@@ -1,0 +1,132 @@
+<h2>MCP Server 工具定义</h2>
+<p class="subtitle">7个MVP工具的输入输出与行为</p>
+
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px">
+
+  <!-- Tool 1 -->
+  <div style="background:#2d3436;border-radius:12px;padding:16px;width:calc(50% - 8px);box-sizing:border-box">
+    <h3 style="color:#00cec9;margin:0">kb_fetch_video</h3>
+    <div style="color:#b2bec3;font-size:12px;margin-top:4px">从B站视频抓取内容</div>
+    <div style="margin-top:12px">
+      <div style="color:#74b9ff;font-size:12px;font-weight:bold">输入</div>
+      <div style="color:#dfe6e9;font-size:12px">bv_id (BV号) 或 url (视频链接)</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#fdcb6e;font-size:12px;font-weight:bold">输出</div>
+      <div style="color:#dfe6e9;font-size:12px">标题、UP主、发布时间、简介、字幕/弹幕摘要、视频中提及的故事名称列表</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#a29bfe;font-size:12px;font-weight:bold">实现</div>
+      <div style="color:#dfe6e9;font-size:12px">调用B站API获取视频信息；yt-dlp提取字幕；AI提取故事名称</div>
+    </div>
+  </div>
+
+  <!-- Tool 2 -->
+  <div style="background:#2d3436;border-radius:12px;padding:16px;width:calc(50% - 8px);box-sizing:border-box">
+    <h3 style="color:#00cec9;margin:0">kb_fetch_article</h3>
+    <div style="color:#b2bec3;font-size:12px;margin-top:4px">从网页文章抓取内容</div>
+    <div style="margin-top:12px">
+      <div style="color:#74b9ff;font-size:12px;font-weight:bold">输入</div>
+      <div style="color:#dfe6e9;font-size:12px">url (文章链接)</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#fdcb6e;font-size:12px;font-weight:bold">输出</div>
+      <div style="color:#dfe6e9;font-size:12px">标题、作者、发布时间、正文(Markdown)、来源平台</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#a29bfe;font-size:12px;font-weight:bold">实现</div>
+      <div style="color:#dfe6e9;font-size:12px">WebFetch抓取HTML → 转Markdown；记录来源元数据</div>
+    </div>
+  </div>
+
+  <!-- Tool 3 -->
+  <div style="background:#2d3436;border-radius:12px;padding:16px;width:calc(50% - 8px);box-sizing:border-box">
+    <h3 style="color:#00cec9;margin:0">kb_verify_source</h3>
+    <div style="color:#b2bec3;font-size:12px;margin-top:4px">核查来源可信度</div>
+    <div style="margin-top:12px">
+      <div style="color:#74b9ff;font-size:12px;font-weight:bold">输入</div>
+      <div style="color:#dfe6e9;font-size:12px">source_type, source_url, source_author, claims (待核实内容)</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#fdcb6e;font-size:12px;font-weight:bold">输出</div>
+      <div style="color:#dfe6e9;font-size:12px">可信度评级(可靠/基本可靠/待核实/存疑)、核查结果、待核实点清单</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#a29bfe;font-size:12px;font-weight:bold">核查规则</div>
+      <div style="color:#dfe6e9;font-size:12px">官方来源→可靠；知名学者/出版社→基本可靠；自媒体→待核实；无来源→存疑</div>
+    </div>
+  </div>
+
+  <!-- Tool 4 -->
+  <div style="background:#2d3436;border-radius:12px;padding:16px;width:calc(50% - 8px);box-sizing:border-box">
+    <h3 style="color:#00cec9;margin:0">kb_add_entry</h3>
+    <div style="color:#b2bec3;font-size:12px;margin-top:4px">写入条目到省份文件</div>
+    <div style="margin-top:12px">
+      <div style="color:#74b9ff;font-size:12px;font-weight:bold">输入</div>
+      <div style="color:#dfe6e9;font-size:12px">完整条目字段（名称、省份、地区、类型、简介、故事梗概、文化意义、相关地点、关键词、来源、可信度、待核实点）</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#fdcb6e;font-size:12px;font-weight:bold">输出</div>
+      <div style="color:#dfe6e9;font-size:12px">写入确认、文件路径；跨省份条目自动在多个文件创建链接</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#a29bfe;font-size:12px;font-weight:bold">行为</div>
+      <div style="color:#dfe6e9;font-size:12px">验证字段完整性 → 确定省份文件 → 按模板格式写入 → 更新索引</div>
+    </div>
+  </div>
+
+  <!-- Tool 5 -->
+  <div style="background:#2d3436;border-radius:12px;padding:16px;width:calc(50% - 8px);box-sizing:border-box">
+    <h3 style="color:#00cec9;margin:0">kb_match</h3>
+    <div style="color:#b2bec3;font-size:12px;margin-top:4px">语义匹配知识库条目</div>
+    <div style="margin-top:12px">
+      <div style="color:#74b9ff;font-size:12px;font-weight:bold">输入</div>
+      <div style="color:#dfe6e9;font-size:12px">story_text (用户上传的故事或观点)</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#fdcb6e;font-size:12px;font-weight:bold">输出</div>
+      <div style="color:#dfe6e9;font-size:12px">匹配条目列表，每个含：条目名称、匹配原因、相似度、省份、链接</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#a29bfe;font-size:12px;font-weight:bold">实现</div>
+      <div style="color:#dfe6e9;font-size:12px">读取所有省份文件 → Claude语义对比 → 返回相关条目及匹配分析</div>
+    </div>
+  </div>
+
+  <!-- Tool 6 -->
+  <div style="background:#2d3436;border-radius:12px;padding:16px;width:calc(50% - 8px);box-sizing:border-box">
+    <h3 style="color:#00cec9;margin:0">kb_search</h3>
+    <div style="color:#b2bec3;font-size:12px;margin-top:4px">按条件检索知识库</div>
+    <div style="margin-top:12px">
+      <div style="color:#74b9ff;font-size:12px;font-weight:bold">输入</div>
+      <div style="color:#dfe6e9;font-size:12px">keywords, type (可选), province (可选), region (可选)</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#fdcb6e;font-size:12px;font-weight:bold">输出</div>
+      <div style="color:#dfe6e9;font-size:12px">匹配条目列表，含完整字段摘要</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#a29bfe;font-size:12px;font-weight:bold">实现</div>
+      <div style="color:#dfe6e9;font-size:12px">遍历指定省份文件 → 关键词文本搜索 → 返回结果</div>
+    </div>
+  </div>
+
+  <!-- Tool 7 -->
+  <div style="background:#2d3436;border-radius:12px;padding:16px;width:calc(50% - 8px);box-sizing:border-box">
+    <h3 style="color:#00cec9;margin:0">kb_supplement</h3>
+    <div style="color:#b2bec3;font-size:12px;margin-top:4px">补充相关知识库内容</div>
+    <div style="margin-top:12px">
+      <div style="color:#74b9ff;font-size:12px;font-weight:bold">输入</div>
+      <div style="color:#dfe6e9;font-size:12px">entry_name 或 story_text</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#fdcb6e;font-size:12px;font-weight:bold">输出</div>
+      <div style="color:#dfe6e9;font-size:12px">相关条目：同一故事的不同地区版本、同类型条目、同地区条目、关联人物/地点</div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="color:#a29bfe;font-size:12px;font-weight:bold">实现</div>
+      <div style="color:#dfe6e9;font-size:12px">定位当前条目 → 搜索同关键词/同省份/同类型 → 返回补充材料</div>
+    </div>
+  </div>
+
+</div>

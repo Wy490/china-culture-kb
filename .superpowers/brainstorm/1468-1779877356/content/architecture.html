@@ -1,0 +1,76 @@
+<h2>系统架构：MCP Server + Claude Code</h2>
+<p class="subtitle">知识库Agent MVP核心架构与数据流</p>
+
+<div class="mockup">
+  <div class="mockup-header">架构总览</div>
+  <div class="mockup-body" style="padding:20px;background:#1a1a2e">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
+
+      <!-- User -->
+      <div style="background:#2d3436;border:2px solid #74b9ff;border-radius:12px;padding:16px;width:120px;text-align:center">
+        <div style="font-size:14px;color:#74b9ff;font-weight:bold">用户</div>
+        <div style="font-size:11px;color:#b2bec3;margin-top:8px">上传URL/故事</div>
+        <div style="font-size:11px;color:#b2bec3">查看结果</div>
+      </div>
+
+      <!-- Arrow -->
+      <div style="display:flex;align-items:center;color:#ffeaa7;font-size:20px">→</div>
+
+      <!-- Claude Code -->
+      <div style="background:#2d3436;border:2px solid #a29bfe;border-radius:12px;padding:16px;width:160px;text-align:center">
+        <div style="font-size:14px;color:#a29bfe;font-weight:bold">Claude Code</div>
+        <div style="font-size:11px;color:#b2bec3;margin-top:8px">对话编排</div>
+        <div style="font-size:11px;color:#b2bec3">调用MCP工具</div>
+        <div style="font-size:11px;color:#b2bec3">LLM语义分析</div>
+      </div>
+
+      <!-- Arrow -->
+      <div style="display:flex;align-items:center;color:#ffeaa7;font-size:20px">↔</div>
+
+      <!-- MCP Server -->
+      <div style="background:#2d3436;border:2px solid #00cec9;border-radius:12px;padding:16px;width:180px;text-align:center">
+        <div style="font-size:14px;color:#00cec9;font-weight:bold">MCP Server</div>
+        <div style="font-size:11px;color:#dfe6e9;margin-top:8px">kb_fetch_video</div>
+        <div style="font-size:11px;color:#dfe6e9">kb_fetch_article</div>
+        <div style="font-size:11px;color:#dfe6e9">kb_verify_source</div>
+        <div style="font-size:11px;color:#dfe6e9">kb_add_entry</div>
+        <div style="font-size:11px;color:#dfe6e9">kb_match</div>
+        <div style="font-size:11px;color:#dfe6e9">kb_search</div>
+        <div style="font-size:11px;color:#dfe6e9">kb_supplement</div>
+      </div>
+
+      <!-- Arrow down -->
+      <div style="display:flex;align-items:center;color:#ffeaa7;font-size:20px">↕</div>
+
+      <!-- Knowledge Base -->
+      <div style="background:#2d3436;border:2px solid #fdcb6e;border-radius:12px;padding:16px;width:160px;text-align:center">
+        <div style="font-size:14px;color:#fdcb6e;font-weight:bold">知识库</div>
+        <div style="font-size:11px;color:#b2bec3;margin-top:8px">Markdown文件</div>
+        <div style="font-size:11px;color:#b2bec3">34个省份</div>
+        <div style="font-size:11px;color:#b2bec3">sources/来源</div>
+        <div style="font-size:11px;color:#b2bec3">indexes/索引</div>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div style="margin-top:24px;display:flex;gap:16px;justify-content:center;align-items:center;border-top:1px dashed #636e72;padding-top:16px">
+      <div style="font-size:12px;color:#636e72;font-style:italic">第二阶段</div>
+      <div style="display:flex;align-items:center;color:#ffeaa7;font-size:20px">→</div>
+      <div style="background:#2d3436;border:2px dashed #e17055;border-radius:12px;padding:16px;width:160px;text-align:center">
+        <div style="font-size:14px;color:#e17055;font-weight:bold">脚本生成</div>
+        <div style="font-size:11px;color:#b2bec3;margin-top:8px">kb_generate_script</div>
+        <div style="font-size:11px;color:#b2bec3">影视脚本模板</div>
+        <div style="font-size:11px;color:#b2bec3">输出Markdown</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">核心流程</h3>
+<div style="background:#1a1a2e;padding:16px;border-radius:8px">
+  <div style="color:#dfe6e9;font-size:13px;line-height:1.8">
+    <div style="margin-bottom:8px"><span style="color:#00cec9;font-weight:bold">采集流程：</span>用户给URL → MCP fetch工具抓取内容 → verify工具核查来源 → add_entry写入省份文件</div>
+    <div style="margin-bottom:8px"><span style="color:#00cec9;font-weight:bold">匹配流程：</span>用户上传故事 → Claude Code做语义分析 → match/search工具检索知识库 → supplement补充相关内容</div>
+    <div><span style="color:#e17055;font-weight:bold">生成流程（二期）：</span>选定条目 → generate_script生成影视脚本 → 输出脚本Markdown文件</div>
+  </div>
+</div>

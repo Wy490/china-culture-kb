@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "china-culture-kb": {
+      "command": "node",
+      "args": ["mcp-server/dist/index.js"],
+      "cwd": "d:/china-culture-kb"
+    }
+  }
+}

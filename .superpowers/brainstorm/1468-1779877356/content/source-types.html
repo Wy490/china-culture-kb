@@ -1,0 +1,80 @@
+<h2>更新：来源类型与核查规则</h2>
+<p class="subtitle">加入口述来源，4种来源各有核查标准</p>
+
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px">
+
+  <!-- Source types -->
+  <div style="background:#2d3436;border-radius:12px;padding:20px;width:100%;box-sizing:border-box">
+    <h3 style="color:#fdcb6e;margin:0 0 12px 0">4种来源类型及核查标准</h3>
+    <table style="width:100%;color:#dfe6e9;font-size:13px;border-collapse:collapse">
+      <tr style="border-bottom:1px solid #636e72">
+        <th style="padding:8px;color:#74b9ff;text-align:left">来源类型</th>
+        <th style="padding:8px;color:#74b9ff;text-align:left">采集方式</th>
+        <th style="padding:8px;color:#74b9ff;text-align:left">默认可信度</th>
+        <th style="padding:8px;color:#74b9ff;text-align:left">核查要点</th>
+        <th style="padding:8px;color:#74b9ff;text-align:left">必记录字段</th>
+      </tr>
+      <tr style="border-bottom:1px solid #4a4a4a">
+        <td style="padding:8px;color:#00cec9">哔哩哔哩</td>
+        <td style="padding:8px">kb_fetch_video</td>
+        <td style="padding:8px;color:#fdcb6e">待核实</td>
+        <td style="padding:8px">UP主是否为领域专家；是否有官方账号背书；评论区是否有考证补充</td>
+        <td style="padding:8px">BV号、标题、UP主、发布时间、链接</td>
+      </tr>
+      <tr style="border-bottom:1px solid #4a4a4a">
+        <td style="padding:8px;color:#00cec9">网络文章</td>
+        <td style="padding:8px">kb_fetch_article</td>
+        <td style="padding:8px;color:#fdcb6e">待核实</td>
+        <td style="padding:8px">平台权威性（知乎>公众号>头条号）；作者资质；是否有引用来源</td>
+        <td style="padding:8px">URL、标题、作者、平台、发布时间</td>
+      </tr>
+      <tr style="border-bottom:1px solid #4a4a4a">
+        <td style="padding:8px;color:#00cec9">书籍/论文</td>
+        <td style="padding:8px">kb_add_entry 直接录入</td>
+        <td style="padding:8px;color:#55efc4">基本可靠</td>
+        <td style="padding:8px">出版社/期刊权威性；是否有ISBN/DOI；版本与版次</td>
+        <td style="padding:8px">书名/论文标题、作者、ISBN/DOI、出版社/期刊、出版年</td>
+      </tr>
+      <tr style="border-bottom:1px solid #4a4a4a;background:#2d3436;border-left:3px solid #e17055">
+        <td style="padding:8px;color:#e17055;font-weight:bold">口述传承</td>
+        <td style="padding:8px">kb_add_entry 直接录入</td>
+        <td style="padding:8px;color:#e17055;font-weight:bold">待核实</td>
+        <td style="padding:8px">讲述人背景；讲述地点与故事属地是否吻合；是否有其他版本佐证</td>
+        <td style="padding:8px">讲述人、讲述地点、讲述时间、讲述场景、记录人</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Oral source template -->
+  <div style="background:#2d3436;border:2px solid #e17055;border-radius:12px;padding:20px;width:100%;box-sizing:border-box">
+    <h3 style="color:#e17055;margin:0 0 12px 0">新增：口述来源记录模板</h3>
+    <div style="color:#dfe6e9;font-size:13px;background:#1a1a2e;padding:12px;border-radius:8px;font-family:monospace">
+      <div style="color:#e17055">## 口述资料：{{讲述人姓名或代号}}</div>
+      <div>- 讲述人：{{姓名/代号，年龄，职业/身份}}</div>
+      <div>- 讲述地点：{{省份-地区-具体地点}}</div>
+      <div>- 讲述时间：{{YYYY-MM-DD}}</div>
+      <div>- 讲述场景：{{访谈/日常聊天/庙会/节庆等}}</div>
+      <div>- 记录人：{{记录者姓名}}</div>
+      <div>- 故事名称：{{故事名}}</div>
+      <div>- 故事内容：{{口述原文或整理稿}}</div>
+      <div>- 可信度：待核实</div>
+      <div>- 待核实点：</div>
+      <div>  - 讲述人身份是否可考</div>
+      <div>  - 故事与其他版本的一致性</div>
+      <div>  - 地域归属是否准确</div>
+    </div>
+  </div>
+
+  <!-- Updated data structure -->
+  <div style="background:#2d3436;border-radius:12px;padding:20px;width:100%;box-sizing:border-box">
+    <h3 style="color:#a29bfe;margin:0 0 12px 0">更新：sources 目录结构</h3>
+    <div style="color:#dfe6e9;font-size:13px;background:#1a1a2e;padding:12px;border-radius:8px;font-family:monospace">
+      <div>sources/</div>
+      <div>  videos/     ← B站视频资料（BV号.md）</div>
+      <div>  articles/   ← 网络文章资料（URL标识.md）</div>
+      <div style="color:#e17055;font-weight:bold">  oral/       ← 口述传承资料（讲述人.md）</div>
+      <div>  books/      ← 书籍论文资料（书名.md）</div>
+      <div>  websites/   ← 网页来源记录</div>
+    </div>
+  </div>
+</div>

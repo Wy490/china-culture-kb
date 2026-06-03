@@ -1,0 +1,43 @@
+<h2>三种架构方案对比</h2>
+<p class="subtitle">选择最适合MVP的知识库Agent架构</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>MCP Server + Claude Code</h3>
+      <p>构建MCP服务器提供知识库专用工具（采集、核查、入库、匹配、生成），通过Claude Code调用</p>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros"><h4>优势</h4><ul><li>零前端开发，直接用Claude Code交互</li><li>Claude Code自带web fetch、文件读写能力</li><li>MCP工具可复用、可扩展</li><li>最贴近MVP"先跑起来"的思路</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>依赖Claude Code环境运行</li><li>非技术用户需要学习CLI</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Claude Agent SDK 自定义Agent</h3>
+      <p>用Anthropic Agent SDK构建独立Agent程序，自定义工具集和对话流程</p>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros"><h4>优势</h4><ul><li>完全自定义Agent行为和对话流程</li><li>可独立运行，不依赖Claude Code</li><li>后续可包装为API或Web服务</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>开发量较大（需要构建整个Agent框架）</li><li>Agent SDK尚在演进中</li><li>需要自己处理对话上下文管理</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>独立Python CLI</h3>
+      <p>Python命令行工具，用Anthropic SDK调用Claude做分析，subcommands管理各功能</p>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros"><h4>优势</h4><ul><li>完全自主，无外部Agent框架依赖</li><li>可用Python生态（yt-dlp、BeautifulSoup等）</li><li>subcommands清晰：fetch/verify/match/generate</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>对话交互体验不如Agent模式</li><li>需要自己写所有胶水代码</li><li>扩展为Web需要大量重构</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">推荐：方案A（MCP Server + Claude Code）</h3>
+<p class="subtitle">最快实现MVP，充分利用Claude Code现有能力，只补知识库专用逻辑</p>

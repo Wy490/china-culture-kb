@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+mcp-server/node_modules/
+
+# Build output
+mcp-server/dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temp
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+
+# Cache
+__pycache__/
+.cache/

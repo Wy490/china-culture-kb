@@ -1,0 +1,62 @@
+<h2>来源核实流程详解</h2>
+<p class="subtitle">混合策略：外部权威优先 → 内部互证补充 → 核实结果标注方法</p>
+
+<div class="mockup">
+  <div class="mockup-header">核实决策流程</div>
+  <div class="mockup-body" style="padding:24px;background:#1a1a2e;font-size:13px;color:#dfe6e9;line-height:2">
+
+    <div style="text-align:center;color:#74b9ff;font-weight:bold;font-size:15px;margin-bottom:8px">输入：待核实条目（来源类型 + 内容 + 关键主张）</div>
+
+    <div style="margin:12px 0;padding:12px;background:#2d3436;border-radius:8px;border-left:4px solid #00cec9">
+      <div style="color:#00cec9;font-weight:bold">Step 1 — 外部权威检索</div>
+      <div style="margin-left:16px">
+        <div>▸ B站视频 → 查UP主资质、评论考证</div>
+        <div>▸ 网络文章 → 查平台权威性、作者背景、引用链</div>
+        <div>▸ 书籍论文 → 验ISBN/DOI、出版社权威性</div>
+        <div>▸ 口述 → 查讲述人可考性、是否有文献记录</div>
+      </div>
+      <div style="margin-top:8px;color:#fdcb6e">外部权威数据源：非遗名录官网、各省文化厅数据库、中国知网、百度百科（参考级）</div>
+    </div>
+
+    <div style="text-align:center;color:#636e72">↓ 若外部找到佐证 → <span style="color:#55efc4;font-weight:bold">评级 + 标注"外部核实"</span></div>
+    <div style="text-align:center;color:#636e72;margin-bottom:8px">↓ 若外部无佐证 → 进入Step 2</div>
+
+    <div style="margin:12px 0;padding:12px;background:#2d3436;border-radius:8px;border-left:4px solid #a29bfe">
+      <div style="color:#a29bfe;font-weight:bold">Step 2 — 知识库内部互证</div>
+      <div style="margin-left:16px">
+        <div>▸ kb_match 搜索同故事不同地区版本 → 版本一致性</div>
+        <div>▸ kb_search 搜索同地区、同类型条目 → 主题印证</div>
+        <div>▸ 检查已有条目中是否提及相同人物、地点、事件</div>
+      </div>
+      <div style="margin-top:8px;color:#fdcb6e">互证标准：库内3条以上佐证 → "基本可靠（内部互证）"；1-2条 → "待核实（内部部分佐证）"</div>
+    </div>
+
+    <div style="text-align:center;color:#636e72">↓ 若内部有充分佐证 → <span style="color:#fdcb6e;font-weight:bold">评级 + 标注"内部互证"</span></div>
+    <div style="text-align:center;color:#636e72;margin-bottom:8px">↓ 若内部也无佐证 → 进入Step 3</div>
+
+    <div style="margin:12px 0;padding:12px;background:#2d3436;border-radius:8px;border-left:4px solid #e17055">
+      <div style="color:#e17055;font-weight:bold">Step 3 — 无佐证</div>
+      <div style="margin-left:16px">
+        <div>▸ 标记"存疑"</div>
+        <div>▸ 列出所有待核实点</div>
+        <div>▸ 建议用户后续寻找外部来源</div>
+      </div>
+    </div>
+
+    <div style="text-align:center;color:#74b9ff;font-weight:bold;font-size:15px;margin-top:8px">输出：可信度评级 + 核实方法标注 + 待核实点清单</div>
+  </div>
+</div>
+
+<div style="background:#2d3436;border-radius:12px;padding:20px;margin-top:16px">
+  <h3 style="color:#fdcb6e;margin:0 0 12px 0">核实结果记录格式</h3>
+  <div style="color:#dfe6e9;font-size:13px;background:#1a1a2e;padding:12px;border-radius:8px;font-family:monospace;line-height:1.8">
+    <div style="color:#74b9ff">### 可信度</div>
+    <div>基本可靠</div>
+    <div style="color:#74b9ff">### 核实方法</div>
+    <div style="color:#55efc4">外部核实：非遗名录"白蛇传"条目印证</div>
+    <div style="color:#fdcb6e">内部互证：江苏、浙江、安徽3省份均有类似版本</div>
+    <div style="color:#74b9ff">### 待核实点</div>
+    <div style="color:#e17055">- 该版本与主流版本的差异原因待查</div>
+    <div style="color:#e17055">- 讲述人提到的具体地名需核实是否为同一地点</div>
+  </div>
+</div>

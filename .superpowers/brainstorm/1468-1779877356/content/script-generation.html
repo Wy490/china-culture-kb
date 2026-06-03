@@ -1,0 +1,91 @@
+<h2>Phase 2：AI影视脚本生成</h2>
+<p class="subtitle">知识库条目 → 可拍摄/可动画化的影视脚本</p>
+
+<div class="mockup">
+  <div class="mockup-header">脚本生成流程</div>
+  <div class="mockup-body" style="padding:24px;background:#1a1a2e;font-size:13px;color:#dfe6e9">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+      <div style="background:#2d3436;border:2px solid #fdcb6e;border-radius:8px;padding:10px;width:120px;text-align:center">
+        <div style="color:#fdcb6e;font-weight:bold;font-size:12px">知识库条目</div>
+        <div style="color:#b2bec3;font-size:11px;margin-top:4px">1个或多个</div>
+        <div style="color:#b2bec3;font-size:11px">相关条目</div>
+      </div>
+      <div style="color:#ffeaa7;font-size:18px">→</div>
+      <div style="background:#2d3436;border:2px solid #a29bfe;border-radius:8px;padding:10px;width:140px;text-align:center">
+        <div style="color:#a29bfe;font-weight:bold;font-size:12px">kb_supplement</div>
+        <div style="color:#b2bec3;font-size:11px;margin-top:4px">补充版本差异</div>
+        <div style="color:#b2bec3;font-size:11px">补充文化背景</div>
+      </div>
+      <div style="color:#ffeaa7;font-size:18px">→</div>
+      <div style="background:#2d3436;border:2px solid #e17055;border-radius:8px;padding:10px;width:160px;text-align:center">
+        <div style="color:#e17055;font-weight:bold;font-size:12px">kb_generate_script</div>
+        <div style="color:#b2bec3;font-size:11px;margin-top:4px">选择脚本类型</div>
+        <div style="color:#b2bec3;font-size:11px">Claude生成脚本</div>
+        <div style="color:#b2bec3;font-size:11px">输出Markdown</div>
+      </div>
+      <div style="color:#ffeaa7;font-size:18px">→</div>
+      <div style="background:#2d3436;border:2px solid #55efc4;border-radius:8px;padding:10px;width:120px;text-align:center">
+        <div style="color:#55efc4;font-weight:bold;font-size:12px">脚本文件</div>
+        <div style="color:#b2bec3;font-size:11px;margin-top:4px">scripts/目录</div>
+        <div style="color:#b2bec3;font-size:11px">Markdown格式</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="background:#2d3436;border-radius:12px;padding:20px;margin-top:16px">
+  <h3 style="color:#fdcb6e;margin:0 0 12px 0">脚本类型选项</h3>
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <div style="background:#1a1a2e;border-radius:8px;padding:12px;width:calc(25% - 9px);text-align:center">
+      <div style="color:#00cec9;font-weight:bold;font-size:12px">纪录片脚本</div>
+      <div style="color:#b2bec3;font-size:11px;margin-top:4px">旁白+画面+采访</div>
+      <div style="color:#b2bec3;font-size:11px">适合非遗、工艺</div>
+    </div>
+    <div style="background:#1a1a2e;border-radius:8px;padding:12px;width:calc(25% - 9px);text-align:center">
+      <div style="color:#a29bfe;font-weight:bold;font-size:12px">短剧脚本</div>
+      <div style="color:#b2bec3;font-size:11px;margin-top:4px">场景+对话+动作</div>
+      <div style="color:#b2bec3;font-size:11px">适合民间故事</div>
+    </div>
+    <div style="background:#1a1a2e;border-radius:8px;padding:12px;width:calc(25% - 9px);text-align:center">
+      <div style="color:#e17055;font-weight:bold;font-size:12px">动画脚本</div>
+      <div style="color:#b2bec3;font-size:11px;margin-top:4px">画面描述+旁白</div>
+      <div style="color:#b2bec3;font-size:11px">适合神话传说</div>
+    </div>
+    <div style="background:#1a1a2e;border-radius:8px;padding:12px;width:calc(25% - 9px);text-align:center">
+      <div style="color:#fdcb6e;font-weight:bold;font-size:12px">文化解说脚本</div>
+      <div style="color:#b2bec3;font-size:11px;margin-top:4px">主题讲解+案例</div>
+      <div style="color:#b2bec3;font-size:11px">适合节庆、饮食</div>
+    </div>
+  </div>
+</div>
+
+<div style="background:#2d3436;border-radius:12px;padding:20px;margin-top:16px">
+  <h3 style="color:#fdcb6e;margin:0 0 12px 0">脚本模板结构</h3>
+  <div style="color:#dfe6e9;font-size:12px;background:#1a1a2e;padding:12px;border-radius:8px;font-family:monospace;line-height:1.8">
+    <div style="color:#fdcb6e"># {{条目名称}} — {{脚本类型}}脚本</div>
+    <div style="color:#74b9ff">## 元信息</div>
+    <div>- 来源条目：[[条目1]]、[[条目2]]</div>
+    <div>- 脚本类型：短剧/纪录片/动画/文化解说</div>
+    <div>- 目标时长：{{分钟数}}</div>
+    <div>- 文化背景说明：{{从知识库补充的文化背景}}</div>
+    <div style="color:#74b9ff;margin-top:8px">## 角色表</div>
+    <div>- {{角色1}}：{{描述}}，来源：[[条目]]</div>
+    <div style="color:#74b9ff;margin-top:8px">## 场景列表</div>
+    <div style="color:#74b9ff;margin-top:8px">### 场景1：{{场景名}}</div>
+    <div>- 地点：{{地点描述}}</div>
+    <div>- 时间：{{时间设定}}</div>
+    <div>- 画面：{{画面描述}}</div>
+    <div>- 旁白/对话：{{具体内容}}</div>
+    <div>- 文化注释：{{需要注明的文化细节}}</div>
+    <div style="color:#74b9ff;margin-top:8px">## 文化注释总汇</div>
+    <div>- {{需要特别注意的文化细节和准确性要点}}</div>
+    <div style="color:#74b9ff;margin-top:8px">## 来源溯源</div>
+    <div>- 本脚本基于知识库条目：[[条目名]]</div>
+    <div>- 版本差异说明：{{如有多版本，说明选择依据}}</div>
+  </div>
+</div>
+
+<div style="background:#2d3436;border-radius:12px;padding:16px;margin-top:16px;border-left:4px solid #636e72">
+  <div style="color:#636e72;font-size:12px;font-style:italic">Phase 2 仅做架构预留，MVP阶段不实现。脚本模板和类型选项待Phase 2启动时细化。</div>
+</div>
