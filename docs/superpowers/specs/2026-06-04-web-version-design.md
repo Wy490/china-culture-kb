@@ -78,7 +78,7 @@ china-culture-kb/
           StoryStudio.vue      # 故事生成工作台（左右分栏）
           StoryDetail.vue      # 已生成故事详情
         components/
-          StoryPlan.vue        # 览推荐面板
+          StoryPlan.vue        # 预览推荐面板
           StoryResult.vue      # 生成结果展示
           GearsActions.vue     # GEARS 操作按钮组
           EntryCard.vue        # 条目卡片（含生成快捷按钮）
@@ -183,8 +183,8 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 |------|------|
 | Web 前端 origin 可访问 | localhost:5173（Vite 默认） |
 | grears v2 前端/后端 origin 可访问 | localhost:3000 或自定义端口 |
-| 第一阶段允许本地开发 origin | 所有 localhost 端口 |
-| 不要默认 `*` | 除非开发模式临时允许 |
+| 第一阶段允许本地开发 origin | `NODE_ENV=development` 时允许 localhost 通配，生产仍使用 CORS_ORIGINS 白名单 |
+| 不要默认 `*` | 生产环境必须使用 CORS_ORIGINS 白名单 |
 
 ### 6.4 第一阶段核心 API
 
@@ -423,7 +423,7 @@ export interface GearsSegment {
 | 接口 | 校验重点 |
 |------|----------|
 | `POST /api/stories/plan` | entry_name 非空 |
-| `POST /api/stories/generate` | entry_name 非空、generation_type 合法、selected_event 非空 |
+| `POST /api/stories/generate` | entry_name 非空、generation_type 合法；selected_event 对 character_story 推荐必填，对 culture_promo / scene_short 可为空 |
 | `GET /api/entries/detail` | name 非空 |
 | `GET /api/stories/:storyId/gears-segments` | storyId 格式合法 |
 
