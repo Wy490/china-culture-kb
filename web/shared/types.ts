@@ -230,6 +230,6 @@ export interface ProvinceInfo {
 
 export interface TypeInfo {
   name: string;
-  recommended_generation_type: GenerationType;
+  recommended_generation_types: GenerationType[];
   description: string;
 }

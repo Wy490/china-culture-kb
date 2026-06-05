@@ -40,7 +40,14 @@ export function validateQuery<T>(schema: ZodSchema<T>) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.query);
     if (result.success) {
-      req.query = result.data as Record<string, string | string[]>;
+      // Express 5 makes req.query a getter on the prototype, so direct
+      // assignment fails. Override with an instance data property instead.
+      Object.defineProperty(req, 'query', {
+        value: result.data as Record<string, string | string[]>,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
       next();
     } else {
       const message = JSON.stringify(result.error.issues);
