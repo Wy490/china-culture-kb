@@ -74,7 +74,10 @@ export const EntrySearchQuerySchema = z.object({
 // storyId format: YYYYMMDD-story-{hash36}
 // Example: 20260603-story-abc123def456ghi789jkl012mno345pqr
 // The hash36 part uses base-36 characters (0-9, a-z) and is variable length
-export const StoryIdParamSchema = z.string().regex(
-  /^\d{8}-story-[0-9a-z]+$/,
-  'storyId must match format YYYYMMDD-story-{hash36}',
-);
+// Must be an object schema because validateParams validates req.params (which is an object)
+export const StoryIdParamSchema = z.object({
+  storyId: z.string().regex(
+    /^\d{8}-story-[0-9a-z]+$/,
+    'storyId must match format YYYYMMDD-story-{hash36}',
+  ),
+});

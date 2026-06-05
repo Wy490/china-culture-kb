@@ -4,6 +4,10 @@ mcp-server/node_modules/
 
 # Build output
 mcp-server/dist/
+web/server/dist/
+
+# Generated story files (runtime output, not source)
+web/generated/
 
 # IDE
 .vscode/
