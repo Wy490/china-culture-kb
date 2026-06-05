@@ -1,5 +1,5 @@
 // web/server/src/services/story-service.ts — Story business logic
-// plan, generate+store, list, get, gears-segments
+// plan, generate+store (with content from KB entry), list, get, gears-segments
 
 import { resolve } from 'node:path';
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -13,9 +13,16 @@ import type {
   AvailableEvent,
   GenerationType,
   SupportedDuration,
+  PanelCount,
   StoryGenerateRequest,
   StoryGenerateResult,
+  StoryScene,
+  StoryCharacter,
+  ActBeat,
+  ProtagonistArc,
+  GearsSegment,
   GearsSegmentsResponse,
+  StoryListItem,
 } from '@shared/types.js';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +45,47 @@ const TYPE_GENERATION_ROUTING: Record<string, GenerationType[]> = {
 };
 
 // ---------------------------------------------------------------------------
+// Dramatic function mapping (for scene_breakdown generation)
+// ---------------------------------------------------------------------------
+
+const DRAMATIC_FUNCTIONS = ['开场', '铺垫', '冲突升级', '高潮', '尾声'] as const;
+
+const CAMERA_BY_FUNCTION: Record<string, string> = {
+  '开场': '远景缓缓推进，建立空间感',
+  '铺垫': '中景固定镜头，人物动作清晰',
+  '冲突升级': '近景快速切换，节奏紧凑',
+  '高潮': '特写+缓推交替，情绪聚焦',
+  '尾声': '远景拉远，留白收束',
+};
+
+const TIME_OF_DAY_OPTIONS = ['清晨', '白天', '黄昏', '夜晚', '雨夜'] as const;
+
+const DURATION_BY_SCENE_COUNT: Record<number, number> = {
+  2: 30,   // 2 scenes → 30s each (1min total)
+  3: 20,   // 3 scenes → 20s each (1min total)
+  4: 15,   // 4 scenes → 15s each (1min total)
+  5: 12,   // 5 scenes → 12s each (1min total)
+};
+
+const DURATION_3MIN: Record<number, number> = {
+  3: 60,   // 3 scenes → 60s each
+  4: 45,   // 4 scenes → 45s each
+  5: 36,   // 5 scenes → 36s each
+  6: 30,   // 6 scenes → 30s each
+};
+
+const PANEL_COUNT_BY_DURATION: Record<number, PanelCount> = {
+  12: 6,
+  15: 6,
+  20: 6,
+  25: 8,
+  30: 9,
+  36: 10,
+  45: 10,
+  60: 12,
+};
+
+// ---------------------------------------------------------------------------
 // Paths
 // ---------------------------------------------------------------------------
 
@@ -46,8 +94,6 @@ function kbRoot(): string {
 }
 
 function generatedRoot(): string {
-  // web/generated/stories is at project root level, next to data/
-  // KB_ROOT points to .../data, so go up one and into web/generated/stories
   return resolve(kbRoot(), '..', 'web', 'generated', 'stories');
 }
 
@@ -55,86 +101,42 @@ function generatedRoot(): string {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * slugify — create a short slug from Chinese text using character code sum → base36 hash.
- * Produces a deterministic, collision-resistant identifier.
- */
 function slugify(text: string): string {
   let sum = 0;
-  for (const ch of text) {
-    sum += ch.charCodeAt(0);
-  }
+  for (const ch of text) sum += ch.charCodeAt(0);
   return sum.toString(36);
 }
 
-/**
- * Generate a storyId in format YYYYMMDD-story-{hash36}
- */
 function generateStoryId(entryName: string): string {
   const now = new Date();
-  const datePart = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-  ].join('');
-  // Combine entry name chars + random component for uniqueness
+  const datePart = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('');
   const hashInput = entryName + String(Date.now());
   let sum = 0;
-  for (const ch of hashInput) {
-    sum += ch.charCodeAt(0);
-  }
-  // Add a small random offset to avoid collisions on same-day same-entry
+  for (const ch of hashInput) sum += ch.charCodeAt(0);
   const hash36 = (sum + Math.floor(Math.random() * 100)).toString(36);
   return `${datePart}-story-${hash36}`;
 }
 
-/**
- * Extract bold-marked events from the story field.
- * Pattern: **event name** followed by ：or a description
- * Returns an array of event name strings.
- */
 function extractBoldEvents(storyText: string): string[] {
   const events: string[] = [];
-  // Match **text** patterns that appear as event headings in the story field
   const boldRegex = /\*\*(.+?)\*\*/g;
+  const skipFields = ['省份', '地区', '类型', '简介', '故事梗概', '文化意义', '相关地点', '关键词', '来源', '可信度', '核实方法', '待核实点'];
   let match: RegExpExecArray | null;
   while ((match = boldRegex.exec(storyText)) !== null) {
-    const eventName = match[1].trim();
-    // Skip meta-fields like "省份", "地区", "类型" which are header fields, not events
-    if (['省份', '地区', '类型', '简介', '故事梗概', '文化意义', '相关地点', '关键词', '来源', '可信度', '核实方法', '待核实点'].includes(eventName)) {
-      continue;
-    }
-    events.push(eventName);
+    const name = match[1].trim();
+    if (!skipFields.includes(name)) events.push(name);
   }
   return events;
 }
 
-/**
- * Compute cultural risks from unverified points and credibility level.
- */
 function computeCulturalRisks(entry: EntryDetail): string[] {
   const risks: string[] = [];
-
-  // Low credibility → risk
-  if (entry.credibility === '存疑') {
-    risks.push('条目整体可信度存疑，需大量核实方可用于创作');
-  }
-  if (entry.credibility === '待核实') {
-    risks.push('条目可信度待核实，核心情节可能缺乏佐证');
-  }
-
-  // Unverified points → risks
-  for (const point of entry.unverifiedPoints) {
-    risks.push(`待核实：${point}`);
-  }
-
+  if (entry.credibility === '存疑') risks.push('条目整体可信度存疑，需大量核实方可用于创作');
+  if (entry.credibility === '待核实') risks.push('条目可信度待核实，核心情节可能缺乏佐证');
+  for (const point of entry.unverifiedPoints) risks.push(`待核实：${point}`);
   return risks;
 }
 
-/**
- * Determine recommended duration based on entry type and event characteristics.
- * Simple heuristic for phase 1.
- */
 function recommendDuration(entryType: string, eventCount: number): SupportedDuration {
   if (entryType === '历史人物' && eventCount >= 3) return '3分钟';
   if (entryType === '历史人物') return '1分钟';
@@ -143,13 +145,183 @@ function recommendDuration(entryType: string, eventCount: number): SupportedDura
   return '1分钟';
 }
 
-/**
- * Determine per-event recommended type based on entry type routing.
- */
 function recommendEventType(entryType: string): GenerationType {
   const types = TYPE_GENERATION_ROUTING[entryType];
   if (!types || types.length === 0) return 'character_story';
   return types[0];
+}
+
+// ---------------------------------------------------------------------------
+// Extract characters from story text (simple heuristic)
+// ---------------------------------------------------------------------------
+
+function extractCharactersFromStory(storyText: string, entryName: string): StoryCharacter[] {
+  // The entry name itself is the protagonist
+  const cleanName = entryName.replace(/——.*/, '').trim();
+  const chars: StoryCharacter[] = [
+    { name: cleanName, role: 'protagonist', description: `主角，${entryName}`, arc: '' },
+  ];
+
+  // Look for other named characters in the story text
+  // Simple pattern: Chinese names (2-3 chars) that appear multiple times
+  const nameRegex = /[^\x00-\x7F]{2,3}(?:公|君|卿|帅|将|帝|王|侯|臣|官|郎|翁|生|师|僧|仙|道|妇|女|郎)/g;
+  const nameCounts = new Map<string, number>();
+  let m: RegExpExecArray | null;
+  while ((m = nameRegex.exec(storyText)) !== null) {
+    const name = m[0];
+    if (name === cleanName) continue;
+    nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
+  }
+
+  // Characters appearing ≥2 times are significant
+  for (const [name, count] of nameCounts) {
+    if (count >= 2) {
+      chars.push({ name, role: count >= 4 ? 'antagonist' : 'supporting', description: `出场${count}次的角色` });
+    }
+  }
+
+  return chars.slice(0, 6); // cap at 6 characters
+}
+
+// ---------------------------------------------------------------------------
+// Build scene_breakdown from entry data + selected event
+// ---------------------------------------------------------------------------
+
+function buildSceneBreakdown(
+  entry: EntryDetail,
+  selectedEvent: string | undefined,
+  boldEvents: string[],
+  targetDuration: SupportedDuration,
+): StoryScene[] {
+  // Determine which events to use
+  const events: string[] = [];
+  if (selectedEvent && selectedEvent !== '整体故事') {
+    // Use selected event as the main event, plus a few supporting events
+    events.push(selectedEvent);
+    const others = boldEvents.filter(e => e !== selectedEvent).slice(0, 2);
+    events.push(...others);
+  } else {
+    // Use all bold events, or default
+    events.push(...boldEvents.slice(0, 5));
+  }
+
+  // If no events at all, use a default
+  if (events.length === 0) {
+    events.push('整体故事');
+  }
+
+  // Determine per-scene duration
+  const is3Min = targetDuration === '3分钟' || targetDuration === '5分钟';
+  const durationMap = is3Min ? DURATION_3MIN : DURATION_BY_SCENE_COUNT;
+  const perSceneDuration = durationMap[events.length] ?? 15;
+
+  // Assign dramatic functions based on position
+  const scenes: StoryScene[] = events.map((eventName, idx) => {
+    const funcIndex = idx === 0 ? 0
+      : idx === events.length - 1 ? 4
+      : idx === events.length - 2 ? 3
+      : Math.min(idx, 2);
+    const func = DRAMATIC_FUNCTIONS[funcIndex];
+    const timeOfDay = TIME_OF_DAY_OPTIONS[Math.min(idx, TIME_OF_DAY_OPTIONS.length - 1)];
+
+    // Build visual_prompt from keywords + location + event
+    const keyVisuals = entry.keywords.slice(0, 3).join('、');
+    const visualPrompt = `${entry.region}，${eventName}。${keyVisuals}构成核心画面`;
+
+    // Build plot description from event name + entry context
+    const plot = `${eventName}——基于${entry.name}的故事梗概中该事件的叙述`;
+
+    // Cultural note from unverified points
+    const relatedNotes = entry.unverifiedPoints.filter(p =>
+      eventName.includes(p.substring(0, 4)) || p.includes(eventName.substring(0, 4))
+    );
+    const culturalNote = relatedNotes.length > 0
+      ? relatedNotes[0]
+      : '本场景基于知识库条目，具体细节请核实来源';
+
+    return {
+      scene_id: idx + 1,
+      title: eventName,
+      duration_sec: perSceneDuration,
+      location: entry.region,
+      time_of_day: timeOfDay,
+      dramatic_function: func,
+      plot,
+      key_action: `${func === '高潮' ? '关键抉择时刻' : func === '开场' ? '建立情境与角色' : '推进叙事冲突'}`,
+      characters: extractCharactersFromStory(entry.story, entry.name)
+        .filter(c => entry.story.includes(c.name))
+        .map(c => c.name)
+        .slice(0, 3),
+      visual_prompt: visualPrompt,
+      camera_suggestion: CAMERA_BY_FUNCTION[func] ?? '中景固定镜头',
+      cultural_note: culturalNote,
+    };
+  });
+
+  return scenes;
+}
+
+// ---------------------------------------------------------------------------
+// Build gears_segments from scene_breakdown
+// ---------------------------------------------------------------------------
+
+function buildGearsSegments(scenes: StoryScene[], storyId: string): GearsSegment[] {
+  return scenes.map((scene) => {
+    const panelCount = PANEL_COUNT_BY_DURATION[scene.duration_sec] ?? 6;
+    const scriptText = `【${scene.dramatic_function}】${scene.location}，${scene.time_of_day}。${scene.visual_prompt}。${scene.key_action}——${scene.title}。${scene.camera_suggestion}。`;
+    const visualFocus = [
+      scene.location,
+      ...scene.visual_prompt.split(/[，、。]/).filter(s => s.length > 1 && s.length < 8).slice(0, 2),
+    ];
+
+    return {
+      segment_id: scene.scene_id,
+      source_scene_id: scene.scene_id,
+      duration_sec: scene.duration_sec,
+      panel_count: panelCount,
+      script_text: scriptText,
+      purpose: scene.dramatic_function,
+      visual_focus: visualFocus.slice(0, 3),
+      cultural_constraints: scene.cultural_note ? [scene.cultural_note] : [],
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Build act_structure for character_story
+// ---------------------------------------------------------------------------
+
+function buildActStructure(scenes: StoryScene[]): ActBeat[] {
+  if (scenes.length === 0) return [];
+  const acts: ActBeat[] = [];
+
+  // Group scenes by dramatic_function into acts
+  const actMap: Record<string, number[]> = {};
+  for (const s of scenes) {
+    if (!actMap[s.dramatic_function]) actMap[s.dramatic_function] = [];
+    actMap[s.dramatic_function].push(s.scene_id);
+  }
+
+  let actNum = 1;
+  for (const func of DRAMATIC_FUNCTIONS) {
+    const ids = actMap[func];
+    if (ids && ids.length > 0) {
+      acts.push({ act: actNum, beat: func, scene_ids: ids, purpose: func });
+      actNum++;
+    }
+  }
+
+  return acts;
+}
+
+// ---------------------------------------------------------------------------
+// Strip internal _request_meta from story data before returning to API
+// ---------------------------------------------------------------------------
+
+function stripInternalFields(data: StoryGenerateResult): StoryGenerateResult {
+  const cleaned = { ...data } as Record<string, unknown>;
+  delete cleaned._request_meta;
+  return cleaned as StoryGenerateResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -164,49 +336,33 @@ export async function planStory(entryName: string): Promise<ApiResponse<StoryPla
 
   const entry = convertFullEntryDetail(mcpDetail);
   const entryType = entry.type;
-
-  // Determine recommended generation types from routing map
   const routedTypes = TYPE_GENERATION_ROUTING[entryType] || ['character_story'];
 
-  // Build recommended_types list
   const recommendedTypes: RecommendedType[] = routedTypes.map((genType, index) => {
     const reasonMap: Record<string, string> = {
       character_story: `该条目类型"${entryType}"适合以人物/故事为核心的叙事`,
       culture_promo: `该条目类型"${entryType}"适合文化推广展示`,
       scene_short: `该条目类型"${entryType}"适合场景演绎短片`,
     };
-    return {
-      generation_type: genType,
-      reason: reasonMap[genType] || `适合${genType}模式`,
-      priority: index + 1,
-    };
+    return { generation_type: genType, reason: reasonMap[genType] || `适合${genType}模式`, priority: index + 1 };
   });
 
-  // Extract bold events from story field
   const boldEvents = extractBoldEvents(entry.story);
+  const availableEvents: AvailableEvent[] = boldEvents.length > 0
+    ? boldEvents.map((eventName) => ({
+        event: eventName,
+        conflict_score: 7,
+        recommended_duration: recommendDuration(entryType, boldEvents.length),
+        recommended_type: recommendEventType(entryType),
+      }))
+    : [{
+        event: '整体故事',
+        conflict_score: 5,
+        recommended_duration: recommendDuration(entryType, 0),
+        recommended_type: recommendEventType(entryType),
+      }];
 
-  // Build available_events list
-  const availableEvents: AvailableEvent[] = boldEvents.map((eventName) => ({
-    event: eventName,
-    conflict_score: 7, // Default score for phase 1 — actual scoring TBD
-    recommended_duration: recommendDuration(entryType, boldEvents.length),
-    recommended_type: recommendEventType(entryType),
-  }));
-
-  // If no bold events found, provide a default
-  if (availableEvents.length === 0) {
-    availableEvents.push({
-      event: '整体故事',
-      conflict_score: 5,
-      recommended_duration: recommendDuration(entryType, 0),
-      recommended_type: recommendEventType(entryType),
-    });
-  }
-
-  // Compute cultural risks
   const culturalRisks = computeCulturalRisks(entry);
-
-  // Recommended duration
   const recommendedDuration = recommendDuration(entryType, boldEvents.length);
 
   return success({
@@ -220,7 +376,7 @@ export async function planStory(entryName: string): Promise<ApiResponse<StoryPla
 }
 
 // ---------------------------------------------------------------------------
-// generateAndStoreStory — create story skeleton and store JSON file
+// generateAndStoreStory — create story with content from KB entry
 // ---------------------------------------------------------------------------
 
 export async function generateAndStoreStory(
@@ -235,47 +391,60 @@ export async function generateAndStoreStory(
   }
 
   const entry = convertFullEntryDetail(mcpDetail);
-
-  // Generate storyId
   const storyId = generateStoryId(entry_name);
-
-  // Compute gears_segments_url (backend-generated, frontend never constructs)
   const gearsSegmentsUrl = `/api/stories/${storyId}/gears-segments`;
+  const targetDuration = target_video_duration ?? recommendDuration(entry.type, extractBoldEvents(entry.story).length);
+  const boldEvents = extractBoldEvents(entry.story);
+  const culturalRisks = computeCulturalRisks(entry);
 
-  // Build skeleton JSON — phase 1: metadata populated, content fields empty
-  const storyData: StoryGenerateResult = {
+  // Build scene_breakdown
+  const sceneBreakdown = buildSceneBreakdown(entry, selected_event, boldEvents, targetDuration);
+
+  // Build gears_segments from scene_breakdown
+  const gearsSegments = output_gears_segments !== false
+    ? buildGearsSegments(sceneBreakdown, storyId)
+    : [];
+
+  // Build story data with content filled from entry
+  const storyData: StoryGenerateResult & { _request_meta: Record<string, unknown> } = {
     storyId,
-    title: entry_name,
+    title: selected_event && selected_event !== '整体故事'
+      ? selected_event
+      : entry.name,
     generation_type,
     source_entry: entry_name,
-    logline: '', // populated by frontend/Claude later
-    theme: '', // populated later
-    full_text: '', // populated later
-    scene_breakdown: [], // populated later
-    gears_segments: [], // populated later
+    logline: entry.summary,
+    theme: `${entry.type} × ${entry.culturalSignificance.substring(0, 30)}`,
+    full_text: entry.story,
+    scene_breakdown: sceneBreakdown,
+    gears_segments: gearsSegments,
     gears_segments_url: gearsSegmentsUrl,
-    cultural_constraints: computeCulturalRisks(entry),
+    cultural_constraints: culturalRisks,
     credibility_note: entry.credibility,
-    // Type-specific fields — populated later based on generation_type
+    // Type-specific fields
     ...(generation_type === 'character_story' ? {
-      characters: [],
-      act_structure: [],
-      protagonist_arc: [],
+      characters: extractCharactersFromStory(entry.story, entry.name),
+      act_structure: buildActStructure(sceneBreakdown),
+      protagonist_arc: [{
+        starting_state: `循规蹈矩的${entry.type}`,
+        turning_point: selected_event ?? '核心转折事件',
+        resolution: '道德觉醒或精神升华',
+      }],
     } : {}),
     ...(generation_type === 'culture_promo' ? {
-      visual_symbols: [],
-      craft_or_ritual_process: '',
-      modern_connection: '',
+      visual_symbols: entry.keywords.slice(0, 5),
+      craft_or_ritual_process: `核心技艺：${entry.keywords.slice(0, 3).join('、')}`,
+      modern_connection: `${entry.name}在现代的文化传承与创新`,
     } : {}),
     ...(generation_type === 'scene_short' ? {
-      spatial_identity: '',
-      visual_route: [],
-      time_layer: '',
+      spatial_identity: entry.region,
+      visual_route: sceneBreakdown.map(s => `${s.title}：${s.visual_prompt}`),
+      time_layer: `${entry.name}的古今变迁与时空叠加`,
     } : {}),
-    // Store request metadata for later content generation
+    // Internal metadata (stripped before API response)
     _request_meta: {
       selected_event: selected_event || null,
-      target_video_duration: target_video_duration || null,
+      target_video_duration: targetDuration,
       tone: tone || null,
       output_gears_segments: output_gears_segments ?? true,
       entry_type: entry.type,
@@ -283,27 +452,25 @@ export async function generateAndStoreStory(
     },
   };
 
-  // Ensure directory exists and write file
+  // Ensure directory and write file
   const dirPath = resolve(generatedRoot(), generation_type);
   await mkdir(dirPath, { recursive: true });
-
   const filePath = resolve(dirPath, `${storyId}.json`);
   await writeFile(filePath, JSON.stringify(storyData, null, 2), 'utf-8');
 
-  return success(storyData);
+  // Return to API without internal _request_meta
+  return success(stripInternalFields(storyData));
 }
 
 // ---------------------------------------------------------------------------
-// listStories — scan generated stories directories
+// listStories — return enriched story list
 // ---------------------------------------------------------------------------
 
 export async function listStories(
   generationType?: string,
-): Promise<ApiResponse<Array<{ storyId: string; title: string; generation_type: string }>>> {
+): Promise<ApiResponse<StoryListItem[]>> {
   const root = generatedRoot();
-  const results: Array<{ storyId: string; title: string; generation_type: string }> = [];
-
-  // Determine which directories to scan
+  const results: StoryListItem[] = [];
   const typesToScan: string[] = generationType
     ? [generationType]
     : ['character_story', 'culture_promo', 'scene_short'];
@@ -311,29 +478,27 @@ export async function listStories(
   for (const typeDir of typesToScan) {
     const dirPath = resolve(root, typeDir);
     let files: string[];
-    try {
-      files = await readdir(dirPath);
-    } catch {
-      // Directory doesn't exist yet — no stories of this type
-      continue;
-    }
+    try { files = await readdir(dirPath); } catch { continue; }
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
-
       const filePath = resolve(dirPath, file);
       try {
         const content = await readFile(filePath, 'utf-8');
         const data = JSON.parse(content);
+        const meta = data._request_meta as Record<string, unknown> | undefined;
         results.push({
           storyId: data.storyId || file.replace('.json', ''),
           title: data.title || '',
           generation_type: data.generation_type || typeDir,
+          source_entry: data.source_entry || '',
+          logline: data.logline || '',
+          created_at: meta?.created_at as string ?? '',
+          has_gears_segments: (data.gears_segments?.length ?? 0) > 0,
+          scene_count: data.scene_breakdown?.length ?? 0,
+          credibility_note: data.credibility_note || '',
         });
-      } catch {
-        // Skip malformed files
-        continue;
-      }
+      } catch { continue; }
     }
   }
 
@@ -341,7 +506,7 @@ export async function listStories(
 }
 
 // ---------------------------------------------------------------------------
-// getStory — find and read a story JSON file
+// getStory — find and read a story JSON file (strip _request_meta)
 // ---------------------------------------------------------------------------
 
 export async function getStory(storyId: string): Promise<ApiResponse<StoryGenerateResult>> {
@@ -352,12 +517,10 @@ export async function getStory(storyId: string): Promise<ApiResponse<StoryGenera
     const filePath = resolve(root, typeDir, `${storyId}.json`);
     try {
       const content = await readFile(filePath, 'utf-8');
-      const data = JSON.parse(content) as StoryGenerateResult;
-      return success(data);
-    } catch {
-      // Not in this directory, try next
-      continue;
-    }
+      const data = JSON.parse(content) as StoryGenerateResult & { _request_meta?: unknown };
+      // Strip internal field before returning
+      return success(stripInternalFields(data));
+    } catch { continue; }
   }
 
   return fail(ErrorCodes.STORY_NOT_FOUND, `Story "${storyId}" not found`);
@@ -369,15 +532,12 @@ export async function getStory(storyId: string): Promise<ApiResponse<StoryGenera
 
 export async function getGearsSegments(storyId: string): Promise<ApiResponse<GearsSegmentsResponse>> {
   const storyResult = await getStory(storyId);
-
   if (!storyResult.ok || !storyResult.data) {
     return fail(ErrorCodes.GEARS_SEGMENTS_NOT_FOUND, `Gears segments for story "${storyId}" not found`);
   }
 
   const story = storyResult.data;
   const segments = story.gears_segments || [];
-
-  // Compute total_duration_sec from segments
   const totalDurationSec = segments.reduce((sum, seg) => sum + seg.duration_sec, 0);
 
   const response: GearsSegmentsResponse = {

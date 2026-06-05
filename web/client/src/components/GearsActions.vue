@@ -13,7 +13,7 @@
       </button>
 
       <div class="gears-actions__single-copy">
-        <label class="gears-actions__label" for="segment-select">复制单段脚本:</label>
+        <label class="gears-actions__label" for="segment-select">复制单段:</label>
         <select id="segment-select" v-model="selectedSegmentId" class="gears-actions__select">
           <option value="" disabled>选择段落…</option>
           <option v-for="seg in segments" :key="seg.segment_id" :value="seg.segment_id">
@@ -25,7 +25,14 @@
           @click="copySegmentScript"
           :disabled="!selectedSegmentId || copyingSegment"
         >
-          📋 {{ copyingSegment ? '已复制!' : '复制脚本' }}
+          📋 {{ copyingSegment ? '已复制!' : '复制脚本文本' }}
+        </button>
+        <button
+          class="btn btn--blue btn--sm"
+          @click="copySegmentJson"
+          :disabled="!selectedSegmentId"
+        >
+          📋 复制单段 JSON
         </button>
       </div>
 
@@ -80,13 +87,27 @@ async function copySegmentScript() {
     const seg = props.segments.find(s => s.segment_id === Number(selectedSegmentId.value))
     if (!seg) { message.value = '未找到该段落'; return }
     await navigator.clipboard.writeText(seg.script_text)
-    message.value = `段落 #${seg.segment_id} 脚本已复制到剪贴板`
+    message.value = `段落 #${seg.segment_id} 脚本文本已复制到剪贴板`
   } catch {
     message.value = '复制失败，请手动复制'
   } finally {
     copyingSegment.value = false
     setTimeout(() => { message.value = '' }, 3000)
   }
+}
+
+async function copySegmentJson() {
+  if (!selectedSegmentId.value) return
+  message.value = ''
+  try {
+    const seg = props.segments.find(s => s.segment_id === Number(selectedSegmentId.value))
+    if (!seg) { message.value = '未找到该段落'; return }
+    await navigator.clipboard.writeText(JSON.stringify(seg, null, 2))
+    message.value = `段落 #${seg.segment_id} JSON 已复制到剪贴板`
+  } catch {
+    message.value = '复制失败，请手动复制'
+  }
+  setTimeout(() => { message.value = '' }, 3000)
 }
 
 function exportJson() {

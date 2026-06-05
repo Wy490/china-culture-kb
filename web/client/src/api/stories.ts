@@ -3,6 +3,7 @@ import type {
   StoryPlanResult,
   StoryGenerateRequest,
   StoryGenerateResult,
+  StoryListItem,
   GearsSegmentsResponse,
 } from '@shared/types'
 
@@ -18,7 +19,7 @@ export function listStories(generationType?: string) {
   const qs: Record<string, string> | undefined = generationType
     ? { generation_type: generationType }
     : undefined
-  return apiGet<StoryGenerateResult[]>('/stories', qs)
+  return apiGet<StoryListItem[]>('/stories', qs)
 }
 
 export function getStory(storyId: string) {

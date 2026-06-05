@@ -128,11 +128,29 @@ export interface ProtagonistArc {
 
 export interface StoryScene {
   scene_id: number;
-  location: string;
+  title: string;
   duration_sec: number;
-  description: string;
+  location: string;
+  time_of_day: string;
+  dramatic_function: string;
+  plot: string;
   key_action: string;
   characters: string[];
+  visual_prompt: string;
+  camera_suggestion: string;
+  cultural_note: string;
+}
+
+export interface StoryListItem {
+  storyId: string;
+  title: string;
+  generation_type: string;
+  source_entry: string;
+  logline: string;
+  created_at: string;
+  has_gears_segments: boolean;
+  scene_count: number;
+  credibility_note: string;
 }
 
 // ---------------------------------------------------------------------------

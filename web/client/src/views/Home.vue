@@ -53,6 +53,13 @@
           <span class="home__story-type-badge">{{ typeLabel(story.generation_type) }}</span>
           <h3 class="home__story-title">{{ story.title }}</h3>
           <p class="home__story-source">来源: {{ story.source_entry }}</p>
+          <p v-if="story.logline" class="home__story-logline">{{ story.logline }}</p>
+          <div class="home__story-meta-row">
+            <span v-if="story.created_at" class="home__story-date">{{ formatDate(story.created_at) }}</span>
+            <span v-if="story.has_gears_segments" class="home__story-gears-badge">✅ GEARS</span>
+            <span v-else class="home__story-gears-badge--none">⭕ 无分段</span>
+            <span class="home__story-scenes">{{ story.scene_count }} 场景</span>
+          </div>
         </RouterLink>
       </div>
     </section>
@@ -77,14 +84,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getProvinces } from '@/api/system'
 import { listStories } from '@/api/stories'
-import type { ProvinceInfo, StoryGenerateResult, GenerationType } from '@shared/types'
+import type { ProvinceInfo, StoryListItem, GenerationType } from '@shared/types'
 import ProvinceGrid from '@/components/ProvinceGrid.vue'
 
 const router = useRouter()
 
 const searchQuery = ref('')
 const provinces = ref<ProvinceInfo[]>([])
-const recentStories = ref<StoryGenerateResult[]>([])
+const recentStories = ref<StoryListItem[]>([])
 const loading = ref(false)
 const error = ref('')
 
@@ -103,6 +110,12 @@ function typeLabel(type: GenerationType): string {
     scene_short: '场景短片',
   }
   return map[type] ?? type
+}
+
+function formatDate(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
 onMounted(async () => {
@@ -271,6 +284,48 @@ onMounted(async () => {
 .home__story-source {
   margin: 0;
   font-size: 13px;
+  color: #7f8c8d;
+}
+
+.home__story-logline {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: #34495e;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.home__story-meta-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.home__story-date {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+.home__story-gears-badge {
+  padding: 2px 6px;
+  background: #d5f5e3;
+  color: #27ae60;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.home__story-gears-badge--none {
+  padding: 2px 6px;
+  background: #f8f9fa;
+  color: #7f8c8d;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.home__story-scenes {
+  font-size: 12px;
   color: #7f8c8d;
 }
 
