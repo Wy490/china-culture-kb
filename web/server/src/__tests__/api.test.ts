@@ -206,12 +206,22 @@ describe('Stories API', () => {
         expect(plan).toHaveProperty('entry_name');
         expect(plan).toHaveProperty('entry_type');
         expect(plan).toHaveProperty('recommended_types');
+        expect(plan).toHaveProperty('recommended_video_types');
+        expect(plan).toHaveProperty('recommended_presentation_styles');
         expect(plan).toHaveProperty('available_events');
         expect(plan).toHaveProperty('recommended_duration');
         expect(plan).toHaveProperty('cultural_risks');
         expect(Array.isArray(plan.recommended_types)).toBe(true);
+        expect(Array.isArray(plan.recommended_video_types)).toBe(true);
         expect(Array.isArray(plan.available_events)).toBe(true);
         expect(Array.isArray(plan.cultural_risks)).toBe(true);
+        // Video type structure check
+        if (plan.recommended_video_types.length > 0) {
+          const firstVT = plan.recommended_video_types[0];
+          expect(firstVT).toHaveProperty('video_type');
+          expect(firstVT).toHaveProperty('reason');
+          expect(firstVT).toHaveProperty('priority');
+        }
       }
     });
   });
@@ -255,6 +265,8 @@ describe('Stories API', () => {
         expect(story).toHaveProperty('storyId');
         expect(story).toHaveProperty('title');
         expect(story).toHaveProperty('generation_type');
+        expect(story).toHaveProperty('video_type');
+        expect(story).toHaveProperty('presentation_style');
         expect(story).toHaveProperty('source_entry');
         expect(story).toHaveProperty('gears_segments_url');
         expect(story).toHaveProperty('cultural_constraints');
@@ -263,6 +275,56 @@ describe('Stories API', () => {
         expect(story.storyId).toMatch(/^\d{8}-story-[0-9a-z]+$/);
         // gears_segments_url format check
         expect(story.gears_segments_url).toMatch(/^\/api\/stories\/\d{8}-story-[0-9a-z]+\/gears-segments$/);
+      }
+    });
+
+    it('returns story with video_type when video_type provided', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: 'ai_comic_drama',
+        target_video_duration: '3分钟',
+      });
+      if (res.status === 200) {
+        expectSuccess(res.body);
+        const story = res.body.data;
+        expect(story).toHaveProperty('video_type');
+        expect(story).toHaveProperty('presentation_style');
+        expect(story).toHaveProperty('generation_type'); // backward compat always present
+        expect(story.video_type).toBe('ai_comic_drama');
+      }
+    });
+
+    it('returns story with backward compat when only generation_type provided', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        entry_name: '周敦颐——理学开山鼻祖',
+        generation_type: 'character_story',
+        target_video_duration: '3分钟',
+      });
+      if (res.status === 200) {
+        expectSuccess(res.body);
+        const story = res.body.data;
+        expect(story).toHaveProperty('video_type');
+        expect(story.video_type).toBe('character_story');
+        expect(story.generation_type).toBe('character_story');
+      }
+    });
+
+    it('returns story with segment_prompt_hint in gears_segments', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: 'ai_comic_drama',
+        target_video_duration: '3分钟',
+        output_gears_segments: true,
+      });
+      if (res.status === 200) {
+        expectSuccess(res.body);
+        const story = res.body.data;
+        if (story.gears_segments && story.gears_segments.length > 0) {
+          const firstSeg = story.gears_segments[0];
+          expect(firstSeg).toHaveProperty('video_type');
+          expect(firstSeg).toHaveProperty('presentation_style');
+          expect(firstSeg).toHaveProperty('segment_prompt_hint');
+        }
       }
     });
   });
