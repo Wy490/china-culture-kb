@@ -84,7 +84,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getProvinces } from '@/api/system'
 import { listStories } from '@/api/stories'
-import type { ProvinceInfo, StoryListItem, GenerationType } from '@shared/types'
+import type { ProvinceInfo, StoryListItem } from '@shared/types'
 import ProvinceGrid from '@/components/ProvinceGrid.vue'
 
 const router = useRouter()
@@ -103,11 +103,23 @@ function goSearch() {
   }
 }
 
-function typeLabel(type: GenerationType): string {
-  const map: Record<GenerationType, string> = {
+function typeLabel(type: string): string {
+  const map: Record<string, string> = {
     character_story: '人物故事',
     culture_promo: '文化宣传',
     scene_short: '场景短片',
+    historical_drama: '历史剧情',
+    legend_story: '传说故事',
+    heritage_promo: '非遗宣传',
+    city_brand_promo: '城市文旅',
+    documentary_short: '微纪录',
+    explainer_video: '知识讲解',
+    lecture_video: '宣讲片',
+    education_training: '教育培训',
+    children_story: '儿童故事',
+    social_short: '竖屏短视频',
+    ai_comic_drama: 'AI漫剧',
+    landscape_mood: '山水意境',
   }
   return map[type] ?? type
 }

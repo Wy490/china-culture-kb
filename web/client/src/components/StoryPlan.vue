@@ -106,8 +106,8 @@ defineEmits<{
   'select-video-type': [type: VideoType]
 }>()
 
-function typeLabel(type: GenerationType): string {
-  const map: Record<GenerationType, string> = {
+function typeLabel(type: string): string {
+  const map: Record<string, string> = {
     character_story: '人物故事',
     culture_promo: '文化宣传片',
     scene_short: '场景短片',

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { fail, ErrorCodes } from '@shared/types.js';
+import { fail, ErrorCodes, type ErrorCode } from '@shared/types.js';
 
 /**
  * Unified error handler — catches all errors thrown in route handlers or
@@ -22,7 +22,7 @@ export function errorHandler(
   // Errors with a known 'code' property
   if (err.code) {
     const status = deriveStatus(err.code);
-    res.status(status).json(fail(err.code, err.message));
+    res.status(status).json(fail(err.code as ErrorCode, err.message));
     return;
   }
 
