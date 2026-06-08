@@ -5,7 +5,7 @@
       <h2 class="story-result__title">{{ result.title }}</h2>
       <p v-if="result.logline" class="story-result__logline">{{ result.logline }}</p>
       <p class="story-result__meta">
-        类型: {{ typeLabel(result.generation_type) }} · 来源: {{ result.source_entry }}
+        成片: {{ videoTypeLabel }} · 表现: {{ presentationStyleLabel }} · 来源: {{ result.source_entry }}
         <span v-if="result.credibility_note"> · 可信度: {{ result.credibility_note }}</span>
       </p>
     </header>
@@ -79,6 +79,9 @@
             <p v-if="seg.cultural_constraints.length > 0" class="story-result__segment-constraints">
               <strong>文化约束:</strong> {{ seg.cultural_constraints.join('；') }}
             </p>
+            <p v-if="seg.segment_prompt_hint" class="story-result__segment-hint">
+              <strong>风格提示:</strong> {{ seg.segment_prompt_hint }}
+            </p>
             <div class="story-result__segment-actions">
               <button class="btn btn--sm btn--blue" @click="copySegmentScript(seg)">📋 复制脚本文本</button>
               <button class="btn btn--sm btn--blue" @click="copySegmentJson(seg)">📋 复制单段 JSON</button>
@@ -95,6 +98,37 @@
       :gears-segments-url="result.gears_segments_url"
       :story-id="result.storyId"
     />
+
+    <!-- AI comic dialogue -->
+    <section v-if="result.dialogue && result.dialogue.length > 0" class="story-result__section">
+      <h3 class="story-result__section-title">漫剧对白</h3>
+      <div v-for="d in result.dialogue" :key="d.scene_id" class="story-result__dialogue-scene">
+        <h4>场景 {{ d.scene_id }}</h4>
+        <p v-for="line in d.lines" :key="line.character" class="story-result__dialogue-line">
+          <strong>{{ line.character }}</strong>（{{ line.emotion }}）: {{ line.text }}
+        </p>
+      </div>
+    </section>
+
+    <!-- Promo fields -->
+    <section v-if="result.visual_symbols && result.visual_symbols.length > 0" class="story-result__section">
+      <h3 class="story-result__section-title">视觉符号</h3>
+      <p>{{ result.visual_symbols.join('、') }}</p>
+      <p v-if="result.core_message"><strong>核心信息:</strong> {{ result.core_message }}</p>
+      <p v-if="result.slogan_or_key_sentence"><strong>标语:</strong> {{ result.slogan_or_key_sentence }}</p>
+    </section>
+
+    <!-- Lecture/explainer fields -->
+    <section v-if="result.argument_points && result.argument_points.length > 0" class="story-result__section">
+      <h3 class="story-result__section-title">论点标注</h3>
+      <ul><li v-for="pt in result.argument_points" :key="pt">{{ pt }}</li></ul>
+    </section>
+
+    <!-- Documentary fields -->
+    <section v-if="result.source_quotes && result.source_quotes.length > 0" class="story-result__section">
+      <h3 class="story-result__section-title">史料引用</h3>
+      <ul><li v-for="sq in result.source_quotes" :key="sq">{{ sq }}</li></ul>
+    </section>
 
     <!-- Cultural constraints -->
     <section v-if="result.cultural_constraints.length > 0" class="story-result__section">
@@ -117,7 +151,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import type { StoryGenerateResult, GenerationType, GearsSegment } from '@shared/types'
+import type { StoryGenerateResult, VideoType, PresentationStyle, GearsSegment } from '@shared/types'
+import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import GearsActions from './GearsActions.vue'
 
 const props = defineProps<{
@@ -127,14 +162,15 @@ const props = defineProps<{
 const expandedSegments = reactive<Record<number, boolean>>({})
 const copyMessage = ref('')
 
-function typeLabel(type: GenerationType): string {
-  const map: Record<GenerationType, string> = {
-    character_story: '人物故事',
-    culture_promo: '文化宣传',
-    scene_short: '场景短片',
-  }
-  return map[type] ?? type
-}
+const videoTypeLabel = computed(() => {
+  if (!props.result) return ''
+  return VIDEO_TYPE_CONFIG[props.result.video_type]?.label ?? props.result.video_type
+})
+
+const presentationStyleLabel = computed(() => {
+  if (!props.result) return ''
+  return PRESENTATION_STYLE_CONFIG[props.result.presentation_style]?.label ?? props.result.presentation_style
+})
 
 const fullTextParagraphs = computed(() => {
   if (!props.result?.full_text) return []
@@ -214,11 +250,16 @@ function showCopyMessage(msg: string) {
 .story-result__segment-script { margin: 0 0 8px 0; font-size: 14px; line-height: 1.6; color: #34495e; }
 .story-result__segment-focus { margin: 0 0 6px 0; font-size: 14px; color: #3498db; }
 .story-result__segment-constraints { margin: 0 0 8px 0; font-size: 13px; color: #e67e22; }
+.story-result__segment-hint { margin: 0 0 8px 0; font-size: 13px; color: #8e44ad; background: #f5eef8; padding: 4px 8px; border-radius: 4px; }
 .story-result__segment-actions { display: flex; gap: 8px; }
 .btn { padding: 6px 12px; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; transition: opacity 0.2s; }
 .btn:hover:not(:disabled) { opacity: 0.85; }
 .btn--blue { background: #2980b9; color: #fff; }
 .btn--sm { padding: 6px 12px; font-size: 13px; }
+
+/* Dialogue */
+.story-result__dialogue-scene { margin-bottom: 8px; }
+.story-result__dialogue-line { margin: 0 0 4px 0; font-size: 14px; color: #34495e; }
 
 /* Constraints */
 .story-result__constraints { padding-left: 20px; margin: 0; }

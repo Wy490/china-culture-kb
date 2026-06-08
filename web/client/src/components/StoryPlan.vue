@@ -2,9 +2,32 @@
   <div v-if="plan" class="story-plan">
     <h3 class="story-plan__title">推荐方案 — {{ plan.entry_name }}（{{ plan.entry_type }}）</h3>
 
-    <!-- Type cards -->
+    <!-- Recommended video types -->
+    <section v-if="plan.recommended_video_types && plan.recommended_video_types.length > 0" class="story-plan__section">
+      <h4 class="story-plan__section-title">推荐成片类型</h4>
+      <div class="story-plan__types">
+        <div
+          v-for="rvt in plan.recommended_video_types"
+          :key="rvt.video_type"
+          class="story-plan__type-card"
+          :class="{
+            'story-plan__type-card--selected': selectedVideoType === rvt.video_type,
+            'story-plan__type-card--recommended': rvt.priority === 1,
+          }"
+          @click="$emit('select-video-type', rvt.video_type)"
+        >
+          <span class="story-plan__type-badge">
+            {{ rvt.priority === 1 ? '✅ 推荐' : '⭕ 可选' }}
+          </span>
+          <span class="story-plan__type-name">{{ videoTypeLabel(rvt.video_type) }}</span>
+          <span class="story-plan__type-reason">{{ rvt.reason }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Old type cards (backward compat) -->
     <section class="story-plan__section">
-      <h4 class="story-plan__section-title">推荐类型</h4>
+      <h4 class="story-plan__section-title">推荐类型（旧版）</h4>
       <div class="story-plan__types">
         <div
           v-for="rt in plan.recommended_types"
@@ -25,6 +48,16 @@
       </div>
     </section>
 
+    <!-- Recommended presentation styles -->
+    <section v-if="plan.recommended_presentation_styles && plan.recommended_presentation_styles.length > 0" class="story-plan__section">
+      <h4 class="story-plan__section-title">推荐表现形式</h4>
+      <ul class="story-plan__styles">
+        <li v-for="ps in plan.recommended_presentation_styles" :key="ps.presentation_style">
+          {{ presentationStyleLabel(ps.presentation_style) }} — {{ ps.reason }}
+        </li>
+      </ul>
+    </section>
+
     <!-- Events -->
     <section class="story-plan__section">
       <h4 class="story-plan__section-title">可选核心事件</h4>
@@ -38,7 +71,7 @@
         >
           <span class="story-plan__event-name">{{ ev.event }}</span>
           <span class="story-plan__event-meta">
-            冲突 {{ ev.conflict_score }}/10 · 推荐 {{ typeLabel(ev.recommended_type) }} · {{ ev.recommended_duration }}
+            冲突 {{ ev.conflict_score }}/10 · 推荐 {{ videoTypeLabel(ev.recommended_video_type) }} · {{ ev.recommended_duration }}
           </span>
         </li>
       </ul>
@@ -57,17 +90,20 @@
 </template>
 
 <script setup lang="ts">
-import type { StoryPlanResult, GenerationType } from '@shared/types'
+import type { StoryPlanResult, GenerationType, VideoType, PresentationStyle } from '@shared/types'
+import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 
 const props = defineProps<{
   plan: StoryPlanResult | null
   selectedType: GenerationType | null
   selectedEvent: string | null
+  selectedVideoType: VideoType | null
 }>()
 
 defineEmits<{
   'select-type': [type: GenerationType]
   'select-event': [event: string]
+  'select-video-type': [type: VideoType]
 }>()
 
 function typeLabel(type: GenerationType): string {
@@ -77,6 +113,14 @@ function typeLabel(type: GenerationType): string {
     scene_short: '场景短片',
   }
   return map[type] ?? type
+}
+
+function videoTypeLabel(vt: VideoType): string {
+  return VIDEO_TYPE_CONFIG[vt]?.label ?? vt
+}
+
+function presentationStyleLabel(ps: PresentationStyle): string {
+  return PRESENTATION_STYLE_CONFIG[ps]?.label ?? ps
 }
 </script>
 
@@ -206,6 +250,18 @@ function typeLabel(type: GenerationType): string {
 .story-plan__risks li {
   font-size: 14px;
   color: #c0392b;
+  margin-bottom: 4px;
+}
+
+/* Styles */
+.story-plan__styles {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.story-plan__styles li {
+  font-size: 14px;
+  color: #34495e;
   margin-bottom: 4px;
 }
 
