@@ -1,6 +1,6 @@
 // web/server/src/services/story-service.ts — Story business logic
-// plan, generate+store (with content from KB entry), list, get, gears-segments
-// Updated: VideoType/PresentationStyle dual-layer system
+// plan, generate+store (with dramatic narrative from KB entry), list, get, gears-segments
+// Updated: VideoType/PresentationStyle dual-layer system + Dramatic story generation engine
 
 import { resolve } from 'node:path';
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -28,12 +28,19 @@ import type {
   GearsSegment,
   GearsSegmentsResponse,
   StoryListItem,
+  KnowledgePack,
+  StoryQualityReport,
 } from '@shared/types.js';
 import {
   GENERATION_TO_VIDEO_TYPE,
   VIDEO_TYPE_CONFIG,
   PRESENTATION_STYLE_CONFIG,
 } from '@shared/types.js';
+import {
+  selectCentralEvent,
+  generateDramaticContent,
+  validateDramaticStory,
+} from './dramatic-story.js';
 
 // ---------------------------------------------------------------------------
 // Entry type → VideoType routing (entry Chinese type name → recommended VideoType list)
@@ -528,97 +535,135 @@ export async function planStory(entryName: string, originalUserQuery?: string): 
 }
 
 // ---------------------------------------------------------------------------
-// generateAndStoreStory — create story with content from KB entry
+// generateAndStoreStory — create story with dramatic narrative from KB entry
+// REFACTORED: uses dramatic-story engine instead of template concatenation
 // ---------------------------------------------------------------------------
 
 export async function generateAndStoreStory(
   request: StoryGenerateRequest,
 ): Promise<ApiResponse<StoryGenerateResult>> {
-  const { entry_name, original_user_query, selected_event, target_video_duration, tone, output_gears_segments } = request;
+  const { entry_name, original_user_query, selected_event, target_video_duration, tone, output_gears_segments, outline, knowledge_pack } = request;
 
   // Resolve video_type and generation_type
   const videoType = resolveVideoType(request);
   const generationType = request.generation_type ?? resolveGenerationType(videoType);
   const presentationStyle = request.presentation_style ?? VIDEO_TYPE_CONFIG[videoType].default_presentation_style;
+  const targetDuration = target_video_duration ?? VIDEO_TYPE_CONFIG[videoType].default_duration;
 
-  // Validate entry exists
-  const mcpDetail = await mcpGetFullEntryDetail(entry_name);
-  if (!mcpDetail) {
-    return fail(ErrorCodes.ENTRY_NOT_FOUND, `Entry "${entry_name}" not found`);
+  // --- Determine the primary entry to use ---
+  let primaryEntryName: string;
+  let entry: EntryDetail;
+  let knowledgePackToUse: KnowledgePack | undefined = knowledge_pack;
+
+  if (knowledge_pack && knowledge_pack.primary_entries.length > 0) {
+    // Use the highest-scoring primary entry from knowledge_pack
+    primaryEntryName = knowledge_pack.primary_entries[0].entry_name;
+    const mcpDetail = await mcpGetFullEntryDetail(primaryEntryName);
+    if (!mcpDetail) {
+      return fail(ErrorCodes.ENTRY_NOT_FOUND, `Primary entry "${primaryEntryName}" not found`);
+    }
+    entry = convertFullEntryDetail(mcpDetail);
+  } else if (entry_name) {
+    // Use explicit entry_name (backward compat)
+    primaryEntryName = entry_name;
+    const mcpDetail = await mcpGetFullEntryDetail(primaryEntryName);
+    if (!mcpDetail) {
+      return fail(ErrorCodes.ENTRY_NOT_FOUND, `Entry "${primaryEntryName}" not found`);
+    }
+    entry = convertFullEntryDetail(mcpDetail);
+  } else {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Either entry_name or knowledge_pack with primary_entries must be provided');
   }
 
-  const entry = convertFullEntryDetail(mcpDetail);
-  const storyId = generateStoryId(entry_name);
-  const gearsSegmentsUrl = `/api/stories/${storyId}/gears-segments`;
-  const targetDuration = target_video_duration ?? VIDEO_TYPE_CONFIG[videoType].default_duration;
+  // --- Select central event ---
   const boldEvents = extractBoldEvents(entry.story);
-  const culturalRisks = computeCulturalRisks(entry);
+  const centralEvent = selectCentralEvent(entry, boldEvents, videoType, selected_event);
 
-  // Build scene_breakdown
-  const sceneBreakdown = buildSceneBreakdown(entry, selected_event, boldEvents, targetDuration);
+  // --- Generate dramatic story content ---
+  const dramaticResult = generateDramaticContent({
+    entry,
+    centralEvent,
+    videoType,
+    presentationStyle,
+    targetDuration,
+    tone: tone ?? '',
+    knowledgePack: knowledgePackToUse,
+    originalUserQuery: original_user_query ?? outline,
+  });
 
-  // Build gears_segments from scene_breakdown (with video_type/presentation_style)
+  // --- Validate story quality ---
+  const qualityReport = validateDramaticStory({
+    full_text: dramaticResult.full_text,
+    scene_breakdown: dramaticResult.scene_breakdown,
+    title: dramaticResult.title,
+    selectedEvent: centralEvent,
+  });
+
+  if (!qualityReport.passed) {
+    // Still return the result, but include the quality issues
+    // Don't block generation entirely — the user can see the issues and refine
+  }
+
+  // --- Build story data ---
+  const storyId = generateStoryId(primaryEntryName);
+  const gearsSegmentsUrl = `/api/stories/${storyId}/gears-segments`;
+
+  // Determine gears_segments
   const gearsSegments = output_gears_segments !== false
-    ? buildGearsSegments(sceneBreakdown, storyId, videoType, presentationStyle)
+    ? dramaticResult.gears_segments
     : [];
 
-  // Build story data with content filled from entry
   const storyData: StoryGenerateResult & { _request_meta: Record<string, unknown> } = {
     storyId,
-    title: selected_event && selected_event !== '整体故事'
-      ? selected_event
-      : entry.name,
+    title: dramaticResult.title,
     generation_type: generationType,
     video_type: videoType,
     presentation_style: presentationStyle,
-    source_entry: entry_name,
-    original_user_query: original_user_query ?? undefined,
-    logline: entry.summary,
-    theme: `${VIDEO_TYPE_CONFIG[videoType].label} × ${entry.type}`,
-    full_text: entry.story,
-    scene_breakdown: sceneBreakdown,
-    gears_segments: gearsSegments,
+    source_entry: primaryEntryName,
+    original_user_query: original_user_query ?? outline ?? undefined,
+    logline: dramaticResult.logline,
+    theme: dramaticResult.theme,
+    full_text: dramaticResult.full_text,  // DRAMATIC story text, NOT entry.story
+    scene_breakdown: dramaticResult.scene_breakdown,  // REAL scenes, NOT template concatenation
+    gears_segments: gearsSegments,  // CINEMATIC scripts, NOT template concatenation
     gears_segments_url: gearsSegmentsUrl,
-    cultural_constraints: culturalRisks,
-    credibility_note: entry.credibility + (original_user_query
-      ? `；用户创作主题"${original_user_query}"中的部分表达未在知识库中验证，已按创作方向处理`
-      : ''),
-    // Type-specific fields based on video_type
-    ...(videoType === 'character_story' || videoType === 'historical_drama' || videoType === 'legend_story' ? {
-      characters: extractCharactersFromStory(entry.story, entry.name),
-      act_structure: buildActStructure(sceneBreakdown),
-      protagonist_arc: [{
-        starting_state: `循规蹈矩的${entry.type}`,
-        turning_point: selected_event ?? '核心转折事件',
-        resolution: '道德觉醒或精神升华',
-      }],
-    } : {}),
+    cultural_constraints: dramaticResult.cultural_constraints,
+    credibility_note: dramaticResult.credibility_note,
+    // Knowledge pack for multi-entry traceability
+    knowledge_pack: knowledgePackToUse,
+    // Quality report
+    quality_report: qualityReport,
+    // Characters, act structure, protagonist arc — from dramatic engine
+    characters: dramaticResult.characters,
+    act_structure: dramaticResult.act_structure,
+    protagonist_arc: dramaticResult.protagonist_arc,
+    // Type-specific fields for promo/scene/explainer types (not dramatic)
     ...(videoType === 'culture_promo' || videoType === 'heritage_promo' || videoType === 'city_brand_promo' ? {
       visual_symbols: entry.keywords.slice(0, 5),
       craft_or_ritual_process: `核心技艺：${entry.keywords.slice(0, 3).join('、')}`,
       modern_connection: `${entry.name}在现代的文化传承与创新`,
-      core_message: `${entry.name}的文化价值`,
+      core_message: dramaticResult.logline,
       slogan_or_key_sentence: `${entry.type}之光——${entry.name}`,
     } : {}),
     ...(videoType === 'scene_short' || videoType === 'landscape_mood' ? {
       spatial_identity: entry.region,
-      visual_route: sceneBreakdown.map(s => `${s.title}：${s.visual_prompt}`),
+      visual_route: dramaticResult.scene_breakdown.map(s => `${s.title}：${s.visual_prompt}`),
       time_layer: `${entry.name}的古今变迁与时空叠加`,
       atmosphere: videoType === 'landscape_mood' ? `${entry.region}的自然意境与山水灵韵` : `${entry.region}的场景氛围`,
     } : {}),
     ...(videoType === 'ai_comic_drama' ? {
-      dialogue: sceneBreakdown.map(s => ({
+      dialogue: dramaticResult.scene_breakdown.map(s => ({
         scene_id: s.scene_id,
         lines: s.characters.map(ch => ({
           character: ch,
-          text: `${s.key_action}`,
-          emotion: s.dramatic_function === '高潮' ? '激烈' : s.dramatic_function === '开场' ? '平静' : '紧张',
+          text: s.dialogue_or_narration ?? s.key_action,
+          emotion: s.dramatic_function === '高潮' ? '激烈' : s.dramatic_function === '钩子开场' ? '紧张' : '克制',
         })),
       })),
     } : {}),
     ...(videoType === 'explainer_video' || videoType === 'lecture_video' ? {
       argument_points: entry.keywords.slice(0, 4).map(k => `${k}的核心解释`),
-      knowledge_outline: sceneBreakdown.map(s => `${s.scene_id}. ${s.title}：${s.plot.substring(0, 40)}`),
+      knowledge_outline: dramaticResult.scene_breakdown.map(s => `${s.scene_id}. ${s.title}：${s.plot.substring(0, 40)}`),
     } : {}),
     ...(videoType === 'documentary_short' ? {
       source_quotes: [`据${entry.credibility}来源记载`],
@@ -626,7 +671,7 @@ export async function generateAndStoreStory(
     } : {}),
     // Internal metadata
     _request_meta: {
-      selected_event: selected_event || null,
+      selected_event: centralEvent,
       target_video_duration: targetDuration,
       tone: tone || null,
       output_gears_segments: output_gears_segments ?? true,

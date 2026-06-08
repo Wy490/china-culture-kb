@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from './client'
-import type { EntrySearchResult, EntryDetail, EntryMatchResult } from '@shared/types'
+import type { EntrySearchResult, EntryDetail, EntryMatchResult, MultiMatchResult, KnowledgeNeed } from '@shared/types'
 
 export function searchEntries(params: {
   keywords?: string
@@ -26,4 +26,13 @@ export function matchEntries(params: {
 
 export function getEntryDetail(name: string) {
   return apiGet<EntryDetail>('/entries/detail', { name })
+}
+
+// New: Multi-entry matching for story creation
+export function entriesMultiMatch(params: {
+  outline: string
+  knowledge_needs: KnowledgeNeed[]
+  limit_per_need?: number
+}) {
+  return apiPost<MultiMatchResult>('/entries/multi-match', params)
 }

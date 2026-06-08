@@ -6,6 +6,8 @@ import type {
   StoryListItem,
   GearsSegmentsResponse,
   VideoType,
+  StoryOutlineAnalyzeRequest,
+  StoryOutlineAnalysis,
 } from '@shared/types'
 
 export function storyPlan(entryName: string, originalUserQuery?: string) {
@@ -34,4 +36,9 @@ export function getStory(storyId: string) {
 
 export function getGearsSegments(storyId: string) {
   return apiGet<GearsSegmentsResponse>(`/stories/${storyId}/gears-segments`)
+}
+
+// New: Story outline analysis
+export function storyOutlineAnalyze(req: StoryOutlineAnalyzeRequest) {
+  return apiPost<StoryOutlineAnalysis>('/story-outline/analyze', req)
 }

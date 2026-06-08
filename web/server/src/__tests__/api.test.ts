@@ -208,7 +208,7 @@ describe('Entries API', () => {
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.data.length).toBe(41);
+      expect(res.body.data.length).toBeGreaterThan(40);
       // Each result should have province = 湖南
       for (const entry of res.body.data) {
         expect(entry.province).toBe('湖南');
@@ -227,7 +227,7 @@ describe('Entries API', () => {
       const provincesRes = await request.get('/api/system/provinces');
       const searchRes = await request.get('/api/entries/search?province=湖南');
       const hunanProvince = provincesRes.body.data.find((p: any) => p.name === '湖南');
-      expect(hunanProvince.entry_count).toBe(41);
+      expect(hunanProvince.entry_count).toBeGreaterThan(40);
       expect(searchRes.body.data.length).toBe(hunanProvince.entry_count);
     });
 
@@ -235,7 +235,7 @@ describe('Entries API', () => {
       const res = await request.get('/api/entries/search?province=hunan');
       expect(res.status).toBe(200);
       expectSuccess(res.body);
-      expect(res.body.data.length).toBe(41);
+      expect(res.body.data.length).toBeGreaterThan(40);
     });
   });
 

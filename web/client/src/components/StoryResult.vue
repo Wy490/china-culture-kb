@@ -21,6 +21,44 @@
       </div>
     </section>
 
+    <!-- Knowledge source (new) -->
+    <section v-if="result.knowledge_pack" class="story-result__section">
+      <h3 class="story-result__section-title">知识来源</h3>
+      <div v-if="result.knowledge_pack.primary_entries.length > 0" class="story-result__source-group">
+        <h4 class="story-result__source-label story-result__source-label--primary">主依据条目</h4>
+        <div v-for="e in result.knowledge_pack.primary_entries" :key="e.entry_name" class="story-result__source-item">
+          <strong>{{ e.entry_name }}</strong>
+          <span class="story-result__source-type">{{ e.type }}</span>
+          <span class="story-result__source-score">{{ (e.score * 100).toFixed(0) }}%</span>
+        </div>
+      </div>
+      <div v-if="result.knowledge_pack.supporting_entries.length > 0" class="story-result__source-group">
+        <h4 class="story-result__source-label story-result__source-label--supporting">辅助条目</h4>
+        <div v-for="e in result.knowledge_pack.supporting_entries" :key="e.entry_name" class="story-result__source-item">
+          <strong>{{ e.entry_name }}</strong>
+          <span class="story-result__source-type">{{ e.type }}</span>
+          <span class="story-result__source-score">{{ (e.score * 100).toFixed(0) }}%</span>
+        </div>
+      </div>
+      <div v-if="result.knowledge_pack.missing_needs.length > 0" class="story-result__source-group">
+        <h4 class="story-result__source-label story-result__source-label--missing">缺失资料（创作方向）</h4>
+        <p v-for="m in result.knowledge_pack.missing_needs" :key="m.need_id" class="story-result__source-missing">
+          ⚠️ {{ m.label }}：{{ m.message }}
+        </p>
+      </div>
+    </section>
+
+    <!-- Quality report (new) -->
+    <section v-if="result.quality_report" class="story-result__section">
+      <h3 class="story-result__section-title">故事质量校验</h3>
+      <div :class="['story-result__quality', result.quality_report.passed ? 'story-result__quality--pass' : 'story-result__quality--fail']">
+        <p>{{ result.quality_report.passed ? '✅ 全部校验通过' : '⚠️ 存在质量问题' }}</p>
+        <ul v-if="result.quality_report.issues.length > 0" class="story-result__quality-issues">
+          <li v-for="issue in result.quality_report.issues" :key="issue">{{ issue }}</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- Scene breakdown — detailed -->
     <section class="story-result__section">
       <h3 class="story-result__section-title">场景分解</h3>
@@ -37,8 +75,14 @@
               <span v-if="scene.time_of_day">{{ scene.time_of_day }}</span>
             </p>
             <p v-if="scene.plot" class="story-result__scene-plot">{{ scene.plot }}</p>
+            <p v-if="scene.conflict" class="story-result__scene-conflict">
+              <strong>冲突:</strong> {{ scene.conflict }}
+            </p>
             <p v-if="scene.key_action" class="story-result__scene-action">
               <strong>关键动作:</strong> {{ scene.key_action }}
+            </p>
+            <p v-if="scene.dialogue_or_narration" class="story-result__scene-dialogue">
+              <strong>对白/旁白:</strong> {{ scene.dialogue_or_narration }}
             </p>
             <p v-if="scene.characters && scene.characters.length > 0" class="story-result__scene-characters">
               <strong>角色:</strong> {{ scene.characters.join(', ') }}
@@ -51,6 +95,15 @@
             </p>
             <p v-if="scene.cultural_note" class="story-result__scene-cultural">
               <strong>文化标注:</strong> {{ scene.cultural_note }}
+            </p>
+            <p v-if="scene.factual_basis" class="story-result__scene-factual">
+              <strong>史实依据:</strong> {{ scene.factual_basis }}
+            </p>
+            <p v-if="scene.fictionalized_elements && scene.fictionalized_elements.length > 0" class="story-result__scene-fictionalized">
+              <strong>影视化创作:</strong> {{ scene.fictionalized_elements.join('；') }}
+            </p>
+            <p v-if="scene.source_entries && scene.source_entries.length > 0" class="story-result__scene-source">
+              <strong>来源条目:</strong> {{ scene.source_entries.join('、') }}
             </p>
           </div>
         </div>
@@ -234,10 +287,15 @@ function showCopyMessage(msg: string) {
 .story-result__scene-tag { padding: 2px 8px; background: #eaf2f8; color: #2980b9; border-radius: 3px; font-size: 12px; font-weight: 600; }
 .story-result__scene-plot { margin: 0; font-size: 14px; line-height: 1.5; color: #34495e; }
 .story-result__scene-action { margin: 0; font-size: 14px; color: #2c3e50; }
+.story-result__scene-conflict { margin: 0; font-size: 14px; color: #c0392b; background: #fdecea; padding: 4px 8px; border-radius: 4px; }
+.story-result__scene-dialogue { margin: 0; font-size: 14px; color: #2c3e50; background: #f5eef8; padding: 4px 8px; border-radius: 4px; }
 .story-result__scene-characters { margin: 0; font-size: 13px; color: #7f8c8d; }
 .story-result__scene-visual { margin: 0; font-size: 14px; color: #34495e; background: #eaf2f8; padding: 4px 8px; border-radius: 4px; }
 .story-result__scene-camera { margin: 0; font-size: 14px; color: #34495e; background: #f0f8ff; padding: 4px 8px; border-radius: 4px; }
 .story-result__scene-cultural { margin: 0; font-size: 13px; color: #f39c12; }
+.story-result__scene-factual { margin: 0; font-size: 13px; color: #27ae60; background: #d5f5e3; padding: 4px 8px; border-radius: 4px; }
+.story-result__scene-fictionalized { margin: 0; font-size: 13px; color: #8e44ad; background: #f5eef8; padding: 4px 8px; border-radius: 4px; }
+.story-result__scene-source { margin: 0; font-size: 13px; color: #7f8c8d; }
 
 /* GEARS segments */
 .story-result__segments { display: flex; flex-direction: column; gap: 8px; }
@@ -266,4 +324,54 @@ function showCopyMessage(msg: string) {
 .story-result__constraints li { font-size: 14px; color: #e67e22; margin-bottom: 4px; }
 .story-result__credibility { font-size: 14px; color: #34495e; background: #fef9e7; padding: 8px 12px; border-radius: 4px; margin: 0; }
 .story-result__copy-msg { margin-top: 10px; padding: 6px 10px; background: #d5f5e3; border-radius: 4px; font-size: 13px; color: #27ae60; }
+
+/* Knowledge source section */
+.story-result__source-group { margin-bottom: 8px; }
+.story-result__source-label { margin: 0 0 4px; font-size: 14px; }
+.story-result__source-label--primary { color: #27ae60; }
+.story-result__source-label--supporting { color: #2980b9; }
+.story-result__source-label--missing { color: #f39c12; }
+.story-result__source-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 14px;
+  color: #34495e;
+}
+.story-result__source-type {
+  padding: 2px 6px;
+  background: #eaf2f8;
+  color: #2980b9;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.story-result__source-score {
+  padding: 2px 6px;
+  background: #d5f5e3;
+  color: #27ae60;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.story-result__source-missing {
+  font-size: 13px;
+  color: #f39c12;
+  margin: 4px 0;
+}
+
+/* Quality report */
+.story-result__quality {
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin: 0;
+}
+.story-result__quality--pass { background: #d5f5e3; border: 1px solid #27ae60; }
+.story-result__quality--fail { background: #fef9e7; border: 1px solid #f39c12; }
+.story-result__quality p { margin: 0; font-size: 14px; }
+.story-result__quality-issues {
+  padding-left: 18px;
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #c0392b;
+}
 </style>

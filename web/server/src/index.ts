@@ -6,6 +6,7 @@ import { errorHandler } from './middleware/error-handler.js';
 import { entriesRouter } from './routes/entries.js';
 import { storiesRouter } from './routes/stories.js';
 import { systemRouter } from './routes/system.js';
+import { outlineRouter } from './routes/outline.js';
 
 // Default KB_ROOT to ../../data (relative to this file → project root /data)
 if (!process.env.KB_ROOT) {
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use('/api/entries', entriesRouter);
 app.use('/api/stories', storiesRouter);
 app.use('/api/system', systemRouter);
+app.use('/api/story-outline', outlineRouter);
 
 // Unified error handler (must be after all routes)
 app.use(errorHandler);

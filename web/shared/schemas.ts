@@ -81,7 +81,7 @@ export const StoryPlanRequestSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const StoryGenerateRequestSchema = z.object({
-  entry_name: z.string().min(1, 'entry_name cannot be empty'),
+  entry_name: z.string().optional(),
   original_user_query: z.string().optional(),
   generation_type: GenerationTypeSchema.optional(),
   video_type: VideoTypeSchema.optional(),
@@ -90,7 +90,42 @@ export const StoryGenerateRequestSchema = z.object({
   tone: z.string().optional(),
   presentation_style: PresentationStyleSchema.optional(),
   output_gears_segments: z.boolean().optional().default(true),
+  // New fields
+  outline: z.string().optional(),
+  knowledge_pack: z.object({
+    primary_entries: z.array(z.object({
+      entry_name: z.string(),
+      province: z.string(),
+      region: z.string(),
+      type: z.string(),
+      summary: z.string(),
+      score: z.number(),
+      role_in_story: z.string(),
+      match_reason: z.string(),
+      keywords: z.array(z.string()),
+    })),
+    supporting_entries: z.array(z.object({
+      entry_name: z.string(),
+      province: z.string(),
+      region: z.string(),
+      type: z.string(),
+      summary: z.string(),
+      score: z.number(),
+      role_in_story: z.string(),
+      match_reason: z.string(),
+      keywords: z.array(z.string()),
+    })),
+    missing_needs: z.array(z.object({
+      need_id: z.string(),
+      label: z.string(),
+      message: z.string(),
+    })),
+    overall_confidence: z.number(),
+  }).optional(),
 }).refine(
+  (data) => data.entry_name || data.knowledge_pack || data.outline,
+  { message: 'At least one of entry_name, knowledge_pack, or outline must be provided', path: ['entry_name'] },
+).refine(
   (data) => data.generation_type || data.video_type,
   { message: 'Either generation_type or video_type must be provided', path: ['video_type'] },
 );
@@ -134,4 +169,31 @@ export const StoryIdParamSchema = z.object({
     /^\d{8}-story-[0-9a-z]+$/,
     'storyId must match format YYYYMMDD-story-{hash36}',
   ),
+});
+
+// ---------------------------------------------------------------------------
+// Story outline analyze request
+// ---------------------------------------------------------------------------
+
+export const KnowledgeNeedSchema = z.object({
+  need_id: z.string().min(1),
+  label: z.string().min(1),
+  keywords: z.array(z.string()),
+  required: z.boolean(),
+});
+
+export const StoryOutlineAnalyzeRequestSchema = z.object({
+  outline: z.string().min(1, 'outline cannot be empty'),
+  preferred_video_types: VideoTypeSchema.array().optional(),
+  target_video_duration: DurationSchema.optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Multi-entry match request
+// ---------------------------------------------------------------------------
+
+export const MultiMatchRequestSchema = z.object({
+  outline: z.string().min(1, 'outline cannot be empty'),
+  knowledge_needs: z.array(KnowledgeNeedSchema).min(1, 'at least one knowledge_need required'),
+  limit_per_need: z.number().int().min(1).max(20).optional().default(5),
 });

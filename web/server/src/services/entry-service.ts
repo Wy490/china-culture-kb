@@ -145,7 +145,7 @@ export async function matchEntries(params: MatchParams): Promise<ApiResponse<Ent
 // Local scoring helpers
 // ---------------------------------------------------------------------------
 
-function extractKeywords(query: string): string[] {
+export function extractKeywords(query: string): string[] {
   // Split by common delimiters and Chinese punctuation
   const parts = query.split(/[，、\s,·——\-–_]+/).filter(p => p.trim().length >= 2);
   // Also extract individual meaningful words (2-4 chars)
@@ -164,7 +164,7 @@ function extractKeywords(query: string): string[] {
   return [...new Set(words)]; // Deduplicate
 }
 
-function detectProvince(query: string, preferred?: string): string | null {
+export function detectProvince(query: string, preferred?: string): string | null {
   // Check if query mentions a province name directly
   for (const prov of PROVINCE_NAMES) {
     if (query.includes(prov)) return prov;
@@ -177,7 +177,7 @@ function detectProvince(query: string, preferred?: string): string | null {
   return null;
 }
 
-function computeMatchScore(
+export function computeMatchScore(
   query: string,
   queryKeywords: string[],
   entry: EntrySearchResult,

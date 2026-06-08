@@ -4,15 +4,34 @@
     <aside class="story-studio__left">
       <h2 class="story-studio__page-title">视频方案工坊</h2>
 
-      <!-- Entry search + match -->
-      <div class="story-studio__field">
+      <!-- Input mode tabs -->
+      <div class="story-studio__mode-tabs">
+        <button
+          class="story-studio__mode-tab"
+          :class="{ 'story-studio__mode-tab--active': inputMode === 'entry' }"
+          @click="switchMode('entry')"
+        >词条模式</button>
+        <button
+          class="story-studio__mode-tab"
+          :class="{ 'story-studio__mode-tab--active': inputMode === 'theme' }"
+          @click="switchMode('theme')"
+        >主题模式</button>
+        <button
+          class="story-studio__mode-tab"
+          :class="{ 'story-studio__mode-tab--active': inputMode === 'outline' }"
+          @click="switchMode('outline')"
+        >故事大纲模式</button>
+      </div>
+
+      <!-- ===== ENTRY MODE ===== -->
+      <div v-if="inputMode === 'entry'" class="story-studio__field">
         <label class="story-studio__label" for="entry-search">创作主题 / 词条搜索</label>
         <div class="story-studio__search-row">
           <input
             id="entry-search"
             v-model="entrySearchQuery"
             class="story-studio__input"
-            placeholder="输入创作主题或词条关键词，如 周敦颐拒签冤案故事、湖南非遗宣传片、岳阳楼场景短片"
+            placeholder="输入创作主题或词条关键词，如 周敦颐拒签冤案故事、湖南非遗宣传片"
             @input="handleEntrySearchDebounced"
           />
           <button class="btn btn--search" @click="handleAutoMatch" :disabled="!entrySearchQuery.trim() || matching">
@@ -32,7 +51,7 @@
           <p class="story-studio__selected-summary">{{ selectedEntry.summary }}</p>
         </div>
 
-        <!-- Match results (from POST /api/entries/match) -->
+        <!-- Match results -->
         <div v-if="matchResult && !selectedEntry" class="story-studio__search-results">
           <p class="story-studio__search-hint">
             {{ matchResult.matches.length > 0
@@ -61,19 +80,144 @@
           </div>
         </div>
 
-        <!-- Fallback message when no good match -->
-        <div v-if="matchResult && matchResult.matches.length === 0 && matchResult.fallback_message && !selectedEntry" class="story-studio__search-empty">
-          <p>{{ matchResult.fallback_message }}</p>
-        </div>
-
-        <!-- Hint when no entry selected -->
-        <div v-if="!selectedEntry && !matchResult && !matching && !entrySearchLoading" class="story-studio__entry-hint">
+        <div v-if="!selectedEntry && !matchResult && !matching" class="story-studio__entry-hint">
           <p>输入创作主题或词条关键词，点击"自动匹配"找到知识库中最相关的词条。</p>
         </div>
       </div>
 
-      <!-- Preview button -->
+      <!-- ===== THEME / OUTLINE MODE ===== -->
+      <div v-if="inputMode === 'theme' || inputMode === 'outline'" class="story-studio__field">
+        <label class="story-studio__label" for="outline-input">
+          {{ inputMode === 'outline' ? '故事大纲' : '创作主题' }}
+        </label>
+        <textarea
+          id="outline-input"
+          v-model="outlineText"
+          class="story-studio__textarea"
+          :rows="inputMode === 'outline' ? 6 : 3"
+          :placeholder="inputMode === 'outline'
+            ? '输入故事大纲，如：我想写一个毛泽东少年时期到革命觉醒的故事，重点表现湖南乡土、求学、新民学会、农民运动、理想形成。'
+            : '输入创作主题，如：周敦颐南安拒签冤案故事'"
+        />
+
+        <div class="story-studio__outline-actions">
+          <button
+            class="btn btn--search"
+            @click="handleAnalyzeOutline"
+            :disabled="!outlineText.trim() || analyzingOutline"
+          >
+            {{ analyzingOutline ? '分析中…' : '分析大纲' }}
+          </button>
+          <button
+            v-if="outlineAnalysis"
+            class="btn btn--search"
+            @click="handleMultiMatch"
+            :disabled="matchingMulti || !outlineAnalysis"
+          >
+            {{ matchingMulti ? '匹配中…' : '匹配知识内容' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- ===== OUTLINE ANALYSIS RESULTS ===== -->
+      <div v-if="outlineAnalysis" class="story-studio__analysis">
+        <h4 class="story-studio__analysis-title">大纲分析结果</h4>
+        <div class="story-studio__analysis-items">
+          <p v-if="outlineAnalysis.story_intent.main_character">
+            <strong>主人公：</strong>{{ outlineAnalysis.story_intent.main_character }}
+          </p>
+          <p v-if="outlineAnalysis.story_intent.time_range">
+            <strong>时代：</strong>{{ outlineAnalysis.story_intent.time_range }}
+          </p>
+          <p>
+            <strong>核心主题：</strong>{{ outlineAnalysis.story_intent.core_theme }}
+          </p>
+          <p v-if="outlineAnalysis.story_intent.conflict_keywords.length > 0">
+            <strong>冲突关键词：</strong>{{ outlineAnalysis.story_intent.conflict_keywords.join('、') }}
+          </p>
+          <p v-if="outlineAnalysis.story_intent.target_emotion.length > 0">
+            <strong>目标情绪：</strong>{{ outlineAnalysis.story_intent.target_emotion.join('、') }}
+          </p>
+          <div v-if="outlineAnalysis.knowledge_needs.length > 0" class="story-studio__knowledge-needs">
+            <strong>知识需求：</strong>
+            <ul>
+              <li v-for="need in outlineAnalysis.knowledge_needs" :key="need.need_id">
+                {{ need.label }}（{{ need.keywords.join('、') }}）{{ need.required ? '✅ 必需' : '⭕ 可选' }}
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== KNOWLEDGE PACK DISPLAY ===== -->
+      <div v-if="knowledgePack" class="story-studio__knowledge-pack">
+        <h4 class="story-studio__kp-title">知识组合包</h4>
+
+        <!-- Primary entries -->
+        <div v-if="knowledgePack.primary_entries.length > 0" class="story-studio__kp-section">
+          <h5 class="story-studio__kp-section-title story-studio__kp-section-title--primary">主依据条目</h5>
+          <div
+            v-for="entry in knowledgePack.primary_entries"
+            :key="entry.entry_name"
+            class="story-studio__kp-entry story-studio__kp-entry--primary"
+          >
+            <input
+              type="checkbox"
+              v-model="selectedPrimaryEntries"
+              :value="entry.entry_name"
+              class="story-studio__kp-checkbox"
+            />
+            <div class="story-studio__kp-entry-content">
+              <span class="story-studio__kp-score">{{ (entry.score * 100).toFixed(0) }}%</span>
+              <strong>{{ entry.entry_name }}</strong>
+              <span class="story-studio__kp-type">{{ entry.type }}</span>
+              <p class="story-studio__kp-region">{{ entry.province }} · {{ entry.region }}</p>
+              <p class="story-studio__kp-reason">匹配原因：{{ entry.match_reason }}</p>
+              <p v-if="entry.summary" class="story-studio__kp-summary">{{ entry.summary.substring(0, 60) }}…</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Supporting entries -->
+        <div v-if="knowledgePack.supporting_entries.length > 0" class="story-studio__kp-section">
+          <h5 class="story-studio__kp-section-title story-studio__kp-section-title--supporting">辅助条目</h5>
+          <div
+            v-for="entry in knowledgePack.supporting_entries"
+            :key="entry.entry_name"
+            class="story-studio__kp-entry story-studio__kp-entry--supporting"
+          >
+            <input
+              type="checkbox"
+              v-model="selectedSupportingEntries"
+              :value="entry.entry_name"
+              class="story-studio__kp-checkbox"
+            />
+            <div class="story-studio__kp-entry-content">
+              <span class="story-studio__kp-score">{{ (entry.score * 100).toFixed(0) }}%</span>
+              <strong>{{ entry.entry_name }}</strong>
+              <span class="story-studio__kp-type">{{ entry.type }}</span>
+              <p class="story-studio__kp-region">{{ entry.province }} · {{ entry.region }}</p>
+              <p class="story-studio__kp-reason">匹配原因：{{ entry.match_reason }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Missing needs -->
+        <div v-if="knowledgePack.missing_needs.length > 0" class="story-studio__kp-section">
+          <h5 class="story-studio__kp-section-title story-studio__kp-section-title--missing">缺失资料</h5>
+          <div v-for="missing in knowledgePack.missing_needs" :key="missing.need_id" class="story-studio__kp-missing">
+            <p>⚠️ {{ missing.label }}：{{ missing.message }}</p>
+          </div>
+        </div>
+
+        <p class="story-studio__kp-confidence">
+          总体置信度：{{ (knowledgePack.overall_confidence * 100).toFixed(0) }}%
+        </p>
+      </div>
+
+      <!-- Preview button (entry mode only) -->
       <button
+        v-if="inputMode === 'entry'"
         class="btn btn--primary"
         @click="handlePlan"
         :disabled="!selectedEntry || planning"
@@ -120,7 +264,7 @@
         </div>
       </section>
 
-      <!-- Presentation style selector — visible once video type selected -->
+      <!-- Presentation style selector -->
       <section v-if="selectedVideoType" class="story-studio__field">
         <label class="story-studio__label" for="presentation-style">表现形式</label>
         <select id="presentation-style" v-model="selectedPresentationStyle" class="story-studio__select">
@@ -166,11 +310,11 @@
         @click="handleGenerate"
         :disabled="!canGenerate || generating"
       >
-        {{ generating ? '正在生成…' : '生成视频方案' }}
+        {{ generating ? '正在生成…' : '生成剧情方案' }}
       </button>
 
-      <div v-if="!canGenerate && selectedVideoType && !selectedEntry" class="story-studio__generate-hint">
-        请先从知识库搜索结果中选择一个词条，才能生成视频方案。
+      <div v-if="!canGenerate && selectedVideoType && !hasAnyEntrySource" class="story-studio__generate-hint">
+        {{ inputMode === 'entry' ? '请先从知识库搜索结果中选择一个词条。' : '请先分析大纲并匹配知识内容，至少选择1个主依据条目。' }}
       </div>
 
       <div v-if="generateError" class="story-studio__error">{{ generateError }}</div>
@@ -180,7 +324,7 @@
     <main class="story-studio__right">
       <div v-if="generating" class="story-studio__loading">
         <div class="story-studio__spinner" />
-        <p class="story-studio__loading-text">正在生成视频方案，请稍候…</p>
+        <p class="story-studio__loading-text">正在生成剧情方案，请稍候…</p>
       </div>
 
       <div v-else-if="generateError && !generateResult" class="story-studio__result-error">
@@ -193,7 +337,7 @@
       </div>
 
       <div v-else class="story-studio__empty">
-        <p>选择词条、预览推荐，然后生成视频方案。</p>
+        <p>选择词条、输入大纲，然后生成剧情方案。</p>
         <p class="story-studio__hint">结果将在此处展示。</p>
       </div>
     </main>
@@ -203,8 +347,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { storyPlan, storyGenerate } from '@/api/stories'
-import { searchEntries, matchEntries } from '@/api/entries'
+import { storyPlan, storyGenerate, storyOutlineAnalyze } from '@/api/stories'
+import { searchEntries, matchEntries, entriesMultiMatch } from '@/api/entries'
 import type {
   EntrySearchResult,
   EntryMatchResult,
@@ -218,6 +362,10 @@ import type {
   VideoTypeGroup,
   VideoTypeMeta,
   PresentationStyleMeta,
+  StoryOutlineAnalysis,
+  KnowledgePack,
+  KnowledgeNeed,
+  KnowledgePackEntry,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
 import StoryPlan from '@/components/StoryPlan.vue'
@@ -225,7 +373,30 @@ import StoryResult from '@/components/StoryResult.vue'
 
 const route = useRoute()
 
-// --- State ---
+// --- Input mode ---
+type InputMode = 'entry' | 'theme' | 'outline'
+const inputMode = ref<InputMode>('entry')
+
+function switchMode(mode: InputMode) {
+  inputMode.value = mode
+  // Clear state on mode switch
+  if (mode === 'entry') {
+    outlineText.value = ''
+    outlineAnalysis.value = null
+    knowledgePack.value = null
+    selectedPrimaryEntries.value = []
+    selectedSupportingEntries.value = []
+  } else {
+    selectedEntry.value = null
+    matchResult.value = null
+    autoMatchLabel.value = ''
+    planResult.value = null
+  }
+  generateResult.value = null
+  generateError.value = ''
+}
+
+// --- Entry mode state ---
 const entrySearchQuery = ref('')
 const selectedEntry = ref<EntrySearchResult | null>(null)
 const originalUserQuery = ref('')
@@ -237,6 +408,16 @@ const matchResult = ref<EntryMatchResult | null>(null)
 const autoMatchLabel = ref('')
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
+// --- Outline mode state ---
+const outlineText = ref('')
+const analyzingOutline = ref(false)
+const outlineAnalysis = ref<StoryOutlineAnalysis | null>(null)
+const matchingMulti = ref(false)
+const knowledgePack = ref<KnowledgePack | null>(null)
+const selectedPrimaryEntries = ref<string[]>([])
+const selectedSupportingEntries = ref<string[]>([])
+
+// --- Common state ---
 const selectedType = ref<GenerationType | null>(null)
 const selectedVideoType = ref<VideoType | null>(null)
 const selectedPresentationStyle = ref<PresentationStyle | null>(null)
@@ -250,8 +431,16 @@ const generateResult = ref<StoryGenerateResult | null>(null)
 const planError = ref('')
 const generateError = ref('')
 
+const hasAnyEntrySource = computed(() => {
+  if (inputMode.value === 'entry') return !!selectedEntry.value
+  return selectedPrimaryEntries.value.length > 0
+})
+
 const canGenerate = computed(() => {
-  return selectedEntry.value && (selectedVideoType.value || selectedType.value)
+  if (inputMode.value === 'entry') {
+    return selectedEntry.value && (selectedVideoType.value || selectedType.value)
+  }
+  return selectedPrimaryEntries.value.length > 0 && (selectedVideoType.value || selectedType.value)
 })
 
 // --- VideoType group computed ---
@@ -295,11 +484,9 @@ function handleEntrySearchDebounced() {
 async function handleEntrySearch() {
   const query = entrySearchQuery.value.trim()
   if (!query) return
-
   entrySearchLoading.value = true
   entrySearchNoResults.value = false
   entrySearchResults.value = []
-
   const res = await searchEntries({ keywords: query })
   if (res.ok && res.data) {
     entrySearchResults.value = res.data
@@ -311,39 +498,21 @@ async function handleEntrySearch() {
   entrySearchLoading.value = false
 }
 
-function handleSelectEntry(entry: EntrySearchResult) {
-  selectedEntry.value = entry
-  originalUserQuery.value = ''
-  autoMatchLabel.value = ''
-  entrySearchResults.value = []
-  entrySearchNoResults.value = false
-  // Clear previous plan/generate state
-  planResult.value = null
-  planError.value = ''
-  generateResult.value = null
-  generateError.value = ''
-}
-
 function handleSelectMatch(m: EntryMatchItem) {
-  // Convert match item to EntrySearchResult for the selected entry display
-  // We need to search for the full entry to get summary etc
   selectedEntry.value = {
     name: m.entry_name,
     province: m.province,
-    region: '',  // Will be filled when plan loads
+    region: '',
     type: m.type,
     summary: m.match_reason,
     keywords: [],
     credibility: '',
   }
   originalUserQuery.value = entrySearchQuery.value.trim()
-  if (m.usable_for_story) {
-    autoMatchLabel.value = `已自动匹配到：${m.entry_name}（匹配度 ${(m.score * 100).toFixed(0)}%）`
-  } else {
-    autoMatchLabel.value = `已选择：${m.entry_name}（匹配度 ${(m.score * 100).toFixed(0)}%，请确认是否适合创作）`
-  }
+  autoMatchLabel.value = m.usable_for_story
+    ? `已自动匹配到：${m.entry_name}（匹配度 ${(m.score * 100).toFixed(0)}%）`
+    : `已选择：${m.entry_name}（匹配度 ${(m.score * 100).toFixed(0)}%，请确认）`
   matchResult.value = null
-  // Clear previous plan/generate state
   planResult.value = null
   planError.value = ''
   generateResult.value = null
@@ -353,19 +522,11 @@ function handleSelectMatch(m: EntryMatchItem) {
 async function handleAutoMatch() {
   const query = entrySearchQuery.value.trim()
   if (!query) return
-
   matching.value = true
   matchResult.value = null
-  entrySearchResults.value = []
-  entrySearchNoResults.value = false
-
-  const res = await matchEntries({
-    query,
-    limit: 5,
-  })
+  const res = await matchEntries({ query, limit: 5 })
   if (res.ok && res.data) {
     matchResult.value = res.data
-    // Auto-select best_match if score >= 0.75
     if (res.data.best_match && res.data.best_match.score >= 0.75) {
       handleSelectMatch(res.data.best_match)
     }
@@ -385,27 +546,61 @@ function clearSelectedEntry() {
   generateError.value = ''
 }
 
+// --- Outline mode handlers ---
+async function handleAnalyzeOutline() {
+  const text = outlineText.value.trim()
+  if (!text) return
+  analyzingOutline.value = true
+  planError.value = ''
+  const res = await storyOutlineAnalyze({
+    outline: text,
+    preferred_video_types: selectedVideoType.value ? [selectedVideoType.value] : undefined,
+    target_video_duration: targetDuration.value,
+  })
+  if (res.ok && res.data) {
+    outlineAnalysis.value = res.data
+    knowledgePack.value = null
+    selectedPrimaryEntries.value = []
+    selectedSupportingEntries.value = []
+  } else {
+    planError.value = res.error?.message ?? '大纲分析失败'
+  }
+  analyzingOutline.value = false
+}
+
+async function handleMultiMatch() {
+  if (!outlineAnalysis.value) return
+  matchingMulti.value = true
+  planError.value = ''
+  const res = await entriesMultiMatch({
+    outline: outlineText.value.trim(),
+    knowledge_needs: outlineAnalysis.value.knowledge_needs,
+    limit_per_need: 5,
+  })
+  if (res.ok && res.data) {
+    knowledgePack.value = res.data.matched_knowledge_pack
+    // Auto-select all primary entries
+    selectedPrimaryEntries.value = res.data.matched_knowledge_pack.primary_entries.map(e => e.entry_name)
+    // Auto-select all supporting entries
+    selectedSupportingEntries.value = res.data.matched_knowledge_pack.supporting_entries.map(e => e.entry_name)
+  } else {
+    planError.value = res.error?.message ?? '知识匹配失败'
+  }
+  matchingMulti.value = false
+}
+
 // --- Init from route query ---
 onMounted(async () => {
   const entry = route.query.entry as string | undefined
-
   if (entry) {
-    // Try to load the entry from the knowledge base
+    inputMode.value = 'entry'
     entrySearchQuery.value = entry
     const res = await searchEntries({ keywords: entry })
     if (res.ok && res.data) {
-      // Find exact match or first result
       const exactMatch = res.data.find(e => e.name === entry)
-      if (exactMatch) {
-        selectedEntry.value = exactMatch
-      } else if (res.data.length > 0) {
-        // If no exact match, use first result (user from detail page probably typed partial name)
-        selectedEntry.value = res.data[0]
-      } else {
-        planError.value = '知识库中没有找到该词条，请先搜索并选择已有词条。'
-      }
-    } else {
-      planError.value = '知识库中没有找到该词条，请先搜索并选择已有词条。'
+      if (exactMatch) selectedEntry.value = exactMatch
+      else if (res.data.length > 0) selectedEntry.value = res.data[0]
+      else planError.value = '知识库中没有找到该词条'
     }
   }
 
@@ -413,9 +608,6 @@ onMounted(async () => {
   if (type && Object.keys(VIDEO_TYPE_CONFIG).includes(type)) {
     selectedVideoType.value = type as VideoType
     selectedPresentationStyle.value = VIDEO_TYPE_CONFIG[type as VideoType].default_presentation_style
-  } else if (type && ['character_story', 'culture_promo', 'scene_short'].includes(type)) {
-    selectedType.value = type as GenerationType
-    selectedVideoType.value = type as VideoType
   }
 
   const vt = route.query.video_type as string | undefined
@@ -434,32 +626,23 @@ async function handlePlan() {
   planning.value = true
   planError.value = ''
   planResult.value = null
-
   const res = await storyPlan(selectedEntry.value.name, originalUserQuery.value || undefined)
   if (res.ok && res.data) {
     planResult.value = res.data
-    // Auto-select the top recommended type (backward compat)
     if (!selectedType.value && res.data.recommended_types.length > 0) {
       selectedType.value = res.data.recommended_types[0].generation_type
     }
-    // Auto-select the top recommended video type
     if (!selectedVideoType.value && res.data.recommended_video_types.length > 0) {
       selectedVideoType.value = res.data.recommended_video_types[0].video_type
     }
-    // Auto-select recommended presentation style
     if (!selectedPresentationStyle.value && res.data.recommended_presentation_styles.length > 0) {
       selectedPresentationStyle.value = res.data.recommended_presentation_styles[0].presentation_style
     }
-    // Auto-select recommended_duration
     targetDuration.value = res.data.recommended_duration
   } else {
-    // Translate ENTRY_NOT_FOUND to user-friendly Chinese message
-    const errorCode = res.error?.code
-    if (errorCode === 'ENTRY_NOT_FOUND') {
-      planError.value = '知识库中没有找到该词条，请先搜索并选择已有词条。'
-    } else {
-      planError.value = res.error?.message ?? '预览推荐失败'
-    }
+    planError.value = res.error?.code === 'ENTRY_NOT_FOUND'
+      ? '知识库中没有找到该词条'
+      : res.error?.message ?? '预览推荐失败'
   }
   planning.value = false
 }
@@ -480,15 +663,10 @@ function handleSelectEvent(event: string) {
 
 async function handleGenerate() {
   if (!canGenerate.value) return
-  if (!selectedEntry.value) {
-    generateError.value = '请先从知识库搜索结果中选择一个词条。'
-    return
-  }
   generating.value = true
   generateError.value = ''
   generateResult.value = null
 
-  // Resolve video_type: prefer selectedVideoType, fall back to selectedType mapping
   const videoTypeToSend = selectedVideoType.value ?? selectedType.value ?? 'character_story'
   const generationTypeToSend = selectedType.value ?? (
     videoTypeToSend === 'character_story' ? 'character_story'
@@ -497,29 +675,59 @@ async function handleGenerate() {
   )
   const presentationStyleToSend = selectedPresentationStyle.value ?? VIDEO_TYPE_CONFIG[videoTypeToSend as VideoType]?.default_presentation_style ?? 'cinematic'
 
-  const res = await storyGenerate({
-    entry_name: selectedEntry.value.name,
-    original_user_query: originalUserQuery.value || undefined,
-    generation_type: generationTypeToSend as GenerationType,
-    video_type: videoTypeToSend as VideoType,
-    selected_event: selectedEvent.value ?? undefined,
-    target_video_duration: targetDuration.value,
-    tone: tone.value || undefined,
-    presentation_style: presentationStyleToSend as PresentationStyle,
-    output_gears_segments: true,
-  })
-
-  if (res.ok && res.data) {
-    generateResult.value = res.data
-  } else {
-    // Translate ENTRY_NOT_FOUND to user-friendly Chinese message
-    const errorCode = res.error?.code
-    if (errorCode === 'ENTRY_NOT_FOUND') {
-      generateError.value = '知识库中没有找到该词条，请先搜索并选择已有词条。'
+  if (inputMode.value === 'entry' && selectedEntry.value) {
+    // Entry mode: single entry generation
+    const res = await storyGenerate({
+      entry_name: selectedEntry.value.name,
+      original_user_query: originalUserQuery.value || undefined,
+      generation_type: generationTypeToSend as GenerationType,
+      video_type: videoTypeToSend as VideoType,
+      selected_event: selectedEvent.value ?? undefined,
+      target_video_duration: targetDuration.value,
+      tone: tone.value || undefined,
+      presentation_style: presentationStyleToSend as PresentationStyle,
+      output_gears_segments: true,
+    })
+    if (res.ok && res.data) {
+      generateResult.value = res.data
     } else {
-      generateError.value = res.error?.message ?? '视频方案生成失败'
+      generateError.value = res.error?.code === 'ENTRY_NOT_FOUND'
+        ? '知识库中没有找到该词条'
+        : res.error?.message ?? '剧情方案生成失败'
+    }
+  } else if ((inputMode.value === 'theme' || inputMode.value === 'outline') && knowledgePack.value) {
+    // Outline/theme mode: multi-entry generation with knowledge pack
+    // Build filtered knowledge pack from user selections
+    const filteredPack: KnowledgePack = {
+      primary_entries: knowledgePack.value.primary_entries.filter(e => selectedPrimaryEntries.value.includes(e.entry_name)),
+      supporting_entries: knowledgePack.value.supporting_entries.filter(e => selectedSupportingEntries.value.includes(e.entry_name)),
+      missing_needs: knowledgePack.value.missing_needs,
+      overall_confidence: knowledgePack.value.overall_confidence,
+    }
+
+    const primaryEntryName = filteredPack.primary_entries.length > 0
+      ? filteredPack.primary_entries[0].entry_name
+      : ''
+
+    const res = await storyGenerate({
+      entry_name: primaryEntryName,
+      original_user_query: outlineText.value || undefined,
+      generation_type: generationTypeToSend as GenerationType,
+      video_type: videoTypeToSend as VideoType,
+      target_video_duration: targetDuration.value,
+      tone: tone.value || undefined,
+      presentation_style: presentationStyleToSend as PresentationStyle,
+      output_gears_segments: true,
+      outline: outlineText.value,
+      knowledge_pack: filteredPack,
+    })
+    if (res.ok && res.data) {
+      generateResult.value = res.data
+    } else {
+      generateError.value = res.error?.message ?? '剧情方案生成失败'
     }
   }
+
   generating.value = false
 }
 </script>
@@ -546,16 +754,178 @@ async function handleGenerate() {
 }
 
 .story-studio__page-title {
-  margin: 0 0 20px 0;
+  margin: 0 0 16px 0;
   font-size: 22px;
   color: #2c3e50;
 }
 
-/* Fields */
-.story-studio__field {
+/* Mode tabs */
+.story-studio__mode-tabs {
+  display: flex;
+  gap: 6px;
   margin-bottom: 14px;
 }
+.story-studio__mode-tab {
+  padding: 6px 14px;
+  border: 2px solid #bdc3c7;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.story-studio__mode-tab--active {
+  border-color: #2980b9;
+  background: #eaf2f8;
+  color: #2980b9;
+  font-weight: 600;
+}
+.story-studio__mode-tab:hover:not(.story-studio__mode-tab--active) { border-color: #3498db; }
 
+/* Textarea */
+.story-studio__textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 15px;
+  line-height: 1.5;
+  box-sizing: border-box;
+  resize: vertical;
+}
+.story-studio__textarea:focus { border-color: #3498db; outline: none; }
+
+/* Outline actions */
+.story-studio__outline-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Analysis results */
+.story-studio__analysis {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  background: #f8f9fa;
+}
+.story-studio__analysis-title {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  color: #2c3e50;
+}
+.story-studio__analysis-items p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #34495e;
+  line-height: 1.4;
+}
+.story-studio__knowledge-needs ul {
+  padding-left: 18px;
+  margin: 4px 0;
+}
+.story-studio__knowledge-needs li {
+  font-size: 13px;
+  color: #34495e;
+  margin-bottom: 3px;
+}
+
+/* Knowledge pack */
+.story-studio__knowledge-pack {
+  margin-top: 12px;
+}
+.story-studio__kp-title {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: #2c3e50;
+}
+.story-studio__kp-section {
+  margin-bottom: 10px;
+}
+.story-studio__kp-section-title {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.story-studio__kp-section-title--primary { color: #27ae60; }
+.story-studio__kp-section-title--supporting { color: #2980b9; }
+.story-studio__kp-section-title--missing { color: #f39c12; }
+
+.story-studio__kp-entry {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  align-items: flex-start;
+}
+.story-studio__kp-entry--primary { background: #eafaf1; border: 1px solid #27ae60; }
+.story-studio__kp-entry--supporting { background: #eaf2f8; border: 1px solid #2980b9; }
+.story-studio__kp-checkbox {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+}
+.story-studio__kp-entry-content {
+  flex: 1;
+}
+.story-studio__kp-score {
+  padding: 2px 6px;
+  background: #d5f5e3;
+  color: #27ae60;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+  margin-right: 6px;
+}
+.story-studio__kp-type {
+  padding: 2px 8px;
+  background: #eaf2f8;
+  color: #2980b9;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+.story-studio__kp-region {
+  margin: 2px 0;
+  font-size: 13px;
+  color: #7f8c8d;
+}
+.story-studio__kp-reason {
+  margin: 2px 0;
+  font-size: 13px;
+  color: #34495e;
+}
+.story-studio__kp-summary {
+  margin: 2px 0;
+  font-size: 13px;
+  color: #7f8c8d;
+  line-height: 1.4;
+}
+
+.story-studio__kp-missing {
+  padding: 8px 12px;
+  background: #fef9e7;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.story-studio__kp-missing p {
+  margin: 0;
+  font-size: 13px;
+  color: #f39c12;
+}
+.story-studio__kp-confidence {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* Fields */
+.story-studio__field { margin-bottom: 14px; }
 .story-studio__label {
   display: block;
   font-size: 14px;
@@ -563,7 +933,6 @@ async function handleGenerate() {
   color: #2c3e50;
   margin-bottom: 4px;
 }
-
 .story-studio__input {
   width: 100%;
   padding: 8px 12px;
@@ -572,12 +941,7 @@ async function handleGenerate() {
   font-size: 15px;
   box-sizing: border-box;
 }
-
-.story-studio__input:focus {
-  border-color: #3498db;
-  outline: none;
-}
-
+.story-studio__input:focus { border-color: #3498db; outline: none; }
 .story-studio__select {
   width: 100%;
   padding: 8px 12px;
@@ -600,13 +964,8 @@ async function handleGenerate() {
 }
 
 /* Search row */
-.story-studio__search-row {
-  display: flex;
-  gap: 8px;
-}
-.story-studio__search-row .story-studio__input {
-  flex: 1;
-}
+.story-studio__search-row { display: flex; gap: 8px; }
+.story-studio__search-row .story-studio__input { flex: 1; }
 
 .btn--search {
   padding: 8px 16px;
@@ -620,7 +979,7 @@ async function handleGenerate() {
 .btn--search:hover:not(:disabled) { background: #2980b9; }
 .btn--search:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Selected entry display */
+/* Selected entry */
 .story-studio__selected-entry {
   margin-top: 10px;
   padding: 12px 14px;
@@ -642,10 +1001,7 @@ async function handleGenerate() {
   font-size: 12px;
   font-weight: 600;
 }
-.story-studio__selected-name {
-  font-size: 15px;
-  color: #2c3e50;
-}
+.story-studio__selected-name { font-size: 15px; color: #2c3e50; }
 .story-studio__clear-btn {
   margin-left: auto;
   padding: 2px 6px;
@@ -657,27 +1013,12 @@ async function handleGenerate() {
   border-radius: 3px;
 }
 .story-studio__clear-btn:hover { background: #fdecea; }
-.story-studio__selected-meta {
-  margin: 0;
-  font-size: 13px;
-  color: #7f8c8d;
-}
-.story-studio__selected-summary {
-  margin: 4px 0 0 0;
-  font-size: 14px;
-  color: #34495e;
-  line-height: 1.4;
-}
+.story-studio__selected-meta { margin: 0; font-size: 13px; color: #7f8c8d; }
+.story-studio__selected-summary { margin: 4px 0 0; font-size: 14px; color: #34495e; line-height: 1.4; }
 
-/* Search results list */
-.story-studio__search-results {
-  margin-top: 10px;
-}
-.story-studio__search-hint {
-  margin: 0 0 8px 0;
-  font-size: 13px;
-  color: #7f8c8d;
-}
+/* Search results */
+.story-studio__search-results { margin-top: 10px; }
+.story-studio__search-hint { margin: 0 0 8px; font-size: 13px; color: #7f8c8d; }
 .story-studio__search-item {
   padding: 10px 14px;
   border: 1px solid #dee2e6;
@@ -686,20 +1027,9 @@ async function handleGenerate() {
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
 }
-.story-studio__search-item:hover {
-  border-color: #3498db;
-  background: #eaf2f8;
-}
-.story-studio__search-item--best {
-  border-color: #27ae60;
-  background: #eafaf1;
-}
-.story-studio__search-item-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
+.story-studio__search-item:hover { border-color: #3498db; background: #eaf2f8; }
+.story-studio__search-item--best { border-color: #27ae60; background: #eafaf1; }
+.story-studio__search-item-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .story-studio__match-score {
   padding: 2px 6px;
   background: #d5f5e3;
@@ -709,32 +1039,15 @@ async function handleGenerate() {
   font-weight: 600;
 }
 .story-studio__search-type {
-  display: inline-block;
   padding: 2px 8px;
   background: #eaf2f8;
   color: #2980b9;
   border-radius: 3px;
   font-size: 12px;
   font-weight: 600;
-  margin-bottom: 4px;
 }
-.story-studio__search-name {
-  display: block;
-  font-size: 15px;
-  color: #2c3e50;
-  margin-bottom: 2px;
-}
-.story-studio__search-meta {
-  margin: 0;
-  font-size: 12px;
-  color: #7f8c8d;
-}
-.story-studio__search-summary {
-  margin: 4px 0 0 0;
-  font-size: 13px;
-  color: #34495e;
-  line-height: 1.4;
-}
+.story-studio__search-name { display: block; font-size: 15px; color: #2c3e50; margin-bottom: 2px; }
+.story-studio__search-meta { margin: 0; font-size: 12px; color: #7f8c8d; }
 .btn--select-entry {
   margin-top: 6px;
   padding: 6px 12px;
@@ -746,25 +1059,7 @@ async function handleGenerate() {
   cursor: pointer;
   font-weight: 600;
 }
-.btn--select-entry:hover {
-  background: #27ae60;
-  color: #fff;
-}
-.btn--select-entry--best {
-  border-color: #27ae60;
-  color: #27ae60;
-  background: #eafaf1;
-}
-
-/* Search no results */
-.story-studio__search-empty {
-  margin-top: 10px;
-  padding: 10px 14px;
-  background: #fef9e7;
-  color: #f39c12;
-  border-radius: 4px;
-  font-size: 14px;
-}
+.btn--select-entry:hover { background: #27ae60; color: #fff; }
 
 /* Entry hint */
 .story-studio__entry-hint {
@@ -775,8 +1070,6 @@ async function handleGenerate() {
   border-radius: 4px;
   font-size: 13px;
 }
-
-/* Generate hint */
 .story-studio__generate-hint {
   margin-top: 8px;
   padding: 8px 12px;
@@ -795,21 +1088,9 @@ async function handleGenerate() {
   cursor: pointer;
   transition: opacity 0.2s;
 }
-
-.btn:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.btn--primary {
-  background: #2980b9;
-  color: #fff;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
+.btn:hover:not(:disabled) { opacity: 0.85; }
+.btn--primary { background: #2980b9; color: #fff; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn--generate {
   margin-top: 16px;
   width: 100%;
@@ -836,7 +1117,6 @@ async function handleGenerate() {
   justify-content: center;
   height: 300px;
 }
-
 .story-studio__spinner {
   width: 40px;
   height: 40px;
@@ -845,19 +1125,13 @@ async function handleGenerate() {
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
-
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+.story-studio__loading-text { margin-top: 16px; font-size: 16px; color: #7f8c8d; }
 
-.story-studio__loading-text {
-  margin-top: 16px;
-  font-size: 16px;
-  color: #7f8c8d;
-}
-
-/* Result error in right panel */
+/* Result error */
 .story-studio__result-error {
   display: flex;
   flex-direction: column;
@@ -879,22 +1153,21 @@ async function handleGenerate() {
   height: 300px;
   color: #95a5a6;
 }
-
-.story-studio__empty p {
-  font-size: 16px;
-  margin: 0;
-}
-
-.story-studio__hint {
-  margin-top: 8px;
-  font-size: 14px;
-}
+.story-studio__empty p { font-size: 16px; margin: 0; }
+.story-studio__hint { margin-top: 8px; font-size: 14px; }
 
 /* Video type groups */
 .story-studio__vt-group { margin-bottom: 12px; }
 .story-studio__vt-group-name { margin: 0 0 6px 0; font-size: 14px; color: #34495e; font-weight: 600; }
 .story-studio__vt-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
-.story-studio__vt-card { padding: 10px 14px; border: 2px solid #bdc3c7; border-radius: 6px; background: #fff; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.story-studio__vt-card {
+  padding: 10px 14px;
+  border: 2px solid #bdc3c7;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
 .story-studio__vt-card:hover { border-color: #3498db; }
 .story-studio__vt-card--selected { border-color: #2980b9; background: #eaf2f8; }
 .story-studio__vt-card--recommended { border-color: #27ae60; }

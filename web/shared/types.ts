@@ -277,7 +277,7 @@ export interface StoryPlanResult {
 // ---------------------------------------------------------------------------
 
 export interface StoryGenerateRequest {
-  entry_name: string;
+  entry_name?: string;
   original_user_query?: string;
   generation_type?: GenerationType;
   video_type?: VideoType;
@@ -286,6 +286,9 @@ export interface StoryGenerateRequest {
   tone?: string;
   presentation_style?: PresentationStyle;
   output_gears_segments?: boolean;
+  // New fields for outline-driven multi-knowledge matching
+  outline?: string;
+  knowledge_pack?: KnowledgePack;
 }
 
 // ---------------------------------------------------------------------------
@@ -325,6 +328,12 @@ export interface StoryScene {
   visual_prompt: string;
   camera_suggestion: string;
   cultural_note: string;
+  // New dramatic narrative fields
+  conflict?: string;
+  dialogue_or_narration?: string;
+  source_entries?: string[];
+  factual_basis?: string;
+  fictionalized_elements?: string[];
 }
 
 export interface StoryListItem {
@@ -357,6 +366,7 @@ export interface GearsSegment {
   video_type: VideoType;
   presentation_style: PresentationStyle;
   segment_prompt_hint?: string;
+  source_entries?: string[];
 }
 
 export interface GearsSegmentsResponse {
@@ -365,6 +375,79 @@ export interface GearsSegmentsResponse {
   title: string;
   total_duration_sec: number;
   segments: GearsSegment[];
+}
+
+// ---------------------------------------------------------------------------
+// Story outline analysis — multi-knowledge matching
+// ---------------------------------------------------------------------------
+
+export interface KnowledgeNeed {
+  need_id: string;
+  label: string;
+  keywords: string[];
+  required: boolean;
+}
+
+export interface StoryOutlineAnalyzeRequest {
+  outline: string;
+  preferred_video_types?: VideoType[];
+  target_video_duration?: SupportedDuration;
+}
+
+export interface StoryOutlineAnalysis {
+  outline: string;
+  detected_subjects: string[];
+  detected_domain: 'china_culture_or_history' | 'modern' | 'other';
+  story_intent: {
+    main_character: string | null;
+    time_range: string | null;
+    core_theme: string;
+    conflict_keywords: string[];
+    target_emotion: string[];
+  };
+  knowledge_needs: KnowledgeNeed[];
+}
+
+export interface KnowledgePackEntry {
+  entry_name: string;
+  province: string;
+  region: string;
+  type: string;
+  summary: string;
+  score: number;
+  role_in_story: string;
+  match_reason: string;
+  keywords: string[];
+}
+
+export interface KnowledgePackMissing {
+  need_id: string;
+  label: string;
+  message: string;
+}
+
+export interface KnowledgePack {
+  primary_entries: KnowledgePackEntry[];
+  supporting_entries: KnowledgePackEntry[];
+  missing_needs: KnowledgePackMissing[];
+  overall_confidence: number;
+}
+
+export interface MultiMatchResult {
+  outline: string;
+  matched_knowledge_pack: KnowledgePack;
+}
+
+export interface StoryQualityReport {
+  hasCentralEvent: boolean;
+  hasConflict: boolean;
+  hasProtagonistChoice: boolean;
+  hasSceneAction: boolean;
+  hasClimax: boolean;
+  hasEndingTheme: boolean;
+  isNotBiographySummary: boolean;
+  passed: boolean;
+  issues: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -387,6 +470,9 @@ export interface StoryGenerateResult {
   gears_segments_url: string;
   cultural_constraints: string[];
   credibility_note: string;
+  // New fields for multi-knowledge matching
+  knowledge_pack?: KnowledgePack;
+  quality_report?: StoryQualityReport;
   // Type-specific optional fields — character_story / historical_drama / legend_story
   characters?: StoryCharacter[];
   act_structure?: ActBeat[];

@@ -2,8 +2,9 @@
 
 import { Router } from 'express';
 import { validateQuery, validateBody } from '../middleware/validate.js';
-import { EntrySearchQuerySchema, EntryDetailQuerySchema, EntryMatchRequestSchema } from '@shared/schemas.js';
+import { EntrySearchQuerySchema, EntryDetailQuerySchema, EntryMatchRequestSchema, MultiMatchRequestSchema } from '@shared/schemas.js';
 import { searchEntries, getEntryDetailByName, matchEntries } from '../services/entry-service.js';
+import { multiMatchEntries } from '../services/outline-service.js';
 
 export const entriesRouter = Router();
 
@@ -34,6 +35,17 @@ entriesRouter.get('/detail', validateQuery(EntryDetailQuerySchema), async (req, 
     const { name } = req.query as { name: string };
     const result = await getEntryDetailByName(name);
     res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/entries/multi-match — multi-knowledge matching for story creation
+entriesRouter.post('/multi-match', validateBody(MultiMatchRequestSchema), async (req, res, next) => {
+  try {
+    const { outline, knowledge_needs, limit_per_need } = req.body;
+    const result = await multiMatchEntries({ outline, knowledge_needs, limit_per_need: limit_per_need ?? 5 });
+    res.json(result);
   } catch (err) {
     next(err);
   }
