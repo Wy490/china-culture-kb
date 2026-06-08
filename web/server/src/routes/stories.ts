@@ -17,8 +17,8 @@ export const storiesRouter = Router();
 // POST /api/stories/plan — preview recommendation for an entry
 storiesRouter.post('/plan', validateBody(StoryPlanRequestSchema), async (req, res, next) => {
   try {
-    const { entry_name } = req.body as { entry_name: string };
-    const result = await planStory(entry_name);
+    const { entry_name, original_user_query } = req.body as { entry_name: string; original_user_query?: string };
+    const result = await planStory(entry_name, original_user_query);
     res.status(result.ok ? 200 : 404).json(result);
   } catch (err) {
     next(err);

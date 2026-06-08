@@ -100,6 +100,40 @@ const DURATION_3MIN: Record<number, number> = {
   6: 30,   // 6 scenes → 30s each
 };
 
+const DURATION_5MIN: Record<number, number> = {
+  4: 75,   // 4 scenes → 75s each
+  5: 60,   // 5 scenes → 60s each
+  6: 50,   // 6 scenes → 50s each
+  7: 43,   // 7 scenes → ~43s each
+};
+
+const DURATION_8MIN: Record<number, number> = {
+  5: 96,   // 5 scenes → 96s each
+  6: 80,   // 6 scenes → 80s each
+  7: 69,   // 7 scenes → ~69s each
+  8: 60,   // 8 scenes → 60s each
+};
+
+const DURATION_10MIN: Record<number, number> = {
+  6: 100,  // 6 scenes → 100s each
+  7: 86,   // 7 scenes → ~86s each
+  8: 75,   // 8 scenes → 75s each
+  9: 67,   // 9 scenes → ~67s each
+};
+
+const DURATION_15MIN: Record<number, number> = {
+  8: 113,  // 8 scenes → ~113s each
+  9: 100,  // 9 scenes → 100s each
+  10: 90,  // 10 scenes → 90s each
+  11: 82,  // 11 scenes → ~82s each
+};
+
+const DURATION_20MIN: Record<number, number> = {
+  10: 120, // 10 scenes → 120s each
+  11: 109, // 11 scenes → ~109s each
+  12: 100, // 12 scenes → 100s each
+};
+
 const PANEL_COUNT_BY_DURATION: Record<number, PanelCount> = {
   12: 6,
   15: 6,
@@ -107,8 +141,21 @@ const PANEL_COUNT_BY_DURATION: Record<number, PanelCount> = {
   25: 8,
   30: 9,
   36: 10,
+  43: 10,
   45: 10,
+  50: 10,
   60: 12,
+  67: 12,
+  69: 12,
+  75: 12,
+  80: 12,
+  86: 12,
+  90: 12,
+  96: 12,
+  100: 12,
+  109: 12,
+  113: 12,
+  120: 12,
 };
 
 // ---------------------------------------------------------------------------
@@ -176,6 +223,7 @@ function computeCulturalRisks(entry: EntryDetail): string[] {
 }
 
 function recommendDuration(entryType: string, eventCount: number): SupportedDuration {
+  if (entryType === '历史人物' && eventCount >= 5) return '5分钟';
   if (entryType === '历史人物' && eventCount >= 3) return '3分钟';
   if (entryType === '历史人物') return '1分钟';
   if (['非遗', '传统工艺', '饮食文化'].includes(entryType)) return '1分钟';
@@ -240,9 +288,24 @@ function buildSceneBreakdown(
     events.push('整体故事');
   }
 
-  const is3Min = targetDuration === '3分钟' || targetDuration === '5分钟';
-  const durationMap = is3Min ? DURATION_3MIN : DURATION_BY_SCENE_COUNT;
-  const perSceneDuration = durationMap[events.length] ?? 15;
+  // Determine scene count and per-scene duration based on target duration
+  const durationSecMap: Record<string, number> = {
+    '30秒': 30, '1分钟': 60, '3分钟': 180, '5分钟': 300,
+    '8分钟': 480, '10分钟': 600, '15分钟': 900, '20分钟': 1200,
+  };
+  const totalSeconds = durationSecMap[targetDuration] ?? 60;
+  const targetSceneCount = Math.max(2, Math.min(12, Math.round(totalSeconds / 60)));
+
+  // Fill events up to target scene count
+  while (events.length < targetSceneCount && boldEvents.length > events.length) {
+    events.push(boldEvents[events.length]);
+  }
+  while (events.length < targetSceneCount) {
+    events.push(`场景${events.length + 1}——${entry.type}延伸叙事`);
+  }
+
+  // Per-scene duration
+  const perSceneDuration = Math.round(totalSeconds / events.length);
 
   const scenes: StoryScene[] = events.map((eventName, idx) => {
     const funcIndex = idx === 0 ? 0
@@ -386,7 +449,7 @@ function resolveGenerationType(videoType: VideoType): GenerationType {
 // planStory — preview recommendation for an entry
 // ---------------------------------------------------------------------------
 
-export async function planStory(entryName: string): Promise<ApiResponse<StoryPlanResult>> {
+export async function planStory(entryName: string, originalUserQuery?: string): Promise<ApiResponse<StoryPlanResult>> {
   const mcpDetail = await mcpGetFullEntryDetail(entryName);
   if (!mcpDetail) {
     return fail(ErrorCodes.ENTRY_NOT_FOUND, `Entry "${entryName}" not found`);
@@ -454,6 +517,7 @@ export async function planStory(entryName: string): Promise<ApiResponse<StoryPla
   return success({
     entry_name: entryName,
     entry_type: entryType,
+    original_user_query: originalUserQuery ?? undefined,
     recommended_types: recommendedTypes,
     recommended_video_types: recommendedVideoTypes,
     recommended_presentation_styles: recommendedPresentationStyles,
@@ -470,7 +534,7 @@ export async function planStory(entryName: string): Promise<ApiResponse<StoryPla
 export async function generateAndStoreStory(
   request: StoryGenerateRequest,
 ): Promise<ApiResponse<StoryGenerateResult>> {
-  const { entry_name, selected_event, target_video_duration, tone, output_gears_segments } = request;
+  const { entry_name, original_user_query, selected_event, target_video_duration, tone, output_gears_segments } = request;
 
   // Resolve video_type and generation_type
   const videoType = resolveVideoType(request);
@@ -508,6 +572,7 @@ export async function generateAndStoreStory(
     video_type: videoType,
     presentation_style: presentationStyle,
     source_entry: entry_name,
+    original_user_query: original_user_query ?? undefined,
     logline: entry.summary,
     theme: `${VIDEO_TYPE_CONFIG[videoType].label} × ${entry.type}`,
     full_text: entry.story,
@@ -515,7 +580,9 @@ export async function generateAndStoreStory(
     gears_segments: gearsSegments,
     gears_segments_url: gearsSegmentsUrl,
     cultural_constraints: culturalRisks,
-    credibility_note: entry.credibility,
+    credibility_note: entry.credibility + (original_user_query
+      ? `；用户创作主题"${original_user_query}"中的部分表达未在知识库中验证，已按创作方向处理`
+      : ''),
     // Type-specific fields based on video_type
     ...(videoType === 'character_story' || videoType === 'historical_drama' || videoType === 'legend_story' ? {
       characters: extractCharactersFromStory(entry.story, entry.name),

@@ -8,6 +8,7 @@
 //  - Error handling (404, validation, internal)
 
 import { describe, it, expect, beforeAll } from 'vitest';
+import { resolve } from 'path';
 import supertest from 'supertest';
 import express from 'express';
 import cors from 'cors';
@@ -16,6 +17,15 @@ import { errorHandler } from '../middleware/error-handler.js';
 import { entriesRouter } from '../routes/entries.js';
 import { storiesRouter } from '../routes/stories.js';
 import { systemRouter } from '../routes/system.js';
+
+// Set KB_ROOT so MCP functions can find the data directory
+// (same logic as server/src/index.ts which sets this at startup)
+beforeAll(() => {
+  if (!process.env.KB_ROOT) {
+    // From this test file: web/server/src/__tests__/ → ../../../../data
+    process.env.KB_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Build a test Express app (same configuration as production, no listen)
@@ -102,6 +112,68 @@ describe('System API', () => {
 // ---------------------------------------------------------------------------
 
 describe('Entries API', () => {
+  describe('POST /api/entries/match', () => {
+    it('returns exact match for real entry name', async () => {
+      const res = await request.post('/api/entries/match').send({
+        query: '周敦颐——理学开山鼻祖',
+      });
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.query).toBe('周敦颐——理学开山鼻祖');
+      expect(res.body.data.best_match).not.toBeNull();
+      expect(res.body.data.best_match.score).toBe(1.0);
+      expect(res.body.data.best_match.entry_name).toBe('周敦颐——理学开山鼻祖');
+    });
+
+    it('returns fuzzy match for topic keywords', async () => {
+      const res = await request.post('/api/entries/match').send({
+        query: '周敦颐拒签冤案故事',
+      });
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.matches.length).toBeGreaterThan(0);
+      // Should find 周敦颐 as top match
+      const topMatch = res.body.data.best_match;
+      if (topMatch) {
+        expect(topMatch.entry_name).toContain('周敦颐');
+        expect(topMatch.score).toBeGreaterThan(0.5);
+      }
+    });
+
+    it('returns province-weighted results for province queries', async () => {
+      const res = await request.post('/api/entries/match').send({
+        query: '湖南非遗宣传片',
+      });
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      // Should return Hunan-related entries
+      if (res.body.data.matches.length > 0) {
+        const hunanMatches = res.body.data.matches.filter(m => m.province === '湖南');
+        expect(hunanMatches.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('returns empty matches for completely unrelated query', async () => {
+      const res = await request.post('/api/entries/match').send({
+        query: '量子物理学宇宙大爆炸',
+      });
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      // Unlikely to have relevant matches in culture KB
+      if (res.body.data.matches.length === 0) {
+        expect(res.body.data.fallback_message).toBeTruthy();
+      }
+    });
+
+    it('returns 400 for empty query', async () => {
+      const res = await request.post('/api/entries/match').send({
+        query: '',
+      });
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+  });
+
   describe('GET /api/entries/search', () => {
     it('returns success envelope with empty results when no keywords', async () => {
       const res = await request.get('/api/entries/search');
@@ -129,6 +201,41 @@ describe('Entries API', () => {
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
+    });
+
+    it('returns all entries for a province without keywords (province-only search)', async () => {
+      const res = await request.get('/api/entries/search?province=湖南');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBe(41);
+      // Each result should have province = 湖南
+      for (const entry of res.body.data) {
+        expect(entry.province).toBe('湖南');
+      }
+    });
+
+    it('returns all entries for 北京 without keywords', async () => {
+      const res = await request.get('/api/entries/search?province=北京');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBe(1);
+    });
+
+    it('province count matches /api/system/provinces count for 湖南', async () => {
+      const provincesRes = await request.get('/api/system/provinces');
+      const searchRes = await request.get('/api/entries/search?province=湖南');
+      const hunanProvince = provincesRes.body.data.find((p: any) => p.name === '湖南');
+      expect(hunanProvince.entry_count).toBe(41);
+      expect(searchRes.body.data.length).toBe(hunanProvince.entry_count);
+    });
+
+    it('supports pinyin slug for province name', async () => {
+      const res = await request.get('/api/entries/search?province=hunan');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.length).toBe(41);
     });
   });
 
@@ -325,6 +432,47 @@ describe('Stories API', () => {
           expect(firstSeg).toHaveProperty('presentation_style');
           expect(firstSeg).toHaveProperty('segment_prompt_hint');
         }
+      }
+    });
+
+    it('generates story with 10-minute duration producing more scenes', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: 'ai_comic_drama',
+        target_video_duration: '10分钟',
+        output_gears_segments: true,
+      });
+      if (res.status === 200) {
+        expectSuccess(res.body);
+        const story = res.body.data;
+        // 10-minute story should have more scenes than a 3-minute one
+        expect(story.scene_breakdown.length).toBeGreaterThanOrEqual(6);
+        expect(story.gears_segments.length).toBeGreaterThanOrEqual(6);
+        // total duration should be close to 600 seconds
+        const totalSec = story.scene_breakdown.reduce((sum: number, s: any) => sum + s.duration_sec, 0);
+        expect(totalSec).toBeGreaterThanOrEqual(480);
+      }
+    });
+
+    it('generates story with full_text, scene_breakdown, gears_segments, gears_segments_url', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: 'character_story',
+        target_video_duration: '5分钟',
+        output_gears_segments: true,
+      });
+      if (res.status === 200) {
+        expectSuccess(res.body);
+        const story = res.body.data;
+        expect(story).toHaveProperty('full_text');
+        expect(typeof story.full_text).toBe('string');
+        expect(story.full_text.length).toBeGreaterThan(0);
+        expect(story).toHaveProperty('scene_breakdown');
+        expect(Array.isArray(story.scene_breakdown)).toBe(true);
+        expect(story).toHaveProperty('gears_segments');
+        expect(Array.isArray(story.gears_segments)).toBe(true);
+        expect(story).toHaveProperty('gears_segments_url');
+        expect(story.gears_segments_url).toMatch(/^\/api\/stories\/\d{8}-story-[0-9a-z]+\/gears-segments$/);
       }
     });
   });

@@ -134,7 +134,7 @@ export const VIDEO_TYPE_CONFIG: Record<VideoType, VideoTypeMeta> = {
   education_training: {
     id: 'education_training', group: '讲解教育类', label: '教育/培训片',
     description: '面向教学场景的培训内容', default_presentation_style: 'host_narration',
-    default_duration: '5分钟', compatible_entry_types: ['非遗', '传统工艺', '节庆习俗'],
+    default_duration: '10分钟', compatible_entry_types: ['非遗', '传统工艺', '节庆习俗'],
   },
   scene_short: {
     id: 'scene_short', group: '场景空间类', label: '场景短片',
@@ -176,7 +176,7 @@ export const PRESENTATION_STYLE_CONFIG: Record<PresentationStyle, PresentationSt
 // Duration & panel count
 // ---------------------------------------------------------------------------
 
-export type SupportedDuration = '30秒' | '1分钟' | '3分钟' | '5分钟';
+export type SupportedDuration = '30秒' | '1分钟' | '3分钟' | '5分钟' | '8分钟' | '10分钟' | '15分钟' | '20分钟';
 
 export type PanelCount = 4 | 6 | 8 | 9 | 10 | 12;
 
@@ -263,6 +263,7 @@ export interface AvailableEvent {
 export interface StoryPlanResult {
   entry_name: string;
   entry_type: string;
+  original_user_query?: string;
   recommended_types: RecommendedType[];
   recommended_video_types: RecommendedVideoType[];
   recommended_presentation_styles: RecommendedPresentationStyle[];
@@ -277,6 +278,7 @@ export interface StoryPlanResult {
 
 export interface StoryGenerateRequest {
   entry_name: string;
+  original_user_query?: string;
   generation_type?: GenerationType;
   video_type?: VideoType;
   selected_event?: string;
@@ -376,6 +378,7 @@ export interface StoryGenerateResult {
   video_type: VideoType;
   presentation_style: PresentationStyle;
   source_entry: string;
+  original_user_query?: string;
   logline: string;
   theme: string;
   full_text: string;
@@ -421,6 +424,26 @@ export interface EntrySearchResult {
   summary: string;
   keywords: string[];
   credibility: string;
+}
+
+// ---------------------------------------------------------------------------
+// Entry match result (smart topic matching)
+// ---------------------------------------------------------------------------
+
+export interface EntryMatchItem {
+  entry_name: string;
+  province: string;
+  type: string;
+  score: number;
+  match_reason: string;
+  usable_for_story: boolean;
+}
+
+export interface EntryMatchResult {
+  query: string;
+  matches: EntryMatchItem[];
+  best_match: EntryMatchItem | null;
+  fallback_message: string | null;
 }
 
 export interface EntryDetail {

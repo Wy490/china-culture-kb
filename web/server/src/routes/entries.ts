@@ -1,9 +1,9 @@
-// web/server/src/routes/entries.ts — Entry search & detail routes
+// web/server/src/routes/entries.ts — Entry search, match & detail routes
 
 import { Router } from 'express';
-import { validateQuery } from '../middleware/validate.js';
-import { EntrySearchQuerySchema, EntryDetailQuerySchema } from '@shared/schemas.js';
-import { searchEntries, getEntryDetailByName } from '../services/entry-service.js';
+import { validateQuery, validateBody } from '../middleware/validate.js';
+import { EntrySearchQuerySchema, EntryDetailQuerySchema, EntryMatchRequestSchema } from '@shared/schemas.js';
+import { searchEntries, getEntryDetailByName, matchEntries } from '../services/entry-service.js';
 
 export const entriesRouter = Router();
 
@@ -11,6 +11,17 @@ export const entriesRouter = Router();
 entriesRouter.get('/search', validateQuery(EntrySearchQuerySchema), async (req, res, next) => {
   try {
     const result = await searchEntries(req.query as any);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/entries/match — smart topic matching for story creation
+entriesRouter.post('/match', validateBody(EntryMatchRequestSchema), async (req, res, next) => {
+  try {
+    const { query, limit, preferred_province, preferred_type } = req.body;
+    const result = await matchEntries({ query, limit: limit ?? 5, preferred_province, preferred_type });
     res.json(result);
   } catch (err) {
     next(err);

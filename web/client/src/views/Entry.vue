@@ -84,24 +84,43 @@
       <!-- Generate story buttons -->
       <section class="entry-page__generate-section">
         <h2 class="entry-page__section-title">生成故事</h2>
+        <p class="entry-page__generate-hint">选择一种成片类型，跳转到视频方案工坊：</p>
         <div class="entry-page__generate-buttons">
           <RouterLink
             class="btn btn--generate btn--recommended"
-            :to="`/story/new?entry=${encodeURIComponent(entry.name)}&type=character_story`"
+            :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=character_story`"
           >
-            ✅ 生成人物故事（推荐）
+            ✅ 人物故事（推荐）
           </RouterLink>
           <RouterLink
             class="btn btn--generate btn--optional"
-            :to="`/story/new?entry=${encodeURIComponent(entry.name)}&type=culture_promo`"
+            :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=ai_comic_drama`"
           >
-            ⭕ 生成文化宣传片
+            ⭕ AI 漫剧
           </RouterLink>
           <RouterLink
             class="btn btn--generate btn--optional"
-            :to="`/story/new?entry=${encodeURIComponent(entry.name)}&type=scene_short`"
+            :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=scene_short`"
           >
-            ⭕ 生成场景短片
+            ⭕ 场景短片
+          </RouterLink>
+          <RouterLink
+            class="btn btn--generate btn--optional"
+            :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=heritage_promo`"
+          >
+            ⭕ 非遗/工艺宣传
+          </RouterLink>
+          <RouterLink
+            class="btn btn--generate btn--optional"
+            :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=documentary_short`"
+          >
+            ⭕ 微纪录片
+          </RouterLink>
+          <RouterLink
+            class="btn btn--generate btn--more"
+            :to="`/story/new?entry=${encodeURIComponent(entry.name)}`"
+          >
+            更多成片类型 →
           </RouterLink>
         </div>
       </section>
@@ -404,6 +423,22 @@ watch(() => route.query.name, (newName) => {
 .btn--optional:hover {
   border-color: #3498db;
   color: #3498db;
+}
+
+.btn--more {
+  background: #fff;
+  border: 2px solid #7f8c8d;
+  color: #7f8c8d;
+}
+.btn--more:hover {
+  border-color: #2c3e50;
+  color: #2c3e50;
+}
+
+.entry-page__generate-hint {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #7f8c8d;
 }
 
 /* Loading */

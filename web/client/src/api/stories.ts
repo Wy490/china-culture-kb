@@ -8,8 +8,11 @@ import type {
   VideoType,
 } from '@shared/types'
 
-export function storyPlan(entryName: string) {
-  return apiPost<StoryPlanResult>('/stories/plan', { entry_name: entryName })
+export function storyPlan(entryName: string, originalUserQuery?: string) {
+  return apiPost<StoryPlanResult>('/stories/plan', {
+    entry_name: entryName,
+    original_user_query: originalUserQuery,
+  })
 }
 
 export function storyGenerate(req: StoryGenerateRequest) {

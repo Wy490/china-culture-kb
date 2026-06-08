@@ -1,5 +1,5 @@
-import { apiGet } from './client'
-import type { EntrySearchResult, EntryDetail } from '@shared/types'
+import { apiGet, apiPost } from './client'
+import type { EntrySearchResult, EntryDetail, EntryMatchResult } from '@shared/types'
 
 export function searchEntries(params: {
   keywords?: string
@@ -13,6 +13,15 @@ export function searchEntries(params: {
   if (params.province) qs.province = params.province
   if (params.region) qs.region = params.region
   return apiGet<EntrySearchResult[]>('/entries/search', qs)
+}
+
+export function matchEntries(params: {
+  query: string
+  limit?: number
+  preferred_province?: string
+  preferred_type?: string
+}) {
+  return apiPost<EntryMatchResult>('/entries/match', params)
 }
 
 export function getEntryDetail(name: string) {

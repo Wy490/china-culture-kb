@@ -3,7 +3,7 @@ import { readProvinceFile, parseEntries } from '../lib/markdown.js';
 import { PROVINCES, findProvinceByName } from '../lib/provinces.js';
 
 interface SearchInput {
-  keywords: string;
+  keywords?: string;
   type?: string;
   province?: string;
   region?: string;
@@ -14,7 +14,7 @@ export async function searchKnowledgeBase(input: SearchInput): Promise<SearchRes
     ? [findProvinceByName(input.province) ?? input.province]
     : PROVINCES;
 
-  const keywordList = input.keywords.split(/[,，、\s]+/).filter(Boolean);
+  const keywordList = (input.keywords ?? '').split(/[,，、\s]+/).filter(Boolean);
   const results: SearchResult[] = [];
 
   for (const province of provincesToSearch) {

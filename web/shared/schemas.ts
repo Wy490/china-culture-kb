@@ -56,7 +56,7 @@ export const PresentationStyleSchema = z.enum([
 // Duration & panel count
 // ---------------------------------------------------------------------------
 
-export const DurationSchema = z.enum(['30秒', '1分钟', '3分钟', '5分钟']);
+export const DurationSchema = z.enum(['30秒', '1分钟', '3分钟', '5分钟', '8分钟', '10分钟', '15分钟', '20分钟']);
 
 export const PanelCountSchema = z.union([
   z.literal(4),
@@ -73,6 +73,7 @@ export const PanelCountSchema = z.union([
 
 export const StoryPlanRequestSchema = z.object({
   entry_name: z.string().min(1, 'entry_name cannot be empty'),
+  original_user_query: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,7 @@ export const StoryPlanRequestSchema = z.object({
 
 export const StoryGenerateRequestSchema = z.object({
   entry_name: z.string().min(1, 'entry_name cannot be empty'),
+  original_user_query: z.string().optional(),
   generation_type: GenerationTypeSchema.optional(),
   video_type: VideoTypeSchema.optional(),
   selected_event: z.string().optional(),
@@ -110,6 +112,17 @@ export const EntrySearchQuerySchema = z.object({
   type: z.string().optional(),
   province: z.string().optional(),
   region: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Entry match request (POST body — smart topic matching)
+// ---------------------------------------------------------------------------
+
+export const EntryMatchRequestSchema = z.object({
+  query: z.string().min(1, 'query cannot be empty'),
+  limit: z.number().int().min(1).max(20).optional().default(5),
+  preferred_province: z.string().optional(),
+  preferred_type: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
