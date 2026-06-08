@@ -5,6 +5,7 @@ import type {
   StoryGenerateResult,
   StoryListItem,
   GearsSegmentsResponse,
+  VideoType,
 } from '@shared/types'
 
 export function storyPlan(entryName: string) {
@@ -15,10 +16,12 @@ export function storyGenerate(req: StoryGenerateRequest) {
   return apiPost<StoryGenerateResult>('/stories/generate', req)
 }
 
-export function listStories(generationType?: string) {
-  const qs: Record<string, string> | undefined = generationType
-    ? { generation_type: generationType }
-    : undefined
+export function listStories(generationType?: string, videoType?: VideoType) {
+  const qs: Record<string, string> | undefined = videoType
+    ? { video_type: videoType }
+    : generationType
+      ? { generation_type: generationType }
+      : undefined
   return apiGet<StoryListItem[]>('/stories', qs)
 }
 
