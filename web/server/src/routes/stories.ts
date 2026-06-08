@@ -10,7 +10,7 @@ import {
   getStory,
   getGearsSegments,
 } from '../services/story-service.js';
-import type { GenerationType } from '@shared/types.js';
+import type { VideoType } from '@shared/types.js';
 
 export const storiesRouter = Router();
 
@@ -25,7 +25,7 @@ storiesRouter.post('/plan', validateBody(StoryPlanRequestSchema), async (req, re
   }
 });
 
-// POST /api/stories/generate — create story skeleton and store JSON file
+// POST /api/stories/generate — create video proposal and store JSON file
 storiesRouter.post('/generate', validateBody(StoryGenerateRequestSchema), async (req, res, next) => {
   try {
     const result = await generateAndStoreStory(req.body);
@@ -35,11 +35,12 @@ storiesRouter.post('/generate', validateBody(StoryGenerateRequestSchema), async 
   }
 });
 
-// GET /api/stories — list stories (optional query param generation_type)
+// GET /api/stories — list stories (optional query params: generation_type, video_type)
 storiesRouter.get('/', async (req, res, next) => {
   try {
-    const generationType = req.query.generation_type as GenerationType | undefined;
-    const result = await listStories(generationType);
+    const generationType = req.query.generation_type as string | undefined;
+    const videoType = req.query.video_type as VideoType | undefined;
+    const result = await listStories(generationType, videoType);
     res.json(result);
   } catch (err) {
     next(err);
