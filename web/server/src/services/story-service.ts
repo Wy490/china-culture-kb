@@ -1,5 +1,6 @@
 // web/server/src/services/story-service.ts — Story business logic
 // plan, generate+store (with content from KB entry), list, get, gears-segments
+// Updated: VideoType/PresentationStyle dual-layer system
 
 import { resolve } from 'node:path';
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -10,8 +11,12 @@ import type {
   EntryDetail,
   StoryPlanResult,
   RecommendedType,
+  RecommendedVideoType,
+  RecommendedPresentationStyle,
   AvailableEvent,
   GenerationType,
+  VideoType,
+  PresentationStyle,
   SupportedDuration,
   PanelCount,
   StoryGenerateRequest,
@@ -24,11 +29,32 @@ import type {
   GearsSegmentsResponse,
   StoryListItem,
 } from '@shared/types.js';
+import {
+  GENERATION_TO_VIDEO_TYPE,
+  VIDEO_TYPE_CONFIG,
+  PRESENTATION_STYLE_CONFIG,
+} from '@shared/types.js';
 
 // ---------------------------------------------------------------------------
-// Type → generation type routing (same map as system/types endpoint)
+// Entry type → VideoType routing (entry Chinese type name → recommended VideoType list)
 // ---------------------------------------------------------------------------
 
+const TYPE_VIDEO_TYPE_ROUTING: Record<string, VideoType[]> = {
+  '历史人物': ['character_story', 'historical_drama', 'ai_comic_drama', 'documentary_short', 'lecture_video'],
+  '神话传说': ['legend_story', 'ai_comic_drama', 'scene_short', 'culture_promo', 'children_story'],
+  '民间故事': ['character_story', 'legend_story', 'ai_comic_drama', 'children_story'],
+  '非遗': ['heritage_promo', 'culture_promo', 'explainer_video', 'ai_comic_drama', 'social_short'],
+  '地方戏曲': ['culture_promo', 'ai_comic_drama', 'heritage_promo'],
+  '节庆习俗': ['culture_promo', 'scene_short', 'social_short', 'children_story'],
+  '饮食文化': ['culture_promo', 'explainer_video', 'social_short', 'documentary_short'],
+  '传统工艺': ['heritage_promo', 'culture_promo', 'explainer_video', 'documentary_short'],
+  '名胜古迹': ['scene_short', 'landscape_mood', 'culture_promo', 'city_brand_promo', 'documentary_short'],
+  '地方掌故': ['character_story', 'scene_short', 'lecture_video', 'documentary_short'],
+  '宗教信仰': ['scene_short', 'culture_promo', 'explainer_video'],
+  '民俗活动': ['culture_promo', 'social_short', 'children_story'],
+};
+
+// Keep old routing for backward compat (recommended_types field)
 const TYPE_GENERATION_ROUTING: Record<string, GenerationType[]> = {
   '历史人物': ['character_story'],
   '神话传说': ['character_story', 'scene_short'],
@@ -84,6 +110,18 @@ const PANEL_COUNT_BY_DURATION: Record<number, PanelCount> = {
   45: 10,
   60: 12,
 };
+
+// ---------------------------------------------------------------------------
+// All VideoType values for directory scanning
+// ---------------------------------------------------------------------------
+
+const ALL_VIDEO_TYPES: VideoType[] = [
+  'character_story', 'historical_drama', 'legend_story',
+  'culture_promo', 'heritage_promo', 'city_brand_promo',
+  'scene_short', 'landscape_mood',
+  'documentary_short', 'explainer_video', 'lecture_video', 'education_training',
+  'children_story', 'social_short', 'ai_comic_drama',
+];
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -156,14 +194,11 @@ function recommendEventType(entryType: string): GenerationType {
 // ---------------------------------------------------------------------------
 
 function extractCharactersFromStory(storyText: string, entryName: string): StoryCharacter[] {
-  // The entry name itself is the protagonist
   const cleanName = entryName.replace(/——.*/, '').trim();
   const chars: StoryCharacter[] = [
     { name: cleanName, role: 'protagonist', description: `主角，${entryName}`, arc: '' },
   ];
 
-  // Look for other named characters in the story text
-  // Simple pattern: Chinese names (2-3 chars) that appear multiple times
   const nameRegex = /[^\x00-\x7F]{2,3}(?:公|君|卿|帅|将|帝|王|侯|臣|官|郎|翁|生|师|僧|仙|道|妇|女|郎)/g;
   const nameCounts = new Map<string, number>();
   let m: RegExpExecArray | null;
@@ -173,14 +208,13 @@ function extractCharactersFromStory(storyText: string, entryName: string): Story
     nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
   }
 
-  // Characters appearing ≥2 times are significant
   for (const [name, count] of nameCounts) {
     if (count >= 2) {
       chars.push({ name, role: count >= 4 ? 'antagonist' : 'supporting', description: `出场${count}次的角色` });
     }
   }
 
-  return chars.slice(0, 6); // cap at 6 characters
+  return chars.slice(0, 6);
 }
 
 // ---------------------------------------------------------------------------
@@ -193,29 +227,23 @@ function buildSceneBreakdown(
   boldEvents: string[],
   targetDuration: SupportedDuration,
 ): StoryScene[] {
-  // Determine which events to use
   const events: string[] = [];
   if (selectedEvent && selectedEvent !== '整体故事') {
-    // Use selected event as the main event, plus a few supporting events
     events.push(selectedEvent);
     const others = boldEvents.filter(e => e !== selectedEvent).slice(0, 2);
     events.push(...others);
   } else {
-    // Use all bold events, or default
     events.push(...boldEvents.slice(0, 5));
   }
 
-  // If no events at all, use a default
   if (events.length === 0) {
     events.push('整体故事');
   }
 
-  // Determine per-scene duration
   const is3Min = targetDuration === '3分钟' || targetDuration === '5分钟';
   const durationMap = is3Min ? DURATION_3MIN : DURATION_BY_SCENE_COUNT;
   const perSceneDuration = durationMap[events.length] ?? 15;
 
-  // Assign dramatic functions based on position
   const scenes: StoryScene[] = events.map((eventName, idx) => {
     const funcIndex = idx === 0 ? 0
       : idx === events.length - 1 ? 4
@@ -224,14 +252,11 @@ function buildSceneBreakdown(
     const func = DRAMATIC_FUNCTIONS[funcIndex];
     const timeOfDay = TIME_OF_DAY_OPTIONS[Math.min(idx, TIME_OF_DAY_OPTIONS.length - 1)];
 
-    // Build visual_prompt from keywords + location + event
     const keyVisuals = entry.keywords.slice(0, 3).join('、');
     const visualPrompt = `${entry.region}，${eventName}。${keyVisuals}构成核心画面`;
 
-    // Build plot description from event name + entry context
     const plot = `${eventName}——基于${entry.name}的故事梗概中该事件的叙述`;
 
-    // Cultural note from unverified points
     const relatedNotes = entry.unverifiedPoints.filter(p =>
       eventName.includes(p.substring(0, 4)) || p.includes(eventName.substring(0, 4))
     );
@@ -262,10 +287,15 @@ function buildSceneBreakdown(
 }
 
 // ---------------------------------------------------------------------------
-// Build gears_segments from scene_breakdown
+// Build gears_segments from scene_breakdown (with video_type/presentation_style)
 // ---------------------------------------------------------------------------
 
-function buildGearsSegments(scenes: StoryScene[], storyId: string): GearsSegment[] {
+function buildGearsSegments(
+  scenes: StoryScene[],
+  storyId: string,
+  videoType: VideoType,
+  presentationStyle: PresentationStyle,
+): GearsSegment[] {
   return scenes.map((scene) => {
     const panelCount = PANEL_COUNT_BY_DURATION[scene.duration_sec] ?? 6;
     const scriptText = `【${scene.dramatic_function}】${scene.location}，${scene.time_of_day}。${scene.visual_prompt}。${scene.key_action}——${scene.title}。${scene.camera_suggestion}。`;
@@ -273,6 +303,10 @@ function buildGearsSegments(scenes: StoryScene[], storyId: string): GearsSegment
       scene.location,
       ...scene.visual_prompt.split(/[，、。]/).filter(s => s.length > 1 && s.length < 8).slice(0, 2),
     ];
+
+    const vtMeta = VIDEO_TYPE_CONFIG[videoType];
+    const psMeta = PRESENTATION_STYLE_CONFIG[presentationStyle];
+    const segmentPromptHint = `${vtMeta.label}/${psMeta.label}风格提示: ${psMeta.description}，场景${scene.scene_id}聚焦${scene.key_action}`;
 
     return {
       segment_id: scene.scene_id,
@@ -283,6 +317,9 @@ function buildGearsSegments(scenes: StoryScene[], storyId: string): GearsSegment
       purpose: scene.dramatic_function,
       visual_focus: visualFocus.slice(0, 3),
       cultural_constraints: scene.cultural_note ? [scene.cultural_note] : [],
+      video_type: videoType,
+      presentation_style: presentationStyle,
+      segment_prompt_hint: segmentPromptHint,
     };
   });
 }
@@ -295,7 +332,6 @@ function buildActStructure(scenes: StoryScene[]): ActBeat[] {
   if (scenes.length === 0) return [];
   const acts: ActBeat[] = [];
 
-  // Group scenes by dramatic_function into acts
   const actMap: Record<string, number[]> = {};
   for (const s of scenes) {
     if (!actMap[s.dramatic_function]) actMap[s.dramatic_function] = [];
@@ -325,6 +361,28 @@ function stripInternalFields(data: StoryGenerateResult): StoryGenerateResult {
 }
 
 // ---------------------------------------------------------------------------
+// Resolve VideoType from request — prefer video_type, fall back to generation_type
+// ---------------------------------------------------------------------------
+
+function resolveVideoType(request: StoryGenerateRequest): VideoType {
+  return request.video_type
+    ?? (request.generation_type ? GENERATION_TO_VIDEO_TYPE[request.generation_type] : undefined)
+    ?? 'character_story';
+}
+
+function resolveGenerationType(videoType: VideoType): GenerationType {
+  // Map video_type back to one of the 3 legacy generation_types
+  if (videoType === 'character_story' || videoType === 'historical_drama'
+    || videoType === 'legend_story' || videoType === 'ai_comic_drama'
+    || videoType === 'children_story') return 'character_story';
+  if (videoType === 'culture_promo' || videoType === 'heritage_promo'
+    || videoType === 'city_brand_promo' || videoType === 'social_short'
+    || videoType === 'documentary_short' || videoType === 'explainer_video'
+    || videoType === 'lecture_video' || videoType === 'education_training') return 'culture_promo';
+  return 'scene_short';
+}
+
+// ---------------------------------------------------------------------------
 // planStory — preview recommendation for an entry
 // ---------------------------------------------------------------------------
 
@@ -336,8 +394,9 @@ export async function planStory(entryName: string): Promise<ApiResponse<StoryPla
 
   const entry = convertFullEntryDetail(mcpDetail);
   const entryType = entry.type;
-  const routedTypes = TYPE_GENERATION_ROUTING[entryType] || ['character_story'];
 
+  // Backward compat: old recommended_types
+  const routedTypes = TYPE_GENERATION_ROUTING[entryType] || ['character_story'];
   const recommendedTypes: RecommendedType[] = routedTypes.map((genType, index) => {
     const reasonMap: Record<string, string> = {
       character_story: `该条目类型"${entryType}"适合以人物/故事为核心的叙事`,
@@ -347,6 +406,31 @@ export async function planStory(entryName: string): Promise<ApiResponse<StoryPla
     return { generation_type: genType, reason: reasonMap[genType] || `适合${genType}模式`, priority: index + 1 };
   });
 
+  // New: recommended_video_types
+  const routedVideoTypes = TYPE_VIDEO_TYPE_ROUTING[entryType] || ['character_story'];
+  const recommendedVideoTypes: RecommendedVideoType[] = routedVideoTypes.map((vt, index) => {
+    const meta = VIDEO_TYPE_CONFIG[vt];
+    const compatible = meta.compatible_entry_types.includes(entryType);
+    return {
+      video_type: vt,
+      reason: compatible
+        ? `"${entryType}"条目适合${meta.label}——${meta.description}`
+        : `${meta.label}——${meta.description}（可选）`,
+      priority: index + 1,
+    };
+  });
+
+  // New: recommended_presentation_styles (derived from top video types)
+  const topVideoTypes = routedVideoTypes.slice(0, 3);
+  const recommendedPresentationStyles: RecommendedPresentationStyle[] = topVideoTypes.map(vt => {
+    const meta = VIDEO_TYPE_CONFIG[vt];
+    const styleMeta = PRESENTATION_STYLE_CONFIG[meta.default_presentation_style];
+    return {
+      presentation_style: meta.default_presentation_style,
+      reason: `${meta.label}默认表现形式: ${styleMeta.label}——${styleMeta.description}`,
+    };
+  });
+
   const boldEvents = extractBoldEvents(entry.story);
   const availableEvents: AvailableEvent[] = boldEvents.length > 0
     ? boldEvents.map((eventName) => ({
@@ -354,12 +438,14 @@ export async function planStory(entryName: string): Promise<ApiResponse<StoryPla
         conflict_score: 7,
         recommended_duration: recommendDuration(entryType, boldEvents.length),
         recommended_type: recommendEventType(entryType),
+        recommended_video_type: routedVideoTypes[0],
       }))
     : [{
         event: '整体故事',
         conflict_score: 5,
         recommended_duration: recommendDuration(entryType, 0),
         recommended_type: recommendEventType(entryType),
+        recommended_video_type: routedVideoTypes[0],
       }];
 
   const culturalRisks = computeCulturalRisks(entry);
@@ -369,6 +455,8 @@ export async function planStory(entryName: string): Promise<ApiResponse<StoryPla
     entry_name: entryName,
     entry_type: entryType,
     recommended_types: recommendedTypes,
+    recommended_video_types: recommendedVideoTypes,
+    recommended_presentation_styles: recommendedPresentationStyles,
     available_events: availableEvents,
     recommended_duration: recommendedDuration,
     cultural_risks: culturalRisks,
@@ -382,7 +470,12 @@ export async function planStory(entryName: string): Promise<ApiResponse<StoryPla
 export async function generateAndStoreStory(
   request: StoryGenerateRequest,
 ): Promise<ApiResponse<StoryGenerateResult>> {
-  const { entry_name, generation_type, selected_event, target_video_duration, tone, output_gears_segments } = request;
+  const { entry_name, selected_event, target_video_duration, tone, output_gears_segments } = request;
+
+  // Resolve video_type and generation_type
+  const videoType = resolveVideoType(request);
+  const generationType = request.generation_type ?? resolveGenerationType(videoType);
+  const presentationStyle = request.presentation_style ?? VIDEO_TYPE_CONFIG[videoType].default_presentation_style;
 
   // Validate entry exists
   const mcpDetail = await mcpGetFullEntryDetail(entry_name);
@@ -393,16 +486,16 @@ export async function generateAndStoreStory(
   const entry = convertFullEntryDetail(mcpDetail);
   const storyId = generateStoryId(entry_name);
   const gearsSegmentsUrl = `/api/stories/${storyId}/gears-segments`;
-  const targetDuration = target_video_duration ?? recommendDuration(entry.type, extractBoldEvents(entry.story).length);
+  const targetDuration = target_video_duration ?? VIDEO_TYPE_CONFIG[videoType].default_duration;
   const boldEvents = extractBoldEvents(entry.story);
   const culturalRisks = computeCulturalRisks(entry);
 
   // Build scene_breakdown
   const sceneBreakdown = buildSceneBreakdown(entry, selected_event, boldEvents, targetDuration);
 
-  // Build gears_segments from scene_breakdown
+  // Build gears_segments from scene_breakdown (with video_type/presentation_style)
   const gearsSegments = output_gears_segments !== false
-    ? buildGearsSegments(sceneBreakdown, storyId)
+    ? buildGearsSegments(sceneBreakdown, storyId, videoType, presentationStyle)
     : [];
 
   // Build story data with content filled from entry
@@ -411,18 +504,20 @@ export async function generateAndStoreStory(
     title: selected_event && selected_event !== '整体故事'
       ? selected_event
       : entry.name,
-    generation_type,
+    generation_type: generationType,
+    video_type: videoType,
+    presentation_style: presentationStyle,
     source_entry: entry_name,
     logline: entry.summary,
-    theme: `${entry.type} × ${entry.culturalSignificance.substring(0, 30)}`,
+    theme: `${VIDEO_TYPE_CONFIG[videoType].label} × ${entry.type}`,
     full_text: entry.story,
     scene_breakdown: sceneBreakdown,
     gears_segments: gearsSegments,
     gears_segments_url: gearsSegmentsUrl,
     cultural_constraints: culturalRisks,
     credibility_note: entry.credibility,
-    // Type-specific fields
-    ...(generation_type === 'character_story' ? {
+    // Type-specific fields based on video_type
+    ...(videoType === 'character_story' || videoType === 'historical_drama' || videoType === 'legend_story' ? {
       characters: extractCharactersFromStory(entry.story, entry.name),
       act_structure: buildActStructure(sceneBreakdown),
       protagonist_arc: [{
@@ -431,29 +526,52 @@ export async function generateAndStoreStory(
         resolution: '道德觉醒或精神升华',
       }],
     } : {}),
-    ...(generation_type === 'culture_promo' ? {
+    ...(videoType === 'culture_promo' || videoType === 'heritage_promo' || videoType === 'city_brand_promo' ? {
       visual_symbols: entry.keywords.slice(0, 5),
       craft_or_ritual_process: `核心技艺：${entry.keywords.slice(0, 3).join('、')}`,
       modern_connection: `${entry.name}在现代的文化传承与创新`,
+      core_message: `${entry.name}的文化价值`,
+      slogan_or_key_sentence: `${entry.type}之光——${entry.name}`,
     } : {}),
-    ...(generation_type === 'scene_short' ? {
+    ...(videoType === 'scene_short' || videoType === 'landscape_mood' ? {
       spatial_identity: entry.region,
       visual_route: sceneBreakdown.map(s => `${s.title}：${s.visual_prompt}`),
       time_layer: `${entry.name}的古今变迁与时空叠加`,
+      atmosphere: videoType === 'landscape_mood' ? `${entry.region}的自然意境与山水灵韵` : `${entry.region}的场景氛围`,
     } : {}),
-    // Internal metadata (stripped before API response)
+    ...(videoType === 'ai_comic_drama' ? {
+      dialogue: sceneBreakdown.map(s => ({
+        scene_id: s.scene_id,
+        lines: s.characters.map(ch => ({
+          character: ch,
+          text: `${s.key_action}`,
+          emotion: s.dramatic_function === '高潮' ? '激烈' : s.dramatic_function === '开场' ? '平静' : '紧张',
+        })),
+      })),
+    } : {}),
+    ...(videoType === 'explainer_video' || videoType === 'lecture_video' ? {
+      argument_points: entry.keywords.slice(0, 4).map(k => `${k}的核心解释`),
+      knowledge_outline: sceneBreakdown.map(s => `${s.scene_id}. ${s.title}：${s.plot.substring(0, 40)}`),
+    } : {}),
+    ...(videoType === 'documentary_short' ? {
+      source_quotes: [`据${entry.credibility}来源记载`],
+      field_notes: [`${entry.region}实地考察记录要点`],
+    } : {}),
+    // Internal metadata
     _request_meta: {
       selected_event: selected_event || null,
       target_video_duration: targetDuration,
       tone: tone || null,
       output_gears_segments: output_gears_segments ?? true,
       entry_type: entry.type,
+      video_type: videoType,
+      presentation_style: presentationStyle,
       created_at: new Date().toISOString(),
     },
   };
 
-  // Ensure directory and write file
-  const dirPath = resolve(generatedRoot(), generation_type);
+  // Ensure directory and write file — use video_type as directory name
+  const dirPath = resolve(generatedRoot(), videoType);
   await mkdir(dirPath, { recursive: true });
   const filePath = resolve(dirPath, `${storyId}.json`);
   await writeFile(filePath, JSON.stringify(storyData, null, 2), 'utf-8');
@@ -463,17 +581,22 @@ export async function generateAndStoreStory(
 }
 
 // ---------------------------------------------------------------------------
-// listStories — return enriched story list
+// listStories — return enriched story list (scans all video_type dirs)
 // ---------------------------------------------------------------------------
 
 export async function listStories(
   generationType?: string,
+  videoType?: string,
 ): Promise<ApiResponse<StoryListItem[]>> {
   const root = generatedRoot();
   const results: StoryListItem[] = [];
-  const typesToScan: string[] = generationType
-    ? [generationType]
-    : ['character_story', 'culture_promo', 'scene_short'];
+
+  // Determine which directories to scan
+  const typesToScan: string[] = videoType
+    ? [videoType]
+    : generationType
+      ? [generationType]
+      : ALL_VIDEO_TYPES;
 
   for (const typeDir of typesToScan) {
     const dirPath = resolve(root, typeDir);
@@ -491,6 +614,8 @@ export async function listStories(
           storyId: data.storyId || file.replace('.json', ''),
           title: data.title || '',
           generation_type: data.generation_type || typeDir,
+          video_type: data.video_type || data.generation_type || typeDir,
+          presentation_style: data.presentation_style || '',
           source_entry: data.source_entry || '',
           logline: data.logline || '',
           created_at: meta?.created_at as string ?? '',
@@ -511,14 +636,12 @@ export async function listStories(
 
 export async function getStory(storyId: string): Promise<ApiResponse<StoryGenerateResult>> {
   const root = generatedRoot();
-  const typesToSearch = ['character_story', 'culture_promo', 'scene_short'];
 
-  for (const typeDir of typesToSearch) {
+  for (const typeDir of ALL_VIDEO_TYPES) {
     const filePath = resolve(root, typeDir, `${storyId}.json`);
     try {
       const content = await readFile(filePath, 'utf-8');
       const data = JSON.parse(content) as StoryGenerateResult & { _request_meta?: unknown };
-      // Strip internal field before returning
       return success(stripInternalFields(data));
     } catch { continue; }
   }
@@ -541,7 +664,7 @@ export async function getGearsSegments(storyId: string): Promise<ApiResponse<Gea
   const totalDurationSec = segments.reduce((sum, seg) => sum + seg.duration_sec, 0);
 
   const response: GearsSegmentsResponse = {
-    schema_version: 'gears-segments/v1',
+    schema_version: 'gears-segments/v2',
     storyId: story.storyId,
     title: story.title,
     total_duration_sec: totalDurationSec,
