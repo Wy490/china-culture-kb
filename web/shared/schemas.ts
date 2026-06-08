@@ -3,13 +3,53 @@
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
-// Generation type (3 modes)
+// Generation type (3 modes) — backward compat
 // ---------------------------------------------------------------------------
 
 export const GenerationTypeSchema = z.enum([
   'character_story',
   'culture_promo',
   'scene_short',
+]);
+
+// ---------------------------------------------------------------------------
+// Video type (15 成片类型)
+// ---------------------------------------------------------------------------
+
+export const VideoTypeSchema = z.enum([
+  'character_story',
+  'historical_drama',
+  'legend_story',
+  'culture_promo',
+  'heritage_promo',
+  'city_brand_promo',
+  'scene_short',
+  'landscape_mood',
+  'documentary_short',
+  'explainer_video',
+  'lecture_video',
+  'education_training',
+  'children_story',
+  'social_short',
+  'ai_comic_drama',
+]);
+
+// ---------------------------------------------------------------------------
+// Presentation style (11 表现形式)
+// ---------------------------------------------------------------------------
+
+export const PresentationStyleSchema = z.enum([
+  'cinematic',
+  'documentary',
+  'host_narration',
+  'voiceover_montage',
+  'vertical_drama',
+  'ai_comic',
+  'animation_2d',
+  'ink_style',
+  'children_animation',
+  'museum_exhibit',
+  'social_media_fastcut',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -41,12 +81,17 @@ export const StoryPlanRequestSchema = z.object({
 
 export const StoryGenerateRequestSchema = z.object({
   entry_name: z.string().min(1, 'entry_name cannot be empty'),
-  generation_type: GenerationTypeSchema,
+  generation_type: GenerationTypeSchema.optional(),
+  video_type: VideoTypeSchema.optional(),
   selected_event: z.string().optional(),
   target_video_duration: DurationSchema.optional(),
   tone: z.string().optional(),
+  presentation_style: PresentationStyleSchema.optional(),
   output_gears_segments: z.boolean().optional().default(true),
-});
+}).refine(
+  (data) => data.generation_type || data.video_type,
+  { message: 'Either generation_type or video_type must be provided', path: ['video_type'] },
+);
 
 // ---------------------------------------------------------------------------
 // Entry detail query (GET query params)
@@ -71,10 +116,6 @@ export const EntrySearchQuerySchema = z.object({
 // Story ID param (path param)
 // ---------------------------------------------------------------------------
 
-// storyId format: YYYYMMDD-story-{hash36}
-// Example: 20260603-story-abc123def456ghi789jkl012mno345pqr
-// The hash36 part uses base-36 characters (0-9, a-z) and is variable length
-// Must be an object schema because validateParams validates req.params (which is an object)
 export const StoryIdParamSchema = z.object({
   storyId: z.string().regex(
     /^\d{8}-story-[0-9a-z]+$/,
