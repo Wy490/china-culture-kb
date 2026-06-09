@@ -10,6 +10,14 @@
     <div v-else-if="story">
       <StoryResult :result="story" />
 
+      <!-- GEARS 操作区（独立突出展示） -->
+      <GearsActions
+        v-if="story.gears_segments && story.gears_segments.length > 0"
+        :segments="story.gears_segments"
+        :gears-segments-url="story.gears_segments_url"
+        :story-id="story.storyId"
+      />
+
       <!-- Back link -->
       <div class="story-detail-page__back">
         <RouterLink class="btn btn--back" to="/story/new">← 返回故事工坊</RouterLink>
@@ -29,6 +37,7 @@ import { useRoute } from 'vue-router'
 import { getStory } from '@/api/stories'
 import type { StoryGenerateResult } from '@shared/types'
 import StoryResult from '@/components/StoryResult.vue'
+import GearsActions from '@/components/GearsActions.vue'
 
 const route = useRoute()
 

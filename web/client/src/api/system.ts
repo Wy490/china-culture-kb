@@ -8,3 +8,7 @@ export function getProvinces() {
 export function getTypes() {
   return apiGet<TypeInfo[]>('/system/types')
 }
+
+export function getRegions(province: string) {
+  return apiGet<string[]>(`/system/regions?province=${encodeURIComponent(province)}`)
+}

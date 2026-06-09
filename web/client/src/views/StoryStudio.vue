@@ -1175,4 +1175,28 @@ async function handleGenerate() {
 .story-studio__vt-name { display: block; font-size: 15px; font-weight: 700; color: #2c3e50; margin-bottom: 2px; }
 .story-studio__vt-desc { display: block; font-size: 12px; color: #7f8c8d; }
 .story-studio__vt-duration { display: block; font-size: 12px; color: #3498db; margin-top: 2px; }
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 768px) {
+  .story-studio {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .story-studio__left {
+    width: 100%;
+    min-width: 0;
+    padding-right: 0;
+    border-right: none;
+    border-bottom: 1px solid #ecf0f1;
+  }
+  .story-studio__right {
+    width: 100%;
+  }
+  .story-studio__mode-tabs {
+    flex-wrap: wrap;
+  }
+  .story-studio__vt-cards {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

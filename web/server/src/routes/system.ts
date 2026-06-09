@@ -52,3 +52,34 @@ const TYPE_GENERATION_MAP: TypeInfo[] = [
 systemRouter.get('/types', (_req, res) => {
   res.json(success(TYPE_GENERATION_MAP));
 });
+
+// ---------------------------------------------------------------------------
+// GET /api/system/regions — list distinct regions for a province
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/regions', async (req, res, next) => {
+  try {
+    const province = req.query.province as string | undefined;
+    if (!province) {
+      res.json(success([]));
+      return;
+    }
+
+    const provinceFiles = await mcpReadAllProvinceFiles();
+    const content = provinceFiles.get(province);
+    if (!content) {
+      res.json(success([]));
+      return;
+    }
+
+    const entries = mcpParseEntries(content, province);
+    const regions = new Set<string>();
+    for (const entry of entries) {
+      if (entry.region) regions.add(entry.region);
+    }
+
+    res.json(success([...regions].sort((a, b) => a.localeCompare(b, 'zh-CN'))));
+  } catch (err) {
+    next(err);
+  }
+});

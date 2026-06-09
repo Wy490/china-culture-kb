@@ -59,4 +59,16 @@
   flex: 1;
   padding: 24px;
 }
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+  .app-main {
+    padding: 16px;
+  }
+}
 </style>

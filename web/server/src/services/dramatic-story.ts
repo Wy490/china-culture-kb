@@ -225,6 +225,108 @@ const DRAMATIC_STRUCTURES: Record<string, DramaticStructure> = {
       { position: 3, function_label: '金句落点', function_description: '定格金句', content_guide: '金句定格——最后一句是记忆点。"吾不为也"或"出淤泥而不染"。画面定格+文字。' },
     ],
   },
+  legend_story: {
+    video_type: 'legend_story',
+    label: '神话/传说故事',
+    min_scenes: 4,
+    max_scenes: 6,
+    scene_templates: [
+      { position: 0, function_label: '远古传说', function_description: '神话/传说背景引入', content_guide: '从远古或超自然背景切入——天地异象、神力显现、传说起源。建立神话氛围，不用现代视角。' },
+      { position: 1, function_label: '神力显现', function_description: '超自然力量介入', content_guide: '超自然元素显现——神力、天命、预言、异象。写凡人如何遇到超越人力的事件或力量。' },
+      { position: 2, function_label: '凡人考验', function_description: '人的选择与考验', content_guide: '即使是神话，核心是人——凡人面对考验时如何选择。恐惧、犹豫、勇气、信念。要有人的情感。' },
+      { position: 3, function_label: '命运转折', function_description: '命运/天意转折', content_guide: '命运转折——天意不可违但人心可以选择。写出命运与人力的交汇点。' },
+      { position: 4, function_label: '传说永恒', function_description: '传说流传至今', content_guide: '传说如何流传至今——这个神话/传说为什么被世代传颂，它照见了什么精神或文化意义。' },
+    ],
+  },
+  culture_promo: {
+    video_type: 'culture_promo',
+    label: '文化宣传片',
+    min_scenes: 4,
+    max_scenes: 5,
+    scene_templates: [
+      { position: 0, function_label: '符号引入', function_description: '文化符号/视觉锚点开场', content_guide: '用最具代表性的文化符号开场——建筑、器物、仪式、技艺。画面要美，氛围要浓。不讲故事，先建立视觉吸引力。' },
+      { position: 1, function_label: '文化根基', function_description: '文化渊源与精神内核', content_guide: '追溯文化渊源——这种文化从何而来、为什么诞生、照见了什么精神。要有历史纵深，但不用叙事手法，用展示手法。' },
+      { position: 2, function_label: '技艺展示', function_description: '核心技艺/仪式过程展示', content_guide: '展示核心技艺或仪式过程——手的动作、材料的质感、工具的声音。要有匠人的专注和手艺的美感。画面要有微距和慢动作。' },
+      { position: 3, function_label: '现代传承', function_description: '当代传承与创新', content_guide: '传统如何在现代延续——新一代匠人、新的应用场景、文化在生活中的存在。要有现实温度，不是博物馆里的标本。' },
+      { position: 4, function_label: '标语收束', function_description: '核心标语/品牌信息定格', content_guide: '用一句话或标语收束——不是口号，而是文化精神最凝练的表达。画面定格+文字叠加。' },
+    ],
+  },
+  heritage_promo: {
+    video_type: 'heritage_promo',
+    label: '非遗/工艺宣传片',
+    min_scenes: 4,
+    max_scenes: 6,
+    scene_templates: [
+      { position: 0, function_label: '技艺渊源', function_description: '非遗项目的历史起源', content_guide: '从技艺的历史起源切入——何时诞生、何人首创、因何而生。用实物或文献引入，建立历史感。' },
+      { position: 1, function_label: '匠人登场', function_description: '传承人/匠人出场', content_guide: '匠人出场——写他的身份、技艺、专注。不只是介绍，要写出他与这门技艺的情感联结。"我做了三十年"比"他是传承人"有力。' },
+      { position: 2, function_label: '工艺全程', function_description: '完整工艺流程展示', content_guide: '展示完整工艺流程——从原料到成品，每一步都是匠心。要有手的动作、材料的质感、时间流逝的节奏。' },
+      { position: 3, function_label: '精神内核', function_description: '技艺背后的精神与文化', content_guide: '技艺不只是技术——它照见什么精神？坚守、传承、精益求精、物我合一。用匠人自己的话或行为来表达。' },
+      { position: 4, function_label: '传承之路', function_description: '传承困境与未来展望', content_guide: '传承的现实——年轻人不愿学、市场萎缩、技艺可能消亡。但也有人接过担子。结尾要有传承的希望。' },
+    ],
+  },
+  city_brand_promo: {
+    video_type: 'city_brand_promo',
+    label: '城市/文旅宣传片',
+    min_scenes: 4,
+    max_scenes: 5,
+    scene_templates: [
+      { position: 0, function_label: '地标引入', function_description: '城市标志性空间开场', content_guide: '用最具标志性的地标开场——不只是建筑外观，要写空间的氛围、光影、人的活动。建立城市的空间认同感。' },
+      { position: 1, function_label: '历史底蕴', function_description: '城市的历史纵深', content_guide: '这座城市有什么历史——名人、事件、文化积淀。用具体故事而非抽象概述，让历史活在今天。' },
+      { position: 2, function_label: '人文风貌', function_description: '地方文化特色展示', content_guide: '展示地方文化的独特之处——方言、饮食、习俗、技艺。要有烟火气，不是空镜堆砌。' },
+      { position: 3, function_label: '生活气息', function_description: '当代生活场景', content_guide: '生活在这座城市的人——他们的日常、情感、节奏。城市不只是景点，更是生活空间。要有温度。' },
+      { position: 4, function_label: '品牌定格', function_description: '城市品牌形象定格', content_guide: '用一句凝练的标语或画面定格城市印象——不是口号，而是这座城市最核心的气质表达。画面定格+文字叠加。' },
+    ],
+  },
+  scene_short: {
+    video_type: 'scene_short',
+    label: '场景短片',
+    min_scenes: 3,
+    max_scenes: 5,
+    scene_templates: [
+      { position: 0, function_label: '空间引入', function_description: '空间氛围建立', content_guide: '用一个空间开场——不只是地点名称，要写光线、声音、气味、质感。让观众"走进"这个空间。' },
+      { position: 1, function_label: '场景叙事', function_description: '空间中发生的故事', content_guide: '在这个空间中发生了什么——人物、事件、情感。叙事要简短但要有具体内容，不是空镜。' },
+      { position: 2, function_label: '时空叠印', function_description: '古今叠加/时间深度', content_guide: '同一个空间在不同时间的故事——古人与今人、旧貌与新颜。用叠影或旁白展现时间的深度。' },
+      { position: 3, function_label: '意境收束', function_description: '氛围定格收束', content_guide: '收束在意境上——不是故事结局，而是空间本身的精神。一个画面+一句旁白即可。' },
+    ],
+  },
+  landscape_mood: {
+    video_type: 'landscape_mood',
+    label: '山水意境片',
+    min_scenes: 3,
+    max_scenes: 4,
+    scene_templates: [
+      { position: 0, function_label: '山水开卷', function_description: '自然山水开场', content_guide: '纯自然山水开场——山、水、云、雾、光影。没有人物、没有叙事。只有自然本身的美与气息。画面要美，节奏要慢。' },
+      { position: 1, function_label: '意境流变', function_description: '季节/天气/光影变化', content_guide: '意境在时间中流变——晨昏、四季、风雨、晴雾。同一个山水在不同状态下的美感。纯视觉诗，没有解释性旁白。' },
+      { position: 2, function_label: '灵韵定格', function_description: '山水精神的凝练表达', content_guide: '山水的精神——不是"资源"，而是灵韵。一句话或一首诗定格即可。画面要有留白。' },
+    ],
+  },
+  explainer_video: {
+    video_type: 'explainer_video',
+    label: '知识讲解视频',
+    min_scenes: 4,
+    max_scenes: 6,
+    scene_templates: [
+      { position: 0, function_label: '提出问题', function_description: '核心问题/悬念引入', content_guide: '用一个引人思考的问题开场——这种技艺为什么能千年传承？这段历史为什么被遗忘？问题比答案更有吸引力。' },
+      { position: 1, function_label: '概念解释', function_description: '核心概念/知识点讲解', content_guide: '清晰讲解核心概念——用类比、对比、视觉辅助让复杂概念变得易懂。每个概念只讲一个要点。' },
+      { position: 2, function_label: '实例论证', function_description: '具体案例/事实支撑', content_guide: '用具体案例支撑概念——不是抽象论证，要有真实的人物、事件、地点作为例证。案例要简短有力。' },
+      { position: 3, function_label: '逻辑深化', function_description: '深层原理/延伸思考', content_guide: '深化到原理层面——不只是"是什么"，还要讲"为什么"和"意味着什么"。要有逻辑递进。' },
+      { position: 4, function_label: '总结归纳', function_description: '知识要点归纳收束', content_guide: '归纳总结——用最简洁的语言重述核心要点。可以加一个延伸思考问题引发后续讨论。' },
+    ],
+  },
+  education_training: {
+    video_type: 'education_training',
+    label: '教育/培训片',
+    min_scenes: 5,
+    max_scenes: 8,
+    scene_templates: [
+      { position: 0, function_label: '学习目标', function_description: '明确学习目标', content_guide: '明确告诉观众：学完这段你能掌握什么。目标要具体可衡量，不是"了解文化"，而是"掌握3个核心要点"。' },
+      { position: 1, function_label: '知识讲授', function_description: '核心知识讲解', content_guide: '讲解核心知识——结构化、分步骤、有逻辑。每个知识点配一个案例或图示。避免信息过载，每个段落只讲一个要点。' },
+      { position: 2, function_label: '示范演示', function_description: '操作/流程示范', content_guide: '如果涉及操作，做完整示范——从准备到执行到检验。要有步骤标注和要点提示。' },
+      { position: 3, function_label: '练习引导', function_description: '练习/思考题', content_guide: '给出练习或思考题——让观众主动参与，不只是被动接受。练习要与学习目标直接对应。' },
+      { position: 4, function_label: '检验反馈', function_description: '知识检验', content_guide: '检验是否达到学习目标——用问答或场景测试验证理解。反馈要及时，错误要纠正。' },
+      { position: 5, function_label: '总结拓展', function_description: '知识总结+延伸学习', content_guide: '总结要点+提供延伸学习方向。告诉观众下一步可以学什么、在哪里找到更多资源。' },
+    ],
+  },
 };
 
 // Fallback: for video types without specific dramatic structure, use character_story as base
@@ -283,6 +385,52 @@ const CAMERA_BY_FUNCTION: Record<string, string> = {
   '冲突爆发': '密集对白+分镜切换',
   '反转/觉醒': '表情变化特写+动作转折',
   '高燃收束': '金句定格+画面冲击',
+  // --- Legend story ---
+  '远古传说': '远景推入，建立神话空间',
+  '神力显现': '特效+光影变化，超自然氛围',
+  '凡人考验': '中景，人物表情清晰',
+  '命运转折': '特写+环境突变，命运感',
+  '传说永恒': '远景+叠影，时空延展',
+  // --- Culture promo ---
+  '符号引入': '实物特写+空镜，视觉锚点',
+  '文化根基': '史料画面+旁白，纵深感',
+  '技艺展示': '微距+慢动作，手艺之美',
+  '现代传承': '实景+生活场景，温度感',
+  '标语收束': '画面定格+文字叠加',
+  // --- Heritage promo ---
+  '技艺渊源': '实物/文献引入+旁白',
+  '匠人登场': '中景跟随，匠人出场',
+  '工艺全程': '微距+过程镜头，步骤感',
+  '精神内核': '匠人特写+旁白解读',
+  '传承之路': '现实场景+希望光线',
+  // --- City brand promo ---
+  '地标引入': '航拍/远景推入，空间认同',
+  '历史底蕴': '史料画面+具体故事旁白',
+  '人文风貌': '生活场景快切，烟火气',
+  '生活气息': '人物中景+日常节奏',
+  '品牌定格': '画面定格+品牌文字叠加',
+  // --- Scene short ---
+  '空间引入': '空镜缓推，空间氛围建立',
+  '场景叙事': '中景叙事，事件简短呈现',
+  '时空叠印': '叠影+古今切换，时间深度',
+  '意境收束': '远景+旁白留白',
+  // --- Landscape mood ---
+  '山水开卷': '航拍/远景缓推，自然入场',
+  '意境流变': '四季/天气蒙太奇，视觉诗',
+  '灵韵定格': '远景留白+诗句定格',
+  // --- Explainer video ---
+  '提出问题': '主讲人正面+问题字幕',
+  '概念解释': '主讲人+视觉辅助/图示',
+  '实例论证': '案例画面+旁白论证',
+  '逻辑深化': '主讲人+逻辑图示',
+  '总结归纳': '主讲人+要点字幕叠加',
+  // --- Education/training ---
+  '学习目标': '主讲人正面+目标字幕',
+  '知识讲授': '主讲人+分步图示',
+  '示范演示': '实操画面+步骤标注',
+  '练习引导': '主讲人+练习画面',
+  '检验反馈': '问答画面+反馈标注',
+  '总结拓展': '主讲人+延伸资源字幕',
 };
 
 // ---------------------------------------------------------------------------
@@ -311,7 +459,7 @@ function extractEventParagraphs(storyText: string, centralEvent: string): string
 // Extract key dialogue/quotes from story text
 // ---------------------------------------------------------------------------
 
-function extractQuotes(storyText: string): string[] {
+export function extractQuotes(storyText: string): string[] {
   const quotes: string[] = [];
   // Chinese quotes pattern: "..." or 「...」
   const quoteRegex = /[「"『]([^」"』]+)[」"』]/g;
@@ -691,6 +839,52 @@ function buildSceneTitle(template: SceneTemplate, centralEvent: string, idx: num
     '反转/觉醒': [`反转觉醒`, '选择时刻'],
     '高燃收束': [`金句定格`, '精神定格'],
     '冲突深化': [`冲突深化`, '矛盾加深'],
+    // --- Legend story ---
+    '远古传说': [`远古传说`, '神话开场'],
+    '神力显现': [`神力显现`, '超自然介入'],
+    '凡人考验': [`凡人考验`, '人的抉择'],
+    '命运转折': [`命运转折`, '天意与人意'],
+    '传说永恒': [`传说永恒`, '世代传颂'],
+    // --- Culture promo ---
+    '符号引入': [`文化符号`, '视觉锚点'],
+    '文化根基': [`文化根基`, '精神渊源'],
+    '技艺展示': [`技艺展示`, '匠心之美'],
+    '现代传承': [`现代传承`, '活在当下'],
+    '标语收束': [`标语收束`, '精神定格'],
+    // --- Heritage promo ---
+    '技艺渊源': [`技艺渊源`, '非遗起源'],
+    '匠人登场': [`匠人登场`, '传承人出场'],
+    '工艺全程': [`工艺全程`, '手艺过程'],
+    '精神内核': [`精神内核`, '技艺精神'],
+    '传承之路': [`传承之路`, '接力延续'],
+    // --- City brand promo ---
+    '地标引入': [`地标引入`, '城市空间'],
+    '历史底蕴': [`历史底蕴`, '城市记忆'],
+    '人文风貌': [`人文风貌`, '地方特色'],
+    '生活气息': [`生活气息`, '烟火日常'],
+    '品牌定格': [`品牌定格`, '城市印象'],
+    // --- Scene short ---
+    '空间引入': [`空间引入`, '走进空间'],
+    '场景叙事': [`场景叙事`, '空间故事'],
+    '时空叠印': [`时空叠印`, '古今映照'],
+    '意境收束': [`意境收束`, '氛围定格'],
+    // --- Landscape mood ---
+    '山水开卷': [`山水开卷`, '自然入场'],
+    '意境流变': [`意境流变`, '四季流转'],
+    '灵韵定格': [`灵韵定格`, '山水精神'],
+    // --- Explainer video ---
+    '提出问题': [`提出问题`, '核心悬念'],
+    '概念解释': [`概念解释`, '知识讲解'],
+    '实例论证': [`实例论证`, '案例支撑'],
+    '逻辑深化': [`逻辑深化`, '深层原理'],
+    '总结归纳': [`总结归纳`, '要点重述'],
+    // --- Education/training ---
+    '学习目标': [`学习目标`, '目标明确'],
+    '知识讲授': [`知识讲授`, '分步讲解'],
+    '示范演示': [`示范演示`, '操作展示'],
+    '练习引导': [`练习引导`, '主动参与'],
+    '检验反馈': [`检验反馈`, '知识检验'],
+    '总结拓展': [`总结拓展`, '延伸方向'],
   };
 
   const options = labelMap[template.function_label] ?? [template.function_label];
@@ -808,6 +1002,98 @@ function buildScenePlot(
 
     case '金句落点':
       return buildShortGoldenQuote(protagonistName, centralEvent, keyQuote);
+
+    // --- Legend story ---
+    case '远古传说':
+      return buildLegendOpening(centralEvent, region, protagonistName, entry);
+    case '神力显现':
+      return buildSupernaturalPower(centralEvent, protagonistName, entry);
+    case '凡人考验':
+      return buildHumanTrial(protagonistName, centralEvent, actionDetails);
+    case '命运转折':
+      return buildFateTurning(protagonistName, centralEvent, keyQuote, entry);
+    case '传说永恒':
+      return buildLegendEnduring(protagonistName, centralEvent, entry);
+
+    // --- Culture promo ---
+    case '符号引入':
+      return buildSymbolOpening(entry, region);
+    case '文化根基':
+      return buildCultureRoots(entry, centralEvent);
+    case '技艺展示':
+      return buildCraftDisplay(entry, centralEvent, actionDetails);
+    case '现代传承':
+      return buildModernInheritance(entry, protagonistName);
+    case '标语收束':
+      return buildSloganClose(entry, protagonistName, keyQuote);
+
+    // --- Heritage promo ---
+    case '技艺渊源':
+      return buildHeritageOrigin(entry, centralEvent, region);
+    case '匠人登场':
+      return buildArtisanEntrance(protagonistName, entry, region);
+    case '工艺全程':
+      return buildCraftProcess(entry, actionDetails);
+    case '精神内核':
+      return buildCraftSpirit(protagonistName, centralEvent, entry);
+    case '传承之路':
+      return buildInheritancePath(protagonistName, centralEvent, entry);
+
+    // --- City brand promo ---
+    case '地标引入':
+      return buildLandmarkOpening(entry, region);
+    case '历史底蕴':
+      return buildCityHistory(entry, centralEvent, protagonistName);
+    case '人文风貌':
+      return buildCityCulture(entry, region);
+    case '生活气息':
+      return buildCityLife(entry, region);
+    case '品牌定格':
+      return buildBrandClose(entry, region);
+
+    // --- Scene short ---
+    case '空间引入':
+      return buildSpaceIntro(entry, region);
+    case '场景叙事':
+      return buildSceneNarrative(protagonistName, centralEvent, actionDetails, entry);
+    case '时空叠印':
+      return buildTimeOverlay(entry, centralEvent, protagonistName);
+    case '意境收束':
+      return buildMoodClose(entry, region);
+
+    // --- Landscape mood ---
+    case '山水开卷':
+      return buildLandscapeOpening(entry, region);
+    case '意境流变':
+      return buildMoodFlow(entry, region);
+    case '灵韵定格':
+      return buildSpiritEssence(entry, region);
+
+    // --- Explainer video ---
+    case '提出问题':
+      return buildPoseQuestion(centralEvent, entry);
+    case '概念解释':
+      return buildConceptExplain(centralEvent, entry);
+    case '实例论证':
+      return buildCaseEvidence(protagonistName, centralEvent, actionDetails);
+    case '逻辑深化':
+      return buildLogicDeepen(centralEvent, entry);
+    case '总结归纳':
+      return buildSummary(centralEvent, entry);
+
+    // --- Education/training ---
+    case '学习目标':
+      return buildLearningObjective(centralEvent, entry);
+    case '知识讲授':
+      return buildKnowledgeTeach(centralEvent, entry);
+    case '示范演示':
+      return buildDemonstration(protagonistName, centralEvent, actionDetails);
+    case '练习引导':
+      return buildPracticeGuide(centralEvent);
+    case '检验反馈':
+      return buildAssessment(centralEvent, entry);
+    case '总结拓展':
+      return buildExtendedSummary(centralEvent, entry);
 
     default:
       // Generic: use content guide + available material
@@ -1000,6 +1286,204 @@ function buildShortEmotion(protagonist: string, centralEvent: string, toneAdj: s
 
 function buildShortGoldenQuote(protagonist: string, centralEvent: string, quote: string): string {
   return `${quote || `"吾不为也"`}——${protagonist}${centralEvent}的精神定格。`;
+}
+
+// ---------------------------------------------------------------------------
+// Legend story builders
+// ---------------------------------------------------------------------------
+
+function buildLegendOpening(centralEvent: string, region: string, protagonist: string, entry: EntryDetail): string {
+  return `远古${region}，${centralEvent}的传说从这里开始。${entry.story.substring(0, 60).replace(/\*\*/g, '').split(/[。]/)[0]}。这不是历史，而是代代相传的故事。`;
+}
+
+function buildSupernaturalPower(centralEvent: string, protagonist: string, entry: EntryDetail): string {
+  return `天地异象，超自然的力量介入人间。${protagonist}面对超越人力的事件——${centralEvent}中有天命的指引，也有人力无法掌控的维度。`;
+}
+
+function buildHumanTrial(protagonist: string, centralEvent: string, details: string): string {
+  return `即使是神话传说，核心是人的选择。${protagonist}面对${centralEvent}的考验——恐惧、犹豫、勇气、信念，凡人的情感在神话中更加真切。${details ? `具体考验：${details}` : ''}`;
+}
+
+function buildFateTurning(protagonist: string, centralEvent: string, quote: string, entry: EntryDetail): string {
+  return `命运转折——天意与人意的交汇。${protagonist}${centralEvent}，命运看似不可违，但人心的选择才是关键。${quote ? `核心表达："${quote}"` : entry.culturalSignificance?.substring(0, 40) ?? '传说照见了人心的力量'}`;
+}
+
+function buildLegendEnduring(protagonist: string, centralEvent: string, entry: EntryDetail): string {
+  return `${centralEvent}的传说为何世代传颂？${entry.culturalSignificance?.substring(0, 60) ?? `它照见了某种精神——即使在传说中，也有真实的情感和信念`}。传说不灭，精神永存。`;
+}
+
+// ---------------------------------------------------------------------------
+// Culture promo builders
+// ---------------------------------------------------------------------------
+
+function buildSymbolOpening(entry: EntryDetail, region: string): string {
+  const topKeywords = entry.keywords.slice(0, 3).join('、');
+  return `${region}，${topKeywords}——最具代表性的文化符号。不用言语，先让画面说话。光影、质感、氛围，文化的视觉入口。`;
+}
+
+function buildCultureRoots(entry: EntryDetail, centralEvent: string): string {
+  return `这种文化从何而来？${entry.culturalSignificance?.substring(0, 80) ?? `${centralEvent}的历史渊源`}。文化不是凭空而生，它有根基、有土壤、有精神源头。`;
+}
+
+function buildCraftDisplay(entry: EntryDetail, centralEvent: string, details: string): string {
+  const keywords = entry.keywords.slice(0, 3).join('、');
+  return `${keywords}——技艺的核心展示。手的动作、材料的质感、工具的声音。${details ? `具体步骤：${details}` : `从原料到成品，每一步都是匠心`}。画面要有微距和慢动作。`;
+}
+
+function buildModernInheritance(entry: EntryDetail, protagonist: string): string {
+  const culturalSignificance = entry.culturalSignificance?.substring(0, 60) ?? '';
+  return `传统如何在现代延续？${culturalSignificance || `${entry.name}在新一代手中继续传承`}。不是博物馆里的标本，而是活在当下的生命力。`;
+}
+
+function buildSloganClose(entry: EntryDetail, protagonist: string, quote: string): string {
+  const coreMessage = entry.culturalSignificance?.split(/[。]/)[0]?.substring(0, 30) ?? entry.type;
+  return `${quote || `${coreMessage}——文化精神最凝练的表达`}。画面定格，精神定格。`;
+}
+
+// ---------------------------------------------------------------------------
+// Heritage promo builders
+// ---------------------------------------------------------------------------
+
+function buildHeritageOrigin(entry: EntryDetail, centralEvent: string, region: string): string {
+  return `${region}，${centralEvent}的非遗技艺起源。${entry.story.substring(0, 50).replace(/\*\*/g, '').split(/[。]/)[0]}。这不是技艺的消亡史，而是技艺的诞生记。`;
+}
+
+function buildArtisanEntrance(protagonist: string, entry: EntryDetail, region: string): string {
+  return `${protagonist}——${entry.type}的传承人。他在${region}做了几十年，手上是岁月刻下的痕迹。不只是"传承人"的标签，而是他本人与技艺的情感联结。`;
+}
+
+function buildCraftProcess(entry: EntryDetail, details: string): string {
+  const keywords = entry.keywords.slice(0, 3).join('→');
+  return `完整工艺流程：${keywords}。${details || '从原料准备到成品检验，每一步都要精准'}。要有步骤感——手的动作、材料的反应、时间的痕迹。`;
+}
+
+function buildCraftSpirit(protagonist: string, centralEvent: string, entry: EntryDetail): string {
+  const spirit = entry.culturalSignificance?.substring(0, 50) ?? '精益求精、物我合一';
+  return `技艺不只是技术。${centralEvent}照见的精神：${spirit}。${protagonist}的手不只在做东西，更在传承一种信念。`;
+}
+
+function buildInheritancePath(protagonist: string, centralEvent: string, entry: EntryDetail): string {
+  return `传承的现实——年轻人不愿学、市场萎缩、技艺可能消亡。但也有人接过担子。${protagonist}的${centralEvent}不是终点，而是接力棒。传承之路，还在继续。`;
+}
+
+// ---------------------------------------------------------------------------
+// City brand promo builders
+// ---------------------------------------------------------------------------
+
+function buildLandmarkOpening(entry: EntryDetail, region: string): string {
+  return `${region}——城市的标志性空间。不只是建筑外观，更是光影、声音、人活动的总和。走进这个空间，感受它的呼吸。`;
+}
+
+function buildCityHistory(entry: EntryDetail, centralEvent: string, protagonist: string): string {
+  return `${entry.region}的历史纵深——${protagonist}${centralEvent}，不是抽象概述而是具体故事。历史活在今天，不只是教科书上的年份。`;
+}
+
+function buildCityCulture(entry: EntryDetail, region: string): string {
+  const keywords = entry.keywords.slice(0, 3).join('、');
+  return `${region}的地方文化——${keywords}。方言、饮食、习俗、技艺，每一项都是这座城市的DNA。要有烟火气，不是空镜堆砌。`;
+}
+
+function buildCityLife(entry: EntryDetail, region: string): string {
+  return `生活在这座城市的人——他们的日常、情感、节奏。${region}不只是景点，更是生活空间。清晨的早餐摊、傍晚的散步人、深夜的灯火。`;
+}
+
+function buildBrandClose(entry: EntryDetail, region: string): string {
+  const core = entry.culturalSignificance?.split(/[。]/)[0]?.substring(0, 30) ?? entry.type;
+  return `${core}——${region}最核心的气质表达。画面定格+文字叠加。不是口号，而是城市灵魂的凝练。`;
+}
+
+// ---------------------------------------------------------------------------
+// Scene short builders
+// ---------------------------------------------------------------------------
+
+function buildSpaceIntro(entry: EntryDetail, region: string): string {
+  return `走进${region}——光线、声音、气味、质感。不只是地名，而是空间的氛围。让观众"走进"这个空间，感受它的气息。`;
+}
+
+function buildSceneNarrative(protagonist: string, centralEvent: string, details: string, entry: EntryDetail): string {
+  return `在这个空间中发生了什么——${protagonist}${centralEvent}。叙事要简短但具体：${details || entry.story.substring(0, 60).replace(/\*\*/g, '').split(/[。]/)[0]}。不是空镜，而是有故事的空间。`;
+}
+
+function buildTimeOverlay(entry: EntryDetail, centralEvent: string, protagonist: string): string {
+  const culturalDepth = entry.culturalSignificance?.substring(0, 50) ?? '';
+  return `同一个空间在不同时间的故事——古人与今人、旧貌与新颜。${protagonist}${centralEvent}的痕迹，与今天的生活叠印。${culturalDepth || '时间的深度让空间有了灵魂'}`;
+}
+
+function buildMoodClose(entry: EntryDetail, region: string): string {
+  return `${region}的精神——不是故事的结局，而是空间本身。一个画面，一句旁白。留白收束。`;
+}
+
+// ---------------------------------------------------------------------------
+// Landscape mood builders
+// ---------------------------------------------------------------------------
+
+function buildLandscapeOpening(entry: EntryDetail, region: string): string {
+  return `${region}——山、水、云、雾、光影。没有人物、没有叙事。只有自然本身的美与气息。画面要美，节奏要慢。`;
+}
+
+function buildMoodFlow(entry: EntryDetail, region: string): string {
+  const keywords = entry.keywords.filter(k => ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬'].some(w => k.includes(w)));
+  const moodWords = keywords.length > 0 ? keywords.join('→') : '晨昏→四季→风雨→晴雾';
+  return `意境在时间中流变——${moodWords}。同一个山水在不同状态下的美感。纯视觉诗，没有解释性旁白。`;
+}
+
+function buildSpiritEssence(entry: EntryDetail, region: string): string {
+  const core = entry.culturalSignificance?.substring(0, 30)?.split(/[。]/)[0] ?? '山水灵韵';
+  return `${core}——山水的精神不是"资源"，而是灵韵。一句话定格。画面要有留白。`;
+}
+
+// ---------------------------------------------------------------------------
+// Explainer video builders
+// ---------------------------------------------------------------------------
+
+function buildPoseQuestion(centralEvent: string, entry: EntryDetail): string {
+  return `${centralEvent}——为什么这件事值得关注？${entry.type === '非遗' ? '这种技艺为什么能千年传承？' : entry.type === '名胜古迹' ? '这个地方为什么成为文化地标？' : '这段历史为什么被记住？'}`;
+}
+
+function buildConceptExplain(centralEvent: string, entry: EntryDetail): string {
+  const keywords = entry.keywords.slice(0, 3).join('、');
+  return `核心概念：${keywords}。用类比和对比让复杂变简单——${entry.summary?.substring(0, 60) ?? centralEvent}。每个概念只讲一个要点。`;
+}
+
+function buildCaseEvidence(protagonist: string, centralEvent: string, details: string): string {
+  return `具体案例：${protagonist}${centralEvent}。${details || '不是抽象论证，而是有真实的人物、事件、地点作为例证'}。案例要简短有力，直击要点。`;
+}
+
+function buildLogicDeepen(centralEvent: string, entry: EntryDetail): string {
+  const culturalSig = entry.culturalSignificance?.substring(0, 60) ?? '';
+  return `不只是"是什么"——${centralEvent}意味着什么？${culturalSig || '深层原理和延伸思考'}。从现象到本质，逻辑递进。`;
+}
+
+function buildSummary(centralEvent: string, entry: EntryDetail): string {
+  return `要点归纳：${entry.keywords.slice(0, 3).join('·')}——${centralEvent}的核心启示。用最简洁的语言重述核心要点。`;
+}
+
+// ---------------------------------------------------------------------------
+// Education/training builders
+// ---------------------------------------------------------------------------
+
+function buildLearningObjective(centralEvent: string, entry: EntryDetail): string {
+  return `学习目标：学完本节，你能掌握${centralEvent}的3个核心要点——${entry.keywords.slice(0, 3).join('、')}。目标具体可衡量。`;
+}
+
+function buildKnowledgeTeach(centralEvent: string, entry: EntryDetail): string {
+  return `核心知识讲解——${centralEvent}的要点1：${entry.keywords[0] ?? centralEvent}。要点2：${entry.keywords[1] ?? '文化背景'}。要点3：${entry.keywords[2] ?? '现实意义'}。结构化、分步骤、有逻辑。`;
+}
+
+function buildDemonstration(protagonist: string, centralEvent: string, details: string): string {
+  return `示范演示——${protagonist}${centralEvent}的操作流程。${details || '从准备到执行到检验，每一步都有标注和要点提示'}。`;
+}
+
+function buildPracticeGuide(centralEvent: string): string {
+  return `练习引导——基于${centralEvent}的思考题：这个事件照见了什么精神？在当代如何体现？让观众主动参与，不只是被动接受。`;
+}
+
+function buildAssessment(centralEvent: string, entry: EntryDetail): string {
+  return `知识检验——${centralEvent}的核心知识点回顾：${entry.keywords.slice(0, 3).join('、')}。你是否达到了学习目标？`;
+}
+
+function buildExtendedSummary(centralEvent: string, entry: EntryDetail): string {
+  return `总结拓展——${centralEvent}的要点归纳+延伸方向：${entry.type}相关的其他内容、参考资料、进阶学习路径。`;
 }
 
 // ---------------------------------------------------------------------------

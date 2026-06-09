@@ -21,19 +21,19 @@
     <div class="entry-card__actions">
       <RouterLink
         class="btn btn--blue btn--sm"
-        :to="`/story/new?entry=${encodeURIComponent(entry.name)}&type=character_story`"
+        :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=character_story`"
       >
         ✅ 人物故事
       </RouterLink>
       <RouterLink
         class="btn btn--sm btn--outline"
-        :to="`/story/new?entry=${encodeURIComponent(entry.name)}&type=culture_promo`"
+        :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=culture_promo`"
       >
         ⭕ 文化宣传
       </RouterLink>
       <RouterLink
         class="btn btn--sm btn--outline"
-        :to="`/story/new?entry=${encodeURIComponent(entry.name)}&type=scene_short`"
+        :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=scene_short`"
       >
         ⭕ 场景短片
       </RouterLink>

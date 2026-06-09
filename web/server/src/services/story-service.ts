@@ -38,8 +38,10 @@ import {
 } from '@shared/types.js';
 import {
   selectCentralEvent,
+  conflictScore,
   generateDramaticContent,
   validateDramaticStory,
+  extractQuotes,
 } from './dramatic-story.js';
 
 // ---------------------------------------------------------------------------
@@ -505,14 +507,14 @@ export async function planStory(entryName: string, originalUserQuery?: string): 
   const availableEvents: AvailableEvent[] = boldEvents.length > 0
     ? boldEvents.map((eventName) => ({
         event: eventName,
-        conflict_score: 7,
+        conflict_score: Math.max(1, Math.min(10, Math.round(conflictScore(eventName, entry.story) / 2))),
         recommended_duration: recommendDuration(entryType, boldEvents.length),
         recommended_type: recommendEventType(entryType),
         recommended_video_type: routedVideoTypes[0],
       }))
     : [{
         event: '整体故事',
-        conflict_score: 5,
+        conflict_score: 1,
         recommended_duration: recommendDuration(entryType, 0),
         recommended_type: recommendEventType(entryType),
         recommended_video_type: routedVideoTypes[0],
@@ -532,6 +534,23 @@ export async function planStory(entryName: string, originalUserQuery?: string): 
     recommended_duration: recommendedDuration,
     cultural_risks: culturalRisks,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Helper: extract process descriptions from story text
+// ---------------------------------------------------------------------------
+
+function extractProcessFromStory(storyText: string): string | null {
+  const processKeywords = ['制作', '制造', '工序', '步骤', '流程', '工艺', '技法', '手法', '过程', '编制', '织造', '雕刻', '酿造', '烧制', '铸造'];
+  const paragraphs = storyText.split(/\n\n+/).filter(p => p.trim());
+  const processParagraphs = paragraphs.filter(p =>
+    processKeywords.some(kw => p.includes(kw))
+  );
+  if (processParagraphs.length > 0) {
+    const text = processParagraphs[0].replace(/\*\*/g, '').substring(0, 80);
+    return `核心技艺流程：${text}`;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -637,19 +656,26 @@ export async function generateAndStoreStory(
     characters: dramaticResult.characters,
     act_structure: dramaticResult.act_structure,
     protagonist_arc: dramaticResult.protagonist_arc,
-    // Type-specific fields for promo/scene/explainer types (not dramatic)
+    // Type-specific fields — enriched with real content from entry + dramatic result
     ...(videoType === 'culture_promo' || videoType === 'heritage_promo' || videoType === 'city_brand_promo' ? {
-      visual_symbols: entry.keywords.slice(0, 5),
-      craft_or_ritual_process: `核心技艺：${entry.keywords.slice(0, 3).join('、')}`,
-      modern_connection: `${entry.name}在现代的文化传承与创新`,
+      visual_symbols: [
+        ...entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2),
+        ...entry.keywords.filter(k => !['人物', '故事', '历史'].includes(k)).slice(0, 3),
+      ],
+      craft_or_ritual_process: extractProcessFromStory(entry.story) || `核心技艺流程：${entry.keywords.slice(0, 3).join('→')}`,
+      modern_connection: entry.culturalSignificance?.substring(0, 80) ?? `${entry.name}在现代的文化传承与创新`,
       core_message: dramaticResult.logline,
-      slogan_or_key_sentence: `${entry.type}之光——${entry.name}`,
+      slogan_or_key_sentence: extractQuotes(entry.story).length > 0
+        ? extractQuotes(entry.story)[0]
+        : `${entry.type}之光——${entry.name.split('——')[0]}`,
     } : {}),
     ...(videoType === 'scene_short' || videoType === 'landscape_mood' ? {
-      spatial_identity: entry.region,
+      spatial_identity: `${entry.region}·${entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2).join('、')}`,
       visual_route: dramaticResult.scene_breakdown.map(s => `${s.title}：${s.visual_prompt}`),
-      time_layer: `${entry.name}的古今变迁与时空叠加`,
-      atmosphere: videoType === 'landscape_mood' ? `${entry.region}的自然意境与山水灵韵` : `${entry.region}的场景氛围`,
+      time_layer: entry.culturalSignificance?.substring(0, 60) ?? `${entry.name}的古今变迁与时空叠加`,
+      atmosphere: videoType === 'landscape_mood'
+        ? entry.keywords.filter(k => ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬'].some(w => k.includes(w))).join('、') || `${entry.region}的自然意境`
+        : `${entry.region}的场景氛围`,
     } : {}),
     ...(videoType === 'ai_comic_drama' ? {
       dialogue: dramaticResult.scene_breakdown.map(s => ({
@@ -662,12 +688,18 @@ export async function generateAndStoreStory(
       })),
     } : {}),
     ...(videoType === 'explainer_video' || videoType === 'lecture_video' ? {
-      argument_points: entry.keywords.slice(0, 4).map(k => `${k}的核心解释`),
+      argument_points: dramaticResult.scene_breakdown.slice(0, 4).map(s => s.key_action),
       knowledge_outline: dramaticResult.scene_breakdown.map(s => `${s.scene_id}. ${s.title}：${s.plot.substring(0, 40)}`),
     } : {}),
     ...(videoType === 'documentary_short' ? {
-      source_quotes: [`据${entry.credibility}来源记载`],
-      field_notes: [`${entry.region}实地考察记录要点`],
+      source_quotes: extractQuotes(entry.story).slice(0, 3),
+      field_notes: [
+        ...entry.relatedLocations.map(l => {
+          const name = typeof l === 'string' ? l : (l as any).name ?? '';
+          return name ? `${name}实地考察记录要点` : '';
+        }).filter(Boolean).slice(0, 2),
+        ...entry.unverifiedPoints.filter(p => p.includes('实地') || p.includes('考察') || p.includes('遗迹')).slice(0, 1),
+      ],
     } : {}),
     // Internal metadata
     _request_meta: {

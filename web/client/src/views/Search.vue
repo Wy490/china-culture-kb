@@ -17,6 +17,10 @@
         <option value="">全部省份</option>
         <option v-for="p in provinces" :key="p.name" :value="p.name">{{ p.name }}</option>
       </select>
+      <select v-model="regionFilter" class="search-page__select" :disabled="!provinceFilter">
+        <option value="">全部地区</option>
+        <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
+      </select>
       <button class="btn btn--primary" type="submit" :disabled="searching">
         {{ searching ? '搜索中…' : '搜索' }}
       </button>
@@ -52,10 +56,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { searchEntries } from '@/api/entries'
-import { getProvinces, getTypes } from '@/api/system'
+import { getProvinces, getTypes, getRegions } from '@/api/system'
 import type { EntrySearchResult, ProvinceInfo, TypeInfo } from '@shared/types'
 import EntryCard from '@/components/EntryCard.vue'
 
@@ -65,6 +69,8 @@ const router = useRouter()
 const keywords = ref('')
 const typeFilter = ref('')
 const provinceFilter = ref('')
+const regionFilter = ref('')
+const regions = ref<string[]>([])
 const results = ref<EntrySearchResult[]>([])
 const provinces = ref<ProvinceInfo[]>([])
 const types = ref<TypeInfo[]>([])
@@ -87,6 +93,7 @@ async function handleSearch() {
     keywords: keywords.value.trim() || undefined,
     type: typeFilter.value || undefined,
     province: provinceFilter.value || undefined,
+    region: regionFilter.value || undefined,
   })
 
   if (res.ok && res.data) {
@@ -97,6 +104,18 @@ async function handleSearch() {
   searching.value = false
   searched.value = true
 }
+
+// Load regions when province changes
+watch(provinceFilter, async (newProvince) => {
+  regionFilter.value = ''
+  regions.value = []
+  if (newProvince) {
+    const res = await getRegions(newProvince)
+    if (res.ok && res.data) {
+      regions.value = res.data
+    }
+  }
+})
 
 onMounted(async () => {
   // Read initial query from URL
@@ -236,5 +255,20 @@ onMounted(async () => {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 768px) {
+  .search-page__form {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .search-page__input {
+    flex: 1;
+    width: 100%;
+  }
+  .search-page__select {
+    width: 100%;
+  }
 }
 </style>
