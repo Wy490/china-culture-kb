@@ -13,11 +13,13 @@ import type {
   RecommendedType,
   RecommendedVideoType,
   RecommendedPresentationStyle,
+  RecommendedStoryStructure,
   AvailableEvent,
   GenerationType,
   VideoType,
   PresentationStyle,
   SupportedDuration,
+  StoryStructureType,
   PanelCount,
   StoryGenerateRequest,
   StoryGenerateResult,
@@ -30,11 +32,14 @@ import type {
   StoryListItem,
   KnowledgePack,
   StoryQualityReport,
+  ReferenceTrace,
+  MemoryMosaicStorySeed,
 } from '@shared/types.js';
 import {
   GENERATION_TO_VIDEO_TYPE,
   VIDEO_TYPE_CONFIG,
   PRESENTATION_STYLE_CONFIG,
+  STORY_STRUCTURE_CONFIG,
 } from '@shared/types.js';
 import {
   selectCentralEvent,
@@ -43,6 +48,12 @@ import {
   validateDramaticStory,
   extractQuotes,
 } from './dramatic-story.js';
+import {
+  buildMemoryMosaicSeed,
+  generateMemoryMosaicContent,
+  validateMemoryMosaicStory,
+} from './memory-mosaic-service.js';
+import { validateReferenceSafety, combineQualityReports } from './reference-quality-service.js';
 
 // ---------------------------------------------------------------------------
 // Entry type → VideoType routing (entry Chinese type name → recommended VideoType list)
@@ -80,7 +91,23 @@ const TYPE_GENERATION_ROUTING: Record<string, GenerationType[]> = {
 };
 
 // ---------------------------------------------------------------------------
-// Dramatic function mapping (for scene_breakdown generation)
+// Entry type → StoryStructureType routing (Phase 5)
+// ---------------------------------------------------------------------------
+
+const TYPE_STORY_STRUCTURE_ROUTING: Record<string, StoryStructureType[]> = {
+  '历史人物': ['single_event_drama', 'memory_mosaic_biography', 'witness_testimony', 'three_act_drama'],
+  '神话传说': ['single_event_drama', 'object_clue_journey', 'three_act_drama'],
+  '民间故事': ['single_event_drama', 'three_act_drama'],
+  '非遗': ['object_clue_journey', 'memory_mosaic_biography', 'before_after_transformation'],
+  '地方戏曲': ['single_event_drama', 'three_act_drama'],
+  '节庆习俗': ['single_event_drama', 'object_clue_journey'],
+  '饮食文化': ['object_clue_journey', 'single_event_drama'],
+  '传统工艺': ['object_clue_journey', 'before_after_transformation'],
+  '名胜古迹': ['object_clue_journey', 'witness_testimony', 'single_event_drama'],
+  '地方掌故': ['case_reconstruction', 'witness_testimony', 'single_event_drama'],
+  '宗教信仰': ['object_clue_journey', 'single_event_drama'],
+  '民俗活动': ['single_event_drama', 'before_after_transformation'],
+};
 // ---------------------------------------------------------------------------
 
 const DRAMATIC_FUNCTIONS = ['开场', '铺垫', '冲突升级', '高潮', '尾声'] as const;
@@ -455,6 +482,47 @@ function resolveGenerationType(videoType: VideoType): GenerationType {
 }
 
 // ---------------------------------------------------------------------------
+// Resolve StoryStructureType from request (Phase 5)
+// ---------------------------------------------------------------------------
+
+function resolveStoryStructure(request: StoryGenerateRequest, videoType: VideoType, entryType?: string): StoryStructureType {
+  // 1. User explicitly specified → use it (after compatibility check)
+  if (request.story_structure) {
+    const config = STORY_STRUCTURE_CONFIG[request.story_structure];
+    if (config && config.compatible_video_types.includes(videoType)) {
+      return request.story_structure;
+    }
+    // Incompatible → fall back to default
+  }
+
+  // 2. Derive from video_type default
+  const vtConfig = VIDEO_TYPE_CONFIG[videoType];
+  // Character-driven video types default to single_event_drama
+  if (['character_story', 'historical_drama', 'ai_comic_drama', 'children_story'].includes(videoType)) {
+    return 'single_event_drama';
+  }
+  // Promo/explainer types default to lecture_argument or object_clue_journey
+  if (['explainer_video', 'lecture_video', 'education_training'].includes(videoType)) {
+    return 'lecture_argument';
+  }
+  // Documentary defaults to witness_testimony for人物条目, single_event_drama otherwise
+  if (videoType === 'documentary_short' && entryType === '历史人物') {
+    return 'witness_testimony';
+  }
+  // Scene/landscape defaults to object_clue_journey for名胜古迹, single_event_drama otherwise
+  if (['scene_short', 'landscape_mood'].includes(videoType)) {
+    return 'object_clue_journey';
+  }
+  // Promo types default to object_clue_journey
+  if (['culture_promo', 'heritage_promo', 'city_brand_promo', 'social_short'].includes(videoType)) {
+    return 'object_clue_journey';
+  }
+
+  // 3. Fallback
+  return 'single_event_drama';
+}
+
+// ---------------------------------------------------------------------------
 // planStory — preview recommendation for an entry
 // ---------------------------------------------------------------------------
 
@@ -523,6 +591,17 @@ export async function planStory(entryName: string, originalUserQuery?: string): 
   const culturalRisks = computeCulturalRisks(entry);
   const recommendedDuration = recommendDuration(entryType, boldEvents.length);
 
+  // New (Phase 5): recommended_story_structures based on entry type
+  const routedStoryStructures = TYPE_STORY_STRUCTURE_ROUTING[entryType] || ['single_event_drama'];
+  const recommendedStoryStructures: RecommendedStoryStructure[] = routedStoryStructures.map((ss, index) => {
+    const meta = STORY_STRUCTURE_CONFIG[ss];
+    return {
+      story_structure: ss,
+      reason: `"${entryType}"条目适合${meta.label}——${meta.description}`,
+      priority: index + 1,
+    };
+  });
+
   return success({
     entry_name: entryName,
     entry_type: entryType,
@@ -530,6 +609,7 @@ export async function planStory(entryName: string, originalUserQuery?: string): 
     recommended_types: recommendedTypes,
     recommended_video_types: recommendedVideoTypes,
     recommended_presentation_styles: recommendedPresentationStyles,
+    recommended_story_structures: recommendedStoryStructures,
     available_events: availableEvents,
     recommended_duration: recommendedDuration,
     cultural_risks: culturalRisks,
@@ -569,6 +649,9 @@ export async function generateAndStoreStory(
   const presentationStyle = request.presentation_style ?? VIDEO_TYPE_CONFIG[videoType].default_presentation_style;
   const targetDuration = target_video_duration ?? VIDEO_TYPE_CONFIG[videoType].default_duration;
 
+  // Resolve story_structure (Phase 5)
+  const storyStructure = resolveStoryStructure(request, videoType, undefined /* entry type resolved below */);
+
   // --- Determine the primary entry to use ---
   let primaryEntryName: string;
   let entry: EntryDetail;
@@ -598,29 +681,116 @@ export async function generateAndStoreStory(
   const boldEvents = extractBoldEvents(entry.story);
   const centralEvent = selectCentralEvent(entry, boldEvents, videoType, selected_event);
 
-  // --- Generate dramatic story content ---
-  const dramaticResult = generateDramaticContent({
-    entry,
-    centralEvent,
-    videoType,
-    presentationStyle,
-    targetDuration,
-    tone: tone ?? '',
-    knowledgePack: knowledgePackToUse,
-    originalUserQuery: original_user_query ?? outline,
-  });
+  // --- Generate story content (branch by story_structure) ---
+  let storyResult: {
+    title: string;
+    logline: string;
+    theme: string;
+    full_text: string;
+    scene_breakdown: StoryScene[];
+    gears_segments: GearsSegment[];
+    cultural_constraints: string[];
+    credibility_note: string;
+    characters: StoryCharacter[];
+    act_structure: ActBeat[];
+    protagonist_arc: ProtagonistArc[];
+  };
 
-  // --- Validate story quality ---
-  const qualityReport = validateDramaticStory({
-    full_text: dramaticResult.full_text,
-    scene_breakdown: dramaticResult.scene_breakdown,
-    title: dramaticResult.title,
-    selectedEvent: centralEvent,
-  });
+  let memoryMosaicSeed: MemoryMosaicStorySeed | undefined;
+  let referenceTrace: ReferenceTrace[] | undefined;
 
-  if (!qualityReport.passed) {
-    // Still return the result, but include the quality issues
-    // Don't block generation entirely — the user can see the issues and refine
+  if (storyStructure === 'memory_mosaic_biography') {
+    // ---- Memory Mosaic Biography path ----
+    const seed = buildMemoryMosaicSeed(entry, centralEvent, knowledgePackToUse);
+    memoryMosaicSeed = seed;
+
+    storyResult = generateMemoryMosaicContent({
+      entry,
+      centralEvent,
+      videoType,
+      presentationStyle,
+      targetDuration,
+      tone: tone ?? '',
+      memorySeed: seed,
+      knowledgePack: knowledgePackToUse,
+      originalUserQuery: original_user_query ?? outline,
+    });
+
+    // Build reference trace for memory mosaic
+    if (request.style_pack_ids && request.style_pack_ids.length > 0) {
+      referenceTrace = request.style_pack_ids.map(spId => ({
+        style_pack_id: spId,
+        applied_rules: ['用物件开场', '用见证人回忆推进', '结尾呼应物件', `${storyStructure}结构规则`],
+        source_story_structure: storyStructure,
+      }));
+    } else {
+      referenceTrace = [{
+        applied_rules: ['用物件开场', '用见证人回忆推进', '结尾呼应物件', `${storyStructure}结构规则`],
+        source_story_structure: storyStructure,
+      }];
+    }
+
+    // Validate with memory mosaic-specific quality checks
+    const mosaicQuality = validateMemoryMosaicStory({
+      full_text: storyResult.full_text,
+      scene_breakdown: storyResult.scene_breakdown,
+      memory_seed: seed,
+    });
+
+    // Validate reference safety (MVP: basic checks only)
+    const refSafety = validateReferenceSafety({
+      generated_text: storyResult.full_text,
+      reference_strength: request.reference_strength,
+      reference_trace: referenceTrace,
+      style_pack_ids: request.style_pack_ids,
+    });
+
+    // Combine quality reports
+    const qualityReport = combineQualityReports(mosaicQuality, refSafety);
+
+    // Log quality issues but don't block generation
+    if (!qualityReport.passed) {
+      // Still return the result, but include the quality issues
+    }
+
+  } else {
+    // ---- Standard dramatic story path ----
+    storyResult = generateDramaticContent({
+      entry,
+      centralEvent,
+      videoType,
+      presentationStyle,
+      targetDuration,
+      tone: tone ?? '',
+      knowledgePack: knowledgePackToUse,
+      originalUserQuery: original_user_query ?? outline,
+    });
+
+    // Build reference trace for standard path
+    if (request.style_pack_ids && request.style_pack_ids.length > 0) {
+      referenceTrace = request.style_pack_ids.map(spId => ({
+        style_pack_id: spId,
+        applied_rules: [`Using ${storyStructure} structure with ${videoType}/${presentationStyle}`],
+        source_story_structure: storyStructure,
+      }));
+    }
+  }
+
+  // --- Validate story quality (unified for both paths) ---
+  let qualityReport: StoryQualityReport;
+  if (storyStructure === 'memory_mosaic_biography' && memoryMosaicSeed) {
+    qualityReport = validateMemoryMosaicStory({
+      full_text: storyResult.full_text,
+      scene_breakdown: storyResult.scene_breakdown,
+      memory_seed: memoryMosaicSeed,
+    });
+  } else {
+    qualityReport = validateDramaticStory({
+      full_text: storyResult.full_text,
+      scene_breakdown: storyResult.scene_breakdown,
+      title: storyResult.title,
+      selectedEvent: centralEvent,
+    });
   }
 
   // --- Build story data ---
@@ -629,34 +799,38 @@ export async function generateAndStoreStory(
 
   // Determine gears_segments
   const gearsSegments = output_gears_segments !== false
-    ? dramaticResult.gears_segments
+    ? storyResult.gears_segments
     : [];
 
   const storyData: StoryGenerateResult & { _request_meta: Record<string, unknown> } = {
     storyId,
-    title: dramaticResult.title,
+    title: storyResult.title,
     generation_type: generationType,
     video_type: videoType,
     presentation_style: presentationStyle,
     source_entry: primaryEntryName,
     original_user_query: original_user_query ?? outline ?? undefined,
-    logline: dramaticResult.logline,
-    theme: dramaticResult.theme,
-    full_text: dramaticResult.full_text,  // DRAMATIC story text, NOT entry.story
-    scene_breakdown: dramaticResult.scene_breakdown,  // REAL scenes, NOT template concatenation
-    gears_segments: gearsSegments,  // CINEMATIC scripts, NOT template concatenation
+    logline: storyResult.logline,
+    theme: storyResult.theme,
+    full_text: storyResult.full_text,
+    scene_breakdown: storyResult.scene_breakdown,
+    gears_segments: gearsSegments,
     gears_segments_url: gearsSegmentsUrl,
-    cultural_constraints: dramaticResult.cultural_constraints,
-    credibility_note: dramaticResult.credibility_note,
+    cultural_constraints: storyResult.cultural_constraints,
+    credibility_note: storyResult.credibility_note,
+    // Phase 5: story_structure + reference trace + memory_mosaic_seed
+    story_structure: storyStructure,
+    reference_trace: referenceTrace,
+    memory_mosaic_seed: memoryMosaicSeed,
     // Knowledge pack for multi-entry traceability
     knowledge_pack: knowledgePackToUse,
     // Quality report
     quality_report: qualityReport,
-    // Characters, act structure, protagonist arc — from dramatic engine
-    characters: dramaticResult.characters,
-    act_structure: dramaticResult.act_structure,
-    protagonist_arc: dramaticResult.protagonist_arc,
-    // Type-specific fields — enriched with real content from entry + dramatic result
+    // Characters, act structure, protagonist arc — from engine
+    characters: storyResult.characters,
+    act_structure: storyResult.act_structure,
+    protagonist_arc: storyResult.protagonist_arc,
+    // Type-specific fields — enriched with real content from entry + result
     ...(videoType === 'culture_promo' || videoType === 'heritage_promo' || videoType === 'city_brand_promo' ? {
       visual_symbols: [
         ...entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2),
@@ -664,21 +838,21 @@ export async function generateAndStoreStory(
       ],
       craft_or_ritual_process: extractProcessFromStory(entry.story) || `核心技艺流程：${entry.keywords.slice(0, 3).join('→')}`,
       modern_connection: entry.culturalSignificance?.substring(0, 80) ?? `${entry.name}在现代的文化传承与创新`,
-      core_message: dramaticResult.logline,
+      core_message: storyResult.logline,
       slogan_or_key_sentence: extractQuotes(entry.story).length > 0
         ? extractQuotes(entry.story)[0]
         : `${entry.type}之光——${entry.name.split('——')[0]}`,
     } : {}),
     ...(videoType === 'scene_short' || videoType === 'landscape_mood' ? {
       spatial_identity: `${entry.region}·${entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2).join('、')}`,
-      visual_route: dramaticResult.scene_breakdown.map(s => `${s.title}：${s.visual_prompt}`),
+      visual_route: storyResult.scene_breakdown.map(s => `${s.title}：${s.visual_prompt}`),
       time_layer: entry.culturalSignificance?.substring(0, 60) ?? `${entry.name}的古今变迁与时空叠加`,
       atmosphere: videoType === 'landscape_mood'
         ? entry.keywords.filter(k => ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬'].some(w => k.includes(w))).join('、') || `${entry.region}的自然意境`
         : `${entry.region}的场景氛围`,
     } : {}),
     ...(videoType === 'ai_comic_drama' ? {
-      dialogue: dramaticResult.scene_breakdown.map(s => ({
+      dialogue: storyResult.scene_breakdown.map(s => ({
         scene_id: s.scene_id,
         lines: s.characters.map(ch => ({
           character: ch,
@@ -688,8 +862,8 @@ export async function generateAndStoreStory(
       })),
     } : {}),
     ...(videoType === 'explainer_video' || videoType === 'lecture_video' ? {
-      argument_points: dramaticResult.scene_breakdown.slice(0, 4).map(s => s.key_action),
-      knowledge_outline: dramaticResult.scene_breakdown.map(s => `${s.scene_id}. ${s.title}：${s.plot.substring(0, 40)}`),
+      argument_points: storyResult.scene_breakdown.slice(0, 4).map(s => s.key_action),
+      knowledge_outline: storyResult.scene_breakdown.map(s => `${s.scene_id}. ${s.title}：${s.plot.substring(0, 40)}`),
     } : {}),
     ...(videoType === 'documentary_short' ? {
       source_quotes: extractQuotes(entry.story).slice(0, 3),

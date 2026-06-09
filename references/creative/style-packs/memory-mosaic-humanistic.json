@@ -1,0 +1,54 @@
+{
+  "id": "memory-mosaic-humanistic",
+  "name": "人文感回忆拼图",
+  "description": "通过物件线索、见证人回忆和现实追寻，拼出人物精神底色。强调情绪递进和物件回响。",
+  "source_reference_ids": [],
+  "compatible_video_types": ["character_story", "historical_drama", "documentary_short", "ai_comic_drama"],
+  "compatible_presentation_styles": ["cinematic", "documentary", "ink_style", "ai_comic"],
+  "compatible_story_structures": ["memory_mosaic_biography"],
+  "structure_rules": [
+    "用物件或线索开场，制造追问感",
+    "现实追寻者必须因回忆发生认知变化",
+    "见证人回忆按情感递进排列，不按时间线",
+    "结尾物件必须呼应开场物件",
+    "主角不能自我介绍，只通过他人行动被看见"
+  ],
+  "rhythm_rules": [
+    "现实线和回忆线交错推进",
+    "现实线段落短促，制造追问节奏",
+    "回忆段落更长，情绪更深入",
+    "最后一个回忆是关键选择的爆发点"
+  ],
+  "scene_rules": [
+    "现实线用实景+旁白，制造文献感和追问感",
+    "回忆线用叠影+见证人旁白，制造情绪深度",
+    "结尾现实线和回忆线合流，物件回响"
+  ],
+  "narration_rules": [
+    "追寻者旁白推动现实线",
+    "见证人直接讲述推动回忆线",
+    "不用第三人称百科旁白概括主角生平"
+  ],
+  "dialogue_rules": [
+    "见证人讲述要有人物语气——敬佩者语气升，误解者语气沉，遗憾者语气叹",
+    "追寻者旁白要轻——追问而非解答",
+    "结尾旁白点到即止，不解释"
+  ],
+  "visual_rules": [
+    "物件开场要有实物特写",
+    "回忆画面要有叠影和时间深度感",
+    "结尾物件特写呼应开场构图"
+  ],
+  "ending_rules": [
+    "物件回响：开头物件在结尾有了新意义",
+    "追寻者认知变化：不是旁白总结，而是行动变化",
+    "留白收束：远景拉远，光影留白"
+  ],
+  "forbidden_patterns": [
+    "不允许年表式罗列（出生→成长→成就→晚年）",
+    "不允许传记腔（他的一生、生平事迹、传奇人生）",
+    "不允许只有赞美没有代价",
+    "不允许只有旁白没有见证人声音",
+    "不允许百科式知识讲解取代人物行动"
+  ]
+}

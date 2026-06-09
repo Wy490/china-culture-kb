@@ -173,6 +173,197 @@ export const PRESENTATION_STYLE_CONFIG: Record<PresentationStyle, PresentationSt
 };
 
 // ---------------------------------------------------------------------------
+// Story structure type (8 叙事结构) — third dimension alongside video_type + presentation_style
+// ---------------------------------------------------------------------------
+
+export type StoryStructureType =
+  | 'single_event_drama'
+  | 'three_act_drama'
+  | 'memory_mosaic_biography'
+  | 'witness_testimony'
+  | 'object_clue_journey'
+  | 'before_after_transformation'
+  | 'case_reconstruction'
+  | 'lecture_argument';
+
+export type ReferenceStrength = 'light' | 'medium' | 'strong';
+
+export interface StoryStructureMeta {
+  id: StoryStructureType;
+  label: string;
+  description: string;
+  compatible_video_types: VideoType[];
+  compatible_entry_types: string[];
+}
+
+export const STORY_STRUCTURE_CONFIG: Record<StoryStructureType, StoryStructureMeta> = {
+  single_event_drama: {
+    id: 'single_event_drama',
+    label: '单事件戏剧',
+    description: '围绕一个核心事件展开目标、阻力、选择和结果',
+    compatible_video_types: ['character_story', 'historical_drama', 'ai_comic_drama', 'children_story'],
+    compatible_entry_types: ['历史人物', '神话传说', '民间故事', '地方掌故'],
+  },
+  three_act_drama: {
+    id: 'three_act_drama',
+    label: '三幕式戏剧',
+    description: '经典三幕结构：建立→冲突→解决',
+    compatible_video_types: ['character_story', 'historical_drama', 'ai_comic_drama'],
+    compatible_entry_types: ['历史人物', '地方掌故'],
+  },
+  memory_mosaic_biography: {
+    id: 'memory_mosaic_biography',
+    label: '回忆拼图式人物故事',
+    description: '通过后人追寻、关键物件和多位见证人的回忆拼出主角生平',
+    compatible_video_types: ['character_story', 'historical_drama', 'documentary_short', 'ai_comic_drama'],
+    compatible_entry_types: ['历史人物', '非遗', '名胜古迹', '地方掌故'],
+  },
+  witness_testimony: {
+    id: 'witness_testimony',
+    label: '见证人叙述',
+    description: '以多个见证人的口述推动故事',
+    compatible_video_types: ['documentary_short', 'lecture_video', 'historical_drama'],
+    compatible_entry_types: ['历史人物', '地方掌故', '名胜古迹'],
+  },
+  object_clue_journey: {
+    id: 'object_clue_journey',
+    label: '物件线索追寻',
+    description: '由一件物品串联地点、人物和历史片段',
+    compatible_video_types: ['documentary_short', 'scene_short', 'culture_promo'],
+    compatible_entry_types: ['名胜古迹', '非遗', '传统工艺', '地方掌故'],
+  },
+  before_after_transformation: {
+    id: 'before_after_transformation',
+    label: '前后转变',
+    description: '对比主角前后状态，突出转变的力量',
+    compatible_video_types: ['character_story', 'culture_promo', 'documentary_short'],
+    compatible_entry_types: ['历史人物', '非遗', '传统工艺'],
+  },
+  case_reconstruction: {
+    id: 'case_reconstruction',
+    label: '案例重构',
+    description: '重构一个事件或案例的完整经过',
+    compatible_video_types: ['documentary_short', 'explainer_video', 'lecture_video'],
+    compatible_entry_types: ['地方掌故', '历史人物'],
+  },
+  lecture_argument: {
+    id: 'lecture_argument',
+    label: '讲述论证',
+    description: '逻辑论证式讲述，提出观点并用事实支撑',
+    compatible_video_types: ['explainer_video', 'lecture_video', 'education_training'],
+    compatible_entry_types: ['非遗', '传统工艺', '节庆习俗', '饮食文化'],
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Memory mosaic biography — witness memory structure
+// ---------------------------------------------------------------------------
+
+export type WitnessEmotionalBias = 'admiration' | 'regret' | 'misunderstanding' | 'gratitude' | 'conflict' | 'nostalgia';
+
+export interface WitnessMemory {
+  witness_name: string;
+  relationship_to_subject: string;
+  remembered_event: string;
+  subject_choice: string;
+  emotional_bias: WitnessEmotionalBias;
+  object_or_phrase: string;
+  scene_location: string;
+  scene_time: string;
+  present_day_effect: string;
+  factual_basis: string;
+  fictionalized_elements: string[];
+}
+
+export interface MemoryMosaicStorySeed {
+  subject: string;
+  present_day_seeker: string;
+  seeker_goal: string;
+  trigger_object: string;
+  central_question: string;
+  witnesses: WitnessMemory[];
+  final_reveal: string;
+  ending_image: string;
+}
+
+// ---------------------------------------------------------------------------
+// Creative Reference — user-recognized excellent story samples (Phase 5)
+// ---------------------------------------------------------------------------
+
+export type CreativeReferenceMediaType =
+  | 'text'
+  | 'video'
+  | 'script'
+  | 'article'
+  | 'user_sample';
+
+export type CreativeReferenceRights =
+  | 'public_domain'
+  | 'user_owned'
+  | 'licensed'
+  | 'summary_only'
+  | 'unknown';
+
+export interface CreativeReference {
+  id: string;
+  title: string;
+  media_type: CreativeReferenceMediaType;
+  source_url?: string;
+  local_path?: string;
+  rights: CreativeReferenceRights;
+  domain_tags: string[];
+  video_type_tags: VideoType[];
+  presentation_style_tags: PresentationStyle[];
+  story_structure_tags: StoryStructureType[];
+  user_reason: string;
+  summary: string;
+  created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Reference Analysis — structural breakdown of a reference sample
+// ---------------------------------------------------------------------------
+
+export interface ReferenceAnalysis {
+  reference_id: string;
+  narrative_device: string;
+  opening_hook: string;
+  central_question: string;
+  protagonist_mode: string;
+  conflict_pattern: string;
+  emotional_curve: string[];
+  scene_pattern: string[];
+  dialogue_density: 'low' | 'medium' | 'high';
+  narration_mode: 'first_person' | 'third_person' | 'witness_voice' | 'host_voice' | 'mixed';
+  visual_motifs: string[];
+  ending_strategy: string;
+  reusable_principles: string[];
+  avoid_copying: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Style Pack — reusable creative rules derived from multiple references
+// ---------------------------------------------------------------------------
+
+export interface StylePack {
+  id: string;
+  name: string;
+  description: string;
+  source_reference_ids: string[];
+  compatible_video_types: VideoType[];
+  compatible_presentation_styles: PresentationStyle[];
+  compatible_story_structures: StoryStructureType[];
+  structure_rules: string[];
+  rhythm_rules: string[];
+  scene_rules: string[];
+  narration_rules: string[];
+  dialogue_rules: string[];
+  visual_rules: string[];
+  ending_rules: string[];
+  forbidden_patterns: string[];
+}
+
+// ---------------------------------------------------------------------------
 // Duration & panel count
 // ---------------------------------------------------------------------------
 
@@ -201,6 +392,7 @@ export const ErrorCodes = {
   INVALID_GENERATION_TYPE: 'INVALID_GENERATION_TYPE',
   INVALID_VIDEO_TYPE: 'INVALID_VIDEO_TYPE',
   INVALID_PRESENTATION_STYLE: 'INVALID_PRESENTATION_STYLE',
+  INVALID_STORY_STRUCTURE: 'INVALID_STORY_STRUCTURE',
   INVALID_DURATION: 'INVALID_DURATION',
   STORY_GENERATION_FAILED: 'STORY_GENERATION_FAILED',
   STORY_NOT_FOUND: 'STORY_NOT_FOUND',
@@ -252,6 +444,12 @@ export interface RecommendedPresentationStyle {
   reason: string;
 }
 
+export interface RecommendedStoryStructure {
+  story_structure: StoryStructureType;
+  reason: string;
+  priority: number;
+}
+
 export interface AvailableEvent {
   event: string;
   conflict_score: number;
@@ -267,6 +465,7 @@ export interface StoryPlanResult {
   recommended_types: RecommendedType[];
   recommended_video_types: RecommendedVideoType[];
   recommended_presentation_styles: RecommendedPresentationStyle[];
+  recommended_story_structures?: RecommendedStoryStructure[];
   available_events: AvailableEvent[];
   recommended_duration: SupportedDuration;
   cultural_risks: string[];
@@ -289,6 +488,11 @@ export interface StoryGenerateRequest {
   // New fields for outline-driven multi-knowledge matching
   outline?: string;
   knowledge_pack?: KnowledgePack;
+  // New fields for story structure and creative reference (Phase 5)
+  story_structure?: StoryStructureType;
+  creative_reference_ids?: string[];
+  style_pack_ids?: string[];
+  reference_strength?: ReferenceStrength;
 }
 
 // ---------------------------------------------------------------------------
@@ -451,6 +655,16 @@ export interface StoryQualityReport {
 }
 
 // ---------------------------------------------------------------------------
+// Creative reference trace — provenance for style pack influence
+// ---------------------------------------------------------------------------
+
+export interface ReferenceTrace {
+  style_pack_id?: string;
+  applied_rules: string[];
+  source_story_structure: StoryStructureType;
+}
+
+// ---------------------------------------------------------------------------
 // Story generate result (full output)
 // ---------------------------------------------------------------------------
 
@@ -473,6 +687,10 @@ export interface StoryGenerateResult {
   // New fields for multi-knowledge matching
   knowledge_pack?: KnowledgePack;
   quality_report?: StoryQualityReport;
+  // New fields for story structure and creative reference (Phase 5)
+  story_structure?: StoryStructureType;
+  reference_trace?: ReferenceTrace[];
+  memory_mosaic_seed?: MemoryMosaicStorySeed;
   // Type-specific optional fields — character_story / historical_drama / legend_story
   characters?: StoryCharacter[];
   act_structure?: ActBeat[];

@@ -520,6 +520,129 @@ describe('Stories API', () => {
       expectFailure(res.body, 'GEARS_SEGMENTS_NOT_FOUND');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Phase 5: Story structure + memory_mosaic tests
+  // ---------------------------------------------------------------------------
+
+  describe('Phase 5: story_structure', () => {
+    describe('POST /api/stories/plan returns recommended_story_structures', () => {
+      it('returns recommended_story_structures for valid entry', async () => {
+        const res = await request.post('/api/stories/plan').send({ entry_name: '周敦颐——理学开山鼻祖' });
+        if (res.status === 200) {
+          expectSuccess(res.body);
+          const plan = res.body.data;
+          expect(plan).toHaveProperty('recommended_story_structures');
+          expect(Array.isArray(plan.recommended_story_structures)).toBe(true);
+          expect(plan.recommended_story_structures.length).toBeGreaterThan(0);
+          // First structure should be single_event_drama for 历史人物
+          const first = plan.recommended_story_structures[0];
+          expect(first).toHaveProperty('story_structure');
+          expect(first).toHaveProperty('reason');
+          expect(first).toHaveProperty('priority');
+          expect(first.story_structure).toBe('single_event_drama');
+          // memory_mosaic_biography should be recommended for 历史人物
+          const mosaic = plan.recommended_story_structures.find(
+            (s: any) => s.story_structure === 'memory_mosaic_biography'
+          );
+          expect(mosaic).toBeDefined();
+        }
+      });
+    });
+
+    describe('POST /api/stories/generate with story_structure', () => {
+      it('returns story with story_structure field when story_structure provided', async () => {
+        const res = await request.post('/api/stories/generate').send({
+          entry_name: '周敦颐——理学开山鼻祖',
+          video_type: 'character_story',
+          story_structure: 'single_event_drama',
+          target_video_duration: '3分钟',
+        });
+        if (res.status === 200) {
+          expectSuccess(res.body);
+          const story = res.body.data;
+          expect(story).toHaveProperty('story_structure');
+          expect(story.story_structure).toBe('single_event_drama');
+        }
+      });
+
+      it('returns story with story_structure=single_event_drama by default (backward compat)', async () => {
+        const res = await request.post('/api/stories/generate').send({
+          entry_name: '周敦颐——理学开山鼻祖',
+          generation_type: 'character_story',
+          target_video_duration: '3分钟',
+        });
+        if (res.status === 200) {
+          expectSuccess(res.body);
+          const story = res.body.data;
+          // story_structure defaults to single_event_drama when not specified
+          expect(story).toHaveProperty('story_structure');
+          expect(story.story_structure).toBe('single_event_drama');
+          // All existing fields still present
+          expect(story).toHaveProperty('storyId');
+          expect(story).toHaveProperty('title');
+          expect(story).toHaveProperty('full_text');
+          expect(story).toHaveProperty('scene_breakdown');
+          expect(story).toHaveProperty('gears_segments');
+          expect(story).toHaveProperty('generation_type');
+          expect(story).toHaveProperty('video_type');
+        }
+      });
+
+      it('accepts story_structure=memory_mosaic_biography with compatible video_type', async () => {
+        const res = await request.post('/api/stories/generate').send({
+          entry_name: '周敦颐——理学开山鼻祖',
+          video_type: 'character_story',
+          story_structure: 'memory_mosaic_biography',
+          target_video_duration: '3分钟',
+        });
+        if (res.status === 200) {
+          expectSuccess(res.body);
+          const story = res.body.data;
+          expect(story.story_structure).toBe('memory_mosaic_biography');
+          // Memory mosaic should include memory_mosaic_seed
+          expect(story).toHaveProperty('memory_mosaic_seed');
+          expect(story.memory_mosaic_seed).not.toBeNull();
+          expect(story.memory_mosaic_seed.subject).toBe('周敦颐');
+          expect(story.memory_mosaic_seed.witnesses.length).toBeGreaterThanOrEqual(3);
+          // Memory mosaic should include reference_trace
+          expect(story).toHaveProperty('reference_trace');
+          expect(Array.isArray(story.reference_trace)).toBe(true);
+          // Full text should NOT contain biography-style phrases
+          const forbiddenPhrases = ['他的一生', '生平事迹', '一生充满传奇'];
+          for (const phrase of forbiddenPhrases) {
+            expect(story.full_text).not.toContain(phrase);
+          }
+        }
+      });
+
+      it('rejects memory_mosaic_biography with incompatible video_type', async () => {
+        const res = await request.post('/api/stories/generate').send({
+          entry_name: '周敦颐——理学开山鼻祖',
+          video_type: 'culture_promo',
+          story_structure: 'memory_mosaic_biography',
+          target_video_duration: '3分钟',
+        });
+        expect(res.status).toBe(400);
+        expectFailure(res.body, 'VALIDATION_ERROR');
+        // Error message should mention incompatible video_type
+        expect(res.body.error.message).toContain('memory_mosaic_biography');
+      });
+
+      it('accepts reference_strength field', async () => {
+        const res = await request.post('/api/stories/generate').send({
+          entry_name: '周敦颐——理学开山鼻祖',
+          video_type: 'character_story',
+          story_structure: 'single_event_drama',
+          reference_strength: 'medium',
+          target_video_duration: '3分钟',
+        });
+        if (res.status === 200) {
+          expectSuccess(res.body);
+        }
+      });
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

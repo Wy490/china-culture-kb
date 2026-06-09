@@ -53,6 +53,23 @@ export const PresentationStyleSchema = z.enum([
 ]);
 
 // ---------------------------------------------------------------------------
+// Story structure type (8 叙事结构) — Phase 5
+// ---------------------------------------------------------------------------
+
+export const StoryStructureTypeSchema = z.enum([
+  'single_event_drama',
+  'three_act_drama',
+  'memory_mosaic_biography',
+  'witness_testimony',
+  'object_clue_journey',
+  'before_after_transformation',
+  'case_reconstruction',
+  'lecture_argument',
+]);
+
+export const ReferenceStrengthSchema = z.enum(['light', 'medium', 'strong']);
+
+// ---------------------------------------------------------------------------
 // Duration & panel count
 // ---------------------------------------------------------------------------
 
@@ -90,7 +107,7 @@ export const StoryGenerateRequestSchema = z.object({
   tone: z.string().optional(),
   presentation_style: PresentationStyleSchema.optional(),
   output_gears_segments: z.boolean().optional().default(true),
-  // New fields
+  // New fields for outline-driven multi-knowledge matching
   outline: z.string().optional(),
   knowledge_pack: z.object({
     primary_entries: z.array(z.object({
@@ -122,12 +139,30 @@ export const StoryGenerateRequestSchema = z.object({
     })),
     overall_confidence: z.number(),
   }).optional(),
+  // New fields for story structure and creative reference (Phase 5)
+  story_structure: StoryStructureTypeSchema.optional(),
+  creative_reference_ids: z.array(z.string()).optional(),
+  style_pack_ids: z.array(z.string()).optional(),
+  reference_strength: ReferenceStrengthSchema.optional(),
 }).refine(
   (data) => data.entry_name || data.knowledge_pack || data.outline,
   { message: 'At least one of entry_name, knowledge_pack, or outline must be provided', path: ['entry_name'] },
 ).refine(
   (data) => data.generation_type || data.video_type,
   { message: 'Either generation_type or video_type must be provided', path: ['video_type'] },
+).refine(
+  // memory_mosaic_biography only compatible with certain video_types
+  (data) => {
+    if (data.story_structure === 'memory_mosaic_biography') {
+      const allowedVideoTypes = ['character_story', 'historical_drama', 'documentary_short', 'ai_comic_drama'];
+      const resolvedVideoType = data.video_type ?? (data.generation_type ? { character_story: 'character_story', culture_promo: 'culture_promo', scene_short: 'scene_short' }[data.generation_type] : undefined);
+      if (resolvedVideoType && !allowedVideoTypes.includes(resolvedVideoType)) {
+        return false;
+      }
+    }
+    return true;
+  },
+  { message: 'memory_mosaic_biography is only compatible with character_story, historical_drama, documentary_short, or ai_comic_drama', path: ['story_structure'] },
 );
 
 // ---------------------------------------------------------------------------
