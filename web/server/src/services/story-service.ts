@@ -54,6 +54,11 @@ import {
   validateMemoryMosaicStory,
 } from './memory-mosaic-service.js';
 import { validateReferenceSafety, combineQualityReports } from './reference-quality-service.js';
+import { createProjectFromGeneratedStory } from './project-service.js';
+import { resolveModelProfile } from './model-catalog.js';
+import { buildStoryGenerationPromptPackage } from './story-generation-prompt.js';
+import { generateStoryWithAdapter } from './story-generation-model.js';
+import type { StoryGenerationModelOutput } from './story-generation-prompt.js';
 
 // ---------------------------------------------------------------------------
 // Entry type → VideoType routing (entry Chinese type name → recommended VideoType list)
@@ -634,6 +639,110 @@ function extractProcessFromStory(storyText: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Compatibility check: model scene_breakdown must structurally match local skeleton.
+// If scene count or scene_ids don't align, the merge would produce inconsistent results
+// (full_text from model + scene_breakdown hybrid that tells a different story).
+// Incompatible → whole fallback to local result.
+// Exported for focused testing (story-generation-model.test.ts).
+// ---------------------------------------------------------------------------
+
+export function isModelSceneBreakdownCompatible(
+  localScenes: StoryScene[],
+  modelScenes: Array<{ scene_id: number }>,
+): boolean {
+  // Must have same number of scenes
+  if (modelScenes.length !== localScenes.length) return false;
+
+  // All model scene_ids must exist in local scene_ids — ensures merge-by-ID works
+  const localIds = new Set(localScenes.map(s => s.scene_id));
+  for (const ms of modelScenes) {
+    if (!localIds.has(ms.scene_id)) return false;
+  }
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Merge external model output onto local structural skeleton
+// Strategy: keep local structural fields (scene_id, duration, panel_count),
+//           replace creative content fields with model output,
+//           rebuild gears_segments from merged scene data.
+// ONLY called when isModelSceneBreakdownCompatible passes — guarantees
+// full_text and scene_breakdown are structurally aligned.
+// Exported for focused testing (story-generation-model.test.ts).
+// ---------------------------------------------------------------------------
+
+export function mergeModelOutputOntoLocalSkeleton(
+  local: {
+    title: string;
+    logline: string;
+    theme: string;
+    full_text: string;
+    scene_breakdown: StoryScene[];
+    gears_segments: GearsSegment[];
+    cultural_constraints: string[];
+    credibility_note: string;
+    characters: StoryCharacter[];
+    act_structure: ActBeat[];
+    protagonist_arc: ProtagonistArc[];
+  },
+  modelOutput: StoryGenerationModelOutput,
+  videoType: VideoType,
+  presentationStyle: PresentationStyle,
+): typeof local {
+  // Merge scene_breakdown: keep local structural metadata, inject model creative content
+  // Since compatibility check passed, every model scene matches a local scene by ID.
+  const mergedSceneBreakdown: StoryScene[] = local.scene_breakdown.map((localScene) => {
+    // Find matching model scene by scene_id (guaranteed to exist after compat check)
+    const modelScene = modelOutput.scene_breakdown.find(ms => ms.scene_id === localScene.scene_id)!;
+
+    return {
+      ...localScene,                          // Keep structural fields: scene_id, duration_sec, location, time_of_day, dramatic_function
+      title: modelScene.title || localScene.title,
+      plot: modelScene.plot || localScene.plot,
+      key_action: modelScene.key_action || localScene.key_action,
+      conflict: modelScene.conflict || localScene.conflict,
+      dialogue_or_narration: modelScene.dialogue_or_narration || localScene.dialogue_or_narration,
+      visual_prompt: modelScene.visual_prompt || localScene.visual_prompt,
+      camera_suggestion: modelScene.camera_suggestion || localScene.camera_suggestion,
+      characters: modelScene.characters?.length ? modelScene.characters : localScene.characters,
+      cultural_note: modelScene.cultural_note || localScene.cultural_note,
+    };
+  });
+
+  // Rebuild gears_segments from merged scene data
+  const mergedGearsSegments = buildGearsSegments(mergedSceneBreakdown, '', videoType, presentationStyle);
+
+  // Merge top-level creative fields from model output
+  const mergedCharacters: StoryCharacter[] = modelOutput.characters?.length
+    ? modelOutput.characters.map(c => ({
+        name: c.name,
+        role: c.role,
+        description: c.description,
+        arc: c.arc,
+      }))
+    : local.characters;
+
+  const mergedProtagonistArc: ProtagonistArc[] = modelOutput.protagonist_arc?.length
+    ? modelOutput.protagonist_arc
+    : local.protagonist_arc;
+
+  return {
+    title: modelOutput.title || local.title,
+    logline: modelOutput.logline || local.logline,
+    theme: modelOutput.theme || local.theme,
+    full_text: modelOutput.full_text || local.full_text,
+    scene_breakdown: mergedSceneBreakdown,
+    gears_segments: mergedGearsSegments,
+    cultural_constraints: modelOutput.cultural_constraints?.length ? modelOutput.cultural_constraints : local.cultural_constraints,
+    credibility_note: modelOutput.credibility_note || local.credibility_note,
+    characters: mergedCharacters,
+    act_structure: local.act_structure, // Keep local act_structure (structural)
+    protagonist_arc: mergedProtagonistArc,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // generateAndStoreStory — create story with dramatic narrative from KB entry
 // REFACTORED: uses dramatic-story engine instead of template concatenation
 // ---------------------------------------------------------------------------
@@ -677,12 +786,18 @@ export async function generateAndStoreStory(
     return fail(ErrorCodes.VALIDATION_ERROR, 'Either entry_name or knowledge_pack with primary_entries must be provided');
   }
 
+  const selectedModelProfile = resolveModelProfile(request.model_profile_id);
+
   // --- Select central event ---
   const boldEvents = extractBoldEvents(entry.story);
   const centralEvent = selectCentralEvent(entry, boldEvents, videoType, selected_event);
 
-  // --- Generate story content (branch by story_structure) ---
-  let storyResult: {
+  // --- Generate story content ---
+  // Strategy: always run local engine as fallback, then try external model adapter.
+  // If adapter succeeds, merge its creative content onto the local structural skeleton.
+  // If adapter fails or is not configured, use the full local result unchanged.
+
+  let localResult: {
     title: string;
     logline: string;
     theme: string;
@@ -699,12 +814,12 @@ export async function generateAndStoreStory(
   let memoryMosaicSeed: MemoryMosaicStorySeed | undefined;
   let referenceTrace: ReferenceTrace[] | undefined;
 
+  // --- Step 1: Always generate local content as structural skeleton + fallback ---
   if (storyStructure === 'memory_mosaic_biography') {
-    // ---- Memory Mosaic Biography path ----
     const seed = buildMemoryMosaicSeed(entry, centralEvent, knowledgePackToUse);
     memoryMosaicSeed = seed;
 
-    storyResult = generateMemoryMosaicContent({
+    localResult = generateMemoryMosaicContent({
       entry,
       centralEvent,
       videoType,
@@ -716,7 +831,6 @@ export async function generateAndStoreStory(
       originalUserQuery: original_user_query ?? outline,
     });
 
-    // Build reference trace for memory mosaic
     if (request.style_pack_ids && request.style_pack_ids.length > 0) {
       referenceTrace = request.style_pack_ids.map(spId => ({
         style_pack_id: spId,
@@ -729,33 +843,8 @@ export async function generateAndStoreStory(
         source_story_structure: storyStructure,
       }];
     }
-
-    // Validate with memory mosaic-specific quality checks
-    const mosaicQuality = validateMemoryMosaicStory({
-      full_text: storyResult.full_text,
-      scene_breakdown: storyResult.scene_breakdown,
-      memory_seed: seed,
-    });
-
-    // Validate reference safety (MVP: basic checks only)
-    const refSafety = validateReferenceSafety({
-      generated_text: storyResult.full_text,
-      reference_strength: request.reference_strength,
-      reference_trace: referenceTrace,
-      style_pack_ids: request.style_pack_ids,
-    });
-
-    // Combine quality reports
-    const qualityReport = combineQualityReports(mosaicQuality, refSafety);
-
-    // Log quality issues but don't block generation
-    if (!qualityReport.passed) {
-      // Still return the result, but include the quality issues
-    }
-
   } else {
-    // ---- Standard dramatic story path ----
-    storyResult = generateDramaticContent({
+    localResult = generateDramaticContent({
       entry,
       centralEvent,
       videoType,
@@ -766,7 +855,6 @@ export async function generateAndStoreStory(
       originalUserQuery: original_user_query ?? outline,
     });
 
-    // Build reference trace for standard path
     if (request.style_pack_ids && request.style_pack_ids.length > 0) {
       referenceTrace = request.style_pack_ids.map(spId => ({
         style_pack_id: spId,
@@ -774,6 +862,75 @@ export async function generateAndStoreStory(
         source_story_structure: storyStructure,
       }));
     }
+  }
+
+  // --- Step 2: Try external model adapter ---
+  const promptPackage = buildStoryGenerationPromptPackage({
+    entry,
+    request,
+    videoType,
+    presentationStyle,
+    storyStructure,
+    targetDuration,
+    tone: tone ?? '',
+    selectedEvent: centralEvent,
+    knowledgePack: knowledgePackToUse,
+    memoryMosaicSeed,
+  });
+
+  const adapterResult = await generateStoryWithAdapter({
+    pkg: promptPackage,
+    modelProfileId: selectedModelProfile.id,
+  });
+
+  // --- Step 3: Determine final result — merge or fallback ---
+  let storyResult: typeof localResult;
+  let adapterTrace: string | undefined;
+  let generationMode: 'external_model' | 'local_fallback' | 'local_only';
+  let generationUsedFallback: boolean;
+
+  if (adapterResult.output) {
+    // Adapter produced output — check structural compatibility before merging.
+    // If model scene_breakdown is incompatible with local skeleton (different count
+    // or scene_ids), fall back entirely to local result to avoid inconsistent
+    // full_text vs scene_breakdown.
+    const compatible = isModelSceneBreakdownCompatible(
+      localResult.scene_breakdown,
+      adapterResult.output.scene_breakdown,
+    );
+
+    if (compatible) {
+      // Compatible — merge creative content onto local structural skeleton
+      storyResult = mergeModelOutputOntoLocalSkeleton(localResult, adapterResult.output, videoType, presentationStyle);
+      adapterTrace = `provider:${adapterResult.provider}`;
+      generationMode = 'external_model';
+      generationUsedFallback = false;
+    } else {
+      // Incompatible — whole fallback to local result
+      storyResult = localResult;
+      adapterTrace = `fallback:scene_breakdown_incompatible_with_local_skeleton`;
+      generationMode = 'local_fallback';
+      generationUsedFallback = true;
+    }
+  } else {
+    // Adapter failed or not configured — use full local result unchanged
+    storyResult = localResult;
+    adapterTrace = adapterResult.used_fallback
+      ? `fallback:${adapterResult.reason || 'model unavailable'}`
+      : undefined;
+    generationMode = adapterResult.used_fallback ? 'local_fallback' : 'local_only';
+    generationUsedFallback = adapterResult.used_fallback;
+  }
+
+  // Add adapter trace to reference_trace
+  if (adapterTrace) {
+    referenceTrace = [
+      ...(referenceTrace ?? []),
+      {
+        applied_rules: [adapterTrace],
+        source_story_structure: storyStructure,
+      },
+    ];
   }
 
   // --- Validate story quality (unified for both paths) ---
@@ -802,9 +959,19 @@ export async function generateAndStoreStory(
     ? storyResult.gears_segments
     : [];
 
+  const createdAt = new Date().toISOString();
+
   const storyData: StoryGenerateResult & { _request_meta: Record<string, unknown> } = {
     storyId,
     title: storyResult.title,
+    model_profile_id: selectedModelProfile.id,
+    generation_source: generationMode === 'external_model'
+      ? selectedModelProfile.label
+      : generationMode === 'local_fallback'
+        ? `本地引擎 (未使用所选模型)`
+        : '本地引擎',
+    generation_mode: generationMode,
+    generation_used_fallback: generationUsedFallback,
     generation_type: generationType,
     video_type: videoType,
     presentation_style: presentationStyle,
@@ -830,26 +997,26 @@ export async function generateAndStoreStory(
     characters: storyResult.characters,
     act_structure: storyResult.act_structure,
     protagonist_arc: storyResult.protagonist_arc,
-    // Type-specific fields — enriched with real content from entry + result
+    // Type-specific fields — prefer model output if adapter succeeded, else derive from entry + result
     ...(videoType === 'culture_promo' || videoType === 'heritage_promo' || videoType === 'city_brand_promo' ? {
-      visual_symbols: [
+      visual_symbols: adapterResult.output?.visual_symbols ?? [
         ...entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2),
         ...entry.keywords.filter(k => !['人物', '故事', '历史'].includes(k)).slice(0, 3),
       ],
       craft_or_ritual_process: extractProcessFromStory(entry.story) || `核心技艺流程：${entry.keywords.slice(0, 3).join('→')}`,
       modern_connection: entry.culturalSignificance?.substring(0, 80) ?? `${entry.name}在现代的文化传承与创新`,
-      core_message: storyResult.logline,
-      slogan_or_key_sentence: extractQuotes(entry.story).length > 0
+      core_message: adapterResult.output?.core_message ?? storyResult.logline,
+      slogan_or_key_sentence: adapterResult.output?.slogan_or_key_sentence ?? (extractQuotes(entry.story).length > 0
         ? extractQuotes(entry.story)[0]
-        : `${entry.type}之光——${entry.name.split('——')[0]}`,
+        : `${entry.type}之光——${entry.name.split('——')[0]}`),
     } : {}),
     ...(videoType === 'scene_short' || videoType === 'landscape_mood' ? {
       spatial_identity: `${entry.region}·${entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2).join('、')}`,
       visual_route: storyResult.scene_breakdown.map(s => `${s.title}：${s.visual_prompt}`),
       time_layer: entry.culturalSignificance?.substring(0, 60) ?? `${entry.name}的古今变迁与时空叠加`,
-      atmosphere: videoType === 'landscape_mood'
+      atmosphere: adapterResult.output?.atmosphere ?? (videoType === 'landscape_mood'
         ? entry.keywords.filter(k => ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬'].some(w => k.includes(w))).join('、') || `${entry.region}的自然意境`
-        : `${entry.region}的场景氛围`,
+        : `${entry.region}的场景氛围`),
     } : {}),
     ...(videoType === 'ai_comic_drama' ? {
       dialogue: storyResult.scene_breakdown.map(s => ({
@@ -862,7 +1029,7 @@ export async function generateAndStoreStory(
       })),
     } : {}),
     ...(videoType === 'explainer_video' || videoType === 'lecture_video' ? {
-      argument_points: storyResult.scene_breakdown.slice(0, 4).map(s => s.key_action),
+      argument_points: adapterResult.output?.argument_points ?? storyResult.scene_breakdown.slice(0, 4).map(s => s.key_action),
       knowledge_outline: storyResult.scene_breakdown.map(s => `${s.scene_id}. ${s.title}：${s.plot.substring(0, 40)}`),
     } : {}),
     ...(videoType === 'documentary_short' ? {
@@ -884,18 +1051,23 @@ export async function generateAndStoreStory(
       entry_type: entry.type,
       video_type: videoType,
       presentation_style: presentationStyle,
-      created_at: new Date().toISOString(),
+      created_at: createdAt,
+      model_provider: adapterResult.provider,
+      model_used_fallback: adapterResult.used_fallback,
+      model_fallback_reason: adapterResult.reason,
     },
   };
+
+  const storyWithProject = await createProjectFromGeneratedStory(storyData, createdAt);
 
   // Ensure directory and write file — use video_type as directory name
   const dirPath = resolve(generatedRoot(), videoType);
   await mkdir(dirPath, { recursive: true });
   const filePath = resolve(dirPath, `${storyId}.json`);
-  await writeFile(filePath, JSON.stringify(storyData, null, 2), 'utf-8');
+  await writeFile(filePath, JSON.stringify(storyWithProject, null, 2), 'utf-8');
 
   // Return to API without internal _request_meta
-  return success(stripInternalFields(storyData));
+  return success(stripInternalFields(storyWithProject));
 }
 
 // ---------------------------------------------------------------------------
@@ -940,10 +1112,21 @@ export async function listStories(
           has_gears_segments: (data.gears_segments?.length ?? 0) > 0,
           scene_count: data.scene_breakdown?.length ?? 0,
           credibility_note: data.credibility_note || '',
+          model_profile_id: data.model_profile_id || undefined,
+          generation_source: data.generation_source || undefined,
+          generation_mode: data.generation_mode || undefined,
+          generation_used_fallback: data.generation_used_fallback || undefined,
         });
       } catch { continue; }
     }
   }
+
+  results.sort((a, b) => {
+    if (!a.created_at && !b.created_at) return a.title.localeCompare(b.title, 'zh-CN');
+    if (!a.created_at) return 1;
+    if (!b.created_at) return -1;
+    return b.created_at.localeCompare(a.created_at);
+  });
 
   return success(results);
 }

@@ -364,6 +364,12 @@ export interface StylePack {
 }
 
 // ---------------------------------------------------------------------------
+// Generation mode — structured status for model adapter results
+// ---------------------------------------------------------------------------
+
+export type GenerationMode = 'external_model' | 'local_fallback' | 'local_only';
+
+// ---------------------------------------------------------------------------
 // Duration & panel count
 // ---------------------------------------------------------------------------
 
@@ -480,6 +486,7 @@ export interface StoryGenerateRequest {
   original_user_query?: string;
   generation_type?: GenerationType;
   video_type?: VideoType;
+  model_profile_id?: string;
   selected_event?: string;
   target_video_duration?: SupportedDuration;
   tone?: string;
@@ -552,6 +559,79 @@ export interface StoryListItem {
   has_gears_segments: boolean;
   scene_count: number;
   credibility_note: string;
+  model_profile_id?: string;
+  generation_source?: string;
+  generation_mode?: GenerationMode;
+  generation_used_fallback?: boolean;
+}
+
+export type StoryProjectStatus = 'draft' | 'edited' | 'exported' | 'finalized';
+
+export interface StoryProjectListItem {
+  project_id: string;
+  current_story_id: string;
+  title: string;
+  source_domain: 'china_culture';
+  source_entry: string;
+  video_type: VideoType;
+  presentation_style: PresentationStyle;
+  story_structure?: StoryStructureType;
+  status: StoryProjectStatus;
+  updated_at: string;
+  scene_count: number;
+  has_gears_segments: boolean;
+  credibility_note: string;
+  logline: string;
+  model_profile_id?: string;
+  generation_source?: string;
+  generation_mode?: GenerationMode;
+  generation_used_fallback?: boolean;
+}
+
+export type StoryProjectVersionChangeType = 'initial_generation' | 'scene_regeneration';
+
+export interface StoryProjectVersionSummary {
+  version_id: string;
+  created_at: string;
+  change_type: StoryProjectVersionChangeType;
+  scene_ids_changed: number[];
+  note?: string;
+}
+
+export interface StoryProjectMeta extends StoryProjectListItem {
+  created_at: string;
+  current_version_id: string;
+  version_count: number;
+}
+
+export interface StoryProjectVersionSnapshot {
+  project_id: string;
+  version_id: string;
+  created_at: string;
+  change_type: StoryProjectVersionChangeType;
+  scene_ids_changed: number[];
+  note?: string;
+  story: StoryGenerateResult;
+}
+
+export interface StoryProjectDetail {
+  project: StoryProjectMeta;
+  current_story: StoryGenerateResult;
+  versions: StoryProjectVersionSummary[];
+}
+
+export type StorySceneRegenerateIntent =
+  | 'tighten_conflict'
+  | 'rewrite_narration'
+  | 'shift_emotion'
+  | 'clarify_visuals'
+  | 'custom';
+
+export interface StorySceneRegenerateRequest {
+  scene_id: number;
+  intent: StorySceneRegenerateIntent;
+  user_note?: string;
+  model_profile_id?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -670,6 +750,12 @@ export interface ReferenceTrace {
 
 export interface StoryGenerateResult {
   storyId: string;
+  project_id?: string;
+  current_version_id?: string;
+  model_profile_id?: string;
+  generation_source?: string;
+  generation_mode?: GenerationMode;
+  generation_used_fallback?: boolean;
   title: string;
   generation_type: GenerationType;
   video_type: VideoType;
@@ -773,6 +859,18 @@ export interface EntryDetail {
 export interface ProvinceInfo {
   name: string;
   entry_count: number;
+}
+
+export type AIModelCapability = 'story_generation' | 'scene_regeneration';
+
+export interface AIModelProfile {
+  id: string;
+  label: string;
+  description: string;
+  runtime: 'claude' | 'codex';
+  model: string;
+  recommended?: boolean;
+  capabilities: AIModelCapability[];
 }
 
 export interface TypeInfo {

@@ -6,6 +6,8 @@
       <p v-if="result.logline" class="story-result__logline">{{ result.logline }}</p>
       <p class="story-result__meta">
         成片: {{ videoTypeLabel }} · 表现: {{ presentationStyleLabel }} · 来源: {{ result.source_entry }}
+        <span v-if="result.generation_source" :class="generationModelClass"> · 模型: {{ result.generation_source }}</span>
+        <span v-else-if="result.model_profile_id" class="story-result__model-normal"> · 模型: {{ result.model_profile_id }}</span>
         <span v-if="result.credibility_note"> · 可信度: {{ result.credibility_note }}</span>
       </p>
     </header>
@@ -105,6 +107,15 @@
             <p v-if="scene.source_entries && scene.source_entries.length > 0" class="story-result__scene-source">
               <strong>来源条目:</strong> {{ scene.source_entries.join('、') }}
             </p>
+          </div>
+          <div v-if="editableProject" class="story-result__scene-actions">
+            <button
+              class="btn btn--sm btn--blue"
+              :disabled="regeneratingSceneId === scene.scene_id"
+              @click="emit('rewrite-scene', scene.scene_id)"
+            >
+              {{ regeneratingSceneId === scene.scene_id ? '正在重写…' : '重写这一场' }}
+            </button>
           </div>
         </div>
       </div>
@@ -208,8 +219,16 @@ import type { StoryGenerateResult, VideoType, PresentationStyle, GearsSegment } 
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import GearsActions from './GearsActions.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   result: StoryGenerateResult | null
+  editableProject?: boolean
+  regeneratingSceneId?: number | null
+}>(), {
+  editableProject: false,
+  regeneratingSceneId: null,
+})
+const emit = defineEmits<{
+  (e: 'rewrite-scene', sceneId: number): void
 }>()
 
 const expandedSegments = reactive<Record<number, boolean>>({})
@@ -223,6 +242,18 @@ const videoTypeLabel = computed(() => {
 const presentationStyleLabel = computed(() => {
   if (!props.result) return ''
   return PRESENTATION_STYLE_CONFIG[props.result.presentation_style]?.label ?? props.result.presentation_style
+})
+
+const isFallbackGeneration = computed(() => {
+  // Use the structured boolean field — no fragile Chinese string matching
+  return props.result?.generation_used_fallback === true
+})
+
+const generationModelClass = computed(() => {
+  if (isFallbackGeneration.value) return 'story-result__model-fallback'
+  // local_only (no adapter configured) shows neutral grey, external_model shows green
+  if (props.result?.generation_mode === 'local_only') return 'story-result__model-neutral'
+  return 'story-result__model-normal'
 })
 
 const fullTextParagraphs = computed(() => {
@@ -271,6 +302,9 @@ function showCopyMessage(msg: string) {
 .story-result__title { margin: 0 0 8px 0; font-size: 24px; color: #2c3e50; }
 .story-result__logline { margin: 0 0 4px 0; font-size: 16px; color: #34495e; font-style: italic; }
 .story-result__meta { margin: 0; font-size: 14px; color: #7f8c8d; }
+.story-result__model-normal { color: #27ae60; }
+.story-result__model-fallback { color: #f39c12; }
+.story-result__model-neutral { color: #7f8c8d; }
 .story-result__section { margin-bottom: 24px; }
 .story-result__section-title { margin: 0 0 10px 0; font-size: 18px; color: #2c3e50; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
 
@@ -296,6 +330,7 @@ function showCopyMessage(msg: string) {
 .story-result__scene-factual { margin: 0; font-size: 13px; color: #27ae60; background: #d5f5e3; padding: 4px 8px; border-radius: 4px; }
 .story-result__scene-fictionalized { margin: 0; font-size: 13px; color: #8e44ad; background: #f5eef8; padding: 4px 8px; border-radius: 4px; }
 .story-result__scene-source { margin: 0; font-size: 13px; color: #7f8c8d; }
+.story-result__scene-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
 
 /* GEARS segments */
 .story-result__segments { display: flex; flex-direction: column; gap: 8px; }
