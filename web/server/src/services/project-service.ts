@@ -146,8 +146,8 @@ function buildProjectMeta(
     logline: story.logline,
     model_profile_id: story.model_profile_id,
     generation_source: story.generation_source,
-    generation_mode: story.generation_mode,
-    generation_used_fallback: story.generation_used_fallback,
+    generation_mode: story.generation_mode ?? 'local_only',
+    generation_used_fallback: story.generation_used_fallback ?? false,
   };
 }
 
@@ -311,8 +311,8 @@ async function persistProjectVersion(
     credibility_note: updatedStory.credibility_note,
     model_profile_id: updatedStory.model_profile_id,
     generation_source: updatedStory.generation_source,
-    generation_mode: updatedStory.generation_mode,
-    generation_used_fallback: updatedStory.generation_used_fallback,
+    generation_mode: updatedStory.generation_mode ?? 'local_only',
+    generation_used_fallback: updatedStory.generation_used_fallback ?? false,
   };
 
   await writeJsonFile(projectVersionPath(project.project_id, versionId), snapshot);
@@ -373,9 +373,16 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
 
   return success({
     project,
-    current_story: currentVersion.story,
+    current_story: normalizeStoryGenerationFields(currentVersion.story),
     versions: versions.map(toVersionSummary),
   });
+}
+
+/** 旧故事 JSON 缺 generation_mode/generation_used_fallback → 填充默认值 */
+function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenerateResult {
+  story.generation_mode = story.generation_mode ?? 'local_only';
+  story.generation_used_fallback = story.generation_used_fallback ?? false;
+  return story;
 }
 
 export async function regenerateProjectScene(

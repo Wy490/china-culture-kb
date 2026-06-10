@@ -159,4 +159,62 @@ describe('project-service', () => {
     expect(result.data?.project.model_profile_id).toBe('claude_sonnet');
     expect(result.data?.current_story.model_profile_id).toBe('claude_sonnet');
   });
+
+  // ---------------------------------------------------------------------------
+  // 旧故事兼容性测试：generation_mode/generation_used_fallback 缺失或为 false
+  // ---------------------------------------------------------------------------
+
+  it('fills generation_mode=local_only and generation_used_fallback=false for old stories missing these fields', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    // makeStory() 不含 generation_mode/generation_used_fallback → 模拟旧故事
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+
+    const detail = await getProject(enriched.project_id!);
+    expect(detail.ok).toBe(true);
+    // 旧故事缺失字段 → 填充为 local_only / false
+    expect(detail.data?.current_story.generation_mode).toBe('local_only');
+    expect(detail.data?.current_story.generation_used_fallback).toBe(false);
+    expect(detail.data?.project.generation_mode).toBe('local_only');
+    expect(detail.data?.project.generation_used_fallback).toBe(false);
+  });
+
+  it('preserves generation_used_fallback=false (does not coerce to undefined)', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    // 故事显式设置 generation_used_fallback=false（非旧故事缺失）
+    const story = makeStory() as StoryGenerateResult & { generation_mode?: string; generation_used_fallback?: boolean };
+    story.generation_mode = 'local_only';
+    story.generation_used_fallback = false;
+
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const detail = await getProject(enriched.project_id!);
+    expect(detail.ok).toBe(true);
+    // false 不应被 || 操作符吞掉变为 undefined
+    expect(detail.data?.current_story.generation_used_fallback).toBe(false);
+    expect(detail.data?.current_story.generation_mode).toBe('local_only');
+  });
+
+  it('preserves generation_mode=external_model and generation_used_fallback=true for adapter stories', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory() as StoryGenerateResult & { generation_mode?: string; generation_used_fallback?: boolean; generation_source?: string };
+    story.generation_mode = 'external_model';
+    story.generation_used_fallback = true;
+    story.generation_source = 'Claude Sonnet (fallback)';
+
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const detail = await getProject(enriched.project_id!);
+    expect(detail.ok).toBe(true);
+    expect(detail.data?.current_story.generation_mode).toBe('external_model');
+    expect(detail.data?.current_story.generation_used_fallback).toBe(true);
+    expect(detail.data?.current_story.generation_source).toBe('Claude Sonnet (fallback)');
+  });
 });

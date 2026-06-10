@@ -252,7 +252,9 @@ const isFallbackGeneration = computed(() => {
 const generationModelClass = computed(() => {
   if (isFallbackGeneration.value) return 'story-result__model-fallback'
   // local_only (no adapter configured) shows neutral grey, external_model shows green
-  if (props.result?.generation_mode === 'local_only') return 'story-result__model-neutral'
+  // undefined generation_mode (old stories) treated as local_only → grey
+  const mode = props.result?.generation_mode ?? 'local_only'
+  if (mode === 'local_only') return 'story-result__model-neutral'
   return 'story-result__model-normal'
 })
 

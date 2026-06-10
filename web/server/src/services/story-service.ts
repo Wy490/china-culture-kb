@@ -1120,8 +1120,8 @@ export async function listStories(
           credibility_note: data.credibility_note || '',
           model_profile_id: data.model_profile_id || undefined,
           generation_source: data.generation_source || undefined,
-          generation_mode: data.generation_mode || undefined,
-          generation_used_fallback: data.generation_used_fallback || undefined,
+          generation_mode: data.generation_mode ?? 'local_only',
+          generation_used_fallback: data.generation_used_fallback ?? false,
         });
       } catch { continue; }
     }
@@ -1149,7 +1149,11 @@ export async function getStory(storyId: string): Promise<ApiResponse<StoryGenera
     try {
       const content = await readFile(filePath, 'utf-8');
       const data = JSON.parse(content) as StoryGenerateResult & { _request_meta?: unknown };
-      return success(stripInternalFields(data));
+      const cleaned = stripInternalFields(data);
+      // 旧故事 JSON 缺 generation_mode/generation_used_fallback → 填充默认值
+      cleaned.generation_mode = cleaned.generation_mode ?? 'local_only';
+      cleaned.generation_used_fallback = cleaned.generation_used_fallback ?? false;
+      return success(cleaned);
     } catch { continue; }
   }
 
