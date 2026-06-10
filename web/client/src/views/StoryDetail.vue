@@ -20,7 +20,15 @@
 
       <!-- Back link -->
       <div class="story-detail-page__back">
-        <RouterLink class="btn btn--back" to="/story/new">← 返回故事工坊</RouterLink>
+        <RouterLink
+          v-if="story.project_id"
+          class="btn btn--back"
+          :to="`/projects/${story.project_id}`"
+        >
+          进入故事项目
+        </RouterLink>
+        <RouterLink v-else class="btn btn--back" to="/projects">返回故事项目</RouterLink>
+        <RouterLink class="btn btn--back" to="/story/new">继续生成故事</RouterLink>
       </div>
     </div>
 
@@ -109,6 +117,9 @@ onMounted(() => {
 /* Back */
 .story-detail-page__back {
   margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .btn {

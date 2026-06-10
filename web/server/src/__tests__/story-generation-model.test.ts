@@ -161,6 +161,26 @@ describe('isModelSceneBreakdownCompatible', () => {
     ];
     expect(isModelSceneBreakdownCompatible(local, model)).toBe(false);
   });
+
+  it('returns false when model repeats scene_ids even with same scene count', () => {
+    const local = makeLocalScenes(); // IDs 1,2,3
+    const model = [
+      { scene_id: 1, title: 'A', plot: '情节A足够长度', key_action: '动作A' },
+      { scene_id: 1, title: 'B', plot: '情节B足够长度', key_action: '动作B' },
+      { scene_id: 2, title: 'C', plot: '情节C足够长度', key_action: '动作C' },
+    ];
+    expect(isModelSceneBreakdownCompatible(local, model)).toBe(false);
+  });
+
+  it('returns false when model is missing a local scene_id and includes an extra one', () => {
+    const local = makeLocalScenes(); // IDs 1,2,3
+    const model = [
+      { scene_id: 1, title: 'A', plot: '情节A足够长度', key_action: '动作A' },
+      { scene_id: 2, title: 'B', plot: '情节B足够长度', key_action: '动作B' },
+      { scene_id: 4, title: 'C', plot: '情节C足够长度', key_action: '动作C' },
+    ];
+    expect(isModelSceneBreakdownCompatible(local, model)).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

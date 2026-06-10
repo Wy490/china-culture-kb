@@ -9,7 +9,7 @@ function makeZodLikeError(message: string, issues: unknown[]): Error {
   const err = new Error(message);
   err.name = 'ZodError';
   // Attach issues for the error handler's details extraction
-  (err as Record<string, unknown>).issues = issues;
+  (err as unknown as Record<string, unknown>).issues = issues;
   return err;
 }
 

@@ -3,7 +3,8 @@
 import { Router } from 'express';
 import { mcpReadAllProvinceFiles, mcpParseEntries } from '../services/mcp-proxy.js';
 import { success } from '@shared/types.js';
-import type { ProvinceInfo, TypeInfo, VideoType, PresentationStyle } from '@shared/types.js';
+import type { AIModelProfile, ProvinceInfo, TypeInfo, VideoType, PresentationStyle } from '@shared/types.js';
+import { listModelProfiles } from '../services/model-catalog.js';
 
 export const systemRouter = Router();
 
@@ -51,6 +52,15 @@ const TYPE_GENERATION_MAP: TypeInfo[] = [
 
 systemRouter.get('/types', (_req, res) => {
   res.json(success(TYPE_GENERATION_MAP));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/models — curated model options for users
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/models', (_req, res) => {
+  const models: AIModelProfile[] = listModelProfiles();
+  res.json(success(models));
 });
 
 // ---------------------------------------------------------------------------

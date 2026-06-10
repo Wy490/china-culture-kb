@@ -4,6 +4,8 @@
       <h1 class="app-title">中国传统文化知识库</h1>
       <nav class="app-nav">
         <RouterLink to="/">首页</RouterLink>
+        <RouterLink to="/knowledge">知识库</RouterLink>
+        <RouterLink to="/projects">故事项目</RouterLink>
         <RouterLink to="/search">搜索</RouterLink>
         <RouterLink to="/story/new">故事生成</RouterLink>
       </nav>
@@ -39,6 +41,7 @@
 .app-nav {
   display: flex;
   gap: 20px;
+  align-items: center;
 }
 
 .app-nav a {
@@ -66,6 +69,10 @@
     flex-direction: column;
     gap: 12px;
     padding: 12px 16px;
+  }
+  .app-nav {
+    flex-wrap: wrap;
+    justify-content: center;
   }
   .app-main {
     padding: 16px;

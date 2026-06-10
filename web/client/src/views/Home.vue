@@ -1,29 +1,47 @@
 <template>
   <div class="home">
-    <!-- Hero section -->
     <section class="home__hero">
-      <h1 class="home__hero-title">中国传统文化知识库</h1>
-      <p class="home__hero-desc">浏览知识库、搜索条目、生成故事脚本</p>
-      <RouterLink class="btn btn--primary btn--lg" to="/story/new">
-        🎬 开始生成故事
+      <div class="home__hero-copy">
+        <p class="home__hero-eyebrow">Story Agent 工作台</p>
+        <h1 class="home__hero-title">从知识库到故事项目的创作主控台</h1>
+        <p class="home__hero-desc">浏览知识库、生成初稿、管理故事项目，并逐步进入局部重写与导出流程。</p>
+      </div>
+    </section>
+
+    <section class="home__workbench">
+      <RouterLink class="home__workbench-card home__workbench-card--library" to="/knowledge">
+        <span class="home__workbench-kicker">知识库</span>
+        <h2>中国文化知识库</h2>
+        <p>省份、类型和主题条目从统一入口进入，首页不再铺开全部目录。</p>
+        <div class="home__workbench-meta">
+          <span>{{ provinces.length }} 个省份</span>
+          <span>{{ totalEntries }} 条条目</span>
+        </div>
+      </RouterLink>
+
+      <RouterLink class="home__workbench-card home__workbench-card--projects" to="/projects">
+        <span class="home__workbench-kicker">项目</span>
+        <h2>故事项目</h2>
+        <p>查看最近生成结果，后续在这里承接局部修改、版本管理和导出。</p>
+        <div class="home__workbench-meta">
+          <span>{{ projectCount }} 个项目</span>
+          <span>{{ recentStories.length }} 个最近更新</span>
+        </div>
+      </RouterLink>
+
+      <RouterLink class="home__workbench-card home__workbench-card--studio" to="/story/new">
+        <span class="home__workbench-kicker">生成</span>
+        <h2>故事工坊</h2>
+        <p>从词条、主题或大纲出发生成故事方案，并为后续编辑保留结构化结果。</p>
+        <div class="home__workbench-meta">
+          <span>支持多成片类型</span>
+          <span>输出 GEARS segments</span>
+        </div>
       </RouterLink>
     </section>
 
-    <!-- Quick search -->
-    <section class="home__search">
-      <form class="home__search-form" @submit.prevent="goSearch">
-        <input
-          v-model="searchQuery"
-          class="home__search-input"
-          placeholder="搜索词条名称、关键词、地区…"
-        />
-        <button class="btn btn--primary" type="submit">搜索</button>
-      </form>
-    </section>
-
-    <!-- Stats -->
     <section v-if="provinces.length > 0" class="home__stats">
-      <h2 class="home__section-title">知识库概览</h2>
+      <h2 class="home__section-title">工作台概览</h2>
       <div class="home__stats-grid">
         <div class="home__stat-card">
           <span class="home__stat-number">{{ totalEntries }}</span>
@@ -34,28 +52,30 @@
           <span class="home__stat-label">覆盖省份</span>
         </div>
         <div class="home__stat-card">
-          <span class="home__stat-number">{{ recentStories.length }}</span>
-          <span class="home__stat-label">已生成故事</span>
+          <span class="home__stat-number">{{ projectCount }}</span>
+          <span class="home__stat-label">故事项目</span>
         </div>
       </div>
     </section>
 
-    <!-- Recent stories -->
     <section v-if="recentStories.length > 0" class="home__recent">
-      <h2 class="home__section-title">最近生成故事</h2>
+      <div class="home__section-header">
+        <h2 class="home__section-title">最近生成故事</h2>
+        <RouterLink class="home__section-link" to="/projects">查看全部故事</RouterLink>
+      </div>
       <div class="home__recent-list">
         <RouterLink
           v-for="story in recentStories"
-          :key="story.storyId"
+          :key="story.project_id"
           class="home__story-card"
-          :to="`/story/${story.storyId}`"
+          :to="`/projects/${story.project_id}`"
         >
-          <span class="home__story-type-badge">{{ typeLabel(story.generation_type) }}</span>
+          <span class="home__story-type-badge">{{ typeLabel(story.video_type) }}</span>
           <h3 class="home__story-title">{{ story.title }}</h3>
           <p class="home__story-source">来源: {{ story.source_entry }}</p>
           <p v-if="story.logline" class="home__story-logline">{{ story.logline }}</p>
           <div class="home__story-meta-row">
-            <span v-if="story.created_at" class="home__story-date">{{ formatDate(story.created_at) }}</span>
+            <span v-if="story.updated_at" class="home__story-date">{{ formatDate(story.updated_at) }}</span>
             <span v-if="story.has_gears_segments" class="home__story-gears-badge">✅ GEARS</span>
             <span v-else class="home__story-gears-badge--none">⭕ 无分段</span>
             <span class="home__story-scenes">{{ story.scene_count }} 场景</span>
@@ -63,45 +83,32 @@
         </RouterLink>
       </div>
     </section>
+    <div v-else-if="storyError" class="home__notice">
+      最近生成故事暂不可用：{{ storyError }}
+    </div>
 
-    <!-- Province grid -->
-    <section class="home__provinces">
-      <h2 class="home__section-title">按省份浏览</h2>
-      <ProvinceGrid :provinces="provinces" />
-    </section>
-
-    <!-- Loading / error -->
     <div v-if="loading" class="home__loading">
       <div class="home__spinner" />
       <p>正在加载知识库数据…</p>
     </div>
-    <div v-if="error" class="home__error">{{ error }}</div>
+    <div v-else-if="provinceError" class="home__error">{{ provinceError }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { getProvinces } from '@/api/system'
-import { listStories } from '@/api/stories'
-import type { ProvinceInfo, StoryListItem } from '@shared/types'
-import ProvinceGrid from '@/components/ProvinceGrid.vue'
-
-const router = useRouter()
-
-const searchQuery = ref('')
+import { listProjects } from '@/api/projects'
+import type { ProvinceInfo, StoryProjectListItem } from '@shared/types'
 const provinces = ref<ProvinceInfo[]>([])
-const recentStories = ref<StoryListItem[]>([])
+const recentStories = ref<StoryProjectListItem[]>([])
 const loading = ref(false)
-const error = ref('')
+const provinceError = ref('')
+const storyError = ref('')
+const totalProjectCount = ref(0)
 
 const totalEntries = computed(() => provinces.value.reduce((sum, p) => sum + p.entry_count, 0))
-
-function goSearch() {
-  if (searchQuery.value.trim()) {
-    router.push({ path: '/search', query: { q: searchQuery.value.trim() } })
-  }
-}
+const projectCount = computed(() => totalProjectCount.value)
 
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
@@ -132,93 +139,181 @@ function formatDate(iso: string): string {
 
 onMounted(async () => {
   loading.value = true
-  error.value = ''
+  provinceError.value = ''
+  storyError.value = ''
 
-  try {
-    const [provRes, storyRes] = await Promise.all([
-      getProvinces(),
-      listStories(),
-    ])
+  const [provRes, storyRes] = await Promise.allSettled([
+    getProvinces(),
+    listProjects(),
+  ])
 
-    if (provRes.ok && provRes.data) {
-      provinces.value = provRes.data
-    } else {
-      error.value = provRes.error?.message ?? '加载省份失败'
-    }
-
-    if (storyRes.ok && storyRes.data) {
-      // Show at most 6 recent stories
-      recentStories.value = storyRes.data.slice(0, 6)
-    }
-  } catch (e: any) {
-    error.value = e.message ?? '加载失败'
-  } finally {
-    loading.value = false
+  if (provRes.status === 'fulfilled' && provRes.value.ok && provRes.value.data) {
+    provinces.value = provRes.value.data
+  } else if (provRes.status === 'fulfilled') {
+    provinceError.value = provRes.value.error?.message ?? '加载省份失败'
+  } else {
+    provinceError.value = provRes.reason?.message ?? '加载省份失败'
   }
+
+  if (storyRes.status === 'fulfilled' && storyRes.value.ok && storyRes.value.data) {
+    totalProjectCount.value = storyRes.value.data.length
+    recentStories.value = storyRes.value.data.slice(0, 3)
+  } else if (storyRes.status === 'fulfilled') {
+    storyError.value = storyRes.value.error?.message ?? '加载最近故事失败'
+  } else {
+    storyError.value = storyRes.reason?.message ?? '加载最近故事失败'
+  }
+
+  loading.value = false
 })
 </script>
 
 <style scoped>
 .home {
-  max-width: 960px;
+  max-width: 1120px;
   margin: 0 auto;
 }
 
-/* Hero */
 .home__hero {
-  text-align: center;
-  padding: 40px 20px 30px;
-  background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
-  color: #ecf0f1;
-  border-radius: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
+  padding: 38px 32px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top right, rgba(252, 214, 93, 0.28), transparent 28%),
+    linear-gradient(135deg, #17324d 0%, #1f6fa4 62%, #f2eee6 160%);
+  color: #eff5f8;
 }
 
 .home__hero-title {
-  margin: 0 0 8px 0;
-  font-size: 30px;
+  max-width: 720px;
+  margin: 0;
+  font-size: 38px;
   font-weight: 700;
+  line-height: 1.18;
 }
 
 .home__hero-desc {
-  margin: 0 0 20px 0;
-  font-size: 16px;
-  color: #bdc3c7;
+  max-width: 680px;
+  margin: 12px 0 0 0;
+  font-size: 17px;
+  line-height: 1.7;
+  color: rgba(239, 245, 248, 0.88);
 }
 
-/* Search */
-.home__search {
+.home__hero-eyebrow {
+  margin: 0 0 10px 0;
+  color: rgba(255, 247, 230, 0.88);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home__workbench {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
   margin-bottom: 24px;
 }
 
-.home__search-form {
+.home__workbench-card {
+  display: block;
+  min-height: 210px;
+  padding: 18px;
+  border-radius: 12px;
+  text-decoration: none;
+  border: 1px solid #d8e1e8;
+  background: #fff;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.home__workbench-card:hover {
+  transform: translateY(-2px);
+  border-color: #2f83bd;
+  box-shadow: 0 10px 24px rgba(31, 111, 164, 0.1);
+}
+
+.home__workbench-card h2 {
+  margin: 8px 0 10px 0;
+  color: #22313f;
+  font-size: 24px;
+}
+
+.home__workbench-card p {
+  margin: 0 0 18px 0;
+  color: #5e6d79;
+  line-height: 1.65;
+}
+
+.home__workbench-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.home__workbench-card--library .home__workbench-kicker {
+  background: #f3ede3;
+  color: #8a5a18;
+}
+
+.home__workbench-card--projects .home__workbench-kicker {
+  background: #e9f3fb;
+  color: #1f6fa4;
+}
+
+.home__workbench-card--studio .home__workbench-kicker {
+  background: #edf5ef;
+  color: #2f7a4a;
+}
+
+.home__workbench-meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  color: #72808d;
+  font-size: 13px;
 }
 
-.home__search-input {
-  flex: 1;
-  padding: 10px 14px;
-  border: 1px solid #bdc3c7;
-  border-radius: 4px;
-  font-size: 15px;
-}
-
-.home__search-input:focus {
-  border-color: #3498db;
-  outline: none;
-}
-
-/* Section title */
 .home__section-title {
-  margin: 0 0 14px 0;
+  margin: 0 0 12px 0;
   font-size: 20px;
   color: #2c3e50;
   border-bottom: 1px solid #ecf0f1;
   padding-bottom: 4px;
 }
 
-/* Stats */
+.home__section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  border-bottom: 1px solid #ecf0f1;
+  margin-bottom: 8px;
+}
+
+.home__section-header .home__section-title {
+  border-bottom: 0;
+  margin-bottom: 0;
+}
+
+.home__section-link {
+  color: #2980b9;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.home__section-link:hover {
+  text-decoration: underline;
+}
+
+.home__section-desc {
+  margin: 0 0 14px 0;
+  color: #66727f;
+  font-size: 14px;
+}
+
 .home__stats {
   margin-bottom: 24px;
 }
@@ -251,9 +346,17 @@ onMounted(async () => {
   margin-top: 4px;
 }
 
-/* Recent stories */
 .home__recent {
   margin-bottom: 24px;
+}
+
+.home__notice {
+  padding: 10px 14px;
+  margin-bottom: 24px;
+  background: #fff7e6;
+  color: #8a5a00;
+  border-radius: 4px;
+  font-size: 14px;
 }
 
 .home__recent-list {
@@ -340,41 +443,6 @@ onMounted(async () => {
   font-size: 12px;
   color: #7f8c8d;
 }
-
-/* Provinces */
-.home__provinces {
-  margin-bottom: 24px;
-}
-
-/* Buttons */
-.btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  font-size: 15px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: opacity 0.2s;
-  display: inline-flex;
-  align-items: center;
-}
-
-.btn:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.btn--primary {
-  background: #2980b9;
-  color: #fff;
-}
-
-.btn--lg {
-  padding: 14px 28px;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-/* Loading & error */
 .home__loading {
   display: flex;
   flex-direction: column;
@@ -404,5 +472,26 @@ onMounted(async () => {
   border-radius: 4px;
   font-size: 14px;
   margin-top: 12px;
+}
+
+@media (max-width: 960px) {
+  .home__workbench {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .home__hero {
+    padding: 28px 20px;
+  }
+
+  .home__hero-title {
+    font-size: 30px;
+  }
+
+  .home__stats-grid,
+  .home__recent-list {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

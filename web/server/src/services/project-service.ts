@@ -76,7 +76,7 @@ async function writeJsonFile(filePath: string, data: unknown): Promise<void> {
 function cleanStory(data: StoredStoryFile): StoryGenerateResult {
   const cleaned = { ...data } as Record<string, unknown>;
   delete cleaned._request_meta;
-  return cleaned as StoryGenerateResult;
+  return cleaned as unknown as StoryGenerateResult;
 }
 
 function storyCreatedAt(story: StoredStoryFile): string {

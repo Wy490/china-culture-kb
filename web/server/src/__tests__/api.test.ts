@@ -17,6 +17,7 @@ import { errorHandler } from '../middleware/error-handler.js';
 import { entriesRouter } from '../routes/entries.js';
 import { storiesRouter } from '../routes/stories.js';
 import { systemRouter } from '../routes/system.js';
+import { projectsRouter } from '../routes/projects.js';
 
 // Set KB_ROOT so MCP functions can find the data directory
 // (same logic as server/src/index.ts which sets this at startup)
@@ -37,6 +38,7 @@ app.use(express.json());
 app.use('/api/entries', entriesRouter);
 app.use('/api/stories', storiesRouter);
 app.use('/api/system', systemRouter);
+app.use('/api/projects', projectsRouter);
 app.use(errorHandler);
 
 const request = supertest(app);
@@ -105,6 +107,26 @@ describe('System API', () => {
       expect(Array.isArray(first.recommended_generation_types)).toBe(true);
     });
   });
+
+});
+
+describe('Projects API', () => {
+  describe('GET /api/projects', () => {
+    it('returns unified envelope with project list', async () => {
+      const res = await request.get('/api/projects');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      if (res.body.data.length > 0) {
+        const first = res.body.data[0];
+        expect(first).toHaveProperty('project_id');
+        expect(first).toHaveProperty('current_story_id');
+        expect(first).toHaveProperty('source_domain');
+        expect(first).toHaveProperty('status');
+        expect(first).toHaveProperty('video_type');
+      }
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -148,7 +170,7 @@ describe('Entries API', () => {
       expectSuccess(res.body);
       // Should return Hunan-related entries
       if (res.body.data.matches.length > 0) {
-        const hunanMatches = res.body.data.matches.filter(m => m.province === '湖南');
+        const hunanMatches = res.body.data.matches.filter((m: { province: string }) => m.province === '湖南');
         expect(hunanMatches.length).toBeGreaterThan(0);
       }
     });

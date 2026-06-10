@@ -461,7 +461,7 @@ function buildActStructure(scenes: StoryScene[]): ActBeat[] {
 function stripInternalFields(data: StoryGenerateResult): StoryGenerateResult {
   const cleaned = { ...data } as Record<string, unknown>;
   delete cleaned._request_meta;
-  return cleaned as StoryGenerateResult;
+  return cleaned as unknown as StoryGenerateResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -653,10 +653,16 @@ export function isModelSceneBreakdownCompatible(
   // Must have same number of scenes
   if (modelScenes.length !== localScenes.length) return false;
 
-  // All model scene_ids must exist in local scene_ids — ensures merge-by-ID works
+  // Scene IDs must match exactly and be unique — ensures merge-by-ID works.
   const localIds = new Set(localScenes.map(s => s.scene_id));
-  for (const ms of modelScenes) {
-    if (!localIds.has(ms.scene_id)) return false;
+  const modelIds = new Set(modelScenes.map(s => s.scene_id));
+
+  if (localIds.size !== localScenes.length) return false;
+  if (modelIds.size !== modelScenes.length) return false;
+  if (modelIds.size !== localIds.size) return false;
+
+  for (const id of localIds) {
+    if (!modelIds.has(id)) return false;
   }
 
   return true;

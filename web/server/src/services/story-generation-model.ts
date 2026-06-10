@@ -132,7 +132,7 @@ async function runCommandAdapter(input: {
 
   // Build child env — inject the selected model's runtime + model name
   // This is the correct approach: child env inherits from process.env plus model overrides
-  const childEnv = {
+  const childEnv: NodeJS.ProcessEnv = {
     ...process.env,
     STORY_GEN_AGENT: input.modelProfile.runtime,
     STORY_GEN_AGENT_MODEL: input.modelProfile.model,

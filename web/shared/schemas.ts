@@ -102,6 +102,7 @@ export const StoryGenerateRequestSchema = z.object({
   original_user_query: z.string().optional(),
   generation_type: GenerationTypeSchema.optional(),
   video_type: VideoTypeSchema.optional(),
+  model_profile_id: z.string().optional(),
   selected_event: z.string().optional(),
   target_video_duration: DurationSchema.optional(),
   tone: z.string().optional(),
@@ -204,6 +205,26 @@ export const StoryIdParamSchema = z.object({
     /^\d{8}-story-[0-9a-z]+$/,
     'storyId must match format YYYYMMDD-story-{hash36}',
   ),
+});
+
+export const ProjectIdParamSchema = z.object({
+  projectId: z.string().regex(
+    /^\d{8}-story-[0-9a-z]+--[a-z_]+$/,
+    'projectId must match format YYYYMMDD-story-{hash36}--{video_type}',
+  ),
+});
+
+export const StorySceneRegenerateRequestSchema = z.object({
+  scene_id: z.number().int().min(1),
+  intent: z.enum([
+    'tighten_conflict',
+    'rewrite_narration',
+    'shift_emotion',
+    'clarify_visuals',
+    'custom',
+  ]),
+  user_note: z.string().trim().max(300).optional(),
+  model_profile_id: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------

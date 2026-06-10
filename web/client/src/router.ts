@@ -14,9 +14,32 @@ export const router = createRouter({
       component: () => import('./views/Search.vue'),
     },
     {
+      path: '/projects',
+      name: 'Projects',
+      component: () => import('./views/Projects.vue'),
+    },
+    {
+      path: '/projects/:projectId',
+      name: 'ProjectDetail',
+      component: () => import('./views/ProjectDetail.vue'),
+    },
+    {
+      path: '/knowledge',
+      name: 'Knowledge',
+      component: () => import('./views/Knowledge.vue'),
+    },
+    {
+      path: '/knowledge/:province',
+      name: 'KnowledgeProvince',
+      component: () => import('./views/Knowledge.vue'),
+    },
+    {
       path: '/province/:name',
       name: 'Province',
-      component: () => import('./views/Province.vue'),
+      redirect: to => ({
+        name: 'KnowledgeProvince',
+        params: { province: to.params.name },
+      }),
     },
     {
       path: '/entry',

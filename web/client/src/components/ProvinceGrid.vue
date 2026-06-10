@@ -4,7 +4,7 @@
       v-for="province in provinces"
       :key="province.name"
       class="province-grid__item"
-      :to="`/province/${encodeURIComponent(province.name)}`"
+      :to="{ name: 'KnowledgeProvince', params: { province: province.name } }"
     >
       <span class="province-grid__name">{{ province.name }}</span>
       <span class="province-grid__count">{{ province.entry_count }} 条</span>

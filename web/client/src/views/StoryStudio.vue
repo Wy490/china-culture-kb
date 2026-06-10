@@ -278,6 +278,16 @@
         </select>
       </section>
 
+      <section class="story-studio__field">
+        <label class="story-studio__label" for="model-profile">创作模型</label>
+        <select id="model-profile" v-model="selectedModelProfileId" class="story-studio__select">
+          <option v-for="profile in modelProfiles" :key="profile.id" :value="profile.id">
+            {{ profile.label }}{{ profile.recommended ? '（推荐）' : '' }}
+          </option>
+        </select>
+        <p v-if="selectedModelProfile" class="story-studio__field-hint">{{ selectedModelProfile.description }}</p>
+      </section>
+
       <!-- Duration select -->
       <div class="story-studio__field">
         <label class="story-studio__label" for="duration">目标时长</label>
@@ -333,6 +343,11 @@
       </div>
 
       <div v-else-if="generateResult">
+        <div v-if="generateResult.project_id" class="story-studio__result-actions">
+          <RouterLink class="story-studio__result-link" :to="`/projects/${generateResult.project_id}`">
+            进入这个故事项目继续修改
+          </RouterLink>
+        </div>
         <StoryResult :result="generateResult" />
       </div>
 
@@ -349,7 +364,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storyPlan, storyGenerate, storyOutlineAnalyze } from '@/api/stories'
 import { searchEntries, matchEntries, entriesMultiMatch } from '@/api/entries'
+import { getModelProfiles } from '@/api/system'
 import type {
+  AIModelProfile,
   EntrySearchResult,
   EntryMatchResult,
   EntryMatchItem,
@@ -372,6 +389,7 @@ import StoryPlan from '@/components/StoryPlan.vue'
 import StoryResult from '@/components/StoryResult.vue'
 
 const route = useRoute()
+const MODEL_PROFILE_STORAGE_KEY = 'story-agent.model-profile-id'
 
 // --- Input mode ---
 type InputMode = 'entry' | 'theme' | 'outline'
@@ -421,6 +439,8 @@ const selectedSupportingEntries = ref<string[]>([])
 const selectedType = ref<GenerationType | null>(null)
 const selectedVideoType = ref<VideoType | null>(null)
 const selectedPresentationStyle = ref<PresentationStyle | null>(null)
+const modelProfiles = ref<AIModelProfile[]>([])
+const selectedModelProfileId = ref('')
 const selectedEvent = ref<string | null>(null)
 const targetDuration = ref<SupportedDuration>('3分钟')
 const tone = ref('')
@@ -459,6 +479,10 @@ const videoTypeGroups = computed(() => {
 
 const presentationStyleOptions = computed(() => {
   return Object.values(PRESENTATION_STYLE_CONFIG)
+})
+
+const selectedModelProfile = computed(() => {
+  return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
 })
 
 function isRecommendedVideoType(vtId: VideoType): boolean {
@@ -591,6 +615,16 @@ async function handleMultiMatch() {
 
 // --- Init from route query ---
 onMounted(async () => {
+  const modelRes = await getModelProfiles()
+  if (modelRes.ok && modelRes.data && modelRes.data.length > 0) {
+    modelProfiles.value = modelRes.data
+    const storedModelId = localStorage.getItem(MODEL_PROFILE_STORAGE_KEY)
+    const initialModel = modelRes.data.find(profile => profile.id === storedModelId)
+      ?? modelRes.data.find(profile => profile.recommended)
+      ?? modelRes.data[0]
+    selectedModelProfileId.value = initialModel.id
+  }
+
   const entry = route.query.entry as string | undefined
   if (entry) {
     inputMode.value = 'entry'
@@ -614,6 +648,12 @@ onMounted(async () => {
   if (vt && Object.keys(VIDEO_TYPE_CONFIG).includes(vt)) {
     selectedVideoType.value = vt as VideoType
     selectedPresentationStyle.value = VIDEO_TYPE_CONFIG[vt as VideoType].default_presentation_style
+  }
+})
+
+watch(selectedModelProfileId, (value) => {
+  if (value) {
+    localStorage.setItem(MODEL_PROFILE_STORAGE_KEY, value)
   }
 })
 
@@ -682,6 +722,7 @@ async function handleGenerate() {
       original_user_query: originalUserQuery.value || undefined,
       generation_type: generationTypeToSend as GenerationType,
       video_type: videoTypeToSend as VideoType,
+      model_profile_id: selectedModelProfileId.value || undefined,
       selected_event: selectedEvent.value ?? undefined,
       target_video_duration: targetDuration.value,
       tone: tone.value || undefined,
@@ -714,6 +755,7 @@ async function handleGenerate() {
       original_user_query: outlineText.value || undefined,
       generation_type: generationTypeToSend as GenerationType,
       video_type: videoTypeToSend as VideoType,
+      model_profile_id: selectedModelProfileId.value || undefined,
       target_video_duration: targetDuration.value,
       tone: tone.value || undefined,
       presentation_style: presentationStyleToSend as PresentationStyle,
@@ -933,6 +975,12 @@ async function handleGenerate() {
   color: #2c3e50;
   margin-bottom: 4px;
 }
+.story-studio__field-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #6b7884;
+  line-height: 1.5;
+}
 .story-studio__input {
   width: 100%;
   padding: 8px 12px;
@@ -1143,6 +1191,18 @@ async function handleGenerate() {
 }
 .story-studio__result-error h3 { margin: 0 0 8px 0; color: #c0392b; font-size: 18px; }
 .story-studio__result-error p { margin: 0; color: #7f8c8d; font-size: 14px; }
+.story-studio__result-actions { margin-bottom: 14px; }
+.story-studio__result-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #eef6ff;
+  color: #2b78b7;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
 
 /* Empty state */
 .story-studio__empty {

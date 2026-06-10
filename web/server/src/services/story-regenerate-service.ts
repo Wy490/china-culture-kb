@@ -379,10 +379,9 @@ export async function regenerateSceneInStory(
 
   const updatedStory: StoryGenerateResult = {
     ...story,
-    model_profile_id: selectedModelProfile.id,
-    // generation_source, generation_mode, generation_used_fallback:
+    // model_profile_id, generation_source, generation_mode, generation_used_fallback:
     // These describe the ORIGINAL full-generation source and must NOT be overwritten
-    // by scene-regeneration. Scene-regeneration info goes into reference_trace only.
+    // by scene-regeneration. Scene-regeneration model info goes into reference_trace only.
     // If the user cares about which model was used for the scene rewrite,
     // they can check reference_trace for "provider:..." and "fallback:..." markers.
     scene_breakdown: updatedScenes,
