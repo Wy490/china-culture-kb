@@ -9,6 +9,7 @@ import {
 import {
   deleteProject,
   getProject,
+  listProjectSupplementTasks,
   listProjects,
   regenerateProjectScene,
   updateProjectSupplementTask,
@@ -19,6 +20,18 @@ export const projectsRouter = Router();
 projectsRouter.get('/', async (_req, res, next) => {
   try {
     const result = await listProjects();
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.get('/supplement-tasks', async (req, res, next) => {
+  try {
+    const status = req.query.status === 'open' || req.query.status === 'resolved'
+      ? req.query.status
+      : undefined;
+    const result = await listProjectSupplementTasks(status);
     res.json(result);
   } catch (err) {
     next(err);

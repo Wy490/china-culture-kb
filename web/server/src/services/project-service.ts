@@ -11,7 +11,9 @@ import type {
   StoryProjectVersionSnapshot,
   StoryProjectVersionSummary,
   StoryProjectDeleteResult,
+  ProjectSupplementTaskListItem,
   KnowledgeSupplementTaskUpdateRequest,
+  KnowledgeSupplementTaskStatus,
   StorySceneRegenerateRequest,
   VideoType,
   GearsDeliveryPackage,
@@ -390,6 +392,44 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
     current_story: normalizeStoryGenerationFields(currentVersion.story),
     versions: versions.map(toVersionSummary),
   });
+}
+
+export async function listProjectSupplementTasks(
+  status?: KnowledgeSupplementTaskStatus,
+): Promise<ApiResponse<ProjectSupplementTaskListItem[]>> {
+  const projectsResult = await listProjects();
+  if (!projectsResult.ok || !projectsResult.data) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      projectsResult.error?.message ?? 'Failed to list projects',
+    );
+  }
+
+  const items: ProjectSupplementTaskListItem[] = [];
+  for (const project of projectsResult.data) {
+    const detailResult = await getProject(project.project_id);
+    if (!detailResult.ok || !detailResult.data) continue;
+    for (const task of detailResult.data.current_story.supplement_tasks ?? []) {
+      if (status && task.status !== status) continue;
+      items.push({
+        project_id: project.project_id,
+        current_story_id: project.current_story_id,
+        project_title: project.title,
+        source_entry: project.source_entry,
+        video_type: project.video_type,
+        updated_at: project.updated_at,
+        task,
+      });
+    }
+  }
+
+  items.sort((a, b) => {
+    if (a.task.status !== b.task.status) return a.task.status === 'open' ? -1 : 1;
+    const aTime = a.task.updated_at ?? a.task.resolved_at ?? a.updated_at;
+    const bTime = b.task.updated_at ?? b.task.resolved_at ?? b.updated_at;
+    return bTime.localeCompare(aTime);
+  });
+  return success(items);
 }
 
 export async function deleteProject(projectId: string): Promise<ApiResponse<StoryProjectDeleteResult>> {

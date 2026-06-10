@@ -621,6 +621,16 @@ export interface StoryProjectDetail {
   versions: StoryProjectVersionSummary[];
 }
 
+export interface ProjectSupplementTaskListItem {
+  project_id: string;
+  current_story_id: string;
+  project_title: string;
+  source_entry: string;
+  video_type: VideoType;
+  updated_at: string;
+  task: KnowledgeSupplementTask;
+}
+
 export interface StoryProjectDeleteResult {
   project_id: string;
   story_id: string;

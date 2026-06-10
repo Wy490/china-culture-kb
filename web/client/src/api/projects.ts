@@ -1,6 +1,7 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from './client'
 import type {
   KnowledgeSupplementTaskUpdateRequest,
+  ProjectSupplementTaskListItem,
   StoryProjectDeleteResult,
   StoryProjectDetail,
   StoryProjectListItem,
@@ -9,6 +10,10 @@ import type {
 
 export function listProjects() {
   return apiGet<StoryProjectListItem[]>('/projects')
+}
+
+export function listSupplementTasks(status?: 'open' | 'resolved') {
+  return apiGet<ProjectSupplementTaskListItem[]>('/projects/supplement-tasks', status ? { status } : undefined)
 }
 
 export function getProject(projectId: string) {

@@ -137,6 +137,15 @@ describe('Projects API', () => {
       expectFailure(res.body, 'VALIDATION_ERROR');
     });
   });
+
+  describe('GET /api/projects/supplement-tasks', () => {
+    it('returns unified envelope with supplement task list', async () => {
+      const res = await request.get('/api/projects/supplement-tasks');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(Array.isArray(res.body.data)).toBe(true);
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

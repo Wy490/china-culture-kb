@@ -6,6 +6,7 @@
         <RouterLink to="/">首页</RouterLink>
         <RouterLink to="/knowledge">知识库</RouterLink>
         <RouterLink to="/projects">故事项目</RouterLink>
+        <RouterLink to="/supplement-tasks">补录任务</RouterLink>
         <RouterLink to="/search">搜索</RouterLink>
         <RouterLink to="/story/new">故事生成</RouterLink>
       </nav>

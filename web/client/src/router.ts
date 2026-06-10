@@ -19,6 +19,11 @@ export const router = createRouter({
       component: () => import('./views/Projects.vue'),
     },
     {
+      path: '/supplement-tasks',
+      name: 'SupplementTasks',
+      component: () => import('./views/SupplementTasks.vue'),
+    },
+    {
       path: '/projects/:projectId',
       name: 'ProjectDetail',
       component: () => import('./views/ProjectDetail.vue'),

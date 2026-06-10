@@ -8,6 +8,7 @@ import {
   createProjectFromGeneratedStory,
   deleteProject,
   getProject,
+  listProjectSupplementTasks,
   regenerateProjectScene,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
@@ -160,6 +161,49 @@ describe('project-service', () => {
     expect(detail.ok).toBe(true);
     expect(detail.data?.project.open_supplement_task_count).toBe(1);
     expect(detail.data?.current_story.supplement_tasks?.[0].status).toBe('open');
+  });
+
+  it('lists supplement tasks across projects with status filtering', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      supplement_tasks: [
+        {
+          task_id: '20260609-story-abc1--supplement--supporting_characters',
+          need_id: 'supporting_characters',
+          label: '配角人物',
+          description: '补充「配角人物」相关资料',
+          status: 'open',
+          source: 'knowledge_pack_missing_need',
+          created_at: '2026-06-09T10:00:00.000Z',
+        },
+        {
+          task_id: '20260609-story-abc1--supplement--regional_context',
+          need_id: 'regional_context',
+          label: '地域背景',
+          description: '补充「地域背景」相关资料',
+          status: 'resolved',
+          source: 'knowledge_pack_missing_need',
+          created_at: '2026-06-09T10:00:00.000Z',
+          resolved_at: '2026-06-09T11:00:00.000Z',
+          supplement_note: '已补充地域背景。',
+        },
+      ],
+    };
+    await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+
+    const allTasks = await listProjectSupplementTasks();
+    const openTasks = await listProjectSupplementTasks('open');
+
+    expect(allTasks.ok).toBe(true);
+    expect(allTasks.data).toHaveLength(2);
+    expect(openTasks.ok).toBe(true);
+    expect(openTasks.data).toHaveLength(1);
+    expect(openTasks.data?.[0].project_title).toBe(story.title);
+    expect(openTasks.data?.[0].task.status).toBe('open');
   });
 
   it('updates supplement task status on the current project and source story file', async () => {
