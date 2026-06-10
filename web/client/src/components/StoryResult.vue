@@ -63,14 +63,24 @@
             </div>
             <p>{{ task.description }}</p>
             <p v-if="task.intake_prompt" class="story-result__supplement-prompt">{{ task.intake_prompt }}</p>
+            <textarea
+              v-if="editableProject && task.status === 'open'"
+              class="story-result__supplement-textarea"
+              :value="supplementDrafts[task.task_id] ?? task.supplement_note ?? ''"
+              placeholder="记录本次补录的事实、来源、可用于故事或画面的细节。"
+              @input="updateSupplementDraft(task.task_id, $event)"
+            />
+            <p v-else-if="task.supplement_note" class="story-result__supplement-note">
+              <strong>补录说明：</strong>{{ task.supplement_note }}
+            </p>
           </div>
           <button
             v-if="editableProject"
             class="btn btn--sm btn--outline story-result__supplement-action"
             :disabled="updatingSupplementTaskId === task.task_id"
-            @click="emit('update-supplement-task', task.task_id, task.status === 'open' ? 'resolved' : 'open')"
+            @click="emitSupplementTaskUpdate(task.task_id, task.status === 'open' ? 'resolved' : 'open')"
           >
-            {{ updatingSupplementTaskId === task.task_id ? '更新中…' : task.status === 'open' ? '标记完成' : '重新打开' }}
+            {{ updatingSupplementTaskId === task.task_id ? '更新中…' : task.status === 'open' ? '保存并完成' : '重新打开' }}
           </button>
         </div>
       </div>
@@ -265,10 +275,11 @@ const props = withDefaults(defineProps<{
 })
 const emit = defineEmits<{
   (e: 'rewrite-scene', sceneId: number): void
-  (e: 'update-supplement-task', taskId: string, status: KnowledgeSupplementTaskStatus): void
+  (e: 'update-supplement-task', taskId: string, status: KnowledgeSupplementTaskStatus, supplementNote?: string): void
 }>()
 
 const expandedSegments = reactive<Record<number, boolean>>({})
+const supplementDrafts = reactive<Record<string, string>>({})
 const copyMessage = ref('')
 
 const videoTypeLabel = computed(() => {
@@ -322,6 +333,15 @@ function supplementCategoryLabel(category?: KnowledgeSupplementTaskCategory): st
     general: '通用资料',
   }
   return category ? map[category] : '通用资料'
+}
+
+function updateSupplementDraft(taskId: string, event: Event) {
+  supplementDrafts[taskId] = (event.target as HTMLTextAreaElement).value
+}
+
+function emitSupplementTaskUpdate(taskId: string, status: KnowledgeSupplementTaskStatus) {
+  const note = supplementDrafts[taskId]?.trim()
+  emit('update-supplement-task', taskId, status, note || undefined)
 }
 
 async function copySegmentScript(seg: GearsSegment) {
@@ -489,6 +509,25 @@ function showCopyMessage(msg: string) {
 }
 .story-result__supplement-prompt {
   margin-top: 4px !important;
+}
+.story-result__supplement-textarea {
+  width: 100%;
+  min-height: 82px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid #e6c982;
+  border-radius: 5px;
+  resize: vertical;
+  color: #3f3420;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.story-result__supplement-note {
+  margin-top: 6px !important;
+  padding: 7px 8px;
+  border-radius: 5px;
+  background: #fff5d6;
 }
 .story-result__supplement-status {
   padding: 3px 7px;

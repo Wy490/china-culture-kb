@@ -798,11 +798,14 @@ export interface KnowledgeSupplementTask {
   status: KnowledgeSupplementTaskStatus;
   source: KnowledgeSupplementTaskSource;
   created_at: string;
+  updated_at?: string;
   resolved_at?: string;
+  supplement_note?: string;
 }
 
 export interface KnowledgeSupplementTaskUpdateRequest {
   status: KnowledgeSupplementTaskStatus;
+  supplement_note?: string;
 }
 
 export interface MultiMatchResult {

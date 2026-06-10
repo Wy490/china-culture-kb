@@ -251,12 +251,13 @@ async function submitSceneRewrite() {
   submitting.value = false
 }
 
-async function handleSupplementTaskUpdate(taskId: string, status: KnowledgeSupplementTaskStatus) {
+async function handleSupplementTaskUpdate(taskId: string, status: KnowledgeSupplementTaskStatus, supplementNote?: string) {
   if (!detail.value) return
   updatingSupplementTaskId.value = taskId
   error.value = ''
   successMessage.value = ''
-  const res = await updateProjectSupplementTask(detail.value.project.project_id, taskId, { status })
+  const body = supplementNote ? { status, supplement_note: supplementNote } : { status }
+  const res = await updateProjectSupplementTask(detail.value.project.project_id, taskId, body)
   if (res.ok && res.data) {
     detail.value = res.data
     successMessage.value = status === 'resolved' ? '资料补充任务已标记完成' : '资料补充任务已重新打开'

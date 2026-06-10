@@ -191,15 +191,20 @@ describe('project-service', () => {
       _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
     }, null, 2), 'utf-8');
 
-    const updated = await updateProjectSupplementTask(enriched.project_id!, taskId, { status: 'resolved' });
+    const updated = await updateProjectSupplementTask(enriched.project_id!, taskId, {
+      status: 'resolved',
+      supplement_note: '上官可设定为南安军衙主管，负责催促签署疑案文书。',
+    });
 
     expect(updated.ok).toBe(true);
     expect(updated.data?.project.open_supplement_task_count).toBe(0);
     expect(updated.data?.current_story.supplement_tasks?.[0].status).toBe('resolved');
     expect(updated.data?.current_story.supplement_tasks?.[0].resolved_at).toBeTruthy();
+    expect(updated.data?.current_story.supplement_tasks?.[0].supplement_note).toContain('南安军衙主管');
 
     const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
     expect(rawSource.supplement_tasks?.[0].status).toBe('resolved');
+    expect(rawSource.supplement_tasks?.[0].supplement_note).toContain('疑案文书');
   });
 
   it('builds a GEARS delivery package when reading old project snapshots', async () => {

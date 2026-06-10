@@ -468,10 +468,13 @@ export async function updateProjectSupplementTask(
   const updatedAt = new Date().toISOString();
   const updatedTasks = tasks.map((task, index) => {
     if (index !== taskIndex) return task;
+    const supplementNote = request.supplement_note?.trim();
     return {
       ...task,
       status: request.status,
+      updated_at: updatedAt,
       resolved_at: request.status === 'resolved' ? updatedAt : undefined,
+      supplement_note: supplementNote || task.supplement_note,
     };
   });
   const updatedStory: StoryGenerateResult = {

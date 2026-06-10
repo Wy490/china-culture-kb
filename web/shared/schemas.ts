@@ -237,6 +237,7 @@ export const SupplementTaskIdParamSchema = ProjectIdParamSchema.extend({
 
 export const KnowledgeSupplementTaskUpdateRequestSchema = z.object({
   status: z.enum(['open', 'resolved']),
+  supplement_note: z.string().trim().max(4000, 'supplement_note is too long').optional(),
 });
 
 // ---------------------------------------------------------------------------
