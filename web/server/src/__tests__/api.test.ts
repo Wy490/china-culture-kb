@@ -459,6 +459,44 @@ describe('Stories API', () => {
       }
     });
 
+    it('creates supplement tasks from missing knowledge needs', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        knowledge_pack: {
+          primary_entries: [{
+            entry_name: '周敦颐——理学开山鼻祖',
+            province: '湖南省',
+            region: '道县',
+            type: '历史人物',
+            summary: '周敦颐相关人物故事素材。',
+            score: 0.92,
+            role_in_story: 'main_character',
+            match_reason: '角色：主角人物',
+            keywords: ['周敦颐', '理学'],
+          }],
+          supporting_entries: [],
+          missing_needs: [{
+            need_id: 'supporting_characters',
+            label: '配角人物',
+            message: '知识库中未找到高置信度条目，可作为创作方向但不可写成已验证史实',
+          }],
+          overall_confidence: 0.5,
+        },
+        generation_type: 'character_story',
+        target_video_duration: '3分钟',
+      });
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      const story = res.body.data;
+      expect(story.supplement_tasks).toHaveLength(1);
+      expect(story.supplement_tasks[0]).toMatchObject({
+        need_id: 'supporting_characters',
+        label: '配角人物',
+        status: 'open',
+        source: 'knowledge_pack_missing_need',
+      });
+      expect(story.supplement_tasks[0].task_id).toContain(story.storyId);
+    });
+
     it('returns story with video_type when video_type provided', async () => {
       const res = await request.post('/api/stories/generate').send({
         entry_name: '周敦颐——理学开山鼻祖',

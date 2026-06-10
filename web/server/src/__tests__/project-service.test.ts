@@ -130,9 +130,35 @@ describe('project-service', () => {
     const detail = await getProject(enriched.project_id!);
     expect(detail.ok).toBe(true);
     expect(detail.data?.project.version_count).toBe(1);
+    expect(detail.data?.project.open_supplement_task_count).toBe(0);
     expect(detail.data?.current_story.title).toBe(story.title);
     expect(detail.data?.project.model_profile_id).toBe('claude_sonnet');
     expect(detail.data?.current_story.model_profile_id).toBe('claude_sonnet');
+  });
+
+  it('tracks open supplement task count on project metadata', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      supplement_tasks: [{
+        task_id: '20260609-story-abc1--supplement--supporting_characters',
+        need_id: 'supporting_characters',
+        label: '配角人物',
+        description: '补充「配角人物」相关资料',
+        status: 'open',
+        source: 'knowledge_pack_missing_need',
+        created_at: '2026-06-09T10:00:00.000Z',
+      }],
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const detail = await getProject(enriched.project_id!);
+
+    expect(detail.ok).toBe(true);
+    expect(detail.data?.project.open_supplement_task_count).toBe(1);
+    expect(detail.data?.current_story.supplement_tasks?.[0].status).toBe('open');
   });
 
   it('builds a GEARS delivery package when reading old project snapshots', async () => {

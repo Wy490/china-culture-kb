@@ -50,6 +50,19 @@
       </div>
     </section>
 
+    <section v-if="result.supplement_tasks && result.supplement_tasks.length > 0" class="story-result__section">
+      <h3 class="story-result__section-title">资料补充任务</h3>
+      <div class="story-result__supplement-list">
+        <div v-for="task in result.supplement_tasks" :key="task.task_id" class="story-result__supplement-task">
+          <span class="story-result__supplement-status">{{ task.status === 'open' ? '待补' : '已完成' }}</span>
+          <div>
+            <strong>{{ task.label }}</strong>
+            <p>{{ task.description }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Quality report (new) -->
     <section v-if="result.quality_report" class="story-result__section">
       <h3 class="story-result__section-title">故事质量校验</h3>
@@ -395,6 +408,40 @@ function showCopyMessage(msg: string) {
   font-size: 13px;
   color: #f39c12;
   margin: 4px 0;
+}
+.story-result__supplement-list {
+  display: grid;
+  gap: 8px;
+}
+.story-result__supplement-task {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px;
+  border: 1px solid #f0d8a8;
+  border-radius: 6px;
+  background: #fffaf0;
+}
+.story-result__supplement-task strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #6f4b00;
+  font-size: 14px;
+}
+.story-result__supplement-task p {
+  margin: 0;
+  color: #705c2d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.story-result__supplement-status {
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: #f0c36b;
+  color: #4e3600;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* Quality report */

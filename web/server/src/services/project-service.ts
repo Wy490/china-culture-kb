@@ -94,6 +94,10 @@ function inferProjectStatus(story: StoryGenerateResult, versionCount: number): S
   return 'draft';
 }
 
+function countOpenSupplementTasks(story: StoryGenerateResult): number {
+  return story.supplement_tasks?.filter(task => task.status === 'open').length ?? 0;
+}
+
 export function buildProjectId(storyId: string, videoType: string): string {
   return `${storyId}--${videoType}`;
 }
@@ -151,6 +155,7 @@ function buildProjectMeta(
     generation_source: story.generation_source,
     generation_mode: story.generation_mode ?? 'local_only',
     generation_used_fallback: story.generation_used_fallback ?? false,
+    open_supplement_task_count: countOpenSupplementTasks(story),
   };
 }
 
@@ -316,6 +321,7 @@ async function persistProjectVersion(
     generation_source: updatedStory.generation_source,
     generation_mode: updatedStory.generation_mode ?? 'local_only',
     generation_used_fallback: updatedStory.generation_used_fallback ?? false,
+    open_supplement_task_count: countOpenSupplementTasks(updatedStory),
   };
 
   await writeJsonFile(projectVersionPath(project.project_id, versionId), snapshot);

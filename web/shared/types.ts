@@ -586,6 +586,7 @@ export interface StoryProjectListItem {
   generation_source?: string;
   generation_mode?: GenerationMode;
   generation_used_fallback?: boolean;
+  open_supplement_task_count?: number;
 }
 
 export type StoryProjectVersionChangeType = 'initial_generation' | 'scene_regeneration';
@@ -775,6 +776,20 @@ export interface KnowledgePack {
   overall_confidence: number;
 }
 
+export type KnowledgeSupplementTaskStatus = 'open' | 'resolved';
+export type KnowledgeSupplementTaskSource = 'knowledge_pack_missing_need';
+
+export interface KnowledgeSupplementTask {
+  task_id: string;
+  need_id: string;
+  label: string;
+  description: string;
+  status: KnowledgeSupplementTaskStatus;
+  source: KnowledgeSupplementTaskSource;
+  created_at: string;
+  resolved_at?: string;
+}
+
 export interface MultiMatchResult {
   outline: string;
   matched_knowledge_pack: KnowledgePack;
@@ -831,6 +846,7 @@ export interface StoryGenerateResult {
   credibility_note: string;
   // New fields for multi-knowledge matching
   knowledge_pack?: KnowledgePack;
+  supplement_tasks?: KnowledgeSupplementTask[];
   quality_report?: StoryQualityReport;
   // New fields for story structure and creative reference (Phase 5)
   story_structure?: StoryStructureType;

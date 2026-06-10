@@ -32,6 +32,7 @@ import type {
   GearsDeliveryPackage,
   StoryListItem,
   KnowledgePack,
+  KnowledgeSupplementTask,
   StoryQualityReport,
   ReferenceTrace,
   MemoryMosaicStorySeed,
@@ -312,6 +313,22 @@ function buildSingleEntryKnowledgePack(
     missing_needs: [],
     overall_confidence: 1,
   };
+}
+
+function buildKnowledgeSupplementTasks(
+  knowledgePack: KnowledgePack | undefined,
+  context: { storyId: string; createdAt: string },
+): KnowledgeSupplementTask[] {
+  if (!knowledgePack?.missing_needs.length) return [];
+  return knowledgePack.missing_needs.map((missing) => ({
+    task_id: `${context.storyId}--supplement--${missing.need_id}`,
+    need_id: missing.need_id,
+    label: missing.label,
+    description: `补充「${missing.label}」相关资料：${missing.message}`,
+    status: 'open',
+    source: 'knowledge_pack_missing_need',
+    created_at: context.createdAt,
+  }));
 }
 
 function recommendDuration(entryType: string, eventCount: number): SupportedDuration {
@@ -1024,6 +1041,7 @@ export async function generateAndStoreStory(
     : [];
 
   const createdAt = new Date().toISOString();
+  const supplementTasks = buildKnowledgeSupplementTasks(knowledgePackToUse, { storyId, createdAt });
 
   const storyData: StoryGenerateResult & { _request_meta: Record<string, unknown> } = {
     storyId,
@@ -1055,6 +1073,7 @@ export async function generateAndStoreStory(
     memory_mosaic_seed: memoryMosaicSeed,
     // Knowledge pack for multi-entry traceability
     knowledge_pack: knowledgePackToUse,
+    supplement_tasks: supplementTasks,
     // Quality report
     quality_report: qualityReport,
     // Characters, act structure, protagonist arc — from engine

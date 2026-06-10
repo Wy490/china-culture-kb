@@ -45,6 +45,10 @@
           <span class="project-detail-page__summary-label">版本数</span>
           <strong>{{ detail.project.version_count }}</strong>
         </div>
+        <div class="project-detail-page__summary-card">
+          <span class="project-detail-page__summary-label">待补资料</span>
+          <strong>{{ detail.project.open_supplement_task_count ?? 0 }}</strong>
+        </div>
       </section>
 
       <section class="project-detail-page__editor">
@@ -394,7 +398,7 @@ watch(selectedModelProfileId, (value) => {
 
 .project-detail-page__summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }

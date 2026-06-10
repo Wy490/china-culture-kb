@@ -49,6 +49,9 @@
             <span>{{ project.scene_count }} 场景</span>
             <span v-if="project.has_gears_segments">GEARS 已生成</span>
             <span v-else>无 GEARS 分段</span>
+            <span v-if="(project.open_supplement_task_count ?? 0) > 0" class="projects-page__meta-warning">
+              待补资料 {{ project.open_supplement_task_count }}
+            </span>
           </div>
         </RouterLink>
         <div class="projects-page__card-actions">
@@ -298,6 +301,11 @@ onMounted(async () => {
   gap: 10px;
   color: #7c8894;
   font-size: 13px;
+}
+
+.projects-page__meta-warning {
+  color: #a05f00;
+  font-weight: 700;
 }
 
 .projects-page__card-actions {
