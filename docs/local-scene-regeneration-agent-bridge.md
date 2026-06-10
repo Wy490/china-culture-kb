@@ -106,14 +106,14 @@ export STORY_GEN_AGENT_CODEX_ARGS='["--model","gpt-5.5"]'
 | `STORY_GEN_PROVIDER` | 模型适配器类型 | `command_json` |
 | `STORY_GEN_COMMAND` | 要执行的命令 | 无（未配置则走本地 fallback） |
 | `STORY_GEN_COMMAND_ARGS` | 命令参数（JSON 数组或空格分隔） | `[]` |
-| `STORY_GEN_COMMAND_TIMEOUT_MS` | 命令超时（毫秒） | `120000` |
+| `STORY_GEN_COMMAND_TIMEOUT_MS` | 命令超时（毫秒） | `330000` |
 | `STORY_GEN_AGENT` | Agent 类型：`claude` 或 `codex` | `claude` |
 | `STORY_GEN_AGENT_MODEL` | 模型名称（如 `sonnet`, `opus`, `gpt-5.5`） | 无 |
 | `STORY_GEN_AGENT_CLAUDE_PATH` | claude CLI 路径 | `claude` |
 | `STORY_GEN_AGENT_CLAUDE_ARGS` | claude 附加参数（JSON 数组） | `[]` |
 | `STORY_GEN_AGENT_CODEX_PATH` | codex CLI 路径 | `codex` |
 | `STORY_GEN_AGENT_CODEX_ARGS` | codex 附加参数（JSON 数组） | `[]` |
-| `STORY_GEN_AGENT_TIMEOUT_MS` | agent 超时（毫秒，桥接脚本内部） | `180000` |
+| `STORY_GEN_AGENT_TIMEOUT_MS` | agent 超时（毫秒，桥接脚本内部） | `300000` |
 
 ### 调试建议
 
@@ -193,14 +193,14 @@ export SCENE_REGEN_AGENT_CODEX_PATH="/Applications/Codex.app/Contents/Resources/
 | `SCENE_REGEN_PROVIDER` | 模型适配器类型 | `command_json` |
 | `SCENE_REGEN_COMMAND` | 要执行的命令 | 无（未配置则走本地 fallback） |
 | `SCENE_REGEN_COMMAND_ARGS` | 命令参数 | `[]` |
-| `SCENE_REGEN_COMMAND_TIMEOUT_MS` | 命令超时（毫秒） | `45000` |
+| `SCENE_REGEN_COMMAND_TIMEOUT_MS` | 命令超时（毫秒） | `180000` |
 | `SCENE_REGEN_AGENT` | Agent 类型 | `claude` |
 | `SCENE_REGEN_AGENT_MODEL` | 模型名称 | 无 |
 | `SCENE_REGEN_AGENT_CLAUDE_PATH` | claude CLI 路径 | `claude` |
 | `SCENE_REGEN_AGENT_CLAUDE_ARGS` | claude 附加参数 | `[]` |
 | `SCENE_REGEN_AGENT_CODEX_PATH` | codex CLI 路径 | `codex` |
 | `SCENE_REGEN_AGENT_CODEX_ARGS` | codex 附加参数 | `[]` |
-| `SCENE_REGEN_AGENT_TIMEOUT_MS` | agent 超时（毫秒，桥接脚本内部） | `120000` |
+| `SCENE_REGEN_AGENT_TIMEOUT_MS` | agent 超时（毫秒，桥接脚本内部） | `180000` |
 
 ### 调试建议
 

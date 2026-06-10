@@ -125,6 +125,23 @@ describe('project-service', () => {
     expect(detail.data?.current_story.model_profile_id).toBe('claude_sonnet');
   });
 
+  it('builds a GEARS delivery package when reading old project snapshots', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+
+    const detail = await getProject(enriched.project_id!);
+
+    expect(detail.ok).toBe(true);
+    expect(detail.data?.current_story.gears_delivery?.schema_version).toBe('gears-delivery/v1');
+    expect(detail.data?.current_story.gears_delivery?.character_assets.some(character => character.name === '周敦颐')).toBe(true);
+    expect(detail.data?.current_story.gears_delivery?.units.every(unit => unit.suggested_duration_sec <= 15)).toBe(true);
+    expect(detail.data?.current_story.gears_delivery?.markdown).toContain('GEARS 供稿包');
+  });
+
   it('regenerates a single scene into a new version', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);

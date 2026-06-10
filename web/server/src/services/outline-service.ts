@@ -23,7 +23,14 @@ import type {
   EntryDetail,
 } from '@shared/types.js';
 import { VIDEO_TYPE_CONFIG } from '@shared/types.js';
-import { extractKeywords, detectProvince, computeMatchScore } from './entry-service.js';
+import {
+  buildEntryKnowledgeSummary,
+  collectSearchableEntries,
+  detectProvince,
+  extractKeywords,
+  computeMatchScore,
+} from './entry-service.js';
+import type { SearchableEntry } from './entry-service.js';
 
 // ---------------------------------------------------------------------------
 // Predefined word lists for outline subject extraction
@@ -109,7 +116,54 @@ interface ClassifiedSubjects {
   other_keywords: string[];
 }
 
-function classifySubjects(outline: string): ClassifiedSubjects {
+function addUnique(list: string[], value: string) {
+  if (value && !list.includes(value)) list.push(value);
+}
+
+function getEntryPersonAlias(entry: EntrySearchResult): string | null {
+  if (entry.type !== '历史人物' && !entry.keywords.some(k => k.includes('人物'))) return null;
+  const alias = entry.name.split('——')[0]?.trim();
+  if (!alias || alias.length < 2 || alias.length > 4) return null;
+  const hasKnownPrefix = PERSON_NAME_PREFIXES.some(prefix => alias.startsWith(prefix));
+  return hasKnownPrefix ? alias : null;
+}
+
+async function getKnownPersonNames(): Promise<string[]> {
+  const provinceFiles = await mcpReadAllProvinceFiles();
+  const names: string[] = [];
+  for (const [provinceName, content] of provinceFiles) {
+    const parsed = mcpParseEntries(content, provinceName).map(convertSearchResult);
+    for (const entry of parsed) {
+      const alias = getEntryPersonAlias(entry);
+      if (alias) addUnique(names, alias);
+    }
+  }
+  return names.sort((a, b) => b.length - a.length);
+}
+
+function looksLikeBoundedPersonName(word: string): boolean {
+  const hasKnownPrefix = PERSON_NAME_PREFIXES.some(prefix =>
+    word.startsWith(prefix) && word.length >= prefix.length + 1 && word.length <= prefix.length + 2
+  );
+  if (!hasKnownPrefix) return false;
+
+  const semanticWords = [
+    ...DYNASTY_PERIOD_WORDS,
+    ...EVENT_WORDS,
+    ...ACTION_WORDS,
+    ...EMOTION_WORDS,
+    '人物', '故事', '时期', '时代', '资料', '内容', '主人公',
+  ];
+  return !semanticWords.some(term => word.includes(term));
+}
+
+function removeCoveredShortNames(names: string[]): string[] {
+  return names.filter(name =>
+    !names.some(other => other !== name && other.includes(name) && other.length > name.length)
+  );
+}
+
+function classifySubjects(outline: string, knownPersonNames: string[] = []): ClassifiedSubjects {
   const result: ClassifiedSubjects = {
     person_names: [],
     place_names: [],
@@ -124,6 +178,22 @@ function classifySubjects(outline: string): ClassifiedSubjects {
   // Split outline into segments
   const segments = outline.split(/[，、。；：！？\s,·——–\-–_\n""''（）【】《》]+/)
     .filter(s => s.trim().length >= 2);
+  const segmentSet = new Set(segments);
+
+  // Person extraction is intentionally conservative: first trust KB aliases,
+  // then only accept short names that appear as their own segment.
+  for (const knownName of knownPersonNames) {
+    if (outline.includes(knownName)) {
+      addUnique(result.person_names, knownName);
+    }
+  }
+  for (const segment of segments) {
+    if (segment.length <= 4 && looksLikeBoundedPersonName(segment)) {
+      addUnique(result.person_names, segment);
+    }
+  }
+  result.person_names = removeCoveredShortNames(result.person_names)
+    .sort((a, b) => outline.indexOf(a) - outline.indexOf(b));
 
   // Also extract 2-4 char overlapping substrings for longer segments
   const candidates: string[] = [];
@@ -142,42 +212,37 @@ function classifySubjects(outline: string): ClassifiedSubjects {
 
   // Classify each candidate
   for (const word of uniqueCandidates) {
-    // Person names: starts with known surname prefix + 1-2 chars
-    const isPersonName = PERSON_NAME_PREFIXES.some(prefix =>
-      word.startsWith(prefix) && word.length >= prefix.length + 1 && word.length <= prefix.length + 2
-    );
-    if (isPersonName) {
-      result.person_names.push(word);
+    if (result.person_names.includes(word)) {
       continue;
     }
 
     // Place names
     if (CITY_NAMES.includes(word) || mcpProvinces.includes(word)) {
-      result.place_names.push(word);
+      addUnique(result.place_names, word);
       continue;
     }
 
     // Dynasty/period words
     if (DYNASTY_PERIOD_WORDS.includes(word)) {
-      result.period_words.push(word);
+      addUnique(result.period_words, word);
       continue;
     }
 
     // Event words
     if (EVENT_WORDS.includes(word)) {
-      result.event_words.push(word);
+      addUnique(result.event_words, word);
       continue;
     }
 
     // Action words
     if (ACTION_WORDS.includes(word)) {
-      result.action_words.push(word);
+      addUnique(result.action_words, word);
       continue;
     }
 
     // Emotion words
     if (EMOTION_WORDS.includes(word)) {
-      result.emotion_words.push(word);
+      addUnique(result.emotion_words, word);
       continue;
     }
 
@@ -185,15 +250,19 @@ function classifySubjects(outline: string): ClassifiedSubjects {
     let matchedType = false;
     for (const [typeName, hints] of Object.entries(TYPE_KEYWORD_HINTS_FLAT)) {
       if (hints.includes(word)) {
-        result.culture_type_words.push(`${typeName}→${word}`);
+        addUnique(result.culture_type_words, `${typeName}→${word}`);
         matchedType = true;
         break;
       }
     }
     if (matchedType) continue;
 
-    // Other keywords (2+ chars, not classified)
-    if (word.length >= 2 && !result.other_keywords.includes(word)) {
+    // Other keywords (2+ chars, not classified). Do not keep fragments of a
+    // recognized person name, otherwise "毛泽东" leaks as "毛泽/泽东".
+    if (result.person_names.some(name => name.includes(word))) {
+      continue;
+    }
+    if (word.length >= 2 && segmentSet.has(word) && !result.other_keywords.includes(word)) {
       result.other_keywords.push(word);
     }
   }
@@ -234,8 +303,11 @@ function inferStoryIntent(subjects: ClassifiedSubjects, outline: string): {
   const mainCharacter = subjects.person_names.length > 0 ? subjects.person_names[0] : null;
   const timeRange = subjects.period_words.length > 0 ? subjects.period_words.join('→') : null;
 
-  // Core theme from action words + event words
-  const themeParts = [...subjects.action_words.slice(0, 2), ...subjects.event_words.slice(0, 2)];
+  // Core theme from action/event/life-phase words.
+  const phaseThemeWords = subjects.period_words.filter(p =>
+    ['求学', '革命', '觉醒', '起义', '抗战', '解放', '建国', '改革开放'].includes(p)
+  );
+  const themeParts = [...subjects.action_words.slice(0, 2), ...subjects.event_words.slice(0, 2), ...phaseThemeWords.slice(0, 2)];
   const coreTheme = themeParts.length > 0 ? themeParts.join('与') : (outline.length > 20 ? outline.substring(0, 20) + '…' : outline);
 
   // Conflict keywords from event + action intersection
@@ -281,7 +353,7 @@ function generateKnowledgeNeeds(
 
   // Main character need
   const mainCharKeywords = intent.main_character
-    ? [intent.main_character, ...subjects.person_names.filter(n => n !== intent.main_character).slice(0, 2)]
+    ? [intent.main_character]
     : subjects.person_names.slice(0, 3);
   if (mainCharKeywords.length > 0) {
     needs.push({
@@ -317,6 +389,7 @@ function generateKnowledgeNeeds(
   // Cultural background need
   const cultureKeywords = subjects.culture_type_words
     .map(c => c.split('→')[1])
+    .filter(k => !['故事', '人物'].includes(k))
     .slice(0, 4);
   if (cultureKeywords.length > 0) {
     needs.push({
@@ -353,7 +426,8 @@ export async function analyzeOutline(
     return fail(ErrorCodes.VALIDATION_ERROR, 'outline cannot be empty');
   }
 
-  const subjects = classifySubjects(outline);
+  const knownPersonNames = await getKnownPersonNames();
+  const subjects = classifySubjects(outline, knownPersonNames);
   const domain = detectDomain(subjects);
   const intent = inferStoryIntent(subjects, outline);
   const knowledgeNeeds = generateKnowledgeNeeds(intent, subjects);
@@ -393,16 +467,11 @@ export async function multiMatchEntries(
 ): Promise<ApiResponse<MultiMatchResult>> {
   const { outline, knowledge_needs, limit_per_need } = params;
 
-  // Step 1: Collect all entries from knowledge base
-  const provinceFiles = await mcpReadAllProvinceFiles();
-  const allEntries: EntrySearchResult[] = [];
-  for (const [provinceName, content] of provinceFiles) {
-    const parsed = mcpParseEntries(content, provinceName);
-    allEntries.push(...parsed.map(convertSearchResult));
-  }
+  // Step 1: Collect all entries from knowledge base, including long story/detail fields.
+  const allEntries = await collectSearchableEntries();
 
   // Step 2: For each knowledge_need, independently match entries
-  const entryRoleMap = new Map<string, { entry: EntrySearchResult; score: number; role: string; reason: string }>();
+  const entryRoleMap = new Map<string, { entry: SearchableEntry; score: number; role: string; reason: string; keywords: string[] }>();
 
   for (const need of knowledge_needs) {
     // Build a combined query from need keywords
@@ -411,13 +480,14 @@ export async function multiMatchEntries(
     const queryProvince = detectProvince(needQuery);
 
     for (const entry of allEntries) {
+      if (!entryMatchesNeedRole(need, entry)) continue;
       const score = computeMatchScore(needQuery, queryKeywords, entry, queryProvince);
       if (score >= 0.35) {
         const existing = entryRoleMap.get(entry.name);
         // Keep the best role (highest score) for each entry
         if (!existing || score > existing.score) {
           const reason = buildMultiMatchReason(need, entry, score);
-          entryRoleMap.set(entry.name, { entry, score, role: need.need_id, reason });
+          entryRoleMap.set(entry.name, { entry, score, role: need.need_id, reason, keywords: queryKeywords });
         }
       }
     }
@@ -438,7 +508,7 @@ export async function multiMatchEntries(
       province: entry.province,
       region: entry.region || '',
       type: entry.type,
-      summary: entry.summary,
+      summary: buildEntryKnowledgeSummary(entry, data.keywords),
       score: Math.round(data.score * 100) / 100,
       role_in_story: data.role,
       match_reason: data.reason,
@@ -488,6 +558,20 @@ export async function multiMatchEntries(
       overall_confidence: overallConfidence,
     },
   });
+}
+
+function entryMatchesNeedRole(need: KnowledgeNeed, entry: EntrySearchResult): boolean {
+  if (need.need_id === 'main_character') {
+    return need.keywords.some(kw => {
+      const entryAlias = entry.name.split('——')[0]?.trim() ?? entry.name;
+      return entryAlias === kw || (entry.type === '历史人物' && (
+        entry.name.includes(kw)
+        || entry.summary.includes(kw)
+        || entry.keywords.some(ekw => ekw.includes(kw) || kw.includes(ekw))
+      ));
+    });
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------

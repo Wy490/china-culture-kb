@@ -227,6 +227,10 @@ export const StorySceneRegenerateRequestSchema = z.object({
   model_profile_id: z.string().optional(),
 });
 
+export const GearsDeliveryUpdateRequestSchema = z.object({
+  markdown: z.string().min(1, 'markdown cannot be empty').max(120000, 'markdown is too long'),
+});
+
 // ---------------------------------------------------------------------------
 // Story outline analyze request
 // ---------------------------------------------------------------------------

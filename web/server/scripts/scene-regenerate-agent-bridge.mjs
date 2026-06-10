@@ -190,7 +190,7 @@ async function main() {
   const raw = await readStdin();
   const pkg = JSON.parse(raw);
   const provider = (process.env.SCENE_REGEN_AGENT || 'claude').trim();
-  const timeoutMs = Number(process.env.SCENE_REGEN_AGENT_TIMEOUT_MS || 120000);
+  const timeoutMs = Number(process.env.SCENE_REGEN_AGENT_TIMEOUT_MS || 180000);
 
   const patch = provider === 'codex'
     ? await runCodex(pkg, timeoutMs)

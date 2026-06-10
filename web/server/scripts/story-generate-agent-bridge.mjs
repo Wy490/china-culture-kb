@@ -133,8 +133,8 @@ function validateOutput(output) {
     throw new Error('scene_breakdown must be a non-empty array');
   }
   for (const scene of output.scene_breakdown) {
-    if (!scene.scene_id || !scene.title || !scene.plot || !scene.key_action) {
-      throw new Error('Each scene must have scene_id, title, plot, key_action');
+    if (!scene.title || !scene.plot || !scene.key_action) {
+      throw new Error('Each scene must have title, plot, key_action');
     }
   }
   return {
@@ -142,8 +142,8 @@ function validateOutput(output) {
     logline: String(output.logline).trim(),
     theme: String(output.theme).trim(),
     full_text: String(output.full_text).trim(),
-    scene_breakdown: output.scene_breakdown.map(s => ({
-      scene_id: Number(s.scene_id),
+    scene_breakdown: output.scene_breakdown.map((s, index) => ({
+      scene_id: normalizeSceneId(s.scene_id, index),
       title: String(s.title).trim(),
       plot: String(s.plot).trim(),
       key_action: String(s.key_action).trim(),
@@ -164,6 +164,11 @@ function validateOutput(output) {
     atmosphere: output.atmosphere || undefined,
     argument_points: output.argument_points || undefined,
   };
+}
+
+function normalizeSceneId(rawSceneId, index) {
+  const parsed = Number(rawSceneId);
+  return Number.isInteger(parsed) && parsed >= 1 ? parsed : index + 1;
 }
 
 function combinedPrompt(pkg) {
@@ -270,7 +275,7 @@ async function main() {
   const raw = await readStdin();
   const pkg = JSON.parse(raw);
   const provider = (process.env.STORY_GEN_AGENT || 'claude').trim();
-  const timeoutMs = Number(process.env.STORY_GEN_AGENT_TIMEOUT_MS || 180000);
+  const timeoutMs = Number(process.env.STORY_GEN_AGENT_TIMEOUT_MS || 300000);
 
   const result = provider === 'codex'
     ? await runCodex(pkg, timeoutMs)

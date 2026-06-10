@@ -160,6 +160,7 @@
       v-if="result.gears_segments.length > 0"
       :segments="result.gears_segments"
       :gears-segments-url="result.gears_segments_url"
+      :delivery-package="result.gears_delivery"
       :story-id="result.storyId"
     />
 

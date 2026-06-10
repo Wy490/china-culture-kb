@@ -29,6 +29,7 @@ import type {
   ProtagonistArc,
   GearsSegment,
   GearsSegmentsResponse,
+  GearsDeliveryPackage,
   StoryListItem,
   KnowledgePack,
   StoryQualityReport,
@@ -54,11 +55,12 @@ import {
   validateMemoryMosaicStory,
 } from './memory-mosaic-service.js';
 import { validateReferenceSafety, combineQualityReports } from './reference-quality-service.js';
-import { createProjectFromGeneratedStory } from './project-service.js';
+import { createProjectFromGeneratedStory, updateProjectCurrentGearsDelivery } from './project-service.js';
 import { resolveModelProfile } from './model-catalog.js';
 import { buildStoryGenerationPromptPackage } from './story-generation-prompt.js';
 import { generateStoryWithAdapter } from './story-generation-model.js';
 import type { StoryGenerationModelOutput } from './story-generation-prompt.js';
+import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
 
 // ---------------------------------------------------------------------------
 // Entry type → VideoType routing (entry Chinese type name → recommended VideoType list)
@@ -1063,6 +1065,7 @@ export async function generateAndStoreStory(
       model_fallback_reason: adapterResult.reason,
     },
   };
+  storyData.gears_delivery = buildGearsDeliveryPackage(storyData);
 
   const storyWithProject = await createProjectFromGeneratedStory(storyData, createdAt);
 
@@ -1153,6 +1156,7 @@ export async function getStory(storyId: string): Promise<ApiResponse<StoryGenera
       // 旧故事 JSON 缺 generation_mode/generation_used_fallback → 填充默认值
       cleaned.generation_mode = cleaned.generation_mode ?? 'local_only';
       cleaned.generation_used_fallback = cleaned.generation_used_fallback ?? false;
+      cleaned.gears_delivery = cleaned.gears_delivery ?? buildGearsDeliveryPackage(cleaned);
       return success(cleaned);
     } catch { continue; }
   }
@@ -1183,4 +1187,49 @@ export async function getGearsSegments(storyId: string): Promise<ApiResponse<Gea
   };
 
   return success(response);
+}
+
+// ---------------------------------------------------------------------------
+// getGearsDeliveryPackage — GEARS script delivery package (assets + units)
+// ---------------------------------------------------------------------------
+
+export async function getGearsDeliveryPackage(storyId: string): Promise<ApiResponse<GearsDeliveryPackage>> {
+  const storyResult = await getStory(storyId);
+  if (!storyResult.ok || !storyResult.data) {
+    return fail(ErrorCodes.GEARS_SEGMENTS_NOT_FOUND, `Gears delivery package for story "${storyId}" not found`);
+  }
+
+  return success(storyResult.data.gears_delivery ?? buildGearsDeliveryPackage(storyResult.data));
+}
+
+export async function updateGearsDeliveryMarkdown(
+  storyId: string,
+  markdown: string,
+): Promise<ApiResponse<GearsDeliveryPackage>> {
+  const root = generatedRoot();
+
+  for (const typeDir of ALL_VIDEO_TYPES) {
+    const filePath = resolve(root, typeDir, `${storyId}.json`);
+    try {
+      const content = await readFile(filePath, 'utf-8');
+      const data = JSON.parse(content) as StoryGenerateResult & { _request_meta?: unknown };
+      const baseDelivery = data.gears_delivery ?? buildGearsDeliveryPackage(data);
+      const updatedDelivery: GearsDeliveryPackage = {
+        ...baseDelivery,
+        markdown,
+      };
+      const updatedStory = {
+        ...data,
+        gears_delivery: updatedDelivery,
+      };
+
+      await writeFile(filePath, JSON.stringify(updatedStory, null, 2), 'utf-8');
+      await updateProjectCurrentGearsDelivery(data.project_id, data.storyId, updatedDelivery);
+      return success(updatedDelivery);
+    } catch {
+      continue;
+    }
+  }
+
+  return fail(ErrorCodes.STORY_NOT_FOUND, `Story "${storyId}" not found`);
 }

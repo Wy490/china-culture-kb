@@ -59,7 +59,7 @@ async function runCommandAdapter(input: {
   }
 
   const args = parseArgs(process.env.SCENE_REGEN_COMMAND_ARGS);
-  const timeoutMs = Number(process.env.SCENE_REGEN_COMMAND_TIMEOUT_MS ?? 45000);
+  const timeoutMs = Number(process.env.SCENE_REGEN_COMMAND_TIMEOUT_MS ?? 180000);
   const selectedProfile = getModelProfileById(input.modelProfileId);
   const childEnv = {
     ...process.env,

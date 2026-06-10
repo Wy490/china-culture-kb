@@ -12,8 +12,10 @@ import type {
   StoryProjectVersionSummary,
   StorySceneRegenerateRequest,
   VideoType,
+  GearsDeliveryPackage,
 } from '@shared/types.js';
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
+import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
 
 const ALL_VIDEO_TYPES: VideoType[] = [
   'character_story', 'historical_drama', 'legend_story',
@@ -380,9 +382,13 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
 
 /** 旧故事 JSON 缺 generation_mode/generation_used_fallback → 填充默认值 */
 function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenerateResult {
-  story.generation_mode = story.generation_mode ?? 'local_only';
-  story.generation_used_fallback = story.generation_used_fallback ?? false;
-  return story;
+  const normalized = {
+    ...story,
+    generation_mode: story.generation_mode ?? 'local_only',
+    generation_used_fallback: story.generation_used_fallback ?? false,
+  };
+  normalized.gears_delivery = normalized.gears_delivery ?? buildGearsDeliveryPackage(normalized);
+  return normalized;
 }
 
 export async function regenerateProjectScene(
@@ -411,4 +417,35 @@ export async function regenerateProjectScene(
   );
 
   return getProject(projectId);
+}
+
+export async function updateProjectCurrentGearsDelivery(
+  projectId: string | undefined,
+  storyId: string,
+  gearsDelivery: GearsDeliveryPackage,
+): Promise<void> {
+  if (!projectId) return;
+  const project = await readProjectMeta(projectId);
+  if (!project) return;
+
+  const currentPath = projectVersionPath(projectId, project.current_version_id);
+  if (!(await pathExists(currentPath))) return;
+
+  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
+  if (snapshot.story.storyId !== storyId) return;
+
+  const updatedSnapshot: StoryProjectVersionSnapshot = {
+    ...snapshot,
+    story: {
+      ...snapshot.story,
+      gears_delivery: gearsDelivery,
+    },
+  };
+  const updatedMeta: StoryProjectMeta = {
+    ...project,
+    updated_at: new Date().toISOString(),
+  };
+
+  await writeJsonFile(currentPath, updatedSnapshot);
+  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
 }

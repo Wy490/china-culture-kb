@@ -18,6 +18,7 @@ import { validateDramaticStory } from './dramatic-story.js';
 import { validateMemoryMosaicStory } from './memory-mosaic-service.js';
 import { combineQualityReports, validateReferenceSafety } from './reference-quality-service.js';
 import { resolveModelProfile } from './model-catalog.js';
+import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
 
 const REALITY_LINE_FUNCTIONS = new Set([
   '现实钩子',
@@ -420,11 +421,16 @@ export async function regenerateSceneInStory(
     reference_trace: [...(updatedStory.reference_trace ?? []), regenerationTrace],
   });
 
-  return {
+  const finalStory = {
     ...updatedStory,
     reference_trace: [...(updatedStory.reference_trace ?? []), regenerationTrace],
     quality_report: combineQualityReports(structuralQuality, referenceSafety),
     ...syncDerivedFields(updatedStory, updatedScenes),
+  };
+
+  return {
+    ...finalStory,
+    gears_delivery: buildGearsDeliveryPackage(finalStory),
   };
 }
 

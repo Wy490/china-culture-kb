@@ -224,7 +224,11 @@ describe('Entries API', () => {
       const res = await request.get('/api/entries/search?keywords=拒签冤案');
       expect(res.status).toBe(200);
       expectSuccess(res.body);
-      expect(res.body.data.some((entry: { name: string }) => entry.name.includes('周敦颐'))).toBe(true);
+      const zhou = res.body.data.find((entry: { name: string }) => entry.name.includes('周敦颐'));
+      expect(zhou).toBeTruthy();
+      expect(res.body.data[0].name).toContain('周敦颐');
+      expect(zhou.matched_snippets.some((snippet: string) => snippet.includes('拒签冤案'))).toBe(true);
+      expect(zhou.match_reason).toContain('命中');
     });
 
     it('searches related locations and building names', async () => {
@@ -232,6 +236,15 @@ describe('Entries API', () => {
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(res.body.data.some((entry: { name: string }) => entry.name.includes('岳阳楼'))).toBe(true);
+    });
+
+    it('promotes entries that match place and building intent', async () => {
+      const res = await request.get('/api/entries/search?keywords=吕仙祠建筑故事');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data[0].name).toContain('岳阳楼');
+      expect(res.body.data[0].match_reason).toContain('地点建筑');
+      expect(res.body.data[0].matched_snippets.some((snippet: string) => snippet.includes('吕仙祠'))).toBe(true);
     });
 
     it('returns results with province filter', async () => {

@@ -2,8 +2,8 @@
 
 > 分支: `feat/memory-mosaic-biography-phase5`
 > 日期: 2026-06-10
-> 测试: 111 passed, 0 failed
-> 工作区: **干净**（全部已 commit + push）
+> 测试: 112 passed, 0 failed
+> 工作区: 交接 commit `87b7754` 时干净；本轮 P0 修复后有待提交改动
 
 ---
 
@@ -18,6 +18,14 @@
 | `1edba69` | 部署指南文档 docs/deployment-guide.md |
 | `965d18f` | 桥接脚本去掉 `--json-schema` 和 `--allowedTools ''` |
 | `e1aa7b6` | MCP 搜索增强 + entry-service 意图扩展 + 搜索测试 (108→111) |
+
+### 本轮 P0 修复（待 commit）
+
+| 改动 | 说明 |
+|------|------|
+| 全文桥接 `scene_id` 归一化 | `scene_id: null/0/非法值` → 按数组顺序补为 `index + 1` |
+| 默认超时调整 | 全文生成 330s/300s；场景重写 180s/180s |
+| 回归测试 | 新增 `story-generation-bridge.test.ts`，测试总数 112 |
 
 ### 修复的 Bug
 
@@ -140,11 +148,11 @@ reference_trace: {applied_rules: ['provider:command_json']}
 | `STORY_GEN_PROVIDER` | `command_json` | 适配器类型 |
 | `STORY_GEN_COMMAND` | 空（local_only） | 外部命令路径 |
 | `STORY_GEN_COMMAND_ARGS` | `[]` | 命令参数 JSON |
-| `STORY_GEN_COMMAND_TIMEOUT_MS` | `120000` | **⚠️ 建议改为 330000** |
+| `STORY_GEN_COMMAND_TIMEOUT_MS` | `330000` | 适配器超时 |
 | `STORY_GEN_AGENT` | `claude` | 桥接用 claude/codex |
 | `STORY_GEN_AGENT_MODEL` | 空 | 模型名（sonnet/opus） |
 | `STORY_GEN_AGENT_CLAUDE_PATH` | `claude` | Claude CLI 路径 |
-| `STORY_GEN_AGENT_TIMEOUT_MS` | `180000` | **⚠️ 建议改为 300000** |
+| `STORY_GEN_AGENT_TIMEOUT_MS` | `300000` | 桥接脚本超时 |
 
 ### 场景重写
 
@@ -153,9 +161,9 @@ reference_trace: {applied_rules: ['provider:command_json']}
 | `SCENE_REGEN_PROVIDER` | `command_json` | 适配器类型 |
 | `SCENE_REGEN_COMMAND` | 空 | 外部命令路径 |
 | `SCENE_REGEN_COMMAND_ARGS` | `[]` | 命令参数 |
-| `SCENE_REGEN_COMMAND_TIMEOUT_MS` | `45000` | 适配器超时 |
+| `SCENE_REGEN_COMMAND_TIMEOUT_MS` | `180000` | 适配器超时 |
 | `SCENE_REGEN_AGENT` | `claude` | 桥接 agent |
-| `SCENE_REGEN_AGENT_TIMEOUT_MS` | `120000` | 桥接超时 |
+| `SCENE_REGEN_AGENT_TIMEOUT_MS` | `180000` | 桥接超时 |
 
 ### 核心服务
 
@@ -168,12 +176,13 @@ reference_trace: {applied_rules: ['provider:command_json']}
 
 ---
 
-## 五、测试覆盖（111 个）
+## 五、测试覆盖（112 个）
 
 | 测试文件 | 测试数 | 覆盖范围 |
 |----------|--------|----------|
 | `api.test.ts` | ~73 | 路由集成 + Projects API + 参数验证 + 新搜索测试 |
 | `story-generation-model.test.ts` | 16 | 适配器 fallback + 兼容性检查 + 合并 + 边界 |
+| `story-generation-bridge.test.ts` | 1 | 全文桥接脚本 scene_id 归一化 |
 | `story-regenerate-service.test.ts` | 4 | 场景重写本地/模型/记忆拼图 |
 | `project-service.test.ts` | 5 | 项目 CRUD + 场景重写 + **旧故事兼容 3 个** |
 | `model-catalog.test.ts` | ? | 模型目录 |
@@ -184,18 +193,10 @@ reference_trace: {applied_rules: ['provider:command_json']}
 
 ## 六、下一步建议（Codex 接手）
 
-### 优先级 P0 — 必须先做
+### 优先级 P0 — 已完成
 
-1. **桥接脚本 `scene_id` 类型修复** — 模型返回 `scene_id: null`（应为整数），桥接脚本的 `validateOutput` 需强转
-   - 文件: `web/server/scripts/story-generate-agent-bridge.mjs` 的 `validateOutput` 函数
-   - 当前: `scene_id: Number(s.scene_id)` — `Number(null)` = `0`，不是期望的 1-N
-   - 建议: 检查 `scene_id` 是否为 null → 用数组索引 +1 作为 fallback
-
-2. **默认超时值调整** — 当前默认值 120000 不够，真实 Claude CLI 调用需 ~2-3 分钟
-   - 文件: `web/server/src/services/story-generation-model.ts` 和 `scene-regeneration-model.ts`
-   - 当前默认: `STORY_GEN_COMMAND_TIMEOUT_MS = 120000`
-   - 建议: 改为 `330000`（5.5 分钟）
-   - 同理: `STORY_GEN_AGENT_TIMEOUT_MS` 从 180000 改为 300000
+1. **桥接脚本 `scene_id` 类型修复** — `web/server/scripts/story-generate-agent-bridge.mjs` 已将模型返回的 `scene_id: null/0/非法值` 归一化为数组顺序 `index + 1`。
+2. **默认超时值调整** — 全文生成默认超时已提升到 `STORY_GEN_COMMAND_TIMEOUT_MS=330000`、`STORY_GEN_AGENT_TIMEOUT_MS=300000`；场景重写默认超时已提升到 `SCENE_REGEN_COMMAND_TIMEOUT_MS=180000`、`SCENE_REGEN_AGENT_TIMEOUT_MS=180000`。
 
 ### 优先级 P1 — 建议接下来做
 
@@ -231,10 +232,10 @@ reference_trace: {applied_rules: ['provider:command_json']}
 
 | Risk | 说明 | 当前缓解 |
 |------|------|----------|
-| 模型返回 `scene_id: null` | Claude 可能不给整数 scene_id | `Number(null)` = 0 → 兼容性检查会 reject → fallback |
+| 模型返回 `scene_id: null` | Claude 可能不给整数 scene_id | 桥接脚本按数组顺序归一化为 `index + 1`，并有回归测试覆盖 |
 | 模型 `full_text`/`scene_breakdown` 语义不一致 | 模型内部质量问题 | 兼容性检查 reject → fallback，无法解决语义不一致 |
 | `parseJsonBlock` 误解析 | Claude 输出含多个 JSON 对象时可能取错 | `parseJsonBlock` 取 `{...}` 最外层匹配，大部分情况足够 |
-| 默认超时 120s 不够 | 真实调用需 ~2-3 分钟 | 需手动设环境变量 330s，或改默认值 |
+| 外部模型偶发慢响应 | 真实调用可能超过 2-3 分钟 | 默认值已上调；仍可用环境变量继续覆盖 |
 | 旧 JSON 无 generation 字段 | 已存故事缺少新字段 | 已做 `?? 'local_only'` / `?? false` 兜底 |
 
 ---
@@ -252,7 +253,7 @@ npm run dev    # 端口 5173，自动代理 /api → localhost:3000
 
 # 测试
 cd web/server
-npm test       # 111 tests
+npm test       # 112 tests
 
 # 带外部模型启动（需要 Claude CLI 已安装并登录）
 export STORY_GEN_COMMAND=node

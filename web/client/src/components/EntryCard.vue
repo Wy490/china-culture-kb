@@ -11,6 +11,13 @@
 
     <p class="entry-card__summary">{{ entry.summary }}</p>
 
+    <div v-if="entry.matched_snippets?.length" class="entry-card__matches">
+      <div class="entry-card__matches-title">{{ entry.match_reason || '命中片段' }}</div>
+      <p v-for="snippet in entry.matched_snippets.slice(0, 2)" :key="snippet">
+        {{ snippet }}
+      </p>
+    </div>
+
     <div v-if="entry.keywords.length > 0" class="entry-card__keywords">
       <span v-for="kw in entry.keywords.slice(0, 4)" :key="kw" class="entry-card__keyword">{{ kw }}</span>
     </div>
@@ -120,6 +127,31 @@ const credibilityClass = (credibility: string) => {
   font-size: 14px;
   line-height: 1.5;
   color: #34495e;
+}
+
+.entry-card__matches {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-left: 3px solid #3498db;
+  background: #f4f9fd;
+  color: #2c3e50;
+}
+
+.entry-card__matches-title {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2980b9;
+}
+
+.entry-card__matches p {
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.entry-card__matches p:last-child {
+  margin-bottom: 0;
 }
 
 .entry-card__keywords {

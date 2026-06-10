@@ -2,13 +2,20 @@
 
 import { Router } from 'express';
 import { validateBody, validateParams } from '../middleware/validate.js';
-import { StoryPlanRequestSchema, StoryGenerateRequestSchema, StoryIdParamSchema } from '@shared/schemas.js';
+import {
+  GearsDeliveryUpdateRequestSchema,
+  StoryPlanRequestSchema,
+  StoryGenerateRequestSchema,
+  StoryIdParamSchema,
+} from '@shared/schemas.js';
 import {
   planStory,
   generateAndStoreStory,
   listStories,
   getStory,
   getGearsSegments,
+  getGearsDeliveryPackage,
+  updateGearsDeliveryMarkdown,
 } from '../services/story-service.js';
 import type { VideoType } from '@shared/types.js';
 
@@ -68,3 +75,31 @@ storiesRouter.get('/:storyId/gears-segments', validateParams(StoryIdParamSchema)
     next(err);
   }
 });
+
+// GET /api/stories/:storyId/gears-delivery — get GEARS supply package markdown + assets + units
+storiesRouter.get('/:storyId/gears-delivery', validateParams(StoryIdParamSchema), async (req, res, next) => {
+  try {
+    const { storyId } = req.params as { storyId: string };
+    const result = await getGearsDeliveryPackage(storyId);
+    res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/stories/:storyId/gears-delivery — persist edited GEARS delivery markdown
+storiesRouter.patch(
+  '/:storyId/gears-delivery',
+  validateParams(StoryIdParamSchema),
+  validateBody(GearsDeliveryUpdateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { storyId } = req.params as { storyId: string };
+      const { markdown } = req.body as { markdown: string };
+      const result = await updateGearsDeliveryMarkdown(storyId, markdown);
+      res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);

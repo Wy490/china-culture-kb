@@ -1883,11 +1883,26 @@ export function validateDramaticStory(result: {
   );
   if (!hasClimax) issues.push('缺少高潮场景');
 
-  // 6. hasEndingTheme — last scene mentions spiritual/moral/value theme
-  const themeWords = ['良知', '精神', '道德', '价值', '正义', '廉洁', '担当', '坚守', '传承', '出淤泥而不染'];
+  // 6. hasEndingTheme — last scene mentions spiritual/moral/value theme.
+  // Revolutionary and coming-of-age stories often land on "理想/信仰/人民/道路/觉醒"
+  // instead of explicit moral words such as "道德".
+  const themeWords = [
+    '良知', '精神', '道德', '价值', '正义', '廉洁', '担当', '坚守', '传承', '出淤泥而不染',
+    '理想', '信仰', '人民', '道路', '觉醒', '初心', '使命', '家国', '民族', '奋斗', '求索',
+    '牺牲', '独立自主', '实事求是', '敢为天下先',
+  ];
   const lastScene = scenes[scenes.length - 1];
+  const lastSceneText = lastScene
+    ? [
+        lastScene.title,
+        lastScene.dramatic_function,
+        lastScene.plot,
+        lastScene.key_action,
+        lastScene.cultural_note,
+      ].filter(Boolean).join(' ')
+    : '';
   const hasEndingTheme = lastScene && themeWords.some(w =>
-    lastScene.plot.includes(w) || fullText.includes(w)
+    lastSceneText.includes(w) || fullText.includes(w) || result.title.includes(w)
   );
   if (!hasEndingTheme) issues.push('缺少结尾主题——没有精神/道德落点');
 

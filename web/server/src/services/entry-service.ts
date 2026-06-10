@@ -38,7 +38,27 @@ export async function searchEntries(params: SearchParams): Promise<ApiResponse<E
     region: params.region,
   });
 
-  return success(results.map(convertSearchResult));
+  const converted = results.map(convertSearchResult);
+  if (!hasKeywords) {
+    return success(converted);
+  }
+
+  const queryKeywords = extractKeywords(params.keywords ?? '');
+  const searchIntent = detectSearchIntent(params.keywords ?? '');
+  const detailsByName = new Map((await collectSearchableEntries()).map(entry => [entry.name, entry]));
+  const enriched = converted.map(entry => {
+    const detail = detailsByName.get(entry.name);
+    if (!detail) return { ...entry, _rank: 0 };
+    const matchedSnippets = buildEntryMatchedSnippets(detail, queryKeywords, 3);
+    return {
+      ...entry,
+      ...(matchedSnippets.length > 0 ? { matched_snippets: matchedSnippets } : {}),
+      match_reason: buildEntrySearchReason(detail, queryKeywords, searchIntent),
+      _rank: computeSearchRank(detail, queryKeywords, searchIntent),
+    };
+  });
+  enriched.sort((a, b) => b._rank - a._rank);
+  return success(enriched.map(({ _rank, ...entry }) => entry));
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +84,7 @@ interface MatchParams {
   preferred_type?: string;
 }
 
-interface SearchableEntry extends EntrySearchResult {
+export interface SearchableEntry extends EntrySearchResult {
   story?: string;
   culturalSignificance?: string;
   relatedLocationText?: string;
@@ -72,6 +92,8 @@ interface SearchableEntry extends EntrySearchResult {
   verificationText?: string;
   unverifiedText?: string;
 }
+
+type SearchIntent = 'person_experience' | 'place_building' | 'folk_ritual' | 'religion' | 'event' | 'craft_process' | 'general';
 
 // Type-related keyword hints for boosting scores
 const TYPE_KEYWORD_HINTS: Record<string, string[]> = {
@@ -99,25 +121,8 @@ export async function matchEntries(params: MatchParams): Promise<ApiResponse<Ent
     return fail(ErrorCodes.VALIDATION_ERROR, 'query cannot be empty');
   }
 
-  // Step 1: Collect all entries from knowledge base
-  const provinceFiles = await mcpReadAllProvinceFiles();
-  const allEntries: SearchableEntry[] = [];
-  for (const [provinceName, content] of provinceFiles) {
-    const parsed = mcpParseEntries(content, provinceName);
-    allEntries.push(...parsed.map(entry => {
-      const summaryEntry = convertSearchResult(entry);
-      const detail = mcpParseFullEntry(content, entry.name);
-      return {
-        ...summaryEntry,
-        story: detail?.story ?? '',
-        culturalSignificance: detail?.culturalSignificance ?? '',
-        relatedLocationText: detail?.relatedLocations.map(location => `${location.name} ${location.description}`).join(' ') ?? '',
-        sourcesText: detail?.sources.join(' ') ?? '',
-        verificationText: detail?.verificationMethod ?? '',
-        unverifiedText: detail?.unverifiedPoints.join(' ') ?? '',
-      };
-    }));
-  }
+  // Step 1: Collect all entries from knowledge base, including long story/detail fields.
+  const allEntries = await collectSearchableEntries();
 
   // Step 2: Extract query keywords
   const queryKeywords = extractKeywords(trimmedQuery);
@@ -161,6 +166,183 @@ export async function matchEntries(params: MatchParams): Promise<ApiResponse<Ent
     best_match: bestMatch,
     fallback_message: fallbackMessage,
   });
+}
+
+export async function collectSearchableEntries(): Promise<SearchableEntry[]> {
+  const provinceFiles = await mcpReadAllProvinceFiles();
+  const allEntries: SearchableEntry[] = [];
+  for (const [provinceName, content] of provinceFiles) {
+    const parsed = mcpParseEntries(content, provinceName);
+    allEntries.push(...parsed.map(entry => {
+      const summaryEntry = convertSearchResult(entry);
+      const detail = mcpParseFullEntry(content, entry.name);
+      return {
+        ...summaryEntry,
+        story: detail?.story ?? '',
+        culturalSignificance: detail?.culturalSignificance ?? '',
+        relatedLocationText: detail?.relatedLocations.map(location => `${location.name} ${location.description}`).join(' ') ?? '',
+        sourcesText: detail?.sources.join(' ') ?? '',
+        verificationText: detail?.verificationMethod ?? '',
+        unverifiedText: detail?.unverifiedPoints.join(' ') ?? '',
+      };
+    }));
+  }
+  return allEntries;
+}
+
+export function buildEntryKnowledgeSummary(entry: SearchableEntry, queryKeywords: string[], maxLength = 360): string {
+  const snippets = uniqueTextParts([
+    entry.summary,
+    ...buildEntryMatchedSnippets(entry, queryKeywords, 4, true),
+  ]);
+  const summary = snippets.join('；');
+  return summary.length > maxLength ? `${summary.substring(0, maxLength)}…` : summary;
+}
+
+export function buildEntryMatchedSnippets(
+  entry: SearchableEntry,
+  queryKeywords: string[],
+  limit = 3,
+  allowFallback = false,
+): string[] {
+  return uniqueTextParts([
+    ...extractRelevantSnippets(entry.story ?? '', queryKeywords, 2, allowFallback),
+    ...extractRelevantSnippets(entry.relatedLocationText ?? '', queryKeywords, 1, allowFallback).map(snippet => `相关地点：${snippet}`),
+    ...extractRelevantSnippets(entry.culturalSignificance ?? '', queryKeywords, 1, allowFallback),
+  ]).slice(0, limit);
+}
+
+function buildEntrySearchReason(entry: SearchableEntry, queryKeywords: string[], intent: SearchIntent): string {
+  const matchedKeywords = queryKeywords.filter(keyword =>
+    entry.name.includes(keyword)
+    || entry.summary.includes(keyword)
+    || (entry.story ?? '').includes(keyword)
+    || (entry.relatedLocationText ?? '').includes(keyword)
+    || (entry.culturalSignificance ?? '').includes(keyword)
+    || entry.keywords.some(ekw => ekw.includes(keyword) || keyword.includes(ekw))
+  );
+  const keywordReason = matchedKeywords.length > 0
+    ? `命中：${[...new Set(matchedKeywords)].slice(0, 6).join('、')}`
+    : '内容相关';
+  const intentLabel = searchIntentLabel(intent);
+  return intentLabel ? `${keywordReason} · ${intentLabel}` : keywordReason;
+}
+
+function computeSearchRank(entry: SearchableEntry, queryKeywords: string[], intent: SearchIntent): number {
+  const coreName = entry.name.split('——')[0] ?? entry.name;
+  const baseRank = queryKeywords.reduce((rank, keyword) => {
+    if (!keyword) return rank;
+    let nextRank = rank;
+    if (entry.name.includes(keyword)) nextRank += 12;
+    if (coreName.includes(keyword)) nextRank += 10;
+    if (entry.keywords.some(ekw => ekw.includes(keyword) || keyword.includes(ekw))) nextRank += 8;
+    if (entry.summary.includes(keyword)) nextRank += 6;
+    if ((entry.story ?? '').includes(keyword)) nextRank += 7;
+    if ((entry.relatedLocationText ?? '').includes(keyword)) nextRank += 7;
+    if ((entry.culturalSignificance ?? '').includes(keyword)) nextRank += 4;
+    if (entry.type.includes(keyword) || entry.province.includes(keyword) || entry.region.includes(keyword)) nextRank += 2;
+    return nextRank;
+  }, 0);
+  return baseRank + computeIntentRank(entry, intent, queryKeywords);
+}
+
+function detectSearchIntent(query: string): SearchIntent {
+  if (['建筑', '古建', '楼', '阁', '亭', '寺', '庙', '祠', '书院', '遗址', '地点', '空间', '景点'].some(word => query.includes(word))) {
+    return 'place_building';
+  }
+  if (['人物', '生平', '经历', '事迹', '传记', '主人公', '成长'].some(word => query.includes(word))) {
+    return 'person_experience';
+  }
+  if (['民俗', '习俗', '仪式', '祭祀', '节庆', '节日', '活动'].some(word => query.includes(word))) {
+    return 'folk_ritual';
+  }
+  if (['宗教', '信仰', '佛', '道教', '佛教', '神灵'].some(word => query.includes(word))) {
+    return 'religion';
+  }
+  if (['事件', '起义', '战役', '战争', '革命', '拒签', '断案', '转折', '冲突'].some(word => query.includes(word))) {
+    return 'event';
+  }
+  if (['工艺', '技艺', '流程', '制作', '传承', '手艺', '材料', '工具'].some(word => query.includes(word))) {
+    return 'craft_process';
+  }
+  return 'general';
+}
+
+function computeIntentRank(entry: SearchableEntry, intent: SearchIntent, queryKeywords: string[]): number {
+  const detailText = [
+    entry.name,
+    entry.summary,
+    entry.story,
+    entry.relatedLocationText,
+    entry.culturalSignificance,
+    entry.keywords.join(' '),
+  ].join(' ');
+  const hasKeywordInDetails = queryKeywords.some(keyword => keyword && detailText.includes(keyword));
+
+  if (intent === 'place_building') {
+    return (entry.type === '名胜古迹' ? 10 : 0) + ((entry.relatedLocationText ?? '').length > 0 && hasKeywordInDetails ? 8 : 0);
+  }
+  if (intent === 'person_experience') {
+    return (entry.type === '历史人物' ? 10 : 0) + ((entry.story ?? '').length > 0 && hasKeywordInDetails ? 6 : 0);
+  }
+  if (intent === 'folk_ritual') {
+    return (['民俗活动', '节庆习俗', '非遗'].includes(entry.type) ? 10 : 0) + (hasKeywordInDetails ? 5 : 0);
+  }
+  if (intent === 'religion') {
+    return (entry.type === '宗教信仰' ? 10 : 0) + (hasKeywordInDetails ? 5 : 0);
+  }
+  if (intent === 'event') {
+    return (['地方掌故', '历史人物'].includes(entry.type) ? 8 : 0) + ((entry.story ?? '').length > 0 && hasKeywordInDetails ? 7 : 0);
+  }
+  if (intent === 'craft_process') {
+    return (['传统工艺', '非遗'].includes(entry.type) ? 10 : 0) + (hasKeywordInDetails ? 5 : 0);
+  }
+  return 0;
+}
+
+function searchIntentLabel(intent: SearchIntent): string | null {
+  const labels: Record<SearchIntent, string | null> = {
+    person_experience: '人物经历',
+    place_building: '地点建筑',
+    folk_ritual: '民俗仪式',
+    religion: '宗教信仰',
+    event: '历史事件',
+    craft_process: '工艺流程',
+    general: null,
+  };
+  return labels[intent];
+}
+
+function extractRelevantSnippets(text: string, keywords: string[], limit: number, allowFallback: boolean): string[] {
+  const cleaned = text.trim().replace(/\s+/g, ' ');
+  if (!cleaned) return [];
+
+  const sentences = cleaned
+    .split(/(?<=[。！？!?；;])/)
+    .map(sentence => sentence.trim())
+    .filter(sentence => sentence.length >= 8);
+  const matched = sentences
+    .filter(sentence => keywords.some(keyword => keyword && sentence.includes(keyword)))
+    .sort((a, b) => scoreSnippet(b, keywords) - scoreSnippet(a, keywords));
+  const selected = matched.length > 0 ? matched : allowFallback ? sentences.slice(0, 1) : [];
+  return selected.slice(0, limit).map(snippet => snippet.length > 120 ? `${snippet.substring(0, 120)}…` : snippet);
+}
+
+function scoreSnippet(sentence: string, keywords: string[]): number {
+  return keywords.reduce((score, keyword) => {
+    if (!keyword || !sentence.includes(keyword)) return score;
+    return score + Math.min(4, keyword.length);
+  }, 0);
+}
+
+function uniqueTextParts(parts: Array<string | undefined>): string[] {
+  const result: string[] = [];
+  for (const part of parts) {
+    const cleaned = part?.trim();
+    if (!cleaned || result.includes(cleaned)) continue;
+    result.push(cleaned);
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------

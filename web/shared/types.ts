@@ -661,6 +661,58 @@ export interface GearsSegmentsResponse {
   segments: GearsSegment[];
 }
 
+export type GearsCharacterRolePosition = '主角' | '反派' | '配角' | '路人' | '群演';
+export type GearsSpeciesType = '人类' | '拟人动物' | '拟人机器人' | '怪物·异形' | '卡通角色' | '其他';
+export type GearsEthnicity = '东亚' | '东南亚' | '南亚' | '西亚·阿拉伯' | '欧洲白人' | '非洲黑人' | '拉美裔' | '其他';
+export type GearsGender = '男' | '女' | '其他' | '未指定' | '不适用';
+export type GearsAgeRange = '儿童' | '少年' | '青年' | '中年' | '老年' | '不适用';
+export type GearsSceneType = '室内' | '室外' | '虚构空间' | '不限';
+export type GearsSceneAtmosphere = '明亮' | '压抑' | '温馨' | '紧张' | '神秘' | '中性';
+export type GearsTimeOfDay = '早' | '午' | '夕' | '夜';
+
+export interface GearsCharacterAsset {
+  name: string;
+  role_position: GearsCharacterRolePosition;
+  species_type: GearsSpeciesType;
+  ethnicity: GearsEthnicity[];
+  gender: GearsGender;
+  age_range: GearsAgeRange;
+  appearance_features: string;
+  clothing: string;
+  signature_objects?: string;
+  background_oneliner?: string;
+}
+
+export interface GearsSceneAsset {
+  name: string;
+  scene_type: GearsSceneType;
+  description: string;
+  atmosphere: GearsSceneAtmosphere;
+}
+
+export interface GearsDeliveryUnit {
+  unit_id: string;
+  source_scene_id: number;
+  scene_name: string;
+  character_names: string[];
+  suggested_duration_sec: number;
+  suggested_panel_count: PanelCount;
+  time_of_day?: GearsTimeOfDay;
+  beat_count: number;
+  script_text: string;
+}
+
+export interface GearsDeliveryPackage {
+  schema_version: string;
+  storyId: string;
+  title: string;
+  character_assets: GearsCharacterAsset[];
+  scene_assets: GearsSceneAsset[];
+  units: GearsDeliveryUnit[];
+  markdown: string;
+  validation_notes: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Story outline analysis — multi-knowledge matching
 // ---------------------------------------------------------------------------
@@ -768,6 +820,7 @@ export interface StoryGenerateResult {
   scene_breakdown: StoryScene[];
   gears_segments: GearsSegment[];
   gears_segments_url: string;
+  gears_delivery?: GearsDeliveryPackage;
   cultural_constraints: string[];
   credibility_note: string;
   // New fields for multi-knowledge matching
@@ -814,6 +867,8 @@ export interface EntrySearchResult {
   summary: string;
   keywords: string[];
   credibility: string;
+  matched_snippets?: string[];
+  match_reason?: string;
 }
 
 // ---------------------------------------------------------------------------

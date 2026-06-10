@@ -29,3 +29,16 @@ export async function apiPost<T>(path: string, body: unknown): Promise<ApiRespon
     return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
   }
 }
+
+export async function apiPatch<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return res.json() as Promise<ApiResponse<T>>
+  } catch (err: any) {
+    return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
+  }
+}

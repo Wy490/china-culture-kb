@@ -6,8 +6,58 @@
       <span class="gears-actions__label">Segments URL:</span>
       <code class="gears-actions__code">{{ gearsSegmentsUrl }}</code>
     </div>
+    <div v-if="deliveryPackage" class="gears-actions__url">
+      <span class="gears-actions__label">供稿包:</span>
+      <code class="gears-actions__code">
+        {{ deliveryPackage.character_assets.length }} 个人物资产 ·
+        {{ deliveryPackage.scene_assets.length }} 个场景资产 ·
+        {{ deliveryPackage.units.length }} 个剧本单元
+      </code>
+    </div>
+    <div v-if="validationNotes.length > 0" class="gears-actions__notice">
+      <div class="gears-actions__notice-head">
+        <strong>资料待补:</strong>
+        <span>{{ validationNotes.length }} 项</span>
+      </div>
+      <ul>
+        <li v-for="note in visibleValidationNotes" :key="note">{{ note }}</li>
+      </ul>
+      <p v-if="hiddenValidationCount > 0" class="gears-actions__notice-more">
+        另有 {{ hiddenValidationCount }} 项，请展开供稿编辑查看
+      </p>
+    </div>
 
     <div class="gears-actions__buttons">
+      <button
+        v-if="deliveryPackage"
+        class="btn btn--blue"
+        @click="copyDeliveryMarkdown"
+        :disabled="copyingDelivery"
+      >
+        📋 {{ copyingDelivery ? '已复制!' : '复制当前供稿 Markdown' }}
+      </button>
+
+      <button v-if="deliveryPackage" class="btn btn--blue" @click="exportDeliveryMarkdown">
+        📥 导出当前供稿 Markdown
+      </button>
+
+      <button
+        v-if="deliveryPackage"
+        class="btn btn--blue"
+        @click="copyDeliveryJson"
+        :disabled="copyingDeliveryJson"
+      >
+        📋 {{ copyingDeliveryJson ? '已复制!' : '复制供稿包 JSON' }}
+      </button>
+
+      <button v-if="deliveryPackage" class="btn btn--blue" @click="exportDeliveryJson">
+        📥 导出供稿包 JSON
+      </button>
+
+      <button v-if="deliveryPackage" class="btn btn--blue" @click="toggleDeliveryEditor">
+        {{ showDeliveryEditor ? '收起供稿编辑' : '预览/编辑供稿包' }}
+      </button>
+
       <button class="btn btn--blue" @click="copyFullJson" :disabled="copyingFull">
         📋 {{ copyingFull ? '已复制!' : '复制完整 Segments JSON' }}
       </button>
@@ -45,24 +95,163 @@
       </button>
     </div>
 
+    <section v-if="deliveryPackage && showDeliveryEditor" class="gears-actions__editor">
+      <div class="gears-actions__editor-head">
+        <div>
+          <h4 class="gears-actions__editor-title">GEARS 供稿 Markdown</h4>
+          <p class="gears-actions__editor-state">{{ isDeliveryDirty ? '已修改，复制/导出将使用当前编辑稿' : '当前为自动生成稿' }}</p>
+        </div>
+        <button
+          class="btn btn--sm btn--ghost"
+          @click="resetDeliveryMarkdown"
+          :disabled="!isDeliveryDirty"
+        >
+          恢复自动生成稿
+        </button>
+        <button
+          class="btn btn--sm btn--blue"
+          @click="saveDeliveryMarkdown"
+          :disabled="!isDeliveryDirty || savingDelivery"
+        >
+          {{ savingDelivery ? '保存中…' : '保存编辑稿' }}
+        </button>
+      </div>
+      <textarea
+        v-model="editableDeliveryMarkdown"
+        class="gears-actions__textarea"
+        spellcheck="false"
+      />
+      <div v-if="validationNotes.length > 0" class="gears-actions__validation">
+        <strong>校验提示:</strong>
+        <ul>
+          <li v-for="note in validationNotes" :key="note">{{ note }}</li>
+        </ul>
+      </div>
+    </section>
+
     <div v-if="message" class="gears-actions__message">{{ message }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { GearsSegment } from '@shared/types'
+import { computed, ref, watch } from 'vue'
+import type { GearsDeliveryPackage, GearsSegment } from '@shared/types'
+import { updateGearsDeliveryMarkdown } from '@/api/stories'
 
 const props = defineProps<{
   segments: GearsSegment[]
   gearsSegmentsUrl: string
+  deliveryPackage?: GearsDeliveryPackage
   storyId: string
 }>()
 
 const selectedSegmentId = ref<number | string>('')
 const copyingFull = ref(false)
 const copyingSegment = ref(false)
+const copyingDelivery = ref(false)
+const copyingDeliveryJson = ref(false)
+const savingDelivery = ref(false)
+const showDeliveryEditor = ref(false)
+const editableDeliveryMarkdown = ref(props.deliveryPackage?.markdown ?? '')
+const savedDeliveryMarkdown = ref(props.deliveryPackage?.markdown ?? '')
 const message = ref('')
+
+const isDeliveryDirty = computed(() => {
+  return Boolean(props.deliveryPackage && editableDeliveryMarkdown.value !== savedDeliveryMarkdown.value)
+})
+const validationNotes = computed(() => props.deliveryPackage?.validation_notes ?? [])
+const visibleValidationNotes = computed(() => validationNotes.value.slice(0, 3))
+const hiddenValidationCount = computed(() => Math.max(0, validationNotes.value.length - visibleValidationNotes.value.length))
+
+watch(
+  () => props.deliveryPackage?.markdown,
+  markdown => {
+    editableDeliveryMarkdown.value = markdown ?? ''
+    savedDeliveryMarkdown.value = markdown ?? ''
+  },
+)
+
+function toggleDeliveryEditor() {
+  showDeliveryEditor.value = !showDeliveryEditor.value
+}
+
+function currentDeliveryMarkdown() {
+  return editableDeliveryMarkdown.value || props.deliveryPackage?.markdown || ''
+}
+
+function currentDeliveryPackageJson() {
+  if (!props.deliveryPackage) return ''
+  return JSON.stringify({
+    ...props.deliveryPackage,
+    markdown: currentDeliveryMarkdown(),
+  }, null, 2)
+}
+
+function resetDeliveryMarkdown() {
+  editableDeliveryMarkdown.value = savedDeliveryMarkdown.value || props.deliveryPackage?.markdown || ''
+  message.value = '已恢复自动生成稿'
+  setTimeout(() => { message.value = '' }, 3000)
+}
+
+async function saveDeliveryMarkdown() {
+  if (!props.deliveryPackage || !isDeliveryDirty.value) return
+  savingDelivery.value = true
+  message.value = ''
+  const res = await updateGearsDeliveryMarkdown(props.storyId, currentDeliveryMarkdown())
+  if (res.ok && res.data) {
+    savedDeliveryMarkdown.value = res.data.markdown
+    editableDeliveryMarkdown.value = res.data.markdown
+    message.value = '供稿编辑稿已保存'
+  } else {
+    message.value = res.error?.message ?? '保存失败'
+  }
+  savingDelivery.value = false
+  setTimeout(() => { message.value = '' }, 3000)
+}
+
+async function copyDeliveryMarkdown() {
+  if (!props.deliveryPackage) return
+  copyingDelivery.value = true
+  message.value = ''
+  try {
+    await navigator.clipboard.writeText(currentDeliveryMarkdown())
+    message.value = 'GEARS 供稿 Markdown 已复制到剪贴板'
+  } catch {
+    message.value = '复制失败，请手动复制'
+  } finally {
+    copyingDelivery.value = false
+    setTimeout(() => { message.value = '' }, 3000)
+  }
+}
+
+function exportDeliveryMarkdown() {
+  if (!props.deliveryPackage) return
+  downloadText(`${props.storyId}-gears-delivery.md`, currentDeliveryMarkdown(), 'text/markdown;charset=utf-8')
+  message.value = '供稿 Markdown 已下载'
+  setTimeout(() => { message.value = '' }, 3000)
+}
+
+async function copyDeliveryJson() {
+  if (!props.deliveryPackage) return
+  copyingDeliveryJson.value = true
+  message.value = ''
+  try {
+    await navigator.clipboard.writeText(currentDeliveryPackageJson())
+    message.value = 'GEARS 供稿包 JSON 已复制到剪贴板'
+  } catch {
+    message.value = '复制失败，请手动复制'
+  } finally {
+    copyingDeliveryJson.value = false
+    setTimeout(() => { message.value = '' }, 3000)
+  }
+}
+
+function exportDeliveryJson() {
+  if (!props.deliveryPackage) return
+  downloadText(`${props.storyId}-gears-delivery.json`, currentDeliveryPackageJson(), 'application/json')
+  message.value = '供稿包 JSON 已下载'
+  setTimeout(() => { message.value = '' }, 3000)
+}
 
 async function copyFullJson() {
   copyingFull.value = true
@@ -112,17 +301,21 @@ async function copySegmentJson() {
 
 function exportJson() {
   const json = JSON.stringify(props.segments, null, 2)
-  const blob = new Blob([json], { type: 'application/json' })
+  downloadText(`${props.storyId}-gears-segments.json`, json, 'application/json')
+  message.value = '文件已下载'
+  setTimeout(() => { message.value = '' }, 3000)
+}
+
+function downloadText(filename: string, text: string, type: string) {
+  const blob = new Blob([text], { type })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'gears_segments.json'
+  a.download = filename
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
-  message.value = '文件已下载'
-  setTimeout(() => { message.value = '' }, 3000)
 }
 </script>
 
@@ -172,11 +365,13 @@ function exportJson() {
 .gears-actions__single-copy {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .gears-actions__select {
   flex: 1;
+  min-width: 180px;
   padding: 6px 8px;
   border: 1px solid #bdc3c7;
   border-radius: 4px;
@@ -197,9 +392,20 @@ function exportJson() {
   opacity: 0.85;
 }
 
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .btn--blue {
   background: #2980b9;
   color: #fff;
+}
+
+.btn--ghost {
+  background: #fff;
+  color: #2c3e50;
+  border: 1px solid #bdc3c7;
 }
 
 .btn--sm {
@@ -211,6 +417,92 @@ function exportJson() {
   background: #bdc3c7;
   color: #7f8c8d;
   cursor: not-allowed;
+}
+
+.gears-actions__editor {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.gears-actions__editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.gears-actions__editor-title {
+  margin: 0;
+  font-size: 15px;
+  color: #2c3e50;
+}
+
+.gears-actions__editor-state {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+.gears-actions__textarea {
+  width: 100%;
+  min-height: 360px;
+  max-height: 560px;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2c3e50;
+  background: #fbfcfd;
+}
+
+.gears-actions__validation {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #f39c12;
+  border-radius: 4px;
+  background: #fef9e7;
+  color: #7d6608;
+  font-size: 13px;
+}
+
+.gears-actions__validation ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.gears-actions__notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #f39c12;
+  border-radius: 4px;
+  background: #fff8df;
+  color: #6f5600;
+  font-size: 13px;
+}
+
+.gears-actions__notice-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gears-actions__notice ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.gears-actions__notice-more {
+  margin: 6px 0 0;
+  color: #7d6608;
 }
 
 .gears-actions__message {

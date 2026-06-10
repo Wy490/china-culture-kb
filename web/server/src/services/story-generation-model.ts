@@ -128,7 +128,7 @@ async function runCommandAdapter(input: {
   }
 
   const args = parseArgs(process.env.STORY_GEN_COMMAND_ARGS);
-  const timeoutMs = Number(process.env.STORY_GEN_COMMAND_TIMEOUT_MS ?? 120000);
+  const timeoutMs = Number(process.env.STORY_GEN_COMMAND_TIMEOUT_MS ?? 330000);
 
   // Build child env — inject the selected model's runtime + model name
   // This is the correct approach: child env inherits from process.env plus model overrides

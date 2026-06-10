@@ -73,14 +73,14 @@ npm run dev            # vite dev server，默认代理 /api → localhost:3000
 | `STORY_GEN_PROVIDER` | `command_json` | 适配器类型 |
 | `STORY_GEN_COMMAND` | 空（local_only） | 外部命令路径，未配置则走本地 fallback |
 | `STORY_GEN_COMMAND_ARGS` | `[]` | 命令参数（JSON 数组或空格分隔） |
-| `STORY_GEN_COMMAND_TIMEOUT_MS` | `120000` | 适配器超时（毫秒） |
+| `STORY_GEN_COMMAND_TIMEOUT_MS` | `330000` | 适配器超时（毫秒） |
 | `STORY_GEN_AGENT` | `claude` | 桥接 agent：`claude` 或 `codex` |
 | `STORY_GEN_AGENT_MODEL` | 空 | 模型名称（如 `sonnet`, `opus`, `gpt-5.5`） |
 | `STORY_GEN_AGENT_CLAUDE_PATH` | `claude` | Claude CLI 路径 |
 | `STORY_GEN_AGENT_CLAUDE_ARGS` | `[]` | Claude 附加参数（JSON 数组） |
 | `STORY_GEN_AGENT_CODEX_PATH` | `codex` | Codex CLI 路径 |
 | `STORY_GEN_AGENT_CODEX_ARGS` | `[]` | Codex 附加参数（JSON 数组） |
-| `STORY_GEN_AGENT_TIMEOUT_MS` | `180000` | 桥接脚本超时（毫秒） |
+| `STORY_GEN_AGENT_TIMEOUT_MS` | `300000` | 桥接脚本超时（毫秒） |
 
 **模型 Profile ID 映射**：
 
@@ -97,14 +97,14 @@ npm run dev            # vite dev server，默认代理 /api → localhost:3000
 | `SCENE_REGEN_PROVIDER` | `command_json` | 适配器类型 |
 | `SCENE_REGEN_COMMAND` | 空（local fallback） | 外部命令路径 |
 | `SCENE_REGEN_COMMAND_ARGS` | `[]` | 命令参数 |
-| `SCENE_REGEN_COMMAND_TIMEOUT_MS` | `45000` | 适配器超时（毫秒） |
+| `SCENE_REGEN_COMMAND_TIMEOUT_MS` | `180000` | 适配器超时（毫秒） |
 | `SCENE_REGEN_AGENT` | `claude` | 桥接 agent |
 | `SCENE_REGEN_AGENT_MODEL` | 空 | 模型名称 |
 | `SCENE_REGEN_AGENT_CLAUDE_PATH` | `claude` | Claude CLI 路径 |
 | `SCENE_REGEN_AGENT_CLAUDE_ARGS` | `[]` | Claude 附加参数 |
 | `SCENE_REGEN_AGENT_CODEX_PATH` | `codex` | Codex CLI 路径 |
 | `SCENE_REGEN_AGENT_CODEX_ARGS` | `[]` | Codex 附加参数 |
-| `SCENE_REGEN_AGENT_TIMEOUT_MS` | `120000` | 桥接脚本超时（毫秒） |
+| `SCENE_REGEN_AGENT_TIMEOUT_MS` | `180000` | 桥接脚本超时（毫秒） |
 
 ### 4.3 接法示例
 
@@ -174,5 +174,5 @@ export SCENE_REGEN_AGENT_CODEX_PATH="/Applications/Codex.app/Contents/Resources/
 
 ```bash
 cd web/server
-npm test                # vitest run → 108 tests
+npm test                # vitest run → 111+ tests
 ```
