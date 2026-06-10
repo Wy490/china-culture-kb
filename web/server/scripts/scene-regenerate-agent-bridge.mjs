@@ -144,8 +144,6 @@ async function runClaude(pkg, timeoutMs) {
     ...parseExtraArgs(process.env.SCENE_REGEN_AGENT_CLAUDE_ARGS),
     '-p',
     '--output-format', 'text',
-    '--json-schema', JSON.stringify(OUTPUT_SCHEMA),
-    '--allowedTools', '',
     '--system-prompt', pkg.system_prompt,
   ];
 
