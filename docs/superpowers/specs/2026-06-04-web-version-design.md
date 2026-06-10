@@ -489,7 +489,7 @@ const DurationSchema = z.enum([
     - 📋 复制单段 script_text
     - 📥 导出 gears_segments.json
     - 🔗 显示 gears_segments_url
-    - 🚀 预留：发送到 grears v2（第一阶段灰显）
+    - 🚀 复制 GEARS 拉取配置（包含 segments_url / delivery_url）
   - cultural_constraints + credibility_note 底部信息
 
 ### 9.3 条目详情 `/entry?name=xxx`

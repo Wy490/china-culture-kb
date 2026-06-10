@@ -90,8 +90,8 @@
         📥 导出 gears_segments.json
       </button>
 
-      <button class="btn btn--disabled" disabled title="Phase 1 placeholder — 尚未实现">
-        🚀 发送到 GEARS v2（暂未开放）
+      <button class="btn btn--blue" @click="copyGearsPullConfig" :disabled="copyingGearsPull">
+        🚀 {{ copyingGearsPull ? '已复制!' : '复制 GEARS 拉取配置' }}
       </button>
     </div>
 
@@ -150,6 +150,7 @@ const copyingFull = ref(false)
 const copyingSegment = ref(false)
 const copyingDelivery = ref(false)
 const copyingDeliveryJson = ref(false)
+const copyingGearsPull = ref(false)
 const savingDelivery = ref(false)
 const showDeliveryEditor = ref(false)
 const editableDeliveryMarkdown = ref(props.deliveryPackage?.markdown ?? '')
@@ -244,6 +245,46 @@ async function copyDeliveryJson() {
     copyingDeliveryJson.value = false
     setTimeout(() => { message.value = '' }, 3000)
   }
+}
+
+async function copyGearsPullConfig() {
+  copyingGearsPull.value = true
+  message.value = ''
+  const segmentsUrl = absoluteApiUrl(props.gearsSegmentsUrl)
+  const deliveryUrl = absoluteApiUrl(`/api/stories/${props.storyId}/gears-delivery`)
+  const config = [
+    '# GEARS v2 拉取配置',
+    `segments_url: ${segmentsUrl}`,
+    `delivery_url: ${deliveryUrl}`,
+    '',
+    '推荐流程:',
+    '1. 拉取 delivery_url 获取人物资产、场景资产、剧本单元和供稿 Markdown。',
+    '2. 拉取 segments_url 获取兼容旧流程的分段 JSON。',
+    '3. 优先使用已编辑保存的供稿 Markdown；若 validation_notes 非空，先完成资料补录。',
+  ].join('\n')
+  try {
+    await navigator.clipboard.writeText(config)
+    message.value = 'GEARS 拉取配置已复制到剪贴板'
+  } catch {
+    message.value = '复制失败，请手动复制 Segments URL 和供稿包 URL'
+  } finally {
+    copyingGearsPull.value = false
+    setTimeout(() => { message.value = '' }, 3000)
+  }
+}
+
+function absoluteApiUrl(path: string) {
+  return new URL(path, getApiPullOrigin()).toString()
+}
+
+function getApiPullOrigin() {
+  const current = new URL(window.location.origin)
+  const isLocalDevFrontend = current.port === '5173'
+    && ['localhost', '127.0.0.1', '[::1]', '::1'].includes(current.hostname)
+  if (isLocalDevFrontend) {
+    current.port = '3000'
+  }
+  return current.origin
 }
 
 function exportDeliveryJson() {
@@ -411,12 +452,6 @@ function downloadText(filename: string, text: string, type: string) {
 .btn--sm {
   padding: 6px 12px;
   font-size: 13px;
-}
-
-.btn--disabled {
-  background: #bdc3c7;
-  color: #7f8c8d;
-  cursor: not-allowed;
 }
 
 .gears-actions__editor {
