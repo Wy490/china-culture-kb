@@ -64,6 +64,7 @@ import { generateStoryWithAdapter } from './story-generation-model.js';
 import type { StoryGenerationModelOutput } from './story-generation-prompt.js';
 import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
 import { buildEntryKnowledgeSummary, extractKeywords } from './entry-service.js';
+import { notifyGearsStoryReady } from './gears-webhook-service.js';
 
 // ---------------------------------------------------------------------------
 // Entry type → VideoType routing (entry Chinese type name → recommended VideoType list)
@@ -1213,7 +1214,9 @@ export async function generateAndStoreStory(
   await writeFile(filePath, JSON.stringify(storyWithProject, null, 2), 'utf-8');
 
   // Return to API without internal _request_meta
-  return success(stripInternalFields(storyWithProject));
+  const apiStory = stripInternalFields(storyWithProject);
+  void notifyGearsStoryReady(apiStory).catch(() => undefined);
+  return success(apiStory);
 }
 
 // ---------------------------------------------------------------------------
