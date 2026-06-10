@@ -21,6 +21,10 @@
         <option value="exported">已导出</option>
         <option value="finalized">已定稿</option>
       </select>
+      <label class="projects-page__toggle">
+        <input v-model="supplementFilter" type="checkbox" />
+        <span>仅看待补资料</span>
+      </label>
     </section>
 
     <div v-if="loading" class="projects-page__loading">
@@ -82,16 +86,18 @@ const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
 const statusFilter = ref('')
+const supplementFilter = ref(false)
 const deletingProjectId = ref('')
 
 const filteredProjects = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   return projects.value.filter(project => {
     const matchesStatus = !statusFilter.value || project.status === statusFilter.value
+    const matchesSupplement = !supplementFilter.value || (project.open_supplement_task_count ?? 0) > 0
     const matchesQuery = !query
       || project.title.toLowerCase().includes(query)
       || project.source_entry.toLowerCase().includes(query)
-    return matchesStatus && matchesQuery
+    return matchesStatus && matchesSupplement && matchesQuery
   })
 })
 
@@ -199,6 +205,7 @@ onMounted(async () => {
 .projects-page__toolbar {
   display: flex;
   gap: 12px;
+  align-items: center;
   margin-bottom: 20px;
 }
 
@@ -212,6 +219,24 @@ onMounted(async () => {
 
 .projects-page__search {
   flex: 1;
+}
+
+.projects-page__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  color: #33475b;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.projects-page__toggle input {
+  width: 15px;
+  height: 15px;
 }
 
 .projects-page__grid {
@@ -370,7 +395,8 @@ onMounted(async () => {
 
   .projects-page__cta,
   .projects-page__search,
-  .projects-page__select {
+  .projects-page__select,
+  .projects-page__toggle {
     width: 100%;
   }
 }
