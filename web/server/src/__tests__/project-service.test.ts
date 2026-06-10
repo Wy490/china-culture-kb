@@ -1,17 +1,27 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import type { StoryGenerateResult } from '@shared/types.js';
 import {
   buildProjectId,
   createProjectFromGeneratedStory,
+  deleteProject,
   getProject,
   regenerateProjectScene,
 } from '../services/project-service.js';
 
 const TEMP_DIRS: string[] = [];
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function makeStory(): StoryGenerateResult {
   return {
@@ -140,6 +150,36 @@ describe('project-service', () => {
     expect(detail.data?.current_story.gears_delivery?.character_assets.some(character => character.name === '周敦颐')).toBe(true);
     expect(detail.data?.current_story.gears_delivery?.units.every(unit => unit.suggested_duration_sec <= 15)).toBe(true);
     expect(detail.data?.current_story.gears_delivery?.markdown).toContain('GEARS 供稿包');
+  });
+
+  it('deletes the project snapshots and source story file', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const projectId = enriched.project_id!;
+    const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+    const storyPath = resolve(storyDir, `${story.storyId}.json`);
+    const projectPath = resolve(root, 'web', 'generated', 'projects', projectId);
+
+    await mkdir(storyDir, { recursive: true });
+    await writeFile(storyPath, JSON.stringify({
+      ...story,
+      project_id: projectId,
+      current_version_id: enriched.current_version_id,
+      _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
+    }, null, 2), 'utf-8');
+
+    const deleted = await deleteProject(projectId);
+
+    expect(deleted.ok).toBe(true);
+    expect(deleted.data?.deleted).toBe(true);
+    expect(await exists(storyPath)).toBe(false);
+    expect(await exists(projectPath)).toBe(false);
+    const detail = await getProject(projectId);
+    expect(detail.ok).toBe(false);
   });
 
   it('regenerates a single scene into a new version', async () => {

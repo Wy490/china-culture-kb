@@ -620,6 +620,12 @@ export interface StoryProjectDetail {
   versions: StoryProjectVersionSummary[];
 }
 
+export interface StoryProjectDeleteResult {
+  project_id: string;
+  story_id: string;
+  deleted: true;
+}
+
 export type StorySceneRegenerateIntent =
   | 'tighten_conflict'
   | 'rewrite_narration'

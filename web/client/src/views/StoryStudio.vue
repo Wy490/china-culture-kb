@@ -625,6 +625,11 @@ onMounted(async () => {
     selectedModelProfileId.value = initialModel.id
   }
 
+  const query = route.query.original_user_query as string | undefined
+  if (query) {
+    originalUserQuery.value = query
+  }
+
   const entry = route.query.entry as string | undefined
   if (entry) {
     inputMode.value = 'entry'

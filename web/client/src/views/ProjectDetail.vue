@@ -20,6 +20,13 @@
           <button class="project-detail-page__action-btn project-detail-page__action-btn--primary" @click="exportCurrentStory">
             导出当前版本
           </button>
+          <button
+            class="project-detail-page__action-btn project-detail-page__action-btn--danger"
+            :disabled="deleting"
+            @click="deleteCurrentProject"
+          >
+            {{ deleting ? '删除中…' : '删除项目' }}
+          </button>
           <RouterLink class="project-detail-page__action-btn" to="/projects">返回项目列表</RouterLink>
           <RouterLink class="project-detail-page__action-btn" to="/story/new">继续生成</RouterLink>
         </div>
@@ -115,13 +122,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { getProject, regenerateProjectScene } from '@/api/projects'
+import { useRoute, useRouter } from 'vue-router'
+import { deleteProject, getProject, regenerateProjectScene } from '@/api/projects'
 import { getModelProfiles } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
 import type { AIModelProfile, StoryProjectDetail, StoryProjectStatus, StoryProjectVersionChangeType } from '@shared/types'
 
 const route = useRoute()
+const router = useRouter()
 const MODEL_PROFILE_STORAGE_KEY = 'story-agent.model-profile-id'
 
 const detail = ref<StoryProjectDetail | null>(null)
@@ -133,6 +141,7 @@ const selectedSceneId = ref<number | null>(null)
 const selectedIntent = ref<'tighten_conflict' | 'rewrite_narration' | 'shift_emotion' | 'clarify_visuals' | 'custom'>('tighten_conflict')
 const userNote = ref('')
 const submitting = ref(false)
+const deleting = ref(false)
 const successMessage = ref('')
 
 const selectedModelProfile = computed(() => {
@@ -240,6 +249,22 @@ function exportCurrentStory() {
   a.click()
   URL.revokeObjectURL(url)
   successMessage.value = '当前版本已导出到本地'
+}
+
+async function deleteCurrentProject() {
+  if (!detail.value) return
+  const confirmed = window.confirm(`确定删除《${detail.value.project.title}》吗？这会删除生成故事文件和项目版本记录。`)
+  if (!confirmed) return
+
+  deleting.value = true
+  error.value = ''
+  const res = await deleteProject(detail.value.project.project_id)
+  if (res.ok) {
+    await router.push('/projects')
+  } else {
+    error.value = res.error?.message ?? '删除故事项目失败'
+  }
+  deleting.value = false
 }
 
 onMounted(() => {
@@ -355,6 +380,16 @@ watch(selectedModelProfileId, (value) => {
   background: #2980b9;
   border-color: #2980b9;
   color: #fff;
+}
+
+.project-detail-page__action-btn--danger {
+  border-color: #f0c4bd;
+  color: #b13b2e;
+}
+
+.project-detail-page__action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .project-detail-page__summary {

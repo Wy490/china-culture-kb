@@ -31,26 +31,36 @@
     <div v-else-if="error" class="projects-page__error">{{ error }}</div>
 
     <section v-else class="projects-page__grid">
-      <RouterLink
+      <article
         v-for="project in filteredProjects"
         :key="project.project_id"
         class="projects-page__card"
-        :to="`/projects/${project.project_id}`"
       >
-        <div class="projects-page__card-top">
-          <span class="projects-page__status-badge" :data-status="project.status">{{ statusLabel(project.status) }}</span>
-          <span class="projects-page__video-type">{{ typeLabel(project.video_type) }}</span>
+        <RouterLink class="projects-page__card-link" :to="`/projects/${project.project_id}`">
+          <div class="projects-page__card-top">
+            <span class="projects-page__status-badge" :data-status="project.status">{{ statusLabel(project.status) }}</span>
+            <span class="projects-page__video-type">{{ typeLabel(project.video_type) }}</span>
+          </div>
+          <h2 class="projects-page__card-title">{{ project.title }}</h2>
+          <p class="projects-page__source">来源：{{ project.source_entry }}</p>
+          <p v-if="project.logline" class="projects-page__logline">{{ project.logline }}</p>
+          <div class="projects-page__meta">
+            <span>{{ formatDate(project.updated_at) }}</span>
+            <span>{{ project.scene_count }} 场景</span>
+            <span v-if="project.has_gears_segments">GEARS 已生成</span>
+            <span v-else>无 GEARS 分段</span>
+          </div>
+        </RouterLink>
+        <div class="projects-page__card-actions">
+          <button
+            class="projects-page__delete-btn"
+            :disabled="deletingProjectId === project.project_id"
+            @click="handleDeleteProject(project)"
+          >
+            {{ deletingProjectId === project.project_id ? '删除中…' : '删除' }}
+          </button>
         </div>
-        <h2 class="projects-page__card-title">{{ project.title }}</h2>
-        <p class="projects-page__source">来源：{{ project.source_entry }}</p>
-        <p v-if="project.logline" class="projects-page__logline">{{ project.logline }}</p>
-        <div class="projects-page__meta">
-          <span>{{ formatDate(project.updated_at) }}</span>
-          <span>{{ project.scene_count }} 场景</span>
-          <span v-if="project.has_gears_segments">GEARS 已生成</span>
-          <span v-else>无 GEARS 分段</span>
-        </div>
-      </RouterLink>
+      </article>
 
       <div v-if="filteredProjects.length === 0" class="projects-page__empty">
         <p>还没有匹配到故事项目，可以先去故事工坊生成一个初稿。</p>
@@ -61,7 +71,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { listProjects } from '@/api/projects'
+import { deleteProject, listProjects } from '@/api/projects'
 import type { StoryProjectListItem, StoryProjectStatus } from '@shared/types'
 
 const projects = ref<StoryProjectListItem[]>([])
@@ -69,6 +79,7 @@ const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
 const statusFilter = ref('')
+const deletingProjectId = ref('')
 
 const filteredProjects = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -116,6 +127,21 @@ function formatDate(iso: string): string {
   if (!iso) return '未记录'
   const d = new Date(iso)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+async function handleDeleteProject(project: StoryProjectListItem) {
+  const confirmed = window.confirm(`确定删除《${project.title}》吗？这会删除生成故事文件和项目版本记录。`)
+  if (!confirmed) return
+
+  deletingProjectId.value = project.project_id
+  error.value = ''
+  const res = await deleteProject(project.project_id)
+  if (res.ok) {
+    projects.value = projects.value.filter(item => item.project_id !== project.project_id)
+  } else {
+    error.value = res.error?.message ?? '删除故事项目失败'
+  }
+  deletingProjectId.value = ''
 }
 
 onMounted(async () => {
@@ -207,6 +233,12 @@ onMounted(async () => {
   transform: translateY(-1px);
 }
 
+.projects-page__card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
 .projects-page__card-top {
   display: flex;
   justify-content: space-between;
@@ -266,6 +298,29 @@ onMounted(async () => {
   gap: 10px;
   color: #7c8894;
   font-size: 13px;
+}
+
+.projects-page__card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #edf1f5;
+}
+
+.projects-page__delete-btn {
+  padding: 7px 10px;
+  border: 1px solid #f0c4bd;
+  border-radius: 4px;
+  background: #fff;
+  color: #b13b2e;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.projects-page__delete-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .projects-page__loading,

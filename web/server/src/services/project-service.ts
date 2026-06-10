@@ -1,5 +1,5 @@
 import { dirname, resolve } from 'node:path';
-import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { fail, success, ErrorCodes } from '@shared/types.js';
 import type {
   ApiResponse,
@@ -10,6 +10,7 @@ import type {
   StoryProjectStatus,
   StoryProjectVersionSnapshot,
   StoryProjectVersionSummary,
+  StoryProjectDeleteResult,
   StorySceneRegenerateRequest,
   VideoType,
   GearsDeliveryPackage,
@@ -377,6 +378,23 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
     project,
     current_story: normalizeStoryGenerationFields(currentVersion.story),
     versions: versions.map(toVersionSummary),
+  });
+}
+
+export async function deleteProject(projectId: string): Promise<ApiResponse<StoryProjectDeleteResult>> {
+  const project = await ensureProjectExists(projectId);
+  if (!project) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" not found`);
+  }
+
+  const storyFile = resolve(storiesRoot(), project.video_type, `${project.current_story_id}.json`);
+  await rm(storyFile, { force: true });
+  await rm(projectDir(projectId), { recursive: true, force: true });
+
+  return success({
+    project_id: projectId,
+    story_id: project.current_story_id,
+    deleted: true,
   });
 }
 

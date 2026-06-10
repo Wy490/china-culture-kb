@@ -28,19 +28,19 @@
     <div class="entry-card__actions">
       <RouterLink
         class="btn btn--blue btn--sm"
-        :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=character_story`"
+        :to="storyLink('character_story')"
       >
         ✅ 人物故事
       </RouterLink>
       <RouterLink
         class="btn btn--sm btn--outline"
-        :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=culture_promo`"
+        :to="storyLink('culture_promo')"
       >
         ⭕ 文化宣传
       </RouterLink>
       <RouterLink
         class="btn btn--sm btn--outline"
-        :to="`/story/new?entry=${encodeURIComponent(entry.name)}&video_type=scene_short`"
+        :to="storyLink('scene_short')"
       >
         ⭕ 场景短片
       </RouterLink>
@@ -51,8 +51,9 @@
 <script setup lang="ts">
 import type { EntrySearchResult } from '@shared/types'
 
-defineProps<{
+const props = defineProps<{
   entry: EntrySearchResult
+  sourceQuery?: string
 }>()
 
 defineEmits<{
@@ -68,6 +69,16 @@ const credibilityClass = (credibility: string) => {
     '混合': 'entry-card__credibility--mixed',
   }
   return map[credibility] ?? ''
+}
+
+function storyLink(videoType: string) {
+  const params = new URLSearchParams({
+    entry: props.entry.name,
+    video_type: videoType,
+  })
+  const sourceQuery = props.sourceQuery?.trim()
+  if (sourceQuery) params.set('original_user_query', sourceQuery)
+  return `/story/new?${params.toString()}`
 }
 </script>
 

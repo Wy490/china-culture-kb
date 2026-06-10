@@ -34,6 +34,7 @@
           v-for="entry in results"
           :key="entry.name"
           :entry="entry"
+          :source-query="keywords.trim()"
           @click="goEntry"
         />
       </div>

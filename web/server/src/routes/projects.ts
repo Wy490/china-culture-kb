@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { validateBody, validateParams } from '../middleware/validate.js';
 import { ProjectIdParamSchema, StorySceneRegenerateRequestSchema } from '@shared/schemas.js';
-import { getProject, listProjects, regenerateProjectScene } from '../services/project-service.js';
+import { deleteProject, getProject, listProjects, regenerateProjectScene } from '../services/project-service.js';
 
 export const projectsRouter = Router();
 
@@ -18,6 +18,16 @@ projectsRouter.get('/:projectId', validateParams(ProjectIdParamSchema), async (r
   try {
     const { projectId } = req.params as { projectId: string };
     const result = await getProject(projectId);
+    res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.delete('/:projectId', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  try {
+    const { projectId } = req.params as { projectId: string };
+    const result = await deleteProject(projectId);
     res.status(result.ok ? 200 : 404).json(result);
   } catch (err) {
     next(err);

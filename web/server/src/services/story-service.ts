@@ -61,6 +61,7 @@ import { buildStoryGenerationPromptPackage } from './story-generation-prompt.js'
 import { generateStoryWithAdapter } from './story-generation-model.js';
 import type { StoryGenerationModelOutput } from './story-generation-prompt.js';
 import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
+import { buildEntryKnowledgeSummary, extractKeywords } from './entry-service.js';
 
 // ---------------------------------------------------------------------------
 // Entry type → VideoType routing (entry Chinese type name → recommended VideoType list)
@@ -263,6 +264,54 @@ function computeCulturalRisks(entry: EntryDetail): string[] {
   if (entry.credibility === '待核实') risks.push('条目可信度待核实，核心情节可能缺乏佐证');
   for (const point of entry.unverifiedPoints) risks.push(`待核实：${point}`);
   return risks;
+}
+
+function buildSingleEntryKnowledgePack(
+  entry: EntryDetail,
+  context: { selectedEvent?: string; originalUserQuery?: string; outline?: string },
+): KnowledgePack {
+  const queryText = [
+    context.originalUserQuery,
+    context.outline,
+    context.selectedEvent,
+    entry.name,
+  ].filter(Boolean).join(' ');
+  const extractedKeywords = extractKeywords(queryText);
+  const queryKeywords = context.selectedEvent
+    ? [context.selectedEvent, ...extractedKeywords.filter(keyword => keyword !== context.selectedEvent)]
+    : [...extractedKeywords, ...entry.keywords.slice(0, 5)];
+  const summary = buildEntryKnowledgeSummary({
+    name: entry.name,
+    province: entry.province,
+    region: entry.region,
+    type: entry.type,
+    summary: entry.summary,
+    keywords: entry.keywords,
+    credibility: entry.credibility,
+    story: entry.story,
+    culturalSignificance: entry.culturalSignificance,
+    relatedLocationText: entry.relatedLocations.map(location => `${location.name} ${location.description}`).join(' '),
+    sourcesText: entry.sources.join(' '),
+    verificationText: entry.verificationMethod ?? '',
+    unverifiedText: entry.unverifiedPoints.join(' '),
+  }, queryKeywords);
+
+  return {
+    primary_entries: [{
+      entry_name: entry.name,
+      province: entry.province,
+      region: entry.region,
+      type: entry.type,
+      summary,
+      score: 1,
+      role_in_story: 'primary_entry',
+      match_reason: '用户指定词条，自动注入全文知识包',
+      keywords: entry.keywords,
+    }],
+    supporting_entries: [],
+    missing_needs: [],
+    overall_confidence: 1,
+  };
 }
 
 function recommendDuration(entryType: string, eventCount: number): SupportedDuration {
@@ -792,6 +841,13 @@ export async function generateAndStoreStory(
     entry = convertFullEntryDetail(mcpDetail);
   } else {
     return fail(ErrorCodes.VALIDATION_ERROR, 'Either entry_name or knowledge_pack with primary_entries must be provided');
+  }
+  if (!knowledgePackToUse || knowledgePackToUse.primary_entries.length === 0) {
+    knowledgePackToUse = buildSingleEntryKnowledgePack(entry, {
+      selectedEvent: selected_event,
+      originalUserQuery: original_user_query,
+      outline,
+    });
   }
 
   const selectedModelProfile = resolveModelProfile(request.model_profile_id);

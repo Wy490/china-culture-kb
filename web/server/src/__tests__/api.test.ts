@@ -443,6 +443,22 @@ describe('Stories API', () => {
       }
     });
 
+    it('adds an enriched knowledge_pack for direct entry generation', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        entry_name: '周敦颐——理学开山鼻祖',
+        generation_type: 'character_story',
+        selected_event: '拒签冤案',
+        target_video_duration: '3分钟',
+      });
+      if (res.status === 200) {
+        expectSuccess(res.body);
+        const story = res.body.data;
+        expect(story.knowledge_pack?.primary_entries[0].entry_name).toBe('周敦颐——理学开山鼻祖');
+        expect(story.knowledge_pack?.primary_entries[0].summary).toContain('拒签冤案');
+        expect(story.knowledge_pack?.overall_confidence).toBe(1);
+      }
+    });
+
     it('returns story with video_type when video_type provided', async () => {
       const res = await request.post('/api/stories/generate').send({
         entry_name: '周敦颐——理学开山鼻祖',

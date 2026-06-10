@@ -1,5 +1,6 @@
-import { apiGet, apiPost } from './client'
+import { apiDelete, apiGet, apiPost } from './client'
 import type {
+  StoryProjectDeleteResult,
   StoryProjectDetail,
   StoryProjectListItem,
   StorySceneRegenerateRequest,
@@ -15,4 +16,8 @@ export function getProject(projectId: string) {
 
 export function regenerateProjectScene(projectId: string, body: StorySceneRegenerateRequest) {
   return apiPost<StoryProjectDetail>(`/projects/${projectId}/regenerate-scene`, body)
+}
+
+export function deleteProject(projectId: string) {
+  return apiDelete<StoryProjectDeleteResult>(`/projects/${projectId}`)
 }

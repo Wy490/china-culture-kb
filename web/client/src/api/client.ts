@@ -42,3 +42,14 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<ApiRespo
     return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
   }
 }
+
+export async function apiDelete<T>(path: string): Promise<ApiResponse<T>> {
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'DELETE',
+    })
+    return res.json() as Promise<ApiResponse<T>>
+  } catch (err: any) {
+    return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
+  }
+}
