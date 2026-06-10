@@ -30,6 +30,12 @@ export interface SceneRegenerationPromptPackage {
     primary_entries: string[];
     supporting_entries: string[];
   };
+  supplement_context?: Array<{
+    task_id: string;
+    label: string;
+    category?: string;
+    supplement_note: string;
+  }>;
   memory_mosaic_context?: {
     present_day_seeker: string;
     trigger_object: string;
@@ -104,6 +110,10 @@ function buildUserPrompt(pkg: Omit<SceneRegenerationPromptPackage, 'system_promp
     lines.push('', '知识来源上下文：', JSON.stringify(pkg.knowledge_context, null, 2));
   }
 
+  if (pkg.supplement_context && pkg.supplement_context.length > 0) {
+    lines.push('', '已完成资料补录：', JSON.stringify(pkg.supplement_context, null, 2));
+  }
+
   lines.push(
     '',
     '请只输出一个 JSON 对象，字段限制为：plot, key_action, dialogue_or_narration, conflict, visual_prompt, camera_suggestion。',
@@ -121,6 +131,14 @@ export function buildSceneRegenerationPromptPackage(input: {
   previous?: StoryScene;
   next?: StoryScene;
 }): SceneRegenerationPromptPackage {
+  const supplementContext = input.story.supplement_tasks
+    ?.filter(task => task.status === 'resolved' && task.supplement_note?.trim())
+    .map(task => ({
+      task_id: task.task_id,
+      label: task.label,
+      ...(task.category ? { category: task.category } : {}),
+      supplement_note: task.supplement_note!.trim(),
+    }));
   const base: Omit<SceneRegenerationPromptPackage, 'system_prompt' | 'user_prompt'> = {
     prompt_version: 'scene-regeneration/v1',
     context: {
@@ -149,6 +167,7 @@ export function buildSceneRegenerationPromptPackage(input: {
           supporting_entries: input.story.knowledge_pack.supporting_entries.map(entry => entry.entry_name),
         }
       : undefined,
+    supplement_context: supplementContext && supplementContext.length > 0 ? supplementContext : undefined,
     memory_mosaic_context: input.story.memory_mosaic_seed
       ? {
           present_day_seeker: input.story.memory_mosaic_seed.present_day_seeker,
@@ -175,6 +194,7 @@ export function buildSceneRegenerationPromptPackage(input: {
         '保持前后场景衔接',
         '保持来源条目和文化语境一致',
         '保持当前成片类型的叙事质感',
+        '优先吸收已完成资料补录，但不要把未确认内容写成新的史实断言',
       ],
       return_json_fields: [
         'plot',

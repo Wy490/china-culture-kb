@@ -57,6 +57,14 @@ function deriveIntentTail(request: StorySceneRegenerateRequest): string {
     : '';
 }
 
+function deriveSupplementTail(story: StoryGenerateResult): string {
+  const notes = story.supplement_tasks
+    ?.filter(task => task.status === 'resolved' && task.supplement_note?.trim())
+    .map(task => `${task.label}：${task.supplement_note!.trim()}`)
+    .slice(0, 4) ?? [];
+  return notes.length > 0 ? `已完成资料补录：${notes.join('；')}。` : '';
+}
+
 function deriveTension(scene: StoryScene): string {
   return cleanText(scene.conflict)
     || `${sceneLeadCharacter(scene)}被迫在这一刻作出更难回头的选择`;
@@ -86,6 +94,7 @@ function buildNarration(scene: StoryScene, intent: StorySceneRegenerateIntent, n
 function rewriteDramaticScene(context: SceneRewriteContext, request: StorySceneRegenerateRequest): StoryScene {
   const { current, previous, next } = context;
   const noteTail = deriveIntentTail(request);
+  const supplementTail = deriveSupplementTail(context.story);
   const previousBridge = previous ? `承接上一场“${previous.title}”后的余波，` : '';
   const nextBridge = next ? ` 这一场的结尾也把故事推向“${next.title}”所代表的下一步。` : '';
   const lead = sceneLeadCharacter(current);
@@ -121,7 +130,7 @@ function rewriteDramaticScene(context: SceneRewriteContext, request: StorySceneR
 
   return {
     ...current,
-    plot: `${basePlotByIntent[request.intent]} ${noteTail}`.trim(),
+    plot: `${basePlotByIntent[request.intent]} ${noteTail} ${supplementTail}`.trim(),
     key_action: nextKeyAction,
     conflict: nextConflict,
     dialogue_or_narration: buildNarration(current, request.intent, request.user_note),
@@ -144,6 +153,7 @@ function rewriteMemoryMosaicScene(context: SceneRewriteContext, request: StorySc
   const { current, previous, next, story } = context;
   const seed = story.memory_mosaic_seed;
   const noteTail = deriveIntentTail(request);
+  const supplementTail = deriveSupplementTail(story);
   const isRealityLine = REALITY_LINE_FUNCTIONS.has(current.dramatic_function);
 
   if (!seed) {
@@ -166,7 +176,7 @@ function rewriteMemoryMosaicScene(context: SceneRewriteContext, request: StorySc
 
     return {
       ...current,
-      plot: `${plotByIntent[request.intent]} ${noteTail}`.trim(),
+      plot: `${plotByIntent[request.intent]} ${noteTail} ${supplementTail}`.trim(),
       key_action: request.intent === 'clarify_visuals' ? `重新检视${object}` : `继续追问${object}背后的真相`,
       conflict: request.intent === 'tighten_conflict'
         ? `现实中的追寻者越接近真相，越不得不面对主角真实选择带来的复杂后果${request.user_note ? `；${request.user_note}` : ''}`
@@ -202,7 +212,7 @@ function rewriteMemoryMosaicScene(context: SceneRewriteContext, request: StorySc
 
   return {
     ...current,
-    plot: `${plotByIntent[request.intent]} ${noteTail}`.trim(),
+    plot: `${plotByIntent[request.intent]} ${noteTail} ${supplementTail}`.trim(),
     key_action: request.intent === 'tighten_conflict' ? `在回忆里看见${subject}如何承担代价` : subjectChoice,
     conflict: request.intent === 'tighten_conflict'
       ? `${subject}的选择让${witnessName}至今仍无法轻易放下这段记忆${request.user_note ? `；${request.user_note}` : ''}`

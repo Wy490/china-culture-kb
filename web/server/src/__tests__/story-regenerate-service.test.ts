@@ -234,6 +234,45 @@ describe('story-regenerate-service', () => {
     expect(updated.quality_report).toBeTruthy();
   });
 
+  it('uses resolved supplement notes in local scene regeneration', async () => {
+    delete process.env.SCENE_REGEN_COMMAND
+    process.env.SCENE_REGEN_PROVIDER = 'command_json'
+
+    const story: StoryGenerateResult = {
+      ...makeDramaticStory(),
+      supplement_tasks: [
+        {
+          task_id: '20260609-story-rg1--supplement--supporting_characters',
+          need_id: 'supporting_characters',
+          label: '配角人物',
+          description: '补充配角人物相关资料',
+          status: 'resolved',
+          source: 'knowledge_pack_missing_need',
+          created_at: '2026-06-09T10:00:00.000Z',
+          supplement_note: '上官是南安军衙主管，负责催促签署疑案文书。',
+        },
+        {
+          task_id: '20260609-story-rg1--supplement--regional_context',
+          need_id: 'regional_context',
+          label: '地域背景',
+          description: '补充地域背景相关资料',
+          status: 'open',
+          source: 'knowledge_pack_missing_need',
+          created_at: '2026-06-09T10:00:00.000Z',
+          supplement_note: '待补说明不应进入局部重写。',
+        },
+      ],
+    };
+    const updated = await regenerateSceneInStory(story, {
+      scene_id: 2,
+      intent: 'tighten_conflict',
+    });
+
+    expect(updated.scene_breakdown[1].plot).toContain('已完成资料补录');
+    expect(updated.scene_breakdown[1].plot).toContain('南安军衙主管');
+    expect(updated.scene_breakdown[1].plot).not.toContain('待补说明不应进入局部重写');
+  });
+
   it('rewrites a memory mosaic witness scene in witness voice', async () => {
     delete process.env.SCENE_REGEN_COMMAND
     process.env.SCENE_REGEN_PROVIDER = 'command_json'
