@@ -118,7 +118,9 @@
         :result="detail.current_story"
         :editable-project="true"
         :regenerating-scene-id="submitting ? selectedSceneId : null"
+        :updating-supplement-task-id="updatingSupplementTaskId"
         @rewrite-scene="openSceneEditor"
+        @update-supplement-task="handleSupplementTaskUpdate"
       />
     </div>
   </div>
@@ -127,10 +129,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { deleteProject, getProject, regenerateProjectScene } from '@/api/projects'
+import { deleteProject, getProject, regenerateProjectScene, updateProjectSupplementTask } from '@/api/projects'
 import { getModelProfiles } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
-import type { AIModelProfile, StoryProjectDetail, StoryProjectStatus, StoryProjectVersionChangeType } from '@shared/types'
+import type {
+  AIModelProfile,
+  KnowledgeSupplementTaskStatus,
+  StoryProjectDetail,
+  StoryProjectStatus,
+  StoryProjectVersionChangeType,
+} from '@shared/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -146,6 +154,7 @@ const selectedIntent = ref<'tighten_conflict' | 'rewrite_narration' | 'shift_emo
 const userNote = ref('')
 const submitting = ref(false)
 const deleting = ref(false)
+const updatingSupplementTaskId = ref('')
 const successMessage = ref('')
 
 const selectedModelProfile = computed(() => {
@@ -240,6 +249,21 @@ async function submitSceneRewrite() {
     error.value = res.error?.message ?? '局部重写失败'
   }
   submitting.value = false
+}
+
+async function handleSupplementTaskUpdate(taskId: string, status: KnowledgeSupplementTaskStatus) {
+  if (!detail.value) return
+  updatingSupplementTaskId.value = taskId
+  error.value = ''
+  successMessage.value = ''
+  const res = await updateProjectSupplementTask(detail.value.project.project_id, taskId, { status })
+  if (res.ok && res.data) {
+    detail.value = res.data
+    successMessage.value = status === 'resolved' ? '资料补充任务已标记完成' : '资料补充任务已重新打开'
+  } else {
+    error.value = res.error?.message ?? '更新资料补充任务失败'
+  }
+  updatingSupplementTaskId.value = ''
 }
 
 function exportCurrentStory() {

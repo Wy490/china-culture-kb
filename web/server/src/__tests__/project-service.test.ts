@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import type { StoryGenerateResult } from '@shared/types.js';
@@ -9,6 +9,7 @@ import {
   deleteProject,
   getProject,
   regenerateProjectScene,
+  updateProjectSupplementTask,
 } from '../services/project-service.js';
 
 const TEMP_DIRS: string[] = [];
@@ -159,6 +160,46 @@ describe('project-service', () => {
     expect(detail.ok).toBe(true);
     expect(detail.data?.project.open_supplement_task_count).toBe(1);
     expect(detail.data?.current_story.supplement_tasks?.[0].status).toBe('open');
+  });
+
+  it('updates supplement task status on the current project and source story file', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const taskId = '20260609-story-abc1--supplement--supporting_characters';
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      supplement_tasks: [{
+        task_id: taskId,
+        need_id: 'supporting_characters',
+        label: '配角人物',
+        description: '补充「配角人物」相关资料',
+        status: 'open',
+        source: 'knowledge_pack_missing_need',
+        created_at: '2026-06-09T10:00:00.000Z',
+      }],
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+    const storyPath = resolve(storyDir, `${story.storyId}.json`);
+    await mkdir(storyDir, { recursive: true });
+    await writeFile(storyPath, JSON.stringify({
+      ...story,
+      project_id: enriched.project_id,
+      current_version_id: enriched.current_version_id,
+      _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
+    }, null, 2), 'utf-8');
+
+    const updated = await updateProjectSupplementTask(enriched.project_id!, taskId, { status: 'resolved' });
+
+    expect(updated.ok).toBe(true);
+    expect(updated.data?.project.open_supplement_task_count).toBe(0);
+    expect(updated.data?.current_story.supplement_tasks?.[0].status).toBe('resolved');
+    expect(updated.data?.current_story.supplement_tasks?.[0].resolved_at).toBeTruthy();
+
+    const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(rawSource.supplement_tasks?.[0].status).toBe('resolved');
   });
 
   it('builds a GEARS delivery package when reading old project snapshots', async () => {

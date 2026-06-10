@@ -790,6 +790,10 @@ export interface KnowledgeSupplementTask {
   resolved_at?: string;
 }
 
+export interface KnowledgeSupplementTaskUpdateRequest {
+  status: KnowledgeSupplementTaskStatus;
+}
+
 export interface MultiMatchResult {
   outline: string;
   matched_knowledge_pack: KnowledgePack;

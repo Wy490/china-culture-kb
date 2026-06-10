@@ -127,6 +127,16 @@ describe('Projects API', () => {
       }
     });
   });
+
+  describe('PATCH /api/projects/:projectId/supplement-tasks/:taskId', () => {
+    it('validates supplement task status', async () => {
+      const res = await request
+        .patch('/api/projects/20260609-story-abc1--character_story/supplement-tasks/task-1')
+        .send({ status: 'done' });
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

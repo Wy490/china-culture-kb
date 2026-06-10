@@ -11,6 +11,7 @@ import type {
   StoryProjectVersionSnapshot,
   StoryProjectVersionSummary,
   StoryProjectDeleteResult,
+  KnowledgeSupplementTaskUpdateRequest,
   StorySceneRegenerateRequest,
   VideoType,
   GearsDeliveryPackage,
@@ -98,6 +99,10 @@ function countOpenSupplementTasks(story: StoryGenerateResult): number {
   return story.supplement_tasks?.filter(task => task.status === 'open').length ?? 0;
 }
 
+function storySourcePath(story: Pick<StoryGenerateResult, 'storyId' | 'video_type'>): string {
+  return resolve(storiesRoot(), story.video_type, `${story.storyId}.json`);
+}
+
 export function buildProjectId(storyId: string, videoType: string): string {
   return `${storyId}--${videoType}`;
 }
@@ -163,7 +168,7 @@ async function readStoryFromSource(projectId: string): Promise<{ story: StoryGen
   const parsed = parseProjectId(projectId);
   if (!parsed) return null;
 
-  const filePath = resolve(storiesRoot(), parsed.videoType, `${parsed.storyId}.json`);
+  const filePath = storySourcePath({ storyId: parsed.storyId, video_type: parsed.videoType });
   if (!(await pathExists(filePath))) return null;
 
   const raw = await readJsonFile<StoredStoryFile>(filePath);
@@ -393,7 +398,7 @@ export async function deleteProject(projectId: string): Promise<ApiResponse<Stor
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" not found`);
   }
 
-  const storyFile = resolve(storiesRoot(), project.video_type, `${project.current_story_id}.json`);
+  const storyFile = storySourcePath({ storyId: project.current_story_id, video_type: project.video_type });
   await rm(storyFile, { force: true });
   await rm(projectDir(projectId), { recursive: true, force: true });
 
@@ -439,6 +444,64 @@ export async function regenerateProjectScene(
     [request.scene_id],
     buildRegenerationNote(request),
   );
+
+  return getProject(projectId);
+}
+
+export async function updateProjectSupplementTask(
+  projectId: string,
+  taskId: string,
+  request: KnowledgeSupplementTaskUpdateRequest,
+): Promise<ApiResponse<StoryProjectDetail>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return detailResult;
+  }
+
+  const { project, current_story } = detailResult.data;
+  const tasks = current_story.supplement_tasks ?? [];
+  const taskIndex = tasks.findIndex(task => task.task_id === taskId);
+  if (taskIndex === -1) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Supplement task "${taskId}" not found in project "${projectId}"`);
+  }
+
+  const updatedAt = new Date().toISOString();
+  const updatedTasks = tasks.map((task, index) => {
+    if (index !== taskIndex) return task;
+    return {
+      ...task,
+      status: request.status,
+      resolved_at: request.status === 'resolved' ? updatedAt : undefined,
+    };
+  });
+  const updatedStory: StoryGenerateResult = {
+    ...current_story,
+    supplement_tasks: updatedTasks,
+  };
+  const updatedMeta: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    open_supplement_task_count: countOpenSupplementTasks(updatedStory),
+  };
+  const currentPath = projectVersionPath(projectId, project.current_version_id);
+
+  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
+  await writeJsonFile(currentPath, {
+    ...snapshot,
+    story: updatedStory,
+  });
+  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+
+  const sourcePath = storySourcePath(updatedStory);
+  if (await pathExists(sourcePath)) {
+    const raw = await readJsonFile<StoredStoryFile>(sourcePath);
+    await writeJsonFile(sourcePath, {
+      ...raw,
+      supplement_tasks: updatedTasks,
+      project_id: updatedStory.project_id,
+      current_version_id: updatedStory.current_version_id,
+    });
+  }
 
   return getProject(projectId);
 }

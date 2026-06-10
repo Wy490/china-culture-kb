@@ -59,6 +59,14 @@
             <strong>{{ task.label }}</strong>
             <p>{{ task.description }}</p>
           </div>
+          <button
+            v-if="editableProject"
+            class="btn btn--sm btn--outline story-result__supplement-action"
+            :disabled="updatingSupplementTaskId === task.task_id"
+            @click="emit('update-supplement-task', task.task_id, task.status === 'open' ? 'resolved' : 'open')"
+          >
+            {{ updatingSupplementTaskId === task.task_id ? '更新中…' : task.status === 'open' ? '标记完成' : '重新打开' }}
+          </button>
         </div>
       </div>
     </section>
@@ -229,7 +237,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import type { StoryGenerateResult, VideoType, PresentationStyle, GearsSegment } from '@shared/types'
+import type { KnowledgeSupplementTaskStatus, StoryGenerateResult, VideoType, PresentationStyle, GearsSegment } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import GearsActions from './GearsActions.vue'
 
@@ -237,12 +245,15 @@ const props = withDefaults(defineProps<{
   result: StoryGenerateResult | null
   editableProject?: boolean
   regeneratingSceneId?: number | null
+  updatingSupplementTaskId?: string
 }>(), {
   editableProject: false,
   regeneratingSceneId: null,
+  updatingSupplementTaskId: '',
 })
 const emit = defineEmits<{
   (e: 'rewrite-scene', sceneId: number): void
+  (e: 'update-supplement-task', taskId: string, status: KnowledgeSupplementTaskStatus): void
 }>()
 
 const expandedSegments = reactive<Record<number, boolean>>({})
@@ -415,7 +426,7 @@ function showCopyMessage(msg: string) {
 }
 .story-result__supplement-task {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   gap: 10px;
   align-items: flex-start;
   padding: 10px;
@@ -428,6 +439,9 @@ function showCopyMessage(msg: string) {
   margin-bottom: 4px;
   color: #6f4b00;
   font-size: 14px;
+}
+.story-result__supplement-task > div {
+  min-width: 0;
 }
 .story-result__supplement-task p {
   margin: 0;
@@ -442,6 +456,10 @@ function showCopyMessage(msg: string) {
   color: #4e3600;
   font-size: 12px;
   font-weight: 700;
+}
+.story-result__supplement-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* Quality report */

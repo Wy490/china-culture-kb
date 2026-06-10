@@ -231,6 +231,14 @@ export const GearsDeliveryUpdateRequestSchema = z.object({
   markdown: z.string().min(1, 'markdown cannot be empty').max(120000, 'markdown is too long'),
 });
 
+export const SupplementTaskIdParamSchema = ProjectIdParamSchema.extend({
+  taskId: z.string().min(1, 'taskId cannot be empty'),
+});
+
+export const KnowledgeSupplementTaskUpdateRequestSchema = z.object({
+  status: z.enum(['open', 'resolved']),
+});
+
 // ---------------------------------------------------------------------------
 // Story outline analyze request
 // ---------------------------------------------------------------------------

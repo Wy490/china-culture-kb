@@ -1,5 +1,6 @@
-import { apiDelete, apiGet, apiPost } from './client'
+import { apiDelete, apiGet, apiPatch, apiPost } from './client'
 import type {
+  KnowledgeSupplementTaskUpdateRequest,
   StoryProjectDeleteResult,
   StoryProjectDetail,
   StoryProjectListItem,
@@ -20,4 +21,8 @@ export function regenerateProjectScene(projectId: string, body: StorySceneRegene
 
 export function deleteProject(projectId: string) {
   return apiDelete<StoryProjectDeleteResult>(`/projects/${projectId}`)
+}
+
+export function updateProjectSupplementTask(projectId: string, taskId: string, body: KnowledgeSupplementTaskUpdateRequest) {
+  return apiPatch<StoryProjectDetail>(`/projects/${projectId}/supplement-tasks/${encodeURIComponent(taskId)}`, body)
 }
