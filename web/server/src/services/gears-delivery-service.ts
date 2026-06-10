@@ -75,6 +75,7 @@ function buildCharacterAsset(
       ...(scene.fictionalized_elements ?? []),
     ]),
     ...findKnowledgeSnippets(story, [name, story.source_entry]),
+    ...findSupplementSnippets(story, [name]),
   ].filter(Boolean).join(' ');
   const signatureObjects = inferSignatureObjects(`${characterContext} ${storyContext}`);
   const appearanceFeatures = character?.description?.trim()
@@ -150,6 +151,12 @@ function buildSceneAssets(story: StoryGenerateResult): GearsSceneAsset[] {
         scene.title,
         ...(scene.source_entries ?? []),
       ]),
+      ...findSupplementSnippets(story, [
+        name,
+        scene.location,
+        scene.title,
+        ...(scene.characters ?? []),
+      ]),
       scene.factual_basis,
       scene.cultural_note,
       scene.plot,
@@ -202,6 +209,7 @@ function buildStoryContext(story: StoryGenerateResult): string {
       ...(scene.source_entries ?? []),
     ].filter(Boolean).join(' ')),
     ...knowledgeEntries(story).map(entryToText),
+    ...supplementEntries(story),
   ].filter(Boolean).join(' ');
 }
 
@@ -238,6 +246,30 @@ function findKnowledgeSnippets(story: StoryGenerateResult, needles: Array<string
     })
     .map(entry => entry.summary || entry.match_reason || entry.role_in_story)
     .filter(Boolean);
+}
+
+function supplementEntries(story: StoryGenerateResult): string[] {
+  return (story.supplement_tasks ?? [])
+    .filter(task => task.status === 'resolved' && task.supplement_note?.trim())
+    .map(task => [
+      task.label,
+      task.category,
+      task.supplement_note,
+      ...(task.recommended_fields ?? []),
+    ].filter(Boolean).join(' '));
+}
+
+function findSupplementSnippets(story: StoryGenerateResult, needles: Array<string | undefined>): string[] {
+  const normalizedNeedles = needles
+    .map(needle => needle?.trim())
+    .filter((needle): needle is string => Boolean(needle));
+  const entries = supplementEntries(story);
+  if (entries.length === 0) return [];
+  if (normalizedNeedles.length === 0) return entries;
+
+  return entries.filter(entry =>
+    normalizedNeedles.some(needle => entry.includes(needle) || needle.includes(entry)),
+  );
 }
 
 function detailSentence(subject: string, text: string): string | undefined {

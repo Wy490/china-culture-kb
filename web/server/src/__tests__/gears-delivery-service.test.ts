@@ -131,6 +131,55 @@ function makeSparseStory(): StoryGenerateResult {
   };
 }
 
+function makeSupplementedStory(): StoryGenerateResult {
+  return {
+    ...makeSparseStory(),
+    storyId: '20260610-story-gears-supplemented',
+    title: '补录资料测试',
+    source_entry: '周敦颐——理学开山鼻祖',
+    scene_breakdown: [
+      {
+        scene_id: 1,
+        title: '堂前催签',
+        duration_sec: 10,
+        location: '南安军衙',
+        time_of_day: '白天',
+        dramatic_function: '冲突升级',
+        plot: '上官催促周敦颐签署文书。',
+        key_action: '催促签署',
+        characters: ['上官'],
+        visual_prompt: '',
+        camera_suggestion: '',
+        cultural_note: '',
+      },
+    ],
+    supplement_tasks: [
+      {
+        task_id: '20260610-story-gears-supplemented--supplement--supporting_characters',
+        need_id: 'supporting_characters',
+        label: '配角人物',
+        description: '补充配角人物相关资料',
+        category: 'supporting_character',
+        status: 'resolved',
+        source: 'knowledge_pack_missing_need',
+        created_at: '2026-06-10T10:00:00.000Z',
+        resolved_at: '2026-06-10T11:00:00.000Z',
+        supplement_note: '上官是南安军衙主管，负责催促签署疑案文书。',
+      },
+      {
+        task_id: '20260610-story-gears-supplemented--supplement--regional_context',
+        need_id: 'regional_context',
+        label: '地域背景',
+        description: '补充地域背景相关资料',
+        status: 'open',
+        source: 'knowledge_pack_missing_need',
+        created_at: '2026-06-10T10:00:00.000Z',
+        supplement_note: '这条待补说明不应进入 GEARS。',
+      },
+    ],
+  };
+}
+
 describe('gears-delivery-service', () => {
   it('builds a GEARS supply package with assets, markdown, and <=15s units', () => {
     const pkg = buildGearsDeliveryPackage(makeStory());
@@ -166,5 +215,14 @@ describe('gears-delivery-service', () => {
     expect(pkg.validation_notes).toContain('人物资产 人物甲 缺少稳定外观细节');
     expect(pkg.validation_notes).toContain('场景资产 场景1 缺少空间结构与陈设细节');
     expect(pkg.markdown).toContain('# 校验提示');
+  });
+
+  it('enriches GEARS assets from resolved supplement notes', () => {
+    const pkg = buildGearsDeliveryPackage(makeSupplementedStory());
+
+    expect(pkg.character_assets[0].appearance_features).toContain('南安军衙主管');
+    expect(pkg.scene_assets[0].description).toContain('疑案文书');
+    expect(pkg.markdown).toContain('负责催促签署疑案文书');
+    expect(pkg.markdown).not.toContain('这条待补说明不应进入 GEARS');
   });
 });
