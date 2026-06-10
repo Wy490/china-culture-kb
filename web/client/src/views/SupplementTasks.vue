@@ -56,12 +56,35 @@
           <div v-if="item.task.recommended_fields?.length" class="supplement-page__fields">
             <span v-for="field in item.task.recommended_fields" :key="field">{{ field }}</span>
           </div>
+          <div v-if="item.task.status === 'open'" class="supplement-page__editor">
+            <textarea
+              class="supplement-page__textarea"
+              :value="drafts[item.task.task_id] ?? item.task.supplement_note ?? ''"
+              placeholder="记录本次补录的事实、来源、可用于故事或画面的细节。"
+              @input="updateDraft(item.task.task_id, $event)"
+            />
+            <button
+              class="supplement-page__task-action"
+              :disabled="updatingTaskId === item.task.task_id"
+              @click="updateTask(item, 'resolved')"
+            >
+              {{ updatingTaskId === item.task.task_id ? '保存中…' : '保存并完成' }}
+            </button>
+          </div>
         </div>
         <aside class="supplement-page__project">
           <strong>{{ item.project_title }}</strong>
           <span>{{ item.source_entry }}</span>
           <span>{{ typeLabel(item.video_type) }} · {{ formatDate(item.updated_at) }}</span>
           <RouterLink class="supplement-page__project-link" :to="`/projects/${item.project_id}`">打开项目</RouterLink>
+          <button
+            v-if="item.task.status === 'resolved'"
+            class="supplement-page__task-action supplement-page__task-action--secondary"
+            :disabled="updatingTaskId === item.task.task_id"
+            @click="updateTask(item, 'open')"
+          >
+            {{ updatingTaskId === item.task.task_id ? '更新中…' : '重新打开' }}
+          </button>
         </aside>
       </article>
 
@@ -71,15 +94,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { listSupplementTasks } from '@/api/projects'
-import type { KnowledgeSupplementTaskCategory, ProjectSupplementTaskListItem, VideoType } from '@shared/types'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { listSupplementTasks, updateProjectSupplementTask } from '@/api/projects'
+import type {
+  KnowledgeSupplementTaskCategory,
+  KnowledgeSupplementTaskStatus,
+  ProjectSupplementTaskListItem,
+  VideoType,
+} from '@shared/types'
 
 const tasks = ref<ProjectSupplementTaskListItem[]>([])
 const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
 const statusFilter = ref('')
+const updatingTaskId = ref('')
+const drafts = reactive<Record<string, string>>({})
 
 const filteredTasks = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -140,7 +170,11 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-onMounted(async () => {
+function updateDraft(taskId: string, event: Event) {
+  drafts[taskId] = (event.target as HTMLTextAreaElement).value
+}
+
+async function loadTasks() {
   loading.value = true
   error.value = ''
   const res = await listSupplementTasks()
@@ -150,6 +184,25 @@ onMounted(async () => {
     error.value = res.error?.message ?? '加载补录任务失败'
   }
   loading.value = false
+}
+
+async function updateTask(item: ProjectSupplementTaskListItem, status: KnowledgeSupplementTaskStatus) {
+  updatingTaskId.value = item.task.task_id
+  error.value = ''
+  const note = drafts[item.task.task_id]?.trim()
+  const body = note ? { status, supplement_note: note } : { status }
+  const res = await updateProjectSupplementTask(item.project_id, item.task.task_id, body)
+  if (res.ok) {
+    delete drafts[item.task.task_id]
+    await loadTasks()
+  } else {
+    error.value = res.error?.message ?? '更新补录任务失败'
+  }
+  updatingTaskId.value = ''
+}
+
+onMounted(async () => {
+  await loadTasks()
 })
 </script>
 
@@ -299,6 +352,47 @@ onMounted(async () => {
   padding: 8px 10px;
   border-radius: 6px;
   background: #fffaf0;
+}
+
+.supplement-page__editor {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.supplement-page__textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 9px 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  resize: vertical;
+  color: #2f4358;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.supplement-page__task-action {
+  justify-self: start;
+  padding: 7px 10px;
+  border: 1px solid #2980b9;
+  border-radius: 4px;
+  background: #2980b9;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.supplement-page__task-action--secondary {
+  border-color: #c7d3dd;
+  background: #fff;
+  color: #33475b;
+}
+
+.supplement-page__task-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .supplement-page__project {
