@@ -30,6 +30,19 @@ beforeEach(() => {
 
 故宫、传说、紫禁城
 
+### 故事梗概
+
+相传夜色中的午门曾有守门人听见宫墙回声，这段经历后来被讲成紫禁城建筑空间里的民间故事。
+
+### 文化意义
+
+故宫传说把建筑、地点记忆和城市民俗联系起来。
+
+### 相关地点
+
+- 午门：紫禁城重要城门建筑
+- 太和殿：故宫核心礼制建筑
+
 ---`);
 
   fs.writeFileSync(path.join(tmpDir, 'provinces', '浙江.md'), `# 浙江
@@ -82,6 +95,19 @@ describe('kb_search', () => {
     process.env.KB_ROOT = tmpDir;
     const results = await searchKnowledgeBase({ keywords: '', type: '民间故事' });
     expect(results.some(r => r.type === '民间故事')).toBe(true);
+  });
+
+  it('should search within full story content', async () => {
+    process.env.KB_ROOT = tmpDir;
+    const results = await searchKnowledgeBase({ keywords: '守门人回声' });
+    expect(results.some(r => r.name === '故宫传说')).toBe(true);
+  });
+
+  it('should search related locations and building intent', async () => {
+    process.env.KB_ROOT = tmpDir;
+    const results = await searchKnowledgeBase({ keywords: '午门建筑' });
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results[0].name).toBe('故宫传说');
   });
 
   it('should return empty for no match', async () => {

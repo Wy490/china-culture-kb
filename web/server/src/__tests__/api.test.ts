@@ -175,6 +175,15 @@ describe('Entries API', () => {
       }
     });
 
+    it('matches entries by related location and building intent', async () => {
+      const res = await request.post('/api/entries/match').send({
+        query: '吕仙祠建筑故事',
+      });
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.matches.some((m: { entry_name: string }) => m.entry_name.includes('岳阳楼'))).toBe(true);
+    });
+
     it('returns empty matches for completely unrelated query', async () => {
       const res = await request.post('/api/entries/match').send({
         query: '量子物理学宇宙大爆炸',
@@ -209,6 +218,20 @@ describe('Entries API', () => {
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
+    });
+
+    it('searches full story content beyond summary and keywords', async () => {
+      const res = await request.get('/api/entries/search?keywords=拒签冤案');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.some((entry: { name: string }) => entry.name.includes('周敦颐'))).toBe(true);
+    });
+
+    it('searches related locations and building names', async () => {
+      const res = await request.get('/api/entries/search?keywords=吕仙祠');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.some((entry: { name: string }) => entry.name.includes('岳阳楼'))).toBe(true);
     });
 
     it('returns results with province filter', async () => {

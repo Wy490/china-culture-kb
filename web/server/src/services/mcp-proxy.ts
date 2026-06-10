@@ -3,7 +3,7 @@
 
 import { searchKnowledgeBase } from '../../../../mcp-server/src/tools/search.js';
 import { getEntryDetail } from '../../../../mcp-server/src/tools/get-entry-detail.js';
-import { getFullEntryDetail, readAllProvinceFiles, parseEntries } from '../../../../mcp-server/src/lib/markdown.js';
+import { getFullEntryDetail, readAllProvinceFiles, parseEntries, parseFullEntry } from '../../../../mcp-server/src/lib/markdown.js';
 import { PROVINCES } from '../../../../mcp-server/src/lib/provinces.js';
 import type { SearchResult as McpSearchResult, FullEntryDetail as McpFullEntryDetail } from '../../../../mcp-server/src/types.js';
 
@@ -54,3 +54,4 @@ export const mcpGetFullEntryDetail = getFullEntryDetail;
 export const mcpProvinces = PROVINCES;
 export const mcpReadAllProvinceFiles = readAllProvinceFiles;
 export const mcpParseEntries = parseEntries;
+export const mcpParseFullEntry = parseFullEntry;

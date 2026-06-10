@@ -6,6 +6,7 @@ import {
   mcpProvinces,
   mcpReadAllProvinceFiles,
   mcpParseEntries,
+  mcpParseFullEntry,
   convertSearchResult,
   convertFullEntryDetail,
 } from './mcp-proxy.js';
@@ -63,20 +64,29 @@ interface MatchParams {
   preferred_type?: string;
 }
 
+interface SearchableEntry extends EntrySearchResult {
+  story?: string;
+  culturalSignificance?: string;
+  relatedLocationText?: string;
+  sourcesText?: string;
+  verificationText?: string;
+  unverifiedText?: string;
+}
+
 // Type-related keyword hints for boosting scores
 const TYPE_KEYWORD_HINTS: Record<string, string[]> = {
-  '历史人物': ['人物', '革命', '先贤', '诗人', '英雄', '领袖', '将军', '皇帝', '大臣', '宰相', '学者', '名臣', '革命家', '政治家', '军事家', '哲学家', '思想家'],
+  '历史人物': ['人物', '名人', '生平', '经历', '事迹', '传记', '革命', '先贤', '诗人', '英雄', '领袖', '将军', '皇帝', '大臣', '宰相', '学者', '名臣', '革命家', '政治家', '军事家', '哲学家', '思想家'],
   '神话传说': ['传说', '神话', '神仙', '妖怪', '仙人', '龙', '凤凰', '灵'],
   '民间故事': ['故事', '民间', '传说', '传说故事', '爱情', '狐仙'],
-  '非遗': ['非遗', '工艺', '技艺', '传承', '手艺', '绣', '陶瓷', '织', '染', '雕刻'],
-  '传统工艺': ['工艺', '技艺', '手工', '制作', '烧制', '编织'],
-  '名胜古迹': ['景区', '山水', '古城', '楼', '阁', '书院', '寺', '庙', '墓', '洞', '遗址', '名胜', '古迹', '景点', '景点'],
-  '地方掌故': ['掌故', '轶事', '事件', '故事', '转折', '转折'],
-  '节庆习俗': ['节日', '节庆', '习俗', '端午', '中秋', '春节', '过年', '庆典'],
+  '非遗': ['非遗', '民俗', '工艺', '技艺', '传承', '手艺', '绣', '陶瓷', '织', '染', '雕刻', '仪式'],
+  '传统工艺': ['工艺', '技艺', '手工', '制作', '烧制', '编织', '流程'],
+  '名胜古迹': ['地点', '建筑', '古建', '景区', '山水', '古城', '楼', '阁', '亭', '书院', '寺', '庙', '祠', '墓', '洞', '遗址', '名胜', '古迹', '景点'],
+  '地方掌故': ['掌故', '轶事', '事件', '故事', '经历', '转折', '冲突'],
+  '节庆习俗': ['节日', '节庆', '习俗', '端午', '中秋', '春节', '过年', '庆典', '仪式', '祭祀'],
   '饮食文化': ['美食', '饮食', '菜', '味道', '小吃', '特产', '烹饪'],
   '地方戏曲': ['戏曲', '戏', '剧', '唱', '舞台'],
-  '宗教信仰': ['宗教', '信仰', '佛', '道', '祭祀', '祭'],
-  '民俗活动': ['民俗', '活动', '赶秋', '鼓舞', '仪式'],
+  '宗教信仰': ['宗教', '信仰', '佛', '佛教', '禅宗', '道', '道教', '寺', '庙', '祠', '祭祀', '祭', '神灵'],
+  '民俗活动': ['民俗', '习俗', '活动', '赶秋', '鼓舞', '仪式', '祭祀', '歌舞'],
 };
 
 // Province name mapping for query detection
@@ -91,10 +101,22 @@ export async function matchEntries(params: MatchParams): Promise<ApiResponse<Ent
 
   // Step 1: Collect all entries from knowledge base
   const provinceFiles = await mcpReadAllProvinceFiles();
-  const allEntries: EntrySearchResult[] = [];
+  const allEntries: SearchableEntry[] = [];
   for (const [provinceName, content] of provinceFiles) {
     const parsed = mcpParseEntries(content, provinceName);
-    allEntries.push(...parsed.map(convertSearchResult));
+    allEntries.push(...parsed.map(entry => {
+      const summaryEntry = convertSearchResult(entry);
+      const detail = mcpParseFullEntry(content, entry.name);
+      return {
+        ...summaryEntry,
+        story: detail?.story ?? '',
+        culturalSignificance: detail?.culturalSignificance ?? '',
+        relatedLocationText: detail?.relatedLocations.map(location => `${location.name} ${location.description}`).join(' ') ?? '',
+        sourcesText: detail?.sources.join(' ') ?? '',
+        verificationText: detail?.verificationMethod ?? '',
+        unverifiedText: detail?.unverifiedPoints.join(' ') ?? '',
+      };
+    }));
   }
 
   // Step 2: Extract query keywords
@@ -161,6 +183,16 @@ export function extractKeywords(query: string): string[] {
       }
     }
   }
+
+  const queryText = parts.join('');
+  for (const hints of Object.values(TYPE_KEYWORD_HINTS)) {
+    for (const hint of hints) {
+      if (queryText.includes(hint)) {
+        words.push(hint);
+      }
+    }
+  }
+
   return [...new Set(words)]; // Deduplicate
 }
 
@@ -180,7 +212,7 @@ export function detectProvince(query: string, preferred?: string): string | null
 export function computeMatchScore(
   query: string,
   queryKeywords: string[],
-  entry: EntrySearchResult,
+  entry: SearchableEntry,
   queryProvince: string | null,
   preferredType?: string,
 ): number {
@@ -218,6 +250,12 @@ export function computeMatchScore(
       if (entryCoreName.includes(kw)) { hit = true; weight = 0.8; }
       // Check summary
       if (entry.summary.includes(kw)) { hit = true; weight = Math.max(weight, 0.4); }
+      // Check full story content — useful when keyword is an event/experience not in summary
+      if ((entry.story ?? '').includes(kw)) { hit = true; weight = Math.max(weight, 0.55); }
+      // Check related locations — useful for buildings, temples, scenic spots and place search
+      if ((entry.relatedLocationText ?? '').includes(kw)) { hit = true; weight = Math.max(weight, 0.65); }
+      // Check cultural significance
+      if ((entry.culturalSignificance ?? '').includes(kw)) { hit = true; weight = Math.max(weight, 0.35); }
       // Check keywords array
       if (entry.keywords.some(ekw => ekw.includes(kw) || kw.includes(ekw))) { hit = true; weight = Math.max(weight, 0.6); }
       // Check type
@@ -226,6 +264,11 @@ export function computeMatchScore(
       if (entry.province.includes(kw)) { hit = true; weight = Math.max(weight, 0.3); }
       // Check region
       if (entry.region.includes(kw)) { hit = true; weight = Math.max(weight, 0.2); }
+      // Lower-weight provenance fields can still rescue sparse entries
+      if ((entry.sourcesText ?? '').includes(kw) || (entry.verificationText ?? '').includes(kw) || (entry.unverifiedText ?? '').includes(kw)) {
+        hit = true;
+        weight = Math.max(weight, 0.2);
+      }
 
       if (hit) { keywordHits++; keywordHitWeight += weight; }
     }
@@ -261,7 +304,7 @@ export function computeMatchScore(
   return score;
 }
 
-function buildMatchReason(query: string, entry: EntrySearchResult, score: number): string {
+function buildMatchReason(query: string, entry: SearchableEntry, score: number): string {
   if (score >= 1.0) return `精确匹配：查询"${query}"与词条"${entry.name}"完全一致`;
 
   const reasons: string[] = [];
@@ -274,10 +317,22 @@ function buildMatchReason(query: string, entry: EntrySearchResult, score: number
   // Keyword hits
   const queryKws = extractKeywords(query);
   const matchedKws = queryKws.filter(kw =>
-    entry.name.includes(kw) || entry.summary.includes(kw) || entry.keywords.some(ekw => ekw.includes(kw) || kw.includes(ekw))
+    entry.name.includes(kw)
+    || entry.summary.includes(kw)
+    || (entry.story ?? '').includes(kw)
+    || (entry.relatedLocationText ?? '').includes(kw)
+    || (entry.culturalSignificance ?? '').includes(kw)
+    || entry.keywords.some(ekw => ekw.includes(kw) || kw.includes(ekw))
   );
   if (matchedKws.length > 0) {
     reasons.push(`关键词命中：${matchedKws.join('、')}`);
+  }
+
+  if (queryKws.some(kw => (entry.story ?? '').includes(kw))) {
+    reasons.push('故事梗概命中');
+  }
+  if (queryKws.some(kw => (entry.relatedLocationText ?? '').includes(kw))) {
+    reasons.push('相关地点命中');
   }
 
   // Province match
