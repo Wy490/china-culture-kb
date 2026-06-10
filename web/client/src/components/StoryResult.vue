@@ -57,7 +57,12 @@
           <span class="story-result__supplement-status">{{ task.status === 'open' ? '待补' : '已完成' }}</span>
           <div>
             <strong>{{ task.label }}</strong>
+            <div v-if="task.category || task.recommended_fields?.length" class="story-result__supplement-meta">
+              <span v-if="task.category">{{ supplementCategoryLabel(task.category) }}</span>
+              <span v-if="task.recommended_fields?.length">建议字段：{{ task.recommended_fields.join('、') }}</span>
+            </div>
             <p>{{ task.description }}</p>
+            <p v-if="task.intake_prompt" class="story-result__supplement-prompt">{{ task.intake_prompt }}</p>
           </div>
           <button
             v-if="editableProject"
@@ -237,7 +242,14 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import type { KnowledgeSupplementTaskStatus, StoryGenerateResult, VideoType, PresentationStyle, GearsSegment } from '@shared/types'
+import type {
+  KnowledgeSupplementTaskCategory,
+  KnowledgeSupplementTaskStatus,
+  StoryGenerateResult,
+  VideoType,
+  PresentationStyle,
+  GearsSegment,
+} from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import GearsActions from './GearsActions.vue'
 
@@ -297,6 +309,19 @@ function renderSimpleMarkdown(text: string): string {
 
 function toggleSegment(id: number) {
   expandedSegments[id] = !expandedSegments[id]
+}
+
+function supplementCategoryLabel(category?: KnowledgeSupplementTaskCategory): string {
+  const map: Record<KnowledgeSupplementTaskCategory, string> = {
+    person_experience: '人物经历',
+    architecture_detail: '建筑细节',
+    event_process: '事件过程',
+    regional_context: '地域背景',
+    cultural_background: '文化背景',
+    supporting_character: '配角人物',
+    general: '通用资料',
+  }
+  return category ? map[category] : '通用资料'
 }
 
 async function copySegmentScript(seg: GearsSegment) {
@@ -448,6 +473,22 @@ function showCopyMessage(msg: string) {
   color: #705c2d;
   font-size: 13px;
   line-height: 1.5;
+}
+.story-result__supplement-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.story-result__supplement-meta span {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f7e8c4;
+  color: #72510c;
+  font-size: 12px;
+}
+.story-result__supplement-prompt {
+  margin-top: 4px !important;
 }
 .story-result__supplement-status {
   padding: 3px 7px;

@@ -778,12 +778,23 @@ export interface KnowledgePack {
 
 export type KnowledgeSupplementTaskStatus = 'open' | 'resolved';
 export type KnowledgeSupplementTaskSource = 'knowledge_pack_missing_need';
+export type KnowledgeSupplementTaskCategory =
+  | 'person_experience'
+  | 'architecture_detail'
+  | 'event_process'
+  | 'regional_context'
+  | 'cultural_background'
+  | 'supporting_character'
+  | 'general';
 
 export interface KnowledgeSupplementTask {
   task_id: string;
   need_id: string;
   label: string;
   description: string;
+  category?: KnowledgeSupplementTaskCategory;
+  recommended_fields?: string[];
+  intake_prompt?: string;
   status: KnowledgeSupplementTaskStatus;
   source: KnowledgeSupplementTaskSource;
   created_at: string;

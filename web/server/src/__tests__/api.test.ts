@@ -501,9 +501,12 @@ describe('Stories API', () => {
       expect(story.supplement_tasks[0]).toMatchObject({
         need_id: 'supporting_characters',
         label: '配角人物',
+        category: 'supporting_character',
         status: 'open',
         source: 'knowledge_pack_missing_need',
       });
+      expect(story.supplement_tasks[0].recommended_fields).toContain('与主角关系');
+      expect(story.supplement_tasks[0].intake_prompt).toContain('人物关系');
       expect(story.supplement_tasks[0].task_id).toContain(story.storyId);
     });
 
