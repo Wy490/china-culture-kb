@@ -240,6 +240,10 @@ function entryToText(entry: KnowledgePackEntry): string {
     entry.role_in_story,
     entry.match_reason,
     ...entry.keywords,
+    ...(entry.asset_split?.characters ?? []),
+    ...(entry.asset_split?.scenes ?? []),
+    ...(entry.asset_split?.character_props ?? []),
+    ...(entry.asset_split?.scene_props ?? []),
   ].filter(Boolean).join(' ');
 }
 

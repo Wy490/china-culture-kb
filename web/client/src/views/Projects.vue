@@ -21,6 +21,13 @@
         <option value="exported">已导出</option>
         <option value="finalized">已定稿</option>
       </select>
+      <select v-model="videoStatusFilter" class="projects-page__select">
+        <option value="">全部成片</option>
+        <option value="none">未回传</option>
+        <option value="processing">制作中</option>
+        <option value="ready">已就绪</option>
+        <option value="failed">未完成</option>
+      </select>
       <label class="projects-page__toggle">
         <input v-model="supplementFilter" type="checkbox" />
         <span>仅看待补资料</span>
@@ -85,6 +92,12 @@
             <span>{{ project.scene_count }} 场景</span>
             <span v-if="project.has_gears_segments">GEARS 已生成</span>
             <span v-else>无 GEARS 分段</span>
+            <span
+              v-if="project.gears_video_status"
+              :class="['projects-page__meta-video', `projects-page__meta-video--${project.gears_video_status}`]"
+            >
+              {{ gearsVideoStatusLabel(project.gears_video_status) }}
+            </span>
             <span v-if="(project.open_supplement_task_count ?? 0) > 0" class="projects-page__meta-warning">
               待补资料 {{ project.open_supplement_task_count }}
             </span>
@@ -111,13 +124,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { deleteProject, deleteProjects, listProjects } from '@/api/projects'
-import type { StoryProjectListItem, StoryProjectStatus } from '@shared/types'
+import type { GearsVideoStatus, StoryProjectListItem, StoryProjectStatus } from '@shared/types'
 
 const projects = ref<StoryProjectListItem[]>([])
 const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
 const statusFilter = ref('')
+const videoStatusFilter = ref('')
 const supplementFilter = ref(false)
 const deletingProjectId = ref('')
 const selectedProjectIds = ref<string[]>([])
@@ -127,11 +141,14 @@ const filteredProjects = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   return projects.value.filter(project => {
     const matchesStatus = !statusFilter.value || project.status === statusFilter.value
+    const matchesVideoStatus = !videoStatusFilter.value
+      || (videoStatusFilter.value === 'none' && !project.gears_video_status)
+      || project.gears_video_status === videoStatusFilter.value
     const matchesSupplement = !supplementFilter.value || (project.open_supplement_task_count ?? 0) > 0
     const matchesQuery = !query
       || project.title.toLowerCase().includes(query)
       || project.source_entry.toLowerCase().includes(query)
-    return matchesStatus && matchesSupplement && matchesQuery
+    return matchesStatus && matchesVideoStatus && matchesSupplement && matchesQuery
   })
 })
 
@@ -174,6 +191,15 @@ function typeLabel(type: string): string {
     landscape_mood: '山水意境',
   }
   return map[type] ?? type
+}
+
+function gearsVideoStatusLabel(status: GearsVideoStatus): string {
+  const map: Record<GearsVideoStatus, string> = {
+    processing: '成片制作中',
+    ready: '成片已就绪',
+    failed: '成片未完成',
+  }
+  return map[status]
 }
 
 function formatDate(iso: string): string {
@@ -490,6 +516,27 @@ onMounted(async () => {
 .projects-page__meta-warning {
   color: #a05f00;
   font-weight: 700;
+}
+
+.projects-page__meta-video {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
+.projects-page__meta-video--ready {
+  background: #d5f5e3;
+  color: #1b7f4a;
+}
+
+.projects-page__meta-video--processing {
+  background: #eaf2f8;
+  color: #2b78b7;
+}
+
+.projects-page__meta-video--failed {
+  background: #fdecea;
+  color: #b13b2e;
 }
 
 .projects-page__card-actions {

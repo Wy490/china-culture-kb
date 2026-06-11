@@ -21,6 +21,12 @@ function makeEntry(): EntryDetail {
     entry_role: 'core_entry',
     era: '宋',
     asset_usage: ['character_clothing', 'scene_space'],
+    asset_split: {
+      characters: ['周敦颐：北宋士人'],
+      scenes: ['月岩洞：道县天然岩洞'],
+      character_props: ['书卷：随身读书物'],
+      scene_props: ['岩壁：自然场景陈设'],
+    },
   };
 }
 
@@ -40,6 +46,12 @@ function makeKnowledgePack(): KnowledgePack {
       entry_role: 'core_entry',
       era: '宋',
       asset_usage: ['character_clothing'],
+      asset_split: {
+        characters: ['周敦颐：主角'],
+        scenes: ['濂溪书斋：读书场景'],
+        character_props: ['手稿：随身物'],
+        scene_props: ['书桌：场景陈设'],
+      },
     }],
     supporting_entries: [{
       entry_name: 'GEARS场景资产包——洞穴、书院与衙署边界',
@@ -54,6 +66,12 @@ function makeKnowledgePack(): KnowledgePack {
       knowledge_domain: 'gears_asset',
       entry_role: 'asset_pack',
       asset_usage: ['scene_space', 'scene_props', 'gears_delivery'],
+      asset_split: {
+        characters: [],
+        scenes: ['洞穴：场景资产', '书院：场景资产'],
+        character_props: ['书卷：人物随身物'],
+        scene_props: ['案卷：场景陈设', '油灯：场景陈设'],
+      },
     }],
     missing_needs: [],
     overall_confidence: 1,
@@ -81,6 +99,9 @@ describe('story-generation-prompt', () => {
 
     expect(pkg.user_prompt).toContain('知识域：gears_asset');
     expect(pkg.user_prompt).toContain('用途：scene_space、scene_props、gears_delivery');
+    expect(pkg.user_prompt).toContain('资产拆分：人物=周敦颐：主角');
+    expect(pkg.user_prompt).toContain('场景=洞穴：场景资产、书院：场景资产');
+    expect(pkg.knowledge_context?.primary_entries[0].asset_split?.character_props[0]).toContain('手稿');
     expect(pkg.user_prompt).toContain('不要把设定包内容写成主条目的史实');
   });
 

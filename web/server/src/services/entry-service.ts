@@ -91,6 +91,7 @@ export interface SearchableEntry extends EntrySearchResult {
   sourcesText?: string;
   verificationText?: string;
   unverifiedText?: string;
+  assetSplitText?: string;
 }
 
 type SearchIntent = 'person_experience' | 'place_building' | 'folk_ritual' | 'religion' | 'event' | 'craft_process' | 'general';
@@ -184,6 +185,7 @@ export async function collectSearchableEntries(): Promise<SearchableEntry[]> {
         sourcesText: detail?.sources.join(' ') ?? '',
         verificationText: detail?.verificationMethod ?? '',
         unverifiedText: detail?.unverifiedPoints.join(' ') ?? '',
+        assetSplitText: assetSplitToText(summaryEntry.asset_split ?? detail?.asset_split),
       };
     }));
   }
@@ -470,6 +472,10 @@ export function computeMatchScore(
         hit = true;
         weight = Math.max(weight, 0.2);
       }
+      if ((entry.assetSplitText ?? '').includes(kw)) {
+        hit = true;
+        weight = Math.max(weight, 0.45);
+      }
 
       if (hit) { keywordHits++; keywordHitWeight += weight; }
     }
@@ -523,6 +529,7 @@ function buildMatchReason(query: string, entry: SearchableEntry, score: number):
     || (entry.story ?? '').includes(kw)
     || (entry.relatedLocationText ?? '').includes(kw)
     || (entry.culturalSignificance ?? '').includes(kw)
+    || (entry.assetSplitText ?? '').includes(kw)
     || entry.keywords.some(ekw => ekw.includes(kw) || kw.includes(ekw))
   );
   if (matchedKws.length > 0) {
@@ -554,4 +561,14 @@ function buildMatchReason(query: string, entry: SearchableEntry, score: number):
   }
 
   return reasons.join('，');
+}
+
+function assetSplitToText(assetSplit: SearchableEntry['asset_split']): string {
+  if (!assetSplit) return '';
+  return [
+    ...assetSplit.characters,
+    ...assetSplit.scenes,
+    ...assetSplit.character_props,
+    ...assetSplit.scene_props,
+  ].join(' ');
 }

@@ -78,6 +78,12 @@
             <span v-if="story.updated_at" class="home__story-date">{{ formatDate(story.updated_at) }}</span>
             <span v-if="story.has_gears_segments" class="home__story-gears-badge">✅ GEARS</span>
             <span v-else class="home__story-gears-badge--none">⭕ 无分段</span>
+            <span
+              v-if="story.gears_video_status"
+              :class="['home__story-video-badge', `home__story-video-badge--${story.gears_video_status}`]"
+            >
+              {{ gearsVideoStatusLabel(story.gears_video_status) }}
+            </span>
             <span class="home__story-scenes">{{ story.scene_count }} 场景</span>
           </div>
         </RouterLink>
@@ -99,7 +105,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { getProvinces } from '@/api/system'
 import { listProjects } from '@/api/projects'
-import type { ProvinceInfo, StoryProjectListItem } from '@shared/types'
+import type { GearsVideoStatus, ProvinceInfo, StoryProjectListItem } from '@shared/types'
 const provinces = ref<ProvinceInfo[]>([])
 const recentStories = ref<StoryProjectListItem[]>([])
 const loading = ref(false)
@@ -129,6 +135,15 @@ function typeLabel(type: string): string {
     landscape_mood: '山水意境',
   }
   return map[type] ?? type
+}
+
+function gearsVideoStatusLabel(status: GearsVideoStatus): string {
+  const map: Record<GearsVideoStatus, string> = {
+    processing: '成片中',
+    ready: '成片',
+    failed: '未完成',
+  }
+  return map[status]
 }
 
 function formatDate(iso: string): string {
@@ -437,6 +452,28 @@ onMounted(async () => {
   color: #7f8c8d;
   border-radius: 3px;
   font-size: 12px;
+}
+
+.home__story-video-badge {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.home__story-video-badge--ready {
+  background: #d5f5e3;
+  color: #1b7f4a;
+}
+
+.home__story-video-badge--processing {
+  background: #eaf2f8;
+  color: #2b78b7;
+}
+
+.home__story-video-badge--failed {
+  background: #fdecea;
+  color: #b13b2e;
 }
 
 .home__story-scenes {

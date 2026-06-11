@@ -117,6 +117,10 @@ describe('parseFullEntry', () => {
 - **省份**：湖南
 - **地区**：岳阳→汨罗
 - **类型**：神话传说
+- **knowledge_domain**：folklore_zhiyi
+- **entry_role**：core_entry
+- **era**：战国
+- **asset_usage**：story_motif、scene_space、character_props、credibility_boundary
 
 ### 简介
 
@@ -136,6 +140,26 @@ describe('parseFullEntry', () => {
 
 - 汨罗江：屈原投江之处，岳阳汨罗市
 - 屈子祠：汨罗江畔玉笥山上，始建于汉代
+
+### 人物
+
+- 屈原：楚国诗人，故事核心人物
+- 渔父：传说问答人物
+
+### 场景
+
+- 汨罗江：投江传说核心水域
+- 江畔渡口：百姓竞渡场景
+
+### 人物随身道具
+
+- 石块：投江传说中的随身物
+- 书稿：诗人身份标志
+
+### 场景陈设
+
+- 龙舟：端午竞渡场景资产
+- 粽叶米团：祭祀与习俗道具
 
 ### 关键词
 
@@ -194,6 +218,24 @@ describe('parseFullEntry', () => {
     expect(detail!.verificationMethod).toContain('A级《史记》+B级非遗名录交叉佐证');
     expect(detail!.unverifiedPoints.length).toBe(2);
     expect(detail!.unverifiedPoints[0]).toContain('屈原托梦');
+    expect(detail!.knowledge_domain).toBe('folklore_zhiyi');
+    expect(detail!.entry_role).toBe('core_entry');
+    expect(detail!.era).toBe('战国');
+    expect(detail!.asset_usage).toContain('character_props');
+    expect(detail!.asset_split?.characters).toHaveLength(2);
+    expect(detail!.asset_split?.scenes[0]).toContain('汨罗江');
+    expect(detail!.asset_split?.character_props[0]).toContain('石块');
+    expect(detail!.asset_split?.scene_props[1]).toContain('粽叶米团');
+  });
+
+  it('should parse knowledge tags and asset split in entry summaries', () => {
+    const entries = parseEntries(fullEntryContent);
+    expect(entries[0].knowledge_domain).toBe('folklore_zhiyi');
+    expect(entries[0].entry_role).toBe('core_entry');
+    expect(entries[0].era).toBe('战国');
+    expect(entries[0].asset_usage).toContain('scene_space');
+    expect(entries[0].asset_split?.characters[0]).toContain('屈原');
+    expect(entries[0].asset_split?.scene_props[0]).toContain('龙舟');
   });
 
   it('should parse entry with old separate credibility format', () => {

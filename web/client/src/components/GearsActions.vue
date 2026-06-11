@@ -252,15 +252,18 @@ async function copyGearsPullConfig() {
   message.value = ''
   const segmentsUrl = absoluteApiUrl(props.gearsSegmentsUrl)
   const deliveryUrl = absoluteApiUrl(`/api/stories/${props.storyId}/gears-delivery`)
+  const videoCallbackUrl = absoluteApiUrl('/api/gears-callback/video-ready')
   const config = [
     '# GEARS v2 拉取配置',
     `segments_url: ${segmentsUrl}`,
     `delivery_url: ${deliveryUrl}`,
+    `video_callback_url: ${videoCallbackUrl}`,
     '',
     '推荐流程:',
     '1. 拉取 delivery_url 获取人物资产、场景资产、剧本单元和供稿 Markdown。',
     '2. 拉取 segments_url 获取兼容旧流程的分段 JSON。',
-    '3. 优先使用已编辑保存的供稿 Markdown；若 validation_notes 非空，先完成资料补录。',
+    '3. 成片完成后向 video_callback_url 回传 storyId、status、video_url 和 thumbnail_url。',
+    '4. 优先使用已编辑保存的供稿 Markdown；若 validation_notes 非空，先完成资料补录。',
   ].join('\n')
   try {
     await navigator.clipboard.writeText(config)

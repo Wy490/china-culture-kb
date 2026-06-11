@@ -40,6 +40,17 @@ npm run start          # node dist/index.js
 | `KB_ROOT` | `../../data`（相对 dist/） | 知识库根目录路径 |
 | `NODE_ENV` | `development` | 环境标识 |
 
+### GEARS 对接环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `GEARS_WEBHOOK_URL` | 空 | 故事生成完成后发送 `story_ready` 通知的 GEARS 接收地址 |
+| `GEARS_CALLBACK_BASE_URL` | 空 | 对外可访问的知识库平台 API 基址，用于生成 `gears_video_callback_url` |
+| `PUBLIC_API_BASE_URL` | 空 | `GEARS_CALLBACK_BASE_URL` 未配置时的备用 API 基址 |
+| `APP_BASE_URL` | 空 | 上述两项未配置时的备用应用基址 |
+
+`story_ready` 通知会携带 `gears_video_callback_url`。GEARS 完成成片后向该地址提交 `storyId`、`status`、`video_url`、`thumbnail_url`，平台会把成片状态写回故事项目。
+
 ---
 
 ## 3. 前端部署
@@ -166,6 +177,7 @@ export SCENE_REGEN_AGENT_CODEX_PATH="/Applications/Codex.app/Contents/Resources/
 | `/api/stories` | 故事生成、列表、详情、GEARS 分段 |
 | `/api/story-outline` | 大纲分析 |
 | `/api/projects` | 项目 CRUD、场景重写 |
+| `/api/gears-callback/video-ready` | GEARS 成片结果回传 |
 | `/api/system` | 系统信息、省份列表、类型列表、模型 Profile |
 
 ---

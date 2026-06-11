@@ -19,6 +19,7 @@ import type {
   VideoType,
   GearsDeliveryPackage,
   GearsWebhookStatus,
+  GearsVideoResult,
 } from '@shared/types.js';
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
 import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
@@ -165,6 +166,9 @@ function buildProjectMeta(
     generation_mode: story.generation_mode ?? 'local_only',
     generation_used_fallback: story.generation_used_fallback ?? false,
     open_supplement_task_count: countOpenSupplementTasks(story),
+    gears_video_status: story.gears_video?.status,
+    gears_video_url: story.gears_video?.video_url,
+    gears_video_thumbnail_url: story.gears_video?.thumbnail_url,
   };
 }
 
@@ -331,6 +335,9 @@ async function persistProjectVersion(
     generation_mode: updatedStory.generation_mode ?? 'local_only',
     generation_used_fallback: updatedStory.generation_used_fallback ?? false,
     open_supplement_task_count: countOpenSupplementTasks(updatedStory),
+    gears_video_status: updatedStory.gears_video?.status,
+    gears_video_url: updatedStory.gears_video?.video_url,
+    gears_video_thumbnail_url: updatedStory.gears_video?.thumbnail_url,
   };
 
   await writeJsonFile(projectVersionPath(project.project_id, versionId), snapshot);
@@ -640,6 +647,47 @@ export async function updateProjectCurrentGearsWebhookStatus(
   await updateSourceStory(snapshot.story, raw => ({
     ...raw,
     gears_webhook: gearsWebhook,
+    project_id: snapshot.story.project_id,
+    current_version_id: snapshot.story.current_version_id,
+  }));
+}
+
+export async function updateProjectCurrentGearsVideo(
+  projectId: string | undefined,
+  storyId: string,
+  gearsVideo: GearsVideoResult,
+): Promise<void> {
+  if (!projectId) return;
+  const project = await readProjectMeta(projectId);
+  if (!project) return;
+
+  const currentPath = projectVersionPath(projectId, project.current_version_id);
+  if (!(await pathExists(currentPath))) return;
+
+  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
+  if (snapshot.story.storyId !== storyId) return;
+
+  const updatedSnapshot: StoryProjectVersionSnapshot = {
+    ...snapshot,
+    story: {
+      ...snapshot.story,
+      gears_video: gearsVideo,
+    },
+  };
+  const updatedAt = new Date().toISOString();
+  const updatedMeta: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    gears_video_status: gearsVideo.status,
+    gears_video_url: gearsVideo.video_url,
+    gears_video_thumbnail_url: gearsVideo.thumbnail_url,
+  };
+
+  await writeJsonFile(currentPath, updatedSnapshot);
+  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+  await updateSourceStory(snapshot.story, raw => ({
+    ...raw,
+    gears_video: gearsVideo,
     project_id: snapshot.story.project_id,
     current_version_id: snapshot.story.current_version_id,
   }));

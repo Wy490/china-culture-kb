@@ -96,6 +96,13 @@ export const KnowledgeAssetUsageSchema = z.enum([
   'gears_delivery',
 ]);
 
+export const KnowledgeAssetSplitSchema = z.object({
+  characters: z.array(z.string()),
+  scenes: z.array(z.string()),
+  character_props: z.array(z.string()),
+  scene_props: z.array(z.string()),
+});
+
 // ---------------------------------------------------------------------------
 // Duration & panel count
 // ---------------------------------------------------------------------------
@@ -163,6 +170,7 @@ export const StoryGenerateRequestSchema = z.object({
       entry_role: KnowledgeEntryRoleSchema.optional(),
       era: z.string().optional(),
       asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
+      asset_split: KnowledgeAssetSplitSchema.optional(),
     })),
     supporting_entries: z.array(z.object({
       entry_name: z.string(),
@@ -178,6 +186,7 @@ export const StoryGenerateRequestSchema = z.object({
       entry_role: KnowledgeEntryRoleSchema.optional(),
       era: z.string().optional(),
       asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
+      asset_split: KnowledgeAssetSplitSchema.optional(),
     })),
     missing_needs: z.array(z.object({
       need_id: z.string(),
@@ -253,13 +262,27 @@ export const StoryIdParamSchema = z.object({
   ),
 });
 
+export const StoryIdValueSchema = z.string().regex(
+  /^\d{8}-story-[0-9a-z]+$/,
+  'storyId must match format YYYYMMDD-story-{hash36}',
+);
+
 const ProjectIdValueSchema = z.string().regex(
   /^\d{8}-story-[0-9a-z]+--[a-z_]+$/,
   'projectId must match format YYYYMMDD-story-{hash36}--{video_type}',
 );
 
+export const AiComicSeriesProjectIdValueSchema = z.string().regex(
+  /^\d{8}-series-[0-9a-z]+$/,
+  'seriesProjectId must match format YYYYMMDD-series-{hash36}',
+);
+
 export const ProjectIdParamSchema = z.object({
   projectId: ProjectIdValueSchema,
+});
+
+export const AiComicSeriesProjectIdParamSchema = z.object({
+  seriesProjectId: AiComicSeriesProjectIdValueSchema,
 });
 
 export const ProjectBatchDeleteRequestSchema = z.object({
@@ -281,6 +304,53 @@ export const StorySceneRegenerateRequestSchema = z.object({
 
 export const GearsDeliveryUpdateRequestSchema = z.object({
   markdown: z.string().min(1, 'markdown cannot be empty').max(120000, 'markdown is too long'),
+});
+
+const GearsVideoCallbackStatusSchema = z.enum([
+  'processing',
+  'ready',
+  'failed',
+  'queued',
+  'running',
+  'completed',
+  'success',
+  'done',
+  'error',
+]).transform((status) => {
+  if (status === 'queued' || status === 'running') return 'processing';
+  if (status === 'completed' || status === 'success' || status === 'done') return 'ready';
+  if (status === 'error') return 'failed';
+  return status;
+});
+
+function normalizeGearsVideoCallbackInput(input: unknown): unknown {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return input;
+  const raw = input as Record<string, unknown>;
+  return {
+    ...raw,
+    storyId: raw.storyId ?? raw.story_id,
+    video_url: raw.video_url ?? raw.videoUrl,
+    status: typeof raw.status === 'string' ? raw.status.toLowerCase() : raw.status,
+    thumbnail_url: raw.thumbnail_url ?? raw.thumbnailUrl,
+  };
+}
+
+export const GearsVideoReadyCallbackRequestSchema = z.preprocess(
+  normalizeGearsVideoCallbackInput,
+  z.object({
+    storyId: StoryIdValueSchema,
+    video_url: z.string().url('video_url must be a valid URL').optional(),
+    status: GearsVideoCallbackStatusSchema.default('ready'),
+    thumbnail_url: z.string().url('thumbnail_url must be a valid URL').optional(),
+  }),
+).superRefine((data, ctx) => {
+  if (data.status === 'ready' && !data.video_url) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['video_url'],
+      message: 'video_url is required when status is ready',
+    });
+  }
 });
 
 export const SupplementTaskIdParamSchema = ProjectIdParamSchema.extend({
@@ -318,3 +388,196 @@ export const MultiMatchRequestSchema = z.object({
   knowledge_needs: z.array(KnowledgeNeedSchema).min(1, 'at least one knowledge_need required'),
   limit_per_need: z.number().int().min(1).max(20).optional().default(5),
 });
+
+// ---------------------------------------------------------------------------
+// AI comic series plan request
+// ---------------------------------------------------------------------------
+
+export const AiComicPacingProfileSchema = z.enum([
+  'fast_hook',
+  'balanced_drama',
+  'slow_burn',
+  'mystery_cliffhanger',
+]);
+
+export const AiComicGenerationScopeSchema = z.enum([
+  'series_bible',
+  'episode_cards',
+  'full_planning',
+]);
+
+const AiComicKnowledgePackSchema = z.object({
+  primary_entries: z.array(z.object({
+    entry_name: z.string(),
+    province: z.string(),
+    region: z.string(),
+    type: z.string(),
+    summary: z.string(),
+    score: z.number(),
+    role_in_story: z.string(),
+    match_reason: z.string(),
+    keywords: z.array(z.string()),
+    knowledge_domain: KnowledgeDomainSchema.optional(),
+    entry_role: KnowledgeEntryRoleSchema.optional(),
+    era: z.string().optional(),
+    asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
+    asset_split: KnowledgeAssetSplitSchema.optional(),
+  })),
+  supporting_entries: z.array(z.object({
+    entry_name: z.string(),
+    province: z.string(),
+    region: z.string(),
+    type: z.string(),
+    summary: z.string(),
+    score: z.number(),
+    role_in_story: z.string(),
+    match_reason: z.string(),
+    keywords: z.array(z.string()),
+    knowledge_domain: KnowledgeDomainSchema.optional(),
+    entry_role: KnowledgeEntryRoleSchema.optional(),
+    era: z.string().optional(),
+    asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
+    asset_split: KnowledgeAssetSplitSchema.optional(),
+  })),
+  missing_needs: z.array(z.object({
+    need_id: z.string(),
+    label: z.string(),
+    message: z.string(),
+  })),
+  overall_confidence: z.number(),
+});
+
+export const AiComicSeriesPlanRequestSchema = z.object({
+  outline: z.string().trim().min(1, 'outline cannot be empty').max(12000, 'outline is too long'),
+  series_title: z.string().trim().min(1).max(80).optional(),
+  episode_count: z.number().int().min(1).max(120),
+  episode_duration_range_sec: z.object({
+    min: z.number().int().min(30).max(1200),
+    max: z.number().int().min(30).max(1200),
+  }),
+  pacing_profile: AiComicPacingProfileSchema.optional().default('balanced_drama'),
+  generation_scope: AiComicGenerationScopeSchema.optional().default('full_planning'),
+  knowledge_pack: AiComicKnowledgePackSchema.optional(),
+  character_hints: z.array(StoryDetectedCharacterSchema).optional(),
+}).refine(
+  data => data.episode_duration_range_sec.min <= data.episode_duration_range_sec.max,
+  { message: 'episode_duration_range_sec.min cannot be greater than max', path: ['episode_duration_range_sec'] },
+);
+
+const AiComicSeriesCharacterArcSchema = z.object({
+  name: z.string().min(1),
+  role: z.string().min(1),
+  starting_state: z.string().min(1),
+  desire: z.string().min(1),
+  long_arc: z.string().min(1),
+  turning_points: z.array(z.object({
+    episode_no: z.number().int().min(1),
+    change: z.string().min(1),
+  })),
+  visual_signature: z.string().min(1),
+});
+
+const AiComicPlotThreadSchema = z.object({
+  thread_id: z.string().min(1),
+  title: z.string().min(1),
+  setup_episode: z.number().int().min(1),
+  payoff_episode: z.number().int().min(1),
+  description: z.string().min(1),
+  continuity_notes: z.array(z.string()),
+});
+
+const AiComicSeriesPhaseSchema = z.object({
+  phase_id: z.string().min(1),
+  episode_range: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
+  purpose: z.string().min(1),
+  turning_point: z.string().min(1),
+});
+
+const AiComicEpisodePlanSchema = z.object({
+  episode_no: z.number().int().min(1),
+  title: z.string().min(1),
+  target_duration_sec: z.number().int().min(30).max(1200),
+  target_panel_count: z.number().int().min(1).max(240),
+  story_phase: z.string().min(1),
+  main_conflict: z.string().min(1),
+  key_characters: z.array(z.string()),
+  continuity_from_previous: z.array(z.string()),
+  new_information: z.array(z.string()),
+  foreshadowing: z.array(z.string()),
+  payoff: z.array(z.string()),
+  ending_hook: z.string().min(1),
+  knowledge_focus: z.array(z.string()),
+  continuity_state_after: z.array(z.string()),
+});
+
+const AiComicContinuityRuleSchema = z.object({
+  rule_id: z.string().min(1),
+  label: z.string().min(1),
+  description: z.string().min(1),
+});
+
+const AiComicSeriesPlanSchema = z.object({
+  schema_version: z.literal('ai-comic-series-plan/v1'),
+  series_title: z.string().min(1),
+  episode_count: z.number().int().min(1).max(120),
+  episode_duration_range_sec: z.object({
+    min: z.number().int().min(30).max(1200),
+    max: z.number().int().min(30).max(1200),
+  }),
+  pacing_profile: AiComicPacingProfileSchema,
+  generation_scope: AiComicGenerationScopeSchema,
+  premise: z.string().min(1).max(12000),
+  logline: z.string().min(1),
+  core_theme: z.string().min(1),
+  main_characters: z.array(AiComicSeriesCharacterArcSchema),
+  plot_threads: z.array(AiComicPlotThreadSchema),
+  phases: z.array(AiComicSeriesPhaseSchema),
+  episodes: z.array(AiComicEpisodePlanSchema).min(1),
+  continuity_rules: z.array(AiComicContinuityRuleSchema),
+  recurring_motifs: z.array(z.string()),
+  production_notes: z.array(z.string()),
+}).refine(
+  data => data.episode_duration_range_sec.min <= data.episode_duration_range_sec.max,
+  { message: 'episode_duration_range_sec.min cannot be greater than max', path: ['episode_duration_range_sec'] },
+);
+
+const AiComicContinuityLedgerSchema = z.object({
+  schema_version: z.literal('ai-comic-continuity-ledger/v1'),
+  last_generated_episode_no: z.number().int().min(1).max(120).optional(),
+  character_state_current: z.array(z.string()),
+  open_threads: z.array(z.string()),
+  paid_off_threads: z.array(z.string()),
+  knowledge_used: z.array(z.string()),
+  episode_records: z.array(z.object({
+    episode_no: z.number().int().min(1).max(120),
+    story_id: StoryIdValueSchema,
+    title: z.string().min(1),
+    generated_at: z.string().min(1),
+    character_state: z.array(z.string()),
+    opened_threads: z.array(z.string()),
+    paid_off_threads: z.array(z.string()),
+    pending_threads_after: z.array(z.string()),
+    knowledge_used: z.array(z.string()),
+    ending_hook: z.string().min(1),
+    next_episode_memory: z.array(z.string()),
+  })),
+});
+
+export const AiComicSeriesProjectSaveRequestSchema = z.object({
+  series_project_id: AiComicSeriesProjectIdValueSchema.optional(),
+  plan: AiComicSeriesPlanSchema,
+  generated_episode_story_ids: z.record(z.string(), StoryIdValueSchema).optional(),
+  continuity_ledger: AiComicContinuityLedgerSchema.optional(),
+});
+
+export const AiComicEpisodeGenerateRequestSchema = z.object({
+  series_plan: AiComicSeriesPlanSchema,
+  episode_no: z.number().int().min(1).max(120),
+  series_project_id: AiComicSeriesProjectIdValueSchema.optional(),
+  model_profile_id: z.string().optional(),
+  output_gears_segments: z.boolean().optional().default(true),
+  knowledge_pack: AiComicKnowledgePackSchema.optional(),
+}).refine(
+  data => data.episode_no <= data.series_plan.episode_count,
+  { message: 'episode_no cannot exceed series_plan.episode_count', path: ['episode_no'] },
+);

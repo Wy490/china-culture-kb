@@ -24,6 +24,11 @@ export function convertSearchResult(mcp: McpSearchResult): EntrySearchResult {
     summary: mcp.summary,
     keywords: mcp.keywords,
     credibility: mcp.credibility,
+    knowledge_domain: mcp.knowledge_domain,
+    entry_role: mcp.entry_role,
+    era: mcp.era,
+    asset_usage: mcp.asset_usage,
+    asset_split: mcp.asset_split,
   });
 }
 
@@ -42,6 +47,11 @@ export function convertFullEntryDetail(mcp: McpFullEntryDetail): EntryDetail {
     credibility: mcp.credibility,
     verificationMethod: mcp.verificationMethod,
     unverifiedPoints: mcp.unverifiedPoints,
+    knowledge_domain: mcp.knowledge_domain,
+    entry_role: mcp.entry_role,
+    era: mcp.era,
+    asset_usage: mcp.asset_usage,
+    asset_split: mcp.asset_split,
   });
 }
 

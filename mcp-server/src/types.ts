@@ -16,6 +16,37 @@ export type CredibilityLevel = '可靠' | '基本可靠' | '待核实' | '存疑
 
 export type SourceType = 'bilibili' | 'article' | 'book' | 'oral';
 
+export type KnowledgeDomain =
+  | 'core_china_culture'
+  | 'era_setting'
+  | 'regional_culture'
+  | 'folklore_zhiyi'
+  | 'gears_asset';
+
+export type KnowledgeEntryRole =
+  | 'core_entry'
+  | 'setting_pack'
+  | 'motif_pack'
+  | 'asset_pack'
+  | 'regional_pack';
+
+export type KnowledgeAssetUsage =
+  | 'character_clothing'
+  | 'character_props'
+  | 'scene_space'
+  | 'scene_props'
+  | 'story_motif'
+  | 'dialogue_tone'
+  | 'credibility_boundary'
+  | 'gears_delivery';
+
+export interface KnowledgeAssetSplit {
+  characters: string[];
+  scenes: string[];
+  character_props: string[];
+  scene_props: string[];
+}
+
 export interface CultureEntry {
   name: string;
   province: string;
@@ -30,6 +61,11 @@ export interface CultureEntry {
   credibility: CredibilityLevel;
   verificationMethod?: string;
   unverifiedPoints: string[];
+  knowledge_domain?: KnowledgeDomain;
+  entry_role?: KnowledgeEntryRole;
+  era?: string;
+  asset_usage?: KnowledgeAssetUsage[];
+  asset_split?: KnowledgeAssetSplit;
 }
 
 export interface VideoSource {
@@ -70,6 +106,11 @@ export interface SearchResult {
   summary: string;
   keywords: string[];
   credibility: CredibilityLevel;
+  knowledge_domain?: KnowledgeDomain;
+  entry_role?: KnowledgeEntryRole;
+  era?: string;
+  asset_usage?: KnowledgeAssetUsage[];
+  asset_split?: KnowledgeAssetSplit;
 }
 
 export interface MatchResult {

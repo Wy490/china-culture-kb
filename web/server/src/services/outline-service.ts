@@ -658,6 +658,7 @@ export async function multiMatchEntries(
       entry_role: entry.entry_role,
       era: entry.era,
       asset_usage: entry.asset_usage,
+      asset_split: entry.asset_split,
     };
 
     if (data.score >= 0.75 && primaryRoleIds.includes(data.role)) {

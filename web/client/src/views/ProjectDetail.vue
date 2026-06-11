@@ -52,6 +52,7 @@
       </section>
 
       <GearsWebhookStatus :status="detail.current_story.gears_webhook" />
+      <GearsVideoStatus :video="detail.current_story.gears_video" />
 
       <section class="project-detail-page__editor">
         <div class="project-detail-page__editor-header">
@@ -120,6 +121,7 @@
         :result="detail.current_story"
         :editable-project="true"
         :show-gears-webhook-status="false"
+        :show-gears-video-status="false"
         :regenerating-scene-id="submitting ? selectedSceneId : null"
         :updating-supplement-task-id="updatingSupplementTaskId"
         @rewrite-scene="openSceneEditor"
@@ -136,6 +138,7 @@ import { deleteProject, getProject, regenerateProjectScene, updateProjectSupplem
 import { getModelProfiles } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
 import GearsWebhookStatus from '@/components/GearsWebhookStatus.vue'
+import GearsVideoStatus from '@/components/GearsVideoStatus.vue'
 import type {
   AIModelProfile,
   KnowledgeSupplementTaskStatus,

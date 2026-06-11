@@ -9,6 +9,12 @@ import type {
   VideoType,
   StoryOutlineAnalyzeRequest,
   StoryOutlineAnalysis,
+  AiComicEpisodeGenerateRequest,
+  AiComicSeriesProjectDetail,
+  AiComicSeriesProjectMeta,
+  AiComicSeriesProjectSaveRequest,
+  AiComicSeriesPlanRequest,
+  AiComicSeriesPlan,
 } from '@shared/types'
 
 export function storyPlan(entryName: string, originalUserQuery?: string) {
@@ -50,4 +56,24 @@ export function updateGearsDeliveryMarkdown(storyId: string, markdown: string) {
 // New: Story outline analysis
 export function storyOutlineAnalyze(req: StoryOutlineAnalyzeRequest) {
   return apiPost<StoryOutlineAnalysis>('/story-outline/analyze', req)
+}
+
+export function aiComicSeriesPlan(req: AiComicSeriesPlanRequest) {
+  return apiPost<AiComicSeriesPlan>('/story-outline/ai-comic-series-plan', req)
+}
+
+export function aiComicEpisodeGenerate(req: AiComicEpisodeGenerateRequest) {
+  return apiPost<StoryGenerateResult>('/story-outline/ai-comic-episode', req)
+}
+
+export function listAiComicSeriesProjects() {
+  return apiGet<AiComicSeriesProjectMeta[]>('/story-outline/ai-comic-series-projects')
+}
+
+export function getAiComicSeriesProject(seriesProjectId: string) {
+  return apiGet<AiComicSeriesProjectDetail>(`/story-outline/ai-comic-series-projects/${seriesProjectId}`)
+}
+
+export function saveAiComicSeriesProject(req: AiComicSeriesProjectSaveRequest) {
+  return apiPost<AiComicSeriesProjectDetail>('/story-outline/ai-comic-series-projects', req)
 }

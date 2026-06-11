@@ -14,6 +14,7 @@ export interface GearsStoryReadyWebhookPayload {
   source_entry: string;
   gears_segments_url: string;
   gears_delivery_url: string;
+  gears_video_callback_url: string;
   total_duration_sec: number;
   panel_count_total: number;
   scene_count: number;
@@ -48,6 +49,14 @@ function webhookFailuresPath(): string {
   return resolve(generatedRoot(), 'webhook_failures.log');
 }
 
+function publicApiUrl(path: string): string {
+  const baseUrl = process.env.GEARS_CALLBACK_BASE_URL
+    ?? process.env.PUBLIC_API_BASE_URL
+    ?? process.env.APP_BASE_URL;
+  if (!baseUrl) return path;
+  return `${baseUrl.replace(/\/+$/, '')}${path}`;
+}
+
 export function buildGearsStoryReadyPayload(
   story: StoryGenerateResult,
   now = new Date(),
@@ -66,6 +75,7 @@ export function buildGearsStoryReadyPayload(
     source_entry: story.source_entry,
     gears_segments_url: story.gears_segments_url,
     gears_delivery_url: `/api/stories/${story.storyId}/gears-delivery`,
+    gears_video_callback_url: publicApiUrl('/api/gears-callback/video-ready'),
     total_duration_sec: totalDurationSec,
     panel_count_total: panelCountTotal,
     scene_count: story.scene_breakdown.length,

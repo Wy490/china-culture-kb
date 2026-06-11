@@ -8,6 +8,7 @@ import { storiesRouter } from './routes/stories.js';
 import { systemRouter } from './routes/system.js';
 import { outlineRouter } from './routes/outline.js';
 import { projectsRouter } from './routes/projects.js';
+import { gearsCallbackRouter } from './routes/gears-callback.js';
 
 // Default KB_ROOT to ../../data (relative to this file → project root /data)
 if (!process.env.KB_ROOT) {
@@ -26,6 +27,7 @@ app.use('/api/stories', storiesRouter);
 app.use('/api/system', systemRouter);
 app.use('/api/story-outline', outlineRouter);
 app.use('/api/projects', projectsRouter);
+app.use('/api/gears-callback', gearsCallbackRouter);
 
 // Unified error handler (must be after all routes)
 app.use(errorHandler);

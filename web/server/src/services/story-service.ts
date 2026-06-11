@@ -40,6 +40,9 @@ import type {
   ReferenceTrace,
   MemoryMosaicStorySeed,
   GearsWebhookStatus,
+  GearsVideoReadyCallbackRequest,
+  GearsVideoReadyCallbackResult,
+  GearsVideoResult,
 } from '@shared/types.js';
 import {
   GENERATION_TO_VIDEO_TYPE,
@@ -64,6 +67,7 @@ import {
   createProjectFromGeneratedStory,
   updateProjectCurrentGearsDelivery,
   updateProjectCurrentGearsWebhookStatus,
+  updateProjectCurrentGearsVideo,
 } from './project-service.js';
 import { resolveModelProfile } from './model-catalog.js';
 import { buildStoryGenerationPromptPackage } from './story-generation-prompt.js';
@@ -321,6 +325,7 @@ function buildSingleEntryKnowledgePack(
     entry_role: entry.entry_role,
     era: entry.era,
     asset_usage: entry.asset_usage,
+    asset_split: entry.asset_split,
   };
 
   return {
@@ -1610,4 +1615,43 @@ export async function updateGearsDeliveryMarkdown(
   }
 
   return fail(ErrorCodes.STORY_NOT_FOUND, `Story "${storyId}" not found`);
+}
+
+export async function updateGearsVideoReady(
+  request: GearsVideoReadyCallbackRequest,
+): Promise<ApiResponse<GearsVideoReadyCallbackResult>> {
+  const root = generatedRoot();
+  const now = new Date().toISOString();
+
+  for (const typeDir of ALL_VIDEO_TYPES) {
+    const filePath = resolve(root, typeDir, `${request.storyId}.json`);
+    try {
+      const content = await readFile(filePath, 'utf-8');
+      const data = JSON.parse(content) as StoryGenerateResult & { _request_meta?: unknown };
+      const previous = data.gears_video;
+      const gearsVideo: GearsVideoResult = {
+        status: request.status,
+        video_url: request.video_url ?? previous?.video_url,
+        thumbnail_url: request.thumbnail_url ?? previous?.thumbnail_url,
+        received_at: previous?.received_at ?? now,
+        updated_at: now,
+      };
+      const updatedStory = {
+        ...data,
+        gears_video: gearsVideo,
+      };
+
+      await writeFile(filePath, JSON.stringify(updatedStory, null, 2), 'utf-8');
+      await updateProjectCurrentGearsVideo(data.project_id, data.storyId, gearsVideo);
+      return success({
+        storyId: data.storyId,
+        project_id: data.project_id,
+        gears_video: gearsVideo,
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  return fail(ErrorCodes.STORY_NOT_FOUND, `Story "${request.storyId}" not found`);
 }

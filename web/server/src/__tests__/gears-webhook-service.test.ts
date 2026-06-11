@@ -7,6 +7,9 @@ import type { StoryGenerateResult } from '@shared/types.js';
 
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
 const ORIGINAL_WEBHOOK_URL = process.env.GEARS_WEBHOOK_URL;
+const ORIGINAL_CALLBACK_BASE_URL = process.env.GEARS_CALLBACK_BASE_URL;
+const ORIGINAL_PUBLIC_API_BASE_URL = process.env.PUBLIC_API_BASE_URL;
+const ORIGINAL_APP_BASE_URL = process.env.APP_BASE_URL;
 const TEMP_DIRS: string[] = [];
 
 function makeStory(): StoryGenerateResult {
@@ -72,6 +75,12 @@ afterEach(async () => {
   else process.env.KB_ROOT = ORIGINAL_KB_ROOT;
   if (ORIGINAL_WEBHOOK_URL === undefined) delete process.env.GEARS_WEBHOOK_URL;
   else process.env.GEARS_WEBHOOK_URL = ORIGINAL_WEBHOOK_URL;
+  if (ORIGINAL_CALLBACK_BASE_URL === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+  else process.env.GEARS_CALLBACK_BASE_URL = ORIGINAL_CALLBACK_BASE_URL;
+  if (ORIGINAL_PUBLIC_API_BASE_URL === undefined) delete process.env.PUBLIC_API_BASE_URL;
+  else process.env.PUBLIC_API_BASE_URL = ORIGINAL_PUBLIC_API_BASE_URL;
+  if (ORIGINAL_APP_BASE_URL === undefined) delete process.env.APP_BASE_URL;
+  else process.env.APP_BASE_URL = ORIGINAL_APP_BASE_URL;
   vi.unstubAllGlobals();
   for (const dir of TEMP_DIRS.splice(0)) {
     await rm(dir, { recursive: true, force: true });
@@ -87,6 +96,13 @@ describe('gears-webhook-service', () => {
     expect(payload.panel_count_total).toBe(6);
     expect(payload.validation_notes_count).toBe(1);
     expect(payload.gears_delivery_url).toContain('/api/stories/20260611-story-webhook/gears-delivery');
+    expect(payload.gears_video_callback_url).toBe('/api/gears-callback/video-ready');
+  });
+
+  it('builds an absolute video callback URL when a public base URL is configured', () => {
+    process.env.GEARS_CALLBACK_BASE_URL = 'https://story.example/api-root/';
+    const payload = buildGearsStoryReadyPayload(makeStory(), new Date('2026-06-11T10:00:00.000Z'));
+    expect(payload.gears_video_callback_url).toBe('https://story.example/api-root/api/gears-callback/video-ready');
   });
 
   it('skips when webhook is not configured', async () => {

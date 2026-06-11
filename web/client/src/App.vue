@@ -9,6 +9,7 @@
         <RouterLink to="/supplement-tasks">补录任务</RouterLink>
         <RouterLink to="/search">搜索</RouterLink>
         <RouterLink to="/story/new">故事生成</RouterLink>
+        <RouterLink to="/ai-comic-series/new">漫剧系列</RouterLink>
       </nav>
     </header>
     <main class="app-main">
@@ -41,6 +42,7 @@
 
 .app-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   align-items: center;
 }

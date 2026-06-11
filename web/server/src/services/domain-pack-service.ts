@@ -2,6 +2,7 @@ import type {
   EntryDetail,
   EntrySearchResult,
   KnowledgeAssetUsage,
+  KnowledgeAssetSplit,
   KnowledgeDomain,
   KnowledgeEntryRole,
   KnowledgePackEntry,
@@ -12,6 +13,7 @@ interface EntryMetadata {
   entry_role: KnowledgeEntryRole;
   era?: string;
   asset_usage?: KnowledgeAssetUsage[];
+  asset_split?: KnowledgeAssetSplit;
 }
 
 interface DomainPackSeed {
@@ -133,16 +135,26 @@ export function inferEntryMetadata(entry: Pick<EntrySearchResult, 'name' | 'type
 }
 
 export function enrichSearchResultWithMetadata(entry: EntrySearchResult): EntrySearchResult {
+  const inferred = inferEntryMetadata(entry);
   return {
     ...entry,
-    ...inferEntryMetadata(entry),
+    knowledge_domain: entry.knowledge_domain ?? inferred.knowledge_domain,
+    entry_role: entry.entry_role ?? inferred.entry_role,
+    era: entry.era ?? inferred.era,
+    asset_usage: entry.asset_usage ?? inferred.asset_usage,
+    asset_split: entry.asset_split ?? inferred.asset_split,
   };
 }
 
 export function enrichEntryDetailWithMetadata(entry: EntryDetail): EntryDetail {
+  const inferred = inferEntryMetadata(entry);
   return {
     ...entry,
-    ...inferEntryMetadata(entry),
+    knowledge_domain: entry.knowledge_domain ?? inferred.knowledge_domain,
+    entry_role: entry.entry_role ?? inferred.entry_role,
+    era: entry.era ?? inferred.era,
+    asset_usage: entry.asset_usage ?? inferred.asset_usage,
+    asset_split: entry.asset_split ?? inferred.asset_split,
   };
 }
 
@@ -163,8 +175,9 @@ export function buildDomainPackEntries(context: {
       context.entry.story,
       context.entry.culturalSignificance,
       context.entry.keywords.join(' '),
+      assetSplitToText(context.entry.asset_split),
     ].join(' ') : '',
-    ...(context.knowledgePackEntries ?? []).map(entry => `${entry.entry_name} ${entry.summary} ${entry.keywords.join(' ')}`),
+    ...(context.knowledgePackEntries ?? []).map(entry => `${entry.entry_name} ${entry.summary} ${entry.keywords.join(' ')} ${assetSplitToText(entry.asset_split)}`),
   ].filter(Boolean).join(' ');
   if (!text.trim()) return [];
 
@@ -254,4 +267,14 @@ function seedToKnowledgePackEntry(seed: DomainPackSeed, score: number): Knowledg
     ...(seed.era ? { era: seed.era } : {}),
     asset_usage: seed.asset_usage,
   };
+}
+
+function assetSplitToText(assetSplit: KnowledgeAssetSplit | undefined): string {
+  if (!assetSplit) return '';
+  return [
+    ...assetSplit.characters,
+    ...assetSplit.scenes,
+    ...assetSplit.character_props,
+    ...assetSplit.scene_props,
+  ].join(' ');
 }

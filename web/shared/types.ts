@@ -596,6 +596,29 @@ export interface GearsWebhookStatus {
   last_error?: string;
 }
 
+export type GearsVideoStatus = 'processing' | 'ready' | 'failed';
+
+export interface GearsVideoResult {
+  status: GearsVideoStatus;
+  video_url?: string;
+  thumbnail_url?: string;
+  received_at: string;
+  updated_at: string;
+}
+
+export interface GearsVideoReadyCallbackRequest {
+  storyId: string;
+  video_url?: string;
+  status: GearsVideoStatus;
+  thumbnail_url?: string;
+}
+
+export interface GearsVideoReadyCallbackResult {
+  storyId: string;
+  project_id?: string;
+  gears_video: GearsVideoResult;
+}
+
 export type StoryProjectStatus = 'draft' | 'edited' | 'exported' | 'finalized';
 
 export interface StoryProjectListItem {
@@ -618,6 +641,9 @@ export interface StoryProjectListItem {
   generation_mode?: GenerationMode;
   generation_used_fallback?: boolean;
   open_supplement_task_count?: number;
+  gears_video_status?: GearsVideoStatus;
+  gears_video_url?: string;
+  gears_video_thumbnail_url?: string;
 }
 
 export type StoryProjectVersionChangeType = 'initial_generation' | 'scene_regeneration';
@@ -821,6 +847,7 @@ export interface KnowledgePackEntry {
   entry_role?: KnowledgeEntryRole;
   era?: string;
   asset_usage?: KnowledgeAssetUsage[];
+  asset_split?: KnowledgeAssetSplit;
 }
 
 export interface KnowledgePackMissing {
@@ -871,6 +898,167 @@ export interface KnowledgeSupplementTaskUpdateRequest {
 export interface MultiMatchResult {
   outline: string;
   matched_knowledge_pack: KnowledgePack;
+}
+
+// ---------------------------------------------------------------------------
+// AI comic series planning
+// ---------------------------------------------------------------------------
+
+export type AiComicPacingProfile =
+  | 'fast_hook'
+  | 'balanced_drama'
+  | 'slow_burn'
+  | 'mystery_cliffhanger';
+
+export type AiComicGenerationScope =
+  | 'series_bible'
+  | 'episode_cards'
+  | 'full_planning';
+
+export interface AiComicDurationRange {
+  min: number;
+  max: number;
+}
+
+export interface AiComicSeriesPlanRequest {
+  outline: string;
+  series_title?: string;
+  episode_count: number;
+  episode_duration_range_sec: AiComicDurationRange;
+  pacing_profile?: AiComicPacingProfile;
+  generation_scope?: AiComicGenerationScope;
+  knowledge_pack?: KnowledgePack;
+  character_hints?: StoryDetectedCharacter[];
+}
+
+export interface AiComicSeriesCharacterArc {
+  name: string;
+  role: string;
+  starting_state: string;
+  desire: string;
+  long_arc: string;
+  turning_points: Array<{
+    episode_no: number;
+    change: string;
+  }>;
+  visual_signature: string;
+}
+
+export interface AiComicPlotThread {
+  thread_id: string;
+  title: string;
+  setup_episode: number;
+  payoff_episode: number;
+  description: string;
+  continuity_notes: string[];
+}
+
+export interface AiComicContinuityRule {
+  rule_id: string;
+  label: string;
+  description: string;
+}
+
+export interface AiComicSeriesPhase {
+  phase_id: string;
+  episode_range: [number, number];
+  purpose: string;
+  turning_point: string;
+}
+
+export interface AiComicEpisodePlan {
+  episode_no: number;
+  title: string;
+  target_duration_sec: number;
+  target_panel_count: number;
+  story_phase: string;
+  main_conflict: string;
+  key_characters: string[];
+  continuity_from_previous: string[];
+  new_information: string[];
+  foreshadowing: string[];
+  payoff: string[];
+  ending_hook: string;
+  knowledge_focus: string[];
+  continuity_state_after: string[];
+}
+
+export interface AiComicSeriesPlan {
+  schema_version: 'ai-comic-series-plan/v1';
+  series_title: string;
+  episode_count: number;
+  episode_duration_range_sec: AiComicDurationRange;
+  pacing_profile: AiComicPacingProfile;
+  generation_scope: AiComicGenerationScope;
+  premise: string;
+  logline: string;
+  core_theme: string;
+  main_characters: AiComicSeriesCharacterArc[];
+  plot_threads: AiComicPlotThread[];
+  phases: AiComicSeriesPhase[];
+  episodes: AiComicEpisodePlan[];
+  continuity_rules: AiComicContinuityRule[];
+  recurring_motifs: string[];
+  production_notes: string[];
+}
+
+export interface AiComicSeriesProjectMeta {
+  series_project_id: string;
+  title: string;
+  episode_count: number;
+  episode_duration_range_sec: AiComicDurationRange;
+  pacing_profile: AiComicPacingProfile;
+  logline: string;
+  created_at: string;
+  updated_at: string;
+  generated_episode_count: number;
+}
+
+export interface AiComicContinuityLedgerEpisode {
+  episode_no: number;
+  story_id: string;
+  title: string;
+  generated_at: string;
+  character_state: string[];
+  opened_threads: string[];
+  paid_off_threads: string[];
+  pending_threads_after: string[];
+  knowledge_used: string[];
+  ending_hook: string;
+  next_episode_memory: string[];
+}
+
+export interface AiComicContinuityLedger {
+  schema_version: 'ai-comic-continuity-ledger/v1';
+  last_generated_episode_no?: number;
+  character_state_current: string[];
+  open_threads: string[];
+  paid_off_threads: string[];
+  knowledge_used: string[];
+  episode_records: AiComicContinuityLedgerEpisode[];
+}
+
+export interface AiComicSeriesProjectDetail {
+  project: AiComicSeriesProjectMeta;
+  plan: AiComicSeriesPlan;
+  generated_episode_story_ids: Record<string, string>;
+  continuity_ledger: AiComicContinuityLedger;
+}
+
+export interface AiComicSeriesProjectSaveRequest {
+  series_project_id?: string;
+  plan: AiComicSeriesPlan;
+  generated_episode_story_ids?: Record<string, string>;
+  continuity_ledger?: AiComicContinuityLedger;
+}
+
+export interface AiComicEpisodeGenerateRequest {
+  series_plan: AiComicSeriesPlan;
+  episode_no: number;
+  series_project_id?: string;
+  model_profile_id?: string;
+  output_gears_segments?: boolean;
+  knowledge_pack?: KnowledgePack;
 }
 
 export interface StoryQualityReport {
@@ -927,6 +1115,7 @@ export interface StoryGenerateResult {
   supplement_tasks?: KnowledgeSupplementTask[];
   quality_report?: StoryQualityReport;
   gears_webhook?: GearsWebhookStatus;
+  gears_video?: GearsVideoResult;
   // New fields for story structure and creative reference (Phase 5)
   story_structure?: StoryStructureType;
   reference_trace?: ReferenceTrace[];
@@ -972,6 +1161,7 @@ export interface EntrySearchResult {
   entry_role?: KnowledgeEntryRole;
   era?: string;
   asset_usage?: KnowledgeAssetUsage[];
+  asset_split?: KnowledgeAssetSplit;
   matched_snippets?: string[];
   match_reason?: string;
 }
@@ -1014,6 +1204,14 @@ export interface EntryDetail {
   entry_role?: KnowledgeEntryRole;
   era?: string;
   asset_usage?: KnowledgeAssetUsage[];
+  asset_split?: KnowledgeAssetSplit;
+}
+
+export interface KnowledgeAssetSplit {
+  characters: string[];
+  scenes: string[];
+  character_props: string[];
+  scene_props: string[];
 }
 
 export type KnowledgeDomain =

@@ -1,5 +1,13 @@
 import fs from 'node:fs/promises';
-import { CultureEntry, SearchResult, FullEntryDetail } from '../types.js';
+import {
+  CultureEntry,
+  SearchResult,
+  FullEntryDetail,
+  KnowledgeAssetSplit,
+  KnowledgeAssetUsage,
+  KnowledgeDomain,
+  KnowledgeEntryRole,
+} from '../types.js';
 import { resolveProvinceFile, PROVINCES } from './provinces.js';
 import { formatEntry } from './templates.js';
 
@@ -84,16 +92,31 @@ export function parseEntries(content: string, province?: string): SearchResult[]
     const region = match[4];
     const type = match[5];
 
-    const summaryMatch = content.slice(match.index).match(/### 简介\n\n(.+?)\n\n/);
+    const entryEnd = findEntryEnd(content, match.index + match[0].length);
+    const entryContent = content.slice(match.index, entryEnd);
+
+    const summaryMatch = entryContent.match(/### 简介\n\n(.+?)\n\n/);
     const summary = summaryMatch?.[1] || '';
 
-    const kwMatch = content.slice(match.index).match(/### 关键词\n\n(.+?)(?:\n|$)/);
+    const kwMatch = entryContent.match(/### 关键词\n\n(.+?)(?:\n|$)/);
     const keywords = kwMatch?.[1]?.split('、') || [];
 
-    const credMatch = content.slice(match.index).match(/### 可信度\n\n(.+?)\n/);
+    const credMatch = entryContent.match(/### 可信度\n\n(.+?)\n/);
     const credibility = credMatch?.[1] || '待核实';
+    const metadata = parseEntryMetadata(entryContent);
+    const assetSplit = parseAssetSplit(entryContent);
 
-    entries.push({ name, province: provinceName, region, type: type as any, summary, keywords, credibility: credibility as any });
+    entries.push({
+      name,
+      province: provinceName,
+      region,
+      type: type as any,
+      summary,
+      keywords,
+      credibility: credibility as any,
+      ...metadata,
+      ...(hasAssetSplit(assetSplit) ? { asset_split: assetSplit } : {}),
+    });
   }
 
   // Cache parsed result if province is known
@@ -210,13 +233,7 @@ export function parseFullEntry(content: string, entryName: string): FullEntryDet
 
   // Find the end of this entry (next ## header or --- delimiter)
   const afterHeader = entryStart + headerMatch[0].length;
-  let entryEnd = content.length;
-  const nextEntryRegex = /\n---\n\n## /g;
-  nextEntryRegex.lastIndex = afterHeader;
-  const nextEntry = nextEntryRegex.exec(content);
-  if (nextEntry) {
-    entryEnd = nextEntry.index;
-  }
+  const entryEnd = findEntryEnd(content, afterHeader);
 
   const entryContent = content.slice(entryStart, entryEnd);
 
@@ -290,6 +307,8 @@ export function parseFullEntry(content: string, entryName: string): FullEntryDet
   const unverifiedPoints = unverifiedRaw
     ? unverifiedRaw.split('\n').filter(l => l.startsWith('- ')).map(l => l.replace(/^- /, '').trim())
     : [];
+  const metadata = parseEntryMetadata(entryContent);
+  const assetSplit = parseAssetSplit(entryContent);
 
   return {
     name: entryName,
@@ -305,7 +324,75 @@ export function parseFullEntry(content: string, entryName: string): FullEntryDet
     relatedLocations,
     unverifiedPoints,
     verificationMethod,
+    ...metadata,
+    ...(hasAssetSplit(assetSplit) ? { asset_split: assetSplit } : {}),
   };
+}
+
+function findEntryEnd(content: string, fromIndex: number): number {
+  const nextEntryRegex = /\n---\n\n## /g;
+  nextEntryRegex.lastIndex = fromIndex;
+  const nextEntry = nextEntryRegex.exec(content);
+  return nextEntry ? nextEntry.index : content.length;
+}
+
+function parseEntryMetadata(entryContent: string): {
+  knowledge_domain?: KnowledgeDomain;
+  entry_role?: KnowledgeEntryRole;
+  era?: string;
+  asset_usage?: KnowledgeAssetUsage[];
+} {
+  const knowledgeDomain = parseHeaderField(entryContent, 'knowledge_domain') as KnowledgeDomain | undefined;
+  const entryRole = parseHeaderField(entryContent, 'entry_role') as KnowledgeEntryRole | undefined;
+  const era = parseHeaderField(entryContent, 'era');
+  const assetUsageRaw = parseHeaderField(entryContent, 'asset_usage');
+  const assetUsage = assetUsageRaw ? splitList(assetUsageRaw) as KnowledgeAssetUsage[] : [];
+  return {
+    ...(knowledgeDomain ? { knowledge_domain: knowledgeDomain } : {}),
+    ...(entryRole ? { entry_role: entryRole } : {}),
+    ...(era ? { era } : {}),
+    ...(assetUsage.length ? { asset_usage: assetUsage } : {}),
+  };
+}
+
+function parseHeaderField(entryContent: string, fieldName: string): string | undefined {
+  const match = entryContent.match(new RegExp(`- \\*{2}${escapeRegex(fieldName)}\\*{2}：(.+?)\\n`));
+  return match?.[1]?.trim();
+}
+
+function parseAssetSplit(entryContent: string): KnowledgeAssetSplit {
+  return {
+    characters: parseListSection(entryContent, '人物'),
+    scenes: parseListSection(entryContent, '场景'),
+    character_props: parseListSection(entryContent, '人物随身道具'),
+    scene_props: parseListSection(entryContent, '场景陈设'),
+  };
+}
+
+function parseListSection(entryContent: string, sectionName: string): string[] {
+  const raw = extractSection(entryContent, sectionName);
+  if (!raw) return [];
+  const listItems = raw
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.startsWith('- '))
+    .map(line => line.replace(/^- /, '').trim())
+    .filter(Boolean);
+  return listItems.length ? listItems : splitList(raw);
+}
+
+function splitList(raw: string): string[] {
+  return raw
+    .split(/[、，,]/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function hasAssetSplit(assetSplit: KnowledgeAssetSplit): boolean {
+  return assetSplit.characters.length > 0
+    || assetSplit.scenes.length > 0
+    || assetSplit.character_props.length > 0
+    || assetSplit.scene_props.length > 0;
 }
 
 /**

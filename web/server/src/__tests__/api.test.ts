@@ -18,6 +18,8 @@ import { entriesRouter } from '../routes/entries.js';
 import { storiesRouter } from '../routes/stories.js';
 import { systemRouter } from '../routes/system.js';
 import { projectsRouter } from '../routes/projects.js';
+import { gearsCallbackRouter } from '../routes/gears-callback.js';
+import { outlineRouter } from '../routes/outline.js';
 
 // Set KB_ROOT so MCP functions can find the data directory
 // (same logic as server/src/index.ts which sets this at startup)
@@ -39,6 +41,8 @@ app.use('/api/entries', entriesRouter);
 app.use('/api/stories', storiesRouter);
 app.use('/api/system', systemRouter);
 app.use('/api/projects', projectsRouter);
+app.use('/api/gears-callback', gearsCallbackRouter);
+app.use('/api/story-outline', outlineRouter);
 app.use(errorHandler);
 
 const request = supertest(app);
@@ -152,6 +156,157 @@ describe('Projects API', () => {
       const res = await request.post('/api/projects/batch-delete').send({ project_ids: [] });
       expect(res.status).toBe(400);
       expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+  });
+});
+
+describe('GEARS Callback API', () => {
+  describe('POST /api/gears-callback/video-ready', () => {
+    it('validates ready callbacks require a video URL', async () => {
+      const res = await request.post('/api/gears-callback/video-ready').send({
+        storyId: '20260611-story-cb1',
+        status: 'ready',
+      });
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+
+    it('accepts callback field aliases before looking up the story', async () => {
+      const res = await request.post('/api/gears-callback/video-ready').send({
+        story_id: '20260611-story-cb1',
+        status: 'COMPLETED',
+        videoUrl: 'https://gears.example/videos/cb1.mp4',
+        thumbnailUrl: 'https://gears.example/videos/cb1.jpg',
+      });
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'STORY_NOT_FOUND');
+    });
+  });
+});
+
+describe('Story Outline API', () => {
+  describe('POST /api/story-outline/ai-comic-series-plan', () => {
+    it('returns a series plan with the requested episode count and duration range', async () => {
+      const res = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '周敦颐少年在濂溪读书，面对冤案和师友关系，一步步形成自己的选择。',
+        series_title: '濂溪漫剧',
+        episode_count: 6,
+        episode_duration_range_sec: { min: 60, max: 120 },
+        pacing_profile: 'balanced_drama',
+      });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.series_title).toBe('濂溪漫剧');
+      expect(res.body.data.episodes).toHaveLength(6);
+      expect(res.body.data.episodes[0]).toHaveProperty('continuity_state_after');
+      expect(res.body.data.episodes[1].continuity_from_previous[0]).toContain('第1集');
+    });
+
+    it('validates episode_count', async () => {
+      const res = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '周敦颐少年故事',
+        episode_count: 0,
+        episode_duration_range_sec: { min: 60, max: 120 },
+      });
+
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+
+    it('validates duration min and max order', async () => {
+      const res = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '周敦颐少年故事',
+        episode_count: 8,
+        episode_duration_range_sec: { min: 180, max: 60 },
+      });
+
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+  });
+
+  describe('POST /api/story-outline/ai-comic-episode', () => {
+    it('generates one episode script from a series plan', async () => {
+      const planRes = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '周敦颐少年在濂溪读书，面对冤案和师友关系，一步步形成自己的选择。',
+        series_title: '濂溪漫剧',
+        episode_count: 3,
+        episode_duration_range_sec: { min: 60, max: 120 },
+        pacing_profile: 'balanced_drama',
+      });
+      expect(planRes.status).toBe(200);
+      expectSuccess(planRes.body);
+
+      const res = await request.post('/api/story-outline/ai-comic-episode').send({
+        series_plan: planRes.body.data,
+        episode_no: 1,
+        output_gears_segments: false,
+      });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.video_type).toBe('ai_comic_drama');
+      expect(res.body.data.presentation_style).toBe('ai_comic');
+      expect(res.body.data.original_user_query).toContain('只生成第1集完整分镜');
+      expect(res.body.data.scene_breakdown.length).toBeGreaterThan(0);
+    });
+
+    it('validates episode_no against the series plan', async () => {
+      const planRes = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '周敦颐少年故事',
+        episode_count: 2,
+        episode_duration_range_sec: { min: 60, max: 120 },
+      });
+      expect(planRes.status).toBe(200);
+      expectSuccess(planRes.body);
+
+      const res = await request.post('/api/story-outline/ai-comic-episode').send({
+        series_plan: planRes.body.data,
+        episode_no: 3,
+      });
+
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+  });
+
+  describe('AI comic series project persistence', () => {
+    it('saves and loads a series project', async () => {
+      const planRes = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '周敦颐少年在濂溪读书，面对冤案和师友关系，一步步形成自己的选择。',
+        series_title: '濂溪漫剧',
+        episode_count: 3,
+        episode_duration_range_sec: { min: 60, max: 120 },
+      });
+      expect(planRes.status).toBe(200);
+      expectSuccess(planRes.body);
+
+      const saveRes = await request.post('/api/story-outline/ai-comic-series-projects').send({
+        plan: planRes.body.data,
+        generated_episode_story_ids: {
+          1: '20260611-story-abc1',
+        },
+      });
+      expect(saveRes.status).toBe(200);
+      expectSuccess(saveRes.body);
+      expect(saveRes.body.data.project.series_project_id).toMatch(/^\d{8}-series-[0-9a-z]+$/);
+      expect(saveRes.body.data.project.generated_episode_count).toBe(1);
+      expect(saveRes.body.data.continuity_ledger.schema_version).toBe('ai-comic-continuity-ledger/v1');
+
+      const getRes = await request.get(`/api/story-outline/ai-comic-series-projects/${saveRes.body.data.project.series_project_id}`);
+      expect(getRes.status).toBe(200);
+      expectSuccess(getRes.body);
+      expect(getRes.body.data.plan.series_title).toBe('濂溪漫剧');
+      expect(getRes.body.data.generated_episode_story_ids['1']).toBe('20260611-story-abc1');
+      expect(getRes.body.data.continuity_ledger.character_state_current.length).toBeGreaterThan(0);
+    });
+
+    it('returns 404 for an unknown series project', async () => {
+      const res = await request.get('/api/story-outline/ai-comic-series-projects/20260611-series-notfound');
+
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'STORY_NOT_FOUND');
     });
   });
 });

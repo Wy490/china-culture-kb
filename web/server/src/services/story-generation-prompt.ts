@@ -11,6 +11,7 @@ import type {
   SupportedDuration,
   KnowledgePack,
   KnowledgeAssetUsage,
+  KnowledgeAssetSplit,
   KnowledgeDomain,
   KnowledgeEntryRole,
   MemoryMosaicStorySeed,
@@ -77,6 +78,7 @@ interface PromptKnowledgeEntry {
   entry_role?: KnowledgeEntryRole;
   era?: string;
   asset_usage?: KnowledgeAssetUsage[];
+  asset_split?: KnowledgeAssetSplit;
 }
 
 // ---------------------------------------------------------------------------
@@ -276,7 +278,18 @@ function formatKnowledgeEntryForPrompt(entry: PromptKnowledgeEntry): string {
     entry.era ? `时代：${entry.era}` : '',
     entry.asset_usage?.length ? `用途：${entry.asset_usage.join('、')}` : '',
   ].filter(Boolean).join('；');
-  return `${entry.entry_name}（${tags}）: ${entry.summary}`;
+  const assetSplitText = formatAssetSplitForPrompt(entry.asset_split);
+  return `${entry.entry_name}（${tags}）: ${entry.summary}${assetSplitText ? `；资产拆分：${assetSplitText}` : ''}`;
+}
+
+function formatAssetSplitForPrompt(assetSplit: KnowledgeAssetSplit | undefined): string {
+  if (!assetSplit) return '';
+  return [
+    assetSplit.characters.length ? `人物=${assetSplit.characters.join('、')}` : '',
+    assetSplit.scenes.length ? `场景=${assetSplit.scenes.join('、')}` : '',
+    assetSplit.character_props.length ? `人物随身道具=${assetSplit.character_props.join('、')}` : '',
+    assetSplit.scene_props.length ? `场景陈设=${assetSplit.scene_props.join('、')}` : '',
+  ].filter(Boolean).join('；');
 }
 
 // ---------------------------------------------------------------------------
@@ -327,6 +340,7 @@ export function buildStoryGenerationPromptPackage(input: {
             entry_role: e.entry_role,
             era: e.era,
             asset_usage: e.asset_usage,
+            asset_split: e.asset_split,
           })),
           supporting_entries: input.knowledgePack.supporting_entries.map(e => ({
             entry_name: e.entry_name,
@@ -336,6 +350,7 @@ export function buildStoryGenerationPromptPackage(input: {
             entry_role: e.entry_role,
             era: e.era,
             asset_usage: e.asset_usage,
+            asset_split: e.asset_split,
           })),
         }
       : undefined,

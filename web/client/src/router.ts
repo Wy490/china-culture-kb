@@ -57,6 +57,11 @@ export const router = createRouter({
       component: () => import('./views/StoryStudio.vue'),
     },
     {
+      path: '/ai-comic-series/new',
+      name: 'AiComicSeriesStudio',
+      component: () => import('./views/AiComicSeriesStudio.vue'),
+    },
+    {
       path: '/story/:storyId',
       name: 'StoryDetail',
       component: () => import('./views/StoryDetail.vue'),

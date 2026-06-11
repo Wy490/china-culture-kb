@@ -11,6 +11,7 @@
         <span v-if="result.credibility_note"> · 可信度: {{ result.credibility_note }}</span>
       </p>
       <GearsWebhookStatus v-if="showGearsWebhookStatus" :status="result.gears_webhook" />
+      <GearsVideoStatus v-if="showGearsVideoStatus" :video="result.gears_video" />
     </header>
 
     <!-- Full text -->
@@ -271,6 +272,7 @@ import type {
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import GearsActions from './GearsActions.vue'
 import GearsWebhookStatus from './GearsWebhookStatus.vue'
+import GearsVideoStatus from './GearsVideoStatus.vue'
 
 const props = withDefaults(defineProps<{
   result: StoryGenerateResult | null
@@ -278,11 +280,13 @@ const props = withDefaults(defineProps<{
   regeneratingSceneId?: number | null
   updatingSupplementTaskId?: string
   showGearsWebhookStatus?: boolean
+  showGearsVideoStatus?: boolean
 }>(), {
   editableProject: false,
   regeneratingSceneId: null,
   updatingSupplementTaskId: '',
   showGearsWebhookStatus: true,
+  showGearsVideoStatus: true,
 })
 const emit = defineEmits<{
   (e: 'rewrite-scene', sceneId: number): void
