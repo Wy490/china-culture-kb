@@ -69,6 +69,33 @@ export const StoryStructureTypeSchema = z.enum([
 
 export const ReferenceStrengthSchema = z.enum(['light', 'medium', 'strong']);
 
+export const KnowledgeDomainSchema = z.enum([
+  'core_china_culture',
+  'era_setting',
+  'regional_culture',
+  'folklore_zhiyi',
+  'gears_asset',
+]);
+
+export const KnowledgeEntryRoleSchema = z.enum([
+  'core_entry',
+  'setting_pack',
+  'motif_pack',
+  'asset_pack',
+  'regional_pack',
+]);
+
+export const KnowledgeAssetUsageSchema = z.enum([
+  'character_clothing',
+  'character_props',
+  'scene_space',
+  'scene_props',
+  'story_motif',
+  'dialogue_tone',
+  'credibility_boundary',
+  'gears_delivery',
+]);
+
 // ---------------------------------------------------------------------------
 // Duration & panel count
 // ---------------------------------------------------------------------------
@@ -83,6 +110,16 @@ export const PanelCountSchema = z.union([
   z.literal(10),
   z.literal(12),
 ]);
+
+export const StoryDetectedCharacterSchema = z.object({
+  name: z.string().min(1),
+  role_position: z.enum(['主角', '反派', '配角', '路人', '群演']),
+  character_kind: z.enum(['named_person', 'identity_role', 'group_role', 'supernatural_role']),
+  source_text: z.string().min(1),
+  asset_stability: z.enum(['recurring', 'single_scene']),
+  age_range: z.enum(['儿童', '少年', '青年', '中年', '老年', '不适用']).optional(),
+  gender: z.enum(['男', '女', '其他', '未指定', '不适用']).optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Story plan request
@@ -110,6 +147,7 @@ export const StoryGenerateRequestSchema = z.object({
   output_gears_segments: z.boolean().optional().default(true),
   // New fields for outline-driven multi-knowledge matching
   outline: z.string().optional(),
+  character_hints: z.array(StoryDetectedCharacterSchema).optional(),
   knowledge_pack: z.object({
     primary_entries: z.array(z.object({
       entry_name: z.string(),
@@ -121,6 +159,10 @@ export const StoryGenerateRequestSchema = z.object({
       role_in_story: z.string(),
       match_reason: z.string(),
       keywords: z.array(z.string()),
+      knowledge_domain: KnowledgeDomainSchema.optional(),
+      entry_role: KnowledgeEntryRoleSchema.optional(),
+      era: z.string().optional(),
+      asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
     })),
     supporting_entries: z.array(z.object({
       entry_name: z.string(),
@@ -132,6 +174,10 @@ export const StoryGenerateRequestSchema = z.object({
       role_in_story: z.string(),
       match_reason: z.string(),
       keywords: z.array(z.string()),
+      knowledge_domain: KnowledgeDomainSchema.optional(),
+      entry_role: KnowledgeEntryRoleSchema.optional(),
+      era: z.string().optional(),
+      asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
     })),
     missing_needs: z.array(z.object({
       need_id: z.string(),
@@ -207,11 +253,17 @@ export const StoryIdParamSchema = z.object({
   ),
 });
 
+const ProjectIdValueSchema = z.string().regex(
+  /^\d{8}-story-[0-9a-z]+--[a-z_]+$/,
+  'projectId must match format YYYYMMDD-story-{hash36}--{video_type}',
+);
+
 export const ProjectIdParamSchema = z.object({
-  projectId: z.string().regex(
-    /^\d{8}-story-[0-9a-z]+--[a-z_]+$/,
-    'projectId must match format YYYYMMDD-story-{hash36}--{video_type}',
-  ),
+  projectId: ProjectIdValueSchema,
+});
+
+export const ProjectBatchDeleteRequestSchema = z.object({
+  project_ids: z.array(ProjectIdValueSchema).min(1, 'project_ids cannot be empty').max(200, 'cannot delete more than 200 projects at once'),
 });
 
 export const StorySceneRegenerateRequestSchema = z.object({

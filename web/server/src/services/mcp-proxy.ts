@@ -6,6 +6,7 @@ import { getEntryDetail } from '../../../../mcp-server/src/tools/get-entry-detai
 import { getFullEntryDetail, readAllProvinceFiles, parseEntries, parseFullEntry } from '../../../../mcp-server/src/lib/markdown.js';
 import { PROVINCES } from '../../../../mcp-server/src/lib/provinces.js';
 import type { SearchResult as McpSearchResult, FullEntryDetail as McpFullEntryDetail } from '../../../../mcp-server/src/types.js';
+import { enrichEntryDetailWithMetadata, enrichSearchResultWithMetadata } from './domain-pack-service.js';
 
 import type { EntrySearchResult, EntryDetail } from '@shared/types.js';
 
@@ -15,7 +16,7 @@ import type { EntrySearchResult, EntryDetail } from '@shared/types.js';
 // ---------------------------------------------------------------------------
 
 export function convertSearchResult(mcp: McpSearchResult): EntrySearchResult {
-  return {
+  return enrichSearchResultWithMetadata({
     name: mcp.name,
     province: mcp.province,
     region: mcp.region,
@@ -23,11 +24,11 @@ export function convertSearchResult(mcp: McpSearchResult): EntrySearchResult {
     summary: mcp.summary,
     keywords: mcp.keywords,
     credibility: mcp.credibility,
-  };
+  });
 }
 
 export function convertFullEntryDetail(mcp: McpFullEntryDetail): EntryDetail {
-  return {
+  return enrichEntryDetailWithMetadata({
     name: mcp.name,
     province: mcp.province,
     region: mcp.region,
@@ -41,7 +42,7 @@ export function convertFullEntryDetail(mcp: McpFullEntryDetail): EntryDetail {
     credibility: mcp.credibility,
     verificationMethod: mcp.verificationMethod,
     unverifiedPoints: mcp.unverifiedPoints,
-  };
+  });
 }
 
 // ---------------------------------------------------------------------------

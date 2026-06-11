@@ -51,6 +51,8 @@
         </div>
       </section>
 
+      <GearsWebhookStatus :status="detail.current_story.gears_webhook" />
+
       <section class="project-detail-page__editor">
         <div class="project-detail-page__editor-header">
           <div>
@@ -117,6 +119,7 @@
       <StoryResult
         :result="detail.current_story"
         :editable-project="true"
+        :show-gears-webhook-status="false"
         :regenerating-scene-id="submitting ? selectedSceneId : null"
         :updating-supplement-task-id="updatingSupplementTaskId"
         @rewrite-scene="openSceneEditor"
@@ -132,6 +135,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { deleteProject, getProject, regenerateProjectScene, updateProjectSupplementTask } from '@/api/projects'
 import { getModelProfiles } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
+import GearsWebhookStatus from '@/components/GearsWebhookStatus.vue'
 import type {
   AIModelProfile,
   KnowledgeSupplementTaskStatus,

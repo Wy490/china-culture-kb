@@ -65,4 +65,55 @@ describe('outline-service', () => {
     expect(zhou?.summary).toContain('拒签冤案');
     expect(zhou?.summary.length).toBeGreaterThan(zhou?.entry_name.length ?? 0);
   });
+
+  it('injects domain packs for era, folklore, and GEARS asset boundaries', async () => {
+    const res = await multiMatchEntries({
+      outline: '周敦颐少年在道县月岩洞读书悟道，做一个民间传说短片，需要宋代服饰和洞穴场景道具边界。',
+      knowledge_needs: [
+        {
+          need_id: 'main_character',
+          label: '主人公',
+          keywords: ['周敦颐', '月岩洞', '道县'],
+          required: true,
+        },
+      ],
+      limit_per_need: 5,
+    });
+
+    expect(res.ok).toBe(true);
+    const supporting = res.data?.matched_knowledge_pack.supporting_entries ?? [];
+    expect(supporting.some(entry => entry.knowledge_domain === 'era_setting' && entry.era === '宋')).toBe(true);
+    expect(supporting.some(entry => entry.knowledge_domain === 'folklore_zhiyi')).toBe(true);
+    expect(supporting.some(entry =>
+      entry.knowledge_domain === 'gears_asset'
+      && entry.asset_usage?.includes('scene_props')
+      && entry.summary.includes('场景道具'),
+    )).toBe(true);
+  });
+
+  it('detects unnamed supporting, crowd, and supernatural characters from outlines', async () => {
+    const res = await analyzeOutline({
+      outline: '周敦颐在月岩洞读书时，一个老奶奶在洞口点灯。村民围过来听她讲狐仙显灵的传说，书童递上书卷。',
+    });
+
+    expect(res.ok).toBe(true);
+    const characters = res.data?.detected_characters ?? [];
+    expect(characters.find(character => character.name === '周敦颐')?.role_position).toBe('主角');
+    expect(characters.find(character => character.name === '老奶奶')).toMatchObject({
+      character_kind: 'identity_role',
+      role_position: '配角',
+      age_range: '老年',
+      gender: '女',
+    });
+    expect(characters.find(character => character.name === '村民')).toMatchObject({
+      character_kind: 'group_role',
+      role_position: '群演',
+    });
+    expect(characters.find(character => character.name === '狐仙')).toMatchObject({
+      character_kind: 'supernatural_role',
+      role_position: '配角',
+    });
+    expect(res.data?.knowledge_needs.find(need => need.need_id === 'supporting_characters')?.keywords)
+      .toEqual(expect.arrayContaining(['老奶奶', '村民', '狐仙', '书童']));
+  });
 });

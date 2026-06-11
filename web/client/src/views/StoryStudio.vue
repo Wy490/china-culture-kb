@@ -138,6 +138,18 @@
           <p v-if="outlineAnalysis.story_intent.target_emotion.length > 0">
             <strong>目标情绪：</strong>{{ outlineAnalysis.story_intent.target_emotion.join('、') }}
           </p>
+          <div v-if="outlineAnalysis.detected_characters?.length" class="story-studio__detected-characters">
+            <strong>识别角色：</strong>
+            <div class="story-studio__character-chips">
+              <span
+                v-for="character in outlineAnalysis.detected_characters"
+                :key="`${character.character_kind}-${character.name}`"
+                class="story-studio__character-chip"
+              >
+                {{ character.name }} · {{ character.role_position }} · {{ characterKindLabel(character.character_kind) }}
+              </span>
+            </div>
+          </div>
           <div v-if="outlineAnalysis.knowledge_needs.length > 0" class="story-studio__knowledge-needs">
             <strong>知识需求：</strong>
             <ul>
@@ -171,6 +183,11 @@
               <span class="story-studio__kp-score">{{ (entry.score * 100).toFixed(0) }}%</span>
               <strong>{{ entry.entry_name }}</strong>
               <span class="story-studio__kp-type">{{ entry.type }}</span>
+              <div class="story-studio__kp-tags">
+                <span v-if="entry.knowledge_domain" class="story-studio__kp-tag">{{ knowledgeDomainLabel(entry.knowledge_domain) }}</span>
+                <span v-if="entry.era" class="story-studio__kp-tag">{{ entry.era }}</span>
+                <span v-for="usage in entry.asset_usage ?? []" :key="usage" class="story-studio__kp-tag">{{ assetUsageLabel(usage) }}</span>
+              </div>
               <p class="story-studio__kp-region">{{ entry.province }} · {{ entry.region }}</p>
               <p class="story-studio__kp-reason">匹配原因：{{ entry.match_reason }}</p>
               <p v-if="entry.summary" class="story-studio__kp-summary">{{ entry.summary.substring(0, 60) }}…</p>
@@ -196,6 +213,11 @@
               <span class="story-studio__kp-score">{{ (entry.score * 100).toFixed(0) }}%</span>
               <strong>{{ entry.entry_name }}</strong>
               <span class="story-studio__kp-type">{{ entry.type }}</span>
+              <div class="story-studio__kp-tags">
+                <span v-if="entry.knowledge_domain" class="story-studio__kp-tag">{{ knowledgeDomainLabel(entry.knowledge_domain) }}</span>
+                <span v-if="entry.era" class="story-studio__kp-tag">{{ entry.era }}</span>
+                <span v-for="usage in entry.asset_usage ?? []" :key="usage" class="story-studio__kp-tag">{{ assetUsageLabel(usage) }}</span>
+              </div>
               <p class="story-studio__kp-region">{{ entry.province }} · {{ entry.region }}</p>
               <p class="story-studio__kp-reason">匹配原因：{{ entry.match_reason }}</p>
             </div>
@@ -383,6 +405,9 @@ import type {
   KnowledgePack,
   KnowledgeNeed,
   KnowledgePackEntry,
+  KnowledgeDomain,
+  KnowledgeAssetUsage,
+  StoryDetectedCharacterKind,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
 import StoryPlan from '@/components/StoryPlan.vue'
@@ -390,6 +415,44 @@ import StoryResult from '@/components/StoryResult.vue'
 
 const route = useRoute()
 const MODEL_PROFILE_STORAGE_KEY = 'story-agent.model-profile-id'
+
+const KNOWLEDGE_DOMAIN_LABELS: Record<KnowledgeDomain, string> = {
+  core_china_culture: '主库',
+  era_setting: '朝代设定',
+  regional_culture: '地域文化',
+  folklore_zhiyi: '志异传说',
+  gears_asset: 'GEARS资产',
+}
+
+const ASSET_USAGE_LABELS: Record<KnowledgeAssetUsage, string> = {
+  character_clothing: '服装',
+  character_props: '随身道具',
+  scene_space: '场景',
+  scene_props: '场景陈设',
+  story_motif: '母题',
+  dialogue_tone: '语气',
+  credibility_boundary: '可信度',
+  gears_delivery: '供稿',
+}
+
+const CHARACTER_KIND_LABELS: Record<StoryDetectedCharacterKind, string> = {
+  named_person: '具名人物',
+  identity_role: '身份角色',
+  group_role: '群体角色',
+  supernatural_role: '志异异类',
+}
+
+function knowledgeDomainLabel(domain: KnowledgeDomain) {
+  return KNOWLEDGE_DOMAIN_LABELS[domain] ?? domain
+}
+
+function assetUsageLabel(usage: KnowledgeAssetUsage) {
+  return ASSET_USAGE_LABELS[usage] ?? usage
+}
+
+function characterKindLabel(kind: StoryDetectedCharacterKind) {
+  return CHARACTER_KIND_LABELS[kind] ?? kind
+}
 
 // --- Input mode ---
 type InputMode = 'entry' | 'theme' | 'outline'
@@ -767,6 +830,7 @@ async function handleGenerate() {
       output_gears_segments: true,
       outline: outlineText.value,
       knowledge_pack: filteredPack,
+      character_hints: outlineAnalysis.value?.detected_characters ?? undefined,
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
@@ -877,6 +941,23 @@ async function handleGenerate() {
   color: #34495e;
   margin-bottom: 3px;
 }
+.story-studio__detected-characters {
+  margin-top: 8px;
+}
+.story-studio__character-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+.story-studio__character-chip {
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid #d7dde2;
+  background: #fff;
+  color: #34495e;
+  font-size: 12px;
+}
 
 /* Knowledge pack */
 .story-studio__knowledge-pack {
@@ -935,6 +1016,21 @@ async function handleGenerate() {
   font-size: 12px;
   font-weight: 600;
   display: inline-block;
+}
+.story-studio__kp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.story-studio__kp-tag {
+  padding: 2px 6px;
+  border: 1px solid #ccd6dd;
+  border-radius: 3px;
+  color: #455a64;
+  background: #ffffff;
+  font-size: 12px;
+  line-height: 1.2;
 }
 .story-studio__kp-region {
   margin: 2px 0;

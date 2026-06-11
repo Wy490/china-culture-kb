@@ -10,6 +10,7 @@
         <span v-else-if="result.model_profile_id" class="story-result__model-normal"> · 模型: {{ result.model_profile_id }}</span>
         <span v-if="result.credibility_note"> · 可信度: {{ result.credibility_note }}</span>
       </p>
+      <GearsWebhookStatus v-if="showGearsWebhookStatus" :status="result.gears_webhook" />
     </header>
 
     <!-- Full text -->
@@ -32,6 +33,8 @@
           <strong>{{ e.entry_name }}</strong>
           <span class="story-result__source-type">{{ e.type }}</span>
           <span class="story-result__source-score">{{ (e.score * 100).toFixed(0) }}%</span>
+          <span v-if="e.knowledge_domain" class="story-result__source-tag">{{ knowledgeDomainLabel(e.knowledge_domain) }}</span>
+          <span v-if="e.era" class="story-result__source-tag">{{ e.era }}</span>
         </div>
       </div>
       <div v-if="result.knowledge_pack.supporting_entries.length > 0" class="story-result__source-group">
@@ -40,6 +43,9 @@
           <strong>{{ e.entry_name }}</strong>
           <span class="story-result__source-type">{{ e.type }}</span>
           <span class="story-result__source-score">{{ (e.score * 100).toFixed(0) }}%</span>
+          <span v-if="e.knowledge_domain" class="story-result__source-tag">{{ knowledgeDomainLabel(e.knowledge_domain) }}</span>
+          <span v-if="e.era" class="story-result__source-tag">{{ e.era }}</span>
+          <span v-for="usage in e.asset_usage ?? []" :key="usage" class="story-result__source-tag">{{ assetUsageLabel(usage) }}</span>
         </div>
       </div>
       <div v-if="result.knowledge_pack.missing_needs.length > 0" class="story-result__source-group">
@@ -259,19 +265,24 @@ import type {
   VideoType,
   PresentationStyle,
   GearsSegment,
+  KnowledgeDomain,
+  KnowledgeAssetUsage,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import GearsActions from './GearsActions.vue'
+import GearsWebhookStatus from './GearsWebhookStatus.vue'
 
 const props = withDefaults(defineProps<{
   result: StoryGenerateResult | null
   editableProject?: boolean
   regeneratingSceneId?: number | null
   updatingSupplementTaskId?: string
+  showGearsWebhookStatus?: boolean
 }>(), {
   editableProject: false,
   regeneratingSceneId: null,
   updatingSupplementTaskId: '',
+  showGearsWebhookStatus: true,
 })
 const emit = defineEmits<{
   (e: 'rewrite-scene', sceneId: number): void
@@ -281,6 +292,33 @@ const emit = defineEmits<{
 const expandedSegments = reactive<Record<number, boolean>>({})
 const supplementDrafts = reactive<Record<string, string>>({})
 const copyMessage = ref('')
+
+const KNOWLEDGE_DOMAIN_LABELS: Record<KnowledgeDomain, string> = {
+  core_china_culture: '主库',
+  era_setting: '朝代设定',
+  regional_culture: '地域文化',
+  folklore_zhiyi: '志异传说',
+  gears_asset: 'GEARS资产',
+}
+
+const ASSET_USAGE_LABELS: Record<KnowledgeAssetUsage, string> = {
+  character_clothing: '服装',
+  character_props: '随身道具',
+  scene_space: '场景',
+  scene_props: '场景陈设',
+  story_motif: '母题',
+  dialogue_tone: '语气',
+  credibility_boundary: '可信度',
+  gears_delivery: '供稿',
+}
+
+function knowledgeDomainLabel(domain: KnowledgeDomain) {
+  return KNOWLEDGE_DOMAIN_LABELS[domain] ?? domain
+}
+
+function assetUsageLabel(usage: KnowledgeAssetUsage) {
+  return ASSET_USAGE_LABELS[usage] ?? usage
+}
 
 const videoTypeLabel = computed(() => {
   if (!props.result) return ''
@@ -442,6 +480,7 @@ function showCopyMessage(msg: string) {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
   padding: 4px 0;
   font-size: 14px;
   color: #34495e;
@@ -457,6 +496,14 @@ function showCopyMessage(msg: string) {
   padding: 2px 6px;
   background: #d5f5e3;
   color: #27ae60;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.story-result__source-tag {
+  padding: 2px 6px;
+  border: 1px solid #d7dde2;
+  color: #455a64;
+  background: #fff;
   border-radius: 3px;
   font-size: 12px;
 }

@@ -92,7 +92,8 @@ describe('gears-webhook-service', () => {
   it('skips when webhook is not configured', async () => {
     delete process.env.GEARS_WEBHOOK_URL;
     const result = await notifyGearsStoryReady(makeStory(), { retryDelaysMs: [0] });
-    expect(result).toEqual({ status: 'skipped', reason: 'not_configured' });
+    expect(result).toMatchObject({ status: 'skipped', reason: 'not_configured' });
+    expect(result).toHaveProperty('attemptedAt');
   });
 
   it('sends the webhook when configured', async () => {
@@ -106,7 +107,11 @@ describe('gears-webhook-service', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     const result = await notifyGearsStoryReady(makeStory(), { retryDelaysMs: [0], timeoutMs: 10 });
-    expect(result).toEqual({ status: 'sent', attempts: 1 });
+    expect(result).toMatchObject({
+      status: 'sent',
+      attempts: 1,
+      webhookUrl: 'https://grears.example/api/webhook/story-ready',
+    });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -121,6 +126,8 @@ describe('gears-webhook-service', () => {
     expect(result.status).toBe('failed');
     if (result.status === 'failed') {
       expect(result.attempts).toBe(3);
+      expect(result.webhookUrl).toBe('https://grears.example/api/webhook/story-ready');
+      expect(result.error).toContain('HTTP 500');
     }
 
     const logPath = resolve(tempRoot, 'web/generated/webhook_failures.log');

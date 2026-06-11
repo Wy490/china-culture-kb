@@ -22,9 +22,9 @@ export interface GearsStoryReadyWebhookPayload {
 }
 
 export type GearsWebhookResult =
-  | { status: 'skipped'; reason: 'not_configured' }
-  | { status: 'sent'; attempts: number }
-  | { status: 'failed'; attempts: number; error: string };
+  | { status: 'skipped'; reason: 'not_configured'; attemptedAt: string }
+  | { status: 'sent'; attempts: number; webhookUrl: string; attemptedAt: string }
+  | { status: 'failed'; attempts: number; webhookUrl: string; error: string; attemptedAt: string };
 
 interface NotifyOptions {
   webhookUrl?: string;
@@ -79,8 +79,9 @@ export async function notifyGearsStoryReady(
   options: NotifyOptions = {},
 ): Promise<GearsWebhookResult> {
   const webhookUrl = options.webhookUrl ?? process.env.GEARS_WEBHOOK_URL;
+  const attemptedAt = (options.now ?? new Date()).toISOString();
   if (!webhookUrl) {
-    return { status: 'skipped', reason: 'not_configured' };
+    return { status: 'skipped', reason: 'not_configured', attemptedAt };
   }
 
   const retryDelaysMs = options.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
@@ -95,7 +96,7 @@ export async function notifyGearsStoryReady(
 
     try {
       await postWebhook(webhookUrl, payload, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-      return { status: 'sent', attempts: attemptIndex + 1 };
+      return { status: 'sent', attempts: attemptIndex + 1, webhookUrl, attemptedAt };
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
     }
@@ -104,7 +105,9 @@ export async function notifyGearsStoryReady(
   const result: GearsWebhookResult = {
     status: 'failed',
     attempts: retryDelaysMs.length,
+    webhookUrl,
     error: lastError || 'unknown webhook error',
+    attemptedAt,
   };
   await appendWebhookFailure(webhookUrl, payload, result.error);
   return result;

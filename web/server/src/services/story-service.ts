@@ -23,11 +23,13 @@ import type {
   PanelCount,
   StoryGenerateRequest,
   StoryGenerateResult,
+  StoryDetectedCharacter,
   StoryScene,
   StoryCharacter,
   ActBeat,
   ProtagonistArc,
   GearsSegment,
+  GearsCharacterRolePosition,
   GearsSegmentsResponse,
   GearsDeliveryPackage,
   StoryListItem,
@@ -37,6 +39,7 @@ import type {
   StoryQualityReport,
   ReferenceTrace,
   MemoryMosaicStorySeed,
+  GearsWebhookStatus,
 } from '@shared/types.js';
 import {
   GENERATION_TO_VIDEO_TYPE,
@@ -57,7 +60,11 @@ import {
   validateMemoryMosaicStory,
 } from './memory-mosaic-service.js';
 import { validateReferenceSafety, combineQualityReports } from './reference-quality-service.js';
-import { createProjectFromGeneratedStory, updateProjectCurrentGearsDelivery } from './project-service.js';
+import {
+  createProjectFromGeneratedStory,
+  updateProjectCurrentGearsDelivery,
+  updateProjectCurrentGearsWebhookStatus,
+} from './project-service.js';
 import { resolveModelProfile } from './model-catalog.js';
 import { buildStoryGenerationPromptPackage } from './story-generation-prompt.js';
 import { generateStoryWithAdapter } from './story-generation-model.js';
@@ -65,6 +72,8 @@ import type { StoryGenerationModelOutput } from './story-generation-prompt.js';
 import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
 import { buildEntryKnowledgeSummary, extractKeywords } from './entry-service.js';
 import { notifyGearsStoryReady } from './gears-webhook-service.js';
+import type { GearsWebhookResult } from './gears-webhook-service.js';
+import { appendDomainPackEntries } from './domain-pack-service.js';
 
 // ---------------------------------------------------------------------------
 // Entry type → VideoType routing (entry Chinese type name → recommended VideoType list)
@@ -298,20 +307,30 @@ function buildSingleEntryKnowledgePack(
     verificationText: entry.verificationMethod ?? '',
     unverifiedText: entry.unverifiedPoints.join(' '),
   }, queryKeywords);
+  const primaryEntry = {
+    entry_name: entry.name,
+    province: entry.province,
+    region: entry.region,
+    type: entry.type,
+    summary,
+    score: 1,
+    role_in_story: 'primary_entry',
+    match_reason: '用户指定词条，自动注入全文知识包',
+    keywords: entry.keywords,
+    knowledge_domain: entry.knowledge_domain,
+    entry_role: entry.entry_role,
+    era: entry.era,
+    asset_usage: entry.asset_usage,
+  };
 
   return {
-    primary_entries: [{
-      entry_name: entry.name,
-      province: entry.province,
-      region: entry.region,
-      type: entry.type,
-      summary,
-      score: 1,
-      role_in_story: 'primary_entry',
-      match_reason: '用户指定词条，自动注入全文知识包',
-      keywords: entry.keywords,
-    }],
-    supporting_entries: [],
+    primary_entries: [primaryEntry],
+    supporting_entries: appendDomainPackEntries([], {
+      query: queryText,
+      entry,
+      primaryEntries: [primaryEntry],
+      limit: 4,
+    }),
     missing_needs: [],
     overall_confidence: 1,
   };
@@ -593,6 +612,52 @@ function stripInternalFields(data: StoryGenerateResult): StoryGenerateResult {
   const cleaned = { ...data } as Record<string, unknown>;
   delete cleaned._request_meta;
   return cleaned as unknown as StoryGenerateResult;
+}
+
+function buildInitialGearsWebhookStatus(): GearsWebhookStatus {
+  const webhookUrl = process.env.GEARS_WEBHOOK_URL;
+  if (!webhookUrl) return { status: 'not_configured' };
+  return {
+    status: 'pending',
+    webhook_target: safeWebhookTarget(webhookUrl),
+  };
+}
+
+function gearsWebhookStatusFromResult(result: GearsWebhookResult): GearsWebhookStatus {
+  if (result.status === 'skipped') {
+    return {
+      status: 'not_configured',
+      last_attempt_at: result.attemptedAt,
+    };
+  }
+
+  if (result.status === 'sent') {
+    return {
+      status: 'sent',
+      webhook_target: safeWebhookTarget(result.webhookUrl),
+      attempts: result.attempts,
+      last_attempt_at: result.attemptedAt,
+      last_success_at: result.attemptedAt,
+    };
+  }
+
+  return {
+    status: 'failed',
+    webhook_target: safeWebhookTarget(result.webhookUrl),
+    attempts: result.attempts,
+    last_attempt_at: result.attemptedAt,
+    last_error_at: result.attemptedAt,
+    last_error: result.error,
+  };
+}
+
+function safeWebhookTarget(webhookUrl: string): string {
+  try {
+    const url = new URL(webhookUrl);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return 'configured endpoint';
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -879,6 +944,165 @@ export function mergeModelOutputOntoLocalSkeleton(
   };
 }
 
+type StoryAssembly = {
+  title: string;
+  logline: string;
+  theme: string;
+  full_text: string;
+  scene_breakdown: StoryScene[];
+  gears_segments: GearsSegment[];
+  cultural_constraints: string[];
+  credibility_note: string;
+  characters: StoryCharacter[];
+  act_structure: ActBeat[];
+  protagonist_arc: ProtagonistArc[];
+};
+
+const ROLE_POSITION_TO_STORY_ROLE: Record<GearsCharacterRolePosition, string> = {
+  '主角': 'protagonist',
+  '反派': 'antagonist',
+  '配角': 'supporting',
+  '路人': 'passerby',
+  '群演': 'crowd',
+};
+
+function normalizeHintCharacterName(name: string): string {
+  return name.replace(/[「」『』"'“”‘’（）()【】\[\]\s]/g, '').trim();
+}
+
+function buildHintCharacterDescription(hint: StoryDetectedCharacter): string {
+  const parts = [
+    hint.role_position,
+    hint.character_kind === 'named_person' ? '具名人物' : hint.character_kind,
+    hint.age_range,
+    hint.gender,
+    hint.source_text ? `来自大纲：“${hint.source_text}”` : undefined,
+  ].filter(Boolean);
+  return parts.join('；');
+}
+
+function extractSceneMatchTokens(hint: StoryDetectedCharacter): string[] {
+  const rawText = `${hint.name} ${hint.source_text}`;
+  const cleaned = rawText
+    .replace(/[，。！？；：、“”‘’"'（）()【】\[\]\s]/g, ' ')
+    .replace(/[一个某位这位那位正在走过来说听她讲的了和与在把将]/g, ' ');
+  const tokens = new Set<string>();
+  const directName = normalizeHintCharacterName(hint.name);
+  if (directName) tokens.add(directName);
+
+  for (const token of cleaned.split(/\s+/)) {
+    const normalized = normalizeHintCharacterName(token);
+    if (normalized.length >= 2 && normalized.length <= 10) tokens.add(normalized);
+    for (let size = 2; size <= 4; size += 1) {
+      for (let i = 0; i <= normalized.length - size; i += 1) {
+        const gram = normalized.slice(i, i + size);
+        if (gram.length >= 2) tokens.add(gram);
+      }
+    }
+  }
+
+  return [...tokens].filter(token => token.length >= 2);
+}
+
+function sceneSearchText(scene: StoryScene): string {
+  return [
+    scene.title,
+    scene.location,
+    scene.time_of_day,
+    scene.dramatic_function,
+    scene.plot,
+    scene.key_action,
+    scene.dialogue_or_narration,
+    scene.visual_prompt,
+    scene.camera_suggestion,
+    scene.cultural_note,
+    ...(scene.characters ?? []),
+  ].filter(Boolean).join(' ');
+}
+
+function findHintSceneIds(hint: StoryDetectedCharacter, scenes: StoryScene[]): Set<number> {
+  const matched = new Set<number>();
+  const name = normalizeHintCharacterName(hint.name);
+  const sourceText = hint.source_text.trim();
+  const tokens = extractSceneMatchTokens(hint);
+  let bestSceneId: number | undefined;
+  let bestScore = 0;
+
+  for (const scene of scenes) {
+    const text = sceneSearchText(scene);
+    if ((name && text.includes(name)) || (sourceText && text.includes(sourceText))) {
+      matched.add(scene.scene_id);
+      continue;
+    }
+
+    const score = tokens.reduce((sum, token) => sum + (text.includes(token) ? 1 : 0), 0);
+    if (score > bestScore) {
+      bestScore = score;
+      bestSceneId = scene.scene_id;
+    }
+  }
+
+  if (matched.size > 0) return matched;
+  if (bestSceneId !== undefined && bestScore >= 2) return new Set([bestSceneId]);
+  if (scenes.length === 0) return matched;
+
+  if (hint.asset_stability === 'recurring') {
+    return new Set(scenes.map(scene => scene.scene_id));
+  }
+  return new Set([scenes[0].scene_id]);
+}
+
+// Exported for focused tests and to keep role-hint behavior independent from
+// the external model adapter. It normalizes outline-detected roles into the
+// final story object so GEARS receives stable character assets.
+export function mergeCharacterHintsIntoStoryResult(
+  story: StoryAssembly,
+  characterHints: StoryDetectedCharacter[] | undefined,
+  videoType: VideoType,
+  presentationStyle: PresentationStyle,
+): StoryAssembly {
+  if (!characterHints?.length) return story;
+
+  const existingNames = new Set((story.characters ?? []).map(character => normalizeHintCharacterName(character.name)));
+  const sceneBreakdown = story.scene_breakdown.map(scene => ({
+    ...scene,
+    characters: [...(scene.characters ?? [])],
+  }));
+  const characters = [...(story.characters ?? [])];
+
+  for (const hint of characterHints) {
+    const name = normalizeHintCharacterName(hint.name);
+    if (!name) continue;
+
+    if (!existingNames.has(name)) {
+      characters.push({
+        name,
+        role: ROLE_POSITION_TO_STORY_ROLE[hint.role_position] ?? 'supporting',
+        description: buildHintCharacterDescription(hint),
+        arc: hint.asset_stability === 'recurring'
+          ? `${name}作为${hint.role_position}贯穿多个单元，推动或见证主要行动。`
+          : `${name}作为${hint.role_position}在对应单元提供行动、对白或氛围支撑。`,
+      });
+      existingNames.add(name);
+    }
+
+    const matchedSceneIds = findHintSceneIds(hint, sceneBreakdown);
+    for (const scene of sceneBreakdown) {
+      if (!matchedSceneIds.has(scene.scene_id)) continue;
+      if (!scene.characters.includes(name)) {
+        scene.characters = [...scene.characters, name];
+      }
+    }
+  }
+
+  return {
+    ...story,
+    characters,
+    scene_breakdown: sceneBreakdown,
+    gears_segments: buildGearsSegments(sceneBreakdown, '', videoType, presentationStyle),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // generateAndStoreStory — create story with dramatic narrative from KB entry
 // REFACTORED: uses dramatic-story engine instead of template concatenation
@@ -1077,6 +1301,13 @@ export async function generateAndStoreStory(
     ];
   }
 
+  storyResult = mergeCharacterHintsIntoStoryResult(
+    storyResult,
+    request.character_hints,
+    videoType,
+    presentationStyle,
+  );
+
   // --- Validate story quality (unified for both paths) ---
   let qualityReport: StoryQualityReport;
   if (storyStructure === 'memory_mosaic_biography' && memoryMosaicSeed) {
@@ -1139,6 +1370,7 @@ export async function generateAndStoreStory(
     supplement_tasks: supplementTasks,
     // Quality report
     quality_report: qualityReport,
+    gears_webhook: buildInitialGearsWebhookStatus(),
     // Characters, act structure, protagonist arc — from engine
     characters: storyResult.characters,
     act_structure: storyResult.act_structure,
@@ -1215,7 +1447,13 @@ export async function generateAndStoreStory(
 
   // Return to API without internal _request_meta
   const apiStory = stripInternalFields(storyWithProject);
-  void notifyGearsStoryReady(apiStory).catch(() => undefined);
+  void notifyGearsStoryReady(apiStory)
+    .then(result => updateProjectCurrentGearsWebhookStatus(
+      apiStory.project_id,
+      apiStory.storyId,
+      gearsWebhookStatusFromResult(result),
+    ))
+    .catch(() => undefined);
   return success(apiStory);
 }
 

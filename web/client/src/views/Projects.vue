@@ -27,6 +27,30 @@
       </label>
     </section>
 
+    <section v-if="filteredProjects.length > 0" class="projects-page__bulkbar">
+      <label class="projects-page__bulk-check">
+        <input
+          type="checkbox"
+          :checked="allFilteredSelected"
+          :disabled="batchDeleting || deletingProjectId !== ''"
+          @change="toggleSelectFiltered"
+        />
+        <span>已选 {{ selectedProjectIds.length }} / 当前筛选 {{ filteredProjects.length }}</span>
+      </label>
+      <div class="projects-page__bulk-actions">
+        <button class="projects-page__muted-btn" :disabled="selectedProjectIds.length === 0 || batchDeleting" @click="clearSelection">
+          清空选择
+        </button>
+        <button
+          class="projects-page__danger-btn"
+          :disabled="selectedProjectIds.length === 0 || batchDeleting || deletingProjectId !== ''"
+          @click="handleBatchDeleteProjects"
+        >
+          {{ batchDeleting ? '批量删除中…' : `删除所选 ${selectedProjectIds.length} 个` }}
+        </button>
+      </div>
+    </section>
+
     <div v-if="loading" class="projects-page__loading">
       <div class="projects-page__spinner" />
       <p>正在加载故事项目…</p>
@@ -38,8 +62,16 @@
       <article
         v-for="project in filteredProjects"
         :key="project.project_id"
-        class="projects-page__card"
+        :class="['projects-page__card', selectedProjectIds.includes(project.project_id) ? 'projects-page__card--selected' : '']"
       >
+        <label class="projects-page__card-select" :aria-label="`选择 ${project.title}`">
+          <input
+            v-model="selectedProjectIds"
+            type="checkbox"
+            :value="project.project_id"
+            :disabled="batchDeleting || deletingProjectId !== ''"
+          />
+        </label>
         <RouterLink class="projects-page__card-link" :to="`/projects/${project.project_id}`">
           <div class="projects-page__card-top">
             <span class="projects-page__status-badge" :data-status="project.status">{{ statusLabel(project.status) }}</span>
@@ -78,7 +110,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { deleteProject, listProjects } from '@/api/projects'
+import { deleteProject, deleteProjects, listProjects } from '@/api/projects'
 import type { StoryProjectListItem, StoryProjectStatus } from '@shared/types'
 
 const projects = ref<StoryProjectListItem[]>([])
@@ -88,6 +120,8 @@ const searchQuery = ref('')
 const statusFilter = ref('')
 const supplementFilter = ref(false)
 const deletingProjectId = ref('')
+const selectedProjectIds = ref<string[]>([])
+const batchDeleting = ref(false)
 
 const filteredProjects = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -99,6 +133,16 @@ const filteredProjects = computed(() => {
       || project.source_entry.toLowerCase().includes(query)
     return matchesStatus && matchesSupplement && matchesQuery
   })
+})
+
+const allFilteredSelected = computed(() => {
+  return filteredProjects.value.length > 0
+    && filteredProjects.value.every(project => selectedProjectIds.value.includes(project.project_id))
+})
+
+const selectedProjects = computed(() => {
+  const selected = new Set(selectedProjectIds.value)
+  return projects.value.filter(project => selected.has(project.project_id))
 })
 
 function statusLabel(status: StoryProjectStatus): string {
@@ -147,10 +191,51 @@ async function handleDeleteProject(project: StoryProjectListItem) {
   const res = await deleteProject(project.project_id)
   if (res.ok) {
     projects.value = projects.value.filter(item => item.project_id !== project.project_id)
+    selectedProjectIds.value = selectedProjectIds.value.filter(id => id !== project.project_id)
   } else {
     error.value = res.error?.message ?? '删除故事项目失败'
   }
   deletingProjectId.value = ''
+}
+
+function toggleSelectFiltered() {
+  const filteredIds = filteredProjects.value.map(project => project.project_id)
+  if (allFilteredSelected.value) {
+    const removeIds = new Set(filteredIds)
+    selectedProjectIds.value = selectedProjectIds.value.filter(id => !removeIds.has(id))
+    return
+  }
+
+  selectedProjectIds.value = [...new Set([...selectedProjectIds.value, ...filteredIds])]
+}
+
+function clearSelection() {
+  selectedProjectIds.value = []
+}
+
+async function handleBatchDeleteProjects() {
+  if (selectedProjectIds.value.length === 0) return
+  const selectedTitles = selectedProjects.value.slice(0, 3).map(project => `《${project.title}》`).join('、')
+  const extraCount = Math.max(0, selectedProjectIds.value.length - 3)
+  const titlePreview = `${selectedTitles}${extraCount > 0 ? ` 等 ${selectedProjectIds.value.length} 个项目` : ''}`
+  const confirmed = window.confirm(`确定批量删除 ${titlePreview} 吗？这会删除对应生成故事文件和项目版本记录。`)
+  if (!confirmed) return
+
+  batchDeleting.value = true
+  error.value = ''
+  const idsToDelete = [...selectedProjectIds.value]
+  const res = await deleteProjects(idsToDelete)
+  if (res.ok && res.data) {
+    const deletedIds = new Set(res.data.deleted.map(item => item.project_id))
+    projects.value = projects.value.filter(item => !deletedIds.has(item.project_id))
+    selectedProjectIds.value = selectedProjectIds.value.filter(id => !deletedIds.has(id))
+    if (res.data.failed.length > 0) {
+      error.value = `已删除 ${res.data.deleted.length} 个，${res.data.failed.length} 个删除失败：${res.data.failed[0].error}`
+    }
+  } else {
+    error.value = res.error?.message ?? '批量删除故事项目失败'
+  }
+  batchDeleting.value = false
 }
 
 onMounted(async () => {
@@ -209,6 +294,66 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
+.projects-page__bulkbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 18px;
+  padding: 9px 12px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #f8fafb;
+}
+
+.projects-page__bulk-check {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #33475b;
+  font-size: 14px;
+}
+
+.projects-page__bulk-check input,
+.projects-page__card-select input {
+  width: 16px;
+  height: 16px;
+}
+
+.projects-page__bulk-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.projects-page__muted-btn,
+.projects-page__danger-btn {
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.projects-page__muted-btn {
+  border: 1px solid #d7dee5;
+  background: #fff;
+  color: #33475b;
+}
+
+.projects-page__danger-btn {
+  border: 1px solid #d4473b;
+  background: #d4473b;
+  color: #fff;
+}
+
+.projects-page__muted-btn:disabled,
+.projects-page__danger-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .projects-page__search,
 .projects-page__select {
   padding: 10px 12px;
@@ -246,13 +391,27 @@ onMounted(async () => {
 }
 
 .projects-page__card {
+  position: relative;
   display: block;
-  padding: 16px;
-  border-radius: 10px;
+  padding: 16px 16px 16px 44px;
+  border-radius: 8px;
   border: 1px solid #d9e2ea;
   background: #fff;
   text-decoration: none;
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.projects-page__card--selected {
+  border-color: #2980b9;
+  background: #f6fbff;
+}
+
+.projects-page__card-select {
+  position: absolute;
+  top: 18px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .projects-page__card:hover {
@@ -389,15 +548,24 @@ onMounted(async () => {
 
 @media (max-width: 720px) {
   .projects-page__header,
-  .projects-page__toolbar {
+  .projects-page__toolbar,
+  .projects-page__bulkbar {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .projects-page__cta,
   .projects-page__search,
   .projects-page__select,
-  .projects-page__toggle {
+  .projects-page__toggle,
+  .projects-page__bulk-actions,
+  .projects-page__muted-btn,
+  .projects-page__danger-btn {
     width: 100%;
+  }
+
+  .projects-page__bulk-actions {
+    flex-direction: column;
   }
 }
 </style>

@@ -477,6 +477,24 @@ export interface StoryPlanResult {
   cultural_risks: string[];
 }
 
+export type StoryDetectedCharacterKind =
+  | 'named_person'
+  | 'identity_role'
+  | 'group_role'
+  | 'supernatural_role';
+
+export type StoryDetectedCharacterStability = 'recurring' | 'single_scene';
+
+export interface StoryDetectedCharacter {
+  name: string;
+  role_position: GearsCharacterRolePosition;
+  character_kind: StoryDetectedCharacterKind;
+  source_text: string;
+  asset_stability: StoryDetectedCharacterStability;
+  age_range?: GearsAgeRange;
+  gender?: GearsGender;
+}
+
 // ---------------------------------------------------------------------------
 // Story generate
 // ---------------------------------------------------------------------------
@@ -495,6 +513,7 @@ export interface StoryGenerateRequest {
   // New fields for outline-driven multi-knowledge matching
   outline?: string;
   knowledge_pack?: KnowledgePack;
+  character_hints?: StoryDetectedCharacter[];
   // New fields for story structure and creative reference (Phase 5)
   story_structure?: StoryStructureType;
   creative_reference_ids?: string[];
@@ -563,6 +582,18 @@ export interface StoryListItem {
   generation_source?: string;
   generation_mode?: GenerationMode;
   generation_used_fallback?: boolean;
+}
+
+export type GearsWebhookDeliveryStatus = 'not_configured' | 'pending' | 'sent' | 'failed';
+
+export interface GearsWebhookStatus {
+  status: GearsWebhookDeliveryStatus;
+  webhook_target?: string;
+  attempts?: number;
+  last_attempt_at?: string;
+  last_success_at?: string;
+  last_error_at?: string;
+  last_error?: string;
 }
 
 export type StoryProjectStatus = 'draft' | 'edited' | 'exported' | 'finalized';
@@ -637,6 +668,18 @@ export interface StoryProjectDeleteResult {
   deleted: true;
 }
 
+export interface StoryProjectBatchDeleteRequest {
+  project_ids: string[];
+}
+
+export interface StoryProjectBatchDeleteResult {
+  deleted: StoryProjectDeleteResult[];
+  failed: Array<{
+    project_id: string;
+    error: string;
+  }>;
+}
+
 export type StorySceneRegenerateIntent =
   | 'tighten_conflict'
   | 'rewrite_narration'
@@ -696,6 +739,7 @@ export interface GearsCharacterAsset {
   age_range: GearsAgeRange;
   appearance_features: string;
   clothing: string;
+  carried_props?: string;
   signature_objects?: string;
   background_oneliner?: string;
 }
@@ -704,6 +748,7 @@ export interface GearsSceneAsset {
   name: string;
   scene_type: GearsSceneType;
   description: string;
+  environment_props?: string;
   atmosphere: GearsSceneAtmosphere;
 }
 
@@ -758,6 +803,7 @@ export interface StoryOutlineAnalysis {
     conflict_keywords: string[];
     target_emotion: string[];
   };
+  detected_characters: StoryDetectedCharacter[];
   knowledge_needs: KnowledgeNeed[];
 }
 
@@ -771,6 +817,10 @@ export interface KnowledgePackEntry {
   role_in_story: string;
   match_reason: string;
   keywords: string[];
+  knowledge_domain?: KnowledgeDomain;
+  entry_role?: KnowledgeEntryRole;
+  era?: string;
+  asset_usage?: KnowledgeAssetUsage[];
 }
 
 export interface KnowledgePackMissing {
@@ -876,6 +926,7 @@ export interface StoryGenerateResult {
   knowledge_pack?: KnowledgePack;
   supplement_tasks?: KnowledgeSupplementTask[];
   quality_report?: StoryQualityReport;
+  gears_webhook?: GearsWebhookStatus;
   // New fields for story structure and creative reference (Phase 5)
   story_structure?: StoryStructureType;
   reference_trace?: ReferenceTrace[];
@@ -917,6 +968,10 @@ export interface EntrySearchResult {
   summary: string;
   keywords: string[];
   credibility: string;
+  knowledge_domain?: KnowledgeDomain;
+  entry_role?: KnowledgeEntryRole;
+  era?: string;
+  asset_usage?: KnowledgeAssetUsage[];
   matched_snippets?: string[];
   match_reason?: string;
 }
@@ -955,7 +1010,35 @@ export interface EntryDetail {
   credibility: string;
   verificationMethod?: string;
   unverifiedPoints: string[];
+  knowledge_domain?: KnowledgeDomain;
+  entry_role?: KnowledgeEntryRole;
+  era?: string;
+  asset_usage?: KnowledgeAssetUsage[];
 }
+
+export type KnowledgeDomain =
+  | 'core_china_culture'
+  | 'era_setting'
+  | 'regional_culture'
+  | 'folklore_zhiyi'
+  | 'gears_asset';
+
+export type KnowledgeEntryRole =
+  | 'core_entry'
+  | 'setting_pack'
+  | 'motif_pack'
+  | 'asset_pack'
+  | 'regional_pack';
+
+export type KnowledgeAssetUsage =
+  | 'character_clothing'
+  | 'character_props'
+  | 'scene_space'
+  | 'scene_props'
+  | 'story_motif'
+  | 'dialogue_tone'
+  | 'credibility_boundary'
+  | 'gears_delivery';
 
 // ---------------------------------------------------------------------------
 // System info

@@ -639,12 +639,19 @@ grears v2 后端（接收通知 → 拉取详细分段）
 
 **平台侧状态**：已实现，默认通过 `GEARS_WEBHOOK_URL` 开关控制是否发送。
 
-**需要新增**：
+**已实现**：
 
 | 改动 | 位置 | 说明 |
 |------|------|------|
 | Webhook 配置 | 知识库平台环境变量 | `GEARS_WEBHOOK_URL=https://grears-v2-host/api/webhook/story-ready` |
 | 故事生成后触发 | story-service.ts | `generateAndStoreStory()` 完成后异步 POST webhook |
+| Webhook 状态持久化 | shared/types.ts / project-service.ts | 故事与当前项目版本记录 `not_configured` / `pending` / `sent` / `failed`、尝试次数、最近错误 |
+| 前端状态展示 | StoryResult.vue / ProjectDetail.vue | 故事结果与项目详情展示未配置、等待发送、已发送、发送失败 |
+
+**grears v2 侧需要新增**：
+
+| 改动 | 位置 | 说明 |
+|------|------|------|
 | grears v2 webhook 端点 | grears v2 后端 | 接收通知 → 拉取分段 → 入队生产 |
 
 **Webhook 通知体**：
@@ -715,7 +722,7 @@ grears v2 完成视频产出
 |------|------|------|
 | 故事状态字段 | shared/types.ts | StoryGenerateResult 新增 `status` 字段（draft → gears_ready → producing → video_ready） |
 | 回调端点 | 知识库平台 API | `POST /api/gears-callback/video-ready` 接收 grears v2 产出通知 |
-| 前端状态展示 | StoryResult.vue / StoryDetail.vue | 根据状态显示"等待生产"/"生产中"/"视频就绪" |
+| 视频生产状态展示 | StoryResult.vue / StoryDetail.vue | 根据回调状态显示"等待生产"/"生产中"/"视频就绪" |
 | 视频预览嵌入 | StoryDetail.vue | 当 video_url 可用时嵌入视频播放器 |
 | 批量生成 API | 知识库平台 | `POST /api/stories/batch-generate` 支持多条目批量生成 |
 | 生产队列 | grears v2 | 接收分段 → 排队 → 自动生产 → 回调完成 |

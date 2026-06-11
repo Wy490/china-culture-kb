@@ -191,9 +191,12 @@ export async function collectSearchableEntries(): Promise<SearchableEntry[]> {
 }
 
 export function buildEntryKnowledgeSummary(entry: SearchableEntry, queryKeywords: string[], maxLength = 360): string {
+  const matchedSnippets = buildEntryMatchedSnippets(entry, queryKeywords, 4, false);
+  const fallbackSnippets = matchedSnippets.length > 0 ? [] : buildEntryMatchedSnippets(entry, queryKeywords, 3, true);
   const snippets = uniqueTextParts([
+    ...matchedSnippets,
     entry.summary,
-    ...buildEntryMatchedSnippets(entry, queryKeywords, 4, true),
+    ...fallbackSnippets,
   ]);
   const summary = snippets.join('；');
   return summary.length > maxLength ? `${summary.substring(0, maxLength)}…` : summary;
@@ -205,11 +208,17 @@ export function buildEntryMatchedSnippets(
   limit = 3,
   allowFallback = false,
 ): string[] {
-  return uniqueTextParts([
+  const candidates = uniqueTextParts([
     ...extractRelevantSnippets(entry.story ?? '', queryKeywords, 2, allowFallback),
     ...extractRelevantSnippets(entry.relatedLocationText ?? '', queryKeywords, 1, allowFallback).map(snippet => `相关地点：${snippet}`),
     ...extractRelevantSnippets(entry.culturalSignificance ?? '', queryKeywords, 1, allowFallback),
-  ]).slice(0, limit);
+    ...extractRelevantSnippets(entry.keywords.join('、'), queryKeywords, 1, false).map(snippet => `关键词：${snippet}`),
+    ...extractRelevantSnippets(entry.verificationText ?? '', queryKeywords, 1, false).map(snippet => `核验：${snippet}`),
+    ...extractRelevantSnippets(entry.unverifiedText ?? '', queryKeywords, 1, false).map(snippet => `待核：${snippet}`),
+  ]);
+  return candidates
+    .sort((a, b) => scoreSnippet(b, queryKeywords) - scoreSnippet(a, queryKeywords))
+    .slice(0, limit);
 }
 
 function buildEntrySearchReason(entry: SearchableEntry, queryKeywords: string[], intent: SearchIntent): string {
@@ -317,15 +326,25 @@ function extractRelevantSnippets(text: string, keywords: string[], limit: number
   const cleaned = text.trim().replace(/\s+/g, ' ');
   if (!cleaned) return [];
 
-  const sentences = cleaned
-    .split(/(?<=[。！？!?；;])/)
-    .map(sentence => sentence.trim())
-    .filter(sentence => sentence.length >= 8);
+  const sentences = splitSnippetCandidates(cleaned);
   const matched = sentences
     .filter(sentence => keywords.some(keyword => keyword && sentence.includes(keyword)))
     .sort((a, b) => scoreSnippet(b, keywords) - scoreSnippet(a, keywords));
   const selected = matched.length > 0 ? matched : allowFallback ? sentences.slice(0, 1) : [];
   return selected.slice(0, limit).map(snippet => snippet.length > 120 ? `${snippet.substring(0, 120)}…` : snippet);
+}
+
+function splitSnippetCandidates(text: string): string[] {
+  const sentenceParts = text
+    .split(/(?<=[。！？!?；;])/)
+    .map(sentence => sentence.trim())
+    .filter(sentence => sentence.length >= 8);
+  if (sentenceParts.length > 0) return sentenceParts;
+
+  return text
+    .split(/[、，,\s]+/)
+    .map(part => part.trim())
+    .filter(part => part.length >= 2);
 }
 
 function scoreSnippet(sentence: string, keywords: string[]): number {

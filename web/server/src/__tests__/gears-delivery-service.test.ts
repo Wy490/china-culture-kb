@@ -180,6 +180,93 @@ function makeSupplementedStory(): StoryGenerateResult {
   };
 }
 
+function makePollutedMoonCaveStory(): StoryGenerateResult {
+  return {
+    storyId: '20260611-story-5xgl',
+    title: '月岩悟道传说',
+    generation_type: 'character_story',
+    video_type: 'character_story',
+    presentation_style: 'cinematic',
+    source_entry: '周敦颐——理学开山鼻祖',
+    logline: '周敦颐少年时在月岩洞读书悟道。',
+    theme: '读书悟道',
+    full_text: '雨夜，永州→道县。',
+    scene_breakdown: [
+      {
+        scene_id: 1,
+        title: '月岩悟道传说',
+        duration_sec: 12,
+        location: '**月岩悟道传说**：道县有著名天然溶洞',
+        time_of_day: '夜',
+        dramatic_function: '开场',
+        plot: '雨夜，永州→道县。',
+        key_action: '',
+        characters: ['周敦颐', '月岩悟道', '少年时在道'],
+        visual_prompt: '烛火/文书/案卷/判词——核心画面是月岩悟道传说的紧张开场',
+        camera_suggestion: '',
+        cultural_note: '月岩悟道传说为民间传说，学术推测而非确证',
+        factual_basis: '道县有著名天然溶洞“月岩”，传说周敦颐少年时常在月岩洞中读书悟道。',
+        dialogue_or_narration: '',
+      },
+      {
+        scene_id: 2,
+        title: '月岩悟道传说',
+        duration_sec: 15,
+        location: '**月岩悟道传说**：道县有著名天然溶洞',
+        time_of_day: '午',
+        dramatic_function: '身份介绍',
+        plot: '周敦颐是什么身份？',
+        key_action: '',
+        characters: ['周敦颐'],
+        visual_prompt: '月岩洞',
+        camera_suggestion: '',
+        cultural_note: '',
+        dialogue_or_narration: '',
+      },
+      {
+        scene_id: 3,
+        title: '月岩悟道传说',
+        duration_sec: 15,
+        location: '**月岩悟道传说**：道县有著名天然溶洞',
+        time_of_day: '夜',
+        dramatic_function: '残缺对白',
+        plot: '',
+        key_action: '',
+        characters: ['周敦颐'],
+        visual_prompt: '月岩洞',
+        camera_suggestion: '',
+        cultural_note: '',
+        dialogue_or_narration: '"',
+      },
+    ],
+    gears_segments: [],
+    gears_segments_url: '/api/stories/20260611-story-5xgl/gears-segments',
+    cultural_constraints: [],
+    credibility_note: '月岩悟道传说为民间传说，学术推测而非确证',
+    characters: [
+      { name: '周敦颐', role: 'protagonist', description: '北宋道县少年读书人，清瘦沉静', arc: '在月岩读书传说中形成求理问道的精神底色' },
+    ],
+    knowledge_pack: {
+      primary_entries: [
+        {
+          entry_name: '周敦颐——理学开山鼻祖',
+          province: '湖南',
+          region: '永州道县',
+          type: '历史人物',
+          summary: '周敦颐出身道县楼田村书香门第，幼年丧父，由母亲郑氏抚养；道县月岩为天然岩洞，民间传说其少年时在洞中读书悟道。',
+          score: 0.98,
+          role_in_story: '主人公经历来源',
+          match_reason: '命中周敦颐与月岩悟道传说',
+          keywords: ['周敦颐', '月岩', '道县', '读书', '悟道'],
+        },
+      ],
+      supporting_entries: [],
+      missing_needs: [],
+      overall_confidence: 0.86,
+    },
+  };
+}
+
 describe('gears-delivery-service', () => {
   it('builds a GEARS supply package with assets, markdown, and <=15s units', () => {
     const pkg = buildGearsDeliveryPackage(makeStory());
@@ -204,8 +291,9 @@ describe('gears-delivery-service', () => {
     expect(pkg.character_assets[0].appearance_features).toContain('书香门第');
     expect(pkg.character_assets[0].background_oneliner).toContain('濂溪畔读书洗笔');
     expect(pkg.character_assets[0].signature_objects).toContain('书');
-    expect(pkg.scene_assets[0].description).toContain('幼年丧父');
     expect(pkg.scene_assets[0].description).toContain('溪水、旧书、毛笔');
+    expect(pkg.scene_assets[0].description).not.toContain('幼年丧父');
+    expect(pkg.scene_assets[0].environment_props).toContain('旧书');
     expect(pkg.markdown).toContain('周敦颐出身道县楼田村书香门第');
   });
 
@@ -224,5 +312,25 @@ describe('gears-delivery-service', () => {
     expect(pkg.scene_assets[0].description).toContain('疑案文书');
     expect(pkg.markdown).toContain('负责催促签署疑案文书');
     expect(pkg.markdown).not.toContain('这条待补说明不应进入 GEARS');
+  });
+
+  it('cleans polluted moon cave delivery assets and flags thin script units', () => {
+    const pkg = buildGearsDeliveryPackage(makePollutedMoonCaveStory());
+
+    expect(pkg.character_assets.map(character => character.name)).toEqual(['周敦颐']);
+    expect(pkg.character_assets[0].clothing).toContain('北宋士人');
+    expect(pkg.character_assets[0].signature_objects).toContain('书');
+    expect(pkg.scene_assets).toHaveLength(1);
+    expect(pkg.scene_assets[0].name).toBe('月岩洞');
+    expect(pkg.scene_assets[0].description).toContain('天然岩洞空间');
+    expect(pkg.scene_assets[0].description).not.toContain('案卷');
+    expect(pkg.scene_assets[0].environment_props).toBe('洞口、岩壁、石质地面');
+    expect(pkg.units.every(unit => unit.scene_name === '月岩洞')).toBe(true);
+    expect(pkg.units.every(unit => unit.character_names.join('、') === '周敦颐')).toBe(true);
+    expect(pkg.units[0].suggested_duration_sec).toBeLessThan(12);
+    expect(pkg.validation_notes).toContain('单元 2 正文过短，不足以支撑 5 秒分镜');
+    expect(pkg.validation_notes).toContain('单元 3 缺少可供分镜使用的剧本正文');
+    expect(pkg.markdown).toContain('- 场景道具/陈设: 洞口、岩壁、石质地面');
+    expect(pkg.markdown).toContain('- 随身/标志性物件: 书');
   });
 });

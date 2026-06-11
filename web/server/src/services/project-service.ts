@@ -10,6 +10,7 @@ import type {
   StoryProjectStatus,
   StoryProjectVersionSnapshot,
   StoryProjectVersionSummary,
+  StoryProjectBatchDeleteResult,
   StoryProjectDeleteResult,
   ProjectSupplementTaskListItem,
   KnowledgeSupplementTaskUpdateRequest,
@@ -17,6 +18,7 @@ import type {
   StorySceneRegenerateRequest,
   VideoType,
   GearsDeliveryPackage,
+  GearsWebhookStatus,
 } from '@shared/types.js';
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
 import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
@@ -449,6 +451,25 @@ export async function deleteProject(projectId: string): Promise<ApiResponse<Stor
   });
 }
 
+export async function deleteProjects(projectIds: string[]): Promise<ApiResponse<StoryProjectBatchDeleteResult>> {
+  const deleted: StoryProjectDeleteResult[] = [];
+  const failed: StoryProjectBatchDeleteResult['failed'] = [];
+
+  for (const projectId of [...new Set(projectIds)]) {
+    const result = await deleteProject(projectId);
+    if (result.ok && result.data) {
+      deleted.push(result.data);
+    } else {
+      failed.push({
+        project_id: projectId,
+        error: result.error?.message ?? '删除故事项目失败',
+      });
+    }
+  }
+
+  return success({ deleted, failed });
+}
+
 /** 旧故事 JSON 缺 generation_mode/generation_used_fallback → 填充默认值 */
 function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenerateResult {
   const normalized = {
@@ -458,6 +479,16 @@ function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenera
   };
   normalized.gears_delivery = normalized.gears_delivery ?? buildGearsDeliveryPackage(normalized);
   return normalized;
+}
+
+async function updateSourceStory(
+  story: Pick<StoryGenerateResult, 'storyId' | 'video_type'>,
+  updater: (raw: StoredStoryFile) => StoredStoryFile,
+): Promise<void> {
+  const sourcePath = storySourcePath(story);
+  if (!(await pathExists(sourcePath))) return;
+  const raw = await readJsonFile<StoredStoryFile>(sourcePath);
+  await writeJsonFile(sourcePath, updater(raw));
 }
 
 export async function regenerateProjectScene(
@@ -535,16 +566,12 @@ export async function updateProjectSupplementTask(
   });
   await writeJsonFile(projectMetaPath(projectId), updatedMeta);
 
-  const sourcePath = storySourcePath(updatedStory);
-  if (await pathExists(sourcePath)) {
-    const raw = await readJsonFile<StoredStoryFile>(sourcePath);
-    await writeJsonFile(sourcePath, {
-      ...raw,
-      supplement_tasks: updatedTasks,
-      project_id: updatedStory.project_id,
-      current_version_id: updatedStory.current_version_id,
-    });
-  }
+  await updateSourceStory(updatedStory, raw => ({
+    ...raw,
+    supplement_tasks: updatedTasks,
+    project_id: updatedStory.project_id,
+    current_version_id: updatedStory.current_version_id,
+  }));
 
   return getProject(projectId);
 }
@@ -578,4 +605,42 @@ export async function updateProjectCurrentGearsDelivery(
 
   await writeJsonFile(currentPath, updatedSnapshot);
   await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+}
+
+export async function updateProjectCurrentGearsWebhookStatus(
+  projectId: string | undefined,
+  storyId: string,
+  gearsWebhook: GearsWebhookStatus,
+): Promise<void> {
+  if (!projectId) return;
+  const project = await readProjectMeta(projectId);
+  if (!project) return;
+
+  const currentPath = projectVersionPath(projectId, project.current_version_id);
+  if (!(await pathExists(currentPath))) return;
+
+  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
+  if (snapshot.story.storyId !== storyId) return;
+
+  const updatedSnapshot: StoryProjectVersionSnapshot = {
+    ...snapshot,
+    story: {
+      ...snapshot.story,
+      gears_webhook: gearsWebhook,
+    },
+  };
+  const updatedAt = new Date().toISOString();
+  const updatedMeta: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+  };
+
+  await writeJsonFile(currentPath, updatedSnapshot);
+  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+  await updateSourceStory(snapshot.story, raw => ({
+    ...raw,
+    gears_webhook: gearsWebhook,
+    project_id: snapshot.story.project_id,
+    current_version_id: snapshot.story.current_version_id,
+  }));
 }

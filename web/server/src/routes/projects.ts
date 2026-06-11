@@ -2,12 +2,14 @@ import { Router } from 'express';
 import { validateBody, validateParams } from '../middleware/validate.js';
 import {
   KnowledgeSupplementTaskUpdateRequestSchema,
+  ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
   StorySceneRegenerateRequestSchema,
   SupplementTaskIdParamSchema,
 } from '@shared/schemas.js';
 import {
   deleteProject,
+  deleteProjects,
   getProject,
   listProjectSupplementTasks,
   listProjects,
@@ -32,6 +34,15 @@ projectsRouter.get('/supplement-tasks', async (req, res, next) => {
       ? req.query.status
       : undefined;
     const result = await listProjectSupplementTasks(status);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.post('/batch-delete', validateBody(ProjectBatchDeleteRequestSchema), async (req, res, next) => {
+  try {
+    const result = await deleteProjects(req.body.project_ids);
     res.json(result);
   } catch (err) {
     next(err);

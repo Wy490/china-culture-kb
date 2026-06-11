@@ -484,6 +484,7 @@ const DurationSchema = z.enum([
   - full_text 故事正文（分段渲染）
   - scene_breakdown 场次卡片（时长、地点、剧情）
   - gears_segments 分段表（script_text、duration、panel_count）
+  - GEARS Webhook 状态（未配置 / 等待发送 / 已发送 / 发送失败，含最近失败原因）
   - **GEARS 操作区**（显眼位置）：
     - 📋 复制完整 segments JSON
     - 📋 复制单段 script_text

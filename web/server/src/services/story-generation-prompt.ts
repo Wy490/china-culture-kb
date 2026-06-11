@@ -10,7 +10,11 @@ import type {
   PresentationStyle,
   SupportedDuration,
   KnowledgePack,
+  KnowledgeAssetUsage,
+  KnowledgeDomain,
+  KnowledgeEntryRole,
   MemoryMosaicStorySeed,
+  StoryDetectedCharacter,
   WitnessMemory,
 } from '@shared/types.js';
 import {
@@ -44,9 +48,10 @@ export interface StoryGenerationPromptPackage {
   entry_story: string;
   entry_cultural_significance: string;
   knowledge_context?: {
-    primary_entries: Array<{ entry_name: string; role_in_story: string; summary: string }>;
-    supporting_entries: Array<{ entry_name: string; role_in_story: string; summary: string }>;
+    primary_entries: PromptKnowledgeEntry[];
+    supporting_entries: PromptKnowledgeEntry[];
   };
+  character_hints?: StoryDetectedCharacter[];
   memory_mosaic_context?: {
     present_day_seeker: string;
     trigger_object: string;
@@ -62,6 +67,16 @@ export interface StoryGenerationPromptPackage {
   };
   system_prompt: string;
   user_prompt: string;
+}
+
+interface PromptKnowledgeEntry {
+  entry_name: string;
+  role_in_story: string;
+  summary: string;
+  knowledge_domain?: KnowledgeDomain;
+  entry_role?: KnowledgeEntryRole;
+  era?: string;
+  asset_usage?: KnowledgeAssetUsage[];
 }
 
 // ---------------------------------------------------------------------------
@@ -191,14 +206,23 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
     lines.push('', '=== 知识组合包 ===');
     lines.push('主要条目：');
     for (const entry of pkg.knowledge_context.primary_entries) {
-      lines.push(`- ${entry.entry_name}（角色：${entry.role_in_story}）: ${entry.summary}`);
+      lines.push(`- ${formatKnowledgeEntryForPrompt(entry)}`);
     }
     if (pkg.knowledge_context.supporting_entries.length > 0) {
       lines.push('支撑条目：');
       for (const entry of pkg.knowledge_context.supporting_entries) {
-        lines.push(`- ${entry.entry_name}（角色：${entry.role_in_story}）: ${entry.summary}`);
+        lines.push(`- ${formatKnowledgeEntryForPrompt(entry)}`);
       }
+      lines.push('知识包使用规则：朝代设定包用于服饰、器物、称谓和时代边界；志异母题包用于叙事结构和可信度提示；GEARS资产包用于人物/场景/道具边界。不要把设定包内容写成主条目的史实。');
     }
+  }
+
+  if (pkg.character_hints?.length) {
+    lines.push('', '=== 大纲角色识别 ===');
+    for (const character of pkg.character_hints) {
+      lines.push(`- ${character.name}（${character.role_position}；${character.character_kind}；${character.asset_stability}${character.age_range ? `；${character.age_range}` : ''}${character.gender ? `；${character.gender}` : ''}）：${character.source_text}`);
+    }
+    lines.push('角色使用规则：身份型配角、群体角色和志异异类也要进入 characters 或 scene_breakdown.characters；无名角色用稳定身份名，不要随场景改名。');
   }
 
   if (pkg.memory_mosaic_context) {
@@ -242,6 +266,17 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
   }
 
   return lines.join('\n');
+}
+
+function formatKnowledgeEntryForPrompt(entry: PromptKnowledgeEntry): string {
+  const tags = [
+    `角色：${entry.role_in_story}`,
+    entry.knowledge_domain ? `知识域：${entry.knowledge_domain}` : '',
+    entry.entry_role ? `条目角色：${entry.entry_role}` : '',
+    entry.era ? `时代：${entry.era}` : '',
+    entry.asset_usage?.length ? `用途：${entry.asset_usage.join('、')}` : '',
+  ].filter(Boolean).join('；');
+  return `${entry.entry_name}（${tags}）: ${entry.summary}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -288,14 +323,23 @@ export function buildStoryGenerationPromptPackage(input: {
             entry_name: e.entry_name,
             role_in_story: e.role_in_story,
             summary: e.summary,
+            knowledge_domain: e.knowledge_domain,
+            entry_role: e.entry_role,
+            era: e.era,
+            asset_usage: e.asset_usage,
           })),
           supporting_entries: input.knowledgePack.supporting_entries.map(e => ({
             entry_name: e.entry_name,
             role_in_story: e.role_in_story,
             summary: e.summary,
+            knowledge_domain: e.knowledge_domain,
+            entry_role: e.entry_role,
+            era: e.era,
+            asset_usage: e.asset_usage,
           })),
         }
       : undefined,
+    character_hints: input.request.character_hints,
     memory_mosaic_context: input.memoryMosaicSeed
       ? {
           present_day_seeker: input.memoryMosaicSeed.present_day_seeker,

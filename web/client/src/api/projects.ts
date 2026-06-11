@@ -1,6 +1,7 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from './client'
 import type {
   KnowledgeSupplementTaskUpdateRequest,
+  StoryProjectBatchDeleteResult,
   ProjectSupplementTaskListItem,
   StoryProjectDeleteResult,
   StoryProjectDetail,
@@ -26,6 +27,10 @@ export function regenerateProjectScene(projectId: string, body: StorySceneRegene
 
 export function deleteProject(projectId: string) {
   return apiDelete<StoryProjectDeleteResult>(`/projects/${projectId}`)
+}
+
+export function deleteProjects(projectIds: string[]) {
+  return apiPost<StoryProjectBatchDeleteResult>('/projects/batch-delete', { project_ids: projectIds })
 }
 
 export function updateProjectSupplementTask(projectId: string, taskId: string, body: KnowledgeSupplementTaskUpdateRequest) {

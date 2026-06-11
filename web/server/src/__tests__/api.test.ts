@@ -146,6 +146,14 @@ describe('Projects API', () => {
       expect(Array.isArray(res.body.data)).toBe(true);
     });
   });
+
+  describe('POST /api/projects/batch-delete', () => {
+    it('validates project_ids', async () => {
+      const res = await request.post('/api/projects/batch-delete').send({ project_ids: [] });
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -463,18 +471,26 @@ describe('Stories API', () => {
     });
 
     it('adds an enriched knowledge_pack for direct entry generation', async () => {
-      const res = await request.post('/api/stories/generate').send({
-        entry_name: '周敦颐——理学开山鼻祖',
-        generation_type: 'character_story',
-        selected_event: '拒签冤案',
-        target_video_duration: '3分钟',
-      });
-      if (res.status === 200) {
-        expectSuccess(res.body);
-        const story = res.body.data;
-        expect(story.knowledge_pack?.primary_entries[0].entry_name).toBe('周敦颐——理学开山鼻祖');
-        expect(story.knowledge_pack?.primary_entries[0].summary).toContain('拒签冤案');
-        expect(story.knowledge_pack?.overall_confidence).toBe(1);
+      const originalWebhookUrl = process.env.GEARS_WEBHOOK_URL;
+      delete process.env.GEARS_WEBHOOK_URL;
+      try {
+        const res = await request.post('/api/stories/generate').send({
+          entry_name: '周敦颐——理学开山鼻祖',
+          generation_type: 'character_story',
+          selected_event: '拒签冤案',
+          target_video_duration: '3分钟',
+        });
+        if (res.status === 200) {
+          expectSuccess(res.body);
+          const story = res.body.data;
+          expect(story.knowledge_pack?.primary_entries[0].entry_name).toBe('周敦颐——理学开山鼻祖');
+          expect(story.knowledge_pack?.primary_entries[0].summary).toContain('拒签冤案');
+          expect(story.knowledge_pack?.overall_confidence).toBe(1);
+          expect(story.gears_webhook?.status).toBe('not_configured');
+        }
+      } finally {
+        if (originalWebhookUrl === undefined) delete process.env.GEARS_WEBHOOK_URL;
+        else process.env.GEARS_WEBHOOK_URL = originalWebhookUrl;
       }
     });
 

@@ -7,9 +7,11 @@ import {
   buildProjectId,
   createProjectFromGeneratedStory,
   deleteProject,
+  deleteProjects,
   getProject,
   listProjectSupplementTasks,
   regenerateProjectScene,
+  updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
 
@@ -136,6 +138,47 @@ describe('project-service', () => {
     expect(detail.data?.current_story.title).toBe(story.title);
     expect(detail.data?.project.model_profile_id).toBe('claude_sonnet');
     expect(detail.data?.current_story.model_profile_id).toBe('claude_sonnet');
+  });
+
+  it('updates GEARS webhook status on the current project and source story file', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      gears_webhook: {
+        status: 'pending',
+        webhook_target: 'https://grears.example/api/webhook/story-ready',
+      },
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+    const storyPath = resolve(storyDir, `${story.storyId}.json`);
+    await mkdir(storyDir, { recursive: true });
+    await writeFile(storyPath, JSON.stringify({
+      ...story,
+      project_id: enriched.project_id,
+      current_version_id: enriched.current_version_id,
+      _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
+    }, null, 2), 'utf-8');
+
+    await updateProjectCurrentGearsWebhookStatus(enriched.project_id, story.storyId, {
+      status: 'sent',
+      webhook_target: 'https://grears.example/api/webhook/story-ready',
+      attempts: 1,
+      last_attempt_at: '2026-06-09T10:00:01.000Z',
+      last_success_at: '2026-06-09T10:00:01.000Z',
+    });
+
+    const detail = await getProject(enriched.project_id!);
+    expect(detail.ok).toBe(true);
+    expect(detail.data?.current_story.gears_webhook?.status).toBe('sent');
+    expect(detail.data?.current_story.gears_webhook?.attempts).toBe(1);
+
+    const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(rawSource.gears_webhook?.status).toBe('sent');
+    expect(rawSource.gears_webhook?.last_success_at).toBe('2026-06-09T10:00:01.000Z');
   });
 
   it('tracks open supplement task count on project metadata', async () => {
@@ -296,6 +339,49 @@ describe('project-service', () => {
     expect(await exists(projectPath)).toBe(false);
     const detail = await getProject(projectId);
     expect(detail.ok).toBe(false);
+  });
+
+  it('batch deletes projects and reports missing ids', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const firstStory = makeStory();
+    const secondStory: StoryGenerateResult = {
+      ...makeStory(),
+      storyId: '20260609-story-def2',
+      title: '月岩悟道传说',
+      gears_segments_url: '/api/stories/20260609-story-def2/gears-segments',
+    };
+    const first = await createProjectFromGeneratedStory(firstStory, '2026-06-09T10:00:00.000Z');
+    const second = await createProjectFromGeneratedStory(secondStory, '2026-06-09T10:01:00.000Z');
+
+    for (const story of [first, second]) {
+      const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+      await mkdir(storyDir, { recursive: true });
+      await writeFile(resolve(storyDir, `${story.storyId}.json`), JSON.stringify({
+        ...story,
+        _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
+      }, null, 2), 'utf-8');
+    }
+
+    const result = await deleteProjects([
+      first.project_id!,
+      second.project_id!,
+      '20260609-story-none--character_story',
+    ]);
+
+    expect(result.ok).toBe(true);
+    expect(result.data?.deleted.map(item => item.project_id).sort()).toEqual([
+      first.project_id!,
+      second.project_id!,
+    ].sort());
+    expect(result.data?.failed).toHaveLength(1);
+    expect(result.data?.failed[0].project_id).toBe('20260609-story-none--character_story');
+    expect(await exists(resolve(root, 'web', 'generated', 'projects', first.project_id!))).toBe(false);
+    expect(await exists(resolve(root, 'web', 'generated', 'projects', second.project_id!))).toBe(false);
+    expect(await exists(resolve(root, 'web', 'generated', 'stories', first.video_type, `${first.storyId}.json`))).toBe(false);
+    expect(await exists(resolve(root, 'web', 'generated', 'stories', second.video_type, `${second.storyId}.json`))).toBe(false);
   });
 
   it('regenerates a single scene into a new version', async () => {

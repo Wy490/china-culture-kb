@@ -6,9 +6,13 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { generateStoryWithAdapter } from '../services/story-generation-model.js';
-import { isModelSceneBreakdownCompatible, mergeModelOutputOntoLocalSkeleton } from '../services/story-service.js';
+import {
+  isModelSceneBreakdownCompatible,
+  mergeCharacterHintsIntoStoryResult,
+  mergeModelOutputOntoLocalSkeleton,
+} from '../services/story-service.js';
 import type { StoryGenerationPromptPackage, StoryGenerationModelOutput } from '../services/story-generation-prompt.js';
-import type { StoryScene, StoryGenerateResult } from '@shared/types.js';
+import type { StoryDetectedCharacter, StoryScene, StoryGenerateResult } from '@shared/types.js';
 
 // ---------------------------------------------------------------------------
 // Env var cleanup
@@ -405,5 +409,88 @@ describe('mergeModelOutputOntoLocalSkeleton', () => {
 
     const merged = mergeModelOutputOntoLocalSkeleton(local, model, 'character_story', 'cinematic');
     expect(merged.act_structure).toEqual(local.act_structure);
+  });
+});
+
+describe('mergeCharacterHintsIntoStoryResult', () => {
+  it('adds unnamed supporting characters to top-level characters and matched scenes', () => {
+    const local = makeLocalSkeleton();
+    const hints: StoryDetectedCharacter[] = [
+      {
+        name: '老奶奶',
+        role_position: '配角',
+        character_kind: 'identity_role',
+        source_text: '一个老奶奶在洞口点灯',
+        asset_stability: 'single_scene',
+        age_range: '老年',
+        gender: '女',
+      },
+      {
+        name: '村民',
+        role_position: '群演',
+        character_kind: 'group_role',
+        source_text: '村民围过来听狐仙传说',
+        asset_stability: 'single_scene',
+        gender: '不适用',
+      },
+      {
+        name: '狐仙',
+        role_position: '配角',
+        character_kind: 'supernatural_role',
+        source_text: '狐仙显灵的传说',
+        asset_stability: 'recurring',
+        gender: '其他',
+      },
+    ];
+
+    local.scene_breakdown[0] = {
+      ...local.scene_breakdown[0],
+      location: '月岩洞',
+      plot: '周敦颐在洞口读书，一个老人点灯，村民听见狐仙传说后停步。',
+      key_action: '洞口点灯，众人围听',
+      characters: ['周敦颐'],
+    };
+
+    const merged = mergeCharacterHintsIntoStoryResult(local, hints, 'character_story', 'cinematic');
+
+    expect(merged.characters.find(character => character.name === '老奶奶')).toMatchObject({
+      role: 'supporting',
+    });
+    expect(merged.characters.find(character => character.name === '村民')).toMatchObject({
+      role: 'crowd',
+    });
+    expect(merged.characters.find(character => character.name === '狐仙')).toMatchObject({
+      role: 'supporting',
+    });
+    expect(merged.scene_breakdown[0].characters).toEqual(expect.arrayContaining(['老奶奶', '村民', '狐仙']));
+    expect(merged.gears_segments).toHaveLength(merged.scene_breakdown.length);
+  });
+
+  it('uses stable fallback placement when the generated scenes omit the outline wording', () => {
+    const local = makeLocalSkeleton();
+    const hints: StoryDetectedCharacter[] = [
+      {
+        name: '书童',
+        role_position: '配角',
+        character_kind: 'identity_role',
+        source_text: '书童递上书卷',
+        asset_stability: 'single_scene',
+        age_range: '少年',
+        gender: '男',
+      },
+      {
+        name: '乡民',
+        role_position: '群演',
+        character_kind: 'group_role',
+        source_text: '乡民一路跟随',
+        asset_stability: 'recurring',
+        gender: '不适用',
+      },
+    ];
+
+    const merged = mergeCharacterHintsIntoStoryResult(local, hints, 'character_story', 'cinematic');
+
+    expect(merged.scene_breakdown[0].characters).toContain('书童');
+    expect(merged.scene_breakdown.every(scene => scene.characters.includes('乡民'))).toBe(true);
   });
 });

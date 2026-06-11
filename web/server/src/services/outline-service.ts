@@ -21,6 +21,7 @@ import type {
   MultiMatchResult,
   VideoType,
   EntryDetail,
+  StoryDetectedCharacter,
 } from '@shared/types.js';
 import { VIDEO_TYPE_CONFIG } from '@shared/types.js';
 import {
@@ -31,6 +32,7 @@ import {
   computeMatchScore,
 } from './entry-service.js';
 import type { SearchableEntry } from './entry-service.js';
+import { appendDomainPackEntries } from './domain-pack-service.js';
 
 // ---------------------------------------------------------------------------
 // Predefined word lists for outline subject extraction
@@ -100,6 +102,51 @@ const TYPE_KEYWORD_HINTS_FLAT: Record<string, string[]> = {
   '宗教信仰': ['宗教', '信仰', '佛', '道', '祭祀', '祭'],
   '民俗活动': ['民俗', '活动', '赶秋', '鼓舞', '仪式'],
 };
+
+const IDENTITY_CHARACTER_RULES: Array<{
+  name: string;
+  aliases: string[];
+  age_range?: StoryDetectedCharacter['age_range'];
+  gender?: StoryDetectedCharacter['gender'];
+  role_position: StoryDetectedCharacter['role_position'];
+  asset_stability: StoryDetectedCharacter['asset_stability'];
+}> = [
+  { name: '少年', aliases: ['一个少年', '少年'], age_range: '少年', gender: '男', role_position: '配角', asset_stability: 'single_scene' },
+  { name: '少女', aliases: ['一个少女', '少女'], age_range: '少年', gender: '女', role_position: '配角', asset_stability: 'single_scene' },
+  { name: '老奶奶', aliases: ['一个老奶奶', '老奶奶', '老妇人', '老婆婆', '阿婆'], age_range: '老年', gender: '女', role_position: '配角', asset_stability: 'single_scene' },
+  { name: '老人', aliases: ['一个老人', '老人', '老者', '老先生'], age_range: '老年', gender: '男', role_position: '配角', asset_stability: 'single_scene' },
+  { name: '书童', aliases: ['书童', '小书童'], age_range: '少年', gender: '男', role_position: '配角', asset_stability: 'recurring' },
+  { name: '差役', aliases: ['差役', '衙役', '官差'], age_range: '青年', gender: '未指定', role_position: '配角', asset_stability: 'single_scene' },
+  { name: '县令', aliases: ['县令', '知县'], age_range: '中年', gender: '男', role_position: '配角', asset_stability: 'recurring' },
+  { name: '船夫', aliases: ['船夫', '艄公', '渔父', '渔夫'], age_range: '中年', gender: '男', role_position: '配角', asset_stability: 'single_scene' },
+  { name: '道士', aliases: ['道士', '道人'], age_range: '中年', gender: '男', role_position: '配角', asset_stability: 'recurring' },
+  { name: '僧人', aliases: ['僧人', '和尚', '老僧'], age_range: '中年', gender: '男', role_position: '配角', asset_stability: 'single_scene' },
+];
+
+const GROUP_CHARACTER_RULES = [
+  '村民',
+  '百姓',
+  '乡民',
+  '士兵',
+  '香客',
+  '围观者',
+  '行人',
+  '孩童',
+  '学生',
+  '族人',
+];
+
+const SUPERNATURAL_CHARACTER_RULES: Array<{
+  name: string;
+  aliases: string[];
+  role_position: StoryDetectedCharacter['role_position'];
+}> = [
+  { name: '狐仙', aliases: ['狐仙', '狐女', '狐狸精'], role_position: '配角' },
+  { name: '鬼魂', aliases: ['鬼魂', '冤魂', '亡魂', '女鬼'], role_position: '配角' },
+  { name: '龙女', aliases: ['龙女', '洞庭龙女'], role_position: '配角' },
+  { name: '山神', aliases: ['山神', '土地神', '神灵'], role_position: '配角' },
+  { name: '妖怪', aliases: ['妖怪', '精怪', '异类'], role_position: '反派' },
+];
 
 // ---------------------------------------------------------------------------
 // Extract subjects from outline text
@@ -270,6 +317,92 @@ function classifySubjects(outline: string, knownPersonNames: string[] = []): Cla
   return result;
 }
 
+function extractDetectedCharacters(outline: string, subjects: ClassifiedSubjects): StoryDetectedCharacter[] {
+  const characters: StoryDetectedCharacter[] = [];
+  const mainCharacter = subjects.person_names[0] ?? null;
+
+  for (const name of subjects.person_names) {
+    addDetectedCharacter(characters, {
+      name,
+      role_position: name === mainCharacter ? '主角' : '配角',
+      character_kind: 'named_person',
+      source_text: findSourceSentence(outline, name),
+      asset_stability: 'recurring',
+      gender: '未指定',
+    });
+  }
+
+  for (const rule of IDENTITY_CHARACTER_RULES) {
+    const alias = rule.aliases.find(item => outline.includes(item));
+    if (!alias) continue;
+    addDetectedCharacter(characters, {
+      name: rule.name,
+      role_position: rule.role_position,
+      character_kind: 'identity_role',
+      source_text: findSourceSentence(outline, alias),
+      asset_stability: countOccurrences(outline, alias) > 1 ? 'recurring' : rule.asset_stability,
+      age_range: rule.age_range,
+      gender: rule.gender,
+    });
+  }
+
+  for (const name of GROUP_CHARACTER_RULES) {
+    if (!outline.includes(name)) continue;
+    addDetectedCharacter(characters, {
+      name,
+      role_position: '群演',
+      character_kind: 'group_role',
+      source_text: findSourceSentence(outline, name),
+      asset_stability: 'single_scene',
+      gender: '不适用',
+    });
+  }
+
+  for (const rule of SUPERNATURAL_CHARACTER_RULES) {
+    const alias = rule.aliases.find(item => outline.includes(item));
+    if (!alias) continue;
+    addDetectedCharacter(characters, {
+      name: rule.name,
+      role_position: rule.role_position,
+      character_kind: 'supernatural_role',
+      source_text: findSourceSentence(outline, alias),
+      asset_stability: countOccurrences(outline, alias) > 1 ? 'recurring' : 'single_scene',
+      gender: '未指定',
+    });
+  }
+
+  return characters;
+}
+
+function addDetectedCharacter(characters: StoryDetectedCharacter[], character: StoryDetectedCharacter) {
+  const existing = characters.find(item => item.name === character.name);
+  if (!existing) {
+    characters.push(character);
+    return;
+  }
+  if (existing.role_position !== '主角' && character.role_position === '主角') {
+    existing.role_position = '主角';
+  }
+  if (existing.asset_stability !== 'recurring' && character.asset_stability === 'recurring') {
+    existing.asset_stability = 'recurring';
+  }
+  if (!existing.source_text.includes(character.source_text)) {
+    existing.source_text = `${existing.source_text}；${character.source_text}`.substring(0, 160);
+  }
+}
+
+function findSourceSentence(text: string, keyword: string): string {
+  const sentences = text
+    .split(/(?<=[。！？!?；;\n])/)
+    .map(sentence => sentence.trim())
+    .filter(Boolean);
+  return sentences.find(sentence => sentence.includes(keyword)) ?? keyword;
+}
+
+function countOccurrences(text: string, keyword: string): number {
+  return text.split(keyword).length - 1;
+}
+
 // ---------------------------------------------------------------------------
 // Detect domain from subjects
 // ---------------------------------------------------------------------------
@@ -348,6 +481,7 @@ function inferEmotionFromContext(subjects: ClassifiedSubjects): string[] {
 function generateKnowledgeNeeds(
   intent: { main_character: string | null; time_range: string | null },
   subjects: ClassifiedSubjects,
+  detectedCharacters: StoryDetectedCharacter[],
 ): KnowledgeNeed[] {
   const needs: KnowledgeNeed[] = [];
 
@@ -401,7 +535,12 @@ function generateKnowledgeNeeds(
   }
 
   // Supporting characters need
-  const supportingCharKeywords = subjects.person_names.filter(n => n !== intent.main_character).slice(0, 3);
+  const supportingCharKeywords = [...new Set([
+    ...subjects.person_names.filter(n => n !== intent.main_character),
+    ...detectedCharacters
+      .filter(character => character.role_position !== '主角')
+      .map(character => character.name),
+  ])].slice(0, 6);
   if (supportingCharKeywords.length > 0) {
     needs.push({
       need_id: 'supporting_characters',
@@ -430,7 +569,8 @@ export async function analyzeOutline(
   const subjects = classifySubjects(outline, knownPersonNames);
   const domain = detectDomain(subjects);
   const intent = inferStoryIntent(subjects, outline);
-  const knowledgeNeeds = generateKnowledgeNeeds(intent, subjects);
+  const detectedCharacters = extractDetectedCharacters(outline, subjects);
+  const knowledgeNeeds = generateKnowledgeNeeds(intent, subjects, detectedCharacters);
 
   // Collect all detected subjects
   const detectedSubjects = [
@@ -448,6 +588,7 @@ export async function analyzeOutline(
     detected_subjects: detectedSubjects,
     detected_domain: domain,
     story_intent: intent,
+    detected_characters: detectedCharacters,
     knowledge_needs: knowledgeNeeds,
   });
 }
@@ -513,6 +654,10 @@ export async function multiMatchEntries(
       role_in_story: data.role,
       match_reason: data.reason,
       keywords: entry.keywords,
+      knowledge_domain: entry.knowledge_domain,
+      entry_role: entry.entry_role,
+      era: entry.era,
+      asset_usage: entry.asset_usage,
     };
 
     if (data.score >= 0.75 && primaryRoleIds.includes(data.role)) {
@@ -529,9 +674,14 @@ export async function multiMatchEntries(
   // Sort by score descending
   primaryEntries.sort((a, b) => b.score - a.score);
   supportingEntries.sort((a, b) => b.score - a.score);
+  const enrichedSupportingEntries = appendDomainPackEntries(supportingEntries, {
+    query: outline,
+    primaryEntries,
+    limit: 5,
+  });
 
   // Check for missing needs
-  const coveredNeedIds = new Set([...primaryEntries, ...supportingEntries].map(e => e.role_in_story));
+  const coveredNeedIds = new Set([...primaryEntries, ...enrichedSupportingEntries].map(e => e.role_in_story));
   for (const need of knowledge_needs) {
     if (need.required && !coveredNeedIds.has(need.need_id)) {
       missingNeeds.push({
@@ -553,7 +703,7 @@ export async function multiMatchEntries(
     outline: outline.trim(),
     matched_knowledge_pack: {
       primary_entries: primaryEntries,
-      supporting_entries: supportingEntries,
+      supporting_entries: enrichedSupportingEntries,
       missing_needs: missingNeeds,
       overall_confidence: overallConfidence,
     },
