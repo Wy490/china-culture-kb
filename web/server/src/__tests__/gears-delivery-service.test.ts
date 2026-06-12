@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildGearsDeliveryPackage } from '../services/gears-delivery-service.js';
-import type { StoryGenerateResult } from '@shared/types.js';
+import { buildGearsDeliveryPackage, ensureGearsDeliveryPackage } from '../services/gears-delivery-service.js';
+import type { GearsDeliveryPackage, StoryGenerateResult } from '@shared/types.js';
 
 function makeStory(): StoryGenerateResult {
   return {
@@ -128,6 +128,40 @@ function makeSparseStory(): StoryGenerateResult {
     gears_segments_url: '/api/stories/20260610-story-gears-sparse/gears-segments',
     cultural_constraints: [],
     credibility_note: '资料不足',
+  };
+}
+
+function makeGenderStory(): StoryGenerateResult {
+  return {
+    storyId: '20260610-story-gears-gender',
+    title: '性别统计测试',
+    generation_type: 'character_story',
+    video_type: 'character_story',
+    presentation_style: 'cinematic',
+    source_entry: '测试条目',
+    logline: '少年、老奶奶和村民共同出场。',
+    theme: '人物识别',
+    full_text: '少年在村口问路，老奶奶点灯回应，村民围在一旁。',
+    scene_breakdown: [
+      {
+        scene_id: 1,
+        title: '村口问路',
+        duration_sec: 12,
+        location: '村口',
+        time_of_day: '夜晚',
+        dramatic_function: '开场',
+        plot: '少年在村口问路，老奶奶点灯回应，村民围在一旁。',
+        key_action: '问路与回应',
+        characters: ['少年', '老奶奶', '村民'],
+        visual_prompt: '村口、灯火、人群',
+        camera_suggestion: '中景',
+        cultural_note: '测试',
+      },
+    ],
+    gears_segments: [],
+    gears_segments_url: '/api/stories/20260610-story-gears-gender/gears-segments',
+    cultural_constraints: [],
+    credibility_note: '测试',
   };
 }
 
@@ -279,10 +313,61 @@ describe('gears-delivery-service', () => {
     expect(pkg.units.every(unit => unit.scene_name === '韶山私塾')).toBe(true);
     expect(pkg.units.every(unit => unit.character_names.includes('毛泽东'))).toBe(true);
     expect(pkg.validation_notes).toEqual([]);
+    expect(pkg.character_gender_summary.male).toBe(1);
+    expect(pkg.character_assets[0].gender).toBe('男');
+    expect(pkg.markdown).toContain('# 人物性别统计');
     expect(pkg.markdown).toContain('# 资产清单');
     expect(pkg.markdown).toContain('### 毛泽东');
     expect(pkg.markdown).toContain('- 场景: 韶山私塾');
     expect(pkg.markdown).toContain('- 出场人物: 毛泽东');
+  });
+
+  it('infers and summarizes character genders for the delivery package', () => {
+    const pkg = buildGearsDeliveryPackage(makeGenderStory());
+
+    expect(pkg.character_assets.find(character => character.name === '少年')?.gender).toBe('男');
+    expect(pkg.character_assets.find(character => character.name === '老奶奶')?.gender).toBe('女');
+    expect(pkg.character_assets.find(character => character.name === '村民')?.gender).toBe('不适用');
+    expect(pkg.character_gender_summary).toEqual({
+      total: 3,
+      male: 1,
+      female: 1,
+      other: 0,
+      unspecified: 0,
+      not_applicable: 1,
+    });
+    expect(pkg.markdown).toContain('- 男: 1');
+    expect(pkg.markdown).toContain('- 女: 1');
+    expect(pkg.markdown).toContain('- 不适用: 1');
+  });
+
+  it('normalizes legacy delivery packages without a gender summary', () => {
+    const current = buildGearsDeliveryPackage(makeGenderStory());
+    const legacyDelivery = {
+      ...current,
+      character_assets: current.character_assets.map(character => ({
+        ...character,
+        gender: '未指定',
+      })),
+      character_gender_summary: undefined,
+      markdown: '# 旧版 GEARS 供稿包',
+    } as unknown as GearsDeliveryPackage;
+    const pkg = ensureGearsDeliveryPackage({
+      ...makeGenderStory(),
+      gears_delivery: legacyDelivery,
+    });
+
+    expect(pkg.character_assets.find(character => character.name === '少年')?.gender).toBe('男');
+    expect(pkg.character_assets.find(character => character.name === '老奶奶')?.gender).toBe('女');
+    expect(pkg.character_gender_summary).toEqual({
+      total: 3,
+      male: 1,
+      female: 1,
+      other: 0,
+      unspecified: 0,
+      not_applicable: 1,
+    });
+    expect(pkg.markdown).toContain('# 人物性别统计');
   });
 
   it('enriches assets from knowledge_pack when story fields are thin', () => {

@@ -187,6 +187,7 @@ export type StoryStructureType =
   | 'lecture_argument';
 
 export type ReferenceStrength = 'light' | 'medium' | 'strong';
+export type GenreStrictness = 'loose' | 'balanced' | 'strict';
 
 export interface StoryStructureMeta {
   id: StoryStructureType;
@@ -519,6 +520,8 @@ export interface StoryGenerateRequest {
   creative_reference_ids?: string[];
   style_pack_ids?: string[];
   reference_strength?: ReferenceStrength;
+  genre_strictness?: GenreStrictness;
+  auto_repair?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -640,6 +643,9 @@ export interface StoryProjectListItem {
   generation_source?: string;
   generation_mode?: GenerationMode;
   generation_used_fallback?: boolean;
+  quality_passed?: boolean;
+  genre_score?: number;
+  quality_issue_count?: number;
   open_supplement_task_count?: number;
   gears_video_status?: GearsVideoStatus;
   gears_video_url?: string;
@@ -706,6 +712,15 @@ export interface StoryProjectBatchDeleteResult {
   }>;
 }
 
+export interface StoryProjectRetainRecentRequest {
+  keep_recent: number;
+}
+
+export interface StoryProjectRetainRecentResult extends StoryProjectBatchDeleteResult {
+  keep_recent: number;
+  kept: StoryProjectListItem[];
+}
+
 export type StorySceneRegenerateIntent =
   | 'tighten_conflict'
   | 'rewrite_narration'
@@ -770,6 +785,15 @@ export interface GearsCharacterAsset {
   background_oneliner?: string;
 }
 
+export interface GearsCharacterGenderSummary {
+  total: number;
+  male: number;
+  female: number;
+  other: number;
+  unspecified: number;
+  not_applicable: number;
+}
+
 export interface GearsSceneAsset {
   name: string;
   scene_type: GearsSceneType;
@@ -795,6 +819,7 @@ export interface GearsDeliveryPackage {
   storyId: string;
   title: string;
   character_assets: GearsCharacterAsset[];
+  character_gender_summary: GearsCharacterGenderSummary;
   scene_assets: GearsSceneAsset[];
   units: GearsDeliveryUnit[];
   markdown: string;
@@ -1038,6 +1063,30 @@ export interface AiComicContinuityLedger {
   episode_records: AiComicContinuityLedgerEpisode[];
 }
 
+export interface AiComicEpisodeQualityReport {
+  schema_version: 'ai-comic-episode-quality/v1';
+  episode_no: number;
+  score: number;
+  passed: boolean;
+  issues: string[];
+  checks: {
+    responds_to_previous: boolean;
+    advances_phase_goal: boolean;
+    updates_character_state: boolean;
+    handles_threads: boolean;
+    leaves_next_hook: boolean;
+  };
+}
+
+export interface AiComicSeriesContinuityAudit {
+  schema_version: 'ai-comic-continuity-audit/v1';
+  checked_episode_no: number;
+  passed: boolean;
+  issues: string[];
+  open_threads_after: string[];
+  character_state_after: string[];
+}
+
 export interface AiComicSeriesProjectDetail {
   project: AiComicSeriesProjectMeta;
   plan: AiComicSeriesPlan;
@@ -1059,6 +1108,8 @@ export interface AiComicEpisodeGenerateRequest {
   model_profile_id?: string;
   output_gears_segments?: boolean;
   knowledge_pack?: KnowledgePack;
+  auto_audit_continuity?: boolean;
+  auto_repair_episode?: boolean;
 }
 
 export interface StoryQualityReport {
@@ -1071,6 +1122,81 @@ export interface StoryQualityReport {
   isNotBiographySummary: boolean;
   passed: boolean;
   issues: string[];
+  video_type?: VideoType;
+  story_structure?: StoryStructureType;
+  genre_score?: number;
+  missing_required_elements?: string[];
+  weak_beats?: string[];
+  forbidden_patterns_found?: string[];
+  repair_actions?: string[];
+}
+
+export type EvidenceBoundaryType = 'verified' | 'uncertain' | 'creative_treatment';
+
+export interface EvidenceBoundary {
+  boundary_id: string;
+  label: string;
+  type: EvidenceBoundaryType;
+  source: string;
+  note: string;
+}
+
+export interface StoryGenreBeat {
+  beat_id: string;
+  order: number;
+  function_label: string;
+  function_description: string;
+  scene_id?: number;
+  content_requirement: string;
+  emotional_turn?: string;
+  evidence_boundary_ids: string[];
+}
+
+export interface StoryCharacterArcPlan {
+  character_name: string;
+  starting_state: string;
+  pressure: string;
+  turning_point: string;
+  ending_state: string;
+}
+
+export interface StoryBlueprint {
+  schema_version: 'story-blueprint/v1';
+  storyId?: string;
+  entry_name: string;
+  source_entry: string;
+  video_type: VideoType;
+  presentation_style: PresentationStyle;
+  story_structure: StoryStructureType;
+  target_duration: SupportedDuration;
+  central_event?: string;
+  central_question: string;
+  protagonist?: string;
+  genre_beats: StoryGenreBeat[];
+  character_arcs: StoryCharacterArcPlan[];
+  evidence_boundaries: EvidenceBoundary[];
+  type_specific_requirements: string[];
+}
+
+export interface GenreQualityReport extends StoryQualityReport {
+  video_type: VideoType;
+  story_structure?: StoryStructureType;
+  genre_score: number;
+  missing_required_elements: string[];
+  weak_beats: string[];
+  forbidden_patterns_found: string[];
+  repair_actions: string[];
+}
+
+export interface StoryRepairTrace {
+  trace_id: string;
+  attempted: boolean;
+  applied: boolean;
+  reason: string;
+  model_profile_id?: string;
+  before_genre_score?: number;
+  after_genre_score?: number;
+  actions: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1113,12 +1239,16 @@ export interface StoryGenerateResult {
   // New fields for multi-knowledge matching
   knowledge_pack?: KnowledgePack;
   supplement_tasks?: KnowledgeSupplementTask[];
-  quality_report?: StoryQualityReport;
+  quality_report?: StoryQualityReport | GenreQualityReport;
   gears_webhook?: GearsWebhookStatus;
   gears_video?: GearsVideoResult;
+  ai_comic_episode_quality?: AiComicEpisodeQualityReport;
+  continuity_audit?: AiComicSeriesContinuityAudit;
   // New fields for story structure and creative reference (Phase 5)
   story_structure?: StoryStructureType;
+  story_blueprint?: StoryBlueprint;
   reference_trace?: ReferenceTrace[];
+  repair_trace?: StoryRepairTrace[];
   memory_mosaic_seed?: MemoryMosaicStorySeed;
   // Type-specific optional fields — character_story / historical_drama / legend_story
   characters?: StoryCharacter[];

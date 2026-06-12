@@ -68,6 +68,7 @@ export const StoryStructureTypeSchema = z.enum([
 ]);
 
 export const ReferenceStrengthSchema = z.enum(['light', 'medium', 'strong']);
+export const GenreStrictnessSchema = z.enum(['loose', 'balanced', 'strict']);
 
 export const KnowledgeDomainSchema = z.enum([
   'core_china_culture',
@@ -200,6 +201,8 @@ export const StoryGenerateRequestSchema = z.object({
   creative_reference_ids: z.array(z.string()).optional(),
   style_pack_ids: z.array(z.string()).optional(),
   reference_strength: ReferenceStrengthSchema.optional(),
+  genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
+  auto_repair: z.boolean().optional().default(false),
 }).refine(
   (data) => data.entry_name || data.knowledge_pack || data.outline,
   { message: 'At least one of entry_name, knowledge_pack, or outline must be provided', path: ['entry_name'] },
@@ -287,6 +290,10 @@ export const AiComicSeriesProjectIdParamSchema = z.object({
 
 export const ProjectBatchDeleteRequestSchema = z.object({
   project_ids: z.array(ProjectIdValueSchema).min(1, 'project_ids cannot be empty').max(200, 'cannot delete more than 200 projects at once'),
+});
+
+export const ProjectRetainRecentRequestSchema = z.object({
+  keep_recent: z.number().int().min(0).max(1000),
 });
 
 export const StorySceneRegenerateRequestSchema = z.object({
@@ -577,6 +584,8 @@ export const AiComicEpisodeGenerateRequestSchema = z.object({
   model_profile_id: z.string().optional(),
   output_gears_segments: z.boolean().optional().default(true),
   knowledge_pack: AiComicKnowledgePackSchema.optional(),
+  auto_audit_continuity: z.boolean().optional().default(true),
+  auto_repair_episode: z.boolean().optional().default(false),
 }).refine(
   data => data.episode_no <= data.series_plan.episode_count,
   { message: 'episode_no cannot exceed series_plan.episode_count', path: ['episode_no'] },

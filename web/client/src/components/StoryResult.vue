@@ -93,13 +93,60 @@
       </div>
     </section>
 
+    <section v-if="result.story_blueprint" class="story-result__section">
+      <h3 class="story-result__section-title">类型故事蓝图</h3>
+      <div class="story-result__blueprint">
+        <p><strong>中心问题:</strong> {{ result.story_blueprint.central_question }}</p>
+        <p v-if="result.story_blueprint.protagonist"><strong>主角:</strong> {{ result.story_blueprint.protagonist }}</p>
+        <div v-if="result.story_blueprint.genre_beats.length > 0" class="story-result__field-list">
+          <strong>类型节拍</strong>
+          <ol>
+            <li v-for="beat in result.story_blueprint.genre_beats" :key="beat.beat_id">
+              {{ beat.scene_id ? `场景 ${beat.scene_id} · ` : '' }}{{ beat.function_label }}：{{ beat.content_requirement }}
+            </li>
+          </ol>
+        </div>
+        <div v-if="result.story_blueprint.evidence_boundaries.length > 0" class="story-result__field-list">
+          <strong>可信度边界</strong>
+          <ul>
+            <li v-for="boundary in result.story_blueprint.evidence_boundaries" :key="boundary.boundary_id">
+              {{ boundary.label }}：{{ boundary.note }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
     <!-- Quality report (new) -->
     <section v-if="result.quality_report" class="story-result__section">
       <h3 class="story-result__section-title">故事质量校验</h3>
       <div :class="['story-result__quality', result.quality_report.passed ? 'story-result__quality--pass' : 'story-result__quality--fail']">
         <p>{{ result.quality_report.passed ? '✅ 全部校验通过' : '⚠️ 存在质量问题' }}</p>
+        <p v-if="typeof result.quality_report.genre_score === 'number'" class="story-result__quality-score">
+          类型匹配度：{{ result.quality_report.genre_score }}/100
+        </p>
         <ul v-if="result.quality_report.issues.length > 0" class="story-result__quality-issues">
           <li v-for="issue in result.quality_report.issues" :key="issue">{{ issue }}</li>
+        </ul>
+        <div v-if="result.quality_report.repair_actions && result.quality_report.repair_actions.length > 0" class="story-result__quality-actions">
+          <strong>建议修复</strong>
+          <ul>
+            <li v-for="action in result.quality_report.repair_actions" :key="action">{{ action }}</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="result.repair_trace && result.repair_trace.length > 0" class="story-result__section">
+      <h3 class="story-result__section-title">修复记录</h3>
+      <div class="story-result__field-list">
+        <ul>
+          <li v-for="trace in result.repair_trace" :key="trace.trace_id">
+            {{ trace.applied ? '已应用' : '未应用' }}：{{ trace.reason }}
+            <span v-if="typeof trace.before_genre_score === 'number' || typeof trace.after_genre_score === 'number'">
+              （{{ trace.before_genre_score ?? '-' }} → {{ trace.after_genre_score ?? '-' }}）
+            </span>
+          </li>
         </ul>
       </div>
     </section>
@@ -107,8 +154,11 @@
     <!-- Scene breakdown — detailed -->
     <section class="story-result__section">
       <h3 class="story-result__section-title">场景分解</h3>
-      <div v-if="result.scene_breakdown.length > 0" class="story-result__scenes">
-        <div v-for="scene in result.scene_breakdown" :key="scene.scene_id" class="story-result__scene-card">
+      <p v-if="sceneFilterIds && sceneFilterIds.length > 0" class="story-result__filter-note">
+        当前仅显示质量报告关联场景。
+      </p>
+      <div v-if="displayedScenes.length > 0" class="story-result__scenes">
+        <div v-for="scene in displayedScenes" :key="scene.scene_id" class="story-result__scene-card">
           <h4 class="story-result__scene-title">
             场景 {{ scene.scene_id }} — {{ scene.title || scene.location }}
           </h4>
@@ -163,7 +213,7 @@
         </div>
       </div>
       <div v-else class="story-result__empty-warning">
-        <p>⚠️ 该故事缺少场景分解数据，请重新生成</p>
+        <p>{{ sceneFilterIds && sceneFilterIds.length > 0 ? '没有匹配到质量报告关联场景。' : '⚠️ 该故事缺少场景分解数据，请重新生成' }}</p>
       </div>
     </section>
 
@@ -222,20 +272,52 @@
     <section v-if="result.visual_symbols && result.visual_symbols.length > 0" class="story-result__section">
       <h3 class="story-result__section-title">视觉符号</h3>
       <p>{{ result.visual_symbols.join('、') }}</p>
+      <p v-if="result.craft_or_ritual_process"><strong>工艺/仪式流程:</strong> {{ result.craft_or_ritual_process }}</p>
+      <p v-if="result.modern_connection"><strong>当代连接:</strong> {{ result.modern_connection }}</p>
       <p v-if="result.core_message"><strong>核心信息:</strong> {{ result.core_message }}</p>
       <p v-if="result.slogan_or_key_sentence"><strong>标语:</strong> {{ result.slogan_or_key_sentence }}</p>
     </section>
 
+    <!-- Scene/landscape fields -->
+    <section v-if="hasSpatialFields" class="story-result__section">
+      <h3 class="story-result__section-title">空间与视觉路线</h3>
+      <p v-if="result.spatial_identity"><strong>空间身份:</strong> {{ result.spatial_identity }}</p>
+      <p v-if="result.time_layer"><strong>时间层:</strong> {{ result.time_layer }}</p>
+      <p v-if="result.atmosphere"><strong>氛围:</strong> {{ result.atmosphere }}</p>
+      <div v-if="result.visual_route && result.visual_route.length > 0" class="story-result__field-list">
+        <strong>视觉路线</strong>
+        <ol>
+          <li v-for="route in result.visual_route" :key="route">{{ route }}</li>
+        </ol>
+      </div>
+    </section>
+
     <!-- Lecture/explainer fields -->
-    <section v-if="result.argument_points && result.argument_points.length > 0" class="story-result__section">
+    <section v-if="hasKnowledgeFields" class="story-result__section">
       <h3 class="story-result__section-title">论点标注</h3>
-      <ul><li v-for="pt in result.argument_points" :key="pt">{{ pt }}</li></ul>
+      <ul v-if="result.argument_points && result.argument_points.length > 0">
+        <li v-for="pt in result.argument_points" :key="pt">{{ pt }}</li>
+      </ul>
+      <div v-if="result.knowledge_outline && result.knowledge_outline.length > 0" class="story-result__field-list">
+        <strong>知识大纲</strong>
+        <ol>
+          <li v-for="item in result.knowledge_outline" :key="item">{{ item }}</li>
+        </ol>
+      </div>
     </section>
 
     <!-- Documentary fields -->
-    <section v-if="result.source_quotes && result.source_quotes.length > 0" class="story-result__section">
+    <section v-if="hasDocumentaryFields" class="story-result__section">
       <h3 class="story-result__section-title">史料引用</h3>
-      <ul><li v-for="sq in result.source_quotes" :key="sq">{{ sq }}</li></ul>
+      <ul v-if="result.source_quotes && result.source_quotes.length > 0">
+        <li v-for="sq in result.source_quotes" :key="sq">{{ sq }}</li>
+      </ul>
+      <div v-if="result.field_notes && result.field_notes.length > 0" class="story-result__field-list">
+        <strong>现场素材</strong>
+        <ul>
+          <li v-for="note in result.field_notes" :key="note">{{ note }}</li>
+        </ul>
+      </div>
     </section>
 
     <!-- Cultural constraints -->
@@ -281,12 +363,14 @@ const props = withDefaults(defineProps<{
   updatingSupplementTaskId?: string
   showGearsWebhookStatus?: boolean
   showGearsVideoStatus?: boolean
+  sceneFilterIds?: number[]
 }>(), {
   editableProject: false,
   regeneratingSceneId: null,
   updatingSupplementTaskId: '',
   showGearsWebhookStatus: true,
   showGearsVideoStatus: true,
+  sceneFilterIds: undefined,
 })
 const emit = defineEmits<{
   (e: 'rewrite-scene', sceneId: number): void
@@ -354,6 +438,39 @@ const fullTextParagraphs = computed(() => {
     .split(/\n\n+/)
     .filter(p => p.trim())
     .map(p => renderSimpleMarkdown(p.trim()))
+})
+
+const hasSpatialFields = computed(() => {
+  const result = props.result
+  return Boolean(
+    result?.spatial_identity
+      || result?.time_layer
+      || result?.atmosphere
+      || (result?.visual_route && result.visual_route.length > 0),
+  )
+})
+
+const hasKnowledgeFields = computed(() => {
+  const result = props.result
+  return Boolean(
+    (result?.argument_points && result.argument_points.length > 0)
+      || (result?.knowledge_outline && result.knowledge_outline.length > 0),
+  )
+})
+
+const hasDocumentaryFields = computed(() => {
+  const result = props.result
+  return Boolean(
+    (result?.source_quotes && result.source_quotes.length > 0)
+      || (result?.field_notes && result.field_notes.length > 0),
+  )
+})
+
+const displayedScenes = computed(() => {
+  const scenes = props.result?.scene_breakdown ?? []
+  if (!props.sceneFilterIds || props.sceneFilterIds.length === 0) return scenes
+  const ids = new Set(props.sceneFilterIds)
+  return scenes.filter(scene => ids.has(scene.scene_id))
 })
 
 function renderSimpleMarkdown(text: string): string {
@@ -425,6 +542,11 @@ function showCopyMessage(msg: string) {
 /* Full text */
 .story-result__full-text p { margin: 0 0 12px 0; font-size: 15px; line-height: 1.7; color: #34495e; }
 .story-result__empty-warning { padding: 12px 16px; background: #fef9e7; border: 1px solid #f39c12; border-radius: 6px; color: #e67e22; font-size: 14px; }
+.story-result__filter-note {
+  margin: 0 0 8px;
+  color: #6b7884;
+  font-size: 13px;
+}
 
 /* Scene cards */
 .story-result__scenes { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
@@ -467,6 +589,30 @@ function showCopyMessage(msg: string) {
 /* Dialogue */
 .story-result__dialogue-scene { margin-bottom: 8px; }
 .story-result__dialogue-line { margin: 0 0 4px 0; font-size: 14px; color: #34495e; }
+.story-result__field-list {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #f8fafb;
+}
+.story-result__field-list strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #2c3e50;
+  font-size: 14px;
+}
+.story-result__field-list ol,
+.story-result__field-list ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.story-result__field-list li {
+  margin-bottom: 4px;
+  color: #34495e;
+  font-size: 14px;
+  line-height: 1.5;
+}
 
 /* Constraints */
 .story-result__constraints { padding-left: 20px; margin: 0; }
@@ -594,6 +740,12 @@ function showCopyMessage(msg: string) {
 }
 
 /* Quality report */
+.story-result__blueprint p {
+  margin: 0 0 8px;
+  color: #34495e;
+  font-size: 14px;
+  line-height: 1.5;
+}
 .story-result__quality {
   padding: 10px 14px;
   border-radius: 6px;
@@ -602,10 +754,26 @@ function showCopyMessage(msg: string) {
 .story-result__quality--pass { background: #d5f5e3; border: 1px solid #27ae60; }
 .story-result__quality--fail { background: #fef9e7; border: 1px solid #f39c12; }
 .story-result__quality p { margin: 0; font-size: 14px; }
+.story-result__quality-score {
+  margin-top: 6px !important;
+  color: #2c3e50;
+  font-weight: 600;
+}
 .story-result__quality-issues {
   padding-left: 18px;
   margin: 6px 0 0;
   font-size: 13px;
   color: #c0392b;
+}
+.story-result__quality-actions {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  color: #6f4b00;
+  font-size: 13px;
+}
+.story-result__quality-actions ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
 }
 </style>

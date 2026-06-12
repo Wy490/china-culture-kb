@@ -141,6 +141,12 @@ describe('parseFullEntry', () => {
 - 汨罗江：屈原投江之处，岳阳汨罗市
 - 屈子祠：汨罗江畔玉笥山上，始建于汉代
 
+### 地方化创作关系
+
+- 直接事件｜汨罗江：屈原投江殉国的核心地点，适合作为端午故事的史事入口。
+- 当代转化｜汨罗：可用于端午研学、龙舟竞渡和城市文化讲述。
+- 不可写成｜长沙：不得把屈原投江写成发生在长沙。
+
 ### 人物
 
 - 屈原：楚国诗人，故事核心人物
@@ -212,6 +218,14 @@ describe('parseFullEntry', () => {
     expect(detail!.relatedLocations.length).toBe(2);
     expect(detail!.relatedLocations[0].name).toBe('汨罗江');
     expect(detail!.relatedLocations[0].description).toContain('屈原投江之处');
+    expect(detail!.localCreativeRelations).toHaveLength(3);
+    expect(detail!.localCreativeRelations[0]).toEqual({
+      relation_type: 'direct_region',
+      target: '汨罗江',
+      description: '屈原投江殉国的核心地点，适合作为端午故事的史事入口。',
+    });
+    expect(detail!.localCreativeRelations[1].relation_type).toBe('contemporary_adaptation');
+    expect(detail!.localCreativeRelations[2].relation_type).toBe('do_not_write_as');
     expect(detail!.keywords).toContain('屈原');
     expect(detail!.keywords).toContain('端午节');
     expect(detail!.credibility).toBe('基本可靠');

@@ -54,6 +54,16 @@
       <GearsWebhookStatus :status="detail.current_story.gears_webhook" />
       <GearsVideoStatus :video="detail.current_story.gears_video" />
 
+      <section v-if="qualitySceneIds.length > 0" class="project-detail-page__quality-tools">
+        <div>
+          <h2 class="project-detail-page__section-title">质量问题场景</h2>
+          <p>类型质量报告关联到场景 {{ qualitySceneIds.join('、') }}。</p>
+        </div>
+        <button class="project-detail-page__action-btn" @click="showQualityScenesOnly = !showQualityScenesOnly">
+          {{ showQualityScenesOnly ? '显示全部场景' : '仅看质量问题场景' }}
+        </button>
+      </section>
+
       <section class="project-detail-page__editor">
         <div class="project-detail-page__editor-header">
           <div>
@@ -124,6 +134,7 @@
         :show-gears-video-status="false"
         :regenerating-scene-id="submitting ? selectedSceneId : null"
         :updating-supplement-task-id="updatingSupplementTaskId"
+        :scene-filter-ids="showQualityScenesOnly ? qualitySceneIds : undefined"
         @rewrite-scene="openSceneEditor"
         @update-supplement-task="handleSupplementTaskUpdate"
       />
@@ -163,9 +174,23 @@ const submitting = ref(false)
 const deleting = ref(false)
 const updatingSupplementTaskId = ref('')
 const successMessage = ref('')
+const showQualityScenesOnly = ref(false)
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
+})
+
+const qualitySceneIds = computed(() => {
+  const story = detail.value?.current_story
+  if (!story?.quality_report?.weak_beats?.length || !story.story_blueprint?.genre_beats.length) return []
+  const ids = new Set<number>()
+  for (const weakBeat of story.quality_report.weak_beats) {
+    const order = Number(weakBeat.match(/^(\d+)\./)?.[1])
+    if (!Number.isFinite(order)) continue
+    const beat = story.story_blueprint.genre_beats.find(item => item.order === order)
+    if (beat?.scene_id) ids.add(beat.scene_id)
+  }
+  return [...ids].sort((a, b) => a - b)
 })
 
 function statusLabel(status: StoryProjectStatus): string {
@@ -216,6 +241,7 @@ async function loadProject(projectId: string) {
   const res = await getProject(projectId)
   if (res.ok && res.data) {
     detail.value = res.data
+    showQualityScenesOnly.value = false
     if (!selectedModelProfileId.value && res.data.current_story.model_profile_id) {
       selectedModelProfileId.value = res.data.current_story.model_profile_id
     }
@@ -277,7 +303,28 @@ async function handleSupplementTaskUpdate(taskId: string, status: KnowledgeSuppl
 function exportCurrentStory() {
   if (!detail.value) return
   const fileName = `${detail.value.project.project_id}-${detail.value.project.current_version_id}.json`
-  const blob = new Blob([JSON.stringify(detail.value.current_story, null, 2)], { type: 'application/json;charset=utf-8' })
+  const story = detail.value.current_story
+  const exportPackage = {
+    schema_version: 'story-export/v1',
+    exported_at: new Date().toISOString(),
+    project: detail.value.project,
+    summary: {
+      title: story.title,
+      source_entry: story.source_entry,
+      video_type: story.video_type,
+      presentation_style: story.presentation_style,
+      story_structure: story.story_structure,
+      logline: story.logline,
+      quality_passed: story.quality_report?.passed,
+      genre_score: story.quality_report?.genre_score,
+      quality_issues: story.quality_report?.issues ?? [],
+      credibility_note: story.credibility_note,
+      evidence_boundaries: story.story_blueprint?.evidence_boundaries ?? [],
+      gears_segment_count: story.gears_segments.length,
+    },
+    story,
+  }
+  const blob = new Blob([JSON.stringify(exportPackage, null, 2)], { type: 'application/json;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -445,6 +492,24 @@ watch(selectedModelProfileId, (value) => {
 
 .project-detail-page__summary-card {
   padding: 14px 16px;
+}
+
+.project-detail-page__quality-tools {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.project-detail-page__quality-tools p {
+  margin: 4px 0 0;
+  color: #5c6a76;
+  font-size: 14px;
 }
 
 .project-detail-page__summary-label {

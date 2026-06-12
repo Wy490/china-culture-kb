@@ -10,10 +10,29 @@
       <span class="gears-actions__label">供稿包:</span>
       <code class="gears-actions__code">
         {{ deliveryPackage.character_assets.length }} 个人物资产 ·
+        性别 {{ genderSummaryText }} ·
         {{ deliveryPackage.scene_assets.length }} 个场景资产 ·
         {{ deliveryPackage.units.length }} 个剧本单元
       </code>
     </div>
+    <section v-if="characterGenderRows.length > 0" class="gears-actions__asset-genders">
+      <div class="gears-actions__asset-genders-head">
+        <strong>人物资产性别</strong>
+        <span>{{ genderSummaryText }}</span>
+      </div>
+      <div class="gears-actions__asset-gender-grid">
+        <div
+          v-for="character in characterGenderRows"
+          :key="character.name"
+          class="gears-actions__asset-gender-row"
+        >
+          <span class="gears-actions__asset-name">{{ character.name }}</span>
+          <span class="gears-actions__gender-pill" :class="genderPillClass(character.gender)">
+            {{ character.gender }}
+          </span>
+        </div>
+      </div>
+    </section>
     <div v-if="validationNotes.length > 0" class="gears-actions__notice">
       <div class="gears-actions__notice-head">
         <strong>资料待补:</strong>
@@ -163,6 +182,31 @@ const isDeliveryDirty = computed(() => {
 const validationNotes = computed(() => props.deliveryPackage?.validation_notes ?? [])
 const visibleValidationNotes = computed(() => validationNotes.value.slice(0, 3))
 const hiddenValidationCount = computed(() => Math.max(0, validationNotes.value.length - visibleValidationNotes.value.length))
+const genderSummaryText = computed(() => {
+  const summary = props.deliveryPackage?.character_gender_summary
+  if (!summary) return '未统计'
+  return [
+    summary.male > 0 ? `男${summary.male}` : '',
+    summary.female > 0 ? `女${summary.female}` : '',
+    summary.other > 0 ? `其他${summary.other}` : '',
+    summary.unspecified > 0 ? `未指定${summary.unspecified}` : '',
+    summary.not_applicable > 0 ? `不适用${summary.not_applicable}` : '',
+  ].filter(Boolean).join(' / ') || '无人物'
+})
+const characterGenderRows = computed(() => props.deliveryPackage?.character_assets.map(character => ({
+  name: character.name,
+  gender: character.gender,
+})) ?? [])
+
+function genderPillClass(gender: string) {
+  return {
+    'gears-actions__gender-pill--male': gender === '男',
+    'gears-actions__gender-pill--female': gender === '女',
+    'gears-actions__gender-pill--other': gender === '其他',
+    'gears-actions__gender-pill--unspecified': gender === '未指定',
+    'gears-actions__gender-pill--na': gender === '不适用',
+  }
+}
 
 watch(
   () => props.deliveryPackage?.markdown,
@@ -398,6 +442,92 @@ function downloadText(filename: string, text: string, type: string) {
   font-size: 13px;
   word-break: break-all;
   white-space: pre-wrap;
+}
+
+.gears-actions__asset-genders {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #9fbad0;
+  border-radius: 6px;
+  background: #f8fbfd;
+}
+
+.gears-actions__asset-genders-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-size: 13px;
+}
+
+.gears-actions__asset-genders-head span {
+  color: #566573;
+  text-align: right;
+}
+
+.gears-actions__asset-gender-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+}
+
+.gears-actions__asset-gender-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #d6e4ee;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.gears-actions__asset-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #2c3e50;
+  font-size: 13px;
+}
+
+.gears-actions__gender-pill {
+  flex: 0 0 auto;
+  min-width: 44px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #edf1f5;
+  color: #34495e;
+  font-size: 12px;
+  text-align: center;
+}
+
+.gears-actions__gender-pill--male {
+  background: #e8f3ff;
+  color: #1b5f9e;
+}
+
+.gears-actions__gender-pill--female {
+  background: #fff0f5;
+  color: #a23b66;
+}
+
+.gears-actions__gender-pill--other {
+  background: #f3efff;
+  color: #6c4bb2;
+}
+
+.gears-actions__gender-pill--unspecified {
+  background: #f4f6f7;
+  color: #6f7f8d;
+}
+
+.gears-actions__gender-pill--na {
+  background: #eef8ef;
+  color: #287a3e;
 }
 
 .gears-actions__buttons {

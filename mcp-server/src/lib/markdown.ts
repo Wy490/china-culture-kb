@@ -7,6 +7,8 @@ import {
   KnowledgeAssetUsage,
   KnowledgeDomain,
   KnowledgeEntryRole,
+  LocalCreativeRelation,
+  LocalRelationType,
 } from '../types.js';
 import { resolveProvinceFile, PROVINCES } from './provinces.js';
 import { formatEntry } from './templates.js';
@@ -302,6 +304,8 @@ export function parseFullEntry(content: string, entryName: string): FullEntryDet
     }
   }
 
+  const localCreativeRelations = parseLocalCreativeRelations(entryContent);
+
   // Parse unverified points (list items)
   const unverifiedRaw = extractSection(entryContent, '待核实点');
   const unverifiedPoints = unverifiedRaw
@@ -322,11 +326,44 @@ export function parseFullEntry(content: string, entryName: string): FullEntryDet
     culturalSignificance,
     sources,
     relatedLocations,
+    localCreativeRelations,
     unverifiedPoints,
     verificationMethod,
     ...metadata,
     ...(hasAssetSplit(assetSplit) ? { asset_split: assetSplit } : {}),
   };
+}
+
+function parseLocalCreativeRelations(entryContent: string): LocalCreativeRelation[] {
+  const raw = extractSection(entryContent, '地方化创作关系');
+  if (!raw) return [];
+  return raw
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.startsWith('- '))
+    .map(line => parseLocalCreativeRelationLine(line.replace(/^- /, '').trim()))
+    .filter((relation): relation is LocalCreativeRelation => relation !== null);
+}
+
+function parseLocalCreativeRelationLine(line: string): LocalCreativeRelation | null {
+  const match = line.match(/^(.+?)[｜|](.+?)：(.+)$/);
+  if (!match) return null;
+  const relationType = mapLocalRelationLabel(match[1].trim());
+  if (!relationType) return null;
+  return {
+    relation_type: relationType,
+    target: match[2].trim(),
+    description: match[3].trim(),
+  };
+}
+
+function mapLocalRelationLabel(label: string): LocalRelationType | null {
+  if (/直接事件/.test(label)) return 'direct_region';
+  if (/相关地点/.test(label)) return 'related_location';
+  if (/思想文化影响/.test(label)) return 'cultural_influence';
+  if (/当代转化/.test(label)) return 'contemporary_adaptation';
+  if (/不可写成/.test(label)) return 'do_not_write_as';
+  return null;
 }
 
 function findEntryEnd(content: string, fromIndex: number): number {

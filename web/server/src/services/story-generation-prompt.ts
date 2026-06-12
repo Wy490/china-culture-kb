@@ -16,6 +16,7 @@ import type {
   KnowledgeEntryRole,
   MemoryMosaicStorySeed,
   StoryDetectedCharacter,
+  StoryBlueprint,
   WitnessMemory,
 } from '@shared/types.js';
 import {
@@ -23,6 +24,10 @@ import {
   PRESENTATION_STYLE_CONFIG,
   STORY_STRUCTURE_CONFIG,
 } from '@shared/types.js';
+import {
+  getGenreReturnJsonFields,
+  getGenreStoryProfile,
+} from './genre-story-profiles.js';
 
 // ---------------------------------------------------------------------------
 // Prompt package type — what gets sent to the external model via stdin
@@ -61,6 +66,7 @@ export interface StoryGenerationPromptPackage {
     final_reveal: string;
     ending_image: string;
   };
+  story_blueprint?: StoryBlueprint;
   output_contract: {
     must_provide: string[];
     should_respect: string[];
@@ -113,10 +119,19 @@ export interface StoryGenerationModelOutput {
   visual_symbols?: string[];
   core_message?: string;
   slogan_or_key_sentence?: string;
+  craft_or_ritual_process?: string;
+  modern_connection?: string;
   // Scene-specific
+  spatial_identity?: string;
+  visual_route?: string[];
+  time_layer?: string;
   atmosphere?: string;
   // Lecture/explainer-specific
   argument_points?: string[];
+  knowledge_outline?: string[];
+  // Documentary-specific
+  source_quotes?: string[];
+  field_notes?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -132,11 +147,16 @@ function buildSystemPrompt(
   const vtMeta = VIDEO_TYPE_CONFIG[videoType];
   const psMeta = PRESENTATION_STYLE_CONFIG[presentationStyle];
   const ssMeta = STORY_STRUCTURE_CONFIG[storyStructure];
+  const profile = getGenreStoryProfile(videoType);
 
   const lines: string[] = [
     '你是一个擅长中文故事创作的编剧。',
     `你要创作一个${vtMeta.label}（${psMeta.label}风格）的完整故事方案。`,
     `叙事结构：${ssMeta.label}——${ssMeta.description}`,
+    `类型创作目标：${profile.narrative_promise}`,
+    `类型叙事框架：${profile.framework.join(' → ')}`,
+    `必须包含：${profile.must_include.join('；')}`,
+    `避免：${profile.avoid.join('；')}`,
   ];
 
   if (isMemoryMosaic) {
@@ -144,23 +164,6 @@ function buildSystemPrompt(
       '这是回忆拼图式人物故事。现实线围绕追寻者与触发物件推进，回忆线必须像见证人口述。',
       '现实线的场次要写追寻者如何逐步接近真相，回忆线的场次要写见证人如何记住主角的选择。',
     );
-  }
-
-  // Type-specific guidance
-  if (['culture_promo', 'heritage_promo', 'city_brand_promo', 'social_short'].includes(videoType)) {
-    lines.push('这是宣传推广类成片。必须有核心视觉符号、核心信息和一句有力的口号/关键句。');
-  }
-  if (['scene_short', 'landscape_mood'].includes(videoType)) {
-    lines.push('这是场景空间类成片。必须有明确的视觉路线和氛围描述。');
-  }
-  if (videoType === 'ai_comic_drama') {
-    lines.push('这是AI漫剧。每个场次必须有对白和情绪标注。');
-  }
-  if (['explainer_video', 'lecture_video', 'education_training'].includes(videoType)) {
-    lines.push('这是讲解教育类成片。必须有论证要点和知识大纲。');
-  }
-  if (videoType === 'documentary_short') {
-    lines.push('这是微纪录片。必须有史料引用和实地素材标注。');
   }
 
   lines.push(
@@ -240,10 +243,25 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
     lines.push(`结尾画面：${pkg.memory_mosaic_context.ending_image}`);
   }
 
+  if (pkg.story_blueprint) {
+    lines.push('', '=== 类型故事蓝图 ===');
+    lines.push(`中心问题：${pkg.story_blueprint.central_question}`);
+    lines.push(`主角：${pkg.story_blueprint.protagonist ?? '未指定'}`);
+    lines.push('类型节拍：');
+    for (const beat of pkg.story_blueprint.genre_beats) {
+      lines.push(`- ${beat.order}. ${beat.function_label}：${beat.content_requirement}`);
+    }
+    lines.push('可信度边界：');
+    for (const boundary of pkg.story_blueprint.evidence_boundaries) {
+      lines.push(`- ${boundary.label}：${boundary.note}`);
+    }
+    lines.push('生成规则：full_text、scene_breakdown 和 GEARS 分段必须服从上述类型节拍。');
+  }
+
   lines.push(
     '',
     '请创作完整故事方案，返回 JSON 对象，包含以下字段：',
-    'title, logline, theme, full_text, scene_breakdown, cultural_constraints, credibility_note',
+    getGenreReturnJsonFields(pkg.context.video_type).join(', '),
     '',
     'scene_breakdown 中每场必须包含：scene_id, title, plot, key_action',
     '可选字段：conflict, dialogue_or_narration, visual_prompt, camera_suggestion, characters, cultural_note',
@@ -254,17 +272,12 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
 
   // Type-specific output reminders
   const vt = pkg.context.video_type;
-  if (['culture_promo', 'heritage_promo', 'city_brand_promo', 'social_short'].includes(vt)) {
-    lines.push('宣传推广类必须额外返回：visual_symbols, core_message, slogan_or_key_sentence');
-  }
-  if (['scene_short', 'landscape_mood'].includes(vt)) {
-    lines.push('场景空间类必须额外返回：atmosphere（在 scene_breakdown 的 cultural_note 或单独字段中体现视觉路线）');
+  const requiredFields = getGenreStoryProfile(vt).required_fields;
+  if (requiredFields.length > 0) {
+    lines.push(`该类型必须额外返回：${requiredFields.join(', ')}`);
   }
   if (vt === 'ai_comic_drama') {
     lines.push('AI漫剧的 scene_breakdown 每场必须有 dialogue_or_narration（对白/旁白）');
-  }
-  if (['explainer_video', 'lecture_video', 'education_training'].includes(vt)) {
-    lines.push('讲解教育类必须额外返回：argument_points');
   }
 
   return lines.join('\n');
@@ -307,6 +320,7 @@ export function buildStoryGenerationPromptPackage(input: {
   selectedEvent?: string;
   knowledgePack?: KnowledgePack;
   memoryMosaicSeed?: MemoryMosaicStorySeed;
+  storyBlueprint?: StoryBlueprint;
 }): StoryGenerationPromptPackage {
   const isMemoryMosaic = input.storyStructure === 'memory_mosaic_biography';
 
@@ -365,6 +379,7 @@ export function buildStoryGenerationPromptPackage(input: {
           ending_image: input.memoryMosaicSeed.ending_image,
         }
       : undefined,
+    story_blueprint: input.storyBlueprint,
     output_contract: {
       must_provide: ['title', 'logline', 'theme', 'full_text', 'scene_breakdown'],
       should_respect: [
@@ -372,11 +387,10 @@ export function buildStoryGenerationPromptPackage(input: {
         '保持当前成片类型的叙事质感',
         '场次数量和时长匹配',
         '故事有冲突、选择和情绪变化',
+        ...getGenreStoryProfile(input.videoType).must_include,
+        ...(input.storyBlueprint?.type_specific_requirements ?? []),
       ],
-      return_json_fields: [
-        'title', 'logline', 'theme', 'full_text', 'scene_breakdown',
-        'cultural_constraints', 'credibility_note',
-      ],
+      return_json_fields: getGenreReturnJsonFields(input.videoType),
     },
   };
 

@@ -108,6 +108,56 @@ function makeDramaticStory(): StoryGenerateResult {
     cultural_constraints: ['基于知识库条目'],
     credibility_note: '基本可靠',
     story_structure: 'single_event_drama',
+    story_blueprint: {
+      schema_version: 'story-blueprint/v1',
+      entry_name: '周敦颐——理学开山鼻祖',
+      source_entry: '周敦颐——理学开山鼻祖',
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      story_structure: 'single_event_drama',
+      target_duration: '1分钟',
+      central_event: '拒签冤案',
+      central_question: '周敦颐如何在拒签冤案中完成良知选择？',
+      protagonist: '周敦颐',
+      genre_beats: [
+        {
+          beat_id: 'beat-1',
+          order: 1,
+          function_label: '钩子开场',
+          function_description: '直接进入危机或关键场面',
+          scene_id: 1,
+          content_requirement: '直接进入危机场面。',
+          evidence_boundary_ids: ['source-entry'],
+        },
+        {
+          beat_id: 'beat-2',
+          order: 2,
+          function_label: '冲突升级',
+          function_description: '对立面强化、两难加深',
+          scene_id: 2,
+          content_requirement: '强化拒签带来的代价。',
+          evidence_boundary_ids: ['source-entry'],
+        },
+        {
+          beat_id: 'beat-3',
+          order: 3,
+          function_label: '高潮',
+          function_description: '核心行动爆发',
+          scene_id: 3,
+          content_requirement: '用行动完成选择。',
+          evidence_boundary_ids: ['source-entry'],
+        },
+      ],
+      character_arcs: [],
+      evidence_boundaries: [{
+        boundary_id: 'source-entry',
+        label: '主条目事实边界',
+        type: 'verified',
+        source: '周敦颐——理学开山鼻祖',
+        note: '基于知识库条目。',
+      }],
+      type_specific_requirements: ['主角目标', '价值选择'],
+    },
   };
 }
 
@@ -232,6 +282,8 @@ describe('story-regenerate-service', () => {
     expect(updated.reference_trace?.at(-1)?.applied_rules[0]).toBe('scene_regeneration:tighten_conflict');
     expect(updated.reference_trace?.at(-1)?.applied_rules).toContain('provider:local_fallback');
     expect(updated.quality_report).toBeTruthy();
+    expect(typeof updated.quality_report?.genre_score).toBe('number');
+    expect(updated.story_blueprint?.genre_beats.find(beat => beat.scene_id === 2)?.function_label).toBe('冲突升级');
   });
 
   it('uses resolved supplement notes in local scene regeneration', async () => {

@@ -336,6 +336,19 @@
         />
       </div>
 
+      <section class="story-studio__field story-studio__advanced">
+        <label class="story-studio__label" for="genre-strictness">类型结构强度</label>
+        <select id="genre-strictness" v-model="genreStrictness" class="story-studio__select">
+          <option value="balanced">均衡</option>
+          <option value="strict">严格</option>
+          <option value="loose">宽松</option>
+        </select>
+        <label class="story-studio__checkbox-row">
+          <input v-model="autoRepair" type="checkbox" />
+          <span>生成后自动修复类型质量问题</span>
+        </label>
+      </section>
+
       <!-- Generate button -->
       <button
         class="btn btn--primary btn--generate"
@@ -408,6 +421,7 @@ import type {
   KnowledgeDomain,
   KnowledgeAssetUsage,
   StoryDetectedCharacterKind,
+  GenreStrictness,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
 import StoryPlan from '@/components/StoryPlan.vue'
@@ -507,6 +521,8 @@ const selectedModelProfileId = ref('')
 const selectedEvent = ref<string | null>(null)
 const targetDuration = ref<SupportedDuration>('3分钟')
 const tone = ref('')
+const genreStrictness = ref<GenreStrictness>('balanced')
+const autoRepair = ref(false)
 const planning = ref(false)
 const generating = ref(false)
 const planResult = ref<StoryPlanResult | null>(null)
@@ -777,8 +793,8 @@ async function handleGenerate() {
 
   const videoTypeToSend = selectedVideoType.value ?? selectedType.value ?? 'character_story'
   const generationTypeToSend = selectedType.value ?? (
-    videoTypeToSend === 'character_story' ? 'character_story'
-    : videoTypeToSend === 'culture_promo' || videoTypeToSend === 'heritage_promo' || videoTypeToSend === 'city_brand_promo' ? 'culture_promo'
+    ['character_story', 'historical_drama', 'legend_story', 'ai_comic_drama', 'children_story'].includes(videoTypeToSend) ? 'character_story'
+    : ['culture_promo', 'heritage_promo', 'city_brand_promo', 'social_short', 'documentary_short', 'explainer_video', 'lecture_video', 'education_training'].includes(videoTypeToSend) ? 'culture_promo'
     : 'scene_short'
   )
   const presentationStyleToSend = selectedPresentationStyle.value ?? VIDEO_TYPE_CONFIG[videoTypeToSend as VideoType]?.default_presentation_style ?? 'cinematic'
@@ -796,6 +812,8 @@ async function handleGenerate() {
       tone: tone.value || undefined,
       presentation_style: presentationStyleToSend as PresentationStyle,
       output_gears_segments: true,
+      genre_strictness: genreStrictness.value,
+      auto_repair: autoRepair.value,
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
@@ -831,6 +849,8 @@ async function handleGenerate() {
       outline: outlineText.value,
       knowledge_pack: filteredPack,
       character_hints: outlineAnalysis.value?.detected_characters ?? undefined,
+      genre_strictness: genreStrictness.value,
+      auto_repair: autoRepair.value,
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
@@ -1081,6 +1101,24 @@ async function handleGenerate() {
   font-size: 13px;
   color: #6b7884;
   line-height: 1.5;
+}
+.story-studio__advanced {
+  padding: 10px 12px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #f8fafb;
+}
+.story-studio__checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: #34495e;
+  font-size: 14px;
+}
+.story-studio__checkbox-row input {
+  width: 16px;
+  height: 16px;
 }
 .story-studio__input {
   width: 100%;

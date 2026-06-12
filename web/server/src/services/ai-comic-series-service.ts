@@ -6,9 +6,11 @@ import { ErrorCodes, success, fail } from '@shared/types.js';
 import type {
   AiComicContinuityLedger,
   AiComicContinuityLedgerEpisode,
+  AiComicEpisodeQualityReport,
   AiComicEpisodePlan,
   AiComicEpisodeGenerateRequest,
   AiComicPacingProfile,
+  AiComicSeriesContinuityAudit,
   AiComicSeriesProjectDetail,
   AiComicSeriesProjectMeta,
   AiComicSeriesProjectSaveRequest,
@@ -168,16 +170,138 @@ export async function generateAiComicEpisodeFromPlan(
     knowledge_pack: knowledgePack,
     character_hints: buildEpisodeCharacterHints(plan, episode),
   }).then(async result => {
-    if (result.ok && result.data && request.series_project_id) {
+    if (!result.ok || !result.data) return result;
+
+    const enrichedStory = request.auto_audit_continuity === false
+      ? result.data
+      : attachAiComicEpisodeReports({
+          story: result.data,
+          plan,
+          episode,
+          ledger: continuityLedger,
+        });
+
+    if (request.series_project_id) {
       await recordGeneratedEpisodeStory({
         seriesProjectId: request.series_project_id,
         plan,
         episode,
-        story: result.data,
+        story: enrichedStory,
       });
     }
-    return result;
+
+    return success(enrichedStory);
   });
+}
+
+function attachAiComicEpisodeReports(params: {
+  story: StoryGenerateResult;
+  plan: AiComicSeriesPlan;
+  episode: AiComicEpisodePlan;
+  ledger?: AiComicContinuityLedger;
+}): StoryGenerateResult {
+  const quality = buildAiComicEpisodeQualityReport(params);
+  const continuityAudit = buildAiComicContinuityAudit({
+    ...params,
+    episodeQuality: quality,
+  });
+  return {
+    ...params.story,
+    ai_comic_episode_quality: quality,
+    continuity_audit: continuityAudit,
+  };
+}
+
+function buildAiComicEpisodeQualityReport(params: {
+  story: StoryGenerateResult;
+  plan: AiComicSeriesPlan;
+  episode: AiComicEpisodePlan;
+  ledger?: AiComicContinuityLedger;
+}): AiComicEpisodeQualityReport {
+  const text = episodeQualityText(params.story);
+  const checks = {
+    responds_to_previous: params.episode.episode_no === 1
+      || matchesAny(text, params.episode.continuity_from_previous)
+      || Boolean(params.ledger?.episode_records.some(record => text.includes(record.ending_hook.slice(0, 8)))),
+    advances_phase_goal: matchesAny(text, [params.episode.story_phase, params.episode.main_conflict]),
+    updates_character_state: params.episode.continuity_state_after.length > 0
+      && matchesAny(text, params.episode.continuity_state_after),
+    handles_threads: (
+      params.episode.foreshadowing.length === 0
+      && params.episode.payoff.length === 0
+    ) || matchesAny(text, [...params.episode.foreshadowing, ...params.episode.payoff]),
+    leaves_next_hook: text.includes(params.episode.ending_hook.slice(0, 10))
+      || params.story.scene_breakdown.some(scene => (scene.dialogue_or_narration ?? scene.key_action).includes('钩子')),
+  };
+  const issues: string[] = [];
+  if (!checks.responds_to_previous) issues.push('本集没有清楚承接上一集记忆或计划承接点');
+  if (!checks.advances_phase_goal) issues.push('本集对阶段目标或主冲突推进不足');
+  if (!checks.updates_character_state) issues.push('本集缺少角色状态变化');
+  if (!checks.handles_threads) issues.push('本集线索开合不清');
+  if (!checks.leaves_next_hook) issues.push('本集结尾缺少下一集承接钩子');
+
+  const passedCount = Object.values(checks).filter(Boolean).length;
+  const score = Math.round((passedCount / Object.keys(checks).length) * 100);
+  return {
+    schema_version: 'ai-comic-episode-quality/v1',
+    episode_no: params.episode.episode_no,
+    score,
+    passed: score >= 80,
+    issues,
+    checks,
+  };
+}
+
+function buildAiComicContinuityAudit(params: {
+  story: StoryGenerateResult;
+  plan: AiComicSeriesPlan;
+  episode: AiComicEpisodePlan;
+  ledger?: AiComicContinuityLedger;
+  episodeQuality: AiComicEpisodeQualityReport;
+}): AiComicSeriesContinuityAudit {
+  const projectedLedger = updateContinuityLedger({
+    ledger: params.ledger ?? buildInitialContinuityLedger(params.plan),
+    plan: params.plan,
+    episode: params.episode,
+    story: params.story,
+  });
+  const issues = params.episodeQuality.issues.filter(issue =>
+    issue.includes('承接') || issue.includes('角色状态') || issue.includes('线索'),
+  );
+  return {
+    schema_version: 'ai-comic-continuity-audit/v1',
+    checked_episode_no: params.episode.episode_no,
+    passed: issues.length === 0,
+    issues,
+    open_threads_after: projectedLedger.open_threads,
+    character_state_after: projectedLedger.character_state_current,
+  };
+}
+
+function episodeQualityText(story: StoryGenerateResult): string {
+  return [
+    story.title,
+    story.logline,
+    story.theme,
+    story.original_user_query ?? '',
+    story.full_text,
+    ...story.scene_breakdown.flatMap(scene => [
+      scene.title,
+      scene.dramatic_function,
+      scene.plot,
+      scene.key_action,
+      scene.dialogue_or_narration ?? '',
+    ]),
+  ].join('\n');
+}
+
+function matchesAny(text: string, needles: string[]): boolean {
+  return needles
+    .filter(needle => needle.trim().length > 0)
+    .some(needle => {
+      const normalized = needle.trim();
+      return text.includes(normalized) || text.includes(normalized.slice(0, Math.min(10, normalized.length)));
+    });
 }
 
 export async function saveAiComicSeriesProject(

@@ -1,7 +1,9 @@
 import type {
   GearsAgeRange,
   GearsCharacterAsset,
+  GearsCharacterGenderSummary,
   GearsCharacterRolePosition,
+  GearsGender,
   GearsDeliveryPackage,
   GearsDeliveryUnit,
   GearsSceneAsset,
@@ -19,6 +21,7 @@ const VALID_PANEL_COUNTS: PanelCount[] = [4, 6, 8, 9, 10, 12];
 
 export function buildGearsDeliveryPackage(story: StoryGenerateResult): GearsDeliveryPackage {
   const characterAssets = buildCharacterAssets(story);
+  const characterGenderSummary = summarizeCharacterGenders(characterAssets);
   const sceneAssets = buildSceneAssets(story);
   const units = buildDeliveryUnits(story.scene_breakdown, characterAssets);
   const validationNotes = validateDeliveryPackage(characterAssets, sceneAssets, units);
@@ -27,6 +30,7 @@ export function buildGearsDeliveryPackage(story: StoryGenerateResult): GearsDeli
     storyId: story.storyId,
     title: story.title,
     character_assets: characterAssets,
+    character_gender_summary: characterGenderSummary,
     scene_assets: sceneAssets,
     units,
     validation_notes: validationNotes,
@@ -36,6 +40,78 @@ export function buildGearsDeliveryPackage(story: StoryGenerateResult): GearsDeli
     ...pkgWithoutMarkdown,
     markdown: renderDeliveryMarkdown(pkgWithoutMarkdown),
   };
+}
+
+export function ensureGearsDeliveryPackage(story: StoryGenerateResult): GearsDeliveryPackage {
+  const current = story.gears_delivery as Partial<GearsDeliveryPackage> | undefined;
+  if (!current) return buildGearsDeliveryPackage(story);
+
+  const fresh = buildGearsDeliveryPackage(story);
+  const characterAssets = mergeCharacterAssets(current.character_assets, fresh.character_assets);
+  const pkgWithoutMarkdown: Omit<GearsDeliveryPackage, 'markdown'> = {
+    schema_version: current.schema_version ?? fresh.schema_version,
+    storyId: current.storyId ?? fresh.storyId,
+    title: current.title ?? fresh.title,
+    character_assets: characterAssets,
+    character_gender_summary: summarizeCharacterGenders(characterAssets),
+    scene_assets: current.scene_assets?.length ? current.scene_assets : fresh.scene_assets,
+    units: current.units?.length ? current.units : fresh.units,
+    validation_notes: current.validation_notes ?? fresh.validation_notes,
+  };
+  const shouldKeepMarkdown = Boolean(current.markdown?.includes('# 人物性别统计'))
+    && areGenderSummariesEqual(current.character_gender_summary, pkgWithoutMarkdown.character_gender_summary);
+  const markdown = shouldKeepMarkdown && current.markdown
+    ? current.markdown
+    : renderDeliveryMarkdown(pkgWithoutMarkdown);
+
+  return {
+    ...pkgWithoutMarkdown,
+    markdown,
+  };
+}
+
+function mergeCharacterAssets(
+  currentAssets: GearsCharacterAsset[] | undefined,
+  freshAssets: GearsCharacterAsset[],
+): GearsCharacterAsset[] {
+  if (!currentAssets?.length) return freshAssets;
+
+  const freshByName = new Map(freshAssets.map(asset => [asset.name, asset]));
+  const merged = currentAssets.map(asset => {
+    const fresh = freshByName.get(asset.name);
+    return {
+      ...(fresh ?? asset),
+      ...asset,
+      gender: normalizeGender(asset.gender, fresh?.gender),
+    };
+  });
+  const currentNames = new Set(merged.map(asset => asset.name));
+  for (const fresh of freshAssets) {
+    if (!currentNames.has(fresh.name)) merged.push(fresh);
+  }
+  return merged;
+}
+
+function normalizeGender(value: unknown, fallback: GearsGender | undefined): GearsGender {
+  if (isGearsGender(value) && value !== '未指定') return value;
+  return fallback ?? (isGearsGender(value) ? value : '未指定');
+}
+
+function isGearsGender(value: unknown): value is GearsGender {
+  return ['男', '女', '其他', '未指定', '不适用'].includes(String(value));
+}
+
+function areGenderSummariesEqual(
+  current: GearsCharacterGenderSummary | undefined,
+  next: GearsCharacterGenderSummary,
+): boolean {
+  if (!current) return false;
+  return current.total === next.total
+    && current.male === next.male
+    && current.female === next.female
+    && current.other === next.other
+    && current.unspecified === next.unspecified
+    && current.not_applicable === next.not_applicable;
 }
 
 function buildCharacterAssets(story: StoryGenerateResult): GearsCharacterAsset[] {
@@ -90,7 +166,7 @@ function buildCharacterAsset(
     role_position: mapRolePosition(character?.role, index),
     species_type: '人类',
     ethnicity: ['东亚'],
-    gender: '未指定',
+    gender: inferGender(name, `${characterContext} ${storyContext}`),
     age_range: inferAgeRange(`${name} ${characterContext} ${storyContext}`),
     appearance_features: appearanceFeatures,
     clothing: inferClothing(`${characterContext} ${storyContext}`),
@@ -101,6 +177,47 @@ function buildCharacterAsset(
         ? { background_oneliner: detailSentence(name, characterContext, 1) }
         : {}),
   };
+}
+
+function inferGender(name: string, text: string): GearsGender {
+  const nameGender = inferGenderFromText(name, true);
+  if (nameGender !== '未指定') return nameGender;
+  return inferGenderFromText(text, false);
+}
+
+function inferGenderFromText(text: string, allowGroupTerms: boolean): GearsGender {
+  if (allowGroupTerms && ['群体', '百姓', '众人', '村民', '乡民', '学生们', '孩子们', '人群'].some(word => text.includes(word))) {
+    return '不适用';
+  }
+  if (['老奶奶', '老婆婆', '老妇人', '阿婆', '少女', '姑娘', '女子', '女儿', '母亲', '郑氏', '狐女', '龙女', '女鬼'].some(word => text.includes(word))) {
+    return '女';
+  }
+  if (['老人', '老者', '老先生', '少年', '书童', '船夫', '艄公', '渔父', '渔夫', '县令', '知县', '道士', '道人', '僧人', '和尚', '父亲', '上官', '王逵', '周敦颐', '毛泽东'].some(word => text.includes(word))) {
+    return '男';
+  }
+  if (['性别：女', '性别: 女', '女性', '女，', '女；', '女)'].some(word => text.includes(word))) return '女';
+  if (['性别：男', '性别: 男', '男性', '男，', '男；', '男)'].some(word => text.includes(word))) return '男';
+  if (['其他性别', '非二元', '性别：其他', '性别: 其他'].some(word => text.includes(word))) return '其他';
+  return '未指定';
+}
+
+function summarizeCharacterGenders(characters: GearsCharacterAsset[]): GearsCharacterGenderSummary {
+  const summary: GearsCharacterGenderSummary = {
+    total: characters.length,
+    male: 0,
+    female: 0,
+    other: 0,
+    unspecified: 0,
+    not_applicable: 0,
+  };
+  for (const character of characters) {
+    if (character.gender === '男') summary.male += 1;
+    else if (character.gender === '女') summary.female += 1;
+    else if (character.gender === '其他') summary.other += 1;
+    else if (character.gender === '不适用') summary.not_applicable += 1;
+    else summary.unspecified += 1;
+  }
+  return summary;
 }
 
 function mapRolePosition(role: string | undefined, index: number): GearsCharacterRolePosition {
@@ -600,6 +717,15 @@ function renderDeliveryMarkdown(pkg: Omit<GearsDeliveryPackage, 'markdown'>): st
     '',
     `> schema: ${pkg.schema_version}`,
     `> storyId: ${pkg.storyId}`,
+    '',
+    '# 人物性别统计',
+    '',
+    `- 总人物资产: ${pkg.character_gender_summary.total}`,
+    `- 男: ${pkg.character_gender_summary.male}`,
+    `- 女: ${pkg.character_gender_summary.female}`,
+    `- 其他: ${pkg.character_gender_summary.other}`,
+    `- 未指定: ${pkg.character_gender_summary.unspecified}`,
+    `- 不适用: ${pkg.character_gender_summary.not_applicable}`,
     '',
     '# 资产清单',
     '',

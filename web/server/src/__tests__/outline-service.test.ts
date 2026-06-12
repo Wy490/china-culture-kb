@@ -198,6 +198,8 @@ describe('outline-service', () => {
     expect(res.data?.original_user_query).toContain('只生成第2集完整分镜');
     expect(res.data?.scene_breakdown.length).toBeGreaterThan(0);
     expect(res.data?.dialogue?.length).toBeGreaterThan(0);
+    expect(res.data?.ai_comic_episode_quality?.schema_version).toBe('ai-comic-episode-quality/v1');
+    expect(res.data?.continuity_audit?.schema_version).toBe('ai-comic-continuity-audit/v1');
   });
 
   it('saves and loads an AI comic series project', async () => {

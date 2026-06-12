@@ -113,8 +113,40 @@ export interface SearchResult {
   asset_split?: KnowledgeAssetSplit;
 }
 
+export type LocalRelationType =
+  | 'direct_region'
+  | 'related_location'
+  | 'cultural_influence'
+  | 'contemporary_adaptation'
+  | 'do_not_write_as'
+  | 'same_province'
+  | 'keyword_context';
+
+export interface LocalCreativeRelation {
+  relation_type: LocalRelationType;
+  target: string;
+  description: string;
+}
+
+export interface LocalizedSupplementItem {
+  entry: SearchResult;
+  relation_type: LocalRelationType;
+  score: number;
+  match_reason: string;
+  evidence: string[];
+}
+
+export interface MatchedEntry extends SearchResult {
+  score: number;
+  match_reason: string;
+  evidence: string[];
+  relation_type?: LocalRelationType;
+  usable_for_story: boolean;
+}
+
 export interface MatchResult {
   entries: SearchResult[];
+  matchedEntries: MatchedEntry[];
   provinceHints: string[];
   totalEntriesRead: number;
 }
@@ -123,6 +155,8 @@ export interface SupplementResult {
   versionDifferences: SearchResult[];
   sameRegionType: SearchResult[];
   relatedNetwork: SearchResult[];
+  localizedFocus: LocalizedSupplementItem[];
+  supplementStrategy: string[];
 }
 
 export interface VerifyResult {
@@ -140,6 +174,7 @@ export interface FullEntryDetail extends SearchResult {
   culturalSignificance: string;
   sources: string[];
   relatedLocations: Array<{ name: string; description: string }>;
+  localCreativeRelations: LocalCreativeRelation[];
   unverifiedPoints: string[];
   verificationMethod?: string;
 }

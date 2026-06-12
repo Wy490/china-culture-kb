@@ -49,8 +49,16 @@ const StoryGenerationOutputSchema = z.object({
   visual_symbols: z.array(z.string()).optional(),
   core_message: z.string().optional(),
   slogan_or_key_sentence: z.string().optional(),
+  craft_or_ritual_process: z.string().optional(),
+  modern_connection: z.string().optional(),
+  spatial_identity: z.string().optional(),
+  visual_route: z.array(z.string()).optional(),
+  time_layer: z.string().optional(),
   atmosphere: z.string().optional(),
   argument_points: z.array(z.string()).optional(),
+  knowledge_outline: z.array(z.string()).optional(),
+  source_quotes: z.array(z.string()).optional(),
+  field_notes: z.array(z.string()).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -93,8 +101,16 @@ function sanitizeOutput(raw: StoryGenerationModelOutput): StoryGenerationModelOu
     visual_symbols: raw.visual_symbols,
     core_message: raw.core_message,
     slogan_or_key_sentence: raw.slogan_or_key_sentence,
+    craft_or_ritual_process: raw.craft_or_ritual_process?.trim() || undefined,
+    modern_connection: raw.modern_connection?.trim() || undefined,
+    spatial_identity: raw.spatial_identity?.trim() || undefined,
+    visual_route: raw.visual_route,
+    time_layer: raw.time_layer?.trim() || undefined,
     atmosphere: raw.atmosphere,
     argument_points: raw.argument_points,
+    knowledge_outline: raw.knowledge_outline,
+    source_quotes: raw.source_quotes,
+    field_notes: raw.field_notes,
   };
 }
 

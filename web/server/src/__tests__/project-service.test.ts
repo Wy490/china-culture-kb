@@ -11,6 +11,7 @@ import {
   getProject,
   listProjectSupplementTasks,
   regenerateProjectScene,
+  retainRecentProjects,
   updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
@@ -105,6 +106,24 @@ function makeStory(): StoryGenerateResult {
     credibility_note: '基本可靠',
     story_structure: 'single_event_drama',
     model_profile_id: 'claude_sonnet',
+    quality_report: {
+      hasCentralEvent: true,
+      hasConflict: true,
+      hasProtagonistChoice: true,
+      hasSceneAction: true,
+      hasClimax: true,
+      hasEndingTheme: true,
+      isNotBiographySummary: true,
+      passed: true,
+      issues: [],
+      video_type: 'character_story',
+      story_structure: 'single_event_drama',
+      genre_score: 92,
+      missing_required_elements: [],
+      weak_beats: [],
+      forbidden_patterns_found: [],
+      repair_actions: [],
+    },
   };
 }
 
@@ -135,6 +154,9 @@ describe('project-service', () => {
     expect(detail.ok).toBe(true);
     expect(detail.data?.project.version_count).toBe(1);
     expect(detail.data?.project.open_supplement_task_count).toBe(0);
+    expect(detail.data?.project.quality_passed).toBe(true);
+    expect(detail.data?.project.genre_score).toBe(92);
+    expect(detail.data?.project.quality_issue_count).toBe(0);
     expect(detail.data?.current_story.title).toBe(story.title);
     expect(detail.data?.project.model_profile_id).toBe('claude_sonnet');
     expect(detail.data?.current_story.model_profile_id).toBe('claude_sonnet');
@@ -382,6 +404,67 @@ describe('project-service', () => {
     expect(await exists(resolve(root, 'web', 'generated', 'projects', second.project_id!))).toBe(false);
     expect(await exists(resolve(root, 'web', 'generated', 'stories', first.video_type, `${first.storyId}.json`))).toBe(false);
     expect(await exists(resolve(root, 'web', 'generated', 'stories', second.video_type, `${second.storyId}.json`))).toBe(false);
+  });
+
+  it('retains the newest projects and deletes older stories', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const stories: StoryGenerateResult[] = [
+      { ...makeStory(), storyId: '20260609-story-old1', title: '最早故事', gears_segments_url: '/api/stories/20260609-story-old1/gears-segments' },
+      { ...makeStory(), storyId: '20260609-story-mid2', title: '中间故事', gears_segments_url: '/api/stories/20260609-story-mid2/gears-segments' },
+      { ...makeStory(), storyId: '20260609-story-new3', title: '最新故事', gears_segments_url: '/api/stories/20260609-story-new3/gears-segments' },
+    ];
+    const createdStories: StoryGenerateResult[] = [];
+    for (const [index, story] of stories.entries()) {
+      const createdAt = `2026-06-09T10:0${index}:00.000Z`;
+      const created = await createProjectFromGeneratedStory(story, createdAt);
+      createdStories.push(created);
+      const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+      await mkdir(storyDir, { recursive: true });
+      await writeFile(resolve(storyDir, `${story.storyId}.json`), JSON.stringify({
+        ...created,
+        _request_meta: { created_at: createdAt },
+      }, null, 2), 'utf-8');
+    }
+    const orphanProjectId = '20260609-story-orphan--character_story';
+    await mkdir(resolve(root, 'web', 'generated', 'projects', orphanProjectId), { recursive: true });
+    await writeFile(resolve(root, 'web', 'generated', 'projects', orphanProjectId, 'project.json'), JSON.stringify({
+      project_id: orphanProjectId,
+      current_story_id: '20260609-story-orphan',
+      title: '孤立项目',
+      source_domain: 'china_culture',
+      source_entry: '缺失故事文件',
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      status: 'draft',
+      created_at: '2026-06-09T10:09:00.000Z',
+      updated_at: '2026-06-09T10:09:00.000Z',
+      current_version_id: `${orphanProjectId}-v1`,
+      version_count: 1,
+      scene_count: 0,
+      has_gears_segments: false,
+      credibility_note: '测试',
+      logline: '测试',
+    }, null, 2), 'utf-8');
+
+    const result = await retainRecentProjects(2);
+
+    expect(result.ok).toBe(true);
+    expect(result.data?.kept.map(project => project.project_id)).toEqual([
+      createdStories[2].project_id,
+      createdStories[1].project_id,
+    ]);
+    expect(result.data?.deleted.map(item => item.project_id).sort()).toEqual([
+      createdStories[0].project_id,
+      orphanProjectId,
+    ].sort());
+    expect(await exists(resolve(root, 'web', 'generated', 'projects', createdStories[0].project_id!))).toBe(false);
+    expect(await exists(resolve(root, 'web', 'generated', 'projects', orphanProjectId))).toBe(false);
+    expect(await exists(resolve(root, 'web', 'generated', 'stories', createdStories[0].video_type, `${createdStories[0].storyId}.json`))).toBe(false);
+    expect(await exists(resolve(root, 'web', 'generated', 'projects', createdStories[1].project_id!))).toBe(true);
+    expect(await exists(resolve(root, 'web', 'generated', 'projects', createdStories[2].project_id!))).toBe(true);
   });
 
   it('regenerates a single scene into a new version', async () => {

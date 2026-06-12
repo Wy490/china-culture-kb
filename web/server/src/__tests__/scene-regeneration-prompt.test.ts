@@ -53,6 +53,32 @@ function makeStory(): StoryGenerateResult {
     gears_segments_url: '/api/stories/20260609-story-rg1/gears-segments',
     cultural_constraints: ['基于知识库条目'],
     credibility_note: '基本可靠',
+    story_structure: 'single_event_drama',
+    story_blueprint: {
+      schema_version: 'story-blueprint/v1',
+      entry_name: '周敦颐——理学开山鼻祖',
+      source_entry: '周敦颐——理学开山鼻祖',
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      story_structure: 'single_event_drama',
+      target_duration: '1分钟',
+      central_event: '拒签冤案',
+      central_question: '周敦颐如何在拒签冤案中完成良知选择？',
+      protagonist: '周敦颐',
+      genre_beats: [{
+        beat_id: 'beat-2',
+        order: 2,
+        function_label: '冲突升级',
+        function_description: '对立面强化、两难加深',
+        scene_id: 2,
+        content_requirement: '强化拒签带来的代价。',
+        emotional_turn: '把选择压力推高',
+        evidence_boundary_ids: ['source-entry'],
+      }],
+      character_arcs: [],
+      evidence_boundaries: [],
+      type_specific_requirements: ['价值选择'],
+    },
     supplement_tasks: [
       {
         task_id: '20260609-story-rg1--supplement--supporting_characters',
@@ -102,5 +128,8 @@ describe('buildSceneRegenerationPromptPackage', () => {
     expect(pkg.user_prompt).toContain('已完成资料补录');
     expect(pkg.user_prompt).toContain('南安军衙主管');
     expect(pkg.user_prompt).not.toContain('这条待补说明不应进入重写提示');
+    expect(pkg.story_blueprint_context?.target_beat?.function_label).toBe('冲突升级');
+    expect(pkg.user_prompt).toContain('类型故事蓝图');
+    expect(pkg.user_prompt).toContain('强化拒签带来的代价');
   });
 });

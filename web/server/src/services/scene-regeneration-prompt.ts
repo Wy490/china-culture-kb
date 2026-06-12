@@ -36,6 +36,14 @@ export interface SceneRegenerationPromptPackage {
     category?: string;
     supplement_note: string;
   }>;
+  story_blueprint_context?: {
+    central_question: string;
+    target_beat?: {
+      function_label: string;
+      content_requirement: string;
+      emotional_turn?: string;
+    };
+  };
   memory_mosaic_context?: {
     present_day_seeker: string;
     trigger_object: string;
@@ -114,6 +122,11 @@ function buildUserPrompt(pkg: Omit<SceneRegenerationPromptPackage, 'system_promp
     lines.push('', '已完成资料补录：', JSON.stringify(pkg.supplement_context, null, 2));
   }
 
+  if (pkg.story_blueprint_context) {
+    lines.push('', '类型故事蓝图：', JSON.stringify(pkg.story_blueprint_context, null, 2));
+    lines.push('目标场景重写后仍必须承担上述类型节拍功能。');
+  }
+
   lines.push(
     '',
     '请只输出一个 JSON 对象，字段限制为：plot, key_action, dialogue_or_narration, conflict, visual_prompt, camera_suggestion。',
@@ -131,6 +144,8 @@ export function buildSceneRegenerationPromptPackage(input: {
   previous?: StoryScene;
   next?: StoryScene;
 }): SceneRegenerationPromptPackage {
+  const targetBeat = input.story.story_blueprint?.genre_beats
+    .find(beat => beat.scene_id === input.current.scene_id);
   const supplementContext = input.story.supplement_tasks
     ?.filter(task => task.status === 'resolved' && task.supplement_note?.trim())
     .map(task => ({
@@ -168,6 +183,18 @@ export function buildSceneRegenerationPromptPackage(input: {
         }
       : undefined,
     supplement_context: supplementContext && supplementContext.length > 0 ? supplementContext : undefined,
+    story_blueprint_context: input.story.story_blueprint
+      ? {
+          central_question: input.story.story_blueprint.central_question,
+          target_beat: targetBeat
+            ? {
+                function_label: targetBeat.function_label,
+                content_requirement: targetBeat.content_requirement,
+                emotional_turn: targetBeat.emotional_turn,
+              }
+            : undefined,
+        }
+      : undefined,
     memory_mosaic_context: input.story.memory_mosaic_seed
       ? {
           present_day_seeker: input.story.memory_mosaic_seed.present_day_seeker,

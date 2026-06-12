@@ -12,6 +12,7 @@ import type {
   StoryProjectVersionSummary,
   StoryProjectBatchDeleteResult,
   StoryProjectDeleteResult,
+  StoryProjectRetainRecentResult,
   ProjectSupplementTaskListItem,
   KnowledgeSupplementTaskUpdateRequest,
   KnowledgeSupplementTaskStatus,
@@ -22,7 +23,7 @@ import type {
   GearsVideoResult,
 } from '@shared/types.js';
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
-import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
+import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 
 const ALL_VIDEO_TYPES: VideoType[] = [
   'character_story', 'historical_drama', 'legend_story',
@@ -104,6 +105,19 @@ function countOpenSupplementTasks(story: StoryGenerateResult): number {
   return story.supplement_tasks?.filter(task => task.status === 'open').length ?? 0;
 }
 
+function qualitySummary(story: StoryGenerateResult): {
+  quality_passed?: boolean;
+  genre_score?: number;
+  quality_issue_count?: number;
+} {
+  if (!story.quality_report) return {};
+  return {
+    quality_passed: story.quality_report.passed,
+    genre_score: story.quality_report.genre_score,
+    quality_issue_count: story.quality_report.issues.length,
+  };
+}
+
 function storySourcePath(story: Pick<StoryGenerateResult, 'storyId' | 'video_type'>): string {
   return resolve(storiesRoot(), story.video_type, `${story.storyId}.json`);
 }
@@ -165,6 +179,7 @@ function buildProjectMeta(
     generation_source: story.generation_source,
     generation_mode: story.generation_mode ?? 'local_only',
     generation_used_fallback: story.generation_used_fallback ?? false,
+    ...qualitySummary(story),
     open_supplement_task_count: countOpenSupplementTasks(story),
     gears_video_status: story.gears_video?.status,
     gears_video_url: story.gears_video?.video_url,
@@ -334,6 +349,7 @@ async function persistProjectVersion(
     generation_source: updatedStory.generation_source,
     generation_mode: updatedStory.generation_mode ?? 'local_only',
     generation_used_fallback: updatedStory.generation_used_fallback ?? false,
+    ...qualitySummary(updatedStory),
     open_supplement_task_count: countOpenSupplementTasks(updatedStory),
     gears_video_status: updatedStory.gears_video?.status,
     gears_video_url: updatedStory.gears_video?.video_url,
@@ -477,6 +493,47 @@ export async function deleteProjects(projectIds: string[]): Promise<ApiResponse<
   return success({ deleted, failed });
 }
 
+export async function retainRecentProjects(keepRecent: number): Promise<ApiResponse<StoryProjectRetainRecentResult>> {
+  const normalizedKeepRecent = Math.max(0, Math.floor(keepRecent));
+  const stories = await readAllStoriesForMigration();
+  stories.sort((a, b) => {
+    if (!a.createdAt && !b.createdAt) return a.story.title.localeCompare(b.story.title, 'zh-CN');
+    if (!a.createdAt) return 1;
+    if (!b.createdAt) return -1;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+
+  const keptProjectIds = new Set<string>();
+  for (const item of stories.slice(0, normalizedKeepRecent)) {
+    const meta = await ensureProjectFromStory(item.story, item.createdAt);
+    keptProjectIds.add(meta.project_id);
+  }
+
+  const projectsResult = await listProjects();
+  if (!projectsResult.ok || !projectsResult.data) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      projectsResult.error?.message ?? 'Failed to list projects',
+    );
+  }
+
+  const kept = projectsResult.data.filter(project => keptProjectIds.has(project.project_id));
+  const deleteIds = projectsResult.data
+    .filter(project => !keptProjectIds.has(project.project_id))
+    .map(project => project.project_id);
+  const deletedResult = await deleteProjects(deleteIds);
+
+  return success({
+    keep_recent: normalizedKeepRecent,
+    kept,
+    deleted: deletedResult.data?.deleted ?? [],
+    failed: deletedResult.data?.failed ?? deleteIds.map(projectId => ({
+      project_id: projectId,
+      error: deletedResult.error?.message ?? '批量删除故事项目失败',
+    })),
+  });
+}
+
 /** 旧故事 JSON 缺 generation_mode/generation_used_fallback → 填充默认值 */
 function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenerateResult {
   const normalized = {
@@ -484,7 +541,7 @@ function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenera
     generation_mode: story.generation_mode ?? 'local_only',
     generation_used_fallback: story.generation_used_fallback ?? false,
   };
-  normalized.gears_delivery = normalized.gears_delivery ?? buildGearsDeliveryPackage(normalized);
+  normalized.gears_delivery = ensureGearsDeliveryPackage(normalized);
   return normalized;
 }
 

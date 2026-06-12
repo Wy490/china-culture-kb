@@ -6,6 +6,7 @@ import type {
   StoryProjectDeleteResult,
   StoryProjectDetail,
   StoryProjectListItem,
+  StoryProjectRetainRecentResult,
   StorySceneRegenerateRequest,
 } from '@shared/types'
 
@@ -31,6 +32,10 @@ export function deleteProject(projectId: string) {
 
 export function deleteProjects(projectIds: string[]) {
   return apiPost<StoryProjectBatchDeleteResult>('/projects/batch-delete', { project_ids: projectIds })
+}
+
+export function retainRecentProjects(keepRecent: number) {
+  return apiPost<StoryProjectRetainRecentResult>('/projects/retain-recent', { keep_recent: keepRecent })
 }
 
 export function updateProjectSupplementTask(projectId: string, taskId: string, body: KnowledgeSupplementTaskUpdateRequest) {

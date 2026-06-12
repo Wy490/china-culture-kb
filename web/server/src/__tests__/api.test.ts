@@ -7,8 +7,10 @@
 //  - Story plan, generate, list, detail, gears-segments endpoints
 //  - Error handling (404, validation, internal)
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { resolve } from 'path';
+import { mkdtemp, rm, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import supertest from 'supertest';
 import express from 'express';
 import cors from 'cors';
@@ -21,13 +23,23 @@ import { projectsRouter } from '../routes/projects.js';
 import { gearsCallbackRouter } from '../routes/gears-callback.js';
 import { outlineRouter } from '../routes/outline.js';
 
-// Set KB_ROOT so MCP functions can find the data directory
-// (same logic as server/src/index.ts which sets this at startup)
-beforeAll(() => {
-  if (!process.env.KB_ROOT) {
-    // From this test file: web/server/src/__tests__/ → ../../../../data
-    process.env.KB_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
+let testWorkspaceRoot = '';
+
+beforeAll(async () => {
+  testWorkspaceRoot = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-api-'));
+  const realDataRoot = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+  await symlink(realDataRoot, resolve(testWorkspaceRoot, 'data'), 'dir');
+  process.env.KB_ROOT = resolve(testWorkspaceRoot, 'data');
+});
+
+afterAll(async () => {
+  if (ORIGINAL_KB_ROOT === undefined) {
+    delete process.env.KB_ROOT;
+  } else {
+    process.env.KB_ROOT = ORIGINAL_KB_ROOT;
   }
+  await rm(testWorkspaceRoot, { recursive: true, force: true });
 });
 
 // ---------------------------------------------------------------------------
@@ -154,6 +166,14 @@ describe('Projects API', () => {
   describe('POST /api/projects/batch-delete', () => {
     it('validates project_ids', async () => {
       const res = await request.post('/api/projects/batch-delete').send({ project_ids: [] });
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+  });
+
+  describe('POST /api/projects/retain-recent', () => {
+    it('validates keep_recent', async () => {
+      const res = await request.post('/api/projects/retain-recent').send({ keep_recent: -1 });
       expect(res.status).toBe(400);
       expectFailure(res.body, 'VALIDATION_ERROR');
     });
@@ -456,11 +476,18 @@ describe('Entries API', () => {
     });
 
     it('returns all entries for 北京 without keywords', async () => {
+      const provincesRes = await request.get('/api/system/provinces');
       const res = await request.get('/api/entries/search?province=北京');
+      expect(provincesRes.status).toBe(200);
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.data.length).toBe(1);
+      const beijingProvince = provincesRes.body.data.find((p: any) => p.name === '北京');
+      expect(beijingProvince.entry_count).toBeGreaterThan(0);
+      expect(res.body.data.length).toBe(beijingProvince.entry_count);
+      for (const entry of res.body.data) {
+        expect(entry.province).toBe('北京');
+      }
     });
 
     it('province count matches /api/system/provinces count for 湖南', async () => {
@@ -891,6 +918,23 @@ describe('Stories API', () => {
           expect(story).toHaveProperty('gears_segments');
           expect(story).toHaveProperty('generation_type');
           expect(story).toHaveProperty('video_type');
+        }
+      });
+
+      it('defaults documentary historical entries to witness_testimony and documentary fields', async () => {
+        const res = await request.post('/api/stories/generate').send({
+          entry_name: '周敦颐——理学开山鼻祖',
+          video_type: 'documentary_short',
+          target_video_duration: '3分钟',
+          output_gears_segments: false,
+        });
+        if (res.status === 200) {
+          expectSuccess(res.body);
+          const story = res.body.data;
+          expect(story.video_type).toBe('documentary_short');
+          expect(story.story_structure).toBe('witness_testimony');
+          expect(Array.isArray(story.source_quotes)).toBe(true);
+          expect(Array.isArray(story.field_notes)).toBe(true);
         }
       });
 

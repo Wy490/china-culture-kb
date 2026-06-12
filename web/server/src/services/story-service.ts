@@ -37,6 +37,8 @@ import type {
   KnowledgeSupplementTask,
   KnowledgeSupplementTaskCategory,
   StoryQualityReport,
+  StoryBlueprint,
+  StoryRepairTrace,
   ReferenceTrace,
   MemoryMosaicStorySeed,
   GearsWebhookStatus,
@@ -73,7 +75,10 @@ import { resolveModelProfile } from './model-catalog.js';
 import { buildStoryGenerationPromptPackage } from './story-generation-prompt.js';
 import { generateStoryWithAdapter } from './story-generation-model.js';
 import type { StoryGenerationModelOutput } from './story-generation-prompt.js';
-import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
+import { buildStoryBlueprint, attachBlueprintScenes } from './story-blueprint-service.js';
+import { validateGenreStoryQuality } from './genre-quality-service.js';
+import { buildStoryRepairPromptPackage, shouldAttemptStoryRepair } from './story-repair-service.js';
+import { buildGearsDeliveryPackage, ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import { buildEntryKnowledgeSummary, extractKeywords } from './entry-service.js';
 import { notifyGearsStoryReady } from './gears-webhook-service.js';
 import type { GearsWebhookResult } from './gears-webhook-service.js';
@@ -839,6 +844,113 @@ function extractProcessFromStory(storyText: string): string | null {
   return null;
 }
 
+function deriveTypeSpecificStoryFields(input: {
+  videoType: VideoType;
+  storyResult: StoryAssembly;
+  modelOutput?: StoryGenerationModelOutput | null;
+  entry: EntryDetail;
+}): Partial<StoryGenerateResult> {
+  const { videoType, storyResult, modelOutput, entry } = input;
+  if (videoType === 'culture_promo' || videoType === 'heritage_promo' || videoType === 'city_brand_promo' || videoType === 'social_short') {
+    return {
+      visual_symbols: modelOutput?.visual_symbols ?? [
+        ...entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2),
+        ...entry.keywords.filter(k => !['人物', '故事', '历史'].includes(k)).slice(0, 3),
+      ],
+      craft_or_ritual_process: modelOutput?.craft_or_ritual_process
+        ?? extractProcessFromStory(entry.story)
+        ?? (videoType === 'heritage_promo' ? `核心技艺流程：${entry.keywords.slice(0, 3).join('→')}` : undefined),
+      modern_connection: modelOutput?.modern_connection
+        ?? entry.culturalSignificance?.substring(0, 80)
+        ?? `${entry.name}在现代的文化传承与创新`,
+      core_message: modelOutput?.core_message ?? storyResult.logline,
+      slogan_or_key_sentence: modelOutput?.slogan_or_key_sentence ?? (extractQuotes(entry.story).length > 0
+        ? extractQuotes(entry.story)[0]
+        : `${entry.type}之光——${entry.name.split('——')[0]}`),
+    };
+  }
+
+  if (videoType === 'scene_short' || videoType === 'landscape_mood') {
+    return {
+      spatial_identity: modelOutput?.spatial_identity
+        ?? `${entry.region}·${entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2).join('、')}`,
+      visual_route: modelOutput?.visual_route
+        ?? storyResult.scene_breakdown.map(s => `${s.title}：${s.visual_prompt}`),
+      time_layer: modelOutput?.time_layer
+        ?? entry.culturalSignificance?.substring(0, 60)
+        ?? `${entry.name}的古今变迁与时空叠加`,
+      atmosphere: modelOutput?.atmosphere ?? (videoType === 'landscape_mood'
+        ? entry.keywords.filter(k => ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬'].some(w => k.includes(w))).join('、') || `${entry.region}的自然意境`
+        : `${entry.region}的场景氛围`),
+    };
+  }
+
+  if (videoType === 'ai_comic_drama') {
+    return {
+      dialogue: storyResult.scene_breakdown.map(s => ({
+        scene_id: s.scene_id,
+        lines: s.characters.map(ch => ({
+          character: ch,
+          text: s.dialogue_or_narration ?? s.key_action,
+          emotion: s.dramatic_function === '高潮' ? '激烈' : s.dramatic_function === '钩子开场' ? '紧张' : '克制',
+        })),
+      })),
+    };
+  }
+
+  if (videoType === 'explainer_video' || videoType === 'lecture_video' || videoType === 'education_training') {
+    return {
+      argument_points: modelOutput?.argument_points ?? storyResult.scene_breakdown.slice(0, 4).map(s => s.key_action),
+      knowledge_outline: modelOutput?.knowledge_outline
+        ?? storyResult.scene_breakdown.map(s => `${s.scene_id}. ${s.title}：${s.plot.substring(0, 40)}`),
+    };
+  }
+
+  if (videoType === 'documentary_short') {
+    return {
+      source_quotes: modelOutput?.source_quotes ?? extractQuotes(entry.story).slice(0, 3),
+      field_notes: modelOutput?.field_notes ?? [
+        ...entry.relatedLocations.map(l => {
+          const name = typeof l === 'string' ? l : (l as any).name ?? '';
+          return name ? `${name}实地考察记录要点` : '';
+        }).filter(Boolean).slice(0, 2),
+        ...entry.unverifiedPoints.filter(p => p.includes('实地') || p.includes('考察') || p.includes('遗迹')).slice(0, 1),
+      ],
+    };
+  }
+
+  return {};
+}
+
+function applyStoryAssemblyToStoryData(input: {
+  storyData: StoryGenerateResult;
+  storyResult: StoryAssembly;
+  modelOutput?: StoryGenerationModelOutput | null;
+  entry: EntryDetail;
+  videoType: VideoType;
+  outputGearsSegments: boolean;
+}): void {
+  Object.assign(input.storyData, {
+    title: input.storyResult.title,
+    logline: input.storyResult.logline,
+    theme: input.storyResult.theme,
+    full_text: input.storyResult.full_text,
+    scene_breakdown: input.storyResult.scene_breakdown,
+    gears_segments: input.outputGearsSegments ? input.storyResult.gears_segments : [],
+    cultural_constraints: input.storyResult.cultural_constraints,
+    credibility_note: input.storyResult.credibility_note,
+    characters: input.storyResult.characters,
+    act_structure: input.storyResult.act_structure,
+    protagonist_arc: input.storyResult.protagonist_arc,
+    ...deriveTypeSpecificStoryFields({
+      videoType: input.videoType,
+      storyResult: input.storyResult,
+      modelOutput: input.modelOutput,
+      entry: input.entry,
+    }),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Compatibility check: model scene_breakdown must structurally match local skeleton.
 // If scene count or scene_ids don't align, the merge would produce inconsistent results
@@ -1124,9 +1236,6 @@ export async function generateAndStoreStory(
   const presentationStyle = request.presentation_style ?? VIDEO_TYPE_CONFIG[videoType].default_presentation_style;
   const targetDuration = target_video_duration ?? VIDEO_TYPE_CONFIG[videoType].default_duration;
 
-  // Resolve story_structure (Phase 5)
-  const storyStructure = resolveStoryStructure(request, videoType, undefined /* entry type resolved below */);
-
   // --- Determine the primary entry to use ---
   let primaryEntryName: string;
   let entry: EntryDetail;
@@ -1158,12 +1267,22 @@ export async function generateAndStoreStory(
       outline,
     });
   }
+  const storyStructure = resolveStoryStructure(request, videoType, entry.type);
 
   const selectedModelProfile = resolveModelProfile(request.model_profile_id);
 
   // --- Select central event ---
   const boldEvents = extractBoldEvents(entry.story);
   const centralEvent = selectCentralEvent(entry, boldEvents, videoType, selected_event);
+  const preliminaryStoryBlueprint = buildStoryBlueprint({
+    entry,
+    videoType,
+    presentationStyle,
+    storyStructure,
+    targetDuration,
+    centralEvent,
+    knowledgePack: knowledgePackToUse,
+  });
 
   // --- Generate story content ---
   // Strategy: always run local engine as fallback, then try external model adapter.
@@ -1249,6 +1368,7 @@ export async function generateAndStoreStory(
     selectedEvent: centralEvent,
     knowledgePack: knowledgePackToUse,
     memoryMosaicSeed,
+    storyBlueprint: preliminaryStoryBlueprint,
   });
 
   const adapterResult = await generateStoryWithAdapter({
@@ -1313,25 +1433,30 @@ export async function generateAndStoreStory(
     presentationStyle,
   );
 
+  // --- Build story data ---
+  const storyId = generateStoryId(primaryEntryName);
+  const finalStoryBlueprint: StoryBlueprint = attachBlueprintScenes(
+    preliminaryStoryBlueprint,
+    storyResult.scene_breakdown,
+    storyId,
+  );
+
   // --- Validate story quality (unified for both paths) ---
-  let qualityReport: StoryQualityReport;
+  let baseQualityReport: StoryQualityReport;
   if (storyStructure === 'memory_mosaic_biography' && memoryMosaicSeed) {
-    qualityReport = validateMemoryMosaicStory({
+    baseQualityReport = validateMemoryMosaicStory({
       full_text: storyResult.full_text,
       scene_breakdown: storyResult.scene_breakdown,
       memory_seed: memoryMosaicSeed,
     });
   } else {
-    qualityReport = validateDramaticStory({
+    baseQualityReport = validateDramaticStory({
       full_text: storyResult.full_text,
       scene_breakdown: storyResult.scene_breakdown,
       title: storyResult.title,
       selectedEvent: centralEvent,
     });
   }
-
-  // --- Build story data ---
-  const storyId = generateStoryId(primaryEntryName);
   const gearsSegmentsUrl = `/api/stories/${storyId}/gears-segments`;
 
   // Determine gears_segments
@@ -1368,63 +1493,26 @@ export async function generateAndStoreStory(
     credibility_note: storyResult.credibility_note,
     // Phase 5: story_structure + reference trace + memory_mosaic_seed
     story_structure: storyStructure,
+    story_blueprint: finalStoryBlueprint,
     reference_trace: referenceTrace,
     memory_mosaic_seed: memoryMosaicSeed,
     // Knowledge pack for multi-entry traceability
     knowledge_pack: knowledgePackToUse,
     supplement_tasks: supplementTasks,
     // Quality report
-    quality_report: qualityReport,
+    quality_report: baseQualityReport,
     gears_webhook: buildInitialGearsWebhookStatus(),
     // Characters, act structure, protagonist arc — from engine
     characters: storyResult.characters,
     act_structure: storyResult.act_structure,
     protagonist_arc: storyResult.protagonist_arc,
     // Type-specific fields — prefer model output if adapter succeeded, else derive from entry + result
-    ...(videoType === 'culture_promo' || videoType === 'heritage_promo' || videoType === 'city_brand_promo' ? {
-      visual_symbols: adapterResult.output?.visual_symbols ?? [
-        ...entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2),
-        ...entry.keywords.filter(k => !['人物', '故事', '历史'].includes(k)).slice(0, 3),
-      ],
-      craft_or_ritual_process: extractProcessFromStory(entry.story) || `核心技艺流程：${entry.keywords.slice(0, 3).join('→')}`,
-      modern_connection: entry.culturalSignificance?.substring(0, 80) ?? `${entry.name}在现代的文化传承与创新`,
-      core_message: adapterResult.output?.core_message ?? storyResult.logline,
-      slogan_or_key_sentence: adapterResult.output?.slogan_or_key_sentence ?? (extractQuotes(entry.story).length > 0
-        ? extractQuotes(entry.story)[0]
-        : `${entry.type}之光——${entry.name.split('——')[0]}`),
-    } : {}),
-    ...(videoType === 'scene_short' || videoType === 'landscape_mood' ? {
-      spatial_identity: `${entry.region}·${entry.relatedLocations.map(l => typeof l === 'string' ? l : (l as any).name ?? '').filter(Boolean).slice(0, 2).join('、')}`,
-      visual_route: storyResult.scene_breakdown.map(s => `${s.title}：${s.visual_prompt}`),
-      time_layer: entry.culturalSignificance?.substring(0, 60) ?? `${entry.name}的古今变迁与时空叠加`,
-      atmosphere: adapterResult.output?.atmosphere ?? (videoType === 'landscape_mood'
-        ? entry.keywords.filter(k => ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬'].some(w => k.includes(w))).join('、') || `${entry.region}的自然意境`
-        : `${entry.region}的场景氛围`),
-    } : {}),
-    ...(videoType === 'ai_comic_drama' ? {
-      dialogue: storyResult.scene_breakdown.map(s => ({
-        scene_id: s.scene_id,
-        lines: s.characters.map(ch => ({
-          character: ch,
-          text: s.dialogue_or_narration ?? s.key_action,
-          emotion: s.dramatic_function === '高潮' ? '激烈' : s.dramatic_function === '钩子开场' ? '紧张' : '克制',
-        })),
-      })),
-    } : {}),
-    ...(videoType === 'explainer_video' || videoType === 'lecture_video' ? {
-      argument_points: adapterResult.output?.argument_points ?? storyResult.scene_breakdown.slice(0, 4).map(s => s.key_action),
-      knowledge_outline: storyResult.scene_breakdown.map(s => `${s.scene_id}. ${s.title}：${s.plot.substring(0, 40)}`),
-    } : {}),
-    ...(videoType === 'documentary_short' ? {
-      source_quotes: extractQuotes(entry.story).slice(0, 3),
-      field_notes: [
-        ...entry.relatedLocations.map(l => {
-          const name = typeof l === 'string' ? l : (l as any).name ?? '';
-          return name ? `${name}实地考察记录要点` : '';
-        }).filter(Boolean).slice(0, 2),
-        ...entry.unverifiedPoints.filter(p => p.includes('实地') || p.includes('考察') || p.includes('遗迹')).slice(0, 1),
-      ],
-    } : {}),
+    ...deriveTypeSpecificStoryFields({
+      videoType,
+      storyResult,
+      modelOutput: adapterResult.output,
+      entry,
+    }),
     // Internal metadata
     _request_meta: {
       selected_event: centralEvent,
@@ -1438,8 +1526,110 @@ export async function generateAndStoreStory(
       model_provider: adapterResult.provider,
       model_used_fallback: adapterResult.used_fallback,
       model_fallback_reason: adapterResult.reason,
+      genre_strictness: request.genre_strictness ?? 'balanced',
+      auto_repair: request.auto_repair ?? false,
     },
   };
+  storyData.quality_report = validateGenreStoryQuality({
+    story: storyData,
+    baseReport: baseQualityReport,
+    blueprint: finalStoryBlueprint,
+  });
+  const repairTrace: StoryRepairTrace[] = [];
+  if (shouldAttemptStoryRepair({
+    autoRepair: request.auto_repair,
+    qualityReport: storyData.quality_report,
+    strictness: request.genre_strictness,
+  })) {
+    const beforeScore = storyData.quality_report.genre_score;
+    const repairPromptPackage = buildStoryRepairPromptPackage({
+      basePackage: promptPackage,
+      story: storyData,
+      qualityReport: storyData.quality_report,
+      blueprint: finalStoryBlueprint,
+      strictness: request.genre_strictness,
+    });
+    const repairAdapterResult = await generateStoryWithAdapter({
+      pkg: repairPromptPackage,
+      modelProfileId: selectedModelProfile.id,
+    });
+    const trace: StoryRepairTrace = {
+      trace_id: `${storyId}--repair-1`,
+      attempted: true,
+      applied: false,
+      reason: repairAdapterResult.reason ?? `provider:${repairAdapterResult.provider}`,
+      model_profile_id: selectedModelProfile.id,
+      before_genre_score: beforeScore,
+      actions: storyData.quality_report.repair_actions ?? [],
+    };
+
+    if (repairAdapterResult.output) {
+      const compatible = isModelSceneBreakdownCompatible(
+        storyResult.scene_breakdown,
+        repairAdapterResult.output.scene_breakdown,
+      );
+      if (compatible) {
+        const repairedResult = mergeModelOutputOntoLocalSkeleton(
+          storyResult,
+          repairAdapterResult.output,
+          videoType,
+          presentationStyle,
+        );
+        applyStoryAssemblyToStoryData({
+          storyData,
+          storyResult: repairedResult,
+          modelOutput: repairAdapterResult.output,
+          entry,
+          videoType,
+          outputGearsSegments: output_gears_segments !== false,
+        });
+        const repairedBaseQualityReport = storyStructure === 'memory_mosaic_biography' && memoryMosaicSeed
+          ? validateMemoryMosaicStory({
+              full_text: repairedResult.full_text,
+              scene_breakdown: repairedResult.scene_breakdown,
+              memory_seed: memoryMosaicSeed,
+            })
+          : validateDramaticStory({
+              full_text: repairedResult.full_text,
+              scene_breakdown: repairedResult.scene_breakdown,
+              title: repairedResult.title,
+              selectedEvent: centralEvent,
+            });
+        storyData.quality_report = validateGenreStoryQuality({
+          story: storyData,
+          baseReport: repairedBaseQualityReport,
+          blueprint: finalStoryBlueprint,
+        });
+        trace.after_genre_score = storyData.quality_report.genre_score;
+        if ((trace.after_genre_score ?? 0) >= (beforeScore ?? 0)) {
+          storyResult = repairedResult;
+          trace.applied = true;
+          trace.reason = 'repair_applied';
+        } else {
+          applyStoryAssemblyToStoryData({
+            storyData,
+            storyResult,
+            modelOutput: adapterResult.output,
+            entry,
+            videoType,
+            outputGearsSegments: output_gears_segments !== false,
+          });
+          storyData.quality_report = validateGenreStoryQuality({
+            story: storyData,
+            baseReport: baseQualityReport,
+            blueprint: finalStoryBlueprint,
+          });
+          trace.reason = 'repair_score_not_improved';
+        }
+      } else {
+        trace.reason = 'repair_scene_breakdown_incompatible';
+      }
+    }
+    repairTrace.push(trace);
+  }
+  if (repairTrace.length > 0) {
+    storyData.repair_trace = repairTrace;
+  }
   storyData.gears_delivery = buildGearsDeliveryPackage(storyData);
 
   const storyWithProject = await createProjectFromGeneratedStory(storyData, createdAt);
@@ -1539,7 +1729,7 @@ export async function getStory(storyId: string): Promise<ApiResponse<StoryGenera
       // 旧故事 JSON 缺 generation_mode/generation_used_fallback → 填充默认值
       cleaned.generation_mode = cleaned.generation_mode ?? 'local_only';
       cleaned.generation_used_fallback = cleaned.generation_used_fallback ?? false;
-      cleaned.gears_delivery = cleaned.gears_delivery ?? buildGearsDeliveryPackage(cleaned);
+      cleaned.gears_delivery = ensureGearsDeliveryPackage(cleaned);
       return success(cleaned);
     } catch { continue; }
   }
@@ -1582,7 +1772,7 @@ export async function getGearsDeliveryPackage(storyId: string): Promise<ApiRespo
     return fail(ErrorCodes.GEARS_SEGMENTS_NOT_FOUND, `Gears delivery package for story "${storyId}" not found`);
   }
 
-  return success(storyResult.data.gears_delivery ?? buildGearsDeliveryPackage(storyResult.data));
+  return success(ensureGearsDeliveryPackage(storyResult.data));
 }
 
 export async function updateGearsDeliveryMarkdown(
@@ -1596,7 +1786,7 @@ export async function updateGearsDeliveryMarkdown(
     try {
       const content = await readFile(filePath, 'utf-8');
       const data = JSON.parse(content) as StoryGenerateResult & { _request_meta?: unknown };
-      const baseDelivery = data.gears_delivery ?? buildGearsDeliveryPackage(data);
+      const baseDelivery = ensureGearsDeliveryPackage(data);
       const updatedDelivery: GearsDeliveryPackage = {
         ...baseDelivery,
         markdown,

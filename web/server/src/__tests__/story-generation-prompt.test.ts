@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildStoryGenerationPromptPackage } from '../services/story-generation-prompt.js';
-import type { EntryDetail, KnowledgePack, StoryGenerateRequest } from '@shared/types.js';
+import { buildStoryBlueprint } from '../services/story-blueprint-service.js';
+import type { EntryDetail, KnowledgePack, StoryGenerateRequest, VideoType } from '@shared/types.js';
 
 function makeEntry(): EntryDetail {
   return {
@@ -146,5 +147,88 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('老奶奶（配角；identity_role；single_scene；老年；女）');
     expect(pkg.user_prompt).toContain('村民（群演；group_role；single_scene；不适用）');
     expect(pkg.user_prompt).toContain('无名角色用稳定身份名');
+  });
+
+  it('adds a concrete creative protocol for each video type', () => {
+    const cases: Array<{ videoType: VideoType; expectedSystem: string; expectedFields: string[] }> = [
+      { videoType: 'character_story', expectedSystem: '主角目标', expectedFields: ['characters', 'protagonist_arc'] },
+      { videoType: 'historical_drama', expectedSystem: '史实锚点', expectedFields: ['characters', 'protagonist_arc'] },
+      { videoType: 'legend_story', expectedSystem: '传说与史实边界', expectedFields: ['characters'] },
+      { videoType: 'culture_promo', expectedSystem: '核心视觉符号', expectedFields: ['visual_symbols', 'core_message', 'slogan_or_key_sentence', 'modern_connection'] },
+      { videoType: 'heritage_promo', expectedSystem: '完整流程', expectedFields: ['craft_or_ritual_process', 'modern_connection'] },
+      { videoType: 'city_brand_promo', expectedSystem: '品牌主张', expectedFields: ['visual_symbols', 'core_message', 'slogan_or_key_sentence'] },
+      { videoType: 'scene_short', expectedSystem: '明确视觉路线', expectedFields: ['spatial_identity', 'visual_route', 'time_layer', 'atmosphere'] },
+      { videoType: 'landscape_mood', expectedSystem: '山水意象', expectedFields: ['spatial_identity', 'visual_route', 'time_layer', 'atmosphere'] },
+      { videoType: 'documentary_short', expectedSystem: '事实与再现边界', expectedFields: ['source_quotes', 'field_notes'] },
+      { videoType: 'explainer_video', expectedSystem: '知识大纲', expectedFields: ['argument_points', 'knowledge_outline'] },
+      { videoType: 'lecture_video', expectedSystem: '核心观点', expectedFields: ['argument_points', 'knowledge_outline'] },
+      { videoType: 'education_training', expectedSystem: '学习路径', expectedFields: ['argument_points', 'knowledge_outline'] },
+      { videoType: 'children_story', expectedSystem: '儿童可理解语言', expectedFields: ['characters', 'protagonist_arc'] },
+      { videoType: 'social_short', expectedSystem: '3秒钩子', expectedFields: ['visual_symbols', 'core_message', 'slogan_or_key_sentence'] },
+      { videoType: 'ai_comic_drama', expectedSystem: '表情标注', expectedFields: [] },
+    ];
+
+    for (const item of cases) {
+      const request: StoryGenerateRequest = {
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: item.videoType,
+        original_user_query: `${item.videoType} 测试`,
+      };
+
+      const pkg = buildStoryGenerationPromptPackage({
+        entry: makeEntry(),
+        request,
+        videoType: item.videoType,
+        presentationStyle: 'cinematic',
+        storyStructure: 'single_event_drama',
+        targetDuration: '3分钟',
+        tone: '',
+        knowledgePack: makeKnowledgePack(),
+      });
+
+      expect(pkg.system_prompt).toContain('类型创作目标');
+      expect(pkg.system_prompt).toContain('类型叙事框架');
+      expect(pkg.system_prompt).toContain(item.expectedSystem);
+      for (const field of item.expectedFields) {
+        expect(pkg.output_contract.return_json_fields).toContain(field);
+        expect(pkg.user_prompt).toContain(field);
+      }
+    }
+  });
+
+  it('includes the story blueprint in the model prompt', () => {
+    const entry = makeEntry();
+    const request: StoryGenerateRequest = {
+      entry_name: '周敦颐——理学开山鼻祖',
+      video_type: 'character_story',
+      original_user_query: '周敦颐月岩悟道传说',
+    };
+    const storyBlueprint = buildStoryBlueprint({
+      entry,
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '1分钟',
+      centralEvent: '月岩悟道',
+      knowledgePack: makeKnowledgePack(),
+    });
+
+    const pkg = buildStoryGenerationPromptPackage({
+      entry,
+      request,
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '1分钟',
+      tone: '',
+      knowledgePack: makeKnowledgePack(),
+      storyBlueprint,
+    });
+
+    expect(pkg.story_blueprint?.schema_version).toBe('story-blueprint/v1');
+    expect(pkg.user_prompt).toContain('=== 类型故事蓝图 ===');
+    expect(pkg.user_prompt).toContain('中心问题');
+    expect(pkg.user_prompt).toContain('类型节拍');
+    expect(pkg.output_contract.should_respect).toEqual(expect.arrayContaining(storyBlueprint.type_specific_requirements));
   });
 });

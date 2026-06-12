@@ -4,6 +4,7 @@ import {
   KnowledgeSupplementTaskUpdateRequestSchema,
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
+  ProjectRetainRecentRequestSchema,
   StorySceneRegenerateRequestSchema,
   SupplementTaskIdParamSchema,
 } from '@shared/schemas.js';
@@ -14,6 +15,7 @@ import {
   listProjectSupplementTasks,
   listProjects,
   regenerateProjectScene,
+  retainRecentProjects,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
 
@@ -43,6 +45,15 @@ projectsRouter.get('/supplement-tasks', async (req, res, next) => {
 projectsRouter.post('/batch-delete', validateBody(ProjectBatchDeleteRequestSchema), async (req, res, next) => {
   try {
     const result = await deleteProjects(req.body.project_ids);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.post('/retain-recent', validateBody(ProjectRetainRecentRequestSchema), async (req, res, next) => {
+  try {
+    const result = await retainRecentProjects(req.body.keep_recent);
     res.json(result);
   } catch (err) {
     next(err);

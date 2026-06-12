@@ -86,12 +86,14 @@ server.tool(
     storyText: z.string().describe('用户上传的故事或观点文本'),
     provinceHints: z.string().optional().describe('地理线索省份，逗号分隔'),
     typeHint: z.string().optional().describe('类型判断'),
+    regionHint: z.string().optional().describe('地市/县区等地方化线索，例如长沙、岳麓'),
   },
   async (input) => {
     const result = await matchEntries({
       storyText: input.storyText,
       provinceHints: input.provinceHints?.split(/[，,]/) ?? undefined,
       typeHint: input.typeHint,
+      regionHint: input.regionHint,
     });
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   }
@@ -105,6 +107,7 @@ server.tool(
     entryName: z.string().optional().describe('条目名称'),
     storyText: z.string().optional().describe('故事文本'),
     province: z.string().optional().describe('当前条目所属省份'),
+    region: z.string().optional().describe('甲方指定的地方化目标，例如长沙、岳麓'),
     keywords: z.string().optional().describe('关键词，逗号分隔'),
     type: z.string().optional().describe('条目类型'),
   },
@@ -113,6 +116,7 @@ server.tool(
       entryName: input.entryName,
       storyText: input.storyText,
       province: input.province,
+      region: input.region,
       keywords: input.keywords?.split(/[，,、]/) ?? undefined,
       type: input.type,
     });

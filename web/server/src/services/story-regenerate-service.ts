@@ -19,6 +19,8 @@ import { validateMemoryMosaicStory } from './memory-mosaic-service.js';
 import { combineQualityReports, validateReferenceSafety } from './reference-quality-service.js';
 import { resolveModelProfile } from './model-catalog.js';
 import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
+import { attachBlueprintScenes } from './story-blueprint-service.js';
+import { validateGenreStoryQuality } from './genre-quality-service.js';
 
 const REALITY_LINE_FUNCTIONS = new Set([
   '现实钩子',
@@ -431,12 +433,22 @@ export async function regenerateSceneInStory(
     reference_trace: [...(updatedStory.reference_trace ?? []), regenerationTrace],
   });
 
+  const updatedBlueprint = updatedStory.story_blueprint
+    ? attachBlueprintScenes(updatedStory.story_blueprint, updatedScenes, updatedStory.storyId)
+    : undefined;
+  const combinedQuality = combineQualityReports(structuralQuality, referenceSafety);
+
   const finalStory = {
     ...updatedStory,
+    story_blueprint: updatedBlueprint ?? updatedStory.story_blueprint,
     reference_trace: [...(updatedStory.reference_trace ?? []), regenerationTrace],
-    quality_report: combineQualityReports(structuralQuality, referenceSafety),
     ...syncDerivedFields(updatedStory, updatedScenes),
   };
+  finalStory.quality_report = validateGenreStoryQuality({
+    story: finalStory,
+    baseReport: combinedQuality,
+    blueprint: updatedBlueprint,
+  });
 
   return {
     ...finalStory,

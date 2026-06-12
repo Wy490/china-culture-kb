@@ -301,9 +301,22 @@
                   >
                     {{ generatingEpisodeNo === episode.episode_no ? '生成中...' : generatedEpisodeStoryIds[String(episode.episode_no)] ? '重新生成本集分镜' : '生成本集分镜' }}
                   </button>
+                  <RouterLink
+                    v-if="episodeStoryId(episode.episode_no)"
+                    class="series-studio__episode-link"
+                    :to="episodeProjectPath(episode.episode_no)"
+                  >
+                    打开故事项目
+                  </RouterLink>
                 </div>
               </header>
               <div v-if="isEditingEpisode(episode.episode_no) && episodeEditDraft" class="series-studio__episode-editor">
+                <p
+                  v-if="episodeStoryId(episode.episode_no)"
+                  class="series-studio__message series-studio__message--warning series-studio__episode-edit-warning"
+                >
+                  本集已生成分镜。保存卡片修改后，建议重新生成本集分镜，让故事项目与最新分集规划一致。
+                </p>
                 <label>
                   <span>主冲突</span>
                   <textarea v-model="episodeEditDraft.main_conflict" rows="2" />
@@ -371,6 +384,13 @@
                 >
                   已生成分镜
                 </span>
+                <RouterLink
+                  v-if="episodeStoryId(episode.episode_no)"
+                  class="series-studio__episode-detail-link"
+                  :to="`/story/${episodeStoryId(episode.episode_no)}`"
+                >
+                  查看详情
+                </RouterLink>
                 <span>{{ episode.ending_hook }}</span>
               </footer>
             </article>
@@ -393,7 +413,31 @@
           <p v-else-if="episodeErrorMessage" class="series-studio__message series-studio__message--error">
             {{ episodeErrorMessage }}
           </p>
-          <StoryResult v-else :result="episodeResult" />
+          <div v-else-if="episodeResult">
+            <section
+              v-if="episodeResult.ai_comic_episode_quality || episodeResult.continuity_audit"
+              class="series-studio__episode-quality"
+            >
+              <article v-if="episodeResult.ai_comic_episode_quality">
+                <strong>本集剧情质量</strong>
+                <p>
+                  {{ episodeResult.ai_comic_episode_quality.passed ? '通过' : '需调整' }}
+                  · {{ episodeResult.ai_comic_episode_quality.score }}/100
+                </p>
+                <ul v-if="episodeResult.ai_comic_episode_quality.issues.length > 0">
+                  <li v-for="issue in episodeResult.ai_comic_episode_quality.issues" :key="issue">{{ issue }}</li>
+                </ul>
+              </article>
+              <article v-if="episodeResult.continuity_audit">
+                <strong>连续性检查</strong>
+                <p>{{ episodeResult.continuity_audit.passed ? '通过' : '需调整' }}</p>
+                <ul v-if="episodeResult.continuity_audit.issues.length > 0">
+                  <li v-for="issue in episodeResult.continuity_audit.issues" :key="issue">{{ issue }}</li>
+                </ul>
+              </article>
+            </section>
+            <StoryResult :result="episodeResult" />
+          </div>
         </section>
 
         <section class="series-studio__section">
@@ -577,6 +621,7 @@ async function handleGenerateEpisode(episodeNo: number) {
     episode_no: episodeNo,
     series_project_id: seriesProjectId.value || undefined,
     output_gears_segments: true,
+    auto_audit_continuity: true,
   })
 
   if (res.ok && res.data) {
@@ -626,6 +671,7 @@ function cancelEditEpisode() {
 async function saveEpisodeEdit() {
   if (!plan.value || !episodeEditDraft.value) return
   const draft = episodeEditDraft.value
+  const wasGenerated = Boolean(episodeStoryId(draft.episode_no))
   const title = draft.title.trim()
   const mainConflict = draft.main_conflict.trim()
   const endingHook = draft.ending_hook.trim()
@@ -677,6 +723,9 @@ async function saveEpisodeEdit() {
   }
   await saveCurrentProject()
   await loadSavedProjects()
+  if (wasGenerated) {
+    saveMessage.value = `已保存第${draft.episode_no}集卡片。该集已有分镜，建议重新生成本集。`
+  }
   savingEpisodeEdit.value = false
   cancelEditEpisode()
 }
@@ -761,6 +810,15 @@ function pacingLabel(profile: AiComicPacingProfile): string {
     mystery_cliffhanger: '悬念',
   }
   return map[profile]
+}
+
+function episodeStoryId(episodeNo: number): string {
+  return generatedEpisodeStoryIds.value[String(episodeNo)] ?? ''
+}
+
+function episodeProjectPath(episodeNo: number): string {
+  const storyId = episodeStoryId(episodeNo)
+  return storyId ? `/projects/${storyId}--ai_comic_drama` : '/projects'
 }
 </script>
 
@@ -1267,6 +1325,26 @@ function pacingLabel(profile: AiComicPacingProfile): string {
   opacity: 0.55;
 }
 
+.series-studio__episode-link,
+.series-studio__episode-detail-link {
+  min-height: 28px;
+  border: 1px solid #28734b;
+  border-radius: 4px;
+  background: #fff;
+  color: #28734b;
+  cursor: pointer;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.series-studio__episode-link:hover,
+.series-studio__episode-detail-link:hover {
+  background: #eef6f1;
+}
+
 .series-studio__episode-edit {
   min-height: 28px;
   border: 1px solid #b9c4cc;
@@ -1319,6 +1397,10 @@ function pacingLabel(profile: AiComicPacingProfile): string {
   display: grid;
   gap: 10px;
   margin-top: 12px;
+}
+
+.series-studio__episode-edit-warning {
+  margin: 0;
 }
 
 .series-studio__episode-editor label {
@@ -1379,6 +1461,38 @@ function pacingLabel(profile: AiComicPacingProfile): string {
   border-top: 1px solid #eef1f4;
   padding-top: 9px;
   color: #667986;
+  font-size: 13px;
+}
+
+.series-studio__episode-quality {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.series-studio__episode-quality article {
+  padding: 12px 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.series-studio__episode-quality strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #213547;
+}
+
+.series-studio__episode-quality p {
+  margin: 0 0 6px;
+  color: #34495e;
+}
+
+.series-studio__episode-quality ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #a05f00;
   font-size: 13px;
 }
 

@@ -5,7 +5,16 @@
         <h1 class="projects-page__title">故事项目</h1>
         <p class="projects-page__desc">管理已生成的故事草稿，查看来源条目、状态和最近更新时间。</p>
       </div>
-      <RouterLink class="projects-page__cta" to="/story/new">新建故事</RouterLink>
+      <div class="projects-page__header-actions">
+        <button
+          class="projects-page__muted-btn"
+          :disabled="projects.length <= RETAIN_RECENT_COUNT || retainingRecent || batchDeleting || deletingProjectId !== ''"
+          @click="handleRetainRecentProjects"
+        >
+          {{ retainingRecent ? '清理中…' : `按生成时间保留最近 ${RETAIN_RECENT_COUNT} 个` }}
+        </button>
+        <RouterLink class="projects-page__cta" to="/story/new">新建故事</RouterLink>
+      </div>
     </header>
 
     <section class="projects-page__toolbar">
@@ -31,6 +40,10 @@
       <label class="projects-page__toggle">
         <input v-model="supplementFilter" type="checkbox" />
         <span>仅看待补资料</span>
+      </label>
+      <label class="projects-page__toggle">
+        <input v-model="qualityFilter" type="checkbox" />
+        <span>仅看质量问题</span>
       </label>
     </section>
 
@@ -64,8 +77,9 @@
     </div>
 
     <div v-else-if="error" class="projects-page__error">{{ error }}</div>
+    <div v-if="!loading && !error && projectMessage" class="projects-page__message">{{ projectMessage }}</div>
 
-    <section v-else class="projects-page__grid">
+    <section v-if="!loading && !error" class="projects-page__grid">
       <article
         v-for="project in filteredProjects"
         :key="project.project_id"
@@ -101,6 +115,15 @@
             <span v-if="(project.open_supplement_task_count ?? 0) > 0" class="projects-page__meta-warning">
               待补资料 {{ project.open_supplement_task_count }}
             </span>
+            <span
+              v-if="typeof project.genre_score === 'number'"
+              :class="['projects-page__meta-quality', project.quality_passed ? 'projects-page__meta-quality--pass' : 'projects-page__meta-quality--warn']"
+            >
+              类型分 {{ project.genre_score }}
+            </span>
+            <span v-if="(project.quality_issue_count ?? 0) > 0" class="projects-page__meta-warning">
+              质量问题 {{ project.quality_issue_count }}
+            </span>
           </div>
         </RouterLink>
         <div class="projects-page__card-actions">
@@ -123,19 +146,24 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { deleteProject, deleteProjects, listProjects } from '@/api/projects'
+import { deleteProject, deleteProjects, listProjects, retainRecentProjects } from '@/api/projects'
 import type { GearsVideoStatus, StoryProjectListItem, StoryProjectStatus } from '@shared/types'
+
+const RETAIN_RECENT_COUNT = 10
 
 const projects = ref<StoryProjectListItem[]>([])
 const loading = ref(false)
 const error = ref('')
+const projectMessage = ref('')
 const searchQuery = ref('')
 const statusFilter = ref('')
 const videoStatusFilter = ref('')
 const supplementFilter = ref(false)
+const qualityFilter = ref(false)
 const deletingProjectId = ref('')
 const selectedProjectIds = ref<string[]>([])
 const batchDeleting = ref(false)
+const retainingRecent = ref(false)
 
 const filteredProjects = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -145,10 +173,11 @@ const filteredProjects = computed(() => {
       || (videoStatusFilter.value === 'none' && !project.gears_video_status)
       || project.gears_video_status === videoStatusFilter.value
     const matchesSupplement = !supplementFilter.value || (project.open_supplement_task_count ?? 0) > 0
+    const matchesQuality = !qualityFilter.value || project.quality_passed === false || (project.quality_issue_count ?? 0) > 0
     const matchesQuery = !query
       || project.title.toLowerCase().includes(query)
       || project.source_entry.toLowerCase().includes(query)
-    return matchesStatus && matchesVideoStatus && matchesSupplement && matchesQuery
+    return matchesStatus && matchesVideoStatus && matchesSupplement && matchesQuality && matchesQuery
   })
 })
 
@@ -214,10 +243,12 @@ async function handleDeleteProject(project: StoryProjectListItem) {
 
   deletingProjectId.value = project.project_id
   error.value = ''
+  projectMessage.value = ''
   const res = await deleteProject(project.project_id)
   if (res.ok) {
     projects.value = projects.value.filter(item => item.project_id !== project.project_id)
     selectedProjectIds.value = selectedProjectIds.value.filter(id => id !== project.project_id)
+    projectMessage.value = '故事项目已删除'
   } else {
     error.value = res.error?.message ?? '删除故事项目失败'
   }
@@ -249,6 +280,7 @@ async function handleBatchDeleteProjects() {
 
   batchDeleting.value = true
   error.value = ''
+  projectMessage.value = ''
   const idsToDelete = [...selectedProjectIds.value]
   const res = await deleteProjects(idsToDelete)
   if (res.ok && res.data) {
@@ -257,6 +289,8 @@ async function handleBatchDeleteProjects() {
     selectedProjectIds.value = selectedProjectIds.value.filter(id => !deletedIds.has(id))
     if (res.data.failed.length > 0) {
       error.value = `已删除 ${res.data.deleted.length} 个，${res.data.failed.length} 个删除失败：${res.data.failed[0].error}`
+    } else {
+      projectMessage.value = `已删除 ${res.data.deleted.length} 个故事项目`
     }
   } else {
     error.value = res.error?.message ?? '批量删除故事项目失败'
@@ -264,9 +298,33 @@ async function handleBatchDeleteProjects() {
   batchDeleting.value = false
 }
 
-onMounted(async () => {
+async function handleRetainRecentProjects() {
+  if (projects.value.length <= RETAIN_RECENT_COUNT) return
+  const confirmed = window.confirm(`确定按生成故事时间只保留最近 ${RETAIN_RECENT_COUNT} 个吗？较早项目、孤立项目及对应生成故事文件会被删除。`)
+  if (!confirmed) return
+
+  retainingRecent.value = true
+  error.value = ''
+  projectMessage.value = ''
+  const res = await retainRecentProjects(RETAIN_RECENT_COUNT)
+  if (res.ok && res.data) {
+    projects.value = res.data.kept
+    selectedProjectIds.value = selectedProjectIds.value.filter(id => projects.value.some(project => project.project_id === id))
+    projectMessage.value = `已按生成时间保留最近 ${res.data.keep_recent} 个，删除 ${res.data.deleted.length} 个故事项目`
+    if (res.data.failed.length > 0) {
+      await loadProjects()
+      error.value = `有 ${res.data.failed.length} 个项目未删除：${res.data.failed[0].error}`
+    }
+  } else {
+    error.value = res.error?.message ?? '清理故事项目失败'
+  }
+  retainingRecent.value = false
+}
+
+async function loadProjects() {
   loading.value = true
   error.value = ''
+  projectMessage.value = ''
   const res = await listProjects()
   if (res.ok && res.data) {
     projects.value = res.data
@@ -274,6 +332,10 @@ onMounted(async () => {
     error.value = res.error?.message ?? '加载故事项目失败'
   }
   loading.value = false
+}
+
+onMounted(async () => {
+  await loadProjects()
 })
 </script>
 
@@ -289,6 +351,13 @@ onMounted(async () => {
   gap: 16px;
   align-items: flex-start;
   margin-bottom: 20px;
+}
+
+.projects-page__header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  align-items: center;
 }
 
 .projects-page__title {
@@ -518,6 +587,18 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+.projects-page__meta-quality {
+  font-weight: 700;
+}
+
+.projects-page__meta-quality--pass {
+  color: #1b7f4a;
+}
+
+.projects-page__meta-quality--warn {
+  color: #b13b2e;
+}
+
 .projects-page__meta-video {
   padding: 2px 6px;
   border-radius: 3px;
@@ -586,6 +667,16 @@ onMounted(async () => {
   color: #c0392b;
   border-radius: 4px;
   font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.projects-page__message {
+  padding: 10px 14px;
+  background: #eaf7ef;
+  color: #1f7a44;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 16px;
 }
 
 @keyframes spin {
@@ -602,6 +693,7 @@ onMounted(async () => {
   }
 
   .projects-page__cta,
+  .projects-page__header-actions,
   .projects-page__search,
   .projects-page__select,
   .projects-page__toggle,
@@ -613,6 +705,10 @@ onMounted(async () => {
 
   .projects-page__bulk-actions {
     flex-direction: column;
+  }
+
+  .projects-page__header-actions {
+    align-items: stretch;
   }
 }
 </style>
