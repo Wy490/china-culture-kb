@@ -69,6 +69,7 @@ export const StoryStructureTypeSchema = z.enum([
 
 export const ReferenceStrengthSchema = z.enum(['light', 'medium', 'strong']);
 export const GenreStrictnessSchema = z.enum(['loose', 'balanced', 'strict']);
+export const StoryGenerationPrioritySchema = z.enum(['balanced', 'plot_first', 'knowledge_first']);
 
 export const KnowledgeDomainSchema = z.enum([
   'core_china_culture',
@@ -203,6 +204,7 @@ export const StoryGenerateRequestSchema = z.object({
   reference_strength: ReferenceStrengthSchema.optional(),
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
   auto_repair: z.boolean().optional().default(false),
+  story_priority: StoryGenerationPrioritySchema.optional().default('balanced'),
 }).refine(
   (data) => data.entry_name || data.knowledge_pack || data.outline,
   { message: 'At least one of entry_name, knowledge_pack, or outline must be provided', path: ['entry_name'] },
@@ -575,6 +577,10 @@ export const AiComicSeriesProjectSaveRequestSchema = z.object({
   plan: AiComicSeriesPlanSchema,
   generated_episode_story_ids: z.record(z.string(), StoryIdValueSchema).optional(),
   continuity_ledger: AiComicContinuityLedgerSchema.optional(),
+});
+
+export const AiComicSeriesLedgerRebuildRequestSchema = z.object({
+  from_episode_no: z.number().int().min(1).max(120).optional().default(1),
 });
 
 export const AiComicEpisodeGenerateRequestSchema = z.object({

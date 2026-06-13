@@ -343,6 +343,12 @@
           <option value="strict">严格</option>
           <option value="loose">宽松</option>
         </select>
+        <label class="story-studio__label" for="story-priority">生成优先级</label>
+        <select id="story-priority" v-model="storyPriority" class="story-studio__select">
+          <option value="balanced">剧情与资料均衡</option>
+          <option value="plot_first">优先剧情完整</option>
+          <option value="knowledge_first">优先资料完整</option>
+        </select>
         <label class="story-studio__checkbox-row">
           <input v-model="autoRepair" type="checkbox" />
           <span>生成后自动修复类型质量问题</span>
@@ -422,6 +428,7 @@ import type {
   KnowledgeAssetUsage,
   StoryDetectedCharacterKind,
   GenreStrictness,
+  StoryGenerationPriority,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
 import StoryPlan from '@/components/StoryPlan.vue'
@@ -522,6 +529,7 @@ const selectedEvent = ref<string | null>(null)
 const targetDuration = ref<SupportedDuration>('3分钟')
 const tone = ref('')
 const genreStrictness = ref<GenreStrictness>('balanced')
+const storyPriority = ref<StoryGenerationPriority>('balanced')
 const autoRepair = ref(false)
 const planning = ref(false)
 const generating = ref(false)
@@ -813,6 +821,7 @@ async function handleGenerate() {
       presentation_style: presentationStyleToSend as PresentationStyle,
       output_gears_segments: true,
       genre_strictness: genreStrictness.value,
+      story_priority: storyPriority.value,
       auto_repair: autoRepair.value,
     })
     if (res.ok && res.data) {
@@ -850,6 +859,7 @@ async function handleGenerate() {
       knowledge_pack: filteredPack,
       character_hints: outlineAnalysis.value?.detected_characters ?? undefined,
       genre_strictness: genreStrictness.value,
+      story_priority: storyPriority.value,
       auto_repair: autoRepair.value,
     })
     if (res.ok && res.data) {
@@ -1107,6 +1117,9 @@ async function handleGenerate() {
   border: 1px solid #d7dde2;
   border-radius: 6px;
   background: #f8fafb;
+}
+.story-studio__advanced .story-studio__label:not(:first-child) {
+  margin-top: 10px;
 }
 .story-studio__checkbox-row {
   display: flex;

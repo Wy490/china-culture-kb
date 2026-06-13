@@ -11,6 +11,7 @@ import {
 import {
   deleteProject,
   deleteProjects,
+  exportProjectCurrentVersion,
   getProject,
   listProjectSupplementTasks,
   listProjects,
@@ -74,6 +75,16 @@ projectsRouter.delete('/:projectId', validateParams(ProjectIdParamSchema), async
   try {
     const { projectId } = req.params as { projectId: string };
     const result = await deleteProject(projectId);
+    res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.post('/:projectId/export', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  try {
+    const { projectId } = req.params as { projectId: string };
+    const result = await exportProjectCurrentVersion(projectId);
     res.status(result.ok ? 200 : 404).json(result);
   } catch (err) {
     next(err);

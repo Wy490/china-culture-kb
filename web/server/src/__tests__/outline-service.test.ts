@@ -6,6 +6,7 @@ import {
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
+  rebuildAiComicSeriesContinuityLedger,
   saveAiComicSeriesProject,
 } from '../services/ai-comic-series-service.js';
 
@@ -223,11 +224,19 @@ describe('outline-service', () => {
     expect(saveRes.data?.project.generated_episode_count).toBe(1);
     expect(saveRes.data?.continuity_ledger.schema_version).toBe('ai-comic-continuity-ledger/v1');
     expect(saveRes.data?.continuity_ledger.character_state_current.length).toBeGreaterThan(0);
+    expect(saveRes.data?.series_quality_audit?.schema_version).toBe('ai-comic-series-quality-audit/v1');
+    expect(saveRes.data?.series_quality_audit?.generated_episode_count).toBe(1);
+    expect(saveRes.data?.series_quality_audit?.total_episode_count).toBe(3);
 
     const getRes = await getAiComicSeriesProject(saveRes.data!.project.series_project_id);
     expect(getRes.ok).toBe(true);
     expect(getRes.data?.plan.series_title).toBe('濂溪少年志');
     expect(getRes.data?.generated_episode_story_ids['1']).toBe('20260611-story-abc1');
+    expect(getRes.data?.series_quality_audit?.episode_reports[0]).toMatchObject({
+      episode_no: 1,
+      story_id: '20260611-story-abc1',
+      status: 'unknown',
+    });
 
     const listRes = await listAiComicSeriesProjects();
     expect(listRes.ok).toBe(true);
@@ -260,6 +269,42 @@ describe('outline-service', () => {
     expect(getRes.data?.continuity_ledger.episode_records).toHaveLength(1);
     expect(getRes.data?.continuity_ledger.episode_records[0].story_id).toBe(episodeRes.data?.storyId);
     expect(getRes.data?.continuity_ledger.open_threads.length).toBeGreaterThan(0);
+    expect(getRes.data?.series_quality_audit?.generated_episode_count).toBe(1);
+    expect(getRes.data?.series_quality_audit?.episode_reports[0].story_id).toBe(episodeRes.data?.storyId);
+    expect(getRes.data?.series_quality_audit?.episode_reports[0].score).toBeTypeOf('number');
+
+    const editedPlan = {
+      ...planRes.data!,
+      episodes: planRes.data!.episodes.map(episode =>
+        episode.episode_no === 1
+          ? { ...episode, ending_hook: `${episode.ending_hook}（改为新的承接点）` }
+          : episode
+      ),
+    };
+    const editedSaveRes = await saveAiComicSeriesProject({
+      series_project_id: saveRes.data!.project.series_project_id,
+      plan: editedPlan,
+    });
+    expect(editedSaveRes.ok).toBe(true);
+    expect(editedSaveRes.data?.series_quality_audit?.episode_reports[0]).toMatchObject({
+      episode_no: 1,
+      plan_changed_after_generation: true,
+      needs_episode_regeneration: true,
+      needs_ledger_rebuild: true,
+      status: 'needs_attention',
+    });
+
+    const rebuildRes = await rebuildAiComicSeriesContinuityLedger(saveRes.data!.project.series_project_id, {
+      from_episode_no: 1,
+    });
+    expect(rebuildRes.ok).toBe(true);
+    expect(rebuildRes.data?.continuity_ledger.episode_records[0].ending_hook).toContain('改为新的承接点');
+    expect(rebuildRes.data?.series_quality_audit?.episode_reports[0]).toMatchObject({
+      episode_no: 1,
+      plan_changed_after_generation: false,
+      needs_episode_regeneration: false,
+      needs_ledger_rebuild: false,
+    });
   });
 
   it('uses the saved continuity ledger when generating a later episode', async () => {

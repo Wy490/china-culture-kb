@@ -128,6 +128,20 @@
             <h1 class="series-studio__plan-title">{{ plan.series_title }}</h1>
             <p class="series-studio__logline">{{ plan.logline }}</p>
             <p v-if="saveMessage" class="series-studio__save-note">{{ saveMessage }}</p>
+            <div v-if="nextRecommendedEpisode" class="series-studio__next-action">
+              <div>
+                <span>推荐下一集</span>
+                <strong>第{{ nextRecommendedEpisode.episode_no }}集：{{ nextRecommendedEpisode.title }}</strong>
+                <p>{{ nextRecommendedEpisode.main_conflict }}</p>
+              </div>
+              <button
+                class="series-studio__submit series-studio__submit--compact"
+                :disabled="generatingEpisodeNo !== null || editingEpisodeNo !== null"
+                @click="handleGenerateEpisode(nextRecommendedEpisode.episode_no)"
+              >
+                {{ generatingEpisodeNo === nextRecommendedEpisode.episode_no ? '生成中...' : '生成推荐集' }}
+              </button>
+            </div>
           </div>
           <div class="series-studio__metrics">
             <div class="series-studio__metric">
@@ -146,6 +160,51 @@
               <strong>{{ generatedEpisodeCount }}</strong>
               <span>已生成分镜</span>
             </div>
+          </div>
+        </section>
+
+        <section v-if="seriesQualityAudit" class="series-studio__section series-studio__quality">
+          <div class="series-studio__section-header">
+            <h2>系列质量审计</h2>
+            <span>{{ seriesQualityAudit.passed ? '通过' : '需处理' }} · {{ seriesQualityAudit.score }}/100</span>
+          </div>
+          <div v-if="earliestLedgerRebuildEpisode" class="series-studio__quality-actions">
+            <p>第 {{ earliestLedgerRebuildEpisode }} 集之后的连续性账本需要按当前分集卡片重建。</p>
+            <button
+              class="series-studio__ghost-button"
+              :disabled="rebuildingLedger"
+              @click="handleRebuildLedger"
+            >
+              {{ rebuildingLedger ? '重建中...' : `从第${earliestLedgerRebuildEpisode}集重建账本` }}
+            </button>
+          </div>
+          <div class="series-studio__quality-grid">
+            <article>
+              <strong>{{ seriesQualityAudit.generated_episode_count }}/{{ seriesQualityAudit.total_episode_count }}</strong>
+              <span>已生成集数</span>
+            </article>
+            <article>
+              <strong>{{ Math.round(seriesQualityAudit.checks.known_episode_quality_pass_rate * 100) }}%</strong>
+              <span>已知单集通过率</span>
+            </article>
+            <article>
+              <strong>{{ seriesQualityAudit.episodes_need_attention.length }}</strong>
+              <span>待处理集数</span>
+            </article>
+          </div>
+          <ul v-if="seriesQualityAudit.issues.length > 0" class="series-studio__quality-issues">
+            <li v-for="issue in seriesQualityAudit.issues.slice(0, 6)" :key="issue">{{ issue }}</li>
+          </ul>
+          <div class="series-studio__episode-audit-list">
+            <span
+              v-for="report in seriesQualityAudit.episode_reports"
+              :key="report.episode_no"
+              :class="['series-studio__episode-audit', `series-studio__episode-audit--${report.status}`]"
+            >
+              第{{ report.episode_no }}集 · {{ episodeAuditLabel(report.status) }}
+              <template v-if="typeof report.score === 'number'"> · {{ report.score }}</template>
+              <template v-if="report.needs_episode_regeneration"> · 需重新生成</template>
+            </span>
           </div>
         </section>
 
@@ -468,6 +527,7 @@ import {
   aiComicSeriesPlan,
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
+  rebuildAiComicSeriesLedger,
   saveAiComicSeriesProject,
 } from '@/api/stories'
 import StoryResult from '@/components/StoryResult.vue'
@@ -475,8 +535,10 @@ import type {
   AiComicContinuityLedger,
   AiComicEpisodePlan,
   AiComicPacingProfile,
+  AiComicSeriesQualityAudit,
   AiComicSeriesProjectMeta,
   AiComicSeriesPlan,
+  AiComicSeriesQualityEpisodeStatus,
   StoryGenerateResult,
 } from '@shared/types'
 
@@ -500,10 +562,12 @@ const seriesProjectId = ref('')
 const saveMessage = ref('')
 const generatedEpisodeStoryIds = ref<Record<string, string>>({})
 const continuityLedger = ref<AiComicContinuityLedger | null>(null)
+const seriesQualityAudit = ref<AiComicSeriesQualityAudit | null>(null)
 const editingEpisodeNo = ref<number | null>(null)
 const episodeEditDraft = ref<EpisodeEditDraft | null>(null)
 const episodeEditError = ref('')
 const savingEpisodeEdit = ref(false)
+const rebuildingLedger = ref(false)
 const savedProjects = ref<AiComicSeriesProjectMeta[]>([])
 const loadingSavedProjects = ref(false)
 const savedProjectsError = ref('')
@@ -543,6 +607,23 @@ const validationMessage = computed(() => {
 
 const canSubmit = computed(() => !validationMessage.value)
 const generatedEpisodeCount = computed(() => Object.keys(generatedEpisodeStoryIds.value).length)
+const earliestLedgerRebuildEpisode = computed(() => {
+  const reports = seriesQualityAudit.value?.episode_reports ?? []
+  const episodes = reports
+    .filter(report => report.needs_ledger_rebuild)
+    .map(report => report.episode_no)
+  return episodes.length > 0 ? Math.min(...episodes) : null
+})
+const nextRecommendedEpisode = computed(() => {
+  if (!plan.value || earliestLedgerRebuildEpisode.value) return null
+  const generated = new Set(Object.keys(generatedEpisodeStoryIds.value).map(Number))
+  const ungenerated = plan.value.episodes
+    .filter(episode => !generated.has(episode.episode_no))
+    .sort((a, b) => a.episode_no - b.episode_no)
+  if (ungenerated.length === 0) return null
+  const nextAfterLedger = (continuityLedger.value?.last_generated_episode_no ?? 0) + 1
+  return ungenerated.find(episode => episode.episode_no === nextAfterLedger) ?? ungenerated[0]
+})
 
 onMounted(async () => {
   await loadSavedProjects()
@@ -563,6 +644,7 @@ async function loadSeriesProject(id: string) {
     seriesProjectId.value = res.data.project.series_project_id
     generatedEpisodeStoryIds.value = res.data.generated_episode_story_ids
     continuityLedger.value = res.data.continuity_ledger
+    seriesQualityAudit.value = res.data.series_quality_audit ?? null
     applyPlan(res.data.plan)
     saveMessage.value = `已保存：${res.data.project.series_project_id} · ${formatDate(res.data.project.updated_at)}`
   } else {
@@ -583,6 +665,7 @@ async function handlePlan() {
   saveMessage.value = ''
   generatedEpisodeStoryIds.value = {}
   continuityLedger.value = null
+  seriesQualityAudit.value = null
 
   const res = await aiComicSeriesPlan({
     outline: outline.value.trim(),
@@ -758,6 +841,7 @@ async function saveCurrentProject() {
     seriesProjectId.value = res.data.project.series_project_id
     generatedEpisodeStoryIds.value = res.data.generated_episode_story_ids
     continuityLedger.value = res.data.continuity_ledger
+    seriesQualityAudit.value = res.data.series_quality_audit ?? null
     saveMessage.value = `已保存：${res.data.project.series_project_id} · ${formatDate(res.data.project.updated_at)}`
     if (route.query.seriesProjectId !== seriesProjectId.value) {
       router.replace({
@@ -771,6 +855,27 @@ async function saveCurrentProject() {
   } else {
     errorMessage.value = res.error?.message ?? '保存系列规划失败'
   }
+}
+
+async function handleRebuildLedger() {
+  if (!seriesProjectId.value || !earliestLedgerRebuildEpisode.value) return
+  const fromEpisodeNo = earliestLedgerRebuildEpisode.value
+  rebuildingLedger.value = true
+  errorMessage.value = ''
+  const res = await rebuildAiComicSeriesLedger(seriesProjectId.value, {
+    from_episode_no: fromEpisodeNo,
+  })
+  if (res.ok && res.data) {
+    generatedEpisodeStoryIds.value = res.data.generated_episode_story_ids
+    continuityLedger.value = res.data.continuity_ledger
+    seriesQualityAudit.value = res.data.series_quality_audit ?? null
+    applyPlan(res.data.plan)
+    saveMessage.value = `已从第${fromEpisodeNo}集重建连续性账本 · ${formatDate(res.data.project.updated_at)}`
+    await loadSavedProjects()
+  } else {
+    errorMessage.value = res.error?.message ?? '重建连续性账本失败'
+  }
+  rebuildingLedger.value = false
 }
 
 async function loadSavedProjects() {
@@ -810,6 +915,16 @@ function pacingLabel(profile: AiComicPacingProfile): string {
     mystery_cliffhanger: '悬念',
   }
   return map[profile]
+}
+
+function episodeAuditLabel(status: AiComicSeriesQualityEpisodeStatus): string {
+  const map: Record<AiComicSeriesQualityEpisodeStatus, string> = {
+    not_generated: '未生成',
+    passed: '通过',
+    needs_attention: '需处理',
+    unknown: '待复核',
+  }
+  return map[status]
 }
 
 function episodeStoryId(episodeNo: number): string {
@@ -909,6 +1024,12 @@ function episodeProjectPath(episodeNo: number): string {
 .series-studio__submit:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.series-studio__submit--compact {
+  width: auto;
+  min-width: 128px;
+  padding: 0 14px;
 }
 
 .series-studio__message {
@@ -1071,6 +1192,40 @@ function episodeProjectPath(episodeNo: number): string {
   font-weight: 600;
 }
 
+.series-studio__next-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  max-width: 780px;
+  margin-top: 14px;
+  border: 1px solid #c8dce8;
+  border-radius: 6px;
+  background: #f5fafc;
+  padding: 11px 12px;
+}
+
+.series-studio__next-action span {
+  display: block;
+  color: #5d7281;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.series-studio__next-action strong {
+  display: block;
+  margin-top: 2px;
+  color: #1f2e38;
+  font-size: 15px;
+}
+
+.series-studio__next-action p {
+  margin: 5px 0 0;
+  color: #455866;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .series-studio__metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(86px, 1fr));
@@ -1094,6 +1249,95 @@ function episodeProjectPath(episodeNo: number): string {
 .series-studio__metric span {
   color: #667986;
   font-size: 12px;
+}
+
+.series-studio__quality {
+  border-bottom: 1px solid #dde4ea;
+  padding-bottom: 18px;
+}
+
+.series-studio__quality-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.series-studio__quality-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  border: 1px solid #f0d7a2;
+  border-radius: 6px;
+  background: #fff8e8;
+  padding: 9px 11px;
+}
+
+.series-studio__quality-actions p {
+  margin: 0;
+  color: #8a5b00;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.series-studio__quality-grid article {
+  border: 1px solid #d5dee5;
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 10px 12px;
+}
+
+.series-studio__quality-grid strong {
+  display: block;
+  color: #1f2e38;
+  font-size: 18px;
+}
+
+.series-studio__quality-grid span {
+  color: #667986;
+  font-size: 12px;
+}
+
+.series-studio__quality-issues {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: #9a6300;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.series-studio__episode-audit-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.series-studio__episode-audit {
+  border: 1px solid #d5dee5;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #516473;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.series-studio__episode-audit--passed {
+  border-color: #b8dcc8;
+  color: #1b7f4a;
+}
+
+.series-studio__episode-audit--needs_attention,
+.series-studio__episode-audit--unknown {
+  border-color: #f0c4b8;
+  color: #b13b2e;
+}
+
+.series-studio__episode-audit--not_generated {
+  color: #667986;
 }
 
 .series-studio__section {

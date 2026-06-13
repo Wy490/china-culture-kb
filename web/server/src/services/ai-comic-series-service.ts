@@ -10,7 +10,10 @@ import type {
   AiComicEpisodePlan,
   AiComicEpisodeGenerateRequest,
   AiComicPacingProfile,
+  AiComicSeriesLedgerRebuildRequest,
   AiComicSeriesContinuityAudit,
+  AiComicSeriesQualityAudit,
+  AiComicSeriesQualityEpisodeReport,
   AiComicSeriesProjectDetail,
   AiComicSeriesProjectMeta,
   AiComicSeriesProjectSaveRequest,
@@ -330,6 +333,12 @@ export async function saveAiComicSeriesProject(
     generated_episode_story_ids: generatedEpisodeStoryIds,
     continuity_ledger: continuityLedger,
   };
+  detail.series_quality_audit = buildAiComicSeriesQualityAudit({
+    plan: detail.plan,
+    generatedEpisodeStoryIds,
+    ledger: continuityLedger,
+    previousAudit: existing?.series_quality_audit,
+  });
 
   await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
   return success(detail);
@@ -342,6 +351,49 @@ export async function getAiComicSeriesProject(
   if (!detail) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
   }
+  return success(detail);
+}
+
+export async function rebuildAiComicSeriesContinuityLedger(
+  seriesProjectId: string,
+  request: AiComicSeriesLedgerRebuildRequest = {},
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const fromEpisodeNo = request.from_episode_no ?? 1;
+  if (fromEpisodeNo < 1 || fromEpisodeNo > existing.plan.episode_count) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `from_episode_no ${fromEpisodeNo} is outside the series episode range`);
+  }
+
+  const continuityLedger = rebuildContinuityLedgerFromEpisode({
+    plan: existing.plan,
+    generatedEpisodeStoryIds: existing.generated_episode_story_ids,
+    ledger: existing.continuity_ledger,
+    fromEpisodeNo,
+  });
+  const now = new Date().toISOString();
+  const detail: AiComicSeriesProjectDetail = {
+    ...existing,
+    project: buildSeriesProjectMeta({
+      seriesProjectId,
+      plan: existing.plan,
+      createdAt: existing.project.created_at,
+      updatedAt: now,
+      generatedEpisodeStoryIds: existing.generated_episode_story_ids,
+    }),
+    continuity_ledger: continuityLedger,
+  };
+  detail.series_quality_audit = buildAiComicSeriesQualityAudit({
+    plan: detail.plan,
+    generatedEpisodeStoryIds: detail.generated_episode_story_ids,
+    ledger: continuityLedger,
+    previousAudit: existing.series_quality_audit,
+  });
+
+  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
   return success(detail);
 }
 
@@ -396,7 +448,228 @@ async function recordGeneratedEpisodeStory(
     generated_episode_story_ids: generatedEpisodeStoryIds,
     continuity_ledger: continuityLedger,
   };
+  detail.series_quality_audit = buildAiComicSeriesQualityAudit({
+    plan: detail.plan,
+    generatedEpisodeStoryIds,
+    ledger: continuityLedger,
+    previousAudit: existing.series_quality_audit,
+    latestStory: params.story,
+    latestEpisodeNo: params.episode.episode_no,
+  });
   await writeJsonFile(seriesProjectPath(params.seriesProjectId), detail);
+}
+
+function buildAiComicSeriesQualityAudit(params: {
+  plan: AiComicSeriesPlan;
+  generatedEpisodeStoryIds: Record<string, string>;
+  ledger: AiComicContinuityLedger;
+  previousAudit?: AiComicSeriesQualityAudit;
+  latestStory?: StoryGenerateResult;
+  latestEpisodeNo?: number;
+}): AiComicSeriesQualityAudit {
+  const planEpisodeNumbers = new Set(params.plan.episodes.map(episode => episode.episode_no));
+  const generatedEntries = Object.entries(params.generatedEpisodeStoryIds)
+    .map(([episodeNo, storyId]) => ({ episodeNo: Number(episodeNo), storyId }))
+    .filter(entry => Number.isInteger(entry.episodeNo));
+  const generatedEpisodeNumbers = new Set(generatedEntries.map(entry => entry.episodeNo));
+  const generatedIdsInPlanRange = generatedEntries.every(entry => planEpisodeNumbers.has(entry.episodeNo));
+  const ledgerRecordsByEpisode = new Map(params.ledger.episode_records.map(record => [record.episode_no, record]));
+  const previousReports = new Map(
+    (params.previousAudit?.episode_reports ?? []).map(report => [report.episode_no, report]),
+  );
+  const latestQuality = params.latestStory?.ai_comic_episode_quality;
+  const latestContinuity = params.latestStory?.continuity_audit;
+
+  const episodeReports: AiComicSeriesQualityEpisodeReport[] = params.plan.episodes.map(episode => {
+    const storyId = params.generatedEpisodeStoryIds[String(episode.episode_no)];
+    const ledgerRecord = ledgerRecordsByEpisode.get(episode.episode_no);
+    const planChangedAfterGeneration = Boolean(storyId && ledgerRecord && hasEpisodePlanChangedAfterGeneration({
+      episode,
+      ledgerRecord,
+    }));
+    if (!storyId) {
+      return {
+        episode_no: episode.episode_no,
+        status: 'not_generated',
+        issues: ['本集尚未生成完整分镜'],
+      };
+    }
+
+    const latestMatches = params.latestEpisodeNo === episode.episode_no
+      && latestQuality
+      && latestQuality.episode_no === episode.episode_no;
+    const previous = previousReports.get(episode.episode_no);
+    const previousStillMatches = previous?.story_id === storyId;
+    const issues = latestMatches
+      ? unique([
+          ...latestQuality.issues,
+          ...(latestContinuity?.issues ?? []),
+      ])
+      : previousStillMatches
+        ? previous.issues.filter(issue => !issue.includes('分集卡片已在生成后变更'))
+        : ['本集缺少可追溯质量报告，建议重新生成或重新保存后复核'];
+    if (planChangedAfterGeneration) {
+      issues.push('本集分集卡片已在生成后变更，建议重新生成本集并重建后续账本');
+    }
+    const score = latestMatches
+      ? latestQuality.score
+      : previousStillMatches
+        ? previous.score
+        : undefined;
+    const passed = latestMatches
+      ? latestQuality.passed && (latestContinuity?.passed ?? true)
+      : previousStillMatches
+        ? previous.status === 'passed'
+          || (
+            previous.needs_episode_regeneration === true
+            && !planChangedAfterGeneration
+            && issues.length === 0
+            && (previous.score ?? 0) >= 80
+          )
+        : false;
+
+    return {
+      episode_no: episode.episode_no,
+      story_id: storyId,
+      status: planChangedAfterGeneration
+        ? 'needs_attention'
+        : latestMatches || previousStillMatches
+          ? passed ? 'passed' : 'needs_attention'
+        : 'unknown',
+      score,
+      issues,
+      plan_changed_after_generation: planChangedAfterGeneration,
+      needs_episode_regeneration: planChangedAfterGeneration,
+      needs_ledger_rebuild: planChangedAfterGeneration,
+    };
+  });
+
+  const allEpisodesGenerated = params.plan.episodes.every(episode =>
+    generatedEpisodeNumbers.has(episode.episode_no),
+  );
+  const generatedEpisodesMissingLedger = generatedEntries.filter(entry => {
+    const record = ledgerRecordsByEpisode.get(entry.episodeNo);
+    return !record || record.story_id !== entry.storyId;
+  });
+  const ledgerCoversGeneratedEpisodes = generatedEpisodesMissingLedger.length === 0;
+  const completedSeriesThreadsResolved = !allEpisodesGenerated || params.ledger.open_threads.length <= 2;
+  const knownReports = episodeReports.filter(report => typeof report.score === 'number');
+  const knownPassed = knownReports.filter(report => report.status === 'passed').length;
+  const knownEpisodeQualityPassRate = knownReports.length > 0
+    ? Number((knownPassed / knownReports.length).toFixed(2))
+    : 0;
+  const episodesNeedAttention = episodeReports
+    .filter(report => report.status !== 'passed')
+    .map(report => report.episode_no);
+  const issues: string[] = [];
+  const notGeneratedCount = episodeReports.filter(report => report.status === 'not_generated').length;
+  if (notGeneratedCount > 0) issues.push(`还有 ${notGeneratedCount} 集尚未生成完整分镜`);
+  if (!generatedIdsInPlanRange) issues.push('存在不在当前分集规划范围内的已生成故事记录');
+  if (!ledgerCoversGeneratedEpisodes) {
+    issues.push(`连续性账本缺少 ${generatedEpisodesMissingLedger.length} 个已生成分集记录`);
+  }
+  if (!completedSeriesThreadsResolved) issues.push('系列已全部生成，但仍有多条未回收线索需要处理');
+  for (const report of episodeReports) {
+    if (report.status === 'needs_attention' || report.status === 'unknown') {
+      issues.push(`第${report.episode_no}集：${report.issues[0] ?? '需要复核'}`);
+    }
+  }
+
+  const score = clampScore(Math.round(
+    (allEpisodesGenerated ? 25 : Math.max(0, 25 - notGeneratedCount * 3))
+    + (generatedIdsInPlanRange ? 15 : 0)
+    + (ledgerCoversGeneratedEpisodes ? 20 : 0)
+    + (completedSeriesThreadsResolved ? 15 : 0)
+    + (knownReports.length > 0 ? knownEpisodeQualityPassRate * 25 : 8)
+  ));
+
+  return {
+    schema_version: 'ai-comic-series-quality-audit/v1',
+    passed: issues.length === 0 && score >= 80,
+    score,
+    generated_episode_count: generatedEntries.length,
+    total_episode_count: params.plan.episode_count,
+    episodes_need_attention: episodesNeedAttention,
+    issues: unique(issues),
+    checks: {
+      all_episodes_generated: allEpisodesGenerated,
+      generated_ids_in_plan_range: generatedIdsInPlanRange,
+      ledger_covers_generated_episodes: ledgerCoversGeneratedEpisodes,
+      completed_series_threads_resolved: completedSeriesThreadsResolved,
+      known_episode_quality_pass_rate: knownEpisodeQualityPassRate,
+    },
+    episode_reports: episodeReports,
+  };
+}
+
+function clampScore(score: number): number {
+  return Math.max(0, Math.min(100, score));
+}
+
+function rebuildContinuityLedgerFromEpisode(params: {
+  plan: AiComicSeriesPlan;
+  generatedEpisodeStoryIds: Record<string, string>;
+  ledger: AiComicContinuityLedger;
+  fromEpisodeNo: number;
+}): AiComicContinuityLedger {
+  const existingRecordsByEpisode = new Map(params.ledger.episode_records.map(record => [record.episode_no, record]));
+  const beforeRecords = params.ledger.episode_records
+    .filter(record => record.episode_no < params.fromEpisodeNo)
+    .sort((a, b) => a.episode_no - b.episode_no);
+  const lastBefore = beforeRecords.at(-1);
+  let ledger: AiComicContinuityLedger = lastBefore
+    ? {
+        schema_version: 'ai-comic-continuity-ledger/v1',
+        last_generated_episode_no: lastBefore.episode_no,
+        character_state_current: lastBefore.character_state,
+        open_threads: lastBefore.pending_threads_after,
+        paid_off_threads: unique(beforeRecords.flatMap(record => record.paid_off_threads)),
+        knowledge_used: unique(beforeRecords.flatMap(record => record.knowledge_used)),
+        episode_records: beforeRecords,
+      }
+    : buildInitialContinuityLedger(params.plan);
+
+  const generatedEpisodes = params.plan.episodes
+    .filter(episode => episode.episode_no >= params.fromEpisodeNo)
+    .filter(episode => Boolean(params.generatedEpisodeStoryIds[String(episode.episode_no)]))
+    .sort((a, b) => a.episode_no - b.episode_no);
+
+  for (const episode of generatedEpisodes) {
+    const storyId = params.generatedEpisodeStoryIds[String(episode.episode_no)];
+    if (!storyId) continue;
+    const existingRecord = existingRecordsByEpisode.get(episode.episode_no);
+    ledger = updateContinuityLedgerFromEpisodePlan({
+      ledger,
+      plan: params.plan,
+      episode,
+      storyId,
+      generatedAt: existingRecord?.generated_at,
+      knowledgeUsed: existingRecord?.knowledge_used,
+    });
+  }
+
+  return ledger;
+}
+
+function hasEpisodePlanChangedAfterGeneration(params: {
+  episode: AiComicEpisodePlan;
+  ledgerRecord: AiComicContinuityLedgerEpisode;
+}): boolean {
+  return params.episode.title !== params.ledgerRecord.title
+    || params.episode.ending_hook !== params.ledgerRecord.ending_hook
+    || !sameStringList(params.episode.continuity_state_after, params.ledgerRecord.character_state)
+    || !sameStringList(params.episode.knowledge_focus, params.ledgerRecord.knowledge_used);
+}
+
+function sameStringList(left: string[], right: string[]): boolean {
+  const normalize = (items: string[]) => items
+    .map(item => item.trim())
+    .filter(Boolean)
+    .sort();
+  const leftNormalized = normalize(left);
+  const rightNormalized = normalize(right);
+  if (leftNormalized.length !== rightNormalized.length) return false;
+  return leftNormalized.every((item, index) => item === rightNormalized[index]);
 }
 
 function kbRoot(): string {
@@ -433,9 +706,15 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
   const filePath = seriesProjectPath(seriesProjectId);
   if (!(await pathExists(filePath))) return null;
   const detail = await readJsonFile<StoredAiComicSeriesProject>(filePath);
+  const continuityLedger = detail.continuity_ledger ?? buildInitialContinuityLedger(detail.plan);
   return {
     ...detail,
-    continuity_ledger: detail.continuity_ledger ?? buildInitialContinuityLedger(detail.plan),
+    continuity_ledger: continuityLedger,
+    series_quality_audit: detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
+      plan: detail.plan,
+      generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
+      ledger: continuityLedger,
+    }),
   };
 }
 
@@ -487,6 +766,27 @@ function updateContinuityLedger(params: {
   episode: AiComicEpisodePlan;
   story: StoryGenerateResult;
 }): AiComicContinuityLedger {
+  const storyKnowledgeEntries = [
+    ...(params.story.knowledge_pack?.primary_entries ?? []).map(entry => entry.entry_name),
+    ...(params.story.knowledge_pack?.supporting_entries ?? []).map(entry => entry.entry_name),
+  ];
+  return updateContinuityLedgerFromEpisodePlan({
+    ledger: params.ledger,
+    plan: params.plan,
+    episode: params.episode,
+    storyId: params.story.storyId,
+    knowledgeUsed: storyKnowledgeEntries,
+  });
+}
+
+function updateContinuityLedgerFromEpisodePlan(params: {
+  ledger: AiComicContinuityLedger;
+  plan: AiComicSeriesPlan;
+  episode: AiComicEpisodePlan;
+  storyId: string;
+  generatedAt?: string;
+  knowledgeUsed?: string[];
+}): AiComicContinuityLedger {
   const openedThreads = params.plan.plot_threads
     .filter(thread => thread.setup_episode === params.episode.episode_no)
     .map(thread => `${thread.title}：${thread.description}`);
@@ -504,14 +804,13 @@ function updateContinuityLedger(params: {
   const knowledgeUsed = unique([
     ...params.ledger.knowledge_used,
     ...params.episode.knowledge_focus,
-    ...(params.story.knowledge_pack?.primary_entries ?? []).map(entry => entry.entry_name),
-    ...(params.story.knowledge_pack?.supporting_entries ?? []).map(entry => entry.entry_name),
+    ...(params.knowledgeUsed ?? []),
   ]);
   const record: AiComicContinuityLedgerEpisode = {
     episode_no: params.episode.episode_no,
-    story_id: params.story.storyId,
+    story_id: params.storyId,
     title: params.episode.title,
-    generated_at: new Date().toISOString(),
+    generated_at: params.generatedAt ?? new Date().toISOString(),
     character_state: params.episode.continuity_state_after,
     opened_threads: openedThreads,
     paid_off_threads: paidOffThreads,

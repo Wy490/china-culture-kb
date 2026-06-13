@@ -748,11 +748,11 @@ AiComicEpisodeRegenerationReason
    - 是否更新角色状态；
    - 是否打开/回收线索；
    - 是否为下一集留下明确承接；
-5. 分集卡片被编辑后标记：
+5. 分集卡片被编辑后标记：（已部分完成：系列级审计会识别已生成分集的规划变更，并标记需重新生成与重建账本）
    - `plan_changed_after_generation`
    - `needs_episode_regeneration`
    - `needs_ledger_rebuild`
-6. 支持“从第 N 集重建连续性账本”的设计与后端函数。
+6. 支持“从第 N 集重建连续性账本”的设计与后端函数。（已完成：支持从指定集数重建账本，前端可从最早需重建集数触发）
 
 验收：
 
@@ -767,12 +767,12 @@ AiComicEpisodeRegenerationReason
 
 任务：
 
-1. `StoryProjectVersionSnapshot` 增加 `quality_report`；
-2. `AiComicSeriesProjectDetail` 增加 `series_quality_audit`；
+1. `StoryProjectVersionSnapshot` 增加 `quality_report`；（已完成：版本快照顶层沉淀质量报告，旧快照摘要兼容回退到 story 内部质量报告）
+2. `AiComicSeriesProjectDetail` 增加 `series_quality_audit`；（已完成：保存、读取、单集生成回写时自动刷新系列级审计，并在 AI 漫剧系列页展示）
 3. 故事详情页展示质量报告；
 4. 项目详情页支持按质量问题筛选场景；
 5. 局部重写后重新运行类型片校验；
-6. 导出 Markdown / JSON 时带上：
+6. 导出 Markdown / JSON 时带上：（已完成：项目详情页通过后端当前版本导出包下载 Markdown 与 JSON，导出后项目状态标记为已导出，包含以下内容）
    - 类型片信息；
    - 叙事结构；
    - 质量报告摘要；
@@ -801,13 +801,13 @@ AiComicEpisodeRegenerationReason
 
 1. StoryPlan 展示：
    - 推荐类型；
-   - 推荐叙事结构；
+   - 推荐叙事结构；（已完成：StoryPlan 现在展示推荐结构、首选标记和推荐原因）
    - 为什么推荐；
-   - 需要补充的资料；
+   - 需要补充的资料；（已完成：StoryPlan 会展示可信度、核验方式、待核实点和故事细节补充建议）
 2. StoryStudio 增加高级设置：
    - 类型片结构强度；
-   - 是否优先剧情；
-   - 是否优先资料完整；
+   - 是否优先剧情；（已完成：生成优先级支持“优先剧情完整”）
+   - 是否优先资料完整；（已完成：生成优先级支持“优先资料完整”）
    - 是否开启自动修复；
 3. StoryResult 展示：
    - 类型匹配度；
@@ -818,7 +818,7 @@ AiComicEpisodeRegenerationReason
    - 连续性账本；
    - 每集质量状态；
    - 已生成但计划已变化提示；
-   - 下一集推荐生成入口。
+   - 下一集推荐生成入口。（已完成：系列蓝图顶部根据连续性账本推荐下一集生成入口）
 
 验收：
 

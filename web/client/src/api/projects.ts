@@ -5,6 +5,7 @@ import type {
   ProjectSupplementTaskListItem,
   StoryProjectDeleteResult,
   StoryProjectDetail,
+  StoryProjectExportPackage,
   StoryProjectListItem,
   StoryProjectRetainRecentResult,
   StorySceneRegenerateRequest,
@@ -24,6 +25,10 @@ export function getProject(projectId: string) {
 
 export function regenerateProjectScene(projectId: string, body: StorySceneRegenerateRequest) {
   return apiPost<StoryProjectDetail>(`/projects/${projectId}/regenerate-scene`, body)
+}
+
+export function exportProjectCurrentVersion(projectId: string) {
+  return apiPost<StoryProjectExportPackage>(`/projects/${projectId}/export`, {})
 }
 
 export function deleteProject(projectId: string) {

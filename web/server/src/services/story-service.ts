@@ -20,6 +20,7 @@ import type {
   PresentationStyle,
   SupportedDuration,
   StoryStructureType,
+  StoryGenerationPriority,
   PanelCount,
   StoryGenerateRequest,
   StoryGenerateResult,
@@ -34,6 +35,7 @@ import type {
   GearsDeliveryPackage,
   StoryListItem,
   KnowledgePack,
+  KnowledgePackMissing,
   KnowledgeSupplementTask,
   KnowledgeSupplementTaskCategory,
   StoryQualityReport,
@@ -692,6 +694,16 @@ function resolveGenerationType(videoType: VideoType): GenerationType {
   return 'scene_short';
 }
 
+function storyPriorityInstruction(priority: StoryGenerationPriority | undefined): string {
+  if (priority === 'plot_first') {
+    return '生成优先级：优先保证剧情推进、人物选择、冲突升级和场景行动完整；资料内容服务于剧情，不堆砌说明。';
+  }
+  if (priority === 'knowledge_first') {
+    return '生成优先级：优先保证知识依据、事实边界、文化信息和资料完整性；戏剧化表达不得稀释核心知识点。';
+  }
+  return '生成优先级：剧情推进与资料完整保持均衡，关键知识点必须进入可观看的场景行动。';
+}
+
 // ---------------------------------------------------------------------------
 // Resolve StoryStructureType from request (Phase 5)
 // ---------------------------------------------------------------------------
@@ -800,6 +812,7 @@ export async function planStory(entryName: string, originalUserQuery?: string): 
       }];
 
   const culturalRisks = computeCulturalRisks(entry);
+  const recommendedSupplementNeeds = buildPlanSupplementNeeds(entry);
   const recommendedDuration = recommendDuration(entryType, boldEvents.length);
 
   // New (Phase 5): recommended_story_structures based on entry type
@@ -821,10 +834,44 @@ export async function planStory(entryName: string, originalUserQuery?: string): 
     recommended_video_types: recommendedVideoTypes,
     recommended_presentation_styles: recommendedPresentationStyles,
     recommended_story_structures: recommendedStoryStructures,
+    recommended_supplement_needs: recommendedSupplementNeeds,
     available_events: availableEvents,
     recommended_duration: recommendedDuration,
     cultural_risks: culturalRisks,
   });
+}
+
+function buildPlanSupplementNeeds(entry: EntryDetail): KnowledgePackMissing[] {
+  const needs: KnowledgePackMissing[] = [];
+  if (entry.credibility === '存疑' || entry.credibility === '待核实') {
+    needs.push({
+      need_id: 'credibility_review',
+      label: '可信度复核',
+      message: `条目可信度为“${entry.credibility}”，生成前建议补充来源说明或核验结论。`,
+    });
+  }
+  if (!entry.verificationMethod?.trim()) {
+    needs.push({
+      need_id: 'verification_method',
+      label: '核验方式',
+      message: '条目缺少核验方式说明，建议补充资料来源、地方志、馆藏说明或实地记录。',
+    });
+  }
+  for (const point of entry.unverifiedPoints.slice(0, 5)) {
+    needs.push({
+      need_id: `unverified_${needs.length + 1}`,
+      label: '待核实内容',
+      message: point,
+    });
+  }
+  if (entry.story.trim().length < 120) {
+    needs.push({
+      need_id: 'story_detail',
+      label: '故事细节',
+      message: '词条故事材料较短，建议补充关键事件过程、人物选择、场景地点或可视化细节。',
+    });
+  }
+  return needs;
 }
 
 // ---------------------------------------------------------------------------
@@ -1229,6 +1276,9 @@ export async function generateAndStoreStory(
   request: StoryGenerateRequest,
 ): Promise<ApiResponse<StoryGenerateResult>> {
   const { entry_name, original_user_query, selected_event, target_video_duration, tone, output_gears_segments, outline, knowledge_pack } = request;
+  const toneWithPriority = [tone, storyPriorityInstruction(request.story_priority)]
+    .filter((item): item is string => Boolean(item))
+    .join('\n');
 
   // Resolve video_type and generation_type
   const videoType = resolveVideoType(request);
@@ -1317,7 +1367,7 @@ export async function generateAndStoreStory(
       videoType,
       presentationStyle,
       targetDuration,
-      tone: tone ?? '',
+      tone: toneWithPriority,
       memorySeed: seed,
       knowledgePack: knowledgePackToUse,
       originalUserQuery: original_user_query ?? outline,
@@ -1342,7 +1392,7 @@ export async function generateAndStoreStory(
       videoType,
       presentationStyle,
       targetDuration,
-      tone: tone ?? '',
+      tone: toneWithPriority,
       knowledgePack: knowledgePackToUse,
       originalUserQuery: original_user_query ?? outline,
     });
@@ -1364,7 +1414,7 @@ export async function generateAndStoreStory(
     presentationStyle,
     storyStructure,
     targetDuration,
-    tone: tone ?? '',
+    tone: toneWithPriority,
     selectedEvent: centralEvent,
     knowledgePack: knowledgePackToUse,
     memoryMosaicSeed,
@@ -1517,7 +1567,7 @@ export async function generateAndStoreStory(
     _request_meta: {
       selected_event: centralEvent,
       target_video_duration: targetDuration,
-      tone: tone || null,
+      tone: toneWithPriority || null,
       output_gears_segments: output_gears_segments ?? true,
       entry_type: entry.type,
       video_type: videoType,
@@ -1528,6 +1578,7 @@ export async function generateAndStoreStory(
       model_fallback_reason: adapterResult.reason,
       genre_strictness: request.genre_strictness ?? 'balanced',
       auto_repair: request.auto_repair ?? false,
+      story_priority: request.story_priority ?? 'balanced',
     },
   };
   storyData.quality_report = validateGenreStoryQuality({

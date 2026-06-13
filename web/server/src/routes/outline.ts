@@ -5,6 +5,7 @@ import { ErrorCodes } from '@shared/types.js';
 import { validateBody, validateParams } from '../middleware/validate.js';
 import {
   AiComicEpisodeGenerateRequestSchema,
+  AiComicSeriesLedgerRebuildRequestSchema,
   AiComicSeriesProjectIdParamSchema,
   AiComicSeriesProjectSaveRequestSchema,
   AiComicSeriesPlanRequestSchema,
@@ -16,6 +17,7 @@ import {
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
+  rebuildAiComicSeriesContinuityLedger,
   saveAiComicSeriesProject,
 } from '../services/ai-comic-series-service.js';
 
@@ -70,6 +72,22 @@ outlineRouter.get(
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await getAiComicSeriesProject(seriesProjectId);
       res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/rebuild-ledger — rebuild continuity ledger
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/rebuild-ledger',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeriesLedgerRebuildRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await rebuildAiComicSeriesContinuityLedger(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);
     }

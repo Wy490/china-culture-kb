@@ -188,6 +188,7 @@ export type StoryStructureType =
 
 export type ReferenceStrength = 'light' | 'medium' | 'strong';
 export type GenreStrictness = 'loose' | 'balanced' | 'strict';
+export type StoryGenerationPriority = 'balanced' | 'plot_first' | 'knowledge_first';
 
 export interface StoryStructureMeta {
   id: StoryStructureType;
@@ -473,6 +474,7 @@ export interface StoryPlanResult {
   recommended_video_types: RecommendedVideoType[];
   recommended_presentation_styles: RecommendedPresentationStyle[];
   recommended_story_structures?: RecommendedStoryStructure[];
+  recommended_supplement_needs: KnowledgePackMissing[];
   available_events: AvailableEvent[];
   recommended_duration: SupportedDuration;
   cultural_risks: string[];
@@ -522,6 +524,7 @@ export interface StoryGenerateRequest {
   reference_strength?: ReferenceStrength;
   genre_strictness?: GenreStrictness;
   auto_repair?: boolean;
+  story_priority?: StoryGenerationPriority;
 }
 
 // ---------------------------------------------------------------------------
@@ -660,6 +663,9 @@ export interface StoryProjectVersionSummary {
   change_type: StoryProjectVersionChangeType;
   scene_ids_changed: number[];
   note?: string;
+  quality_passed?: boolean;
+  genre_score?: number;
+  quality_issue_count?: number;
 }
 
 export interface StoryProjectMeta extends StoryProjectListItem {
@@ -675,6 +681,7 @@ export interface StoryProjectVersionSnapshot {
   change_type: StoryProjectVersionChangeType;
   scene_ids_changed: number[];
   note?: string;
+  quality_report?: StoryQualityReport | GenreQualityReport;
   story: StoryGenerateResult;
 }
 
@@ -682,6 +689,33 @@ export interface StoryProjectDetail {
   project: StoryProjectMeta;
   current_story: StoryGenerateResult;
   versions: StoryProjectVersionSummary[];
+}
+
+export interface StoryProjectExportSummary {
+  title: string;
+  source_entry: string;
+  video_type: VideoType;
+  video_type_label: string;
+  presentation_style: PresentationStyle;
+  presentation_style_label: string;
+  story_structure?: StoryStructureType;
+  story_structure_label?: string;
+  logline: string;
+  quality_passed?: boolean;
+  genre_score?: number;
+  quality_issues: string[];
+  credibility_note: string;
+  evidence_boundary_count: number;
+  gears_segment_count: number;
+}
+
+export interface StoryProjectExportPackage {
+  schema_version: 'story-project-export/v1';
+  exported_at: string;
+  project: StoryProjectMeta;
+  summary: StoryProjectExportSummary;
+  markdown: string;
+  story: StoryGenerateResult;
 }
 
 export interface ProjectSupplementTaskListItem {
@@ -1087,11 +1121,43 @@ export interface AiComicSeriesContinuityAudit {
   character_state_after: string[];
 }
 
+export type AiComicSeriesQualityEpisodeStatus = 'not_generated' | 'passed' | 'needs_attention' | 'unknown';
+
+export interface AiComicSeriesQualityEpisodeReport {
+  episode_no: number;
+  story_id?: string;
+  status: AiComicSeriesQualityEpisodeStatus;
+  score?: number;
+  issues: string[];
+  plan_changed_after_generation?: boolean;
+  needs_episode_regeneration?: boolean;
+  needs_ledger_rebuild?: boolean;
+}
+
+export interface AiComicSeriesQualityAudit {
+  schema_version: 'ai-comic-series-quality-audit/v1';
+  passed: boolean;
+  score: number;
+  generated_episode_count: number;
+  total_episode_count: number;
+  episodes_need_attention: number[];
+  issues: string[];
+  checks: {
+    all_episodes_generated: boolean;
+    generated_ids_in_plan_range: boolean;
+    ledger_covers_generated_episodes: boolean;
+    completed_series_threads_resolved: boolean;
+    known_episode_quality_pass_rate: number;
+  };
+  episode_reports: AiComicSeriesQualityEpisodeReport[];
+}
+
 export interface AiComicSeriesProjectDetail {
   project: AiComicSeriesProjectMeta;
   plan: AiComicSeriesPlan;
   generated_episode_story_ids: Record<string, string>;
   continuity_ledger: AiComicContinuityLedger;
+  series_quality_audit?: AiComicSeriesQualityAudit;
 }
 
 export interface AiComicSeriesProjectSaveRequest {
@@ -1099,6 +1165,10 @@ export interface AiComicSeriesProjectSaveRequest {
   plan: AiComicSeriesPlan;
   generated_episode_story_ids?: Record<string, string>;
   continuity_ledger?: AiComicContinuityLedger;
+}
+
+export interface AiComicSeriesLedgerRebuildRequest {
+  from_episode_no?: number;
 }
 
 export interface AiComicEpisodeGenerateRequest {

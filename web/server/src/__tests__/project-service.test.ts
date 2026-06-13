@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import type { StoryGenerateResult } from '@shared/types.js';
+import type { StoryGenerateResult, StoryProjectVersionSnapshot } from '@shared/types.js';
 import {
   buildProjectId,
   createProjectFromGeneratedStory,
   deleteProject,
   deleteProjects,
+  exportProjectCurrentVersion,
   getProject,
   listProjectSupplementTasks,
   regenerateProjectScene,
@@ -157,9 +158,48 @@ describe('project-service', () => {
     expect(detail.data?.project.quality_passed).toBe(true);
     expect(detail.data?.project.genre_score).toBe(92);
     expect(detail.data?.project.quality_issue_count).toBe(0);
+    expect(detail.data?.versions[0].quality_passed).toBe(true);
+    expect(detail.data?.versions[0].genre_score).toBe(92);
     expect(detail.data?.current_story.title).toBe(story.title);
     expect(detail.data?.project.model_profile_id).toBe('claude_sonnet');
     expect(detail.data?.current_story.model_profile_id).toBe('claude_sonnet');
+
+    const versionPath = resolve(
+      root,
+      'web',
+      'generated',
+      'projects',
+      enriched.project_id!,
+      'versions',
+      `${enriched.current_version_id}.json`,
+    );
+    const snapshot = JSON.parse(await readFile(versionPath, 'utf-8')) as StoryProjectVersionSnapshot;
+    expect(snapshot.quality_report?.genre_score).toBe(92);
+    expect(snapshot.quality_report?.passed).toBe(true);
+  });
+
+  it('exports the current project version with markdown and marks the project exported', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const exportRes = await exportProjectCurrentVersion(enriched.project_id!);
+
+    expect(exportRes.ok).toBe(true);
+    expect(exportRes.data?.schema_version).toBe('story-project-export/v1');
+    expect(exportRes.data?.project.status).toBe('exported');
+    expect(exportRes.data?.summary.video_type_label).toBe('人物故事');
+    expect(exportRes.data?.summary.genre_score).toBe(92);
+    expect(exportRes.data?.markdown).toContain('# 拒签冤案');
+    expect(exportRes.data?.markdown).toContain('## 质量报告摘要');
+    expect(exportRes.data?.markdown).toContain('## GEARS 分段');
+    expect(exportRes.data?.story.storyId).toBe(story.storyId);
+
+    const detail = await getProject(enriched.project_id!);
+    expect(detail.ok).toBe(true);
+    expect(detail.data?.project.status).toBe('exported');
   });
 
   it('updates GEARS webhook status on the current project and source story file', async () => {

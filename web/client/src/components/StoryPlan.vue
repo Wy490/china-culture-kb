@@ -27,7 +27,7 @@
 
     <!-- Old type cards (backward compat) -->
     <section class="story-plan__section">
-      <h4 class="story-plan__section-title">推荐类型（旧版）</h4>
+      <h4 class="story-plan__section-title">基础生成模式</h4>
       <div class="story-plan__types">
         <div
           v-for="rt in plan.recommended_types"
@@ -45,6 +45,25 @@
           <span class="story-plan__type-name">{{ typeLabel(rt.generation_type) }}</span>
           <span class="story-plan__type-reason">{{ rt.reason }}</span>
         </div>
+      </div>
+    </section>
+
+    <section
+      v-if="plan.recommended_story_structures && plan.recommended_story_structures.length > 0"
+      class="story-plan__section"
+    >
+      <h4 class="story-plan__section-title">推荐叙事结构</h4>
+      <div class="story-plan__structure-list">
+        <article
+          v-for="structure in plan.recommended_story_structures"
+          :key="structure.story_structure"
+          class="story-plan__structure-card"
+          :class="{ 'story-plan__structure-card--primary': structure.priority === 1 }"
+        >
+          <span>{{ structure.priority === 1 ? '首选结构' : '可选结构' }}</span>
+          <strong>{{ storyStructureLabel(structure.story_structure) }}</strong>
+          <p>{{ structure.reason }}</p>
+        </article>
       </div>
     </section>
 
@@ -77,6 +96,23 @@
       </ul>
     </section>
 
+    <section
+      v-if="plan.recommended_supplement_needs && plan.recommended_supplement_needs.length > 0"
+      class="story-plan__section"
+    >
+      <h4 class="story-plan__section-title">建议补充资料</h4>
+      <div class="story-plan__supplement-list">
+        <article
+          v-for="need in plan.recommended_supplement_needs"
+          :key="need.need_id"
+          class="story-plan__supplement-item"
+        >
+          <strong>{{ need.label }}</strong>
+          <p>{{ need.message }}</p>
+        </article>
+      </div>
+    </section>
+
     <!-- Cultural risks -->
     <section v-if="plan.cultural_risks.length > 0" class="story-plan__section">
       <h4 class="story-plan__section-title">文化风险提示</h4>
@@ -90,8 +126,8 @@
 </template>
 
 <script setup lang="ts">
-import type { StoryPlanResult, GenerationType, VideoType, PresentationStyle } from '@shared/types'
-import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
+import type { StoryPlanResult, GenerationType, VideoType, PresentationStyle, StoryStructureType } from '@shared/types'
+import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, STORY_STRUCTURE_CONFIG } from '@shared/types'
 
 const props = defineProps<{
   plan: StoryPlanResult | null
@@ -121,6 +157,10 @@ function videoTypeLabel(vt: VideoType): string {
 
 function presentationStyleLabel(ps: PresentationStyle): string {
   return PRESENTATION_STYLE_CONFIG[ps]?.label ?? ps
+}
+
+function storyStructureLabel(structure: StoryStructureType): string {
+  return STORY_STRUCTURE_CONFIG[structure]?.label ?? structure
 }
 </script>
 
@@ -198,6 +238,70 @@ function presentationStyleLabel(ps: PresentationStyle): string {
   display: block;
   font-size: 13px;
   color: #7f8c8d;
+}
+
+.story-plan__structure-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.story-plan__structure-card {
+  border: 1px solid #d5dee5;
+  border-radius: 6px;
+  background: #fff;
+  padding: 11px 13px;
+}
+
+.story-plan__structure-card--primary {
+  border-color: #27ae60;
+  background: #f2fbf5;
+}
+
+.story-plan__structure-card span {
+  display: block;
+  margin-bottom: 4px;
+  color: #667986;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.story-plan__structure-card strong {
+  display: block;
+  color: #2c3e50;
+  font-size: 15px;
+}
+
+.story-plan__structure-card p {
+  margin: 6px 0 0;
+  color: #60717d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.story-plan__supplement-list {
+  display: grid;
+  gap: 8px;
+}
+
+.story-plan__supplement-item {
+  border: 1px solid #ead4a2;
+  border-radius: 6px;
+  background: #fff9ed;
+  padding: 9px 11px;
+}
+
+.story-plan__supplement-item strong {
+  display: block;
+  color: #7a5200;
+  font-size: 14px;
+}
+
+.story-plan__supplement-item p {
+  margin: 4px 0 0;
+  color: #6f5d38;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 /* Events */

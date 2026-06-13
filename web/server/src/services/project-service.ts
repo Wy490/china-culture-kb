@@ -1,10 +1,18 @@
 import { dirname, resolve } from 'node:path';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { fail, success, ErrorCodes } from '@shared/types.js';
+import {
+  fail,
+  success,
+  ErrorCodes,
+  PRESENTATION_STYLE_CONFIG,
+  STORY_STRUCTURE_CONFIG,
+  VIDEO_TYPE_CONFIG,
+} from '@shared/types.js';
 import type {
   ApiResponse,
   StoryGenerateResult,
   StoryProjectDetail,
+  StoryProjectExportPackage,
   StoryProjectListItem,
   StoryProjectMeta,
   StoryProjectStatus,
@@ -105,7 +113,7 @@ function countOpenSupplementTasks(story: StoryGenerateResult): number {
   return story.supplement_tasks?.filter(task => task.status === 'open').length ?? 0;
 }
 
-function qualitySummary(story: StoryGenerateResult): {
+function qualitySummary(story: Pick<StoryGenerateResult, 'quality_report'>): {
   quality_passed?: boolean;
   genre_score?: number;
   quality_issue_count?: number;
@@ -142,12 +150,16 @@ function parseProjectId(projectId: string): { storyId: string; videoType: VideoT
 }
 
 function toVersionSummary(snapshot: StoryProjectVersionSnapshot): StoryProjectVersionSummary {
+  const qualitySource = snapshot.quality_report
+    ? { quality_report: snapshot.quality_report }
+    : snapshot.story;
   return {
     version_id: snapshot.version_id,
     created_at: snapshot.created_at,
     change_type: snapshot.change_type,
     scene_ids_changed: snapshot.scene_ids_changed,
     note: snapshot.note,
+    ...qualitySummary(qualitySource),
   };
 }
 
@@ -244,6 +256,7 @@ function buildInitialProjectSnapshot(
       created_at: createdAt,
       change_type: 'initial_generation',
       scene_ids_changed: [],
+      quality_report: storyWithProject.quality_report,
       story: storyWithProject,
     },
   };
@@ -330,6 +343,7 @@ async function persistProjectVersion(
     change_type: changeType,
     scene_ids_changed: sceneIdsChanged,
     note,
+    quality_report: updatedStory.quality_report,
     story: updatedStory,
   };
 
@@ -417,6 +431,144 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
     current_story: normalizeStoryGenerationFields(currentVersion.story),
     versions: versions.map(toVersionSummary),
   });
+}
+
+export async function exportProjectCurrentVersion(projectId: string): Promise<ApiResponse<StoryProjectExportPackage>> {
+  const project = await ensureProjectExists(projectId);
+  if (!project) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" not found`);
+  }
+
+  const versions = await readVersionSnapshots(projectId);
+  const currentVersion = versions.find(version => version.version_id === project.current_version_id) ?? versions[0];
+  if (!currentVersion) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" has no version snapshots`);
+  }
+
+  const exportedAt = new Date().toISOString();
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    status: project.status === 'finalized' ? 'finalized' : 'exported',
+    updated_at: exportedAt,
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+
+  const story = normalizeStoryGenerationFields(currentVersion.story);
+  return success(buildProjectExportPackage({
+    project: updatedProject,
+    story,
+    exportedAt,
+  }));
+}
+
+function buildProjectExportPackage(params: {
+  project: StoryProjectMeta;
+  story: StoryGenerateResult;
+  exportedAt: string;
+}): StoryProjectExportPackage {
+  const summary = {
+    title: params.story.title,
+    source_entry: params.story.source_entry,
+    video_type: params.story.video_type,
+    video_type_label: VIDEO_TYPE_CONFIG[params.story.video_type]?.label ?? params.story.video_type,
+    presentation_style: params.story.presentation_style,
+    presentation_style_label: PRESENTATION_STYLE_CONFIG[params.story.presentation_style]?.label ?? params.story.presentation_style,
+    story_structure: params.story.story_structure,
+    story_structure_label: params.story.story_structure
+      ? STORY_STRUCTURE_CONFIG[params.story.story_structure]?.label ?? params.story.story_structure
+      : undefined,
+    logline: params.story.logline,
+    quality_passed: params.story.quality_report?.passed,
+    genre_score: params.story.quality_report?.genre_score,
+    quality_issues: params.story.quality_report?.issues ?? [],
+    credibility_note: params.story.credibility_note,
+    evidence_boundary_count: params.story.story_blueprint?.evidence_boundaries.length ?? 0,
+    gears_segment_count: params.story.gears_segments.length,
+  };
+
+  const basePackage = {
+    schema_version: 'story-project-export/v1' as const,
+    exported_at: params.exportedAt,
+    project: params.project,
+    summary,
+    markdown: '',
+    story: params.story,
+  };
+
+  return {
+    ...basePackage,
+    markdown: buildProjectExportMarkdown(basePackage),
+  };
+}
+
+function buildProjectExportMarkdown(pkg: Omit<StoryProjectExportPackage, 'markdown'> & { markdown: string }): string {
+  const { story, project, summary } = pkg;
+  const quality = story.quality_report;
+  const blueprint = story.story_blueprint;
+  const lines: string[] = [
+    `# ${story.title}`,
+    '',
+    '## 项目信息',
+    `- 项目 ID: ${project.project_id}`,
+    `- 当前版本: ${project.current_version_id}`,
+    `- 导出时间: ${pkg.exported_at}`,
+    `- 来源条目: ${story.source_entry}`,
+    `- 类型片: ${summary.video_type_label} (${story.video_type})`,
+    `- 表现形式: ${summary.presentation_style_label} (${story.presentation_style})`,
+    `- 叙事结构: ${summary.story_structure_label ?? story.story_structure ?? '未记录'}`,
+    `- 生成模型: ${story.model_profile_id ?? '未记录'}`,
+    '',
+    '## 故事摘要',
+    `- 一句话: ${story.logline}`,
+    `- 主题: ${story.theme}`,
+    '',
+    story.full_text,
+    '',
+    '## 质量报告摘要',
+    `- 状态: ${quality ? quality.passed ? '通过' : '需调整' : '未记录'}`,
+    `- 类型分: ${typeof quality?.genre_score === 'number' ? quality.genre_score : '未记录'}`,
+    `- 问题: ${quality?.issues.length ? quality.issues.join('；') : '无'}`,
+    `- 修复建议: ${quality?.repair_actions?.length ? quality.repair_actions.join('；') : '无'}`,
+    '',
+    '## 可信度边界',
+    `- 总体说明: ${story.credibility_note}`,
+    ...(blueprint?.evidence_boundaries.length
+      ? blueprint.evidence_boundaries.map(item => `- ${item.label} [${item.type}]: ${item.note}`)
+      : ['- 未记录结构化边界']),
+    '',
+    '## 类型节拍',
+    ...(blueprint?.genre_beats.length
+      ? blueprint.genre_beats.map(beat =>
+          `- ${beat.order}. ${beat.function_label}: ${beat.function_description}；场景 ${beat.scene_id ?? '未绑定'}；要求：${beat.content_requirement}；边界：${beat.evidence_boundary_ids.join('、') || '未绑定'}`
+        )
+      : ['- 未记录类型节拍']),
+    '',
+    '## 场景分解',
+    ...story.scene_breakdown.flatMap(scene => [
+      `### 场景 ${scene.scene_id}: ${scene.title}`,
+      `- 时长: ${scene.duration_sec} 秒`,
+      `- 地点: ${scene.location}`,
+      `- 功能: ${scene.dramatic_function}`,
+      `- 冲突: ${scene.conflict ?? '未记录'}`,
+      `- 行动: ${scene.key_action}`,
+      `- 画面: ${scene.visual_prompt}`,
+      `- 旁白/对白: ${scene.dialogue_or_narration ?? '未记录'}`,
+      '',
+    ]),
+    '## GEARS 分段',
+    ...story.gears_segments.flatMap(segment => [
+      `### Segment ${segment.segment_id} / 场景 ${segment.source_scene_id}`,
+      `- 时长: ${segment.duration_sec} 秒`,
+      `- 格数: ${segment.panel_count}`,
+      `- 目的: ${segment.purpose}`,
+      `- 视觉重点: ${segment.visual_focus.join('、') || '未记录'}`,
+      `- 文化约束: ${segment.cultural_constraints.join('；') || '未记录'}`,
+      '',
+      segment.script_text,
+      '',
+    ]),
+  ];
+  return lines.join('\n');
 }
 
 export async function listProjectSupplementTasks(

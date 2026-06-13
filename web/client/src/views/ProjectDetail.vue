@@ -17,8 +17,11 @@
           </p>
         </div>
         <div class="project-detail-page__header-actions">
-          <button class="project-detail-page__action-btn project-detail-page__action-btn--primary" @click="exportCurrentStory">
-            导出当前版本
+          <button class="project-detail-page__action-btn project-detail-page__action-btn--primary" @click="exportCurrentStoryMarkdown">
+            导出 Markdown
+          </button>
+          <button class="project-detail-page__action-btn" @click="exportCurrentStoryJson">
+            导出 JSON
           </button>
           <button
             class="project-detail-page__action-btn project-detail-page__action-btn--danger"
@@ -122,6 +125,15 @@
             <span>{{ formatDate(version.created_at) }}</span>
             <span>{{ versionLabel(version.change_type) }}</span>
             <span v-if="version.scene_ids_changed.length > 0">场景 {{ version.scene_ids_changed.join(', ') }}</span>
+            <span
+              v-if="typeof version.genre_score === 'number'"
+              :class="['project-detail-page__version-quality', version.quality_passed ? 'project-detail-page__version-quality--pass' : 'project-detail-page__version-quality--warn']"
+            >
+              类型分 {{ version.genre_score }}
+            </span>
+            <span v-if="(version.quality_issue_count ?? 0) > 0" class="project-detail-page__version-warning">
+              质量问题 {{ version.quality_issue_count }}
+            </span>
             <span v-if="version.note">{{ version.note }}</span>
           </div>
         </div>
@@ -145,7 +157,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { deleteProject, getProject, regenerateProjectScene, updateProjectSupplementTask } from '@/api/projects'
+import {
+  deleteProject,
+  exportProjectCurrentVersion,
+  getProject,
+  regenerateProjectScene,
+  updateProjectSupplementTask,
+} from '@/api/projects'
 import { getModelProfiles } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
 import GearsWebhookStatus from '@/components/GearsWebhookStatus.vue'
@@ -300,38 +318,52 @@ async function handleSupplementTaskUpdate(taskId: string, status: KnowledgeSuppl
   updatingSupplementTaskId.value = ''
 }
 
-function exportCurrentStory() {
+async function exportCurrentStoryJson() {
   if (!detail.value) return
-  const fileName = `${detail.value.project.project_id}-${detail.value.project.current_version_id}.json`
-  const story = detail.value.current_story
-  const exportPackage = {
-    schema_version: 'story-export/v1',
-    exported_at: new Date().toISOString(),
-    project: detail.value.project,
-    summary: {
-      title: story.title,
-      source_entry: story.source_entry,
-      video_type: story.video_type,
-      presentation_style: story.presentation_style,
-      story_structure: story.story_structure,
-      logline: story.logline,
-      quality_passed: story.quality_report?.passed,
-      genre_score: story.quality_report?.genre_score,
-      quality_issues: story.quality_report?.issues ?? [],
-      credibility_note: story.credibility_note,
-      evidence_boundaries: story.story_blueprint?.evidence_boundaries ?? [],
-      gears_segment_count: story.gears_segments.length,
-    },
-    story,
+  const res = await exportProjectCurrentVersion(detail.value.project.project_id)
+  if (!res.ok || !res.data) {
+    error.value = res.error?.message ?? '导出 JSON 失败'
+    return
   }
-  const blob = new Blob([JSON.stringify(exportPackage, null, 2)], { type: 'application/json;charset=utf-8' })
+  detail.value = {
+    ...detail.value,
+    project: res.data.project,
+  }
+  downloadText(
+    `${res.data.project.project_id}-${res.data.project.current_version_id}.json`,
+    JSON.stringify(res.data, null, 2),
+    'application/json;charset=utf-8',
+  )
+  successMessage.value = '当前版本 JSON 已导出到本地'
+}
+
+async function exportCurrentStoryMarkdown() {
+  if (!detail.value) return
+  const res = await exportProjectCurrentVersion(detail.value.project.project_id)
+  if (!res.ok || !res.data) {
+    error.value = res.error?.message ?? '导出 Markdown 失败'
+    return
+  }
+  detail.value = {
+    ...detail.value,
+    project: res.data.project,
+  }
+  downloadText(
+    `${res.data.project.project_id}-${res.data.project.current_version_id}.md`,
+    res.data.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = '当前版本 Markdown 已导出到本地'
+}
+
+function downloadText(filename: string, text: string, type: string) {
+  const blob = new Blob([text], { type })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = fileName
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
-  successMessage.value = '当前版本已导出到本地'
 }
 
 async function deleteCurrentProject() {
@@ -627,6 +659,20 @@ watch(selectedModelProfileId, (value) => {
   background: #f8fafc;
   color: #314252;
   font-size: 14px;
+}
+
+.project-detail-page__version-quality {
+  font-weight: 700;
+}
+
+.project-detail-page__version-quality--pass {
+  color: #1b7f4a;
+}
+
+.project-detail-page__version-quality--warn,
+.project-detail-page__version-warning {
+  color: #b13b2e;
+  font-weight: 700;
 }
 
 @media (max-width: 820px) {
