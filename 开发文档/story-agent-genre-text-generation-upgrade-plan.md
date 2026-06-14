@@ -885,6 +885,18 @@ ai_comic_episode_quality?: AiComicEpisodeQualityReport;
 continuity_audit?: AiComicSeriesContinuityAudit;
 ```
 
+系列 Bible 导出：
+
+```text
+POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-bible
+```
+
+响应包含：
+
+```ts
+AiComicSeriesBibleExportPackage
+```
+
 ---
 
 ## 8. 测试计划

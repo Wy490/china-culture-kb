@@ -14,6 +14,7 @@ import type {
   AiComicPacingProfile,
   AiComicSeriesLedgerRebuildRequest,
   AiComicSeriesContinuityAudit,
+  AiComicSeriesBibleExportPackage,
   AiComicSeriesQualityAudit,
   AiComicSeriesQualityEpisodeReport,
   AiComicSeriesProjectDetail,
@@ -326,6 +327,92 @@ function buildAiComicEpisodeQualityReport(params: {
   };
 }
 
+function buildAiComicSeriesBibleMarkdown(pkg: AiComicSeriesBibleExportPackage): string {
+  const plan = pkg.plan;
+  const lines = [
+    `# ${plan.series_title} 系列 Bible`,
+    '',
+    '## 导出信息',
+    `- 导出时间: ${pkg.exported_at}`,
+    `- 系列项目: ${pkg.project.series_project_id}`,
+    `- 总集数: ${plan.episode_count}`,
+    `- 单集时长: ${plan.episode_duration_range_sec.min}-${plan.episode_duration_range_sec.max} 秒`,
+    `- 节奏: ${PACING_LABELS[plan.pacing_profile]}`,
+    `- 已生成分镜: ${pkg.project.generated_episode_count}`,
+    '',
+    '## 系列总览',
+    `- 一句话: ${plan.logline}`,
+    `- 核心主题: ${plan.core_theme}`,
+    `- 故事梗概: ${plan.premise}`,
+    '',
+    '## 主线剧情骨架',
+    ...(plan.series_spine?.length
+      ? plan.series_spine.map(beat =>
+          `- 第${beat.episode_range[0]}-${beat.episode_range[1]}集：${beat.story_function}；${beat.central_question}；转折：${beat.required_turn}；目标：${beat.payoff_target}`
+        )
+      : ['- 未记录']),
+    '',
+    '## 角色弧线',
+    ...plan.main_characters.map(character => [
+      `### ${character.name}`,
+      `- 定位: ${character.role}`,
+      `- 初始状态: ${character.starting_state}`,
+      `- 欲望: ${character.desire}`,
+      `- 长弧: ${character.long_arc}`,
+      `- 视觉识别: ${character.visual_signature}`,
+      `- 转折: ${character.turning_points.map(point => `第${point.episode_no}集 ${point.change}`).join('；') || '未记录'}`,
+      '',
+    ]).flat(),
+    '## 长期线索',
+    ...plan.plot_threads.map(thread => [
+      `### ${thread.title}`,
+      `- 开启/回收: 第${thread.setup_episode}集 → 第${thread.payoff_episode}集`,
+      `- 描述: ${thread.description}`,
+      `- 连续性备注: ${thread.continuity_notes.join('；') || '无'}`,
+      '',
+    ]).flat(),
+    '## 连续性账本',
+    `- 最近生成集: ${pkg.continuity_ledger.last_generated_episode_no ? `第${pkg.continuity_ledger.last_generated_episode_no}集` : '尚未生成'}`,
+    `- 当前角色状态: ${pkg.continuity_ledger.character_state_current.join('；') || '暂无'}`,
+    `- 未回收线索: ${pkg.continuity_ledger.open_threads.join('；') || '暂无'}`,
+    `- 已回收线索: ${pkg.continuity_ledger.paid_off_threads.join('；') || '暂无'}`,
+    `- 已用知识: ${pkg.continuity_ledger.knowledge_used.join('、') || '暂无'}`,
+    '',
+    '## 系列质量审计',
+    ...(pkg.series_quality_audit ? [
+      `- 状态: ${pkg.series_quality_audit.passed ? '通过' : '需处理'}`,
+      `- 分数: ${pkg.series_quality_audit.score}/100`,
+      `- 待处理集数: ${pkg.series_quality_audit.episodes_need_attention.join('、') || '无'}`,
+      `- 问题: ${pkg.series_quality_audit.issues.join('；') || '无'}`,
+    ] : ['- 未记录']),
+    '',
+    '## 分集蓝图',
+    ...pkg.episode_blueprints.map(blueprint => {
+      const episode = plan.episodes.find(item => item.episode_no === blueprint.episode_no);
+      const storyId = pkg.generated_episode_story_ids[String(blueprint.episode_no)];
+      return [
+        `### 第${blueprint.episode_no}集：${blueprint.title}`,
+        `- 生成故事: ${storyId || '尚未生成'}`,
+        `- 阶段: ${episode?.story_phase ?? '未记录'}`,
+        `- 开场钩子: ${blueprint.opening_hook}`,
+        `- 主冲突: ${blueprint.main_conflict}`,
+        `- 中段转折: ${blueprint.midpoint_turn}`,
+        `- 结尾钩子: ${blueprint.ending_hook}`,
+        `- 结尾类型: ${hookTypeLabel(blueprint.ending_hook_type)}`,
+        `- 角色变化: ${blueprint.character_state_change}`,
+        `- 线索动作: ${blueprint.thread_action}`,
+        `- 知识焦点: ${blueprint.knowledge_focus.join('、') || '无'}`,
+        `- 目标场景功能: ${blueprint.target_scene_functions.join('；')}`,
+        '',
+      ];
+    }).flat(),
+    '## 生产备注',
+    ...plan.production_notes.map(note => `- ${note}`),
+    '',
+  ];
+  return lines.join('\n');
+}
+
 function buildAiComicContinuityAudit(params: {
   story: StoryGenerateResult;
   plan: AiComicSeriesPlan;
@@ -484,6 +571,40 @@ export async function listAiComicSeriesProjects(): Promise<ApiResponse<AiComicSe
 
   projects.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   return success(projects);
+}
+
+export async function exportAiComicSeriesBible(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesBibleExportPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const exportedAt = new Date().toISOString();
+  const seriesQualityAudit = detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
+    plan: detail.plan,
+    generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
+    ledger: detail.continuity_ledger,
+  });
+  const episodeBlueprints = detail.plan.episodes.map(episode =>
+    buildAiComicEpisodeBlueprint(detail.plan, episode)
+  );
+  const pkg: AiComicSeriesBibleExportPackage = {
+    schema_version: 'ai-comic-series-bible-export/v1',
+    exported_at: exportedAt,
+    project: detail.project,
+    plan: detail.plan,
+    generated_episode_story_ids: detail.generated_episode_story_ids,
+    continuity_ledger: detail.continuity_ledger,
+    series_quality_audit: seriesQualityAudit,
+    episode_blueprints: episodeBlueprints,
+    markdown: '',
+  };
+  return success({
+    ...pkg,
+    markdown: buildAiComicSeriesBibleMarkdown(pkg),
+  });
 }
 
 async function recordGeneratedEpisodeStory(

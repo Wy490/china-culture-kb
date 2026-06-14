@@ -1201,6 +1201,18 @@ export interface AiComicSeriesProjectDetail {
   series_quality_audit?: AiComicSeriesQualityAudit;
 }
 
+export interface AiComicSeriesBibleExportPackage {
+  schema_version: 'ai-comic-series-bible-export/v1';
+  exported_at: string;
+  project: AiComicSeriesProjectMeta;
+  plan: AiComicSeriesPlan;
+  generated_episode_story_ids: Record<string, string>;
+  continuity_ledger: AiComicContinuityLedger;
+  series_quality_audit?: AiComicSeriesQualityAudit;
+  episode_blueprints: AiComicEpisodeBlueprint[];
+  markdown: string;
+}
+
 export interface AiComicSeriesProjectSaveRequest {
   series_project_id?: string;
   plan: AiComicSeriesPlan;

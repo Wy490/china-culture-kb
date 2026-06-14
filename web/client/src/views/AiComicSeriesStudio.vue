@@ -133,6 +133,22 @@
             <h1 class="series-studio__plan-title">{{ plan.series_title }}</h1>
             <p class="series-studio__logline">{{ plan.logline }}</p>
             <p v-if="saveMessage" class="series-studio__save-note">{{ saveMessage }}</p>
+            <div v-if="seriesProjectId" class="series-studio__summary-actions">
+              <button
+                class="series-studio__ghost-button"
+                :disabled="exportingBible"
+                @click="exportSeriesBibleMarkdown"
+              >
+                {{ exportingBible ? '导出中...' : '导出系列 Bible Markdown' }}
+              </button>
+              <button
+                class="series-studio__ghost-button"
+                :disabled="exportingBible"
+                @click="exportSeriesBibleJson"
+              >
+                导出系列 Bible JSON
+              </button>
+            </div>
             <div v-if="nextRecommendedEpisode" class="series-studio__next-action">
               <div>
                 <span>推荐下一集</span>
@@ -595,6 +611,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   aiComicEpisodeGenerate,
+  exportAiComicSeriesBible,
   aiComicSeriesPlan,
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
@@ -641,6 +658,7 @@ const episodeEditDraft = ref<EpisodeEditDraft | null>(null)
 const episodeEditError = ref('')
 const savingEpisodeEdit = ref(false)
 const rebuildingLedger = ref(false)
+const exportingBible = ref(false)
 const savedProjects = ref<AiComicSeriesProjectMeta[]>([])
 const loadingSavedProjects = ref(false)
 const savedProjectsError = ref('')
@@ -965,6 +983,52 @@ async function handleRebuildLedger() {
     errorMessage.value = res.error?.message ?? '重建连续性账本失败'
   }
   rebuildingLedger.value = false
+}
+
+async function exportSeriesBibleMarkdown() {
+  if (!seriesProjectId.value) return
+  exportingBible.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesBible(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-series-bible.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    saveMessage.value = `系列 Bible Markdown 已导出 · ${formatDate(res.data.exported_at)}`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出系列 Bible 失败'
+  }
+  exportingBible.value = false
+}
+
+async function exportSeriesBibleJson() {
+  if (!seriesProjectId.value) return
+  exportingBible.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesBible(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-series-bible.json`,
+      JSON.stringify(res.data, null, 2),
+      'application/json;charset=utf-8',
+    )
+    saveMessage.value = `系列 Bible JSON 已导出 · ${formatDate(res.data.exported_at)}`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出系列 Bible 失败'
+  }
+  exportingBible.value = false
+}
+
+function downloadText(filename: string, text: string, type: string) {
+  const blob = new Blob([text], { type })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 async function loadSavedProjects() {
@@ -1307,6 +1371,13 @@ function episodeProjectPath(episodeNo: number): string {
   color: #28734b;
   font-size: 13px;
   font-weight: 600;
+}
+
+.series-studio__summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .series-studio__next-action {

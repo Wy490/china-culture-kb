@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { resolve } from 'node:path';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import {
+  exportAiComicSeriesBible,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
@@ -254,6 +255,15 @@ describe('outline-service', () => {
     const listRes = await listAiComicSeriesProjects();
     expect(listRes.ok).toBe(true);
     expect(listRes.data?.some(project => project.series_project_id === saveRes.data!.project.series_project_id)).toBe(true);
+
+    const exportRes = await exportAiComicSeriesBible(saveRes.data!.project.series_project_id);
+    expect(exportRes.ok).toBe(true);
+    expect(exportRes.data?.schema_version).toBe('ai-comic-series-bible-export/v1');
+    expect(exportRes.data?.episode_blueprints).toHaveLength(3);
+    expect(exportRes.data?.markdown).toContain('# 濂溪少年志 系列 Bible');
+    expect(exportRes.data?.markdown).toContain('## 主线剧情骨架');
+    expect(exportRes.data?.markdown).toContain('## 连续性账本');
+    expect(exportRes.data?.markdown).toContain('第1集：问题出现');
   });
 
   it('updates continuity ledger after generating an episode inside a saved series project', async () => {

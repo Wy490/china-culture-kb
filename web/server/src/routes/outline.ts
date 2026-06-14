@@ -13,6 +13,7 @@ import {
 } from '@shared/schemas.js';
 import { analyzeOutline } from '../services/outline-service.js';
 import {
+  exportAiComicSeriesBible,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
@@ -72,6 +73,21 @@ outlineRouter.get(
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await getAiComicSeriesProject(seriesProjectId);
       res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-bible — export series bible
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/export-bible',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await exportAiComicSeriesBible(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);
     }

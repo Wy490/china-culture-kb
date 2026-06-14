@@ -10,6 +10,7 @@ import type {
   StoryOutlineAnalyzeRequest,
   StoryOutlineAnalysis,
   AiComicEpisodeGenerateRequest,
+  AiComicSeriesBibleExportPackage,
   AiComicSeriesLedgerRebuildRequest,
   AiComicSeriesProjectDetail,
   AiComicSeriesProjectMeta,
@@ -83,5 +84,12 @@ export function rebuildAiComicSeriesLedger(seriesProjectId: string, req: AiComic
   return apiPost<AiComicSeriesProjectDetail>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/rebuild-ledger`,
     req,
+  )
+}
+
+export function exportAiComicSeriesBible(seriesProjectId: string) {
+  return apiPost<AiComicSeriesBibleExportPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-bible`,
+    {},
   )
 }
