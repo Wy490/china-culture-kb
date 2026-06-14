@@ -3,11 +3,13 @@
 
 import type {
   GenreQualityReport,
+  NarrativePatternId,
   StoryBlueprint,
   StoryGenerateResult,
   StoryQualityReport,
 } from '@shared/types.js';
-import { getGenreStoryProfile } from './genre-story-profiles.js';
+import { getGenreSampleGuidance, getGenreStoryProfile } from './genre-story-profiles.js';
+import { getNarrativePatternQualitySignals, getNarrativePatternRepairActions } from './narrative-pattern-library.js';
 
 type StoryFieldValue = string | string[] | Array<unknown> | undefined;
 
@@ -15,15 +17,22 @@ export function validateGenreStoryQuality(input: {
   story: StoryGenerateResult;
   baseReport: StoryQualityReport;
   blueprint?: StoryBlueprint;
+  narrativePatternIds?: NarrativePatternId[];
 }): GenreQualityReport {
   const profile = getGenreStoryProfile(input.story.video_type);
+  const sampleGuidance = getGenreSampleGuidance(input.story.video_type);
+  const narrativePatternSignals = getNarrativePatternQualitySignals(input.story.video_type, input.narrativePatternIds ?? []);
   const missingRequiredElements = findMissingRequiredElements(input.story);
   const weakBeats = findWeakBeats(input.story, input.blueprint);
+  const missingNarrativePatternSignals = findMissingNarrativePatternSignals(input.story, narrativePatternSignals);
   const forbiddenPatternsFound = profile.avoid.filter(pattern => storyText(input.story).includes(pattern));
   const repairActions = [
     ...missingRequiredElements.map(item => `补齐类型字段：${item}`),
     ...weakBeats.map(item => `强化节拍：${item}`),
+    ...missingNarrativePatternSignals.map(item => `补强流派质量信号：${item}`),
     ...forbiddenPatternsFound.map(item => `改写不适配表达：${item}`),
+    ...sampleGuidance.quality_signals.map(item => `对齐样片信号：${item}`),
+    ...getNarrativePatternRepairActions(input.story.video_type, input.narrativePatternIds ?? []),
     ...profile.repair_guidance,
   ].filter((item, index, arr) => arr.indexOf(item) === index);
 
@@ -32,6 +41,7 @@ export function validateGenreStoryQuality(input: {
     100
       - missingRequiredElements.length * 14
       - weakBeats.length * 8
+      - Math.min(missingNarrativePatternSignals.length, 4) * 3
       - forbiddenPatternsFound.length * 10
       - input.baseReport.issues.length * 5,
   );
@@ -39,6 +49,7 @@ export function validateGenreStoryQuality(input: {
   const genreIssues = [
     ...missingRequiredElements.map(item => `类型字段缺失：${item}`),
     ...weakBeats.map(item => `类型节拍偏弱：${item}`),
+    ...missingNarrativePatternSignals.slice(0, 4).map(item => `流派质量信号偏弱：${item}`),
     ...forbiddenPatternsFound.map(item => `出现不适配表达：${item}`),
   ];
 
@@ -54,6 +65,22 @@ export function validateGenreStoryQuality(input: {
     passed: input.baseReport.passed && genreScore >= 70 && missingRequiredElements.length === 0,
     issues: [...input.baseReport.issues, ...genreIssues],
   };
+}
+
+function findMissingNarrativePatternSignals(story: StoryGenerateResult, signals: string[]): string[] {
+  const text = storyText(story);
+  return signals.filter(signal => !hasSignalText(text, signal));
+}
+
+function hasSignalText(text: string, signal: string): boolean {
+  const normalizedSignal = signal.replace(/[，。；、\s]/g, '');
+  if (!normalizedSignal) return true;
+  const chunks = normalizedSignal
+    .split(/明确|清楚|可见|成立|充足|具体|自然|存在|强|高|低|有/)
+    .map(item => item.trim())
+    .filter(item => item.length >= 2);
+  if (chunks.length === 0) return text.includes(signal);
+  return chunks.some(chunk => text.includes(chunk));
 }
 
 function findMissingRequiredElements(story: StoryGenerateResult): string[] {

@@ -71,6 +71,29 @@
         </label>
       </section>
 
+      <section v-if="availableNarrativePatterns.length > 0" class="series-studio__field">
+        <span class="series-studio__label">叙事流派强化</span>
+        <p class="series-studio__field-hint">AI 漫剧默认使用这些流派机制；勾选后会在系列规划和单集生成中加强。</p>
+        <div class="series-studio__pattern-list">
+          <label
+            v-for="pattern in availableNarrativePatterns"
+            :key="pattern.pattern_id"
+            class="series-studio__pattern-card"
+            :class="{ 'series-studio__pattern-card--selected': selectedNarrativePatternIds.includes(pattern.pattern_id) }"
+          >
+            <input
+              v-model="selectedNarrativePatternIds"
+              type="checkbox"
+              :value="pattern.pattern_id"
+            />
+            <span>
+              <strong>{{ pattern.label }}</strong>
+              <small>{{ pattern.narrative_engine }}</small>
+            </span>
+          </label>
+        </div>
+      </section>
+
       <label class="series-studio__checkbox-row">
         <input v-model="autoRepairEpisode" type="checkbox" />
         <span>生成本集后自动调整类型质量问题</span>
@@ -94,25 +117,61 @@
       <section class="series-studio__saved">
         <div class="series-studio__saved-head">
           <h3>已保存系列</h3>
-          <button class="series-studio__ghost-button" :disabled="loadingSavedProjects" @click="loadSavedProjects">
-            {{ loadingSavedProjects ? '刷新中...' : '刷新' }}
-          </button>
+          <div class="series-studio__saved-head-actions">
+            <label class="series-studio__saved-toggle">
+              <input v-model="showArchivedProjects" type="checkbox" @change="loadSavedProjects" />
+              <span>显示归档</span>
+            </label>
+            <button class="series-studio__ghost-button" :disabled="loadingSavedProjects" @click="loadSavedProjects">
+              {{ loadingSavedProjects ? '刷新中...' : '刷新' }}
+            </button>
+          </div>
         </div>
         <p v-if="savedProjectsError" class="series-studio__message series-studio__message--error">
           {{ savedProjectsError }}
         </p>
         <div v-else-if="savedProjects.length > 0" class="series-studio__saved-list">
-          <button
+          <article
             v-for="project in savedProjects"
             :key="project.series_project_id"
             class="series-studio__saved-item"
-            :class="{ 'series-studio__saved-item--active': project.series_project_id === seriesProjectId }"
-            @click="openSavedProject(project.series_project_id)"
+            :class="{
+              'series-studio__saved-item--active': project.series_project_id === seriesProjectId,
+              'series-studio__saved-item--archived': Boolean(project.archived_at),
+            }"
           >
-            <strong>{{ project.title }}</strong>
-            <span>{{ project.episode_count }} 集 · {{ project.generated_episode_count }} 集已生成</span>
-            <small>{{ formatDate(project.updated_at) }}</small>
-          </button>
+            <button class="series-studio__saved-open" @click="openSavedProject(project.series_project_id)">
+              <strong>{{ project.title }}</strong>
+              <span>
+                {{ project.episode_count }} 集 · {{ project.generated_episode_count }} 集已生成
+                <template v-if="project.archived_at"> · 已归档</template>
+              </span>
+              <small>{{ formatDate(project.updated_at) }}</small>
+            </button>
+            <div class="series-studio__saved-actions">
+              <button
+                class="series-studio__ghost-button"
+                :disabled="managingProjectId === project.series_project_id"
+                @click="handleCopyProject(project.series_project_id)"
+              >
+                复制
+              </button>
+              <button
+                class="series-studio__ghost-button"
+                :disabled="managingProjectId === project.series_project_id"
+                @click="handleArchiveProject(project.series_project_id, !project.archived_at)"
+              >
+                {{ project.archived_at ? '恢复' : '归档' }}
+              </button>
+              <button
+                class="series-studio__ghost-button series-studio__ghost-button--danger"
+                :disabled="managingProjectId === project.series_project_id"
+                @click="handleDeleteProject(project.series_project_id)"
+              >
+                删除
+              </button>
+            </div>
+          </article>
         </div>
         <p v-else class="series-studio__saved-empty">
           暂无保存系列。
@@ -178,6 +237,10 @@
               <span>节奏</span>
             </div>
             <div class="series-studio__metric">
+              <strong>{{ activeNarrativePatternLabels.length }}</strong>
+              <span>流派机制</span>
+            </div>
+            <div class="series-studio__metric">
               <strong>{{ generatedEpisodeCount }}</strong>
               <span>已生成分镜</span>
             </div>
@@ -216,6 +279,42 @@
           <ul v-if="seriesQualityAudit.issues.length > 0" class="series-studio__quality-issues">
             <li v-for="issue in seriesQualityAudit.issues.slice(0, 6)" :key="issue">{{ issue }}</li>
           </ul>
+          <div v-if="seriesQualityAudit.thread_closure_report" class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>线索闭环</strong>
+              <span>
+                {{ seriesQualityAudit.thread_closure_report.paid_off_thread_count }}/{{ seriesQualityAudit.thread_closure_report.total_thread_count }} 已回收
+              </span>
+            </div>
+            <div class="series-studio__thread-closure-grid">
+              <article>
+                <strong>{{ seriesQualityAudit.thread_closure_report.overdue_thread_count }}</strong>
+                <span>超期未回收</span>
+              </article>
+              <article>
+                <strong>{{ seriesQualityAudit.thread_closure_report.orphaned_thread_count }}</strong>
+                <span>未绑定伏笔</span>
+              </article>
+              <article>
+                <strong>{{ seriesQualityAudit.thread_closure_report.duplicate_thread_count }}</strong>
+                <span>重复伏笔</span>
+              </article>
+            </div>
+            <div v-if="priorityThreadClosureItems.length > 0" class="series-studio__thread-closure-list">
+              <article
+                v-for="item in priorityThreadClosureItems"
+                :key="item.thread_id"
+                :class="['series-studio__thread-closure-item', `series-studio__thread-closure-item--${item.status}`]"
+              >
+                <div>
+                  <strong>{{ item.title }}</strong>
+                  <span>{{ threadClosureStatusLabel(item.status) }} · 第{{ item.related_episodes.join('、') }}集</span>
+                </div>
+                <p>{{ item.issues[0] || item.repair_suggestions[0] || '按计划继续推进线索。' }}</p>
+                <small v-if="item.repair_suggestions.length > 0">{{ item.repair_suggestions[0] }}</small>
+              </article>
+            </div>
+          </div>
           <div class="series-studio__episode-audit-list">
             <span
               v-for="report in seriesQualityAudit.episode_reports"
@@ -569,6 +668,10 @@
               <p>{{ hookTypeLabel(contextPreview.blueprint.ending_hook_type) }} · {{ contextPreview.blueprint.thread_action }}</p>
             </article>
             <article class="series-studio__context-card">
+              <strong>叙事流派机制</strong>
+              <p>{{ contextPreview.narrative_patterns.join('；') || '使用默认 AI 漫剧机制' }}</p>
+            </article>
+            <article class="series-studio__context-card">
               <strong>连续性摘要</strong>
               <p>上一条生成：{{ contextPreview.ledger_summary.last_generated_episode_no ?? '暂无' }}</p>
               <p>{{ contextPreview.ledger_summary.character_state_current.join('；') || '暂无角色状态' }}</p>
@@ -669,6 +772,9 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   aiComicEpisodeContextPreview,
   aiComicEpisodeGenerate,
+  archiveAiComicSeriesProject,
+  copyAiComicSeriesProject,
+  deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
   aiComicSeriesPlan,
   getAiComicSeriesProject,
@@ -676,6 +782,7 @@ import {
   rebuildAiComicSeriesLedger,
   saveAiComicSeriesProject,
 } from '@/api/stories'
+import { getNarrativePatternCatalog } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
 import type {
   AiComicContinuityLedger,
@@ -687,6 +794,10 @@ import type {
   AiComicSeriesProjectMeta,
   AiComicSeriesPlan,
   AiComicSeriesQualityEpisodeStatus,
+  AiComicThreadClosureStatus,
+  NarrativePattern,
+  NarrativePatternCatalog,
+  NarrativePatternId,
   StoryGenerateResult,
 } from '@shared/types'
 
@@ -699,6 +810,8 @@ const episodeCount = ref(60)
 const durationMin = ref(60)
 const durationMax = ref(120)
 const pacingProfile = ref<AiComicPacingProfile>('balanced_drama')
+const narrativePatternCatalog = ref<NarrativePatternCatalog | null>(null)
+const selectedNarrativePatternIds = ref<NarrativePatternId[]>([])
 const autoRepairEpisode = ref(false)
 const planning = ref(false)
 const errorMessage = ref('')
@@ -724,6 +837,8 @@ const exportingBible = ref(false)
 const savedProjects = ref<AiComicSeriesProjectMeta[]>([])
 const loadingSavedProjects = ref(false)
 const savedProjectsError = ref('')
+const showArchivedProjects = ref(false)
+const managingProjectId = ref('')
 
 interface EpisodeEditDraft {
   episode_no: number
@@ -772,6 +887,26 @@ const earliestLedgerRebuildEpisode = computed(() => {
     .map(report => report.episode_no)
   return episodes.length > 0 ? Math.min(...episodes) : null
 })
+const priorityThreadClosureItems = computed(() => {
+  const items = seriesQualityAudit.value?.thread_closure_report?.items ?? []
+  const weight: Record<AiComicThreadClosureStatus, number> = {
+    overdue: 0,
+    orphaned: 1,
+    duplicate: 2,
+    opened: 3,
+    in_progress: 4,
+    planned: 5,
+    paid_off: 6,
+  }
+  return [...items]
+    .filter(item => item.issues.length > 0 || item.status !== 'paid_off')
+    .sort((a, b) => {
+      const statusDiff = weight[a.status] - weight[b.status]
+      if (statusDiff !== 0) return statusDiff
+      return (a.related_episodes[0] ?? 999) - (b.related_episodes[0] ?? 999)
+    })
+    .slice(0, 5)
+})
 const nextRecommendedEpisode = computed(() => {
   if (!plan.value || earliestLedgerRebuildEpisode.value) return null
   const generated = new Set(Object.keys(generatedEpisodeStoryIds.value).map(Number))
@@ -782,8 +917,25 @@ const nextRecommendedEpisode = computed(() => {
   const nextAfterLedger = (continuityLedger.value?.last_generated_episode_no ?? 0) + 1
   return ungenerated.find(episode => episode.episode_no === nextAfterLedger) ?? ungenerated[0]
 })
+const availableNarrativePatterns = computed<NarrativePattern[]>(() => {
+  if (!narrativePatternCatalog.value) return []
+  const patternIds = narrativePatternCatalog.value.video_type_map.ai_comic_drama ?? []
+  return patternIds
+    .map(patternId => narrativePatternCatalog.value?.patterns.find(pattern => pattern.pattern_id === patternId))
+    .filter((pattern): pattern is NarrativePattern => Boolean(pattern))
+})
+const activeNarrativePatternLabels = computed(() => {
+  const selected = new Set(selectedNarrativePatternIds.value)
+  return availableNarrativePatterns.value
+    .filter(pattern => selected.size === 0 || selected.has(pattern.pattern_id))
+    .map(pattern => pattern.label)
+})
 
 onMounted(async () => {
+  const patternRes = await getNarrativePatternCatalog()
+  if (patternRes.ok && patternRes.data) {
+    narrativePatternCatalog.value = patternRes.data
+  }
   await loadSavedProjects()
   const id = typeof route.query.seriesProjectId === 'string' ? route.query.seriesProjectId : ''
   if (!id) return
@@ -837,6 +989,7 @@ async function handlePlan() {
     },
     pacing_profile: pacingProfile.value,
     generation_scope: 'full_planning',
+    narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
   })
 
   if (res.ok && res.data) {
@@ -867,6 +1020,7 @@ async function handleGenerateEpisode(episodeNo: number) {
     output_gears_segments: true,
     auto_audit_continuity: true,
     auto_repair_episode: autoRepairEpisode.value,
+    narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
   })
 
   if (res.ok && res.data) {
@@ -896,6 +1050,7 @@ async function handlePreviewEpisodeContext(episodeNo: number) {
     series_plan: plan.value,
     episode_no: episodeNo,
     series_project_id: seriesProjectId.value || undefined,
+    narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
   })
 
   if (res.ok && res.data) {
@@ -1029,6 +1184,7 @@ function applyPlan(nextPlan: AiComicSeriesPlan) {
   durationMin.value = nextPlan.episode_duration_range_sec.min
   durationMax.value = nextPlan.episode_duration_range_sec.max
   pacingProfile.value = nextPlan.pacing_profile
+  selectedNarrativePatternIds.value = [...(nextPlan.narrative_pattern_ids ?? [])]
 }
 
 async function saveCurrentProject() {
@@ -1128,13 +1284,83 @@ function downloadText(filename: string, text: string, type: string) {
 async function loadSavedProjects() {
   loadingSavedProjects.value = true
   savedProjectsError.value = ''
-  const res = await listAiComicSeriesProjects()
+  const res = await listAiComicSeriesProjects(showArchivedProjects.value)
   if (res.ok && res.data) {
     savedProjects.value = res.data
   } else {
     savedProjectsError.value = res.error?.message ?? '加载保存系列失败'
   }
   loadingSavedProjects.value = false
+}
+
+async function handleCopyProject(id: string) {
+  if (!id || managingProjectId.value) return
+  managingProjectId.value = id
+  savedProjectsError.value = ''
+  const res = await copyAiComicSeriesProject(id)
+  if (res.ok && res.data) {
+    await loadSavedProjects()
+    await openSavedProject(res.data.project.series_project_id)
+    saveMessage.value = `已复制为：${res.data.project.series_project_id} · ${formatDate(res.data.project.updated_at)}`
+  } else {
+    savedProjectsError.value = res.error?.message ?? '复制系列失败'
+  }
+  managingProjectId.value = ''
+}
+
+async function handleArchiveProject(id: string, archived: boolean) {
+  if (!id || managingProjectId.value) return
+  managingProjectId.value = id
+  savedProjectsError.value = ''
+  const res = await archiveAiComicSeriesProject(id, { archived })
+  if (res.ok && res.data) {
+    if (id === seriesProjectId.value) {
+      saveMessage.value = archived
+        ? `已归档：${res.data.project.series_project_id}`
+        : `已恢复：${res.data.project.series_project_id}`
+    }
+    await loadSavedProjects()
+  } else {
+    savedProjectsError.value = res.error?.message ?? (archived ? '归档系列失败' : '恢复系列失败')
+  }
+  managingProjectId.value = ''
+}
+
+async function handleDeleteProject(id: string) {
+  if (!id || managingProjectId.value) return
+  if (!window.confirm('确定删除这个保存系列？该操作会移除系列规划、账本和分集生成记录索引。')) return
+  managingProjectId.value = id
+  savedProjectsError.value = ''
+  const res = await deleteAiComicSeriesProject(id)
+  if (res.ok) {
+    if (id === seriesProjectId.value) {
+      clearCurrentProject()
+    }
+    await loadSavedProjects()
+    saveMessage.value = `已删除保存系列：${id}`
+  } else {
+    savedProjectsError.value = res.error?.message ?? '删除系列失败'
+  }
+  managingProjectId.value = ''
+}
+
+function clearCurrentProject() {
+  plan.value = null
+  seriesProjectId.value = ''
+  generatedEpisodeStoryIds.value = {}
+  continuityLedger.value = null
+  seriesQualityAudit.value = null
+  episodeResult.value = null
+  episodeErrorMessage.value = ''
+  generatedEpisodeNo.value = null
+  clearContextPreview()
+  cancelEditEpisode()
+  router.replace({
+    path: route.path,
+    query: Object.fromEntries(
+      Object.entries(route.query).filter(([key]) => key !== 'seriesProjectId'),
+    ),
+  })
 }
 
 async function openSavedProject(id: string) {
@@ -1170,6 +1396,19 @@ function episodeAuditLabel(status: AiComicSeriesQualityEpisodeStatus): string {
     passed: '通过',
     needs_attention: '需处理',
     unknown: '待复核',
+  }
+  return map[status]
+}
+
+function threadClosureStatusLabel(status: AiComicThreadClosureStatus): string {
+  const map: Record<AiComicThreadClosureStatus, string> = {
+    planned: '待开启',
+    opened: '已开启',
+    in_progress: '推进中',
+    paid_off: '已回收',
+    overdue: '超期未回收',
+    duplicate: '重复伏笔',
+    orphaned: '未绑定伏笔',
   }
   return map[status]
 }
@@ -1227,6 +1466,54 @@ function episodeProjectPath(episodeNo: number): string {
   color: #2c3e50;
   font-size: 14px;
   font-weight: 600;
+}
+
+.series-studio__field-hint {
+  margin: 0 0 8px;
+  color: #667786;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.series-studio__pattern-list {
+  display: grid;
+  gap: 8px;
+}
+
+.series-studio__pattern-card {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.series-studio__pattern-card--selected {
+  border-color: #8e44ad;
+  background: #f5eef8;
+}
+
+.series-studio__pattern-card input {
+  margin-top: 2px;
+}
+
+.series-studio__pattern-card span {
+  display: grid;
+  gap: 3px;
+}
+
+.series-studio__pattern-card strong {
+  color: #263746;
+  font-size: 13px;
+}
+
+.series-studio__pattern-card small {
+  color: #5d6d7e;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .series-studio__input,
@@ -1339,6 +1626,14 @@ function episodeProjectPath(episodeNo: number): string {
   margin-bottom: 10px;
 }
 
+.series-studio__saved-head-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .series-studio__saved-head h3 {
   margin: 0;
   color: #24313b;
@@ -1361,9 +1656,33 @@ function episodeProjectPath(episodeNo: number): string {
   background: #f5f8fa;
 }
 
+.series-studio__ghost-button--danger {
+  border-color: #e3b3ae;
+  color: #a53328;
+}
+
+.series-studio__ghost-button--danger:hover:not(:disabled) {
+  background: #fff4f2;
+}
+
 .series-studio__ghost-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.series-studio__saved-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #5d7281;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.series-studio__saved-toggle input {
+  width: 14px;
+  height: 14px;
 }
 
 .series-studio__saved-list {
@@ -1376,13 +1695,12 @@ function episodeProjectPath(episodeNo: number): string {
 
 .series-studio__saved-item {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   width: 100%;
   border: 1px solid #d5dee5;
   border-radius: 6px;
   background: #fff;
   color: inherit;
-  cursor: pointer;
   padding: 10px 11px;
   text-align: left;
 }
@@ -1397,16 +1715,39 @@ function episodeProjectPath(episodeNo: number): string {
   background: #eef6fb;
 }
 
-.series-studio__saved-item strong {
+.series-studio__saved-item--archived {
+  background: #f8f9fa;
+  opacity: 0.86;
+}
+
+.series-studio__saved-open {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.series-studio__saved-open strong {
   color: #24313b;
   font-size: 14px;
 }
 
-.series-studio__saved-item span,
-.series-studio__saved-item small,
+.series-studio__saved-open span,
+.series-studio__saved-open small,
 .series-studio__saved-empty {
   color: #667986;
   font-size: 12px;
+}
+
+.series-studio__saved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .series-studio__saved-empty {
@@ -1589,6 +1930,112 @@ function episodeProjectPath(episodeNo: number): string {
   color: #9a6300;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.series-studio__thread-closure {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid #d5dee5;
+  border-radius: 6px;
+  background: #fff;
+  padding: 12px;
+}
+
+.series-studio__thread-closure-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.series-studio__thread-closure-head strong {
+  color: #24313b;
+  font-size: 14px;
+}
+
+.series-studio__thread-closure-head span {
+  color: #667986;
+  font-size: 12px;
+}
+
+.series-studio__thread-closure-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.series-studio__thread-closure-grid article {
+  border: 1px solid #e1e7ec;
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 8px 10px;
+}
+
+.series-studio__thread-closure-grid strong {
+  display: block;
+  color: #24313b;
+  font-size: 16px;
+}
+
+.series-studio__thread-closure-grid span {
+  color: #667986;
+  font-size: 12px;
+}
+
+.series-studio__thread-closure-list {
+  display: grid;
+  gap: 8px;
+}
+
+.series-studio__thread-closure-item {
+  border-left: 3px solid #9fb1bf;
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 9px 10px;
+}
+
+.series-studio__thread-closure-item--overdue,
+.series-studio__thread-closure-item--orphaned,
+.series-studio__thread-closure-item--duplicate {
+  border-left-color: #d46a45;
+  background: #fff7f2;
+}
+
+.series-studio__thread-closure-item--paid_off {
+  border-left-color: #2e9b62;
+}
+
+.series-studio__thread-closure-item div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.series-studio__thread-closure-item strong {
+  color: #24313b;
+  font-size: 13px;
+}
+
+.series-studio__thread-closure-item span,
+.series-studio__thread-closure-item small {
+  color: #667986;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.series-studio__thread-closure-item p {
+  margin: 5px 0 0;
+  color: #536774;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.series-studio__thread-closure-item small {
+  display: block;
+  margin-top: 4px;
+  color: #9a6300;
 }
 
 .series-studio__episode-audit-list {

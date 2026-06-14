@@ -5,6 +5,7 @@ import { mcpReadAllProvinceFiles, mcpParseEntries } from '../services/mcp-proxy.
 import { success } from '@shared/types.js';
 import type { AIModelProfile, ProvinceInfo, TypeInfo, VideoType, PresentationStyle } from '@shared/types.js';
 import { listModelProfiles } from '../services/model-catalog.js';
+import { getNarrativePatternCatalog } from '../services/narrative-pattern-library.js';
 
 export const systemRouter = Router();
 
@@ -61,6 +62,14 @@ systemRouter.get('/types', (_req, res) => {
 systemRouter.get('/models', (_req, res) => {
   const models: AIModelProfile[] = listModelProfiles();
   res.json(success(models));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/narrative-patterns — reusable narrative pattern catalog
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/narrative-patterns', (_req, res) => {
+  res.json(success(getNarrativePatternCatalog()));
 });
 
 // ---------------------------------------------------------------------------

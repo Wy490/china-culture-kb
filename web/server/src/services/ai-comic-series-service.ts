@@ -1,7 +1,7 @@
 // web/server/src/services/ai-comic-series-service.ts — AI comic series planning
 
 import { dirname, resolve } from 'node:path';
-import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { ErrorCodes, success, fail } from '@shared/types.js';
 import type {
   AiComicContinuityLedger,
@@ -19,6 +19,11 @@ import type {
   AiComicSeriesBibleExportPackage,
   AiComicSeriesQualityAudit,
   AiComicSeriesQualityEpisodeReport,
+  AiComicThreadClosureItem,
+  AiComicThreadClosureReport,
+  AiComicSeriesProjectArchiveRequest,
+  AiComicSeriesProjectCopyRequest,
+  AiComicSeriesProjectDeleteResult,
   AiComicSeriesProjectDetail,
   AiComicSeriesProjectMeta,
   AiComicSeriesProjectSaveRequest,
@@ -31,12 +36,17 @@ import type {
   ApiResponse,
   KnowledgeNeed,
   KnowledgePack,
+  NarrativePatternId,
   StoryDetectedCharacter,
   StoryGenerateResult,
   SupportedDuration,
 } from '@shared/types.js';
 import { analyzeOutline, multiMatchEntries } from './outline-service.js';
 import { generateAndStoreStory } from './story-service.js';
+import {
+  getNarrativePatternRequirementLines,
+  getNarrativePatternsForVideoType,
+} from './narrative-pattern-library.js';
 
 const PACING_LABELS: Record<AiComicPacingProfile, string> = {
   fast_hook: '强钩子快节奏',
@@ -79,6 +89,7 @@ export async function generateAiComicSeriesPlan(
   const seriesTitle = request.series_title?.trim() || deriveSeriesTitle(outline, storyIntent?.main_character ?? null);
   const pacingProfile = request.pacing_profile ?? 'balanced_drama';
   const generationScope = request.generation_scope ?? 'full_planning';
+  const narrativePatternIds = request.narrative_pattern_ids ?? [];
   const phases = buildPhases(request.episode_count);
   const mainCharacters = buildCharacterArcs(detectedCharacters, request.episode_count, storyIntent?.main_character ?? null);
   const plotThreads = buildPlotThreads(request.episode_count, seriesTitle, knowledgeFocus, pacingProfile);
@@ -108,6 +119,7 @@ export async function generateAiComicSeriesPlan(
     episode_duration_range_sec: request.episode_duration_range_sec,
     pacing_profile: pacingProfile,
     generation_scope: generationScope,
+    narrative_pattern_ids: narrativePatternIds.length > 0 ? narrativePatternIds : undefined,
     premise: outline,
     logline: buildLogline(seriesTitle, outline, storyIntent?.core_theme),
     core_theme: storyIntent?.core_theme ?? summarizeText(outline, 24),
@@ -130,12 +142,19 @@ export async function generateAiComicSeriesPlan(
       {
         rule_id: 'rule-knowledge-boundary',
         label: '知识依据边界',
-        description: '知识库明确内容作为事实依据，戏剧化补足内容需要保持可辨识的创作边界。',
+        description: '知识库明确内容作为事实依据，戏剧化补足内容需要保持可辨识的创作边界；知识库不是资料仓库，必须按条目角色、关系、用途和可信度做生成决策。',
       },
       {
         rule_id: 'rule-episode-memory',
         label: '单集记忆输入',
         description: '生成某一集分镜前，需要带入上一集结尾、当前阶段目标、未回收线索和角色当前状态。',
+      },
+      {
+        rule_id: 'rule-narrative-patterns',
+        label: '流派机制一致',
+        description: narrativePatternIds.length > 0
+          ? `系列全程强化：${narrativePatternLabels(narrativePatternIds).join('、')}。每集需要把流派机制转成冲突、选择、钩子和回收。`
+          : '默认按 AI 漫剧流派机制组织强钩子、对白冲突、反转和追看问题。',
       },
     ],
     recurring_motifs: buildMotifs(knowledgeFocus, storyIntent?.target_emotion ?? []),
@@ -143,6 +162,8 @@ export async function generateAiComicSeriesPlan(
       `单集建议按 ${request.episode_duration_range_sec.min}-${request.episode_duration_range_sec.max} 秒规划，实际成片以分镜、对白密度和配音语速复核。`,
       '先审核系列规划，再逐集生成完整分镜；长系列不建议一次生成全部剧本文本。',
       '每集生成后应更新连续性状态，再进入下一集，保持人物选择、线索和情绪曲线前后相连。',
+      '知识条目要被转成角色状态、线索、场景资产、时代边界和风险提示，不要把资料摘要直接堆进对白或旁白。',
+      ...getNarrativePatternRequirementLines('ai_comic_drama', narrativePatternIds).map(line => `流派机制：${line}`),
     ],
   });
 }
@@ -171,7 +192,8 @@ export async function generateAiComicEpisodeFromPlan(
     );
   }
 
-  const episodeOutline = buildEpisodeGenerationOutline(plan, episode, continuityLedger);
+  const narrativePatternIds = resolveAiComicNarrativePatternIds(plan, request.narrative_pattern_ids);
+  const episodeOutline = buildEpisodeGenerationOutline(plan, episode, continuityLedger, narrativePatternIds);
   return generateAndStoreStory({
     video_type: 'ai_comic_drama',
     presentation_style: 'ai_comic',
@@ -185,6 +207,7 @@ export async function generateAiComicEpisodeFromPlan(
     model_profile_id: request.model_profile_id,
     knowledge_pack: knowledgePack,
     character_hints: buildEpisodeCharacterHints(plan, episode),
+    narrative_pattern_ids: narrativePatternIds.length > 0 ? narrativePatternIds : undefined,
     auto_repair: request.auto_repair_episode ?? false,
   }).then(async result => {
     if (!result.ok || !result.data) return result;
@@ -233,6 +256,7 @@ export async function previewAiComicEpisodeContext(
     .sort((a, b) => b.episode_no - a.episode_no)[0];
   const next = plan.episodes.find(item => item.episode_no === episode.episode_no + 1);
   const fallbackLedger = ledger ?? buildInitialContinuityLedger(plan);
+  const narrativePatternIds = resolveAiComicNarrativePatternIds(plan, request.narrative_pattern_ids);
 
   return success({
     schema_version: 'ai-comic-episode-context-preview/v1',
@@ -241,7 +265,8 @@ export async function previewAiComicEpisodeContext(
     title: episode.title,
     used_saved_ledger: Boolean(ledger),
     blueprint: buildAiComicEpisodeBlueprint(plan, episode),
-    generation_outline: buildEpisodeGenerationOutline(plan, episode, fallbackLedger),
+    narrative_patterns: narrativePatternLabels(narrativePatternIds),
+    generation_outline: buildEpisodeGenerationOutline(plan, episode, fallbackLedger, narrativePatternIds),
     ledger_summary: {
       last_generated_episode_no: fallbackLedger.last_generated_episode_no,
       character_state_current: fallbackLedger.character_state_current,
@@ -431,6 +456,13 @@ function buildAiComicSeriesBibleMarkdown(pkg: AiComicSeriesBibleExportPackage): 
       `- 分数: ${pkg.series_quality_audit.score}/100`,
       `- 待处理集数: ${pkg.series_quality_audit.episodes_need_attention.join('、') || '无'}`,
       `- 问题: ${pkg.series_quality_audit.issues.join('；') || '无'}`,
+      pkg.series_quality_audit.thread_closure_report
+        ? `- 线索闭环: 已回收 ${pkg.series_quality_audit.thread_closure_report.paid_off_thread_count}/${pkg.series_quality_audit.thread_closure_report.total_thread_count}；超期 ${pkg.series_quality_audit.thread_closure_report.overdue_thread_count}；未绑定 ${pkg.series_quality_audit.thread_closure_report.orphaned_thread_count}；重复 ${pkg.series_quality_audit.thread_closure_report.duplicate_thread_count}`
+        : '- 线索闭环: 未记录',
+      ...(pkg.series_quality_audit.thread_closure_report?.items
+        .filter(item => item.issues.length > 0 || item.status !== 'paid_off')
+        .slice(0, 5)
+        .map(item => `  - ${item.title}: ${item.issues[0] ?? item.repair_suggestions[0] ?? '按计划推进'}`) ?? []),
     ] : ['- 未记录']),
     '',
     '## 分集蓝图',
@@ -533,6 +565,7 @@ export async function saveAiComicSeriesProject(
       createdAt: existing?.project.created_at ?? now,
       updatedAt: now,
       generatedEpisodeStoryIds,
+      archivedAt: existing?.project.archived_at,
     }),
     plan: request.plan,
     generated_episode_story_ids: generatedEpisodeStoryIds,
@@ -588,6 +621,7 @@ export async function rebuildAiComicSeriesContinuityLedger(
       createdAt: existing.project.created_at,
       updatedAt: now,
       generatedEpisodeStoryIds: existing.generated_episode_story_ids,
+      archivedAt: existing.project.archived_at,
     }),
     continuity_ledger: continuityLedger,
   };
@@ -602,7 +636,9 @@ export async function rebuildAiComicSeriesContinuityLedger(
   return success(detail);
 }
 
-export async function listAiComicSeriesProjects(): Promise<ApiResponse<AiComicSeriesProjectMeta[]>> {
+export async function listAiComicSeriesProjects(
+  options: { includeArchived?: boolean } = {},
+): Promise<ApiResponse<AiComicSeriesProjectMeta[]>> {
   let projectIds: string[];
   try {
     projectIds = await readdir(seriesProjectsRoot());
@@ -613,11 +649,108 @@ export async function listAiComicSeriesProjects(): Promise<ApiResponse<AiComicSe
   const projects: AiComicSeriesProjectMeta[] = [];
   for (const projectId of projectIds) {
     const detail = await readSeriesProject(projectId);
-    if (detail) projects.push(detail.project);
+    if (detail && (options.includeArchived || !detail.project.archived_at)) projects.push(detail.project);
   }
 
   projects.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   return success(projects);
+}
+
+export async function copyAiComicSeriesProject(
+  seriesProjectId: string,
+  request: AiComicSeriesProjectCopyRequest = {},
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const now = new Date().toISOString();
+  const newSeriesProjectId = generateSeriesProjectId();
+  const title = request.title?.trim() || `${existing.plan.series_title} 副本`;
+  const plan: AiComicSeriesPlan = {
+    ...existing.plan,
+    series_title: title,
+  };
+  const detail: AiComicSeriesProjectDetail = {
+    project: buildSeriesProjectMeta({
+      seriesProjectId: newSeriesProjectId,
+      plan,
+      createdAt: now,
+      updatedAt: now,
+      generatedEpisodeStoryIds: existing.generated_episode_story_ids,
+    }),
+    plan,
+    generated_episode_story_ids: { ...existing.generated_episode_story_ids },
+    continuity_ledger: {
+      ...existing.continuity_ledger,
+      character_state_current: [...existing.continuity_ledger.character_state_current],
+      open_threads: [...existing.continuity_ledger.open_threads],
+      paid_off_threads: [...existing.continuity_ledger.paid_off_threads],
+      knowledge_used: [...existing.continuity_ledger.knowledge_used],
+      episode_records: existing.continuity_ledger.episode_records.map(record => ({
+        ...record,
+        character_state: [...record.character_state],
+        opened_threads: [...record.opened_threads],
+        paid_off_threads: [...record.paid_off_threads],
+        pending_threads_after: [...record.pending_threads_after],
+        knowledge_used: [...record.knowledge_used],
+        next_episode_memory: [...record.next_episode_memory],
+      })),
+    },
+    series_quality_audit: existing.series_quality_audit,
+  };
+  detail.series_quality_audit = buildAiComicSeriesQualityAudit({
+    plan: detail.plan,
+    generatedEpisodeStoryIds: detail.generated_episode_story_ids,
+    ledger: detail.continuity_ledger,
+    previousAudit: detail.series_quality_audit,
+  });
+
+  await writeJsonFile(seriesProjectPath(newSeriesProjectId), detail);
+  return success(detail);
+}
+
+export async function archiveAiComicSeriesProject(
+  seriesProjectId: string,
+  request: AiComicSeriesProjectArchiveRequest = {},
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const now = new Date().toISOString();
+  const archivedAt = request.archived === false ? undefined : now;
+  const detail: AiComicSeriesProjectDetail = {
+    ...existing,
+    project: buildSeriesProjectMeta({
+      seriesProjectId,
+      plan: existing.plan,
+      createdAt: existing.project.created_at,
+      updatedAt: now,
+      generatedEpisodeStoryIds: existing.generated_episode_story_ids,
+      archivedAt,
+    }),
+  };
+
+  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  return success(detail);
+}
+
+export async function deleteAiComicSeriesProject(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesProjectDeleteResult>> {
+  const filePath = seriesProjectPath(seriesProjectId);
+  if (!(await pathExists(filePath))) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  await rm(dirname(filePath), { recursive: true, force: true });
+  return success({
+    series_project_id: seriesProjectId,
+    deleted: true,
+  });
 }
 
 export async function exportAiComicSeriesBible(
@@ -683,6 +816,7 @@ async function recordGeneratedEpisodeStory(
       createdAt: existing.project.created_at,
       updatedAt: now,
       generatedEpisodeStoryIds,
+      archivedAt: existing.project.archived_at,
     }),
     generated_episode_story_ids: generatedEpisodeStoryIds,
     continuity_ledger: continuityLedger,
@@ -791,7 +925,20 @@ function buildAiComicSeriesQualityAudit(params: {
     return !record || record.story_id !== entry.storyId;
   });
   const ledgerCoversGeneratedEpisodes = generatedEpisodesMissingLedger.length === 0;
-  const completedSeriesThreadsResolved = !allEpisodesGenerated || params.ledger.open_threads.length <= 2;
+  const threadClosureReport = buildAiComicThreadClosureReport({
+    plan: params.plan,
+    generatedEpisodeNumbers,
+    ledger: params.ledger,
+  });
+  const completedSeriesThreadsResolved = threadClosureReport.overdue_thread_count === 0
+    && threadClosureReport.orphaned_thread_count === 0
+    && threadClosureReport.duplicate_thread_count === 0
+    && (!allEpisodesGenerated || threadClosureReport.items.every(item =>
+      item.status === 'paid_off'
+      || item.status === 'orphaned'
+      || item.status === 'duplicate'
+      || (item.payoff_episode && item.payoff_episode > params.plan.episode_count)
+    ));
   const knownReports = episodeReports.filter(report => typeof report.score === 'number');
   const knownPassed = knownReports.filter(report => report.status === 'passed').length;
   const knownEpisodeQualityPassRate = knownReports.length > 0
@@ -807,7 +954,16 @@ function buildAiComicSeriesQualityAudit(params: {
   if (!ledgerCoversGeneratedEpisodes) {
     issues.push(`连续性账本缺少 ${generatedEpisodesMissingLedger.length} 个已生成分集记录`);
   }
-  if (!completedSeriesThreadsResolved) issues.push('系列已全部生成，但仍有多条未回收线索需要处理');
+  if (!completedSeriesThreadsResolved) issues.push('系列线索开合存在断点，需要按线索闭环报告处理');
+  if (threadClosureReport.overdue_thread_count > 0) {
+    issues.push(`${threadClosureReport.overdue_thread_count} 条线索已到计划回收集但未形成明确回收`);
+  }
+  if (threadClosureReport.orphaned_thread_count > 0) {
+    issues.push(`${threadClosureReport.orphaned_thread_count} 条临时伏笔未绑定长期线索`);
+  }
+  if (threadClosureReport.duplicate_thread_count > 0) {
+    issues.push(`${threadClosureReport.duplicate_thread_count} 组伏笔重复出现但缺少推进变化`);
+  }
   for (const report of episodeReports) {
     if (report.status === 'needs_attention' || report.status === 'unknown') {
       issues.push(`第${report.episode_no}集：${report.issues[0] ?? '需要复核'}`);
@@ -820,6 +976,9 @@ function buildAiComicSeriesQualityAudit(params: {
     + (ledgerCoversGeneratedEpisodes ? 20 : 0)
     + (completedSeriesThreadsResolved ? 15 : 0)
     + (knownReports.length > 0 ? knownEpisodeQualityPassRate * 25 : 8)
+    - threadClosureReport.overdue_thread_count * 6
+    - threadClosureReport.orphaned_thread_count * 4
+    - threadClosureReport.duplicate_thread_count * 3
   ));
 
   return {
@@ -828,7 +987,10 @@ function buildAiComicSeriesQualityAudit(params: {
     score,
     generated_episode_count: generatedEntries.length,
     total_episode_count: params.plan.episode_count,
-    episodes_need_attention: episodesNeedAttention,
+    episodes_need_attention: unique([
+      ...episodesNeedAttention,
+      ...threadClosureReport.episodes_need_attention,
+    ]).sort((a, b) => a - b),
     issues: unique(issues),
     checks: {
       all_episodes_generated: allEpisodesGenerated,
@@ -838,7 +1000,200 @@ function buildAiComicSeriesQualityAudit(params: {
       known_episode_quality_pass_rate: knownEpisodeQualityPassRate,
     },
     episode_reports: episodeReports,
+    thread_closure_report: threadClosureReport,
   };
+}
+
+function buildAiComicThreadClosureReport(params: {
+  plan: AiComicSeriesPlan;
+  generatedEpisodeNumbers: Set<number>;
+  ledger: AiComicContinuityLedger;
+}): AiComicThreadClosureReport {
+  const ledgerRecordsByEpisode = new Map(params.ledger.episode_records.map(record => [record.episode_no, record]));
+  const lastGeneratedEpisodeNo = Math.max(
+    params.ledger.last_generated_episode_no ?? 0,
+    ...[...params.generatedEpisodeNumbers, 0],
+  );
+  const items: AiComicThreadClosureItem[] = params.plan.plot_threads.map(thread => {
+    const openedInEpisodes = params.plan.episodes
+      .filter(episode => params.generatedEpisodeNumbers.has(episode.episode_no))
+      .filter(episode => episodeMentionsThread(episode, ledgerRecordsByEpisode.get(episode.episode_no), thread, 'open'))
+      .map(episode => episode.episode_no);
+    const paidOffInEpisodes = params.plan.episodes
+      .filter(episode => params.generatedEpisodeNumbers.has(episode.episode_no))
+      .filter(episode => episodeMentionsThread(episode, ledgerRecordsByEpisode.get(episode.episode_no), thread, 'payoff'))
+      .map(episode => episode.episode_no);
+    const relatedEpisodes = unique([
+      thread.setup_episode,
+      thread.payoff_episode,
+      ...openedInEpisodes,
+      ...paidOffInEpisodes,
+    ]).sort((a, b) => a - b);
+    const issues: string[] = [];
+    const repairSuggestions: string[] = [];
+    const setupAlreadyGenerated = params.generatedEpisodeNumbers.has(thread.setup_episode);
+    const payoffAlreadyGenerated = params.generatedEpisodeNumbers.has(thread.payoff_episode);
+    const opened = openedInEpisodes.length > 0;
+    const paidOff = paidOffInEpisodes.length > 0;
+
+    if (setupAlreadyGenerated && !opened) {
+      issues.push(`第${thread.setup_episode}集应打开“${thread.title}”，但账本或卡片中没有明确开启动作`);
+      repairSuggestions.push(`在第${thread.setup_episode}集新增“打开：${thread.title}”的场景动作或伏笔描述`);
+    }
+    if (payoffAlreadyGenerated && !paidOff) {
+      issues.push(`第${thread.payoff_episode}集应回收“${thread.title}”，但未形成明确回收`);
+      repairSuggestions.push(`在第${thread.payoff_episode}集补充回收场景，并让角色选择因此改变`);
+    }
+    if (lastGeneratedEpisodeNo > thread.payoff_episode && !paidOff) {
+      issues.push(`已生成到第${lastGeneratedEpisodeNo}集，超过计划回收点第${thread.payoff_episode}集`);
+      repairSuggestions.push(`优先改第${thread.payoff_episode}集；如要延期，修改线索回收集并重建后续账本`);
+    }
+    if (opened && !paidOff && lastGeneratedEpisodeNo >= thread.setup_episode) {
+      repairSuggestions.push(`后续生成到第${thread.payoff_episode}集前，持续让“${thread.title}”产生新信息或新代价`);
+    }
+
+    const status = paidOff
+      ? 'paid_off'
+      : lastGeneratedEpisodeNo > thread.payoff_episode
+        ? 'overdue'
+        : opened
+          ? lastGeneratedEpisodeNo <= thread.setup_episode ? 'opened' : 'in_progress'
+          : 'planned';
+
+    return {
+      thread_id: thread.thread_id,
+      title: thread.title,
+      setup_episode: thread.setup_episode,
+      payoff_episode: thread.payoff_episode,
+      status,
+      opened_in_episodes: openedInEpisodes,
+      paid_off_in_episodes: paidOffInEpisodes,
+      related_episodes: relatedEpisodes,
+      issues,
+      repair_suggestions: unique(repairSuggestions),
+    };
+  });
+
+  const orphanItems = buildOrphanThreadClosureItems(params.plan, params.generatedEpisodeNumbers);
+  const duplicateItems = buildDuplicateThreadClosureItems(params.plan, params.generatedEpisodeNumbers);
+  const allItems = [...items, ...orphanItems, ...duplicateItems];
+  const episodesNeedAttention = unique(allItems
+    .filter(item => item.issues.length > 0 || item.status === 'overdue' || item.status === 'orphaned' || item.status === 'duplicate')
+    .flatMap(item => item.related_episodes))
+    .sort((a, b) => a - b);
+
+  return {
+    schema_version: 'ai-comic-thread-closure-report/v1',
+    total_thread_count: allItems.length,
+    opened_thread_count: allItems.filter(item => ['opened', 'in_progress', 'paid_off', 'overdue'].includes(item.status)).length,
+    paid_off_thread_count: allItems.filter(item => item.status === 'paid_off').length,
+    overdue_thread_count: allItems.filter(item => item.status === 'overdue').length,
+    orphaned_thread_count: allItems.filter(item => item.status === 'orphaned').length,
+    duplicate_thread_count: allItems.filter(item => item.status === 'duplicate').length,
+    episodes_need_attention: episodesNeedAttention,
+    items: allItems,
+  };
+}
+
+function episodeMentionsThread(
+  episode: AiComicEpisodePlan,
+  ledgerRecord: AiComicContinuityLedgerEpisode | undefined,
+  thread: AiComicPlotThread,
+  mode: 'open' | 'payoff',
+): boolean {
+  const episodeTexts = mode === 'payoff'
+    ? [...episode.payoff, episode.thread_action ?? '']
+    : [...episode.foreshadowing, ...episode.new_information, episode.thread_action ?? ''];
+  const ledgerTexts = mode === 'payoff'
+    ? ledgerRecord?.paid_off_threads ?? []
+    : ledgerRecord?.opened_threads ?? [];
+  const texts = [...episodeTexts, ...ledgerTexts];
+  if (mode === 'open' && episode.episode_no === thread.setup_episode && texts.length === 0) return false;
+  if (mode === 'payoff' && episode.episode_no === thread.payoff_episode && texts.length === 0) return false;
+  return texts.some(text => textReferencesThread(text, thread));
+}
+
+function buildOrphanThreadClosureItems(
+  plan: AiComicSeriesPlan,
+  generatedEpisodeNumbers: Set<number>,
+): AiComicThreadClosureItem[] {
+  const items: AiComicThreadClosureItem[] = [];
+  for (const episode of plan.episodes) {
+    if (!generatedEpisodeNumbers.has(episode.episode_no)) continue;
+    for (const [index, text] of episode.foreshadowing.entries()) {
+      if (plan.plot_threads.some(thread => textReferencesThread(text, thread))) continue;
+      const title = summarizeText(text, 22);
+      items.push({
+        thread_id: `orphan-${episode.episode_no}-${index + 1}`,
+        title,
+        setup_episode: episode.episode_no,
+        status: 'orphaned',
+        opened_in_episodes: [episode.episode_no],
+        paid_off_in_episodes: [],
+        related_episodes: [episode.episode_no],
+        issues: [`第${episode.episode_no}集出现未绑定长期线索的伏笔：${title}`],
+        repair_suggestions: [
+          `把第${episode.episode_no}集伏笔并入现有长期线索，或新增一条带回收集的长期线索`,
+        ],
+      });
+    }
+  }
+  return items;
+}
+
+function buildDuplicateThreadClosureItems(
+  plan: AiComicSeriesPlan,
+  generatedEpisodeNumbers: Set<number>,
+): AiComicThreadClosureItem[] {
+  const groups = new Map<string, Array<{ episode_no: number; text: string }>>();
+  for (const episode of plan.episodes) {
+    if (!generatedEpisodeNumbers.has(episode.episode_no)) continue;
+    for (const text of episode.foreshadowing) {
+      const key = normalizeThreadText(text);
+      if (key.length < 6) continue;
+      groups.set(key, [...(groups.get(key) ?? []), { episode_no: episode.episode_no, text }]);
+    }
+  }
+
+  return [...groups.entries()]
+    .filter(([, entries]) => unique(entries.map(entry => entry.episode_no)).length > 1)
+    .map(([key, entries], index) => {
+      const episodes = unique(entries.map(entry => entry.episode_no)).sort((a, b) => a - b);
+      const title = summarizeText(entries[0]?.text ?? key, 22);
+      return {
+        thread_id: `duplicate-${index + 1}`,
+        title,
+        status: 'duplicate',
+        opened_in_episodes: episodes,
+        paid_off_in_episodes: [],
+        related_episodes: episodes,
+        issues: [`第${episodes.join('、')}集重复出现相同伏笔，但缺少清晰递进变化`],
+        repair_suggestions: [
+          `保留第${episodes[0]}集开伏笔，后续重复集改成新证据、新代价或明确回收`,
+        ],
+      };
+    });
+}
+
+function textReferencesThread(text: string, thread: AiComicPlotThread): boolean {
+  const normalizedText = normalizeThreadText(text);
+  const candidates = [
+    thread.title,
+    thread.description,
+    ...thread.continuity_notes,
+  ].map(normalizeThreadText).filter(Boolean);
+  return candidates.some(candidate =>
+    normalizedText.includes(candidate)
+    || candidate.includes(normalizedText)
+    || sameThread(text, thread.title)
+  );
+}
+
+function normalizeThreadText(text: string): string {
+  return text
+    .replace(/[第\d一二三四五六七八九十百千万集]/g, '')
+    .replace(/[，。；：！？、,.!?:;\s"'“”‘’（）()【】\[\]-]/g, '')
+    .trim();
 }
 
 function clampScore(score: number): number {
@@ -970,8 +1325,9 @@ function buildSeriesProjectMeta(params: {
   createdAt: string;
   updatedAt: string;
   generatedEpisodeStoryIds: Record<string, string>;
+  archivedAt?: string;
 }): AiComicSeriesProjectMeta {
-  return {
+  const meta: AiComicSeriesProjectMeta = {
     series_project_id: params.seriesProjectId,
     title: params.plan.series_title,
     episode_count: params.plan.episode_count,
@@ -982,6 +1338,8 @@ function buildSeriesProjectMeta(params: {
     updated_at: params.updatedAt,
     generated_episode_count: Object.keys(params.generatedEpisodeStoryIds).length,
   };
+  if (params.archivedAt) meta.archived_at = params.archivedAt;
+  return meta;
 }
 
 function buildInitialContinuityLedger(plan: AiComicSeriesPlan): AiComicContinuityLedger {
@@ -1146,6 +1504,7 @@ function buildEpisodeGenerationOutline(
   plan: AiComicSeriesPlan,
   episode: AiComicEpisodePlan,
   ledger?: AiComicContinuityLedger,
+  narrativePatternIds: NarrativePatternId[] = [],
 ): string {
   const previous = plan.episodes.find(item => item.episode_no === episode.episode_no - 1);
   const next = plan.episodes.find(item => item.episode_no === episode.episode_no + 1);
@@ -1170,6 +1529,7 @@ function buildEpisodeGenerationOutline(
       ? `上一条生成记忆：第${previousLedgerRecord.episode_no}集《${previousLedgerRecord.title}》；故事ID：${previousLedgerRecord.story_id}；${previousLedgerRecord.next_episode_memory.join('；')}`
       : '',
   ] : [];
+  const narrativePatternLines = getNarrativePatternRequirementLines('ai_comic_drama', narrativePatternIds);
 
   return [
     `系列名：${plan.series_title}`,
@@ -1194,6 +1554,10 @@ function buildEpisodeGenerationOutline(
     `本集后连续性状态：${episode.continuity_state_after.join('；')}`,
     next ? `下一集需要承接：${next.main_conflict}；${next.continuity_from_previous.join('；')}` : '',
     ...ledgerLines,
+    narrativePatternLines.length > 0
+      ? `叙事流派机制：${narrativePatternLines.join('；')}`
+      : '',
+    '知识库使用规则：知识库不是资料仓库。本集生成必须把知识焦点转化为人物选择、场景资产、时代边界、线索开合和可信度提示；不要把知识摘要直接铺成旁白资料。',
     `长期线索：${plan.plot_threads.map(thread => `${thread.title}，第${thread.setup_episode}集开启，第${thread.payoff_episode}集回收：${thread.description}`).join('；')}`,
     `角色弧线：${plan.main_characters.map(character => `${character.name}：${character.long_arc}`).join('；')}`,
     `连续性规则：${plan.continuity_rules.map(rule => `${rule.label}：${rule.description}`).join('；')}`,
@@ -1667,6 +2031,18 @@ function buildMotifs(knowledgeFocus: string[], emotions: string[]): string[] {
 function summarizeText(text: string, maxLength: number): string {
   const compact = text.replace(/\s+/g, '').trim();
   return compact.length > maxLength ? `${compact.slice(0, maxLength)}...` : compact;
+}
+
+function resolveAiComicNarrativePatternIds(
+  plan: AiComicSeriesPlan,
+  overridePatternIds?: NarrativePatternId[],
+): NarrativePatternId[] {
+  return overridePatternIds ?? plan.narrative_pattern_ids ?? [];
+}
+
+function narrativePatternLabels(patternIds: NarrativePatternId[]): string[] {
+  return getNarrativePatternsForVideoType('ai_comic_drama', patternIds)
+    .map(pattern => pattern.label);
 }
 
 function unique<T>(items: T[]): T[] {

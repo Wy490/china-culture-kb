@@ -57,6 +57,16 @@ export interface GenreStoryProfile {
   dramatic_structure: GenreDramaticStructure;
 }
 
+export interface GenreSampleGuidance {
+  reference_samples: string[];
+  opening_moves: string[];
+  middle_moves: string[];
+  ending_moves: string[];
+  visual_moves: string[];
+  script_moves: string[];
+  quality_signals: string[];
+}
+
 const PROFILES: Record<VideoType, GenreStoryProfile> = {
   character_story: {
     video_type: 'character_story',
@@ -494,6 +504,144 @@ const PROFILES: Record<VideoType, GenreStoryProfile> = {
   },
 };
 
+const SAMPLE_GUIDANCE: Record<VideoType, GenreSampleGuidance> = {
+  character_story: {
+    reference_samples: ['人物传记短片', '人物微纪录访谈段落', '单事件人物剧情短片'],
+    opening_moves: ['从人物面临选择的一刻开场', '用一个动作或一句话暴露人物压力'],
+    middle_moves: ['让外部阻力逐场加码', '用配角反应映出主角立场'],
+    ending_moves: ['用选择后的代价收束', '留下人物精神被他人看见的余味'],
+    visual_moves: ['特写手部、眼神、随身物', '用同一地点前后变化表现人物弧线'],
+    script_moves: ['旁白少讲评价，多写行动', '关键句必须来自人物处境，不写空泛赞美'],
+    quality_signals: ['人物目标清楚', '阻力具体', '选择有代价', '结尾有人物变化'],
+  },
+  historical_drama: {
+    reference_samples: ['历史事件剧情短片', '历史现场再现段落', '史料驱动的事件短片'],
+    opening_moves: ['从时代压力或危机现场切入', '用制度、案卷、战报等物件建立历史锚点'],
+    middle_moves: ['因果链要一环扣一环', '人物行动必须受时代规则限制'],
+    ending_moves: ['回到事件后果与历史余响', '交代创作补足和史实边界'],
+    visual_moves: ['服饰、器物、称谓要服务时代质感', '用空间调度体现权力关系'],
+    script_moves: ['对白可戏剧化，但不能伪装成史料原文', '旁白标清可考信息与合理补足'],
+    quality_signals: ['时代压力可见', '事件因果清楚', '史实边界明确', '人物不是背景板'],
+  },
+  legend_story: {
+    reference_samples: ['民间传说动画短片', '水墨神话故事片段', '口述传说改编短片'],
+    opening_moves: ['从异象、禁忌或古老传闻开场', '先建立传说氛围再引出人物'],
+    middle_moves: ['神异元素推动人的考验', '用重复意象强化宿命感'],
+    ending_moves: ['落到传说为何流传', '用地名、习俗或物件承接现实'],
+    visual_moves: ['云、影、水、火、古树等象征意象贯穿', '水墨或剪影式画面保留神秘感'],
+    script_moves: ['保持“相传”“民间说法”等边界', '减少现代解释腔，让故事自己显义'],
+    quality_signals: ['神异意象服务选择', '凡人考验成立', '传说边界清楚', '结尾有流传理由'],
+  },
+  ai_comic_drama: {
+    reference_samples: ['竖屏动态漫画短剧', '分镜漫画剧情号', '强对白短篇漫剧'],
+    opening_moves: ['第一格就给冲突定格', '用大字旁白或角色表情制造追看问题'],
+    middle_moves: ['对白短、来回快，每场都有表情变化', '用反应格放大误会、震惊或觉醒'],
+    ending_moves: ['以反转、选择或危险问题结尾', '最后一格留出下一集承接'],
+    visual_moves: ['近景表情、动作线、分屏、定格金句', '每场都能拆成 3-6 个漫画画面'],
+    script_moves: ['对白优先，旁白只补情绪和转场', '每句台词都短到适合气泡框'],
+    quality_signals: ['开场有强画面', '对白密度高', '表情动作明确', '结尾钩子强'],
+  },
+  children_story: {
+    reference_samples: ['儿童绘本动画', '少儿寓言故事短片', '面向儿童的传统故事动画'],
+    opening_moves: ['从孩子能理解的小问题开场', '先给可爱的主人公和清楚愿望'],
+    middle_moves: ['每场只解决一个小困难', '用重复句式帮助儿童跟上因果'],
+    ending_moves: ['问题解决后给温暖反馈', '用一句简单道理收束'],
+    visual_moves: ['明亮色彩、明确动作、少量角色', '危险场面转为温和表达'],
+    script_moves: ['短句、简单词、少典故', '价值表达要通过帮助、分享、勇敢等行动'],
+    quality_signals: ['语言简单', '冲突温和', '因果清楚', '结尾正向'],
+  },
+  culture_promo: {
+    reference_samples: ['文化主题形象片', '博物馆展陈宣传片', '节庆文化推广短片'],
+    opening_moves: ['用最强文化符号开场', '先让观众看见质感，再讲意义'],
+    middle_moves: ['文化根基、代表过程、当代延续三段递进', '用人和物连接传统与今天'],
+    ending_moves: ['落到一句可传播关键句', '画面定格在符号、人群或仪式上'],
+    visual_moves: ['宏观氛围与细节特写交替', '颜色、纹样、器物形成统一识别'],
+    script_moves: ['旁白有节奏，不做百科列表', '核心主张要凝练可复述'],
+    quality_signals: ['符号鲜明', '主张清楚', '当代连接自然', '结尾有记忆句'],
+  },
+  heritage_promo: {
+    reference_samples: ['非遗代表作视频', '传统工艺微纪录', '匠人流程宣传片'],
+    opening_moves: ['从材料、工具或手部动作开场', '用声音和质感立刻进入工艺现场'],
+    middle_moves: ['流程按关键步骤推进', '匠人情感从动作和等待中出现'],
+    ending_moves: ['从成品回到传承人和下一代', '呈现传承困境与希望'],
+    visual_moves: ['微距手部、材料纹理、工具运动', '原料到成品的前后对照'],
+    script_moves: ['每个步骤要有动词', '少喊匠心，多写技艺如何发生'],
+    quality_signals: ['流程完整', '材料工具清楚', '手部动作充足', '传承关系可见'],
+  },
+  city_brand_promo: {
+    reference_samples: ['城市文旅形象片', '城市品牌宣传片', '旅行目的地短片'],
+    opening_moves: ['从地标或城市日出/夜色建立识别', '一句话说出城市气质'],
+    middle_moves: ['历史、人文、生活、产业或自然景观交替', '用一日时间线串联城市节奏'],
+    ending_moves: ['回到城市品牌主张', '用人群或地标大景定格'],
+    visual_moves: ['航拍、街巷、人物生活、地标特写组合', '古今空间自然转场'],
+    script_moves: ['少写泛化形容词，多写地方名词', '品牌句要有地域辨识度'],
+    quality_signals: ['地标清楚', '生活气息充足', '古今连接自然', '品牌句有地方感'],
+  },
+  social_short: {
+    reference_samples: ['竖屏知识短视频', '社交平台文化短片', '快节奏文旅短内容'],
+    opening_moves: ['3 秒内抛出反差、问题或极强画面', '第一句就是字幕标题'],
+    middle_moves: ['一场一个信息点，快速换画面', '用数字、对比、动作保持节奏'],
+    ending_moves: ['用金句、互动问题或反差回扣收束', '结尾画面要适合停留和转发'],
+    visual_moves: ['竖屏构图、字幕占位、快切、近景细节', '每个画面只保留一个视觉重点'],
+    script_moves: ['短句化、口语化、强节拍', '减少铺垫，先给结论再解释'],
+    quality_signals: ['前 3 秒有钩子', '信息点集中', '字幕感强', '结尾可记住'],
+  },
+  documentary_short: {
+    reference_samples: ['微纪录片', '现实现场加历史回望短片', '人物/地点观察式短纪录'],
+    opening_moves: ['从现实地点、实物或声音进入', '用一个当下问题引出历史回望'],
+    middle_moves: ['现场、史料、人物讲述交替', '事实叙述和再现画面分清边界'],
+    ending_moves: ['回到今天还能看见的痕迹', '用现实意义而非口号收束'],
+    visual_moves: ['实景、物件、文献、手部翻阅、环境声', '再现画面要有边界提示'],
+    script_moves: ['旁白客观但有线索', '引用和来源提示要服务可信度'],
+    quality_signals: ['现实现场明确', '来源提示存在', '边界清楚', '当代意义自然'],
+  },
+  explainer_video: {
+    reference_samples: ['博物馆知识讲解视频', '动画知识讲解短片', '主持人知识栏目'],
+    opening_moves: ['用一个观众会问的问题开场', '先制造认知缺口再给框架'],
+    middle_moves: ['概念、步骤、例子、误区逐层展开', '用图示和类比降低理解成本'],
+    ending_moves: ['总结 3 个要点', '留下一个延伸问题或应用场景'],
+    visual_moves: ['关键词卡片、流程图、对比图、局部放大', '主持人与图文信息交替'],
+    script_moves: ['每段先说结论再解释', '避免知识点堆叠，保持层级编号'],
+    quality_signals: ['核心问题明确', '层级清楚', '例子有效', '总结可复盘'],
+  },
+  lecture_video: {
+    reference_samples: ['主题宣讲片', '人物精神讲述短片', '案例支撑式演讲视频'],
+    opening_moves: ['用案例引出主题观点', '先给现实问题再进入历史事实'],
+    middle_moves: ['事实、分析、价值、当下连接递进', '每个观点必须有例证'],
+    ending_moves: ['用凝练号召或价值回扣收束', '让观众知道今天能怎么理解'],
+    visual_moves: ['讲述者、案例画面、金句字幕、资料画面交替', '节奏稳重但不能静止'],
+    script_moves: ['观点明确，语气有力量但不过火', '减少空泛表达，增加案例支撑'],
+    quality_signals: ['中心观点明确', '论据充分', '现实连接清楚', '结尾有力量'],
+  },
+  education_training: {
+    reference_samples: ['课堂教学视频', '步骤示范培训片', '课程模块化讲解视频'],
+    opening_moves: ['先说明学完能掌握什么', '用一个练习或任务建立学习目标'],
+    middle_moves: ['模块、步骤、示范、练习、反馈逐步推进', '每个环节都有可复盘要点'],
+    ending_moves: ['用清单复盘', '给出下一步练习或延伸任务'],
+    visual_moves: ['标题卡、步骤编号、示范画面、检查表', '复杂流程拆成可暂停画面'],
+    script_moves: ['教学语言直接清楚', '每段都对应一个学习动作'],
+    quality_signals: ['学习目标具体', '步骤完整', '练习存在', '复盘清楚'],
+  },
+  scene_short: {
+    reference_samples: ['地点导览短片', '空间氛围短片', '物件线索带路的场景片'],
+    opening_moves: ['用光线、声音或入口带观众进入空间', '先确定空间身份和观看路线'],
+    middle_moves: ['沿路线移动，每到一处揭示一层时间记忆', '用人物经过或物件触发故事'],
+    ending_moves: ['把路线停在最有意味的空间节点', '用氛围而不是口号收束'],
+    visual_moves: ['入口、路径、转角、局部纹理、远景回望', '空间移动要清楚可拍'],
+    script_moves: ['旁白像带路，不像人物传记', '每句都服务空间感和时间层'],
+    quality_signals: ['空间身份明确', '视觉路线完整', '时间层存在', '氛围收束'],
+  },
+  landscape_mood: {
+    reference_samples: ['山水意境短片', '自然风光诗性短片', '水墨风景片段'],
+    opening_moves: ['从山、水、雾、风、光影的慢镜头开场', '用低密度旁白留出呼吸'],
+    middle_moves: ['季节、天气、光线或声音缓慢流变', '人文痕迹只作为轻触点'],
+    ending_moves: ['以留白画面和一句诗性旁白定格', '让情绪停住，不急于解释'],
+    visual_moves: ['长镜头、空镜、雾气、倒影、慢推慢移', '自然元素占主导'],
+    script_moves: ['句子短、信息少、重声音和光影', '避免密集知识讲解和口号'],
+    quality_signals: ['自然意象突出', '光影季节明确', '旁白低密度', '留白感成立'],
+  },
+};
+
 export const GENRE_STORY_PROFILES = PROFILES;
 
 export function getGenreStoryProfile(videoType: VideoType): GenreStoryProfile {
@@ -502,6 +650,10 @@ export function getGenreStoryProfile(videoType: VideoType): GenreStoryProfile {
 
 export function getGenreDramaticStructure(videoType: VideoType): GenreDramaticStructure {
   return getGenreStoryProfile(videoType).dramatic_structure;
+}
+
+export function getGenreSampleGuidance(videoType: VideoType): GenreSampleGuidance {
+  return SAMPLE_GUIDANCE[videoType] ?? SAMPLE_GUIDANCE.character_story;
 }
 
 export function getGenreReturnJsonFields(videoType: VideoType): string[] {

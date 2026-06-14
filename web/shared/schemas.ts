@@ -34,6 +34,30 @@ export const VideoTypeSchema = z.enum([
   'ai_comic_drama',
 ]);
 
+export const NarrativePatternIdSchema = z.enum([
+  'mortal_growth',
+  'infinite_mission',
+  'historical_causal_story',
+  'power_strategy',
+  'hero_choice',
+  'folk_legend_trial',
+  'mystery_reveal',
+  'ensemble_threads',
+  'object_clue_journey',
+  'craft_mastery',
+  'ritual_process',
+  'brand_symbol',
+  'city_day_journey',
+  'social_hook_contrast',
+  'documentary_investigation',
+  'knowledge_gap_explainer',
+  'lecture_case_argument',
+  'training_loop',
+  'space_walkthrough',
+  'poetic_landscape',
+  'children_fable',
+]);
+
 // ---------------------------------------------------------------------------
 // Presentation style (11 表现形式)
 // ---------------------------------------------------------------------------
@@ -201,6 +225,7 @@ export const StoryGenerateRequestSchema = z.object({
   story_structure: StoryStructureTypeSchema.optional(),
   creative_reference_ids: z.array(z.string()).optional(),
   style_pack_ids: z.array(z.string()).optional(),
+  narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
   reference_strength: ReferenceStrengthSchema.optional(),
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
   auto_repair: z.boolean().optional().default(false),
@@ -466,6 +491,7 @@ export const AiComicSeriesPlanRequestSchema = z.object({
   }),
   pacing_profile: AiComicPacingProfileSchema.optional().default('balanced_drama'),
   generation_scope: AiComicGenerationScopeSchema.optional().default('full_planning'),
+  narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
   knowledge_pack: AiComicKnowledgePackSchema.optional(),
   character_hints: z.array(StoryDetectedCharacterSchema).optional(),
 }).refine(
@@ -558,6 +584,7 @@ const AiComicSeriesPlanSchema = z.object({
   }),
   pacing_profile: AiComicPacingProfileSchema,
   generation_scope: AiComicGenerationScopeSchema,
+  narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
   premise: z.string().min(1).max(12000),
   logline: z.string().min(1),
   core_theme: z.string().min(1),
@@ -603,6 +630,14 @@ export const AiComicSeriesProjectSaveRequestSchema = z.object({
   continuity_ledger: AiComicContinuityLedgerSchema.optional(),
 });
 
+export const AiComicSeriesProjectCopyRequestSchema = z.object({
+  title: z.string().trim().min(1).max(80).optional(),
+});
+
+export const AiComicSeriesProjectArchiveRequestSchema = z.object({
+  archived: z.boolean().optional().default(true),
+});
+
 export const AiComicSeriesLedgerRebuildRequestSchema = z.object({
   from_episode_no: z.number().int().min(1).max(120).optional().default(1),
 });
@@ -611,6 +646,7 @@ export const AiComicEpisodeContextPreviewRequestSchema = z.object({
   series_plan: AiComicSeriesPlanSchema,
   episode_no: z.number().int().min(1).max(120),
   series_project_id: AiComicSeriesProjectIdValueSchema.optional(),
+  narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
 }).refine(
   data => data.episode_no <= data.series_plan.episode_count,
   { message: 'episode_no cannot exceed series_plan.episode_count', path: ['episode_no'] },
@@ -623,6 +659,7 @@ export const AiComicEpisodeGenerateRequestSchema = z.object({
   model_profile_id: z.string().optional(),
   output_gears_segments: z.boolean().optional().default(true),
   knowledge_pack: AiComicKnowledgePackSchema.optional(),
+  narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
   auto_audit_continuity: z.boolean().optional().default(true),
   auto_repair_episode: z.boolean().optional().default(false),
 }).refine(

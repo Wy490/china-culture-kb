@@ -72,6 +72,7 @@ function buildSystemPrompt(story: StoryGenerateResult): string {
     '你是一个擅长中文影视叙事改写的故事编辑器。',
     '你的任务不是重写整篇故事，而是只重写一个目标场景。',
     '必须保持整体故事设定、人物身份、来源条目和叙事结构不变。',
+    '知识库不是资料仓库；改写时要使用知识条目的边界、关系和用途来约束场景，而不是把补录资料直接塞进台词或旁白。',
     structureLine,
     '禁止输出解释、分析、Markdown、代码块。',
     '只返回 JSON 对象，并且只能包含指定字段。',
@@ -116,6 +117,7 @@ function buildUserPrompt(pkg: Omit<SceneRegenerationPromptPackage, 'system_promp
 
   if (pkg.knowledge_context) {
     lines.push('', '知识来源上下文：', JSON.stringify(pkg.knowledge_context, null, 2));
+    lines.push('知识使用规则：来源条目负责事实边界和文化语境，支撑条目负责时代、资产、母题或风险提示；不要把支撑资料改写成主条目的新史实。');
   }
 
   if (pkg.supplement_context && pkg.supplement_context.length > 0) {
@@ -221,6 +223,7 @@ export function buildSceneRegenerationPromptPackage(input: {
         '保持前后场景衔接',
         '保持来源条目和文化语境一致',
         '保持当前成片类型的叙事质感',
+        '把知识库当作结构化决策依据，不当作资料仓库堆砌',
         '优先吸收已完成资料补录，但不要把未确认内容写成新的史实断言',
       ],
       return_json_fields: [

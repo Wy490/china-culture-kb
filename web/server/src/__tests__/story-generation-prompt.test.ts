@@ -103,6 +103,10 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('资产拆分：人物=周敦颐：主角');
     expect(pkg.user_prompt).toContain('场景=洞穴：场景资产、书院：场景资产');
     expect(pkg.knowledge_context?.primary_entries[0].asset_split?.character_props[0]).toContain('手稿');
+    expect(pkg.system_prompt).toContain('结构化知识库，不是资料仓库');
+    expect(pkg.user_prompt).toContain('知识库不是资料仓库');
+    expect(pkg.user_prompt).toContain('先读取知识域、条目角色、时代、用途、资产拆分、可信度和风险提示');
+    expect(pkg.output_contract.should_respect).toContain('按结构化知识库做创作决策，不把知识包当资料仓库堆砌');
     expect(pkg.user_prompt).toContain('不要把设定包内容写成主条目的史实');
   });
 
@@ -188,7 +192,11 @@ describe('story-generation-prompt', () => {
 
       expect(pkg.system_prompt).toContain('类型创作目标');
       expect(pkg.system_prompt).toContain('类型叙事框架');
+      expect(pkg.system_prompt).toContain('样片参考类型');
+      expect(pkg.user_prompt).toContain('=== 样片化类型规则 ===');
+      expect(pkg.user_prompt).toContain('质量信号');
       expect(pkg.system_prompt).toContain(item.expectedSystem);
+      expect(pkg.output_contract.should_respect.length).toBeGreaterThan(8);
       for (const field of item.expectedFields) {
         expect(pkg.output_contract.return_json_fields).toContain(field);
         expect(pkg.user_prompt).toContain(field);
@@ -230,5 +238,31 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('中心问题');
     expect(pkg.user_prompt).toContain('类型节拍');
     expect(pkg.output_contract.should_respect).toEqual(expect.arrayContaining(storyBlueprint.type_specific_requirements));
+  });
+
+  it('prioritizes user-selected narrative patterns in the prompt', () => {
+    const request: StoryGenerateRequest = {
+      entry_name: '周敦颐——理学开山鼻祖',
+      video_type: 'ai_comic_drama',
+      original_user_query: '写成弱者成长和任务压力很强的AI漫剧',
+      narrative_pattern_ids: ['infinite_mission', 'mortal_growth'],
+    };
+
+    const pkg = buildStoryGenerationPromptPackage({
+      entry: makeEntry(),
+      request,
+      videoType: 'ai_comic_drama',
+      presentationStyle: 'ai_comic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '3分钟',
+      tone: '',
+      knowledgePack: makeKnowledgePack(),
+    });
+
+    expect(pkg.context.narrative_pattern_ids).toEqual(['infinite_mission', 'mortal_growth']);
+    expect(pkg.system_prompt).toContain('无限流任务生存');
+    expect(pkg.user_prompt).toContain('无限流任务生存（用户强化');
+    expect(pkg.user_prompt).toContain('凡人流成长（用户强化');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('无限流任务生存');
   });
 });

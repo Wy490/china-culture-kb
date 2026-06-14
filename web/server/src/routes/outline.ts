@@ -7,6 +7,8 @@ import {
   AiComicEpisodeContextPreviewRequestSchema,
   AiComicEpisodeGenerateRequestSchema,
   AiComicSeriesLedgerRebuildRequestSchema,
+  AiComicSeriesProjectArchiveRequestSchema,
+  AiComicSeriesProjectCopyRequestSchema,
   AiComicSeriesProjectIdParamSchema,
   AiComicSeriesProjectSaveRequestSchema,
   AiComicSeriesPlanRequestSchema,
@@ -14,6 +16,9 @@ import {
 } from '@shared/schemas.js';
 import { analyzeOutline } from '../services/outline-service.js';
 import {
+  archiveAiComicSeriesProject,
+  copyAiComicSeriesProject,
+  deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
   previewAiComicEpisodeContext,
   generateAiComicEpisodeFromPlan,
@@ -47,9 +52,11 @@ outlineRouter.post('/ai-comic-series-plan', validateBody(AiComicSeriesPlanReques
 });
 
 // GET /api/story-outline/ai-comic-series-projects — list saved AI comic series projects
-outlineRouter.get('/ai-comic-series-projects', async (_req, res, next) => {
+outlineRouter.get('/ai-comic-series-projects', async (req, res, next) => {
   try {
-    const result = await listAiComicSeriesProjects();
+    const result = await listAiComicSeriesProjects({
+      includeArchived: req.query.include_archived === '1' || req.query.include_archived === 'true',
+    });
     res.json(result);
   } catch (err) {
     next(err);
@@ -65,6 +72,53 @@ outlineRouter.post('/ai-comic-series-projects', validateBody(AiComicSeriesProjec
     next(err);
   }
 });
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/copy — copy a saved project
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/copy',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeriesProjectCopyRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await copyAiComicSeriesProject(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/archive — archive or restore a saved project
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/archive',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeriesProjectArchiveRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await archiveAiComicSeriesProject(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// DELETE /api/story-outline/ai-comic-series-projects/:seriesProjectId — remove a saved project
+outlineRouter.delete(
+  '/ai-comic-series-projects/:seriesProjectId',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await deleteAiComicSeriesProject(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // GET /api/story-outline/ai-comic-series-projects/:seriesProjectId — load a saved AI comic series project
 outlineRouter.get(

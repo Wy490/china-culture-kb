@@ -1,5 +1,5 @@
 import { apiGet } from './client'
-import type { AIModelProfile, ProvinceInfo, TypeInfo } from '@shared/types'
+import type { AIModelProfile, NarrativePatternCatalog, ProvinceInfo, TypeInfo } from '@shared/types'
 
 export function getProvinces() {
   return apiGet<ProvinceInfo[]>('/system/provinces')
@@ -15,4 +15,8 @@ export function getRegions(province: string) {
 
 export function getModelProfiles() {
   return apiGet<AIModelProfile[]>('/system/models')
+}
+
+export function getNarrativePatternCatalog() {
+  return apiGet<NarrativePatternCatalog>('/system/narrative-patterns')
 }

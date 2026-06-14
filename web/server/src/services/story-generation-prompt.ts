@@ -14,6 +14,7 @@ import type {
   KnowledgeAssetSplit,
   KnowledgeDomain,
   KnowledgeEntryRole,
+  NarrativePatternId,
   MemoryMosaicStorySeed,
   StoryDetectedCharacter,
   StoryBlueprint,
@@ -26,8 +27,13 @@ import {
 } from '@shared/types.js';
 import {
   getGenreReturnJsonFields,
+  getGenreSampleGuidance,
   getGenreStoryProfile,
 } from './genre-story-profiles.js';
+import {
+  formatNarrativePatternsForPrompt,
+  getNarrativePatternRequirementLines,
+} from './narrative-pattern-library.js';
 
 // ---------------------------------------------------------------------------
 // Prompt package type — what gets sent to the external model via stdin
@@ -49,6 +55,7 @@ export interface StoryGenerationPromptPackage {
     original_user_query?: string;
     credibility_note?: string;
     cultural_risks?: string[];
+    narrative_pattern_ids?: NarrativePatternId[];
   };
   entry_summary: string;
   entry_story: string;
@@ -143,19 +150,30 @@ function buildSystemPrompt(
   presentationStyle: PresentationStyle,
   storyStructure: StoryStructureType,
   isMemoryMosaic: boolean,
+  narrativePatternIds: NarrativePatternId[] = [],
 ): string {
   const vtMeta = VIDEO_TYPE_CONFIG[videoType];
   const psMeta = PRESENTATION_STYLE_CONFIG[presentationStyle];
   const ssMeta = STORY_STRUCTURE_CONFIG[storyStructure];
   const profile = getGenreStoryProfile(videoType);
+  const sampleGuidance = getGenreSampleGuidance(videoType);
+  const narrativePatternLines = getNarrativePatternRequirementLines(videoType, narrativePatternIds);
 
   const lines: string[] = [
     '你是一个擅长中文故事创作的编剧。',
+    '你使用的是结构化知识库，不是资料仓库；知识条目必须转化为人物、场景、边界、关系和创作决策，不能当作原文素材堆砌。',
     `你要创作一个${vtMeta.label}（${psMeta.label}风格）的完整故事方案。`,
     `叙事结构：${ssMeta.label}——${ssMeta.description}`,
     `类型创作目标：${profile.narrative_promise}`,
     `类型叙事框架：${profile.framework.join(' → ')}`,
     `必须包含：${profile.must_include.join('；')}`,
+    `样片参考类型：${sampleGuidance.reference_samples.join('；')}`,
+    `样片开场方法：${sampleGuidance.opening_moves.join('；')}`,
+    `样片中段推进：${sampleGuidance.middle_moves.join('；')}`,
+    `样片结尾策略：${sampleGuidance.ending_moves.join('；')}`,
+    `样片画面策略：${sampleGuidance.visual_moves.join('；')}`,
+    `样片文案策略：${sampleGuidance.script_moves.join('；')}`,
+    `叙事流派机制：${narrativePatternLines.join('；')}`,
     `避免：${profile.avoid.join('；')}`,
   ];
 
@@ -181,6 +199,7 @@ function buildSystemPrompt(
 // ---------------------------------------------------------------------------
 
 function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt' | 'user_prompt'>): string {
+  const sampleGuidance = getGenreSampleGuidance(pkg.context.video_type);
   const lines: string[] = [
     `来源条目：${pkg.context.entry_name}`,
     `条目类型：${pkg.context.entry_type}`,
@@ -218,8 +237,12 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
       for (const entry of pkg.knowledge_context.supporting_entries) {
         lines.push(`- ${formatKnowledgeEntryForPrompt(entry)}`);
       }
-      lines.push('知识包使用规则：朝代设定包用于服饰、器物、称谓和时代边界；志异母题包用于叙事结构和可信度提示；GEARS资产包用于人物/场景/道具边界。不要把设定包内容写成主条目的史实。');
     }
+    lines.push(
+      '知识库不是资料仓库：不要把知识包摘要当作散乱资料粘进正文；必须先读取知识域、条目角色、时代、用途、资产拆分、可信度和风险提示，再决定哪些内容约束事实、哪些内容提供画面、哪些内容只作为创作边界。',
+      '知识包使用规则：朝代设定包用于服饰、器物、称谓和时代边界；志异母题包用于叙事结构和可信度提示；GEARS资产包用于人物/场景/道具边界。不要把设定包内容写成主条目的史实。',
+      '知识决策规则：每个关键人物、场景、道具和情节转折都要能说明来自主条目、设定包、资产包、可信创作补足或明确虚构，不允许用“资料里有一些说法”替代判断。',
+    );
   }
 
   if (pkg.character_hints?.length) {
@@ -257,6 +280,21 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
     }
     lines.push('生成规则：full_text、scene_breakdown 和 GEARS 分段必须服从上述类型节拍。');
   }
+
+  lines.push('', '=== 样片化类型规则 ===');
+  lines.push(`参考样片类型：${sampleGuidance.reference_samples.join('；')}`);
+  lines.push(`开场：${sampleGuidance.opening_moves.join('；')}`);
+  lines.push(`中段：${sampleGuidance.middle_moves.join('；')}`);
+  lines.push(`结尾：${sampleGuidance.ending_moves.join('；')}`);
+  lines.push(`画面：${sampleGuidance.visual_moves.join('；')}`);
+  lines.push(`文案：${sampleGuidance.script_moves.join('；')}`);
+  lines.push(`质量信号：${sampleGuidance.quality_signals.join('；')}`);
+
+  lines.push('', '=== 叙事流派库 ===');
+  lines.push(
+    '以下是结构机制参考，只能学习叙事引擎、冲突引擎、节奏和质量信号；禁止复刻具体小说情节、人物、设定、台词或作者文风。',
+  );
+  lines.push(...formatNarrativePatternsForPrompt(pkg.context.video_type, pkg.context.narrative_pattern_ids ?? []));
 
   lines.push(
     '',
@@ -340,6 +378,7 @@ export function buildStoryGenerationPromptPackage(input: {
       original_user_query: input.request.original_user_query ?? input.request.outline,
       credibility_note: input.entry.verificationMethod,
       cultural_risks: computeCulturalRisks(input.entry),
+      narrative_pattern_ids: input.request.narrative_pattern_ids,
     },
     entry_summary: input.entry.summary,
     entry_story: input.entry.story,
@@ -384,10 +423,14 @@ export function buildStoryGenerationPromptPackage(input: {
       must_provide: ['title', 'logline', 'theme', 'full_text', 'scene_breakdown'],
       should_respect: [
         '保持来源条目的文化语境和可信度标注',
+        '按结构化知识库做创作决策，不把知识包当资料仓库堆砌',
+        '区分事实依据、画面资产、叙事母题、可信度边界和创作补足',
         '保持当前成片类型的叙事质感',
         '场次数量和时长匹配',
         '故事有冲突、选择和情绪变化',
         ...getGenreStoryProfile(input.videoType).must_include,
+        ...getGenreSampleGuidance(input.videoType).quality_signals,
+        ...getNarrativePatternRequirementLines(input.videoType, input.request.narrative_pattern_ids ?? []),
         ...(input.storyBlueprint?.type_specific_requirements ?? []),
       ],
       return_json_fields: getGenreReturnJsonFields(input.videoType),
@@ -396,7 +439,13 @@ export function buildStoryGenerationPromptPackage(input: {
 
   return {
     ...base,
-    system_prompt: buildSystemPrompt(input.videoType, input.presentationStyle, input.storyStructure, isMemoryMosaic),
+    system_prompt: buildSystemPrompt(
+      input.videoType,
+      input.presentationStyle,
+      input.storyStructure,
+      isMemoryMosaic,
+      input.request.narrative_pattern_ids ?? [],
+    ),
     user_prompt: buildUserPrompt(base),
   };
 }

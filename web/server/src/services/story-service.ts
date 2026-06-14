@@ -1332,6 +1332,7 @@ export async function generateAndStoreStory(
     targetDuration,
     centralEvent,
     knowledgePack: knowledgePackToUse,
+    narrativePatternIds: request.narrative_pattern_ids,
   });
 
   // --- Generate story content ---
@@ -1579,12 +1580,14 @@ export async function generateAndStoreStory(
       genre_strictness: request.genre_strictness ?? 'balanced',
       auto_repair: request.auto_repair ?? false,
       story_priority: request.story_priority ?? 'balanced',
+      narrative_pattern_ids: request.narrative_pattern_ids ?? [],
     },
   };
   storyData.quality_report = validateGenreStoryQuality({
     story: storyData,
     baseReport: baseQualityReport,
     blueprint: finalStoryBlueprint,
+    narrativePatternIds: request.narrative_pattern_ids,
   });
   const repairTrace: StoryRepairTrace[] = [];
   if (shouldAttemptStoryRepair({
@@ -1650,6 +1653,7 @@ export async function generateAndStoreStory(
           story: storyData,
           baseReport: repairedBaseQualityReport,
           blueprint: finalStoryBlueprint,
+          narrativePatternIds: request.narrative_pattern_ids,
         });
         trace.after_genre_score = storyData.quality_report.genre_score;
         if ((trace.after_genre_score ?? 0) >= (beforeScore ?? 0)) {
@@ -1669,6 +1673,7 @@ export async function generateAndStoreStory(
             story: storyData,
             baseReport: baseQualityReport,
             blueprint: finalStoryBlueprint,
+            narrativePatternIds: request.narrative_pattern_ids,
           });
           trace.reason = 'repair_score_not_improved';
         }

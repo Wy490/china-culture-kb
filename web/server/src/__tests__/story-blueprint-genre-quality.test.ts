@@ -150,5 +150,6 @@ describe('story blueprint and genre quality', () => {
     expect(report.genre_score).toBeGreaterThanOrEqual(70);
     expect(report.missing_required_elements).toEqual([]);
     expect(report.repair_actions).toContain('补强主角当下目标');
+    expect(report.repair_actions).toContain('对齐样片信号：人物目标清楚');
   });
 });

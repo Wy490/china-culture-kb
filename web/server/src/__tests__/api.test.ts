@@ -124,6 +124,19 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/narrative-patterns', () => {
+    it('returns narrative pattern catalog mapped to video types', async () => {
+      const res = await request.get('/api/system/narrative-patterns');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(Array.isArray(res.body.data.patterns)).toBe(true);
+      expect(res.body.data.patterns.length).toBeGreaterThan(0);
+      expect(res.body.data.video_type_map.ai_comic_drama).toEqual(
+        expect.arrayContaining(['mortal_growth', 'infinite_mission']),
+      );
+    });
+  });
+
 });
 
 describe('Projects API', () => {
@@ -320,6 +333,40 @@ describe('Story Outline API', () => {
       expect(getRes.body.data.plan.series_title).toBe('濂溪漫剧');
       expect(getRes.body.data.generated_episode_story_ids['1']).toBe('20260611-story-abc1');
       expect(getRes.body.data.continuity_ledger.character_state_current.length).toBeGreaterThan(0);
+
+      const copyRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${saveRes.body.data.project.series_project_id}/copy`)
+        .send({ title: '濂溪漫剧 副本' });
+      expect(copyRes.status).toBe(200);
+      expectSuccess(copyRes.body);
+      expect(copyRes.body.data.project.series_project_id).not.toBe(saveRes.body.data.project.series_project_id);
+      expect(copyRes.body.data.plan.series_title).toBe('濂溪漫剧 副本');
+
+      const archiveRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${copyRes.body.data.project.series_project_id}/archive`)
+        .send({ archived: true });
+      expect(archiveRes.status).toBe(200);
+      expectSuccess(archiveRes.body);
+      expect(archiveRes.body.data.project.archived_at).toBeTruthy();
+
+      const listRes = await request.get('/api/story-outline/ai-comic-series-projects');
+      expect(listRes.status).toBe(200);
+      expectSuccess(listRes.body);
+      expect(listRes.body.data.some((project: any) =>
+        project.series_project_id === copyRes.body.data.project.series_project_id,
+      )).toBe(false);
+
+      const fullListRes = await request.get('/api/story-outline/ai-comic-series-projects?include_archived=1');
+      expect(fullListRes.status).toBe(200);
+      expectSuccess(fullListRes.body);
+      expect(fullListRes.body.data.some((project: any) =>
+        project.series_project_id === copyRes.body.data.project.series_project_id,
+      )).toBe(true);
+
+      const deleteRes = await request.delete(`/api/story-outline/ai-comic-series-projects/${copyRes.body.data.project.series_project_id}`);
+      expect(deleteRes.status).toBe(200);
+      expectSuccess(deleteRes.body);
+      expect(deleteRes.body.data.deleted).toBe(true);
     });
 
     it('returns 404 for an unknown series project', async () => {

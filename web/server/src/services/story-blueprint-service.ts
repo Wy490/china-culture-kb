@@ -13,8 +13,13 @@ import type {
   StoryStructureType,
   SupportedDuration,
   VideoType,
+  NarrativePatternId,
 } from '@shared/types.js';
 import { getGenreStoryProfile } from './genre-story-profiles.js';
+import {
+  getNarrativePatternQualitySignals,
+  getNarrativePatternRequirementLines,
+} from './narrative-pattern-library.js';
 
 const DURATION_SEC_MAP: Record<string, number> = {
   '30秒': 30,
@@ -36,6 +41,7 @@ export function buildStoryBlueprint(input: {
   centralEvent?: string;
   knowledgePack?: KnowledgePack;
   scenes?: StoryScene[];
+  narrativePatternIds?: NarrativePatternId[];
 }): StoryBlueprint {
   const profile = getGenreStoryProfile(input.videoType);
   const protagonist = input.entry.name.split('——')[0].trim();
@@ -74,6 +80,8 @@ export function buildStoryBlueprint(input: {
       ...profile.must_include,
       ...profile.scene_rules,
       ...profile.gears_rules,
+      ...getNarrativePatternRequirementLines(input.videoType, input.narrativePatternIds ?? []),
+      ...getNarrativePatternQualitySignals(input.videoType, input.narrativePatternIds ?? []).map(signal => `流派质量信号：${signal}`),
     ],
   };
 }

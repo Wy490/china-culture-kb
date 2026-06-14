@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from './client'
+import { apiDelete, apiGet, apiPatch, apiPost } from './client'
 import type {
   StoryPlanResult,
   StoryGenerateRequest,
@@ -14,6 +14,9 @@ import type {
   AiComicEpisodeGenerateRequest,
   AiComicSeriesBibleExportPackage,
   AiComicSeriesLedgerRebuildRequest,
+  AiComicSeriesProjectArchiveRequest,
+  AiComicSeriesProjectCopyRequest,
+  AiComicSeriesProjectDeleteResult,
   AiComicSeriesProjectDetail,
   AiComicSeriesProjectMeta,
   AiComicSeriesProjectSaveRequest,
@@ -74,8 +77,11 @@ export function aiComicEpisodeContextPreview(req: AiComicEpisodeContextPreviewRe
   return apiPost<AiComicEpisodeContextPreview>('/story-outline/ai-comic-episode-context-preview', req)
 }
 
-export function listAiComicSeriesProjects() {
-  return apiGet<AiComicSeriesProjectMeta[]>('/story-outline/ai-comic-series-projects')
+export function listAiComicSeriesProjects(includeArchived = false) {
+  return apiGet<AiComicSeriesProjectMeta[]>(
+    '/story-outline/ai-comic-series-projects',
+    includeArchived ? { include_archived: '1' } : undefined,
+  )
 }
 
 export function getAiComicSeriesProject(seriesProjectId: string) {
@@ -84,6 +90,24 @@ export function getAiComicSeriesProject(seriesProjectId: string) {
 
 export function saveAiComicSeriesProject(req: AiComicSeriesProjectSaveRequest) {
   return apiPost<AiComicSeriesProjectDetail>('/story-outline/ai-comic-series-projects', req)
+}
+
+export function copyAiComicSeriesProject(seriesProjectId: string, req: AiComicSeriesProjectCopyRequest = {}) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/copy`,
+    req,
+  )
+}
+
+export function archiveAiComicSeriesProject(seriesProjectId: string, req: AiComicSeriesProjectArchiveRequest = {}) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/archive`,
+    req,
+  )
+}
+
+export function deleteAiComicSeriesProject(seriesProjectId: string) {
+  return apiDelete<AiComicSeriesProjectDeleteResult>(`/story-outline/ai-comic-series-projects/${seriesProjectId}`)
 }
 
 export function rebuildAiComicSeriesLedger(seriesProjectId: string, req: AiComicSeriesLedgerRebuildRequest) {

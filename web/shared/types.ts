@@ -27,6 +27,47 @@ export type VideoType =
   | 'social_short'
   | 'ai_comic_drama';
 
+export type NarrativePatternId =
+  | 'mortal_growth'
+  | 'infinite_mission'
+  | 'historical_causal_story'
+  | 'power_strategy'
+  | 'hero_choice'
+  | 'folk_legend_trial'
+  | 'mystery_reveal'
+  | 'ensemble_threads'
+  | 'object_clue_journey'
+  | 'craft_mastery'
+  | 'ritual_process'
+  | 'brand_symbol'
+  | 'city_day_journey'
+  | 'social_hook_contrast'
+  | 'documentary_investigation'
+  | 'knowledge_gap_explainer'
+  | 'lecture_case_argument'
+  | 'training_loop'
+  | 'space_walkthrough'
+  | 'poetic_landscape'
+  | 'children_fable';
+
+export interface NarrativePattern {
+  pattern_id: NarrativePatternId;
+  label: string;
+  reference_archetypes: string[];
+  narrative_engine: string;
+  protagonist_engine: string;
+  conflict_engine: string;
+  pacing_pattern: string[];
+  scene_recipes: string[];
+  quality_signals: string[];
+  avoid: string[];
+}
+
+export interface NarrativePatternCatalog {
+  patterns: NarrativePattern[];
+  video_type_map: Record<VideoType, NarrativePatternId[]>;
+}
+
 // ---------------------------------------------------------------------------
 // Presentation style (11 表现形式)
 // ---------------------------------------------------------------------------
@@ -521,6 +562,7 @@ export interface StoryGenerateRequest {
   story_structure?: StoryStructureType;
   creative_reference_ids?: string[];
   style_pack_ids?: string[];
+  narrative_pattern_ids?: NarrativePatternId[];
   reference_strength?: ReferenceStrength;
   genre_strictness?: GenreStrictness;
   auto_repair?: boolean;
@@ -986,6 +1028,7 @@ export interface AiComicSeriesPlanRequest {
   episode_duration_range_sec: AiComicDurationRange;
   pacing_profile?: AiComicPacingProfile;
   generation_scope?: AiComicGenerationScope;
+  narrative_pattern_ids?: NarrativePatternId[];
   knowledge_pack?: KnowledgePack;
   character_hints?: StoryDetectedCharacter[];
 }
@@ -1089,6 +1132,7 @@ export interface AiComicSeriesPlan {
   episode_duration_range_sec: AiComicDurationRange;
   pacing_profile: AiComicPacingProfile;
   generation_scope: AiComicGenerationScope;
+  narrative_pattern_ids?: NarrativePatternId[];
   premise: string;
   logline: string;
   core_theme: string;
@@ -1112,6 +1156,7 @@ export interface AiComicSeriesProjectMeta {
   created_at: string;
   updated_at: string;
   generated_episode_count: number;
+  archived_at?: string;
 }
 
 export interface AiComicContinuityLedgerEpisode {
@@ -1164,6 +1209,15 @@ export interface AiComicSeriesContinuityAudit {
 
 export type AiComicSeriesQualityEpisodeStatus = 'not_generated' | 'passed' | 'needs_attention' | 'unknown';
 
+export type AiComicThreadClosureStatus =
+  | 'planned'
+  | 'opened'
+  | 'in_progress'
+  | 'paid_off'
+  | 'overdue'
+  | 'duplicate'
+  | 'orphaned';
+
 export interface AiComicSeriesQualityEpisodeReport {
   episode_no: number;
   story_id?: string;
@@ -1173,6 +1227,31 @@ export interface AiComicSeriesQualityEpisodeReport {
   plan_changed_after_generation?: boolean;
   needs_episode_regeneration?: boolean;
   needs_ledger_rebuild?: boolean;
+}
+
+export interface AiComicThreadClosureItem {
+  thread_id: string;
+  title: string;
+  setup_episode?: number;
+  payoff_episode?: number;
+  status: AiComicThreadClosureStatus;
+  opened_in_episodes: number[];
+  paid_off_in_episodes: number[];
+  related_episodes: number[];
+  issues: string[];
+  repair_suggestions: string[];
+}
+
+export interface AiComicThreadClosureReport {
+  schema_version: 'ai-comic-thread-closure-report/v1';
+  total_thread_count: number;
+  opened_thread_count: number;
+  paid_off_thread_count: number;
+  overdue_thread_count: number;
+  orphaned_thread_count: number;
+  duplicate_thread_count: number;
+  episodes_need_attention: number[];
+  items: AiComicThreadClosureItem[];
 }
 
 export interface AiComicSeriesQualityAudit {
@@ -1191,6 +1270,7 @@ export interface AiComicSeriesQualityAudit {
     known_episode_quality_pass_rate: number;
   };
   episode_reports: AiComicSeriesQualityEpisodeReport[];
+  thread_closure_report?: AiComicThreadClosureReport;
 }
 
 export interface AiComicSeriesProjectDetail {
@@ -1217,6 +1297,7 @@ export interface AiComicEpisodeContextPreviewRequest {
   series_plan: AiComicSeriesPlan;
   episode_no: number;
   series_project_id?: string;
+  narrative_pattern_ids?: NarrativePatternId[];
 }
 
 export interface AiComicEpisodeContextPreview {
@@ -1226,6 +1307,7 @@ export interface AiComicEpisodeContextPreview {
   title: string;
   used_saved_ledger: boolean;
   blueprint: AiComicEpisodeBlueprint;
+  narrative_patterns: string[];
   generation_outline: string;
   ledger_summary: {
     last_generated_episode_no?: number;
@@ -1245,6 +1327,19 @@ export interface AiComicSeriesProjectSaveRequest {
   continuity_ledger?: AiComicContinuityLedger;
 }
 
+export interface AiComicSeriesProjectCopyRequest {
+  title?: string;
+}
+
+export interface AiComicSeriesProjectArchiveRequest {
+  archived?: boolean;
+}
+
+export interface AiComicSeriesProjectDeleteResult {
+  series_project_id: string;
+  deleted: true;
+}
+
 export interface AiComicSeriesLedgerRebuildRequest {
   from_episode_no?: number;
 }
@@ -1256,6 +1351,7 @@ export interface AiComicEpisodeGenerateRequest {
   model_profile_id?: string;
   output_gears_segments?: boolean;
   knowledge_pack?: KnowledgePack;
+  narrative_pattern_ids?: NarrativePatternId[];
   auto_audit_continuity?: boolean;
   auto_repair_episode?: boolean;
 }

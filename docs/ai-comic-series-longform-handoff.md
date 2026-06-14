@@ -177,6 +177,9 @@
 - `GET /api/story-outline/ai-comic-series-projects`
 - `POST /api/story-outline/ai-comic-series-projects`
 - `GET /api/story-outline/ai-comic-series-projects/:seriesProjectId`
+- `POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/copy`
+- `POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/archive`
+- `DELETE /api/story-outline/ai-comic-series-projects/:seriesProjectId`
 - `POST /api/story-outline/ai-comic-episode-context-preview`
 
 新增类型：
@@ -184,6 +187,9 @@
 - `AiComicSeriesProjectMeta`
 - `AiComicSeriesProjectDetail`
 - `AiComicSeriesProjectSaveRequest`
+- `AiComicSeriesProjectCopyRequest`
+- `AiComicSeriesProjectArchiveRequest`
+- `AiComicSeriesProjectDeleteResult`
 
 前端行为：
 
@@ -192,7 +198,9 @@
 - 刷新页面后自动恢复保存项目。
 - 保存 `generated_episode_story_ids`。
 - 保存并展示 `continuity_ledger`。
-- 左侧新增“已保存系列”列表，可刷新、查看集数/已生成分镜数/更新时间、点击打开项目。
+- 左侧“已保存系列”列表可刷新、查看集数/已生成分镜数/更新时间、点击打开项目。
+- 保存列表支持复制系列项目、归档/恢复系列项目、删除系列项目。
+- 列表默认隐藏已归档项目，可勾选“显示归档”查看并恢复。
 
 ### 分集卡片编辑
 
@@ -397,14 +405,25 @@ npm run build
 8. AI 漫剧单集生成已支持生成后自动调整类型质量问题。
 9. 已支持导出系列 Bible Markdown / JSON，包含主线骨架、角色弧线、长期线索、连续性账本、系列质量审计和分集蓝图。
 10. 已支持单集生成上下文预览，可在生成前查看本集蓝图、账本摘要、上一集记忆和完整生成提纲。
+11. 已支持系列项目复制、归档/恢复和删除；保存列表默认隐藏已归档项目，可手动显示归档项。
+12. 已安装 `anysearch-skill` 到 `/Users/wuyu/.codex/skills/anysearch-skill`。重启 Codex 后可在技能清单中直接使用；当前会话中 CLI 可运行，但匿名额度已用完，未把自动生成的密钥写入磁盘。
+13. 已新增 15 个成片类型的样片参考矩阵：`docs/video-type-sample-reference-matrix.md`。样片化规则已接入 `genre-story-profiles`、生成提示词和类型质量调整建议。
+14. 已根据用户提供的抖音视频观点“AI真正认识你的是知识库，而不是资料仓库”更新 Agent 知识观。由于抖音短链无法取得逐字稿、AnySearch 匿名额度已耗尽，本轮只基于可确认标题与项目需求沉淀原则；已把“知识库不是资料仓库”接入知识库撰写规范、平台路线图、全故事生成提示词、单场重写提示词和 AI 漫剧单集生成上下文。
+15. 已新增全类型叙事流派库：`web/server/src/services/narrative-pattern-library.ts`。覆盖全部 15 个 `VideoType`，包含凡人流成长、无限流任务生存、历史因果讲述、权谋博弈、悬疑揭示、匠艺精进、纪实追踪、认知缺口讲解、教学闭环、空间导览、诗性山水、儿童寓言等结构机制；已接入故事生成提示词、故事蓝图和类型质量修复建议。该库只蒸馏叙事机制，不复制具体小说情节、角色、台词或作者文风。
+16. 已把叙事流派库产品化为可见、可选、可传参的生成能力：新增 `NarrativePatternId` / `NarrativePatternCatalog` 类型、`narrative_pattern_ids` 生成请求字段、Zod 校验、`GET /api/system/narrative-patterns` 接口、前端 `StoryStudio` 流派强化选择区。用户可在成片类型默认流派基础上勾选强化流派，后端会把用户选择排在默认流派前进入提示词、故事蓝图和质量修复建议。
+17. 已把叙事流派强化贯穿 AI 漫剧长篇系统：`AiComicSeriesPlanRequest`、`AiComicSeriesPlan`、单集生成请求和上下文预览请求均支持 `narrative_pattern_ids`；`AiComicSeriesStudio` 可选择 AI 漫剧流派机制；系列规划会保存选择，连续性规则、production notes、单集生成提纲、上下文预览、最终故事生成请求都会带入流派机制。
+18. 已新增能力缺口分析文档：`docs/ai-comic-series-capability-gap-analysis.md`，列出当前系统已具备能力、高优先级缺口和建议下一步。当前建议优先做批量伏笔/回收闭环检查、流派机制质量评分升级、系列项目统一入口和镜头级视频提示词导出。
+19. 已新增系列线索闭环报告：`AiComicThreadClosureReport` 会进入 `series_quality_audit.thread_closure_report`，批量检查长期线索的开启、推进、回收、超期、未绑定伏笔和重复伏笔；前端系列质量审计面板会显示线索闭环统计、重点问题和修复建议；系列 Bible Markdown / JSON 导出也会包含线索闭环摘要。
 
 ## 建议下一步
 
 优先级较高：
 
 1. 将保存的系列项目纳入现有项目系统，而不只是 `web/generated/ai-comic-series-projects` 文件存储。
-2. 支持系列项目复制、归档、删除。
-3. 支持批量检查所有分集卡片的伏笔/回收闭环。
+2. 将流派机制质量评分升级为可解释检查项，例如凡人流、无限流、历史因果、权谋博弈分别有专属满足信号和修复建议。
+3. 将系列项目操作补充到统一项目首页，形成故事项目与系列项目的统一入口。
+4. 为 `anysearch-skill` 配置正式 API key 后，可继续扩展样片参考库，把每个类型补到 5-10 个可追踪样片源。
+5. 将知识条目的 `relationship_to_primary_entry`、`credibility_note`、`cultural_risks` 等 Agent 可读字段继续产品化，避免资料补录只停留在长文本摘要。
 
 可继续增强：
 
@@ -418,4 +437,4 @@ npm run build
 
 建议新对话从这里继续：
 
-> 仓库 `/Users/wuyu/Desktop/china-culture-kb`，继续完善 AI 漫剧长篇创作。当前已有系列规划页 `/ai-comic-series/new`、系列项目保存、分集卡片编辑、单集分镜生成、连续性账本、系列质量审计、分集蓝图、系列 Bible 导出、单集生成上下文预览、已生成分镜跳转、计划变更提示、账本重建和下一集推荐生成。请先阅读 `docs/ai-comic-series-longform-handoff.md` 和相关文件，再继续实现下一步：系列项目复制/归档/删除，或批量检查所有分集卡片的伏笔/回收闭环。
+> 仓库 `/Users/wuyu/Desktop/china-culture-kb`，继续完善 AI 漫剧长篇创作。当前已有系列规划页 `/ai-comic-series/new`、系列项目保存、复制、归档、删除、分集卡片编辑、单集分镜生成、连续性账本、系列质量审计、线索闭环报告、分集蓝图、系列 Bible 导出、单集生成上下文预览、已生成分镜跳转、计划变更提示、账本重建、下一集推荐生成和叙事流派强化。请先阅读 `docs/ai-comic-series-longform-handoff.md` 和相关文件，再继续实现下一步：流派机制质量评分升级、系列项目统一入口、镜头级视频提示词导出，或知识条目 Agent 可读字段产品化。

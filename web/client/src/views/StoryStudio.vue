@@ -286,6 +286,29 @@
         </div>
       </section>
 
+      <section v-if="selectedVideoType && availableNarrativePatterns.length > 0" class="story-studio__field">
+        <label class="story-studio__label">叙事流派强化</label>
+        <p class="story-studio__field-hint">默认会使用该成片类型的流派机制；勾选后会在生成中加强对应叙事引擎。</p>
+        <div class="story-studio__pattern-list">
+          <label
+            v-for="pattern in availableNarrativePatterns"
+            :key="pattern.pattern_id"
+            class="story-studio__pattern-card"
+            :class="{ 'story-studio__pattern-card--selected': selectedNarrativePatternIds.includes(pattern.pattern_id) }"
+          >
+            <input
+              v-model="selectedNarrativePatternIds"
+              type="checkbox"
+              :value="pattern.pattern_id"
+            />
+            <span class="story-studio__pattern-main">
+              <strong>{{ pattern.label }}</strong>
+              <span>{{ pattern.narrative_engine }}</span>
+            </span>
+          </label>
+        </div>
+      </section>
+
       <!-- Presentation style selector -->
       <section v-if="selectedVideoType" class="story-studio__field">
         <label class="story-studio__label" for="presentation-style">表现形式</label>
@@ -405,7 +428,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storyPlan, storyGenerate, storyOutlineAnalyze } from '@/api/stories'
 import { searchEntries, matchEntries, entriesMultiMatch } from '@/api/entries'
-import { getModelProfiles } from '@/api/system'
+import { getModelProfiles, getNarrativePatternCatalog } from '@/api/system'
 import type {
   AIModelProfile,
   EntrySearchResult,
@@ -426,6 +449,9 @@ import type {
   KnowledgePackEntry,
   KnowledgeDomain,
   KnowledgeAssetUsage,
+  NarrativePattern,
+  NarrativePatternCatalog,
+  NarrativePatternId,
   StoryDetectedCharacterKind,
   GenreStrictness,
   StoryGenerationPriority,
@@ -524,6 +550,8 @@ const selectedType = ref<GenerationType | null>(null)
 const selectedVideoType = ref<VideoType | null>(null)
 const selectedPresentationStyle = ref<PresentationStyle | null>(null)
 const modelProfiles = ref<AIModelProfile[]>([])
+const narrativePatternCatalog = ref<NarrativePatternCatalog | null>(null)
+const selectedNarrativePatternIds = ref<NarrativePatternId[]>([])
 const selectedModelProfileId = ref('')
 const selectedEvent = ref<string | null>(null)
 const targetDuration = ref<SupportedDuration>('3分钟')
@@ -570,6 +598,14 @@ const presentationStyleOptions = computed(() => {
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
+})
+
+const availableNarrativePatterns = computed<NarrativePattern[]>(() => {
+  if (!selectedVideoType.value || !narrativePatternCatalog.value) return []
+  const patternIds = narrativePatternCatalog.value.video_type_map[selectedVideoType.value] ?? []
+  return patternIds
+    .map(patternId => narrativePatternCatalog.value?.patterns.find(pattern => pattern.pattern_id === patternId))
+    .filter((pattern): pattern is NarrativePattern => Boolean(pattern))
 })
 
 function isRecommendedVideoType(vtId: VideoType): boolean {
@@ -712,6 +748,11 @@ onMounted(async () => {
     selectedModelProfileId.value = initialModel.id
   }
 
+  const patternRes = await getNarrativePatternCatalog()
+  if (patternRes.ok && patternRes.data) {
+    narrativePatternCatalog.value = patternRes.data
+  }
+
   const query = route.query.original_user_query as string | undefined
   if (query) {
     originalUserQuery.value = query
@@ -747,6 +788,10 @@ watch(selectedModelProfileId, (value) => {
   if (value) {
     localStorage.setItem(MODEL_PROFILE_STORAGE_KEY, value)
   }
+})
+
+watch(selectedVideoType, () => {
+  selectedNarrativePatternIds.value = []
 })
 
 // --- Handlers ---
@@ -823,6 +868,7 @@ async function handleGenerate() {
       genre_strictness: genreStrictness.value,
       story_priority: storyPriority.value,
       auto_repair: autoRepair.value,
+      narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
@@ -861,6 +907,7 @@ async function handleGenerate() {
       genre_strictness: genreStrictness.value,
       story_priority: storyPriority.value,
       auto_repair: autoRepair.value,
+      narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
@@ -987,6 +1034,48 @@ async function handleGenerate() {
   background: #fff;
   color: #34495e;
   font-size: 12px;
+}
+
+.story-studio__pattern-list {
+  display: grid;
+  gap: 8px;
+}
+
+.story-studio__pattern-card {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.story-studio__pattern-card--selected {
+  border-color: #8e44ad;
+  background: #f5eef8;
+}
+
+.story-studio__pattern-card input {
+  margin-top: 2px;
+}
+
+.story-studio__pattern-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.story-studio__pattern-main strong {
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+.story-studio__pattern-main span {
+  font-size: 12px;
+  line-height: 1.35;
+  color: #5d6d7e;
 }
 
 /* Knowledge pack */

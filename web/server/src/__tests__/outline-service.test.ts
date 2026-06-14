@@ -2,6 +2,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { resolve } from 'node:path';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import {
+  archiveAiComicSeriesProject,
+  copyAiComicSeriesProject,
+  deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
@@ -164,11 +167,17 @@ describe('outline-service', () => {
       episode_duration_range_sec: { min: 60, max: 120 },
       pacing_profile: 'mystery_cliffhanger',
       generation_scope: 'full_planning',
+      narrative_pattern_ids: ['mortal_growth', 'infinite_mission'],
     });
 
     expect(res.ok).toBe(true);
     expect(res.data?.series_title).toBe('濂溪少年志');
     expect(res.data?.episode_count).toBe(12);
+    expect(res.data?.narrative_pattern_ids).toEqual(['mortal_growth', 'infinite_mission']);
+    expect(res.data?.continuity_rules.some(rule =>
+      rule.rule_id === 'rule-narrative-patterns' && rule.description.includes('凡人流成长')
+    )).toBe(true);
+    expect(res.data?.production_notes.join('\n')).toContain('无限流任务生存');
     expect(res.data?.series_spine?.length).toBeGreaterThan(0);
     expect(res.data?.episodes).toHaveLength(12);
     expect(res.data?.episodes.every(episode =>
@@ -194,6 +203,7 @@ describe('outline-service', () => {
       episode_duration_range_sec: { min: 60, max: 120 },
       pacing_profile: 'balanced_drama',
       generation_scope: 'full_planning',
+      narrative_pattern_ids: ['infinite_mission'],
     });
 
     expect(planRes.ok).toBe(true);
@@ -210,6 +220,8 @@ describe('outline-service', () => {
     expect(res.data?.original_user_query).toContain('只生成第2集完整分镜');
     expect(res.data?.original_user_query).toContain('本集蓝图');
     expect(res.data?.original_user_query).toContain('系列主线骨架');
+    expect(res.data?.original_user_query).toContain('叙事流派机制');
+    expect(res.data?.original_user_query).toContain('无限流任务生存');
     expect(res.data?.scene_breakdown.length).toBeGreaterThan(0);
     expect(res.data?.dialogue?.length).toBeGreaterThan(0);
     expect(res.data?.ai_comic_episode_blueprint?.schema_version).toBe('ai-comic-episode-blueprint/v1');
@@ -224,6 +236,7 @@ describe('outline-service', () => {
       series_title: '濂溪少年志',
       episode_count: 3,
       episode_duration_range_sec: { min: 60, max: 120 },
+      narrative_pattern_ids: ['mortal_growth'],
     });
     expect(planRes.ok).toBe(true);
 
@@ -242,6 +255,9 @@ describe('outline-service', () => {
     expect(saveRes.data?.series_quality_audit?.schema_version).toBe('ai-comic-series-quality-audit/v1');
     expect(saveRes.data?.series_quality_audit?.generated_episode_count).toBe(1);
     expect(saveRes.data?.series_quality_audit?.total_episode_count).toBe(3);
+    expect(saveRes.data?.series_quality_audit?.thread_closure_report?.schema_version)
+      .toBe('ai-comic-thread-closure-report/v1');
+    expect(saveRes.data?.series_quality_audit?.thread_closure_report?.items.length).toBeGreaterThan(0);
 
     const getRes = await getAiComicSeriesProject(saveRes.data!.project.series_project_id);
     expect(getRes.ok).toBe(true);
@@ -264,7 +280,95 @@ describe('outline-service', () => {
     expect(exportRes.data?.markdown).toContain('# 濂溪少年志 系列 Bible');
     expect(exportRes.data?.markdown).toContain('## 主线剧情骨架');
     expect(exportRes.data?.markdown).toContain('## 连续性账本');
+    expect(exportRes.data?.markdown).toContain('线索闭环');
     expect(exportRes.data?.markdown).toContain('第1集：问题出现');
+  });
+
+  it('reports unbound episode foreshadowing in the AI comic series quality audit', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 4,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const editedPlan = {
+      ...planRes.data!,
+      episodes: planRes.data!.episodes.map(episode =>
+        episode.episode_no === 1
+          ? { ...episode, foreshadowing: ['一枚没有归属的玉扣在画面边缘反复出现'] }
+          : episode
+      ),
+    };
+    const saveRes = await saveAiComicSeriesProject({
+      plan: editedPlan,
+      generated_episode_story_ids: {
+        1: '20260611-story-orph1',
+      },
+    });
+
+    expect(saveRes.ok).toBe(true);
+    const report = saveRes.data?.series_quality_audit?.thread_closure_report;
+    expect(report?.orphaned_thread_count).toBeGreaterThan(0);
+    expect(report?.episodes_need_attention).toContain(1);
+    expect(report?.items.some(item =>
+      item.status === 'orphaned' && item.repair_suggestions[0].includes('新增一条带回收集的长期线索')
+    )).toBe(true);
+  });
+
+  it('copies, archives, restores, and deletes an AI comic series project', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: '20260611-story-abc1',
+      },
+    });
+    expect(saveRes.ok).toBe(true);
+
+    const copyRes = await copyAiComicSeriesProject(saveRes.data!.project.series_project_id, {
+      title: '濂溪少年志 复盘版',
+    });
+    expect(copyRes.ok).toBe(true);
+    expect(copyRes.data?.project.series_project_id).not.toBe(saveRes.data!.project.series_project_id);
+    expect(copyRes.data?.plan.series_title).toBe('濂溪少年志 复盘版');
+    expect(copyRes.data?.generated_episode_story_ids['1']).toBe('20260611-story-abc1');
+    expect(copyRes.data?.continuity_ledger.schema_version).toBe('ai-comic-continuity-ledger/v1');
+
+    const archiveRes = await archiveAiComicSeriesProject(copyRes.data!.project.series_project_id, {
+      archived: true,
+    });
+    expect(archiveRes.ok).toBe(true);
+    expect(archiveRes.data?.project.archived_at).toBeTruthy();
+
+    const activeListRes = await listAiComicSeriesProjects();
+    expect(activeListRes.ok).toBe(true);
+    expect(activeListRes.data?.some(project => project.series_project_id === copyRes.data!.project.series_project_id)).toBe(false);
+
+    const fullListRes = await listAiComicSeriesProjects({ includeArchived: true });
+    expect(fullListRes.ok).toBe(true);
+    expect(fullListRes.data?.some(project => project.series_project_id === copyRes.data!.project.series_project_id)).toBe(true);
+
+    const restoreRes = await archiveAiComicSeriesProject(copyRes.data!.project.series_project_id, {
+      archived: false,
+    });
+    expect(restoreRes.ok).toBe(true);
+    expect(restoreRes.data?.project.archived_at).toBeUndefined();
+
+    const deleteRes = await deleteAiComicSeriesProject(copyRes.data!.project.series_project_id);
+    expect(deleteRes.ok).toBe(true);
+    expect(deleteRes.data?.deleted).toBe(true);
+
+    const getDeletedRes = await getAiComicSeriesProject(copyRes.data!.project.series_project_id);
+    expect(getDeletedRes.ok).toBe(false);
   });
 
   it('updates continuity ledger after generating an episode inside a saved series project', async () => {
@@ -363,6 +467,8 @@ describe('outline-service', () => {
     expect(previewRes.data?.blueprint.episode_no).toBe(2);
     expect(previewRes.data?.generation_outline).toContain('连续性账本');
     expect(previewRes.data?.generation_outline).toContain('上一条生成记忆');
+    expect(previewRes.data?.generation_outline).toContain('凡人流成长');
+    expect(previewRes.data?.narrative_patterns).toEqual(expect.arrayContaining(['凡人流成长']));
     expect(previewRes.data?.generation_outline).toContain(firstEpisodeRes.data!.storyId);
     expect(previewRes.data?.ledger_summary.last_generated_episode_no).toBe(1);
     expect(previewRes.data?.previous_episode_memory.length).toBeGreaterThan(0);
