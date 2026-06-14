@@ -502,19 +502,42 @@ const AiComicSeriesPhaseSchema = z.object({
   turning_point: z.string().min(1),
 });
 
+const AiComicSeriesSpineBeatSchema = z.object({
+  beat_id: z.string().min(1),
+  episode_range: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
+  story_function: z.string().min(1),
+  central_question: z.string().min(1),
+  required_turn: z.string().min(1),
+  payoff_target: z.string().min(1),
+});
+
+const AiComicEndingHookTypeSchema = z.enum([
+  'choice',
+  'reveal',
+  'danger',
+  'emotional_question',
+  'quiet_aftertaste',
+  'final_echo',
+]);
+
 const AiComicEpisodePlanSchema = z.object({
   episode_no: z.number().int().min(1),
   title: z.string().min(1),
   target_duration_sec: z.number().int().min(30).max(1200),
   target_panel_count: z.number().int().min(1).max(240),
   story_phase: z.string().min(1),
+  opening_hook: z.string().min(1).optional(),
   main_conflict: z.string().min(1),
+  midpoint_turn: z.string().min(1).optional(),
   key_characters: z.array(z.string()),
   continuity_from_previous: z.array(z.string()),
   new_information: z.array(z.string()),
   foreshadowing: z.array(z.string()),
   payoff: z.array(z.string()),
   ending_hook: z.string().min(1),
+  ending_hook_type: AiComicEndingHookTypeSchema.optional(),
+  character_state_change: z.string().min(1).optional(),
+  thread_action: z.string().min(1).optional(),
   knowledge_focus: z.array(z.string()),
   continuity_state_after: z.array(z.string()),
 });
@@ -541,6 +564,7 @@ const AiComicSeriesPlanSchema = z.object({
   main_characters: z.array(AiComicSeriesCharacterArcSchema),
   plot_threads: z.array(AiComicPlotThreadSchema),
   phases: z.array(AiComicSeriesPhaseSchema),
+  series_spine: z.array(AiComicSeriesSpineBeatSchema).optional(),
   episodes: z.array(AiComicEpisodePlanSchema).min(1),
   continuity_rules: z.array(AiComicContinuityRuleSchema),
   recurring_motifs: z.array(z.string()),

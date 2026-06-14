@@ -1025,21 +1025,61 @@ export interface AiComicSeriesPhase {
   turning_point: string;
 }
 
+export interface AiComicSeriesSpineBeat {
+  beat_id: string;
+  episode_range: [number, number];
+  story_function: string;
+  central_question: string;
+  required_turn: string;
+  payoff_target: string;
+}
+
+export type AiComicEndingHookType =
+  | 'choice'
+  | 'reveal'
+  | 'danger'
+  | 'emotional_question'
+  | 'quiet_aftertaste'
+  | 'final_echo';
+
 export interface AiComicEpisodePlan {
   episode_no: number;
   title: string;
   target_duration_sec: number;
   target_panel_count: number;
   story_phase: string;
+  opening_hook?: string;
   main_conflict: string;
+  midpoint_turn?: string;
   key_characters: string[];
   continuity_from_previous: string[];
   new_information: string[];
   foreshadowing: string[];
   payoff: string[];
   ending_hook: string;
+  ending_hook_type?: AiComicEndingHookType;
+  character_state_change?: string;
+  thread_action?: string;
   knowledge_focus: string[];
   continuity_state_after: string[];
+}
+
+export interface AiComicEpisodeBlueprint {
+  schema_version: 'ai-comic-episode-blueprint/v1';
+  series_title: string;
+  episode_no: number;
+  title: string;
+  opening_hook: string;
+  main_conflict: string;
+  midpoint_turn: string;
+  ending_hook: string;
+  ending_hook_type: AiComicEndingHookType;
+  character_state_change: string;
+  thread_action: string;
+  continuity_from_previous: string[];
+  continuity_state_after: string[];
+  knowledge_focus: string[];
+  target_scene_functions: string[];
 }
 
 export interface AiComicSeriesPlan {
@@ -1055,6 +1095,7 @@ export interface AiComicSeriesPlan {
   main_characters: AiComicSeriesCharacterArc[];
   plot_threads: AiComicPlotThread[];
   phases: AiComicSeriesPhase[];
+  series_spine?: AiComicSeriesSpineBeat[];
   episodes: AiComicEpisodePlan[];
   continuity_rules: AiComicContinuityRule[];
   recurring_motifs: string[];
@@ -1312,6 +1353,7 @@ export interface StoryGenerateResult {
   quality_report?: StoryQualityReport | GenreQualityReport;
   gears_webhook?: GearsWebhookStatus;
   gears_video?: GearsVideoResult;
+  ai_comic_episode_blueprint?: AiComicEpisodeBlueprint;
   ai_comic_episode_quality?: AiComicEpisodeQualityReport;
   continuity_audit?: AiComicSeriesContinuityAudit;
   // New fields for story structure and creative reference (Phase 5)

@@ -8,6 +8,8 @@ import type {
   AiComicContinuityLedgerEpisode,
   AiComicEpisodeQualityReport,
   AiComicEpisodePlan,
+  AiComicEpisodeBlueprint,
+  AiComicEndingHookType,
   AiComicEpisodeGenerateRequest,
   AiComicPacingProfile,
   AiComicSeriesLedgerRebuildRequest,
@@ -21,6 +23,7 @@ import type {
   AiComicSeriesPhase,
   AiComicSeriesPlan,
   AiComicSeriesPlanRequest,
+  AiComicSeriesSpineBeat,
   AiComicPlotThread,
   ApiResponse,
   KnowledgeNeed,
@@ -76,6 +79,12 @@ export async function generateAiComicSeriesPlan(
   const phases = buildPhases(request.episode_count);
   const mainCharacters = buildCharacterArcs(detectedCharacters, request.episode_count, storyIntent?.main_character ?? null);
   const plotThreads = buildPlotThreads(request.episode_count, seriesTitle, knowledgeFocus, pacingProfile);
+  const seriesSpine = buildSeriesSpine({
+    phases,
+    plotThreads,
+    coreTheme: storyIntent?.core_theme ?? summarizeText(outline, 18),
+    seriesTitle,
+  });
   const episodes = buildEpisodes({
     episodeCount: request.episode_count,
     durationMin: request.episode_duration_range_sec.min,
@@ -102,6 +111,7 @@ export async function generateAiComicSeriesPlan(
     main_characters: mainCharacters,
     plot_threads: plotThreads,
     phases,
+    series_spine: seriesSpine,
     episodes,
     continuity_rules: [
       {
@@ -172,6 +182,7 @@ export async function generateAiComicEpisodeFromPlan(
     model_profile_id: request.model_profile_id,
     knowledge_pack: knowledgePack,
     character_hints: buildEpisodeCharacterHints(plan, episode),
+    auto_repair: request.auto_repair_episode ?? false,
   }).then(async result => {
     if (!result.ok || !result.data) return result;
 
@@ -203,6 +214,7 @@ function attachAiComicEpisodeReports(params: {
   episode: AiComicEpisodePlan;
   ledger?: AiComicContinuityLedger;
 }): StoryGenerateResult {
+  const blueprint = buildAiComicEpisodeBlueprint(params.plan, params.episode);
   const quality = buildAiComicEpisodeQualityReport(params);
   const continuityAudit = buildAiComicContinuityAudit({
     ...params,
@@ -210,8 +222,54 @@ function attachAiComicEpisodeReports(params: {
   });
   return {
     ...params.story,
+    ai_comic_episode_blueprint: blueprint,
     ai_comic_episode_quality: quality,
     continuity_audit: continuityAudit,
+  };
+}
+
+function buildAiComicEpisodeBlueprint(
+  plan: AiComicSeriesPlan,
+  episode: AiComicEpisodePlan,
+): AiComicEpisodeBlueprint {
+  const previous = plan.episodes.find(item => item.episode_no === episode.episode_no - 1);
+  const next = plan.episodes.find(item => item.episode_no === episode.episode_no + 1);
+  const openingHook = episode.opening_hook
+    ?? (previous
+      ? `开场回应上一集结尾“${previous.ending_hook}”，立刻给出新的行动压力。`
+      : `开场用主角的日常缺口引出“${plan.core_theme}”的核心问题。`);
+  const midpointTurn = episode.midpoint_turn
+    ?? `中段让${episode.key_characters[0] ?? '主角'}发现信息并不完整，原计划必须改向。`;
+  const endingHookType = episode.ending_hook_type ?? inferEndingHookType(episode, plan.pacing_profile);
+  const characterStateChange = episode.character_state_change
+    ?? episode.continuity_state_after[0]
+    ?? `第${episode.episode_no}集后，主角状态出现可追踪变化。`;
+  const threadAction = episode.thread_action
+    ?? summarizeEpisodeThreadAction(plan, episode);
+
+  return {
+    schema_version: 'ai-comic-episode-blueprint/v1',
+    series_title: plan.series_title,
+    episode_no: episode.episode_no,
+    title: episode.title,
+    opening_hook: openingHook,
+    main_conflict: episode.main_conflict,
+    midpoint_turn: midpointTurn,
+    ending_hook: episode.ending_hook,
+    ending_hook_type: endingHookType,
+    character_state_change: characterStateChange,
+    thread_action: threadAction,
+    continuity_from_previous: episode.continuity_from_previous,
+    continuity_state_after: episode.continuity_state_after,
+    knowledge_focus: episode.knowledge_focus,
+    target_scene_functions: [
+      `开场钩子：${openingHook}`,
+      `冲突升级：${episode.main_conflict}`,
+      `中段转折：${midpointTurn}`,
+      `状态变化：${characterStateChange}`,
+      `线索动作：${threadAction}`,
+      next ? `下一集承接：${next.main_conflict}` : '终局余韵：完成主题表达并保留情绪回声',
+    ],
   };
 }
 
@@ -226,14 +284,27 @@ function buildAiComicEpisodeQualityReport(params: {
     responds_to_previous: params.episode.episode_no === 1
       || matchesAny(text, params.episode.continuity_from_previous)
       || Boolean(params.ledger?.episode_records.some(record => text.includes(record.ending_hook.slice(0, 8)))),
-    advances_phase_goal: matchesAny(text, [params.episode.story_phase, params.episode.main_conflict]),
+    advances_phase_goal: matchesAny(text, [
+      params.episode.story_phase,
+      params.episode.main_conflict,
+      params.episode.midpoint_turn ?? '',
+    ]),
     updates_character_state: params.episode.continuity_state_after.length > 0
-      && matchesAny(text, params.episode.continuity_state_after),
+      && matchesAny(text, [
+        ...params.episode.continuity_state_after,
+        params.episode.character_state_change ?? '',
+      ]),
     handles_threads: (
       params.episode.foreshadowing.length === 0
       && params.episode.payoff.length === 0
-    ) || matchesAny(text, [...params.episode.foreshadowing, ...params.episode.payoff]),
+      && !params.episode.thread_action
+    ) || matchesAny(text, [
+      ...params.episode.foreshadowing,
+      ...params.episode.payoff,
+      params.episode.thread_action ?? '',
+    ]),
     leaves_next_hook: text.includes(params.episode.ending_hook.slice(0, 10))
+      || Boolean(params.episode.ending_hook_type && text.includes(hookTypeLabel(params.episode.ending_hook_type)))
       || params.story.scene_breakdown.some(scene => (scene.dialogue_or_narration ?? scene.key_action).includes('钩子')),
   };
   const issues: string[] = [];
@@ -916,6 +987,10 @@ function buildEpisodeGenerationOutline(
   const previousLedgerRecord = ledger?.episode_records
     .filter(record => record.episode_no < episode.episode_no)
     .sort((a, b) => b.episode_no - a.episode_no)[0];
+  const blueprint = buildAiComicEpisodeBlueprint(plan, episode);
+  const spineLines = plan.series_spine?.map(beat =>
+    `${beat.beat_id} 第${beat.episode_range[0]}-${beat.episode_range[1]}集：${beat.story_function}；关键问题：${beat.central_question}；必须转向：${beat.required_turn}；目标：${beat.payoff_target}`
+  ) ?? [];
   const ledgerLines = ledger ? [
     '连续性账本：后续分镜必须以账本为准，不得推翻已生成集数的人物状态、线索开合和知识使用记录。',
     `账本最近生成集：${ledger.last_generated_episode_no ? `第${ledger.last_generated_episode_no}集` : '尚未生成'}`,
@@ -933,10 +1008,13 @@ function buildEpisodeGenerationOutline(
     `只生成第${episode.episode_no}集完整分镜，不生成其他集。`,
     `系列梗概：${plan.premise}`,
     `系列主题：${plan.core_theme}`,
+    spineLines.length > 0 ? `系列主线骨架：${spineLines.join('；')}` : '',
     `本集标题：${episode.title}`,
     `本集目标：${episode.target_duration_sec}秒左右，约${episode.target_panel_count}格。该时长是生成前目标，不代表最终成片真实时长。`,
     `本集阶段：${episode.story_phase}`,
     phase ? `阶段目标：${phase.purpose}；阶段转折：${phase.turning_point}` : '',
+    `本集蓝图：开场钩子=${blueprint.opening_hook}；中段转折=${blueprint.midpoint_turn}；结尾类型=${hookTypeLabel(blueprint.ending_hook_type)}；角色变化=${blueprint.character_state_change}；线索动作=${blueprint.thread_action}`,
+    `本集目标场景功能：${blueprint.target_scene_functions.join('；')}`,
     `本集主冲突：${episode.main_conflict}`,
     `关键角色：${episode.key_characters.join('、') || plan.main_characters.map(character => character.name).join('、')}`,
     `承接上一集：${episode.continuity_from_previous.join('；')}`,
@@ -1110,6 +1188,38 @@ function buildPlotThreads(
   ];
 }
 
+function buildSeriesSpine(params: {
+  phases: AiComicSeriesPhase[];
+  plotThreads: AiComicPlotThread[];
+  coreTheme: string;
+  seriesTitle: string;
+}): AiComicSeriesSpineBeat[] {
+  const mainThread = params.plotThreads.find(thread => thread.thread_id === 'thread-main') ?? params.plotThreads[0];
+  return params.phases.map((phase, index) => {
+    const activeThreads = params.plotThreads
+      .filter(thread => thread.setup_episode <= phase.episode_range[1] && thread.payoff_episode >= phase.episode_range[0])
+      .map(thread => thread.title);
+    const storyFunction = [
+      '点燃主问题并建立行动方向',
+      '扩大关系阻力并让文化线索进入选择',
+      '持续加压，使长期线索汇合',
+      '把代价、误解和信念推到临界点',
+      '回收主线并完成主题表达',
+    ][index] ?? phase.purpose;
+
+    return {
+      beat_id: `spine-${index + 1}`,
+      episode_range: phase.episode_range,
+      story_function: storyFunction,
+      central_question: `在《${params.seriesTitle}》第${phase.episode_range[0]}-${phase.episode_range[1]}集，主角如何回答“${params.coreTheme}”？`,
+      required_turn: phase.turning_point,
+      payoff_target: activeThreads.length > 0
+        ? `重点处理：${activeThreads.join('、')}`
+        : `推进${mainThread?.title ?? '系列主线'}`,
+    };
+  });
+}
+
 function buildEpisodes(params: {
   episodeCount: number;
   durationMin: number;
@@ -1131,6 +1241,13 @@ function buildEpisodes(params: {
     const threadSetups = params.plotThreads.filter(thread => thread.setup_episode === episodeNo);
     const focus = chooseKnowledgeFocus(params.knowledgeFocus, episodeNo);
     const keyCharacters = chooseKeyCharacters(params.characters, episodeNo);
+    const mainConflict = buildConflict(episodeNo, params.episodeCount, params.coreTheme, focus);
+    const endingHookType = inferEndingHookTypeFromPlan(episodeNo, params.episodeCount, params.pacingProfile);
+    const endingHook = buildEndingHook(episodeNo, params.episodeCount, params.pacingProfile, focus);
+    const continuityStateAfter = [
+      `第${episodeNo}集后，${keyCharacters[0] ?? '主角'}对“${params.coreTheme}”的理解推进一层`,
+      episodeNo === params.episodeCount ? '主要长期线索完成回收' : `保留第${episodeNo + 1}集需要回应的选择或疑问`,
+    ];
 
     episodes.push({
       episode_no: episodeNo,
@@ -1138,7 +1255,9 @@ function buildEpisodes(params: {
       target_duration_sec: duration,
       target_panel_count: Math.max(4, Math.min(60, Math.round(duration / 6))),
       story_phase: `${phase.phase_id}：${phase.purpose}`,
-      main_conflict: buildConflict(episodeNo, params.episodeCount, params.coreTheme, focus),
+      opening_hook: buildOpeningHook(episodeNo, previous, params.coreTheme, focus, params.pacingProfile),
+      main_conflict: mainConflict,
+      midpoint_turn: buildMidpointTurn(episodeNo, params.episodeCount, phase, focus, params.coreTheme),
       key_characters: keyCharacters,
       continuity_from_previous: episodeNo === 1
         ? ['建立主角初始状态、核心问题和第一条长期线索']
@@ -1156,12 +1275,12 @@ function buildEpisodes(params: {
         : episodeNo % 5 === 0
           ? [`阶段性回应第${Math.max(1, episodeNo - 3)}集留下的疑问`]
           : [],
-      ending_hook: buildEndingHook(episodeNo, params.episodeCount, params.pacingProfile, focus),
+      ending_hook: endingHook,
+      ending_hook_type: endingHookType,
+      character_state_change: continuityStateAfter[0],
+      thread_action: buildThreadAction(episodeNo, params.plotThreads, threadSetups, threadPayoffs, phase),
       knowledge_focus: focus ? [focus] : params.knowledgeFocus.slice(0, 2),
-      continuity_state_after: [
-        `第${episodeNo}集后，${keyCharacters[0] ?? '主角'}对“${params.coreTheme}”的理解推进一层`,
-        episodeNo === params.episodeCount ? '主要长期线索完成回收' : `保留第${episodeNo + 1}集需要回应的选择或疑问`,
-      ],
+      continuity_state_after: continuityStateAfter,
     });
   }
   return episodes;
@@ -1217,6 +1336,42 @@ function buildConflict(episodeNo: number, episodeCount: number, coreTheme: strin
     : `新的阻力让主角对“${coreTheme}”产生更具体的判断。`;
 }
 
+function buildOpeningHook(
+  episodeNo: number,
+  previous: AiComicEpisodePlan | undefined,
+  coreTheme: string,
+  focus: string,
+  pacingProfile: AiComicPacingProfile,
+): string {
+  if (episodeNo === 1) {
+    return focus
+      ? `用${focus}的视觉细节开场，让主角第一次碰到“${coreTheme}”的问题。`
+      : `用一个反常日常开场，让主角第一次碰到“${coreTheme}”的问题。`;
+  }
+  if (pacingProfile === 'fast_hook') {
+    return `开场直接回应上一集结尾“${previous?.ending_hook ?? '上一集留下的选择'}”，并立刻给出新代价。`;
+  }
+  if (pacingProfile === 'mystery_cliffhanger') {
+    return `开场先展示上一集钩子的结果，再保留一个尚未解释的关键细节。`;
+  }
+  return `开场承接上一集状态，让人物带着未完成的问题进入新场景。`;
+}
+
+function buildMidpointTurn(
+  episodeNo: number,
+  episodeCount: number,
+  phase: AiComicSeriesPhase,
+  focus: string,
+  coreTheme: string,
+): string {
+  if (episodeNo === 1) return `主角发现“${coreTheme}”不是旁观问题，而是必须亲自选择。`;
+  if (episodeNo === episodeCount) return `终局中段让主角看见最终代价，仍选择完成主题答案。`;
+  if (episodeNo === phase.episode_range[1]) return `阶段转折落地：${phase.turning_point}`;
+  return focus
+    ? `${focus}带来的新信息推翻主角前半集判断，行动方向发生变化。`
+    : `一个新证据让主角前半集判断改变，行动方向发生变化。`;
+}
+
 function buildForeshadowing(
   episodeNo: number,
   episodeCount: number,
@@ -1246,6 +1401,77 @@ function buildEndingHook(
     return '一个细小变化被保留下来，下一集继续发酵。';
   }
   return '主角得到新信息，也失去一种原本确定的判断。';
+}
+
+function inferEndingHookTypeFromPlan(
+  episodeNo: number,
+  episodeCount: number,
+  pacingProfile: AiComicPacingProfile,
+): AiComicEndingHookType {
+  if (episodeNo === episodeCount) return 'final_echo';
+  if (pacingProfile === 'mystery_cliffhanger') return 'reveal';
+  if (pacingProfile === 'fast_hook') return 'danger';
+  if (pacingProfile === 'slow_burn') return episodeNo % 2 === 0 ? 'emotional_question' : 'quiet_aftertaste';
+  return episodeNo % 3 === 0 ? 'choice' : 'reveal';
+}
+
+function inferEndingHookType(
+  episode: AiComicEpisodePlan,
+  pacingProfile: AiComicPacingProfile,
+): AiComicEndingHookType {
+  if (episode.ending_hook_type) return episode.ending_hook_type;
+  if (episode.ending_hook.includes('选择')) return 'choice';
+  if (episode.ending_hook.includes('反常') || episode.ending_hook.includes('解释') || episode.ending_hook.includes('新信息')) return 'reveal';
+  if (episode.ending_hook.includes('代价')) return 'danger';
+  if (episode.ending_hook.includes('余波')) return 'final_echo';
+  return pacingProfile === 'slow_burn' ? 'quiet_aftertaste' : 'emotional_question';
+}
+
+function hookTypeLabel(type: AiComicEndingHookType): string {
+  const labels: Record<AiComicEndingHookType, string> = {
+    choice: '选择钩子',
+    reveal: '揭示钩子',
+    danger: '代价钩子',
+    emotional_question: '情绪疑问钩子',
+    quiet_aftertaste: '余味钩子',
+    final_echo: '终局回声',
+  };
+  return labels[type];
+}
+
+function buildThreadAction(
+  episodeNo: number,
+  plotThreads: AiComicPlotThread[],
+  threadSetups: AiComicPlotThread[],
+  threadPayoffs: AiComicPlotThread[],
+  phase: AiComicSeriesPhase,
+): string {
+  if (threadSetups.length > 0) {
+    return `打开线索：${threadSetups.map(thread => thread.title).join('、')}，并写入后续承接。`;
+  }
+  if (threadPayoffs.length > 0) {
+    return `回收线索：${threadPayoffs.map(thread => thread.title).join('、')}，让阶段选择产生结果。`;
+  }
+  const active = plotThreads.find(thread => thread.setup_episode < episodeNo && thread.payoff_episode > episodeNo);
+  return active
+    ? `推进线索：${active.title}在${phase.phase_id}继续升温，但不提前回收。`
+    : `维持${phase.phase_id}阶段线索清晰，避免新增无承接疑问。`;
+}
+
+function summarizeEpisodeThreadAction(plan: AiComicSeriesPlan, episode: AiComicEpisodePlan): string {
+  const opened = plan.plot_threads.filter(thread => thread.setup_episode === episode.episode_no);
+  const paid = plan.plot_threads.filter(thread => thread.payoff_episode === episode.episode_no);
+  if (opened.length > 0 || paid.length > 0) {
+    return [
+      opened.length > 0 ? `打开：${opened.map(thread => thread.title).join('、')}` : '',
+      paid.length > 0 ? `回收：${paid.map(thread => thread.title).join('、')}` : '',
+    ].filter(Boolean).join('；');
+  }
+  if (episode.thread_action) return episode.thread_action;
+  const active = plan.plot_threads.find(thread =>
+    thread.setup_episode < episode.episode_no && thread.payoff_episode > episode.episode_no
+  );
+  return active ? `推进：${active.title}` : '保持既有线索状态，不额外增加未承接疑问';
 }
 
 function extractKnowledgeFocus(knowledgePack: KnowledgePack | undefined, detectedSubjects: string[], outline: string): string[] {

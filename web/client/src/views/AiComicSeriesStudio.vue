@@ -71,6 +71,11 @@
         </label>
       </section>
 
+      <label class="series-studio__checkbox-row">
+        <input v-model="autoRepairEpisode" type="checkbox" />
+        <span>生成本集后自动调整类型质量问题</span>
+      </label>
+
       <button
         class="series-studio__submit"
         :disabled="!canSubmit || planning"
@@ -205,6 +210,21 @@
               <template v-if="typeof report.score === 'number'"> · {{ report.score }}</template>
               <template v-if="report.needs_episode_regeneration"> · 需重新生成</template>
             </span>
+          </div>
+        </section>
+
+        <section v-if="plan.series_spine?.length" class="series-studio__section">
+          <div class="series-studio__section-header">
+            <h2>主线剧情骨架</h2>
+            <span>{{ plan.series_spine.length }} 个节点</span>
+          </div>
+          <div class="series-studio__spine-list">
+            <article v-for="beat in plan.series_spine" :key="beat.beat_id" class="series-studio__spine">
+              <span class="series-studio__phase-range">第 {{ beat.episode_range[0] }}-{{ beat.episode_range[1] }} 集</span>
+              <strong>{{ beat.story_function }}</strong>
+              <p>{{ beat.central_question }}</p>
+              <small>{{ beat.required_turn }} · {{ beat.payoff_target }}</small>
+            </article>
           </div>
         </section>
 
@@ -382,6 +402,16 @@
                 </label>
                 <div class="series-studio__episode-editor-grid">
                   <label>
+                    <span>开场钩子</span>
+                    <textarea v-model="episodeEditDraft.opening_hook" rows="2" />
+                  </label>
+                  <label>
+                    <span>中段转折</span>
+                    <textarea v-model="episodeEditDraft.midpoint_turn" rows="2" />
+                  </label>
+                </div>
+                <div class="series-studio__episode-editor-grid">
+                  <label>
                     <span>承接</span>
                     <textarea v-model="episodeEditDraft.continuity_from_previous_text" rows="3" />
                   </label>
@@ -404,6 +434,23 @@
                 </label>
                 <div class="series-studio__episode-editor-grid">
                   <label>
+                    <span>结尾钩子类型</span>
+                    <select v-model="episodeEditDraft.ending_hook_type">
+                      <option value="choice">选择钩子</option>
+                      <option value="reveal">揭示钩子</option>
+                      <option value="danger">代价钩子</option>
+                      <option value="emotional_question">情绪疑问钩子</option>
+                      <option value="quiet_aftertaste">余味钩子</option>
+                      <option value="final_echo">终局回声</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>线索开合动作</span>
+                    <input v-model="episodeEditDraft.thread_action" />
+                  </label>
+                </div>
+                <div class="series-studio__episode-editor-grid">
+                  <label>
                     <span>关键角色</span>
                     <input v-model="episodeEditDraft.key_characters_text" />
                   </label>
@@ -416,12 +463,20 @@
                   <span>本集后连续性状态</span>
                   <textarea v-model="episodeEditDraft.continuity_state_after_text" rows="3" />
                 </label>
+                <label>
+                  <span>角色状态变化</span>
+                  <textarea v-model="episodeEditDraft.character_state_change" rows="2" />
+                </label>
                 <p v-if="episodeEditError" class="series-studio__message series-studio__message--error">
                   {{ episodeEditError }}
                 </p>
               </div>
               <p v-else class="series-studio__conflict">{{ episode.main_conflict }}</p>
               <div v-if="!isEditingEpisode(episode.episode_no)" class="series-studio__episode-columns">
+                <div>
+                  <strong>开场/转折</strong>
+                  <p>{{ episode.opening_hook || '按承接关系开场' }}；{{ episode.midpoint_turn || '中段推动判断变化' }}</p>
+                </div>
                 <div>
                   <strong>承接</strong>
                   <p>{{ episode.continuity_from_previous.join('；') }}</p>
@@ -434,9 +489,14 @@
                   <strong>伏笔/回收</strong>
                   <p>{{ [...episode.foreshadowing, ...episode.payoff].join('；') || '本集不新增回收点' }}</p>
                 </div>
+                <div>
+                  <strong>状态/线索</strong>
+                  <p>{{ episode.character_state_change || episode.continuity_state_after[0] }}；{{ episode.thread_action || '按阶段目标推进线索' }}</p>
+                </div>
               </div>
               <footer class="series-studio__episode-footer">
                 <span>{{ episode.key_characters.join('、') }}</span>
+                <span>{{ hookTypeLabel(episode.ending_hook_type) }}</span>
                 <span
                   v-if="generatedEpisodeStoryIds[String(episode.episode_no)]"
                   class="series-studio__episode-generated"
@@ -474,9 +534,20 @@
           </p>
           <div v-else-if="episodeResult">
             <section
-              v-if="episodeResult.ai_comic_episode_quality || episodeResult.continuity_audit"
+              v-if="episodeResult.ai_comic_episode_blueprint || episodeResult.ai_comic_episode_quality || episodeResult.continuity_audit"
               class="series-studio__episode-quality"
             >
+              <article v-if="episodeResult.ai_comic_episode_blueprint">
+                <strong>本集生成蓝图</strong>
+                <p>
+                  {{ episodeResult.ai_comic_episode_blueprint.opening_hook }}
+                  · {{ episodeResult.ai_comic_episode_blueprint.midpoint_turn }}
+                </p>
+                <p>
+                  {{ hookTypeLabel(episodeResult.ai_comic_episode_blueprint.ending_hook_type) }}
+                  · {{ episodeResult.ai_comic_episode_blueprint.thread_action }}
+                </p>
+              </article>
               <article v-if="episodeResult.ai_comic_episode_quality">
                 <strong>本集剧情质量</strong>
                 <p>
@@ -533,6 +604,7 @@ import {
 import StoryResult from '@/components/StoryResult.vue'
 import type {
   AiComicContinuityLedger,
+  AiComicEndingHookType,
   AiComicEpisodePlan,
   AiComicPacingProfile,
   AiComicSeriesQualityAudit,
@@ -551,6 +623,7 @@ const episodeCount = ref(60)
 const durationMin = ref(60)
 const durationMax = ref(120)
 const pacingProfile = ref<AiComicPacingProfile>('balanced_drama')
+const autoRepairEpisode = ref(false)
 const planning = ref(false)
 const errorMessage = ref('')
 const plan = ref<AiComicSeriesPlan | null>(null)
@@ -577,12 +650,17 @@ interface EpisodeEditDraft {
   title: string
   target_duration_sec: number
   target_panel_count: number
+  opening_hook: string
   main_conflict: string
+  midpoint_turn: string
   continuity_from_previous_text: string
   new_information_text: string
   foreshadowing_text: string
   payoff_text: string
   ending_hook: string
+  ending_hook_type: AiComicEndingHookType
+  character_state_change: string
+  thread_action: string
   key_characters_text: string
   knowledge_focus_text: string
   continuity_state_after_text: string
@@ -705,6 +783,7 @@ async function handleGenerateEpisode(episodeNo: number) {
     series_project_id: seriesProjectId.value || undefined,
     output_gears_segments: true,
     auto_audit_continuity: true,
+    auto_repair_episode: autoRepairEpisode.value,
   })
 
   if (res.ok && res.data) {
@@ -733,12 +812,17 @@ function startEditEpisode(episode: AiComicEpisodePlan) {
     title: episode.title,
     target_duration_sec: episode.target_duration_sec,
     target_panel_count: episode.target_panel_count,
+    opening_hook: episode.opening_hook ?? '',
     main_conflict: episode.main_conflict,
+    midpoint_turn: episode.midpoint_turn ?? '',
     continuity_from_previous_text: episode.continuity_from_previous.join('\n'),
     new_information_text: episode.new_information.join('\n'),
     foreshadowing_text: episode.foreshadowing.join('\n'),
     payoff_text: episode.payoff.join('\n'),
     ending_hook: episode.ending_hook,
+    ending_hook_type: episode.ending_hook_type ?? 'reveal',
+    character_state_change: episode.character_state_change ?? episode.continuity_state_after[0] ?? '',
+    thread_action: episode.thread_action ?? '',
     key_characters_text: episode.key_characters.join('、'),
     knowledge_focus_text: episode.knowledge_focus.join('、'),
     continuity_state_after_text: episode.continuity_state_after.join('\n'),
@@ -787,12 +871,17 @@ async function saveEpisodeEdit() {
       title,
       target_duration_sec: draft.target_duration_sec,
       target_panel_count: draft.target_panel_count,
+      opening_hook: draft.opening_hook.trim() || undefined,
       main_conflict: mainConflict,
+      midpoint_turn: draft.midpoint_turn.trim() || undefined,
       continuity_from_previous: parseListText(draft.continuity_from_previous_text),
       new_information: parseListText(draft.new_information_text),
       foreshadowing: parseListText(draft.foreshadowing_text),
       payoff: parseListText(draft.payoff_text),
       ending_hook: endingHook,
+      ending_hook_type: draft.ending_hook_type,
+      character_state_change: draft.character_state_change.trim() || undefined,
+      thread_action: draft.thread_action.trim() || undefined,
       key_characters: parseListText(draft.key_characters_text),
       knowledge_focus: parseListText(draft.knowledge_focus_text),
       continuity_state_after: parseListText(draft.continuity_state_after_text),
@@ -927,6 +1016,19 @@ function episodeAuditLabel(status: AiComicSeriesQualityEpisodeStatus): string {
   return map[status]
 }
 
+function hookTypeLabel(type?: AiComicEndingHookType): string {
+  if (!type) return '未标注钩子类型'
+  const map: Record<AiComicEndingHookType, string> = {
+    choice: '选择钩子',
+    reveal: '揭示钩子',
+    danger: '代价钩子',
+    emotional_question: '情绪疑问钩子',
+    quiet_aftertaste: '余味钩子',
+    final_echo: '终局回声',
+  }
+  return map[type]
+}
+
 function episodeStoryId(episodeNo: number): string {
   return generatedEpisodeStoryIds.value[String(episodeNo)] ?? ''
 }
@@ -1003,6 +1105,21 @@ function episodeProjectPath(episodeNo: number): string {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.series-studio__checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.series-studio__checkbox-row input {
+  width: 16px;
+  height: 16px;
 }
 
 .series-studio__submit {
@@ -1364,6 +1481,7 @@ function episodeProjectPath(episodeNo: number): string {
 }
 
 .series-studio__phase-list,
+.series-studio__spine-list,
 .series-studio__thread-list,
 .series-studio__rule-list {
   display: grid;
@@ -1419,6 +1537,7 @@ function episodeProjectPath(episodeNo: number): string {
 }
 
 .series-studio__phase,
+.series-studio__spine,
 .series-studio__thread,
 .series-studio__rule,
 .series-studio__character,
@@ -1441,6 +1560,7 @@ function episodeProjectPath(episodeNo: number): string {
 }
 
 .series-studio__phase strong,
+.series-studio__spine strong,
 .series-studio__thread strong,
 .series-studio__rule strong {
   display: block;
@@ -1449,6 +1569,7 @@ function episodeProjectPath(episodeNo: number): string {
 }
 
 .series-studio__phase p,
+.series-studio__spine p,
 .series-studio__thread p,
 .series-studio__rule p,
 .series-studio__character p {
@@ -1456,6 +1577,14 @@ function episodeProjectPath(episodeNo: number): string {
   color: #536774;
   font-size: 14px;
   line-height: 1.55;
+}
+
+.series-studio__spine small {
+  display: block;
+  margin-top: 6px;
+  color: #667986;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .series-studio__character-grid {
@@ -1656,10 +1785,12 @@ function episodeProjectPath(episodeNo: number): string {
 }
 
 .series-studio__episode-editor textarea,
-.series-studio__episode-editor input {
+.series-studio__episode-editor input,
+.series-studio__episode-editor select {
   width: 100%;
   border: 1px solid #b9c4cc;
   border-radius: 4px;
+  background: #fff;
   color: #24313b;
   font-size: 13px;
   line-height: 1.5;
@@ -1678,7 +1809,7 @@ function episodeProjectPath(episodeNo: number): string {
 
 .series-studio__episode-columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 

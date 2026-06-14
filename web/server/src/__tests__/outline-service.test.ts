@@ -167,10 +167,18 @@ describe('outline-service', () => {
     expect(res.ok).toBe(true);
     expect(res.data?.series_title).toBe('濂溪少年志');
     expect(res.data?.episode_count).toBe(12);
+    expect(res.data?.series_spine?.length).toBeGreaterThan(0);
     expect(res.data?.episodes).toHaveLength(12);
     expect(res.data?.episodes.every(episode =>
       episode.target_duration_sec >= 60 && episode.target_duration_sec <= 120
     )).toBe(true);
+    expect(res.data?.episodes[0]).toMatchObject({
+      opening_hook: expect.any(String),
+      midpoint_turn: expect.any(String),
+      ending_hook_type: expect.any(String),
+      character_state_change: expect.any(String),
+      thread_action: expect.any(String),
+    });
     expect(res.data?.episodes[1].continuity_from_previous[0]).toContain('第1集');
     expect(res.data?.episodes[11].payoff.length).toBeGreaterThan(0);
     expect(res.data?.continuity_rules.some(rule => rule.rule_id === 'rule-episode-memory')).toBe(true);
@@ -191,14 +199,19 @@ describe('outline-service', () => {
       series_plan: planRes.data!,
       episode_no: 2,
       output_gears_segments: false,
+      auto_repair_episode: true,
     });
 
     expect(res.ok).toBe(true);
     expect(res.data?.video_type).toBe('ai_comic_drama');
     expect(res.data?.presentation_style).toBe('ai_comic');
     expect(res.data?.original_user_query).toContain('只生成第2集完整分镜');
+    expect(res.data?.original_user_query).toContain('本集蓝图');
+    expect(res.data?.original_user_query).toContain('系列主线骨架');
     expect(res.data?.scene_breakdown.length).toBeGreaterThan(0);
     expect(res.data?.dialogue?.length).toBeGreaterThan(0);
+    expect(res.data?.ai_comic_episode_blueprint?.schema_version).toBe('ai-comic-episode-blueprint/v1');
+    expect(res.data?.ai_comic_episode_blueprint?.episode_no).toBe(2);
     expect(res.data?.ai_comic_episode_quality?.schema_version).toBe('ai-comic-episode-quality/v1');
     expect(res.data?.continuity_audit?.schema_version).toBe('ai-comic-continuity-audit/v1');
   });

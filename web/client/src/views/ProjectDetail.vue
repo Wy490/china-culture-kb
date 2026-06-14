@@ -57,12 +57,30 @@
       <GearsWebhookStatus :status="detail.current_story.gears_webhook" />
       <GearsVideoStatus :video="detail.current_story.gears_video" />
 
-      <section v-if="qualitySceneIds.length > 0" class="project-detail-page__quality-tools">
-        <div>
-          <h2 class="project-detail-page__section-title">质量问题场景</h2>
-          <p>类型质量报告关联到场景 {{ qualitySceneIds.join('、') }}。</p>
+      <section v-if="currentQuality" class="project-detail-page__quality-tools">
+        <div class="project-detail-page__quality-main">
+          <div>
+            <h2 class="project-detail-page__section-title">当前版本质量</h2>
+            <p>
+              {{ currentQuality.passed ? '通过' : '需调整' }}
+              <template v-if="typeof currentQuality.genre_score === 'number'"> · 类型分 {{ currentQuality.genre_score }}/100</template>
+              · 问题 {{ currentQuality.issues.length }}
+            </p>
+          </div>
+          <div class="project-detail-page__quality-mini">
+            <span>缺少要素 {{ currentQuality.missing_required_elements?.length ?? 0 }}</span>
+            <span>节拍问题 {{ currentQuality.weak_beats?.length ?? 0 }}</span>
+            <span>关联场景 {{ qualitySceneIds.length }}</span>
+          </div>
+          <ul v-if="currentQuality.issues.length > 0" class="project-detail-page__quality-list">
+            <li v-for="issue in currentQuality.issues.slice(0, 4)" :key="issue">{{ issue }}</li>
+          </ul>
         </div>
-        <button class="project-detail-page__action-btn" @click="showQualityScenesOnly = !showQualityScenesOnly">
+        <button
+          class="project-detail-page__action-btn"
+          :disabled="qualitySceneIds.length === 0"
+          @click="showQualityScenesOnly = !showQualityScenesOnly"
+        >
           {{ showQualityScenesOnly ? '显示全部场景' : '仅看质量问题场景' }}
         </button>
       </section>
@@ -198,6 +216,8 @@ const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
 })
 
+const currentQuality = computed(() => detail.value?.current_story.quality_report ?? null)
+
 const qualitySceneIds = computed(() => {
   const story = detail.value?.current_story
   if (!story?.quality_report?.weak_beats?.length || !story.story_blueprint?.genre_beats.length) return []
@@ -294,7 +314,11 @@ async function submitSceneRewrite() {
 
   if (res.ok && res.data) {
     detail.value = res.data
-    successMessage.value = `场景 ${selectedSceneId.value} 已生成新版本`
+    const quality = res.data.current_story.quality_report
+    const qualityTail = quality
+      ? `，已重新复核：${quality.passed ? '通过' : '需调整'}${typeof quality.genre_score === 'number' ? `，类型分 ${quality.genre_score}` : ''}`
+      : ''
+    successMessage.value = `场景 ${selectedSceneId.value} 已生成新版本${qualityTail}`
     clearEditor()
   } else {
     error.value = res.error?.message ?? '局部重写失败'
@@ -530,7 +554,7 @@ watch(selectedModelProfileId, (value) => {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 18px;
   padding: 12px 14px;
   border: 1px solid #d9e2ea;
@@ -538,10 +562,39 @@ watch(selectedModelProfileId, (value) => {
   background: #f8fafb;
 }
 
+.project-detail-page__quality-main {
+  min-width: 0;
+}
+
 .project-detail-page__quality-tools p {
   margin: 4px 0 0;
   color: #5c6a76;
   font-size: 14px;
+}
+
+.project-detail-page__quality-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.project-detail-page__quality-mini span {
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  background: #fff;
+  color: #455866;
+  padding: 3px 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.project-detail-page__quality-list {
+  margin: 9px 0 0;
+  padding-left: 18px;
+  color: #9a6300;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .project-detail-page__summary-label {
@@ -682,6 +735,10 @@ watch(selectedModelProfileId, (value) => {
 
   .project-detail-page__header-actions {
     justify-content: flex-start;
+  }
+
+  .project-detail-page__quality-tools {
+    flex-direction: column;
   }
 
   .project-detail-page__summary {

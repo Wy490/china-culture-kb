@@ -121,15 +121,52 @@
     <section v-if="result.quality_report" class="story-result__section">
       <h3 class="story-result__section-title">故事质量校验</h3>
       <div :class="['story-result__quality', result.quality_report.passed ? 'story-result__quality--pass' : 'story-result__quality--fail']">
-        <p>{{ result.quality_report.passed ? '✅ 全部校验通过' : '⚠️ 存在质量问题' }}</p>
-        <p v-if="typeof result.quality_report.genre_score === 'number'" class="story-result__quality-score">
-          类型匹配度：{{ result.quality_report.genre_score }}/100
-        </p>
+        <div class="story-result__quality-summary">
+          <article>
+            <span>状态</span>
+            <strong>{{ result.quality_report.passed ? '通过' : '需调整' }}</strong>
+          </article>
+          <article>
+            <span>类型匹配度</span>
+            <strong>{{ typeof result.quality_report.genre_score === 'number' ? `${result.quality_report.genre_score}/100` : '未记录' }}</strong>
+          </article>
+          <article>
+            <span>质量问题</span>
+            <strong>{{ result.quality_report.issues.length }}</strong>
+          </article>
+          <article>
+            <span>节拍问题</span>
+            <strong>{{ qualityBeatIssues.length }}</strong>
+          </article>
+        </div>
         <ul v-if="result.quality_report.issues.length > 0" class="story-result__quality-issues">
           <li v-for="issue in result.quality_report.issues" :key="issue">{{ issue }}</li>
         </ul>
+        <div v-if="result.quality_report.missing_required_elements?.length" class="story-result__quality-actions">
+          <strong>缺少的类型要素</strong>
+          <ul>
+            <li v-for="item in result.quality_report.missing_required_elements" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+        <div v-if="qualityBeatIssues.length > 0" class="story-result__quality-actions">
+          <strong>节拍定位</strong>
+          <ul>
+            <li v-for="item in qualityBeatIssues" :key="item.issue">
+              <button
+                v-if="item.scene_id"
+                class="story-result__inline-scene-btn"
+                type="button"
+                @click="scrollToScene(item.scene_id)"
+              >
+                场景 {{ item.scene_id }}
+              </button>
+              <span v-else>未匹配场景</span>
+              {{ item.function_label ? ` · ${item.function_label}` : '' }}：{{ item.issue }}
+            </li>
+          </ul>
+        </div>
         <div v-if="result.quality_report.repair_actions && result.quality_report.repair_actions.length > 0" class="story-result__quality-actions">
-          <strong>建议修复</strong>
+          <strong>建议调整</strong>
           <ul>
             <li v-for="action in result.quality_report.repair_actions" :key="action">{{ action }}</li>
           </ul>
@@ -158,10 +195,18 @@
         当前仅显示质量报告关联场景。
       </p>
       <div v-if="displayedScenes.length > 0" class="story-result__scenes">
-        <div v-for="scene in displayedScenes" :key="scene.scene_id" class="story-result__scene-card">
+        <div
+          v-for="scene in displayedScenes"
+          :key="scene.scene_id"
+          :id="`story-scene-${scene.scene_id}`"
+          :class="['story-result__scene-card', sceneQualityNotes(scene.scene_id).length > 0 ? 'story-result__scene-card--quality' : '']"
+        >
           <h4 class="story-result__scene-title">
             场景 {{ scene.scene_id }} — {{ scene.title || scene.location }}
           </h4>
+          <ul v-if="sceneQualityNotes(scene.scene_id).length > 0" class="story-result__scene-quality-notes">
+            <li v-for="note in sceneQualityNotes(scene.scene_id)" :key="note">{{ note }}</li>
+          </ul>
           <div class="story-result__scene-details">
             <p class="story-result__scene-meta-row">
               <span class="story-result__scene-tag">{{ scene.dramatic_function }}</span>
@@ -473,8 +518,45 @@ const displayedScenes = computed(() => {
   return scenes.filter(scene => ids.has(scene.scene_id))
 })
 
+const qualityBeatIssues = computed(() => {
+  const report = props.result?.quality_report
+  const beats = props.result?.story_blueprint?.genre_beats ?? []
+  if (!report?.weak_beats?.length || beats.length === 0) return []
+  return report.weak_beats.map(issue => {
+    const order = Number(issue.match(/^(\d+)\./)?.[1])
+    const beat = Number.isFinite(order) ? beats.find(item => item.order === order) : undefined
+    return {
+      issue,
+      scene_id: beat?.scene_id,
+      function_label: beat?.function_label,
+    }
+  })
+})
+
+const qualityNotesByScene = computed(() => {
+  const map = new Map<number, string[]>()
+  for (const item of qualityBeatIssues.value) {
+    if (!item.scene_id) continue
+    const notes = map.get(item.scene_id) ?? []
+    notes.push(item.function_label ? `${item.function_label}：${item.issue}` : item.issue)
+    map.set(item.scene_id, notes)
+  }
+  return map
+})
+
 function renderSimpleMarkdown(text: string): string {
   return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+}
+
+function sceneQualityNotes(sceneId: number): string[] {
+  return qualityNotesByScene.value.get(sceneId) ?? []
+}
+
+function scrollToScene(sceneId: number) {
+  document.getElementById(`story-scene-${sceneId}`)?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'center',
+  })
 }
 
 function toggleSegment(id: number) {
@@ -551,7 +633,18 @@ function showCopyMessage(msg: string) {
 /* Scene cards */
 .story-result__scenes { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .story-result__scene-card { padding: 14px 18px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; }
+.story-result__scene-card--quality {
+  border-color: #f0c36b;
+  background: #fffaf0;
+}
 .story-result__scene-title { margin: 0 0 8px 0; font-size: 16px; color: #2c3e50; }
+.story-result__scene-quality-notes {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  color: #8a5b00;
+  font-size: 13px;
+  line-height: 1.45;
+}
 .story-result__scene-details { display: flex; flex-direction: column; gap: 6px; }
 .story-result__scene-meta-row { display: flex; gap: 8px; align-items: center; font-size: 13px; color: #7f8c8d; }
 .story-result__scene-tag { padding: 2px 8px; background: #eaf2f8; color: #2980b9; border-radius: 3px; font-size: 12px; font-weight: 600; }
@@ -754,6 +847,27 @@ function showCopyMessage(msg: string) {
 .story-result__quality--pass { background: #d5f5e3; border: 1px solid #27ae60; }
 .story-result__quality--fail { background: #fef9e7; border: 1px solid #f39c12; }
 .story-result__quality p { margin: 0; font-size: 14px; }
+.story-result__quality-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.story-result__quality-summary article {
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 8px 10px;
+}
+.story-result__quality-summary span {
+  display: block;
+  color: #6b7884;
+  font-size: 12px;
+}
+.story-result__quality-summary strong {
+  display: block;
+  margin-top: 3px;
+  color: #2c3e50;
+  font-size: 16px;
+}
 .story-result__quality-score {
   margin-top: 6px !important;
   color: #2c3e50;
@@ -775,5 +889,25 @@ function showCopyMessage(msg: string) {
 .story-result__quality-actions ul {
   margin: 4px 0 0;
   padding-left: 18px;
+}
+.story-result__inline-scene-btn {
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  background: #fff;
+  color: #2f6f9f;
+  cursor: pointer;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+.story-result__inline-scene-btn:hover {
+  background: #eef6fb;
+}
+
+@media (max-width: 760px) {
+  .story-result__quality-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>
