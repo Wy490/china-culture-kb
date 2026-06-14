@@ -157,7 +157,7 @@
               </div>
               <button
                 class="series-studio__submit series-studio__submit--compact"
-                :disabled="generatingEpisodeNo !== null || editingEpisodeNo !== null"
+                :disabled="generatingEpisodeNo !== null || previewingEpisodeNo !== null || editingEpisodeNo !== null"
                 @click="handleGenerateEpisode(nextRecommendedEpisode.episode_no)"
               >
                 {{ generatingEpisodeNo === nextRecommendedEpisode.episode_no ? '生成中...' : '生成推荐集' }}
@@ -368,7 +368,7 @@
                   <button
                     v-if="!isEditingEpisode(episode.episode_no)"
                     class="series-studio__episode-edit"
-                    :disabled="generatingEpisodeNo !== null"
+                    :disabled="generatingEpisodeNo !== null || previewingEpisodeNo !== null"
                     @click="startEditEpisode(episode)"
                   >
                     编辑
@@ -391,7 +391,14 @@
                   </button>
                   <button
                     class="series-studio__episode-action"
-                    :disabled="generatingEpisodeNo !== null || isEditingEpisode(episode.episode_no)"
+                    :disabled="generatingEpisodeNo !== null || previewingEpisodeNo !== null || isEditingEpisode(episode.episode_no)"
+                    @click="handlePreviewEpisodeContext(episode.episode_no)"
+                  >
+                    {{ previewingEpisodeNo === episode.episode_no ? '预览中...' : '预览生成上下文' }}
+                  </button>
+                  <button
+                    class="series-studio__episode-action"
+                    :disabled="generatingEpisodeNo !== null || previewingEpisodeNo !== null || isEditingEpisode(episode.episode_no)"
                     @click="handleGenerateEpisode(episode.episode_no)"
                   >
                     {{ generatingEpisodeNo === episode.episode_no ? '生成中...' : generatedEpisodeStoryIds[String(episode.episode_no)] ? '重新生成本集分镜' : '生成本集分镜' }}
@@ -533,6 +540,56 @@
         </section>
 
         <section
+          v-if="previewingEpisodeNo || contextPreviewError || contextPreview"
+          class="series-studio__section series-studio__context-preview"
+        >
+          <div class="series-studio__section-header">
+            <h2>生成上下文预览</h2>
+            <span v-if="contextPreview">第 {{ contextPreview.episode_no }} 集</span>
+            <span v-else-if="previewingEpisodeNo">第 {{ previewingEpisodeNo }} 集</span>
+          </div>
+          <div v-if="previewingEpisodeNo" class="series-studio__loading series-studio__loading--inline">
+            <div class="spinner" />
+            <p>正在整理生成上下文...</p>
+          </div>
+          <p v-else-if="contextPreviewError" class="series-studio__message series-studio__message--error">
+            {{ contextPreviewError }}
+          </p>
+          <div v-else-if="contextPreview" class="series-studio__context-grid">
+            <article class="series-studio__context-card series-studio__context-card--wide">
+              <strong>{{ contextPreview.title }}</strong>
+              <p>
+                {{ contextPreview.used_saved_ledger ? '已使用保存项目的连续性账本' : '使用当前规划生成初始连续性账本' }}
+              </p>
+            </article>
+            <article class="series-studio__context-card">
+              <strong>本集蓝图</strong>
+              <p>{{ contextPreview.blueprint.opening_hook }}</p>
+              <p>{{ contextPreview.blueprint.midpoint_turn }}</p>
+              <p>{{ hookTypeLabel(contextPreview.blueprint.ending_hook_type) }} · {{ contextPreview.blueprint.thread_action }}</p>
+            </article>
+            <article class="series-studio__context-card">
+              <strong>连续性摘要</strong>
+              <p>上一条生成：{{ contextPreview.ledger_summary.last_generated_episode_no ?? '暂无' }}</p>
+              <p>{{ contextPreview.ledger_summary.character_state_current.join('；') || '暂无角色状态' }}</p>
+              <p>{{ contextPreview.ledger_summary.open_threads.join('；') || '暂无未回收线索' }}</p>
+            </article>
+            <article class="series-studio__context-card">
+              <strong>上一集记忆</strong>
+              <p>{{ contextPreview.previous_episode_memory.join('；') || '暂无上一集记忆' }}</p>
+            </article>
+            <article class="series-studio__context-card">
+              <strong>下一集承接要求</strong>
+              <p>{{ contextPreview.next_episode_requirement || '这是当前规划的最后一集' }}</p>
+            </article>
+            <article class="series-studio__context-card series-studio__context-card--wide">
+              <strong>完整生成提纲</strong>
+              <pre>{{ contextPreview.generation_outline }}</pre>
+            </article>
+          </div>
+        </section>
+
+        <section
           v-if="generatingEpisodeNo || episodeErrorMessage || episodeResult"
           class="series-studio__section series-studio__generated"
         >
@@ -610,6 +667,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  aiComicEpisodeContextPreview,
   aiComicEpisodeGenerate,
   exportAiComicSeriesBible,
   aiComicSeriesPlan,
@@ -622,6 +680,7 @@ import StoryResult from '@/components/StoryResult.vue'
 import type {
   AiComicContinuityLedger,
   AiComicEndingHookType,
+  AiComicEpisodeContextPreview,
   AiComicEpisodePlan,
   AiComicPacingProfile,
   AiComicSeriesQualityAudit,
@@ -648,6 +707,9 @@ const generatingEpisodeNo = ref<number | null>(null)
 const generatedEpisodeNo = ref<number | null>(null)
 const episodeResult = ref<StoryGenerateResult | null>(null)
 const episodeErrorMessage = ref('')
+const contextPreview = ref<AiComicEpisodeContextPreview | null>(null)
+const previewingEpisodeNo = ref<number | null>(null)
+const contextPreviewError = ref('')
 const seriesProjectId = ref('')
 const saveMessage = ref('')
 const generatedEpisodeStoryIds = ref<Record<string, string>>({})
@@ -734,6 +796,7 @@ async function loadSeriesProject(id: string) {
   episodeResult.value = null
   episodeErrorMessage.value = ''
   generatedEpisodeNo.value = null
+  clearContextPreview()
   cancelEditEpisode()
   const res = await getAiComicSeriesProject(id)
   if (res.ok && res.data) {
@@ -757,6 +820,7 @@ async function handlePlan() {
   episodeResult.value = null
   episodeErrorMessage.value = ''
   generatedEpisodeNo.value = null
+  clearContextPreview()
   seriesProjectId.value = ''
   saveMessage.value = ''
   generatedEpisodeStoryIds.value = {}
@@ -794,6 +858,7 @@ async function handleGenerateEpisode(episodeNo: number) {
   generatedEpisodeNo.value = episodeNo
   episodeResult.value = null
   episodeErrorMessage.value = ''
+  clearContextPreview()
 
   const res = await aiComicEpisodeGenerate({
     series_plan: plan.value,
@@ -816,6 +881,35 @@ async function handleGenerateEpisode(episodeNo: number) {
     episodeErrorMessage.value = res.error?.message ?? '本集分镜生成失败'
   }
   generatingEpisodeNo.value = null
+}
+
+async function handlePreviewEpisodeContext(episodeNo: number) {
+  if (!plan.value || previewingEpisodeNo.value !== null) return
+  if (!seriesProjectId.value) {
+    await saveCurrentProject()
+  }
+  previewingEpisodeNo.value = episodeNo
+  contextPreview.value = null
+  contextPreviewError.value = ''
+
+  const res = await aiComicEpisodeContextPreview({
+    series_plan: plan.value,
+    episode_no: episodeNo,
+    series_project_id: seriesProjectId.value || undefined,
+  })
+
+  if (res.ok && res.data) {
+    contextPreview.value = res.data
+  } else {
+    contextPreviewError.value = res.error?.message ?? '生成上下文预览失败'
+  }
+  previewingEpisodeNo.value = null
+}
+
+function clearContextPreview() {
+  contextPreview.value = null
+  previewingEpisodeNo.value = null
+  contextPreviewError.value = ''
 }
 
 function isEditingEpisode(episodeNo: number): boolean {
@@ -1952,6 +2046,58 @@ function episodeProjectPath(episodeNo: number): string {
   white-space: nowrap;
 }
 
+.series-studio__context-preview {
+  border-top: 1px solid #dde4ea;
+  padding-top: 18px;
+}
+
+.series-studio__context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.series-studio__context-card {
+  min-width: 0;
+  border: 1px solid #d9e2ea;
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 12px 14px;
+}
+
+.series-studio__context-card--wide {
+  grid-column: 1 / -1;
+}
+
+.series-studio__context-card strong {
+  display: block;
+  margin-bottom: 7px;
+  color: #213547;
+  font-size: 14px;
+}
+
+.series-studio__context-card p {
+  margin: 0 0 6px;
+  color: #455866;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.series-studio__context-card pre {
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+  border: 1px solid #d5dee5;
+  border-radius: 4px;
+  background: #fff;
+  color: #24313b;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .series-studio__generated {
   border-top: 1px solid #dde4ea;
   padding-top: 18px;
@@ -1984,6 +2130,10 @@ function episodeProjectPath(episodeNo: number): string {
   .series-studio__ledger,
   .series-studio__episode-columns,
   .series-studio__episode-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .series-studio__context-grid {
     grid-template-columns: 1fr;
   }
 }

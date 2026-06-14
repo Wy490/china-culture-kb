@@ -9,6 +9,8 @@ import type {
   VideoType,
   StoryOutlineAnalyzeRequest,
   StoryOutlineAnalysis,
+  AiComicEpisodeContextPreview,
+  AiComicEpisodeContextPreviewRequest,
   AiComicEpisodeGenerateRequest,
   AiComicSeriesBibleExportPackage,
   AiComicSeriesLedgerRebuildRequest,
@@ -66,6 +68,10 @@ export function aiComicSeriesPlan(req: AiComicSeriesPlanRequest) {
 
 export function aiComicEpisodeGenerate(req: AiComicEpisodeGenerateRequest) {
   return apiPost<StoryGenerateResult>('/story-outline/ai-comic-episode', req)
+}
+
+export function aiComicEpisodeContextPreview(req: AiComicEpisodeContextPreviewRequest) {
+  return apiPost<AiComicEpisodeContextPreview>('/story-outline/ai-comic-episode-context-preview', req)
 }
 
 export function listAiComicSeriesProjects() {

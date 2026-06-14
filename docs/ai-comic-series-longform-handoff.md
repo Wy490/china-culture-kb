@@ -177,6 +177,7 @@
 - `GET /api/story-outline/ai-comic-series-projects`
 - `POST /api/story-outline/ai-comic-series-projects`
 - `GET /api/story-outline/ai-comic-series-projects/:seriesProjectId`
+- `POST /api/story-outline/ai-comic-episode-context-preview`
 
 新增类型：
 
@@ -213,6 +214,30 @@
 编辑保存后会更新系列项目。
 
 生成按钮在编辑状态下禁用，避免编辑草稿和生成请求交叉。
+
+### 单集生成上下文预览
+
+在生成完整分镜前，分集卡片可先预览将要带入生成器的上下文。
+
+预览内容包含：
+
+- 本集生成蓝图
+- 是否使用保存项目的连续性账本
+- 当前角色状态、未回收线索、已回收线索和知识使用摘要
+- 上一集生成记忆
+- 下一集承接要求
+- 完整生成提纲
+
+后端服务：
+
+- `previewAiComicEpisodeContext`
+
+前端行为：
+
+- 每个分集卡片新增“预览生成上下文”按钮。
+- 如果当前系列尚未保存，预览前会先保存系列项目。
+- 预览请求期间禁用编辑、预览和生成，避免状态交叉。
+- 预览区展示实际会进入单集生成的连续性上下文。
 
 ## 关键文件
 
@@ -371,6 +396,7 @@ npm run build
 7. 单集生成前会构造 `AiComicEpisodeBlueprint`，生成后返回蓝图、单集质量报告和连续性审计。
 8. AI 漫剧单集生成已支持生成后自动调整类型质量问题。
 9. 已支持导出系列 Bible Markdown / JSON，包含主线骨架、角色弧线、长期线索、连续性账本、系列质量审计和分集蓝图。
+10. 已支持单集生成上下文预览，可在生成前查看本集蓝图、账本摘要、上一集记忆和完整生成提纲。
 
 ## 建议下一步
 
@@ -379,7 +405,6 @@ npm run build
 1. 将保存的系列项目纳入现有项目系统，而不只是 `web/generated/ai-comic-series-projects` 文件存储。
 2. 支持系列项目复制、归档、删除。
 3. 支持批量检查所有分集卡片的伏笔/回收闭环。
-4. 在单集生成前展示将要带入的“生成上下文预览”。
 
 可继续增强：
 
@@ -393,4 +418,4 @@ npm run build
 
 建议新对话从这里继续：
 
-> 仓库 `/Users/wuyu/Desktop/china-culture-kb`，继续完善 AI 漫剧长篇创作。当前已有系列规划页 `/ai-comic-series/new`、系列项目保存、分集卡片编辑、单集分镜生成、连续性账本、系列质量审计、分集蓝图、系列 Bible 导出、已生成分镜跳转、计划变更提示、账本重建和下一集推荐生成。请先阅读 `docs/ai-comic-series-longform-handoff.md` 和相关文件，再继续实现下一步：系列项目复制/归档/删除、批量检查伏笔/回收闭环，或单集生成上下文预览。
+> 仓库 `/Users/wuyu/Desktop/china-culture-kb`，继续完善 AI 漫剧长篇创作。当前已有系列规划页 `/ai-comic-series/new`、系列项目保存、分集卡片编辑、单集分镜生成、连续性账本、系列质量审计、分集蓝图、系列 Bible 导出、单集生成上下文预览、已生成分镜跳转、计划变更提示、账本重建和下一集推荐生成。请先阅读 `docs/ai-comic-series-longform-handoff.md` 和相关文件，再继续实现下一步：系列项目复制/归档/删除，或批量检查所有分集卡片的伏笔/回收闭环。

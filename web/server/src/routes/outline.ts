@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { ErrorCodes } from '@shared/types.js';
 import { validateBody, validateParams } from '../middleware/validate.js';
 import {
+  AiComicEpisodeContextPreviewRequestSchema,
   AiComicEpisodeGenerateRequestSchema,
   AiComicSeriesLedgerRebuildRequestSchema,
   AiComicSeriesProjectIdParamSchema,
@@ -14,6 +15,7 @@ import {
 import { analyzeOutline } from '../services/outline-service.js';
 import {
   exportAiComicSeriesBible,
+  previewAiComicEpisodeContext,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
@@ -104,6 +106,25 @@ outlineRouter.post(
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await rebuildAiComicSeriesContinuityLedger(seriesProjectId, req.body);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-episode-context-preview — preview generation context before creating one episode
+outlineRouter.post(
+  '/ai-comic-episode-context-preview',
+  validateBody(AiComicEpisodeContextPreviewRequestSchema),
+  async (req, res, next) => {
+    try {
+      const result = await previewAiComicEpisodeContext(req.body);
+      const status = result.ok
+        ? 200
+        : result.error?.code === ErrorCodes.STORY_NOT_FOUND
+          ? 404
+          : 400;
+      res.status(status).json(result);
     } catch (err) {
       next(err);
     }

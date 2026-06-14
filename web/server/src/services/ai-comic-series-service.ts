@@ -6,6 +6,8 @@ import { ErrorCodes, success, fail } from '@shared/types.js';
 import type {
   AiComicContinuityLedger,
   AiComicContinuityLedgerEpisode,
+  AiComicEpisodeContextPreview,
+  AiComicEpisodeContextPreviewRequest,
   AiComicEpisodeQualityReport,
   AiComicEpisodePlan,
   AiComicEpisodeBlueprint,
@@ -206,6 +208,51 @@ export async function generateAiComicEpisodeFromPlan(
     }
 
     return success(enrichedStory);
+  });
+}
+
+export async function previewAiComicEpisodeContext(
+  request: AiComicEpisodeContextPreviewRequest,
+): Promise<ApiResponse<AiComicEpisodeContextPreview>> {
+  const existingProject = request.series_project_id
+    ? await readSeriesProject(request.series_project_id)
+    : null;
+  if (request.series_project_id && !existingProject) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${request.series_project_id}" not found`);
+  }
+
+  const plan = request.series_plan;
+  const episode = plan.episodes.find(item => item.episode_no === request.episode_no);
+  if (!episode) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `episode_no ${request.episode_no} does not exist in series_plan`);
+  }
+
+  const ledger = existingProject?.continuity_ledger;
+  const previousRecord = ledger?.episode_records
+    .filter(record => record.episode_no < episode.episode_no)
+    .sort((a, b) => b.episode_no - a.episode_no)[0];
+  const next = plan.episodes.find(item => item.episode_no === episode.episode_no + 1);
+  const fallbackLedger = ledger ?? buildInitialContinuityLedger(plan);
+
+  return success({
+    schema_version: 'ai-comic-episode-context-preview/v1',
+    series_project_id: request.series_project_id,
+    episode_no: episode.episode_no,
+    title: episode.title,
+    used_saved_ledger: Boolean(ledger),
+    blueprint: buildAiComicEpisodeBlueprint(plan, episode),
+    generation_outline: buildEpisodeGenerationOutline(plan, episode, fallbackLedger),
+    ledger_summary: {
+      last_generated_episode_no: fallbackLedger.last_generated_episode_no,
+      character_state_current: fallbackLedger.character_state_current,
+      open_threads: fallbackLedger.open_threads,
+      paid_off_threads: fallbackLedger.paid_off_threads,
+      knowledge_used: fallbackLedger.knowledge_used,
+    },
+    previous_episode_memory: previousRecord?.next_episode_memory ?? episode.continuity_from_previous,
+    next_episode_requirement: next
+      ? `第${next.episode_no}集需要承接：${next.main_conflict}；${next.continuity_from_previous.join('；')}`
+      : undefined,
   });
 }
 

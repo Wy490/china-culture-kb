@@ -891,10 +891,17 @@ continuity_audit?: AiComicSeriesContinuityAudit;
 POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-bible
 ```
 
+单集生成上下文预览：
+
+```text
+POST /api/story-outline/ai-comic-episode-context-preview
+```
+
 响应包含：
 
 ```ts
 AiComicSeriesBibleExportPackage
+AiComicEpisodeContextPreview
 ```
 
 ---

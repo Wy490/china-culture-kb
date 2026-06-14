@@ -607,6 +607,15 @@ export const AiComicSeriesLedgerRebuildRequestSchema = z.object({
   from_episode_no: z.number().int().min(1).max(120).optional().default(1),
 });
 
+export const AiComicEpisodeContextPreviewRequestSchema = z.object({
+  series_plan: AiComicSeriesPlanSchema,
+  episode_no: z.number().int().min(1).max(120),
+  series_project_id: AiComicSeriesProjectIdValueSchema.optional(),
+}).refine(
+  data => data.episode_no <= data.series_plan.episode_count,
+  { message: 'episode_no cannot exceed series_plan.episode_count', path: ['episode_no'] },
+);
+
 export const AiComicEpisodeGenerateRequestSchema = z.object({
   series_plan: AiComicSeriesPlanSchema,
   episode_no: z.number().int().min(1).max(120),

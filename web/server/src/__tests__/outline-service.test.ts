@@ -7,6 +7,7 @@ import {
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
+  previewAiComicEpisodeContext,
   rebuildAiComicSeriesContinuityLedger,
   saveAiComicSeriesProject,
 } from '../services/ai-comic-series-service.js';
@@ -349,6 +350,22 @@ describe('outline-service', () => {
       output_gears_segments: false,
     });
     expect(firstEpisodeRes.ok).toBe(true);
+
+    const previewRes = await previewAiComicEpisodeContext({
+      series_plan: planRes.data!,
+      episode_no: 2,
+      series_project_id: saveRes.data!.project.series_project_id,
+    });
+    expect(previewRes.ok).toBe(true);
+    expect(previewRes.data?.schema_version).toBe('ai-comic-episode-context-preview/v1');
+    expect(previewRes.data?.used_saved_ledger).toBe(true);
+    expect(previewRes.data?.blueprint.schema_version).toBe('ai-comic-episode-blueprint/v1');
+    expect(previewRes.data?.blueprint.episode_no).toBe(2);
+    expect(previewRes.data?.generation_outline).toContain('连续性账本');
+    expect(previewRes.data?.generation_outline).toContain('上一条生成记忆');
+    expect(previewRes.data?.generation_outline).toContain(firstEpisodeRes.data!.storyId);
+    expect(previewRes.data?.ledger_summary.last_generated_episode_no).toBe(1);
+    expect(previewRes.data?.previous_episode_memory.length).toBeGreaterThan(0);
 
     const secondEpisodeRes = await generateAiComicEpisodeFromPlan({
       series_plan: planRes.data!,

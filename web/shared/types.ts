@@ -1213,6 +1213,31 @@ export interface AiComicSeriesBibleExportPackage {
   markdown: string;
 }
 
+export interface AiComicEpisodeContextPreviewRequest {
+  series_plan: AiComicSeriesPlan;
+  episode_no: number;
+  series_project_id?: string;
+}
+
+export interface AiComicEpisodeContextPreview {
+  schema_version: 'ai-comic-episode-context-preview/v1';
+  series_project_id?: string;
+  episode_no: number;
+  title: string;
+  used_saved_ledger: boolean;
+  blueprint: AiComicEpisodeBlueprint;
+  generation_outline: string;
+  ledger_summary: {
+    last_generated_episode_no?: number;
+    character_state_current: string[];
+    open_threads: string[];
+    paid_off_threads: string[];
+    knowledge_used: string[];
+  };
+  previous_episode_memory: string[];
+  next_episode_requirement?: string;
+}
+
 export interface AiComicSeriesProjectSaveRequest {
   series_project_id?: string;
   plan: AiComicSeriesPlan;
