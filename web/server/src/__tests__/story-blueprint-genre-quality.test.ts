@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { EntryDetail, StoryGenerateResult, StoryQualityReport } from '@shared/types.js';
 import { buildStoryBlueprint, attachBlueprintScenes } from '../services/story-blueprint-service.js';
 import { validateGenreStoryQuality } from '../services/genre-quality-service.js';
+import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
 
 function makeEntry(): EntryDetail {
   return {
@@ -151,5 +152,28 @@ describe('story blueprint and genre quality', () => {
     expect(report.missing_required_elements).toEqual([]);
     expect(report.repair_actions).toContain('补强主角当下目标');
     expect(report.repair_actions).toContain('对齐样片信号：人物目标清楚');
+  });
+
+  it('flags adaptation drift when user novel characters disappear', () => {
+    const source = '少年阿青在书院门口等雨停，师友误会他偷走旧书。阿青决定留下来查清真相。夜里，阿青举着油灯穿过藏书楼。';
+    const story = {
+      ...makeStory(),
+      original_user_query: source,
+      full_text: '周敦颐在月岩洞前做出选择。',
+      adaptation_analysis: buildAdaptationAnalysis(source),
+      _request_meta: {
+        source_material_mode: 'adapt_user_novel',
+      },
+    } as StoryGenerateResult & { _request_meta: Record<string, unknown> };
+
+    const report = validateGenreStoryQuality({
+      story,
+      baseReport: makeBaseReport(),
+      narrativePatternIds: ['novel_scene_compression'],
+    });
+
+    expect(report.issues.some(issue => issue.includes('改编偏差'))).toBe(true);
+    expect(report.repair_actions.some(action => action.includes('原作关键人物/称谓未进入改编方案'))).toBe(true);
+    expect(report.repair_actions.some(action => action.includes('原作主线节拍未被改编承接'))).toBe(true);
   });
 });

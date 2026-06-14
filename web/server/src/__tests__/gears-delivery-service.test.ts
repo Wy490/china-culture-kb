@@ -301,6 +301,60 @@ function makePollutedMoonCaveStory(): StoryGenerateResult {
   };
 }
 
+function makePollutedMaoStory(): StoryGenerateResult {
+  return {
+    storyId: '20260614-story-mao',
+    title: '从韶山少年到革命青年',
+    generation_type: 'character_story',
+    video_type: 'character_story',
+    presentation_style: 'cinematic',
+    source_entry: '毛泽东——从韶山冲走向天安门的农家革命者',
+    logline: '少年毛泽东从韶山求学走向思想觉醒。',
+    theme: '求学、独立与时代觉醒',
+    full_text: '少年毛泽东在韶山劳动读书，后来走出家乡，到长沙求学，逐渐把个人求学与国家前途联系起来。',
+    scene_breakdown: [
+      {
+        scene_id: 1,
+        title: '韶山少年',
+        duration_sec: 12,
+        location: '**韶山少年**：湖南湘潭韶山冲农家院落',
+        time_of_day: '清晨',
+        dramatic_function: '主角处境',
+        plot: '毛泽东是什么身份？',
+        key_action: '劳动后翻开书本',
+        characters: ['毛泽东', '韶山少年', '湘江评论与驱张运动'],
+        visual_prompt: '湘江评论与驱张运动（1919—1920）：五四运动后，毛泽东1919年7月14日在长沙创刊主编《湘江评论》，在创',
+        camera_suggestion: '中景',
+        cultural_note: '清末民初湖南乡村求学背景',
+        conflict: '父亲希望他承担家业，少年更想继续求学',
+        dialogue_or_narration: '窗外是田垄，少年把书压在膝上，听见父亲催他去做事。',
+      },
+      {
+        scene_id: 2,
+        title: '长沙求学',
+        duration_sec: 12,
+        location: '长沙新式学校',
+        time_of_day: '白天',
+        dramatic_function: '关键行动',
+        plot: '',
+        key_action: '阅读报刊并参加讨论',
+        characters: ['毛泽东', '学生们'],
+        visual_prompt: '书桌、报刊、课堂、青年学生围坐讨论',
+        camera_suggestion: '近景切换',
+        cultural_note: '新式教育与新思想冲击',
+        conflict: '个人求学开始连接国家危机',
+      },
+    ],
+    gears_segments: [],
+    gears_segments_url: '/api/stories/20260614-story-mao/gears-segments',
+    cultural_constraints: [],
+    credibility_note: '基于知识库条目生成',
+    characters: [
+      { name: '毛泽东', role: 'protagonist', description: '湖南韶山少年，清末民初求学青年', arc: '从乡村少年到有社会关怀的革命青年' },
+    ],
+  };
+}
+
 describe('gears-delivery-service', () => {
   it('builds a GEARS supply package with assets, markdown, and <=15s units', () => {
     const pkg = buildGearsDeliveryPackage(makeStory());
@@ -412,10 +466,25 @@ describe('gears-delivery-service', () => {
     expect(pkg.scene_assets[0].environment_props).toBe('洞口、岩壁、石质地面');
     expect(pkg.units.every(unit => unit.scene_name === '月岩洞')).toBe(true);
     expect(pkg.units.every(unit => unit.character_names.join('、') === '周敦颐')).toBe(true);
-    expect(pkg.units[0].suggested_duration_sec).toBeLessThan(12);
-    expect(pkg.validation_notes).toContain('单元 2 正文过短，不足以支撑 5 秒分镜');
+    expect(pkg.units[0].script_text).toContain('天然溶洞');
+    expect(pkg.validation_notes).toContain('单元 2 缺少可供分镜使用的剧本正文');
     expect(pkg.validation_notes).toContain('单元 3 缺少可供分镜使用的剧本正文');
     expect(pkg.markdown).toContain('- 场景道具/陈设: 洞口、岩壁、石质地面');
     expect(pkg.markdown).toContain('- 随身/标志性物件: 书');
+  });
+
+  it('keeps modern revolutionary youth assets out of Song clothing and cleans polluted prompts', () => {
+    const pkg = buildGearsDeliveryPackage(makePollutedMaoStory());
+
+    expect(pkg.character_assets.map(character => character.name)).toEqual(['毛泽东', '学生们']);
+    expect(pkg.character_assets[0].clothing).toContain('清末民初');
+    expect(pkg.character_assets[0].clothing).not.toContain('北宋');
+    expect(pkg.scene_assets[0].description).toContain('湖南湘潭韶山冲农家院落');
+    expect(pkg.scene_assets[0].description).not.toContain('湘江评论与驱张运动');
+    expect(pkg.units.every(unit => unit.character_names.includes('毛泽东'))).toBe(true);
+    expect(pkg.units[0].script_text).toContain('父亲希望他承担家业');
+    expect(pkg.units[1].script_text).toContain('阅读报刊并参加讨论');
+    expect(pkg.units[1].script_text).toContain('个人求学开始连接国家危机');
+    expect(pkg.units[1].script_text).not.toContain('【文本待补】');
   });
 });

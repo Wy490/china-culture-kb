@@ -104,6 +104,33 @@ describe('outline-service', () => {
     )).toBe(true);
   });
 
+  it('uses client-localized target region when matching cultural influence entries', async () => {
+    const res = await multiMatchEntries({
+      outline: '甲方只想要周敦颐和长沙相关的故事，重点讲岳麓书院、湖湘学脉和思想文化影响，不要硬写成周敦颐本人在长沙发生的事。',
+      knowledge_needs: [
+        {
+          need_id: 'main_character',
+          label: '主人公',
+          keywords: ['周敦颐', '长沙', '岳麓书院', '思想文化影响'],
+          required: true,
+        },
+      ],
+      limit_per_need: 5,
+      localized_target_region: '长沙',
+      localization_mode: 'allow_related_influence',
+    });
+
+    expect(res.ok).toBe(true);
+    const entries = [
+      ...(res.data?.matched_knowledge_pack.primary_entries ?? []),
+      ...(res.data?.matched_knowledge_pack.supporting_entries ?? []),
+    ];
+    const zhou = entries.find(entry => entry.entry_name.startsWith('周敦颐——'));
+    expect(zhou).toBeTruthy();
+    expect(`${zhou?.summary} ${zhou?.match_reason}`).toContain('长沙');
+    expect(`${zhou?.summary} ${zhou?.match_reason}`).toContain('地方化');
+  });
+
   it('carries markdown knowledge tags and asset split into matched knowledge packs', async () => {
     const res = await multiMatchEntries({
       outline: '需要月岩洞天然洞穴、洞口岩壁、坐石和书卷的 GEARS 场景资产。',

@@ -48,11 +48,64 @@ export type NarrativePatternId =
   | 'training_loop'
   | 'space_walkthrough'
   | 'poetic_landscape'
-  | 'children_fable';
+  | 'children_fable'
+  | 'novel_scene_compression'
+  | 'character_arc_adaptation'
+  | 'serial_hook_adaptation'
+  | 'cinematic_setpiece_adaptation'
+  | 'theme_preserving_adaptation'
+  | 'source_fidelity_adaptation'
+  | 'chapter_slice_adaptation'
+  | 'dialogue_scene_adaptation'
+  | 'worldbuilding_grounding'
+  | 'platform_short_drama_hook'
+  | 'wuxia_chivalric_epic'
+  | 'wuxia_lone_blade_mystery'
+  | 'wuxia_sect_growth'
+  | 'wuxia_revenge_journey'
+  | 'wuxia_court_jianghu'
+  | 'wuxia_romance_honor';
+
+export type NarrativeSubjectFamily =
+  | 'general'
+  | 'adaptation'
+  | 'wuxia'
+  | 'history'
+  | 'folklore'
+  | 'promo'
+  | 'education'
+  | 'documentary'
+  | 'space'
+  | 'children';
+
+export type NarrativeStyleAxisId =
+  | 'world_scale'
+  | 'dialogue_density'
+  | 'action_density'
+  | 'mystery_density'
+  | 'romance_density'
+  | 'hook_intensity'
+  | 'ensemble_degree'
+  | 'blank_space'
+  | 'historical_weight'
+  | 'fidelity';
+
+export type NarrativeStyleAxisValue = 'low' | 'medium' | 'high';
+
+export interface NarrativeStyleAxis {
+  axis_id: NarrativeStyleAxisId;
+  label: string;
+  value: NarrativeStyleAxisValue;
+  note: string;
+}
 
 export interface NarrativePattern {
   pattern_id: NarrativePatternId;
   label: string;
+  subject_family?: NarrativeSubjectFamily;
+  subgenre_tags?: string[];
+  user_facing_summary?: string;
+  style_axes?: NarrativeStyleAxis[];
   reference_archetypes: string[];
   narrative_engine: string;
   protagonist_engine: string;
@@ -230,6 +283,8 @@ export type StoryStructureType =
 export type ReferenceStrength = 'light' | 'medium' | 'strong';
 export type GenreStrictness = 'loose' | 'balanced' | 'strict';
 export type StoryGenerationPriority = 'balanced' | 'plot_first' | 'knowledge_first';
+export type SourceMaterialMode = 'generate_from_knowledge' | 'adapt_user_novel';
+export type LocalizationMode = 'allow_related_influence' | 'strict_direct_events';
 
 export interface StoryStructureMeta {
   id: StoryStructureType;
@@ -567,6 +622,21 @@ export interface StoryGenerateRequest {
   genre_strictness?: GenreStrictness;
   auto_repair?: boolean;
   story_priority?: StoryGenerationPriority;
+  source_material_mode?: SourceMaterialMode;
+  localized_target_region?: string;
+  localization_mode?: LocalizationMode;
+}
+
+export interface StoryAdaptationAnalysis {
+  source_mode: 'user_novel';
+  source_length: number;
+  source_summary: string;
+  core_characters: string[];
+  plot_beats: string[];
+  must_keep: string[];
+  compressible_parts: string[];
+  visual_setpieces: string[];
+  adaptation_risks: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -917,6 +987,7 @@ export interface StoryOutlineAnalyzeRequest {
   outline: string;
   preferred_video_types?: VideoType[];
   target_video_duration?: SupportedDuration;
+  localized_target_region?: string;
 }
 
 export interface StoryOutlineAnalysis {
@@ -1482,6 +1553,7 @@ export interface StoryGenerateResult {
   credibility_note: string;
   // New fields for multi-knowledge matching
   knowledge_pack?: KnowledgePack;
+  adaptation_analysis?: StoryAdaptationAnalysis;
   supplement_tasks?: KnowledgeSupplementTask[];
   quality_report?: StoryQualityReport | GenreQualityReport;
   gears_webhook?: GearsWebhookStatus;
@@ -1570,6 +1642,7 @@ export interface EntryDetail {
   story: string;
   culturalSignificance: string;
   relatedLocations: Array<{ name: string; description: string }>;
+  localCreativeRelations?: LocalCreativeRelation[];
   keywords: string[];
   sources: string[];
   credibility: string;
@@ -1580,6 +1653,21 @@ export interface EntryDetail {
   era?: string;
   asset_usage?: KnowledgeAssetUsage[];
   asset_split?: KnowledgeAssetSplit;
+}
+
+export type LocalRelationType =
+  | 'direct_region'
+  | 'related_location'
+  | 'cultural_influence'
+  | 'contemporary_adaptation'
+  | 'do_not_write_as'
+  | 'same_province'
+  | 'keyword_context';
+
+export interface LocalCreativeRelation {
+  relation_type: LocalRelationType;
+  target: string;
+  description: string;
 }
 
 export interface KnowledgeAssetSplit {
@@ -1594,14 +1682,26 @@ export type KnowledgeDomain =
   | 'era_setting'
   | 'regional_culture'
   | 'folklore_zhiyi'
-  | 'gears_asset';
+  | 'gears_asset'
+  | 'narrative_pattern'
+  | 'character_archetype'
+  | 'conflict_pattern'
+  | 'visual_style_pack'
+  | 'safety_rule'
+  | 'source_pack';
 
 export type KnowledgeEntryRole =
   | 'core_entry'
   | 'setting_pack'
   | 'motif_pack'
   | 'asset_pack'
-  | 'regional_pack';
+  | 'regional_pack'
+  | 'pattern_pack'
+  | 'archetype_pack'
+  | 'conflict_pack'
+  | 'style_pack'
+  | 'rule_pack'
+  | 'source_pack';
 
 export type KnowledgeAssetUsage =
   | 'character_clothing'
@@ -1611,7 +1711,13 @@ export type KnowledgeAssetUsage =
   | 'story_motif'
   | 'dialogue_tone'
   | 'credibility_boundary'
-  | 'gears_delivery';
+  | 'gears_delivery'
+  | 'plot_structure'
+  | 'character_arc'
+  | 'conflict_engine'
+  | 'visual_style'
+  | 'safety_boundary'
+  | 'source_grounding';
 
 // ---------------------------------------------------------------------------
 // System info

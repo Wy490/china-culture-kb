@@ -21,14 +21,26 @@ export type KnowledgeDomain =
   | 'era_setting'
   | 'regional_culture'
   | 'folklore_zhiyi'
-  | 'gears_asset';
+  | 'gears_asset'
+  | 'narrative_pattern'
+  | 'character_archetype'
+  | 'conflict_pattern'
+  | 'visual_style_pack'
+  | 'safety_rule'
+  | 'source_pack';
 
 export type KnowledgeEntryRole =
   | 'core_entry'
   | 'setting_pack'
   | 'motif_pack'
   | 'asset_pack'
-  | 'regional_pack';
+  | 'regional_pack'
+  | 'pattern_pack'
+  | 'archetype_pack'
+  | 'conflict_pack'
+  | 'style_pack'
+  | 'rule_pack'
+  | 'source_pack';
 
 export type KnowledgeAssetUsage =
   | 'character_clothing'
@@ -38,7 +50,13 @@ export type KnowledgeAssetUsage =
   | 'story_motif'
   | 'dialogue_tone'
   | 'credibility_boundary'
-  | 'gears_delivery';
+  | 'gears_delivery'
+  | 'plot_structure'
+  | 'character_arc'
+  | 'conflict_engine'
+  | 'visual_style'
+  | 'safety_boundary'
+  | 'source_grounding';
 
 export interface KnowledgeAssetSplit {
   characters: string[];

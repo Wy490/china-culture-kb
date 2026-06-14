@@ -25,15 +25,20 @@ export function validateGenreStoryQuality(input: {
   const missingRequiredElements = findMissingRequiredElements(input.story);
   const weakBeats = findWeakBeats(input.story, input.blueprint);
   const missingNarrativePatternSignals = findMissingNarrativePatternSignals(input.story, narrativePatternSignals);
+  const outlineDriftIssues = findOutlineDriftIssues(input.story);
+  const adaptationIssues = findAdaptationIssues(input.story);
   const forbiddenPatternsFound = profile.avoid.filter(pattern => storyText(input.story).includes(pattern));
   const repairActions = [
     ...missingRequiredElements.map(item => `补齐类型字段：${item}`),
     ...weakBeats.map(item => `强化节拍：${item}`),
-    ...missingNarrativePatternSignals.map(item => `补强流派质量信号：${item}`),
+    ...outlineDriftIssues.map(item => `回到用户大纲：${item}`),
+    ...adaptationIssues.map(item => `修正改编偏差：${item}`),
+    ...missingNarrativePatternSignals.flatMap(signal => buildSignalRepairActions(signal, input.story)),
     ...forbiddenPatternsFound.map(item => `改写不适配表达：${item}`),
     ...sampleGuidance.quality_signals.map(item => `对齐样片信号：${item}`),
     ...getNarrativePatternRepairActions(input.story.video_type, input.narrativePatternIds ?? []),
     ...profile.repair_guidance,
+    ...buildGearsRepairActions(input.story),
   ].filter((item, index, arr) => arr.indexOf(item) === index);
 
   const genreScore = Math.max(
@@ -42,6 +47,8 @@ export function validateGenreStoryQuality(input: {
       - missingRequiredElements.length * 14
       - weakBeats.length * 8
       - Math.min(missingNarrativePatternSignals.length, 4) * 3
+      - outlineDriftIssues.length * 12
+      - adaptationIssues.length * 10
       - forbiddenPatternsFound.length * 10
       - input.baseReport.issues.length * 5,
   );
@@ -49,6 +56,8 @@ export function validateGenreStoryQuality(input: {
   const genreIssues = [
     ...missingRequiredElements.map(item => `类型字段缺失：${item}`),
     ...weakBeats.map(item => `类型节拍偏弱：${item}`),
+    ...outlineDriftIssues.map(item => `用户大纲偏离：${item}`),
+    ...adaptationIssues.map(item => `改编偏差：${item}`),
     ...missingNarrativePatternSignals.slice(0, 4).map(item => `流派质量信号偏弱：${item}`),
     ...forbiddenPatternsFound.map(item => `出现不适配表达：${item}`),
   ];
@@ -67,6 +76,127 @@ export function validateGenreStoryQuality(input: {
   };
 }
 
+function findAdaptationIssues(story: StoryGenerateResult): string[] {
+  const meta = story as StoryGenerateResult & { _request_meta?: Record<string, unknown> };
+  if (meta._request_meta?.source_material_mode !== 'adapt_user_novel') return [];
+  const source = story.original_user_query ?? '';
+  if (!source.trim()) return ['缺少可对照的用户原作/改编素材。'];
+
+  const analysis = story.adaptation_analysis;
+  const sourceNames = analysis?.core_characters?.length ? analysis.core_characters : extractLikelyNames(source);
+  const text = storyText(story);
+  const issues: string[] = [];
+  const missingNames = sourceNames.filter(name => !text.includes(name)).slice(0, 3);
+  if (missingNames.length > 0) {
+    issues.push(`原作关键人物/称谓未进入改编方案：${missingNames.join('、')}。`);
+  }
+  if (analysis?.plot_beats?.length) {
+    const missingBeats = analysis.plot_beats
+      .filter(beat => !hasEnoughOverlap(text, beat))
+      .slice(0, 2);
+    if (missingBeats.length > 0) {
+      issues.push(`原作主线节拍未被改编承接：${missingBeats.join('；')}。`);
+    }
+  }
+  if (analysis?.must_keep?.length) {
+    const missingMustKeep = analysis.must_keep
+      .filter(item => !hasEnoughOverlap(text, item))
+      .slice(0, 2);
+    if (missingMustKeep.length > 0) {
+      issues.push(`原作保留项未落实：${missingMustKeep.join('；')}。`);
+    }
+  }
+  if (analysis?.visual_setpieces?.length && story.scene_breakdown.every(scene => countCjkAndWordChars(scene.visual_prompt) < 18)) {
+    issues.push('已识别原作可视化场面，但场景画面提示过薄，需把原作场面转成地点、人物、道具、光线和构图。');
+  }
+  if (/(知识库|词条|文化意义|来源条目|主条目)/.test(story.full_text)) {
+    issues.push('正文出现知识库说明腔，应改成视频剧情/旁白，不要暴露内部资料结构。');
+  }
+  if (story.full_text.length > source.length * 1.8 && source.length > 120) {
+    issues.push('改编正文明显扩写过多，需压回原作主线和目标时长。');
+  }
+  return issues;
+}
+
+function hasEnoughOverlap(targetText: string, sourceFragment: string): boolean {
+  const chunks = extractMatchChunks(sourceFragment);
+  if (chunks.length === 0) return true;
+  return chunks.some(chunk => targetText.includes(chunk));
+}
+
+function extractMatchChunks(text: string): string[] {
+  const normalized = normalizeForMatch(text);
+  const chunks = normalized.match(/[\u4e00-\u9fa5]{2,6}/g) ?? [];
+  const blocked = ['保留', '核心', '人物', '称谓', '主线', '事件', '顺序', '原作', '选择', '场景'];
+  return chunks.filter(chunk => !blocked.includes(chunk)).slice(0, 8);
+}
+
+function extractLikelyNames(text: string): string[] {
+  const matches = text.match(/[\u4e00-\u9fa5]{2,4}/g) ?? [];
+  const blocked = ['一个', '这是', '故事', '小说', '改编', '时候', '他们', '我们', '人物', '场景', '后来', '突然', '已经', '因为', '所以'];
+  return [...new Set(matches.filter(item => !blocked.includes(item)).slice(0, 8))];
+}
+
+function buildSignalRepairActions(signal: string, story: StoryGenerateResult): string[] {
+  const targetScene = pickRepairScene(story, signal);
+  const prefix = targetScene ? `在第 ${targetScene.scene_id} 场「${targetScene.title || targetScene.dramatic_function}」` : '在对应场景';
+  if (signal.includes('起点低')) return [`${prefix}补出主角的出身、资源限制或初始处境，不要只写后期成就。`];
+  if (signal.includes('成长有代价')) return [`${prefix}写清继续求学/坚持选择带来的家庭冲突、现实压力或失去。`];
+  if (signal.includes('目标明确')) return [`${prefix}补一句主角当下具体目标，例如“继续求学”“弄清国家为何衰弱”。`];
+  if (signal.includes('精神落点来自选择')) return [`${prefix}把精神主题落到一次可见选择和行动上，不要只用评价句收束。`];
+  if (signal.includes('两难成立') || signal.includes('选择有代价')) return [`${prefix}同时写出两条路的后果，让选择压力可见。`];
+  if (signal.includes('因果链清楚')) return [`${prefix}补上“时代压力 -> 个人观察 -> 行动转变”的因果链。`];
+  if (signal.includes('史实边界明确')) return [`${prefix}标明史实锚点与影视化补足边界。`];
+  if (signal.includes('行动具体')) return [`${prefix}补可拍动作、实物或对白，避免抽象概括。`];
+  return [`${prefix}补强「${signal}」：写成动作、冲突、后果或画面，不要只加标签。`];
+}
+
+function pickRepairScene(story: StoryGenerateResult, signal: string) {
+  if (signal.includes('起点') || signal.includes('目标')) return story.scene_breakdown[0];
+  if (signal.includes('代价') || signal.includes('两难') || signal.includes('因果')) {
+    return story.scene_breakdown[Math.max(1, Math.floor(story.scene_breakdown.length / 2) - 1)] ?? story.scene_breakdown[0];
+  }
+  if (signal.includes('精神') || signal.includes('史实边界')) return story.scene_breakdown[story.scene_breakdown.length - 1];
+  return story.scene_breakdown.find(scene => countCjkAndWordChars(scene.plot) < 35) ?? story.scene_breakdown[0];
+}
+
+function buildGearsRepairActions(story: StoryGenerateResult): string[] {
+  const actions: string[] = [];
+  const thinScenes = story.scene_breakdown.filter(scene => countCjkAndWordChars(scene.plot) < 35 || hasOnlyQuestion(scene.plot));
+  if (thinScenes.length > 0) {
+    actions.push(`补厚 GEARS 剧本单元：第 ${thinScenes.map(scene => scene.scene_id).join('、')} 场 plot 至少写出地点、动作、冲突/发现和情绪变化。`);
+  }
+  const pollutedVisualScenes = story.scene_breakdown.filter(scene => isPollutedVisualPrompt(scene.visual_prompt));
+  if (pollutedVisualScenes.length > 0) {
+    actions.push(`清理 GEARS 场景提示：第 ${pollutedVisualScenes.map(scene => scene.scene_id).join('、')} 场 visual_prompt 只保留可生成画面的空间、人物、道具、光线和构图。`);
+  }
+  return actions;
+}
+
+function findOutlineDriftIssues(story: StoryGenerateResult): string[] {
+  const outline = story.original_user_query ?? '';
+  if (!outline.trim()) return [];
+  const outlineText = normalizeForMatch(outline);
+  const text = normalizeForMatch(storyText(story));
+  const issues: string[] = [];
+
+  if (/(少年|韶山|私塾|求学|长沙|第一师范|新思想)/.test(outlineText)) {
+    const expected = ['韶山', '私塾', '求学', '长沙', '思想'];
+    const matchedCount = expected.filter(word => text.includes(word)).length;
+    if (matchedCount < 3) {
+      issues.push('用户大纲强调少年求学与思想形成，正文没有覆盖韶山、私塾、长沙求学等核心阶段。');
+    }
+    if (/湘江评论|驱张运动|井冈山|延安|北京|天安门/.test(text) && !/湘江评论|驱张运动|井冈山|延安|北京|天安门/.test(outlineText)) {
+      issues.push('正文把后期政治运动或革命地点推成主线，应压缩为结尾历史余响。');
+    }
+  }
+  return issues;
+}
+
+function normalizeForMatch(value: string): string {
+  return value.replace(/[，。；、\s：:（）()—\-]/g, '');
+}
+
 function findMissingNarrativePatternSignals(story: StoryGenerateResult, signals: string[]): string[] {
   const text = storyText(story);
   return signals.filter(signal => !hasSignalText(text, signal));
@@ -81,6 +211,34 @@ function hasSignalText(text: string, signal: string): boolean {
     .filter(item => item.length >= 2);
   if (chunks.length === 0) return text.includes(signal);
   return chunks.some(chunk => text.includes(chunk));
+}
+
+function hasOnlyQuestion(text: string): boolean {
+  const cleaned = text.replace(/\s+/g, '');
+  return cleaned.endsWith('？') || cleaned.endsWith('?')
+    ? !/[。！!；;\n]/.test(cleaned.replace(/[？?]+$/g, ''))
+    : false;
+}
+
+function isPollutedVisualPrompt(value: string): boolean {
+  const text = value.trim();
+  if (!text) return false;
+  return [
+    '关键时刻',
+    '核心画面是',
+    '故事',
+    '质量信号',
+    '流派',
+    '做出选择',
+    '什么身份',
+    '为什么',
+    '资料',
+    '摘要',
+  ].some(word => text.includes(word));
+}
+
+function countCjkAndWordChars(text: string): number {
+  return (text.match(/[\p{Script=Han}A-Za-z0-9]/gu) ?? []).length;
 }
 
 function findMissingRequiredElements(story: StoryGenerateResult): string[] {

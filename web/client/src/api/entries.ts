@@ -33,6 +33,8 @@ export function entriesMultiMatch(params: {
   outline: string
   knowledge_needs: KnowledgeNeed[]
   limit_per_need?: number
+  localized_target_region?: string
+  localization_mode?: 'allow_related_influence' | 'strict_direct_events'
 }) {
   return apiPost<MultiMatchResult>('/entries/multi-match', params)
 }

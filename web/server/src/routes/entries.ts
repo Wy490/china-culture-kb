@@ -43,8 +43,14 @@ entriesRouter.get('/detail', validateQuery(EntryDetailQuerySchema), async (req, 
 // POST /api/entries/multi-match — multi-knowledge matching for story creation
 entriesRouter.post('/multi-match', validateBody(MultiMatchRequestSchema), async (req, res, next) => {
   try {
-    const { outline, knowledge_needs, limit_per_need } = req.body;
-    const result = await multiMatchEntries({ outline, knowledge_needs, limit_per_need: limit_per_need ?? 5 });
+    const { outline, knowledge_needs, limit_per_need, localized_target_region, localization_mode } = req.body;
+    const result = await multiMatchEntries({
+      outline,
+      knowledge_needs,
+      limit_per_need: limit_per_need ?? 5,
+      localized_target_region,
+      localization_mode,
+    });
     res.json(result);
   } catch (err) {
     next(err);

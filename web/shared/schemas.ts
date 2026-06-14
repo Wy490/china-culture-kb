@@ -56,6 +56,22 @@ export const NarrativePatternIdSchema = z.enum([
   'space_walkthrough',
   'poetic_landscape',
   'children_fable',
+  'novel_scene_compression',
+  'character_arc_adaptation',
+  'serial_hook_adaptation',
+  'cinematic_setpiece_adaptation',
+  'theme_preserving_adaptation',
+  'source_fidelity_adaptation',
+  'chapter_slice_adaptation',
+  'dialogue_scene_adaptation',
+  'worldbuilding_grounding',
+  'platform_short_drama_hook',
+  'wuxia_chivalric_epic',
+  'wuxia_lone_blade_mystery',
+  'wuxia_sect_growth',
+  'wuxia_revenge_journey',
+  'wuxia_court_jianghu',
+  'wuxia_romance_honor',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -94,6 +110,8 @@ export const StoryStructureTypeSchema = z.enum([
 export const ReferenceStrengthSchema = z.enum(['light', 'medium', 'strong']);
 export const GenreStrictnessSchema = z.enum(['loose', 'balanced', 'strict']);
 export const StoryGenerationPrioritySchema = z.enum(['balanced', 'plot_first', 'knowledge_first']);
+export const SourceMaterialModeSchema = z.enum(['generate_from_knowledge', 'adapt_user_novel']);
+export const LocalizationModeSchema = z.enum(['allow_related_influence', 'strict_direct_events']);
 
 export const KnowledgeDomainSchema = z.enum([
   'core_china_culture',
@@ -101,6 +119,12 @@ export const KnowledgeDomainSchema = z.enum([
   'regional_culture',
   'folklore_zhiyi',
   'gears_asset',
+  'narrative_pattern',
+  'character_archetype',
+  'conflict_pattern',
+  'visual_style_pack',
+  'safety_rule',
+  'source_pack',
 ]);
 
 export const KnowledgeEntryRoleSchema = z.enum([
@@ -109,6 +133,12 @@ export const KnowledgeEntryRoleSchema = z.enum([
   'motif_pack',
   'asset_pack',
   'regional_pack',
+  'pattern_pack',
+  'archetype_pack',
+  'conflict_pack',
+  'style_pack',
+  'rule_pack',
+  'source_pack',
 ]);
 
 export const KnowledgeAssetUsageSchema = z.enum([
@@ -120,6 +150,12 @@ export const KnowledgeAssetUsageSchema = z.enum([
   'dialogue_tone',
   'credibility_boundary',
   'gears_delivery',
+  'plot_structure',
+  'character_arc',
+  'conflict_engine',
+  'visual_style',
+  'safety_boundary',
+  'source_grounding',
 ]);
 
 export const KnowledgeAssetSplitSchema = z.object({
@@ -230,6 +266,9 @@ export const StoryGenerateRequestSchema = z.object({
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
   auto_repair: z.boolean().optional().default(false),
   story_priority: StoryGenerationPrioritySchema.optional().default('balanced'),
+  source_material_mode: SourceMaterialModeSchema.optional().default('generate_from_knowledge'),
+  localized_target_region: z.string().trim().min(1).max(40).optional(),
+  localization_mode: LocalizationModeSchema.optional().default('allow_related_influence'),
 }).refine(
   (data) => data.entry_name || data.knowledge_pack || data.outline,
   { message: 'At least one of entry_name, knowledge_pack, or outline must be provided', path: ['entry_name'] },
@@ -411,6 +450,7 @@ export const StoryOutlineAnalyzeRequestSchema = z.object({
   outline: z.string().min(1, 'outline cannot be empty'),
   preferred_video_types: VideoTypeSchema.array().optional(),
   target_video_duration: DurationSchema.optional(),
+  localized_target_region: z.string().trim().min(1).max(40).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -421,6 +461,8 @@ export const MultiMatchRequestSchema = z.object({
   outline: z.string().min(1, 'outline cannot be empty'),
   knowledge_needs: z.array(KnowledgeNeedSchema).min(1, 'at least one knowledge_need required'),
   limit_per_need: z.number().int().min(1).max(20).optional().default(5),
+  localized_target_region: z.string().trim().min(1).max(40).optional(),
+  localization_mode: LocalizationModeSchema.optional().default('allow_related_influence'),
 });
 
 // ---------------------------------------------------------------------------

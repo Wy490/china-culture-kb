@@ -239,11 +239,11 @@ function inferAgeRange(text: string): GearsAgeRange {
 }
 
 function inferClothing(text: string): string {
+  if (/(毛泽东|韶山|湘潭|长沙|第一师范|东山|辛亥|五四|新文化|马克思|革命|近代|民国|清末|191\d|192\d)/.test(text)) {
+    return '清末民初至五四前后中国青年固定服装：朴素学生长衫或短褂布鞋，发式按近代青年处理，所有单元保持一致。';
+  }
   if (['周敦颐', '濂溪', '理学', '太极图说', '爱莲说', '宋', '北宋'].some(word => text.includes(word))) {
     return '北宋士人或少年读书人固定服装：素色交领长衫或圆领袍，布履，头发束起，所有单元保持一致。';
-  }
-  if (text.includes('革命') || text.includes('近代') || text.includes('民国')) {
-    return '符合近现代中国历史语境的朴素固定服装，可采用学生装、长衫或早期革命者常服，所有单元保持一致。';
   }
   if (text.includes('唐') || text.includes('宋') || text.includes('明') || text.includes('清') || text.includes('古代')) {
     return '符合对应历史时期与身份的固定服装，所有单元保持一致。';
@@ -269,6 +269,7 @@ function buildSceneAssets(story: StoryGenerateResult): GearsSceneAsset[] {
 
   return [...sceneMap.entries()].map(([name, relatedScenes]) => {
     const rawDescriptionParts = relatedScenes.flatMap(scene => compactStrings([
+      scene.location,
       scene.visual_prompt,
       ...findKnowledgeSnippets(story, [
         name,
@@ -428,6 +429,10 @@ function stripMarkdown(value: string): string {
 
 function normalizeCharacterName(name: string): string {
   return normalizeAssetName(name)
+    .replace(/^[*#>\-\s]+/g, '')
+    .replace(/[：:].*$/g, '')
+    .replace(/（.*?）/g, '')
+    .replace(/(.{2,12})(少年|青年|学生|老师|父亲|母亲|叔叔|阿姨|老奶奶|老爷爷|村民|众人|人群)$/g, '$1')
     .replace(/[，,。！？!?；;：:].*$/g, '')
     .substring(0, 40)
     .trim();
@@ -437,6 +442,8 @@ function isLikelyNonCharacterName(name: string, story: StoryGenerateResult): boo
   const explicitNames = new Set((story.characters ?? []).map(character => normalizeCharacterName(character.name)));
   if (explicitNames.has(name)) return false;
   if (name.length < 2 || name.length > 8) return true;
+  if (/^(韶山|湘潭|长沙|东山|北京|延安|井冈山|天安门|长沙新式学校)/.test(name)) return true;
+  if (/(评论|运动|会议|路线|纲领|事件|行动|计划|政策|学校|地点|场景|章节|开场|高潮|尾声|身份介绍|关键时刻)/.test(name)) return true;
   const blockedWords = [
     '传说',
     '故事',
@@ -454,6 +461,11 @@ function isLikelyNonCharacterName(name: string, story: StoryGenerateResult): boo
     '身份',
     '选择',
     '局面',
+    '韶山少年',
+    '韶山',
+    '湘潭',
+    '长沙',
+    '东山',
   ];
   return blockedWords.some(word => name.includes(word));
 }
@@ -463,6 +475,8 @@ function normalizeSceneName(name: string, scene: StoryScene): string {
   if (text.includes('月岩') || text.includes('天然溶洞') || text.includes('溶洞')) return '月岩洞';
   if (text.includes('濂溪')) return '濂溪畔';
   if (text.includes('南安军衙')) return '南安军衙';
+  const colonMatch = stripMarkdown(name).match(/^[^：:]{2,24}[：:](.+)$/);
+  if (colonMatch?.[1]?.trim()) return normalizeAssetName(colonMatch[1].trim()).substring(0, 80);
   const withoutPrefix = stripMarkdown(name)
     .replace(/^[^：:]{2,24}[：:]/, '')
     .replace(/^(道县有著名|著名|天然)/, '')
@@ -474,7 +488,7 @@ function normalizeSceneName(name: string, scene: StoryScene): string {
 
 function filterSceneDescriptionParts(sceneName: string, parts: string[]): string[] {
   const cleanedParts = parts
-    .map(removePersonalHistoryFromScenePart)
+    .map(part => sanitizeSceneDescriptionPart(removePersonalHistoryFromScenePart(part)))
     .filter(Boolean);
   if (sceneName !== '月岩洞') return cleanedParts;
   const unrelatedCaseWords = ['上官', '催签', '签字', '拒签', '案卷', '卷宗', '文书', '判词', '疑案', '军衙'];
@@ -489,6 +503,38 @@ function removePersonalHistoryFromScenePart(part: string): string {
   const blockedWords = ['幼年丧父', '母亲', '抚养', '主人公经历', '关键选择', '人生', '身份'];
   const kept = clauses.filter(clause => !blockedWords.some(word => clause.includes(word)));
   return kept.join('').trim();
+}
+
+function sanitizeSceneDescriptionPart(part: string): string {
+  return stripMarkdown(part)
+    .replace(/[“”"]/g, '')
+    .replace(/^[^：:]{2,24}[：:]/, '')
+    .split(/(?<=[。！？!?；;])/)
+    .map(clause => clause.trim())
+    .filter(Boolean)
+    .filter(clause => !isSceneDescriptionPollution(clause))
+    .join('')
+    .trim();
+}
+
+function isSceneDescriptionPollution(text: string): boolean {
+  return [
+    '核心画面是',
+    '关键时刻',
+    '做出选择',
+    '故事',
+    '什么身份',
+    '为什么必须',
+    '流派',
+    '质量信号',
+    '建议调整',
+    '匹配度',
+    '资料',
+    '摘要',
+    '韶山少年',
+    '湘江评论与驱张运动',
+    '什么身份',
+  ].some(word => text.includes(word));
 }
 
 function buildSceneDescription(sceneName: string, parts: string[]): string {
@@ -608,15 +654,48 @@ function buildUnitScriptText(scene: StoryScene): string {
   const parts = compactStrings([
     scene.plot,
     scene.key_action && !scene.plot?.includes(scene.key_action) ? scene.key_action : undefined,
+    scene.conflict && !scene.plot?.includes(scene.conflict) ? `冲突：${scene.conflict}` : undefined,
     scene.dialogue_or_narration,
   ]);
   const cleaned = parts
     .map(part => stripMarkdown(part)
       .replace(/^[「『"“”]+$/g, '')
       .replace(/^[」』"“”]+$/g, '')
+      .replace(/\s+/g, ' ')
       .trim())
+    .filter(part => !isScriptPollution(part))
     .filter(Boolean);
-  if (cleaned.length > 0) return cleaned.join('\n');
+  if (cleaned.length > 0) {
+    const text = cleaned.join('\n');
+    if (countCjkAndWordChars(text) >= 18 && !hasOnlyQuestion(text)) return text;
+    return expandThinScriptText(scene, text);
+  }
+  return `【文本待补】场景 ${scene.scene_id} 缺少可供 GEARS 分镜使用的剧本正文。`;
+}
+
+function isScriptPollution(text: string): boolean {
+  const normalized = text.replace(/\s+/g, '');
+  if (/^["“”'‘’]+$/.test(normalized)) return true;
+  return [
+    '什么身份',
+    '为什么必须面对',
+    '关键时刻到来',
+    '核心画面是',
+    '质量信号',
+    '流派质量',
+    '建议调整方向',
+  ].some(word => normalized.includes(word));
+}
+
+function expandThinScriptText(scene: StoryScene, currentText: string): string {
+  const lines = compactStrings([
+    currentText && !hasOnlyQuestion(currentText) ? currentText : undefined,
+    scene.location ? `画面落在${stripMarkdown(scene.location)}，人物进入当下处境。` : undefined,
+    scene.key_action ? `关键动作：${stripMarkdown(scene.key_action)}。` : undefined,
+    scene.conflict ? `冲突压力：${stripMarkdown(scene.conflict)}。` : undefined,
+    scene.dialogue_or_narration && !isScriptPollution(scene.dialogue_or_narration) ? stripMarkdown(scene.dialogue_or_narration) : undefined,
+  ]);
+  if (lines.length > 0) return lines.join('\n');
   return `【文本待补】场景 ${scene.scene_id} 缺少可供 GEARS 分镜使用的剧本正文。`;
 }
 

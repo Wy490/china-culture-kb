@@ -21,6 +21,7 @@ import type {
   SupportedDuration,
   StoryStructureType,
   StoryGenerationPriority,
+  NarrativePatternId,
   PanelCount,
   StoryGenerateRequest,
   StoryGenerateResult,
@@ -85,6 +86,7 @@ import { buildEntryKnowledgeSummary, extractKeywords } from './entry-service.js'
 import { notifyGearsStoryReady } from './gears-webhook-service.js';
 import type { GearsWebhookResult } from './gears-webhook-service.js';
 import { appendDomainPackEntries } from './domain-pack-service.js';
+import { buildAdaptationAnalysis } from './adaptation-analysis-service.js';
 
 // ---------------------------------------------------------------------------
 // Entry type → VideoType routing (entry Chinese type name → recommended VideoType list)
@@ -345,6 +347,30 @@ function buildSingleEntryKnowledgePack(
     }),
     missing_needs: [],
     overall_confidence: 1,
+  };
+}
+
+function buildUserMaterialEntry(request: StoryGenerateRequest): EntryDetail {
+  const sourceText = request.outline ?? request.original_user_query ?? '用户提供的改编素材';
+  const title = sourceText
+    .split(/[\n。！？!?]/)
+    .map(part => part.trim())
+    .find(Boolean)
+    ?.substring(0, 24) || '用户小说改编素材';
+  return {
+    name: `${title}——用户小说改编素材`,
+    province: '用户素材',
+    region: '用户素材',
+    type: '用户小说',
+    summary: sourceText.substring(0, 180),
+    story: sourceText,
+    culturalSignificance: '用户提供的原创或授权故事文本，系统仅做视频化改编与制作拆解。',
+    relatedLocations: [],
+    keywords: extractKeywords(sourceText).slice(0, 12),
+    sources: ['用户提供素材'],
+    credibility: '用户提供',
+    verificationMethod: '用户素材主导，知识库仅作时代、地域和资产校准',
+    unverifiedPoints: [],
   };
 }
 
@@ -692,6 +718,21 @@ function resolveGenerationType(videoType: VideoType): GenerationType {
     || videoType === 'documentary_short' || videoType === 'explainer_video'
     || videoType === 'lecture_video' || videoType === 'education_training') return 'culture_promo';
   return 'scene_short';
+}
+
+function resolveNarrativePatternIds(request: StoryGenerateRequest): NarrativePatternId[] {
+  const selected = request.narrative_pattern_ids ?? [];
+  if (request.source_material_mode !== 'adapt_user_novel') return selected;
+  const adaptationDefaults: NarrativePatternId[] = [
+    'source_fidelity_adaptation',
+    'novel_scene_compression',
+    request.video_type === 'ai_comic_drama' ? 'chapter_slice_adaptation' : 'theme_preserving_adaptation',
+    'character_arc_adaptation',
+    request.video_type === 'ai_comic_drama' ? 'serial_hook_adaptation' : 'theme_preserving_adaptation',
+  ];
+  return [...selected, ...adaptationDefaults]
+    .filter((item, index, arr) => arr.indexOf(item) === index)
+    .slice(0, 6);
 }
 
 function storyPriorityInstruction(priority: StoryGenerationPriority | undefined): string {
@@ -1307,6 +1348,9 @@ export async function generateAndStoreStory(
       return fail(ErrorCodes.ENTRY_NOT_FOUND, `Entry "${primaryEntryName}" not found`);
     }
     entry = convertFullEntryDetail(mcpDetail);
+  } else if (request.source_material_mode === 'adapt_user_novel' && (outline || original_user_query)) {
+    entry = buildUserMaterialEntry(request);
+    primaryEntryName = entry.name;
   } else {
     return fail(ErrorCodes.VALIDATION_ERROR, 'Either entry_name or knowledge_pack with primary_entries must be provided');
   }
@@ -1318,6 +1362,10 @@ export async function generateAndStoreStory(
     });
   }
   const storyStructure = resolveStoryStructure(request, videoType, entry.type);
+  const narrativePatternIds = resolveNarrativePatternIds(request);
+  const adaptationAnalysis = request.source_material_mode === 'adapt_user_novel'
+    ? buildAdaptationAnalysis(original_user_query ?? outline)
+    : undefined;
 
   const selectedModelProfile = resolveModelProfile(request.model_profile_id);
 
@@ -1332,7 +1380,7 @@ export async function generateAndStoreStory(
     targetDuration,
     centralEvent,
     knowledgePack: knowledgePackToUse,
-    narrativePatternIds: request.narrative_pattern_ids,
+    narrativePatternIds,
   });
 
   // --- Generate story content ---
@@ -1410,7 +1458,10 @@ export async function generateAndStoreStory(
   // --- Step 2: Try external model adapter ---
   const promptPackage = buildStoryGenerationPromptPackage({
     entry,
-    request,
+    request: {
+      ...request,
+      narrative_pattern_ids: narrativePatternIds,
+    },
     videoType,
     presentationStyle,
     storyStructure,
@@ -1420,6 +1471,7 @@ export async function generateAndStoreStory(
     knowledgePack: knowledgePackToUse,
     memoryMosaicSeed,
     storyBlueprint: preliminaryStoryBlueprint,
+    adaptationAnalysis,
   });
 
   const adapterResult = await generateStoryWithAdapter({
@@ -1549,6 +1601,7 @@ export async function generateAndStoreStory(
     memory_mosaic_seed: memoryMosaicSeed,
     // Knowledge pack for multi-entry traceability
     knowledge_pack: knowledgePackToUse,
+    adaptation_analysis: adaptationAnalysis,
     supplement_tasks: supplementTasks,
     // Quality report
     quality_report: baseQualityReport,
@@ -1580,14 +1633,18 @@ export async function generateAndStoreStory(
       genre_strictness: request.genre_strictness ?? 'balanced',
       auto_repair: request.auto_repair ?? false,
       story_priority: request.story_priority ?? 'balanced',
-      narrative_pattern_ids: request.narrative_pattern_ids ?? [],
+      narrative_pattern_ids: narrativePatternIds,
+      source_material_mode: request.source_material_mode ?? 'generate_from_knowledge',
+      adaptation_analysis: adaptationAnalysis,
+      localized_target_region: request.localized_target_region ?? null,
+      localization_mode: request.localization_mode ?? 'allow_related_influence',
     },
   };
   storyData.quality_report = validateGenreStoryQuality({
     story: storyData,
     baseReport: baseQualityReport,
     blueprint: finalStoryBlueprint,
-    narrativePatternIds: request.narrative_pattern_ids,
+    narrativePatternIds,
   });
   const repairTrace: StoryRepairTrace[] = [];
   if (shouldAttemptStoryRepair({
@@ -1653,7 +1710,7 @@ export async function generateAndStoreStory(
           story: storyData,
           baseReport: repairedBaseQualityReport,
           blueprint: finalStoryBlueprint,
-          narrativePatternIds: request.narrative_pattern_ids,
+          narrativePatternIds,
         });
         trace.after_genre_score = storyData.quality_report.genre_score;
         if ((trace.after_genre_score ?? 0) >= (beforeScore ?? 0)) {
@@ -1673,7 +1730,7 @@ export async function generateAndStoreStory(
             story: storyData,
             baseReport: baseQualityReport,
             blueprint: finalStoryBlueprint,
-            narrativePatternIds: request.narrative_pattern_ids,
+            narrativePatternIds,
           });
           trace.reason = 'repair_score_not_improved';
         }

@@ -69,8 +69,52 @@ Agent 生成故事时，应把知识转化为人物选择、场景资产、时�
 
 常用取值：
 
-- `knowledge_domain`：`core_china_culture`、`era_setting`、`regional_culture`、`folklore_zhiyi`、`gears_asset`
-- `entry_role`：`core_entry`、`setting_pack`、`motif_pack`、`asset_pack`、`regional_pack`
+- `knowledge_domain`：`core_china_culture`、`era_setting`、`regional_culture`、`folklore_zhiyi`、`gears_asset`、`narrative_pattern`、`character_archetype`、`conflict_pattern`、`visual_style_pack`、`safety_rule`、`source_pack`
+- `entry_role`：`core_entry`、`setting_pack`、`motif_pack`、`asset_pack`、`regional_pack`、`pattern_pack`、`archetype_pack`、`conflict_pack`、`style_pack`、`rule_pack`、`source_pack`
+
+知识域 v2 推荐用途：
+
+- `narrative_pattern`：叙事机制包，只写结构、节奏、主角引擎、反转方式，不写具体作品情节。
+- `character_archetype`：人物原型包，如清官、少年士人、匠人、见证者、讲述人。
+- `conflict_pattern`：冲突机制包，如冤案、师承争议、地方传说与史实冲突、家国抉择。
+- `visual_style_pack`：视觉风格包，如宋代书院、水墨志异、AI 漫画分镜、展陈式叙事。
+- `safety_rule`：生成红线包，如不可把民间传说写成史实、不可把纪念空间写成本人亲历。
+- `source_pack`：来源说明包，如某地方志、某专著、某展陈体系的可用边界。
+
+新增 `asset_usage` 可用值：
+
+- `plot_structure`：叙事结构。
+- `character_arc`：人物成长/变化弧。
+- `conflict_engine`：冲突推进机制。
+- `visual_style`：视觉风格约束。
+- `safety_boundary`：安全/可信度边界。
+- `source_grounding`：来源锚定和引用边界。
+
+### 2.1 可编辑 Domain Pack
+
+通用时代设定包、地域文化包、志异母题包和 GEARS 资产包应优先写入：
+
+```text
+data/domain-packs/china-culture.json
+```
+
+不要再直接改服务代码中的内置数组。Domain Pack 条目必须包含：
+
+- `entry_name`：知识包名称。
+- `domain`：对应 `knowledge_domain`。
+- `role`：对应 `entry_role`。
+- `type`：展示类型，如 `朝代设定`、`志异母题`、`GEARS资产模板`。
+- `region`：通用或适用地域。
+- `summary`：生成时给模型看的压缩说明。
+- `keywords`：知识包关键词。
+- `asset_usage`：生成用途。
+- `trigger_words`：自动注入时的触发词。
+
+原则：
+
+- Domain Pack 是“生成规则/资产边界/母题机制”，不是具体人物传记。
+- 如果是具体人物、地点或事件，优先写入省份条目；如果是通用设定、母题或供稿边界，优先写入 Domain Pack。
+- 服务端会读取该 JSON 并自动注入到 `knowledge_pack`；JSON 缺失或格式错误时才使用代码兜底。
 
 ## 3. 资产拆分
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildStoryGenerationPromptPackage } from '../services/story-generation-prompt.js';
 import { buildStoryBlueprint } from '../services/story-blueprint-service.js';
+import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
 import type { EntryDetail, KnowledgePack, StoryGenerateRequest, VideoType } from '@shared/types.js';
 
 function makeEntry(): EntryDetail {
@@ -13,6 +14,23 @@ function makeEntry(): EntryDetail {
     story: '道县月岩悟道传说为民间传说，需标明可信度边界。',
     culturalSignificance: '濂溪学脉影响后世。',
     relatedLocations: [{ name: '月岩洞', description: '道县天然岩洞' }],
+    localCreativeRelations: [
+      {
+        relation_type: 'related_location',
+        target: '长沙岳麓书院',
+        description: '可作为长沙讲述周敦颐思想的空间入口，重点在后世书院教育和湖湘学脉阐释。',
+      },
+      {
+        relation_type: 'cultural_influence',
+        target: '长沙',
+        description: '周敦颐思想可通过岳麓书院、湖湘文教传统和廉洁教育进入长沙叙事。',
+      },
+      {
+        relation_type: 'do_not_write_as',
+        target: '长沙',
+        description: '不得写成周敦颐在长沙悟道、讲学、写《太极图说》或《爱莲说》。',
+      },
+    ],
     keywords: ['周敦颐', '北宋', '月岩洞', '理学'],
     sources: ['测试来源'],
     credibility: '待核实',
@@ -264,5 +282,89 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('无限流任务生存（用户强化');
     expect(pkg.user_prompt).toContain('凡人流成长（用户强化');
     expect(pkg.output_contract.should_respect.join('\n')).toContain('无限流任务生存');
+  });
+
+  it('uses an adaptation protocol when the user provides a novel source', () => {
+    const request: StoryGenerateRequest = {
+      entry_name: '周敦颐——理学开山鼻祖',
+      video_type: 'ai_comic_drama',
+      original_user_query: '少年阿青在书院门口等雨停，师友误会他偷走旧书，阿青决定留下来查清真相。',
+      source_material_mode: 'adapt_user_novel',
+      narrative_pattern_ids: ['novel_scene_compression', 'character_arc_adaptation'],
+    };
+
+    const pkg = buildStoryGenerationPromptPackage({
+      entry: makeEntry(),
+      request,
+      videoType: 'ai_comic_drama',
+      presentationStyle: 'ai_comic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '1分钟',
+      tone: '',
+      knowledgePack: makeKnowledgePack(),
+    });
+
+    expect(pkg.context.source_material_mode).toBe('adapt_user_novel');
+    expect(pkg.system_prompt).toContain('已有小说/故事文本的视频化改编');
+    expect(pkg.system_prompt).toContain('不是重新生成一篇小说');
+    expect(pkg.user_prompt).toContain('用户原作/改编素材');
+    expect(pkg.user_prompt).toContain('不要续写、另写或重写成新小说');
+    expect(pkg.output_contract.should_respect).toContain('改编用户已有小说：保留原作主线、人物关系、因果顺序和主题，不另写新故事');
+  });
+
+  it('adds client-localized creative boundaries to the prompt', () => {
+    const request: StoryGenerateRequest = {
+      entry_name: '周敦颐——理学开山鼻祖',
+      video_type: 'character_story',
+      original_user_query: '甲方想做周敦颐在长沙相关的思想文化故事',
+      localized_target_region: '长沙',
+      localization_mode: 'allow_related_influence',
+    };
+
+    const pkg = buildStoryGenerationPromptPackage({
+      entry: makeEntry(),
+      request,
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '1分钟',
+      tone: '',
+      knowledgePack: makeKnowledgePack(),
+    });
+
+    expect(pkg.context.localized_target_region).toBe('长沙');
+    expect(pkg.user_prompt).toContain('甲方指定地域：长沙');
+    expect(pkg.user_prompt).toContain('=== 地方化创作关系 ===');
+    expect(pkg.user_prompt).toContain('思想文化影响｜长沙');
+    expect(pkg.user_prompt).toContain('不可写成｜长沙');
+    expect(pkg.user_prompt).toContain('不得写成周敦颐在长沙悟道、讲学');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('围绕甲方指定地域「长沙」创作');
+  });
+
+  it('passes user novel adaptation analysis into the prompt contract', () => {
+    const source = '少年阿青在书院门口等雨停，师友误会他偷走旧书。阿青决定留下来查清真相。夜里，阿青举着油灯穿过藏书楼。';
+    const request: StoryGenerateRequest = {
+      video_type: 'ai_comic_drama',
+      source_material_mode: 'adapt_user_novel',
+      original_user_query: source,
+      narrative_pattern_ids: ['novel_scene_compression'],
+    };
+
+    const pkg = buildStoryGenerationPromptPackage({
+      entry: makeEntry(),
+      request,
+      videoType: 'ai_comic_drama',
+      presentationStyle: 'ai_comic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '1分钟',
+      tone: '',
+      knowledgePack: makeKnowledgePack(),
+      adaptationAnalysis: buildAdaptationAnalysis(source),
+    });
+
+    expect(pkg.adaptation_analysis?.core_characters.some(item => item.includes('阿青'))).toBe(true);
+    expect(pkg.user_prompt).toContain('=== 原作改编前置分析 ===');
+    expect(pkg.user_prompt).toContain('必须保留');
+    expect(pkg.output_contract.should_respect.some(item => item.includes('执行原作保留项'))).toBe(true);
   });
 });

@@ -88,6 +88,7 @@ export interface SearchableEntry extends EntrySearchResult {
   story?: string;
   culturalSignificance?: string;
   relatedLocationText?: string;
+  localCreativeRelationText?: string;
   sourcesText?: string;
   verificationText?: string;
   unverifiedText?: string;
@@ -182,6 +183,7 @@ export async function collectSearchableEntries(): Promise<SearchableEntry[]> {
         story: detail?.story ?? '',
         culturalSignificance: detail?.culturalSignificance ?? '',
         relatedLocationText: detail?.relatedLocations.map(location => `${location.name} ${location.description}`).join(' ') ?? '',
+        localCreativeRelationText: detail?.localCreativeRelations.map(relation => `${localRelationLabel(relation.relation_type)} ${relation.target} ${relation.description}`).join(' ') ?? '',
         sourcesText: detail?.sources.join(' ') ?? '',
         verificationText: detail?.verificationMethod ?? '',
         unverifiedText: detail?.unverifiedPoints.join(' ') ?? '',
@@ -213,6 +215,7 @@ export function buildEntryMatchedSnippets(
   const candidates = uniqueTextParts([
     ...extractRelevantSnippets(entry.story ?? '', queryKeywords, 2, allowFallback),
     ...extractRelevantSnippets(entry.relatedLocationText ?? '', queryKeywords, 1, allowFallback).map(snippet => `相关地点：${snippet}`),
+    ...extractRelevantSnippets(entry.localCreativeRelationText ?? '', queryKeywords, 2, allowFallback).map(snippet => `地方化关系：${snippet}`),
     ...extractRelevantSnippets(entry.culturalSignificance ?? '', queryKeywords, 1, allowFallback),
     ...extractRelevantSnippets(entry.keywords.join('、'), queryKeywords, 1, false).map(snippet => `关键词：${snippet}`),
     ...extractRelevantSnippets(entry.verificationText ?? '', queryKeywords, 1, false).map(snippet => `核验：${snippet}`),
@@ -457,6 +460,8 @@ export function computeMatchScore(
       if ((entry.story ?? '').includes(kw)) { hit = true; weight = Math.max(weight, 0.55); }
       // Check related locations — useful for buildings, temples, scenic spots and place search
       if ((entry.relatedLocationText ?? '').includes(kw)) { hit = true; weight = Math.max(weight, 0.65); }
+      // Check local creative relations — critical for client-directed local relevance
+      if ((entry.localCreativeRelationText ?? '').includes(kw)) { hit = true; weight = Math.max(weight, 0.75); }
       // Check cultural significance
       if ((entry.culturalSignificance ?? '').includes(kw)) { hit = true; weight = Math.max(weight, 0.35); }
       // Check keywords array
@@ -491,6 +496,8 @@ export function computeMatchScore(
   if (queryProvince && entry.province === queryProvince) {
     score += 0.1;
   }
+
+  score += computeLocalizedTargetBoost(query, entry);
 
   // 5. Type weighting
   if (preferredType && entry.type === preferredType) {
@@ -528,6 +535,7 @@ function buildMatchReason(query: string, entry: SearchableEntry, score: number):
     || entry.summary.includes(kw)
     || (entry.story ?? '').includes(kw)
     || (entry.relatedLocationText ?? '').includes(kw)
+    || (entry.localCreativeRelationText ?? '').includes(kw)
     || (entry.culturalSignificance ?? '').includes(kw)
     || (entry.assetSplitText ?? '').includes(kw)
     || entry.keywords.some(ekw => ekw.includes(kw) || kw.includes(ekw))
@@ -541,6 +549,9 @@ function buildMatchReason(query: string, entry: SearchableEntry, score: number):
   }
   if (queryKws.some(kw => (entry.relatedLocationText ?? '').includes(kw))) {
     reasons.push('相关地点命中');
+  }
+  if (queryKws.some(kw => (entry.localCreativeRelationText ?? '').includes(kw))) {
+    reasons.push('地方化创作关系命中');
   }
 
   // Province match
@@ -571,4 +582,47 @@ function assetSplitToText(assetSplit: SearchableEntry['asset_split']): string {
     ...assetSplit.character_props,
     ...assetSplit.scene_props,
   ].join(' ');
+}
+
+function computeLocalizedTargetBoost(query: string, entry: SearchableEntry): number {
+  const target = extractLocalizedTargetRegion(query);
+  if (!target) return 0;
+
+  let boost = 0;
+  if (entry.region.includes(target)) boost += 0.18;
+  if ((entry.relatedLocationText ?? '').includes(target)) boost += 0.16;
+  if ((entry.localCreativeRelationText ?? '').includes(target)) boost += 0.22;
+  if ((entry.culturalSignificance ?? '').includes(target)) boost += 0.1;
+
+  if (/严格|直接事件|亲历|发生/.test(query) && !entry.region.includes(target) && !(entry.localCreativeRelationText ?? '').includes(`直接事件 ${target}`)) {
+    boost -= 0.08;
+  }
+
+  return boost;
+}
+
+function extractLocalizedTargetRegion(query: string): string | null {
+  const patterns = [
+    /甲方指定地域[:：]\s*([^\s，,。；;]+)/,
+    /本地化目标[:：]\s*([^\s，,。；;]+)/,
+    /当地范围[:：]\s*([^\s，,。；;]+)/,
+  ];
+  for (const pattern of patterns) {
+    const matched = query.match(pattern)?.[1]?.trim();
+    if (matched) return matched;
+  }
+  return null;
+}
+
+function localRelationLabel(type: string): string {
+  const label: Record<string, string> = {
+    direct_region: '直接事件',
+    related_location: '相关地点',
+    cultural_influence: '思想文化影响',
+    contemporary_adaptation: '当代转化',
+    do_not_write_as: '不可写成',
+    same_province: '同省背景',
+    keyword_context: '关键词语境',
+  };
+  return label[type] ?? type;
 }

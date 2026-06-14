@@ -1,0 +1,87 @@
+{
+  "domain_id": "china_culture",
+  "version": "1.0.0",
+  "description": "中国传统文化故事生成的可编辑领域知识包。用于自动补足时代设定、地域背景、志异母题和 GEARS 资产边界。",
+  "entries": [
+    {
+      "entry_name": "宋代士人设定包——服饰器物与称谓",
+      "domain": "era_setting",
+      "role": "setting_pack",
+      "type": "朝代设定",
+      "era": "宋",
+      "region": "通用",
+      "summary": "用于北宋/南宋人物故事的时代设定：士人或少年读书人可用素色交领长衫、圆领袍、布履、束发；常见随身物为书卷、手稿、毛笔、印章；台词气质应克制、含蓄，避免现代口语和现代器物。",
+      "keywords": ["宋", "北宋", "南宋", "士人", "读书人", "书卷", "毛笔", "圆领袍", "交领长衫"],
+      "asset_usage": ["character_clothing", "character_props", "dialogue_tone", "credibility_boundary"],
+      "trigger_words": ["宋", "北宋", "南宋", "周敦颐", "濂溪", "理学", "书院", "太极图说", "爱莲说"]
+    },
+    {
+      "entry_name": "唐代传奇志异设定包——书生龙女与异界入口",
+      "domain": "era_setting",
+      "role": "setting_pack",
+      "type": "朝代设定",
+      "era": "唐",
+      "region": "通用",
+      "summary": "用于唐代传奇、志异和民间传说：人物服饰宜采用唐代士子、仕女、行旅者的稳定装束；故事常见书信、井口、洞府、水府、寺观等异界入口，需标明文学传说与史实边界。",
+      "keywords": ["唐", "唐传奇", "书生", "龙女", "水府", "洞府", "书信", "异界入口"],
+      "asset_usage": ["character_clothing", "character_props", "scene_space", "story_motif", "credibility_boundary"],
+      "trigger_words": ["唐", "柳毅", "龙女", "传奇", "水府", "洞庭", "异界"]
+    },
+    {
+      "entry_name": "志异母题包——狐鬼神怪与禁忌反转",
+      "domain": "folklore_zhiyi",
+      "role": "motif_pack",
+      "type": "志异母题",
+      "region": "通用",
+      "summary": "用于民间传说、鬼怪故事和志怪叙事：常见母题包括狐仙报恩、冤魂申诉、异梦显灵、山洞悟道、禁忌破坏、书生遇异类。供稿时必须区分传说/文学志怪/史实，不把灵异情节写成可证史实。",
+      "keywords": ["志异", "狐仙", "鬼怪", "冤魂", "异梦", "显灵", "禁忌", "报恩", "山洞悟道"],
+      "asset_usage": ["story_motif", "credibility_boundary", "dialogue_tone"],
+      "trigger_words": ["志异", "鬼", "狐", "狐仙", "妖", "怪", "冤魂", "显灵", "托梦", "传说", "神话", "灵", "洞穴悟道"]
+    },
+    {
+      "entry_name": "GEARS场景资产包——洞穴、书院与衙署边界",
+      "domain": "gears_asset",
+      "role": "asset_pack",
+      "type": "GEARS资产模板",
+      "region": "通用",
+      "summary": "用于供稿包资产边界：洞穴、书院、衙署、祠庙是场景资产；洞口、岩壁、石阶、书桌、案卷、油灯等是场景道具/陈设；书卷、手稿、印章、伞等可作为人物随身/标志性物件。不同事件的场景道具不得串台。",
+      "keywords": ["GEARS", "场景资产", "随身道具", "场景道具", "洞穴", "书院", "衙署", "资产边界"],
+      "asset_usage": ["character_props", "scene_space", "scene_props", "gears_delivery"],
+      "trigger_words": ["GEARS", "供稿", "分镜", "洞", "月岩", "书院", "军衙", "衙署", "案卷", "判词", "道具", "场景"]
+    },
+    {
+      "entry_name": "月岩洞场景资产包——天然岩洞与读书传说",
+      "domain": "gears_asset",
+      "role": "asset_pack",
+      "type": "GEARS资产模板",
+      "era": "宋",
+      "region": "湖南→永州→道县",
+      "summary": "月岩洞应作为场景资产处理，描述重点是天然岩洞空间、洞口、岩壁、石质地面与洞内读书悟道氛围；书卷或手稿可作为周敦颐随身物，案卷、判词等衙署案件物件不应混入月岩悟道场景。",
+      "keywords": ["月岩洞", "月岩悟道", "道县", "天然岩洞", "洞口", "岩壁", "石质地面", "读书悟道"],
+      "asset_usage": ["scene_space", "scene_props", "character_props", "gears_delivery", "credibility_boundary"],
+      "trigger_words": ["月岩", "月岩洞", "月岩悟道", "道县", "周敦颐", "天然溶洞", "读书悟道"]
+    },
+    {
+      "entry_name": "湖南地域传说包——洞庭、永州与湘楚叙事",
+      "domain": "regional_culture",
+      "role": "regional_pack",
+      "type": "地域文化包",
+      "region": "湖南",
+      "summary": "用于湖南地域故事的辅助背景：洞庭湖、永州、道县、汨罗、湘妃竹、柳毅传书等常以地方传说、文学志怪、历史人物相互叠加出现，生成时要保留地域线索并标明传说层级。",
+      "keywords": ["湖南", "永州", "道县", "洞庭湖", "汨罗", "湘楚", "地方传说", "柳毅传书"],
+      "asset_usage": ["story_motif", "scene_space", "credibility_boundary"],
+      "trigger_words": ["湖南", "永州", "道县", "洞庭", "汨罗", "湘楚", "岳阳", "君山"]
+    },
+    {
+      "entry_name": "历史因果讲述模式——人物选择、制度处境与后世影响",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack",
+      "type": "叙事模式",
+      "region": "通用",
+      "summary": "用于历史人物、地方掌故和书院学脉故事：先交代人物所处制度与地域处境，再呈现关键选择或冲突，随后说明即时结果、后世阐释和当代转化。适合把人物亲历、地方传播和思想影响分层讲清，避免把后世影响误写成本人现场行为。",
+      "keywords": ["历史因果", "人物选择", "制度处境", "后世影响", "当代转化", "地方化叙事"],
+      "asset_usage": ["plot_structure", "conflict_engine", "character_arc", "safety_boundary"],
+      "trigger_words": ["人物故事", "历史人物", "地方化", "思想影响", "后世影响", "学脉", "书院", "传承", "当代转化"]
+    }
+  ]
+}

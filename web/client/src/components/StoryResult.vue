@@ -57,6 +57,50 @@
       </div>
     </section>
 
+    <section v-if="result.adaptation_analysis" class="story-result__section">
+      <h3 class="story-result__section-title">原作改编分析</h3>
+      <div class="story-result__adaptation">
+        <p><strong>原作概括:</strong> {{ result.adaptation_analysis.source_summary }}</p>
+        <p><strong>原作长度:</strong> {{ result.adaptation_analysis.source_length }} 字</p>
+        <div v-if="result.adaptation_analysis.core_characters.length > 0" class="story-result__field-list">
+          <strong>核心人物/称谓</strong>
+          <div class="story-result__tag-row">
+            <span v-for="item in result.adaptation_analysis.core_characters" :key="item" class="story-result__source-tag">{{ item }}</span>
+          </div>
+        </div>
+        <div v-if="result.adaptation_analysis.plot_beats.length > 0" class="story-result__field-list">
+          <strong>原作主线节拍</strong>
+          <ol>
+            <li v-for="item in result.adaptation_analysis.plot_beats" :key="item">{{ item }}</li>
+          </ol>
+        </div>
+        <div v-if="result.adaptation_analysis.must_keep.length > 0" class="story-result__field-list">
+          <strong>必须保留</strong>
+          <ul>
+            <li v-for="item in result.adaptation_analysis.must_keep" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+        <div v-if="result.adaptation_analysis.visual_setpieces.length > 0" class="story-result__field-list">
+          <strong>优先转成镜头的场面</strong>
+          <ul>
+            <li v-for="item in result.adaptation_analysis.visual_setpieces" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+        <div v-if="result.adaptation_analysis.compressible_parts.length > 0" class="story-result__field-list">
+          <strong>可压缩/合并</strong>
+          <ul>
+            <li v-for="item in result.adaptation_analysis.compressible_parts" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+        <div v-if="result.adaptation_analysis.adaptation_risks.length > 0" class="story-result__field-list story-result__field-list--warning">
+          <strong>改编风险</strong>
+          <ul>
+            <li v-for="item in result.adaptation_analysis.adaptation_risks" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
     <section v-if="result.supplement_tasks && result.supplement_tasks.length > 0" class="story-result__section">
       <h3 class="story-result__section-title">资料补充任务</h3>
       <div class="story-result__supplement-list">
@@ -432,6 +476,12 @@ const KNOWLEDGE_DOMAIN_LABELS: Record<KnowledgeDomain, string> = {
   regional_culture: '地域文化',
   folklore_zhiyi: '志异传说',
   gears_asset: 'GEARS资产',
+  narrative_pattern: '叙事模式',
+  character_archetype: '人物原型',
+  conflict_pattern: '冲突模式',
+  visual_style_pack: '视觉风格',
+  safety_rule: '安全规则',
+  source_pack: '来源包',
 }
 
 const ASSET_USAGE_LABELS: Record<KnowledgeAssetUsage, string> = {
@@ -443,6 +493,12 @@ const ASSET_USAGE_LABELS: Record<KnowledgeAssetUsage, string> = {
   dialogue_tone: '语气',
   credibility_boundary: '可信度',
   gears_delivery: '供稿',
+  plot_structure: '剧情结构',
+  character_arc: '人物弧线',
+  conflict_engine: '冲突机制',
+  visual_style: '视觉风格',
+  safety_boundary: '安全边界',
+  source_grounding: '来源依据',
 }
 
 function knowledgeDomainLabel(domain: KnowledgeDomain) {
@@ -705,6 +761,25 @@ function showCopyMessage(msg: string) {
   color: #34495e;
   font-size: 14px;
   line-height: 1.5;
+}
+.story-result__field-list--warning {
+  border-color: #f1c40f;
+  background: #fffaf0;
+}
+.story-result__adaptation {
+  display: grid;
+  gap: 8px;
+}
+.story-result__adaptation p {
+  margin: 0;
+  color: #34495e;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.story-result__tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 /* Constraints */

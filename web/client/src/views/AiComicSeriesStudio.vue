@@ -88,7 +88,15 @@
             />
             <span>
               <strong>{{ pattern.label }}</strong>
-              <small>{{ pattern.narrative_engine }}</small>
+              <small>{{ pattern.user_facing_summary || pattern.narrative_engine }}</small>
+              <small v-if="pattern.subgenre_tags?.length" class="series-studio__pattern-tags">
+                <em v-for="tag in pattern.subgenre_tags.slice(0, 4)" :key="tag">{{ tag }}</em>
+              </small>
+              <small v-if="pattern.style_axes?.length" class="series-studio__pattern-axes">
+                <em v-for="axis in pattern.style_axes.slice(0, 3)" :key="axis.axis_id">
+                  {{ axis.label }} {{ styleAxisValueLabel(axis.value) }}
+                </em>
+              </small>
             </span>
           </label>
         </div>
@@ -931,6 +939,12 @@ const activeNarrativePatternLabels = computed(() => {
     .map(pattern => pattern.label)
 })
 
+function styleAxisValueLabel(value: 'low' | 'medium' | 'high') {
+  if (value === 'high') return '高'
+  if (value === 'low') return '低'
+  return '中'
+}
+
 onMounted(async () => {
   const patternRes = await getNarrativePatternCatalog()
   if (patternRes.ok && patternRes.data) {
@@ -1514,6 +1528,28 @@ function episodeProjectPath(episodeNo: number): string {
   color: #5d6d7e;
   font-size: 12px;
   line-height: 1.35;
+}
+.series-studio__pattern-tags,
+.series-studio__pattern-axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.series-studio__pattern-tags em,
+.series-studio__pattern-axes em {
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 2px 5px;
+  border: 1px solid #d7dde2;
+  border-radius: 4px;
+  color: #455a64;
+  background: #f8fafb;
+}
+.series-studio__pattern-axes em {
+  color: #6c3483;
+  background: #fbf6ff;
+  border-color: #ead7f3;
 }
 
 .series-studio__input,

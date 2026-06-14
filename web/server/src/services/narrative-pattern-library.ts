@@ -6,8 +6,15 @@ import type {
   NarrativePattern,
   NarrativePatternCatalog,
   NarrativePatternId,
+  NarrativeStyleAxis,
+  NarrativeStyleAxisId,
+  NarrativeStyleAxisValue,
   VideoType,
 } from '@shared/types.js';
+
+function axis(axis_id: NarrativeStyleAxisId, label: string, value: NarrativeStyleAxisValue, note: string): NarrativeStyleAxis {
+  return { axis_id, label, value, note };
+}
 
 const PATTERNS: Record<NarrativePatternId, NarrativePattern> = {
   mortal_growth: {
@@ -262,24 +269,358 @@ const PATTERNS: Record<NarrativePatternId, NarrativePattern> = {
     quality_signals: ['语言简单', '因果清楚', '冲突温和', '结尾正向'],
     avoid: ['成人化权谋', '恐怖暴力细节', '价值说教过重'],
   },
+  novel_scene_compression: {
+    pattern_id: 'novel_scene_compression',
+    label: '小说场景压缩',
+    subject_family: 'adaptation',
+    subgenre_tags: ['长篇压缩', '场景功能', '视频化改编'],
+    user_facing_summary: '适合把长章节压成 3-6 个可拍场景，保留主线、合并旁枝。',
+    style_axes: [
+      axis('fidelity', '保真度', 'high', '保留原作主线和关键转折。'),
+      axis('hook_intensity', '钩子强度', 'medium', '压缩后仍要有清楚的场景推进。'),
+    ],
+    reference_archetypes: ['长篇小说影视化改编', '章节浓缩式短剧改编'],
+    narrative_engine: '保留原作因果链，把长段叙述压缩成少量可拍场景和明确场次功能。',
+    protagonist_engine: '主角目标、关系和选择沿用原作，不重造人物动机。',
+    conflict_engine: '从原作章节中提炼外部阻力、关系冲突和内心抉择，合并重复信息。',
+    pacing_pattern: ['原作主线识别', '关键场景筛选', '合并过渡', '保留转折', '视听化落点'],
+    scene_recipes: ['把心理描写转成动作/道具/表情', '把长背景压成一句旁白+一个画面', '每段只承载一个剧情功能'],
+    quality_signals: ['保留原作主线', '删改理由清楚', '场景功能明确', '不新增抢戏支线'],
+    avoid: ['把原作重写成新故事', '新增核心人物替代原主角', '只摘要不分镜'],
+  },
+  character_arc_adaptation: {
+    pattern_id: 'character_arc_adaptation',
+    label: '角色弧线改编',
+    subject_family: 'adaptation',
+    subgenre_tags: ['人物变化', '关系压力', '选择代价'],
+    user_facing_summary: '适合突出主角从犹豫、误判到做出选择的变化。',
+    style_axes: [
+      axis('fidelity', '保真度', 'high', '保留原作人物核心性格和变化方向。'),
+      axis('romance_density', '关系浓度', 'medium', '关系压力必须推动人物变化。'),
+    ],
+    reference_archetypes: ['人物弧光影视改编', '成长线短剧化'],
+    narrative_engine: '围绕原作人物的状态变化组织场景，让每场推动关系、认知或选择变化。',
+    protagonist_engine: '保留人物起点、欲望、弱点和最终变化，并让变化通过行动呈现。',
+    conflict_engine: '人物内在矛盾、关系压力和外部事件互相推动。',
+    pacing_pattern: ['初始状态', '欲望显现', '关系压力', '错误选择', '关键醒悟', '状态改变'],
+    scene_recipes: ['用一次小选择呈现性格', '用配角反应证明变化', '结尾回扣开场状态'],
+    quality_signals: ['人物变化可见', '关系压力保留', '关键选择来自原作', '弧线不是口号'],
+    avoid: ['只保留剧情不保留人物变化', '用旁白宣布成长', '改变原作人物核心性格'],
+  },
+  serial_hook_adaptation: {
+    pattern_id: 'serial_hook_adaptation',
+    label: '连续剧钩子改编',
+    subject_family: 'adaptation',
+    subgenre_tags: ['分集', '集末钩子', '长线承接'],
+    user_facing_summary: '适合把原作拆成多集短剧，每集有目标，结尾有可承接问题。',
+    style_axes: [
+      axis('hook_intensity', '钩子强度', 'high', '每集结尾需要明确下一步动作或问题。'),
+      axis('fidelity', '保真度', 'medium', '钩子必须来自原作因果，不硬断章。'),
+    ],
+    reference_archetypes: ['网文分集改编', '短剧集末钩子'],
+    narrative_engine: '把原作连续情节拆成集内目标和集末未解问题，推动追看。',
+    protagonist_engine: '主角每集有明确小目标，长期目标跨集推进。',
+    conflict_engine: '信息差、关系误会、危险逼近和选择后果形成集末钩子。',
+    pacing_pattern: ['本集目标', '障碍升级', '信息反转', '付出代价', '集末钩子'],
+    scene_recipes: ['每集开头承接上一集后果', '中段给一次误判', '结尾留下具体问题而非空悬念'],
+    quality_signals: ['集内目标明确', '钩子可承接', '长期线不断裂', '不是硬断章'],
+    avoid: ['为钩子篡改原作因果', '每集只铺垫不兑现', '结尾问题无法下一集回答'],
+  },
+  cinematic_setpiece_adaptation: {
+    pattern_id: 'cinematic_setpiece_adaptation',
+    label: '影视场面转译',
+    subject_family: 'adaptation',
+    subgenre_tags: ['名场面', '视听调度', '动作情绪'],
+    user_facing_summary: '适合把小说名场面转成强画面、强动作、强情绪的镜头段落。',
+    style_axes: [
+      axis('action_density', '动作密度', 'high', '动作、站位和道具承担情绪表达。'),
+      axis('dialogue_density', '对白密度', 'medium', '关键对白少而准，不搬运长段原文。'),
+    ],
+    reference_archetypes: ['小说名场面影视化', '关键段落视听转译'],
+    narrative_engine: '把原作中的情绪高点、动作段落或关系摊牌转成可视听调度的名场面。',
+    protagonist_engine: '主角通过动作、站位、表情、沉默和一句关键对白被看见。',
+    conflict_engine: '空间压迫、道具、光线、声音和人物距离承担冲突表达。',
+    pacing_pattern: ['空间建立', '人物入场', '压力逼近', '动作/对白爆发', '余波定格'],
+    scene_recipes: ['用道具替代解释', '用站位体现关系', '用声音和停顿放大情绪'],
+    quality_signals: ['名场面可拍', '视听动作具体', '情绪高点清楚', '不靠长解释'],
+    avoid: ['只把原文搬成旁白', '画面提示混入分析', '缺少人物动作'],
+  },
+  theme_preserving_adaptation: {
+    pattern_id: 'theme_preserving_adaptation',
+    label: '主题保真改编',
+    subject_family: 'adaptation',
+    subgenre_tags: ['主题保真', '文学余味', '主旨回扣'],
+    user_facing_summary: '适合文学性强、不想改偏主旨和情绪底色的作品。',
+    style_axes: [
+      axis('fidelity', '保真度', 'high', '删改不能伤害原作核心命题。'),
+      axis('blank_space', '留白程度', 'medium', '结尾允许余味，不硬喊口号。'),
+    ],
+    reference_archetypes: ['文学作品主题改编', '主旨保留型影视化'],
+    narrative_engine: '压缩和重排情节时保留原作核心命题、价值取向和情绪底色。',
+    protagonist_engine: '人物选择必须继续服务原作主题，而不是服务外加口号。',
+    conflict_engine: '主题冲突由原作关系和事件显现，通过结尾回扣完成表达。',
+    pacing_pattern: ['主题命题', '反向压力', '人物试探', '主题选择', '余味回扣'],
+    scene_recipes: ['删减前先确认主题功能', '合并场景时保留主题转折', '结尾用画面而非宣讲回扣主旨'],
+    quality_signals: ['主题不漂移', '删改不伤主旨', '情绪底色一致', '结尾回扣原作命题'],
+    avoid: ['把原作主题改成宣传口号', '只追求爽点丢掉余味', '新增结尾推翻原作表达'],
+  },
+  source_fidelity_adaptation: {
+    pattern_id: 'source_fidelity_adaptation',
+    label: '原作保真改编',
+    subject_family: 'adaptation',
+    subgenre_tags: ['IP 改编', '人物关系', '主线保真'],
+    user_facing_summary: '适合已有小说/剧本改编，优先保证人物、关系、事件顺序不被改飞。',
+    style_axes: [
+      axis('fidelity', '保真度', 'high', '原作人物、关系、主线和主题优先级最高。'),
+      axis('hook_intensity', '钩子强度', 'medium', '允许补强观看钩子，但不能替换原作因果。'),
+    ],
+    reference_archetypes: ['IP 改编圣经', '原作粉丝向剧本改编'],
+    narrative_engine: '先锁定原作不可改动的人物、关系、事件顺序和主题，再决定压缩、合并和视听化补足。',
+    protagonist_engine: '主角姓名、身份、欲望、关系压力和关键选择沿用原作，不用知识包或流派模板替换。',
+    conflict_engine: '冲突来自原作既有事件、误会、对抗和选择代价，新增内容只负责连接和画面化。',
+    pacing_pattern: ['原作锚点', '人物关系确认', '事件顺序锁定', '必要压缩', '视听补足', '保真复核'],
+    scene_recipes: ['每场标注对应原作段落功能', '新增过场只解决转场问题', '结尾检查人物关系和主题是否仍属于原作'],
+    quality_signals: ['人物不丢失', '关系不改写', '主线不换题', '新增内容不抢戏'],
+    avoid: ['以知识库人物替换原主角', '把原作改成全新传记', '新增设定改变原作因果'],
+  },
+  chapter_slice_adaptation: {
+    pattern_id: 'chapter_slice_adaptation',
+    label: '章节切片改编',
+    subject_family: 'adaptation',
+    subgenre_tags: ['单集切片', '长线承接', '章节单元'],
+    user_facing_summary: '适合从长篇原作里截取一集/一段，做成单集闭环。',
+    style_axes: [
+      axis('hook_intensity', '钩子强度', 'high', '结尾承接下一章，但本集也要有阶段结果。'),
+      axis('fidelity', '保真度', 'medium', '只截取当前单元，不一集塞完整本书。'),
+    ],
+    reference_archetypes: ['长篇小说单集切片', '章节单元剧改编'],
+    narrative_engine: '从长篇原作中截取一个完整单元，形成本集目标、阻力、转折和集末承接。',
+    protagonist_engine: '主角长期目标保持在线，本集只解决一个阶段性问题。',
+    conflict_engine: '集内冲突来自当前章节的阻碍，长期线索在开头和结尾轻量露出。',
+    pacing_pattern: ['承接长线', '本集目标', '单元阻力', '中段转折', '阶段结果', '下一集钩子'],
+    scene_recipes: ['开场一句交代上文后果', '中段集中写本章节关键冲突', '结尾只留一个可回答问题'],
+    quality_signals: ['单集闭环', '长线不断', '切片边界清楚', '钩子来自原作'],
+    avoid: ['一集塞完整本书', '只做摘要没有单集目标', '钩子脱离原作'],
+  },
+  dialogue_scene_adaptation: {
+    pattern_id: 'dialogue_scene_adaptation',
+    label: '对白场改编',
+    subject_family: 'adaptation',
+    subgenre_tags: ['强对白', '潜台词', '关系摊牌'],
+    user_facing_summary: '适合把原作关键关系压进一场有目标、有潜台词、有转折的对白场。',
+    style_axes: [
+      axis('dialogue_density', '对白密度', 'high', '台词要有目标、潜台词和后果。'),
+      axis('blank_space', '留白程度', 'medium', '未说出口的信息用动作和停顿表达。'),
+    ],
+    reference_archetypes: ['强对白短剧场', '关系摊牌戏'],
+    narrative_engine: '把原作关键关系和信息差压进一场有目标、有潜台词、有转折的对白场。',
+    protagonist_engine: '人物通过说什么、不说什么、打断、沉默和动作暴露真实诉求。',
+    conflict_engine: '台词表层目的与真实目的错位，关系压力逐句升级。',
+    pacing_pattern: ['入场目标', '试探台词', '信息差暴露', '关系反击', '一句真话', '余波动作'],
+    scene_recipes: ['每句对白服务目标或阻力', '用动作打断解释', '让最后一句话改变下一场处境'],
+    quality_signals: ['对白有目标', '潜台词可见', '关系升级', '不是旁白搬运'],
+    avoid: ['人物轮流解释设定', '对白没有行动后果', '只复制原文长段独白'],
+  },
+  worldbuilding_grounding: {
+    pattern_id: 'worldbuilding_grounding',
+    label: '世界观落地',
+    subject_family: 'adaptation',
+    subgenre_tags: ['世界观', '规则可见', '设定落地'],
+    user_facing_summary: '适合奇幻、玄幻、架空故事，把设定变成角色会遭遇的可见规则。',
+    style_axes: [
+      axis('world_scale', '世界尺度', 'high', '规则、禁忌和等级要能被场景看见。'),
+      axis('action_density', '动作密度', 'medium', '用行动展示规则，不靠设定说明。'),
+    ],
+    reference_archetypes: ['奇幻/玄幻设定影视化', '规则型世界观短剧'],
+    narrative_engine: '把原作世界观规则拆成角色会遭遇、会利用、会付代价的可见规则。',
+    protagonist_engine: '主角通过一次行动展示自己与规则的关系，而不是听旁白解释设定。',
+    conflict_engine: '世界规则、身份等级、禁忌或资源限制直接制造阻力。',
+    pacing_pattern: ['规则可见', '角色试探', '违规代价', '利用规则', '更大规则露出'],
+    scene_recipes: ['用一次失败展示规则', '把设定名词挂在道具/空间/仪式上', '让配角反应证明规则有效'],
+    quality_signals: ['规则可拍', '设定不堆砌', '代价明确', '名词有画面锚点'],
+    avoid: ['开头大段世界观说明', '设定名词无行动含义', '规则随剧情临时变化'],
+  },
+  platform_short_drama_hook: {
+    pattern_id: 'platform_short_drama_hook',
+    label: '平台短剧钩子',
+    subject_family: 'adaptation',
+    subgenre_tags: ['竖屏短剧', '强钩子', '集末反转'],
+    user_facing_summary: '适合平台短剧化，前三秒有局，结尾有下一集动作。',
+    style_axes: [
+      axis('hook_intensity', '钩子强度', 'high', '前三秒进入压力现场，结尾给可承接反转。'),
+      axis('dialogue_density', '对白密度', 'medium', '台词服务压迫、误会或身份揭示。'),
+    ],
+    reference_archetypes: ['竖屏短剧前三秒钩子', '付费短剧集末反转'],
+    narrative_engine: '用高压局面、强关系冲突或信息反转快速建立观看理由，并在结尾给下一步动作。',
+    protagonist_engine: '主角开场就处于可见压力中，必须马上做决定或承受后果。',
+    conflict_engine: '羞辱、误会、倒计时、身份揭示、关系翻盘等高压元素服务原作主线。',
+    pacing_pattern: ['3秒危机', '身份/关系亮明', '压迫升级', '小反击', '反转钩子'],
+    scene_recipes: ['第一场直接进入压力现场', '每 20-30 秒给一次信息变化', '结尾钩子指向下一场行动'],
+    quality_signals: ['前3秒有局', '关系冲突强', '反转可承接', '不牺牲原作'],
+    avoid: ['为了爽点篡改原作人物', '只有吵架没有目标', '硬断章'],
+  },
+  wuxia_chivalric_epic: {
+    pattern_id: 'wuxia_chivalric_epic',
+    label: '武侠：家国侠义史诗',
+    subject_family: 'wuxia',
+    subgenre_tags: ['家国侠义', '宏大江湖', '群像成长', '门派秩序'],
+    user_facing_summary: '适合门派、师承、江湖秩序和家国命题较重的武侠漫剧。',
+    style_axes: [
+      axis('world_scale', '江湖尺度', 'high', '门派、地域、势力和时代压力共同构成大江湖。'),
+      axis('ensemble_degree', '群像程度', 'high', '多名角色围绕侠义命题互相影响。'),
+      axis('historical_weight', '历史重量', 'medium', '可带家国或时代背景，但不压过人物行动。'),
+      axis('action_density', '动作密度', 'medium', '武打服务选择和关系，不只是连续打斗。'),
+    ],
+    reference_archetypes: ['家国侠义型武侠', '门派群像成长故事', '江湖秩序与时代压力叙事'],
+    narrative_engine: '用门派、师承、江湖规矩和时代压力推动主角理解“侠”的代价。',
+    protagonist_engine: '主角从个人恩怨或少年理想出发，逐步承担更大的江湖责任。',
+    conflict_engine: '个人情义、门派规矩、江湖公义和家国处境形成多层冲突。',
+    pacing_pattern: ['少年入局', '师承立规', '江湖见闻', '情义两难', '大义选择', '余波传承'],
+    scene_recipes: ['师门训诫与江湖现实相撞', '小人物遭难触发侠义选择', '群像反应证明主角选择的重量'],
+    quality_signals: ['侠义命题清楚', '江湖规则可见', '群像有功能', '选择有家国/江湖后果'],
+    avoid: ['只堆门派名词', '空喊侠义没有具体代价', '把宏大背景写成设定说明'],
+  },
+  wuxia_lone_blade_mystery: {
+    pattern_id: 'wuxia_lone_blade_mystery',
+    label: '武侠：孤刀悬疑留白',
+    subject_family: 'wuxia',
+    subgenre_tags: ['孤客', '悬疑', '决斗', '留白对白'],
+    user_facing_summary: '适合冷峻刀客、身份谜团、短句对白和强反转的武侠漫剧。',
+    style_axes: [
+      axis('dialogue_density', '对白密度', 'medium', '对白短、硬、带潜台词。'),
+      axis('blank_space', '留白程度', 'high', '沉默、空镜和未说出口的信息承担气质。'),
+      axis('mystery_density', '悬疑密度', 'high', '身份、动机和旧案逐步翻转。'),
+      axis('action_density', '动作密度', 'medium', '决斗少而狠，动作前后有心理压迫。'),
+    ],
+    reference_archetypes: ['冷峻刀客故事', '江湖旧案悬疑', '强对白决斗短剧'],
+    narrative_engine: '用一个孤身角色和一个异常线索切入江湖旧案，在沉默与反转中揭开真相。',
+    protagonist_engine: '主角少说多看，靠观察、试探和关键出手暴露过去。',
+    conflict_engine: '身份伪装、旧案真相、复仇动机和决斗压力互相咬合。',
+    pacing_pattern: ['异常入场', '短句试探', '线索反扣', '身份裂缝', '决斗摊牌', '留白余味'],
+    scene_recipes: ['客栈/雨夜/荒院中一句话改变局势', '同一道具前后两次出现含义不同', '决斗前用静默拉满压力'],
+    quality_signals: ['留白有信息', '对白有潜台词', '旧案可回扣', '决斗改变真相'],
+    avoid: ['把留白写成信息缺失', '台词故作玄虚但无推进', '反转没有前文线索'],
+  },
+  wuxia_sect_growth: {
+    pattern_id: 'wuxia_sect_growth',
+    label: '武侠：门派成长试炼',
+    subject_family: 'wuxia',
+    subgenre_tags: ['少年成长', '门派试炼', '师徒关系', '功法阶段'],
+    user_facing_summary: '适合少年入门、师徒、试炼升级和阶段性成长的武侠漫剧。',
+    style_axes: [
+      axis('world_scale', '江湖尺度', 'medium', '先从门派小世界展开，再露出更大江湖。'),
+      axis('action_density', '动作密度', 'high', '训练、试炼和实战推动成长。'),
+      axis('hook_intensity', '钩子强度', 'medium', '每集用考核结果或新规则承接。'),
+      axis('fidelity', '成长保真', 'medium', '成长必须有训练、失败和代价。'),
+    ],
+    reference_archetypes: ['少年入门武侠', '师徒试炼故事', '门派考核成长线'],
+    narrative_engine: '用门规、训练、考核和下山任务展示主角从不会到会的阶段成长。',
+    protagonist_engine: '主角有短板、有误判，通过师徒关系和实战失败逐步建立能力。',
+    conflict_engine: '门派规矩、同门竞争、师父要求、外部江湖危险共同制造压力。',
+    pacing_pattern: ['入门短板', '门规压迫', '训练失败', '试炼任务', '险胜代价', '新境界露出'],
+    scene_recipes: ['一次基础动作失败暴露短板', '师父不解释但用任务逼人成长', '试炼胜利后立刻出现更大江湖规则'],
+    quality_signals: ['成长步骤清楚', '师徒压力可见', '试炼有代价', '武功不是凭空变强'],
+    avoid: ['主角无训练突然变强', '门派只是背景板', '考核没有规则和代价'],
+  },
+  wuxia_revenge_journey: {
+    pattern_id: 'wuxia_revenge_journey',
+    label: '武侠：复仇追凶江湖路',
+    subject_family: 'wuxia',
+    subgenre_tags: ['复仇', '追凶', '旧案', '真相代价'],
+    user_facing_summary: '适合血案、追凶、误会、真相和复仇代价驱动的武侠漫剧。',
+    style_axes: [
+      axis('mystery_density', '悬疑密度', 'high', '追凶过程不断重释旧案。'),
+      axis('action_density', '动作密度', 'high', '追逃、伏击和决斗推动线索。'),
+      axis('romance_density', '情感浓度', 'medium', '亲情、旧友或爱恨关系会改变复仇方向。'),
+      axis('hook_intensity', '钩子强度', 'high', '每段追查都应留下新的嫌疑或真相裂缝。'),
+    ],
+    reference_archetypes: ['江湖血案复仇', '追凶路书', '误会与真相反转故事'],
+    narrative_engine: '以一桩旧案或血仇为线索，让主角一路追查、误判、付代价并接近真相。',
+    protagonist_engine: '主角被仇恨驱动，但必须在真相、情义和代价中重新选择。',
+    conflict_engine: '仇人线索、伪证、旧友隐瞒、幕后势力和复仇代价持续升级。',
+    pacing_pattern: ['血案钩子', '线索追踪', '误杀/误判风险', '旧人阻拦', '真相反转', '复仇选择'],
+    scene_recipes: ['一件旧物指向下一个地点', '打斗后发现对手并非真凶', '最终让主角在杀与不杀之间承担代价'],
+    quality_signals: ['复仇目标明确', '线索链不断', '真相改变选择', '复仇有代价'],
+    avoid: ['只赶路不破案', '仇人随意更换', '复仇变成无后果爽点'],
+  },
+  wuxia_court_jianghu: {
+    pattern_id: 'wuxia_court_jianghu',
+    label: '武侠：庙堂江湖博弈',
+    subject_family: 'wuxia',
+    subgenre_tags: ['庙堂江湖', '权谋', '势力博弈', '身份站位'],
+    user_facing_summary: '适合江湖门派、官府、朝堂和多方势力交错的武侠漫剧。',
+    style_axes: [
+      axis('world_scale', '江湖尺度', 'high', '江湖与权力结构互相牵制。'),
+      axis('dialogue_density', '对白密度', 'high', '谈判、试探和站位通过台词推进。'),
+      axis('ensemble_degree', '群像程度', 'high', '多方势力都有目标和筹码。'),
+      axis('historical_weight', '历史重量', 'medium', '制度压力应具体，不写成空泛朝堂。'),
+    ],
+    reference_archetypes: ['江湖与官府博弈', '朝堂权谋武侠', '多势力站位故事'],
+    narrative_engine: '让江湖门派、官府和权力势力围绕同一资源或秘密博弈。',
+    protagonist_engine: '主角在江湖义气和现实权力之间判断站位，靠行动破局。',
+    conflict_engine: '名分、密令、门派利益、官府压力和江湖道义形成多方冲突。',
+    pacing_pattern: ['势力摆盘', '江湖事件', '官府介入', '站位试探', '代价交换', '破局余波'],
+    scene_recipes: ['一场宴席/堂审/会盟中多方各说一套话', '表面江湖仇杀背后牵出权力交易', '主角选择使两边都付出代价'],
+    quality_signals: ['多方目标清楚', '江湖与庙堂互相影响', '站位有代价', '权谋不靠解释'],
+    avoid: ['官府只当反派符号', '势力太多但目标不清', '全靠长台词解释阴谋'],
+  },
+  wuxia_romance_honor: {
+    pattern_id: 'wuxia_romance_honor',
+    label: '武侠：情义名节抉择',
+    subject_family: 'wuxia',
+    subgenre_tags: ['侠女', '情义', '名节', '身份束缚'],
+    user_facing_summary: '适合情感选择、身份束缚、江湖名节与个人自由冲突的武侠漫剧。',
+    style_axes: [
+      axis('romance_density', '情感浓度', 'high', '情感关系直接推动选择。'),
+      axis('dialogue_density', '对白密度', 'medium', '对白兼具情义和克制。'),
+      axis('action_density', '动作密度', 'medium', '动作常用于表达保护、决裂或成全。'),
+      axis('blank_space', '留白程度', 'medium', '未说出口的情感应通过动作和道具表达。'),
+    ],
+    reference_archetypes: ['江湖儿女情义', '侠女身份抉择', '名节与自由冲突'],
+    narrative_engine: '用情义关系与江湖名节冲突推动人物做选择。',
+    protagonist_engine: '主角既有情感牵挂，也受身份、承诺或门规约束。',
+    conflict_engine: '爱情、义气、名声、承诺和自由互相冲突。',
+    pacing_pattern: ['情义建立', '身份阻隔', '江湖压力', '误会/试探', '公开选择', '余味成全'],
+    scene_recipes: ['用一件信物承载未说出口的承诺', '用并肩或背离的站位表现关系变化', '结尾让人物选择比告白更有力量'],
+    quality_signals: ['情感压力具体', '名节规则可见', '选择不廉价', '余味来自行动'],
+    avoid: ['只谈恋爱没有江湖规则', '情感转折无铺垫', '用狗血误会替代人物选择'],
+  },
 };
 
 const VIDEO_TYPE_PATTERN_MAP: Record<VideoType, NarrativePatternId[]> = {
-  character_story: ['hero_choice', 'mortal_growth', 'mystery_reveal', 'ensemble_threads'],
-  historical_drama: ['historical_causal_story', 'power_strategy', 'hero_choice', 'mystery_reveal'],
-  legend_story: ['folk_legend_trial', 'children_fable', 'mystery_reveal', 'object_clue_journey'],
+  character_story: ['hero_choice', 'historical_causal_story', 'source_fidelity_adaptation', 'wuxia_chivalric_epic', 'wuxia_revenge_journey', 'character_arc_adaptation', 'novel_scene_compression', 'mortal_growth', 'mystery_reveal', 'ensemble_threads'],
+  historical_drama: ['historical_causal_story', 'hero_choice', 'source_fidelity_adaptation', 'wuxia_court_jianghu', 'wuxia_chivalric_epic', 'theme_preserving_adaptation', 'cinematic_setpiece_adaptation', 'power_strategy', 'mystery_reveal'],
+  legend_story: ['folk_legend_trial', 'object_clue_journey', 'children_fable', 'mystery_reveal'],
   culture_promo: ['brand_symbol', 'object_clue_journey', 'ritual_process', 'city_day_journey'],
   heritage_promo: ['craft_mastery', 'ritual_process', 'object_clue_journey', 'brand_symbol'],
   city_brand_promo: ['city_day_journey', 'brand_symbol', 'object_clue_journey', 'poetic_landscape'],
-  scene_short: ['space_walkthrough', 'object_clue_journey', 'mystery_reveal', 'poetic_landscape'],
+  scene_short: ['space_walkthrough', 'object_clue_journey', 'poetic_landscape', 'mystery_reveal'],
   landscape_mood: ['poetic_landscape', 'space_walkthrough', 'object_clue_journey'],
-  documentary_short: ['documentary_investigation', 'historical_causal_story', 'object_clue_journey', 'ensemble_threads'],
+  documentary_short: ['documentary_investigation', 'historical_causal_story', 'object_clue_journey', 'source_fidelity_adaptation', 'theme_preserving_adaptation', 'ensemble_threads'],
   explainer_video: ['knowledge_gap_explainer', 'historical_causal_story', 'object_clue_journey'],
   lecture_video: ['lecture_case_argument', 'historical_causal_story', 'hero_choice'],
   education_training: ['training_loop', 'knowledge_gap_explainer', 'craft_mastery'],
   children_story: ['children_fable', 'folk_legend_trial', 'mortal_growth'],
-  social_short: ['social_hook_contrast', 'mystery_reveal', 'brand_symbol', 'knowledge_gap_explainer'],
-  ai_comic_drama: ['mortal_growth', 'infinite_mission', 'mystery_reveal', 'power_strategy', 'hero_choice'],
+  social_short: ['social_hook_contrast', 'platform_short_drama_hook', 'mystery_reveal', 'brand_symbol', 'knowledge_gap_explainer'],
+  ai_comic_drama: ['source_fidelity_adaptation', 'chapter_slice_adaptation', 'platform_short_drama_hook', 'novel_scene_compression', 'serial_hook_adaptation', 'character_arc_adaptation', 'dialogue_scene_adaptation', 'cinematic_setpiece_adaptation', 'worldbuilding_grounding', 'wuxia_chivalric_epic', 'wuxia_lone_blade_mystery', 'wuxia_sect_growth', 'wuxia_revenge_journey', 'wuxia_court_jianghu', 'wuxia_romance_honor', 'mortal_growth', 'mystery_reveal', 'power_strategy', 'infinite_mission'],
+};
+
+const DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE: Record<VideoType, number> = {
+  character_story: 2,
+  historical_drama: 2,
+  legend_story: 2,
+  culture_promo: 2,
+  heritage_promo: 2,
+  city_brand_promo: 2,
+  scene_short: 2,
+  landscape_mood: 1,
+  documentary_short: 2,
+  explainer_video: 1,
+  lecture_video: 1,
+  education_training: 1,
+  children_story: 1,
+  social_short: 1,
+  ai_comic_drama: 2,
 };
 
 export const NARRATIVE_PATTERN_LIBRARY = PATTERNS;
@@ -296,11 +637,21 @@ export function getNarrativePatternsForVideoType(
   videoType: VideoType,
   selectedPatternIds: NarrativePatternId[] = [],
 ): NarrativePattern[] {
-  return mergePatternIds(
-    selectedPatternIds,
-    VIDEO_TYPE_PATTERN_MAP[videoType] ?? VIDEO_TYPE_PATTERN_MAP.character_story,
-  )
+  return resolveActivePatternIds(videoType, selectedPatternIds)
     .map(patternId => PATTERNS[patternId]);
+}
+
+export function resolveActivePatternIds(
+  videoType: VideoType,
+  selectedPatternIds: NarrativePatternId[] = [],
+): NarrativePatternId[] {
+  const fallback = VIDEO_TYPE_PATTERN_MAP[videoType] ?? VIDEO_TYPE_PATTERN_MAP.character_story;
+  const selected = selectedPatternIds.filter(patternId => Boolean(PATTERNS[patternId]));
+  if (selected.length > 0) {
+    return mergePatternIds(selected, fallback).slice(0, selected.length + 2);
+  }
+  const defaultCount = DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE[videoType] ?? 1;
+  return fallback.slice(0, defaultCount);
 }
 
 export function getNarrativePatternQualitySignals(
@@ -315,7 +666,7 @@ export function getNarrativePatternRequirementLines(
   selectedPatternIds: NarrativePatternId[] = [],
 ): string[] {
   return getNarrativePatternsForVideoType(videoType, selectedPatternIds).map(pattern =>
-    `${pattern.label}：${pattern.narrative_engine}；节奏=${pattern.pacing_pattern.join(' → ')}`
+    `${pattern.label}：${pattern.narrative_engine}；${formatPatternMeta(pattern)}节奏=${pattern.pacing_pattern.join(' → ')}`
   );
 }
 
@@ -336,6 +687,9 @@ export function formatNarrativePatternsForPrompt(
   const selected = new Set(selectedPatternIds);
   return getNarrativePatternsForVideoType(videoType, selectedPatternIds).flatMap(pattern => [
     selected.has(pattern.pattern_id) ? `- ${pattern.label}（用户强化；结构参考：${pattern.reference_archetypes.join('、')}）` : `- ${pattern.label}（默认参考；结构参考：${pattern.reference_archetypes.join('、')}）`,
+    pattern.subject_family ? `  题材族：${pattern.subject_family}${pattern.subgenre_tags?.length ? `；子流派=${pattern.subgenre_tags.join('、')}` : ''}` : '',
+    pattern.user_facing_summary ? `  适用场景：${pattern.user_facing_summary}` : '',
+    pattern.style_axes?.length ? `  表达风格轴：${pattern.style_axes.map(item => `${item.label}=${item.value}（${item.note}）`).join('；')}` : '',
     `  叙事引擎：${pattern.narrative_engine}`,
     `  主角引擎：${pattern.protagonist_engine}`,
     `  冲突引擎：${pattern.conflict_engine}`,
@@ -343,7 +697,15 @@ export function formatNarrativePatternsForPrompt(
     `  场景配方：${pattern.scene_recipes.join('；')}`,
     `  质量信号：${pattern.quality_signals.join('；')}`,
     `  禁止：${pattern.avoid.join('；')}`,
-  ]);
+  ].filter(Boolean));
+}
+
+function formatPatternMeta(pattern: NarrativePattern): string {
+  const meta = [
+    pattern.subgenre_tags?.length ? `子流派=${pattern.subgenre_tags.join('、')}` : '',
+    pattern.style_axes?.length ? `表达轴=${pattern.style_axes.map(item => `${item.label}:${item.value}`).join('、')}` : '',
+  ].filter(Boolean).join('；');
+  return meta ? `${meta}；` : '';
 }
 
 function mergePatternIds(primary: NarrativePatternId[], fallback: NarrativePatternId[]): NarrativePatternId[] {

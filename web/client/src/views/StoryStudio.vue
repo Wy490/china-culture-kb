@@ -21,6 +21,11 @@
           :class="{ 'story-studio__mode-tab--active': inputMode === 'outline' }"
           @click="switchMode('outline')"
         >故事大纲模式</button>
+        <button
+          class="story-studio__mode-tab"
+          :class="{ 'story-studio__mode-tab--active': inputMode === 'novel' }"
+          @click="switchMode('novel')"
+        >小说改编模式</button>
       </div>
 
       <!-- ===== ENTRY MODE ===== -->
@@ -85,17 +90,35 @@
         </div>
       </div>
 
+      <div class="story-studio__field">
+        <label class="story-studio__label" for="localized-target-region">甲方指定地域</label>
+        <div class="story-studio__localization-grid">
+          <input
+            id="localized-target-region"
+            v-model="localizedTargetRegion"
+            class="story-studio__input"
+            placeholder="如 长沙、岳麓、道县"
+          />
+          <select v-model="localizationMode" class="story-studio__select">
+            <option value="allow_related_influence">可用思想影响</option>
+            <option value="strict_direct_events">只要直接事件</option>
+          </select>
+        </div>
+      </div>
+
       <!-- ===== THEME / OUTLINE MODE ===== -->
-      <div v-if="inputMode === 'theme' || inputMode === 'outline'" class="story-studio__field">
+      <div v-if="inputMode === 'theme' || inputMode === 'outline' || inputMode === 'novel'" class="story-studio__field">
         <label class="story-studio__label" for="outline-input">
-          {{ inputMode === 'outline' ? '故事大纲' : '创作主题' }}
+          {{ inputMode === 'novel' ? '小说原文 / 改编素材' : inputMode === 'outline' ? '故事大纲' : '创作主题' }}
         </label>
         <textarea
           id="outline-input"
           v-model="outlineText"
           class="story-studio__textarea"
-          :rows="inputMode === 'outline' ? 6 : 3"
-          :placeholder="inputMode === 'outline'
+          :rows="inputMode === 'novel' ? 10 : inputMode === 'outline' ? 6 : 3"
+          :placeholder="inputMode === 'novel'
+            ? '粘贴你已有小说、章节片段或完整故事。系统会保留原作主线，做视频化改编、分镜拆解和 GEARS 供稿，不会另写一篇新小说。'
+            : inputMode === 'outline'
             ? '输入故事大纲，如：我想写一个毛泽东少年时期到革命觉醒的故事，重点表现湖南乡土、求学、新民学会、农民运动、理想形成。'
             : '输入创作主题，如：周敦颐南安拒签冤案故事'"
         />
@@ -303,7 +326,15 @@
             />
             <span class="story-studio__pattern-main">
               <strong>{{ pattern.label }}</strong>
-              <span>{{ pattern.narrative_engine }}</span>
+              <span>{{ pattern.user_facing_summary || pattern.narrative_engine }}</span>
+              <span v-if="pattern.subgenre_tags?.length" class="story-studio__pattern-tags">
+                <em v-for="tag in pattern.subgenre_tags.slice(0, 4)" :key="tag">{{ tag }}</em>
+              </span>
+              <span v-if="pattern.style_axes?.length" class="story-studio__pattern-axes">
+                <em v-for="axis in pattern.style_axes.slice(0, 3)" :key="axis.axis_id">
+                  {{ axis.label }} {{ styleAxisValueLabel(axis.value) }}
+                </em>
+              </span>
             </span>
           </label>
         </div>
@@ -455,6 +486,7 @@ import type {
   StoryDetectedCharacterKind,
   GenreStrictness,
   StoryGenerationPriority,
+  LocalizationMode,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
 import StoryPlan from '@/components/StoryPlan.vue'
@@ -469,6 +501,12 @@ const KNOWLEDGE_DOMAIN_LABELS: Record<KnowledgeDomain, string> = {
   regional_culture: '地域文化',
   folklore_zhiyi: '志异传说',
   gears_asset: 'GEARS资产',
+  narrative_pattern: '叙事模式',
+  character_archetype: '人物原型',
+  conflict_pattern: '冲突模式',
+  visual_style_pack: '视觉风格',
+  safety_rule: '安全规则',
+  source_pack: '来源包',
 }
 
 const ASSET_USAGE_LABELS: Record<KnowledgeAssetUsage, string> = {
@@ -480,6 +518,12 @@ const ASSET_USAGE_LABELS: Record<KnowledgeAssetUsage, string> = {
   dialogue_tone: '语气',
   credibility_boundary: '可信度',
   gears_delivery: '供稿',
+  plot_structure: '剧情结构',
+  character_arc: '人物弧线',
+  conflict_engine: '冲突机制',
+  visual_style: '视觉风格',
+  safety_boundary: '安全边界',
+  source_grounding: '来源依据',
 }
 
 const CHARACTER_KIND_LABELS: Record<StoryDetectedCharacterKind, string> = {
@@ -502,7 +546,7 @@ function characterKindLabel(kind: StoryDetectedCharacterKind) {
 }
 
 // --- Input mode ---
-type InputMode = 'entry' | 'theme' | 'outline'
+type InputMode = 'entry' | 'theme' | 'outline' | 'novel'
 const inputMode = ref<InputMode>('entry')
 
 function switchMode(mode: InputMode) {
@@ -558,6 +602,8 @@ const targetDuration = ref<SupportedDuration>('3分钟')
 const tone = ref('')
 const genreStrictness = ref<GenreStrictness>('balanced')
 const storyPriority = ref<StoryGenerationPriority>('balanced')
+const localizedTargetRegion = ref('')
+const localizationMode = ref<LocalizationMode>('allow_related_influence')
 const autoRepair = ref(false)
 const planning = ref(false)
 const generating = ref(false)
@@ -568,12 +614,16 @@ const generateError = ref('')
 
 const hasAnyEntrySource = computed(() => {
   if (inputMode.value === 'entry') return !!selectedEntry.value
+  if (inputMode.value === 'novel') return !!outlineText.value.trim()
   return selectedPrimaryEntries.value.length > 0
 })
 
 const canGenerate = computed(() => {
   if (inputMode.value === 'entry') {
     return selectedEntry.value && (selectedVideoType.value || selectedType.value)
+  }
+  if (inputMode.value === 'novel') {
+    return outlineText.value.trim().length > 0 && (selectedVideoType.value || selectedType.value)
   }
   return selectedPrimaryEntries.value.length > 0 && (selectedVideoType.value || selectedType.value)
 })
@@ -607,6 +657,12 @@ const availableNarrativePatterns = computed<NarrativePattern[]>(() => {
     .map(patternId => narrativePatternCatalog.value?.patterns.find(pattern => pattern.pattern_id === patternId))
     .filter((pattern): pattern is NarrativePattern => Boolean(pattern))
 })
+
+function styleAxisValueLabel(value: 'low' | 'medium' | 'high') {
+  if (value === 'high') return '高'
+  if (value === 'low') return '低'
+  return '中'
+}
 
 function isRecommendedVideoType(vtId: VideoType): boolean {
   if (!planResult.value) return false
@@ -703,6 +759,7 @@ async function handleAnalyzeOutline() {
     outline: text,
     preferred_video_types: selectedVideoType.value ? [selectedVideoType.value] : undefined,
     target_video_duration: targetDuration.value,
+    localized_target_region: localizedTargetRegion.value.trim() || undefined,
   })
   if (res.ok && res.data) {
     outlineAnalysis.value = res.data
@@ -723,6 +780,8 @@ async function handleMultiMatch() {
     outline: outlineText.value.trim(),
     knowledge_needs: outlineAnalysis.value.knowledge_needs,
     limit_per_need: 5,
+    localized_target_region: localizedTargetRegion.value.trim() || undefined,
+    localization_mode: localizationMode.value,
   })
   if (res.ok && res.data) {
     knowledgePack.value = res.data.matched_knowledge_pack
@@ -869,6 +928,8 @@ async function handleGenerate() {
       story_priority: storyPriority.value,
       auto_repair: autoRepair.value,
       narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
+      localized_target_region: localizedTargetRegion.value.trim() || undefined,
+      localization_mode: localizationMode.value,
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
@@ -876,6 +937,45 @@ async function handleGenerate() {
       generateError.value = res.error?.code === 'ENTRY_NOT_FOUND'
         ? '知识库中没有找到该词条'
         : res.error?.message ?? '剧情方案生成失败'
+    }
+  } else if (inputMode.value === 'novel') {
+    const filteredPack: KnowledgePack | undefined = knowledgePack.value
+      ? {
+          primary_entries: knowledgePack.value.primary_entries.filter(e => selectedPrimaryEntries.value.includes(e.entry_name)),
+          supporting_entries: knowledgePack.value.supporting_entries.filter(e => selectedSupportingEntries.value.includes(e.entry_name)),
+          missing_needs: knowledgePack.value.missing_needs,
+          overall_confidence: knowledgePack.value.overall_confidence,
+        }
+      : undefined
+    const primaryEntryName = filteredPack?.primary_entries[0]?.entry_name
+
+    const res = await storyGenerate({
+      entry_name: primaryEntryName,
+      original_user_query: outlineText.value || undefined,
+      generation_type: generationTypeToSend as GenerationType,
+      video_type: videoTypeToSend as VideoType,
+      model_profile_id: selectedModelProfileId.value || undefined,
+      target_video_duration: targetDuration.value,
+      tone: tone.value || undefined,
+      presentation_style: presentationStyleToSend as PresentationStyle,
+      output_gears_segments: true,
+      outline: outlineText.value,
+      knowledge_pack: filteredPack,
+      character_hints: outlineAnalysis.value?.detected_characters ?? undefined,
+      genre_strictness: genreStrictness.value,
+      story_priority: storyPriority.value,
+      auto_repair: autoRepair.value,
+      source_material_mode: 'adapt_user_novel',
+      localized_target_region: localizedTargetRegion.value.trim() || undefined,
+      localization_mode: localizationMode.value,
+      narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0
+        ? selectedNarrativePatternIds.value
+        : ['source_fidelity_adaptation', 'chapter_slice_adaptation', 'novel_scene_compression', 'character_arc_adaptation'],
+    })
+    if (res.ok && res.data) {
+      generateResult.value = res.data
+    } else {
+      generateError.value = res.error?.message ?? '小说改编方案生成失败'
     }
   } else if ((inputMode.value === 'theme' || inputMode.value === 'outline') && knowledgePack.value) {
     // Outline/theme mode: multi-entry generation with knowledge pack
@@ -908,6 +1008,8 @@ async function handleGenerate() {
       story_priority: storyPriority.value,
       auto_repair: autoRepair.value,
       narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
+      localized_target_region: localizedTargetRegion.value.trim() || undefined,
+      localization_mode: localizationMode.value,
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
@@ -1077,6 +1179,28 @@ async function handleGenerate() {
   line-height: 1.35;
   color: #5d6d7e;
 }
+.story-studio__pattern-tags,
+.story-studio__pattern-axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.story-studio__pattern-tags em,
+.story-studio__pattern-axes em {
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 2px 5px;
+  border: 1px solid #d7dde2;
+  border-radius: 4px;
+  color: #455a64;
+  background: #f8fafb;
+}
+.story-studio__pattern-axes em {
+  color: #6c3483;
+  background: #fbf6ff;
+  border-color: #ead7f3;
+}
 
 /* Knowledge pack */
 .story-studio__knowledge-pack {
@@ -1239,6 +1363,11 @@ async function handleGenerate() {
   font-size: 15px;
   background: #fff;
   box-sizing: border-box;
+}
+.story-studio__localization-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 8px;
 }
 
 /* Auto-match label */

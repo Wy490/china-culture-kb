@@ -42,6 +42,7 @@ export function convertFullEntryDetail(mcp: McpFullEntryDetail): EntryDetail {
     story: mcp.story,
     culturalSignificance: mcp.culturalSignificance,
     relatedLocations: mcp.relatedLocations,
+    localCreativeRelations: mcp.localCreativeRelations,
     keywords: mcp.keywords,
     sources: mcp.sources,
     credibility: mcp.credibility,

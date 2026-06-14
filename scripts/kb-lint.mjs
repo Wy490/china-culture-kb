@@ -12,6 +12,12 @@ const allowedDomains = new Set([
   'regional_culture',
   'folklore_zhiyi',
   'gears_asset',
+  'narrative_pattern',
+  'character_archetype',
+  'conflict_pattern',
+  'visual_style_pack',
+  'safety_rule',
+  'source_pack',
 ]);
 
 const allowedRoles = new Set([
@@ -20,6 +26,12 @@ const allowedRoles = new Set([
   'motif_pack',
   'asset_pack',
   'regional_pack',
+  'pattern_pack',
+  'archetype_pack',
+  'conflict_pack',
+  'style_pack',
+  'rule_pack',
+  'source_pack',
 ]);
 
 const allowedUsage = new Set([
@@ -31,6 +43,12 @@ const allowedUsage = new Set([
   'dialogue_tone',
   'credibility_boundary',
   'gears_delivery',
+  'plot_structure',
+  'character_arc',
+  'conflict_engine',
+  'visual_style',
+  'safety_boundary',
+  'source_grounding',
 ]);
 
 const requiredBaseFields = ['省份', '地区', '类型'];

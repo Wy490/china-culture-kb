@@ -601,12 +601,15 @@ interface MultiMatchParams {
   outline: string;
   knowledge_needs: KnowledgeNeed[];
   limit_per_need: number;
+  localized_target_region?: string;
+  localization_mode?: 'allow_related_influence' | 'strict_direct_events';
 }
 
 export async function multiMatchEntries(
   params: MultiMatchParams,
 ): Promise<ApiResponse<MultiMatchResult>> {
-  const { outline, knowledge_needs, limit_per_need } = params;
+  const { outline, knowledge_needs, limit_per_need, localized_target_region, localization_mode } = params;
+  const localizedContext = buildLocalizedMatchContext(localized_target_region, localization_mode);
 
   // Step 1: Collect all entries from knowledge base, including long story/detail fields.
   const allEntries = await collectSearchableEntries();
@@ -616,7 +619,7 @@ export async function multiMatchEntries(
 
   for (const need of knowledge_needs) {
     // Build a combined query from need keywords
-    const needQuery = need.keywords.join(' ');
+    const needQuery = [need.keywords.join(' '), localizedContext].filter(Boolean).join(' ');
     const queryKeywords = extractKeywords(needQuery);
     const queryProvince = detectProvince(needQuery);
 
@@ -676,7 +679,7 @@ export async function multiMatchEntries(
   primaryEntries.sort((a, b) => b.score - a.score);
   supportingEntries.sort((a, b) => b.score - a.score);
   const enrichedSupportingEntries = appendDomainPackEntries(supportingEntries, {
-    query: outline,
+    query: [outline, localizedContext].filter(Boolean).join(' '),
     primaryEntries,
     limit: 5,
   });
@@ -709,6 +712,18 @@ export async function multiMatchEntries(
       overall_confidence: overallConfidence,
     },
   });
+}
+
+function buildLocalizedMatchContext(
+  targetRegion: string | undefined,
+  mode: 'allow_related_influence' | 'strict_direct_events' | undefined,
+): string {
+  const target = targetRegion?.trim();
+  if (!target) return '';
+  const modeText = mode === 'strict_direct_events'
+    ? '严格直接事件 亲历 发生'
+    : '思想文化影响 相关地点 当代转化 不可写成';
+  return `甲方指定地域:${target} 本地化目标:${target} 当地范围:${target} ${modeText}`;
 }
 
 function entryMatchesNeedRole(need: KnowledgeNeed, entry: EntrySearchResult): boolean {

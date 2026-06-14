@@ -7,6 +7,8 @@ import type {
   KnowledgeEntryRole,
   KnowledgePackEntry,
 } from '@shared/types.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 interface EntryMetadata {
   knowledge_domain: KnowledgeDomain;
@@ -27,6 +29,13 @@ interface DomainPackSeed {
   keywords: string[];
   asset_usage: KnowledgeAssetUsage[];
   trigger_words: string[];
+}
+
+interface DomainPackFile {
+  domain_id: string;
+  version: string;
+  description?: string;
+  entries: DomainPackSeed[];
 }
 
 const DYNASTY_ERAS = [
@@ -50,7 +59,7 @@ const DYNASTY_ERAS = [
   '现代',
 ];
 
-const DOMAIN_PACK_SEEDS: DomainPackSeed[] = [
+const FALLBACK_DOMAIN_PACK_SEEDS: DomainPackSeed[] = [
   {
     entry_name: '宋代士人设定包——服饰器物与称谓',
     domain: 'era_setting',
@@ -122,6 +131,8 @@ const DOMAIN_PACK_SEEDS: DomainPackSeed[] = [
   },
 ];
 
+let cachedDomainPackSeeds: DomainPackSeed[] | null = null;
+
 export function inferEntryMetadata(entry: Pick<EntrySearchResult, 'name' | 'type' | 'summary' | 'keywords' | 'province' | 'region'>): EntryMetadata {
   const text = `${entry.name} ${entry.type} ${entry.summary} ${entry.keywords.join(' ')} ${entry.province} ${entry.region}`;
   const era = detectEra(text);
@@ -181,13 +192,19 @@ export function buildDomainPackEntries(context: {
   ].filter(Boolean).join(' ');
   if (!text.trim()) return [];
 
-  const selected = DOMAIN_PACK_SEEDS
+  const scored = getDomainPackSeeds()
     .map(seed => ({ seed, score: scoreDomainPackSeed(seed, text) }))
     .filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, context.limit ?? 4);
+    .sort((a, b) => b.score - a.score);
+  const selected = selectDomainPackSeeds(scored, context.limit ?? 4, text);
 
   return selected.map(({ seed, score }) => seedToKnowledgePackEntry(seed, score));
+}
+
+export function getDomainPackSeeds(): DomainPackSeed[] {
+  if (cachedDomainPackSeeds) return cachedDomainPackSeeds;
+  cachedDomainPackSeeds = loadDomainPackSeeds();
+  return cachedDomainPackSeeds;
 }
 
 export function appendDomainPackEntries(
@@ -213,6 +230,24 @@ export function appendDomainPackEntries(
 }
 
 function inferKnowledgeDomain(text: string, type: string): KnowledgeDomain {
+  if (/叙事模式|叙事机制|narrative|剧情结构|节奏结构/.test(text)) {
+    return 'narrative_pattern';
+  }
+  if (/人物原型|角色原型|archetype|清官|匠人|见证者/.test(text)) {
+    return 'character_archetype';
+  }
+  if (/冲突模式|冲突机制|conflict|冤案|抉择|对抗/.test(text)) {
+    return 'conflict_pattern';
+  }
+  if (/视觉风格|画风|镜头风格|visual style|分镜风格/.test(text)) {
+    return 'visual_style_pack';
+  }
+  if (/安全规则|红线|不可写成|禁写|风险规则/.test(text)) {
+    return 'safety_rule';
+  }
+  if (/来源包|来源体系|source pack|引用边界|资料来源/.test(text)) {
+    return 'source_pack';
+  }
   if (type === '神话传说' || type === '民间故事' || /志异|狐|鬼|妖|怪|神话|传说|显灵|托梦/.test(text)) {
     return 'folklore_zhiyi';
   }
@@ -230,6 +265,12 @@ function inferAssetUsage(text: string, type: string): KnowledgeAssetUsage[] {
   if (/案卷|判词|油灯|烛火|香炉|石阶|岩壁|书桌|陈设|道具/.test(text)) usage.add('scene_props');
   if (/传说|神话|志异|狐|鬼|妖|怪|托梦|显灵|报恩|禁忌/.test(text)) usage.add('story_motif');
   if (/可信|待核实|存疑|民间传说|文学|史实|附会/.test(text)) usage.add('credibility_boundary');
+  if (/叙事|剧情结构|节奏|起承转合|开场|反转|结尾/.test(text)) usage.add('plot_structure');
+  if (/成长|人物弧|选择|转变|人格|原型/.test(text)) usage.add('character_arc');
+  if (/冲突|对抗|阻力|抉择|冤案|争议/.test(text)) usage.add('conflict_engine');
+  if (/视觉|画风|镜头|分镜|水墨|漫画|展陈/.test(text)) usage.add('visual_style');
+  if (/红线|不可写成|禁写|安全|风险|边界/.test(text)) usage.add('safety_boundary');
+  if (/来源|引用|地方志|专著|展陈|一手文献/.test(text)) usage.add('source_grounding');
   return [...usage];
 }
 
@@ -249,6 +290,107 @@ function scoreDomainPackSeed(seed: DomainPackSeed, text: string): number {
   }
   if (seed.era && text.includes(seed.era)) score += 0.2;
   return Math.min(1, Math.round(score * 100) / 100);
+}
+
+function loadDomainPackSeeds(): DomainPackSeed[] {
+  try {
+    const filePath = resolve(kbRoot(), 'domain-packs', 'china-culture.json');
+    const parsed = JSON.parse(readFileSync(filePath, 'utf8')) as DomainPackFile;
+    const validEntries = Array.isArray(parsed.entries)
+      ? parsed.entries.filter(isValidDomainPackSeed)
+      : [];
+    return validEntries.length > 0 ? validEntries : FALLBACK_DOMAIN_PACK_SEEDS;
+  } catch {
+    return FALLBACK_DOMAIN_PACK_SEEDS;
+  }
+}
+
+function kbRoot(): string {
+  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+}
+
+function isValidDomainPackSeed(seed: Partial<DomainPackSeed>): seed is DomainPackSeed {
+  return Boolean(
+    seed
+    && seed.entry_name
+    && seed.domain
+    && seed.role
+    && seed.type
+    && seed.region
+    && seed.summary
+    && Array.isArray(seed.keywords)
+    && Array.isArray(seed.asset_usage)
+    && Array.isArray(seed.trigger_words),
+  );
+}
+
+function selectDomainPackSeeds(
+  scored: Array<{ seed: DomainPackSeed; score: number }>,
+  limit: number,
+  text: string,
+): Array<{ seed: DomainPackSeed; score: number }> {
+  if (limit <= 0) return [];
+
+  const selected: Array<{ seed: DomainPackSeed; score: number }> = [];
+  const selectedNames = new Set<string>();
+  const selectedDomains = new Set<KnowledgeDomain>();
+
+  for (const matcher of priorityDomainPackMatchers(text)) {
+    if (selected.length >= limit) break;
+    const item = scored.find(candidate =>
+      !selectedNames.has(candidate.seed.entry_name) && matcher(candidate.seed)
+    );
+    if (!item) continue;
+    selected.push(item);
+    selectedNames.add(item.seed.entry_name);
+    selectedDomains.add(item.seed.domain);
+  }
+
+  for (const item of scored) {
+    if (selected.length >= limit) break;
+    if (selectedDomains.has(item.seed.domain)) continue;
+    selected.push(item);
+    selectedNames.add(item.seed.entry_name);
+    selectedDomains.add(item.seed.domain);
+  }
+
+  for (const item of scored) {
+    if (selected.length >= limit) break;
+    if (selectedNames.has(item.seed.entry_name)) continue;
+    selected.push(item);
+    selectedNames.add(item.seed.entry_name);
+  }
+
+  return selected;
+}
+
+function priorityDomainPackMatchers(text: string): Array<(seed: DomainPackSeed) => boolean> {
+  const matchers: Array<(seed: DomainPackSeed) => boolean> = [];
+
+  if (detectEra(text)) {
+    matchers.push(seed => seed.domain === 'era_setting' && (!seed.era || text.includes(seed.era)));
+  }
+  if (/民间传说|地方传说|传说|志异|神话|狐仙|鬼怪|显灵|托梦/.test(text)) {
+    matchers.push(seed => seed.domain === 'folklore_zhiyi');
+  }
+  if (/场景道具|道具边界|资产边界|GEARS|供稿|分镜/.test(text)) {
+    matchers.push(seed =>
+      seed.domain === 'gears_asset'
+      && seed.asset_usage.includes('scene_props')
+      && /场景道具|资产边界|随身道具/.test(`${seed.summary} ${seed.keywords.join(' ')}`)
+    );
+  }
+  if (/月岩|洞穴|天然岩洞|读书悟道/.test(text)) {
+    matchers.push(seed => seed.domain === 'gears_asset' && seed.region !== '通用');
+  }
+  if (/思想影响|后世影响|当代转化|学脉|传承|地方化/.test(text)) {
+    matchers.push(seed => seed.domain === 'narrative_pattern');
+  }
+  if (/湖南|长沙|岳麓|永州|道县|洞庭|湘楚/.test(text)) {
+    matchers.push(seed => seed.domain === 'regional_culture');
+  }
+
+  return matchers;
 }
 
 function seedToKnowledgePackEntry(seed: DomainPackSeed, score: number): KnowledgePackEntry {
