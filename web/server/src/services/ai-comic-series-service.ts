@@ -17,6 +17,8 @@ import type {
   AiComicSeriesLedgerRebuildRequest,
   AiComicSeriesContinuityAudit,
   AiComicSeriesBibleExportPackage,
+  AiComicSeriesBibleMemoryRow,
+  AiComicSeriesBibleProductionTables,
   AiComicSeriesQualityAudit,
   AiComicSeriesQualityEpisodeReport,
   AiComicThreadClosureItem,
@@ -32,6 +34,13 @@ import type {
   AiComicSeriesPlan,
   AiComicSeriesPlanRequest,
   AiComicSeriesSpineBeat,
+  AiComicSeriesMemory,
+  AiComicSeriesMemoryCategory,
+  AiComicSeriesMemoryItem,
+  AiComicSeriesMemoryRecall,
+  AiComicSeriesMemoryRecallItem,
+  AiComicSeriesMemoryRecallControls,
+  AiComicSeriesMemoryRecallPreferences,
   AiComicPlotThread,
   ApiResponse,
   KnowledgeNeed,
@@ -47,6 +56,7 @@ import {
   getNarrativePatternRequirementLines,
   getNarrativePatternsForVideoType,
 } from './narrative-pattern-library.js';
+import { buildSeedancePromptPackage } from './seedance-prompt-service.js';
 
 const PACING_LABELS: Record<AiComicPacingProfile, string> = {
   fast_hook: '强钩子快节奏',
@@ -193,7 +203,18 @@ export async function generateAiComicEpisodeFromPlan(
   }
 
   const narrativePatternIds = resolveAiComicNarrativePatternIds(plan, request.narrative_pattern_ids);
-  const episodeOutline = buildEpisodeGenerationOutline(plan, episode, continuityLedger, narrativePatternIds);
+  const memoryRecallControls = mergeMemoryRecallControls(
+    existingProject?.memory_recall_preferences,
+    request.memory_recall_controls,
+    episode.episode_no,
+  );
+  const episodeOutline = buildEpisodeGenerationOutline(
+    plan,
+    episode,
+    continuityLedger,
+    narrativePatternIds,
+    memoryRecallControls,
+  );
   return generateAndStoreStory({
     video_type: 'ai_comic_drama',
     presentation_style: 'ai_comic',
@@ -255,8 +276,19 @@ export async function previewAiComicEpisodeContext(
     .filter(record => record.episode_no < episode.episode_no)
     .sort((a, b) => b.episode_no - a.episode_no)[0];
   const next = plan.episodes.find(item => item.episode_no === episode.episode_no + 1);
-  const fallbackLedger = ledger ?? buildInitialContinuityLedger(plan);
+  const fallbackLedger = normalizeContinuityLedger(ledger, plan);
   const narrativePatternIds = resolveAiComicNarrativePatternIds(plan, request.narrative_pattern_ids);
+  const memoryRecallControls = mergeMemoryRecallControls(
+    existingProject?.memory_recall_preferences,
+    request.memory_recall_controls,
+    episode.episode_no,
+  );
+  const focusedMemoryRecall = buildEpisodeMemoryRecall(
+    plan,
+    episode,
+    fallbackLedger.series_memory,
+    memoryRecallControls,
+  );
 
   return success({
     schema_version: 'ai-comic-episode-context-preview/v1',
@@ -266,13 +298,21 @@ export async function previewAiComicEpisodeContext(
     used_saved_ledger: Boolean(ledger),
     blueprint: buildAiComicEpisodeBlueprint(plan, episode),
     narrative_patterns: narrativePatternLabels(narrativePatternIds),
-    generation_outline: buildEpisodeGenerationOutline(plan, episode, fallbackLedger, narrativePatternIds),
+    generation_outline: buildEpisodeGenerationOutline(
+      plan,
+      episode,
+      fallbackLedger,
+      narrativePatternIds,
+      memoryRecallControls,
+    ),
+    focused_memory_recall: focusedMemoryRecall,
     ledger_summary: {
       last_generated_episode_no: fallbackLedger.last_generated_episode_no,
       character_state_current: fallbackLedger.character_state_current,
       open_threads: fallbackLedger.open_threads,
       paid_off_threads: fallbackLedger.paid_off_threads,
       knowledge_used: fallbackLedger.knowledge_used,
+      series_memory: buildSeriesMemorySummary(fallbackLedger.series_memory),
     },
     previous_episode_memory: previousRecord?.next_episode_memory ?? episode.continuity_from_previous,
     next_episode_requirement: next
@@ -450,6 +490,99 @@ function buildAiComicSeriesBibleMarkdown(pkg: AiComicSeriesBibleExportPackage): 
     `- 已回收线索: ${pkg.continuity_ledger.paid_off_threads.join('；') || '暂无'}`,
     `- 已用知识: ${pkg.continuity_ledger.knowledge_used.join('、') || '暂无'}`,
     '',
+    '## 系列记忆引擎',
+    `- 结构化记忆: ${pkg.continuity_ledger.series_memory ? '已启用' : '未启用'}`,
+    `- 待核冲突: ${pkg.continuity_ledger.series_memory?.conflicts.join('；') || '无'}`,
+    '',
+    '## 制作表',
+    '',
+    '### 角色表',
+    ...markdownTable(
+      ['角色', '定位', '当前状态', '欲望', '视觉识别', '转折点'],
+      pkg.production_tables.characters.map(character => [
+        character.name,
+        character.role,
+        character.current_state || character.starting_state,
+        character.desire,
+        character.visual_signature,
+        character.turning_points.join('；') || '未记录',
+      ]),
+    ),
+    '',
+    '### 场景表',
+    ...markdownTable(
+      ['场景', '出现集数', '戏剧用途', '连续性约束'],
+      pkg.production_tables.locations.map(location => [
+        location.label,
+        location.episode_nos.map(no => `第${no}集`).join('、'),
+        location.dramatic_use.join('；') || '未记录',
+        location.continuity_constraints.join('；') || '未记录',
+      ]),
+    ),
+    '',
+    '### 线索表',
+    ...markdownTable(
+      ['线索', '开启', '回收', '状态', '关联集数', '处理建议'],
+      pkg.production_tables.threads.map(thread => [
+        thread.title,
+        `第${thread.setup_episode}集`,
+        `第${thread.payoff_episode}集`,
+        threadClosureStatusLabel(thread.status),
+        thread.related_episodes.map(no => `第${no}集`).join('、') || '未记录',
+        [...thread.issues, ...thread.repair_suggestions].join('；') || '按计划推进',
+      ]),
+    ),
+    '',
+    '### 知识边界表',
+    ...markdownTable(
+      ['知识点', '使用集数', '用途', '边界'],
+      pkg.production_tables.knowledge_boundaries.map(item => [
+        item.label,
+        item.episode_nos.map(no => `第${no}集`).join('、'),
+        item.usage,
+        item.boundary_note,
+      ]),
+    ),
+    '',
+    '### 系列记忆表',
+    ...markdownTable(
+      ['类型', '记忆项', '当前状态', '关联集数', '连续性备注'],
+      pkg.production_tables.series_memory.map(item => [
+        memoryCategoryLabel(item.category),
+        item.label,
+        item.status,
+        item.episode_nos.map(no => `第${no}集`).join('、') || '全系列',
+        item.continuity_notes.join('；') || '未记录',
+      ]),
+    ),
+    '',
+    '### 流派机制表',
+    ...markdownTable(
+      ['机制', '核心承诺', '质量信号'],
+      pkg.production_tables.narrative_patterns.map(pattern => [
+        pattern.label,
+        pattern.core_promise,
+        pattern.required_signals.join('；') || '未记录',
+      ]),
+    ),
+    '',
+    '### 分集状态表',
+    ...markdownTable(
+      ['集数', '标题', '状态', '故事 ID', '质量', '注意事项'],
+      pkg.production_tables.episode_status.map(episode => [
+        `第${episode.episode_no}集`,
+        episode.title,
+        episode.status === 'generated' ? '已生成' : '规划中',
+        episode.story_id ?? '尚未生成',
+        episode.quality_status ? episodeQualityStatusLabel(episode.quality_status) : '未评估',
+        [
+          episode.needs_episode_regeneration ? '需重生成本集' : '',
+          episode.needs_ledger_rebuild ? '需重建账本' : '',
+          ...episode.attention_reasons,
+        ].filter(Boolean).join('；') || '无',
+      ]),
+    ),
+    '',
     '## 系列质量审计',
     ...(pkg.series_quality_audit ? [
       `- 状态: ${pkg.series_quality_audit.passed ? '通过' : '需处理'}`,
@@ -490,6 +623,189 @@ function buildAiComicSeriesBibleMarkdown(pkg: AiComicSeriesBibleExportPackage): 
     '',
   ];
   return lines.join('\n');
+}
+
+function markdownTable(headers: string[], rows: string[][]): string[] {
+  if (rows.length === 0) return ['- 未记录'];
+  const cleanCell = (value: string): string => value.replace(/\|/g, '｜').replace(/\n/g, ' ').trim() || '未记录';
+  return [
+    `| ${headers.map(cleanCell).join(' |')} |`,
+    `| ${headers.map(() => '---').join(' |')} |`,
+    ...rows.map(row => `| ${row.map(cleanCell).join(' |')} |`),
+  ];
+}
+
+function threadClosureStatusLabel(status: AiComicThreadClosureItem['status']): string {
+  const map: Record<AiComicThreadClosureItem['status'], string> = {
+    planned: '已规划',
+    opened: '已开启',
+    in_progress: '推进中',
+    paid_off: '已回收',
+    overdue: '超期',
+    orphaned: '未绑定',
+    duplicate: '重复',
+  };
+  return map[status];
+}
+
+function episodeQualityStatusLabel(status: AiComicSeriesQualityEpisodeReport['status']): string {
+  const map: Record<AiComicSeriesQualityEpisodeReport['status'], string> = {
+    passed: '通过',
+    needs_attention: '需关注',
+    not_generated: '未生成',
+    unknown: '未知',
+  };
+  return map[status];
+}
+
+function memoryCategoryLabel(category: AiComicSeriesMemoryCategory): string {
+  const map: Record<AiComicSeriesMemoryCategory, string> = {
+    character: '角色',
+    relationship: '关系',
+    prop: '道具',
+    location: '地点',
+    visual_asset: '视觉资产',
+    knowledge_boundary: '知识边界',
+    story_event: '关键事件',
+  };
+  return map[category];
+}
+
+function buildAiComicSeriesBibleProductionTables(input: {
+  plan: AiComicSeriesPlan;
+  generatedEpisodeStoryIds: Record<string, string>;
+  ledger: AiComicContinuityLedger;
+  seriesQualityAudit?: AiComicSeriesQualityAudit;
+}): AiComicSeriesBibleProductionTables {
+  const episodeReports = new Map(
+    (input.seriesQualityAudit?.episode_reports ?? []).map(report => [report.episode_no, report]),
+  );
+  const threadItems = new Map(
+    (input.seriesQualityAudit?.thread_closure_report?.items ?? []).map(item => [item.thread_id, item]),
+  );
+  const lastGeneratedEpisodeNo = input.ledger.last_generated_episode_no ?? 0;
+
+  const characters = input.plan.main_characters.map(character => {
+    const currentState = input.ledger.character_state_current.find(state => state.includes(character.name))
+      ?? character.turning_points
+        .filter(point => point.episode_no <= lastGeneratedEpisodeNo)
+        .sort((a, b) => b.episode_no - a.episode_no)[0]?.change
+      ?? character.starting_state;
+    return {
+      name: character.name,
+      role: character.role,
+      starting_state: character.starting_state,
+      current_state: currentState,
+      desire: character.desire,
+      long_arc: character.long_arc,
+      visual_signature: character.visual_signature,
+      turning_points: character.turning_points.map(point => `第${point.episode_no}集：${point.change}`),
+    };
+  });
+
+  const locations = input.plan.episodes.map(episode => ({
+    location_id: `episode-${episode.episode_no}-production-space`,
+    label: episode.knowledge_focus[0] ?? episode.story_phase,
+    episode_nos: [episode.episode_no],
+    dramatic_use: [
+      episode.opening_hook ?? '承接上一集',
+      episode.main_conflict,
+      episode.midpoint_turn ?? episode.ending_hook,
+    ].filter(Boolean),
+    continuity_constraints: [
+      ...episode.continuity_from_previous,
+      ...episode.continuity_state_after,
+    ],
+  }));
+
+  const threads = input.plan.plot_threads.map(thread => {
+    const item = threadItems.get(thread.thread_id);
+    return {
+      thread_id: thread.thread_id,
+      title: thread.title,
+      setup_episode: item?.setup_episode ?? thread.setup_episode,
+      payoff_episode: item?.payoff_episode ?? thread.payoff_episode,
+      status: item?.status ?? 'planned',
+      related_episodes: item?.related_episodes.length
+        ? item.related_episodes
+        : [thread.setup_episode, thread.payoff_episode],
+      issues: item?.issues ?? [],
+      repair_suggestions: item?.repair_suggestions ?? [],
+    };
+  });
+
+  const knowledgeMap = new Map<string, Set<number>>();
+  for (const episode of input.plan.episodes) {
+    for (const label of episode.knowledge_focus) {
+      const normalized = label.trim();
+      if (!normalized) continue;
+      if (!knowledgeMap.has(normalized)) knowledgeMap.set(normalized, new Set());
+      knowledgeMap.get(normalized)?.add(episode.episode_no);
+    }
+  }
+  for (const label of input.ledger.knowledge_used) {
+    const normalized = label.trim();
+    if (!normalized) continue;
+    if (!knowledgeMap.has(normalized)) knowledgeMap.set(normalized, new Set());
+  }
+  const knowledgeBoundaries = [...knowledgeMap.entries()].map(([label, episodeNos]) => ({
+    label,
+    episode_nos: [...episodeNos].sort((a, b) => a - b),
+    usage: episodeNos.size > 0 ? '分集知识焦点' : '连续性账本已用知识',
+    boundary_note: '仅作为文化、人物、地点或事件边界使用；未核实内容不得写成确证史实。',
+  }));
+
+  const narrativePatterns = getNarrativePatternsForVideoType('ai_comic_drama', input.plan.narrative_pattern_ids ?? [])
+    .map(pattern => ({
+      pattern_id: pattern.pattern_id,
+      label: pattern.label,
+      core_promise: pattern.narrative_engine,
+      required_signals: pattern.quality_signals,
+    }));
+
+  const episodeStatus = input.plan.episodes.map(episode => {
+    const storyId = input.generatedEpisodeStoryIds[String(episode.episode_no)];
+    const report = episodeReports.get(episode.episode_no);
+    return {
+      episode_no: episode.episode_no,
+      title: episode.title,
+      status: storyId ? 'generated' as const : 'planned' as const,
+      story_id: storyId,
+      quality_status: report?.status,
+      needs_episode_regeneration: report?.needs_episode_regeneration,
+      needs_ledger_rebuild: report?.needs_ledger_rebuild,
+      attention_reasons: report?.issues ?? [],
+    };
+  });
+
+  return {
+    characters,
+    locations,
+    threads,
+    knowledge_boundaries: knowledgeBoundaries,
+    series_memory: buildAiComicSeriesMemoryRows(input.ledger.series_memory),
+    narrative_patterns: narrativePatterns,
+    episode_status: episodeStatus,
+  };
+}
+
+function buildAiComicSeriesMemoryRows(memory?: AiComicSeriesMemory): AiComicSeriesBibleMemoryRow[] {
+  if (!memory) return [];
+  return [
+    ...memory.characters,
+    ...memory.relationships,
+    ...memory.props,
+    ...memory.locations,
+    ...memory.visual_assets,
+    ...memory.knowledge_boundaries,
+    ...memory.story_events.slice(-20),
+  ].map(item => ({
+    category: item.category,
+    label: item.label,
+    status: item.status,
+    episode_nos: item.related_episode_nos,
+    continuity_notes: item.continuity_notes,
+  }));
 }
 
 function buildAiComicContinuityAudit(params: {
@@ -554,9 +870,14 @@ export async function saveAiComicSeriesProject(
     ...(existing?.generated_episode_story_ids ?? {}),
     ...(request.generated_episode_story_ids ?? {}),
   };
-  const continuityLedger = request.continuity_ledger
-    ?? existing?.continuity_ledger
-    ?? buildInitialContinuityLedger(request.plan);
+  const continuityLedger = normalizeContinuityLedger(
+    request.continuity_ledger ?? existing?.continuity_ledger,
+    request.plan,
+  );
+  const memoryRecallPreferences = normalizeMemoryRecallPreferences(
+    request.memory_recall_preferences ?? existing?.memory_recall_preferences,
+    now,
+  );
 
   const detail: AiComicSeriesProjectDetail = {
     project: buildSeriesProjectMeta({
@@ -570,6 +891,7 @@ export async function saveAiComicSeriesProject(
     plan: request.plan,
     generated_episode_story_ids: generatedEpisodeStoryIds,
     continuity_ledger: continuityLedger,
+    memory_recall_preferences: memoryRecallPreferences,
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -696,8 +1018,11 @@ export async function copyAiComicSeriesProject(
         pending_threads_after: [...record.pending_threads_after],
         knowledge_used: [...record.knowledge_used],
         next_episode_memory: [...record.next_episode_memory],
+        memory_events: record.memory_events?.map(cloneMemoryItem) ?? [],
       })),
+      series_memory: cloneSeriesMemory(existing.continuity_ledger.series_memory ?? buildInitialSeriesMemory(existing.plan)),
     },
+    memory_recall_preferences: cloneMemoryRecallPreferences(existing.memory_recall_preferences),
     series_quality_audit: existing.series_quality_audit,
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
@@ -770,6 +1095,12 @@ export async function exportAiComicSeriesBible(
   const episodeBlueprints = detail.plan.episodes.map(episode =>
     buildAiComicEpisodeBlueprint(detail.plan, episode)
   );
+  const productionTables = buildAiComicSeriesBibleProductionTables({
+    plan: detail.plan,
+    generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
+    ledger: detail.continuity_ledger,
+    seriesQualityAudit,
+  });
   const pkg: AiComicSeriesBibleExportPackage = {
     schema_version: 'ai-comic-series-bible-export/v1',
     exported_at: exportedAt,
@@ -779,6 +1110,7 @@ export async function exportAiComicSeriesBible(
     continuity_ledger: detail.continuity_ledger,
     series_quality_audit: seriesQualityAudit,
     episode_blueprints: episodeBlueprints,
+    production_tables: productionTables,
     markdown: '',
   };
   return success({
@@ -1210,18 +1542,20 @@ function rebuildContinuityLedgerFromEpisode(params: {
   const beforeRecords = params.ledger.episode_records
     .filter(record => record.episode_no < params.fromEpisodeNo)
     .sort((a, b) => a.episode_no - b.episode_no);
-  const lastBefore = beforeRecords.at(-1);
-  let ledger: AiComicContinuityLedger = lastBefore
-    ? {
-        schema_version: 'ai-comic-continuity-ledger/v1',
-        last_generated_episode_no: lastBefore.episode_no,
-        character_state_current: lastBefore.character_state,
-        open_threads: lastBefore.pending_threads_after,
-        paid_off_threads: unique(beforeRecords.flatMap(record => record.paid_off_threads)),
-        knowledge_used: unique(beforeRecords.flatMap(record => record.knowledge_used)),
-        episode_records: beforeRecords,
-      }
-    : buildInitialContinuityLedger(params.plan);
+  let ledger: AiComicContinuityLedger = buildInitialContinuityLedger(params.plan);
+
+  for (const record of beforeRecords) {
+    const episode = params.plan.episodes.find(item => item.episode_no === record.episode_no);
+    if (!episode) continue;
+    ledger = updateContinuityLedgerFromEpisodePlan({
+      ledger,
+      plan: params.plan,
+      episode,
+      storyId: record.story_id,
+      generatedAt: record.generated_at,
+      knowledgeUsed: record.knowledge_used,
+    });
+  }
 
   const generatedEpisodes = params.plan.episodes
     .filter(episode => episode.episode_no >= params.fromEpisodeNo)
@@ -1300,10 +1634,11 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
   const filePath = seriesProjectPath(seriesProjectId);
   if (!(await pathExists(filePath))) return null;
   const detail = await readJsonFile<StoredAiComicSeriesProject>(filePath);
-  const continuityLedger = detail.continuity_ledger ?? buildInitialContinuityLedger(detail.plan);
+  const continuityLedger = normalizeContinuityLedger(detail.continuity_ledger, detail.plan);
   return {
     ...detail,
     continuity_ledger: continuityLedger,
+    memory_recall_preferences: normalizeMemoryRecallPreferences(detail.memory_recall_preferences),
     series_quality_audit: detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
       plan: detail.plan,
       generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
@@ -1354,7 +1689,226 @@ function buildInitialContinuityLedger(plan: AiComicSeriesPlan): AiComicContinuit
     paid_off_threads: [],
     knowledge_used: [],
     episode_records: [],
+    series_memory: buildInitialSeriesMemory(plan),
   };
+}
+
+function normalizeContinuityLedger(
+  ledger: AiComicContinuityLedger | undefined,
+  plan: AiComicSeriesPlan,
+): AiComicContinuityLedger {
+  const base = ledger ?? buildInitialContinuityLedger(plan);
+  return {
+    ...base,
+    character_state_current: base.character_state_current ?? [],
+    open_threads: base.open_threads ?? [],
+    paid_off_threads: base.paid_off_threads ?? [],
+    knowledge_used: base.knowledge_used ?? [],
+    episode_records: (base.episode_records ?? []).map(record => ({
+      ...record,
+      memory_events: record.memory_events ?? [],
+    })),
+    series_memory: base.series_memory ?? buildInitialSeriesMemory(plan),
+  };
+}
+
+function normalizeMemoryRecallPreferences(
+  preferences?: AiComicSeriesMemoryRecallPreferences,
+  updatedAt?: string,
+): AiComicSeriesMemoryRecallPreferences {
+  const globalLocked = unique(preferences?.locked_memory_ids ?? []);
+  const perEpisode = Object.fromEntries(
+    Object.entries(preferences?.per_episode ?? {}).map(([episodeNo, controls]) => {
+      const locked = unique(controls.locked_memory_ids ?? []);
+      return [episodeNo, {
+        locked_memory_ids: locked,
+        excluded_memory_ids: unique(controls.excluded_memory_ids ?? []).filter(id => !locked.includes(id)),
+      }];
+    }),
+  );
+  return {
+    locked_memory_ids: globalLocked,
+    excluded_memory_ids: unique(preferences?.excluded_memory_ids ?? [])
+      .filter(id => !globalLocked.includes(id)),
+    per_episode: perEpisode,
+    updated_at: preferences?.updated_at ?? updatedAt,
+  };
+}
+
+function cloneMemoryRecallPreferences(
+  preferences?: AiComicSeriesMemoryRecallPreferences,
+): AiComicSeriesMemoryRecallPreferences {
+  return {
+    locked_memory_ids: [...(preferences?.locked_memory_ids ?? [])],
+    excluded_memory_ids: [...(preferences?.excluded_memory_ids ?? [])],
+    per_episode: Object.fromEntries(
+      Object.entries(preferences?.per_episode ?? {}).map(([episodeNo, controls]) => [episodeNo, {
+        locked_memory_ids: [...(controls.locked_memory_ids ?? [])],
+        excluded_memory_ids: [...(controls.excluded_memory_ids ?? [])],
+      }]),
+    ),
+    updated_at: preferences?.updated_at,
+  };
+}
+
+function mergeMemoryRecallControls(
+  preferences?: AiComicSeriesMemoryRecallPreferences,
+  controls?: AiComicSeriesMemoryRecallControls,
+  episodeNo?: number,
+): AiComicSeriesMemoryRecallControls {
+  const episodeControls = episodeNo ? preferences?.per_episode?.[String(episodeNo)] : undefined;
+  const locked = unique([
+    ...(preferences?.locked_memory_ids ?? []),
+    ...(episodeControls?.locked_memory_ids ?? []),
+    ...(controls?.locked_memory_ids ?? []),
+  ]);
+  const excluded = unique([
+    ...(preferences?.excluded_memory_ids ?? []),
+    ...(episodeControls?.excluded_memory_ids ?? []),
+    ...(controls?.excluded_memory_ids ?? []),
+  ]);
+  return {
+    locked_memory_ids: locked,
+    excluded_memory_ids: excluded.filter(id => !locked.includes(id)),
+  };
+}
+
+function buildInitialSeriesMemory(plan: AiComicSeriesPlan): AiComicSeriesMemory {
+  const characters = plan.main_characters.map(character => makeMemoryItem({
+    category: 'character',
+    label: character.name,
+    status: character.starting_state,
+    relatedEpisodeNos: uniqueNumbers([
+      1,
+      ...character.turning_points.map(point => point.episode_no),
+    ]),
+    continuityNotes: [
+      `定位：${character.role}`,
+      `欲望：${character.desire}`,
+      `长弧：${character.long_arc}`,
+    ],
+    visualAnchor: character.visual_signature,
+    firstEpisodeNo: 1,
+  }));
+
+  const visualAssets = plan.main_characters.map(character => makeMemoryItem({
+    category: 'visual_asset',
+    label: `${character.name}视觉识别`,
+    status: character.visual_signature,
+    relatedEpisodeNos: uniqueNumbers([
+      1,
+      ...character.turning_points.map(point => point.episode_no),
+    ]),
+    continuityNotes: [`角色视觉资产需跨集保持：${character.visual_signature}`],
+    visualAnchor: character.visual_signature,
+    firstEpisodeNo: 1,
+  }));
+
+  const locations = plan.episodes.map(episode => makeMemoryItem({
+    category: 'location',
+    label: episode.knowledge_focus[0] || episode.story_phase,
+    status: episode.main_conflict,
+    relatedEpisodeNos: [episode.episode_no],
+    continuityNotes: [
+      episode.opening_hook ?? '承接上一集',
+      episode.midpoint_turn ?? episode.ending_hook,
+    ],
+    firstEpisodeNo: episode.episode_no,
+  }));
+
+  const knowledgeBoundaries = unique(plan.episodes.flatMap(episode => episode.knowledge_focus))
+    .filter(label => label.trim().length > 0)
+    .map(label => makeMemoryItem({
+      category: 'knowledge_boundary',
+      label,
+      status: '计划知识焦点',
+      relatedEpisodeNos: plan.episodes
+        .filter(episode => episode.knowledge_focus.includes(label))
+        .map(episode => episode.episode_no),
+      continuityNotes: ['知识库内容作为文化、人物、地点或事件边界；未核实内容不得写成确证史实。'],
+      knowledgeBoundary: '知识库不是资料仓库，生成时只作为事实边界和创作约束。',
+    }));
+
+  const storyEvents = plan.episodes.map(episode => makeMemoryItem({
+    category: 'story_event',
+    label: `第${episode.episode_no}集：${episode.title}`,
+    status: episode.main_conflict,
+    relatedEpisodeNos: [episode.episode_no],
+    continuityNotes: [
+      `承接：${episode.continuity_from_previous.join('；') || '无'}`,
+      `后续状态：${episode.continuity_state_after.join('；') || '待生成确认'}`,
+    ],
+    firstEpisodeNo: episode.episode_no,
+  }));
+
+  return {
+    schema_version: 'ai-comic-series-memory/v1',
+    characters,
+    relationships: [],
+    props: extractPropMemoryFromPlan(plan),
+    locations: mergeMemoryItems(locations),
+    visual_assets: visualAssets,
+    knowledge_boundaries: knowledgeBoundaries,
+    story_events: storyEvents,
+    conflicts: [],
+  };
+}
+
+function extractPropMemoryFromPlan(plan: AiComicSeriesPlan): AiComicSeriesMemoryItem[] {
+  const candidates = plan.episodes.flatMap(episode => [
+    ...episode.foreshadowing,
+    ...episode.payoff,
+  ]);
+  return candidates
+    .filter(text => /信物|玉|剑|书|卷|图|灯|碑|印|符|钥|帛|器|物|道具/.test(text))
+    .slice(0, 20)
+    .map(text => makeMemoryItem({
+      category: 'prop',
+      label: summarizeText(text, 18),
+      status: text,
+      relatedEpisodeNos: plan.episodes
+        .filter(episode => [...episode.foreshadowing, ...episode.payoff].includes(text))
+        .map(episode => episode.episode_no),
+      continuityNotes: ['道具状态和归属在后续分镜中必须保持一致。'],
+    }));
+}
+
+function makeMemoryItem(params: {
+  category: AiComicSeriesMemoryCategory;
+  label: string;
+  status: string;
+  relatedEpisodeNos: number[];
+  continuityNotes: string[];
+  firstEpisodeNo?: number;
+  lastEpisodeNo?: number;
+  visualAnchor?: string;
+  knowledgeBoundary?: string;
+}): AiComicSeriesMemoryItem {
+  const episodeNos = uniqueNumbers(params.relatedEpisodeNos);
+  return {
+    memory_id: `${params.category}-${slugifyMemoryLabel(params.label)}-${episodeNos[0] ?? 'series'}`,
+    category: params.category,
+    label: params.label,
+    status: params.status,
+    first_episode_no: params.firstEpisodeNo ?? episodeNos[0],
+    last_episode_no: params.lastEpisodeNo ?? episodeNos[episodeNos.length - 1],
+    related_episode_nos: episodeNos,
+    continuity_notes: params.continuityNotes.filter(Boolean),
+    visual_anchor: params.visualAnchor,
+    knowledge_boundary: params.knowledgeBoundary,
+  };
+}
+
+function slugifyMemoryLabel(label: string): string {
+  const ascii = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (ascii) return ascii.slice(0, 24);
+  let hash = 0;
+  for (const char of label) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return hash.toString(36);
+}
+
+function uniqueNumbers(values: number[]): number[] {
+  return [...new Set(values.filter(value => Number.isFinite(value)))].sort((a, b) => a - b);
 }
 
 function updateContinuityLedger(params: {
@@ -1373,6 +1927,7 @@ function updateContinuityLedger(params: {
     episode: params.episode,
     storyId: params.story.storyId,
     knowledgeUsed: storyKnowledgeEntries,
+    story: params.story,
   });
 }
 
@@ -1383,6 +1938,7 @@ function updateContinuityLedgerFromEpisodePlan(params: {
   storyId: string;
   generatedAt?: string;
   knowledgeUsed?: string[];
+  story?: StoryGenerateResult;
 }): AiComicContinuityLedger {
   const openedThreads = params.plan.plot_threads
     .filter(thread => thread.setup_episode === params.episode.episode_no)
@@ -1403,6 +1959,18 @@ function updateContinuityLedgerFromEpisodePlan(params: {
     ...params.episode.knowledge_focus,
     ...(params.knowledgeUsed ?? []),
   ]);
+  const memoryEvents = buildEpisodeMemoryEvents({
+    plan: params.plan,
+    episode: params.episode,
+    knowledgeUsed: params.knowledgeUsed ?? [],
+    story: params.story,
+  });
+  const seriesMemory = updateSeriesMemory({
+    memory: params.ledger.series_memory ?? buildInitialSeriesMemory(params.plan),
+    episode: params.episode,
+    knowledgeUsed: params.knowledgeUsed ?? [],
+    memoryEvents,
+  });
   const record: AiComicContinuityLedgerEpisode = {
     episode_no: params.episode.episode_no,
     story_id: params.storyId,
@@ -1418,7 +1986,9 @@ function updateContinuityLedgerFromEpisodePlan(params: {
       `第${params.episode.episode_no}集结尾：${params.episode.ending_hook}`,
       ...params.episode.continuity_state_after,
       ...pendingThreadsAfter.slice(0, 4).map(thread => `未回收：${thread}`),
+      ...memoryEvents.slice(0, 4).map(item => `记忆：${item.label}=${item.status}`),
     ],
+    memory_events: memoryEvents,
   };
   const records = [
     ...params.ledger.episode_records.filter(item => item.episode_no !== params.episode.episode_no),
@@ -1436,7 +2006,898 @@ function updateContinuityLedgerFromEpisodePlan(params: {
     paid_off_threads: unique([...params.ledger.paid_off_threads, ...paidOffThreads]),
     knowledge_used: knowledgeUsed,
     episode_records: records,
+    series_memory: seriesMemory,
   };
+}
+
+function buildEpisodeMemoryEvents(params: {
+  plan: AiComicSeriesPlan;
+  episode: AiComicEpisodePlan;
+  knowledgeUsed: string[];
+  story?: StoryGenerateResult;
+}): AiComicSeriesMemoryItem[] {
+  const characterEvents = params.plan.main_characters
+    .filter(character =>
+      params.episode.key_characters.includes(character.name)
+      || params.episode.continuity_state_after.some(state => state.includes(character.name))
+    )
+    .map(character => {
+      const state = params.episode.continuity_state_after.find(item => item.includes(character.name))
+        ?? params.episode.character_state_change
+        ?? `${character.name}参与第${params.episode.episode_no}集冲突`;
+      return makeMemoryItem({
+        category: 'character',
+        label: character.name,
+        status: state,
+        relatedEpisodeNos: [params.episode.episode_no],
+        continuityNotes: [
+          params.episode.main_conflict,
+          params.episode.thread_action ?? '',
+        ],
+        visualAnchor: character.visual_signature,
+        firstEpisodeNo: params.episode.episode_no,
+        lastEpisodeNo: params.episode.episode_no,
+      });
+    });
+
+  const locationEvent = makeMemoryItem({
+    category: 'location',
+    label: params.episode.knowledge_focus[0] || params.episode.story_phase,
+    status: params.episode.main_conflict,
+    relatedEpisodeNos: [params.episode.episode_no],
+    continuityNotes: [
+      params.episode.opening_hook ?? '',
+      params.episode.midpoint_turn ?? '',
+      params.episode.ending_hook,
+    ],
+    firstEpisodeNo: params.episode.episode_no,
+    lastEpisodeNo: params.episode.episode_no,
+  });
+
+  const propEvents = extractPropMemoryFromPlan({
+    ...params.plan,
+    episodes: [params.episode],
+  });
+
+  const knowledgeEvents = unique([
+    ...params.episode.knowledge_focus,
+    ...params.knowledgeUsed,
+  ]).map(label => makeMemoryItem({
+    category: 'knowledge_boundary',
+    label,
+    status: '已进入生成账本',
+    relatedEpisodeNos: [params.episode.episode_no],
+    continuityNotes: ['后续使用同一知识点时需保持事实边界和可信度口径一致。'],
+    knowledgeBoundary: '不可把戏剧化补足写成已核实史实。',
+    firstEpisodeNo: params.episode.episode_no,
+    lastEpisodeNo: params.episode.episode_no,
+  }));
+
+  const storyEvent = makeMemoryItem({
+    category: 'story_event',
+    label: `第${params.episode.episode_no}集：${params.episode.title}`,
+    status: params.episode.ending_hook,
+    relatedEpisodeNos: [params.episode.episode_no],
+    continuityNotes: [
+      `主冲突：${params.episode.main_conflict}`,
+      `中段转折：${params.episode.midpoint_turn ?? '未记录'}`,
+      `后续状态：${params.episode.continuity_state_after.join('；') || '待补'}`,
+    ],
+    firstEpisodeNo: params.episode.episode_no,
+    lastEpisodeNo: params.episode.episode_no,
+  });
+
+  return mergeMemoryItems([
+    ...characterEvents,
+    locationEvent,
+    ...propEvents,
+    ...knowledgeEvents,
+    storyEvent,
+    ...buildStoryDraftMemoryEvents(params),
+  ]);
+}
+
+function buildStoryDraftMemoryEvents(params: {
+  plan: AiComicSeriesPlan;
+  episode: AiComicEpisodePlan;
+  knowledgeUsed: string[];
+  story?: StoryGenerateResult;
+}): AiComicSeriesMemoryItem[] {
+  const story = params.story;
+  if (!story) return [];
+
+  const sceneEvents = story.scene_breakdown.slice(0, 12).flatMap(scene => {
+    const events: AiComicSeriesMemoryItem[] = [];
+    if (scene.location.trim()) {
+      events.push(makeMemoryItem({
+        category: 'location',
+        label: scene.location.trim(),
+        status: scene.plot || scene.key_action || scene.dramatic_function,
+        relatedEpisodeNos: [params.episode.episode_no],
+        continuityNotes: [
+          `成稿场景${scene.scene_id}：${scene.title}`,
+          scene.time_of_day ? `时间：${scene.time_of_day}` : '',
+          scene.cultural_note ? `文化提示：${scene.cultural_note}` : '',
+        ],
+        firstEpisodeNo: params.episode.episode_no,
+        lastEpisodeNo: params.episode.episode_no,
+      }));
+    }
+
+    for (const characterName of scene.characters.slice(0, 8)) {
+      const character = params.plan.main_characters.find(item => item.name === characterName);
+      events.push(makeMemoryItem({
+        category: 'character',
+        label: characterName,
+        status: scene.conflict || scene.key_action || `${characterName}出现在成稿场景${scene.scene_id}`,
+        relatedEpisodeNos: [params.episode.episode_no],
+        continuityNotes: [
+          `成稿场景${scene.scene_id}：${scene.title}`,
+          scene.dialogue_or_narration ? `对白/旁白：${summarizeText(scene.dialogue_or_narration, 34)}` : '',
+        ],
+        visualAnchor: character?.visual_signature,
+        firstEpisodeNo: params.episode.episode_no,
+        lastEpisodeNo: params.episode.episode_no,
+      }));
+    }
+
+    const visualAnchor = extractVisualAssetAnchor(scene.visual_prompt);
+    if (visualAnchor) {
+      events.push(makeMemoryItem({
+        category: 'visual_asset',
+        label: visualAnchor.label,
+        status: visualAnchor.status,
+        relatedEpisodeNos: [params.episode.episode_no],
+        continuityNotes: [
+          `成稿场景${scene.scene_id}视觉提示：${summarizeText(scene.visual_prompt, 48)}`,
+        ],
+        visualAnchor: visualAnchor.status,
+        firstEpisodeNo: params.episode.episode_no,
+        lastEpisodeNo: params.episode.episode_no,
+      }));
+    }
+
+    const propAnchor = extractPropAnchor([
+      scene.plot,
+      scene.key_action,
+      scene.visual_prompt,
+      scene.dialogue_or_narration ?? '',
+    ].join('；'));
+    if (propAnchor) {
+      events.push(makeMemoryItem({
+        category: 'prop',
+        label: propAnchor,
+        status: `成稿场景${scene.scene_id}出现：${propAnchor}`,
+        relatedEpisodeNos: [params.episode.episode_no],
+        continuityNotes: [
+          scene.key_action,
+          '道具状态和归属需在后续分镜中保持一致。',
+        ],
+        firstEpisodeNo: params.episode.episode_no,
+        lastEpisodeNo: params.episode.episode_no,
+      }));
+    }
+
+    for (const sourceEntry of scene.source_entries ?? []) {
+      events.push(makeMemoryItem({
+        category: 'knowledge_boundary',
+        label: sourceEntry,
+        status: '成稿场景引用知识来源',
+        relatedEpisodeNos: [params.episode.episode_no],
+        continuityNotes: [
+          scene.factual_basis ? `事实依据：${scene.factual_basis}` : '',
+          scene.fictionalized_elements?.length
+            ? `戏剧化补足：${scene.fictionalized_elements.join('；')}`
+            : '',
+        ],
+        knowledgeBoundary: 'source_entries 和 factual_basis 作为事实边界；fictionalized_elements 不得写成确证史实。',
+        firstEpisodeNo: params.episode.episode_no,
+        lastEpisodeNo: params.episode.episode_no,
+      }));
+    }
+
+    return events;
+  });
+
+  const dialogueRelationshipEvents = extractDialogueRelationshipEvents({
+    episodeNo: params.episode.episode_no,
+    story,
+  });
+
+  const knowledgePackEvents = [
+    ...(story.knowledge_pack?.primary_entries ?? []),
+    ...(story.knowledge_pack?.supporting_entries ?? []),
+  ].map(entry => makeMemoryItem({
+    category: 'knowledge_boundary',
+    label: entry.entry_name,
+    status: entry.role_in_story || '成稿知识包条目',
+    relatedEpisodeNos: [params.episode.episode_no],
+    continuityNotes: [
+      `地区：${entry.province}${entry.region ? `/${entry.region}` : ''}`,
+      `类型：${entry.type}`,
+      entry.match_reason,
+    ],
+    knowledgeBoundary: entry.summary,
+    firstEpisodeNo: params.episode.episode_no,
+    lastEpisodeNo: params.episode.episode_no,
+  }));
+
+  return mergeMemoryItems([
+    ...sceneEvents,
+    ...dialogueRelationshipEvents,
+    ...knowledgePackEvents,
+    ...buildGearsSegmentMemoryEvents({
+      episodeNo: params.episode.episode_no,
+      story,
+    }),
+    ...buildSeedanceShotMemoryEvents({
+      episodeNo: params.episode.episode_no,
+      story,
+    }),
+  ]);
+}
+
+function buildSeedanceShotMemoryEvents(params: {
+  episodeNo: number;
+  story: StoryGenerateResult;
+}): AiComicSeriesMemoryItem[] {
+  const pkg = buildSeedancePromptPackage(params.story);
+  return pkg.shot_units.slice(0, 30).flatMap(unit => {
+    const events: AiComicSeriesMemoryItem[] = [];
+    if (unit.location.trim()) {
+      events.push(makeMemoryItem({
+        category: 'location',
+        label: unit.location,
+        status: `Seedance镜头${unit.shot_id}场景`,
+        relatedEpisodeNos: [params.episodeNo],
+        continuityNotes: [
+          `来源场景${unit.source_scene_id}`,
+          `镜头：${unit.camera_suggestion}`,
+          unit.negative_constraints.length ? `禁用元素：${unit.negative_constraints.join('；')}` : '',
+        ],
+        firstEpisodeNo: params.episodeNo,
+        lastEpisodeNo: params.episodeNo,
+      }));
+    }
+
+    const visualAnchor = extractVisualAssetAnchor(unit.visual_prompt);
+    if (visualAnchor) {
+      events.push(makeMemoryItem({
+        category: 'visual_asset',
+        label: visualAnchor.label,
+        status: visualAnchor.status,
+        relatedEpisodeNos: [params.episodeNo],
+        continuityNotes: [
+          `Seedance镜头${unit.shot_id}视觉提示：${summarizeText(unit.visual_prompt, 56)}`,
+          `运镜：${unit.camera_suggestion}`,
+        ],
+        visualAnchor: visualAnchor.status,
+        firstEpisodeNo: params.episodeNo,
+        lastEpisodeNo: params.episodeNo,
+      }));
+    }
+
+    const propAnchor = extractPropAnchor([unit.script_text, unit.visual_prompt, unit.seedance_prompt].join('；'));
+    if (propAnchor) {
+      events.push(makeMemoryItem({
+        category: 'prop',
+        label: propAnchor,
+        status: `Seedance镜头${unit.shot_id}出现：${propAnchor}`,
+        relatedEpisodeNos: [params.episodeNo],
+        continuityNotes: [
+          `来源场景${unit.source_scene_id}`,
+          `脚本：${summarizeText(unit.script_text, 48)}`,
+          unit.negative_constraints.length ? `禁用元素：${unit.negative_constraints.join('；')}` : '',
+        ],
+        firstEpisodeNo: params.episodeNo,
+        lastEpisodeNo: params.episodeNo,
+      }));
+    }
+
+    if (unit.continuity_notes.length || unit.negative_constraints.length) {
+      events.push(makeMemoryItem({
+        category: 'story_event',
+        label: `Seedance镜头${unit.shot_id}`,
+        status: unit.camera_suggestion,
+        relatedEpisodeNos: [params.episodeNo],
+        continuityNotes: [
+          `连续性：${unit.continuity_notes.join('；') || '无'}`,
+          `禁用元素：${unit.negative_constraints.join('；') || '无'}`,
+        ],
+        firstEpisodeNo: params.episodeNo,
+        lastEpisodeNo: params.episodeNo,
+      }));
+    }
+
+    for (const note of unit.continuity_notes) {
+      if (!/史实|来源|文化|创作/.test(note)) continue;
+      events.push(makeMemoryItem({
+        category: 'knowledge_boundary',
+        label: summarizeText(note, 20),
+        status: `Seedance镜头${unit.shot_id}连续性边界`,
+        relatedEpisodeNos: [params.episodeNo],
+        continuityNotes: [note],
+        knowledgeBoundary: 'Seedance 镜头提示词中的连续性说明不得改写为超出知识库的确证史实。',
+        firstEpisodeNo: params.episodeNo,
+        lastEpisodeNo: params.episodeNo,
+      }));
+    }
+
+    return events;
+  });
+}
+
+function buildGearsSegmentMemoryEvents(params: {
+  episodeNo: number;
+  story: StoryGenerateResult;
+}): AiComicSeriesMemoryItem[] {
+  return params.story.gears_segments.slice(0, 24).flatMap(segment => {
+    const events: AiComicSeriesMemoryItem[] = [];
+    const visualText = [
+      ...segment.visual_focus,
+      segment.segment_prompt_hint ?? '',
+    ].join('；');
+    const propAnchor = extractPropAnchor([segment.script_text, visualText].join('；'));
+    if (propAnchor) {
+      events.push(makeMemoryItem({
+        category: 'prop',
+        label: propAnchor,
+        status: `GEARS分段${segment.segment_id}出现：${propAnchor}`,
+        relatedEpisodeNos: [params.episodeNo],
+        continuityNotes: [
+          `来源场景${segment.source_scene_id}`,
+          summarizeText(segment.script_text, 48),
+        ],
+        firstEpisodeNo: params.episodeNo,
+        lastEpisodeNo: params.episodeNo,
+      }));
+    }
+
+    const visualAnchor = extractVisualAssetAnchor(visualText);
+    if (visualAnchor) {
+      events.push(makeMemoryItem({
+        category: 'visual_asset',
+        label: visualAnchor.label,
+        status: visualAnchor.status,
+        relatedEpisodeNos: [params.episodeNo],
+        continuityNotes: [
+          `GEARS分段${segment.segment_id}视觉焦点：${summarizeText(visualText, 56)}`,
+          `镜头用途：${segment.purpose}`,
+        ],
+        visualAnchor: visualAnchor.status,
+        firstEpisodeNo: params.episodeNo,
+        lastEpisodeNo: params.episodeNo,
+      }));
+    }
+
+    if (segment.source_entries?.length) {
+      for (const sourceEntry of segment.source_entries) {
+        events.push(makeMemoryItem({
+          category: 'knowledge_boundary',
+          label: sourceEntry,
+          status: 'GEARS分段引用知识来源',
+          relatedEpisodeNos: [params.episodeNo],
+          continuityNotes: [
+            `GEARS分段${segment.segment_id}`,
+            `文化约束：${segment.cultural_constraints.join('；') || '未记录'}`,
+          ],
+          knowledgeBoundary: 'GEARS 分段来源条目作为镜头级事实和文化边界。',
+          firstEpisodeNo: params.episodeNo,
+          lastEpisodeNo: params.episodeNo,
+        }));
+      }
+    }
+
+    if (segment.segment_prompt_hint || segment.visual_focus.length > 0) {
+      events.push(makeMemoryItem({
+        category: 'story_event',
+        label: `GEARS分段${segment.segment_id}`,
+        status: segment.purpose,
+        relatedEpisodeNos: [params.episodeNo],
+        continuityNotes: [
+          `来源场景${segment.source_scene_id}`,
+          `画面焦点：${segment.visual_focus.join('；') || '未记录'}`,
+          segment.segment_prompt_hint ? `提示词：${summarizeText(segment.segment_prompt_hint, 56)}` : '',
+        ],
+        firstEpisodeNo: params.episodeNo,
+        lastEpisodeNo: params.episodeNo,
+      }));
+    }
+
+    return events;
+  });
+}
+
+function updateSeriesMemory(params: {
+  memory: AiComicSeriesMemory;
+  episode: AiComicEpisodePlan;
+  knowledgeUsed: string[];
+  memoryEvents: AiComicSeriesMemoryItem[];
+}): AiComicSeriesMemory {
+  const merged: AiComicSeriesMemory = {
+    schema_version: 'ai-comic-series-memory/v1',
+    characters: params.memory.characters,
+    relationships: params.memory.relationships,
+    props: params.memory.props,
+    locations: params.memory.locations,
+    visual_assets: params.memory.visual_assets,
+    knowledge_boundaries: params.memory.knowledge_boundaries,
+    story_events: params.memory.story_events,
+    conflicts: [...params.memory.conflicts],
+  };
+
+  for (const event of params.memoryEvents) {
+    const bucket = memoryBucket(merged, event.category);
+    const existingIndex = bucket.findIndex(item => item.label === event.label);
+    if (existingIndex >= 0) {
+      bucket[existingIndex] = mergeMemoryItem(bucket[existingIndex], event);
+    } else {
+      bucket.push(event);
+    }
+  }
+
+  merged.conflicts = unique([
+    ...merged.conflicts,
+    ...detectSeriesMemoryConflicts(merged, params.episode, params.memoryEvents),
+  ]);
+
+  return {
+    ...merged,
+    characters: mergeMemoryItems(merged.characters),
+    relationships: mergeMemoryItems(merged.relationships),
+    props: mergeMemoryItems(merged.props),
+    locations: mergeMemoryItems(merged.locations),
+    visual_assets: mergeMemoryItems(merged.visual_assets),
+    knowledge_boundaries: mergeMemoryItems(merged.knowledge_boundaries),
+    story_events: mergeMemoryItems(merged.story_events).slice(-120),
+  };
+}
+
+function extractVisualAssetAnchor(visualPrompt: string): { label: string; status: string } | null {
+  const normalized = visualPrompt.trim();
+  if (!normalized) return null;
+  const patterns = [
+    /(?:身穿|穿着|披着|戴着|手持|腰挂|背着|发髻|发型|服饰|衣袍|长衫|斗笠|玉佩|佩剑|书箱|竹简)[^，。；,.]{0,24}/,
+    /(?:固定陈设|牌匾|门楼|祠堂|书院|桥|渡口|老宅|庭院|案桌|灯笼)[^，。；,.]{0,24}/,
+  ];
+  const match = patterns.map(pattern => normalized.match(pattern)?.[0]).find(Boolean);
+  if (!match) return null;
+  return {
+    label: summarizeText(match, 18),
+    status: match,
+  };
+}
+
+function extractPropAnchor(text: string): string | null {
+  const normalized = text.trim();
+  if (!normalized) return null;
+  const match = normalized.match(/(?:信物|玉佩|玉扣|佩剑|剑|书卷|竹简|卷宗|图卷|灯笼|石碑|印章|符牌|钥匙|帛书|器物|道具)[^，。；,.]{0,18}/);
+  return match?.[0] ? summarizeText(match[0], 18) : null;
+}
+
+function extractDialogueRelationshipEvents(params: {
+  episodeNo: number;
+  story: StoryGenerateResult;
+}): AiComicSeriesMemoryItem[] {
+  const events: AiComicSeriesMemoryItem[] = [];
+  for (const block of params.story.dialogue ?? []) {
+    const speakers = unique(block.lines.map(line => line.character).filter(Boolean));
+    if (speakers.length < 2) continue;
+    const emotionText = unique(block.lines.map(line => line.emotion).filter(Boolean)).join('、');
+    const text = block.lines.map(line => `${line.character}：${line.text}`).join(' / ');
+    events.push(makeMemoryItem({
+      category: 'relationship',
+      label: speakers.slice(0, 3).join(' / '),
+      status: emotionText || summarizeText(text, 28),
+      relatedEpisodeNos: [params.episodeNo],
+      continuityNotes: [
+        `成稿对白场景${block.scene_id}：${summarizeText(text, 60)}`,
+      ],
+      firstEpisodeNo: params.episodeNo,
+      lastEpisodeNo: params.episodeNo,
+    }));
+  }
+  return events;
+}
+
+function memoryBucket(
+  memory: AiComicSeriesMemory,
+  category: AiComicSeriesMemoryCategory,
+): AiComicSeriesMemoryItem[] {
+  switch (category) {
+    case 'character':
+      return memory.characters;
+    case 'relationship':
+      return memory.relationships;
+    case 'prop':
+      return memory.props;
+    case 'location':
+      return memory.locations;
+    case 'visual_asset':
+      return memory.visual_assets;
+    case 'knowledge_boundary':
+      return memory.knowledge_boundaries;
+    case 'story_event':
+      return memory.story_events;
+  }
+}
+
+function mergeMemoryItems(items: AiComicSeriesMemoryItem[]): AiComicSeriesMemoryItem[] {
+  const map = new Map<string, AiComicSeriesMemoryItem>();
+  for (const item of items) {
+    const key = `${item.category}:${item.label}`;
+    const existing = map.get(key);
+    map.set(key, existing ? mergeMemoryItem(existing, item) : item);
+  }
+  return [...map.values()].sort((a, b) =>
+    (a.first_episode_no ?? 999) - (b.first_episode_no ?? 999)
+    || a.label.localeCompare(b.label, 'zh-Hans-CN')
+  );
+}
+
+function mergeMemoryItem(
+  current: AiComicSeriesMemoryItem,
+  next: AiComicSeriesMemoryItem,
+): AiComicSeriesMemoryItem {
+  const relatedEpisodeNos = uniqueNumbers([
+    ...current.related_episode_nos,
+    ...next.related_episode_nos,
+  ]);
+  return {
+    ...current,
+    status: next.status || current.status,
+    first_episode_no: Math.min(
+      current.first_episode_no ?? relatedEpisodeNos[0] ?? 1,
+      next.first_episode_no ?? relatedEpisodeNos[0] ?? 1,
+    ),
+    last_episode_no: Math.max(
+      current.last_episode_no ?? relatedEpisodeNos[relatedEpisodeNos.length - 1] ?? 1,
+      next.last_episode_no ?? relatedEpisodeNos[relatedEpisodeNos.length - 1] ?? 1,
+    ),
+    related_episode_nos: relatedEpisodeNos,
+    continuity_notes: unique([
+      ...current.continuity_notes,
+      ...next.continuity_notes,
+    ]).slice(-8),
+    visual_anchor: next.visual_anchor ?? current.visual_anchor,
+    knowledge_boundary: next.knowledge_boundary ?? current.knowledge_boundary,
+  };
+}
+
+function cloneMemoryItem(item: AiComicSeriesMemoryItem): AiComicSeriesMemoryItem {
+  return {
+    ...item,
+    related_episode_nos: [...item.related_episode_nos],
+    continuity_notes: [...item.continuity_notes],
+  };
+}
+
+function cloneSeriesMemory(memory: AiComicSeriesMemory): AiComicSeriesMemory {
+  return {
+    schema_version: 'ai-comic-series-memory/v1',
+    characters: memory.characters.map(cloneMemoryItem),
+    relationships: memory.relationships.map(cloneMemoryItem),
+    props: memory.props.map(cloneMemoryItem),
+    locations: memory.locations.map(cloneMemoryItem),
+    visual_assets: memory.visual_assets.map(cloneMemoryItem),
+    knowledge_boundaries: memory.knowledge_boundaries.map(cloneMemoryItem),
+    story_events: memory.story_events.map(cloneMemoryItem),
+    conflicts: [...memory.conflicts],
+  };
+}
+
+function buildSeriesMemorySummary(memory?: AiComicSeriesMemory): {
+  characters: string[];
+  relationships: string[];
+  props: string[];
+  locations: string[];
+  visual_assets: string[];
+  knowledge_boundaries: string[];
+  story_events: string[];
+  conflicts: string[];
+} | undefined {
+  if (!memory) return undefined;
+  return {
+    characters: summarizeMemoryItems(memory.characters, 8),
+    relationships: summarizeMemoryItems(memory.relationships, 6),
+    props: summarizeMemoryItems(memory.props, 6),
+    locations: summarizeMemoryItems(memory.locations, 8),
+    visual_assets: summarizeMemoryItems(memory.visual_assets, 6),
+    knowledge_boundaries: summarizeMemoryItems(memory.knowledge_boundaries, 8),
+    story_events: summarizeMemoryItems(memory.story_events.slice(-8), 8),
+    conflicts: memory.conflicts.slice(-8),
+  };
+}
+
+function summarizeMemoryItems(items: AiComicSeriesMemoryItem[], limit: number): string[] {
+  return items.slice(0, limit).map(item => {
+    const episodeText = item.related_episode_nos.length > 0
+      ? `第${item.related_episode_nos.join('、')}集`
+      : '全系列';
+    return `${item.label}（${episodeText}）：${item.status}`;
+  });
+}
+
+function buildSeriesMemoryPromptLines(
+  memory?: AiComicSeriesMemory,
+  plan?: AiComicSeriesPlan,
+  episode?: AiComicEpisodePlan,
+  controls?: AiComicSeriesMemoryRecallControls,
+): string[] {
+  const recall = plan && episode ? buildEpisodeMemoryRecall(plan, episode, memory, controls) : undefined;
+  if (recall && recall.items.length > 0) {
+    const grouped = groupRecallItemsByCategory(recall.items);
+    return [
+      '系列记忆精准召回：以下为本集相关的跨集结构化记忆，优先用于保持角色、关系、道具、地点、视觉资产和知识边界连续。',
+      ...(['character', 'relationship', 'prop', 'location', 'visual_asset', 'knowledge_boundary', 'story_event'] as AiComicSeriesMemoryCategory[])
+        .map(category => {
+          const items = grouped.get(category) ?? [];
+          if (items.length === 0) return '';
+          return `召回-${memoryCategoryLabel(category)}：${items.map(item =>
+            `${item.label}(${item.score}分，${item.reasons.join('、')})=${item.status}`
+          ).join('；')}`;
+        }),
+      recall.conflicts.length > 0 ? `召回-待核冲突：${recall.conflicts.join('；')}` : '',
+    ].filter(Boolean);
+  }
+
+  const summary = buildSeriesMemorySummary(memory);
+  if (!summary) return [];
+  return [
+    '系列记忆引擎：以下为跨集结构化记忆，优先用于保持角色、关系、道具、地点、视觉资产和知识边界连续。',
+    `记忆-角色：${summary.characters.join('；') || '暂无'}`,
+    `记忆-关系：${summary.relationships.join('；') || '暂无'}`,
+    `记忆-道具：${summary.props.join('；') || '暂无'}`,
+    `记忆-地点：${summary.locations.join('；') || '暂无'}`,
+    `记忆-视觉资产：${summary.visual_assets.join('；') || '暂无'}`,
+    `记忆-知识边界：${summary.knowledge_boundaries.join('；') || '暂无'}`,
+    `记忆-关键事件：${summary.story_events.join('；') || '暂无'}`,
+    summary.conflicts.length > 0
+      ? `记忆-待核冲突：${summary.conflicts.join('；')}`
+      : '',
+  ].filter(Boolean);
+}
+
+function buildEpisodeMemoryRecall(
+  plan: AiComicSeriesPlan,
+  episode: AiComicEpisodePlan,
+  memory?: AiComicSeriesMemory,
+  controls: AiComicSeriesMemoryRecallControls = {},
+): AiComicSeriesMemoryRecall | undefined {
+  if (!memory) return undefined;
+  const context = buildEpisodeRecallContext(plan, episode);
+  const allItems = allSeriesMemoryItems(memory);
+  const lockedIds = new Set(controls.locked_memory_ids ?? []);
+  const excludedIds = new Set(controls.excluded_memory_ids ?? []);
+  const scoredItems = allItems
+    .map(item => scoreMemoryItemForEpisode(item, context))
+    .filter((item): item is AiComicSeriesMemoryRecallItem => Boolean(item))
+    .filter(item => !excludedIds.has(item.memory_id) || lockedIds.has(item.memory_id))
+    .map(item => lockedIds.has(item.memory_id)
+      ? {
+          ...item,
+          score: Math.max(item.score, 100),
+          reasons: unique(['人工锁定', ...item.reasons]).slice(0, 4),
+        }
+      : item
+    );
+  const existingIds = new Set(scoredItems.map(item => item.memory_id));
+  const lockedItems = allItems
+    .filter(item => lockedIds.has(item.memory_id) && !existingIds.has(item.memory_id))
+    .map(item => makeLockedRecallItem(item));
+  const items = [...scoredItems, ...lockedItems]
+    .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label, 'zh-Hans-CN'))
+    .slice(0, 20);
+
+  const conflicts = memory.conflicts
+    .filter(conflict => context.episodeTexts.some(text => textOverlaps(conflict, text)))
+    .slice(0, 8);
+
+  return {
+    schema_version: 'ai-comic-series-memory-recall/v1',
+    episode_no: episode.episode_no,
+    items,
+    conflicts,
+  };
+}
+
+function buildEpisodeRecallContext(plan: AiComicSeriesPlan, episode: AiComicEpisodePlan): {
+  episodeNo: number;
+  keyCharacters: string[];
+  knowledgeFocus: string[];
+  episodeTexts: string[];
+  activeThreadTexts: string[];
+} {
+  const previous = plan.episodes.find(item => item.episode_no === episode.episode_no - 1);
+  const next = plan.episodes.find(item => item.episode_no === episode.episode_no + 1);
+  const activeThreadTexts = plan.plot_threads
+    .filter(thread => thread.setup_episode <= episode.episode_no && thread.payoff_episode >= episode.episode_no)
+    .flatMap(thread => [thread.title, thread.description, ...thread.continuity_notes]);
+  return {
+    episodeNo: episode.episode_no,
+    keyCharacters: episode.key_characters,
+    knowledgeFocus: episode.knowledge_focus,
+    activeThreadTexts,
+    episodeTexts: [
+      episode.title,
+      episode.story_phase,
+      episode.main_conflict,
+      episode.opening_hook ?? '',
+      episode.midpoint_turn ?? '',
+      episode.character_state_change ?? '',
+      episode.thread_action ?? '',
+      ...episode.key_characters,
+      ...episode.continuity_from_previous,
+      ...episode.new_information,
+      ...episode.foreshadowing,
+      ...episode.payoff,
+      episode.ending_hook,
+      ...episode.knowledge_focus,
+      ...episode.continuity_state_after,
+      previous?.ending_hook ?? '',
+      next?.main_conflict ?? '',
+      ...activeThreadTexts,
+    ].filter(Boolean),
+  };
+}
+
+function scoreMemoryItemForEpisode(
+  item: AiComicSeriesMemoryItem,
+  context: ReturnType<typeof buildEpisodeRecallContext>,
+): AiComicSeriesMemoryRecallItem | null {
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (item.related_episode_nos.includes(context.episodeNo)) {
+    score += 28;
+    reasons.push('本集直接关联');
+  }
+  if (item.related_episode_nos.includes(context.episodeNo - 1)) {
+    score += 22;
+    reasons.push('上一集承接');
+  }
+  if (item.related_episode_nos.some(no => no < context.episodeNo && context.episodeNo - no <= 3)) {
+    score += 12;
+    reasons.push('近期记忆');
+  }
+  if (item.category === 'character' && context.keyCharacters.some(name => item.label.includes(name) || name.includes(item.label))) {
+    score += 36;
+    reasons.push('关键角色');
+  }
+  if (item.category === 'knowledge_boundary' && context.knowledgeFocus.some(label => textOverlaps(item.label, label))) {
+    score += 34;
+    reasons.push('知识焦点');
+  }
+  if (item.category === 'story_event' && item.first_episode_no && item.first_episode_no < context.episodeNo) {
+    score += 8;
+    reasons.push('历史事件');
+  }
+  if (context.activeThreadTexts.some(text => textOverlaps(item.label, text) || textOverlaps(item.status, text))) {
+    score += 18;
+    reasons.push('长期线索相关');
+  }
+  if (context.episodeTexts.some(text =>
+    textOverlaps(item.label, text)
+    || textOverlaps(item.status, text)
+    || item.continuity_notes.some(note => textOverlaps(note, text))
+  )) {
+    score += 20;
+    reasons.push('文本匹配');
+  }
+  if (item.category === 'prop' || item.category === 'visual_asset') {
+    score += 6;
+    reasons.push(item.category === 'prop' ? '道具连续性' : '视觉连续性');
+  }
+
+  if (score < 20) return null;
+  return {
+    memory_id: item.memory_id,
+    category: item.category,
+    label: item.label,
+    status: item.status,
+    score: Math.min(score, 100),
+    reasons: unique(reasons).slice(0, 4),
+    related_episode_nos: item.related_episode_nos,
+    continuity_notes: item.continuity_notes.slice(-4),
+  };
+}
+
+function makeLockedRecallItem(item: AiComicSeriesMemoryItem): AiComicSeriesMemoryRecallItem {
+  return {
+    memory_id: item.memory_id,
+    category: item.category,
+    label: item.label,
+    status: item.status,
+    score: 100,
+    reasons: ['人工锁定'],
+    related_episode_nos: item.related_episode_nos,
+    continuity_notes: item.continuity_notes.slice(-4),
+  };
+}
+
+function allSeriesMemoryItems(memory: AiComicSeriesMemory): AiComicSeriesMemoryItem[] {
+  return [
+    ...memory.characters,
+    ...memory.relationships,
+    ...memory.props,
+    ...memory.locations,
+    ...memory.visual_assets,
+    ...memory.knowledge_boundaries,
+    ...memory.story_events,
+  ];
+}
+
+function groupRecallItemsByCategory(
+  items: AiComicSeriesMemoryRecallItem[],
+): Map<AiComicSeriesMemoryCategory, AiComicSeriesMemoryRecallItem[]> {
+  const map = new Map<AiComicSeriesMemoryCategory, AiComicSeriesMemoryRecallItem[]>();
+  for (const item of items) {
+    map.set(item.category, [...(map.get(item.category) ?? []), item]);
+  }
+  return map;
+}
+
+function textOverlaps(left: string, right: string): boolean {
+  const a = left.trim();
+  const b = right.trim();
+  if (!a || !b) return false;
+  if (a.includes(b) || b.includes(a)) return true;
+  const leftTokens = significantTextTokens(a);
+  const rightTokens = new Set(significantTextTokens(b));
+  return leftTokens.some(token => rightTokens.has(token));
+}
+
+function significantTextTokens(text: string): string[] {
+  const asciiTokens = text.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
+  const zhTokens = Array.from(text.matchAll(/[\u4e00-\u9fff]{2,}/g))
+    .flatMap(match => {
+      const value = match[0];
+      const tokens: string[] = [];
+      for (let index = 0; index < value.length - 1; index += 1) tokens.push(value.slice(index, index + 2));
+      return tokens;
+    });
+  return unique([...asciiTokens, ...zhTokens])
+    .filter(token => !['本集', '上一', '下一', '角色', '状态', '线索', '知识', '场景'].includes(token));
+}
+
+function detectSeriesMemoryConflicts(
+  memory: AiComicSeriesMemory,
+  episode: AiComicEpisodePlan,
+  memoryEvents: AiComicSeriesMemoryItem[] = [],
+): string[] {
+  const conflicts: string[] = [];
+  for (const paid of episode.payoff) {
+    const title = paid.split(/[：:]/)[0] ?? paid;
+    if (!title.trim()) continue;
+    const stillOpen = memory.story_events.some(item =>
+      item.label.includes(title) && item.last_episode_no && item.last_episode_no < episode.episode_no
+    );
+    if (stillOpen && episode.foreshadowing.some(item => item.includes(title))) {
+      conflicts.push(`第${episode.episode_no}集同时回收又重新埋设“${title}”，需要确认是反转还是冲突。`);
+    }
+  }
+  for (const event of memoryEvents) {
+    if (event.category !== 'prop' && event.category !== 'visual_asset') continue;
+    const previous = memoryBucket(memory, event.category)
+      .filter(item => item.label === event.label)
+      .filter(item => (item.last_episode_no ?? 0) < episode.episode_no);
+    if (previous.length === 0) continue;
+    const previousStatus = previous[previous.length - 1]?.status ?? '';
+    if (isDestroyedOrLost(previousStatus) && !isDestroyedOrLost(event.status)) {
+      conflicts.push(`第${episode.episode_no}集“${event.label}”再次出现，但旧记忆显示它已损毁或遗失，需要确认是否修复、替代或误写。`);
+    }
+  }
+  for (const event of memoryEvents.filter(item => item.category === 'knowledge_boundary')) {
+    const text = [...event.continuity_notes, event.status].join('；');
+    if (/虚构|戏剧化|补足|待核|未核实/.test(text) && /确证|史实|真实发生|明确记载/.test(text)) {
+      conflicts.push(`第${episode.episode_no}集知识边界“${event.label}”同时出现待核与确证表述，需要人工复核。`);
+    }
+  }
+  return conflicts;
+}
+
+function isDestroyedOrLost(text: string): boolean {
+  return /碎|毁|烧|断|遗失|丢失|失落|沉入|被夺|消失|不见/.test(text);
 }
 
 function sameThread(left: string, right: string): boolean {
@@ -1505,6 +2966,7 @@ function buildEpisodeGenerationOutline(
   episode: AiComicEpisodePlan,
   ledger?: AiComicContinuityLedger,
   narrativePatternIds: NarrativePatternId[] = [],
+  memoryRecallControls?: AiComicSeriesMemoryRecallControls,
 ): string {
   const previous = plan.episodes.find(item => item.episode_no === episode.episode_no - 1);
   const next = plan.episodes.find(item => item.episode_no === episode.episode_no + 1);
@@ -1525,6 +2987,7 @@ function buildEpisodeGenerationOutline(
     `账本未回收线索：${ledger.open_threads.join('；') || '暂无'}`,
     `账本已回收线索：${ledger.paid_off_threads.join('；') || '暂无'}`,
     `账本已用知识：${ledger.knowledge_used.join('、') || '暂无'}`,
+    ...buildSeriesMemoryPromptLines(ledger.series_memory, plan, episode, memoryRecallControls),
     previousLedgerRecord
       ? `上一条生成记忆：第${previousLedgerRecord.episode_no}集《${previousLedgerRecord.title}》；故事ID：${previousLedgerRecord.story_id}；${previousLedgerRecord.next_episode_memory.join('；')}`
       : '',

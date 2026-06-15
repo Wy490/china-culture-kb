@@ -1,0 +1,4 @@
+interface:
+  display_name: "China Culture Story Agent"
+  short_description: "Story Agent generation workflow for china-culture-kb."
+  default_prompt: "Use this skill to plan, generate, validate, or repair Story Agent outputs in china-culture-kb."

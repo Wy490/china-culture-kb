@@ -375,6 +375,13 @@ export const StorySceneRegenerateRequestSchema = z.object({
   model_profile_id: z.string().optional(),
 });
 
+export const StoryQualityRepairRequestSchema = z.object({
+  model_profile_id: z.string().optional(),
+  genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
+  target_report: z.enum(['outline', 'pattern', 'gears', 'combined']).optional(),
+  repair_action_id: z.string().trim().min(1).max(80).optional(),
+});
+
 export const GearsDeliveryUpdateRequestSchema = z.object({
   markdown: z.string().min(1, 'markdown cannot be empty').max(120000, 'markdown is too long'),
 });
@@ -616,6 +623,41 @@ const AiComicContinuityRuleSchema = z.object({
   description: z.string().min(1),
 });
 
+const AiComicSeriesMemoryCategorySchema = z.enum([
+  'character',
+  'relationship',
+  'prop',
+  'location',
+  'visual_asset',
+  'knowledge_boundary',
+  'story_event',
+]);
+
+const AiComicSeriesMemoryItemSchema = z.object({
+  memory_id: z.string().min(1),
+  category: AiComicSeriesMemoryCategorySchema,
+  label: z.string().min(1),
+  status: z.string().min(1),
+  first_episode_no: z.number().int().min(1).max(120).optional(),
+  last_episode_no: z.number().int().min(1).max(120).optional(),
+  related_episode_nos: z.array(z.number().int().min(1).max(120)),
+  continuity_notes: z.array(z.string()),
+  visual_anchor: z.string().optional(),
+  knowledge_boundary: z.string().optional(),
+});
+
+const AiComicSeriesMemorySchema = z.object({
+  schema_version: z.literal('ai-comic-series-memory/v1'),
+  characters: z.array(AiComicSeriesMemoryItemSchema),
+  relationships: z.array(AiComicSeriesMemoryItemSchema),
+  props: z.array(AiComicSeriesMemoryItemSchema),
+  locations: z.array(AiComicSeriesMemoryItemSchema),
+  visual_assets: z.array(AiComicSeriesMemoryItemSchema),
+  knowledge_boundaries: z.array(AiComicSeriesMemoryItemSchema),
+  story_events: z.array(AiComicSeriesMemoryItemSchema),
+  conflicts: z.array(z.string()),
+});
+
 const AiComicSeriesPlanSchema = z.object({
   schema_version: z.literal('ai-comic-series-plan/v1'),
   series_title: z.string().min(1),
@@ -662,14 +704,27 @@ const AiComicContinuityLedgerSchema = z.object({
     knowledge_used: z.array(z.string()),
     ending_hook: z.string().min(1),
     next_episode_memory: z.array(z.string()),
+    memory_events: z.array(AiComicSeriesMemoryItemSchema).optional(),
   })),
+  series_memory: AiComicSeriesMemorySchema.optional(),
 });
+
+const AiComicSeriesMemoryRecallPreferencesSchema = z.object({
+  locked_memory_ids: z.array(z.string().min(1)).max(30).optional(),
+  excluded_memory_ids: z.array(z.string().min(1)).max(80).optional(),
+  per_episode: z.record(z.string(), z.object({
+    locked_memory_ids: z.array(z.string().min(1)).max(30).optional(),
+    excluded_memory_ids: z.array(z.string().min(1)).max(80).optional(),
+  })).optional(),
+  updated_at: z.string().optional(),
+}).optional();
 
 export const AiComicSeriesProjectSaveRequestSchema = z.object({
   series_project_id: AiComicSeriesProjectIdValueSchema.optional(),
   plan: AiComicSeriesPlanSchema,
   generated_episode_story_ids: z.record(z.string(), StoryIdValueSchema).optional(),
   continuity_ledger: AiComicContinuityLedgerSchema.optional(),
+  memory_recall_preferences: AiComicSeriesMemoryRecallPreferencesSchema,
 });
 
 export const AiComicSeriesProjectCopyRequestSchema = z.object({
@@ -684,11 +739,17 @@ export const AiComicSeriesLedgerRebuildRequestSchema = z.object({
   from_episode_no: z.number().int().min(1).max(120).optional().default(1),
 });
 
+const AiComicSeriesMemoryRecallControlsSchema = z.object({
+  locked_memory_ids: z.array(z.string().min(1)).max(30).optional(),
+  excluded_memory_ids: z.array(z.string().min(1)).max(80).optional(),
+}).optional();
+
 export const AiComicEpisodeContextPreviewRequestSchema = z.object({
   series_plan: AiComicSeriesPlanSchema,
   episode_no: z.number().int().min(1).max(120),
   series_project_id: AiComicSeriesProjectIdValueSchema.optional(),
   narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
+  memory_recall_controls: AiComicSeriesMemoryRecallControlsSchema,
 }).refine(
   data => data.episode_no <= data.series_plan.episode_count,
   { message: 'episode_no cannot exceed series_plan.episode_count', path: ['episode_no'] },
@@ -702,6 +763,7 @@ export const AiComicEpisodeGenerateRequestSchema = z.object({
   output_gears_segments: z.boolean().optional().default(true),
   knowledge_pack: AiComicKnowledgePackSchema.optional(),
   narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
+  memory_recall_controls: AiComicSeriesMemoryRecallControlsSchema,
   auto_audit_continuity: z.boolean().optional().default(true),
   auto_repair_episode: z.boolean().optional().default(false),
 }).refine(

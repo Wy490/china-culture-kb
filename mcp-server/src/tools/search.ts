@@ -19,7 +19,7 @@ const INTENT_EXPANSIONS: Record<string, { types: string[]; terms: string[] }> = 
     terms: ['地点', '遗址', '景区', '故居', '古城', '山', '湖', '江', '洞', '岛'],
   },
   建筑: {
-    types: ['名胜古迹', '宗教信仰'],
+    types: ['名胜古迹', '地方掌故', '宗教信仰'],
     terms: ['建筑', '楼', '阁', '亭', '寺', '庙', '祠', '书院', '故居', '古井'],
   },
   民俗: {
@@ -55,6 +55,10 @@ function splitKeywords(raw: string): string[] {
     }
   }
   return unique(terms);
+}
+
+function splitPrimaryKeywords(raw: string): string[] {
+  return unique(raw.split(/[,，、\s;；:：·——\-–_]+/).filter(part => part.trim().length >= 2));
 }
 
 function expandKeywords(keywords: string[]): { terms: string[]; typeHints: Set<string> } {
@@ -144,6 +148,7 @@ export async function searchKnowledgeBase(input: SearchInput): Promise<SearchRes
     : PROVINCES;
 
   const keywordList = splitKeywords(input.keywords ?? '');
+  const primaryKeywordList = splitPrimaryKeywords(input.keywords ?? '');
   const expanded = expandKeywords(keywordList);
   const results: Array<{ entry: SearchResult; score: number }> = [];
 
@@ -162,9 +167,11 @@ export async function searchKnowledgeBase(input: SearchInput): Promise<SearchRes
           const corpus = buildSearchCorpus(entry, content).join(' ');
           const normalizedCorpus = normalizeText(corpus);
           const directHitCount = keywordList.filter(kw => normalizeText(kw).length >= 2 && normalizedCorpus.includes(normalizeText(kw))).length;
+          const primaryDirectHitCount = primaryKeywordList.filter(kw => normalizedCorpus.includes(normalizeText(kw))).length;
           const hasDirectHit = directHitCount > 0;
           const hasIntentTypeHit = expanded.typeHints.has(entry.type);
-          if (score <= 0 || (!hasDirectHit && !hasIntentTypeHit)) continue;
+          const hasCompositeHit = primaryKeywordList.some(kw => normalizeText(kw).length > 3) && directHitCount >= 2;
+          if (score <= 0 || (!primaryDirectHitCount && !hasCompositeHit && !hasIntentTypeHit)) continue;
           score += directHitCount * 20;
         }
 

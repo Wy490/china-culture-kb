@@ -15,6 +15,8 @@ import { ingestVideo } from './tools/ingest-video.js';
 import { collect } from './tools/collect.js';
 import { getEntryDetail } from './tools/get-entry-detail.js';
 import { generateStory } from './tools/generate-story.js';
+import { getProjectContext } from './tools/get-project-context.js';
+import { generateStoryBlueprint } from './tools/generate-story-blueprint.js';
 import { CultureEntry, SourceType, ScriptType } from './types.js';
 
 const server = new McpServer({
@@ -393,6 +395,66 @@ server.tool(
   },
   async (input) => {
     const result = await generateStory(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_project_context — retrieve Story Agent project metadata, current story, versions, and optional exports
+server.tool(
+  'kb_get_project_context',
+  '读取 Story Agent 故事项目上下文（项目元数据、当前故事、版本摘要，可选完整版本快照和导出列表）。只读，不修改项目文件。',
+  {
+    project_id: z.string().describe('故事项目 ID，例如 20260614-story-5xim--ai_comic_drama'),
+    include_versions: z.boolean().optional().describe('是否返回完整版本快照，默认 false'),
+    include_exports: z.boolean().optional().describe('是否返回 exports 文件列表，默认 false'),
+  },
+  async (input) => {
+    const result = await getProjectContext(input);
+    if (!result) {
+      return { content: [{ type: 'text', text: `未找到项目：${input.project_id}` }] };
+    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_generate_story_blueprint — build genre-aware StoryBlueprint from a knowledge-base entry
+server.tool(
+  'kb_generate_story_blueprint',
+  '根据知识库条目生成 Story Agent 类型片蓝图（StoryBlueprint）。只读，不生成正文，不写文件。',
+  {
+    entry_name: z.string().describe('知识库条目名称，例如 周敦颐——理学开山鼻祖'),
+    video_type: z.string().optional().describe('成片类型，例如 character_story/historical_drama/ai_comic_drama/heritage_promo'),
+    presentation_style: z.string().optional().describe('表现形式，例如 cinematic/ai_comic/documentary'),
+    story_structure: z.string().optional().describe('叙事结构，例如 single_event_drama/case_reconstruction/craft_process'),
+    target_duration: z.string().optional().describe('目标时长，例如 30秒/1分钟/3分钟/5分钟/10分钟'),
+    central_event: z.string().optional().describe('中心事件或本集核心事件'),
+    user_outline: z.string().optional().describe('用户大纲或创作方向，只作为创作边界'),
+    region_hint: z.string().optional().describe('地方化目标，例如 长沙/岳麓'),
+  },
+  async (input) => {
+    const result = await generateStoryBlueprint({
+      entry_name: input.entry_name,
+      video_type: input.video_type as Parameters<typeof generateStoryBlueprint>[0]['video_type'],
+      presentation_style: input.presentation_style as Parameters<typeof generateStoryBlueprint>[0]['presentation_style'],
+      story_structure: input.story_structure as Parameters<typeof generateStoryBlueprint>[0]['story_structure'],
+      target_duration: input.target_duration as Parameters<typeof generateStoryBlueprint>[0]['target_duration'],
+      central_event: input.central_event,
+      user_outline: input.user_outline,
+      region_hint: input.region_hint,
+    });
+    if (!result) {
+      return { content: [{ type: 'text', text: `未找到条目：${input.entry_name}` }] };
+    }
     return {
       content: [{
         type: 'text',

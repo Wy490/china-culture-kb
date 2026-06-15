@@ -6,6 +6,7 @@ import type {
   StoryListItem,
   GearsSegmentsResponse,
   GearsDeliveryPackage,
+  SeedancePromptPackage,
   VideoType,
   StoryOutlineAnalyzeRequest,
   StoryOutlineAnalysis,
@@ -54,6 +55,10 @@ export function getGearsSegments(storyId: string) {
 
 export function getGearsDeliveryPackage(storyId: string) {
   return apiGet<GearsDeliveryPackage>(`/stories/${storyId}/gears-delivery`)
+}
+
+export function getSeedancePromptPackage(storyId: string) {
+  return apiGet<SeedancePromptPackage>(`/stories/${storyId}/seedance-prompts`)
 }
 
 export function updateGearsDeliveryMarkdown(storyId: string, markdown: string) {

@@ -5,6 +5,7 @@ import {
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
   ProjectRetainRecentRequestSchema,
+  StoryQualityRepairRequestSchema,
   StorySceneRegenerateRequestSchema,
   SupplementTaskIdParamSchema,
 } from '@shared/schemas.js';
@@ -13,8 +14,10 @@ import {
   deleteProjects,
   exportProjectCurrentVersion,
   getProject,
+  getProjectProductionBoard,
   listProjectSupplementTasks,
   listProjects,
+  repairProjectQuality,
   regenerateProjectScene,
   retainRecentProjects,
   updateProjectSupplementTask,
@@ -91,6 +94,16 @@ projectsRouter.post('/:projectId/export', validateParams(ProjectIdParamSchema), 
   }
 });
 
+projectsRouter.get('/:projectId/production-board', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  try {
+    const { projectId } = req.params as { projectId: string };
+    const result = await getProjectProductionBoard(projectId);
+    res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 projectsRouter.post(
   '/:projectId/regenerate-scene',
   validateParams(ProjectIdParamSchema),
@@ -99,6 +112,21 @@ projectsRouter.post(
     try {
       const { projectId } = req.params as { projectId: string };
       const result = await regenerateProjectScene(projectId, req.body);
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/repair-quality',
+  validateParams(ProjectIdParamSchema),
+  validateBody(StoryQualityRepairRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await repairProjectQuality(projectId, req.body);
       res.status(result.ok ? 200 : 400).json(result);
     } catch (err) {
       next(err);

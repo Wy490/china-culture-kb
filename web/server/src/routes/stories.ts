@@ -15,6 +15,7 @@ import {
   getStory,
   getGearsSegments,
   getGearsDeliveryPackage,
+  getSeedancePromptPackage,
   updateGearsDeliveryMarkdown,
 } from '../services/story-service.js';
 import type { VideoType } from '@shared/types.js';
@@ -81,6 +82,17 @@ storiesRouter.get('/:storyId/gears-delivery', validateParams(StoryIdParamSchema)
   try {
     const { storyId } = req.params as { storyId: string };
     const result = await getGearsDeliveryPackage(storyId);
+    res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/stories/:storyId/seedance-prompts — get shot-level Seedance 2.0 prompts
+storiesRouter.get('/:storyId/seedance-prompts', validateParams(StoryIdParamSchema), async (req, res, next) => {
+  try {
+    const { storyId } = req.params as { storyId: string };
+    const result = await getSeedancePromptPackage(storyId);
     res.status(result.ok ? 200 : 404).json(result);
   } catch (err) {
     next(err);

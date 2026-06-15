@@ -199,18 +199,36 @@
             <p class="series-studio__eyebrow">系列蓝图</p>
             <h1 class="series-studio__plan-title">{{ plan.series_title }}</h1>
             <p class="series-studio__logline">{{ plan.logline }}</p>
+            <div
+              class="series-studio__save-status"
+              :data-status="saveStatus"
+            >
+              <span>{{ saveStatusLabel }}</span>
+              <strong v-if="lastSavedAt">{{ formatDate(lastSavedAt) }}</strong>
+              <em v-if="affectedEpisodeText">{{ affectedEpisodeText }}</em>
+              <em v-if="saveErrorMessage">{{ saveErrorMessage }}</em>
+            </div>
             <p v-if="saveMessage" class="series-studio__save-note">{{ saveMessage }}</p>
-            <div v-if="seriesProjectId" class="series-studio__summary-actions">
+            <div class="series-studio__summary-actions">
               <button
                 class="series-studio__ghost-button"
-                :disabled="exportingBible"
+                :disabled="saveStatus === 'saving' || exportingBible"
+                @click="handleManualSave"
+              >
+                {{ saveStatus === 'saving' ? '保存中...' : '手动保存' }}
+              </button>
+              <button
+                v-if="seriesProjectId"
+                class="series-studio__ghost-button"
+                :disabled="exportingBible || saveStatus === 'saving'"
                 @click="exportSeriesBibleMarkdown"
               >
                 {{ exportingBible ? '导出中...' : '导出系列 Bible Markdown' }}
               </button>
               <button
+                v-if="seriesProjectId"
                 class="series-studio__ghost-button"
-                :disabled="exportingBible"
+                :disabled="exportingBible || saveStatus === 'saving'"
                 @click="exportSeriesBibleJson"
               >
                 导出系列 Bible JSON
@@ -448,6 +466,39 @@
           <div class="series-studio__section-header">
             <h2>分集卡片</h2>
             <span>{{ plan.episodes.length }} 集</span>
+          </div>
+          <div class="series-studio__blueprint-board">
+            <div class="series-studio__timeline">
+              <button
+                v-for="item in blueprintTimelineItems"
+                :key="item.episode.episode_no"
+                class="series-studio__timeline-node"
+                :data-status="item.status"
+                :class="{ 'series-studio__timeline-node--editing': isEditingEpisode(item.episode.episode_no) }"
+                :disabled="savingEpisodeEdit || generatingEpisodeNo !== null || previewingEpisodeNo !== null"
+                @click="startEditEpisode(item.episode)"
+              >
+                <span>第 {{ item.episode.episode_no }} 集</span>
+                <strong>{{ item.episode.title }}</strong>
+                <small>{{ item.episode.story_phase }}</small>
+                <p>{{ item.opening }} → {{ item.midpoint }} → {{ item.ending }}</p>
+                <em>{{ item.threadAction }}</em>
+                <b>{{ item.statusLabel }}</b>
+              </button>
+            </div>
+            <div class="series-studio__character-state-board">
+              <article
+                v-for="row in characterStateRows"
+                :key="row.name"
+                class="series-studio__character-state-row"
+              >
+                <div>
+                  <strong>{{ row.name }}</strong>
+                  <span>{{ row.currentState }}</span>
+                </div>
+                <p>{{ row.turningPoints.join('；') || row.longArc }}</p>
+              </article>
+            </div>
           </div>
           <div class="series-studio__episode-list">
             <article v-for="episode in plan.episodes" :key="episode.episode_no" class="series-studio__episode">
@@ -693,6 +744,77 @@
               <strong>下一集承接要求</strong>
               <p>{{ contextPreview.next_episode_requirement || '这是当前规划的最后一集' }}</p>
             </article>
+            <article
+              v-if="contextPreview.focused_memory_recall?.items.length"
+              class="series-studio__context-card series-studio__context-card--wide"
+            >
+              <strong>系列记忆精准召回</strong>
+              <div class="series-studio__memory-recall-toolbar">
+                <select v-model="memoryRecallCategoryFilter" class="series-studio__select series-studio__select--compact">
+                  <option value="all">全部类型</option>
+                  <option value="character">角色</option>
+                  <option value="relationship">关系</option>
+                  <option value="prop">道具</option>
+                  <option value="location">地点</option>
+                  <option value="visual_asset">视觉资产</option>
+                  <option value="knowledge_boundary">知识边界</option>
+                  <option value="story_event">关键事件</option>
+                </select>
+                <select v-model="memoryRecallStatusFilter" class="series-studio__select series-studio__select--compact">
+                  <option value="all">全部状态</option>
+                  <option value="locked">已锁定</option>
+                  <option value="excluded">已排除</option>
+                </select>
+                <button class="series-studio__ghost-button" @click="clearActiveMemoryLocks">
+                  清空锁定
+                </button>
+                <button class="series-studio__ghost-button" @click="clearActiveMemoryExclusions">
+                  清空排除
+                </button>
+                <button class="series-studio__ghost-button" @click="exportMemoryRecallPreferences">
+                  导出偏好
+                </button>
+                <button class="series-studio__ghost-button" @click="triggerMemoryRecallPreferenceImport">
+                  导入偏好
+                </button>
+                <input
+                  ref="memoryPreferenceImportInput"
+                  class="series-studio__file-input"
+                  type="file"
+                  accept="application/json,.json"
+                  @change="handleMemoryRecallPreferenceImport"
+                >
+              </div>
+              <div class="series-studio__memory-recall-list">
+                <div
+                  v-for="item in filteredMemoryRecallItems"
+                  :key="item.memory_id"
+                  class="series-studio__memory-recall-item"
+                  :class="{
+                    'series-studio__memory-recall-item--locked': lockedMemoryIds.includes(item.memory_id),
+                    'series-studio__memory-recall-item--excluded': excludedMemoryIds.includes(item.memory_id),
+                  }"
+                >
+                  <div>
+                    <b>{{ memoryCategoryLabel(item.category) }} · {{ item.label }}</b>
+                    <p>{{ item.status }}</p>
+                    <small>{{ item.score }} 分 · {{ item.reasons.join('、') }}</small>
+                  </div>
+                  <div class="series-studio__memory-recall-actions">
+                    <button class="series-studio__ghost-button" @click="toggleLockedMemory(item.memory_id)">
+                      {{ lockedMemoryIds.includes(item.memory_id) ? '取消锁定' : '锁定' }}
+                    </button>
+                    <button class="series-studio__ghost-button" @click="toggleExcludedMemory(item.memory_id)">
+                      {{ excludedMemoryIds.includes(item.memory_id) ? '取消排除' : '排除' }}
+                    </button>
+                  </div>
+                </div>
+                <p v-if="filteredMemoryRecallItems.length === 0">当前筛选下没有召回记忆。</p>
+              </div>
+              <p v-if="contextPreview.focused_memory_recall.conflicts.length">
+                待核冲突：{{ contextPreview.focused_memory_recall.conflicts.join('；') }}
+              </p>
+            </article>
             <article class="series-studio__context-card series-studio__context-card--wide">
               <strong>完整生成提纲</strong>
               <pre>{{ contextPreview.generation_outline }}</pre>
@@ -798,6 +920,9 @@ import type {
   AiComicEpisodeContextPreview,
   AiComicEpisodePlan,
   AiComicPacingProfile,
+  AiComicSeriesMemoryCategory,
+  AiComicSeriesMemoryRecallControls,
+  AiComicSeriesMemoryRecallPreferences,
   AiComicSeriesQualityAudit,
   AiComicSeriesProjectMeta,
   AiComicSeriesPlan,
@@ -831,8 +956,20 @@ const episodeErrorMessage = ref('')
 const contextPreview = ref<AiComicEpisodeContextPreview | null>(null)
 const previewingEpisodeNo = ref<number | null>(null)
 const contextPreviewError = ref('')
+const lockedMemoryIds = ref<string[]>([])
+const excludedMemoryIds = ref<string[]>([])
+const memoryRecallPreferences = ref<AiComicSeriesMemoryRecallPreferences>({})
+const activeMemoryPreferenceEpisodeNo = ref<number | null>(null)
+const memoryRecallCategoryFilter = ref<AiComicSeriesMemoryCategory | 'all'>('all')
+const memoryRecallStatusFilter = ref<'all' | 'locked' | 'excluded'>('all')
+const memoryPreferenceImportInput = ref<HTMLInputElement | null>(null)
 const seriesProjectId = ref('')
 const saveMessage = ref('')
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'failed'
+const saveStatus = ref<SaveStatus>('idle')
+const saveErrorMessage = ref('')
+const lastSavedAt = ref('')
+const affectedEpisodeNos = ref<number[]>([])
 const generatedEpisodeStoryIds = ref<Record<string, string>>({})
 const continuityLedger = ref<AiComicContinuityLedger | null>(null)
 const seriesQualityAudit = ref<AiComicSeriesQualityAudit | null>(null)
@@ -925,6 +1062,47 @@ const nextRecommendedEpisode = computed(() => {
   const nextAfterLedger = (continuityLedger.value?.last_generated_episode_no ?? 0) + 1
   return ungenerated.find(episode => episode.episode_no === nextAfterLedger) ?? ungenerated[0]
 })
+const episodeAuditByNo = computed(() => {
+  return new Map((seriesQualityAudit.value?.episode_reports ?? []).map(report => [report.episode_no, report]))
+})
+const blueprintTimelineItems = computed(() => {
+  if (!plan.value) return []
+  return plan.value.episodes.map(episode => {
+    const audit = episodeAuditByNo.value.get(episode.episode_no)
+    const generated = Boolean(generatedEpisodeStoryIds.value[String(episode.episode_no)])
+    const status = audit?.needs_episode_regeneration || audit?.needs_ledger_rebuild
+      ? 'attention'
+      : generated
+        ? 'generated'
+        : 'planned'
+    return {
+      episode,
+      opening: episode.opening_hook || '承接开场',
+      midpoint: episode.midpoint_turn || '中段转折',
+      ending: episode.ending_hook,
+      threadAction: episode.thread_action || [...episode.foreshadowing, ...episode.payoff][0] || '按阶段推进线索',
+      status,
+      statusLabel: timelineStatusLabel(status, audit?.status),
+    }
+  })
+})
+const characterStateRows = computed(() => {
+  if (!plan.value) return []
+  const lastGeneratedEpisodeNo = continuityLedger.value?.last_generated_episode_no ?? 0
+  return plan.value.main_characters.map(character => {
+    const currentState = continuityLedger.value?.character_state_current.find(state => state.includes(character.name))
+      ?? character.turning_points
+        .filter(point => point.episode_no <= lastGeneratedEpisodeNo)
+        .sort((a, b) => b.episode_no - a.episode_no)[0]?.change
+      ?? character.starting_state
+    return {
+      name: character.name,
+      longArc: character.long_arc,
+      currentState,
+      turningPoints: character.turning_points.map(point => `第${point.episode_no}集 ${point.change}`),
+    }
+  })
+})
 const availableNarrativePatterns = computed<NarrativePattern[]>(() => {
   if (!narrativePatternCatalog.value) return []
   const patternIds = narrativePatternCatalog.value.video_type_map.ai_comic_drama ?? []
@@ -938,11 +1116,47 @@ const activeNarrativePatternLabels = computed(() => {
     .filter(pattern => selected.size === 0 || selected.has(pattern.pattern_id))
     .map(pattern => pattern.label)
 })
+const saveStatusLabel = computed(() => {
+  const map: Record<SaveStatus, string> = {
+    idle: '尚未保存',
+    saving: '保存中',
+    saved: '已保存',
+    failed: '保存失败',
+  }
+  return map[saveStatus.value]
+})
+const affectedEpisodeText = computed(() => {
+  if (affectedEpisodeNos.value.length === 0) return ''
+  return `已影响第 ${affectedEpisodeNos.value.join('、')} 集生成`
+})
+const filteredMemoryRecallItems = computed(() => {
+  const items = contextPreview.value?.focused_memory_recall?.items ?? []
+  return items.filter(item => {
+    const categoryOk = memoryRecallCategoryFilter.value === 'all' || item.category === memoryRecallCategoryFilter.value
+    const statusOk = memoryRecallStatusFilter.value === 'all'
+      || (memoryRecallStatusFilter.value === 'locked' && lockedMemoryIds.value.includes(item.memory_id))
+      || (memoryRecallStatusFilter.value === 'excluded' && excludedMemoryIds.value.includes(item.memory_id))
+    return categoryOk && statusOk
+  })
+})
 
 function styleAxisValueLabel(value: 'low' | 'medium' | 'high') {
   if (value === 'high') return '高'
   if (value === 'low') return '低'
   return '中'
+}
+
+function timelineStatusLabel(
+  status: 'planned' | 'generated' | 'attention',
+  auditStatus?: AiComicSeriesQualityEpisodeStatus,
+): string {
+  if (status === 'attention') return '需处理'
+  if (status === 'generated') {
+    if (auditStatus === 'passed') return '已生成 · 通过'
+    if (auditStatus === 'needs_attention') return '已生成 · 待看'
+    return '已生成'
+  }
+  return '规划中'
 }
 
 onMounted(async () => {
@@ -954,6 +1168,10 @@ onMounted(async () => {
   const id = typeof route.query.seriesProjectId === 'string' ? route.query.seriesProjectId : ''
   if (!id) return
   await loadSeriesProject(id)
+  const episodeNo = routeEpisodeNo()
+  if (episodeNo) {
+    await previewRequestedEpisode(episodeNo)
+  }
 })
 
 async function loadSeriesProject(id: string) {
@@ -969,9 +1187,15 @@ async function loadSeriesProject(id: string) {
     seriesProjectId.value = res.data.project.series_project_id
     generatedEpisodeStoryIds.value = res.data.generated_episode_story_ids
     continuityLedger.value = res.data.continuity_ledger
+    memoryRecallPreferences.value = normalizeMemoryRecallPreferences(res.data.memory_recall_preferences)
+    applyMemoryPreferenceForEpisode(activeMemoryPreferenceEpisodeNo.value)
     seriesQualityAudit.value = res.data.series_quality_audit ?? null
     applyPlan(res.data.plan)
     saveMessage.value = `已保存：${res.data.project.series_project_id} · ${formatDate(res.data.project.updated_at)}`
+    saveStatus.value = 'saved'
+    saveErrorMessage.value = ''
+    lastSavedAt.value = res.data.project.updated_at
+    affectedEpisodeNos.value = []
   } else {
     errorMessage.value = res.error?.message ?? '加载系列规划失败'
   }
@@ -989,7 +1213,15 @@ async function handlePlan() {
   clearContextPreview()
   seriesProjectId.value = ''
   saveMessage.value = ''
+  saveStatus.value = 'idle'
+  saveErrorMessage.value = ''
+  lastSavedAt.value = ''
+  affectedEpisodeNos.value = []
   generatedEpisodeStoryIds.value = {}
+  lockedMemoryIds.value = []
+  excludedMemoryIds.value = []
+  memoryRecallPreferences.value = {}
+  activeMemoryPreferenceEpisodeNo.value = null
   continuityLedger.value = null
   seriesQualityAudit.value = null
 
@@ -1008,7 +1240,7 @@ async function handlePlan() {
 
   if (res.ok && res.data) {
     applyPlan(res.data)
-    await saveCurrentProject()
+    await saveCurrentProject({ message: '系列规划已自动保存' })
     await loadSavedProjects()
   } else {
     errorMessage.value = res.error?.message ?? '系列规划生成失败'
@@ -1018,6 +1250,7 @@ async function handlePlan() {
 
 async function handleGenerateEpisode(episodeNo: number) {
   if (!plan.value || generatingEpisodeNo.value !== null) return
+  applyMemoryPreferenceForEpisode(episodeNo)
   if (!seriesProjectId.value) {
     await saveCurrentProject()
   }
@@ -1035,6 +1268,7 @@ async function handleGenerateEpisode(episodeNo: number) {
     auto_audit_continuity: true,
     auto_repair_episode: autoRepairEpisode.value,
     narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
+    memory_recall_controls: buildMemoryRecallControls(),
   })
 
   if (res.ok && res.data) {
@@ -1043,7 +1277,7 @@ async function handleGenerateEpisode(episodeNo: number) {
       ...generatedEpisodeStoryIds.value,
       [String(episodeNo)]: res.data.storyId,
     }
-    await saveCurrentProject()
+    await saveCurrentProject({ message: `第${episodeNo}集生成结果已自动保存`, affectedEpisodeNos: [episodeNo] })
     await loadSavedProjects()
   } else {
     episodeErrorMessage.value = res.error?.message ?? '本集分镜生成失败'
@@ -1053,8 +1287,9 @@ async function handleGenerateEpisode(episodeNo: number) {
 
 async function handlePreviewEpisodeContext(episodeNo: number) {
   if (!plan.value || previewingEpisodeNo.value !== null) return
+  applyMemoryPreferenceForEpisode(episodeNo)
   if (!seriesProjectId.value) {
-    await saveCurrentProject()
+    await saveCurrentProject({ message: '上下文预览前已自动保存' })
   }
   previewingEpisodeNo.value = episodeNo
   contextPreview.value = null
@@ -1065,6 +1300,7 @@ async function handlePreviewEpisodeContext(episodeNo: number) {
     episode_no: episodeNo,
     series_project_id: seriesProjectId.value || undefined,
     narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
+    memory_recall_controls: buildMemoryRecallControls(),
   })
 
   if (res.ok && res.data) {
@@ -1075,10 +1311,175 @@ async function handlePreviewEpisodeContext(episodeNo: number) {
   previewingEpisodeNo.value = null
 }
 
+function routeEpisodeNo(): number | null {
+  const value = typeof route.query.episodeNo === 'string' ? Number(route.query.episodeNo) : NaN
+  if (!Number.isInteger(value) || value < 1) return null
+  return value
+}
+
+async function previewRequestedEpisode(episodeNo: number) {
+  if (!plan.value?.episodes.some(episode => episode.episode_no === episodeNo)) return
+  await handlePreviewEpisodeContext(episodeNo)
+  if (!contextPreviewError.value) {
+    saveMessage.value = `已定位到第${episodeNo}集，可继续生成或先查看上下文预览。`
+  }
+}
+
 function clearContextPreview() {
   contextPreview.value = null
   previewingEpisodeNo.value = null
   contextPreviewError.value = ''
+}
+
+function buildMemoryRecallControls(): AiComicSeriesMemoryRecallControls | undefined {
+  if (lockedMemoryIds.value.length === 0 && excludedMemoryIds.value.length === 0) return undefined
+  return {
+    locked_memory_ids: lockedMemoryIds.value.length > 0 ? lockedMemoryIds.value : undefined,
+    excluded_memory_ids: excludedMemoryIds.value.length > 0 ? excludedMemoryIds.value : undefined,
+  }
+}
+
+function normalizeMemoryRecallPreferences(
+  preferences?: AiComicSeriesMemoryRecallPreferences,
+): AiComicSeriesMemoryRecallPreferences {
+  return {
+    locked_memory_ids: [...(preferences?.locked_memory_ids ?? [])],
+    excluded_memory_ids: [...(preferences?.excluded_memory_ids ?? [])],
+    per_episode: Object.fromEntries(
+      Object.entries(preferences?.per_episode ?? {}).map(([episodeNo, controls]) => [episodeNo, {
+        locked_memory_ids: [...(controls.locked_memory_ids ?? [])],
+        excluded_memory_ids: [...(controls.excluded_memory_ids ?? [])],
+      }]),
+    ),
+    updated_at: preferences?.updated_at,
+  }
+}
+
+function applyMemoryPreferenceForEpisode(episodeNo: number | null) {
+  activeMemoryPreferenceEpisodeNo.value = episodeNo
+  const episodeControls = episodeNo ? memoryRecallPreferences.value.per_episode?.[String(episodeNo)] : undefined
+  lockedMemoryIds.value = [...(episodeControls?.locked_memory_ids ?? memoryRecallPreferences.value.locked_memory_ids ?? [])]
+  excludedMemoryIds.value = [...(episodeControls?.excluded_memory_ids ?? memoryRecallPreferences.value.excluded_memory_ids ?? [])]
+}
+
+function updateActiveEpisodeMemoryPreference() {
+  const controls = buildMemoryRecallControls() ?? {}
+  const episodeNo = activeMemoryPreferenceEpisodeNo.value
+  memoryRecallPreferences.value = {
+    ...memoryRecallPreferences.value,
+    per_episode: episodeNo
+      ? {
+          ...(memoryRecallPreferences.value.per_episode ?? {}),
+          [String(episodeNo)]: controls,
+        }
+      : memoryRecallPreferences.value.per_episode,
+    locked_memory_ids: episodeNo ? memoryRecallPreferences.value.locked_memory_ids : controls.locked_memory_ids,
+    excluded_memory_ids: episodeNo ? memoryRecallPreferences.value.excluded_memory_ids : controls.excluded_memory_ids,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function toggleLockedMemory(memoryId: string) {
+  lockedMemoryIds.value = lockedMemoryIds.value.includes(memoryId)
+    ? lockedMemoryIds.value.filter(id => id !== memoryId)
+    : [...lockedMemoryIds.value, memoryId]
+  if (lockedMemoryIds.value.includes(memoryId)) {
+    excludedMemoryIds.value = excludedMemoryIds.value.filter(id => id !== memoryId)
+  }
+  updateActiveEpisodeMemoryPreference()
+  void saveCurrentProject({ message: '记忆召回偏好已保存' })
+}
+
+function toggleExcludedMemory(memoryId: string) {
+  excludedMemoryIds.value = excludedMemoryIds.value.includes(memoryId)
+    ? excludedMemoryIds.value.filter(id => id !== memoryId)
+    : [...excludedMemoryIds.value, memoryId]
+  if (excludedMemoryIds.value.includes(memoryId)) {
+    lockedMemoryIds.value = lockedMemoryIds.value.filter(id => id !== memoryId)
+  }
+  updateActiveEpisodeMemoryPreference()
+  void saveCurrentProject({ message: '记忆召回偏好已保存' })
+}
+
+function clearActiveMemoryLocks() {
+  if (lockedMemoryIds.value.length === 0) return
+  lockedMemoryIds.value = []
+  updateActiveEpisodeMemoryPreference()
+  void saveCurrentProject({ message: '记忆锁定已清空' })
+}
+
+function clearActiveMemoryExclusions() {
+  if (excludedMemoryIds.value.length === 0) return
+  excludedMemoryIds.value = []
+  updateActiveEpisodeMemoryPreference()
+  void saveCurrentProject({ message: '记忆排除已清空' })
+}
+
+function exportMemoryRecallPreferences() {
+  const payload = {
+    schema_version: 'ai-comic-series-memory-recall-preferences/v1',
+    exported_at: new Date().toISOString(),
+    series_project_id: seriesProjectId.value || undefined,
+    series_title: plan.value?.series_title,
+    memory_recall_preferences: {
+      ...normalizeMemoryRecallPreferences(memoryRecallPreferences.value),
+      updated_at: new Date().toISOString(),
+    },
+  }
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  const safeTitle = (plan.value?.series_title || 'ai-comic-series').replace(/[^\u4e00-\u9fa5A-Za-z0-9_-]+/g, '-')
+  link.href = url
+  link.download = `${safeTitle}-memory-recall-preferences.json`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+  saveMessage.value = '记忆召回偏好已导出'
+}
+
+function triggerMemoryRecallPreferenceImport() {
+  memoryPreferenceImportInput.value?.click()
+}
+
+async function handleMemoryRecallPreferenceImport(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  try {
+    const raw = await file.text()
+    const parsed = JSON.parse(raw) as ({
+      memory_recall_preferences?: AiComicSeriesMemoryRecallPreferences;
+    } | AiComicSeriesMemoryRecallPreferences | null)
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Invalid memory recall preference file')
+    }
+    const parsedRecord = parsed as Record<string, unknown>
+    const imported = parsedRecord.memory_recall_preferences && typeof parsedRecord.memory_recall_preferences === 'object'
+      ? parsedRecord.memory_recall_preferences as AiComicSeriesMemoryRecallPreferences
+      : parsed as AiComicSeriesMemoryRecallPreferences
+    memoryRecallPreferences.value = normalizeMemoryRecallPreferences(imported)
+    applyMemoryPreferenceForEpisode(activeMemoryPreferenceEpisodeNo.value)
+    await saveCurrentProject({ message: '记忆召回偏好已导入' })
+  } catch {
+    saveStatus.value = 'failed'
+    saveErrorMessage.value = '导入失败：请选择有效的记忆召回偏好 JSON 文件'
+  }
+}
+
+function memoryCategoryLabel(category: AiComicSeriesMemoryCategory): string {
+  const map: Record<AiComicSeriesMemoryCategory, string> = {
+    character: '角色',
+    relationship: '关系',
+    prop: '道具',
+    location: '地点',
+    visual_asset: '视觉资产',
+    knowledge_boundary: '知识边界',
+    story_event: '关键事件',
+  }
+  return map[category]
 }
 
 function isEditingEpisode(episodeNo: number): boolean {
@@ -1174,10 +1575,14 @@ async function saveEpisodeEdit() {
     ...plan.value,
     episodes: updatedEpisodes,
   }
-  await saveCurrentProject()
-  await loadSavedProjects()
-  if (wasGenerated) {
-    saveMessage.value = `已保存第${draft.episode_no}集卡片。该集已有分镜，建议重新生成本集。`
+  const saved = await saveCurrentProject({
+    message: wasGenerated
+      ? `已保存第${draft.episode_no}集卡片。该集已有分镜，建议重新生成本集。`
+      : `已保存第${draft.episode_no}集卡片。`,
+    affectedEpisodeNos: [draft.episode_no],
+  })
+  if (saved) {
+    await loadSavedProjects()
   }
   savingEpisodeEdit.value = false
   cancelEditEpisode()
@@ -1201,19 +1606,39 @@ function applyPlan(nextPlan: AiComicSeriesPlan) {
   selectedNarrativePatternIds.value = [...(nextPlan.narrative_pattern_ids ?? [])]
 }
 
-async function saveCurrentProject() {
-  if (!plan.value) return
+async function saveCurrentProject(options: {
+  message?: string;
+  affectedEpisodeNos?: number[];
+} = {}): Promise<boolean> {
+  if (!plan.value) return false
+  saveStatus.value = 'saving'
+  saveErrorMessage.value = ''
+  if (options.affectedEpisodeNos) {
+    affectedEpisodeNos.value = [...options.affectedEpisodeNos]
+  } else if (options.message) {
+    affectedEpisodeNos.value = []
+  }
   const res = await saveAiComicSeriesProject({
     series_project_id: seriesProjectId.value || undefined,
     plan: plan.value,
     generated_episode_story_ids: generatedEpisodeStoryIds.value,
+    memory_recall_preferences: {
+      ...memoryRecallPreferences.value,
+      updated_at: new Date().toISOString(),
+    },
   })
   if (res.ok && res.data) {
     seriesProjectId.value = res.data.project.series_project_id
     generatedEpisodeStoryIds.value = res.data.generated_episode_story_ids
     continuityLedger.value = res.data.continuity_ledger
+    memoryRecallPreferences.value = normalizeMemoryRecallPreferences(res.data.memory_recall_preferences)
+    applyMemoryPreferenceForEpisode(activeMemoryPreferenceEpisodeNo.value)
     seriesQualityAudit.value = res.data.series_quality_audit ?? null
-    saveMessage.value = `已保存：${res.data.project.series_project_id} · ${formatDate(res.data.project.updated_at)}`
+    saveStatus.value = 'saved'
+    lastSavedAt.value = res.data.project.updated_at
+    saveMessage.value = options.message
+      ? `${options.message} · ${res.data.project.series_project_id}`
+      : `已保存：${res.data.project.series_project_id} · ${formatDate(res.data.project.updated_at)}`
     if (route.query.seriesProjectId !== seriesProjectId.value) {
       router.replace({
         path: route.path,
@@ -1223,9 +1648,18 @@ async function saveCurrentProject() {
         },
       })
     }
+    return true
   } else {
-    errorMessage.value = res.error?.message ?? '保存系列规划失败'
+    saveStatus.value = 'failed'
+    saveErrorMessage.value = res.error?.message ?? '保存系列规划失败'
+    errorMessage.value = saveErrorMessage.value
+    return false
   }
+}
+
+async function handleManualSave() {
+  const saved = await saveCurrentProject({ message: '已手动保存系列规划' })
+  if (saved) await loadSavedProjects()
 }
 
 async function handleRebuildLedger() {
@@ -1241,6 +1675,10 @@ async function handleRebuildLedger() {
     continuityLedger.value = res.data.continuity_ledger
     seriesQualityAudit.value = res.data.series_quality_audit ?? null
     applyPlan(res.data.plan)
+    saveStatus.value = 'saved'
+    saveErrorMessage.value = ''
+    lastSavedAt.value = res.data.project.updated_at
+    affectedEpisodeNos.value = []
     saveMessage.value = `已从第${fromEpisodeNo}集重建连续性账本 · ${formatDate(res.data.project.updated_at)}`
     await loadSavedProjects()
   } else {
@@ -1569,6 +2007,13 @@ function episodeProjectPath(episodeNo: number): string {
   padding: 8px 10px;
 }
 
+.series-studio__select--compact {
+  width: auto;
+  min-height: 32px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
 .series-studio__textarea {
   padding: 10px 12px;
   line-height: 1.55;
@@ -1842,6 +2287,46 @@ function episodeProjectPath(episodeNo: number): string {
   color: #28734b;
   font-size: 13px;
   font-weight: 600;
+}
+
+.series-studio__save-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 6px 9px;
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  background: #f8fafb;
+  color: #425766;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.series-studio__save-status strong,
+.series-studio__save-status em {
+  color: #60717f;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.series-studio__save-status[data-status='saving'] {
+  border-color: #c7dbef;
+  background: #eef6ff;
+  color: #2b78b7;
+}
+
+.series-studio__save-status[data-status='saved'] {
+  border-color: #c8e6d2;
+  background: #eefaf2;
+  color: #28734b;
+}
+
+.series-studio__save-status[data-status='failed'] {
+  border-color: #efc3bc;
+  background: #fff1ef;
+  color: #a53328;
 }
 
 .series-studio__summary-actions {
@@ -2284,6 +2769,146 @@ function episodeProjectPath(episodeNo: number): string {
   gap: 12px;
 }
 
+.series-studio__blueprint-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.8fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.series-studio__timeline {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.series-studio__timeline-node {
+  display: grid;
+  gap: 6px;
+  min-height: 172px;
+  padding: 12px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+  color: #24313b;
+  cursor: pointer;
+  text-align: left;
+}
+
+.series-studio__timeline-node:hover:not(:disabled),
+.series-studio__timeline-node--editing {
+  border-color: #2f7fb8;
+  background: #f6fbff;
+}
+
+.series-studio__timeline-node:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.series-studio__timeline-node span,
+.series-studio__timeline-node small,
+.series-studio__timeline-node b {
+  font-size: 12px;
+}
+
+.series-studio__timeline-node span {
+  color: #2f7fb8;
+  font-weight: 800;
+}
+
+.series-studio__timeline-node strong {
+  color: #24313b;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.series-studio__timeline-node small {
+  color: #66727f;
+  line-height: 1.35;
+}
+
+.series-studio__timeline-node p {
+  margin: 0;
+  color: #425766;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.series-studio__timeline-node em {
+  color: #5d6d7e;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.series-studio__timeline-node b {
+  align-self: end;
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #eef3f7;
+  color: #51606d;
+}
+
+.series-studio__timeline-node[data-status='generated'] b {
+  background: #eaf7ef;
+  color: #28734b;
+}
+
+.series-studio__timeline-node[data-status='attention'] b {
+  background: #fff1ef;
+  color: #a53328;
+}
+
+.series-studio__character-state-board {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #f8fafb;
+}
+
+.series-studio__character-state-row {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border: 1px solid #e2e8ee;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.series-studio__character-state-row div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.series-studio__character-state-row strong {
+  color: #263746;
+  font-size: 13px;
+}
+
+.series-studio__character-state-row span {
+  color: #28734b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.series-studio__character-state-row p {
+  margin: 0;
+  color: #5d6d7e;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .series-studio__episode-no {
   display: inline-block;
   margin-bottom: 4px;
@@ -2581,6 +3206,62 @@ function episodeProjectPath(episodeNo: number): string {
   word-break: break-word;
 }
 
+.series-studio__memory-recall-list {
+  display: grid;
+  gap: 8px;
+}
+
+.series-studio__memory-recall-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.series-studio__file-input {
+  display: none;
+}
+
+.series-studio__memory-recall-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid #d7e0e7;
+  border-radius: 6px;
+  background: #fff;
+  padding: 10px;
+}
+
+.series-studio__memory-recall-item--locked {
+  border-color: #6c9f7b;
+  background: #f4faf6;
+}
+
+.series-studio__memory-recall-item--excluded {
+  opacity: 0.62;
+}
+
+.series-studio__memory-recall-item b {
+  display: block;
+  color: #213547;
+  font-size: 13px;
+}
+
+.series-studio__memory-recall-item small {
+  display: block;
+  color: #6a7b87;
+  font-size: 12px;
+}
+
+.series-studio__memory-recall-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .series-studio__generated {
   border-top: 1px solid #dde4ea;
   padding-top: 18px;
@@ -2606,6 +3287,10 @@ function episodeProjectPath(episodeNo: number): string {
   }
 
   .series-studio__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .series-studio__blueprint-board {
     grid-template-columns: 1fr;
   }
 

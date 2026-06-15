@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "china-culture-kb": {
+      "command": "/opt/homebrew/bin/node",
+      "args": ["mcp-server/dist/index.js"],
+      "cwd": "/Users/wuyu/Desktop/china-culture-kb"
+    }
+  }
+}

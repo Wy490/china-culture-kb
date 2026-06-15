@@ -86,6 +86,33 @@ export function buildStoryRepairPromptPackage(input: {
       '=== 修复动作 ===',
       ...repairActions.map(action => `- ${action}`),
       '',
+      ...(input.qualityReport.outline_coverage_report ? [
+        '=== Outline Coverage Report ===',
+        `覆盖分：${input.qualityReport.outline_coverage_report.coverage_score}`,
+        `预览：${input.qualityReport.outline_coverage_report.preview}`,
+        ...input.qualityReport.outline_coverage_report.nodes
+          .filter(node => node.status !== 'covered')
+          .map(node => `- ${node.order}. ${node.text}：${node.repair_hint}`),
+        '',
+      ] : []),
+      ...(input.qualityReport.pattern_quality_report ? [
+        '=== Pattern Quality Report ===',
+        `模式分：${input.qualityReport.pattern_quality_report.pattern_score}`,
+        `预览：${input.qualityReport.pattern_quality_report.preview}`,
+        ...input.qualityReport.pattern_quality_report.weak_signals
+          .slice(0, 8)
+          .map(signal => `- ${signal.label}：${signal.repair_hint}`),
+        '',
+      ] : []),
+      ...(input.qualityReport.gears_readiness_report ? [
+        '=== GEARS Readiness Report ===',
+        `交付分：${input.qualityReport.gears_readiness_report.readiness_score}`,
+        `预览：${input.qualityReport.gears_readiness_report.preview}`,
+        ...input.qualityReport.gears_readiness_report.issue_items
+          .slice(0, 8)
+          .map(item => `- ${item}`),
+        '',
+      ] : []),
       ...(input.blueprint ? [
         '=== 必须保留的类型蓝图 ===',
         `中心问题：${input.blueprint.central_question}`,

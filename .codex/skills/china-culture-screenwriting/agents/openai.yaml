@@ -1,0 +1,4 @@
+interface:
+  display_name: "China Culture Screenwriting"
+  short_description: "Cultural screenwriting rules for china-culture-kb."
+  default_prompt: "Use this skill to write or revise culturally grounded scripts from china-culture-kb material."

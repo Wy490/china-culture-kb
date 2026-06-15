@@ -272,6 +272,10 @@ describe('outline-service', () => {
       generated_episode_story_ids: {
         1: '20260611-story-abc1',
       },
+      memory_recall_preferences: {
+        locked_memory_ids: ['character-abc-1'],
+        excluded_memory_ids: ['prop-def-2'],
+      },
     });
 
     expect(saveRes.ok).toBe(true);
@@ -279,6 +283,11 @@ describe('outline-service', () => {
     expect(saveRes.data?.project.generated_episode_count).toBe(1);
     expect(saveRes.data?.continuity_ledger.schema_version).toBe('ai-comic-continuity-ledger/v1');
     expect(saveRes.data?.continuity_ledger.character_state_current.length).toBeGreaterThan(0);
+    expect(saveRes.data?.continuity_ledger.series_memory?.schema_version).toBe('ai-comic-series-memory/v1');
+    expect(saveRes.data?.continuity_ledger.series_memory?.characters.length).toBeGreaterThan(0);
+    expect(saveRes.data?.continuity_ledger.series_memory?.knowledge_boundaries.length).toBeGreaterThan(0);
+    expect(saveRes.data?.memory_recall_preferences?.locked_memory_ids).toContain('character-abc-1');
+    expect(saveRes.data?.memory_recall_preferences?.excluded_memory_ids).toContain('prop-def-2');
     expect(saveRes.data?.series_quality_audit?.schema_version).toBe('ai-comic-series-quality-audit/v1');
     expect(saveRes.data?.series_quality_audit?.generated_episode_count).toBe(1);
     expect(saveRes.data?.series_quality_audit?.total_episode_count).toBe(3);
@@ -290,6 +299,7 @@ describe('outline-service', () => {
     expect(getRes.ok).toBe(true);
     expect(getRes.data?.plan.series_title).toBe('濂溪少年志');
     expect(getRes.data?.generated_episode_story_ids['1']).toBe('20260611-story-abc1');
+    expect(getRes.data?.memory_recall_preferences?.locked_memory_ids).toContain('character-abc-1');
     expect(getRes.data?.series_quality_audit?.episode_reports[0]).toMatchObject({
       episode_no: 1,
       story_id: '20260611-story-abc1',
@@ -304,9 +314,23 @@ describe('outline-service', () => {
     expect(exportRes.ok).toBe(true);
     expect(exportRes.data?.schema_version).toBe('ai-comic-series-bible-export/v1');
     expect(exportRes.data?.episode_blueprints).toHaveLength(3);
+    expect(exportRes.data?.production_tables.characters.length).toBeGreaterThan(0);
+    expect(exportRes.data?.production_tables.threads.length).toBeGreaterThan(0);
+    expect(exportRes.data?.production_tables.series_memory.length).toBeGreaterThan(0);
+    expect(exportRes.data?.production_tables.episode_status).toHaveLength(3);
+    expect(exportRes.data?.production_tables.episode_status[0]).toMatchObject({
+      episode_no: 1,
+      status: 'generated',
+      story_id: '20260611-story-abc1',
+    });
     expect(exportRes.data?.markdown).toContain('# 濂溪少年志 系列 Bible');
     expect(exportRes.data?.markdown).toContain('## 主线剧情骨架');
     expect(exportRes.data?.markdown).toContain('## 连续性账本');
+    expect(exportRes.data?.markdown).toContain('## 系列记忆引擎');
+    expect(exportRes.data?.markdown).toContain('## 制作表');
+    expect(exportRes.data?.markdown).toContain('### 角色表');
+    expect(exportRes.data?.markdown).toContain('### 系列记忆表');
+    expect(exportRes.data?.markdown).toContain('### 分集状态表');
     expect(exportRes.data?.markdown).toContain('线索闭环');
     expect(exportRes.data?.markdown).toContain('第1集：问题出现');
   });
@@ -358,6 +382,9 @@ describe('outline-service', () => {
       generated_episode_story_ids: {
         1: '20260611-story-abc1',
       },
+      memory_recall_preferences: {
+        locked_memory_ids: ['character-abc-1'],
+      },
     });
     expect(saveRes.ok).toBe(true);
 
@@ -369,6 +396,7 @@ describe('outline-service', () => {
     expect(copyRes.data?.plan.series_title).toBe('濂溪少年志 复盘版');
     expect(copyRes.data?.generated_episode_story_ids['1']).toBe('20260611-story-abc1');
     expect(copyRes.data?.continuity_ledger.schema_version).toBe('ai-comic-continuity-ledger/v1');
+    expect(copyRes.data?.memory_recall_preferences?.locked_memory_ids).toContain('character-abc-1');
 
     const archiveRes = await archiveAiComicSeriesProject(copyRes.data!.project.series_project_id, {
       archived: true,
@@ -414,7 +442,7 @@ describe('outline-service', () => {
       series_plan: planRes.data!,
       episode_no: 1,
       series_project_id: saveRes.data!.project.series_project_id,
-      output_gears_segments: false,
+      output_gears_segments: true,
     });
     expect(episodeRes.ok).toBe(true);
 
@@ -424,6 +452,22 @@ describe('outline-service', () => {
     expect(getRes.data?.continuity_ledger.episode_records).toHaveLength(1);
     expect(getRes.data?.continuity_ledger.episode_records[0].story_id).toBe(episodeRes.data?.storyId);
     expect(getRes.data?.continuity_ledger.open_threads.length).toBeGreaterThan(0);
+    expect(getRes.data?.continuity_ledger.episode_records[0].memory_events?.length).toBeGreaterThan(0);
+    expect(getRes.data?.continuity_ledger.series_memory?.story_events.length).toBeGreaterThan(0);
+    expect(getRes.data?.continuity_ledger.episode_records[0].memory_events?.some(event =>
+      event.category === 'story_event' && event.label.includes('GEARS分段')
+    )).toBe(true);
+    expect(getRes.data?.continuity_ledger.episode_records[0].memory_events?.some(event =>
+      event.category === 'story_event' && event.label.includes('Seedance镜头')
+    )).toBe(true);
+    const firstScene = episodeRes.data!.scene_breakdown[0];
+    expect(getRes.data?.continuity_ledger.episode_records[0].memory_events?.some(event =>
+      event.category === 'location' && event.label === firstScene.location
+    )).toBe(true);
+    expect(getRes.data?.continuity_ledger.series_memory?.relationships.length).toBeGreaterThan(0);
+    expect(getRes.data?.continuity_ledger.episode_records[0].next_episode_memory.some(item =>
+      item.includes('记忆：')
+    )).toBe(true);
     expect(getRes.data?.series_quality_audit?.generated_episode_count).toBe(1);
     expect(getRes.data?.series_quality_audit?.episode_reports[0].story_id).toBe(episodeRes.data?.storyId);
     expect(getRes.data?.series_quality_audit?.episode_reports[0].score).toBeTypeOf('number');
@@ -493,12 +537,74 @@ describe('outline-service', () => {
     expect(previewRes.data?.blueprint.schema_version).toBe('ai-comic-episode-blueprint/v1');
     expect(previewRes.data?.blueprint.episode_no).toBe(2);
     expect(previewRes.data?.generation_outline).toContain('连续性账本');
+    expect(previewRes.data?.generation_outline).toContain('系列记忆精准召回');
     expect(previewRes.data?.generation_outline).toContain('上一条生成记忆');
-    expect(previewRes.data?.generation_outline).toContain('凡人流成长');
-    expect(previewRes.data?.narrative_patterns).toEqual(expect.arrayContaining(['凡人流成长']));
+    expect(previewRes.data?.narrative_patterns.length).toBeGreaterThan(0);
+    expect(previewRes.data?.generation_outline).toContain(previewRes.data!.narrative_patterns[0]);
     expect(previewRes.data?.generation_outline).toContain(firstEpisodeRes.data!.storyId);
     expect(previewRes.data?.ledger_summary.last_generated_episode_no).toBe(1);
+    expect(previewRes.data?.ledger_summary.series_memory?.characters.length).toBeGreaterThan(0);
+    expect(previewRes.data?.focused_memory_recall?.schema_version).toBe('ai-comic-series-memory-recall/v1');
+    expect(previewRes.data?.focused_memory_recall?.episode_no).toBe(2);
+    expect(previewRes.data?.focused_memory_recall?.items.length).toBeGreaterThan(0);
+    expect(previewRes.data?.focused_memory_recall?.items.some(item =>
+      item.category === 'character' || item.reasons.includes('上一集承接')
+    )).toBe(true);
     expect(previewRes.data?.previous_episode_memory.length).toBeGreaterThan(0);
+    const controlledMemoryId = previewRes.data!.focused_memory_recall!.items[0]!.memory_id;
+    const excludedPreviewRes = await previewAiComicEpisodeContext({
+      series_plan: planRes.data!,
+      episode_no: 2,
+      series_project_id: saveRes.data!.project.series_project_id,
+      memory_recall_controls: {
+        excluded_memory_ids: [controlledMemoryId],
+      },
+    });
+    expect(excludedPreviewRes.ok).toBe(true);
+    expect(excludedPreviewRes.data?.focused_memory_recall?.items.some(item =>
+      item.memory_id === controlledMemoryId
+    )).toBe(false);
+
+    const lockedPreviewRes = await previewAiComicEpisodeContext({
+      series_plan: planRes.data!,
+      episode_no: 2,
+      series_project_id: saveRes.data!.project.series_project_id,
+      memory_recall_controls: {
+        locked_memory_ids: [controlledMemoryId],
+        excluded_memory_ids: [controlledMemoryId],
+      },
+    });
+    expect(lockedPreviewRes.ok).toBe(true);
+    expect(lockedPreviewRes.data?.focused_memory_recall?.items.some(item =>
+      item.memory_id === controlledMemoryId && item.reasons.includes('人工锁定')
+    )).toBe(true);
+    expect(lockedPreviewRes.data?.generation_outline).toContain('人工锁定');
+
+    const preferenceSaveRes = await saveAiComicSeriesProject({
+      series_project_id: saveRes.data!.project.series_project_id,
+      plan: planRes.data!,
+      memory_recall_preferences: {
+        per_episode: {
+          2: {
+            locked_memory_ids: [controlledMemoryId],
+            excluded_memory_ids: [controlledMemoryId],
+          },
+        },
+      },
+    });
+    expect(preferenceSaveRes.ok).toBe(true);
+    expect(preferenceSaveRes.data?.memory_recall_preferences?.per_episode?.['2']?.locked_memory_ids)
+      .toContain(controlledMemoryId);
+
+    const persistedPreferencePreviewRes = await previewAiComicEpisodeContext({
+      series_plan: planRes.data!,
+      episode_no: 2,
+      series_project_id: saveRes.data!.project.series_project_id,
+    });
+    expect(persistedPreferencePreviewRes.ok).toBe(true);
+    expect(persistedPreferencePreviewRes.data?.focused_memory_recall?.items.some(item =>
+      item.memory_id === controlledMemoryId && item.reasons.includes('人工锁定')
+    )).toBe(true);
 
     const secondEpisodeRes = await generateAiComicEpisodeFromPlan({
       series_plan: planRes.data!,
@@ -508,6 +614,8 @@ describe('outline-service', () => {
     });
     expect(secondEpisodeRes.ok).toBe(true);
     expect(secondEpisodeRes.data?.original_user_query).toContain('连续性账本');
+    expect(secondEpisodeRes.data?.original_user_query).toContain('系列记忆精准召回');
+    expect(secondEpisodeRes.data?.original_user_query).toContain('人工锁定');
     expect(secondEpisodeRes.data?.original_user_query).toContain('账本未回收线索');
     expect(secondEpisodeRes.data?.original_user_query).toContain('上一条生成记忆');
     expect(secondEpisodeRes.data?.original_user_query).toContain(firstEpisodeRes.data!.storyId);

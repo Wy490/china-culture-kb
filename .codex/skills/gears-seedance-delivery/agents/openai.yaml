@@ -1,0 +1,4 @@
+interface:
+  display_name: "GEARS Seedance Delivery"
+  short_description: "GEARS and Seedance handoff rules for Story Agent outputs."
+  default_prompt: "Use this skill to convert Story Agent scenes into GEARS delivery packages or Seedance prompts."

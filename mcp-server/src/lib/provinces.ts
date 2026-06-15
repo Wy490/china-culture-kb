@@ -1,7 +1,17 @@
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 
 export function getKbRoot(): string {
-  return path.resolve(process.env.KB_ROOT || path.join(process.cwd(), '..', 'data'));
+  if (process.env.KB_ROOT) {
+    return path.resolve(process.env.KB_ROOT);
+  }
+
+  const cwdData = path.resolve(process.cwd(), 'data');
+  if (existsSync(cwdData)) {
+    return cwdData;
+  }
+
+  return path.resolve(process.cwd(), '..', 'data');
 }
 
 export const PROVINCES = [

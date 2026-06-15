@@ -1,6 +1,6 @@
 # Installed AI Tools, Skills, and MCP
 
-Last updated: 2026-06-08
+Last updated: 2026-06-15
 
 This document records the AI tools, MCP servers, skills, plugins, and supporting CLI across two machines: **Mac** (wuyu) and **Windows** (Administrator).
 
@@ -27,7 +27,7 @@ This document records the AI tools, MCP servers, skills, plugins, and supporting
 
 | MCP name | Type | Command / URL | Status / Purpose |
 | --- | --- | --- | --- |
-| `china-culture-kb` | stdio | `node mcp-server/dist/index.js` (cwd: `d:/china-culture-kb`) | **Project-level** — 中国传统文化知识库，14 个工具（搜索、详情、添加、匹配、补充、采集、验证、B站视频、文章、录入、脚本、故事、索引、地区条目） |
+| `china-culture-kb` | stdio | `node mcp-server/dist/index.js` (cwd: `d:/china-culture-kb`) | **Project-level** — 中国传统文化知识库，16 个工具（搜索、详情、添加、匹配、补充、采集、验证、B站视频、文章、录入、脚本、故事、索引、地区条目、项目上下文、故事蓝图） |
 | `github` | http | `https://api.githubcopilot.com/mcp/` | **Plugin-level** — GitHub 官方 MCP（Issue、PR、代码搜索、API 操作）；认证: `GITHUB_PERSONAL_ACCESS_TOKEN` |
 
 ### Mac — Claude Code & Codex Shared MCP
@@ -39,6 +39,7 @@ This document records the AI tools, MCP servers, skills, plugins, and supporting
 | `playwright` | stdio | `/opt/homebrew/bin/playwright-mcp` | Browser automation, page interaction, visual inspection, UI testing |
 | `chrome-devtools` | stdio | `/opt/homebrew/bin/chrome-devtools-mcp` | Chrome DevTools inspection, console/network/page debugging |
 | `duckduckgo` | stdio | `/opt/homebrew/bin/ddg-mcp` | Web search without an API key |
+| `china-culture-kb` | stdio | `/opt/homebrew/bin/node mcp-server/dist/index.js` (cwd: `/Users/wuyu/Desktop/china-culture-kb`) | **Project-level** — 中国传统文化知识库 MCP，已加入 Mac Codex 全局配置 |
 
 Mac Claude Code health check (2026-06-08):
 
@@ -117,7 +118,7 @@ sandbox = "elevated"
 
 Config file: `/Users/wuyu/.codex/config.toml`
 
-Contains the 5 shared MCP servers (same as Claude Code).
+Contains the 5 shared MCP servers (same as Claude Code), `node_repl`, and the project-level `china-culture-kb` MCP server for this workspace.
 
 ## Claude Code Plugins
 
@@ -192,10 +193,30 @@ Installed from the official Claude plugin marketplace. Listed per platform where
 | Skill | Path | Purpose |
 | --- | --- | --- |
 | `agent-dev-standards` | `/Users/wuyu/.codex/skills/agent-dev-standards/SKILL.md` | Token-saving 开发规则、研究流程、代码质量规则、中文视频平台处理 |
+| `anysearch` | `/Users/wuyu/.codex/skills/anysearch-skill/SKILL.md` | 实时搜索、垂直搜索、批量搜索和 URL 内容提取 |
 | `playwright` | `/Users/wuyu/.codex/skills/playwright/SKILL.md` | Browser automation from the terminal |
 | `screenshot` | `/Users/wuyu/.codex/skills/screenshot/SKILL.md` | OS-level screenshot capture |
 | `security-best-practices` | `/Users/wuyu/.codex/skills/security-best-practices/SKILL.md` | Security best-practice reviews |
+| `seedance-prompt-en` | `/Users/wuyu/.codex/skills/seedance2-skill/SKILL.md` | Jimeng Seedance 2.0 英文视频提示词写作 |
+| `seedance-prompt-zh` | `/Users/wuyu/.codex/skills/seedance2-skill/zh/SKILL.md` | 即梦 Seedance 2.0 中文视频提示词写作 |
+| `shanyin-screenwriting-master` | `/Users/wuyu/.codex/skills/shanyin-screenwriting-master/SKILL.md` | 中文编剧、短剧、分集规划、AI 漫剧脚本和剧本修订 |
+| `toonflow-production-workflow` | `/Users/wuyu/.codex/skills/toonflow-production-workflow/SKILL.md` | 剧本到资产、导演规划、分镜表和制作交付流程 |
 | `transcribe` | `/Users/wuyu/.codex/skills/transcribe/SKILL.md` | Audio/video transcription workflow |
+| `china-culture-story-agent` | `/Users/wuyu/.codex/skills/china-culture-story-agent/SKILL.md` | 本项目 Story Agent 生成链路、类型 profile、蓝图、校验和修复流程 |
+| `china-culture-screenwriting` | `/Users/wuyu/.codex/skills/china-culture-screenwriting/SKILL.md` | 本项目中国文化知识库编剧、事实边界和类型片写作规则 |
+| `gears-seedance-delivery` | `/Users/wuyu/.codex/skills/gears-seedance-delivery/SKILL.md` | 本项目 GEARS delivery 与 Seedance 提示词交付规则 |
+
+## Project Codex Skills
+
+Project-level skills are stored in `.codex/skills/` so the china-culture-kb workflow can travel with the repository.
+
+| Skill | Project path | Purpose |
+| --- | --- | --- |
+| `china-culture-story-agent` | `.codex/skills/china-culture-story-agent/SKILL.md` | Story Agent generation contract: knowledge entry → StoryBlueprint → full_text → scenes → GEARS segments → quality report → repair → project version |
+| `china-culture-screenwriting` | `.codex/skills/china-culture-screenwriting/SKILL.md` | Cultural screenwriting rules for knowledge-base stories, historical drama, legends, heritage promo, AI comic-drama, children stories, and documentary shorts |
+| `gears-seedance-delivery` | `.codex/skills/gears-seedance-delivery/SKILL.md` | GEARS field separation, prompt cleaning, delivery readiness, and Seedance prompt patterns |
+
+Project MCP setup notes live in `.codex/mcp-config.md`; the Story Agent MCP upgrade roadmap lives in `.codex/mcp-upgrade-roadmap.md`.
 
 ## Codex Plugins
 
@@ -213,7 +234,7 @@ Installed from the official Claude plugin marketplace. Listed per platform where
 
 > Note: this local skill is not installed on Windows; the **superpowers** plugin provides overlapping discipline (TDD, debugging, verification) and the **writing-plans** skill covers structured development workflow.
 
-## china-culture-kb MCP Server Tools (14)
+## china-culture-kb MCP Server Tools (16)
 
 Project-level MCP server, available on Windows in the `china-culture-kb` project workspace.
 
@@ -233,6 +254,8 @@ Project-level MCP server, available on Windows in the `china-culture-kb` project
 | `kb_generate_script` | 生成文化脚本 | entryName, scriptType (纪录片/短剧/动画/文化解说), duration |
 | `kb_generate_story` | 生成剧情化故事 | entryName, eventType |
 | `kb_query_index` | 查询索引统计 | province, type, region, keyword |
+| `kb_get_project_context` | 读取 Story Agent 项目上下文 | project_id, include_versions, include_exports |
+| `kb_generate_story_blueprint` | 生成 Story Agent 类型片蓝图 | entry_name, video_type, presentation_style, story_structure, target_duration, central_event, user_outline, region_hint |
 
 ## Supporting CLI Tools
 

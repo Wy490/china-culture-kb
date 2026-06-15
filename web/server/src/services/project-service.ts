@@ -25,13 +25,19 @@ import type {
   KnowledgeSupplementTaskUpdateRequest,
   KnowledgeSupplementTaskStatus,
   StorySceneRegenerateRequest,
+  StoryQualityRepairRequest,
+  StoryRepairTrace,
   VideoType,
   GearsDeliveryPackage,
   GearsWebhookStatus,
   GearsVideoResult,
+  StoryProductionBoard,
 } from '@shared/types.js';
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
+import { enrichStoryQualityReport } from './quality-workflow-service.js';
+import { repairStoryWithQualityWorkflow } from './quality-repair-service.js';
+import { buildStoryProductionBoard } from './production-board-service.js';
 
 const ALL_VIDEO_TYPES: VideoType[] = [
   'character_story', 'historical_drama', 'legend_story',
@@ -264,13 +270,11 @@ function buildInitialProjectSnapshot(
 
 async function ensureProjectFromStory(story: StoryGenerateResult, createdAt: string): Promise<StoryProjectMeta> {
   const { meta, snapshot } = buildInitialProjectSnapshot(story, createdAt);
-  const metaFile = projectMetaPath(meta.project_id);
-  if (await pathExists(metaFile)) {
-    return readJsonFile<StoryProjectMeta>(metaFile);
-  }
+  const existingMeta = await readProjectMeta(meta.project_id);
+  if (existingMeta) return existingMeta;
 
   await writeJsonFile(projectVersionPath(meta.project_id, snapshot.version_id), snapshot);
-  await writeJsonFile(metaFile, meta);
+  await writeJsonFile(projectMetaPath(meta.project_id), meta);
   return meta;
 }
 
@@ -284,7 +288,13 @@ async function ensureProjectsFromStories(): Promise<void> {
 async function readProjectMeta(projectId: string): Promise<StoryProjectMeta | null> {
   const metaFile = projectMetaPath(projectId);
   if (!(await pathExists(metaFile))) return null;
-  return readJsonFile<StoryProjectMeta>(metaFile);
+  try {
+    return await readJsonFile<StoryProjectMeta>(metaFile);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[project-service] Skipping unreadable project metadata: ${metaFile} (${message})`);
+    return null;
+  }
 }
 
 async function readVersionSnapshots(projectId: string): Promise<StoryProjectVersionSnapshot[]> {
@@ -433,6 +443,17 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
   });
 }
 
+export async function getProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoard>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+  return success(buildStoryProductionBoard(detail.data.current_story));
+}
+
 export async function exportProjectCurrentVersion(projectId: string): Promise<ApiResponse<StoryProjectExportPackage>> {
   const project = await ensureProjectExists(projectId);
   if (!project) {
@@ -480,6 +501,10 @@ function buildProjectExportPackage(params: {
     logline: params.story.logline,
     quality_passed: params.story.quality_report?.passed,
     genre_score: params.story.quality_report?.genre_score,
+    outline_coverage_score: params.story.quality_report?.outline_coverage_report?.coverage_score,
+    pattern_quality_score: params.story.quality_report?.pattern_quality_report?.pattern_score,
+    gears_readiness_score: params.story.quality_report?.gears_readiness_report?.readiness_score,
+    repair_action_count: params.story.quality_report?.repair_action_items?.length ?? 0,
     quality_issues: params.story.quality_report?.issues ?? [],
     credibility_note: params.story.credibility_note,
     evidence_boundary_count: params.story.story_blueprint?.evidence_boundaries.length ?? 0,
@@ -527,8 +552,55 @@ function buildProjectExportMarkdown(pkg: Omit<StoryProjectExportPackage, 'markdo
     '## 质量报告摘要',
     `- 状态: ${quality ? quality.passed ? '通过' : '需调整' : '未记录'}`,
     `- 类型分: ${typeof quality?.genre_score === 'number' ? quality.genre_score : '未记录'}`,
+    `- 大纲覆盖: ${typeof quality?.outline_coverage_report?.coverage_score === 'number' ? `${quality.outline_coverage_report.coverage_score}/100` : '未记录'}`,
+    `- 流派信号: ${typeof quality?.pattern_quality_report?.pattern_score === 'number' ? `${quality.pattern_quality_report.pattern_score}/100` : '未记录'}`,
+    `- GEARS 就绪: ${typeof quality?.gears_readiness_report?.readiness_score === 'number' ? `${quality.gears_readiness_report.readiness_score}/100` : '未记录'}`,
     `- 问题: ${quality?.issues.length ? quality.issues.join('；') : '无'}`,
     `- 修复建议: ${quality?.repair_actions?.length ? quality.repair_actions.join('；') : '无'}`,
+    '',
+    '## P0 可修复质量报告',
+    ...(quality?.outline_coverage_report ? [
+      '### Outline Coverage Report',
+      `- 覆盖率: ${quality.outline_coverage_report.coverage_score}/100`,
+      `- 节点: 已覆盖 ${quality.outline_coverage_report.covered_nodes}/${quality.outline_coverage_report.total_nodes}；部分 ${quality.outline_coverage_report.partial_nodes}；缺失 ${quality.outline_coverage_report.missing_nodes}`,
+      `- 预览: ${quality.outline_coverage_report.preview}`,
+      ...(quality.outline_coverage_report.nodes
+        .filter(node => node.status !== 'covered')
+        .slice(0, 8)
+        .map(node => `- ${node.order}. [${node.status}] ${node.text} -> ${node.repair_hint}`)),
+      ...(quality.outline_coverage_report.unauthorized_events.length
+        ? [`- 可能偏移: ${quality.outline_coverage_report.unauthorized_events.join('；')}`]
+        : []),
+      '',
+    ] : ['### Outline Coverage Report', '- 未记录', '']),
+    ...(quality?.pattern_quality_report ? [
+      '### Pattern Quality Report',
+      `- 分数: ${quality.pattern_quality_report.pattern_score}/100`,
+      `- 已满足: ${quality.pattern_quality_report.satisfied_signals.length}`,
+      `- 偏弱/缺失: ${quality.pattern_quality_report.weak_signals.length}`,
+      `- 预览: ${quality.pattern_quality_report.preview}`,
+      ...quality.pattern_quality_report.weak_signals
+        .slice(0, 8)
+        .map(signal => `- ${signal.label}: ${signal.gap}；修复：${signal.repair_hint}`),
+      '',
+    ] : ['### Pattern Quality Report', '- 未记录', '']),
+    ...(quality?.gears_readiness_report ? [
+      '### GEARS Readiness Report',
+      `- 分数: ${quality.gears_readiness_report.readiness_score}/100`,
+      `- 状态: ${quality.gears_readiness_report.ready ? '就绪' : '需修复'}`,
+      `- 预览: ${quality.gears_readiness_report.preview}`,
+      ...(quality.gears_readiness_report.asset_gaps.length ? [`- 资产缺口: ${quality.gears_readiness_report.asset_gaps.join('；')}`] : []),
+      ...(quality.gears_readiness_report.unit_gaps.length ? [`- 单元缺口: ${quality.gears_readiness_report.unit_gaps.join('；')}`] : []),
+      ...(quality.gears_readiness_report.prompt_gaps.length ? [`- 提示词缺口: ${quality.gears_readiness_report.prompt_gaps.join('；')}`] : []),
+      '',
+    ] : ['### GEARS Readiness Report', '- 未记录', '']),
+    ...(quality?.repair_action_items?.length ? [
+      '### 一键修复动作',
+      ...quality.repair_action_items.map(action =>
+        `- ${action.label} [${action.target_report}/${action.severity}] 场景: ${action.scene_ids.join('、') || '全局'}；预期: ${action.expected_effect}`
+      ),
+      '',
+    ] : ['### 一键修复动作', '- 无', '']),
     '',
     '## 可信度边界',
     `- 总体说明: ${story.credibility_note}`,
@@ -694,6 +766,13 @@ function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenera
     generation_used_fallback: story.generation_used_fallback ?? false,
   };
   normalized.gears_delivery = ensureGearsDeliveryPackage(normalized);
+  if (normalized.quality_report) {
+    normalized.quality_report = enrichStoryQualityReport({
+      story: normalized,
+      qualityReport: normalized.quality_report,
+      gearsDelivery: normalized.gears_delivery,
+    });
+  }
   return normalized;
 }
 
@@ -733,6 +812,58 @@ export async function regenerateProjectScene(
   );
 
   return getProject(projectId);
+}
+
+export async function repairProjectQuality(
+  projectId: string,
+  request: StoryQualityRepairRequest,
+): Promise<ApiResponse<StoryProjectDetail>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return detailResult;
+  }
+
+  const { project, current_story } = detailResult.data;
+  const { story: updatedStory, trace } = await repairStoryWithQualityWorkflow(current_story, request);
+  const actionSceneIds = selectRequestedRepairActions(current_story.quality_report?.repair_action_items ?? [], request)
+    ?.flatMap(action => action.scene_ids)
+    .filter((sceneId, index, arr) => Number.isFinite(sceneId) && arr.indexOf(sceneId) === index) ?? [];
+  const changedSceneIds = trace.applied
+    ? (actionSceneIds.length > 0 ? actionSceneIds : current_story.scene_breakdown.map(scene => scene.scene_id))
+    : [];
+
+  await persistProjectVersion(
+    project,
+    updatedStory,
+    'quality_repair',
+    changedSceneIds,
+    buildQualityRepairNote(trace),
+  );
+
+  return getProject(projectId);
+}
+
+function selectRequestedRepairActions(
+  actions: NonNullable<StoryGenerateResult['quality_report']>['repair_action_items'],
+  request: StoryQualityRepairRequest,
+) {
+  const structured = actions ?? [];
+  const byId = request.repair_action_id
+    ? structured.filter(action => action.action_id === request.repair_action_id)
+    : structured;
+  if (request.repair_action_id && byId.length === 0) return [];
+  return request.target_report
+    ? byId.filter(action => action.target_report === request.target_report)
+    : byId;
+}
+
+function buildQualityRepairNote(trace: StoryRepairTrace): string {
+  const scoreText = typeof trace.before_genre_score === 'number' || typeof trace.after_genre_score === 'number'
+    ? `（${trace.before_genre_score ?? '-'} -> ${trace.after_genre_score ?? '-'}）`
+    : '';
+  return trace.applied
+    ? `一键质量修复已应用${scoreText}`
+    : `一键质量修复未应用：${trace.reason}${scoreText}`;
 }
 
 export async function updateProjectSupplementTask(

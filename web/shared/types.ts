@@ -767,7 +767,7 @@ export interface StoryProjectListItem {
   gears_video_thumbnail_url?: string;
 }
 
-export type StoryProjectVersionChangeType = 'initial_generation' | 'scene_regeneration';
+export type StoryProjectVersionChangeType = 'initial_generation' | 'scene_regeneration' | 'quality_repair';
 
 export interface StoryProjectVersionSummary {
   version_id: string;
@@ -815,6 +815,10 @@ export interface StoryProjectExportSummary {
   logline: string;
   quality_passed?: boolean;
   genre_score?: number;
+  outline_coverage_score?: number;
+  pattern_quality_score?: number;
+  gears_readiness_score?: number;
+  repair_action_count?: number;
   quality_issues: string[];
   credibility_note: string;
   evidence_boundary_count: number;
@@ -970,6 +974,163 @@ export interface GearsDeliveryPackage {
   units: GearsDeliveryUnit[];
   markdown: string;
   validation_notes: string[];
+}
+
+export interface SeedancePromptShotUnit {
+  shot_id: string;
+  source_scene_id: number;
+  source_unit_id?: string;
+  duration_sec: number;
+  characters: string[];
+  location: string;
+  script_text: string;
+  visual_prompt: string;
+  camera_suggestion: string;
+  continuity_notes: string[];
+  negative_constraints: string[];
+  seedance_prompt: string;
+}
+
+export interface SeedancePromptPackage {
+  schema_version: 'seedance-prompt-package/v1';
+  storyId: string;
+  title: string;
+  target_platform: 'seedance_2_0';
+  prompt_language: 'zh';
+  total_duration_sec: number;
+  asset_reference_plan: string[];
+  shot_units: SeedancePromptShotUnit[];
+  validation_notes: string[];
+  markdown: string;
+}
+
+export interface StoryProductionBoardCostumeAsset {
+  asset_id: string;
+  character_name: string;
+  clothing: string;
+  continuity_note: string;
+}
+
+export interface StoryProductionBoardPropAsset {
+  asset_id: string;
+  label: string;
+  source_scene_ids: number[];
+  usage_note: string;
+}
+
+export interface StoryProductionBoardShotUnit {
+  shot_id: string;
+  source_scene_id: number;
+  source_segment_id?: number;
+  duration_sec: number;
+  panel_count: number;
+  characters: string[];
+  location: string;
+  script_text: string;
+  visual_prompt: string;
+  camera_suggestion: string;
+  production_prompt: string;
+  continuity_notes: string[];
+  cultural_boundary: string;
+  negative_constraints: string[];
+  qa_flags: string[];
+}
+
+export interface StoryProductionBoardDirectorPlan {
+  scene_id: number;
+  dramatic_purpose: string;
+  emotion_turn: string;
+  camera_logic: string;
+  transition_hint: string;
+}
+
+export type StoryProductionBoardSupervisionCategory =
+  | 'asset'
+  | 'prompt'
+  | 'filmability'
+  | 'continuity'
+  | 'period'
+  | 'duration';
+
+export type StoryProductionBoardSupervisionSeverity = 'info' | 'warn' | 'blocker';
+
+export interface StoryProductionBoardSupervisionIssue {
+  issue_id: string;
+  category: StoryProductionBoardSupervisionCategory;
+  severity: StoryProductionBoardSupervisionSeverity;
+  source_shot_id?: string;
+  source_scene_id?: number;
+  title: string;
+  detail: string;
+  fix_hint: string;
+}
+
+export interface StoryProductionBoardSupervisionReport {
+  passed: boolean;
+  score: number;
+  blockers: number;
+  warnings: number;
+  issue_count: number;
+  issues: StoryProductionBoardSupervisionIssue[];
+  priority_fixes: string[];
+}
+
+export type StoryProductionBoardRepairAction =
+  | 'normalize_period_costumes'
+  | 'register_asset'
+  | 'clean_prompt'
+  | 'strengthen_filmability'
+  | 'add_continuity'
+  | 'split_duration';
+
+export type StoryProductionBoardRepairPriority = 'P0' | 'P1' | 'P2';
+
+export interface StoryProductionBoardRepairTask {
+  task_id: string;
+  action: StoryProductionBoardRepairAction;
+  priority: StoryProductionBoardRepairPriority;
+  target_issue_ids: string[];
+  target_shot_ids: string[];
+  target_scene_ids: number[];
+  title: string;
+  instruction: string;
+  expected_output: string;
+  acceptance_criteria: string[];
+}
+
+export interface StoryProductionBoardRepairPlan {
+  task_count: number;
+  blocker_task_count: number;
+  tasks: StoryProductionBoardRepairTask[];
+}
+
+export interface StoryProductionBoardQaReport {
+  passed: boolean;
+  score: number;
+  issues: string[];
+  missing_asset_refs: string[];
+  prompt_pollution_flags: string[];
+  continuity_risks: string[];
+}
+
+export interface StoryProductionBoard {
+  schema_version: 'story-production-board/v1';
+  project_id?: string;
+  storyId: string;
+  title: string;
+  generated_at: string;
+  character_assets: GearsCharacterAsset[];
+  location_assets: GearsSceneAsset[];
+  costume_assets: StoryProductionBoardCostumeAsset[];
+  prop_assets: StoryProductionBoardPropAsset[];
+  director_plan: StoryProductionBoardDirectorPlan[];
+  shot_units: StoryProductionBoardShotUnit[];
+  continuity_constraints: string[];
+  negative_constraints: string[];
+  supervision_report: StoryProductionBoardSupervisionReport;
+  repair_plan: StoryProductionBoardRepairPlan;
+  qa_report: StoryProductionBoardQaReport;
+  markdown: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -1242,6 +1403,69 @@ export interface AiComicContinuityLedgerEpisode {
   knowledge_used: string[];
   ending_hook: string;
   next_episode_memory: string[];
+  memory_events?: AiComicSeriesMemoryItem[];
+}
+
+export type AiComicSeriesMemoryCategory =
+  | 'character'
+  | 'relationship'
+  | 'prop'
+  | 'location'
+  | 'visual_asset'
+  | 'knowledge_boundary'
+  | 'story_event';
+
+export interface AiComicSeriesMemoryItem {
+  memory_id: string;
+  category: AiComicSeriesMemoryCategory;
+  label: string;
+  status: string;
+  first_episode_no?: number;
+  last_episode_no?: number;
+  related_episode_nos: number[];
+  continuity_notes: string[];
+  visual_anchor?: string;
+  knowledge_boundary?: string;
+}
+
+export interface AiComicSeriesMemory {
+  schema_version: 'ai-comic-series-memory/v1';
+  characters: AiComicSeriesMemoryItem[];
+  relationships: AiComicSeriesMemoryItem[];
+  props: AiComicSeriesMemoryItem[];
+  locations: AiComicSeriesMemoryItem[];
+  visual_assets: AiComicSeriesMemoryItem[];
+  knowledge_boundaries: AiComicSeriesMemoryItem[];
+  story_events: AiComicSeriesMemoryItem[];
+  conflicts: string[];
+}
+
+export interface AiComicSeriesMemoryRecallItem {
+  memory_id: string;
+  category: AiComicSeriesMemoryCategory;
+  label: string;
+  status: string;
+  score: number;
+  reasons: string[];
+  related_episode_nos: number[];
+  continuity_notes: string[];
+}
+
+export interface AiComicSeriesMemoryRecall {
+  schema_version: 'ai-comic-series-memory-recall/v1';
+  episode_no: number;
+  items: AiComicSeriesMemoryRecallItem[];
+  conflicts: string[];
+}
+
+export interface AiComicSeriesMemoryRecallControls {
+  locked_memory_ids?: string[];
+  excluded_memory_ids?: string[];
+}
+
+export interface AiComicSeriesMemoryRecallPreferences extends AiComicSeriesMemoryRecallControls {
+  per_episode?: Record<string, AiComicSeriesMemoryRecallControls>;
+  updated_at?: string;
 }
 
 export interface AiComicContinuityLedger {
@@ -1252,6 +1476,7 @@ export interface AiComicContinuityLedger {
   paid_off_threads: string[];
   knowledge_used: string[];
   episode_records: AiComicContinuityLedgerEpisode[];
+  series_memory?: AiComicSeriesMemory;
 }
 
 export interface AiComicEpisodeQualityReport {
@@ -1349,7 +1574,81 @@ export interface AiComicSeriesProjectDetail {
   plan: AiComicSeriesPlan;
   generated_episode_story_ids: Record<string, string>;
   continuity_ledger: AiComicContinuityLedger;
+  memory_recall_preferences?: AiComicSeriesMemoryRecallPreferences;
   series_quality_audit?: AiComicSeriesQualityAudit;
+}
+
+export interface AiComicSeriesBibleCharacterRow {
+  name: string;
+  role: string;
+  starting_state: string;
+  current_state: string;
+  desire: string;
+  long_arc: string;
+  visual_signature: string;
+  turning_points: string[];
+}
+
+export interface AiComicSeriesBibleLocationRow {
+  location_id: string;
+  label: string;
+  episode_nos: number[];
+  dramatic_use: string[];
+  continuity_constraints: string[];
+}
+
+export interface AiComicSeriesBibleThreadRow {
+  thread_id: string;
+  title: string;
+  setup_episode: number;
+  payoff_episode: number;
+  status: AiComicThreadClosureStatus;
+  related_episodes: number[];
+  issues: string[];
+  repair_suggestions: string[];
+}
+
+export interface AiComicSeriesBibleKnowledgeBoundaryRow {
+  label: string;
+  episode_nos: number[];
+  usage: string;
+  boundary_note: string;
+}
+
+export interface AiComicSeriesBibleMemoryRow {
+  category: AiComicSeriesMemoryCategory;
+  label: string;
+  status: string;
+  episode_nos: number[];
+  continuity_notes: string[];
+}
+
+export interface AiComicSeriesBiblePatternRow {
+  pattern_id: NarrativePatternId;
+  label: string;
+  core_promise: string;
+  required_signals: string[];
+}
+
+export interface AiComicSeriesBibleEpisodeStatusRow {
+  episode_no: number;
+  title: string;
+  status: 'generated' | 'planned';
+  story_id?: string;
+  quality_status?: AiComicSeriesQualityEpisodeStatus;
+  needs_episode_regeneration?: boolean;
+  needs_ledger_rebuild?: boolean;
+  attention_reasons: string[];
+}
+
+export interface AiComicSeriesBibleProductionTables {
+  characters: AiComicSeriesBibleCharacterRow[];
+  locations: AiComicSeriesBibleLocationRow[];
+  threads: AiComicSeriesBibleThreadRow[];
+  knowledge_boundaries: AiComicSeriesBibleKnowledgeBoundaryRow[];
+  series_memory: AiComicSeriesBibleMemoryRow[];
+  narrative_patterns: AiComicSeriesBiblePatternRow[];
+  episode_status: AiComicSeriesBibleEpisodeStatusRow[];
 }
 
 export interface AiComicSeriesBibleExportPackage {
@@ -1361,6 +1660,7 @@ export interface AiComicSeriesBibleExportPackage {
   continuity_ledger: AiComicContinuityLedger;
   series_quality_audit?: AiComicSeriesQualityAudit;
   episode_blueprints: AiComicEpisodeBlueprint[];
+  production_tables: AiComicSeriesBibleProductionTables;
   markdown: string;
 }
 
@@ -1369,6 +1669,7 @@ export interface AiComicEpisodeContextPreviewRequest {
   episode_no: number;
   series_project_id?: string;
   narrative_pattern_ids?: NarrativePatternId[];
+  memory_recall_controls?: AiComicSeriesMemoryRecallControls;
 }
 
 export interface AiComicEpisodeContextPreview {
@@ -1380,12 +1681,23 @@ export interface AiComicEpisodeContextPreview {
   blueprint: AiComicEpisodeBlueprint;
   narrative_patterns: string[];
   generation_outline: string;
+  focused_memory_recall?: AiComicSeriesMemoryRecall;
   ledger_summary: {
     last_generated_episode_no?: number;
     character_state_current: string[];
     open_threads: string[];
     paid_off_threads: string[];
     knowledge_used: string[];
+    series_memory?: {
+      characters: string[];
+      relationships: string[];
+      props: string[];
+      locations: string[];
+      visual_assets: string[];
+      knowledge_boundaries: string[];
+      story_events: string[];
+      conflicts: string[];
+    };
   };
   previous_episode_memory: string[];
   next_episode_requirement?: string;
@@ -1396,6 +1708,7 @@ export interface AiComicSeriesProjectSaveRequest {
   plan: AiComicSeriesPlan;
   generated_episode_story_ids?: Record<string, string>;
   continuity_ledger?: AiComicContinuityLedger;
+  memory_recall_preferences?: AiComicSeriesMemoryRecallPreferences;
 }
 
 export interface AiComicSeriesProjectCopyRequest {
@@ -1423,6 +1736,7 @@ export interface AiComicEpisodeGenerateRequest {
   output_gears_segments?: boolean;
   knowledge_pack?: KnowledgePack;
   narrative_pattern_ids?: NarrativePatternId[];
+  memory_recall_controls?: AiComicSeriesMemoryRecallControls;
   auto_audit_continuity?: boolean;
   auto_repair_episode?: boolean;
 }
@@ -1444,6 +1758,88 @@ export interface StoryQualityReport {
   weak_beats?: string[];
   forbidden_patterns_found?: string[];
   repair_actions?: string[];
+  outline_coverage_report?: OutlineCoverageReport;
+  pattern_quality_report?: PatternQualityReport;
+  gears_readiness_report?: GearsReadinessReport;
+  repair_action_items?: QualityRepairAction[];
+  repair_preview?: string;
+}
+
+export type QualitySignalStatus = 'satisfied' | 'weak' | 'missing';
+
+export interface OutlineCoverageNode {
+  node_id: string;
+  order: number;
+  text: string;
+  status: 'covered' | 'partial' | 'missing';
+  matched_scene_ids: number[];
+  evidence: string[];
+  repair_hint: string;
+}
+
+export interface OutlineCoverageReport {
+  schema_version: 'outline-coverage/v1';
+  coverage_score: number;
+  total_nodes: number;
+  covered_nodes: number;
+  partial_nodes: number;
+  missing_nodes: number;
+  nodes: OutlineCoverageNode[];
+  drift_items: string[];
+  unauthorized_events: string[];
+  repair_prompt: string;
+  preview: string;
+}
+
+export interface PatternQualitySignal {
+  signal_id: string;
+  label: string;
+  status: QualitySignalStatus;
+  source: 'required_field' | 'genre_beat' | 'narrative_pattern' | 'sample_signal' | 'genre_rule';
+  impact: string;
+  gap: string;
+  suggested_scene_ids: number[];
+  repair_hint: string;
+}
+
+export interface PatternQualityReport {
+  schema_version: 'pattern-quality/v1';
+  pattern_score: number;
+  satisfied_signals: PatternQualitySignal[];
+  weak_signals: PatternQualitySignal[];
+  gaps: string[];
+  repair_prompt: string;
+  preview: string;
+}
+
+export interface GearsReadinessReport {
+  schema_version: 'gears-readiness/v1';
+  readiness_score: number;
+  ready: boolean;
+  satisfied_items: string[];
+  issue_items: string[];
+  asset_gaps: string[];
+  unit_gaps: string[];
+  prompt_gaps: string[];
+  repair_prompt: string;
+  preview: string;
+}
+
+export interface QualityRepairAction {
+  action_id: string;
+  label: string;
+  target_report: 'outline' | 'pattern' | 'gears' | 'combined';
+  severity: 'low' | 'medium' | 'high';
+  scene_ids: number[];
+  prompt: string;
+  expected_effect: string;
+}
+
+export interface StoryQualityRepairRequest {
+  model_profile_id?: string;
+  genre_strictness?: GenreStrictness;
+  target_report?: QualityRepairAction['target_report'];
+  repair_action_id?: string;
 }
 
 export type EvidenceBoundaryType = 'verified' | 'uncertain' | 'creative_treatment';

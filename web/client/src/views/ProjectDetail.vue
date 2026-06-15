@@ -24,6 +24,13 @@
             导出 JSON
           </button>
           <button
+            class="project-detail-page__action-btn"
+            :disabled="loadingProductionBoard"
+            @click="loadProductionBoard"
+          >
+            {{ loadingProductionBoard ? '生成中…' : 'Production Board' }}
+          </button>
+          <button
             class="project-detail-page__action-btn project-detail-page__action-btn--danger"
             :disabled="deleting"
             @click="deleteCurrentProject"
@@ -57,6 +64,103 @@
       <GearsWebhookStatus :status="detail.current_story.gears_webhook" />
       <GearsVideoStatus :video="detail.current_story.gears_video" />
 
+      <section v-if="productionBoard" class="project-detail-page__production">
+        <div class="project-detail-page__production-head">
+          <div>
+            <h2 class="project-detail-page__section-title">Production Board</h2>
+            <p>
+              QA {{ productionBoard.qa_report.passed ? '通过' : '需处理' }}
+              · {{ productionBoard.qa_report.score }}/100
+              · 监督 {{ productionBoard.supervision_report.passed ? '通过' : '需处理' }}
+              · {{ productionBoard.supervision_report.score }}/100
+              · 镜头 {{ productionBoard.shot_units.length }}
+              · 角色资产 {{ productionBoard.character_assets.length }}
+              · 场景资产 {{ productionBoard.location_assets.length }}
+            </p>
+          </div>
+          <div class="project-detail-page__production-actions">
+            <button class="project-detail-page__action-btn" @click="exportProductionBoardMarkdown">导出 Board Markdown</button>
+            <button class="project-detail-page__action-btn" @click="exportProductionBoardJson">导出 Board JSON</button>
+          </div>
+        </div>
+        <div class="project-detail-page__production-grid">
+          <article>
+            <strong>角色资产</strong>
+            <p>{{ productionBoard.character_assets.map(asset => `${asset.name}：${asset.clothing}`).join('；') || '无' }}</p>
+          </article>
+          <article>
+            <strong>场景资产</strong>
+            <p>{{ productionBoard.location_assets.map(asset => `${asset.name}：${asset.atmosphere}`).join('；') || '无' }}</p>
+          </article>
+          <article>
+            <strong>道具资产</strong>
+            <p>{{ productionBoard.prop_assets.map(asset => `${asset.label}（场景 ${asset.source_scene_ids.join('、')}）`).join('；') || '未自动识别' }}</p>
+          </article>
+          <article>
+            <strong>监督问题</strong>
+            <p>
+              {{ productionBoard.supervision_report.blockers }} 个阻断
+              · {{ productionBoard.supervision_report.warnings }} 个警告
+              · {{ productionBoard.supervision_report.issue_count }} 个总问题
+            </p>
+          </article>
+        </div>
+        <div v-if="productionBoard.supervision_report.issues.length" class="project-detail-page__supervision">
+          <div class="project-detail-page__supervision-head">
+            <strong>Supervision Agent</strong>
+            <span>优先修复 {{ productionBoard.supervision_report.priority_fixes.length }}</span>
+          </div>
+          <div class="project-detail-page__supervision-list">
+            <article
+              v-for="issue in productionBoard.supervision_report.issues.slice(0, 6)"
+              :key="issue.issue_id"
+              :class="['project-detail-page__supervision-issue', `project-detail-page__supervision-issue--${issue.severity}`]"
+            >
+              <div>
+                <span>{{ severityLabel(issue.severity) }}</span>
+                <span>{{ categoryLabel(issue.category) }}</span>
+                <span v-if="issue.source_shot_id">{{ issue.source_shot_id }}</span>
+              </div>
+              <strong>{{ issue.title }}</strong>
+              <p>{{ issue.detail }}</p>
+              <small>{{ issue.fix_hint }}</small>
+            </article>
+          </div>
+        </div>
+        <div v-if="productionBoard.repair_plan.tasks.length" class="project-detail-page__repair-plan">
+          <div class="project-detail-page__supervision-head">
+            <strong>生产修复包</strong>
+            <span>{{ productionBoard.repair_plan.blocker_task_count }} 个 P0 · {{ productionBoard.repair_plan.task_count }} 个任务</span>
+          </div>
+          <div class="project-detail-page__repair-plan-list">
+            <article
+              v-for="task in productionBoard.repair_plan.tasks.slice(0, 5)"
+              :key="task.task_id"
+              class="project-detail-page__repair-task"
+            >
+              <div>
+                <span>{{ task.priority }}</span>
+                <span>{{ repairActionLabel(task.action) }}</span>
+                <span v-if="task.target_shot_ids.length">{{ task.target_shot_ids.join('、') }}</span>
+              </div>
+              <strong>{{ task.title }}</strong>
+              <p>{{ task.instruction }}</p>
+              <small>{{ task.expected_output }}</small>
+            </article>
+          </div>
+        </div>
+        <div class="project-detail-page__shot-list">
+          <article v-for="shot in productionBoard.shot_units.slice(0, 6)" :key="shot.shot_id" class="project-detail-page__shot">
+            <div>
+              <strong>{{ shot.shot_id }} · 场景 {{ shot.source_scene_id }}</strong>
+              <span>{{ shot.duration_sec }} 秒 · {{ shot.panel_count }} 格 · {{ shot.location }}</span>
+            </div>
+            <p>{{ shot.production_prompt }}</p>
+            <small v-if="shot.qa_flags.length > 0">{{ shot.qa_flags.join('；') }}</small>
+          </article>
+        </div>
+      </section>
+
       <section v-if="currentQuality" class="project-detail-page__quality-tools">
         <div class="project-detail-page__quality-main">
           <div>
@@ -75,6 +179,31 @@
           <ul v-if="currentQuality.issues.length > 0" class="project-detail-page__quality-list">
             <li v-for="issue in currentQuality.issues.slice(0, 4)" :key="issue">{{ issue }}</li>
           </ul>
+          <div v-if="qualityReportCards.length > 0" class="project-detail-page__report-strip">
+            <article
+              v-for="card in qualityReportCards"
+              :key="card.key"
+              :class="['project-detail-page__report-pill', card.score >= 70 ? 'project-detail-page__report-pill--pass' : 'project-detail-page__report-pill--warn']"
+            >
+              <span>{{ card.label }}</span>
+              <strong>{{ card.score }}/100</strong>
+              <p>{{ card.preview }}</p>
+            </article>
+          </div>
+          <div v-if="currentQuality.repair_action_items?.length" class="project-detail-page__repair-actions">
+            <button
+              v-for="action in currentQuality.repair_action_items"
+              :key="action.action_id"
+              class="project-detail-page__repair-btn"
+              :class="action.target_report === 'combined' ? 'project-detail-page__repair-btn--primary' : ''"
+              :disabled="repairingQuality"
+              type="button"
+              @click="submitQualityRepair(action)"
+            >
+              <span>{{ action.label }}</span>
+              <small>{{ action.expected_effect }}</small>
+            </button>
+          </div>
         </div>
         <button
           class="project-detail-page__action-btn"
@@ -82,6 +211,13 @@
           @click="showQualityScenesOnly = !showQualityScenesOnly"
         >
           {{ showQualityScenesOnly ? '显示全部场景' : '仅看质量问题场景' }}
+        </button>
+        <button
+          class="project-detail-page__action-btn project-detail-page__action-btn--primary"
+          :disabled="repairingQuality || !currentQuality.repair_action_items?.length"
+          @click="submitQualityRepair()"
+        >
+          {{ repairingQuality ? '正在修复…' : '一键修复' }}
         </button>
       </section>
 
@@ -179,6 +315,8 @@ import {
   deleteProject,
   exportProjectCurrentVersion,
   getProject,
+  getProjectProductionBoard,
+  repairProjectQuality,
   regenerateProjectScene,
   updateProjectSupplementTask,
 } from '@/api/projects'
@@ -192,6 +330,8 @@ import type {
   StoryProjectDetail,
   StoryProjectStatus,
   StoryProjectVersionChangeType,
+  StoryProductionBoard,
+  QualityRepairAction,
 } from '@shared/types'
 
 const route = useRoute()
@@ -207,10 +347,13 @@ const selectedSceneId = ref<number | null>(null)
 const selectedIntent = ref<'tighten_conflict' | 'rewrite_narration' | 'shift_emotion' | 'clarify_visuals' | 'custom'>('tighten_conflict')
 const userNote = ref('')
 const submitting = ref(false)
+const repairingQuality = ref(false)
 const deleting = ref(false)
 const updatingSupplementTaskId = ref('')
 const successMessage = ref('')
 const showQualityScenesOnly = ref(false)
+const productionBoard = ref<StoryProductionBoard | null>(null)
+const loadingProductionBoard = ref(false)
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
@@ -218,15 +361,50 @@ const selectedModelProfile = computed(() => {
 
 const currentQuality = computed(() => detail.value?.current_story.quality_report ?? null)
 
+const qualityReportCards = computed(() => {
+  const quality = currentQuality.value
+  if (!quality) return []
+  const cards: Array<{ key: string; label: string; score: number; preview: string }> = []
+  if (quality.outline_coverage_report) {
+    cards.push({
+      key: 'outline',
+      label: 'Outline Coverage',
+      score: quality.outline_coverage_report.coverage_score,
+      preview: quality.outline_coverage_report.preview,
+    })
+  }
+  if (quality.pattern_quality_report) {
+    cards.push({
+      key: 'pattern',
+      label: 'Pattern Quality',
+      score: quality.pattern_quality_report.pattern_score,
+      preview: quality.pattern_quality_report.preview,
+    })
+  }
+  if (quality.gears_readiness_report) {
+    cards.push({
+      key: 'gears',
+      label: 'GEARS Readiness',
+      score: quality.gears_readiness_report.readiness_score,
+      preview: quality.gears_readiness_report.preview,
+    })
+  }
+  return cards
+})
+
 const qualitySceneIds = computed(() => {
   const story = detail.value?.current_story
-  if (!story?.quality_report?.weak_beats?.length || !story.story_blueprint?.genre_beats.length) return []
   const ids = new Set<number>()
-  for (const weakBeat of story.quality_report.weak_beats) {
-    const order = Number(weakBeat.match(/^(\d+)\./)?.[1])
-    if (!Number.isFinite(order)) continue
-    const beat = story.story_blueprint.genre_beats.find(item => item.order === order)
-    if (beat?.scene_id) ids.add(beat.scene_id)
+  for (const action of story?.quality_report?.repair_action_items ?? []) {
+    for (const sceneId of action.scene_ids) ids.add(sceneId)
+  }
+  if (ids.size === 0 && story?.quality_report?.weak_beats?.length && story.story_blueprint?.genre_beats.length) {
+    for (const weakBeat of story.quality_report.weak_beats) {
+      const order = Number(weakBeat.match(/^(\d+)\./)?.[1])
+      if (!Number.isFinite(order)) continue
+      const beat = story.story_blueprint.genre_beats.find(item => item.order === order)
+      if (beat?.scene_id) ids.add(beat.scene_id)
+    }
   }
   return [...ids].sort((a, b) => a - b)
 })
@@ -262,8 +440,43 @@ function typeLabel(type: string): string {
   return map[type] ?? type
 }
 
+function severityLabel(severity: string): string {
+  const map: Record<string, string> = {
+    blocker: '阻断',
+    warn: '警告',
+    info: '提示',
+  }
+  return map[severity] ?? severity
+}
+
+function categoryLabel(category: string): string {
+  const map: Record<string, string> = {
+    asset: '资产',
+    prompt: '提示词',
+    filmability: '可拍性',
+    continuity: '连续性',
+    period: '时代',
+    duration: '时长',
+  }
+  return map[category] ?? category
+}
+
+function repairActionLabel(action: string): string {
+  const map: Record<string, string> = {
+    normalize_period_costumes: '服饰校准',
+    register_asset: '资产补齐',
+    clean_prompt: '提示清理',
+    strengthen_filmability: '可拍性',
+    add_continuity: '连续性',
+    split_duration: '时长拆分',
+  }
+  return map[action] ?? action
+}
+
 function versionLabel(type: StoryProjectVersionChangeType): string {
-  return type === 'initial_generation' ? '初次生成' : '局部重写'
+  if (type === 'initial_generation') return '初次生成'
+  if (type === 'quality_repair') return '质量修复'
+  return '局部重写'
 }
 
 function formatDate(iso: string): string {
@@ -279,6 +492,7 @@ async function loadProject(projectId: string) {
   const res = await getProject(projectId)
   if (res.ok && res.data) {
     detail.value = res.data
+    productionBoard.value = null
     showQualityScenesOnly.value = false
     if (!selectedModelProfileId.value && res.data.current_story.model_profile_id) {
       selectedModelProfileId.value = res.data.current_story.model_profile_id
@@ -287,6 +501,21 @@ async function loadProject(projectId: string) {
     error.value = res.error?.message ?? '加载故事项目失败'
   }
   loading.value = false
+}
+
+async function loadProductionBoard() {
+  if (!detail.value) return
+  loadingProductionBoard.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await getProjectProductionBoard(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    productionBoard.value = res.data
+    successMessage.value = `Production Board 已生成：${res.data.shot_units.length} 个镜头单元`
+  } else {
+    error.value = res.error?.message ?? '生成 Production Board 失败'
+  }
+  loadingProductionBoard.value = false
 }
 
 function openSceneEditor(sceneId: number) {
@@ -324,6 +553,32 @@ async function submitSceneRewrite() {
     error.value = res.error?.message ?? '局部重写失败'
   }
   submitting.value = false
+}
+
+async function submitQualityRepair(action?: QualityRepairAction) {
+  if (!detail.value) return
+  repairingQuality.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await repairProjectQuality(detail.value.project.project_id, {
+    model_profile_id: selectedModelProfileId.value || undefined,
+    genre_strictness: 'balanced',
+    target_report: action?.target_report,
+    repair_action_id: action?.action_id,
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data
+    const trace = res.data.current_story.repair_trace?.[res.data.current_story.repair_trace.length - 1]
+    const quality = res.data.current_story.quality_report
+    const scoreTail = quality && typeof quality.genre_score === 'number' ? `，类型分 ${quality.genre_score}` : ''
+    const actionLabel = action ? `「${action.label}」` : '质量修复'
+    successMessage.value = trace?.applied
+      ? `已生成${actionLabel}版本${scoreTail}`
+      : `已记录${actionLabel}尝试：${trace?.reason ?? '未应用'}${scoreTail}`
+  } else {
+    error.value = res.error?.message ?? '一键修复失败'
+  }
+  repairingQuality.value = false
 }
 
 async function handleSupplementTaskUpdate(taskId: string, status: KnowledgeSupplementTaskStatus, supplementNote?: string) {
@@ -378,6 +633,28 @@ async function exportCurrentStoryMarkdown() {
     'text/markdown;charset=utf-8',
   )
   successMessage.value = '当前版本 Markdown 已导出到本地'
+}
+
+async function exportProductionBoardJson() {
+  if (!productionBoard.value) await loadProductionBoard()
+  if (!productionBoard.value) return
+  downloadText(
+    `${productionBoard.value.project_id ?? productionBoard.value.storyId}-production-board.json`,
+    JSON.stringify(productionBoard.value, null, 2),
+    'application/json;charset=utf-8',
+  )
+  successMessage.value = 'Production Board JSON 已导出到本地'
+}
+
+async function exportProductionBoardMarkdown() {
+  if (!productionBoard.value) await loadProductionBoard()
+  if (!productionBoard.value) return
+  downloadText(
+    `${productionBoard.value.project_id ?? productionBoard.value.storyId}-production-board.md`,
+    productionBoard.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = 'Production Board Markdown 已导出到本地'
 }
 
 function downloadText(filename: string, text: string, type: string) {
@@ -562,6 +839,202 @@ watch(selectedModelProfileId, (value) => {
   background: #f8fafb;
 }
 
+.project-detail-page__production {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.project-detail-page__production-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.project-detail-page__production-head p {
+  margin: 5px 0 0;
+  color: #647380;
+  font-size: 14px;
+}
+
+.project-detail-page__production-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.project-detail-page__production-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.project-detail-page__production-grid article,
+.project-detail-page__shot {
+  border: 1px solid #d9e2ea;
+  border-radius: 6px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.project-detail-page__production-grid strong,
+.project-detail-page__shot strong {
+  color: #22313f;
+}
+
+.project-detail-page__production-grid p,
+.project-detail-page__shot p {
+  margin: 6px 0 0;
+  color: #455866;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.project-detail-page__shot-list {
+  display: grid;
+  gap: 8px;
+}
+
+.project-detail-page__supervision {
+  margin-bottom: 12px;
+  border: 1px solid #d9e2ea;
+  border-radius: 6px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.project-detail-page__repair-plan {
+  margin-bottom: 12px;
+  border: 1px solid #d9e2ea;
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 10px 12px;
+}
+
+.project-detail-page__supervision-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.project-detail-page__supervision-head strong {
+  color: #22313f;
+}
+
+.project-detail-page__supervision-head span {
+  color: #647380;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.project-detail-page__supervision-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.project-detail-page__repair-plan-list {
+  display: grid;
+  gap: 8px;
+}
+
+.project-detail-page__supervision-issue {
+  min-width: 0;
+  border: 1px solid #d7dee5;
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: #fff;
+}
+
+.project-detail-page__repair-task {
+  min-width: 0;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+  padding: 9px 10px;
+}
+
+.project-detail-page__supervision-issue--blocker {
+  border-left-color: #c0392b;
+}
+
+.project-detail-page__supervision-issue--warn {
+  border-left-color: #d68910;
+}
+
+.project-detail-page__supervision-issue--info {
+  border-left-color: #2980b9;
+}
+
+.project-detail-page__supervision-issue div,
+.project-detail-page__repair-task div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.project-detail-page__supervision-issue div span,
+.project-detail-page__repair-task div span {
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  padding: 2px 5px;
+  color: #5d6d7e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__supervision-issue strong,
+.project-detail-page__repair-task strong {
+  display: block;
+  color: #22313f;
+  font-size: 13px;
+}
+
+.project-detail-page__supervision-issue p,
+.project-detail-page__supervision-issue small,
+.project-detail-page__repair-task p,
+.project-detail-page__repair-task small {
+  display: block;
+  margin-top: 5px;
+  color: #526575;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.project-detail-page__supervision-issue small,
+.project-detail-page__repair-task small {
+  color: #8a5a18;
+}
+
+.project-detail-page__shot div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.project-detail-page__shot span,
+.project-detail-page__shot small {
+  color: #7c8894;
+  font-size: 12px;
+}
+
+.project-detail-page__shot small {
+  display: block;
+  margin-top: 6px;
+  color: #a05f00;
+  line-height: 1.4;
+}
+
 .project-detail-page__quality-main {
   min-width: 0;
 }
@@ -595,6 +1068,91 @@ watch(selectedModelProfileId, (value) => {
   color: #9a6300;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.project-detail-page__report-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.project-detail-page__report-pill {
+  padding: 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.project-detail-page__report-pill--pass {
+  border-color: #b8dbc8;
+}
+
+.project-detail-page__report-pill--warn {
+  border-color: #efcf8a;
+  background: #fffaf0;
+}
+
+.project-detail-page__report-pill span {
+  display: block;
+  color: #5e6d78;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.project-detail-page__report-pill strong {
+  display: block;
+  margin-top: 3px;
+  color: #22313f;
+  font-size: 18px;
+}
+
+.project-detail-page__report-pill p {
+  margin-top: 5px;
+  line-height: 1.45;
+}
+
+.project-detail-page__repair-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.project-detail-page__repair-btn {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+  color: #2f4358;
+  cursor: pointer;
+  text-align: left;
+}
+
+.project-detail-page__repair-btn--primary {
+  border-color: #2980b9;
+  background: #eef7fd;
+}
+
+.project-detail-page__repair-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.project-detail-page__repair-btn span {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.project-detail-page__repair-btn small {
+  display: block;
+  margin-top: 4px;
+  color: #647380;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .project-detail-page__summary-label {
@@ -742,6 +1300,12 @@ watch(selectedModelProfileId, (value) => {
   }
 
   .project-detail-page__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .project-detail-page__report-strip,
+  .project-detail-page__repair-actions,
+  .project-detail-page__supervision-list {
     grid-template-columns: 1fr;
   }
 }

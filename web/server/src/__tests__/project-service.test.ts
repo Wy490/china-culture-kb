@@ -10,6 +10,8 @@ import {
   deleteProjects,
   exportProjectCurrentVersion,
   getProject,
+  getProjectProductionBoard,
+  listProjects,
   listProjectSupplementTasks,
   regenerateProjectScene,
   retainRecentProjects,
@@ -178,6 +180,50 @@ describe('project-service', () => {
     expect(snapshot.quality_report?.passed).toBe(true);
   });
 
+  it('skips unreadable project metadata when listing projects', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const brokenProjectDir = resolve(root, 'web', 'generated', 'projects', 'broken-project');
+    await mkdir(brokenProjectDir, { recursive: true });
+    await writeFile(resolve(brokenProjectDir, 'project.json'), '', 'utf-8');
+
+    const res = await listProjects();
+
+    expect(res.ok).toBe(true);
+    expect(res.data?.map(project => project.project_id)).toEqual([enriched.project_id]);
+  });
+
+  it('rebuilds unreadable project metadata from source stories during migration', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const projectId = buildProjectId(story.storyId, story.video_type);
+    const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+    await mkdir(storyDir, { recursive: true });
+    await writeFile(
+      resolve(storyDir, `${story.storyId}.json`),
+      JSON.stringify({ ...story, _request_meta: { created_at: '2026-06-09T10:00:00.000Z' } }),
+      'utf-8',
+    );
+
+    const brokenProjectDir = resolve(root, 'web', 'generated', 'projects', projectId);
+    await mkdir(brokenProjectDir, { recursive: true });
+    await writeFile(resolve(brokenProjectDir, 'project.json'), '', 'utf-8');
+
+    const res = await listProjects();
+
+    expect(res.ok).toBe(true);
+    expect(res.data?.map(project => project.project_id)).toEqual([projectId]);
+    const rebuilt = JSON.parse(await readFile(resolve(brokenProjectDir, 'project.json'), 'utf-8'));
+    expect(rebuilt.title).toBe(story.title);
+  });
+
   it('exports the current project version with markdown and marks the project exported', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
@@ -192,14 +238,51 @@ describe('project-service', () => {
     expect(exportRes.data?.project.status).toBe('exported');
     expect(exportRes.data?.summary.video_type_label).toBe('人物故事');
     expect(exportRes.data?.summary.genre_score).toBe(92);
+    expect(exportRes.data?.summary.outline_coverage_score).toBe(100);
+    expect(exportRes.data?.summary.pattern_quality_score).toBeGreaterThanOrEqual(0);
+    expect(exportRes.data?.summary.gears_readiness_score).toBeGreaterThanOrEqual(0);
     expect(exportRes.data?.markdown).toContain('# 拒签冤案');
     expect(exportRes.data?.markdown).toContain('## 质量报告摘要');
+    expect(exportRes.data?.markdown).toContain('## P0 可修复质量报告');
+    expect(exportRes.data?.markdown).toContain('### Outline Coverage Report');
+    expect(exportRes.data?.markdown).toContain('### Pattern Quality Report');
+    expect(exportRes.data?.markdown).toContain('### GEARS Readiness Report');
     expect(exportRes.data?.markdown).toContain('## GEARS 分段');
     expect(exportRes.data?.story.storyId).toBe(story.storyId);
 
     const detail = await getProject(enriched.project_id!);
     expect(detail.ok).toBe(true);
     expect(detail.data?.project.status).toBe('exported');
+  });
+
+  it('builds a production board from the current project version', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const boardRes = await getProjectProductionBoard(enriched.project_id!);
+
+    expect(boardRes.ok).toBe(true);
+    expect(boardRes.data?.schema_version).toBe('story-production-board/v1');
+    expect(boardRes.data?.project_id).toBe(enriched.project_id);
+    expect(boardRes.data?.character_assets.length).toBeGreaterThan(0);
+    expect(boardRes.data?.location_assets.length).toBeGreaterThan(0);
+    expect(boardRes.data?.shot_units).toHaveLength(story.scene_breakdown.length);
+    expect(boardRes.data?.shot_units[0]).toMatchObject({
+      source_scene_id: 1,
+      location: '南安军衙',
+    });
+    expect(boardRes.data?.supervision_report.issue_count).toBeGreaterThan(0);
+    expect(boardRes.data?.supervision_report.priority_fixes.length).toBeGreaterThan(0);
+    expect(boardRes.data?.repair_plan.task_count).toBeGreaterThan(0);
+    expect(boardRes.data?.repair_plan.tasks.map(task => task.action)).toContain('add_continuity');
+    expect(boardRes.data?.qa_report.score).toBeGreaterThanOrEqual(0);
+    expect(boardRes.data?.qa_report.issues.some(issue => issue.includes('连续性约束不足'))).toBe(true);
+    expect(boardRes.data?.markdown).toContain('## 镜头单元');
+    expect(boardRes.data?.markdown).toContain('## 监督检查');
+    expect(boardRes.data?.markdown).toContain('## 生产修复包');
   });
 
   it('updates GEARS webhook status on the current project and source story file', async () => {

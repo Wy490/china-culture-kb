@@ -34,6 +34,7 @@ import type {
   GearsCharacterRolePosition,
   GearsSegmentsResponse,
   GearsDeliveryPackage,
+  SeedancePromptPackage,
   StoryListItem,
   KnowledgePack,
   KnowledgePackMissing,
@@ -82,6 +83,8 @@ import { buildStoryBlueprint, attachBlueprintScenes } from './story-blueprint-se
 import { validateGenreStoryQuality } from './genre-quality-service.js';
 import { buildStoryRepairPromptPackage, shouldAttemptStoryRepair } from './story-repair-service.js';
 import { buildGearsDeliveryPackage, ensureGearsDeliveryPackage } from './gears-delivery-service.js';
+import { buildSeedancePromptPackage } from './seedance-prompt-service.js';
+import { enrichStoryQualityReport } from './quality-workflow-service.js';
 import { buildEntryKnowledgeSummary, extractKeywords } from './entry-service.js';
 import { notifyGearsStoryReady } from './gears-webhook-service.js';
 import type { GearsWebhookResult } from './gears-webhook-service.js';
@@ -1646,6 +1649,11 @@ export async function generateAndStoreStory(
     blueprint: finalStoryBlueprint,
     narrativePatternIds,
   });
+  storyData.quality_report = enrichStoryQualityReport({
+    story: storyData,
+    qualityReport: storyData.quality_report,
+    narrativePatternIds,
+  });
   const repairTrace: StoryRepairTrace[] = [];
   if (shouldAttemptStoryRepair({
     autoRepair: request.auto_repair,
@@ -1712,6 +1720,11 @@ export async function generateAndStoreStory(
           blueprint: finalStoryBlueprint,
           narrativePatternIds,
         });
+        storyData.quality_report = enrichStoryQualityReport({
+          story: storyData,
+          qualityReport: storyData.quality_report,
+          narrativePatternIds,
+        });
         trace.after_genre_score = storyData.quality_report.genre_score;
         if ((trace.after_genre_score ?? 0) >= (beforeScore ?? 0)) {
           storyResult = repairedResult;
@@ -1732,6 +1745,11 @@ export async function generateAndStoreStory(
             blueprint: finalStoryBlueprint,
             narrativePatternIds,
           });
+          storyData.quality_report = enrichStoryQualityReport({
+            story: storyData,
+            qualityReport: storyData.quality_report,
+            narrativePatternIds,
+          });
           trace.reason = 'repair_score_not_improved';
         }
       } else {
@@ -1744,6 +1762,12 @@ export async function generateAndStoreStory(
     storyData.repair_trace = repairTrace;
   }
   storyData.gears_delivery = buildGearsDeliveryPackage(storyData);
+  storyData.quality_report = enrichStoryQualityReport({
+    story: storyData,
+    qualityReport: storyData.quality_report,
+    narrativePatternIds,
+    gearsDelivery: storyData.gears_delivery,
+  });
 
   const storyWithProject = await createProjectFromGeneratedStory(storyData, createdAt);
 
@@ -1843,6 +1867,17 @@ export async function getStory(storyId: string): Promise<ApiResponse<StoryGenera
       cleaned.generation_mode = cleaned.generation_mode ?? 'local_only';
       cleaned.generation_used_fallback = cleaned.generation_used_fallback ?? false;
       cleaned.gears_delivery = ensureGearsDeliveryPackage(cleaned);
+      if (cleaned.quality_report) {
+        const meta = data._request_meta as Record<string, unknown> | undefined;
+        cleaned.quality_report = enrichStoryQualityReport({
+          story: cleaned,
+          qualityReport: cleaned.quality_report,
+          narrativePatternIds: Array.isArray(meta?.narrative_pattern_ids)
+            ? meta.narrative_pattern_ids as NarrativePatternId[]
+            : undefined,
+          gearsDelivery: cleaned.gears_delivery,
+        });
+      }
       return success(cleaned);
     } catch { continue; }
   }
@@ -1886,6 +1921,19 @@ export async function getGearsDeliveryPackage(storyId: string): Promise<ApiRespo
   }
 
   return success(ensureGearsDeliveryPackage(storyResult.data));
+}
+
+// ---------------------------------------------------------------------------
+// getSeedancePromptPackage — shot-level Seedance 2.0 prompt export
+// ---------------------------------------------------------------------------
+
+export async function getSeedancePromptPackage(storyId: string): Promise<ApiResponse<SeedancePromptPackage>> {
+  const storyResult = await getStory(storyId);
+  if (!storyResult.ok || !storyResult.data) {
+    return fail(ErrorCodes.GEARS_SEGMENTS_NOT_FOUND, `Seedance prompt package for story "${storyId}" not found`);
+  }
+
+  return success(buildSeedancePromptPackage(storyResult.data));
 }
 
 export async function updateGearsDeliveryMarkdown(

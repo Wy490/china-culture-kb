@@ -8,7 +8,9 @@ import type {
   StoryProjectExportPackage,
   StoryProjectListItem,
   StoryProjectRetainRecentResult,
+  StoryProductionBoard,
   StorySceneRegenerateRequest,
+  StoryQualityRepairRequest,
 } from '@shared/types'
 
 export function listProjects() {
@@ -27,8 +29,16 @@ export function regenerateProjectScene(projectId: string, body: StorySceneRegene
   return apiPost<StoryProjectDetail>(`/projects/${projectId}/regenerate-scene`, body)
 }
 
+export function repairProjectQuality(projectId: string, body: StoryQualityRepairRequest = {}) {
+  return apiPost<StoryProjectDetail>(`/projects/${projectId}/repair-quality`, body)
+}
+
 export function exportProjectCurrentVersion(projectId: string) {
   return apiPost<StoryProjectExportPackage>(`/projects/${projectId}/export`, {})
+}
+
+export function getProjectProductionBoard(projectId: string) {
+  return apiGet<StoryProductionBoard>(`/projects/${projectId}/production-board`)
 }
 
 export function deleteProject(projectId: string) {

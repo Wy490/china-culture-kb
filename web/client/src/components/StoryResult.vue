@@ -215,6 +215,68 @@
             <li v-for="action in result.quality_report.repair_actions" :key="action">{{ action }}</li>
           </ul>
         </div>
+        <div v-if="result.quality_report.repair_preview" class="story-result__quality-preview">
+          {{ result.quality_report.repair_preview }}
+        </div>
+      </div>
+    </section>
+
+    <section
+      v-if="result.quality_report?.outline_coverage_report || result.quality_report?.pattern_quality_report || result.quality_report?.gears_readiness_report"
+      class="story-result__section"
+    >
+      <h3 class="story-result__section-title">可修复质量报告</h3>
+      <div class="story-result__report-grid">
+        <article v-if="result.quality_report.outline_coverage_report" class="story-result__report-card">
+          <span>Outline Coverage</span>
+          <strong>{{ result.quality_report.outline_coverage_report.coverage_score }}/100</strong>
+          <p>{{ result.quality_report.outline_coverage_report.preview }}</p>
+          <ul v-if="result.quality_report.outline_coverage_report.nodes.some(node => node.status !== 'covered')">
+            <li
+              v-for="node in result.quality_report.outline_coverage_report.nodes.filter(item => item.status !== 'covered').slice(0, 4)"
+              :key="node.node_id"
+            >
+              {{ node.order }}. {{ node.repair_hint }}
+            </li>
+          </ul>
+        </article>
+
+        <article v-if="result.quality_report.pattern_quality_report" class="story-result__report-card">
+          <span>Pattern Quality</span>
+          <strong>{{ result.quality_report.pattern_quality_report.pattern_score }}/100</strong>
+          <p>{{ result.quality_report.pattern_quality_report.preview }}</p>
+          <ul v-if="result.quality_report.pattern_quality_report.weak_signals.length > 0">
+            <li
+              v-for="signal in result.quality_report.pattern_quality_report.weak_signals.slice(0, 4)"
+              :key="signal.signal_id"
+            >
+              {{ signal.label }}：{{ signal.repair_hint }}
+            </li>
+          </ul>
+        </article>
+
+        <article v-if="result.quality_report.gears_readiness_report" class="story-result__report-card">
+          <span>GEARS Readiness</span>
+          <strong>{{ result.quality_report.gears_readiness_report.readiness_score }}/100</strong>
+          <p>{{ result.quality_report.gears_readiness_report.preview }}</p>
+          <ul v-if="result.quality_report.gears_readiness_report.issue_items.length > 0">
+            <li
+              v-for="item in result.quality_report.gears_readiness_report.issue_items.slice(0, 4)"
+              :key="item"
+            >
+              {{ item }}
+            </li>
+          </ul>
+        </article>
+      </div>
+
+      <div v-if="result.quality_report.repair_action_items?.length" class="story-result__quality-actions">
+        <strong>一键修复动作</strong>
+        <ul>
+          <li v-for="action in result.quality_report.repair_action_items" :key="action.action_id">
+            {{ action.label }}：{{ action.expected_effect }}
+          </li>
+        </ul>
       </div>
     </section>
 
@@ -965,6 +1027,52 @@ function showCopyMessage(msg: string) {
   margin: 4px 0 0;
   padding-left: 18px;
 }
+.story-result__quality-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.62);
+  border-radius: 6px;
+  color: #2c3e50;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.story-result__report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.story-result__report-card {
+  padding: 14px;
+  border: 1px solid #d8e3ea;
+  border-radius: 6px;
+  background: #f8fbfd;
+}
+.story-result__report-card span {
+  display: block;
+  color: #5d6d7e;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.story-result__report-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #1f3a4a;
+  font-size: 22px;
+}
+.story-result__report-card p {
+  margin: 8px 0 0;
+  color: #34495e;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.story-result__report-card ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #52616b;
+  font-size: 13px;
+  line-height: 1.5;
+}
 .story-result__inline-scene-btn {
   border: 1px solid #d7dee5;
   border-radius: 4px;
@@ -983,6 +1091,9 @@ function showCopyMessage(msg: string) {
 @media (max-width: 760px) {
   .story-result__quality-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .story-result__report-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

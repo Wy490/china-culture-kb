@@ -9,8 +9,24 @@ import type {
   NarrativeStyleAxis,
   NarrativeStyleAxisId,
   NarrativeStyleAxisValue,
+  StoryGenerateResult,
   VideoType,
 } from '@shared/types.js';
+
+export type NarrativePatternDiagnosticStatus = 'satisfied' | 'weak' | 'missing';
+
+export interface NarrativePatternDiagnostic {
+  diagnostic_id: string;
+  pattern_id: NarrativePatternId;
+  pattern_label: string;
+  signal: string;
+  status: NarrativePatternDiagnosticStatus;
+  evidence: string[];
+  suggested_scene_ids: number[];
+  impact: string;
+  gap: string;
+  repair_hint: string;
+}
 
 function axis(axis_id: NarrativeStyleAxisId, label: string, value: NarrativeStyleAxisValue, note: string): NarrativeStyleAxis {
   return { axis_id, label, value, note };
@@ -661,6 +677,36 @@ export function getNarrativePatternQualitySignals(
   return unique(getNarrativePatternsForVideoType(videoType, selectedPatternIds).flatMap(pattern => pattern.quality_signals));
 }
 
+export function getNarrativePatternDiagnostics(input: {
+  story: StoryGenerateResult;
+  videoType: VideoType;
+  selectedPatternIds?: NarrativePatternId[];
+}): NarrativePatternDiagnostic[] {
+  const text = storyText(input.story);
+  return getNarrativePatternsForVideoType(input.videoType, input.selectedPatternIds ?? [])
+    .flatMap(pattern => pattern.quality_signals.map((signal, signalIndex) => {
+      const probe = probeSignal(input.story, text, signal);
+      return {
+        diagnostic_id: `${pattern.pattern_id}-${signalIndex + 1}`,
+        pattern_id: pattern.pattern_id,
+        pattern_label: pattern.label,
+        signal,
+        status: probe.status,
+        evidence: probe.evidence,
+        suggested_scene_ids: probe.sceneIds.length > 0
+          ? probe.sceneIds
+          : suggestedSceneIdsForSignal(input.story, signal),
+        impact: patternImpact(pattern, signal),
+        gap: probe.status === 'satisfied'
+          ? `已出现「${signal}」相关机制。`
+          : `「${pattern.label}」的「${signal}」偏弱，观众不容易感知所选流派机制。`,
+        repair_hint: probe.status === 'satisfied'
+          ? '保持现有机制表达，并避免后续修复时删除证据场景。'
+          : buildPatternRepairHint(pattern, signal, input.story),
+      };
+    }));
+}
+
 export function getNarrativePatternRequirementLines(
   videoType: VideoType,
   selectedPatternIds: NarrativePatternId[] = [],
@@ -715,4 +761,172 @@ function mergePatternIds(primary: NarrativePatternId[], fallback: NarrativePatte
 
 function unique<T extends string>(items: T[]): T[] {
   return items.filter((item, index, arr) => arr.indexOf(item) === index);
+}
+
+function storyText(story: StoryGenerateResult): string {
+  return [
+    story.title,
+    story.logline,
+    story.theme,
+    story.full_text,
+    story.core_message,
+    story.slogan_or_key_sentence,
+    ...(story.protagonist_arc ?? []).flatMap(arc => [arc.starting_state, arc.turning_point, arc.resolution]),
+    ...story.scene_breakdown.map(sceneText),
+    ...story.gears_segments.flatMap(segment => [
+      segment.script_text,
+      segment.segment_prompt_hint ?? '',
+      ...segment.visual_focus,
+    ]),
+  ].filter(Boolean).join('\n');
+}
+
+function sceneText(scene: StoryGenerateResult['scene_breakdown'][number]): string {
+  return [
+    scene.title,
+    scene.location,
+    scene.dramatic_function,
+    scene.plot,
+    scene.key_action,
+    scene.conflict,
+    scene.dialogue_or_narration,
+    scene.visual_prompt,
+    scene.camera_suggestion,
+    scene.cultural_note,
+    ...(scene.characters ?? []),
+  ].filter(Boolean).join(' ');
+}
+
+function probeSignal(story: StoryGenerateResult, text: string, signal: string): {
+  status: NarrativePatternDiagnosticStatus;
+  evidence: string[];
+  sceneIds: number[];
+} {
+  const probe = signalProbe(signal);
+  const sceneMatches = story.scene_breakdown
+    .map(scene => ({
+      scene,
+      hits: probe.terms.filter(term => sceneText(scene).includes(term)),
+    }))
+    .filter(item => item.hits.length > 0);
+  const allHits = probe.terms.filter(term => text.includes(term));
+  const requiredHits = probe.requiredTerms.filter(term => text.includes(term));
+  const hasStructuralEvidence = probe.structural(story);
+  const enoughTerms = allHits.length >= probe.minHits && requiredHits.length >= probe.requiredHits;
+
+  const status: NarrativePatternDiagnosticStatus = hasStructuralEvidence || enoughTerms
+    ? 'satisfied'
+    : allHits.length > 0 || sceneMatches.length > 0
+      ? 'weak'
+      : 'missing';
+  return {
+    status,
+    evidence: unique([...requiredHits, ...allHits]).slice(0, 6),
+    sceneIds: sceneMatches.map(item => item.scene.scene_id).slice(0, 3),
+  };
+}
+
+function signalProbe(signal: string): {
+  terms: string[];
+  requiredTerms: string[];
+  minHits: number;
+  requiredHits: number;
+  structural: (story: StoryGenerateResult) => boolean;
+} {
+  const textTerms = signalTermMap(signal);
+  const requiredTerms = requiredSignalTermMap(signal);
+  return {
+    terms: unique([...textTerms, ...requiredTerms]),
+    requiredTerms,
+    minHits: signal.includes('明确') || signal.includes('清楚') ? 1 : 2,
+    requiredHits: requiredTerms.length > 0 ? 1 : 0,
+    structural: structuralProbe(signal),
+  };
+}
+
+function signalTermMap(signal: string): string[] {
+  const map: Array<[RegExp, string[]]> = [
+    [/起点低|低位|弱者/, ['少年', '初入', '无名', '底层', '贫', '弱', '不会', '短板', '低位']],
+    [/成长|突破|变强|步骤/, ['训练', '失败', '试炼', '学习', '突破', '代价', '阶段', '短板']],
+    [/代价|牺牲|失败/, ['代价', '失去', '受伤', '牺牲', '失败', '后果', '风险', '付出']],
+    [/资源|规则|任务/, ['规则', '资源', '限制', '倒计时', '任务', '惩罚', '结算', '禁忌']],
+    [/团队|分工|群像/, ['同伴', '队友', '分工', '各自', '群像', '配合', '误解', '反应']],
+    [/因果|主线|顺序|不断/, ['因为', '于是', '导致', '主线', '承接', '后果', '上一', '下一']],
+    [/选择|两难|目标/, ['目标', '选择', '两难', '决定', '拒绝', '坚持', '转身', '站位']],
+    [/线索|真相|悬疑|旧案|反转/, ['线索', '真相', '旧案', '异常', '误判', '反转', '嫌疑', '证据']],
+    [/钩子|前3秒|反转可承接|结尾/, ['钩子', '突然', '门外', '未完', '下一', '谁', '为什么', '？', '?']],
+    [/关系|情感|名节/, ['关系', '承诺', '信物', '名节', '门规', '情义', '保护', '决裂']],
+    [/江湖|门派|师徒|庙堂|官府|侠义/, ['江湖', '门派', '师父', '师兄', '门规', '官府', '朝堂', '侠义', '会盟']],
+    [/对白|潜台词/, ['沉默', '打断', '停顿', '反问', '没有回答', '低声', '冷冷']],
+    [/画面|可拍|视听|动作|空间/, ['特写', '推近', '远景', '光线', '道具', '站位', '脚步', '伸手']],
+    [/流程|材料|工具|仪式/, ['材料', '工具', '步骤', '手', '火候', '等待', '仪式', '人群']],
+    [/来源|边界|史实|版本/, ['来源', '史实', '边界', '传说', '版本', '据', '可能', '创作']],
+  ];
+  const matched = map.flatMap(([pattern, terms]) => pattern.test(signal) ? terms : []);
+  const fallback = signal.match(/[\u4e00-\u9fa5]{2,4}/g) ?? [];
+  return unique([...matched, ...fallback]);
+}
+
+function requiredSignalTermMap(signal: string): string[] {
+  if (/任务规则/.test(signal)) return ['任务', '规则'];
+  if (/失败代价/.test(signal)) return ['失败', '惩罚', '代价', '后果'];
+  if (/团队分工/.test(signal)) return ['队友', '分工', '配合'];
+  if (/前3秒有局|3秒钩子/.test(signal)) return ['开场', '钩子', '危机', '压力', '突然'];
+  if (/反转可承接|钩子可承接/.test(signal)) return ['下一', '结尾', '钩子', '承接', '？', '?'];
+  if (/保留原作|人物不丢失|关系不改写|主线不换题/.test(signal)) return ['原作', '保留', '主线', '关系'];
+  if (/江湖规则|侠义|门派|师徒/.test(signal)) return ['江湖', '门派', '门规', '侠义', '师父'];
+  if (/代价/.test(signal)) return ['代价', '后果', '失去', '风险', '牺牲'];
+  if (/线索/.test(signal)) return ['线索', '证据', '旧案', '真相'];
+  return [];
+}
+
+function structuralProbe(signal: string): (story: StoryGenerateResult) => boolean {
+  if (/前3秒有局|3秒钩子/.test(signal)) {
+    return story => {
+      const first = story.scene_breakdown[0];
+      if (!first) return false;
+      return Boolean(first.conflict)
+        || /危机|逼|误会|突然|倒计时|拦住|质问|追/.test(sceneText(first));
+    };
+  }
+  if (/集内目标|单集闭环|阶段结果/.test(signal)) {
+    return story => story.scene_breakdown.some(scene => Boolean(scene.conflict))
+      && story.scene_breakdown.some(scene => /结果|终于|决定|查清|完成|留下|离开/.test(sceneText(scene)));
+  }
+  if (/角色分工|团队分工|群像/.test(signal)) {
+    return story => new Set(story.scene_breakdown.flatMap(scene => scene.characters ?? [])).size >= 3;
+  }
+  if (/场景功能|可拍|视听|画面/.test(signal)) {
+    return story => story.scene_breakdown.every(scene => scene.visual_prompt.trim().length >= 12 && scene.key_action.trim().length > 0);
+  }
+  if (/关系压力|人物变化/.test(signal)) {
+    return story => (story.protagonist_arc?.length ?? 0) > 0
+      || story.scene_breakdown.some(scene => (scene.characters?.length ?? 0) >= 2 && Boolean(scene.conflict));
+  }
+  return () => false;
+}
+
+function suggestedSceneIdsForSignal(story: StoryGenerateResult, signal: string): number[] {
+  if (story.scene_breakdown.length === 0) return [];
+  if (/开场|起点|目标|前3秒|3秒/.test(signal)) return [story.scene_breakdown[0].scene_id];
+  if (/结尾|钩子|回扣|承接|余味/.test(signal)) return [story.scene_breakdown[story.scene_breakdown.length - 1].scene_id];
+  if (/代价|转折|反转|真相|选择|关系/.test(signal)) {
+    const middle = story.scene_breakdown[Math.max(0, Math.floor(story.scene_breakdown.length / 2))];
+    return middle ? [middle.scene_id] : [];
+  }
+  return [story.scene_breakdown[0].scene_id];
+}
+
+function patternImpact(pattern: NarrativePattern, signal: string): string {
+  if (pattern.subject_family === 'adaptation') return '改编流派信号不足会让输出像重新创作，削弱原作保真和分集承接。';
+  if (pattern.subject_family === 'wuxia') return '武侠机制不足会让江湖、师承、侠义或旧案只停留在标签，缺少可拍的类型质感。';
+  if (/钩子|反转/.test(signal)) return '钩子不足会降低短剧/漫剧追看动力。';
+  return `「${pattern.label}」依赖该信号让叙事机制被观众看见。`;
+}
+
+function buildPatternRepairHint(pattern: NarrativePattern, signal: string, story: StoryGenerateResult): string {
+  const sceneIds = suggestedSceneIdsForSignal(story, signal);
+  const sceneLabel = sceneIds.length > 0 ? `在场景 ${sceneIds.join('、')} ` : '在对应场景 ';
+  const recipe = pattern.scene_recipes[0] ?? pattern.narrative_engine;
+  return `${sceneLabel}补强「${pattern.label} / ${signal}」：${recipe}，并写成动作、冲突、后果或镜头证据。`;
 }

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { VideoType } from '@shared/types.js';
+import type { StoryGenerateResult, VideoType } from '@shared/types.js';
 import {
   getNarrativePatternCatalog,
+  getNarrativePatternDiagnostics,
   getNarrativePatternQualitySignals,
   getNarrativePatternRequirementLines,
   getNarrativePatternsForVideoType,
@@ -117,5 +118,50 @@ describe('narrative-pattern-library', () => {
     expect(patterns.map(pattern => pattern.pattern_id)).toEqual(
       expect.arrayContaining(['brand_symbol', 'object_clue_journey']),
     );
+  });
+
+  it('returns explainable diagnostics for selected pattern mechanisms', () => {
+    const story: StoryGenerateResult = {
+      storyId: '20260615-story-pattern',
+      title: '雨夜任务',
+      generation_type: 'character_story',
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      source_entry: '测试',
+      logline: '少年被迫进入一场倒计时任务。',
+      theme: '规则与代价',
+      full_text: '开场，少年在雨夜被拦住。规则公布：天亮前必须找到旧案证据，失败会失去进入书院的资格。',
+      scene_breakdown: [
+        {
+          scene_id: 1,
+          title: '雨夜拦路',
+          duration_sec: 20,
+          location: '书院门外',
+          time_of_day: '雨夜',
+          dramatic_function: '钩子开场',
+          plot: '少年刚到书院门外就被师兄拦住，倒计时任务突然开始。',
+          key_action: '少年抓紧书箱，追问规则',
+          characters: ['少年', '师兄'],
+          visual_prompt: '雨夜，书院门外，少年和师兄对峙',
+          camera_suggestion: '近景对切',
+          cultural_note: '测试',
+          conflict: '入门资格与任务规则冲突',
+        },
+      ],
+      gears_segments: [],
+      gears_segments_url: '/api/stories/20260615-story-pattern/gears-segments',
+      cultural_constraints: [],
+      credibility_note: '测试',
+    };
+
+    const diagnostics = getNarrativePatternDiagnostics({
+      story,
+      videoType: 'ai_comic_drama',
+      selectedPatternIds: ['infinite_mission', 'platform_short_drama_hook'],
+    });
+
+    expect(diagnostics.some(item => item.pattern_id === 'infinite_mission' && item.signal === '任务规则清楚' && item.status === 'satisfied')).toBe(true);
+    expect(diagnostics.some(item => item.pattern_id === 'platform_short_drama_hook' && item.signal === '前3秒有局' && item.status === 'satisfied')).toBe(true);
+    expect(diagnostics.some(item => item.status !== 'satisfied' && item.repair_hint.includes('补强'))).toBe(true);
   });
 });

@@ -2,8 +2,8 @@
   <div class="projects-page">
     <header class="projects-page__header">
       <div>
-        <h1 class="projects-page__title">故事项目</h1>
-        <p class="projects-page__desc">管理已生成的故事草稿，查看来源条目、状态和最近更新时间。</p>
+        <h1 class="projects-page__title">项目工作台</h1>
+        <p class="projects-page__desc">管理故事草稿和 AI 漫剧系列，查看来源条目、状态和最近更新时间。</p>
       </div>
       <div class="projects-page__header-actions">
         <button
@@ -13,6 +13,7 @@
         >
           {{ retainingRecent ? '清理中…' : `按生成时间保留最近 ${RETAIN_RECENT_COUNT} 个` }}
         </button>
+        <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建漫剧系列</RouterLink>
         <RouterLink class="projects-page__cta" to="/story/new">新建故事</RouterLink>
       </div>
     </header>
@@ -21,8 +22,13 @@
       <input
         v-model="searchQuery"
         class="projects-page__search"
-        placeholder="搜索标题、来源条目…"
+        placeholder="搜索标题、来源条目、系列 ID…"
       />
+      <select v-model="projectKindFilter" class="projects-page__select">
+        <option value="">全部项目</option>
+        <option value="story">故事项目</option>
+        <option value="series">漫剧系列</option>
+      </select>
       <select v-model="statusFilter" class="projects-page__select">
         <option value="">全部状态</option>
         <option value="draft">草稿</option>
@@ -45,9 +51,13 @@
         <input v-model="qualityFilter" type="checkbox" />
         <span>仅看质量问题</span>
       </label>
+      <label class="projects-page__toggle">
+        <input v-model="showArchivedSeries" type="checkbox" @change="loadProjects" />
+        <span>显示归档系列</span>
+      </label>
     </section>
 
-    <section v-if="filteredProjects.length > 0" class="projects-page__bulkbar">
+    <section v-if="showStoryProjects && filteredProjects.length > 0" class="projects-page__bulkbar">
       <label class="projects-page__bulk-check">
         <input
           type="checkbox"
@@ -73,73 +83,149 @@
 
     <div v-if="loading" class="projects-page__loading">
       <div class="projects-page__spinner" />
-      <p>正在加载故事项目…</p>
+      <p>正在加载项目…</p>
     </div>
 
-    <div v-else-if="error" class="projects-page__error">{{ error }}</div>
+    <div v-if="!loading && error" class="projects-page__error">{{ error }}</div>
     <div v-if="!loading && !error && projectMessage" class="projects-page__message">{{ projectMessage }}</div>
 
-    <section v-if="!loading && !error" class="projects-page__grid">
-      <article
-        v-for="project in filteredProjects"
-        :key="project.project_id"
-        :class="['projects-page__card', selectedProjectIds.includes(project.project_id) ? 'projects-page__card--selected' : '']"
-      >
-        <label class="projects-page__card-select" :aria-label="`选择 ${project.title}`">
-          <input
-            v-model="selectedProjectIds"
-            type="checkbox"
-            :value="project.project_id"
-            :disabled="batchDeleting || deletingProjectId !== ''"
-          />
-        </label>
-        <RouterLink class="projects-page__card-link" :to="`/projects/${project.project_id}`">
-          <div class="projects-page__card-top">
-            <span class="projects-page__status-badge" :data-status="project.status">{{ statusLabel(project.status) }}</span>
-            <span class="projects-page__video-type">{{ typeLabel(project.video_type) }}</span>
+    <section v-if="!loading" class="projects-page__content">
+      <section v-if="showSeriesProjects" class="projects-page__section">
+        <div class="projects-page__section-head">
+          <div>
+            <h2>AI 漫剧系列</h2>
+            <p>{{ filteredSeriesProjects.length }} 个系列项目</p>
           </div>
-          <h2 class="projects-page__card-title">{{ project.title }}</h2>
-          <p class="projects-page__source">来源：{{ project.source_entry }}</p>
-          <p v-if="project.logline" class="projects-page__logline">{{ project.logline }}</p>
-          <div class="projects-page__meta">
-            <span>{{ formatDate(project.updated_at) }}</span>
-            <span>{{ project.scene_count }} 场景</span>
-            <span v-if="project.has_gears_segments">GEARS 已生成</span>
-            <span v-else>无 GEARS 分段</span>
-            <span
-              v-if="project.gears_video_status"
-              :class="['projects-page__meta-video', `projects-page__meta-video--${project.gears_video_status}`]"
-            >
-              {{ gearsVideoStatusLabel(project.gears_video_status) }}
-            </span>
-            <span v-if="(project.open_supplement_task_count ?? 0) > 0" class="projects-page__meta-warning">
-              待补资料 {{ project.open_supplement_task_count }}
-            </span>
-            <span
-              v-if="typeof project.genre_score === 'number'"
-              :class="['projects-page__meta-quality', project.quality_passed ? 'projects-page__meta-quality--pass' : 'projects-page__meta-quality--warn']"
-            >
-              类型分 {{ project.genre_score }}
-            </span>
-            <span v-if="(project.quality_issue_count ?? 0) > 0" class="projects-page__meta-warning">
-              质量问题 {{ project.quality_issue_count }}
-            </span>
-          </div>
-        </RouterLink>
-        <div class="projects-page__card-actions">
-          <button
-            class="projects-page__delete-btn"
-            :disabled="deletingProjectId === project.project_id"
-            @click="handleDeleteProject(project)"
-          >
-            {{ deletingProjectId === project.project_id ? '删除中…' : '删除' }}
-          </button>
+          <RouterLink class="projects-page__text-link" to="/ai-comic-series/new">打开系列工作台</RouterLink>
         </div>
-      </article>
+        <div v-if="filteredSeriesProjects.length > 0" class="projects-page__grid">
+          <article
+            v-for="series in filteredSeriesProjects"
+            :key="series.series_project_id"
+            :class="['projects-page__card', 'projects-page__card--series', series.archived_at ? 'projects-page__card--archived' : '']"
+          >
+            <RouterLink class="projects-page__card-link" :to="seriesProjectLink(series.series_project_id)">
+              <div class="projects-page__card-top">
+                <span class="projects-page__status-badge" data-status="series">漫剧系列</span>
+                <span v-if="series.archived_at" class="projects-page__video-type">已归档</span>
+                <span v-else class="projects-page__video-type">制作中</span>
+              </div>
+              <h2 class="projects-page__card-title">{{ series.title }}</h2>
+              <p class="projects-page__source">系列 ID：{{ series.series_project_id }}</p>
+              <p v-if="series.logline" class="projects-page__logline">{{ series.logline }}</p>
+              <div class="projects-page__meta">
+                <span>{{ formatDate(series.updated_at) }}</span>
+                <span>{{ series.generated_episode_count }} / {{ series.episode_count }} 集已生成</span>
+                <span>{{ series.episode_duration_range_sec.min }}-{{ series.episode_duration_range_sec.max }} 秒/集</span>
+                <span>{{ pacingProfileLabel(series.pacing_profile) }}</span>
+              </div>
+            </RouterLink>
+            <div class="projects-page__card-actions">
+              <RouterLink
+                class="projects-page__muted-link"
+                :to="seriesContinueLink(series)"
+              >
+                {{ nextSeriesEpisodeNo(series) ? `继续第 ${nextSeriesEpisodeNo(series)} 集` : '查看全集' }}
+              </RouterLink>
+              <button
+                class="projects-page__muted-btn"
+                :disabled="exportingSeriesProjectId === series.series_project_id"
+                @click="handleExportSeriesBible(series)"
+              >
+                {{ exportingSeriesProjectId === series.series_project_id ? '导出中…' : '导出 Bible' }}
+              </button>
+              <button
+                class="projects-page__muted-btn"
+                :disabled="managingSeriesProjectId === series.series_project_id"
+                @click="handleArchiveSeriesProject(series)"
+              >
+                {{ series.archived_at ? '恢复' : '归档' }}
+              </button>
+              <button
+                class="projects-page__delete-btn"
+                :disabled="managingSeriesProjectId === series.series_project_id"
+                @click="handleDeleteSeriesProject(series)"
+              >
+                {{ managingSeriesProjectId === series.series_project_id ? '处理中…' : '删除' }}
+              </button>
+            </div>
+          </article>
+        </div>
+        <div v-else class="projects-page__empty projects-page__empty--section">
+          <p>还没有匹配到漫剧系列，可以从系列工作台创建一个长线项目。</p>
+        </div>
+      </section>
 
-      <div v-if="filteredProjects.length === 0" class="projects-page__empty">
-        <p>还没有匹配到故事项目，可以先去故事工坊生成一个初稿。</p>
-      </div>
+      <section v-if="showStoryProjects" class="projects-page__section">
+        <div class="projects-page__section-head">
+          <div>
+            <h2>故事项目</h2>
+            <p>{{ filteredProjects.length }} 个故事草稿</p>
+          </div>
+          <RouterLink class="projects-page__text-link" to="/story/new">打开故事工坊</RouterLink>
+        </div>
+        <div v-if="filteredProjects.length > 0" class="projects-page__grid">
+          <article
+            v-for="project in filteredProjects"
+            :key="project.project_id"
+            :class="['projects-page__card', selectedProjectIds.includes(project.project_id) ? 'projects-page__card--selected' : '']"
+          >
+            <label class="projects-page__card-select" :aria-label="`选择 ${project.title}`">
+              <input
+                v-model="selectedProjectIds"
+                type="checkbox"
+                :value="project.project_id"
+                :disabled="batchDeleting || deletingProjectId !== ''"
+              />
+            </label>
+            <RouterLink class="projects-page__card-link" :to="`/projects/${project.project_id}`">
+              <div class="projects-page__card-top">
+                <span class="projects-page__status-badge" :data-status="project.status">{{ statusLabel(project.status) }}</span>
+                <span class="projects-page__video-type">{{ typeLabel(project.video_type) }}</span>
+              </div>
+              <h2 class="projects-page__card-title">{{ project.title }}</h2>
+              <p class="projects-page__source">来源：{{ project.source_entry }}</p>
+              <p v-if="project.logline" class="projects-page__logline">{{ project.logline }}</p>
+              <div class="projects-page__meta">
+                <span>{{ formatDate(project.updated_at) }}</span>
+                <span>{{ project.scene_count }} 场景</span>
+                <span v-if="project.has_gears_segments">GEARS 已生成</span>
+                <span v-else>无 GEARS 分段</span>
+                <span
+                  v-if="project.gears_video_status"
+                  :class="['projects-page__meta-video', `projects-page__meta-video--${project.gears_video_status}`]"
+                >
+                  {{ gearsVideoStatusLabel(project.gears_video_status) }}
+                </span>
+                <span v-if="(project.open_supplement_task_count ?? 0) > 0" class="projects-page__meta-warning">
+                  待补资料 {{ project.open_supplement_task_count }}
+                </span>
+                <span
+                  v-if="typeof project.genre_score === 'number'"
+                  :class="['projects-page__meta-quality', project.quality_passed ? 'projects-page__meta-quality--pass' : 'projects-page__meta-quality--warn']"
+                >
+                  类型分 {{ project.genre_score }}
+                </span>
+                <span v-if="(project.quality_issue_count ?? 0) > 0" class="projects-page__meta-warning">
+                  质量问题 {{ project.quality_issue_count }}
+                </span>
+              </div>
+            </RouterLink>
+            <div class="projects-page__card-actions">
+              <button
+                class="projects-page__delete-btn"
+                :disabled="deletingProjectId === project.project_id"
+                @click="handleDeleteProject(project)"
+              >
+                {{ deletingProjectId === project.project_id ? '删除中…' : '删除' }}
+              </button>
+            </div>
+          </article>
+        </div>
+        <div v-else class="projects-page__empty projects-page__empty--section">
+          <p>还没有匹配到故事项目，可以先去故事工坊生成一个初稿。</p>
+        </div>
+      </section>
     </section>
   </div>
 </template>
@@ -147,25 +233,46 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { deleteProject, deleteProjects, listProjects, retainRecentProjects } from '@/api/projects'
-import type { GearsVideoStatus, StoryProjectListItem, StoryProjectStatus } from '@shared/types'
+import {
+  archiveAiComicSeriesProject,
+  deleteAiComicSeriesProject,
+  exportAiComicSeriesBible,
+  listAiComicSeriesProjects,
+} from '@/api/stories'
+import type {
+  AiComicPacingProfile,
+  AiComicSeriesProjectMeta,
+  GearsVideoStatus,
+  StoryProjectListItem,
+  StoryProjectStatus,
+} from '@shared/types'
 
 const RETAIN_RECENT_COUNT = 10
 
 const projects = ref<StoryProjectListItem[]>([])
+const seriesProjects = ref<AiComicSeriesProjectMeta[]>([])
 const loading = ref(false)
 const error = ref('')
 const projectMessage = ref('')
 const searchQuery = ref('')
+const projectKindFilter = ref('')
 const statusFilter = ref('')
 const videoStatusFilter = ref('')
 const supplementFilter = ref(false)
 const qualityFilter = ref(false)
+const showArchivedSeries = ref(false)
 const deletingProjectId = ref('')
+const managingSeriesProjectId = ref('')
+const exportingSeriesProjectId = ref('')
 const selectedProjectIds = ref<string[]>([])
 const batchDeleting = ref(false)
 const retainingRecent = ref(false)
 
+const showStoryProjects = computed(() => projectKindFilter.value !== 'series')
+const showSeriesProjects = computed(() => projectKindFilter.value !== 'story')
+
 const filteredProjects = computed(() => {
+  if (!showStoryProjects.value) return []
   const query = searchQuery.value.trim().toLowerCase()
   return projects.value.filter(project => {
     const matchesStatus = !statusFilter.value || project.status === statusFilter.value
@@ -178,6 +285,18 @@ const filteredProjects = computed(() => {
       || project.title.toLowerCase().includes(query)
       || project.source_entry.toLowerCase().includes(query)
     return matchesStatus && matchesVideoStatus && matchesSupplement && matchesQuality && matchesQuery
+  })
+})
+
+const filteredSeriesProjects = computed(() => {
+  if (!showSeriesProjects.value) return []
+  if (statusFilter.value || videoStatusFilter.value || supplementFilter.value || qualityFilter.value) return []
+  const query = searchQuery.value.trim().toLowerCase()
+  return seriesProjects.value.filter(project => {
+    return !query
+      || project.title.toLowerCase().includes(query)
+      || project.logline.toLowerCase().includes(query)
+      || project.series_project_id.toLowerCase().includes(query)
   })
 })
 
@@ -199,6 +318,16 @@ function statusLabel(status: StoryProjectStatus): string {
     finalized: '已定稿',
   }
   return map[status]
+}
+
+function pacingProfileLabel(profile: AiComicPacingProfile): string {
+  const map: Record<AiComicPacingProfile, string> = {
+    fast_hook: '强钩子快节奏',
+    balanced_drama: '均衡剧情推进',
+    slow_burn: '慢热铺陈',
+    mystery_cliffhanger: '悬念钩子',
+  }
+  return map[profile]
 }
 
 function typeLabel(type: string): string {
@@ -237,6 +366,28 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+function seriesProjectLink(seriesProjectId: string) {
+  return {
+    path: '/ai-comic-series/new',
+    query: { seriesProjectId },
+  }
+}
+
+function nextSeriesEpisodeNo(project: AiComicSeriesProjectMeta): number | null {
+  if (project.generated_episode_count >= project.episode_count) return null
+  return project.generated_episode_count + 1
+}
+
+function seriesContinueLink(project: AiComicSeriesProjectMeta) {
+  const nextEpisodeNo = nextSeriesEpisodeNo(project)
+  return {
+    path: '/ai-comic-series/new',
+    query: nextEpisodeNo
+      ? { seriesProjectId: project.series_project_id, episodeNo: String(nextEpisodeNo) }
+      : { seriesProjectId: project.series_project_id },
+  }
+}
+
 async function handleDeleteProject(project: StoryProjectListItem) {
   const confirmed = window.confirm(`确定删除《${project.title}》吗？这会删除生成故事文件和项目版本记录。`)
   if (!confirmed) return
@@ -253,6 +404,73 @@ async function handleDeleteProject(project: StoryProjectListItem) {
     error.value = res.error?.message ?? '删除故事项目失败'
   }
   deletingProjectId.value = ''
+}
+
+async function handleArchiveSeriesProject(project: AiComicSeriesProjectMeta) {
+  managingSeriesProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const archived = !project.archived_at
+  const res = await archiveAiComicSeriesProject(project.series_project_id, { archived })
+  if (res.ok && res.data) {
+    const updated = res.data.project
+    if (!showArchivedSeries.value && updated.archived_at) {
+      seriesProjects.value = seriesProjects.value.filter(item => item.series_project_id !== project.series_project_id)
+    } else {
+      seriesProjects.value = seriesProjects.value.map(item =>
+        item.series_project_id === project.series_project_id ? updated : item,
+      )
+    }
+    projectMessage.value = archived ? '漫剧系列已归档' : '漫剧系列已恢复'
+  } else {
+    error.value = res.error?.message ?? '更新漫剧系列状态失败'
+  }
+  managingSeriesProjectId.value = ''
+}
+
+async function handleExportSeriesBible(project: AiComicSeriesProjectMeta) {
+  exportingSeriesProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await exportAiComicSeriesBible(project.series_project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-series-bible.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    projectMessage.value = `系列 Bible 已导出：${project.title}`
+  } else {
+    error.value = res.error?.message ?? '导出系列 Bible 失败'
+  }
+  exportingSeriesProjectId.value = ''
+}
+
+async function handleDeleteSeriesProject(project: AiComicSeriesProjectMeta) {
+  const confirmed = window.confirm(`确定删除漫剧系列《${project.title}》吗？这会删除系列规划、连续性账本和导出记录。`)
+  if (!confirmed) return
+
+  managingSeriesProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await deleteAiComicSeriesProject(project.series_project_id)
+  if (res.ok) {
+    seriesProjects.value = seriesProjects.value.filter(item => item.series_project_id !== project.series_project_id)
+    projectMessage.value = '漫剧系列已删除'
+  } else {
+    error.value = res.error?.message ?? '删除漫剧系列失败'
+  }
+  managingSeriesProjectId.value = ''
+}
+
+function downloadText(filename: string, text: string, type: string) {
+  const blob = new Blob([text], { type })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 function toggleSelectFiltered() {
@@ -325,12 +543,14 @@ async function loadProjects() {
   loading.value = true
   error.value = ''
   projectMessage.value = ''
-  const res = await listProjects()
-  if (res.ok && res.data) {
-    projects.value = res.data
-  } else {
-    error.value = res.error?.message ?? '加载故事项目失败'
-  }
+  const [storyRes, seriesRes] = await Promise.all([
+    listProjects(),
+    listAiComicSeriesProjects(showArchivedSeries.value),
+  ])
+  if (storyRes.ok && storyRes.data) projects.value = storyRes.data
+  if (seriesRes.ok && seriesRes.data) seriesProjects.value = seriesRes.data
+  if (!storyRes.ok) error.value = storyRes.error?.message ?? '加载故事项目失败'
+  if (!seriesRes.ok) error.value = seriesRes.error?.message ?? '加载漫剧系列失败'
   loading.value = false
 }
 
@@ -382,8 +602,15 @@ onMounted(async () => {
   font-size: 14px;
 }
 
+.projects-page__cta--secondary {
+  border: 1px solid #2980b9;
+  background: #fff;
+  color: #2980b9;
+}
+
 .projects-page__toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
   margin-bottom: 20px;
@@ -437,6 +664,19 @@ onMounted(async () => {
   color: #33475b;
 }
 
+.projects-page__muted-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  background: #fff;
+  color: #33475b;
+  font-size: 13px;
+  text-decoration: none;
+}
+
 .projects-page__danger-btn {
   border: 1px solid #d4473b;
   background: #d4473b;
@@ -479,6 +719,42 @@ onMounted(async () => {
   height: 15px;
 }
 
+.projects-page__content {
+  display: grid;
+  gap: 26px;
+}
+
+.projects-page__section {
+  display: grid;
+  gap: 12px;
+}
+
+.projects-page__section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.projects-page__section-head h2 {
+  margin: 0 0 4px 0;
+  color: #22313f;
+  font-size: 20px;
+}
+
+.projects-page__section-head p {
+  margin: 0;
+  color: #7c8894;
+  font-size: 13px;
+}
+
+.projects-page__text-link {
+  color: #2980b9;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 .projects-page__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -494,6 +770,14 @@ onMounted(async () => {
   background: #fff;
   text-decoration: none;
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.projects-page__card--series {
+  padding-left: 16px;
+}
+
+.projects-page__card--archived {
+  background: #fafbfc;
 }
 
 .projects-page__card--selected {
@@ -547,6 +831,11 @@ onMounted(async () => {
 .projects-page__status-badge[data-status='draft'] {
   background: #eef6ff;
   color: #2b78b7;
+}
+
+.projects-page__status-badge[data-status='series'] {
+  background: #eaf7ef;
+  color: #1f7a44;
 }
 
 .projects-page__video-type {
@@ -623,6 +912,7 @@ onMounted(async () => {
 .projects-page__card-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid #edf1f5;
@@ -707,8 +997,18 @@ onMounted(async () => {
     flex-direction: column;
   }
 
+  .projects-page__card-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .projects-page__header-actions {
     align-items: stretch;
+  }
+
+  .projects-page__section-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

@@ -73,6 +73,14 @@
         📥 导出供稿包 JSON
       </button>
 
+      <button v-if="deliveryPackage" class="btn btn--blue" @click="exportSeedanceMarkdown" :disabled="loadingSeedance">
+        📥 {{ loadingSeedance ? '生成中…' : '导出 Seedance 提示词 Markdown' }}
+      </button>
+
+      <button v-if="deliveryPackage" class="btn btn--blue" @click="exportSeedanceJson" :disabled="loadingSeedance">
+        📥 {{ loadingSeedance ? '生成中…' : '导出 Seedance 提示词 JSON' }}
+      </button>
+
       <button v-if="deliveryPackage" class="btn btn--blue" @click="toggleDeliveryEditor">
         {{ showDeliveryEditor ? '收起供稿编辑' : '预览/编辑供稿包' }}
       </button>
@@ -155,7 +163,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { GearsDeliveryPackage, GearsSegment } from '@shared/types'
-import { updateGearsDeliveryMarkdown } from '@/api/stories'
+import { getSeedancePromptPackage, updateGearsDeliveryMarkdown } from '@/api/stories'
 
 const props = defineProps<{
   segments: GearsSegment[]
@@ -171,6 +179,7 @@ const copyingDelivery = ref(false)
 const copyingDeliveryJson = ref(false)
 const copyingGearsPull = ref(false)
 const savingDelivery = ref(false)
+const loadingSeedance = ref(false)
 const showDeliveryEditor = ref(false)
 const editableDeliveryMarkdown = ref(props.deliveryPackage?.markdown ?? '')
 const savedDeliveryMarkdown = ref(props.deliveryPackage?.markdown ?? '')
@@ -338,6 +347,33 @@ function exportDeliveryJson() {
   if (!props.deliveryPackage) return
   downloadText(`${props.storyId}-gears-delivery.json`, currentDeliveryPackageJson(), 'application/json')
   message.value = '供稿包 JSON 已下载'
+  setTimeout(() => { message.value = '' }, 3000)
+}
+
+async function exportSeedanceMarkdown() {
+  await exportSeedancePackage('markdown')
+}
+
+async function exportSeedanceJson() {
+  await exportSeedancePackage('json')
+}
+
+async function exportSeedancePackage(format: 'markdown' | 'json') {
+  loadingSeedance.value = true
+  message.value = ''
+  const res = await getSeedancePromptPackage(props.storyId)
+  if (res.ok && res.data) {
+    if (format === 'markdown') {
+      downloadText(`${props.storyId}-seedance-prompts.md`, res.data.markdown, 'text/markdown;charset=utf-8')
+      message.value = 'Seedance 提示词 Markdown 已下载'
+    } else {
+      downloadText(`${props.storyId}-seedance-prompts.json`, JSON.stringify(res.data, null, 2), 'application/json')
+      message.value = 'Seedance 提示词 JSON 已下载'
+    }
+  } else {
+    message.value = res.error?.message ?? '生成 Seedance 提示词失败'
+  }
+  loadingSeedance.value = false
   setTimeout(() => { message.value = '' }, 3000)
 }
 
