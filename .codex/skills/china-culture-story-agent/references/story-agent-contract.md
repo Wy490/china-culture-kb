@@ -25,6 +25,9 @@
   - `mcp-server/src/tools/generate-story.ts`
   - `mcp-server/src/tools/generate-script.ts`
   - `mcp-server/src/index.ts`
+  - `mcp-server/src/tools/get-project-context.ts`
+  - `mcp-server/src/tools/generate-story-blueprint.ts`
+  - `mcp-server/src/tools/validate-genre-story.ts`
 
 ## Generation Contract
 

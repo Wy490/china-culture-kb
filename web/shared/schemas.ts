@@ -382,6 +382,20 @@ export const StoryQualityRepairRequestSchema = z.object({
   repair_action_id: z.string().trim().min(1).max(80).optional(),
 });
 
+export const StoryProductionBoardRepairRequestSchema = z.object({
+  task_ids: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+  actions: z.array(z.enum([
+    'normalize_period_costumes',
+    'register_asset',
+    'clean_prompt',
+    'strengthen_filmability',
+    'add_continuity',
+    'split_duration',
+  ])).max(6).optional(),
+  priorities: z.array(z.enum(['P0', 'P1', 'P2'])).max(3).optional(),
+  apply_all: z.boolean().optional().default(false),
+});
+
 export const GearsDeliveryUpdateRequestSchema = z.object({
   markdown: z.string().min(1, 'markdown cannot be empty').max(120000, 'markdown is too long'),
 });
@@ -658,6 +672,69 @@ const AiComicSeriesMemorySchema = z.object({
   conflicts: z.array(z.string()),
 });
 
+const AiComicEpisodicMemorySourceSchema = z.enum([
+  'scene',
+  'dialogue',
+  'gears_segment',
+  'seedance_shot',
+]);
+
+const AiComicEpisodicMemoryItemSchema = z.object({
+  episodic_memory_id: z.string().min(1),
+  source: AiComicEpisodicMemorySourceSchema,
+  episode_no: z.number().int().min(1).max(120),
+  scene_id: z.string().optional(),
+  shot_id: z.string().optional(),
+  title: z.string().min(1),
+  text: z.string().min(1),
+  characters: z.array(z.string()),
+  location: z.string().optional(),
+  emotional_tone: z.string().optional(),
+  keywords: z.array(z.string()),
+  token_signature: z.array(z.string()),
+  recall_notes: z.array(z.string()),
+});
+
+const AiComicEpisodicMemoryIndexSchema = z.object({
+  schema_version: z.literal('ai-comic-episodic-memory/v1'),
+  embedding_strategy: z.literal('lexical-token-signature/v1'),
+  items: z.array(AiComicEpisodicMemoryItemSchema),
+  updated_at: z.string().optional(),
+});
+
+const AiComicProductionConstraintCategorySchema = z.enum([
+  'continuity',
+  'negative',
+  'camera',
+  'asset',
+  'cultural_boundary',
+]);
+
+const AiComicProductionConstraintSeveritySchema = z.enum(['must', 'should', 'watch']);
+
+const AiComicProductionConstraintStatusSchema = z.enum(['active', 'resolved', 'needs_review']);
+
+const AiComicProductionConstraintItemSchema = z.object({
+  constraint_id: z.string().min(1),
+  category: AiComicProductionConstraintCategorySchema,
+  label: z.string().min(1),
+  description: z.string().min(1),
+  source: z.enum(['series_plan', 'gears_segment', 'seedance_shot', 'manual']),
+  severity: AiComicProductionConstraintSeveritySchema,
+  status: AiComicProductionConstraintStatusSchema,
+  episode_no: z.number().int().min(1).max(120).optional(),
+  scene_id: z.string().optional(),
+  shot_id: z.string().optional(),
+  related_memory_ids: z.array(z.string()).optional(),
+  notes: z.array(z.string()),
+});
+
+const AiComicProductionConstraintsSchema = z.object({
+  schema_version: z.literal('ai-comic-production-constraints/v1'),
+  items: z.array(AiComicProductionConstraintItemSchema),
+  conflicts: z.array(z.string()),
+});
+
 const AiComicSeriesPlanSchema = z.object({
   schema_version: z.literal('ai-comic-series-plan/v1'),
   series_title: z.string().min(1),
@@ -707,6 +784,8 @@ const AiComicContinuityLedgerSchema = z.object({
     memory_events: z.array(AiComicSeriesMemoryItemSchema).optional(),
   })),
   series_memory: AiComicSeriesMemorySchema.optional(),
+  production_constraints: AiComicProductionConstraintsSchema.optional(),
+  episodic_memory: AiComicEpisodicMemoryIndexSchema.optional(),
 });
 
 const AiComicSeriesMemoryRecallPreferencesSchema = z.object({
@@ -733,6 +812,113 @@ export const AiComicSeriesProjectCopyRequestSchema = z.object({
 
 export const AiComicSeriesProjectArchiveRequestSchema = z.object({
   archived: z.boolean().optional().default(true),
+});
+
+const AiComicSeedanceProductionStatusSchema = z.enum([
+  'not_started',
+  'prompt_exported',
+  'submitted',
+  'processing',
+  'ready',
+  'failed',
+  'skipped',
+]);
+
+const AiComicSeedanceAssetReferenceKindSchema = z.enum(['character', 'location', 'unknown']);
+
+export const AiComicSeedanceAssetLibraryUpdateRequestSchema = z.object({
+  items: z.array(z.object({
+    asset_id: z.string().trim().min(1).max(120).optional(),
+    kind: AiComicSeedanceAssetReferenceKindSchema,
+    label: z.string().trim().min(1).max(120),
+    reference_slot: z.string().trim().min(1).max(40).optional(),
+    file_url: z.string().trim().min(1).max(1000).optional(),
+    file_id: z.string().trim().min(1).max(160).optional(),
+    description: z.string().trim().max(500).optional(),
+  })).min(1).max(200),
+});
+
+export const AiComicSeedanceProductionStatusUpdateRequestSchema = z.object({
+  episode_no: z.number().int().min(1).max(120),
+  shot_id: z.string().trim().min(1).max(80),
+  status: AiComicSeedanceProductionStatusSchema,
+  provider_job_id: z.string().trim().min(1).max(120).optional(),
+  video_url: z.string().trim().url().optional(),
+  failure_reason: z.string().trim().min(1).max(500).optional(),
+  note: z.string().trim().min(1).max(500).optional(),
+  increment_retry: z.boolean().optional(),
+  quality_score: z.number().min(0).max(100).optional(),
+  review_note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const AiComicSeedanceProductionBatchUpdateRequestSchema = z.object({
+  updates: z.array(AiComicSeedanceProductionStatusUpdateRequestSchema).min(1).max(200),
+});
+
+export const AiComicSeedanceProductionCallbackRequestSchema = z.object({
+  episode_no: z.number().int().min(1).max(120).optional(),
+  episodeNo: z.number().int().min(1).max(120).optional(),
+  shot_id: z.string().trim().min(1).max(80).optional(),
+  shotId: z.string().trim().min(1).max(80).optional(),
+  provider_job_id: z.string().trim().min(1).max(120).optional(),
+  providerJobId: z.string().trim().min(1).max(120).optional(),
+  job_id: z.string().trim().min(1).max(120).optional(),
+  jobId: z.string().trim().min(1).max(120).optional(),
+  status: z.string().trim().min(1).max(80).optional(),
+  video_url: z.string().trim().url().optional(),
+  videoUrl: z.string().trim().url().optional(),
+  url: z.string().trim().url().optional(),
+  failure_reason: z.string().trim().min(1).max(500).optional(),
+  failureReason: z.string().trim().min(1).max(500).optional(),
+  error: z.string().trim().min(1).max(500).optional(),
+  message: z.string().trim().min(1).max(500).optional(),
+  note: z.string().trim().min(1).max(500).optional(),
+  quality_score: z.number().min(0).max(100).optional(),
+  qualityScore: z.number().min(0).max(100).optional(),
+  review_note: z.string().trim().min(1).max(500).optional(),
+  reviewNote: z.string().trim().min(1).max(500).optional(),
+}).refine(
+  data => Boolean(
+    (data.episode_no ?? data.episodeNo) && (data.shot_id ?? data.shotId)
+    || data.provider_job_id
+    || data.providerJobId
+    || data.job_id
+    || data.jobId
+  ),
+  { message: 'callback requires episode_no + shot_id or provider_job_id/job_id' },
+);
+
+export const AiComicSeedanceProductionVersionSelectRequestSchema = z.object({
+  episode_no: z.number().int().min(1).max(120),
+  shot_id: z.string().trim().min(1).max(80),
+  version_id: z.string().trim().min(1).max(120),
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const AiComicSeedanceProductionAutoSelectRequestSchema = z.object({
+  min_quality_score: z.number().min(0).max(100).optional(),
+  overwrite_manual: z.boolean().optional().default(false),
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const AiComicSeedanceThumbnailCaptureRequestSchema = z.object({
+  dry_run: z.boolean().optional().default(false),
+  overwrite: z.boolean().optional().default(false),
+  episode_no: z.number().int().min(1).max(120).optional(),
+  shot_id: z.string().trim().min(1).max(80).optional(),
+  limit: z.number().int().min(1).max(200).optional(),
+});
+
+export const AiComicSeedanceCutAssemblyRequestSchema = z.object({
+  dry_run: z.boolean().optional().default(false),
+  overwrite: z.boolean().optional().default(false),
+  episode_no: z.number().int().min(1).max(120).optional(),
+  output_filename: z.string().trim().regex(/^[0-9A-Za-z._-]+\.mp4$/).optional(),
+  assembly_mode: z.enum(['copy', 'transcode']).optional().default('copy'),
+  output_profile: z.enum(['source_copy', 'mp4_h264_1080p', 'mp4_h264_720p']).optional(),
+  fps: z.number().int().min(12).max(60).optional(),
+  crf: z.number().int().min(14).max(32).optional(),
+  preset: z.enum(['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow']).optional(),
 });
 
 export const AiComicSeriesLedgerRebuildRequestSchema = z.object({

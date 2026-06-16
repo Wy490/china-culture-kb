@@ -32,12 +32,17 @@ import type {
   GearsWebhookStatus,
   GearsVideoResult,
   StoryProductionBoard,
+  StoryProductionBoardExportFile,
+  StoryProductionBoardExportPackage,
+  StoryProductionBoardRepairRequest,
+  StoryProductionBoardRepairResult,
 } from '@shared/types.js';
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import { enrichStoryQualityReport } from './quality-workflow-service.js';
 import { repairStoryWithQualityWorkflow } from './quality-repair-service.js';
 import { buildStoryProductionBoard } from './production-board-service.js';
+import { repairStoryWithProductionBoard } from './production-board-repair-service.js';
 
 const ALL_VIDEO_TYPES: VideoType[] = [
   'character_story', 'historical_drama', 'legend_story',
@@ -134,6 +139,10 @@ function qualitySummary(story: Pick<StoryGenerateResult, 'quality_report'>): {
 
 function storySourcePath(story: Pick<StoryGenerateResult, 'storyId' | 'video_type'>): string {
   return resolve(storiesRoot(), story.video_type, `${story.storyId}.json`);
+}
+
+function storySourcePathsForId(storyId: string): string[] {
+  return ALL_VIDEO_TYPES.map(videoType => resolve(storiesRoot(), videoType, `${storyId}.json`));
 }
 
 export function buildProjectId(storyId: string, videoType: string): string {
@@ -454,6 +463,127 @@ export async function getProjectProductionBoard(projectId: string): Promise<ApiR
   return success(buildStoryProductionBoard(detail.data.current_story));
 }
 
+export async function exportProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoardExportPackage>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const board = buildStoryProductionBoard(current_story);
+  const exportedAt = new Date().toISOString();
+  const exportDir = resolve(projectDir(project.project_id), 'production-board');
+  await mkdir(exportDir, { recursive: true });
+
+  const files: StoryProductionBoardExportFile[] = [];
+  const writeExportFile = async (
+    fileId: string,
+    kind: StoryProductionBoardExportFile['kind'],
+    label: string,
+    filename: string,
+    content: string,
+    mimeType: string,
+  ) => {
+    const filePath = resolve(exportDir, filename);
+    await writeFile(filePath, content, 'utf-8');
+    files.push({
+      file_id: fileId,
+      kind,
+      label,
+      relative_path: `production-board/${filename}`,
+      file_path: filePath,
+      mime_type: mimeType,
+      byte_size: Buffer.byteLength(content, 'utf-8'),
+    });
+  };
+
+  await writeExportFile(
+    'production-board-json',
+    'board_json',
+    'Production Board JSON',
+    'production-board.json',
+    JSON.stringify(board, null, 2),
+    'application/json',
+  );
+  await writeExportFile(
+    'production-board-markdown',
+    'board_markdown',
+    'Production Board Markdown',
+    'production-board.md',
+    board.markdown,
+    'text/markdown',
+  );
+  await writeExportFile(
+    'supervision-report',
+    'supervision_report',
+    'Supervision Report',
+    'supervision-report.json',
+    JSON.stringify(board.supervision_report, null, 2),
+    'application/json',
+  );
+  await writeExportFile(
+    'repair-plan',
+    'repair_plan',
+    'Production Repair Plan',
+    'repair-plan.json',
+    JSON.stringify(board.repair_plan, null, 2),
+    'application/json',
+  );
+  await writeExportFile(
+    'seedance-prompts-json',
+    'seedance_prompts',
+    'Seedance 2.0 Shot Prompts JSON',
+    'seedance-prompts.json',
+    JSON.stringify(buildProductionBoardSeedanceExport(board), null, 2),
+    'application/json',
+  );
+  await writeExportFile(
+    'seedance-prompts-markdown',
+    'seedance_prompts',
+    'Seedance 2.0 Shot Prompts Markdown',
+    'seedance-prompts.md',
+    buildProductionBoardSeedanceMarkdown(board),
+    'text/markdown',
+  );
+  await writeExportFile(
+    'delivery-manifest',
+    'delivery_manifest',
+    'Delivery Manifest',
+    'manifest.json',
+    JSON.stringify({
+      schema_version: 'story-production-board-manifest/v1',
+      project_id: project.project_id,
+      storyId: board.storyId,
+      title: board.title,
+      exported_at: exportedAt,
+      delivery_manifest: board.delivery_manifest,
+      files,
+    }, null, 2),
+    'application/json',
+  );
+
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    status: project.status === 'finalized' ? 'finalized' : 'exported',
+    updated_at: exportedAt,
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+
+  return success({
+    schema_version: 'story-production-board-export/v1',
+    project_id: project.project_id,
+    storyId: board.storyId,
+    title: board.title,
+    exported_at: exportedAt,
+    export_dir: exportDir,
+    files,
+    board,
+  });
+}
+
 export async function exportProjectCurrentVersion(projectId: string): Promise<ApiResponse<StoryProjectExportPackage>> {
   const project = await ensureProjectExists(projectId);
   if (!project) {
@@ -524,6 +654,52 @@ function buildProjectExportPackage(params: {
     ...basePackage,
     markdown: buildProjectExportMarkdown(basePackage),
   };
+}
+
+function buildProductionBoardSeedanceExport(board: StoryProductionBoard) {
+  return {
+    schema_version: 'story-production-board-seedance-prompts/v1',
+    project_id: board.project_id,
+    storyId: board.storyId,
+    title: board.title,
+    generated_at: board.generated_at,
+    delivery_stage: board.delivery_manifest.stage,
+    shot_count: board.shot_units.length,
+    shot_units: board.shot_units.map(unit => ({
+      shot_id: unit.shot_id,
+      source_scene_id: unit.source_scene_id,
+      duration_sec: unit.seedance_duration_sec,
+      characters: unit.characters,
+      location: unit.location,
+      prompt: unit.seedance_prompt,
+      validation_notes: unit.seedance_validation_notes,
+    })),
+  };
+}
+
+function buildProductionBoardSeedanceMarkdown(board: StoryProductionBoard): string {
+  const lines = [
+    `# ${board.title} Seedance 2.0 镜头提示词`,
+    '',
+    `- 项目 ID: ${board.project_id ?? '未记录'}`,
+    `- 故事 ID: ${board.storyId}`,
+    `- 交付阶段: ${board.delivery_manifest.stage_label}`,
+    `- 镜头数: ${board.shot_units.length}`,
+    '',
+    ...board.shot_units.flatMap(unit => [
+      `## ${unit.shot_id} / 场景 ${unit.source_scene_id}`,
+      `- 时长: ${unit.seedance_duration_sec} 秒`,
+      `- 场景: ${unit.location}`,
+      `- 角色: ${unit.characters.join('、') || '未指定'}`,
+      unit.seedance_validation_notes.length
+        ? `- 校验: ${unit.seedance_validation_notes.join('；')}`
+        : '- 校验: 无',
+      '',
+      unit.seedance_prompt,
+      '',
+    ]),
+  ];
+  return lines.join('\n');
 }
 
 function buildProjectExportMarkdown(pkg: Omit<StoryProjectExportPackage, 'markdown'> & { markdown: string }): string {
@@ -687,13 +863,30 @@ export async function deleteProject(projectId: string): Promise<ApiResponse<Stor
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" not found`);
   }
 
-  const storyFile = storySourcePath({ storyId: project.current_story_id, video_type: project.video_type });
-  await rm(storyFile, { force: true });
+  const versionSnapshots = await readVersionSnapshots(projectId);
+  const storyIds = new Set<string>([project.current_story_id]);
+  const parsed = parseProjectId(projectId);
+  if (parsed) storyIds.add(parsed.storyId);
+  for (const snapshot of versionSnapshots) {
+    if (snapshot.story?.storyId) storyIds.add(snapshot.story.storyId);
+  }
+
+  let removedStoryFileCount = 0;
+  for (const storyId of storyIds) {
+    for (const storyFile of storySourcePathsForId(storyId)) {
+      if (await pathExists(storyFile)) {
+        await rm(storyFile, { force: true });
+        removedStoryFileCount += 1;
+      }
+    }
+  }
   await rm(projectDir(projectId), { recursive: true, force: true });
 
   return success({
     project_id: projectId,
     story_id: project.current_story_id,
+    story_ids: [...storyIds],
+    removed_story_file_count: removedStoryFileCount,
     deleted: true,
   });
 }
@@ -841,6 +1034,45 @@ export async function repairProjectQuality(
   );
 
   return getProject(projectId);
+}
+
+export async function repairProjectProductionBoard(
+  projectId: string,
+  request: StoryProductionBoardRepairRequest,
+): Promise<ApiResponse<StoryProductionBoardRepairResult>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detailResult.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detailResult.data;
+  const repair = repairStoryWithProductionBoard(current_story, request);
+  const updatedMeta = await persistProjectVersion(
+    project,
+    repair.story,
+    'production_board_repair',
+    repair.trace.changed_scene_ids,
+    repair.trace.note,
+  );
+  const nextDetail = await getProject(projectId);
+  if (!nextDetail.ok || !nextDetail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      nextDetail.error?.message ?? `Project "${projectId}" not found after production repair`,
+    );
+  }
+
+  return success({
+    schema_version: 'story-production-board-repair/v1',
+    project: updatedMeta,
+    detail: nextDetail.data,
+    before_board: repair.beforeBoard,
+    after_board: repair.afterBoard,
+    trace: repair.trace,
+  });
 }
 
 function selectRequestedRepairActions(

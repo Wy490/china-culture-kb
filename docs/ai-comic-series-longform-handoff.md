@@ -147,8 +147,9 @@
 - `knowledge_used`
 - `episode_records`
 - `series_memory`
+- `episodic_memory`
 
-`series_memory` 字段是系列记忆引擎 V1，按编剧语义保存：
+`series_memory` 字段是系列记忆引擎的结构化记忆层，按编剧语义保存：
 
 - 角色记忆：当前状态、长弧、视觉识别、相关集数。
 - 关系记忆：后续用于记录人物关系变化。
@@ -158,6 +159,14 @@
 - 知识边界记忆：知识库条目的事实边界和戏剧化补足边界。
 - 关键事件记忆：每集主冲突、结尾钩子和后续状态。
 - 待核冲突：角色、线索、道具、知识边界的潜在冲突。
+
+`episodic_memory` 字段是长期情景记忆层，按已生成内容保存 embedding-ready 片段：
+
+- 场景记忆：从 `scene_breakdown` 提取关键动作、对白/旁白、视觉提示、冲突功能。
+- 对白记忆：从对白块提取人物关系、语气和可回声的关键表达。
+- GEARS 记忆：从分段脚本、目的、视觉焦点和提示词 hint 提取场景回声。
+- Seedance 镜头记忆：从镜头提示词、运镜、连续性提示中提取视觉/情绪片段。
+- 当前实现使用 `lexical-token-signature/v1` 做本地词元签名检索，结构已为后续 embedding / 向量库替换预留。
 
 每条生成记录包含：
 
@@ -181,8 +190,27 @@
 - 第 N 集生成时会额外带入系列记忆精准召回包；召回依据包括本集关键角色、知识焦点、主冲突、承接/伏笔/回收、相关集数和长期线索匹配，帮助保持角色、地点、道具、视觉资产和知识边界的跨集一致。
 - 上下文预览和单集生成支持 `memory_recall_controls`，可传 `locked_memory_ids` 和 `excluded_memory_ids`；锁定优先于排除，用于人工指定必须带入或暂时忽略的记忆项。
 - 系列项目支持 `memory_recall_preferences`，会保存全局锁定/排除偏好，也支持 `per_episode` 保存分集级偏好；上下文预览和单集生成在没有传临时控制项时默认应用“全局偏好 + 当前集偏好”。
-- 前端上下文预览区支持按记忆类型和锁定/排除状态筛选召回项，可单条锁定/排除、批量清空锁定/排除，并可导入/导出记忆召回偏好 JSON，便于系列副本、协作交接和回滚版本复用。
+- 前端上下文预览区支持按记忆类型、锁定/排除状态和实体关键词筛选召回项，可单条锁定/排除，也可对当前筛选范围批量锁定、批量排除或批量清空偏好，并可导入/导出记忆召回偏好 JSON，便于系列副本、协作交接和回滚版本复用。
 - 单集生成完成后，账本会从真实成稿中补充记忆：场景地点、出场角色、视觉提示中的服饰/道具/固定陈设、对白关系、场景知识来源、知识包条目、GEARS 分段级视觉/道具/知识边界，以及 Seedance 镜头提示词中的地点、视觉资产、道具、运镜连续性、禁用元素和知识边界。
+- 单集生成完成后，账本还会更新 `episodic_memory`，把场景、对白、GEARS 分段和 Seedance 镜头沉淀为长期情景记忆；第 N 集预览/生成会模糊召回上一集和近期相关片段，帮助延续情绪回声、对白呼应、场景氛围和人物选择。
+- 账本新增 `production_constraints` 制作约束表，独立保存系列连续性规则、生产备注、Seedance 镜头连续性、禁用元素、运镜、视觉资产和文化边界；上下文预览会显示约束摘要，单集生成提纲会带入“制作约束审计”，系列 Bible 会导出“制作约束表”。
+- 系列质量审计新增 `memory_conflict_report`，按角色状态、地点状态、关系状态、知识边界和制作约束分类检测冲突，并按阻断、警告、观察给出修复建议；上下文预览会显示冲突摘要，系列 Bible 会导出记忆冲突摘要。
+- 系列工作台已支持导出已生成分集的 Seedance 2.0 镜头提示词 Markdown / JSON；后端接口为 `POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-prompts`，返回 `ai-comic-series-seedance-export/v1`，并同步登记 `seedance_production` 生产账本。
+- Seedance 生产状态支持镜头级和批量更新：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-status` 可更新单个镜头；`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-status/batch` 可批量更新状态或导入视频 URL 回传。状态可保存 job id、视频 URL、失败原因、重试计数和备注；每次带 job、视频 URL 或失败原因的更新会追加镜头级 `versions` 视频版本记录；前端系列工作台已有轻量状态看板、批量流转按钮和 JSON 回传导入。
+- Seedance 外部平台回调已进入同一套账本：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-callback` 支持 `provider_job_id` / `job_id` / `jobId` 定位，也支持 `episode_no + shot_id` 定位；`COMPLETED`、`succeeded`、`done` 等状态会归一为 `ready`，`running` / `queued` 等会归一为制作中状态，视频 URL 会追加为新版本；若配置 `SEEDANCE_CALLBACK_SECRET`，回调必须携带 `x-seedance-callback-secret` 或 `Authorization: Bearer <secret>`。
+- 回片版本可保存 `quality_score` 和 `review_note`，callback 与手动状态更新均可写入；剪辑包会带出被选版本的质量分和评审备注，便于剪辑台或后续自动择优使用。
+- 回片版本支持人工指定剪辑版：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-version` 可传 `episode_no`、`shot_id`、`version_id`，将某个 ready 版本设为 `selected_version_id`；前端状态板会展示最近版本并提供“设为剪辑版”按钮。
+- 回片版本支持自动择优：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-version/auto` 可按 ready 版本自动设置 `selected_version_id`；默认不覆盖人工选择，`overwrite_manual: true` 时可重算；排序规则为质量分高者优先，同分取最新，无质量分时按最新 ready 版本兜底；可选 `min_quality_score` 过滤低分版本。前端状态板提供“自动择优剪辑版”按钮。
+- 回片后可导出剪辑交付包：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-cut-package` 返回 `ai-comic-series-seedance-cut-package/v1`，只汇总状态为 `ready` 且存在视频 URL 的镜头，按集和镜头顺序输出 Markdown / JSON，并列出仍缺失的镜头；若镜头已设置 `selected_version_id`，剪辑包优先采用该版本，否则采用最新 ready 版本，供剪辑、自动组装或外部资产流水线继续处理。
+- Seedance 剪辑装配 worker 已接入：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-cut/assemble` 读取剪辑交付包，支持 `dry_run`、`overwrite`、`episode_no`、`output_filename`、`assembly_mode`、`output_profile`、`fps`、`crf`、`preset`，会写出 ffmpeg concat 清单；`assembly_mode=copy` 走快速无损 concat，`assembly_mode=transcode` 输出 H.264/AAC MP4，可选 1080p / 720p profile；真实执行时输出到系列项目目录下的 `cuts/...`，并把 `planned` / `ready` / `failed` / `skipped` 状态写回 `seedance_cut_assembly`；前端系列工作台和项目总览都可触发装配或转码装配。
+- 失败或缺失镜头可导出重试提交包：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-retry-package` 返回 `ai-comic-series-seedance-retry-package/v1`，从已生成 Seedance 提示词中筛出失败、未完成、缺视频 URL 或尚未提交的镜头，保留原始镜头提示词、失败原因、重试次数和建议动作；系列工作台和项目总览均可下载 Markdown，工作台也支持 JSON。
+- 回片版本可导出对比报告：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-version-comparison` 返回 `ai-comic-series-seedance-version-comparison/v1`，按镜头列出所有视频版本、质量分、评审备注、失败原因、当前剪辑版、自动推荐版本和选择说明；系列工作台支持 Markdown / JSON 下载，也可打开版本对比面板直接播放/打开视频版本并改选剪辑版，项目总览支持 Markdown 快捷下载。
+- Seedance 素材引用可导出完整性报告：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-asset-report` 返回 `ai-comic-series-seedance-asset-report/v1`，从已生成分集的 Seedance 提示词包解析人物/场景素材、`@图片` 槽位、镜头绑定、缺槽位镜头和需上传素材项；系列工作台支持 Markdown / JSON 下载，并可导入素材库绑定 JSON。
+- Seedance 素材库绑定可持久化到系列项目：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-asset-library` 可写入素材 `kind`、`label`、`reference_slot`、`file_url`、`file_id` 和说明；素材报告会合并该库，识别 `bound`、`missing_file`、`missing_reference_slot` 三种状态。
+- Seedance 剪辑台资产包可导出：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-edit-asset-package` 返回 `ai-comic-series-seedance-edit-asset-package/v1`，把剪辑交付包中的 ready 视频、选中版本、镜头顺序与素材报告中的绑定文件、素材槽位和缺失素材项合并输出；系列工作台支持 Markdown / JSON 下载。
+- Seedance 缩略图抽帧计划可导出：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-thumbnail-plan` 返回 `ai-comic-series-seedance-thumbnail-plan/v1`，复用剪辑交付包中的 ready 视频和选中版本，给每个镜头输出抽帧秒、缩略图输出路径、文件名和 ffmpeg 命令提示；系列工作台支持 Markdown / JSON 下载。
+- Seedance 缩略图抽帧 worker 已接入：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-thumbnails/capture` 读取缩略图计划包，支持 `dry_run`、`overwrite`、`episode_no`、`shot_id`、`limit`，真实执行时调用 ffmpeg 保存到系列项目目录下的 `thumbnails/...`，并把 `planned` / `ready` / `failed` / `skipped` 缩略图状态写回 `seedance_production.items[].thumbnail`；前端系列工作台和项目总览都可触发抽帧。
+- Seedance 成片精修计划可导出：`POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-finishing-plan` 返回 `ai-comic-series-seedance-finishing-plan/v1`，汇总装配成片路径、镜头时间轴、缩略图路径、SRT 字幕 cue、音乐/音效 cue、片头片尾卡和质检清单；系列工作台支持 Markdown / JSON 下载，项目总览支持 Markdown 快捷下载。
 - 如果传入不存在的 `series_project_id`，接口返回 `STORY_NOT_FOUND`，HTTP 404，避免生成无法回写账本的孤立分镜。
 
 ### 系列项目保存
@@ -434,16 +462,24 @@ npm run build
 17. 已把叙事流派强化贯穿 AI 漫剧长篇系统：`AiComicSeriesPlanRequest`、`AiComicSeriesPlan`、单集生成请求和上下文预览请求均支持 `narrative_pattern_ids`；`AiComicSeriesStudio` 可选择 AI 漫剧流派机制；系列规划会保存选择，连续性规则、production notes、单集生成提纲、上下文预览、最终故事生成请求都会带入流派机制。
 18. 已新增能力缺口分析文档：`docs/ai-comic-series-capability-gap-analysis.md`，列出当前系统已具备能力、高优先级缺口和建议下一步。当前建议优先做批量伏笔/回收闭环检查、流派机制质量评分升级、系列项目统一入口和镜头级视频提示词导出。
 19. 已新增系列线索闭环报告：`AiComicThreadClosureReport` 会进入 `series_quality_audit.thread_closure_report`，批量检查长期线索的开启、推进、回收、超期、未绑定伏笔和重复伏笔；前端系列质量审计面板会显示线索闭环统计、重点问题和修复建议；系列 Bible Markdown / JSON 导出也会包含线索闭环摘要。
-20. 已新增系列记忆引擎 V1-V8 基础能力：连续性账本内保存结构化记忆，单集生成和上下文预览会精准召回；生成后会从 `scene_breakdown`、对白、知识包、GEARS 分段和 Seedance 镜头提示词中抽取记忆事件；前端支持召回项筛选、锁定、排除、批量清理、分集偏好持久化和偏好 JSON 导入/导出。
+20. 已新增系列记忆引擎 V1-V12 基础能力：连续性账本内保存结构化记忆，单集生成和上下文预览会精准召回；生成后会从 `scene_breakdown`、对白、知识包、GEARS 分段和 Seedance 镜头提示词中抽取记忆事件；前端支持召回项筛选、锁定、排除、按筛选范围批量锁定/排除/清理、分集偏好持久化和偏好 JSON 导入/导出；制作约束表已进入账本、上下文预览、生成提纲和 Bible 导出；记忆冲突报告已进入系列质量审计、上下文预览和 Bible；长期情景记忆 `episodic_memory` 已用词元签名索引沉淀场景、对白、GEARS 和 Seedance 镜头片段，并进入上下文预览、生成提纲和 Bible 的“情景记忆表”。
+21. 已新增系列级 Seedance 2.0 镜头提示词导出：复用单故事 `buildSeedancePromptPackage`，按已生成分集合并为 Markdown / JSON，前端系列工作台可直接下载，未生成或缺失 story 会进入 `missing_episodes`；导出后会自动登记镜头生产账本，支持镜头级状态追踪、快捷更新、批量流转和视频 URL 回传 JSON 导入。
+22. 已新增 Seedance 视频版本交付闭环：生产账本支持外部回调、质量分、评审备注、视频版本记录、人工指定剪辑版、自动择优、剪辑交付包、重试提交包和版本对比报告；版本对比报告接口为 `export-seedance-version-comparison`，会列出当前剪辑版、自动推荐版本、版本排序、失败原因和选择说明；系列工作台已有可播放的视频版本对比面板，可直接改选剪辑版并刷新账本。
+23. 已新增 Seedance 素材引用完整性报告和素材库绑定：接口为 `export-seedance-asset-report`，从现有 `asset_reference_plan` 和镜头人物/场景字段生成素材清单、镜头绑定表、缺槽位统计和需上传素材统计；接口 `seedance-asset-library` 可保存素材 URL/文件 ID，报告会识别已绑定文件和缺文件项。
+24. 已新增 Seedance 剪辑台资产包：接口为 `export-seedance-edit-asset-package`，合并 ready 视频、选中版本、镜头顺序、素材槽位、绑定文件和缺失素材项，供剪辑台或自动组装流水线使用。
+25. 已新增 Seedance 缩略图抽帧计划包：接口为 `export-seedance-thumbnail-plan`，输出 ready 视频、选中版本、抽帧秒、缩略图文件名、输出路径和 ffmpeg 命令提示。
+26. 已新增 Seedance 缩略图抽帧 worker：接口为 `seedance-thumbnails/capture`，读取计划包执行或 dry-run 准备 ffmpeg 抽帧，保存输出路径，并将缩略图状态接入前端和 `seedance_production` 生产账本。
+27. 已新增 Seedance 剪辑装配 worker：接口为 `seedance-cut/assemble`，读取剪辑交付包执行或 dry-run 准备 ffmpeg concat 拼接，保存输出路径、concat 清单和命令，并将装配状态接入前端和 `seedance_cut_assembly` 账本；支持 source copy 快速拼接和 H.264/AAC 转码装配两种模式。
+28. 已新增 Seedance 成片精修计划包：接口为 `export-seedance-finishing-plan`，复用剪辑交付包、缩略图计划、装配账本和 Seedance prompt，生成镜头时间轴、字幕 cue、音频 cue、片头片尾卡、推荐输出 profile 和质检清单。
 
 ## 建议下一步
 
 优先级较高：
 
 1. 将保存的系列项目纳入现有项目系统，而不只是 `web/generated/ai-comic-series-projects` 文件存储。
-2. 将系列记忆中的镜头级禁用元素、运镜连续性和制作限制升级成专门的可审计制作约束表。
+2. 在 `episodic_memory` 现有结构上接入真实 embedding / 向量库，并用 30 集以上系列评估关键对白、情绪转折和场景回声的召回质量。
 3. 将流派机制质量评分升级为可解释检查项，例如凡人流、无限流、历史因果、权谋博弈分别有专属满足信号和修复建议。
-4. 将系列项目操作补充到统一项目首页，形成故事项目与系列项目的统一入口。
+4. 将 Seedance 后期从精修计划包继续升级为真实字幕烧录、混音、片头片尾渲染 worker，并适配外部剪辑平台导入格式。
 5. 为 `anysearch-skill` 配置正式 API key 后，可继续扩展样片参考库，把每个类型补到 5-10 个可追踪样片源。
 6. 将知识条目的 `relationship_to_primary_entry`、`credibility_note`、`cultural_risks` 等 Agent 可读字段继续产品化，避免资料补录只停留在长文本摘要。
 
@@ -459,4 +495,4 @@ npm run build
 
 建议新对话从这里继续：
 
-> 仓库 `/Users/wuyu/Desktop/china-culture-kb`，继续完善 AI 漫剧长篇创作。当前已有系列规划页 `/ai-comic-series/new`、系列项目保存、复制、归档、删除、分集卡片编辑、单集分镜生成、连续性账本、系列记忆引擎、记忆召回偏好导入/导出、系列质量审计、线索闭环报告、分集蓝图、系列 Bible 导出、单集生成上下文预览、已生成分镜跳转、计划变更提示、账本重建、下一集推荐生成和叙事流派强化。请先阅读 `docs/ai-comic-series-longform-handoff.md` 和相关文件，再继续实现下一步：制作约束表、流派机制质量评分升级、系列项目统一入口、镜头级视频提示词导出，或知识条目 Agent 可读字段产品化。
+> 仓库 `/Users/wuyu/Desktop/china-culture-kb`，继续完善 AI 漫剧长篇创作。当前已有系列规划页 `/ai-comic-series/new`、系列项目保存、复制、归档、删除、分集卡片编辑、单集分镜生成、连续性账本、系列记忆引擎、长期情景记忆索引、制作约束表、记忆冲突报告、记忆召回偏好导入/导出、记忆批量锁定/排除、系列质量审计、线索闭环报告、分集蓝图、系列 Bible 导出、系列 Seedance 镜头提示词导出、Seedance 镜头生产状态账本、带密钥外部回调、视频版本记录、质量分/评审备注、剪辑版手动选择、剪辑版自动择优、批量状态流转、视频 URL 回传导入、Seedance 剪辑交付包、Seedance 重试提交包、Seedance 版本对比报告和可播放对比面板、Seedance 素材引用完整性报告和素材库绑定导入、Seedance 剪辑台资产包、Seedance 缩略图抽帧计划包、Seedance 缩略图抽帧 worker、Seedance 剪辑装配 worker、Seedance H.264/AAC 转码装配、单集生成上下文预览、已生成分镜跳转、计划变更提示、账本重建、下一集推荐生成和叙事流派强化。请先阅读 `docs/ai-comic-series-longform-handoff.md` 和相关文件，再继续实现下一步：真实 embedding / 向量库接入、流派机制质量评分升级、外部剪辑平台/音频字幕片头片尾策略，或知识条目 Agent 可读字段产品化。

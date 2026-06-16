@@ -1,11 +1,18 @@
 // web/server/src/services/ai-comic-series-service.ts — AI comic series planning
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { dirname, resolve } from 'node:path';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { ErrorCodes, success, fail } from '@shared/types.js';
 import type {
   AiComicContinuityLedger,
   AiComicContinuityLedgerEpisode,
+  AiComicEpisodicMemoryIndex,
+  AiComicEpisodicMemoryItem,
+  AiComicEpisodicMemoryRecall,
+  AiComicEpisodicMemoryRecallItem,
+  AiComicEpisodicMemorySource,
   AiComicEpisodeContextPreview,
   AiComicEpisodeContextPreviewRequest,
   AiComicEpisodeQualityReport,
@@ -14,6 +21,49 @@ import type {
   AiComicEndingHookType,
   AiComicEpisodeGenerateRequest,
   AiComicPacingProfile,
+  AiComicProductionConstraintCategory,
+  AiComicProductionConstraintItem,
+  AiComicProductionConstraints,
+  AiComicSeedanceProductionBatchUpdateRequest,
+  AiComicSeedanceProductionCallbackRequest,
+  AiComicSeedanceProductionLedger,
+  AiComicSeedanceProductionAutoSelectRequest,
+  AiComicSeedanceProductionStatus,
+  AiComicSeedanceProductionStatusUpdateRequest,
+  AiComicSeedanceProductionVersionSelectRequest,
+  AiComicSeedanceAssetLibrary,
+  AiComicSeedanceAssetLibraryItem,
+  AiComicSeedanceAssetLibraryUpdateRequest,
+  AiComicSeedanceThumbnailCaptureRequest,
+  AiComicSeedanceThumbnailCaptureResultShot,
+  AiComicSeedanceThumbnailStatus,
+  AiComicSeedanceVideoVersion,
+  AiComicSeedanceCutPackageEpisode,
+  AiComicSeedanceRetryPackageEpisode,
+  AiComicSeriesSeedanceCutPackage,
+  AiComicSeedanceCutAssemblyLedger,
+  AiComicSeedanceCutAssemblyRequest,
+  AiComicSeriesSeedanceRetryPackage,
+  AiComicSeriesSeedanceAssetReportPackage,
+  AiComicSeriesSeedanceEditAssetPackage,
+  AiComicSeedanceEditAssetPackageEpisode,
+  AiComicSeriesSeedanceThumbnailPlanPackage,
+  AiComicSeriesSeedanceThumbnailCaptureResult,
+  AiComicSeriesSeedanceCutAssemblyResult,
+  AiComicSeedanceThumbnailPlanEpisode,
+  AiComicSeriesSeedanceFinishingPlanPackage,
+  AiComicSeedanceFinishingAudioCue,
+  AiComicSeedanceFinishingShot,
+  AiComicSeedanceFinishingSubtitleCue,
+  AiComicSeriesSeedanceVersionComparisonPackage,
+  AiComicSeedanceShotProductionItem,
+  AiComicSeedanceAssetReferenceItem,
+  AiComicSeedanceShotAssetBinding,
+  AiComicSeedanceVersionComparisonRow,
+  AiComicSeedanceVersionComparisonShot,
+  AiComicMemoryConflictCategory,
+  AiComicMemoryConflictItem,
+  AiComicMemoryConflictReport,
   AiComicSeriesLedgerRebuildRequest,
   AiComicSeriesContinuityAudit,
   AiComicSeriesBibleExportPackage,
@@ -29,6 +79,8 @@ import type {
   AiComicSeriesProjectDetail,
   AiComicSeriesProjectMeta,
   AiComicSeriesProjectSaveRequest,
+  AiComicSeriesSeedanceEpisodePackage,
+  AiComicSeriesSeedanceExportPackage,
   AiComicSeriesCharacterArc,
   AiComicSeriesPhase,
   AiComicSeriesPlan,
@@ -43,15 +95,17 @@ import type {
   AiComicSeriesMemoryRecallPreferences,
   AiComicPlotThread,
   ApiResponse,
+  ErrorCode,
   KnowledgeNeed,
   KnowledgePack,
   NarrativePatternId,
+  SeedancePromptShotUnit,
   StoryDetectedCharacter,
   StoryGenerateResult,
   SupportedDuration,
 } from '@shared/types.js';
 import { analyzeOutline, multiMatchEntries } from './outline-service.js';
-import { generateAndStoreStory } from './story-service.js';
+import { generateAndStoreStory, getStory } from './story-service.js';
 import {
   getNarrativePatternRequirementLines,
   getNarrativePatternsForVideoType,
@@ -74,6 +128,30 @@ const PHASE_TEMPLATES = [
 ];
 
 type StoredAiComicSeriesProject = AiComicSeriesProjectDetail;
+type FfmpegThumbnailRunner = (params: {
+  ffmpegPath: string;
+  videoUrl: string;
+  outputPath: string;
+  captureTimeSec: number;
+}) => Promise<void>;
+type FfmpegCutAssemblyRunner = (params: {
+  ffmpegPath: string;
+  concatListPath: string;
+  outputPath: string;
+  profile: SeedanceCutAssemblyProfile;
+}) => Promise<void>;
+
+interface SeedanceCutAssemblyProfile {
+  assemblyMode: 'copy' | 'transcode';
+  outputProfile: 'source_copy' | 'mp4_h264_1080p' | 'mp4_h264_720p';
+  fps?: number;
+  crf: number;
+  preset: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'medium' | 'slow';
+  width?: number;
+  height?: number;
+}
+
+const execFileAsync = promisify(execFile);
 
 export async function generateAiComicSeriesPlan(
   request: AiComicSeriesPlanRequest,
@@ -289,6 +367,12 @@ export async function previewAiComicEpisodeContext(
     fallbackLedger.series_memory,
     memoryRecallControls,
   );
+  const focusedEpisodicMemoryRecall = buildEpisodeEpisodicMemoryRecall(
+    plan,
+    episode,
+    fallbackLedger.episodic_memory,
+  );
+  const memoryConflictReport = buildAiComicMemoryConflictReport({ ledger: fallbackLedger });
 
   return success({
     schema_version: 'ai-comic-episode-context-preview/v1',
@@ -306,6 +390,7 @@ export async function previewAiComicEpisodeContext(
       memoryRecallControls,
     ),
     focused_memory_recall: focusedMemoryRecall,
+    focused_episodic_memory_recall: focusedEpisodicMemoryRecall,
     ledger_summary: {
       last_generated_episode_no: fallbackLedger.last_generated_episode_no,
       character_state_current: fallbackLedger.character_state_current,
@@ -313,6 +398,9 @@ export async function previewAiComicEpisodeContext(
       paid_off_threads: fallbackLedger.paid_off_threads,
       knowledge_used: fallbackLedger.knowledge_used,
       series_memory: buildSeriesMemorySummary(fallbackLedger.series_memory),
+      production_constraints: buildProductionConstraintSummary(fallbackLedger.production_constraints),
+      memory_conflicts: buildMemoryConflictSummary(memoryConflictReport),
+      episodic_memory: buildEpisodicMemorySummary(fallbackLedger.episodic_memory),
     },
     previous_episode_memory: previousRecord?.next_episode_memory ?? episode.continuity_from_previous,
     next_episode_requirement: next
@@ -556,6 +644,37 @@ function buildAiComicSeriesBibleMarkdown(pkg: AiComicSeriesBibleExportPackage): 
       ]),
     ),
     '',
+    '### 情景记忆表',
+    ...markdownTable(
+      ['来源', '集数', '标题', '人物', '地点', '情绪/运镜', '关键词'],
+      pkg.production_tables.episodic_memory.map(item => [
+        episodicMemorySourceLabel(item.source),
+        `第${item.episode_no}集`,
+        item.title,
+        item.characters.join('、') || '未记录',
+        item.location ?? '未记录',
+        item.emotional_tone ?? '未记录',
+        item.keywords.slice(0, 8).join('、') || '未记录',
+      ]),
+    ),
+    '',
+    '### 制作约束表',
+    ...markdownTable(
+      ['类型', '约束', '来源', '级别', '状态', '集数/镜头', '说明'],
+      pkg.production_tables.production_constraints.map(item => [
+        productionConstraintCategoryLabel(item.category),
+        item.label,
+        productionConstraintSourceLabel(item.source),
+        productionConstraintSeverityLabel(item.severity),
+        productionConstraintStatusLabel(item.status),
+        [
+          item.episode_no ? `第${item.episode_no}集` : '',
+          item.shot_id ? `镜头${item.shot_id}` : '',
+        ].filter(Boolean).join(' / ') || '全系列',
+        [item.description, ...item.notes].join('；'),
+      ]),
+    ),
+    '',
     '### 流派机制表',
     ...markdownTable(
       ['机制', '核心承诺', '质量信号'],
@@ -592,10 +711,16 @@ function buildAiComicSeriesBibleMarkdown(pkg: AiComicSeriesBibleExportPackage): 
       pkg.series_quality_audit.thread_closure_report
         ? `- 线索闭环: 已回收 ${pkg.series_quality_audit.thread_closure_report.paid_off_thread_count}/${pkg.series_quality_audit.thread_closure_report.total_thread_count}；超期 ${pkg.series_quality_audit.thread_closure_report.overdue_thread_count}；未绑定 ${pkg.series_quality_audit.thread_closure_report.orphaned_thread_count}；重复 ${pkg.series_quality_audit.thread_closure_report.duplicate_thread_count}`
         : '- 线索闭环: 未记录',
+      pkg.series_quality_audit.memory_conflict_report
+        ? `- 记忆冲突: 总计 ${pkg.series_quality_audit.memory_conflict_report.total_conflict_count}；阻断 ${pkg.series_quality_audit.memory_conflict_report.blocking_count}；警告 ${pkg.series_quality_audit.memory_conflict_report.warning_count}；观察 ${pkg.series_quality_audit.memory_conflict_report.watch_count}`
+        : '- 记忆冲突: 未记录',
       ...(pkg.series_quality_audit.thread_closure_report?.items
         .filter(item => item.issues.length > 0 || item.status !== 'paid_off')
         .slice(0, 5)
         .map(item => `  - ${item.title}: ${item.issues[0] ?? item.repair_suggestions[0] ?? '按计划推进'}`) ?? []),
+      ...(pkg.series_quality_audit.memory_conflict_report?.items
+        .slice(0, 5)
+        .map(item => `  - ${item.title}: ${item.repair_suggestions[0] ?? item.description}`) ?? []),
     ] : ['- 未记录']),
     '',
     '## 分集蓝图',
@@ -625,6 +750,505 @@ function buildAiComicSeriesBibleMarkdown(pkg: AiComicSeriesBibleExportPackage): 
   return lines.join('\n');
 }
 
+function buildAiComicSeriesSeedanceMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceExportPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — 系列 Seedance 2.0 镜头提示词包`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> 已生成分集: ${pkg.generated_episode_count}/${pkg.total_episode_count}`,
+    `> 总镜头: ${pkg.total_shot_count}`,
+    `> 估算总时长: ${pkg.total_duration_sec} 秒`,
+    '',
+    '## 系列参考素材分配',
+    ...(pkg.asset_reference_plan.length
+      ? pkg.asset_reference_plan.map(item => `- ${item}`)
+      : ['- 未配置参考素材；可直接使用文本提示生成。']),
+    '',
+    '## 分集镜头提示词',
+  ];
+
+  for (const episode of pkg.episodes) {
+    lines.push(
+      '',
+      `### 第${episode.episode_no}集：${episode.episode_title}`,
+      '',
+      `- storyId: ${episode.story_id}`,
+      `- 镜头数: ${episode.shot_count}`,
+      `- 估算时长: ${episode.total_duration_sec} 秒`,
+    );
+    for (const unit of episode.package.shot_units) {
+      lines.push(
+        '',
+        `#### 第${episode.episode_no}集 / ${unit.shot_id} / 场景 ${unit.source_scene_id}`,
+        '',
+        `- 时长: ${unit.duration_sec} 秒`,
+        `- 人物: ${unit.characters.join('、') || '未指定'}`,
+        `- 场景: ${unit.location}`,
+        `- 镜头: ${unit.camera_suggestion}`,
+        unit.continuity_notes.length ? `- 连续性: ${unit.continuity_notes.join('；')}` : '- 连续性: 无',
+        unit.negative_constraints.length ? `- 禁止: ${unit.negative_constraints.join('；')}` : '- 禁止: 无',
+        '',
+        '```text',
+        unit.seedance_prompt,
+        '```',
+      );
+    }
+  }
+
+  if (pkg.missing_episodes.length > 0) {
+    lines.push(
+      '',
+      '## 未导出分集',
+      ...pkg.missing_episodes.map(item => `- 第${item.episode_no}集《${item.title}》：${item.reason}`),
+    );
+  }
+  if (pkg.validation_notes.length > 0) {
+    lines.push(
+      '',
+      '## 校验提醒',
+      ...pkg.validation_notes.map(note => `- ${note}`),
+    );
+  }
+  return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceCutMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceCutPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Seedance 剪辑交付包`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> 可剪辑镜头: ${pkg.total_ready_shot_count}`,
+    `> 待补镜头: ${pkg.total_missing_shot_count}`,
+    '',
+    '## 剪辑镜头清单',
+  ];
+  for (const episode of pkg.episodes) {
+    lines.push(
+      '',
+      `### 第${episode.episode_no}集：${episode.episode_title}`,
+      '',
+      `- storyId: ${episode.story_id ?? '未记录'}`,
+      `- 可用镜头: ${episode.ready_shot_count}`,
+      '',
+      ...markdownTable(
+        ['顺序', '镜头', '场景', '视频 URL', 'Job', '版本', '质量分', '评审', '完成时间'],
+        episode.shots.map(shot => [
+          String(shot.order_index),
+          shot.shot_id,
+          shot.source_scene_id ? `场景 ${shot.source_scene_id}` : '未记录',
+          shot.video_url,
+          shot.provider_job_id ?? '未记录',
+          shot.version_id ?? '未记录',
+          typeof shot.quality_score === 'number' ? String(shot.quality_score) : '未记录',
+          shot.review_note ?? '未记录',
+          shot.completed_at ?? '未记录',
+        ]),
+      ),
+    );
+  }
+  if (pkg.missing_shots.length > 0) {
+    lines.push(
+      '',
+      '## 待补镜头',
+      ...markdownTable(
+        ['集数', '镜头', '状态', '原因'],
+        pkg.missing_shots.map(item => [
+          `第${item.episode_no}集`,
+          item.shot_id,
+          seedanceProductionStatusText(item.status),
+          item.reason,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceRetryMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceRetryPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Seedance 重试提交包`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> 待重试镜头: ${pkg.total_retry_shot_count}`,
+    `> 已跳过可用镜头: ${pkg.skipped_ready_shot_count}`,
+    '',
+    '## 重试镜头',
+  ];
+  for (const episode of pkg.episodes) {
+    lines.push(
+      '',
+      `### 第${episode.episode_no}集：${episode.episode_title}`,
+      '',
+      `- storyId: ${episode.story_id ?? '未记录'}`,
+      `- 待重试镜头: ${episode.retry_shot_count}`,
+    );
+    for (const shot of episode.shots) {
+      lines.push(
+        '',
+        `#### ${shot.shot_id} / 场景 ${shot.source_scene_id ?? '未记录'}`,
+        '',
+        `- 状态: ${seedanceProductionStatusText(shot.status)}`,
+        `- 失败原因: ${shot.failure_reason ?? '未记录'}`,
+        `- 重试次数: ${shot.retry_count}`,
+        `- 上次 job: ${shot.provider_job_id ?? '未记录'}`,
+        `- 建议动作: ${shot.suggested_action}`,
+        `- 人物: ${shot.prompt.characters.join('、') || '未指定'}`,
+        `- 场景: ${shot.prompt.location}`,
+        `- 镜头: ${shot.prompt.camera_suggestion}`,
+        shot.prompt.negative_constraints.length ? `- 禁止: ${shot.prompt.negative_constraints.join('；')}` : '- 禁止: 无',
+        '',
+        '```text',
+        shot.prompt.seedance_prompt,
+        '```',
+      );
+    }
+  }
+  if (pkg.missing_prompt_shots.length > 0) {
+    lines.push(
+      '',
+      '## 缺失提示词镜头',
+      ...markdownTable(
+        ['集数', '镜头', '原因'],
+        pkg.missing_prompt_shots.map(item => [
+          `第${item.episode_no}集：${item.episode_title}`,
+          item.shot_id,
+          item.reason,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceVersionComparisonMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceVersionComparisonPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Seedance 版本对比报告`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> 总镜头: ${pkg.total_shot_count}`,
+    `> 有多版本镜头: ${pkg.comparable_shot_count}`,
+    `> 已选剪辑版: ${pkg.selected_shot_count}`,
+    `> 未选剪辑版: ${pkg.unselected_shot_count}`,
+    '',
+    '## 总览',
+    ...markdownTable(
+      ['集数', '镜头', '当前剪辑版', '自动推荐', '可用版本', '失败版本'],
+      pkg.shots.map(shot => [
+        `第${shot.episode_no}集`,
+        shot.shot_id,
+        shot.selected_version_id ?? '未选择',
+        shot.auto_best_version_id ?? '无可用版本',
+        String(shot.ready_version_count),
+        String(shot.failed_version_count),
+      ]),
+    ),
+  ];
+  for (const shot of pkg.shots) {
+    lines.push(
+      '',
+      `## 第${shot.episode_no}集：${shot.episode_title} / ${shot.shot_id}`,
+      '',
+      `- productionId: ${shot.production_id}`,
+      `- storyId: ${shot.story_id ?? '未记录'}`,
+      `- 场景: ${shot.source_scene_id ?? '未记录'}`,
+      `- 当前剪辑版: ${shot.selected_version_id ?? '未选择'}`,
+      `- 自动推荐: ${shot.auto_best_version_id ?? '无可用版本'}`,
+      '',
+      ...markdownTable(
+        ['排序', '版本', '状态', '质量分', 'Job', '视频 URL', '评审', '说明'],
+        shot.versions.map(version => [
+          String(version.rank),
+          version.version_id,
+          seedanceProductionStatusText(version.status),
+          typeof version.quality_score === 'number' ? String(version.quality_score) : '未记录',
+          version.provider_job_id ?? '未记录',
+          version.video_url ?? '未记录',
+          version.review_note ?? version.note ?? version.failure_reason ?? '未记录',
+          version.decision_reason,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceAssetReportMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceAssetReportPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Seedance 素材引用完整性报告`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> 素材项: ${pkg.total_asset_count}`,
+    `> 缺少引用槽位: ${pkg.missing_reference_slot_count}`,
+    `> 需要上传素材: ${pkg.upload_required_count}`,
+    `> 镜头绑定: ${pkg.shot_binding_count}`,
+    `> 存在缺口镜头: ${pkg.unbound_shot_count}`,
+    '',
+    '## 素材清单',
+    ...markdownTable(
+      ['类型', '素材', '引用槽位', '状态', '使用镜头数', '说明'],
+      pkg.assets.map(asset => [
+        seedanceAssetKindText(asset.kind),
+        asset.label,
+        asset.reference_slot ?? '缺少',
+        seedanceAssetStatusText(asset.status),
+        String(asset.required_by_shot_count),
+        asset.description ?? '未记录',
+      ]),
+    ),
+    '',
+    '## 镜头绑定',
+    ...markdownTable(
+      ['集数', '镜头', '人物', '场景', '引用槽位', '缺口'],
+      pkg.shots.map(shot => [
+        `第${shot.episode_no}集`,
+        shot.shot_id,
+        shot.characters.join('、') || '未指定',
+        shot.location,
+        shot.reference_slots.join('、') || '无',
+        shot.missing_reference_asset_ids.length ? shot.missing_reference_asset_ids.join('、') : '无',
+      ]),
+    ),
+  ];
+  return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceEditAssetMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceEditAssetPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Seedance 剪辑台资产包`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> 可剪镜头: ${pkg.total_ready_shot_count}`,
+    `> 已绑定素材: ${pkg.total_bound_asset_count}`,
+    `> 缺失素材: ${pkg.total_missing_asset_count}`,
+    `> 有素材缺口镜头: ${pkg.unbound_shot_count}`,
+    '',
+    '## 剪辑镜头',
+  ];
+  for (const episode of pkg.episodes) {
+    lines.push(
+      '',
+      `### 第${episode.episode_no}集：${episode.episode_title}`,
+      '',
+      `- storyId: ${episode.story_id ?? '未记录'}`,
+      `- 可剪镜头: ${episode.ready_shot_count}`,
+      `- 有素材缺口镜头: ${episode.unbound_shot_count}`,
+      '',
+      ...markdownTable(
+        ['顺序', '镜头', '视频 URL', '版本', '素材槽位', '缺失素材'],
+        episode.shots.map(shot => [
+          String(shot.order_index),
+          shot.shot_id,
+          shot.video_url,
+          shot.version_id ?? shot.selected_version_id ?? '未记录',
+          shot.reference_slots.join('、') || '无',
+          shot.missing_asset_ids.join('、') || '无',
+        ]),
+      ),
+    );
+  }
+  if (pkg.assets.length > 0) {
+    lines.push(
+      '',
+      '## 素材文件',
+      ...markdownTable(
+        ['类型', '素材', '槽位', '文件', '状态'],
+        pkg.assets.map(asset => [
+          seedanceAssetKindText(asset.kind),
+          asset.label,
+          asset.reference_slot ?? '缺少',
+          asset.file_url ?? asset.file_id ?? '缺少',
+          seedanceAssetStatusText(asset.status),
+        ]),
+      ),
+    );
+  }
+  if (pkg.missing_shots.length > 0) {
+    lines.push(
+      '',
+      '## 未进入剪辑包镜头',
+      ...markdownTable(
+        ['集数', '镜头', '状态', '原因'],
+        pkg.missing_shots.map(shot => [
+          `第${shot.episode_no}集`,
+          shot.shot_id,
+          seedanceProductionStatusText(shot.status),
+          shot.reason,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceThumbnailPlanMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceThumbnailPlanPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Seedance 缩略图抽帧计划`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> thumbnailRoot: ${pkg.thumbnail_root}`,
+    `> 待抽帧镜头: ${pkg.total_ready_shot_count}`,
+    `> 缺失视频镜头: ${pkg.total_missing_shot_count}`,
+    '',
+    '## 抽帧清单',
+  ];
+  for (const episode of pkg.episodes) {
+    lines.push(
+      '',
+      `### 第${episode.episode_no}集：${episode.episode_title}`,
+      '',
+      `- storyId: ${episode.story_id ?? '未记录'}`,
+      `- 待抽帧镜头: ${episode.ready_shot_count}`,
+      '',
+      ...markdownTable(
+        ['顺序', '镜头', '视频 URL', '抽帧秒', '输出文件', 'ffmpeg'],
+        episode.shots.map(shot => [
+          String(shot.order_index),
+          shot.shot_id,
+          shot.video_url,
+          String(shot.capture_time_sec),
+          shot.output_path,
+          shot.ffmpeg_command,
+        ]),
+      ),
+    );
+  }
+  if (pkg.missing_shots.length > 0) {
+    lines.push(
+      '',
+      '## 未进入抽帧计划镜头',
+      ...markdownTable(
+        ['集数', '镜头', '状态', '原因'],
+        pkg.missing_shots.map(shot => [
+          `第${shot.episode_no}集`,
+          shot.shot_id,
+          seedanceProductionStatusText(shot.status),
+          shot.reason,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceFinishingPlanMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceFinishingPlanPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Seedance 成片精修计划`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> sourceCut: ${pkg.source_cut_output_path ?? '尚未装配'}`,
+    `> sourceCutStatus: ${pkg.source_cut_status ?? '未记录'}`,
+    `> 可用镜头: ${pkg.total_ready_shot_count}`,
+    `> 缺失镜头: ${pkg.total_missing_shot_count}`,
+    `> 估算成片时长: ${pkg.total_duration_sec} 秒`,
+    `> 字幕格式: ${pkg.subtitle_format}`,
+    `> 推荐输出: ${pkg.recommended_output_profile}`,
+    '',
+    '## 镜头时间轴',
+    ...markdownTable(
+      ['入点', '出点', '集数', '镜头', '视频', '缩略图', '字幕', '音频'],
+      pkg.shots.map(shot => [
+        formatSeconds(shot.start_sec),
+        formatSeconds(shot.end_sec),
+        `第${shot.episode_no}集`,
+        shot.shot_id,
+        shot.video_url,
+        shot.thumbnail_path ?? '未生成',
+        shot.subtitle_cue_ids.join('、') || '无',
+        shot.audio_cue_ids.join('、') || '无',
+      ]),
+    ),
+    '',
+    '## 片头片尾卡',
+    ...markdownTable(
+      ['位置', '集数', '时长', '文案', '视觉备注'],
+      pkg.title_cards.map(card => [
+        seedanceTitleCardPlacementText(card.placement),
+        card.episode_no ? `第${card.episode_no}集` : '系列',
+        `${card.duration_sec}秒`,
+        card.text,
+        card.visual_note,
+      ]),
+    ),
+    '',
+    '## 字幕 Cue',
+    ...markdownTable(
+      ['Cue', '时间', '集数', '镜头', '文本', '来源'],
+      pkg.subtitle_cues.map(cue => [
+        cue.cue_id,
+        `${formatSeconds(cue.start_sec)}-${formatSeconds(cue.end_sec)}`,
+        `第${cue.episode_no}集`,
+        cue.shot_id,
+        cue.text,
+        seedanceSubtitleSourceText(cue.source),
+      ]),
+    ),
+    '',
+    '## 音频 Cue',
+    ...markdownTable(
+      ['Cue', '时间', '类型', '优先级', '镜头', '说明'],
+      pkg.audio_cues.map(cue => [
+        cue.cue_id,
+        `${formatSeconds(cue.start_sec)}-${formatSeconds(cue.end_sec)}`,
+        seedanceAudioKindText(cue.kind),
+        seedanceCuePriorityText(cue.priority),
+        cue.shot_id ?? '全片',
+        cue.text,
+      ]),
+    ),
+    '',
+    '## 质检清单',
+    ...pkg.quality_checklist.map(item => `- ${item}`),
+  ];
+  if (pkg.missing_shots.length > 0) {
+    lines.push(
+      '',
+      '## 缺失镜头',
+      ...markdownTable(
+        ['集数', '镜头', '状态', '原因'],
+        pkg.missing_shots.map(shot => [
+          `第${shot.episode_no}集`,
+          shot.shot_id,
+          seedanceProductionStatusText(shot.status),
+          shot.reason,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
+}
+
 function markdownTable(headers: string[], rows: string[][]): string[] {
   if (rows.length === 0) return ['- 未记录'];
   const cleanCell = (value: string): string => value.replace(/\|/g, '｜').replace(/\n/g, ' ').trim() || '未记录';
@@ -633,6 +1257,123 @@ function markdownTable(headers: string[], rows: string[][]): string[] {
     `| ${headers.map(() => '---').join(' |')} |`,
     ...rows.map(row => `| ${row.map(cleanCell).join(' |')} |`),
   ];
+}
+
+function normalizeErrorCode(code?: string): ErrorCode {
+  const values = Object.values(ErrorCodes) as ErrorCode[];
+  return code && values.includes(code as ErrorCode) ? code as ErrorCode : ErrorCodes.INTERNAL_ERROR;
+}
+
+async function buildSeedancePromptLookup(
+  detail: AiComicSeriesProjectDetail,
+): Promise<Map<string, SeedancePromptShotUnit>> {
+  const lookup = new Map<string, SeedancePromptShotUnit>();
+  for (const episode of detail.plan.episodes) {
+    const storyId = detail.generated_episode_story_ids[String(episode.episode_no)];
+    if (!storyId) continue;
+    const storyResult = await getStory(storyId);
+    if (!storyResult.ok || !storyResult.data) continue;
+    const seedancePackage = buildSeedancePromptPackage(storyResult.data);
+    for (const unit of seedancePackage.shot_units) {
+      lookup.set(seedanceProductionId(episode.episode_no, unit.shot_id), unit);
+    }
+  }
+  return lookup;
+}
+
+function seedanceFinishingSubtitleText(
+  scriptText: string | undefined,
+  shot: { episode_no: number; episode_title: string; shot_id: string },
+): string {
+  const cleaned = scriptText
+    ? summarizeText(scriptText.replace(/\s+/g, ' '), 54)
+    : '';
+  return cleaned || `第${shot.episode_no}集《${shot.episode_title}》${shot.shot_id} 字幕待校。`;
+}
+
+function seedanceFinishingAudioText(
+  seedancePrompt: string | undefined,
+  cameraSuggestion: string | undefined,
+  shot: { episode_no: number; shot_id: string },
+): string {
+  const source = seedancePrompt || cameraSuggestion || '';
+  const soundHints = source
+    .split(/[。；;\n]/)
+    .map(item => item.trim())
+    .filter(item => /音|声|乐|风|雨|脚步|鼓|铃|呼吸|环境/.test(item))
+    .slice(0, 2);
+  if (soundHints.length > 0) return soundHints.join('；');
+  return `第${shot.episode_no}集 ${shot.shot_id}：补环境底噪和动作音效，避免盖过字幕节奏。`;
+}
+
+function seedanceAudioKindForPrompt(seedancePrompt: string | undefined): AiComicSeedanceFinishingAudioCue['kind'] {
+  if (!seedancePrompt) return 'ambient';
+  if (/音乐|配乐|旋律|鼓点/.test(seedancePrompt)) return 'music';
+  if (/旁白|解说/.test(seedancePrompt)) return 'narration';
+  if (/对白|台词|说/.test(seedancePrompt)) return 'dialogue';
+  if (/音效|脚步|碰撞|风声|雨声|铃声/.test(seedancePrompt)) return 'sound_effect';
+  return 'ambient';
+}
+
+function buildSeedanceFinishingTitleCards(
+  detail: AiComicSeriesProjectDetail,
+  exportedEpisodeNos: number[],
+): AiComicSeriesSeedanceFinishingPlanPackage['title_cards'] {
+  const episodeMap = new Map(detail.plan.episodes.map(episode => [episode.episode_no, episode]));
+  const cards: AiComicSeriesSeedanceFinishingPlanPackage['title_cards'] = [{
+    card_id: 'card-series-opening',
+    placement: 'series_opening',
+    duration_sec: 3,
+    text: detail.plan.series_title,
+    visual_note: `保留系列主视觉，呼应主题：${summarizeText(detail.plan.core_theme, 42)}`,
+  }];
+  for (const episodeNo of exportedEpisodeNos) {
+    const episode = episodeMap.get(episodeNo);
+    if (!episode) continue;
+    cards.push({
+      card_id: `card-e${episodeNo}-opening`,
+      placement: 'episode_opening',
+      episode_no: episodeNo,
+      duration_sec: 2,
+      text: `第${episodeNo}集 ${episode.title}`,
+      visual_note: `承接开场钩子：${summarizeText(episode.opening_hook ?? episode.main_conflict, 42)}`,
+    });
+    cards.push({
+      card_id: `card-e${episodeNo}-ending`,
+      placement: 'episode_ending',
+      episode_no: episodeNo,
+      duration_sec: 2,
+      text: summarizeText(episode.ending_hook, 48),
+      visual_note: '用定格或淡出保留下一集钩子，不额外剧透未生成情节。',
+    });
+  }
+  cards.push({
+    card_id: 'card-series-ending',
+    placement: 'series_ending',
+    duration_sec: 3,
+    text: '未完待续',
+    visual_note: '收束到系列核心意象，留出字幕和平台尾标安全区。',
+  });
+  return cards;
+}
+
+function buildSeedanceFinishingQualityChecklist(missingShotCount: number): string[] {
+  return [
+    missingShotCount > 0
+      ? `仍有 ${missingShotCount} 个镜头缺失，正式成片前需要补齐或明确跳过。`
+      : '所有进入剪辑包的镜头均有 ready 视频 URL。',
+    '字幕 cue 需要人工校对口语、专名和文化名词，避免把视觉动作误当对白。',
+    '配乐底需要在对白、旁白、关键音效处自动降低音量。',
+    '片头片尾卡需保留平台安全区，标题不遮挡人物面部和关键道具。',
+    '导出前检查缩略图、选中版本、质量分和评审备注是否与剪辑版一致。',
+  ];
+}
+
+function formatSeconds(value: number): string {
+  const safeValue = Math.max(0, Math.round(value));
+  const minutes = Math.floor(safeValue / 60);
+  const seconds = safeValue % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function threadClosureStatusLabel(status: AiComicThreadClosureItem['status']): string {
@@ -669,6 +1410,119 @@ function memoryCategoryLabel(category: AiComicSeriesMemoryCategory): string {
     story_event: '关键事件',
   };
   return map[category];
+}
+
+function productionConstraintCategoryLabel(category: AiComicProductionConstraintCategory): string {
+  const map: Record<AiComicProductionConstraintCategory, string> = {
+    continuity: '连续性',
+    negative: '禁用元素',
+    camera: '运镜',
+    asset: '资产',
+    cultural_boundary: '文化边界',
+  };
+  return map[category];
+}
+
+function productionConstraintSourceLabel(source: AiComicProductionConstraintItem['source']): string {
+  const map: Record<AiComicProductionConstraintItem['source'], string> = {
+    series_plan: '系列规划',
+    gears_segment: 'GEARS分段',
+    seedance_shot: 'Seedance镜头',
+    manual: '人工',
+  };
+  return map[source];
+}
+
+function productionConstraintSeverityLabel(severity: AiComicProductionConstraintItem['severity']): string {
+  const map: Record<AiComicProductionConstraintItem['severity'], string> = {
+    must: '必须',
+    should: '建议',
+    watch: '观察',
+  };
+  return map[severity];
+}
+
+function productionConstraintStatusLabel(status: AiComicProductionConstraintItem['status']): string {
+  const map: Record<AiComicProductionConstraintItem['status'], string> = {
+    active: '生效',
+    resolved: '已解决',
+    needs_review: '待复核',
+  };
+  return map[status];
+}
+
+function memoryConflictCategoryLabel(category: AiComicMemoryConflictCategory): string {
+  const map: Record<AiComicMemoryConflictCategory, string> = {
+    character_state: '角色状态',
+    location_state: '地点状态',
+    relationship_state: '关系状态',
+    knowledge_boundary: '知识边界',
+    production_constraint: '制作约束',
+  };
+  return map[category];
+}
+
+function memoryConflictSeverityLabel(severity: AiComicMemoryConflictItem['severity']): string {
+  const map: Record<AiComicMemoryConflictItem['severity'], string> = {
+    blocking: '阻断',
+    warning: '警告',
+    watch: '观察',
+  };
+  return map[severity];
+}
+
+function seedanceProductionStatusText(status: AiComicSeedanceProductionStatusUpdateRequest['status']): string {
+  const map: Record<AiComicSeedanceProductionStatusUpdateRequest['status'], string> = {
+    not_started: '未开始',
+    prompt_exported: '已导出提示词',
+    submitted: '已提交',
+    processing: '处理中',
+    ready: '已完成',
+    failed: '失败',
+    skipped: '跳过',
+  };
+  return map[status];
+}
+
+function seedanceTitleCardPlacementText(
+  placement: AiComicSeriesSeedanceFinishingPlanPackage['title_cards'][number]['placement'],
+): string {
+  const map: Record<AiComicSeriesSeedanceFinishingPlanPackage['title_cards'][number]['placement'], string> = {
+    series_opening: '系列片头',
+    episode_opening: '分集片头',
+    episode_ending: '分集片尾',
+    series_ending: '系列片尾',
+  };
+  return map[placement];
+}
+
+function seedanceSubtitleSourceText(source: AiComicSeedanceFinishingSubtitleCue['source']): string {
+  const map: Record<AiComicSeedanceFinishingSubtitleCue['source'], string> = {
+    script_text: '脚本文本',
+    continuity: '连续性账本',
+    manual_placeholder: '人工占位',
+  };
+  return map[source];
+}
+
+function seedanceAudioKindText(kind: AiComicSeedanceFinishingAudioCue['kind']): string {
+  const map: Record<AiComicSeedanceFinishingAudioCue['kind'], string> = {
+    dialogue: '对白',
+    narration: '旁白',
+    music: '音乐',
+    sound_effect: '音效',
+    ambient: '环境声',
+  };
+  return map[kind];
+}
+
+function seedanceCuePriorityText(priority: AiComicSeedanceFinishingAudioCue['priority']): string {
+  const map: Record<AiComicSeedanceFinishingAudioCue['priority'], string> = {
+    must: '必须',
+    should: '建议',
+    optional: '可选',
+  };
+  return map[priority];
 }
 
 function buildAiComicSeriesBibleProductionTables(input: {
@@ -784,6 +1638,8 @@ function buildAiComicSeriesBibleProductionTables(input: {
     threads,
     knowledge_boundaries: knowledgeBoundaries,
     series_memory: buildAiComicSeriesMemoryRows(input.ledger.series_memory),
+    production_constraints: buildAiComicProductionConstraintRows(input.ledger.production_constraints),
+    episodic_memory: buildAiComicSeriesEpisodicMemoryRows(input.ledger.episodic_memory),
     narrative_patterns: narrativePatterns,
     episode_status: episodeStatus,
   };
@@ -805,6 +1661,42 @@ function buildAiComicSeriesMemoryRows(memory?: AiComicSeriesMemory): AiComicSeri
     status: item.status,
     episode_nos: item.related_episode_nos,
     continuity_notes: item.continuity_notes,
+  }));
+}
+
+function buildAiComicProductionConstraintRows(
+  constraints?: AiComicProductionConstraints,
+): AiComicSeriesBibleProductionTables['production_constraints'] {
+  if (!constraints) return [];
+  return constraints.items
+    .filter(item => item.status !== 'resolved')
+    .slice(-80)
+    .map(item => ({
+      category: item.category,
+      label: item.label,
+      description: item.description,
+      source: item.source,
+      severity: item.severity,
+      status: item.status,
+      episode_no: item.episode_no,
+      shot_id: item.shot_id,
+      notes: [...item.notes],
+    }));
+}
+
+function buildAiComicSeriesEpisodicMemoryRows(
+  index?: AiComicEpisodicMemoryIndex,
+): AiComicSeriesBibleProductionTables['episodic_memory'] {
+  if (!index) return [];
+  return index.items.slice(-80).map(item => ({
+    source: item.source,
+    episode_no: item.episode_no,
+    title: item.title,
+    text: item.text,
+    characters: [...item.characters],
+    location: item.location,
+    emotional_tone: item.emotional_tone,
+    keywords: [...item.keywords],
   }));
 }
 
@@ -892,6 +1784,9 @@ export async function saveAiComicSeriesProject(
     generated_episode_story_ids: generatedEpisodeStoryIds,
     continuity_ledger: continuityLedger,
     memory_recall_preferences: memoryRecallPreferences,
+    seedance_production: normalizeSeedanceProductionLedger(existing?.seedance_production),
+    seedance_asset_library: cloneSeedanceAssetLibrary(existing?.seedance_asset_library),
+    seedance_cut_assembly: cloneSeedanceCutAssemblyLedger(existing?.seedance_cut_assembly),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -1021,9 +1916,18 @@ export async function copyAiComicSeriesProject(
         memory_events: record.memory_events?.map(cloneMemoryItem) ?? [],
       })),
       series_memory: cloneSeriesMemory(existing.continuity_ledger.series_memory ?? buildInitialSeriesMemory(existing.plan)),
+      production_constraints: cloneProductionConstraints(
+        existing.continuity_ledger.production_constraints ?? buildInitialProductionConstraints(existing.plan),
+      ),
+      episodic_memory: cloneEpisodicMemoryIndex(
+        existing.continuity_ledger.episodic_memory ?? buildInitialEpisodicMemoryIndex(),
+      ),
     },
     memory_recall_preferences: cloneMemoryRecallPreferences(existing.memory_recall_preferences),
     series_quality_audit: existing.series_quality_audit,
+    seedance_production: cloneSeedanceProductionLedger(existing.seedance_production),
+    seedance_asset_library: cloneSeedanceAssetLibrary(existing.seedance_asset_library),
+    seedance_cut_assembly: cloneSeedanceCutAssemblyLedger(existing.seedance_cut_assembly),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -1116,6 +2020,1192 @@ export async function exportAiComicSeriesBible(
   return success({
     ...pkg,
     markdown: buildAiComicSeriesBibleMarkdown(pkg),
+  });
+}
+
+export async function exportAiComicSeriesSeedancePrompts(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceExportPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const generatedEpisodeStoryIds = detail.generated_episode_story_ids ?? {};
+  const episodes: AiComicSeriesSeedanceEpisodePackage[] = [];
+  const missingEpisodes: AiComicSeriesSeedanceExportPackage['missing_episodes'] = [];
+  const validationNotes: string[] = [];
+
+  for (const episode of detail.plan.episodes) {
+    const storyId = generatedEpisodeStoryIds[String(episode.episode_no)];
+    if (!storyId) {
+      missingEpisodes.push({
+        episode_no: episode.episode_no,
+        title: episode.title,
+        reason: '尚未生成分集故事',
+      });
+      continue;
+    }
+    const storyResult = await getStory(storyId);
+    if (!storyResult.ok || !storyResult.data) {
+      missingEpisodes.push({
+        episode_no: episode.episode_no,
+        title: episode.title,
+        reason: storyResult.error?.message ?? `故事 ${storyId} 不存在`,
+      });
+      continue;
+    }
+    const seedancePackage = buildSeedancePromptPackage(storyResult.data);
+    episodes.push({
+      episode_no: episode.episode_no,
+      episode_title: episode.title,
+      story_id: storyId,
+      total_duration_sec: seedancePackage.total_duration_sec,
+      shot_count: seedancePackage.shot_units.length,
+      package: seedancePackage,
+    });
+    validationNotes.push(
+      ...seedancePackage.validation_notes.map(note => `第${episode.episode_no}集：${note}`),
+    );
+  }
+
+  const exportedAt = new Date().toISOString();
+  const assetReferencePlan = unique(episodes.flatMap(episode =>
+    episode.package.asset_reference_plan.map(item => `第${episode.episode_no}集：${item}`)
+  )).slice(0, 80);
+  const basePackage: Omit<AiComicSeriesSeedanceExportPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-export/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    exported_at: exportedAt,
+    target_platform: 'seedance_2_0',
+    prompt_language: 'zh',
+    total_episode_count: detail.plan.episode_count,
+    generated_episode_count: episodes.length,
+    total_shot_count: episodes.reduce((sum, episode) => sum + episode.shot_count, 0),
+    total_duration_sec: episodes.reduce((sum, episode) => sum + episode.total_duration_sec, 0),
+    asset_reference_plan: assetReferencePlan,
+    episodes,
+    missing_episodes: missingEpisodes,
+    validation_notes: unique(validationNotes),
+  };
+  const seedanceProduction = syncSeedanceProductionLedgerWithExport({
+    ledger: detail.seedance_production,
+    episodes,
+    exportedAt,
+  });
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: exportedAt,
+    },
+    seedance_production: seedanceProduction,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  const renderPackage = {
+    ...basePackage,
+    project: updatedDetail.project,
+    seedance_production: seedanceProduction,
+  };
+  return success({
+    ...renderPackage,
+    markdown: buildAiComicSeriesSeedanceMarkdown(renderPackage),
+  });
+}
+
+export async function updateAiComicSeriesSeedanceProductionStatus(
+  seriesProjectId: string,
+  request: AiComicSeedanceProductionStatusUpdateRequest,
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  return updateAiComicSeriesSeedanceProductionStatuses(seriesProjectId, { updates: [request] });
+}
+
+export async function updateAiComicSeriesSeedanceProductionStatuses(
+  seriesProjectId: string,
+  request: AiComicSeedanceProductionBatchUpdateRequest,
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const episodeMap = new Map(existing.plan.episodes.map(episode => [episode.episode_no, episode]));
+  for (const update of request.updates) {
+    if (!episodeMap.has(update.episode_no)) {
+      return fail(ErrorCodes.VALIDATION_ERROR, `episode_no ${update.episode_no} is outside the series episode range`);
+    }
+  }
+
+  const now = new Date().toISOString();
+  const ledger = request.updates.reduce((currentLedger, update) => {
+    const episode = episodeMap.get(update.episode_no)!;
+    return updateSeedanceProductionLedger({
+      ledger: currentLedger,
+      episodeTitle: episode.title,
+      storyId: existing.generated_episode_story_ids[String(update.episode_no)],
+      request: update,
+      updatedAt: now,
+    });
+  }, existing.seedance_production);
+  const detail: AiComicSeriesProjectDetail = {
+    ...existing,
+    project: {
+      ...existing.project,
+      updated_at: now,
+    },
+    seedance_production: ledger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  return success(detail);
+}
+
+export async function applyAiComicSeriesSeedanceProductionCallback(
+  seriesProjectId: string,
+  request: AiComicSeedanceProductionCallbackRequest,
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const ledger = normalizeSeedanceProductionLedger(existing.seedance_production);
+  const providerJobId = callbackStringField(
+    request.provider_job_id ?? request.providerJobId ?? request.job_id ?? request.jobId,
+  );
+  const explicitEpisodeNo = Number(request.episode_no ?? request.episodeNo);
+  const explicitShotId = callbackStringField(request.shot_id ?? request.shotId);
+  const matchedItem = providerJobId
+    ? ledger.items.find(item =>
+      item.provider_job_id === providerJobId
+      || item.versions.some(version => version.provider_job_id === providerJobId)
+    )
+    : undefined;
+  const episodeNo = Number.isInteger(explicitEpisodeNo) && explicitEpisodeNo > 0
+    ? explicitEpisodeNo
+    : matchedItem?.episode_no;
+  const shotId = explicitShotId ?? matchedItem?.shot_id;
+  if (!episodeNo || !shotId) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      providerJobId
+        ? `Seedance callback job "${providerJobId}" was not found in production ledger`
+        : 'Seedance callback requires episode_no + shot_id or a known provider_job_id/job_id',
+    );
+  }
+
+  const episode = existing.plan.episodes.find(item => item.episode_no === episodeNo);
+  if (!episode) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `episode_no ${episodeNo} is outside the series episode range`);
+  }
+
+  const videoUrl = callbackStringField(request.video_url ?? request.videoUrl ?? request.url);
+  const explicitFailureReason = callbackStringField(request.failure_reason ?? request.failureReason ?? request.error);
+  const callbackMessage = callbackStringField(request.message);
+  const status = normalizeSeedanceCallbackStatus(request.status, Boolean(videoUrl), Boolean(explicitFailureReason));
+  const failureReason = status === 'failed'
+    ? explicitFailureReason ?? callbackMessage
+    : undefined;
+  return updateAiComicSeriesSeedanceProductionStatus(seriesProjectId, {
+    episode_no: episodeNo,
+    shot_id: shotId,
+    status,
+    provider_job_id: providerJobId,
+    video_url: videoUrl,
+    failure_reason: failureReason,
+    note: callbackStringField(request.note)
+      ?? callbackMessage
+      ?? `Seedance 外部回调：${seedanceProductionStatusText(status)}`,
+    quality_score: callbackNumberField(request.quality_score ?? request.qualityScore),
+    review_note: callbackStringField(request.review_note ?? request.reviewNote),
+  });
+}
+
+export async function selectAiComicSeriesSeedanceProductionVersion(
+  seriesProjectId: string,
+  request: AiComicSeedanceProductionVersionSelectRequest,
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const ledger = normalizeSeedanceProductionLedger(existing.seedance_production);
+  const productionId = seedanceProductionId(request.episode_no, request.shot_id);
+  const item = ledger.items.find(candidate => candidate.production_id === productionId);
+  if (!item) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Seedance production item ${productionId} was not found`);
+  }
+  const version = item.versions.find(candidate => candidate.version_id === request.version_id);
+  if (!version) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Seedance video version "${request.version_id}" was not found`);
+  }
+  if (version.status !== 'ready' || !version.video_url) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Seedance video version "${request.version_id}" is not ready for cutting`);
+  }
+
+  const updatedAt = new Date().toISOString();
+  const nextItems = ledger.items.map(candidate => {
+    if (candidate.production_id !== productionId) return candidate;
+    return {
+      ...candidate,
+      status: 'ready' as const,
+      updated_at: updatedAt,
+      completed_at: version.created_at,
+      provider_job_id: version.provider_job_id ?? candidate.provider_job_id,
+      video_url: version.video_url,
+      failure_reason: undefined,
+      selected_version_id: version.version_id,
+      notes: unique([
+        ...candidate.notes,
+        request.note ?? `已选择剪辑版本：${version.version_id}`,
+      ]).slice(-12),
+    };
+  });
+  const detail: AiComicSeriesProjectDetail = {
+    ...existing,
+    project: {
+      ...existing.project,
+      updated_at: updatedAt,
+    },
+    seedance_production: {
+      schema_version: 'ai-comic-seedance-production-ledger/v1',
+      updated_at: updatedAt,
+      items: nextItems,
+    },
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  return success(detail);
+}
+
+export async function autoSelectAiComicSeriesSeedanceProductionVersions(
+  seriesProjectId: string,
+  request: AiComicSeedanceProductionAutoSelectRequest = {},
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const ledger = normalizeSeedanceProductionLedger(existing.seedance_production);
+  const updatedAt = new Date().toISOString();
+  let selectedCount = 0;
+  const nextItems = ledger.items.map(item => {
+    if (item.selected_version_id && !request.overwrite_manual) return item;
+    const bestVersion = bestReadySeedanceVersion(item, request.min_quality_score);
+    if (!bestVersion) return item;
+    selectedCount += 1;
+    return {
+      ...item,
+      status: 'ready' as const,
+      updated_at: updatedAt,
+      completed_at: bestVersion.created_at,
+      provider_job_id: bestVersion.provider_job_id ?? item.provider_job_id,
+      video_url: bestVersion.video_url,
+      failure_reason: undefined,
+      selected_version_id: bestVersion.version_id,
+      notes: unique([
+        ...item.notes,
+        request.note ?? `自动择优剪辑版本：${bestVersion.version_id}`,
+      ]).slice(-12),
+    };
+  });
+  const detail: AiComicSeriesProjectDetail = {
+    ...existing,
+    project: {
+      ...existing.project,
+      updated_at: selectedCount > 0 ? updatedAt : existing.project.updated_at,
+    },
+    seedance_production: {
+      schema_version: 'ai-comic-seedance-production-ledger/v1',
+      updated_at: selectedCount > 0 ? updatedAt : ledger.updated_at,
+      items: nextItems,
+    },
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  return success(detail);
+}
+
+export async function updateAiComicSeriesSeedanceAssetLibrary(
+  seriesProjectId: string,
+  request: AiComicSeedanceAssetLibraryUpdateRequest,
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const updatedAt = new Date().toISOString();
+  const current = normalizeSeedanceAssetLibrary(existing.seedance_asset_library);
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  for (const item of request.items) {
+    const label = item.label.trim();
+    const assetId = item.asset_id?.trim() || seedanceAssetId(item.kind, label);
+    const previous = byId.get(assetId);
+    byId.set(assetId, {
+      asset_id: assetId,
+      kind: item.kind,
+      label,
+      reference_slot: item.reference_slot?.trim() || previous?.reference_slot,
+      file_url: item.file_url?.trim() || previous?.file_url,
+      file_id: item.file_id?.trim() || previous?.file_id,
+      description: item.description?.trim() || previous?.description,
+      updated_at: updatedAt,
+    });
+  }
+  const detail: AiComicSeriesProjectDetail = {
+    ...existing,
+    project: {
+      ...existing.project,
+      updated_at: updatedAt,
+    },
+    seedance_asset_library: {
+      schema_version: 'ai-comic-seedance-asset-library/v1',
+      updated_at: updatedAt,
+      items: [...byId.values()].sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+        return a.label.localeCompare(b.label, 'zh-CN');
+      }),
+    },
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  return success(detail);
+}
+
+export async function exportAiComicSeriesSeedanceCutPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceCutPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const ledger = normalizeSeedanceProductionLedger(detail.seedance_production);
+  const exportedAt = new Date().toISOString();
+  const episodeMap = new Map(detail.plan.episodes.map(episode => [episode.episode_no, episode]));
+  const readyItems = ledger.items.filter(item => item.status === 'ready' && Boolean(item.video_url));
+  const missingShots = ledger.items
+    .filter(item => !(item.status === 'ready' && item.video_url))
+    .map(item => ({
+      episode_no: item.episode_no,
+      episode_title: item.episode_title,
+      shot_id: item.shot_id,
+      status: item.status,
+      reason: item.failure_reason ?? (item.video_url ? '状态尚未完成' : '缺少视频 URL'),
+    }));
+  const episodes: AiComicSeedanceCutPackageEpisode[] = [...new Set(readyItems.map(item => item.episode_no))]
+    .sort((a, b) => a - b)
+    .map(episodeNo => {
+      const episode = episodeMap.get(episodeNo);
+      const shots = readyItems
+        .filter(item => item.episode_no === episodeNo)
+        .sort((a, b) => compareSeedanceShotIds(a.shot_id, b.shot_id))
+        .map((item, index) => {
+          const selectedVersion = selectedReadySeedanceVersion(item);
+          return {
+            production_id: item.production_id,
+            episode_no: item.episode_no,
+            episode_title: item.episode_title,
+            story_id: item.story_id,
+            shot_id: item.shot_id,
+            source_scene_id: item.source_scene_id,
+            video_url: selectedVersion?.video_url ?? item.video_url!,
+            provider_job_id: selectedVersion?.provider_job_id ?? item.provider_job_id,
+            version_id: selectedVersion?.version_id,
+            selected_version_id: item.selected_version_id,
+            quality_score: selectedVersion?.quality_score,
+            review_note: selectedVersion?.review_note,
+            completed_at: selectedVersion?.created_at ?? item.completed_at,
+            order_index: index + 1,
+            notes: [...item.notes],
+          };
+        });
+      return {
+        episode_no: episodeNo,
+        episode_title: episode?.title ?? shots[0]?.episode_title ?? `第${episodeNo}集`,
+        story_id: detail.generated_episode_story_ids[String(episodeNo)],
+        ready_shot_count: shots.length,
+        shots,
+      };
+    });
+  const basePackage: Omit<AiComicSeriesSeedanceCutPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-cut-package/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    exported_at: exportedAt,
+    total_ready_shot_count: readyItems.length,
+    total_missing_shot_count: missingShots.length,
+    episodes,
+    missing_shots: missingShots,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceCutMarkdown(basePackage),
+  });
+}
+
+export async function assembleAiComicSeriesSeedanceCut(
+  seriesProjectId: string,
+  request: AiComicSeedanceCutAssemblyRequest = {},
+  options: { runner?: FfmpegCutAssemblyRunner } = {},
+): Promise<ApiResponse<AiComicSeriesSeedanceCutAssemblyResult>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const cutPackageRes = await exportAiComicSeriesSeedanceCutPackage(seriesProjectId);
+  if (!cutPackageRes.ok || !cutPackageRes.data) {
+    return fail(
+      normalizeErrorCode(cutPackageRes.error?.code),
+      cutPackageRes.error?.message ?? 'Export Seedance cut package failed',
+    );
+  }
+
+  const cutPackage = cutPackageRes.data;
+  const episodes = request.episode_no === undefined
+    ? cutPackage.episodes
+    : cutPackage.episodes.filter(episode => episode.episode_no === request.episode_no);
+  const shots = episodes
+    .flatMap(episode => episode.shots)
+    .sort((a, b) => a.episode_no - b.episode_no || a.order_index - b.order_index || compareSeedanceShotIds(a.shot_id, b.shot_id));
+  if (shots.length === 0) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      request.episode_no
+        ? `No ready Seedance videos found for episode ${request.episode_no}`
+        : 'No ready Seedance videos found for cut assembly',
+    );
+  }
+
+  const dryRun = request.dry_run ?? false;
+  const overwrite = request.overwrite ?? false;
+  const executedAt = new Date().toISOString();
+  const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
+  const runner = options.runner ?? runFfmpegCutAssembly;
+  const profile = resolveSeedanceCutAssemblyProfile(request);
+  const outputFilename = request.output_filename?.trim()
+    || seedanceCutAssemblyFilename(seriesProjectId, request.episode_no);
+  const outputPath = `cuts/${seriesProjectId}/${outputFilename}`;
+  const concatListPath = `cuts/${seriesProjectId}/${outputFilename.replace(/\.mp4$/i, '.concat.txt')}`;
+  const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const absoluteOutputPath = resolveSeedanceProjectOutputPath(projectDir, outputPath);
+  const absoluteConcatListPath = resolveSeedanceProjectOutputPath(projectDir, concatListPath);
+  const ffmpegCommand = buildFfmpegCutAssemblyCommand(ffmpegPath, concatListPath, outputPath, profile);
+  const alreadyReady = !overwrite && await pathExists(absoluteOutputPath);
+  let status: AiComicSeriesSeedanceCutAssemblyResult['status'] = dryRun ? 'planned' : 'assembled';
+  let failureReason: string | undefined;
+
+  try {
+    await mkdir(dirname(absoluteConcatListPath), { recursive: true });
+    await writeFile(
+      absoluteConcatListPath,
+      `${shots.map(shot => ffmpegConcatFileLine(shot.video_url)).join('\n')}\n`,
+      'utf-8',
+    );
+    if (alreadyReady) {
+      status = 'skipped';
+    } else if (!dryRun) {
+      await mkdir(dirname(absoluteOutputPath), { recursive: true });
+      await runner({
+        ffmpegPath,
+        concatListPath: absoluteConcatListPath,
+        outputPath: absoluteOutputPath,
+        profile,
+      });
+    }
+  } catch (err) {
+    status = 'failed';
+    failureReason = err instanceof Error ? err.message : String(err);
+  }
+
+  const assemblyLedger: AiComicSeedanceCutAssemblyLedger = {
+    schema_version: 'ai-comic-seedance-cut-assembly-ledger/v1',
+    updated_at: executedAt,
+    status: status === 'assembled'
+      ? 'ready'
+      : status === 'planned'
+        ? 'planned'
+        : status,
+    output_path: outputPath,
+    output_filename: outputFilename,
+    concat_list_path: concatListPath,
+    ffmpeg_command: ffmpegCommand,
+    assembly_mode: profile.assemblyMode,
+    output_profile: profile.outputProfile,
+    assembled_at: status === 'assembled' ? executedAt : detail.seedance_cut_assembly?.assembled_at,
+    failure_reason: failureReason,
+    dry_run: dryRun,
+    source_episode_no: request.episode_no,
+    source_shot_count: shots.length,
+    missing_shot_count: cutPackage.total_missing_shot_count,
+  };
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: executedAt,
+    },
+    seedance_cut_assembly: assemblyLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+
+  return success({
+    schema_version: 'ai-comic-series-seedance-cut-assembly-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    executed_at: executedAt,
+    dry_run: dryRun,
+    status,
+    output_path: outputPath,
+    output_filename: outputFilename,
+    concat_list_path: concatListPath,
+    ffmpeg_command: ffmpegCommand,
+    assembly_mode: profile.assemblyMode,
+    output_profile: profile.outputProfile,
+    source_episode_no: request.episode_no,
+    source_shot_count: shots.length,
+    missing_shot_count: cutPackage.total_missing_shot_count,
+    failure_reason: failureReason,
+    seedance_cut_assembly: assemblyLedger,
+  });
+}
+
+export async function exportAiComicSeriesSeedanceRetryPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceRetryPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const ledger = normalizeSeedanceProductionLedger(detail.seedance_production);
+  const ledgerMap = new Map(ledger.items.map(item => [item.production_id, item]));
+  const exportedAt = new Date().toISOString();
+  const retryEpisodes: AiComicSeedanceRetryPackageEpisode[] = [];
+  const promptKeys = new Set<string>();
+
+  for (const episode of detail.plan.episodes) {
+    const storyId = detail.generated_episode_story_ids[String(episode.episode_no)];
+    if (!storyId) continue;
+    const storyResult = await getStory(storyId);
+    if (!storyResult.ok || !storyResult.data) continue;
+    const promptPackage = buildSeedancePromptPackage(storyResult.data);
+    const shots = promptPackage.shot_units
+      .map(unit => {
+        const productionId = seedanceProductionId(episode.episode_no, unit.shot_id);
+        promptKeys.add(productionId);
+        const item = ledgerMap.get(productionId);
+        if (!shouldRetrySeedanceProductionItem(item)) return null;
+        return {
+          production_id: productionId,
+          episode_no: episode.episode_no,
+          episode_title: episode.title,
+          story_id: storyId,
+          shot_id: unit.shot_id,
+          source_scene_id: unit.source_scene_id,
+          status: item?.status ?? 'not_started',
+          retry_count: item?.retry_count ?? 0,
+          failure_reason: item?.failure_reason,
+          provider_job_id: item?.provider_job_id,
+          last_video_url: item?.video_url,
+          suggested_action: seedanceRetrySuggestedAction(item),
+          prompt: unit,
+        };
+      })
+      .filter((shot): shot is NonNullable<typeof shot> => Boolean(shot));
+    if (shots.length > 0) {
+      retryEpisodes.push({
+        episode_no: episode.episode_no,
+        episode_title: episode.title,
+        story_id: storyId,
+        retry_shot_count: shots.length,
+        shots,
+      });
+    }
+  }
+
+  const missingPromptShots = ledger.items
+    .filter(item => shouldRetrySeedanceProductionItem(item))
+    .filter(item => !promptKeys.has(item.production_id))
+    .map(item => ({
+      episode_no: item.episode_no,
+      episode_title: item.episode_title,
+      shot_id: item.shot_id,
+      reason: '账本中存在待处理镜头，但当前已生成 Seedance 提示词包中找不到对应镜头',
+    }));
+  const basePackage: Omit<AiComicSeriesSeedanceRetryPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-retry-package/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    exported_at: exportedAt,
+    total_retry_shot_count: retryEpisodes.reduce((sum, episode) => sum + episode.retry_shot_count, 0),
+    episodes: retryEpisodes,
+    skipped_ready_shot_count: ledger.items.filter(item => item.status === 'ready' && Boolean(item.video_url)).length,
+    missing_prompt_shots: missingPromptShots,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceRetryMarkdown(basePackage),
+  });
+}
+
+export async function exportAiComicSeriesSeedanceVersionComparisonPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceVersionComparisonPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const ledger = normalizeSeedanceProductionLedger(detail.seedance_production);
+  const exportedAt = new Date().toISOString();
+  const shots: AiComicSeedanceVersionComparisonShot[] = ledger.items
+    .map(item => buildSeedanceVersionComparisonShot(item))
+    .sort((a, b) => {
+      if (a.episode_no !== b.episode_no) return a.episode_no - b.episode_no;
+      return compareSeedanceShotIds(a.shot_id, b.shot_id);
+    });
+  const selectedShotCount = shots.filter(shot => Boolean(shot.selected_version_id)).length;
+  const basePackage: Omit<AiComicSeriesSeedanceVersionComparisonPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-version-comparison/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    exported_at: exportedAt,
+    total_shot_count: shots.length,
+    comparable_shot_count: shots.filter(shot => shot.versions.length > 1).length,
+    selected_shot_count: selectedShotCount,
+    unselected_shot_count: shots.length - selectedShotCount,
+    shots,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceVersionComparisonMarkdown(basePackage),
+  });
+}
+
+export async function exportAiComicSeriesSeedanceAssetReportPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceAssetReportPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const generatedEpisodeStoryIds = detail.generated_episode_story_ids ?? {};
+  const assetLibrary = normalizeSeedanceAssetLibrary(detail.seedance_asset_library);
+  const libraryByAssetId = new Map(assetLibrary.items.map(item => [item.asset_id, item]));
+  const libraryByKey = new Map(assetLibrary.items.map(item => [seedanceAssetLookupKey(item.kind, item.label), item]));
+  const assets = new Map<string, AiComicSeedanceAssetReferenceItem>();
+  const shots: AiComicSeedanceShotAssetBinding[] = [];
+
+  for (const episode of detail.plan.episodes) {
+    const storyId = generatedEpisodeStoryIds[String(episode.episode_no)];
+    if (!storyId) continue;
+    const storyResult = await getStory(storyId);
+    if (!storyResult.ok || !storyResult.data) continue;
+    const seedancePackage = buildSeedancePromptPackage(storyResult.data);
+    const episodeAssets = new Map<string, AiComicSeedanceAssetReferenceItem>();
+    for (const planItem of seedancePackage.asset_reference_plan) {
+      const parsed = parseSeedanceAssetReferencePlanItem(planItem, episode.episode_no, libraryByAssetId, libraryByKey);
+      if (!parsed) continue;
+      episodeAssets.set(seedanceAssetLookupKey(parsed.kind, parsed.label), parsed);
+      upsertSeedanceAssetReference(assets, parsed);
+    }
+    for (const unit of seedancePackage.shot_units) {
+      const requiredAssets = [
+        ...unit.characters.map(character => resolveSeedanceShotAsset({
+          kind: 'character',
+          label: character,
+          episodeNo: episode.episode_no,
+          shotId: unit.shot_id,
+          episodeAssets,
+          assets,
+          libraryByAssetId,
+          libraryByKey,
+        })),
+        resolveSeedanceShotAsset({
+          kind: 'location',
+          label: unit.location,
+          episodeNo: episode.episode_no,
+          shotId: unit.shot_id,
+          episodeAssets,
+          assets,
+          libraryByAssetId,
+          libraryByKey,
+        }),
+      ].filter((asset): asset is AiComicSeedanceAssetReferenceItem => Boolean(asset));
+      const requiredAssetIds = unique(requiredAssets.map(asset => asset.asset_id));
+      const missingReferenceAssetIds = requiredAssets
+        .filter(asset => asset.status !== 'bound')
+        .map(asset => asset.asset_id);
+      shots.push({
+        production_id: seedanceProductionId(episode.episode_no, unit.shot_id),
+        episode_no: episode.episode_no,
+        episode_title: episode.title,
+        story_id: storyId,
+        shot_id: unit.shot_id,
+        source_scene_id: unit.source_scene_id,
+        characters: [...unit.characters],
+        location: unit.location,
+        required_asset_ids: requiredAssetIds,
+        missing_reference_asset_ids: unique(missingReferenceAssetIds),
+        reference_slots: unique(requiredAssets.flatMap(asset => asset.reference_slot ? [asset.reference_slot] : [])),
+        prompt_preview: summarizeText(unit.seedance_prompt, 120),
+      });
+    }
+  }
+
+  const exportedAt = new Date().toISOString();
+  const assetList = [...assets.values()]
+    .map(asset => ({
+      ...asset,
+      source_episode_nos: [...new Set(asset.source_episode_nos)].sort((a, b) => a - b),
+      source_shot_ids: unique(asset.source_shot_ids),
+      required_by_shot_count: unique(asset.source_shot_ids).length,
+    }))
+    .sort((a, b) => {
+      const statusWeight: Record<AiComicSeedanceAssetReferenceItem['status'], number> = {
+        missing_reference_slot: 0,
+        missing_file: 1,
+        bound: 2,
+      };
+      if (a.status !== b.status) return statusWeight[a.status] - statusWeight[b.status];
+      if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+      return a.label.localeCompare(b.label, 'zh-CN');
+    });
+  const basePackage: Omit<AiComicSeriesSeedanceAssetReportPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-asset-report/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    exported_at: exportedAt,
+    total_asset_count: assetList.length,
+    missing_reference_slot_count: assetList.filter(asset => !asset.has_reference_slot).length,
+    upload_required_count: assetList.filter(asset => asset.needs_upload).length,
+    shot_binding_count: shots.length,
+    unbound_shot_count: shots.filter(shot => shot.missing_reference_asset_ids.length > 0).length,
+    assets: assetList,
+    shots: shots.sort((a, b) => {
+      if (a.episode_no !== b.episode_no) return a.episode_no - b.episode_no;
+      return compareSeedanceShotIds(a.shot_id, b.shot_id);
+    }),
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceAssetReportMarkdown(basePackage),
+  });
+}
+
+export async function exportAiComicSeriesSeedanceEditAssetPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceEditAssetPackage>> {
+  const cutPackageRes = await exportAiComicSeriesSeedanceCutPackage(seriesProjectId);
+  if (!cutPackageRes.ok || !cutPackageRes.data) {
+    return fail(
+      normalizeErrorCode(cutPackageRes.error?.code),
+      cutPackageRes.error?.message ?? 'Export Seedance cut package failed',
+    );
+  }
+  const assetReportRes = await exportAiComicSeriesSeedanceAssetReportPackage(seriesProjectId);
+  if (!assetReportRes.ok || !assetReportRes.data) {
+    return fail(
+      normalizeErrorCode(assetReportRes.error?.code),
+      assetReportRes.error?.message ?? 'Export Seedance asset report failed',
+    );
+  }
+
+  const cutPackage = cutPackageRes.data;
+  const assetReport = assetReportRes.data;
+  const assetById = new Map(assetReport.assets.map(asset => [asset.asset_id, asset]));
+  const bindingByProductionId = new Map(assetReport.shots.map(shot => [shot.production_id, shot]));
+  const episodes: AiComicSeedanceEditAssetPackageEpisode[] = cutPackage.episodes.map(episode => {
+    const shots = episode.shots.map(shot => {
+      const binding = bindingByProductionId.get(shot.production_id);
+      const assets = (binding?.required_asset_ids ?? [])
+        .map(assetId => assetById.get(assetId))
+        .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset));
+      return {
+        production_id: shot.production_id,
+        episode_no: shot.episode_no,
+        episode_title: shot.episode_title,
+        story_id: shot.story_id,
+        shot_id: shot.shot_id,
+        source_scene_id: shot.source_scene_id,
+        order_index: shot.order_index,
+        video_url: shot.video_url,
+        provider_job_id: shot.provider_job_id,
+        version_id: shot.version_id,
+        selected_version_id: shot.selected_version_id,
+        quality_score: shot.quality_score,
+        review_note: shot.review_note,
+        reference_slots: binding?.reference_slots ?? [],
+        assets,
+        missing_asset_ids: binding?.missing_reference_asset_ids ?? [],
+        prompt_preview: binding?.prompt_preview,
+      };
+    });
+    return {
+      episode_no: episode.episode_no,
+      episode_title: episode.episode_title,
+      story_id: episode.story_id,
+      ready_shot_count: shots.length,
+      unbound_shot_count: shots.filter(shot => shot.missing_asset_ids.length > 0).length,
+      shots,
+    };
+  });
+  const usedAssetIds = new Set(episodes.flatMap(episode =>
+    episode.shots.flatMap(shot => shot.assets.map(asset => asset.asset_id))
+  ));
+  const usedAssets = assetReport.assets.filter(asset => usedAssetIds.has(asset.asset_id));
+  const missingAssetIds = unique(episodes.flatMap(episode =>
+    episode.shots.flatMap(shot => shot.missing_asset_ids)
+  ));
+  const exportedAt = new Date().toISOString();
+  const basePackage: Omit<AiComicSeriesSeedanceEditAssetPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-edit-asset-package/v1',
+    project: cutPackage.project,
+    series_title: cutPackage.series_title,
+    exported_at: exportedAt,
+    total_ready_shot_count: cutPackage.total_ready_shot_count,
+    total_bound_asset_count: usedAssets.filter(asset => asset.is_bound).length,
+    total_missing_asset_count: missingAssetIds.length,
+    unbound_shot_count: episodes.reduce((sum, episode) => sum + episode.unbound_shot_count, 0),
+    episodes,
+    assets: usedAssets,
+    missing_shots: cutPackage.missing_shots,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceEditAssetMarkdown(basePackage),
+  });
+}
+
+export async function exportAiComicSeriesSeedanceThumbnailPlanPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceThumbnailPlanPackage>> {
+  const cutPackageRes = await exportAiComicSeriesSeedanceCutPackage(seriesProjectId);
+  if (!cutPackageRes.ok || !cutPackageRes.data) {
+    return fail(
+      normalizeErrorCode(cutPackageRes.error?.code),
+      cutPackageRes.error?.message ?? 'Export Seedance cut package failed',
+    );
+  }
+
+  const cutPackage = cutPackageRes.data;
+  const exportedAt = new Date().toISOString();
+  const thumbnailRoot = `thumbnails/${cutPackage.project.series_project_id}`;
+  const captureTimeSec = 1;
+  const episodes: AiComicSeedanceThumbnailPlanEpisode[] = cutPackage.episodes.map(episode => {
+    const shots = episode.shots.map(shot => {
+      const outputFilename = seedanceThumbnailFilename(shot.episode_no, shot.shot_id);
+      const outputPath = `${thumbnailRoot}/${outputFilename}`;
+      return {
+        production_id: shot.production_id,
+        episode_no: shot.episode_no,
+        episode_title: shot.episode_title,
+        story_id: shot.story_id,
+        shot_id: shot.shot_id,
+        source_scene_id: shot.source_scene_id,
+        order_index: shot.order_index,
+        video_url: shot.video_url,
+        version_id: shot.version_id,
+        selected_version_id: shot.selected_version_id,
+        capture_time_sec: captureTimeSec,
+        output_filename: outputFilename,
+        output_path: outputPath,
+        ffmpeg_command: `ffmpeg -y -ss ${captureTimeSec} -i ${shellDoubleQuote(shot.video_url)} -frames:v 1 -q:v 2 ${shellDoubleQuote(outputPath)}`,
+        status: 'pending_capture' as const,
+      };
+    });
+    return {
+      episode_no: episode.episode_no,
+      episode_title: episode.episode_title,
+      story_id: episode.story_id,
+      ready_shot_count: shots.length,
+      shots,
+    };
+  });
+  const basePackage: Omit<AiComicSeriesSeedanceThumbnailPlanPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-thumbnail-plan/v1',
+    project: cutPackage.project,
+    series_title: cutPackage.series_title,
+    exported_at: exportedAt,
+    thumbnail_root: thumbnailRoot,
+    total_ready_shot_count: cutPackage.total_ready_shot_count,
+    total_missing_shot_count: cutPackage.total_missing_shot_count,
+    episodes,
+    missing_shots: cutPackage.missing_shots,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceThumbnailPlanMarkdown(basePackage),
+  });
+}
+
+export async function exportAiComicSeriesSeedanceFinishingPlanPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceFinishingPlanPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const cutPackageRes = await exportAiComicSeriesSeedanceCutPackage(seriesProjectId);
+  if (!cutPackageRes.ok || !cutPackageRes.data) {
+    return fail(
+      normalizeErrorCode(cutPackageRes.error?.code),
+      cutPackageRes.error?.message ?? 'Export Seedance cut package failed',
+    );
+  }
+  const thumbnailPlanRes = await exportAiComicSeriesSeedanceThumbnailPlanPackage(seriesProjectId);
+  if (!thumbnailPlanRes.ok || !thumbnailPlanRes.data) {
+    return fail(
+      normalizeErrorCode(thumbnailPlanRes.error?.code),
+      thumbnailPlanRes.error?.message ?? 'Export Seedance thumbnail plan failed',
+    );
+  }
+
+  const cutPackage = cutPackageRes.data;
+  const thumbnailByProductionId = new Map(
+    thumbnailPlanRes.data.episodes.flatMap(episode => episode.shots).map(shot => [shot.production_id, shot]),
+  );
+  const promptByProductionId = await buildSeedancePromptLookup(detail);
+  const shots: AiComicSeedanceFinishingShot[] = [];
+  const subtitleCues: AiComicSeedanceFinishingSubtitleCue[] = [];
+  const audioCues: AiComicSeedanceFinishingAudioCue[] = [];
+  let cursorSec = 0;
+
+  for (const episode of cutPackage.episodes) {
+    for (const shot of episode.shots) {
+      const prompt = promptByProductionId.get(shot.production_id);
+      const durationSec = Math.max(1, Math.round(prompt?.duration_sec ?? 6));
+      const startSec = cursorSec;
+      const endSec = cursorSec + durationSec;
+      const subtitleCueId = `sub-e${shot.episode_no}-${slugifyConstraintKey(shot.shot_id)}`;
+      const audioCueId = `aud-e${shot.episode_no}-${slugifyConstraintKey(shot.shot_id)}`;
+      const subtitleText = seedanceFinishingSubtitleText(prompt?.script_text, shot);
+      const audioText = seedanceFinishingAudioText(prompt?.seedance_prompt, prompt?.camera_suggestion, shot);
+
+      subtitleCues.push({
+        cue_id: subtitleCueId,
+        episode_no: shot.episode_no,
+        shot_id: shot.shot_id,
+        start_sec: startSec,
+        end_sec: endSec,
+        text: subtitleText,
+        source: prompt?.script_text ? 'script_text' : 'manual_placeholder',
+      });
+      audioCues.push({
+        cue_id: audioCueId,
+        episode_no: shot.episode_no,
+        shot_id: shot.shot_id,
+        start_sec: startSec,
+        end_sec: endSec,
+        kind: seedanceAudioKindForPrompt(prompt?.seedance_prompt),
+        text: audioText,
+        priority: 'should',
+      });
+      shots.push({
+        production_id: shot.production_id,
+        episode_no: shot.episode_no,
+        episode_title: shot.episode_title,
+        story_id: shot.story_id,
+        shot_id: shot.shot_id,
+        order_index: shots.length + 1,
+        start_sec: startSec,
+        end_sec: endSec,
+        duration_sec: durationSec,
+        video_url: shot.video_url,
+        selected_version_id: shot.selected_version_id ?? shot.version_id,
+        thumbnail_path: thumbnailByProductionId.get(shot.production_id)?.output_path,
+        subtitle_cue_ids: [subtitleCueId],
+        audio_cue_ids: [audioCueId],
+      });
+      cursorSec = endSec;
+    }
+  }
+
+  const titleCards = buildSeedanceFinishingTitleCards(detail, cutPackage.episodes.map(episode => episode.episode_no));
+  const openingDuration = titleCards
+    .filter(card => card.placement === 'series_opening' || card.placement === 'episode_opening')
+    .reduce((sum, card) => sum + card.duration_sec, 0);
+  const endingDuration = titleCards
+    .filter(card => card.placement === 'series_ending' || card.placement === 'episode_ending')
+    .reduce((sum, card) => sum + card.duration_sec, 0);
+  if (shots.length > 0) {
+    audioCues.unshift({
+      cue_id: 'aud-series-bed',
+      episode_no: shots[0].episode_no,
+      start_sec: 0,
+      end_sec: cursorSec,
+      kind: 'music',
+      text: `低侵入配乐底，服务《${detail.plan.series_title}》的${detail.plan.pacing_profile}节奏；对白或旁白出现时自动降噪降音量。`,
+      priority: 'should',
+    });
+  }
+
+  const exportedAt = new Date().toISOString();
+  const basePackage: Omit<AiComicSeriesSeedanceFinishingPlanPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-finishing-plan/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    exported_at: exportedAt,
+    source_cut_output_path: detail.seedance_cut_assembly?.output_path,
+    source_cut_status: detail.seedance_cut_assembly?.status,
+    total_ready_shot_count: cutPackage.total_ready_shot_count,
+    total_missing_shot_count: cutPackage.total_missing_shot_count,
+    total_duration_sec: cursorSec + openingDuration + endingDuration,
+    subtitle_format: 'srt',
+    recommended_output_profile: 'mp4_h264_1080p',
+    shots,
+    subtitle_cues: subtitleCues,
+    audio_cues: audioCues,
+    title_cards: titleCards,
+    quality_checklist: buildSeedanceFinishingQualityChecklist(cutPackage.total_missing_shot_count),
+    missing_shots: cutPackage.missing_shots,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceFinishingPlanMarkdown(basePackage),
+  });
+}
+
+export async function captureAiComicSeriesSeedanceThumbnails(
+  seriesProjectId: string,
+  request: AiComicSeedanceThumbnailCaptureRequest = {},
+  options: { runner?: FfmpegThumbnailRunner } = {},
+): Promise<ApiResponse<AiComicSeriesSeedanceThumbnailCaptureResult>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const planRes = await exportAiComicSeriesSeedanceThumbnailPlanPackage(seriesProjectId);
+  if (!planRes.ok || !planRes.data) {
+    return fail(
+      normalizeErrorCode(planRes.error?.code),
+      planRes.error?.message ?? 'Export Seedance thumbnail plan failed',
+    );
+  }
+
+  const dryRun = request.dry_run ?? false;
+  const overwrite = request.overwrite ?? false;
+  const executedAt = new Date().toISOString();
+  const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
+  const runner = options.runner ?? runFfmpegThumbnailCapture;
+  const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const plannedShots = planRes.data.episodes
+    .flatMap(episode => episode.shots)
+    .filter(shot => request.episode_no === undefined || shot.episode_no === request.episode_no)
+    .filter(shot => request.shot_id === undefined || shot.shot_id === request.shot_id)
+    .slice(0, request.limit);
+
+  const ledger = normalizeSeedanceProductionLedger(detail.seedance_production);
+  const ledgerMap = new Map(ledger.items.map(item => [item.production_id, item]));
+  const resultShots: AiComicSeedanceThumbnailCaptureResultShot[] = [];
+
+  for (const shot of plannedShots) {
+    const outputPath = resolveSeedanceThumbnailOutputPath(projectDir, shot.output_path);
+    const existingItem = ledgerMap.get(shot.production_id);
+    const existingThumbnail = existingItem?.thumbnail;
+    const alreadyReady = existingThumbnail?.status === 'ready'
+      && existingThumbnail.output_path === shot.output_path
+      && !overwrite
+      && await pathExists(outputPath);
+    let status: AiComicSeedanceThumbnailCaptureResultShot['status'] = dryRun ? 'planned' : 'captured';
+    let failureReason: string | undefined;
+    let skippedReason: string | undefined;
+
+    try {
+      if (alreadyReady) {
+        status = 'skipped';
+        skippedReason = '缩略图已存在，未启用覆盖';
+      } else if (!dryRun) {
+        await mkdir(dirname(outputPath), { recursive: true });
+        await runner({
+          ffmpegPath,
+          videoUrl: shot.video_url,
+          outputPath,
+          captureTimeSec: shot.capture_time_sec,
+        });
+      }
+    } catch (err) {
+      status = 'failed';
+      failureReason = err instanceof Error ? err.message : String(err);
+    }
+
+    const thumbnailStatus: AiComicSeedanceThumbnailStatus = status === 'captured'
+      ? 'ready'
+      : status === 'planned'
+        ? 'planned'
+        : status;
+    const thumbnail = {
+      status: thumbnailStatus,
+      output_path: shot.output_path,
+      output_filename: shot.output_filename,
+      capture_time_sec: shot.capture_time_sec,
+      version_id: shot.version_id,
+      captured_at: status === 'captured' ? executedAt : existingThumbnail?.captured_at,
+      updated_at: executedAt,
+      failure_reason: failureReason,
+      ffmpeg_command: buildFfmpegThumbnailCommand(ffmpegPath, shot.capture_time_sec, shot.video_url, shot.output_path),
+    };
+    if (existingItem) {
+      ledgerMap.set(shot.production_id, {
+        ...existingItem,
+        updated_at: executedAt,
+        notes: unique([
+          ...existingItem.notes,
+          seedanceThumbnailLedgerNote(thumbnailStatus, executedAt, failureReason ?? skippedReason),
+        ]).slice(-12),
+        thumbnail,
+      });
+    }
+
+    resultShots.push({
+      production_id: shot.production_id,
+      episode_no: shot.episode_no,
+      episode_title: shot.episode_title,
+      story_id: shot.story_id,
+      shot_id: shot.shot_id,
+      video_url: shot.video_url,
+      version_id: shot.version_id,
+      selected_version_id: shot.selected_version_id,
+      capture_time_sec: shot.capture_time_sec,
+      output_filename: shot.output_filename,
+      output_path: shot.output_path,
+      ffmpeg_command: thumbnail.ffmpeg_command,
+      status,
+      failure_reason: failureReason,
+      skipped_reason: skippedReason,
+    });
+  }
+
+  const nextLedger: AiComicSeedanceProductionLedger = {
+    schema_version: 'ai-comic-seedance-production-ledger/v1',
+    updated_at: executedAt,
+    items: [...ledgerMap.values()].sort((a, b) =>
+      a.episode_no - b.episode_no || compareSeedanceShotIds(a.shot_id, b.shot_id)
+    ),
+  };
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: executedAt,
+    },
+    seedance_production: nextLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+
+  return success({
+    schema_version: 'ai-comic-series-seedance-thumbnail-capture-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    executed_at: executedAt,
+    dry_run: dryRun,
+    thumbnail_root: planRes.data.thumbnail_root,
+    total_plan_shot_count: plannedShots.length,
+    captured_count: resultShots.filter(shot => shot.status === 'captured').length,
+    planned_count: resultShots.filter(shot => shot.status === 'planned').length,
+    failed_count: resultShots.filter(shot => shot.status === 'failed').length,
+    skipped_count: resultShots.filter(shot => shot.status === 'skipped').length,
+    shots: resultShots,
+    seedance_production: nextLedger,
   });
 }
 
@@ -1262,9 +3352,13 @@ function buildAiComicSeriesQualityAudit(params: {
     generatedEpisodeNumbers,
     ledger: params.ledger,
   });
+  const memoryConflictReport = buildAiComicMemoryConflictReport({
+    ledger: params.ledger,
+  });
   const completedSeriesThreadsResolved = threadClosureReport.overdue_thread_count === 0
     && threadClosureReport.orphaned_thread_count === 0
     && threadClosureReport.duplicate_thread_count === 0
+    && memoryConflictReport.blocking_count === 0
     && (!allEpisodesGenerated || threadClosureReport.items.every(item =>
       item.status === 'paid_off'
       || item.status === 'orphaned'
@@ -1296,6 +3390,12 @@ function buildAiComicSeriesQualityAudit(params: {
   if (threadClosureReport.duplicate_thread_count > 0) {
     issues.push(`${threadClosureReport.duplicate_thread_count} 组伏笔重复出现但缺少推进变化`);
   }
+  if (memoryConflictReport.blocking_count > 0) {
+    issues.push(`${memoryConflictReport.blocking_count} 个记忆冲突会阻断连续性，需要先修复`);
+  }
+  if (memoryConflictReport.warning_count > 0) {
+    issues.push(`${memoryConflictReport.warning_count} 个记忆冲突需要复核`);
+  }
   for (const report of episodeReports) {
     if (report.status === 'needs_attention' || report.status === 'unknown') {
       issues.push(`第${report.episode_no}集：${report.issues[0] ?? '需要复核'}`);
@@ -1311,6 +3411,9 @@ function buildAiComicSeriesQualityAudit(params: {
     - threadClosureReport.overdue_thread_count * 6
     - threadClosureReport.orphaned_thread_count * 4
     - threadClosureReport.duplicate_thread_count * 3
+    - memoryConflictReport.blocking_count * 8
+    - memoryConflictReport.warning_count * 4
+    - memoryConflictReport.watch_count * 2
   ));
 
   return {
@@ -1322,6 +3425,7 @@ function buildAiComicSeriesQualityAudit(params: {
     episodes_need_attention: unique([
       ...episodesNeedAttention,
       ...threadClosureReport.episodes_need_attention,
+      ...memoryConflictReport.episodes_need_attention,
     ]).sort((a, b) => a - b),
     issues: unique(issues),
     checks: {
@@ -1333,6 +3437,7 @@ function buildAiComicSeriesQualityAudit(params: {
     },
     episode_reports: episodeReports,
     thread_closure_report: threadClosureReport,
+    memory_conflict_report: memoryConflictReport,
   };
 }
 
@@ -1425,6 +3530,181 @@ function buildAiComicThreadClosureReport(params: {
     episodes_need_attention: episodesNeedAttention,
     items: allItems,
   };
+}
+
+function buildAiComicMemoryConflictReport(params: {
+  ledger: AiComicContinuityLedger;
+}): AiComicMemoryConflictReport {
+  const memory = params.ledger.series_memory;
+  const items: AiComicMemoryConflictItem[] = [];
+
+  for (const conflict of memory?.conflicts ?? []) {
+    items.push(makeMemoryConflictItem({
+      category: inferMemoryConflictCategory(conflict),
+      severity: /知识边界|确证|史实|待核/.test(conflict) ? 'blocking' : 'warning',
+      title: summarizeText(conflict, 28),
+      description: conflict,
+      relatedEpisodeNos: extractEpisodeNumbers(conflict),
+      relatedMemoryIds: [],
+      evidence: [conflict],
+      repairSuggestions: [suggestMemoryConflictRepair(conflict)],
+    }));
+  }
+
+  for (const item of memory ? allSeriesMemoryItems(memory) : []) {
+    const text = [item.status, ...item.continuity_notes, item.knowledge_boundary ?? ''].join('；');
+    const relatedEpisodeNos = item.related_episode_nos;
+    if (item.category === 'character' && /死亡|牺牲|失踪|离开|不能行动/.test(text) && /出现|行动|带领|再次|恢复/.test(text)) {
+      items.push(makeMemoryConflictItem({
+        category: 'character_state',
+        severity: 'blocking',
+        title: `${item.label} 状态可能倒退`,
+        description: `${item.label} 同时包含“不可行动/离场”和“再次行动/恢复”语义，需要确认是否有明确转折。`,
+        relatedEpisodeNos,
+        relatedMemoryIds: [item.memory_id],
+        evidence: [summarizeText(text, 96)],
+        repairSuggestions: [`补写${item.label}恢复/回归的转折，或把后续出场改为回忆、替身、传闻等明确形式。`],
+      }));
+    }
+    if (item.category === 'location' && /损毁|焚毁|封闭|废弃|坍塌|不可进入/.test(text) && /使用|重返|进入|开门|恢复|重新/.test(text)) {
+      items.push(makeMemoryConflictItem({
+        category: 'location_state',
+        severity: 'warning',
+        title: `${item.label} 空间状态不一致`,
+        description: `${item.label} 同时出现封闭/损毁与继续使用语义，需要解释修复、替代空间或时间跳转。`,
+        relatedEpisodeNos,
+        relatedMemoryIds: [item.memory_id],
+        evidence: [summarizeText(text, 96)],
+        repairSuggestions: [`在相关集数中说明${item.label}是否已修复、是否为另一处同名空间，或调整场景地点。`],
+      }));
+    }
+    if (item.category === 'relationship' && /决裂|敌对|疏离|背叛|不信任/.test(text) && /和解|信任|并肩|亲近|托付/.test(text)) {
+      items.push(makeMemoryConflictItem({
+        category: 'relationship_state',
+        severity: 'warning',
+        title: `${item.label} 关系状态反复`,
+        description: `${item.label} 同时包含破裂与和解/信任语义，需要明确中间转折或阶段。`,
+        relatedEpisodeNos,
+        relatedMemoryIds: [item.memory_id],
+        evidence: [summarizeText(text, 96)],
+        repairSuggestions: [`给${item.label}增加关系转折场景，或把当前关系标注为“表面合作/暂时和解”。`],
+      }));
+    }
+    if (item.category === 'knowledge_boundary' && /待核|未核|创作补足|传说|推测/.test(text) && /确证|史实|真实|一定|明确/.test(text)) {
+      items.push(makeMemoryConflictItem({
+        category: 'knowledge_boundary',
+        severity: 'blocking',
+        title: `${item.label} 知识边界混写`,
+        description: `${item.label} 同时出现待核/创作补足与确证史实表述，需要拆分事实与演绎。`,
+        relatedEpisodeNos,
+        relatedMemoryIds: [item.memory_id],
+        evidence: [summarizeText(text, 96)],
+        repairSuggestions: [`把${item.label}拆成“可确证事实”和“戏剧化创作”两句，并在提示词中禁止把后者写成史实。`],
+      }));
+    }
+  }
+
+  for (const conflict of params.ledger.production_constraints?.conflicts ?? []) {
+    items.push(makeMemoryConflictItem({
+      category: 'production_constraint',
+      severity: 'watch',
+      title: summarizeText(conflict, 28),
+      description: conflict,
+      relatedEpisodeNos: extractEpisodeNumbers(conflict),
+      relatedMemoryIds: [],
+      evidence: [conflict],
+      repairSuggestions: ['复核对应镜头的运镜、负向约束和连续性说明，避免视频提示词自相矛盾。'],
+    }));
+  }
+
+  const merged = mergeMemoryConflictItems(items);
+  return {
+    schema_version: 'ai-comic-memory-conflict-report/v1',
+    total_conflict_count: merged.length,
+    blocking_count: merged.filter(item => item.severity === 'blocking').length,
+    warning_count: merged.filter(item => item.severity === 'warning').length,
+    watch_count: merged.filter(item => item.severity === 'watch').length,
+    episodes_need_attention: uniqueNumbers(merged.flatMap(item => item.related_episode_nos)),
+    items: merged,
+  };
+}
+
+function makeMemoryConflictItem(params: {
+  category: AiComicMemoryConflictCategory;
+  severity: AiComicMemoryConflictItem['severity'];
+  title: string;
+  description: string;
+  relatedEpisodeNos: number[];
+  relatedMemoryIds: string[];
+  evidence: string[];
+  repairSuggestions: string[];
+}): AiComicMemoryConflictItem {
+  const stableKey = [
+    params.category,
+    params.title,
+    params.relatedEpisodeNos.join('-'),
+    params.relatedMemoryIds.join('-'),
+  ].filter(Boolean).join(':');
+  return {
+    conflict_id: `memory-conflict-${slugifyConstraintKey(stableKey)}`,
+    category: params.category,
+    severity: params.severity,
+    title: params.title,
+    description: params.description,
+    related_episode_nos: uniqueNumbers(params.relatedEpisodeNos),
+    related_memory_ids: unique(params.relatedMemoryIds),
+    evidence: unique(params.evidence.filter(Boolean)).slice(0, 5),
+    repair_suggestions: unique(params.repairSuggestions.filter(Boolean)).slice(0, 5),
+  };
+}
+
+function mergeMemoryConflictItems(items: AiComicMemoryConflictItem[]): AiComicMemoryConflictItem[] {
+  const severityRank: Record<AiComicMemoryConflictItem['severity'], number> = {
+    watch: 1,
+    warning: 2,
+    blocking: 3,
+  };
+  const map = new Map<string, AiComicMemoryConflictItem>();
+  for (const item of items) {
+    const existing = map.get(item.conflict_id);
+    if (!existing) {
+      map.set(item.conflict_id, item);
+      continue;
+    }
+    map.set(item.conflict_id, {
+      ...existing,
+      severity: severityRank[item.severity] > severityRank[existing.severity] ? item.severity : existing.severity,
+      related_episode_nos: uniqueNumbers([...existing.related_episode_nos, ...item.related_episode_nos]),
+      related_memory_ids: unique([...existing.related_memory_ids, ...item.related_memory_ids]),
+      evidence: unique([...existing.evidence, ...item.evidence]).slice(0, 5),
+      repair_suggestions: unique([...existing.repair_suggestions, ...item.repair_suggestions]).slice(0, 5),
+    });
+  }
+  return [...map.values()].sort((a, b) =>
+    severityRank[b.severity] - severityRank[a.severity]
+    || (a.related_episode_nos[0] ?? 999) - (b.related_episode_nos[0] ?? 999)
+    || a.title.localeCompare(b.title, 'zh-Hans-CN')
+  );
+}
+
+function inferMemoryConflictCategory(text: string): AiComicMemoryConflictCategory {
+  if (/知识|史实|确证|待核|文化/.test(text)) return 'knowledge_boundary';
+  if (/地点|场景|空间|损毁|遗失/.test(text)) return 'location_state';
+  if (/关系|对白|信任|决裂/.test(text)) return 'relationship_state';
+  if (/镜头|运镜|禁用|约束/.test(text)) return 'production_constraint';
+  return 'character_state';
+}
+
+function suggestMemoryConflictRepair(text: string): string {
+  if (/知识|史实|确证|待核|文化/.test(text)) return '拆分可确证事实与戏剧化补足，避免把待核内容写成史实。';
+  if (/损毁|遗失|地点|场景/.test(text)) return '说明修复、替代、找回或时间跳转；否则调整后续场景/道具使用。';
+  if (/关系|信任|决裂/.test(text)) return '补充关系转折，或明确当前只是暂时合作、伪装和解。';
+  return '回到相关分集卡片和账本，明确状态变化的因果转折。';
+}
+
+function extractEpisodeNumbers(text: string): number[] {
+  const matches = [...text.matchAll(/第(\d{1,3})集/g)].map(match => Number(match[1]));
+  return uniqueNumbers(matches.filter(value => value >= 1 && value <= 120));
 }
 
 function episodeMentionsThread(
@@ -1639,6 +3919,7 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
     ...detail,
     continuity_ledger: continuityLedger,
     memory_recall_preferences: normalizeMemoryRecallPreferences(detail.memory_recall_preferences),
+    seedance_production: normalizeSeedanceProductionLedger(detail.seedance_production),
     series_quality_audit: detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
       plan: detail.plan,
       generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
@@ -1690,6 +3971,8 @@ function buildInitialContinuityLedger(plan: AiComicSeriesPlan): AiComicContinuit
     knowledge_used: [],
     episode_records: [],
     series_memory: buildInitialSeriesMemory(plan),
+    production_constraints: buildInitialProductionConstraints(plan),
+    episodic_memory: buildInitialEpisodicMemoryIndex(),
   };
 }
 
@@ -1709,6 +3992,8 @@ function normalizeContinuityLedger(
       memory_events: record.memory_events ?? [],
     })),
     series_memory: base.series_memory ?? buildInitialSeriesMemory(plan),
+    production_constraints: normalizeProductionConstraints(base.production_constraints, plan),
+    episodic_memory: base.episodic_memory ?? buildInitialEpisodicMemoryIndex(),
   };
 }
 
@@ -1751,6 +4036,779 @@ function cloneMemoryRecallPreferences(
   };
 }
 
+function normalizeSeedanceProductionLedger(
+  ledger?: AiComicSeedanceProductionLedger,
+): AiComicSeedanceProductionLedger {
+  return {
+    schema_version: 'ai-comic-seedance-production-ledger/v1',
+    updated_at: ledger?.updated_at,
+    items: (ledger?.items ?? []).map(item => ({
+      ...item,
+      retry_count: item.retry_count ?? 0,
+      notes: [...(item.notes ?? [])],
+      versions: normalizeSeedanceVideoVersions(item),
+      selected_version_id: item.selected_version_id,
+    })),
+  };
+}
+
+function cloneSeedanceProductionLedger(
+  ledger?: AiComicSeedanceProductionLedger,
+): AiComicSeedanceProductionLedger {
+  const normalized = normalizeSeedanceProductionLedger(ledger);
+  return {
+    ...normalized,
+    items: normalized.items.map(item => ({
+      ...item,
+      notes: [...item.notes],
+    })),
+  };
+}
+
+function normalizeSeedanceAssetLibrary(
+  library?: AiComicSeedanceAssetLibrary,
+): AiComicSeedanceAssetLibrary {
+  return {
+    schema_version: 'ai-comic-seedance-asset-library/v1',
+    updated_at: library?.updated_at,
+    items: (library?.items ?? [])
+      .filter(item => item.label?.trim())
+      .map(item => ({
+        asset_id: item.asset_id || seedanceAssetId(item.kind, item.label),
+        kind: item.kind,
+        label: item.label.trim(),
+        reference_slot: item.reference_slot,
+        file_url: item.file_url,
+        file_id: item.file_id,
+        description: item.description,
+        updated_at: item.updated_at ?? library?.updated_at ?? new Date(0).toISOString(),
+      })),
+  };
+}
+
+function cloneSeedanceAssetLibrary(
+  library?: AiComicSeedanceAssetLibrary,
+): AiComicSeedanceAssetLibrary {
+  const normalized = normalizeSeedanceAssetLibrary(library);
+  return {
+    ...normalized,
+    items: normalized.items.map(item => ({ ...item })),
+  };
+}
+
+function normalizeSeedanceCutAssemblyLedger(
+  ledger?: AiComicSeedanceCutAssemblyLedger,
+): AiComicSeedanceCutAssemblyLedger | undefined {
+  if (!ledger) return undefined;
+  return {
+    schema_version: 'ai-comic-seedance-cut-assembly-ledger/v1',
+    updated_at: ledger.updated_at,
+    status: ledger.status ?? 'not_started',
+    output_path: ledger.output_path,
+    output_filename: ledger.output_filename,
+    concat_list_path: ledger.concat_list_path,
+    ffmpeg_command: ledger.ffmpeg_command,
+    assembly_mode: ledger.assembly_mode,
+    output_profile: ledger.output_profile,
+    assembled_at: ledger.assembled_at,
+    failure_reason: ledger.failure_reason,
+    dry_run: ledger.dry_run,
+    source_episode_no: ledger.source_episode_no,
+    source_shot_count: ledger.source_shot_count ?? 0,
+    missing_shot_count: ledger.missing_shot_count ?? 0,
+  };
+}
+
+function cloneSeedanceCutAssemblyLedger(
+  ledger?: AiComicSeedanceCutAssemblyLedger,
+): AiComicSeedanceCutAssemblyLedger | undefined {
+  const normalized = normalizeSeedanceCutAssemblyLedger(ledger);
+  return normalized ? { ...normalized } : undefined;
+}
+
+function syncSeedanceProductionLedgerWithExport(params: {
+  ledger?: AiComicSeedanceProductionLedger;
+  episodes: AiComicSeriesSeedanceEpisodePackage[];
+  exportedAt: string;
+}): AiComicSeedanceProductionLedger {
+  const map = new Map(normalizeSeedanceProductionLedger(params.ledger).items.map(item => [item.production_id, item]));
+  for (const episode of params.episodes) {
+    for (const unit of episode.package.shot_units) {
+      const productionId = seedanceProductionId(episode.episode_no, unit.shot_id);
+      const existing = map.get(productionId);
+      const status = existing && existing.status !== 'not_started'
+        ? existing.status
+        : 'prompt_exported';
+      map.set(productionId, {
+        production_id: productionId,
+        episode_no: episode.episode_no,
+        episode_title: episode.episode_title,
+        story_id: episode.story_id,
+        shot_id: unit.shot_id,
+        source_scene_id: unit.source_scene_id,
+        status,
+        prompt_exported_at: existing?.prompt_exported_at ?? params.exportedAt,
+        submitted_at: existing?.submitted_at,
+        completed_at: existing?.completed_at,
+        updated_at: existing?.updated_at ?? params.exportedAt,
+        provider_job_id: existing?.provider_job_id,
+        video_url: existing?.video_url,
+      failure_reason: existing?.failure_reason,
+      retry_count: existing?.retry_count ?? 0,
+      notes: unique([
+        ...(existing?.notes ?? []),
+        `提示词已导出：${params.exportedAt}`,
+      ]).slice(-12),
+      versions: normalizeSeedanceVideoVersions(existing),
+      selected_version_id: existing?.selected_version_id,
+    });
+    }
+  }
+  return {
+    schema_version: 'ai-comic-seedance-production-ledger/v1',
+    updated_at: params.exportedAt,
+    items: [...map.values()].sort((a, b) =>
+      a.episode_no - b.episode_no || a.shot_id.localeCompare(b.shot_id, 'zh-Hans-CN')
+    ),
+  };
+}
+
+function updateSeedanceProductionLedger(params: {
+  ledger?: AiComicSeedanceProductionLedger;
+  episodeTitle: string;
+  storyId?: string;
+  request: AiComicSeedanceProductionStatusUpdateRequest;
+  updatedAt: string;
+}): AiComicSeedanceProductionLedger {
+  const ledger = normalizeSeedanceProductionLedger(params.ledger);
+  const productionId = seedanceProductionId(params.request.episode_no, params.request.shot_id);
+  const existing = ledger.items.find(item => item.production_id === productionId);
+  const versions = appendSeedanceVideoVersion({
+    existing,
+    request: params.request,
+    updatedAt: params.updatedAt,
+  });
+  const next: AiComicSeedanceShotProductionItem = {
+    production_id: productionId,
+    episode_no: params.request.episode_no,
+    episode_title: existing?.episode_title ?? params.episodeTitle,
+    story_id: existing?.story_id ?? params.storyId,
+    shot_id: params.request.shot_id,
+    source_scene_id: existing?.source_scene_id,
+    status: params.request.status,
+    prompt_exported_at: existing?.prompt_exported_at,
+    submitted_at: params.request.status === 'submitted' || params.request.status === 'processing'
+      ? existing?.submitted_at ?? params.updatedAt
+      : existing?.submitted_at,
+    completed_at: params.request.status === 'ready' || params.request.status === 'failed'
+      ? params.updatedAt
+      : existing?.completed_at,
+    updated_at: params.updatedAt,
+    provider_job_id: params.request.provider_job_id ?? existing?.provider_job_id,
+    video_url: params.request.video_url ?? existing?.video_url,
+    failure_reason: params.request.failure_reason ?? (params.request.status === 'failed' ? existing?.failure_reason : undefined),
+    retry_count: (existing?.retry_count ?? 0) + (params.request.increment_retry ? 1 : 0),
+    notes: unique([
+      ...(existing?.notes ?? []),
+      params.request.note ?? '',
+    ].filter(Boolean)).slice(-12),
+    versions,
+    selected_version_id: versions.some(version => version.version_id === existing?.selected_version_id)
+      ? existing?.selected_version_id
+      : undefined,
+  };
+  const items = [
+    ...ledger.items.filter(item => item.production_id !== productionId),
+    next,
+  ].sort((a, b) => a.episode_no - b.episode_no || a.shot_id.localeCompare(b.shot_id, 'zh-Hans-CN'));
+  return {
+    schema_version: 'ai-comic-seedance-production-ledger/v1',
+    updated_at: params.updatedAt,
+    items,
+  };
+}
+
+function normalizeSeedanceVideoVersions(
+  item?: Partial<AiComicSeedanceShotProductionItem>,
+): AiComicSeedanceVideoVersion[] {
+  return (item?.versions ?? []).map(version => ({
+    ...version,
+    version_id: version.version_id,
+    status: version.status,
+    created_at: version.created_at,
+  }));
+}
+
+function appendSeedanceVideoVersion(params: {
+  existing?: AiComicSeedanceShotProductionItem;
+  request: AiComicSeedanceProductionStatusUpdateRequest;
+  updatedAt: string;
+}): AiComicSeedanceVideoVersion[] {
+  const versions = normalizeSeedanceVideoVersions(params.existing);
+  const shouldAppend = Boolean(
+    params.request.video_url
+    || params.request.provider_job_id
+    || params.request.failure_reason
+    || params.request.status === 'ready'
+    || params.request.status === 'failed'
+  );
+  if (!shouldAppend) return versions;
+  const nextVersion: AiComicSeedanceVideoVersion = {
+    version_id: `${seedanceProductionId(params.request.episode_no, params.request.shot_id)}-v${versions.length + 1}`,
+    status: params.request.status,
+    created_at: params.updatedAt,
+    provider_job_id: params.request.provider_job_id ?? params.existing?.provider_job_id,
+    video_url: params.request.video_url ?? params.existing?.video_url,
+    failure_reason: params.request.failure_reason,
+    note: params.request.note,
+    quality_score: params.request.quality_score,
+    review_note: params.request.review_note,
+  };
+  const last = versions[versions.length - 1];
+  if (
+    last
+    && last.status === nextVersion.status
+    && last.provider_job_id === nextVersion.provider_job_id
+    && last.video_url === nextVersion.video_url
+    && last.failure_reason === nextVersion.failure_reason
+  ) {
+    return versions;
+  }
+  return [...versions, nextVersion].slice(-12);
+}
+
+function seedanceProductionId(episodeNo: number, shotId: string): string {
+  return `seedance-e${episodeNo}-${slugifyConstraintKey(shotId)}`;
+}
+
+function seedanceThumbnailFilename(episodeNo: number, shotId: string): string {
+  return `e${String(episodeNo).padStart(2, '0')}-${slugifyConstraintKey(shotId)}.jpg`;
+}
+
+function seedanceCutAssemblyFilename(seriesProjectId: string, episodeNo?: number): string {
+  const scope = episodeNo ? `e${String(episodeNo).padStart(2, '0')}` : 'full-series';
+  return `${seriesProjectId}-${scope}-seedance-cut.mp4`;
+}
+
+function buildFfmpegThumbnailCommand(
+  ffmpegPath: string,
+  captureTimeSec: number,
+  videoUrl: string,
+  outputPath: string,
+): string {
+  const executable = ffmpegPath === 'ffmpeg' ? 'ffmpeg' : shellDoubleQuote(ffmpegPath);
+  return `${executable} -y -ss ${captureTimeSec} -i ${shellDoubleQuote(videoUrl)} -frames:v 1 -q:v 2 ${shellDoubleQuote(outputPath)}`;
+}
+
+function buildFfmpegCutAssemblyCommand(
+  ffmpegPath: string,
+  concatListPath: string,
+  outputPath: string,
+  profile: SeedanceCutAssemblyProfile,
+): string {
+  const executable = ffmpegPath === 'ffmpeg' ? 'ffmpeg' : shellDoubleQuote(ffmpegPath);
+  return [
+    executable,
+    ...ffmpegCutAssemblyArgs(concatListPath, outputPath, profile).map(shellDoubleQuoteIfNeeded),
+  ].join(' ');
+}
+
+function resolveSeedanceCutAssemblyProfile(
+  request: AiComicSeedanceCutAssemblyRequest,
+): SeedanceCutAssemblyProfile {
+  const requestedProfile = request.output_profile;
+  const assemblyMode = request.assembly_mode ?? (requestedProfile === 'mp4_h264_1080p' || requestedProfile === 'mp4_h264_720p'
+    ? 'transcode'
+    : 'copy');
+  const outputProfile = assemblyMode === 'copy'
+    ? 'source_copy'
+    : requestedProfile === 'mp4_h264_720p'
+      ? 'mp4_h264_720p'
+      : 'mp4_h264_1080p';
+  const size = outputProfile === 'mp4_h264_720p'
+    ? { width: 1280, height: 720 }
+    : outputProfile === 'mp4_h264_1080p'
+      ? { width: 1920, height: 1080 }
+      : {};
+  return {
+    assemblyMode,
+    outputProfile,
+    fps: request.fps,
+    crf: request.crf ?? 20,
+    preset: request.preset ?? 'medium',
+    ...size,
+  };
+}
+
+function ffmpegCutAssemblyArgs(
+  concatListPath: string,
+  outputPath: string,
+  profile: SeedanceCutAssemblyProfile,
+): string[] {
+  const base = [
+    '-y',
+    '-f',
+    'concat',
+    '-safe',
+    '0',
+    '-protocol_whitelist',
+    'file,http,https,tcp,tls,crypto',
+    '-i',
+    concatListPath,
+  ];
+  if (profile.assemblyMode === 'copy') {
+    return [...base, '-c', 'copy', outputPath];
+  }
+  const filters = [
+    profile.width && profile.height
+      ? `scale=${profile.width}:${profile.height}:force_original_aspect_ratio=decrease,pad=${profile.width}:${profile.height}:(ow-iw)/2:(oh-ih)/2`
+      : '',
+    profile.fps ? `fps=${profile.fps}` : '',
+  ].filter(Boolean).join(',');
+  return [
+    ...base,
+    '-map',
+    '0:v:0',
+    '-map',
+    '0:a?',
+    ...(filters ? ['-vf', filters] : []),
+    '-c:v',
+    'libx264',
+    '-preset',
+    profile.preset,
+    '-crf',
+    String(profile.crf),
+    '-pix_fmt',
+    'yuv420p',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '192k',
+    '-movflags',
+    '+faststart',
+    outputPath,
+  ];
+}
+
+function shellDoubleQuoteIfNeeded(value: string): string {
+  return /^[A-Za-z0-9_./:=,+?-]+$/.test(value) ? value : shellDoubleQuote(value);
+}
+
+async function runFfmpegThumbnailCapture(params: {
+  ffmpegPath: string;
+  videoUrl: string;
+  outputPath: string;
+  captureTimeSec: number;
+}): Promise<void> {
+  await execFileAsync(params.ffmpegPath, [
+    '-y',
+    '-ss',
+    String(params.captureTimeSec),
+    '-i',
+    params.videoUrl,
+    '-frames:v',
+    '1',
+    '-q:v',
+    '2',
+    params.outputPath,
+  ], { timeout: 120_000 });
+}
+
+async function runFfmpegCutAssembly(params: {
+  ffmpegPath: string;
+  concatListPath: string;
+  outputPath: string;
+  profile: SeedanceCutAssemblyProfile;
+}): Promise<void> {
+  await execFileAsync(
+    params.ffmpegPath,
+    ffmpegCutAssemblyArgs(params.concatListPath, params.outputPath, params.profile),
+    { timeout: 600_000 },
+  );
+}
+
+function resolveSeedanceThumbnailOutputPath(projectDir: string, outputPath: string): string {
+  return resolveSeedanceProjectOutputPath(projectDir, outputPath);
+}
+
+function resolveSeedanceProjectOutputPath(projectDir: string, outputPath: string): string {
+  const absolute = resolve(projectDir, outputPath);
+  const root = resolve(projectDir);
+  if (absolute !== root && !absolute.startsWith(`${root}/`)) {
+    throw new Error(`Seedance output path escapes project directory: ${outputPath}`);
+  }
+  return absolute;
+}
+
+function ffmpegConcatFileLine(value: string): string {
+  return `file '${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function seedanceThumbnailLedgerNote(
+  status: AiComicSeedanceThumbnailStatus,
+  updatedAt: string,
+  detail?: string,
+): string {
+  const map: Record<AiComicSeedanceThumbnailStatus, string> = {
+    not_started: '缩略图未开始',
+    planned: '缩略图抽帧已规划',
+    capturing: '缩略图抽帧中',
+    ready: '缩略图已生成',
+    failed: '缩略图生成失败',
+    skipped: '缩略图已跳过',
+  };
+  return `${map[status]}：${updatedAt}${detail ? `（${detail}` : ''}${detail ? '）' : ''}`;
+}
+
+function shellDoubleQuote(value: string): string {
+  return `"${value.replace(/(["\\$`])/g, '\\$1')}"`;
+}
+
+function latestReadySeedanceVersion(
+  item: AiComicSeedanceShotProductionItem,
+): AiComicSeedanceVideoVersion | undefined {
+  return [...item.versions]
+    .filter(version => version.status === 'ready' && Boolean(version.video_url))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+}
+
+function selectedReadySeedanceVersion(
+  item: AiComicSeedanceShotProductionItem,
+): AiComicSeedanceVideoVersion | undefined {
+  const selected = item.selected_version_id
+    ? item.versions.find(version =>
+      version.version_id === item.selected_version_id
+      && version.status === 'ready'
+      && Boolean(version.video_url)
+    )
+    : undefined;
+  return selected ?? latestReadySeedanceVersion(item);
+}
+
+function bestReadySeedanceVersion(
+  item: AiComicSeedanceShotProductionItem,
+  minQualityScore?: number,
+): AiComicSeedanceVideoVersion | undefined {
+  return item.versions
+    .filter(version => version.status === 'ready' && Boolean(version.video_url))
+    .filter(version =>
+      minQualityScore === undefined
+      || (typeof version.quality_score === 'number' && version.quality_score >= minQualityScore)
+    )
+    .sort((a, b) => {
+      const aScore = typeof a.quality_score === 'number' ? a.quality_score : -1;
+      const bScore = typeof b.quality_score === 'number' ? b.quality_score : -1;
+      if (aScore !== bScore) return bScore - aScore;
+      return b.created_at.localeCompare(a.created_at);
+    })[0];
+}
+
+function seedanceAssetKindText(kind: AiComicSeedanceAssetReferenceItem['kind']): string {
+  if (kind === 'character') return '人物';
+  if (kind === 'location') return '场景';
+  return '未知';
+}
+
+function seedanceAssetStatusText(status: AiComicSeedanceAssetReferenceItem['status']): string {
+  if (status === 'bound') return '已绑定文件';
+  if (status === 'missing_file') return '缺文件';
+  return '缺引用槽位';
+}
+
+function seedanceAssetLookupKey(kind: AiComicSeedanceAssetReferenceItem['kind'], label: string): string {
+  return `${kind}:${label.trim().toLowerCase()}`;
+}
+
+function seedanceAssetId(kind: AiComicSeedanceAssetReferenceItem['kind'], label: string): string {
+  return `seedance-asset-${kind}-${slugifyConstraintKey(label)}`;
+}
+
+function parseSeedanceAssetReferencePlanItem(
+  item: string,
+  episodeNo: number,
+  libraryByAssetId: Map<string, AiComicSeedanceAssetLibraryItem>,
+  libraryByKey: Map<string, AiComicSeedanceAssetLibraryItem>,
+): AiComicSeedanceAssetReferenceItem | null {
+  const slot = item.match(/@图片\d+/)?.[0];
+  const characterMatch = item.match(/人物「([^」]+)」形象参考[:：](.+)$/);
+  if (characterMatch) {
+    const label = characterMatch[1].trim();
+    return applySeedanceAssetLibraryBinding({
+      asset_id: seedanceAssetId('character', label),
+      kind: 'character',
+      label,
+      reference_slot: slot,
+      description: characterMatch[2].trim(),
+      source_episode_nos: [episodeNo],
+      source_shot_ids: [],
+      required_by_shot_count: 0,
+      has_reference_slot: Boolean(slot),
+      is_bound: false,
+      needs_upload: true,
+      status: slot ? 'missing_file' : 'missing_reference_slot',
+    }, libraryByAssetId, libraryByKey);
+  }
+  const locationMatch = item.match(/场景「([^」]+)」氛围参考[:：](.+)$/);
+  if (locationMatch) {
+    const label = locationMatch[1].trim();
+    return applySeedanceAssetLibraryBinding({
+      asset_id: seedanceAssetId('location', label),
+      kind: 'location',
+      label,
+      reference_slot: slot,
+      description: locationMatch[2].trim(),
+      source_episode_nos: [episodeNo],
+      source_shot_ids: [],
+      required_by_shot_count: 0,
+      has_reference_slot: Boolean(slot),
+      is_bound: false,
+      needs_upload: true,
+      status: slot ? 'missing_file' : 'missing_reference_slot',
+    }, libraryByAssetId, libraryByKey);
+  }
+  return null;
+}
+
+function resolveSeedanceShotAsset(input: {
+  kind: AiComicSeedanceAssetReferenceItem['kind'];
+  label: string;
+  episodeNo: number;
+  shotId: string;
+  episodeAssets: Map<string, AiComicSeedanceAssetReferenceItem>;
+  assets: Map<string, AiComicSeedanceAssetReferenceItem>;
+  libraryByAssetId: Map<string, AiComicSeedanceAssetLibraryItem>;
+  libraryByKey: Map<string, AiComicSeedanceAssetLibraryItem>;
+}): AiComicSeedanceAssetReferenceItem | null {
+  const label = input.label.trim();
+  if (!label || label === '未指定场景') return null;
+  const planned = input.episodeAssets.get(seedanceAssetLookupKey(input.kind, label));
+  const asset: AiComicSeedanceAssetReferenceItem = planned
+    ? {
+      ...planned,
+      source_episode_nos: [...planned.source_episode_nos, input.episodeNo],
+      source_shot_ids: [...planned.source_shot_ids, input.shotId],
+    }
+    : {
+      asset_id: seedanceAssetId(input.kind, label),
+      kind: input.kind,
+      label,
+      source_episode_nos: [input.episodeNo],
+      source_shot_ids: [input.shotId],
+      required_by_shot_count: 1,
+      has_reference_slot: false,
+      is_bound: false,
+      needs_upload: true,
+      status: 'missing_reference_slot',
+    };
+  upsertSeedanceAssetReference(input.assets, applySeedanceAssetLibraryBinding(
+    asset,
+    input.libraryByAssetId,
+    input.libraryByKey,
+  ));
+  return input.assets.get(asset.asset_id) ?? asset;
+}
+
+function applySeedanceAssetLibraryBinding(
+  asset: AiComicSeedanceAssetReferenceItem,
+  libraryByAssetId: Map<string, AiComicSeedanceAssetLibraryItem>,
+  libraryByKey: Map<string, AiComicSeedanceAssetLibraryItem>,
+): AiComicSeedanceAssetReferenceItem {
+  const libraryItem = libraryByAssetId.get(asset.asset_id)
+    ?? libraryByKey.get(seedanceAssetLookupKey(asset.kind, asset.label));
+  const referenceSlot = asset.reference_slot ?? libraryItem?.reference_slot;
+  const fileUrl = libraryItem?.file_url;
+  const fileId = libraryItem?.file_id;
+  const hasReferenceSlot = Boolean(referenceSlot);
+  const isBound = hasReferenceSlot && Boolean(fileUrl || fileId);
+  return {
+    ...asset,
+    reference_slot: referenceSlot,
+    file_url: fileUrl,
+    file_id: fileId,
+    description: asset.description ?? libraryItem?.description,
+    has_reference_slot: hasReferenceSlot,
+    is_bound: isBound,
+    needs_upload: !isBound,
+    status: isBound ? 'bound' : hasReferenceSlot ? 'missing_file' : 'missing_reference_slot',
+  };
+}
+
+function upsertSeedanceAssetReference(
+  assets: Map<string, AiComicSeedanceAssetReferenceItem>,
+  next: AiComicSeedanceAssetReferenceItem,
+): void {
+  const existing = assets.get(next.asset_id);
+  if (!existing) {
+    assets.set(next.asset_id, {
+      ...next,
+      source_episode_nos: uniqueNumbers(next.source_episode_nos),
+      source_shot_ids: unique(next.source_shot_ids),
+      required_by_shot_count: unique(next.source_shot_ids).length,
+    });
+    return;
+  }
+  const referenceSlot = existing.reference_slot ?? next.reference_slot;
+  const hasReferenceSlot = existing.has_reference_slot || next.has_reference_slot;
+  const fileUrl = existing.file_url ?? next.file_url;
+  const fileId = existing.file_id ?? next.file_id;
+  const isBound = hasReferenceSlot && Boolean(fileUrl || fileId);
+  assets.set(next.asset_id, {
+    ...existing,
+    reference_slot: referenceSlot,
+    file_url: fileUrl,
+    file_id: fileId,
+    description: existing.description ?? next.description,
+    source_episode_nos: uniqueNumbers([...existing.source_episode_nos, ...next.source_episode_nos]),
+    source_shot_ids: unique([...existing.source_shot_ids, ...next.source_shot_ids]),
+    required_by_shot_count: unique([...existing.source_shot_ids, ...next.source_shot_ids]).length,
+    has_reference_slot: hasReferenceSlot,
+    is_bound: isBound,
+    needs_upload: !isBound,
+    status: isBound ? 'bound' : hasReferenceSlot ? 'missing_file' : 'missing_reference_slot',
+  });
+}
+
+function sortedSeedanceVersionsForComparison(
+  item: AiComicSeedanceShotProductionItem,
+): AiComicSeedanceVideoVersion[] {
+  return [...item.versions].sort((a, b) => {
+    const aReady = a.status === 'ready' && Boolean(a.video_url);
+    const bReady = b.status === 'ready' && Boolean(b.video_url);
+    if (aReady !== bReady) return aReady ? -1 : 1;
+    const aScore = typeof a.quality_score === 'number' ? a.quality_score : -1;
+    const bScore = typeof b.quality_score === 'number' ? b.quality_score : -1;
+    if (aScore !== bScore) return bScore - aScore;
+    return b.created_at.localeCompare(a.created_at);
+  });
+}
+
+function buildSeedanceVersionComparisonShot(
+  item: AiComicSeedanceShotProductionItem,
+): AiComicSeedanceVersionComparisonShot {
+  const autoBestVersion = bestReadySeedanceVersion(item);
+  const versions: AiComicSeedanceVersionComparisonRow[] = sortedSeedanceVersionsForComparison(item)
+    .map((version, index) => ({
+      version_id: version.version_id,
+      status: version.status,
+      created_at: version.created_at,
+      provider_job_id: version.provider_job_id,
+      video_url: version.video_url,
+      failure_reason: version.failure_reason,
+      note: version.note,
+      quality_score: version.quality_score,
+      review_note: version.review_note,
+      rank: index + 1,
+      is_selected: version.version_id === item.selected_version_id,
+      is_auto_best: version.version_id === autoBestVersion?.version_id,
+      decision_reason: seedanceVersionDecisionReason(item, version, autoBestVersion),
+    }));
+  return {
+    production_id: item.production_id,
+    episode_no: item.episode_no,
+    episode_title: item.episode_title,
+    story_id: item.story_id,
+    shot_id: item.shot_id,
+    source_scene_id: item.source_scene_id,
+    selected_version_id: item.selected_version_id,
+    auto_best_version_id: autoBestVersion?.version_id,
+    ready_version_count: item.versions.filter(version => version.status === 'ready' && Boolean(version.video_url)).length,
+    failed_version_count: item.versions.filter(version => version.status === 'failed').length,
+    versions,
+  };
+}
+
+function seedanceVersionDecisionReason(
+  item: AiComicSeedanceShotProductionItem,
+  version: AiComicSeedanceVideoVersion,
+  autoBestVersion?: AiComicSeedanceVideoVersion,
+): string {
+  if (version.version_id === item.selected_version_id && version.version_id === autoBestVersion?.version_id) {
+    return '当前剪辑版；也是自动择优推荐。';
+  }
+  if (version.version_id === item.selected_version_id) {
+    return '当前剪辑版；建议人工确认是否仍优于自动推荐。';
+  }
+  if (version.version_id === autoBestVersion?.version_id) {
+    return '自动择优推荐：可用版本中质量分最高；同分时选择更新版本。';
+  }
+  if (version.status === 'failed') {
+    return version.failure_reason ? `失败版本：${version.failure_reason}` : '失败版本：需要查看平台错误。';
+  }
+  if (version.status === 'ready' && !version.video_url) {
+    return '状态已完成但缺少视频 URL，剪辑前需补拉结果。';
+  }
+  if (version.status === 'ready') {
+    return '可用备选版本，可在画面观感更佳时手动设为剪辑版。';
+  }
+  if (version.status === 'processing' || version.status === 'submitted') {
+    return '仍在生成流程中，等待平台回传后再比较。';
+  }
+  return '非可剪辑版本，仅作生产流水记录。';
+}
+
+function shouldRetrySeedanceProductionItem(
+  item?: AiComicSeedanceShotProductionItem,
+): boolean {
+  if (!item) return true;
+  if (item.status === 'skipped') return false;
+  if (item.status === 'ready' && item.video_url) return false;
+  return true;
+}
+
+function seedanceRetrySuggestedAction(
+  item?: AiComicSeedanceShotProductionItem,
+): string {
+  if (!item) return '尚未提交，按原提示词提交生成。';
+  if (item.status === 'failed') return item.retry_count > 0 ? '检查失败原因后再次提交，必要时微调负向约束。' : '按原提示词重新提交一次。';
+  if (item.status === 'ready' && !item.video_url) return '状态已完成但缺少视频 URL，优先向平台补拉结果。';
+  if (item.status === 'processing' || item.status === 'submitted') return '确认平台任务是否超时；如无结果则重新提交。';
+  if (item.status === 'prompt_exported' || item.status === 'not_started') return '按提示词提交生成。';
+  return '人工复核后决定是否重试。';
+}
+
+function normalizeSeedanceCallbackStatus(
+  status: string | undefined,
+  hasVideoUrl: boolean,
+  hasFailureReason: boolean,
+): AiComicSeedanceProductionStatus {
+  const normalized = (status ?? '').trim().toLowerCase();
+  if (['ready', 'completed', 'complete', 'succeeded', 'success', 'done', 'finished'].includes(normalized)) {
+    return 'ready';
+  }
+  if (['failed', 'failure', 'error', 'errored', 'cancelled', 'canceled'].includes(normalized)) {
+    return 'failed';
+  }
+  if (['processing', 'running', 'generating', 'in_progress', 'in-progress'].includes(normalized)) {
+    return 'processing';
+  }
+  if (['submitted', 'queued', 'pending', 'accepted'].includes(normalized)) {
+    return 'submitted';
+  }
+  if (['skipped', 'skip'].includes(normalized)) {
+    return 'skipped';
+  }
+  if (hasFailureReason) return 'failed';
+  if (hasVideoUrl) return 'ready';
+  return 'processing';
+}
+
+function callbackStringField(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function callbackNumberField(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function compareSeedanceShotIds(a: string, b: string): number {
+  const aNumber = Number(a.match(/\d+/)?.[0] ?? Number.NaN);
+  const bNumber = Number(b.match(/\d+/)?.[0] ?? Number.NaN);
+  if (Number.isFinite(aNumber) && Number.isFinite(bNumber) && aNumber !== bNumber) {
+    return aNumber - bNumber;
+  }
+  return a.localeCompare(b, 'zh-Hans-CN');
+}
+
 function mergeMemoryRecallControls(
   preferences?: AiComicSeriesMemoryRecallPreferences,
   controls?: AiComicSeriesMemoryRecallControls,
@@ -1770,6 +4828,475 @@ function mergeMemoryRecallControls(
   return {
     locked_memory_ids: locked,
     excluded_memory_ids: excluded.filter(id => !locked.includes(id)),
+  };
+}
+
+function buildInitialEpisodicMemoryIndex(): AiComicEpisodicMemoryIndex {
+  return {
+    schema_version: 'ai-comic-episodic-memory/v1',
+    embedding_strategy: 'lexical-token-signature/v1',
+    items: [],
+  };
+}
+
+function cloneEpisodicMemoryIndex(index: AiComicEpisodicMemoryIndex): AiComicEpisodicMemoryIndex {
+  return {
+    schema_version: 'ai-comic-episodic-memory/v1',
+    embedding_strategy: 'lexical-token-signature/v1',
+    items: index.items.map(item => ({
+      ...item,
+      characters: [...item.characters],
+      keywords: [...item.keywords],
+      token_signature: [...item.token_signature],
+      recall_notes: [...item.recall_notes],
+    })),
+    updated_at: index.updated_at,
+  };
+}
+
+function updateEpisodicMemoryIndex(params: {
+  index: AiComicEpisodicMemoryIndex;
+  plan: AiComicSeriesPlan;
+  episode: AiComicEpisodePlan;
+  story?: StoryGenerateResult;
+  generatedAt?: string;
+}): AiComicEpisodicMemoryIndex {
+  const nextItems = params.story
+    ? buildEpisodeEpisodicMemoryItems({
+        plan: params.plan,
+        episode: params.episode,
+        story: params.story,
+      })
+    : [];
+  const existing = params.index.items.filter(item => item.episode_no !== params.episode.episode_no);
+  return {
+    schema_version: 'ai-comic-episodic-memory/v1',
+    embedding_strategy: 'lexical-token-signature/v1',
+    items: [...existing, ...nextItems]
+      .sort((a, b) => a.episode_no - b.episode_no || a.title.localeCompare(b.title, 'zh-Hans-CN'))
+      .slice(-420),
+    updated_at: params.generatedAt ?? new Date().toISOString(),
+  };
+}
+
+function buildEpisodeEpisodicMemoryItems(params: {
+  plan: AiComicSeriesPlan;
+  episode: AiComicEpisodePlan;
+  story: StoryGenerateResult;
+}): AiComicEpisodicMemoryItem[] {
+  const items: AiComicEpisodicMemoryItem[] = [];
+  for (const scene of params.story.scene_breakdown.slice(0, 18)) {
+    const text = [
+      scene.key_action,
+      scene.dialogue_or_narration ?? '',
+      scene.visual_prompt,
+      scene.conflict ?? scene.dramatic_function,
+    ].join('；');
+    items.push(makeEpisodicMemoryItem({
+      source: 'scene',
+      episodeNo: params.episode.episode_no,
+      sceneId: String(scene.scene_id),
+      title: `第${params.episode.episode_no}集场景${scene.scene_id}`,
+      text,
+      characters: scene.characters ?? params.episode.key_characters,
+      location: scene.location,
+      emotionalTone: scene.conflict ?? scene.dramatic_function,
+      recallNotes: [
+        `场景功能：${scene.key_action}`,
+        scene.dialogue_or_narration ? `对白/旁白：${summarizeText(scene.dialogue_or_narration, 56)}` : '',
+      ],
+    }));
+  }
+
+  for (const block of (params.story.dialogue ?? []).slice(0, 12)) {
+    const text = block.lines.map(line => `${line.character}：${line.text}`).join(' / ');
+    if (!text.trim()) continue;
+    items.push(makeEpisodicMemoryItem({
+      source: 'dialogue',
+      episodeNo: params.episode.episode_no,
+      sceneId: String(block.scene_id),
+      title: `第${params.episode.episode_no}集对白${block.scene_id}`,
+      text,
+      characters: unique(block.lines.map(line => line.character).filter(Boolean)),
+      emotionalTone: unique(block.lines.map(line => line.emotion).filter(Boolean)).join('、') || undefined,
+      recallNotes: [`对白关系：${summarizeText(text, 72)}`],
+    }));
+  }
+
+  for (const segment of params.story.gears_segments.slice(0, 16)) {
+    const text = [
+      segment.script_text,
+      segment.purpose,
+      ...segment.visual_focus,
+      segment.segment_prompt_hint ?? '',
+    ].join('；');
+    items.push(makeEpisodicMemoryItem({
+      source: 'gears_segment',
+      episodeNo: params.episode.episode_no,
+      sceneId: String(segment.source_scene_id),
+      title: `第${params.episode.episode_no}集GEARS${segment.segment_id}`,
+      text,
+      characters: extractKnownCharacters(text, params.plan),
+      emotionalTone: segment.purpose,
+      recallNotes: [
+        `分段目的：${segment.purpose}`,
+        `视觉焦点：${segment.visual_focus.join('；') || '未记录'}`,
+      ],
+    }));
+  }
+
+  const seedancePackage = buildSeedancePromptPackage(params.story);
+  for (const unit of seedancePackage.shot_units.slice(0, 16)) {
+    const text = [
+      unit.script_text,
+      unit.visual_prompt,
+      unit.camera_suggestion,
+      unit.seedance_prompt,
+      ...unit.continuity_notes,
+    ].join('；');
+    items.push(makeEpisodicMemoryItem({
+      source: 'seedance_shot',
+      episodeNo: params.episode.episode_no,
+      sceneId: String(unit.source_scene_id),
+      shotId: String(unit.shot_id),
+      title: `第${params.episode.episode_no}集镜头${unit.shot_id}`,
+      text,
+      characters: extractKnownCharacters(text, params.plan),
+      location: unit.location,
+      emotionalTone: unit.camera_suggestion,
+      recallNotes: [
+        `运镜：${unit.camera_suggestion}`,
+        unit.continuity_notes.length ? `连续性：${unit.continuity_notes.join('；')}` : '',
+      ],
+    }));
+  }
+
+  return mergeEpisodicMemoryItems(items).slice(0, 56);
+}
+
+function makeEpisodicMemoryItem(params: {
+  source: AiComicEpisodicMemorySource;
+  episodeNo: number;
+  sceneId?: string;
+  shotId?: string;
+  title: string;
+  text: string;
+  characters: string[];
+  location?: string;
+  emotionalTone?: string;
+  recallNotes: string[];
+}): AiComicEpisodicMemoryItem {
+  const keywords = buildEpisodicKeywords([
+    params.title,
+    params.text,
+    ...params.characters,
+    params.location ?? '',
+    params.emotionalTone ?? '',
+  ].join('；'));
+  const stableKey = [
+    params.source,
+    params.episodeNo,
+    params.sceneId,
+    params.shotId,
+    params.title,
+  ].filter(Boolean).join(':');
+  return {
+    episodic_memory_id: `episodic-${slugifyConstraintKey(stableKey)}`,
+    source: params.source,
+    episode_no: params.episodeNo,
+    scene_id: params.sceneId,
+    shot_id: params.shotId,
+    title: params.title,
+    text: summarizeText(params.text, 180),
+    characters: unique(params.characters).slice(0, 8),
+    location: params.location,
+    emotional_tone: params.emotionalTone,
+    keywords,
+    token_signature: keywords.slice(0, 18),
+    recall_notes: params.recallNotes.filter(Boolean).map(note => summarizeText(note, 90)).slice(0, 4),
+  };
+}
+
+function mergeEpisodicMemoryItems(items: AiComicEpisodicMemoryItem[]): AiComicEpisodicMemoryItem[] {
+  const map = new Map<string, AiComicEpisodicMemoryItem>();
+  for (const item of items) {
+    const existing = map.get(item.episodic_memory_id);
+    if (!existing) {
+      map.set(item.episodic_memory_id, item);
+      continue;
+    }
+    map.set(item.episodic_memory_id, {
+      ...existing,
+      text: item.text || existing.text,
+      characters: unique([...existing.characters, ...item.characters]),
+      keywords: unique([...existing.keywords, ...item.keywords]).slice(0, 24),
+      token_signature: unique([...existing.token_signature, ...item.token_signature]).slice(0, 24),
+      recall_notes: unique([...existing.recall_notes, ...item.recall_notes]).slice(0, 6),
+    });
+  }
+  return [...map.values()];
+}
+
+function buildEpisodicKeywords(text: string): string[] {
+  return significantTextTokens(text).filter(token => token.length >= 2).slice(0, 28);
+}
+
+function buildInitialProductionConstraints(plan: AiComicSeriesPlan): AiComicProductionConstraints {
+  const continuityRuleItems = plan.continuity_rules.map(rule => makeProductionConstraintItem({
+    category: 'continuity',
+    label: rule.label,
+    description: rule.description,
+    source: 'series_plan',
+    severity: 'must',
+    status: 'active',
+    notes: ['系列连续性规则，后续单集分镜和视频提示词必须遵守。'],
+    stableKey: rule.rule_id,
+  }));
+  const productionNoteItems = plan.production_notes.map((note, index) => makeProductionConstraintItem({
+    category: /史实|文化|知识|来源|边界/.test(note) ? 'cultural_boundary' : 'asset',
+    label: summarizeText(note, 24),
+    description: note,
+    source: 'series_plan',
+    severity: /必须|不得|禁止|边界/.test(note) ? 'must' : 'should',
+    status: 'active',
+    notes: ['系列生产备注，生成分镜和镜头提示词时作为制作约束。'],
+    stableKey: `production-note-${index + 1}`,
+  }));
+  return {
+    schema_version: 'ai-comic-production-constraints/v1',
+    items: mergeProductionConstraintItems([...continuityRuleItems, ...productionNoteItems]),
+    conflicts: [],
+  };
+}
+
+function normalizeProductionConstraints(
+  constraints: AiComicProductionConstraints | undefined,
+  plan: AiComicSeriesPlan,
+): AiComicProductionConstraints {
+  const initial = buildInitialProductionConstraints(plan);
+  if (!constraints) return initial;
+  return {
+    schema_version: 'ai-comic-production-constraints/v1',
+    items: mergeProductionConstraintItems([
+      ...initial.items,
+      ...(constraints.items ?? []).map(cloneProductionConstraintItem),
+    ]),
+    conflicts: unique([...(constraints.conflicts ?? []), ...detectProductionConstraintConflicts(constraints.items ?? [])]),
+  };
+}
+
+function updateProductionConstraints(params: {
+  constraints: AiComicProductionConstraints;
+  plan: AiComicSeriesPlan;
+  episode: AiComicEpisodePlan;
+  story?: StoryGenerateResult;
+}): AiComicProductionConstraints {
+  const base = normalizeProductionConstraints(params.constraints, params.plan);
+  const episodeConstraints = buildEpisodeProductionConstraints({
+    episodeNo: params.episode.episode_no,
+    story: params.story,
+  });
+  const items = mergeProductionConstraintItems([
+    ...base.items,
+    ...episodeConstraints,
+  ]);
+  return {
+    schema_version: 'ai-comic-production-constraints/v1',
+    items,
+    conflicts: unique([
+      ...base.conflicts,
+      ...detectProductionConstraintConflicts(items),
+    ]),
+  };
+}
+
+function buildEpisodeProductionConstraints(params: {
+  episodeNo: number;
+  story?: StoryGenerateResult;
+}): AiComicProductionConstraintItem[] {
+  if (!params.story) return [];
+  const pkg = buildSeedancePromptPackage(params.story);
+  return pkg.shot_units.slice(0, 40).flatMap(unit => {
+    const items: AiComicProductionConstraintItem[] = [];
+    const sourceNote = `来源场景${unit.source_scene_id}`;
+    const sceneId = String(unit.source_scene_id);
+    const shotId = String(unit.shot_id);
+    if (unit.continuity_notes.length) {
+      items.push(makeProductionConstraintItem({
+        category: 'continuity',
+        label: `Seedance镜头${unit.shot_id}连续性`,
+        description: unit.continuity_notes.join('；'),
+        source: 'seedance_shot',
+        severity: 'must',
+        status: 'active',
+        episodeNo: params.episodeNo,
+        sceneId,
+        shotId,
+        notes: [sourceNote, `运镜：${unit.camera_suggestion}`],
+      }));
+    }
+    if (unit.negative_constraints.length) {
+      items.push(makeProductionConstraintItem({
+        category: 'negative',
+        label: `Seedance镜头${unit.shot_id}禁用元素`,
+        description: unit.negative_constraints.join('；'),
+        source: 'seedance_shot',
+        severity: 'must',
+        status: 'active',
+        episodeNo: params.episodeNo,
+        sceneId,
+        shotId,
+        notes: [sourceNote, '进入视频模型前必须保留为负向约束。'],
+      }));
+    }
+    if (unit.camera_suggestion.trim()) {
+      items.push(makeProductionConstraintItem({
+        category: 'camera',
+        label: `Seedance镜头${unit.shot_id}运镜`,
+        description: unit.camera_suggestion,
+        source: 'seedance_shot',
+        severity: hasContradictoryCameraCue(unit.camera_suggestion) ? 'watch' : 'should',
+        status: hasContradictoryCameraCue(unit.camera_suggestion) ? 'needs_review' : 'active',
+        episodeNo: params.episodeNo,
+        sceneId,
+        shotId,
+        notes: [sourceNote, `提示词片段：${summarizeText(unit.seedance_prompt, 72)}`],
+      }));
+    }
+    const assetAnchor = extractVisualAssetAnchor(unit.visual_prompt);
+    if (assetAnchor) {
+      items.push(makeProductionConstraintItem({
+        category: 'asset',
+        label: assetAnchor.label,
+        description: assetAnchor.status,
+        source: 'seedance_shot',
+        severity: 'should',
+        status: 'active',
+        episodeNo: params.episodeNo,
+        sceneId,
+        shotId,
+        notes: [sourceNote, `视觉提示：${summarizeText(unit.visual_prompt, 72)}`],
+      }));
+    }
+    const culturalNotes = unit.continuity_notes.filter(note => /史实|来源|文化|创作|知识/.test(note));
+    if (culturalNotes.length) {
+      items.push(makeProductionConstraintItem({
+        category: 'cultural_boundary',
+        label: `Seedance镜头${unit.shot_id}文化边界`,
+        description: culturalNotes.join('；'),
+        source: 'seedance_shot',
+        severity: 'must',
+        status: 'active',
+        episodeNo: params.episodeNo,
+        sceneId,
+        shotId,
+        notes: ['镜头连续性说明不得改写为超出知识库的确证史实。'],
+      }));
+    }
+    return items;
+  });
+}
+
+function makeProductionConstraintItem(params: {
+  category: AiComicProductionConstraintCategory;
+  label: string;
+  description: string;
+  source: AiComicProductionConstraintItem['source'];
+  severity: AiComicProductionConstraintItem['severity'];
+  status: AiComicProductionConstraintItem['status'];
+  episodeNo?: number;
+  sceneId?: string;
+  shotId?: string;
+  notes: string[];
+  stableKey?: string;
+}): AiComicProductionConstraintItem {
+  const stableKey = params.stableKey
+    ?? [
+      params.source,
+      params.category,
+      params.episodeNo ?? 'series',
+      params.sceneId,
+      params.shotId,
+      params.label,
+    ].filter(Boolean).join('-');
+  return {
+    constraint_id: `constraint-${slugifyConstraintKey(stableKey)}`,
+    category: params.category,
+    label: params.label,
+    description: params.description,
+    source: params.source,
+    severity: params.severity,
+    status: params.status,
+    episode_no: params.episodeNo,
+    scene_id: params.sceneId,
+    shot_id: params.shotId,
+    notes: params.notes.filter(Boolean),
+  };
+}
+
+function mergeProductionConstraintItems(items: AiComicProductionConstraintItem[]): AiComicProductionConstraintItem[] {
+  const severityRank: Record<AiComicProductionConstraintItem['severity'], number> = {
+    watch: 1,
+    should: 2,
+    must: 3,
+  };
+  const statusRank: Record<AiComicProductionConstraintItem['status'], number> = {
+    resolved: 1,
+    active: 2,
+    needs_review: 3,
+  };
+  const map = new Map<string, AiComicProductionConstraintItem>();
+  for (const item of items) {
+    const existing = map.get(item.constraint_id);
+    if (!existing) {
+      map.set(item.constraint_id, cloneProductionConstraintItem(item));
+      continue;
+    }
+    map.set(item.constraint_id, {
+      ...existing,
+      description: item.description || existing.description,
+      severity: severityRank[item.severity] > severityRank[existing.severity] ? item.severity : existing.severity,
+      status: statusRank[item.status] > statusRank[existing.status] ? item.status : existing.status,
+      episode_no: item.episode_no ?? existing.episode_no,
+      scene_id: item.scene_id ?? existing.scene_id,
+      shot_id: item.shot_id ?? existing.shot_id,
+      related_memory_ids: unique([
+        ...(existing.related_memory_ids ?? []),
+        ...(item.related_memory_ids ?? []),
+      ]),
+      notes: unique([...existing.notes, ...item.notes]).slice(-8),
+    });
+  }
+  return [...map.values()].sort((a, b) =>
+    (a.episode_no ?? 0) - (b.episode_no ?? 0)
+    || a.category.localeCompare(b.category)
+    || a.label.localeCompare(b.label)
+  );
+}
+
+function detectProductionConstraintConflicts(items: AiComicProductionConstraintItem[]): string[] {
+  return items
+    .filter(item => item.category === 'camera' && item.status === 'needs_review')
+    .map(item => `${item.label} 同时包含固定/静止与运动运镜语义，需要人工复核。`);
+}
+
+function hasContradictoryCameraCue(text: string): boolean {
+  return /固定|静止|定机位/.test(text) && /推|拉|摇|移|跟随|环绕|俯冲/.test(text);
+}
+
+function cloneProductionConstraintItem(item: AiComicProductionConstraintItem): AiComicProductionConstraintItem {
+  return {
+    ...item,
+    related_memory_ids: item.related_memory_ids ? [...item.related_memory_ids] : undefined,
+    notes: [...item.notes],
+  };
+}
+
+function cloneProductionConstraints(constraints: AiComicProductionConstraints): AiComicProductionConstraints {
+  return {
+    schema_version: 'ai-comic-production-constraints/v1',
+    items: constraints.items.map(cloneProductionConstraintItem),
+    conflicts: [...constraints.conflicts],
   };
 }
 
@@ -1907,6 +5434,13 @@ function slugifyMemoryLabel(label: string): string {
   return hash.toString(36);
 }
 
+function slugifyConstraintKey(key: string): string {
+  const ascii = key.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 36);
+  let hash = 0;
+  for (const char of key) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return `${ascii || 'item'}-${hash.toString(36)}`;
+}
+
 function uniqueNumbers(values: number[]): number[] {
   return [...new Set(values.filter(value => Number.isFinite(value)))].sort((a, b) => a - b);
 }
@@ -1971,6 +5505,19 @@ function updateContinuityLedgerFromEpisodePlan(params: {
     knowledgeUsed: params.knowledgeUsed ?? [],
     memoryEvents,
   });
+  const productionConstraints = updateProductionConstraints({
+    constraints: params.ledger.production_constraints ?? buildInitialProductionConstraints(params.plan),
+    plan: params.plan,
+    episode: params.episode,
+    story: params.story,
+  });
+  const episodicMemory = updateEpisodicMemoryIndex({
+    index: params.ledger.episodic_memory ?? buildInitialEpisodicMemoryIndex(),
+    plan: params.plan,
+    episode: params.episode,
+    story: params.story,
+    generatedAt: params.generatedAt,
+  });
   const record: AiComicContinuityLedgerEpisode = {
     episode_no: params.episode.episode_no,
     story_id: params.storyId,
@@ -2007,6 +5554,8 @@ function updateContinuityLedgerFromEpisodePlan(params: {
     knowledge_used: knowledgeUsed,
     episode_records: records,
     series_memory: seriesMemory,
+    production_constraints: productionConstraints,
+    episodic_memory: episodicMemory,
   };
 }
 
@@ -2609,6 +6158,63 @@ function buildSeriesMemorySummary(memory?: AiComicSeriesMemory): {
   };
 }
 
+function buildProductionConstraintSummary(constraints?: AiComicProductionConstraints): {
+  active_count: number;
+  must_count: number;
+  needs_review_count: number;
+  recent: string[];
+  conflicts: string[];
+} | undefined {
+  if (!constraints) return undefined;
+  const activeItems = constraints.items.filter(item => item.status !== 'resolved');
+  return {
+    active_count: activeItems.length,
+    must_count: activeItems.filter(item => item.severity === 'must').length,
+    needs_review_count: activeItems.filter(item => item.status === 'needs_review').length,
+    recent: activeItems.slice(-8).map(item => [
+      item.episode_no ? `第${item.episode_no}集` : '全系列',
+      productionConstraintCategoryLabel(item.category),
+      item.label,
+    ].join(' · ')),
+    conflicts: constraints.conflicts.slice(-8),
+  };
+}
+
+function buildMemoryConflictSummary(report: AiComicMemoryConflictReport): {
+  total_conflict_count: number;
+  blocking_count: number;
+  warning_count: number;
+  watch_count: number;
+  recent: string[];
+} {
+  return {
+    total_conflict_count: report.total_conflict_count,
+    blocking_count: report.blocking_count,
+    warning_count: report.warning_count,
+    watch_count: report.watch_count,
+    recent: report.items.slice(0, 6).map(item => [
+      memoryConflictCategoryLabel(item.category),
+      memoryConflictSeverityLabel(item.severity),
+      item.title,
+    ].join(' · ')),
+  };
+}
+
+function buildEpisodicMemorySummary(index?: AiComicEpisodicMemoryIndex): {
+  total_count: number;
+  recent: string[];
+} | undefined {
+  if (!index) return undefined;
+  return {
+    total_count: index.items.length,
+    recent: index.items.slice(-8).map(item => [
+      `第${item.episode_no}集`,
+      episodicMemorySourceLabel(item.source),
+      item.title,
+    ].join(' · ')),
+  };
+}
+
 function summarizeMemoryItems(items: AiComicSeriesMemoryItem[], limit: number): string[] {
   return items.slice(0, limit).map(item => {
     const episodeText = item.related_episode_nos.length > 0
@@ -2656,6 +6262,114 @@ function buildSeriesMemoryPromptLines(
       ? `记忆-待核冲突：${summary.conflicts.join('；')}`
       : '',
   ].filter(Boolean);
+}
+
+function buildEpisodicMemoryPromptLines(
+  index: AiComicEpisodicMemoryIndex | undefined,
+  plan: AiComicSeriesPlan,
+  episode: AiComicEpisodePlan,
+): string[] {
+  const recall = buildEpisodeEpisodicMemoryRecall(plan, episode, index);
+  if (!recall || recall.items.length === 0) return [];
+  return [
+    '长期情景记忆模糊召回：以下片段来自已生成场景/对白/镜头，用于延续情绪回声、对白呼应、场景氛围和人物选择，不得机械复述。',
+    ...recall.items.map(item => [
+      `情景-${episodicMemorySourceLabel(item.source)}`,
+      `第${item.episode_no}集`,
+      `${item.score}分`,
+      item.title,
+      item.text,
+      item.reasons.join('、'),
+    ].join('：')),
+  ];
+}
+
+function buildEpisodeEpisodicMemoryRecall(
+  plan: AiComicSeriesPlan,
+  episode: AiComicEpisodePlan,
+  index?: AiComicEpisodicMemoryIndex,
+): AiComicEpisodicMemoryRecall | undefined {
+  if (!index || index.items.length === 0) return undefined;
+  const context = buildEpisodeRecallContext(plan, episode);
+  const contextTokens = new Set(significantTextTokens(context.episodeTexts.join('；')));
+  const activeThreadTokens = new Set(significantTextTokens(context.activeThreadTexts.join('；')));
+  const items = index.items
+    .filter(item => item.episode_no < episode.episode_no)
+    .map(item => scoreEpisodicMemoryItem(item, context, contextTokens, activeThreadTokens))
+    .filter((item): item is AiComicEpisodicMemoryRecallItem => Boolean(item))
+    .sort((a, b) => b.score - a.score || b.episode_no - a.episode_no)
+    .slice(0, 8);
+  return {
+    schema_version: 'ai-comic-episodic-memory-recall/v1',
+    episode_no: episode.episode_no,
+    items,
+  };
+}
+
+function scoreEpisodicMemoryItem(
+  item: AiComicEpisodicMemoryItem,
+  context: ReturnType<typeof buildEpisodeRecallContext>,
+  contextTokens: Set<string>,
+  activeThreadTokens: Set<string>,
+): AiComicEpisodicMemoryRecallItem | null {
+  const reasons: string[] = [];
+  let score = 0;
+  if (item.episode_no === context.episodeNo - 1) {
+    score += 28;
+    reasons.push('上一集情绪承接');
+  } else if (context.episodeNo - item.episode_no <= 3) {
+    score += 12;
+    reasons.push('近期场景回声');
+  }
+  const characterMatches = item.characters.filter(character => context.keyCharacters.includes(character));
+  if (characterMatches.length > 0) {
+    score += 24;
+    reasons.push(`角色呼应：${characterMatches.join('、')}`);
+  }
+  const keywordOverlap = item.token_signature.filter(token => contextTokens.has(token));
+  if (keywordOverlap.length > 0) {
+    score += Math.min(24, keywordOverlap.length * 4);
+    reasons.push(`语义重叠：${keywordOverlap.slice(0, 3).join('、')}`);
+  }
+  const threadOverlap = item.token_signature.filter(token => activeThreadTokens.has(token));
+  if (threadOverlap.length > 0) {
+    score += Math.min(18, threadOverlap.length * 3);
+    reasons.push('长期线索相关');
+  }
+  if (item.location && context.episodeTexts.some(text => textOverlaps(item.location ?? '', text))) {
+    score += 12;
+    reasons.push('地点氛围呼应');
+  }
+  if (score < 24) return null;
+  return {
+    episodic_memory_id: item.episodic_memory_id,
+    source: item.source,
+    episode_no: item.episode_no,
+    title: item.title,
+    text: item.text,
+    score: Math.min(score, 100),
+    reasons: unique(reasons).slice(0, 4),
+    characters: item.characters,
+    location: item.location,
+    emotional_tone: item.emotional_tone,
+    keywords: item.keywords.slice(0, 8),
+  };
+}
+
+function episodicMemorySourceLabel(source: AiComicEpisodicMemorySource): string {
+  const map: Record<AiComicEpisodicMemorySource, string> = {
+    scene: '场景',
+    dialogue: '对白',
+    gears_segment: 'GEARS',
+    seedance_shot: 'Seedance镜头',
+  };
+  return map[source];
+}
+
+function extractKnownCharacters(text: string, plan: AiComicSeriesPlan): string[] {
+  return plan.main_characters
+    .map(character => character.name)
+    .filter(name => text.includes(name));
 }
 
 function buildEpisodeMemoryRecall(
@@ -2988,6 +6702,8 @@ function buildEpisodeGenerationOutline(
     `账本已回收线索：${ledger.paid_off_threads.join('；') || '暂无'}`,
     `账本已用知识：${ledger.knowledge_used.join('、') || '暂无'}`,
     ...buildSeriesMemoryPromptLines(ledger.series_memory, plan, episode, memoryRecallControls),
+    ...buildEpisodicMemoryPromptLines(ledger.episodic_memory, plan, episode),
+    ...buildProductionConstraintPromptLines(ledger.production_constraints, episode),
     previousLedgerRecord
       ? `上一条生成记忆：第${previousLedgerRecord.episode_no}集《${previousLedgerRecord.title}》；故事ID：${previousLedgerRecord.story_id}；${previousLedgerRecord.next_episode_memory.join('；')}`
       : '',
@@ -3027,6 +6743,36 @@ function buildEpisodeGenerationOutline(
     `知识焦点：${episode.knowledge_focus.join('、') || plan.recurring_motifs.join('、')}`,
     '输出要求：按 AI 漫剧分镜生成完整故事文本、场景分解、对白、画面提示和 GEARS 分段；必须回应上一集钩子，并让本集结尾钩子可被下一集承接。',
   ].filter(Boolean).join('\n');
+}
+
+function buildProductionConstraintPromptLines(
+  constraints: AiComicProductionConstraints | undefined,
+  episode: AiComicEpisodePlan,
+): string[] {
+  if (!constraints) return [];
+  const related = constraints.items
+    .filter(item => item.status !== 'resolved')
+    .filter(item => !item.episode_no || Math.abs(item.episode_no - episode.episode_no) <= 1)
+    .filter(item =>
+      item.episode_no === episode.episode_no
+      || item.severity === 'must'
+      || episode.key_characters.some(character => item.description.includes(character) || item.label.includes(character))
+      || episode.knowledge_focus.some(focus => item.description.includes(focus) || item.label.includes(focus))
+    )
+    .slice(-12);
+  if (related.length === 0) return [];
+  return [
+    '制作约束审计：以下约束来自系列规划、已生成镜头和 Seedance 提示词，必须在本集画面提示、运镜和负向约束中保持一致。',
+    ...related.map(item => [
+      productionConstraintCategoryLabel(item.category),
+      item.episode_no ? `第${item.episode_no}集` : '全系列',
+      item.shot_id ? `镜头${item.shot_id}` : '',
+      productionConstraintSeverityLabel(item.severity),
+      item.label,
+      item.description,
+    ].filter(Boolean).join('：')),
+    constraints.conflicts.length > 0 ? `制作约束待复核：${constraints.conflicts.slice(-5).join('；')}` : '',
+  ].filter(Boolean);
 }
 
 function closestSupportedDuration(seconds: number): SupportedDuration {

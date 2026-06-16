@@ -3,9 +3,21 @@ import { resolve } from 'node:path';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import {
   archiveAiComicSeriesProject,
+  applyAiComicSeriesSeedanceProductionCallback,
+  assembleAiComicSeriesSeedanceCut,
+  autoSelectAiComicSeriesSeedanceProductionVersions,
+  captureAiComicSeriesSeedanceThumbnails,
   copyAiComicSeriesProject,
   deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
+  exportAiComicSeriesSeedanceAssetReportPackage,
+  exportAiComicSeriesSeedanceCutPackage,
+  exportAiComicSeriesSeedanceEditAssetPackage,
+  exportAiComicSeriesSeedanceFinishingPlanPackage,
+  exportAiComicSeriesSeedancePrompts,
+  exportAiComicSeriesSeedanceRetryPackage,
+  exportAiComicSeriesSeedanceThumbnailPlanPackage,
+  exportAiComicSeriesSeedanceVersionComparisonPackage,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
@@ -13,6 +25,10 @@ import {
   previewAiComicEpisodeContext,
   rebuildAiComicSeriesContinuityLedger,
   saveAiComicSeriesProject,
+  selectAiComicSeriesSeedanceProductionVersion,
+  updateAiComicSeriesSeedanceAssetLibrary,
+  updateAiComicSeriesSeedanceProductionStatus,
+  updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
 
 beforeAll(() => {
@@ -286,6 +302,9 @@ describe('outline-service', () => {
     expect(saveRes.data?.continuity_ledger.series_memory?.schema_version).toBe('ai-comic-series-memory/v1');
     expect(saveRes.data?.continuity_ledger.series_memory?.characters.length).toBeGreaterThan(0);
     expect(saveRes.data?.continuity_ledger.series_memory?.knowledge_boundaries.length).toBeGreaterThan(0);
+    expect(saveRes.data?.continuity_ledger.production_constraints?.schema_version)
+      .toBe('ai-comic-production-constraints/v1');
+    expect(saveRes.data?.continuity_ledger.production_constraints?.items.length).toBeGreaterThan(0);
     expect(saveRes.data?.memory_recall_preferences?.locked_memory_ids).toContain('character-abc-1');
     expect(saveRes.data?.memory_recall_preferences?.excluded_memory_ids).toContain('prop-def-2');
     expect(saveRes.data?.series_quality_audit?.schema_version).toBe('ai-comic-series-quality-audit/v1');
@@ -294,6 +313,10 @@ describe('outline-service', () => {
     expect(saveRes.data?.series_quality_audit?.thread_closure_report?.schema_version)
       .toBe('ai-comic-thread-closure-report/v1');
     expect(saveRes.data?.series_quality_audit?.thread_closure_report?.items.length).toBeGreaterThan(0);
+    expect(saveRes.data?.series_quality_audit?.memory_conflict_report?.schema_version)
+      .toBe('ai-comic-memory-conflict-report/v1');
+    expect(saveRes.data?.series_quality_audit?.memory_conflict_report?.total_conflict_count)
+      .toBeGreaterThanOrEqual(0);
 
     const getRes = await getAiComicSeriesProject(saveRes.data!.project.series_project_id);
     expect(getRes.ok).toBe(true);
@@ -317,6 +340,8 @@ describe('outline-service', () => {
     expect(exportRes.data?.production_tables.characters.length).toBeGreaterThan(0);
     expect(exportRes.data?.production_tables.threads.length).toBeGreaterThan(0);
     expect(exportRes.data?.production_tables.series_memory.length).toBeGreaterThan(0);
+    expect(exportRes.data?.production_tables.production_constraints.length).toBeGreaterThan(0);
+    expect(exportRes.data?.production_tables.episodic_memory.length).toBeGreaterThanOrEqual(0);
     expect(exportRes.data?.production_tables.episode_status).toHaveLength(3);
     expect(exportRes.data?.production_tables.episode_status[0]).toMatchObject({
       episode_no: 1,
@@ -330,8 +355,11 @@ describe('outline-service', () => {
     expect(exportRes.data?.markdown).toContain('## 制作表');
     expect(exportRes.data?.markdown).toContain('### 角色表');
     expect(exportRes.data?.markdown).toContain('### 系列记忆表');
+    expect(exportRes.data?.markdown).toContain('### 制作约束表');
+    expect(exportRes.data?.markdown).toContain('### 情景记忆表');
     expect(exportRes.data?.markdown).toContain('### 分集状态表');
     expect(exportRes.data?.markdown).toContain('线索闭环');
+    expect(exportRes.data?.markdown).toContain('记忆冲突');
     expect(exportRes.data?.markdown).toContain('第1集：问题出现');
   });
 
@@ -454,11 +482,20 @@ describe('outline-service', () => {
     expect(getRes.data?.continuity_ledger.open_threads.length).toBeGreaterThan(0);
     expect(getRes.data?.continuity_ledger.episode_records[0].memory_events?.length).toBeGreaterThan(0);
     expect(getRes.data?.continuity_ledger.series_memory?.story_events.length).toBeGreaterThan(0);
+    expect(getRes.data?.continuity_ledger.episodic_memory?.schema_version)
+      .toBe('ai-comic-episodic-memory/v1');
+    expect(getRes.data?.continuity_ledger.episodic_memory?.items.length).toBeGreaterThan(0);
+    expect(getRes.data?.continuity_ledger.episodic_memory?.items.some(item =>
+      item.source === 'scene' && item.token_signature.length > 0
+    )).toBe(true);
     expect(getRes.data?.continuity_ledger.episode_records[0].memory_events?.some(event =>
       event.category === 'story_event' && event.label.includes('GEARS分段')
     )).toBe(true);
     expect(getRes.data?.continuity_ledger.episode_records[0].memory_events?.some(event =>
       event.category === 'story_event' && event.label.includes('Seedance镜头')
+    )).toBe(true);
+    expect(getRes.data?.continuity_ledger.production_constraints?.items.some(item =>
+      item.source === 'seedance_shot' && item.category === 'negative'
     )).toBe(true);
     const firstScene = episodeRes.data!.scene_breakdown[0];
     expect(getRes.data?.continuity_ledger.episode_records[0].memory_events?.some(event =>
@@ -471,6 +508,386 @@ describe('outline-service', () => {
     expect(getRes.data?.series_quality_audit?.generated_episode_count).toBe(1);
     expect(getRes.data?.series_quality_audit?.episode_reports[0].story_id).toBe(episodeRes.data?.storyId);
     expect(getRes.data?.series_quality_audit?.episode_reports[0].score).toBeTypeOf('number');
+
+    const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(saveRes.data!.project.series_project_id);
+    expect(seedanceExportRes.ok).toBe(true);
+    expect(seedanceExportRes.data?.schema_version).toBe('ai-comic-series-seedance-export/v1');
+    expect(seedanceExportRes.data?.generated_episode_count).toBe(1);
+    expect(seedanceExportRes.data?.total_shot_count).toBeGreaterThan(0);
+    expect(seedanceExportRes.data?.episodes[0].story_id).toBe(episodeRes.data?.storyId);
+    expect(seedanceExportRes.data?.seedance_production?.items.length).toBe(seedanceExportRes.data?.total_shot_count);
+    expect(seedanceExportRes.data?.seedance_production?.items[0].status).toBe('prompt_exported');
+    expect(seedanceExportRes.data?.markdown).toContain('系列 Seedance 2.0 镜头提示词包');
+    expect(seedanceExportRes.data?.markdown).toContain(episodeRes.data!.storyId);
+
+    const seedanceAssetReportRes = await exportAiComicSeriesSeedanceAssetReportPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(seedanceAssetReportRes.ok).toBe(true);
+    expect(seedanceAssetReportRes.data?.schema_version).toBe('ai-comic-series-seedance-asset-report/v1');
+    expect(seedanceAssetReportRes.data?.total_asset_count).toBeGreaterThan(0);
+    expect(seedanceAssetReportRes.data?.shot_binding_count).toBe(seedanceExportRes.data?.total_shot_count);
+    expect(seedanceAssetReportRes.data?.assets.some(asset => asset.kind === 'character')).toBe(true);
+    expect(seedanceAssetReportRes.data?.shots[0].required_asset_ids.length).toBeGreaterThan(0);
+    expect(seedanceAssetReportRes.data?.markdown).toContain('Seedance 素材引用完整性报告');
+    const firstShotAssetIds = seedanceAssetReportRes.data!.shots[0].required_asset_ids;
+    const bindableAsset = seedanceAssetReportRes.data!.assets.find(asset =>
+      asset.has_reference_slot && firstShotAssetIds.includes(asset.asset_id)
+    ) ?? seedanceAssetReportRes.data!.assets.find(asset => asset.has_reference_slot);
+    expect(bindableAsset).toBeTruthy();
+    const assetLibraryRes = await updateAiComicSeriesSeedanceAssetLibrary(
+      saveRes.data!.project.series_project_id,
+      {
+        items: [{
+          asset_id: bindableAsset!.asset_id,
+          kind: bindableAsset!.kind,
+          label: bindableAsset!.label,
+          reference_slot: bindableAsset!.reference_slot,
+          file_url: 'https://example.com/seedance-assets/asset-001.png',
+          description: '测试绑定素材文件',
+        }],
+      },
+    );
+    expect(assetLibraryRes.ok).toBe(true);
+    expect(assetLibraryRes.data?.seedance_asset_library?.items[0]).toMatchObject({
+      asset_id: bindableAsset!.asset_id,
+      file_url: 'https://example.com/seedance-assets/asset-001.png',
+    });
+    const boundAssetReportRes = await exportAiComicSeriesSeedanceAssetReportPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(boundAssetReportRes.ok).toBe(true);
+    expect(boundAssetReportRes.data?.assets.find(asset =>
+      asset.asset_id === bindableAsset!.asset_id
+    )).toMatchObject({
+      is_bound: true,
+      status: 'bound',
+      file_url: 'https://example.com/seedance-assets/asset-001.png',
+    });
+
+    const firstProductionItem = seedanceExportRes.data!.seedance_production!.items[0]!;
+    const productionStatusRes = await updateAiComicSeriesSeedanceProductionStatus(
+      saveRes.data!.project.series_project_id,
+      {
+        episode_no: firstProductionItem.episode_no,
+        shot_id: firstProductionItem.shot_id,
+        status: 'processing',
+        provider_job_id: 'seedance-job-001',
+        note: '测试标记为处理中',
+      },
+    );
+    expect(productionStatusRes.ok).toBe(true);
+    expect(productionStatusRes.data?.seedance_production?.items.find(item =>
+      item.production_id === firstProductionItem.production_id
+    )).toMatchObject({
+      status: 'processing',
+      provider_job_id: 'seedance-job-001',
+    });
+    const batchProductionRes = await updateAiComicSeriesSeedanceProductionStatuses(
+      saveRes.data!.project.series_project_id,
+      {
+        updates: [
+          {
+            episode_no: firstProductionItem.episode_no,
+            shot_id: firstProductionItem.shot_id,
+            status: 'ready',
+            video_url: 'https://example.com/seedance/shot-001.mp4',
+            note: '批量回传测试',
+          },
+        ],
+      },
+    );
+    expect(batchProductionRes.ok).toBe(true);
+    expect(batchProductionRes.data?.seedance_production?.items.find(item =>
+      item.production_id === firstProductionItem.production_id
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: 'seedance-job-001',
+      video_url: 'https://example.com/seedance/shot-001.mp4',
+    });
+    const readyProductionItem = batchProductionRes.data?.seedance_production?.items.find(item =>
+      item.production_id === firstProductionItem.production_id
+    );
+    expect(readyProductionItem?.versions.some(version =>
+      version.status === 'ready'
+      && version.video_url === 'https://example.com/seedance/shot-001.mp4'
+      && version.provider_job_id === 'seedance-job-001'
+    )).toBe(true);
+    const firstReadyVersionId = readyProductionItem?.versions.find(version =>
+      version.status === 'ready' && version.video_url === 'https://example.com/seedance/shot-001.mp4'
+    )?.version_id;
+    expect(firstReadyVersionId).toBeTruthy();
+
+    const callbackRes = await applyAiComicSeriesSeedanceProductionCallback(
+      saveRes.data!.project.series_project_id,
+      {
+        jobId: 'seedance-job-001',
+        status: 'COMPLETED',
+        videoUrl: 'https://example.com/seedance/shot-001-v2.mp4',
+        message: '平台回调第二版完成',
+        qualityScore: 78,
+        reviewNote: '动作略急，备用版本',
+      },
+    );
+    expect(callbackRes.ok).toBe(true);
+    const callbackProductionItem = callbackRes.data?.seedance_production?.items.find(item =>
+      item.production_id === firstProductionItem.production_id
+    );
+    expect(callbackProductionItem?.video_url).toBe('https://example.com/seedance/shot-001-v2.mp4');
+    expect(callbackProductionItem?.versions.some(version =>
+      version.status === 'ready'
+      && version.video_url === 'https://example.com/seedance/shot-001-v2.mp4'
+      && version.provider_job_id === 'seedance-job-001'
+      && version.quality_score === 78
+    )).toBe(true);
+
+    const retryCandidate = seedanceExportRes.data!.seedance_production!.items.find(item =>
+      item.production_id !== firstProductionItem.production_id
+    );
+    expect(retryCandidate).toBeTruthy();
+    const failedProductionRes = await updateAiComicSeriesSeedanceProductionStatus(
+      saveRes.data!.project.series_project_id,
+      {
+        episode_no: retryCandidate!.episode_no,
+        shot_id: retryCandidate!.shot_id,
+        status: 'failed',
+        provider_job_id: 'seedance-job-failed',
+        failure_reason: '人物手部变形',
+        increment_retry: true,
+        note: '测试标记失败',
+      },
+    );
+    expect(failedProductionRes.ok).toBe(true);
+
+    const versionSelectRes = await selectAiComicSeriesSeedanceProductionVersion(
+      saveRes.data!.project.series_project_id,
+      {
+        episode_no: firstProductionItem.episode_no,
+        shot_id: firstProductionItem.shot_id,
+        version_id: firstReadyVersionId!,
+        note: '测试选择第一版为剪辑版',
+      },
+    );
+    expect(versionSelectRes.ok).toBe(true);
+    expect(versionSelectRes.data?.seedance_production?.items.find(item =>
+      item.production_id === firstProductionItem.production_id
+    )).toMatchObject({
+      selected_version_id: firstReadyVersionId,
+      video_url: 'https://example.com/seedance/shot-001.mp4',
+    });
+
+    const autoSelectWithoutOverwriteRes = await autoSelectAiComicSeriesSeedanceProductionVersions(
+      saveRes.data!.project.series_project_id,
+      { overwrite_manual: false, note: '测试自动择优不覆盖人工选择' },
+    );
+    expect(autoSelectWithoutOverwriteRes.ok).toBe(true);
+    expect(autoSelectWithoutOverwriteRes.data?.seedance_production?.items.find(item =>
+      item.production_id === firstProductionItem.production_id
+    )?.selected_version_id).toBe(firstReadyVersionId);
+
+    const autoSelectOverwriteRes = await autoSelectAiComicSeriesSeedanceProductionVersions(
+      saveRes.data!.project.series_project_id,
+      { overwrite_manual: true, note: '测试自动择优覆盖人工选择' },
+    );
+    expect(autoSelectOverwriteRes.ok).toBe(true);
+    const autoSelectedItem = autoSelectOverwriteRes.data?.seedance_production?.items.find(item =>
+      item.production_id === firstProductionItem.production_id
+    );
+    expect(autoSelectedItem?.selected_version_id).not.toBe(firstReadyVersionId);
+    expect(autoSelectedItem?.video_url).toBe('https://example.com/seedance/shot-001-v2.mp4');
+
+    const cutPackageRes = await exportAiComicSeriesSeedanceCutPackage(saveRes.data!.project.series_project_id);
+    expect(cutPackageRes.ok).toBe(true);
+    expect(cutPackageRes.data?.schema_version).toBe('ai-comic-series-seedance-cut-package/v1');
+    expect(cutPackageRes.data?.total_ready_shot_count).toBeGreaterThan(0);
+    expect(cutPackageRes.data?.total_missing_shot_count).toBeGreaterThanOrEqual(0);
+    expect(cutPackageRes.data?.episodes[0].shots[0]).toMatchObject({
+      episode_no: firstProductionItem.episode_no,
+      shot_id: firstProductionItem.shot_id,
+      provider_job_id: 'seedance-job-001',
+      video_url: 'https://example.com/seedance/shot-001-v2.mp4',
+      quality_score: 78,
+    });
+    expect(cutPackageRes.data?.episodes[0].shots[0].version_id).toBe(autoSelectedItem?.selected_version_id);
+    expect(cutPackageRes.data?.markdown).toContain('Seedance 剪辑交付包');
+    expect(cutPackageRes.data?.markdown).toContain('https://example.com/seedance/shot-001-v2.mp4');
+
+    const cutAssemblyDryRunRes = await assembleAiComicSeriesSeedanceCut(
+      saveRes.data!.project.series_project_id,
+      { dry_run: true },
+    );
+    expect(cutAssemblyDryRunRes.ok).toBe(true);
+    expect(cutAssemblyDryRunRes.data?.schema_version)
+      .toBe('ai-comic-series-seedance-cut-assembly-result/v1');
+    expect(cutAssemblyDryRunRes.data?.dry_run).toBe(true);
+    expect(cutAssemblyDryRunRes.data?.status).toBe('planned');
+    expect(cutAssemblyDryRunRes.data?.source_shot_count).toBe(cutPackageRes.data?.total_ready_shot_count);
+    expect(cutAssemblyDryRunRes.data?.output_path).toContain('full-series-seedance-cut.mp4');
+    expect(cutAssemblyDryRunRes.data?.ffmpeg_command).toContain('ffmpeg -y -f concat');
+    expect(cutAssemblyDryRunRes.data?.assembly_mode).toBe('copy');
+    expect(cutAssemblyDryRunRes.data?.output_profile).toBe('source_copy');
+    expect(cutAssemblyDryRunRes.data?.seedance_cut_assembly).toMatchObject({
+      status: 'planned',
+      assembly_mode: 'copy',
+      source_shot_count: cutPackageRes.data?.total_ready_shot_count,
+    });
+
+    const cutAssemblyTranscodeDryRunRes = await assembleAiComicSeriesSeedanceCut(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: true,
+        assembly_mode: 'transcode',
+        output_profile: 'mp4_h264_720p',
+        fps: 24,
+        crf: 22,
+        preset: 'fast',
+      },
+    );
+    expect(cutAssemblyTranscodeDryRunRes.ok).toBe(true);
+    expect(cutAssemblyTranscodeDryRunRes.data?.assembly_mode).toBe('transcode');
+    expect(cutAssemblyTranscodeDryRunRes.data?.output_profile).toBe('mp4_h264_720p');
+    expect(cutAssemblyTranscodeDryRunRes.data?.ffmpeg_command).toContain('-c:v libx264');
+    expect(cutAssemblyTranscodeDryRunRes.data?.ffmpeg_command).toContain('-vf');
+    expect(cutAssemblyTranscodeDryRunRes.data?.ffmpeg_command).toContain('scale=1280:720');
+    expect(cutAssemblyTranscodeDryRunRes.data?.seedance_cut_assembly).toMatchObject({
+      status: 'planned',
+      assembly_mode: 'transcode',
+      output_profile: 'mp4_h264_720p',
+    });
+
+    const cutAssemblyRes = await assembleAiComicSeriesSeedanceCut(
+      saveRes.data!.project.series_project_id,
+      { dry_run: false, overwrite: true, episode_no: firstProductionItem.episode_no },
+      { runner: async () => undefined },
+    );
+    expect(cutAssemblyRes.ok).toBe(true);
+    expect(cutAssemblyRes.data?.status).toBe('assembled');
+    expect(cutAssemblyRes.data?.source_episode_no).toBe(firstProductionItem.episode_no);
+    expect(cutAssemblyRes.data?.source_shot_count).toBeGreaterThan(0);
+    expect(cutAssemblyRes.data?.seedance_cut_assembly).toMatchObject({
+      status: 'ready',
+      assembly_mode: 'copy',
+      source_episode_no: firstProductionItem.episode_no,
+    });
+
+    const editAssetPackageRes = await exportAiComicSeriesSeedanceEditAssetPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(editAssetPackageRes.ok).toBe(true);
+    expect(editAssetPackageRes.data?.schema_version).toBe('ai-comic-series-seedance-edit-asset-package/v1');
+    expect(editAssetPackageRes.data?.total_ready_shot_count).toBe(cutPackageRes.data?.total_ready_shot_count);
+    expect(editAssetPackageRes.data?.episodes[0].shots[0]).toMatchObject({
+      shot_id: firstProductionItem.shot_id,
+      video_url: 'https://example.com/seedance/shot-001-v2.mp4',
+    });
+    expect(editAssetPackageRes.data?.assets.some(asset => asset.status === 'bound')).toBe(true);
+    expect(editAssetPackageRes.data?.markdown).toContain('Seedance 剪辑台资产包');
+
+    const thumbnailPlanRes = await exportAiComicSeriesSeedanceThumbnailPlanPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(thumbnailPlanRes.ok).toBe(true);
+    expect(thumbnailPlanRes.data?.schema_version).toBe('ai-comic-series-seedance-thumbnail-plan/v1');
+    expect(thumbnailPlanRes.data?.total_ready_shot_count).toBe(cutPackageRes.data?.total_ready_shot_count);
+    expect(thumbnailPlanRes.data?.episodes[0].shots[0]).toMatchObject({
+      shot_id: firstProductionItem.shot_id,
+      video_url: 'https://example.com/seedance/shot-001-v2.mp4',
+      capture_time_sec: 1,
+      status: 'pending_capture',
+    });
+    expect(thumbnailPlanRes.data?.episodes[0].shots[0].output_path).toContain('/e01-');
+    expect(thumbnailPlanRes.data?.episodes[0].shots[0].ffmpeg_command).toContain('ffmpeg -y -ss 1');
+    expect(thumbnailPlanRes.data?.markdown).toContain('Seedance 缩略图抽帧计划');
+
+    const thumbnailDryRunRes = await captureAiComicSeriesSeedanceThumbnails(
+      saveRes.data!.project.series_project_id,
+      { dry_run: true },
+    );
+    expect(thumbnailDryRunRes.ok).toBe(true);
+    expect(thumbnailDryRunRes.data?.schema_version)
+      .toBe('ai-comic-series-seedance-thumbnail-capture-result/v1');
+    expect(thumbnailDryRunRes.data?.dry_run).toBe(true);
+    expect(thumbnailDryRunRes.data?.planned_count).toBe(cutPackageRes.data?.total_ready_shot_count);
+    expect(thumbnailDryRunRes.data?.seedance_production.items.find(item =>
+      item.production_id === firstProductionItem.production_id
+    )?.thumbnail).toMatchObject({
+      status: 'planned',
+      output_path: thumbnailPlanRes.data?.episodes[0].shots[0].output_path,
+    });
+
+    const thumbnailCaptureRes = await captureAiComicSeriesSeedanceThumbnails(
+      saveRes.data!.project.series_project_id,
+      { dry_run: false, overwrite: true, limit: 1 },
+      { runner: async () => undefined },
+    );
+    expect(thumbnailCaptureRes.ok).toBe(true);
+    expect(thumbnailCaptureRes.data?.captured_count).toBe(1);
+    expect(thumbnailCaptureRes.data?.shots[0]).toMatchObject({
+      production_id: firstProductionItem.production_id,
+      status: 'captured',
+      output_path: thumbnailPlanRes.data?.episodes[0].shots[0].output_path,
+    });
+    expect(thumbnailCaptureRes.data?.seedance_production.items.find(item =>
+      item.production_id === firstProductionItem.production_id
+    )?.thumbnail).toMatchObject({
+      status: 'ready',
+      output_path: thumbnailPlanRes.data?.episodes[0].shots[0].output_path,
+      capture_time_sec: 1,
+    });
+
+    const finishingPlanRes = await exportAiComicSeriesSeedanceFinishingPlanPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(finishingPlanRes.ok).toBe(true);
+    expect(finishingPlanRes.data?.schema_version).toBe('ai-comic-series-seedance-finishing-plan/v1');
+    expect(finishingPlanRes.data?.source_cut_output_path).toBe(cutAssemblyRes.data?.output_path);
+    expect(finishingPlanRes.data?.total_ready_shot_count).toBe(cutPackageRes.data?.total_ready_shot_count);
+    expect(finishingPlanRes.data?.subtitle_format).toBe('srt');
+    expect(finishingPlanRes.data?.shots[0]).toMatchObject({
+      production_id: firstProductionItem.production_id,
+      start_sec: 0,
+      video_url: 'https://example.com/seedance/shot-001-v2.mp4',
+      thumbnail_path: thumbnailPlanRes.data?.episodes[0].shots[0].output_path,
+    });
+    expect(finishingPlanRes.data?.subtitle_cues.length).toBe(finishingPlanRes.data?.shots.length);
+    expect(finishingPlanRes.data?.audio_cues.some(cue => cue.cue_id === 'aud-series-bed')).toBe(true);
+    expect(finishingPlanRes.data?.title_cards.some(card => card.placement === 'series_opening')).toBe(true);
+    expect(finishingPlanRes.data?.quality_checklist.length).toBeGreaterThan(0);
+    expect(finishingPlanRes.data?.markdown).toContain('Seedance 成片精修计划');
+
+    const retryPackageRes = await exportAiComicSeriesSeedanceRetryPackage(saveRes.data!.project.series_project_id);
+    expect(retryPackageRes.ok).toBe(true);
+    expect(retryPackageRes.data?.schema_version).toBe('ai-comic-series-seedance-retry-package/v1');
+    expect(retryPackageRes.data?.total_retry_shot_count).toBeGreaterThan(0);
+    expect(retryPackageRes.data?.episodes.flatMap(episode => episode.shots).some(shot =>
+      shot.shot_id === retryCandidate!.shot_id
+      && shot.failure_reason === '人物手部变形'
+      && shot.prompt.seedance_prompt.length > 0
+    )).toBe(true);
+    expect(retryPackageRes.data?.markdown).toContain('Seedance 重试提交包');
+    expect(retryPackageRes.data?.markdown).toContain('人物手部变形');
+
+    const versionComparisonRes = await exportAiComicSeriesSeedanceVersionComparisonPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(versionComparisonRes.ok).toBe(true);
+    expect(versionComparisonRes.data?.schema_version)
+      .toBe('ai-comic-series-seedance-version-comparison/v1');
+    expect(versionComparisonRes.data?.comparable_shot_count).toBeGreaterThan(0);
+    expect(versionComparisonRes.data?.selected_shot_count).toBeGreaterThan(0);
+    const comparisonShot = versionComparisonRes.data?.shots.find(shot =>
+      shot.production_id === firstProductionItem.production_id
+    );
+    expect(comparisonShot?.auto_best_version_id).toBe(autoSelectedItem?.selected_version_id);
+    expect(comparisonShot?.selected_version_id).toBe(autoSelectedItem?.selected_version_id);
+    expect(comparisonShot?.versions.some(version =>
+      version.is_auto_best
+      && version.is_selected
+      && version.quality_score === 78
+      && version.video_url === 'https://example.com/seedance/shot-001-v2.mp4'
+    )).toBe(true);
+    expect(versionComparisonRes.data?.markdown).toContain('Seedance 版本对比报告');
+    expect(versionComparisonRes.data?.markdown).toContain('自动择优推荐');
 
     const editedPlan = {
       ...planRes.data!,
@@ -538,17 +955,28 @@ describe('outline-service', () => {
     expect(previewRes.data?.blueprint.episode_no).toBe(2);
     expect(previewRes.data?.generation_outline).toContain('连续性账本');
     expect(previewRes.data?.generation_outline).toContain('系列记忆精准召回');
+    expect(previewRes.data?.generation_outline).toContain('制作约束审计');
+    expect(previewRes.data?.generation_outline).toContain('长期情景记忆模糊召回');
     expect(previewRes.data?.generation_outline).toContain('上一条生成记忆');
     expect(previewRes.data?.narrative_patterns.length).toBeGreaterThan(0);
     expect(previewRes.data?.generation_outline).toContain(previewRes.data!.narrative_patterns[0]);
     expect(previewRes.data?.generation_outline).toContain(firstEpisodeRes.data!.storyId);
     expect(previewRes.data?.ledger_summary.last_generated_episode_no).toBe(1);
     expect(previewRes.data?.ledger_summary.series_memory?.characters.length).toBeGreaterThan(0);
+    expect(previewRes.data?.ledger_summary.production_constraints?.active_count).toBeGreaterThan(0);
+    expect(previewRes.data?.ledger_summary.episodic_memory?.total_count).toBeGreaterThan(0);
+    expect(previewRes.data?.ledger_summary.memory_conflicts?.total_conflict_count).toBeGreaterThanOrEqual(0);
     expect(previewRes.data?.focused_memory_recall?.schema_version).toBe('ai-comic-series-memory-recall/v1');
     expect(previewRes.data?.focused_memory_recall?.episode_no).toBe(2);
     expect(previewRes.data?.focused_memory_recall?.items.length).toBeGreaterThan(0);
     expect(previewRes.data?.focused_memory_recall?.items.some(item =>
       item.category === 'character' || item.reasons.includes('上一集承接')
+    )).toBe(true);
+    expect(previewRes.data?.focused_episodic_memory_recall?.schema_version)
+      .toBe('ai-comic-episodic-memory-recall/v1');
+    expect(previewRes.data?.focused_episodic_memory_recall?.items.length).toBeGreaterThan(0);
+    expect(previewRes.data?.focused_episodic_memory_recall?.items.some(item =>
+      item.reasons.includes('上一集情绪承接')
     )).toBe(true);
     expect(previewRes.data?.previous_episode_memory.length).toBeGreaterThan(0);
     const controlledMemoryId = previewRes.data!.focused_memory_recall!.items[0]!.memory_id;
@@ -615,6 +1043,7 @@ describe('outline-service', () => {
     expect(secondEpisodeRes.ok).toBe(true);
     expect(secondEpisodeRes.data?.original_user_query).toContain('连续性账本');
     expect(secondEpisodeRes.data?.original_user_query).toContain('系列记忆精准召回');
+    expect(secondEpisodeRes.data?.original_user_query).toContain('长期情景记忆模糊召回');
     expect(secondEpisodeRes.data?.original_user_query).toContain('人工锁定');
     expect(secondEpisodeRes.data?.original_user_query).toContain('账本未回收线索');
     expect(secondEpisodeRes.data?.original_user_query).toContain('上一条生成记忆');

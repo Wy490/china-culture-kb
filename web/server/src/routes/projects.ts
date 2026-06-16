@@ -5,6 +5,7 @@ import {
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
   ProjectRetainRecentRequestSchema,
+  StoryProductionBoardRepairRequestSchema,
   StoryQualityRepairRequestSchema,
   StorySceneRegenerateRequestSchema,
   SupplementTaskIdParamSchema,
@@ -13,11 +14,13 @@ import {
   deleteProject,
   deleteProjects,
   exportProjectCurrentVersion,
+  exportProjectProductionBoard,
   getProject,
   getProjectProductionBoard,
   listProjectSupplementTasks,
   listProjects,
   repairProjectQuality,
+  repairProjectProductionBoard,
   regenerateProjectScene,
   retainRecentProjects,
   updateProjectSupplementTask,
@@ -103,6 +106,31 @@ projectsRouter.get('/:projectId/production-board', validateParams(ProjectIdParam
     next(err);
   }
 });
+
+projectsRouter.post('/:projectId/production-board/export', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  try {
+    const { projectId } = req.params as { projectId: string };
+    const result = await exportProjectProductionBoard(projectId);
+    res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.post(
+  '/:projectId/production-board/repair',
+  validateParams(ProjectIdParamSchema),
+  validateBody(StoryProductionBoardRepairRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await repairProjectProductionBoard(projectId, req.body);
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 projectsRouter.post(
   '/:projectId/regenerate-scene',

@@ -6,13 +6,6 @@
         <p class="projects-page__desc">管理故事草稿和 AI 漫剧系列，查看来源条目、状态和最近更新时间。</p>
       </div>
       <div class="projects-page__header-actions">
-        <button
-          class="projects-page__muted-btn"
-          :disabled="projects.length <= RETAIN_RECENT_COUNT || retainingRecent || batchDeleting || deletingProjectId !== ''"
-          @click="handleRetainRecentProjects"
-        >
-          {{ retainingRecent ? '清理中…' : `按生成时间保留最近 ${RETAIN_RECENT_COUNT} 个` }}
-        </button>
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建漫剧系列</RouterLink>
         <RouterLink class="projects-page__cta" to="/story/new">新建故事</RouterLink>
       </div>
@@ -29,54 +22,93 @@
         <option value="story">故事项目</option>
         <option value="series">漫剧系列</option>
       </select>
-      <select v-model="statusFilter" class="projects-page__select">
-        <option value="">全部状态</option>
-        <option value="draft">草稿</option>
-        <option value="edited">已编辑</option>
-        <option value="exported">已导出</option>
-        <option value="finalized">已定稿</option>
-      </select>
-      <select v-model="videoStatusFilter" class="projects-page__select">
-        <option value="">全部成片</option>
-        <option value="none">未回传</option>
-        <option value="processing">制作中</option>
-        <option value="ready">已就绪</option>
-        <option value="failed">未完成</option>
-      </select>
-      <label class="projects-page__toggle">
-        <input v-model="supplementFilter" type="checkbox" />
-        <span>仅看待补资料</span>
-      </label>
-      <label class="projects-page__toggle">
-        <input v-model="qualityFilter" type="checkbox" />
-        <span>仅看质量问题</span>
-      </label>
-      <label class="projects-page__toggle">
-        <input v-model="showArchivedSeries" type="checkbox" @change="loadProjects" />
-        <span>显示归档系列</span>
-      </label>
+      <details class="projects-page__filters">
+        <summary class="projects-page__filters-summary">
+          筛选
+          <span v-if="activeFilterCount > 0" class="projects-page__filters-count">{{ activeFilterCount }}</span>
+        </summary>
+        <div class="projects-page__filters-body">
+          <select v-model="statusFilter" class="projects-page__select">
+            <option value="">全部状态</option>
+            <option value="draft">草稿</option>
+            <option value="edited">已编辑</option>
+            <option value="exported">已导出</option>
+            <option value="finalized">已定稿</option>
+          </select>
+          <select v-model="videoStatusFilter" class="projects-page__select">
+            <option value="">全部成片</option>
+            <option value="none">未回传</option>
+            <option value="processing">制作中</option>
+            <option value="ready">已就绪</option>
+            <option value="failed">未完成</option>
+          </select>
+          <label class="projects-page__toggle">
+            <input v-model="supplementFilter" type="checkbox" />
+            <span>仅看待补资料</span>
+          </label>
+          <label class="projects-page__toggle">
+            <input v-model="qualityFilter" type="checkbox" />
+            <span>仅看质量问题</span>
+          </label>
+          <label class="projects-page__toggle">
+            <input v-model="showArchivedSeries" type="checkbox" @change="loadProjects" />
+            <span>显示归档系列</span>
+          </label>
+          <button
+            class="projects-page__muted-btn projects-page__filter-reset"
+            :disabled="activeFilterCount === 0"
+            @click="resetFilters"
+          >
+            重置筛选
+          </button>
+        </div>
+      </details>
     </section>
 
-    <section v-if="showStoryProjects && filteredProjects.length > 0" class="projects-page__bulkbar">
+    <section v-if="showStoryProjects && projects.length > 0" class="projects-page__bulkbar">
       <label class="projects-page__bulk-check">
         <input
           type="checkbox"
           :checked="allFilteredSelected"
-          :disabled="batchDeleting || deletingProjectId !== ''"
+          :indeterminate.prop="someFilteredSelected && !allFilteredSelected"
+          :disabled="filteredProjects.length === 0 || batchDeleting || deletingProjectId !== ''"
+          :aria-label="allFilteredSelected ? '取消选择当前结果' : '全选当前结果'"
           @change="toggleSelectFiltered"
         />
-        <span>已选 {{ selectedProjectIds.length }} / 当前筛选 {{ filteredProjects.length }}</span>
+        <span>全选当前结果</span>
       </label>
+      <p class="projects-page__bulk-summary">
+        当前已选 {{ selectedVisibleProjectIds.length }} 个，当前结果 {{ filteredProjects.length }} 个
+        <span v-if="selectedProjectPreview" class="projects-page__bulk-preview">{{ selectedProjectPreview }}</span>
+        <span v-if="selectedHiddenProjectCount > 0" class="projects-page__bulk-warning">
+          筛选外仍有 {{ selectedHiddenProjectCount }} 个已选
+        </span>
+      </p>
       <div class="projects-page__bulk-actions">
         <button class="projects-page__muted-btn" :disabled="selectedProjectIds.length === 0 || batchDeleting" @click="clearSelection">
           清空选择
         </button>
         <button
+          v-if="selectedHiddenProjectCount > 0"
+          class="projects-page__muted-btn"
+          :disabled="batchDeleting"
+          @click="clearHiddenSelection"
+        >
+          清除筛选外选择
+        </button>
+        <button
+          class="projects-page__muted-btn"
+          :disabled="projects.length <= RETAIN_RECENT_COUNT || retainingRecent || batchDeleting || deletingProjectId !== ''"
+          @click="handleRetainRecentProjects"
+        >
+          {{ retainingRecent ? '清理中…' : `仅保留最近 ${RETAIN_RECENT_COUNT} 个` }}
+        </button>
+        <button
           class="projects-page__danger-btn"
-          :disabled="selectedProjectIds.length === 0 || batchDeleting || deletingProjectId !== ''"
+          :disabled="selectedVisibleProjectIds.length === 0 || batchDeleting || deletingProjectId !== ''"
           @click="handleBatchDeleteProjects"
         >
-          {{ batchDeleting ? '批量删除中…' : `删除所选 ${selectedProjectIds.length} 个` }}
+          {{ batchDeleting ? '批量删除中…' : `删除当前所选 ${selectedVisibleProjectIds.length} 个` }}
         </button>
       </div>
     </section>
@@ -121,33 +153,103 @@
               </div>
             </RouterLink>
             <div class="projects-page__card-actions">
-              <RouterLink
-                class="projects-page__muted-link"
-                :to="seriesContinueLink(series)"
-              >
-                {{ nextSeriesEpisodeNo(series) ? `继续第 ${nextSeriesEpisodeNo(series)} 集` : '查看全集' }}
-              </RouterLink>
-              <button
-                class="projects-page__muted-btn"
-                :disabled="exportingSeriesProjectId === series.series_project_id"
-                @click="handleExportSeriesBible(series)"
-              >
-                {{ exportingSeriesProjectId === series.series_project_id ? '导出中…' : '导出 Bible' }}
-              </button>
-              <button
-                class="projects-page__muted-btn"
-                :disabled="managingSeriesProjectId === series.series_project_id"
-                @click="handleArchiveSeriesProject(series)"
-              >
-                {{ series.archived_at ? '恢复' : '归档' }}
-              </button>
-              <button
-                class="projects-page__delete-btn"
-                :disabled="managingSeriesProjectId === series.series_project_id"
-                @click="handleDeleteSeriesProject(series)"
-              >
-                {{ managingSeriesProjectId === series.series_project_id ? '处理中…' : '删除' }}
-              </button>
+              <div class="projects-page__card-primary-actions">
+                <RouterLink
+                  class="projects-page__muted-link"
+                  :to="seriesContinueLink(series)"
+                >
+                  {{ nextSeriesEpisodeNo(series) ? `继续第 ${nextSeriesEpisodeNo(series)} 集` : '查看全集' }}
+                </RouterLink>
+                <button
+                  class="projects-page__muted-btn"
+                  :disabled="managingSeriesProjectId === series.series_project_id"
+                  @click="handleArchiveSeriesProject(series)"
+                >
+                  {{ series.archived_at ? '恢复' : '归档' }}
+                </button>
+                <button
+                  class="projects-page__delete-btn"
+                  :disabled="managingSeriesProjectId === series.series_project_id"
+                  @click="handleDeleteSeriesProject(series)"
+                >
+                  {{ managingSeriesProjectId === series.series_project_id ? '处理中…' : '删除' }}
+                </button>
+              </div>
+              <details class="projects-page__series-actions">
+                <summary class="projects-page__series-actions-summary">制作操作</summary>
+                <div class="projects-page__series-actions-body">
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="exportingSeriesProjectId === series.series_project_id"
+                    @click="handleExportSeriesBible(series)"
+                  >
+                    {{ exportingSeriesProjectId === series.series_project_id ? '导出中…' : '导出 Bible' }}
+                  </button>
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="exportingSeriesSeedanceProjectId === series.series_project_id"
+                    @click="handleExportSeriesSeedance(series)"
+                  >
+                    {{ exportingSeriesSeedanceProjectId === series.series_project_id ? '导出中…' : 'Seedance' }}
+                  </button>
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="exportingSeriesCutProjectId === series.series_project_id"
+                    @click="handleExportSeriesCutPackage(series)"
+                  >
+                    {{ exportingSeriesCutProjectId === series.series_project_id ? '导出中…' : '剪辑包' }}
+                  </button>
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="assemblingSeriesCutProjectId === series.series_project_id"
+                    @click="handleAssembleSeriesCut(series, 'copy')"
+                  >
+                    {{ assemblingSeriesCutProjectId === series.series_project_id ? '装配中…' : '装配成片' }}
+                  </button>
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="assemblingSeriesCutProjectId === series.series_project_id"
+                    @click="handleAssembleSeriesCut(series, 'transcode')"
+                  >
+                    转码成片
+                  </button>
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="exportingSeriesRetryProjectId === series.series_project_id"
+                    @click="handleExportSeriesRetryPackage(series)"
+                  >
+                    {{ exportingSeriesRetryProjectId === series.series_project_id ? '导出中…' : '重试包' }}
+                  </button>
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="exportingSeriesVersionComparisonProjectId === series.series_project_id"
+                    @click="handleExportSeriesVersionComparison(series)"
+                  >
+                    {{ exportingSeriesVersionComparisonProjectId === series.series_project_id ? '导出中…' : '版本对比' }}
+                  </button>
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="exportingSeriesThumbnailPlanProjectId === series.series_project_id"
+                    @click="handleExportSeriesThumbnailPlan(series)"
+                  >
+                    {{ exportingSeriesThumbnailPlanProjectId === series.series_project_id ? '导出中…' : '缩略图计划' }}
+                  </button>
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="exportingSeriesFinishingPlanProjectId === series.series_project_id"
+                    @click="handleExportSeriesFinishingPlan(series)"
+                  >
+                    {{ exportingSeriesFinishingPlanProjectId === series.series_project_id ? '导出中…' : '精修计划' }}
+                  </button>
+                  <button
+                    class="projects-page__muted-btn"
+                    :disabled="capturingSeriesThumbnailsProjectId === series.series_project_id"
+                    @click="handleCaptureSeriesThumbnails(series)"
+                  >
+                    {{ capturingSeriesThumbnailsProjectId === series.series_project_id ? '抽帧中…' : '生成缩略图' }}
+                  </button>
+                </div>
+              </details>
             </div>
           </article>
         </div>
@@ -164,63 +266,93 @@
           </div>
           <RouterLink class="projects-page__text-link" to="/story/new">打开故事工坊</RouterLink>
         </div>
-        <div v-if="filteredProjects.length > 0" class="projects-page__grid">
-          <article
-            v-for="project in filteredProjects"
-            :key="project.project_id"
-            :class="['projects-page__card', selectedProjectIds.includes(project.project_id) ? 'projects-page__card--selected' : '']"
-          >
-            <label class="projects-page__card-select" :aria-label="`选择 ${project.title}`">
-              <input
-                v-model="selectedProjectIds"
-                type="checkbox"
-                :value="project.project_id"
-                :disabled="batchDeleting || deletingProjectId !== ''"
-              />
-            </label>
-            <RouterLink class="projects-page__card-link" :to="`/projects/${project.project_id}`">
-              <div class="projects-page__card-top">
-                <span class="projects-page__status-badge" :data-status="project.status">{{ statusLabel(project.status) }}</span>
-                <span class="projects-page__video-type">{{ typeLabel(project.video_type) }}</span>
-              </div>
-              <h2 class="projects-page__card-title">{{ project.title }}</h2>
-              <p class="projects-page__source">来源：{{ project.source_entry }}</p>
-              <p v-if="project.logline" class="projects-page__logline">{{ project.logline }}</p>
-              <div class="projects-page__meta">
-                <span>{{ formatDate(project.updated_at) }}</span>
-                <span>{{ project.scene_count }} 场景</span>
-                <span v-if="project.has_gears_segments">GEARS 已生成</span>
-                <span v-else>无 GEARS 分段</span>
-                <span
-                  v-if="project.gears_video_status"
-                  :class="['projects-page__meta-video', `projects-page__meta-video--${project.gears_video_status}`]"
-                >
-                  {{ gearsVideoStatusLabel(project.gears_video_status) }}
-                </span>
-                <span v-if="(project.open_supplement_task_count ?? 0) > 0" class="projects-page__meta-warning">
-                  待补资料 {{ project.open_supplement_task_count }}
-                </span>
-                <span
-                  v-if="typeof project.genre_score === 'number'"
-                  :class="['projects-page__meta-quality', project.quality_passed ? 'projects-page__meta-quality--pass' : 'projects-page__meta-quality--warn']"
-                >
-                  类型分 {{ project.genre_score }}
-                </span>
-                <span v-if="(project.quality_issue_count ?? 0) > 0" class="projects-page__meta-warning">
-                  质量问题 {{ project.quality_issue_count }}
-                </span>
-              </div>
-            </RouterLink>
-            <div class="projects-page__card-actions">
-              <button
-                class="projects-page__delete-btn"
-                :disabled="deletingProjectId === project.project_id"
-                @click="handleDeleteProject(project)"
+        <div v-if="filteredProjects.length > 0" class="projects-page__story-table-wrap">
+          <table class="projects-page__story-table">
+            <thead>
+              <tr>
+                <th class="projects-page__select-col">
+                  <input
+                    type="checkbox"
+                    :checked="allFilteredSelected"
+                    :indeterminate.prop="someFilteredSelected && !allFilteredSelected"
+                    :disabled="batchDeleting || deletingProjectId !== ''"
+                    :aria-label="allFilteredSelected ? '取消选择当前故事项目' : '全选当前故事项目'"
+                    @change="toggleSelectFiltered"
+                  />
+                </th>
+                <th>故事</th>
+                <th>类型 / 状态</th>
+                <th>质量</th>
+                <th>更新时间</th>
+                <th class="projects-page__actions-col">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="project in filteredProjects"
+                :key="project.project_id"
+                :class="{ 'projects-page__story-row--selected': selectedProjectIds.includes(project.project_id) }"
               >
-                {{ deletingProjectId === project.project_id ? '删除中…' : '删除' }}
-              </button>
-            </div>
-          </article>
+                <td class="projects-page__select-col">
+                  <label class="projects-page__row-check" :aria-label="`选择 ${project.title}`">
+                    <input
+                      v-model="selectedProjectIds"
+                      type="checkbox"
+                      :value="project.project_id"
+                      :disabled="batchDeleting || deletingProjectId !== ''"
+                    />
+                  </label>
+                </td>
+                <td>
+                  <RouterLink class="projects-page__story-title" :to="`/projects/${project.project_id}`">
+                    {{ project.title }}
+                  </RouterLink>
+                  <p class="projects-page__story-subtitle">来源：{{ project.source_entry }}</p>
+                  <p v-if="project.logline" class="projects-page__story-logline">{{ project.logline }}</p>
+                </td>
+                <td>
+                  <div class="projects-page__cell-stack">
+                    <span class="projects-page__status-badge" :data-status="project.status">{{ statusLabel(project.status) }}</span>
+                    <span class="projects-page__video-type">{{ typeLabel(project.video_type) }}</span>
+                    <span>{{ project.scene_count }} 场景</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="projects-page__cell-stack">
+                    <span
+                      v-if="typeof project.genre_score === 'number'"
+                      :class="['projects-page__meta-quality', project.quality_passed ? 'projects-page__meta-quality--pass' : 'projects-page__meta-quality--warn']"
+                    >
+                      类型分 {{ project.genre_score }}
+                    </span>
+                    <span v-else>未评分</span>
+                    <span v-if="(project.quality_issue_count ?? 0) > 0" class="projects-page__meta-warning">
+                      质量问题 {{ project.quality_issue_count }}
+                    </span>
+                    <span v-if="(project.open_supplement_task_count ?? 0) > 0" class="projects-page__meta-warning">
+                      待补资料 {{ project.open_supplement_task_count }}
+                    </span>
+                    <span v-if="project.gears_video_status" :class="['projects-page__meta-video', `projects-page__meta-video--${project.gears_video_status}`]">
+                      {{ gearsVideoStatusLabel(project.gears_video_status) }}
+                    </span>
+                  </div>
+                </td>
+                <td class="projects-page__date-cell">{{ formatDate(project.updated_at) }}</td>
+                <td class="projects-page__actions-col">
+                  <div class="projects-page__row-actions">
+                    <RouterLink class="projects-page__muted-link" :to="`/projects/${project.project_id}`">打开</RouterLink>
+                    <button
+                      class="projects-page__delete-btn"
+                      :disabled="deletingProjectId === project.project_id"
+                      @click="handleDeleteProject(project)"
+                    >
+                      {{ deletingProjectId === project.project_id ? '删除中…' : '删除' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
         <div v-else class="projects-page__empty projects-page__empty--section">
           <p>还没有匹配到故事项目，可以先去故事工坊生成一个初稿。</p>
@@ -235,14 +367,23 @@ import { computed, onMounted, ref } from 'vue'
 import { deleteProject, deleteProjects, listProjects, retainRecentProjects } from '@/api/projects'
 import {
   archiveAiComicSeriesProject,
+  assembleAiComicSeriesSeedanceCut,
+  captureAiComicSeriesSeedanceThumbnails,
   deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
+  exportAiComicSeriesSeedanceCutPackage,
+  exportAiComicSeriesSeedanceFinishingPlanPackage,
+  exportAiComicSeriesSeedancePrompts,
+  exportAiComicSeriesSeedanceRetryPackage,
+  exportAiComicSeriesSeedanceThumbnailPlanPackage,
+  exportAiComicSeriesSeedanceVersionComparisonPackage,
   listAiComicSeriesProjects,
 } from '@/api/stories'
 import type {
   AiComicPacingProfile,
   AiComicSeriesProjectMeta,
   GearsVideoStatus,
+  StoryProjectDeleteResult,
   StoryProjectListItem,
   StoryProjectStatus,
 } from '@shared/types'
@@ -255,7 +396,7 @@ const loading = ref(false)
 const error = ref('')
 const projectMessage = ref('')
 const searchQuery = ref('')
-const projectKindFilter = ref('')
+const projectKindFilter = ref('story')
 const statusFilter = ref('')
 const videoStatusFilter = ref('')
 const supplementFilter = ref(false)
@@ -264,6 +405,14 @@ const showArchivedSeries = ref(false)
 const deletingProjectId = ref('')
 const managingSeriesProjectId = ref('')
 const exportingSeriesProjectId = ref('')
+const exportingSeriesSeedanceProjectId = ref('')
+const exportingSeriesCutProjectId = ref('')
+const exportingSeriesRetryProjectId = ref('')
+const exportingSeriesVersionComparisonProjectId = ref('')
+const exportingSeriesThumbnailPlanProjectId = ref('')
+const exportingSeriesFinishingPlanProjectId = ref('')
+const capturingSeriesThumbnailsProjectId = ref('')
+const assemblingSeriesCutProjectId = ref('')
 const selectedProjectIds = ref<string[]>([])
 const batchDeleting = ref(false)
 const retainingRecent = ref(false)
@@ -305,9 +454,38 @@ const allFilteredSelected = computed(() => {
     && filteredProjects.value.every(project => selectedProjectIds.value.includes(project.project_id))
 })
 
-const selectedProjects = computed(() => {
+const someFilteredSelected = computed(() => {
+  return filteredProjects.value.some(project => selectedProjectIds.value.includes(project.project_id))
+})
+
+const selectedVisibleProjects = computed(() => {
   const selected = new Set(selectedProjectIds.value)
-  return projects.value.filter(project => selected.has(project.project_id))
+  return filteredProjects.value.filter(project => selected.has(project.project_id))
+})
+
+const selectedVisibleProjectIds = computed(() => {
+  return selectedVisibleProjects.value.map(project => project.project_id)
+})
+
+const selectedHiddenProjectCount = computed(() => {
+  return Math.max(0, selectedProjectIds.value.length - selectedVisibleProjectIds.value.length)
+})
+
+const selectedProjectPreview = computed(() => {
+  if (selectedVisibleProjects.value.length === 0) return ''
+  const titles = selectedVisibleProjects.value.slice(0, 2).map(project => `《${project.title}》`)
+  const extraCount = selectedVisibleProjects.value.length - titles.length
+  return `${titles.join('、')}${extraCount > 0 ? ` 等 ${selectedVisibleProjects.value.length} 个` : ''}`
+})
+
+const activeFilterCount = computed(() => {
+  return [
+    statusFilter.value,
+    videoStatusFilter.value,
+    supplementFilter.value,
+    qualityFilter.value,
+    showArchivedSeries.value,
+  ].filter(Boolean).length
 })
 
 function statusLabel(status: StoryProjectStatus): string {
@@ -366,6 +544,14 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+function removedStoryFileCount(results: StoryProjectDeleteResult[]): number {
+  return results.reduce((sum, item) => sum + (item.removed_story_file_count ?? 0), 0)
+}
+
+function deletionSummary(results: StoryProjectDeleteResult[]): string {
+  return `清理 ${removedStoryFileCount(results)} 个关联故事文件`
+}
+
 function seriesProjectLink(seriesProjectId: string) {
   return {
     path: '/ai-comic-series/new',
@@ -396,10 +582,10 @@ async function handleDeleteProject(project: StoryProjectListItem) {
   error.value = ''
   projectMessage.value = ''
   const res = await deleteProject(project.project_id)
-  if (res.ok) {
+  if (res.ok && res.data) {
     projects.value = projects.value.filter(item => item.project_id !== project.project_id)
     selectedProjectIds.value = selectedProjectIds.value.filter(id => id !== project.project_id)
-    projectMessage.value = '故事项目已删除'
+    projectMessage.value = `故事项目已删除，${deletionSummary([res.data])}`
   } else {
     error.value = res.error?.message ?? '删除故事项目失败'
   }
@@ -446,6 +632,154 @@ async function handleExportSeriesBible(project: AiComicSeriesProjectMeta) {
   exportingSeriesProjectId.value = ''
 }
 
+async function handleExportSeriesSeedance(project: AiComicSeriesProjectMeta) {
+  exportingSeriesSeedanceProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await exportAiComicSeriesSeedancePrompts(project.series_project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-prompts.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    projectMessage.value = `Seedance 提示词已导出：${project.title} · ${res.data.total_shot_count} 个镜头`
+  } else {
+    error.value = res.error?.message ?? '导出 Seedance 提示词失败'
+  }
+  exportingSeriesSeedanceProjectId.value = ''
+}
+
+async function handleExportSeriesCutPackage(project: AiComicSeriesProjectMeta) {
+  exportingSeriesCutProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceCutPackage(project.series_project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-cut-package.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    projectMessage.value = `剪辑包已导出：${project.title} · 可剪 ${res.data.total_ready_shot_count} 个镜头`
+  } else {
+    error.value = res.error?.message ?? '导出剪辑包失败'
+  }
+  exportingSeriesCutProjectId.value = ''
+}
+
+async function handleAssembleSeriesCut(project: AiComicSeriesProjectMeta, mode: 'copy' | 'transcode') {
+  assemblingSeriesCutProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await assembleAiComicSeriesSeedanceCut(project.series_project_id, {
+    dry_run: false,
+    overwrite: false,
+    assembly_mode: mode,
+    output_profile: mode === 'transcode' ? 'mp4_h264_1080p' : 'source_copy',
+  })
+  if (res.ok && res.data) {
+    seriesProjects.value = seriesProjects.value.map(item =>
+      item.series_project_id === project.series_project_id ? res.data!.project : item,
+    )
+    projectMessage.value = `${mode === 'transcode' ? '转码装配' : '剪辑装配'}完成：${project.title} · ${res.data.source_shot_count} 个镜头 · ${res.data.output_path}`
+  } else {
+    error.value = res.error?.message ?? '装配剪辑成片失败'
+  }
+  assemblingSeriesCutProjectId.value = ''
+}
+
+async function handleExportSeriesRetryPackage(project: AiComicSeriesProjectMeta) {
+  exportingSeriesRetryProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceRetryPackage(project.series_project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-retry-package.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    projectMessage.value = `重试包已导出：${project.title} · ${res.data.total_retry_shot_count} 个镜头`
+  } else {
+    error.value = res.error?.message ?? '导出重试包失败'
+  }
+  exportingSeriesRetryProjectId.value = ''
+}
+
+async function handleExportSeriesVersionComparison(project: AiComicSeriesProjectMeta) {
+  exportingSeriesVersionComparisonProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceVersionComparisonPackage(project.series_project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-version-comparison.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    projectMessage.value = `版本对比已导出：${project.title} · ${res.data.comparable_shot_count} 个多版本镜头`
+  } else {
+    error.value = res.error?.message ?? '导出版本对比失败'
+  }
+  exportingSeriesVersionComparisonProjectId.value = ''
+}
+
+async function handleExportSeriesThumbnailPlan(project: AiComicSeriesProjectMeta) {
+  exportingSeriesThumbnailPlanProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceThumbnailPlanPackage(project.series_project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-thumbnail-plan.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    projectMessage.value = `缩略图计划已导出：${project.title} · ${res.data.total_ready_shot_count} 个镜头`
+  } else {
+    error.value = res.error?.message ?? '导出缩略图计划失败'
+  }
+  exportingSeriesThumbnailPlanProjectId.value = ''
+}
+
+async function handleExportSeriesFinishingPlan(project: AiComicSeriesProjectMeta) {
+  exportingSeriesFinishingPlanProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceFinishingPlanPackage(project.series_project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-finishing-plan.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    projectMessage.value = `成片精修计划已导出：${project.title} · ${res.data.subtitle_cues.length} 条字幕 cue`
+  } else {
+    error.value = res.error?.message ?? '导出成片精修计划失败'
+  }
+  exportingSeriesFinishingPlanProjectId.value = ''
+}
+
+async function handleCaptureSeriesThumbnails(project: AiComicSeriesProjectMeta) {
+  capturingSeriesThumbnailsProjectId.value = project.series_project_id
+  error.value = ''
+  projectMessage.value = ''
+  const res = await captureAiComicSeriesSeedanceThumbnails(project.series_project_id, {
+    dry_run: false,
+    overwrite: false,
+  })
+  if (res.ok && res.data) {
+    seriesProjects.value = seriesProjects.value.map(item =>
+      item.series_project_id === project.series_project_id ? res.data!.project : item,
+    )
+    projectMessage.value = `缩略图抽帧完成：${project.title} · 生成 ${res.data.captured_count} 个，跳过 ${res.data.skipped_count} 个，失败 ${res.data.failed_count} 个`
+  } else {
+    error.value = res.error?.message ?? '生成缩略图失败'
+  }
+  capturingSeriesThumbnailsProjectId.value = ''
+}
+
 async function handleDeleteSeriesProject(project: AiComicSeriesProjectMeta) {
   const confirmed = window.confirm(`确定删除漫剧系列《${project.title}》吗？这会删除系列规划、连续性账本和导出记录。`)
   if (!confirmed) return
@@ -488,27 +822,46 @@ function clearSelection() {
   selectedProjectIds.value = []
 }
 
+function clearHiddenSelection() {
+  const visibleIds = new Set(filteredProjects.value.map(project => project.project_id))
+  selectedProjectIds.value = selectedProjectIds.value.filter(id => visibleIds.has(id))
+}
+
+function resetFilters() {
+  statusFilter.value = ''
+  videoStatusFilter.value = ''
+  supplementFilter.value = false
+  qualityFilter.value = false
+  if (showArchivedSeries.value) {
+    showArchivedSeries.value = false
+    void loadProjects()
+  }
+}
+
 async function handleBatchDeleteProjects() {
-  if (selectedProjectIds.value.length === 0) return
-  const selectedTitles = selectedProjects.value.slice(0, 3).map(project => `《${project.title}》`).join('、')
-  const extraCount = Math.max(0, selectedProjectIds.value.length - 3)
-  const titlePreview = `${selectedTitles}${extraCount > 0 ? ` 等 ${selectedProjectIds.value.length} 个项目` : ''}`
-  const confirmed = window.confirm(`确定批量删除 ${titlePreview} 吗？这会删除对应生成故事文件和项目版本记录。`)
+  if (selectedVisibleProjectIds.value.length === 0) return
+  const selectedTitles = selectedVisibleProjects.value.slice(0, 3).map(project => `《${project.title}》`).join('、')
+  const extraCount = Math.max(0, selectedVisibleProjects.value.length - 3)
+  const titlePreview = `${selectedTitles}${extraCount > 0 ? ` 等 ${selectedVisibleProjects.value.length} 个项目` : ''}`
+  const hiddenSelectionNote = selectedHiddenProjectCount.value > 0
+    ? `\n\n筛选外还有 ${selectedHiddenProjectCount.value} 个已选故事，本次不会删除。`
+    : ''
+  const confirmed = window.confirm(`确定批量删除 ${titlePreview} 吗？这会删除对应生成故事文件和项目版本记录。${hiddenSelectionNote}`)
   if (!confirmed) return
 
   batchDeleting.value = true
   error.value = ''
   projectMessage.value = ''
-  const idsToDelete = [...selectedProjectIds.value]
+  const idsToDelete = [...selectedVisibleProjectIds.value]
   const res = await deleteProjects(idsToDelete)
   if (res.ok && res.data) {
     const deletedIds = new Set(res.data.deleted.map(item => item.project_id))
     projects.value = projects.value.filter(item => !deletedIds.has(item.project_id))
     selectedProjectIds.value = selectedProjectIds.value.filter(id => !deletedIds.has(id))
     if (res.data.failed.length > 0) {
-      error.value = `已删除 ${res.data.deleted.length} 个，${res.data.failed.length} 个删除失败：${res.data.failed[0].error}`
+      error.value = `已删除 ${res.data.deleted.length} 个，${deletionSummary(res.data.deleted)}；${res.data.failed.length} 个删除失败：${res.data.failed[0].error}`
     } else {
-      projectMessage.value = `已删除 ${res.data.deleted.length} 个故事项目`
+      projectMessage.value = `已删除 ${res.data.deleted.length} 个故事项目，${deletionSummary(res.data.deleted)}`
     }
   } else {
     error.value = res.error?.message ?? '批量删除故事项目失败'
@@ -528,7 +881,7 @@ async function handleRetainRecentProjects() {
   if (res.ok && res.data) {
     projects.value = res.data.kept
     selectedProjectIds.value = selectedProjectIds.value.filter(id => projects.value.some(project => project.project_id === id))
-    projectMessage.value = `已按生成时间保留最近 ${res.data.keep_recent} 个，删除 ${res.data.deleted.length} 个故事项目`
+    projectMessage.value = `已按生成时间保留最近 ${res.data.keep_recent} 个，删除 ${res.data.deleted.length} 个故事项目，${deletionSummary(res.data.deleted)}`
     if (res.data.failed.length > 0) {
       await loadProjects()
       error.value = `有 ${res.data.failed.length} 个项目未删除：${res.data.failed[0].error}`
@@ -635,12 +988,34 @@ onMounted(async () => {
   align-items: center;
   color: #33475b;
   font-size: 14px;
+  font-weight: 700;
 }
 
 .projects-page__bulk-check input,
-.projects-page__card-select input {
-  width: 16px;
-  height: 16px;
+.projects-page__row-check input,
+.projects-page__story-table th input {
+  width: 18px;
+  height: 18px;
+}
+
+.projects-page__bulk-summary {
+  margin: 0;
+  color: #66727f;
+  font-size: 13px;
+}
+
+.projects-page__bulk-preview {
+  display: block;
+  margin-top: 3px;
+  color: #33475b;
+  font-weight: 600;
+}
+
+.projects-page__bulk-warning {
+  display: block;
+  margin-top: 3px;
+  color: #a05f00;
+  font-weight: 700;
 }
 
 .projects-page__bulk-actions {
@@ -701,6 +1076,73 @@ onMounted(async () => {
   flex: 1;
 }
 
+.projects-page__filters {
+  flex: 0 0 auto;
+}
+
+.projects-page__filters[open] {
+  flex-basis: 100%;
+}
+
+.projects-page__filters-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+  color: #33475b;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.projects-page__filters-summary::-webkit-details-marker {
+  display: none;
+}
+
+.projects-page__filters-summary::after {
+  content: '▾';
+  color: #7c8894;
+  font-size: 12px;
+}
+
+.projects-page__filters[open] .projects-page__filters-summary::after {
+  content: '▴';
+}
+
+.projects-page__filters-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #2980b9;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.projects-page__filters-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #edf1f5;
+  border-radius: 6px;
+  background: #f8fafb;
+}
+
+.projects-page__filter-reset {
+  min-height: 40px;
+}
+
 .projects-page__toggle {
   display: inline-flex;
   align-items: center;
@@ -759,6 +1201,105 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 14px;
+}
+
+.projects-page__story-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.projects-page__story-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.projects-page__story-table th,
+.projects-page__story-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #edf1f5;
+  color: #34495e;
+  font-size: 14px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.projects-page__story-table th {
+  background: #f8fafb;
+  color: #51606d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.projects-page__story-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.projects-page__story-row--selected td {
+  background: #f4f9fd;
+}
+
+.projects-page__select-col {
+  width: 42px;
+  text-align: center !important;
+}
+
+.projects-page__actions-col {
+  width: 138px;
+  text-align: right !important;
+}
+
+.projects-page__row-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  cursor: pointer;
+}
+
+.projects-page__story-title {
+  color: #22313f;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.projects-page__story-title:hover {
+  color: #2980b9;
+}
+
+.projects-page__story-subtitle,
+.projects-page__story-logline {
+  margin: 5px 0 0;
+  color: #6b7884;
+  line-height: 1.45;
+}
+
+.projects-page__story-logline {
+  max-width: 460px;
+  color: #40566c;
+}
+
+.projects-page__cell-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.projects-page__date-cell {
+  white-space: nowrap;
+}
+
+.projects-page__row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
 }
 
 .projects-page__card {
@@ -910,12 +1451,65 @@ onMounted(async () => {
 }
 
 .projects-page__card-actions {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
   gap: 8px;
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid #edf1f5;
+}
+
+.projects-page__card-primary-actions,
+.projects-page__series-actions-body {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.projects-page__series-actions {
+  text-align: right;
+}
+
+.projects-page__series-actions-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #5c6b78;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.projects-page__series-actions-summary::-webkit-details-marker {
+  display: none;
+}
+
+.projects-page__series-actions-summary::after {
+  content: '▾';
+  font-size: 11px;
+}
+
+.projects-page__series-actions[open] .projects-page__series-actions-summary {
+  border-color: #d7dee5;
+  background: #f8fafc;
+  color: #33475b;
+}
+
+.projects-page__series-actions[open] .projects-page__series-actions-summary::after {
+  content: '▴';
+}
+
+.projects-page__series-actions-body {
+  margin-top: 8px;
+}
+
+.projects-page__series-actions:not([open]) .projects-page__series-actions-body {
+  display: none;
 }
 
 .projects-page__delete-btn {
@@ -986,6 +1580,8 @@ onMounted(async () => {
   .projects-page__header-actions,
   .projects-page__search,
   .projects-page__select,
+  .projects-page__filters,
+  .projects-page__filters-summary,
   .projects-page__toggle,
   .projects-page__bulk-actions,
   .projects-page__muted-btn,
@@ -997,13 +1593,37 @@ onMounted(async () => {
     flex-direction: column;
   }
 
-  .projects-page__card-actions {
+  .projects-page__filters-body {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .projects-page__bulk-summary {
+    order: -1;
+  }
+
+  .projects-page__card-actions,
+  .projects-page__card-primary-actions,
+  .projects-page__series-actions-body {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .projects-page__card-primary-actions .projects-page__muted-link,
+  .projects-page__card-primary-actions .projects-page__muted-btn,
+  .projects-page__card-primary-actions .projects-page__delete-btn,
+  .projects-page__series-actions-summary {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .projects-page__series-actions {
+    text-align: left;
+  }
+
   .projects-page__header-actions {
     align-items: stretch;
+    flex-direction: column;
   }
 
   .projects-page__section-head {

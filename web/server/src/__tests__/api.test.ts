@@ -24,6 +24,7 @@ import { gearsCallbackRouter } from '../routes/gears-callback.js';
 import { outlineRouter } from '../routes/outline.js';
 
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
+const ORIGINAL_SEEDANCE_CALLBACK_SECRET = process.env.SEEDANCE_CALLBACK_SECRET;
 let testWorkspaceRoot = '';
 
 beforeAll(async () => {
@@ -38,6 +39,11 @@ afterAll(async () => {
     delete process.env.KB_ROOT;
   } else {
     process.env.KB_ROOT = ORIGINAL_KB_ROOT;
+  }
+  if (ORIGINAL_SEEDANCE_CALLBACK_SECRET === undefined) {
+    delete process.env.SEEDANCE_CALLBACK_SECRET;
+  } else {
+    process.env.SEEDANCE_CALLBACK_SECRET = ORIGINAL_SEEDANCE_CALLBACK_SECRET;
   }
   await rm(testWorkspaceRoot, { recursive: true, force: true });
 });
@@ -214,6 +220,91 @@ describe('GEARS Callback API', () => {
       expect(res.status).toBe(404);
       expectFailure(res.body, 'STORY_NOT_FOUND');
     });
+  });
+});
+
+describe('Seedance Production Callback API', () => {
+  it('requires callback secret when configured', async () => {
+    process.env.SEEDANCE_CALLBACK_SECRET = 'test-seedance-secret';
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-production-callback')
+      .send({
+        jobId: 'seedance-job-001',
+        status: 'COMPLETED',
+        videoUrl: 'https://seedance.example/shot.mp4',
+      });
+    expect(res.status).toBe(401);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+    delete process.env.SEEDANCE_CALLBACK_SECRET;
+  });
+
+  it('accepts bearer callback secret before looking up the series project', async () => {
+    process.env.SEEDANCE_CALLBACK_SECRET = 'test-seedance-secret';
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-production-callback')
+      .set('Authorization', 'Bearer test-seedance-secret')
+      .send({
+        jobId: 'seedance-job-001',
+        status: 'COMPLETED',
+        videoUrl: 'https://seedance.example/shot.mp4',
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+    delete process.env.SEEDANCE_CALLBACK_SECRET;
+  });
+});
+
+describe('Seedance Thumbnail Capture API', () => {
+  it('validates thumbnail worker request body', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-thumbnails/capture')
+      .send({ limit: 0 });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts a dry-run request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-thumbnails/capture')
+      .send({ dry_run: true });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+});
+
+describe('Seedance Finishing Plan API', () => {
+  it('returns 404 for a missing series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-finishing-plan')
+      .send({});
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+});
+
+describe('Seedance Cut Assembly API', () => {
+  it('validates cut assembly request body', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-cut/assemble')
+      .send({ output_filename: '../bad.mp4' });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('validates cut assembly transcode options', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-cut/assemble')
+      .send({ assembly_mode: 'transcode', crf: 60 });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts a dry-run request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-cut/assemble')
+      .send({ dry_run: true });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
   });
 });
 

@@ -9,11 +9,13 @@ import {
   deleteProject,
   deleteProjects,
   exportProjectCurrentVersion,
+  exportProjectProductionBoard,
   getProject,
   getProjectProductionBoard,
   listProjects,
   listProjectSupplementTasks,
   regenerateProjectScene,
+  repairProjectProductionBoard,
   retainRecentProjects,
   updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
@@ -274,15 +276,130 @@ describe('project-service', () => {
       source_scene_id: 1,
       location: '南安军衙',
     });
+    expect(boardRes.data?.shot_units[0].seedance_duration_sec).toBeGreaterThanOrEqual(4);
+    expect(boardRes.data?.shot_units[0].seedance_duration_sec).toBeLessThanOrEqual(15);
+    expect(boardRes.data?.shot_units[0].seedance_prompt).toContain('0-3秒');
     expect(boardRes.data?.supervision_report.issue_count).toBeGreaterThan(0);
     expect(boardRes.data?.supervision_report.priority_fixes.length).toBeGreaterThan(0);
     expect(boardRes.data?.repair_plan.task_count).toBeGreaterThan(0);
     expect(boardRes.data?.repair_plan.tasks.map(task => task.action)).toContain('add_continuity');
+    expect(boardRes.data?.delivery_manifest.stage).toBe('needs_repair');
+    expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('seedance_prompts');
     expect(boardRes.data?.qa_report.score).toBeGreaterThanOrEqual(0);
     expect(boardRes.data?.qa_report.issues.some(issue => issue.includes('连续性约束不足'))).toBe(true);
     expect(boardRes.data?.markdown).toContain('## 镜头单元');
     expect(boardRes.data?.markdown).toContain('## 监督检查');
     expect(boardRes.data?.markdown).toContain('## 生产修复包');
+    expect(boardRes.data?.markdown).toContain('## 交付清单');
+    expect(boardRes.data?.markdown).toContain('Seedance');
+  });
+
+  it('exports a production board package to the project directory', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const exportRes = await exportProjectProductionBoard(enriched.project_id!);
+
+    expect(exportRes.ok).toBe(true);
+    expect(exportRes.data?.schema_version).toBe('story-production-board-export/v1');
+    expect(exportRes.data?.project_id).toBe(enriched.project_id);
+    expect(exportRes.data?.files.map(file => file.relative_path)).toEqual(expect.arrayContaining([
+      'production-board/manifest.json',
+      'production-board/production-board.json',
+      'production-board/production-board.md',
+      'production-board/supervision-report.json',
+      'production-board/repair-plan.json',
+      'production-board/seedance-prompts.json',
+      'production-board/seedance-prompts.md',
+    ]));
+
+    const exportDir = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'production-board');
+    expect(await exists(resolve(exportDir, 'manifest.json'))).toBe(true);
+    expect(await exists(resolve(exportDir, 'production-board.json'))).toBe(true);
+    expect(await exists(resolve(exportDir, 'seedance-prompts.md'))).toBe(true);
+
+    const manifest = JSON.parse(await readFile(resolve(exportDir, 'manifest.json'), 'utf-8'));
+    expect(manifest.schema_version).toBe('story-production-board-manifest/v1');
+    expect(manifest.delivery_manifest.artifacts.map((artifact: { kind: string }) => artifact.kind)).toContain('seedance_prompts');
+
+    const seedanceMarkdown = await readFile(resolve(exportDir, 'seedance-prompts.md'), 'utf-8');
+    expect(seedanceMarkdown).toContain('Seedance 2.0 镜头提示词');
+    expect(seedanceMarkdown).toContain('0-3秒');
+
+    const detail = await getProject(enriched.project_id!);
+    expect(detail.data?.project.status).toBe('exported');
+  });
+
+  it('repairs production board blockers into a new project version', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      gears_delivery: {
+        schema_version: 'gears-delivery/v1',
+        storyId: '20260609-story-abc1',
+        title: '拒签冤案',
+        character_assets: [
+          {
+            name: '周敦颐',
+            role_position: '主角',
+            species_type: '人类',
+            ethnicity: ['东亚'],
+            gender: '男',
+            age_range: '青年',
+            appearance_features: '青年士人，神情克制',
+            clothing: '清末民初至五四前后中国青年固定服装：朴素学生长衫或短褂布鞋',
+          },
+          {
+            name: '上官',
+            role_position: '配角',
+            species_type: '人类',
+            ethnicity: ['东亚'],
+            gender: '男',
+            age_range: '中年',
+            appearance_features: '中年官员，目光压迫',
+            clothing: '清末民初至五四前后中国青年固定服装：朴素学生长衫或短褂布鞋',
+          },
+        ],
+        character_gender_summary: {
+          total: 2,
+          male: 2,
+          female: 0,
+          other: 0,
+          unspecified: 0,
+          not_applicable: 0,
+        },
+        scene_assets: [{
+          name: '南安军衙',
+          scene_type: '室内',
+          description: '衙署案桌、烛火、案卷',
+          atmosphere: '紧张',
+        }],
+        units: [],
+        validation_notes: [],
+        markdown: '# GEARS',
+      },
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const beforeBoard = await getProjectProductionBoard(enriched.project_id!);
+    expect(beforeBoard.data?.supervision_report.blockers).toBeGreaterThan(0);
+
+    const repairRes = await repairProjectProductionBoard(enriched.project_id!, { priorities: ['P0'] });
+
+    expect(repairRes.ok).toBe(true);
+    expect(repairRes.data?.schema_version).toBe('story-production-board-repair/v1');
+    expect(repairRes.data?.trace.applied).toBe(true);
+    expect(repairRes.data?.trace.applied_actions).toContain('normalize_period_costumes');
+    expect(repairRes.data?.trace.after_blockers).toBeLessThan(repairRes.data?.trace.before_blockers ?? 999);
+    expect(repairRes.data?.detail.project.version_count).toBe(2);
+    expect(repairRes.data?.detail.versions[0].change_type).toBe('production_board_repair');
+    expect(repairRes.data?.detail.current_story.gears_delivery?.character_assets[0].clothing).toContain('宋代');
+    expect(repairRes.data?.after_board.character_assets[0].clothing).toContain('宋代');
   });
 
   it('updates GEARS webhook status on the current project and source story file', async () => {
@@ -466,6 +583,9 @@ describe('project-service', () => {
     const projectId = enriched.project_id!;
     const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
     const storyPath = resolve(storyDir, `${story.storyId}.json`);
+    const previousStoryId = '20260609-story-oldv';
+    const previousStoryDir = resolve(root, 'web', 'generated', 'stories', 'ai_comic_drama');
+    const previousStoryPath = resolve(previousStoryDir, `${previousStoryId}.json`);
     const projectPath = resolve(root, 'web', 'generated', 'projects', projectId);
 
     await mkdir(storyDir, { recursive: true });
@@ -475,12 +595,39 @@ describe('project-service', () => {
       current_version_id: enriched.current_version_id,
       _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
     }, null, 2), 'utf-8');
+    await mkdir(previousStoryDir, { recursive: true });
+    await writeFile(previousStoryPath, JSON.stringify({
+      ...story,
+      storyId: previousStoryId,
+      video_type: 'ai_comic_drama',
+      project_id: projectId,
+    }, null, 2), 'utf-8');
+    await writeFile(
+      resolve(projectPath, 'versions', `${projectId}-v0.json`),
+      JSON.stringify({
+        project_id: projectId,
+        version_id: `${projectId}-v0`,
+        created_at: '2026-06-09T09:59:00.000Z',
+        change_type: 'scene_regeneration',
+        scene_ids_changed: [1],
+        story: {
+          ...story,
+          storyId: previousStoryId,
+          video_type: 'ai_comic_drama',
+          project_id: projectId,
+        },
+      } satisfies StoryProjectVersionSnapshot, null, 2),
+      'utf-8',
+    );
 
     const deleted = await deleteProject(projectId);
 
     expect(deleted.ok).toBe(true);
     expect(deleted.data?.deleted).toBe(true);
+    expect(deleted.data?.story_ids?.sort()).toEqual([previousStoryId, story.storyId].sort());
+    expect(deleted.data?.removed_story_file_count).toBe(2);
     expect(await exists(storyPath)).toBe(false);
+    expect(await exists(previousStoryPath)).toBe(false);
     expect(await exists(projectPath)).toBe(false);
     const detail = await getProject(projectId);
     expect(detail.ok).toBe(false);

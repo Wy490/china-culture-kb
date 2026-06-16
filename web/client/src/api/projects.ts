@@ -9,6 +9,9 @@ import type {
   StoryProjectListItem,
   StoryProjectRetainRecentResult,
   StoryProductionBoard,
+  StoryProductionBoardExportPackage,
+  StoryProductionBoardRepairRequest,
+  StoryProductionBoardRepairResult,
   StorySceneRegenerateRequest,
   StoryQualityRepairRequest,
 } from '@shared/types'
@@ -39,6 +42,14 @@ export function exportProjectCurrentVersion(projectId: string) {
 
 export function getProjectProductionBoard(projectId: string) {
   return apiGet<StoryProductionBoard>(`/projects/${projectId}/production-board`)
+}
+
+export function exportProjectProductionBoard(projectId: string) {
+  return apiPost<StoryProductionBoardExportPackage>(`/projects/${projectId}/production-board/export`, {})
+}
+
+export function repairProjectProductionBoard(projectId: string, body: StoryProductionBoardRepairRequest = {}) {
+  return apiPost<StoryProductionBoardRepairResult>(`/projects/${projectId}/production-board/repair`, body)
 }
 
 export function deleteProject(projectId: string) {

@@ -287,127 +287,152 @@
       <!-- Video type selector (grouped) — always visible -->
       <section class="story-studio__field">
         <label class="story-studio__label">成片类型</label>
-        <div v-for="group in videoTypeGroups" :key="group.name" class="story-studio__vt-group">
-          <h5 class="story-studio__vt-group-name">{{ group.name }}</h5>
-          <div class="story-studio__vt-cards">
-            <div
-              v-for="vt in group.types"
-              :key="vt.id"
-              class="story-studio__vt-card"
-              :class="{
-                'story-studio__vt-card--selected': selectedVideoType === vt.id,
-                'story-studio__vt-card--recommended': isRecommendedVideoType(vt.id),
-              }"
-              @click="handleSelectVideoType(vt.id)"
-            >
-              <span class="story-studio__vt-badge">{{ isRecommendedVideoType(vt.id) ? '✅ 推荐' : '⭕ 可选' }}</span>
-              <span class="story-studio__vt-name">{{ vt.label }}</span>
-              <span class="story-studio__vt-desc">{{ vt.description }}</span>
-              <span class="story-studio__vt-duration">{{ vt.default_duration }}</span>
-            </div>
+        <div class="story-studio__vt-cards story-studio__vt-cards--common">
+          <div
+            v-for="vt in commonVideoTypes"
+            :key="vt.id"
+            class="story-studio__vt-card"
+            :class="{
+              'story-studio__vt-card--selected': selectedVideoType === vt.id,
+              'story-studio__vt-card--recommended': isRecommendedVideoType(vt.id),
+            }"
+            @click="handleSelectVideoType(vt.id)"
+          >
+            <span class="story-studio__vt-badge">{{ isRecommendedVideoType(vt.id) ? '推荐' : '常用' }}</span>
+            <span class="story-studio__vt-name">{{ vt.label }}</span>
+            <span class="story-studio__vt-desc">{{ vt.description }}</span>
+            <span class="story-studio__vt-duration">{{ vt.default_duration }}</span>
           </div>
         </div>
+
+        <details class="story-studio__more-types">
+          <summary class="story-studio__more-types-summary">更多成片类型</summary>
+          <div v-for="group in additionalVideoTypeGroups" :key="group.name" class="story-studio__vt-group">
+            <h5 class="story-studio__vt-group-name">{{ group.name }}</h5>
+            <div class="story-studio__vt-cards">
+              <div
+                v-for="vt in group.types"
+                :key="vt.id"
+                class="story-studio__vt-card"
+                :class="{
+                  'story-studio__vt-card--selected': selectedVideoType === vt.id,
+                  'story-studio__vt-card--recommended': isRecommendedVideoType(vt.id),
+                }"
+                @click="handleSelectVideoType(vt.id)"
+              >
+                <span class="story-studio__vt-badge">{{ isRecommendedVideoType(vt.id) ? '推荐' : '可选' }}</span>
+                <span class="story-studio__vt-name">{{ vt.label }}</span>
+                <span class="story-studio__vt-desc">{{ vt.description }}</span>
+                <span class="story-studio__vt-duration">{{ vt.default_duration }}</span>
+              </div>
+            </div>
+          </div>
+        </details>
       </section>
 
-      <section v-if="selectedVideoType && availableNarrativePatterns.length > 0" class="story-studio__field">
-        <label class="story-studio__label">叙事流派强化</label>
-        <p class="story-studio__field-hint">默认会使用该成片类型的流派机制；勾选后会在生成中加强对应叙事引擎。</p>
-        <div class="story-studio__pattern-list">
-          <label
-            v-for="pattern in availableNarrativePatterns"
-            :key="pattern.pattern_id"
-            class="story-studio__pattern-card"
-            :class="{ 'story-studio__pattern-card--selected': selectedNarrativePatternIds.includes(pattern.pattern_id) }"
-          >
-            <input
-              v-model="selectedNarrativePatternIds"
-              type="checkbox"
-              :value="pattern.pattern_id"
-            />
-            <span class="story-studio__pattern-main">
-              <strong>{{ pattern.label }}</strong>
-              <span>{{ pattern.user_facing_summary || pattern.narrative_engine }}</span>
-              <span v-if="pattern.subgenre_tags?.length" class="story-studio__pattern-tags">
-                <em v-for="tag in pattern.subgenre_tags.slice(0, 4)" :key="tag">{{ tag }}</em>
+      <details class="story-studio__advanced-panel">
+        <summary class="story-studio__advanced-summary">生成设置</summary>
+
+        <section v-if="selectedVideoType && availableNarrativePatterns.length > 0" class="story-studio__field">
+          <label class="story-studio__label">叙事流派强化</label>
+          <p class="story-studio__field-hint">默认会使用该成片类型的流派机制；勾选后会在生成中加强对应叙事引擎。</p>
+          <div class="story-studio__pattern-list">
+            <label
+              v-for="pattern in availableNarrativePatterns"
+              :key="pattern.pattern_id"
+              class="story-studio__pattern-card"
+              :class="{ 'story-studio__pattern-card--selected': selectedNarrativePatternIds.includes(pattern.pattern_id) }"
+            >
+              <input
+                v-model="selectedNarrativePatternIds"
+                type="checkbox"
+                :value="pattern.pattern_id"
+              />
+              <span class="story-studio__pattern-main">
+                <strong>{{ pattern.label }}</strong>
+                <span>{{ pattern.user_facing_summary || pattern.narrative_engine }}</span>
+                <span v-if="pattern.subgenre_tags?.length" class="story-studio__pattern-tags">
+                  <em v-for="tag in pattern.subgenre_tags.slice(0, 4)" :key="tag">{{ tag }}</em>
+                </span>
+                <span v-if="pattern.style_axes?.length" class="story-studio__pattern-axes">
+                  <em v-for="axis in pattern.style_axes.slice(0, 3)" :key="axis.axis_id">
+                    {{ axis.label }} {{ styleAxisValueLabel(axis.value) }}
+                  </em>
+                </span>
               </span>
-              <span v-if="pattern.style_axes?.length" class="story-studio__pattern-axes">
-                <em v-for="axis in pattern.style_axes.slice(0, 3)" :key="axis.axis_id">
-                  {{ axis.label }} {{ styleAxisValueLabel(axis.value) }}
-                </em>
-              </span>
-            </span>
-          </label>
+            </label>
+          </div>
+        </section>
+
+        <!-- Presentation style selector -->
+        <section v-if="selectedVideoType" class="story-studio__field">
+          <label class="story-studio__label" for="presentation-style">表现形式</label>
+          <select id="presentation-style" v-model="selectedPresentationStyle" class="story-studio__select">
+            <option
+              v-for="ps in presentationStyleOptions"
+              :key="ps.id"
+              :value="ps.id"
+            >
+              {{ ps.label }} — {{ ps.description }}
+            </option>
+          </select>
+        </section>
+
+        <section class="story-studio__field">
+          <label class="story-studio__label" for="model-profile">创作模型</label>
+          <select id="model-profile" v-model="selectedModelProfileId" class="story-studio__select">
+            <option v-for="profile in modelProfiles" :key="profile.id" :value="profile.id">
+              {{ profile.label }}{{ profile.recommended ? '（推荐）' : '' }}
+            </option>
+          </select>
+          <p v-if="selectedModelProfile" class="story-studio__field-hint">{{ selectedModelProfile.description }}</p>
+        </section>
+
+        <!-- Duration select -->
+        <div class="story-studio__field">
+          <label class="story-studio__label" for="duration">目标时长</label>
+          <select id="duration" v-model="targetDuration" class="story-studio__select">
+            <option value="30秒">30秒</option>
+            <option value="1分钟">1分钟</option>
+            <option value="3分钟">3分钟</option>
+            <option value="5分钟">5分钟</option>
+            <option value="8分钟">8分钟</option>
+            <option value="10分钟">10分钟</option>
+            <option value="15分钟">15分钟</option>
+            <option value="20分钟">20分钟</option>
+          </select>
         </div>
-      </section>
 
-      <!-- Presentation style selector -->
-      <section v-if="selectedVideoType" class="story-studio__field">
-        <label class="story-studio__label" for="presentation-style">表现形式</label>
-        <select id="presentation-style" v-model="selectedPresentationStyle" class="story-studio__select">
-          <option
-            v-for="ps in presentationStyleOptions"
-            :key="ps.id"
-            :value="ps.id"
-          >
-            {{ ps.label }} — {{ ps.description }}
-          </option>
-        </select>
-      </section>
+        <!-- Tone input -->
+        <div class="story-studio__field">
+          <label class="story-studio__label" for="tone">叙事风格</label>
+          <input
+            id="tone"
+            v-model="tone"
+            class="story-studio__input"
+            placeholder="如：庄重、抒情、诙谐（可选）"
+          />
+        </div>
 
-      <section class="story-studio__field">
-        <label class="story-studio__label" for="model-profile">创作模型</label>
-        <select id="model-profile" v-model="selectedModelProfileId" class="story-studio__select">
-          <option v-for="profile in modelProfiles" :key="profile.id" :value="profile.id">
-            {{ profile.label }}{{ profile.recommended ? '（推荐）' : '' }}
-          </option>
-        </select>
-        <p v-if="selectedModelProfile" class="story-studio__field-hint">{{ selectedModelProfile.description }}</p>
-      </section>
-
-      <!-- Duration select -->
-      <div class="story-studio__field">
-        <label class="story-studio__label" for="duration">目标时长</label>
-        <select id="duration" v-model="targetDuration" class="story-studio__select">
-          <option value="30秒">30秒</option>
-          <option value="1分钟">1分钟</option>
-          <option value="3分钟">3分钟</option>
-          <option value="5分钟">5分钟</option>
-          <option value="8分钟">8分钟</option>
-          <option value="10分钟">10分钟</option>
-          <option value="15分钟">15分钟</option>
-          <option value="20分钟">20分钟</option>
-        </select>
-      </div>
-
-      <!-- Tone input -->
-      <div class="story-studio__field">
-        <label class="story-studio__label" for="tone">叙事风格</label>
-        <input
-          id="tone"
-          v-model="tone"
-          class="story-studio__input"
-          placeholder="如：庄重、抒情、诙谐（可选）"
-        />
-      </div>
-
-      <section class="story-studio__field story-studio__advanced">
-        <label class="story-studio__label" for="genre-strictness">类型结构强度</label>
-        <select id="genre-strictness" v-model="genreStrictness" class="story-studio__select">
-          <option value="balanced">均衡</option>
-          <option value="strict">严格</option>
-          <option value="loose">宽松</option>
-        </select>
-        <label class="story-studio__label" for="story-priority">生成优先级</label>
-        <select id="story-priority" v-model="storyPriority" class="story-studio__select">
-          <option value="balanced">剧情与资料均衡</option>
-          <option value="plot_first">优先剧情完整</option>
-          <option value="knowledge_first">优先资料完整</option>
-        </select>
-        <label class="story-studio__checkbox-row">
-          <input v-model="autoRepair" type="checkbox" />
-          <span>生成后自动修复类型质量问题</span>
-        </label>
-      </section>
+        <section class="story-studio__field story-studio__advanced">
+          <label class="story-studio__label" for="genre-strictness">类型结构强度</label>
+          <select id="genre-strictness" v-model="genreStrictness" class="story-studio__select">
+            <option value="balanced">均衡</option>
+            <option value="strict">严格</option>
+            <option value="loose">宽松</option>
+          </select>
+          <label class="story-studio__label" for="story-priority">生成优先级</label>
+          <select id="story-priority" v-model="storyPriority" class="story-studio__select">
+            <option value="balanced">剧情与资料均衡</option>
+            <option value="plot_first">优先剧情完整</option>
+            <option value="knowledge_first">优先资料完整</option>
+          </select>
+          <label class="story-studio__checkbox-row">
+            <input v-model="autoRepair" type="checkbox" />
+            <span>生成后自动修复类型质量问题</span>
+          </label>
+        </section>
+      </details>
 
       <!-- Generate button -->
       <button
@@ -440,15 +465,49 @@
       <div v-else-if="generateResult">
         <div v-if="generateResult.project_id" class="story-studio__result-actions">
           <RouterLink class="story-studio__result-link" :to="`/projects/${generateResult.project_id}`">
-            进入这个故事项目继续修改
+            打开当前故事
+          </RouterLink>
+          <RouterLink class="story-studio__result-link story-studio__result-link--secondary" to="/projects">
+            管理故事
           </RouterLink>
         </div>
         <StoryResult :result="generateResult" />
       </div>
 
       <div v-else class="story-studio__empty">
-        <p>选择词条、输入大纲，然后生成剧情方案。</p>
-        <p class="story-studio__hint">结果将在此处展示。</p>
+        <div class="story-studio__empty-copy">
+          <p>选择词条、输入大纲，然后生成剧情方案。</p>
+          <p class="story-studio__hint">结果将在此处展示。</p>
+        </div>
+
+        <section class="story-studio__recent" aria-labelledby="recent-story-projects-title">
+          <div class="story-studio__recent-head">
+            <div>
+              <h3 id="recent-story-projects-title">最近故事</h3>
+              <p>{{ recentStoryProjects.length }} 个故事草稿</p>
+            </div>
+            <RouterLink class="story-studio__recent-manage" to="/projects">选择 / 删除</RouterLink>
+          </div>
+
+          <div v-if="recentStoryProjectsLoading" class="story-studio__recent-state">正在加载…</div>
+          <div v-else-if="recentStoryProjectsError" class="story-studio__recent-state story-studio__recent-state--error">
+            {{ recentStoryProjectsError }}
+          </div>
+          <div v-else-if="recentStoryPreview.length > 0" class="story-studio__recent-list">
+            <RouterLink
+              v-for="project in recentStoryPreview"
+              :key="project.project_id"
+              class="story-studio__recent-item"
+              :to="`/projects/${project.project_id}`"
+            >
+              <span class="story-studio__recent-title">{{ project.title }}</span>
+              <span class="story-studio__recent-meta">
+                {{ videoTypeLabel(project.video_type) }} · {{ formatStoryProjectDate(project.updated_at) }}
+              </span>
+            </RouterLink>
+          </div>
+          <div v-else class="story-studio__recent-state">暂无故事草稿</div>
+        </section>
       </div>
     </main>
   </div>
@@ -460,6 +519,7 @@ import { useRoute } from 'vue-router'
 import { storyPlan, storyGenerate, storyOutlineAnalyze } from '@/api/stories'
 import { searchEntries, matchEntries, entriesMultiMatch } from '@/api/entries'
 import { getModelProfiles, getNarrativePatternCatalog } from '@/api/system'
+import { listProjects } from '@/api/projects'
 import type {
   AIModelProfile,
   EntrySearchResult,
@@ -487,6 +547,7 @@ import type {
   GenreStrictness,
   StoryGenerationPriority,
   LocalizationMode,
+  StoryProjectListItem,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
 import StoryPlan from '@/components/StoryPlan.vue'
@@ -532,6 +593,14 @@ const CHARACTER_KIND_LABELS: Record<StoryDetectedCharacterKind, string> = {
   group_role: '群体角色',
   supernatural_role: '志异异类',
 }
+
+const COMMON_VIDEO_TYPE_IDS: VideoType[] = [
+  'ai_comic_drama',
+  'character_story',
+  'culture_promo',
+  'documentary_short',
+  'scene_short',
+]
 
 function knowledgeDomainLabel(domain: KnowledgeDomain) {
   return KNOWLEDGE_DOMAIN_LABELS[domain] ?? domain
@@ -611,6 +680,9 @@ const planResult = ref<StoryPlanResult | null>(null)
 const generateResult = ref<StoryGenerateResult | null>(null)
 const planError = ref('')
 const generateError = ref('')
+const recentStoryProjects = ref<StoryProjectListItem[]>([])
+const recentStoryProjectsLoading = ref(false)
+const recentStoryProjectsError = ref('')
 
 const hasAnyEntrySource = computed(() => {
   if (inputMode.value === 'entry') return !!selectedEntry.value
@@ -628,11 +700,10 @@ const canGenerate = computed(() => {
   return selectedPrimaryEntries.value.length > 0 && (selectedVideoType.value || selectedType.value)
 })
 
-// --- VideoType group computed ---
-const videoTypeGroups = computed(() => {
+function groupVideoTypes(types: VideoTypeMeta[]) {
   const groups: { name: VideoTypeGroup; types: VideoTypeMeta[] }[] = []
   const seen = new Set<VideoTypeGroup>()
-  for (const vt of Object.values(VIDEO_TYPE_CONFIG)) {
+  for (const vt of types) {
     if (!seen.has(vt.group)) {
       seen.add(vt.group)
       groups.push({ name: vt.group, types: [] })
@@ -640,6 +711,18 @@ const videoTypeGroups = computed(() => {
     groups.find(g => g.name === vt.group)?.types.push(vt)
   }
   return groups
+}
+
+const commonVideoTypes = computed(() => {
+  return COMMON_VIDEO_TYPE_IDS
+    .map(id => VIDEO_TYPE_CONFIG[id])
+    .filter((meta): meta is VideoTypeMeta => Boolean(meta))
+})
+
+// --- VideoType group computed ---
+const additionalVideoTypeGroups = computed(() => {
+  const commonIds = new Set(COMMON_VIDEO_TYPE_IDS)
+  return groupVideoTypes(Object.values(VIDEO_TYPE_CONFIG).filter(vt => !commonIds.has(vt.id)))
 })
 
 const presentationStyleOptions = computed(() => {
@@ -658,6 +741,8 @@ const availableNarrativePatterns = computed<NarrativePattern[]>(() => {
     .filter((pattern): pattern is NarrativePattern => Boolean(pattern))
 })
 
+const recentStoryPreview = computed(() => recentStoryProjects.value.slice(0, 5))
+
 function styleAxisValueLabel(value: 'low' | 'medium' | 'high') {
   if (value === 'high') return '高'
   if (value === 'low') return '低'
@@ -669,6 +754,36 @@ function isRecommendedVideoType(vtId: VideoType): boolean {
   const recommended = planResult.value.recommended_video_types
   if (recommended.length === 0) return false
   return recommended[0].video_type === vtId
+}
+
+function videoTypeLabel(type: VideoType): string {
+  return VIDEO_TYPE_CONFIG[type]?.label ?? type
+}
+
+function formatStoryProjectDate(iso: string): string {
+  if (!iso) return '未记录'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '未记录'
+  return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function storyProjectTime(project: StoryProjectListItem): number {
+  const time = Date.parse(project.updated_at)
+  return Number.isNaN(time) ? 0 : time
+}
+
+async function loadRecentStoryProjects() {
+  recentStoryProjectsLoading.value = true
+  recentStoryProjectsError.value = ''
+  const res = await listProjects()
+  if (res.ok && res.data) {
+    recentStoryProjects.value = [...res.data].sort((a, b) => {
+      return storyProjectTime(b) - storyProjectTime(a)
+    })
+  } else {
+    recentStoryProjectsError.value = res.error?.message ?? '加载最近故事失败'
+  }
+  recentStoryProjectsLoading.value = false
 }
 
 // --- Entry search handlers ---
@@ -797,6 +912,8 @@ async function handleMultiMatch() {
 
 // --- Init from route query ---
 onMounted(async () => {
+  void loadRecentStoryProjects()
+
   const modelRes = await getModelProfiles()
   if (modelRes.ok && modelRes.data && modelRes.data.length > 0) {
     modelProfiles.value = modelRes.data
@@ -933,6 +1050,7 @@ async function handleGenerate() {
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
+      void loadRecentStoryProjects()
     } else {
       generateError.value = res.error?.code === 'ENTRY_NOT_FOUND'
         ? '知识库中没有找到该词条'
@@ -974,6 +1092,7 @@ async function handleGenerate() {
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
+      void loadRecentStoryProjects()
     } else {
       generateError.value = res.error?.message ?? '小说改编方案生成失败'
     }
@@ -1013,6 +1132,7 @@ async function handleGenerate() {
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
+      void loadRecentStoryProjects()
     } else {
       generateError.value = res.error?.message ?? '剧情方案生成失败'
     }
@@ -1325,6 +1445,22 @@ async function handleGenerate() {
   color: #6b7884;
   line-height: 1.5;
 }
+.story-studio__advanced-panel {
+  margin: 14px 0;
+  border-top: 1px solid #ecf0f1;
+  border-bottom: 1px solid #ecf0f1;
+}
+.story-studio__advanced-summary {
+  padding: 12px 0;
+  color: #34495e;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  list-style-position: outside;
+}
+.story-studio__advanced-panel[open] .story-studio__advanced-summary {
+  margin-bottom: 10px;
+}
 .story-studio__advanced {
   padding: 10px 12px;
   border: 1px solid #d7dde2;
@@ -1561,7 +1697,12 @@ async function handleGenerate() {
 }
 .story-studio__result-error h3 { margin: 0 0 8px 0; color: #c0392b; font-size: 18px; }
 .story-studio__result-error p { margin: 0; color: #7f8c8d; font-size: 14px; }
-.story-studio__result-actions { margin-bottom: 14px; }
+.story-studio__result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
 .story-studio__result-link {
   display: inline-flex;
   align-items: center;
@@ -1573,23 +1714,101 @@ async function handleGenerate() {
   font-size: 14px;
   font-weight: 600;
 }
+.story-studio__result-link--secondary {
+  background: #f4f7f9;
+  color: #52616f;
+}
 
 /* Empty state */
 .story-studio__empty {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  height: 300px;
+  min-height: 300px;
   color: #95a5a6;
+  gap: 22px;
+}
+.story-studio__empty-copy {
+  text-align: center;
 }
 .story-studio__empty p { font-size: 16px; margin: 0; }
 .story-studio__hint { margin-top: 8px; font-size: 14px; }
+.story-studio__recent {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding-top: 16px;
+  border-top: 1px solid #ecf0f1;
+}
+.story-studio__recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.story-studio__recent-head h3 {
+  margin: 0 0 4px 0;
+  color: #2c3e50;
+  font-size: 16px;
+}
+.story-studio__recent-head p {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 13px;
+}
+.story-studio__recent-manage {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #eef6ff;
+  color: #2b78b7;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+.story-studio__recent-list {
+  display: grid;
+  gap: 8px;
+}
+.story-studio__recent-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #edf1f3;
+  text-decoration: none;
+}
+.story-studio__recent-title {
+  overflow: hidden;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.story-studio__recent-meta {
+  color: #7f8c8d;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.story-studio__recent-state {
+  padding: 12px 0;
+  color: #7f8c8d;
+  font-size: 14px;
+}
+.story-studio__recent-state--error {
+  color: #c0392b;
+}
 
 /* Video type groups */
 .story-studio__vt-group { margin-bottom: 12px; }
 .story-studio__vt-group-name { margin: 0 0 6px 0; font-size: 14px; color: #34495e; font-weight: 600; }
 .story-studio__vt-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.story-studio__vt-cards--common {
+  margin-bottom: 10px;
+}
 .story-studio__vt-card {
   padding: 10px 14px;
   border: 2px solid #bdc3c7;
@@ -1605,6 +1824,20 @@ async function handleGenerate() {
 .story-studio__vt-name { display: block; font-size: 15px; font-weight: 700; color: #2c3e50; margin-bottom: 2px; }
 .story-studio__vt-desc { display: block; font-size: 12px; color: #7f8c8d; }
 .story-studio__vt-duration { display: block; font-size: 12px; color: #3498db; margin-top: 2px; }
+.story-studio__more-types {
+  border-top: 1px solid #ecf0f1;
+}
+.story-studio__more-types-summary {
+  padding: 10px 0;
+  color: #34495e;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  list-style-position: outside;
+}
+.story-studio__more-types[open] .story-studio__more-types-summary {
+  margin-bottom: 6px;
+}
 
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
@@ -1621,6 +1854,21 @@ async function handleGenerate() {
   }
   .story-studio__right {
     width: 100%;
+  }
+  .story-studio__recent-head,
+  .story-studio__recent-item {
+    align-items: flex-start;
+    grid-template-columns: 1fr;
+  }
+  .story-studio__recent-head {
+    flex-direction: column;
+  }
+  .story-studio__recent-manage {
+    width: 100%;
+    text-align: center;
+  }
+  .story-studio__recent-meta {
+    white-space: normal;
   }
   .story-studio__mode-tabs {
     flex-wrap: wrap;

@@ -2,6 +2,8 @@
 
 The current `china-culture-kb` MCP server is useful for knowledge-base search and file-writing, but Story Agent work now needs MCP tools that expose the newer web Story Agent pipeline.
 
+Detailed implementation phases, acceptance criteria, and per-tool checklists are tracked in `开发文档/story-agent-mcp-quality-delivery-implementation-plan.md`.
+
 ## Current State
 
 Existing story/script tools:
@@ -11,10 +13,7 @@ Existing story/script tools:
 
 These tools do not yet:
 
-- build `StoryBlueprint`
-- validate genre quality
 - repair story output
-- read story projects or versions
 - export GEARS delivery packages
 - generate Seedance prompts
 
@@ -52,22 +51,27 @@ Implementation target:
 
 Purpose: validate whether a story result matches the selected type.
 
+Status: implemented as a read-only MCP tool with MCP-local lightweight checks aligned to the Web quality report shape.
+
 Input:
 
-- `story_json` or `story_id`
-- optional `project_id`
+- `project_id`, `story_id`, or `story_json`
+- optional `include_repair_actions`
 
 Output:
 
-- `GenreQualityReport`
+- base dramatic quality report
+- genre score and pass/fail
 - missing required elements
 - weak beats
+- forbidden patterns found
 - repair actions
 
 Implementation target:
 
 - `web/server/src/services/genre-quality-service.ts`
 - `web/server/src/services/quality-workflow-service.ts`
+- `mcp-server/src/tools/validate-genre-story.ts`
 
 ### `kb_repair_story`
 

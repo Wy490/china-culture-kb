@@ -21,6 +21,24 @@ import type {
   AiComicSeriesProjectDetail,
   AiComicSeriesProjectMeta,
   AiComicSeriesProjectSaveRequest,
+  AiComicSeedanceAssetLibraryUpdateRequest,
+  AiComicSeedanceCutAssemblyRequest,
+  AiComicSeriesSeedanceAssetReportPackage,
+  AiComicSeriesSeedanceCutAssemblyResult,
+  AiComicSeriesSeedanceCutPackage,
+  AiComicSeriesSeedanceEditAssetPackage,
+  AiComicSeriesSeedanceExportPackage,
+  AiComicSeriesSeedanceFinishingPlanPackage,
+  AiComicSeriesSeedanceRetryPackage,
+  AiComicSeriesSeedanceThumbnailPlanPackage,
+  AiComicSeriesSeedanceThumbnailCaptureResult,
+  AiComicSeriesSeedanceVersionComparisonPackage,
+  AiComicSeedanceProductionAutoSelectRequest,
+  AiComicSeedanceProductionBatchUpdateRequest,
+  AiComicSeedanceProductionCallbackRequest,
+  AiComicSeedanceProductionStatusUpdateRequest,
+  AiComicSeedanceProductionVersionSelectRequest,
+  AiComicSeedanceThumbnailCaptureRequest,
   AiComicSeriesPlanRequest,
   AiComicSeriesPlan,
 } from '@shared/types'
@@ -126,5 +144,141 @@ export function exportAiComicSeriesBible(seriesProjectId: string) {
   return apiPost<AiComicSeriesBibleExportPackage>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-bible`,
     {},
+  )
+}
+
+export function exportAiComicSeriesSeedancePrompts(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceExportPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-prompts`,
+    {},
+  )
+}
+
+export function exportAiComicSeriesSeedanceCutPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceCutPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-cut-package`,
+    {},
+  )
+}
+
+export function assembleAiComicSeriesSeedanceCut(
+  seriesProjectId: string,
+  req: AiComicSeedanceCutAssemblyRequest = {},
+) {
+  return apiPost<AiComicSeriesSeedanceCutAssemblyResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-cut/assemble`,
+    req,
+  )
+}
+
+export function exportAiComicSeriesSeedanceRetryPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceRetryPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-retry-package`,
+    {},
+  )
+}
+
+export function exportAiComicSeriesSeedanceVersionComparisonPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceVersionComparisonPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-version-comparison`,
+    {},
+  )
+}
+
+export function exportAiComicSeriesSeedanceAssetReportPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceAssetReportPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-asset-report`,
+    {},
+  )
+}
+
+export function exportAiComicSeriesSeedanceEditAssetPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceEditAssetPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-edit-asset-package`,
+    {},
+  )
+}
+
+export function exportAiComicSeriesSeedanceThumbnailPlanPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceThumbnailPlanPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-thumbnail-plan`,
+    {},
+  )
+}
+
+export function exportAiComicSeriesSeedanceFinishingPlanPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceFinishingPlanPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-finishing-plan`,
+    {},
+  )
+}
+
+export function captureAiComicSeriesSeedanceThumbnails(
+  seriesProjectId: string,
+  req: AiComicSeedanceThumbnailCaptureRequest = {},
+) {
+  return apiPost<AiComicSeriesSeedanceThumbnailCaptureResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-thumbnails/capture`,
+    req,
+  )
+}
+
+export function updateAiComicSeriesSeedanceAssetLibrary(
+  seriesProjectId: string,
+  req: AiComicSeedanceAssetLibraryUpdateRequest,
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-asset-library`,
+    req,
+  )
+}
+
+export function updateAiComicSeriesSeedanceProductionStatus(
+  seriesProjectId: string,
+  req: AiComicSeedanceProductionStatusUpdateRequest,
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-production-status`,
+    req,
+  )
+}
+
+export function updateAiComicSeriesSeedanceProductionStatuses(
+  seriesProjectId: string,
+  req: AiComicSeedanceProductionBatchUpdateRequest,
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-production-status/batch`,
+    req,
+  )
+}
+
+export function applyAiComicSeriesSeedanceProductionCallback(
+  seriesProjectId: string,
+  req: AiComicSeedanceProductionCallbackRequest,
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-production-callback`,
+    req,
+  )
+}
+
+export function selectAiComicSeriesSeedanceProductionVersion(
+  seriesProjectId: string,
+  req: AiComicSeedanceProductionVersionSelectRequest,
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-production-version`,
+    req,
+  )
+}
+
+export function autoSelectAiComicSeriesSeedanceProductionVersions(
+  seriesProjectId: string,
+  req: AiComicSeedanceProductionAutoSelectRequest = {},
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-production-version/auto`,
+    req,
   )
 }

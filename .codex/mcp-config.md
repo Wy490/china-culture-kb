@@ -55,12 +55,12 @@ Use the Windows workspace path:
 
 ## Current Tool Surface
 
-The server currently exposes knowledge-base search, entry detail, source collection, source verification, article/video intake, script generation, story generation, region entry writing, index query, Story Agent project context, and StoryBlueprint generation tools.
+The server currently exposes knowledge-base search, entry detail, source collection, source verification, article/video intake, script generation, story generation, region entry writing, index query, Story Agent project context, StoryBlueprint generation, and genre quality validation tools.
 
 Story Agent follow-up tools planned or recently added for this project:
 
 - `kb_generate_story_blueprint` (implemented)
-- `kb_validate_genre_story`
+- `kb_validate_genre_story` (implemented)
 - `kb_repair_story`
 - `kb_generate_gears_delivery`
 - `kb_generate_seedance_prompt`

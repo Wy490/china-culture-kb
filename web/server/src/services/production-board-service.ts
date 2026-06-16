@@ -3,6 +3,9 @@ import type {
   GearsSegment,
   StoryGenerateResult,
   StoryProductionBoard,
+  StoryProductionBoardDeliveryArtifact,
+  StoryProductionBoardDeliveryManifest,
+  StoryProductionBoardDeliveryStage,
   StoryProductionBoardDirectorPlan,
   StoryProductionBoardPropAsset,
   StoryProductionBoardQaReport,
@@ -15,6 +18,7 @@ import type {
   StoryProductionBoardSupervisionReport,
 } from '@shared/types.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
+import { buildSeedancePromptPackage } from './seedance-prompt-service.js';
 
 const DEFAULT_NEGATIVE_CONSTRAINTS = [
   '不要把来源、质量报告、内部分析或 TODO 写入画面提示',
@@ -24,7 +28,9 @@ const DEFAULT_NEGATIVE_CONSTRAINTS = [
 
 export function buildStoryProductionBoard(story: StoryGenerateResult): StoryProductionBoard {
   const delivery = ensureGearsDeliveryPackage(story);
-  const shotUnits = buildShotUnits(story, delivery);
+  const seedancePackage = buildSeedancePromptPackage(story);
+  const seedanceBySceneId = new Map(seedancePackage.shot_units.map(unit => [unit.source_scene_id, unit]));
+  const shotUnits = buildShotUnits(story, delivery, seedanceBySceneId);
   const directorPlan = buildDirectorPlan(story);
   const propAssets = buildPropAssets(story);
   const costumeAssets = delivery.character_assets.map((asset, index) => ({
@@ -37,6 +43,7 @@ export function buildStoryProductionBoard(story: StoryGenerateResult): StoryProd
   const supervisionReport = buildSupervisionReport(story, delivery, shotUnits);
   const repairPlan = buildRepairPlan(supervisionReport);
   const qaReport = buildQaReport(shotUnits, delivery.validation_notes, supervisionReport);
+  const deliveryManifest = buildDeliveryManifest(shotUnits, supervisionReport, repairPlan, qaReport);
   const pkgWithoutMarkdown: Omit<StoryProductionBoard, 'markdown'> = {
     schema_version: 'story-production-board/v1',
     project_id: story.project_id,
@@ -53,6 +60,7 @@ export function buildStoryProductionBoard(story: StoryGenerateResult): StoryProd
     negative_constraints: DEFAULT_NEGATIVE_CONSTRAINTS,
     supervision_report: supervisionReport,
     repair_plan: repairPlan,
+    delivery_manifest: deliveryManifest,
     qa_report: qaReport,
   };
   return {
@@ -64,10 +72,12 @@ export function buildStoryProductionBoard(story: StoryGenerateResult): StoryProd
 function buildShotUnits(
   story: StoryGenerateResult,
   delivery: GearsDeliveryPackage,
+  seedanceBySceneId: Map<number, ReturnType<typeof buildSeedancePromptPackage>['shot_units'][number]>,
 ): StoryProductionBoardShotUnit[] {
   return story.scene_breakdown.map(scene => {
     const segment = story.gears_segments.find(item => item.source_scene_id === scene.scene_id);
     const unit = delivery.units.find(item => item.source_scene_id === scene.scene_id);
+    const seedanceUnit = seedanceBySceneId.get(scene.scene_id);
     const scriptText = segment?.script_text || scene.dialogue_or_narration || scene.key_action || scene.plot;
     const visualPrompt = cleanPrompt(scene.visual_prompt);
     const cameraSuggestion = cleanPrompt(scene.camera_suggestion);
@@ -103,6 +113,16 @@ function buildShotUnits(
         cameraSuggestion,
         segmentPromptHint: segment?.segment_prompt_hint,
       }),
+      seedance_prompt: seedanceUnit?.seedance_prompt ?? buildFallbackSeedancePrompt({
+        durationSec: Math.max(4, Math.min(15, Math.round(scene.duration_sec || 8))),
+        location: scene.location,
+        characters: scene.characters ?? [],
+        scriptText,
+        visualPrompt,
+        cameraSuggestion,
+      }),
+      seedance_duration_sec: seedanceUnit?.duration_sec ?? Math.max(4, Math.min(15, Math.round(scene.duration_sec || 8))),
+      seedance_validation_notes: seedanceUnit ? [] : ['未找到对应 Seedance 单元，已使用 Production Board 兜底提示词。'],
       continuity_notes: continuityNotes,
       cultural_boundary: scene.factual_basis
         ? `事实依据：${scene.factual_basis}`
@@ -379,6 +399,89 @@ function buildRepairPlan(report: StoryProductionBoardSupervisionReport): StoryPr
   };
 }
 
+function buildDeliveryManifest(
+  shotUnits: StoryProductionBoardShotUnit[],
+  supervisionReport: StoryProductionBoardSupervisionReport,
+  repairPlan: StoryProductionBoardRepairPlan,
+  qaReport: StoryProductionBoardQaReport,
+): StoryProductionBoardDeliveryManifest {
+  const hasSeedancePrompts = shotUnits.length > 0
+    && shotUnits.every(unit => unit.seedance_prompt.includes('0-3秒') && unit.seedance_duration_sec >= 4 && unit.seedance_duration_sec <= 15);
+  const stage: StoryProductionBoardDeliveryStage = supervisionReport.blockers > 0
+    ? 'blocked'
+    : qaReport.passed && repairPlan.task_count === 0 ? 'ready' : 'needs_repair';
+  const blockers = [
+    ...supervisionReport.issues
+      .filter(issue => issue.severity === 'blocker')
+      .map(issue => issue.title),
+    ...(!hasSeedancePrompts ? ['Seedance 提示词未满足 4-15 秒分时段要求'] : []),
+  ];
+  const artifacts: StoryProductionBoardDeliveryArtifact[] = [
+    {
+      artifact_id: 'board-json',
+      kind: 'board_json',
+      label: 'Production Board JSON',
+      status: stage,
+      description: '完整结构化生产包，包含资产、镜头、监督、修复和 Seedance 字段。',
+    },
+    {
+      artifact_id: 'board-markdown',
+      kind: 'board_markdown',
+      label: 'Production Board Markdown',
+      status: stage,
+      description: '给导演、分镜、甲方或外部 Agent 阅读的 Markdown 交付稿。',
+    },
+    {
+      artifact_id: 'supervision-report',
+      kind: 'supervision_report',
+      label: 'Supervision Report',
+      status: supervisionReport.blockers > 0 ? 'blocked' : supervisionReport.warnings > 0 ? 'needs_repair' : 'ready',
+      description: '资产、提示词、可拍性、连续性、时代服饰和时长监督结果。',
+    },
+    {
+      artifact_id: 'repair-plan',
+      kind: 'repair_plan',
+      label: 'Production Repair Plan',
+      status: repairPlan.blocker_task_count > 0 ? 'blocked' : repairPlan.task_count > 0 ? 'needs_repair' : 'ready',
+      description: '可执行修复任务，包含目标镜头、修复指令、期望输出和验收标准。',
+    },
+    {
+      artifact_id: 'seedance-prompts',
+      kind: 'seedance_prompts',
+      label: 'Seedance 2.0 Shot Prompts',
+      status: hasSeedancePrompts ? stage : 'blocked',
+      description: '每个镜头的 4-15 秒 Seedance 分时段视频提示词。',
+    },
+  ];
+  return {
+    stage,
+    stage_label: deliveryStageLabel(stage),
+    next_action: deliveryNextAction(stage, repairPlan, supervisionReport),
+    blockers: uniqueStrings(blockers),
+    ready_artifact_count: artifacts.filter(artifact => artifact.status === 'ready').length,
+    artifacts,
+  };
+}
+
+function deliveryStageLabel(stage: StoryProductionBoardDeliveryStage): string {
+  if (stage === 'ready') return '可交付';
+  if (stage === 'blocked') return '存在阻断项';
+  return '需修复后交付';
+}
+
+function deliveryNextAction(
+  stage: StoryProductionBoardDeliveryStage,
+  repairPlan: StoryProductionBoardRepairPlan,
+  supervisionReport: StoryProductionBoardSupervisionReport,
+): string {
+  if (stage === 'ready') return '可以导出 Board Markdown/JSON，并按镜头提交 Seedance 提示词。';
+  const firstP0 = repairPlan.tasks.find(task => task.priority === 'P0');
+  if (firstP0) return `先处理 P0：${firstP0.title}。`;
+  const firstIssue = supervisionReport.issues.find(issue => issue.severity === 'warn');
+  if (firstIssue) return `先处理警告：${firstIssue.title}。`;
+  return '先完成生产修复包中的剩余任务。';
+}
+
 function buildTaskForAction(
   issues: StoryProductionBoardSupervisionIssue[],
   action: StoryProductionBoardRepairAction,
@@ -549,6 +652,37 @@ function buildProductionPrompt(input: {
   ].filter(Boolean).join('\n');
 }
 
+function buildFallbackSeedancePrompt(input: {
+  durationSec: number;
+  location: string;
+  characters: string[];
+  scriptText: string;
+  visualPrompt: string;
+  cameraSuggestion: string;
+}): string {
+  const subject = input.characters.join('、') || '主要人物';
+  const duration = Math.max(4, Math.min(15, input.durationSec));
+  if (duration <= 8) {
+    return [
+      `生成 ${duration} 秒视频。主体：${subject}。场景：${input.location || '未指定场景'}。`,
+      `0-3秒：${input.visualPrompt || '建立场景和主体动作'}；镜头：${input.cameraSuggestion || '稳定中景'}。`,
+      `3-${duration}秒：${input.scriptText || '人物完成关键动作'}；突出表情、手部动作和空间关系，结尾留半秒定格。`,
+      '风格：AI漫剧/影视分镜，画面清晰，人物动作可拍，时代与服饰保持一致。',
+      '音效/音乐：环境声贴合场景，情绪紧张处轻微增强节奏。',
+      `禁止：${DEFAULT_NEGATIVE_CONSTRAINTS.join('；')}。`,
+    ].join('\n');
+  }
+  return [
+    `生成 ${duration} 秒视频。主体：${subject}。场景：${input.location || '未指定场景'}。`,
+    `0-3秒：${input.visualPrompt || '建立场景和主体动作'}；镜头：${input.cameraSuggestion || '稳定中景'}。`,
+    `3-7秒：${input.scriptText || '人物完成关键动作'}；冲突或发现推进，镜头跟随人物动作变化。`,
+    `7-${duration}秒：关键情绪或转折落地，收束到可承接的定格画面。`,
+    '风格：AI漫剧/影视分镜，画面清晰，人物动作可拍，时代与服饰保持一致。',
+    '音效/音乐：环境声贴合场景，情绪紧张处轻微增强节奏。',
+    `禁止：${DEFAULT_NEGATIVE_CONSTRAINTS.join('；')}。`,
+  ].join('\n');
+}
+
 function cleanPrompt(value: string): string {
   return value
     .replace(/^(视觉提示|画面提示|镜头建议|分析|注意)[:：]\s*/g, '')
@@ -565,6 +699,13 @@ function renderProductionBoardMarkdown(pkg: Omit<StoryProductionBoard, 'markdown
     `- 项目 ID: ${pkg.project_id ?? '未记录'}`,
     `- 生成时间: ${pkg.generated_at}`,
     `- QA: ${pkg.qa_report.passed ? '通过' : '需处理'} · ${pkg.qa_report.score}/100`,
+    `- 交付阶段: ${pkg.delivery_manifest.stage_label}`,
+    `- 下一步: ${pkg.delivery_manifest.next_action}`,
+    '',
+    '## 交付清单',
+    `- 可用交付物: ${pkg.delivery_manifest.ready_artifact_count}/${pkg.delivery_manifest.artifacts.length}`,
+    ...(pkg.delivery_manifest.blockers.length ? pkg.delivery_manifest.blockers.map(blocker => `- 阻断: ${blocker}`) : ['- 阻断: 无']),
+    ...pkg.delivery_manifest.artifacts.map(artifact => `- [${artifact.status}] ${artifact.label}: ${artifact.description}`),
     '',
     '## 角色资产',
     ...pkg.character_assets.map(asset => `- ${asset.name}: ${asset.role_position}；${asset.appearance_features}；服装：${asset.clothing}`),
@@ -611,6 +752,8 @@ function renderProductionBoardMarkdown(pkg: Omit<StoryProductionBoard, 'markdown
       `- Visual: ${unit.visual_prompt}`,
       `- Camera: ${unit.camera_suggestion}`,
       `- Production Prompt:\n${unit.production_prompt}`,
+      `- Seedance ${unit.seedance_duration_sec}s Prompt:\n${unit.seedance_prompt}`,
+      unit.seedance_validation_notes.length ? `- Seedance 校验: ${unit.seedance_validation_notes.join('；')}` : '- Seedance 校验: 无',
       `- QA: ${unit.qa_flags.join('；') || '无'}`,
       '',
     ]).flat(),

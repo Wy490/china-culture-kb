@@ -69,6 +69,9 @@
           <div>
             <h2 class="project-detail-page__section-title">Production Board</h2>
             <p>
+              交付 {{ productionBoard.delivery_manifest.stage_label }}
+              · 可用 {{ productionBoard.delivery_manifest.ready_artifact_count }}/{{ productionBoard.delivery_manifest.artifacts.length }}
+              ·
               QA {{ productionBoard.qa_report.passed ? '通过' : '需处理' }}
               · {{ productionBoard.qa_report.score }}/100
               · 监督 {{ productionBoard.supervision_report.passed ? '通过' : '需处理' }}
@@ -79,9 +82,68 @@
             </p>
           </div>
           <div class="project-detail-page__production-actions">
+            <button
+              class="project-detail-page__action-btn project-detail-page__action-btn--primary"
+              :disabled="repairingProductionBoard"
+              @click="submitProductionBoardRepair(true)"
+            >
+              {{ repairingProductionBoard ? '修复中…' : '执行生产修复' }}
+            </button>
+            <button
+              class="project-detail-page__action-btn"
+              :disabled="repairingProductionBoard"
+              @click="submitProductionBoardRepair(false)"
+            >
+              修复 P0
+            </button>
+            <button
+              class="project-detail-page__action-btn project-detail-page__action-btn--primary"
+              :disabled="exportingProductionBoard"
+              @click="saveProductionBoardPackage"
+            >
+              {{ exportingProductionBoard ? '落盘中…' : '一键落盘交付包' }}
+            </button>
             <button class="project-detail-page__action-btn" @click="exportProductionBoardMarkdown">导出 Board Markdown</button>
             <button class="project-detail-page__action-btn" @click="exportProductionBoardJson">导出 Board JSON</button>
           </div>
+        </div>
+        <div
+          class="project-detail-page__delivery-manifest"
+          :class="`project-detail-page__delivery-manifest--${productionBoard.delivery_manifest.stage}`"
+        >
+          <div>
+            <strong>{{ productionBoard.delivery_manifest.stage_label }}</strong>
+            <p>{{ productionBoard.delivery_manifest.next_action }}</p>
+          </div>
+          <div class="project-detail-page__delivery-artifacts">
+            <span
+              v-for="artifact in productionBoard.delivery_manifest.artifacts"
+              :key="artifact.artifact_id"
+              :class="`project-detail-page__delivery-artifact--${artifact.status}`"
+            >
+              {{ artifact.label }}
+            </span>
+          </div>
+        </div>
+        <div v-if="productionBoardExport" class="project-detail-page__export-package">
+          <div>
+            <strong>交付包已写入项目目录</strong>
+            <p>{{ productionBoardExport.export_dir }}</p>
+          </div>
+          <div class="project-detail-page__export-files">
+            <span v-for="file in productionBoardExport.files" :key="file.file_id">
+              {{ file.label }} · {{ file.relative_path }}
+            </span>
+          </div>
+        </div>
+        <div v-if="productionRepairTrace" class="project-detail-page__production-repair-result">
+          <strong>{{ productionRepairTrace.applied ? '生产修复已生成新版本' : '生产修复未产生变化' }}</strong>
+          <p>{{ productionRepairTrace.note }}</p>
+          <span>
+            {{ productionRepairTrace.applied_task_ids.length }} 个任务已应用
+            · 阻断 {{ productionRepairTrace.before_blockers }} → {{ productionRepairTrace.after_blockers }}
+            · {{ productionRepairTrace.before_stage }} → {{ productionRepairTrace.after_stage }}
+          </span>
         </div>
         <div class="project-detail-page__production-grid">
           <article>
@@ -153,9 +215,14 @@
           <article v-for="shot in productionBoard.shot_units.slice(0, 6)" :key="shot.shot_id" class="project-detail-page__shot">
             <div>
               <strong>{{ shot.shot_id }} · 场景 {{ shot.source_scene_id }}</strong>
-              <span>{{ shot.duration_sec }} 秒 · {{ shot.panel_count }} 格 · {{ shot.location }}</span>
+              <span>{{ shot.duration_sec }} 秒 · Seedance {{ shot.seedance_duration_sec }} 秒 · {{ shot.panel_count }} 格 · {{ shot.location }}</span>
             </div>
             <p>{{ shot.production_prompt }}</p>
+            <details class="project-detail-page__seedance-prompt">
+              <summary>Seedance 提示词</summary>
+              <pre>{{ shot.seedance_prompt }}</pre>
+              <small v-if="shot.seedance_validation_notes.length">{{ shot.seedance_validation_notes.join('；') }}</small>
+            </details>
             <small v-if="shot.qa_flags.length > 0">{{ shot.qa_flags.join('；') }}</small>
           </article>
         </div>
@@ -314,9 +381,11 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   deleteProject,
   exportProjectCurrentVersion,
+  exportProjectProductionBoard,
   getProject,
   getProjectProductionBoard,
   repairProjectQuality,
+  repairProjectProductionBoard,
   regenerateProjectScene,
   updateProjectSupplementTask,
 } from '@/api/projects'
@@ -331,6 +400,8 @@ import type {
   StoryProjectStatus,
   StoryProjectVersionChangeType,
   StoryProductionBoard,
+  StoryProductionBoardExportPackage,
+  StoryProductionBoardRepairTrace,
   QualityRepairAction,
 } from '@shared/types'
 
@@ -353,7 +424,11 @@ const updatingSupplementTaskId = ref('')
 const successMessage = ref('')
 const showQualityScenesOnly = ref(false)
 const productionBoard = ref<StoryProductionBoard | null>(null)
+const productionBoardExport = ref<StoryProductionBoardExportPackage | null>(null)
+const productionRepairTrace = ref<StoryProductionBoardRepairTrace | null>(null)
 const loadingProductionBoard = ref(false)
+const exportingProductionBoard = ref(false)
+const repairingProductionBoard = ref(false)
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
@@ -476,6 +551,7 @@ function repairActionLabel(action: string): string {
 function versionLabel(type: StoryProjectVersionChangeType): string {
   if (type === 'initial_generation') return '初次生成'
   if (type === 'quality_repair') return '质量修复'
+  if (type === 'production_board_repair') return '生产修复'
   return '局部重写'
 }
 
@@ -493,6 +569,8 @@ async function loadProject(projectId: string) {
   if (res.ok && res.data) {
     detail.value = res.data
     productionBoard.value = null
+    productionBoardExport.value = null
+    productionRepairTrace.value = null
     showQualityScenesOnly.value = false
     if (!selectedModelProfileId.value && res.data.current_story.model_profile_id) {
       selectedModelProfileId.value = res.data.current_story.model_profile_id
@@ -511,6 +589,8 @@ async function loadProductionBoard() {
   const res = await getProjectProductionBoard(detail.value.project.project_id)
   if (res.ok && res.data) {
     productionBoard.value = res.data
+    productionBoardExport.value = null
+    productionRepairTrace.value = null
     successMessage.value = `Production Board 已生成：${res.data.shot_units.length} 个镜头单元`
   } else {
     error.value = res.error?.message ?? '生成 Production Board 失败'
@@ -543,6 +623,9 @@ async function submitSceneRewrite() {
 
   if (res.ok && res.data) {
     detail.value = res.data
+    productionBoard.value = null
+    productionBoardExport.value = null
+    productionRepairTrace.value = null
     const quality = res.data.current_story.quality_report
     const qualityTail = quality
       ? `，已重新复核：${quality.passed ? '通过' : '需调整'}${typeof quality.genre_score === 'number' ? `，类型分 ${quality.genre_score}` : ''}`
@@ -568,6 +651,9 @@ async function submitQualityRepair(action?: QualityRepairAction) {
   })
   if (res.ok && res.data) {
     detail.value = res.data
+    productionBoard.value = null
+    productionBoardExport.value = null
+    productionRepairTrace.value = null
     const trace = res.data.current_story.repair_trace?.[res.data.current_story.repair_trace.length - 1]
     const quality = res.data.current_story.quality_report
     const scoreTail = quality && typeof quality.genre_score === 'number' ? `，类型分 ${quality.genre_score}` : ''
@@ -655,6 +741,52 @@ async function exportProductionBoardMarkdown() {
     'text/markdown;charset=utf-8',
   )
   successMessage.value = 'Production Board Markdown 已导出到本地'
+}
+
+async function saveProductionBoardPackage() {
+  if (!detail.value) return
+  exportingProductionBoard.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await exportProjectProductionBoard(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    productionBoardExport.value = res.data
+    productionBoard.value = res.data.board
+    detail.value = {
+      ...detail.value,
+      project: {
+        ...detail.value.project,
+        status: detail.value.project.status === 'finalized' ? 'finalized' : 'exported',
+        updated_at: res.data.exported_at,
+      },
+    }
+    successMessage.value = `Production Board 交付包已落盘：${res.data.files.length} 个文件`
+  } else {
+    error.value = res.error?.message ?? 'Production Board 交付包落盘失败'
+  }
+  exportingProductionBoard.value = false
+}
+
+async function submitProductionBoardRepair(applyAll: boolean) {
+  if (!detail.value) return
+  repairingProductionBoard.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await repairProjectProductionBoard(detail.value.project.project_id, applyAll
+    ? { apply_all: true }
+    : { priorities: ['P0'] })
+  if (res.ok && res.data) {
+    detail.value = res.data.detail
+    productionBoard.value = res.data.after_board
+    productionBoardExport.value = null
+    productionRepairTrace.value = res.data.trace
+    successMessage.value = res.data.trace.applied
+      ? `生产修复已生成新版本：${res.data.trace.applied_task_ids.length} 个任务`
+      : `生产修复未产生变化：${res.data.trace.reason}`
+  } else {
+    error.value = res.error?.message ?? '生产修复失败'
+  }
+  repairingProductionBoard.value = false
 }
 
 function downloadText(filename: string, text: string, type: string) {
@@ -868,6 +1000,142 @@ watch(selectedModelProfileId, (value) => {
   gap: 8px;
 }
 
+.project-detail-page__delivery-manifest {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d7dee5;
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.project-detail-page__delivery-manifest--ready {
+  border-left-color: #1b7f4a;
+}
+
+.project-detail-page__delivery-manifest--needs_repair {
+  border-left-color: #d68910;
+}
+
+.project-detail-page__delivery-manifest--blocked {
+  border-left-color: #c0392b;
+}
+
+.project-detail-page__delivery-manifest strong {
+  color: #22313f;
+}
+
+.project-detail-page__delivery-manifest p {
+  margin: 4px 0 0;
+  color: #526575;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.project-detail-page__delivery-artifacts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.project-detail-page__delivery-artifacts span {
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  padding: 3px 6px;
+  background: #f8fafb;
+  color: #455866;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__delivery-artifact--ready {
+  border-color: #b8dbc8 !important;
+  color: #1b7f4a !important;
+}
+
+.project-detail-page__delivery-artifact--needs_repair {
+  border-color: #efcf8a !important;
+  color: #9a6300 !important;
+}
+
+.project-detail-page__delivery-artifact--blocked {
+  border-color: #f0c4bd !important;
+  color: #b13b2e !important;
+}
+
+.project-detail-page__export-package {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #c9d8e5;
+  border-radius: 6px;
+  background: #f4f9fc;
+}
+
+.project-detail-page__export-package strong {
+  color: #22313f;
+}
+
+.project-detail-page__export-package p {
+  margin: 4px 0 0;
+  color: #526575;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.project-detail-page__export-files {
+  display: flex;
+  max-width: 420px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.project-detail-page__export-files span {
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  padding: 3px 6px;
+  background: #fff;
+  color: #455866;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__production-repair-result {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #c8dfd2;
+  border-left: 4px solid #1b7f4a;
+  border-radius: 6px;
+  background: #f5fbf7;
+}
+
+.project-detail-page__production-repair-result strong {
+  color: #22313f;
+}
+
+.project-detail-page__production-repair-result p {
+  margin: 4px 0;
+  color: #526575;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.project-detail-page__production-repair-result span {
+  color: #1b7f4a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .project-detail-page__production-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1026,6 +1294,33 @@ watch(selectedModelProfileId, (value) => {
 .project-detail-page__shot small {
   color: #7c8894;
   font-size: 12px;
+}
+
+.project-detail-page__seedance-prompt {
+  margin-top: 8px;
+  border: 1px solid #e0e6ec;
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 7px 9px;
+}
+
+.project-detail-page__seedance-prompt summary {
+  cursor: pointer;
+  color: #2f4358;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.project-detail-page__seedance-prompt pre {
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 8px 0 0;
+  color: #34495e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .project-detail-page__shot small {
@@ -1297,6 +1592,16 @@ watch(selectedModelProfileId, (value) => {
 
   .project-detail-page__quality-tools {
     flex-direction: column;
+  }
+
+  .project-detail-page__delivery-manifest,
+  .project-detail-page__export-package {
+    grid-template-columns: 1fr;
+  }
+
+  .project-detail-page__delivery-artifacts,
+  .project-detail-page__export-files {
+    justify-content: flex-start;
   }
 
   .project-detail-page__summary {

@@ -17,6 +17,7 @@ import { getEntryDetail } from './tools/get-entry-detail.js';
 import { generateStory } from './tools/generate-story.js';
 import { getProjectContext } from './tools/get-project-context.js';
 import { generateStoryBlueprint } from './tools/generate-story-blueprint.js';
+import { validateGenreStory } from './tools/validate-genre-story.js';
 import { CultureEntry, SourceType, ScriptType } from './types.js';
 
 const server = new McpServer({
@@ -454,6 +455,30 @@ server.tool(
     });
     if (!result) {
       return { content: [{ type: 'text', text: `未找到条目：${input.entry_name}` }] };
+    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_validate_genre_story — validate Story Agent output against video-type quality expectations
+server.tool(
+  'kb_validate_genre_story',
+  '校验 Story Agent 结果是否符合所选成片类型要求。只读，可从 project_id、story_id 或 story_json 读取。',
+  {
+    project_id: z.string().optional().describe('故事项目 ID，优先读取当前版本'),
+    story_id: z.string().optional().describe('故事 ID，读取 web/generated/stories 下的故事 JSON'),
+    story_json: z.string().optional().describe('直接传入 StoryGenerateResult JSON 字符串'),
+    include_repair_actions: z.boolean().optional().describe('是否返回修复建议，默认 true'),
+  },
+  async (input) => {
+    const result = await validateGenreStory(input);
+    if (!result) {
+      return { content: [{ type: 'text', text: '未找到可校验的故事或项目' }] };
     }
     return {
       content: [{

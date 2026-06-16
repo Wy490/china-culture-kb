@@ -51,6 +51,14 @@ npm run start          # node dist/index.js
 
 `story_ready` 通知会携带 `gears_video_callback_url`。GEARS 完成成片后向该地址提交 `storyId`、`status`、`video_url`、`thumbnail_url`，平台会把成片状态写回故事项目。
 
+### Seedance 对接环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `SEEDANCE_CALLBACK_SECRET` | 空 | 配置后，Seedance 生产回调必须携带 `x-seedance-callback-secret` 或 `Authorization: Bearer <secret>` |
+
+Seedance 系列镜头生产回调地址为 `/api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-callback`。回调可用 `job_id` / `provider_job_id` 定位镜头，也可用 `episode_no + shot_id` 定位；支持回写 `video_url`、失败原因、质量分和评审备注。
+
 ---
 
 ## 3. 前端部署
