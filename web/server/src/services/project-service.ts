@@ -22,6 +22,9 @@ import type {
   StoryProjectDeleteResult,
   StoryProjectRetainRecentResult,
   ProjectSupplementTaskListItem,
+  SeedanceAssetLibrary,
+  SeedanceAssetLibraryItem,
+  SeedanceAssetLibraryUpdateRequest,
   KnowledgeSupplementTaskUpdateRequest,
   KnowledgeSupplementTaskStatus,
   StorySceneRegenerateRequest,
@@ -223,6 +226,55 @@ function buildProjectMeta(
     gears_video_url: story.gears_video?.video_url,
     gears_video_thumbnail_url: story.gears_video?.thumbnail_url,
   };
+}
+
+function normalizeSeedanceAssetLibrary(library?: SeedanceAssetLibrary): SeedanceAssetLibrary {
+  return {
+    schema_version: 'seedance-asset-library/v1',
+    updated_at: library?.updated_at,
+    items: (library?.items ?? [])
+      .filter(item => item.label?.trim())
+      .map(item => ({
+        asset_id: item.asset_id || seedanceAssetId(item.kind, item.label),
+        kind: item.kind,
+        label: item.label.trim(),
+        modality: item.modality ?? defaultSeedanceAssetModality(item.kind),
+        role: item.role ?? defaultSeedanceAssetRole(item.kind),
+        reference_slot: item.reference_slot,
+        file_url: item.file_url,
+        file_id: item.file_id,
+        description: item.description,
+        updated_at: item.updated_at ?? library?.updated_at ?? new Date(0).toISOString(),
+      })),
+  };
+}
+
+function defaultSeedanceAssetModality(kind: SeedanceAssetLibraryItem['kind']): SeedanceAssetLibraryItem['modality'] {
+  if (kind === 'audio') return 'audio';
+  if (kind === 'camera') return 'video';
+  return 'image';
+}
+
+function defaultSeedanceAssetRole(kind: SeedanceAssetLibraryItem['kind']): SeedanceAssetLibraryItem['role'] {
+  if (kind === 'character') return 'character_reference';
+  if (kind === 'location') return 'location_reference';
+  if (kind === 'prop') return 'prop_reference';
+  if (kind === 'camera') return 'camera_reference';
+  return 'sound_reference';
+}
+
+function seedanceAssetId(kind: SeedanceAssetLibraryItem['kind'], label: string): string {
+  return `seedance-asset-${kind}-${slugifySeedanceAssetLabel(label)}`;
+}
+
+function slugifySeedanceAssetLabel(value: string): string {
+  const ascii = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (ascii) return ascii.slice(0, 80);
+  return encodeURIComponent(value.trim()).replace(/%/g, '').slice(0, 80) || 'asset';
 }
 
 async function readStoryFromSource(projectId: string): Promise<{ story: StoryGenerateResult; createdAt: string } | null> {
@@ -478,6 +530,51 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
   });
 }
 
+export async function updateProjectSeedanceAssetLibrary(
+  projectId: string,
+  request: SeedanceAssetLibraryUpdateRequest,
+): Promise<ApiResponse<StoryProjectDetail>> {
+  const project = await ensureProjectExists(projectId);
+  if (!project) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" not found`);
+  }
+  const updatedAt = new Date().toISOString();
+  const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  for (const item of request.items) {
+    const label = item.label.trim();
+    const kind = item.kind;
+    const assetId = item.asset_id?.trim() || seedanceAssetId(kind, label);
+    const previous = byId.get(assetId);
+    byId.set(assetId, {
+      asset_id: assetId,
+      kind,
+      label,
+      modality: item.modality ?? previous?.modality ?? defaultSeedanceAssetModality(kind),
+      role: item.role ?? previous?.role ?? defaultSeedanceAssetRole(kind),
+      reference_slot: item.reference_slot?.trim() || previous?.reference_slot,
+      file_url: item.file_url?.trim() || previous?.file_url,
+      file_id: item.file_id?.trim() || previous?.file_id,
+      description: item.description?.trim() || previous?.description,
+      updated_at: updatedAt,
+    });
+  }
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    seedance_asset_library: {
+      schema_version: 'seedance-asset-library/v1',
+      updated_at: updatedAt,
+      items: [...byId.values()].sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+        return a.label.localeCompare(b.label, 'zh-CN');
+      }),
+    },
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  return getProject(project.project_id);
+}
+
 export async function getProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoard>> {
   const detail = await getProject(projectId);
   if (!detail.ok || !detail.data) {
@@ -486,7 +583,9 @@ export async function getProjectProductionBoard(projectId: string): Promise<ApiR
       detail.error?.message ?? `Project "${projectId}" not found`,
     );
   }
-  return success(buildStoryProductionBoard(detail.data.current_story));
+  return success(buildStoryProductionBoard(detail.data.current_story, {
+    seedanceAssetLibrary: detail.data.project.seedance_asset_library,
+  }));
 }
 
 export async function exportProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoardExportPackage>> {
@@ -499,7 +598,9 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
   }
 
   const { project, current_story } = detail.data;
-  const board = buildStoryProductionBoard(current_story);
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+  });
   const exportedAt = new Date().toISOString();
   const exportDir = resolve(projectDir(project.project_id), 'production-board');
   await mkdir(exportDir, { recursive: true });

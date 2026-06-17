@@ -362,6 +362,31 @@ export const ProjectRetainRecentRequestSchema = z.object({
   keep_recent: z.number().int().min(0).max(1000),
 });
 
+const SeedanceAssetReferenceKindSchema = z.enum(['character', 'location', 'prop', 'camera', 'audio']);
+const SeedanceAssetModalitySchema = z.enum(['image', 'video', 'audio']);
+const SeedanceAssetSlotRoleSchema = z.enum([
+  'character_reference',
+  'location_reference',
+  'prop_reference',
+  'camera_reference',
+  'music_reference',
+  'sound_reference',
+]);
+
+export const SeedanceAssetLibraryUpdateRequestSchema = z.object({
+  items: z.array(z.object({
+    asset_id: z.string().trim().min(1).max(160).optional(),
+    label: z.string().trim().min(1).max(120),
+    kind: SeedanceAssetReferenceKindSchema,
+    modality: SeedanceAssetModalitySchema.optional(),
+    role: SeedanceAssetSlotRoleSchema.optional(),
+    reference_slot: z.string().trim().min(1).max(40).optional(),
+    file_url: z.string().trim().min(1).max(1000).optional(),
+    file_id: z.string().trim().min(1).max(160).optional(),
+    description: z.string().trim().max(500).optional(),
+  })).min(1).max(200),
+});
+
 export const StorySceneRegenerateRequestSchema = z.object({
   scene_id: z.number().int().min(1),
   intent: z.enum([

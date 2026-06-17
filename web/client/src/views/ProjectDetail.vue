@@ -144,13 +144,28 @@
             </p>
           </div>
           <div class="project-detail-page__seedance-asset-items">
-            <span
+            <article
               v-for="asset in productionBoard.seedance_asset_report.assets.slice(0, 8)"
               :key="asset.asset_id"
               :class="`project-detail-page__seedance-asset-item--${asset.status}`"
             >
-              {{ asset.reference_slot ?? '未分配槽位' }} · {{ asset.label }} · {{ seedanceAssetStatusLabel(asset.status) }}
-            </span>
+              <span>{{ asset.reference_slot ?? '未分配槽位' }} · {{ asset.label }} · {{ seedanceAssetStatusLabel(asset.status) }}</span>
+              <small v-if="asset.is_bound">{{ asset.file_url ?? asset.file_id }}</small>
+              <template v-else>
+                <input
+                  v-model="seedanceAssetFileInputs[asset.asset_id]"
+                  class="project-detail-page__seedance-asset-input"
+                  placeholder="URL / file ID"
+                >
+                <button
+                  class="project-detail-page__repair-task-btn"
+                  :disabled="bindingSeedanceAssetId === asset.asset_id"
+                  @click="bindSeedanceAsset(asset)"
+                >
+                  {{ bindingSeedanceAssetId === asset.asset_id ? '绑定中…' : '绑定' }}
+                </button>
+              </template>
+            </article>
           </div>
         </div>
         <div v-if="productionBoardExport" class="project-detail-page__export-package">
@@ -543,6 +558,7 @@ import {
   repairProjectQuality,
   repairProjectProductionBoard,
   regenerateProjectScene,
+  updateProjectSeedanceAssetLibrary,
   updateProjectSupplementTask,
 } from '@/api/projects'
 import { getModelProfiles } from '@/api/system'
@@ -552,6 +568,7 @@ import GearsVideoStatus from '@/components/GearsVideoStatus.vue'
 import type {
   AIModelProfile,
   KnowledgeSupplementTaskStatus,
+  SeedanceAssetBindingItem,
   StoryProjectDetail,
   StoryProjectStatus,
   StoryProjectVersionChangeType,
@@ -599,6 +616,8 @@ const repairingProductionBoard = ref(false)
 const repairingAndExportingProductionBoard = ref(false)
 const repairingProductionBoardTaskId = ref('')
 const repairingProductionBoardScope = ref('')
+const seedanceAssetFileInputs = ref<Record<string, string>>({})
+const bindingSeedanceAssetId = ref('')
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
@@ -853,6 +872,44 @@ async function loadProductionBoard() {
     error.value = res.error?.message ?? '生成 Production Board 失败'
   }
   loadingProductionBoard.value = false
+}
+
+async function bindSeedanceAsset(asset: SeedanceAssetBindingItem) {
+  if (!detail.value) return
+  const rawValue = (seedanceAssetFileInputs.value[asset.asset_id] ?? '').trim()
+  if (!rawValue) {
+    error.value = '请填写素材 URL 或 file ID'
+    return
+  }
+  bindingSeedanceAssetId.value = asset.asset_id
+  error.value = ''
+  successMessage.value = ''
+  const isUrl = /^https?:\/\//i.test(rawValue)
+  const res = await updateProjectSeedanceAssetLibrary(detail.value.project.project_id, {
+    items: [{
+      asset_id: asset.asset_id,
+      kind: asset.kind,
+      label: asset.label,
+      modality: asset.modality,
+      role: asset.role,
+      reference_slot: asset.reference_slot,
+      file_url: isUrl ? rawValue : undefined,
+      file_id: isUrl ? undefined : rawValue,
+      description: asset.prompt_usage,
+    }],
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data
+    seedanceAssetFileInputs.value = {
+      ...seedanceAssetFileInputs.value,
+      [asset.asset_id]: '',
+    }
+    await loadProductionBoard()
+    successMessage.value = `已绑定 Seedance 素材：${asset.label}`
+  } else {
+    error.value = res.error?.message ?? '绑定 Seedance 素材失败'
+  }
+  bindingSeedanceAssetId.value = ''
 }
 
 function openSceneEditor(sceneId: number) {
@@ -1467,14 +1524,39 @@ watch(selectedModelProfileId, (value) => {
   gap: 6px;
 }
 
-.project-detail-page__seedance-asset-items span {
+.project-detail-page__seedance-asset-items article {
+  display: flex;
+  max-width: 260px;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
   border: 1px solid #d7dee5;
   border-radius: 4px;
   padding: 3px 6px;
   background: #f8fafb;
   color: #455866;
+}
+
+.project-detail-page__seedance-asset-items span,
+.project-detail-page__seedance-asset-items small {
   font-size: 11px;
   font-weight: 700;
+}
+
+.project-detail-page__seedance-asset-items small {
+  max-width: 230px;
+  overflow-wrap: anywhere;
+  color: #647380;
+}
+
+.project-detail-page__seedance-asset-input {
+  width: 120px;
+  min-width: 0;
+  border: 1px solid #ccd6dd;
+  border-radius: 4px;
+  padding: 4px 6px;
+  color: #22313f;
+  font-size: 12px;
 }
 
 .project-detail-page__seedance-asset-item--bound {

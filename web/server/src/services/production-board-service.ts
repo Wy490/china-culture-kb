@@ -2,6 +2,8 @@ import type {
   GearsDeliveryPackage,
   GearsSegment,
   SeedanceAssetBindingItem,
+  SeedanceAssetLibrary,
+  SeedanceAssetLibraryItem,
   SeedanceAssetReportPackage,
   StoryGenerateResult,
   StoryProductionBoard,
@@ -28,7 +30,10 @@ const DEFAULT_NEGATIVE_CONSTRAINTS = [
   '不要让同一角色在相邻镜头中服装、年龄、发型突变',
 ];
 
-export function buildStoryProductionBoard(story: StoryGenerateResult): StoryProductionBoard {
+export function buildStoryProductionBoard(
+  story: StoryGenerateResult,
+  options: { seedanceAssetLibrary?: SeedanceAssetLibrary } = {},
+): StoryProductionBoard {
   const delivery = ensureGearsDeliveryPackage(story);
   const seedancePackage = buildSeedancePromptPackage(story);
   const seedanceBySceneId = new Map(seedancePackage.shot_units.map(unit => [unit.source_scene_id, unit]));
@@ -50,6 +55,7 @@ export function buildStoryProductionBoard(story: StoryGenerateResult): StoryProd
     story,
     shotUnits,
     generatedAt,
+    assetLibrary: options.seedanceAssetLibrary,
   });
   const deliveryManifest = buildDeliveryManifest(shotUnits, supervisionReport, repairPlan, qaReport, seedanceAssetReport);
   const pkgWithoutMarkdown: Omit<StoryProductionBoard, 'markdown'> = {
@@ -252,27 +258,39 @@ function buildSeedanceAssetReport(input: {
   story: StoryGenerateResult;
   shotUnits: StoryProductionBoardShotUnit[];
   generatedAt: string;
+  assetLibrary?: SeedanceAssetLibrary;
 }): SeedanceAssetReportPackage {
+  const libraryByAssetId = new Map((input.assetLibrary?.items ?? []).map(item => [item.asset_id, item]));
+  const libraryByKey = new Map((input.assetLibrary?.items ?? []).map(item => [seedanceAssetLookupKey(item.kind, item.label), item]));
   const assets = new Map<string, SeedanceAssetBindingItem>();
   const shots = input.shotUnits.map(unit => {
     for (const slot of unit.seedance_asset_slots) {
+      const libraryItem = libraryByAssetId.get(slot.asset_id)
+        ?? libraryByKey.get(seedanceAssetLookupKey(slot.kind, slot.label));
+      const referenceSlot = slot.reference_slot || libraryItem?.reference_slot;
       upsertSeedanceAssetBinding(assets, {
         asset_id: slot.asset_id,
         label: slot.label,
         kind: slot.kind,
         modality: slot.modality,
         role: slot.role,
-        reference_slot: slot.reference_slot,
-        prompt_usage: slot.prompt_usage,
+        reference_slot: referenceSlot,
+        file_url: libraryItem?.file_url,
+        file_id: libraryItem?.file_id,
+        prompt_usage: slot.prompt_usage ?? libraryItem?.description,
         source_scene_ids: [unit.source_scene_id],
         source_shot_ids: [unit.shot_id],
         required_by_shot_count: 1,
-        ...seedanceBindingState(slot.reference_slot),
+        ...seedanceBindingState(referenceSlot, libraryItem),
       });
     }
     const requiredAssetIds = uniqueStrings(unit.seedance_asset_slots.map(slot => slot.asset_id));
     const missingAssetIds = uniqueStrings(unit.seedance_asset_slots
-      .filter(slot => seedanceBindingState(slot.reference_slot).status !== 'bound')
+      .filter(slot => {
+        const libraryItem = libraryByAssetId.get(slot.asset_id)
+          ?? libraryByKey.get(seedanceAssetLookupKey(slot.kind, slot.label));
+        return seedanceBindingState(slot.reference_slot || libraryItem?.reference_slot, libraryItem).status !== 'bound';
+      })
       .map(slot => slot.asset_id));
     return {
       shot_id: unit.shot_id,
@@ -313,13 +331,17 @@ function buildSeedanceAssetReport(input: {
   };
 }
 
-function seedanceBindingState(referenceSlot?: string): Pick<SeedanceAssetBindingItem, 'has_reference_slot' | 'is_bound' | 'needs_upload' | 'status'> {
+function seedanceBindingState(
+  referenceSlot?: string,
+  libraryItem?: SeedanceAssetLibraryItem,
+): Pick<SeedanceAssetBindingItem, 'has_reference_slot' | 'is_bound' | 'needs_upload' | 'status'> {
   const hasReferenceSlot = Boolean(referenceSlot?.trim());
+  const isBound = hasReferenceSlot && Boolean(libraryItem?.file_url || libraryItem?.file_id);
   return {
     has_reference_slot: hasReferenceSlot,
-    is_bound: false,
-    needs_upload: true,
-    status: hasReferenceSlot ? 'missing_file' : 'missing_reference_slot',
+    is_bound: isBound,
+    needs_upload: !isBound,
+    status: isBound ? 'bound' : hasReferenceSlot ? 'missing_file' : 'missing_reference_slot',
   };
 }
 
@@ -337,12 +359,16 @@ function upsertSeedanceAssetBinding(
     return;
   }
   const referenceSlot = existing.reference_slot ?? next.reference_slot;
+  const fileUrl = existing.file_url ?? next.file_url;
+  const fileId = existing.file_id ?? next.file_id;
   const hasReferenceSlot = existing.has_reference_slot || next.has_reference_slot;
-  const isBound = existing.is_bound || next.is_bound;
+  const isBound = hasReferenceSlot && Boolean(fileUrl || fileId);
   const sourceShotIds = uniqueStrings([...existing.source_shot_ids, ...next.source_shot_ids]);
   assets.set(next.asset_id, {
     ...existing,
     reference_slot: referenceSlot,
+    file_url: fileUrl,
+    file_id: fileId,
     prompt_usage: existing.prompt_usage ?? next.prompt_usage,
     source_scene_ids: uniqueNumbers([...existing.source_scene_ids, ...next.source_scene_ids]),
     source_shot_ids: sourceShotIds,
@@ -382,6 +408,10 @@ function renderSeedanceAssetReportMarkdown(pkg: Omit<SeedanceAssetReportPackage,
     '',
   ];
   return lines.join('\n');
+}
+
+function seedanceAssetLookupKey(kind: SeedanceAssetBindingItem['kind'], label: string): string {
+  return `${kind}:${label.trim().toLowerCase()}`;
 }
 
 function shotQaFlags(input: {

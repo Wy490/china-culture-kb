@@ -31,7 +31,7 @@
 | 模块 | 进度判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
-| Production Board / GEARS / Seedance 交付链 | 约 66% -> 本轮推进到约 69% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot 和素材缺口报告首版。 |
+| Production Board / GEARS / Seedance 交付链 | 约 66% -> 本轮推进到约 70% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、素材缺口报告和单故事素材绑定回写首版。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划已具备；字幕/混音/片头片尾/final delivery 仍待做。 |
 | 可商用制作中台 | 约 35-40% | 主链路可用，但还缺 UX 降噪、资产绑定、状态总览、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 35-40% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story` 已完成；GEARS/Seedance/repair/version 写入工具待做。 |
@@ -131,6 +131,11 @@ MCP 原则：
   - 交付清单新增 `Seedance Asset Report` artifact。
   - Production Board 导出包新增 `seedance-asset-report.json` 和 `seedance-asset-report.md`。
   - 项目详情页展示待上传素材、缺槽位、受影响镜头和前 8 个缺文件素材。
+- 单故事 Seedance 素材绑定回写首版：
+  - `StoryProjectMeta` 新增 `seedance_asset_library`，可持久化素材 `file_url` / `file_id`。
+  - 后端新增 `POST /api/projects/:projectId/production-board/seedance-assets`，按素材 id 或 `kind+label` 合并绑定信息。
+  - Production Board 会把项目素材库带入 `seedance_asset_report`，已绑定素材从 `missing_file` 更新为 `bound`，并降低待上传数量。
+  - 项目详情页素材缺口区支持对单个缺文件素材输入 URL 或 file ID 并绑定。
 
 ### 3.3 后端与测试基础
 
@@ -148,10 +153,14 @@ MCP 原则：
 
 - `docs/story-agent-next-conversation-handoff.md`
 - `docs/story-agent-production-workbench-development-plan.md`
+- `web/client/src/api/projects.ts`
 - `web/client/src/views/ProjectDetail.vue`
+- `web/server/src/__tests__/api.test.ts`
 - `web/server/src/__tests__/project-service.test.ts`
+- `web/server/src/routes/projects.ts`
 - `web/server/src/services/production-board-service.ts`
 - `web/server/src/services/project-service.ts`
+- `web/shared/schemas.ts`
 - `web/shared/types.ts`
 
 ## 4. 已验证内容
@@ -171,12 +180,13 @@ git diff --check
 
 - `project-service.test.ts`：24 passed。
 - `seedance-prompt-service.test.ts`：1 passed。
-- `api.test.ts`：80 passed。
+- `api.test.ts`：81 passed。
 - `web/client && npm run lint`：passed。
 - `web/server && npm run lint`：passed。
 - `git diff --check`：passed。
 - 浏览器 smoke：`http://127.0.0.1:5174/projects/20260617-story-5xh7--ai_comic_drama` 的 Production Board / Seedance 展开区已确认素材 slot、素材校验、复杂度、风险标签、`@图片` 均可见；Seedance 提示词和镜头邻近区域未见 `生成优先级`、`本场景基于`、`具体细节请核实来源`、`核心画面是`，控制台无 error。
 - 浏览器 smoke：`http://localhost:5173/projects/20260617-story-5xh7--ai_comic_drama` 的 Production Board 已确认 `Seedance Asset Report` artifact、素材缺口摘要、待上传数量、缺文件素材 chips、`@图片` 可见，控制台无 error。
+- 浏览器 smoke：同一项目的 Seedance 素材缺口区已确认 URL / file ID 绑定控件可见；将第一条缺文件素材绑定为 `seedance-smoke-file-001` 后，页面提示“已绑定 Seedance 素材”，待上传数量从 6 降为 5，控制台无 error。冒烟修改的是 ignored 的 `web/generated` 本地项目数据，不进入提交。
 
 注意：
 
@@ -200,7 +210,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-接入 Seedance 素材缺口报告
+接入 Seedance 素材绑定回写
 ```
 
 ### P0：继续故事管理 UX 降噪
@@ -219,9 +229,9 @@ git diff --stat
 
 ### P0：Production Board 修复闭环继续补强
 
-已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版和 Seedance 素材 slot 首版，下一步：
+已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、素材缺口报告和单故事素材绑定回写首版，下一步：
 
-- Seedance 资产库绑定、上传状态和缺口报告继续接到 Production Board 或项目工作台。
+- Seedance 真实上传、批量导入、跨项目资产库和 Shot Ledger 继续接到 Production Board 或项目工作台。
 - MCP 只读交付工具。
 
 ### P0-P1：Seedance 资产引用字段和素材校验
@@ -236,12 +246,13 @@ git diff --stat
 - 素材数量限制校验。
 - Prompt Complexity / Duration 校验。
 - Production Board 级素材缺口报告。
+- 单故事素材库绑定回写。
 
 仍待做：
 
 - `@视频1` / `@音频1` 引用角色分配。
-- 资产库绑定、上传状态和缺失文件提示。
-- 真实资产库绑定、上传状态回写和文件 URL / file_id 持久化。
+- 真实文件上传、批量导入和失败重试闭环。
+- 跨项目资产库、上传状态历史和更多 provider 元数据。
 - Seedance Shot Ledger 与镜头状态继续增强。
 
 字段规则必须遵守：
@@ -343,19 +354,19 @@ ready 镜头
 如果只继续一个最小任务，建议做：
 
 ```text
-Seedance 资产库绑定和上传状态接入
+Seedance Shot Ledger 与真实上传状态接入
 ```
 
 理由：
 
-- 它直接承接已完成的结构化素材 slot、Seedance 镜头提示词、交付包落盘和系列侧资产库思路。
-- 用户能从“需要哪些素材”继续推进到“哪些素材已绑定/缺文件/可上传”。
+- 它直接承接已完成的结构化素材 slot、Seedance 镜头提示词、交付包落盘和单故事素材绑定回写。
+- 用户能从“哪些素材已绑定/缺文件”继续推进到“哪些镜头已生成、失败、重试、采用哪个版本”。
 - 范围比 MCP 写入工具更小，仍可用类型、服务测试和前端 smoke 快速验证。
 
 如果准备做下一组任务，建议顺序：
 
 1. 收尾并提交当前改动。
 2. StoryStudio / Projects 继续降噪。
-3. Seedance 资产库绑定和上传状态。
+3. Seedance Shot Ledger 与真实上传状态。
 4. MCP `kb_generate_gears_delivery`。
 5. AI 漫剧 `export-seedance-subtitles`。

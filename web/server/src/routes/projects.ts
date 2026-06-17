@@ -5,6 +5,7 @@ import {
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
   ProjectRetainRecentRequestSchema,
+  SeedanceAssetLibraryUpdateRequestSchema,
   StoryProductionBoardRepairRequestSchema,
   StoryQualityRepairRequestSchema,
   StorySceneRegenerateRequestSchema,
@@ -24,6 +25,7 @@ import {
   repairProjectProductionBoard,
   regenerateProjectScene,
   retainRecentProjects,
+  updateProjectSeedanceAssetLibrary,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
 
@@ -117,6 +119,21 @@ projectsRouter.post('/:projectId/production-board/export', validateParams(Projec
     next(err);
   }
 });
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-assets',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceAssetLibraryUpdateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await updateProjectSeedanceAssetLibrary(projectId, req.body);
+      res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 projectsRouter.post(
   '/:projectId/production-board/repair',

@@ -790,6 +790,7 @@ export interface StoryProjectMeta extends StoryProjectListItem {
   created_at: string;
   current_version_id: string;
   version_count: number;
+  seedance_asset_library?: SeedanceAssetLibrary;
 }
 
 export interface StoryProjectVersionSnapshot {
@@ -1048,6 +1049,39 @@ export interface SeedanceAssetBindingItem {
   is_bound: boolean;
   needs_upload: boolean;
   status: SeedanceAssetBindingStatus;
+}
+
+export interface SeedanceAssetLibraryItem {
+  asset_id: string;
+  label: string;
+  kind: SeedanceAssetReferenceKind;
+  modality: SeedanceAssetModality;
+  role: SeedanceAssetSlotRole;
+  reference_slot?: string;
+  file_url?: string;
+  file_id?: string;
+  description?: string;
+  updated_at: string;
+}
+
+export interface SeedanceAssetLibrary {
+  schema_version: 'seedance-asset-library/v1';
+  updated_at?: string;
+  items: SeedanceAssetLibraryItem[];
+}
+
+export interface SeedanceAssetLibraryUpdateRequest {
+  items: Array<{
+    asset_id?: string;
+    label: string;
+    kind: SeedanceAssetReferenceKind;
+    modality?: SeedanceAssetModality;
+    role?: SeedanceAssetSlotRole;
+    reference_slot?: string;
+    file_url?: string;
+    file_id?: string;
+    description?: string;
+  }>;
 }
 
 export interface SeedanceShotAssetBinding {

@@ -8,6 +8,7 @@ import type {
   StoryProjectExportPackage,
   StoryProjectListItem,
   StoryProjectRetainRecentResult,
+  SeedanceAssetLibraryUpdateRequest,
   StoryProductionBoard,
   StoryProductionBoardExportPackage,
   StoryProductionBoardRepairExportResult,
@@ -47,6 +48,10 @@ export function getProjectProductionBoard(projectId: string) {
 
 export function exportProjectProductionBoard(projectId: string) {
   return apiPost<StoryProductionBoardExportPackage>(`/projects/${projectId}/production-board/export`, {})
+}
+
+export function updateProjectSeedanceAssetLibrary(projectId: string, body: SeedanceAssetLibraryUpdateRequest) {
+  return apiPost<StoryProjectDetail>(`/projects/${projectId}/production-board/seedance-assets`, body)
 }
 
 export function repairProjectProductionBoard(projectId: string, body: StoryProductionBoardRepairRequest = {}) {

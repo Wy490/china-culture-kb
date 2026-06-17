@@ -18,6 +18,7 @@ import {
   repairAndExportProjectProductionBoard,
   repairProjectProductionBoard,
   retainRecentProjects,
+  updateProjectSeedanceAssetLibrary,
   updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
@@ -301,6 +302,36 @@ describe('project-service', () => {
     expect(boardRes.data?.markdown).toContain('## Seedance 素材缺口');
     expect(boardRes.data?.markdown).toContain('Seedance');
     expect(boardRes.data?.markdown).toContain('Seedance 素材 slot');
+
+    const bindableAsset = boardRes.data!.seedance_asset_report.assets.find(asset => asset.status === 'missing_file');
+    expect(bindableAsset).toBeTruthy();
+    const updateRes = await updateProjectSeedanceAssetLibrary(enriched.project_id!, {
+      items: [{
+        asset_id: bindableAsset!.asset_id,
+        kind: bindableAsset!.kind,
+        label: bindableAsset!.label,
+        modality: bindableAsset!.modality,
+        role: bindableAsset!.role,
+        reference_slot: bindableAsset!.reference_slot,
+        file_url: 'https://example.com/seedance-assets/asset-001.png',
+        description: '测试绑定素材',
+      }],
+    });
+    expect(updateRes.ok).toBe(true);
+    expect(updateRes.data?.project.seedance_asset_library?.items[0]).toMatchObject({
+      asset_id: bindableAsset!.asset_id,
+      file_url: 'https://example.com/seedance-assets/asset-001.png',
+    });
+    const boundBoardRes = await getProjectProductionBoard(enriched.project_id!);
+    expect(boundBoardRes.ok).toBe(true);
+    expect(boundBoardRes.data?.seedance_asset_report.assets.find(asset =>
+      asset.asset_id === bindableAsset!.asset_id
+    )).toMatchObject({
+      status: 'bound',
+      is_bound: true,
+      needs_upload: false,
+      file_url: 'https://example.com/seedance-assets/asset-001.png',
+    });
   });
 
   it('exports a production board package to the project directory', async () => {

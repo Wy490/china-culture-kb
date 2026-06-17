@@ -522,6 +522,66 @@ describe('Projects API', () => {
     });
   });
 
+  describe('POST /api/projects/:projectId/production-board/seedance-assets', () => {
+    it('binds a Seedance asset file through the route', async () => {
+      const baseStory = makeApiProductionRepairStory();
+      const story: StoryGenerateResult = {
+        ...baseStory,
+        storyId: '20260617-story-apa1',
+        title: 'API Seedance 素材绑定测试故事',
+        gears_segments_url: '/api/stories/20260617-story-apa1/gears-segments',
+        gears_delivery: baseStory.gears_delivery
+          ? {
+              ...baseStory.gears_delivery,
+              storyId: '20260617-story-apa1',
+              title: 'API Seedance 素材绑定测试故事',
+            }
+          : undefined,
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T11:45:00.000Z');
+      const beforeBoardRes = await request.get(`/api/projects/${enriched.project_id}/production-board`);
+      expect(beforeBoardRes.status).toBe(200);
+      expectSuccess(beforeBoardRes.body);
+      const bindableAsset = beforeBoardRes.body.data.seedance_asset_report.assets.find((asset: any) =>
+        asset.status === 'missing_file'
+      );
+      expect(bindableAsset).toBeTruthy();
+
+      const updateRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-assets`)
+        .send({
+          items: [{
+            asset_id: bindableAsset.asset_id,
+            kind: bindableAsset.kind,
+            label: bindableAsset.label,
+            modality: bindableAsset.modality,
+            role: bindableAsset.role,
+            reference_slot: bindableAsset.reference_slot,
+            file_id: 'seedance-file-001',
+            description: 'API 测试绑定素材',
+          }],
+        });
+
+      expect(updateRes.status).toBe(200);
+      expectSuccess(updateRes.body);
+      expect(updateRes.body.data.project.seedance_asset_library.items[0]).toMatchObject({
+        asset_id: bindableAsset.asset_id,
+        file_id: 'seedance-file-001',
+      });
+      const afterBoardRes = await request.get(`/api/projects/${enriched.project_id}/production-board`);
+      expect(afterBoardRes.status).toBe(200);
+      expectSuccess(afterBoardRes.body);
+      expect(afterBoardRes.body.data.seedance_asset_report.assets.find((asset: any) =>
+        asset.asset_id === bindableAsset.asset_id
+      )).toMatchObject({
+        status: 'bound',
+        is_bound: true,
+        needs_upload: false,
+        file_id: 'seedance-file-001',
+      });
+    });
+  });
+
   describe('POST /api/projects/batch-delete', () => {
     it('validates project_ids', async () => {
       const res = await request.post('/api/projects/batch-delete').send({ project_ids: [] });
