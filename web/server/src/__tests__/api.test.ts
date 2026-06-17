@@ -648,6 +648,162 @@ describe('Projects API', () => {
     });
   });
 
+  describe('POST /api/projects/:projectId/production-board/seedance-shots/import', () => {
+    it('imports Seedance callbacks and exports a retry package', async () => {
+      const baseStory = makeApiProductionRepairStory();
+      const story: StoryGenerateResult = {
+        ...baseStory,
+        storyId: '20260617-story-aps2',
+        title: 'API Seedance 回传导入测试故事',
+        gears_segments_url: '/api/stories/20260617-story-aps2/gears-segments',
+        gears_delivery: baseStory.gears_delivery
+          ? {
+              ...baseStory.gears_delivery,
+              storyId: '20260617-story-aps2',
+              title: 'API Seedance 回传导入测试故事',
+            }
+          : undefined,
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T12:10:00.000Z');
+
+      const submittedRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots`)
+        .send({
+          shot_id: 'shot-1',
+          status: 'submitted',
+          provider_job_id: 'seedance-job-import-api-001',
+          note: 'API 测试提交',
+        });
+      expect(submittedRes.status).toBe(200);
+      expectSuccess(submittedRes.body);
+
+      const importRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/import`)
+        .send({
+          callbacks: [{
+            jobId: 'seedance-job-import-api-001',
+            status: 'completed',
+            videoUrl: 'https://example.com/api/imported-shot-1.mp4',
+            qualityScore: 93,
+            reviewNote: '导入回片画面稳定',
+            message: '平台完成',
+          }],
+        });
+      expect(importRes.status).toBe(200);
+      expectSuccess(importRes.body);
+      expect(importRes.body.data).toMatchObject({
+        updated_count: 1,
+        failed_count: 0,
+      });
+      expect(importRes.body.data.seedance_shot_ledger.items.find((item: any) =>
+        item.shot_id === 'shot-1'
+      )).toMatchObject({
+        status: 'ready',
+        video_url: 'https://example.com/api/imported-shot-1.mp4',
+        selected_version_id: 'seedance-shot-shot-1-v2',
+      });
+
+      const failedRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots`)
+        .send({
+          shot_id: 'shot-2',
+          status: 'failed',
+          provider_job_id: 'seedance-job-import-api-002',
+          failure_reason: '背景人物穿帮',
+          increment_retry: true,
+          note: 'API 测试失败回片',
+        });
+      expect(failedRes.status).toBe(200);
+      expectSuccess(failedRes.body);
+
+      const retryRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/export-seedance-retry-package`)
+        .send({});
+      expect(retryRes.status).toBe(200);
+      expectSuccess(retryRes.body);
+      expect(retryRes.body.data).toMatchObject({
+        schema_version: 'story-seedance-retry-package/v1',
+        total_retry_shot_count: 1,
+        skipped_ready_shot_count: 1,
+      });
+      expect(retryRes.body.data.shots[0]).toMatchObject({
+        shot_id: 'shot-2',
+        status: 'failed',
+        failure_reason: '背景人物穿帮',
+        retry_count: 1,
+      });
+      expect(retryRes.body.data.markdown).toContain('Seedance 重试提交包');
+      expect(retryRes.body.data.markdown).toContain('背景人物穿帮');
+
+      const selectRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/select-version`)
+        .send({
+          shot_id: 'shot-1',
+          version_id: 'seedance-shot-shot-1-v2',
+          note: 'API 选择剪辑版',
+        });
+      expect(selectRes.status).toBe(200);
+      expectSuccess(selectRes.body);
+      expect(selectRes.body.data.project.seedance_shot_ledger.items.find((item: any) =>
+        item.shot_id === 'shot-1'
+      )).toMatchObject({
+        selected_version_id: 'seedance-shot-shot-1-v2',
+        video_url: 'https://example.com/api/imported-shot-1.mp4',
+      });
+
+      const betterRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots`)
+        .send({
+          shot_id: 'shot-1',
+          status: 'ready',
+          provider_job_id: 'seedance-job-import-api-003',
+          video_url: 'https://example.com/api/imported-shot-1-v3.mp4',
+          quality_score: 99,
+          note: 'API 更高分版本',
+        });
+      expect(betterRes.status).toBe(200);
+      expectSuccess(betterRes.body);
+      expect(betterRes.body.data.project.seedance_shot_ledger.items.find((item: any) =>
+        item.shot_id === 'shot-1'
+      ).selected_version_id).toBe('seedance-shot-shot-1-v2');
+
+      const autoSelectRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/auto-select`)
+        .send({
+          min_quality_score: 95,
+          overwrite_manual: true,
+          note: 'API 自动择优',
+        });
+      expect(autoSelectRes.status).toBe(200);
+      expectSuccess(autoSelectRes.body);
+      expect(autoSelectRes.body.data.project.seedance_shot_ledger.items.find((item: any) =>
+        item.shot_id === 'shot-1'
+      )).toMatchObject({
+        selected_version_id: 'seedance-shot-shot-1-v3',
+        video_url: 'https://example.com/api/imported-shot-1-v3.mp4',
+      });
+
+      const batchRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/batch`)
+        .send({
+          updates: [
+            { shot_id: 'shot-2', status: 'submitted', note: 'API 批量重新提交' },
+            { shot_id: 'missing-shot', status: 'failed', failure_reason: '不存在的镜头' },
+          ],
+        });
+      expect(batchRes.status).toBe(200);
+      expectSuccess(batchRes.body);
+      expect(batchRes.body.data).toMatchObject({
+        updated_count: 1,
+        failed_count: 1,
+      });
+      expect(batchRes.body.data.failures[0]).toMatchObject({
+        index: 1,
+        shot_id: 'missing-shot',
+      });
+    });
+  });
+
   describe('POST /api/projects/batch-delete', () => {
     it('validates project_ids', async () => {
       const res = await request.post('/api/projects/batch-delete').send({ project_ids: [] });

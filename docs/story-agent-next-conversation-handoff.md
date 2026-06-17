@@ -31,7 +31,7 @@
 | 模块 | 进度判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
-| Production Board / GEARS / Seedance 交付链 | 约 66% -> 本轮推进到约 72% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、素材缺口报告、单故事素材绑定回写和 Seedance Shot Ledger 首版。 |
+| Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 76% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、素材缺口报告、单故事素材绑定回写、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优和批量状态流转首版。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划已具备；字幕/混音/片头片尾/final delivery 仍待做。 |
 | 可商用制作中台 | 约 35-40% | 主链路可用，但还缺 UX 降噪、资产绑定、状态总览、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 35-40% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story` 已完成；GEARS/Seedance/repair/version 写入工具待做。 |
@@ -142,6 +142,16 @@ MCP 原则：
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots`，可记录 `provider_job_id`、`video_url`、失败原因、质量分、review note 和版本列表。
   - Production Board 导出包新增 `seedance-shot-ledger.json` 和 `seedance-shot-ledger.md`。
   - 项目详情页镜头卡显示 Seedance 状态、job/video URL、版本数和剪辑版，并把更新状态收进折叠区。
+- 单故事 Seedance 回传导入与失败重试包首版：
+  - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/import`，支持 `shot_id` 或历史 `job_id/provider_job_id` 匹配镜头，并兼容 `videoUrl`、`url`、`error`、`qualityScore`、`reviewNote` 等回传字段别名。
+  - 后端新增 `POST /api/projects/:projectId/production-board/export-seedance-retry-package`，只导出未完成、失败、缺视频 URL 或尚未提交的镜头，ready 且有视频 URL 的镜头会跳过。
+  - 重试包包含状态、失败原因、重试次数、上次 job、上次视频 URL、建议动作、Seedance prompt、素材 slot 和负向约束，并提供 Markdown / JSON。
+  - 项目详情页 `Seedance Shot Ledger` 增加默认折叠的“回传与重试”，支持粘贴 JSON 回传导入和下载重试包。
+- 单故事 Seedance Shot Ledger 自动择优与批量状态流转首版：
+  - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/batch`，可批量把镜头状态流转为 `submitted`、`processing`、`ready` 或 `failed`，并返回成功数和失败项。
+  - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/select-version`，支持手动把某个 ready 且有 `video_url` 的版本设为剪辑版。
+  - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/auto-select`，按质量分优先、创建时间次优先自动选择可用版本，默认保留人工选择，可显式覆盖。
+  - 项目详情页“回传与重试”折叠区增加“待提交->已提交”和“自动择优”，镜头更新折叠区会显示“设为剪辑版 / 当前剪辑版”版本按钮。
 
 ### 3.3 后端与测试基础
 
@@ -164,7 +174,6 @@ MCP 原则：
 - `web/server/src/__tests__/api.test.ts`
 - `web/server/src/__tests__/project-service.test.ts`
 - `web/server/src/routes/projects.ts`
-- `web/server/src/services/production-board-service.ts`
 - `web/server/src/services/project-service.ts`
 - `web/shared/schemas.ts`
 - `web/shared/types.ts`
@@ -186,7 +195,7 @@ git diff --check
 
 - `project-service.test.ts`：24 passed。
 - `seedance-prompt-service.test.ts`：1 passed。
-- `api.test.ts`：82 passed。
+- `api.test.ts`：83 passed。
 - `web/client && npm run lint`：passed。
 - `web/server && npm run lint`：passed。
 - `git diff --check`：passed。
@@ -194,6 +203,8 @@ git diff --check
 - 浏览器 smoke：`http://localhost:5173/projects/20260617-story-5xh7--ai_comic_drama` 的 Production Board 已确认 `Seedance Asset Report` artifact、素材缺口摘要、待上传数量、缺文件素材 chips、`@图片` 可见，控制台无 error。
 - 浏览器 smoke：同一项目的 Seedance 素材缺口区已确认 URL / file ID 绑定控件可见；将第一条缺文件素材绑定为 `seedance-smoke-file-001` 后，页面提示“已绑定 Seedance 素材”，待上传数量从 6 降为 5，控制台无 error。冒烟修改的是 ignored 的 `web/generated` 本地项目数据，不进入提交。
 - 浏览器 smoke：同一项目已确认 `Seedance Shot Ledger` 区块、`job id` / `video URL` 输入、镜头卡“更新状态”折叠区可见；将 `shot-1` 标记为完成后，统计从已完成 0 到 1，job/video URL 和剪辑版版本回显。刷新后状态仍保留；热重载期曾留下旧 JSON 解析错误日志，刷新复查未出现新的错误。
+- 浏览器 smoke：同一项目已确认 `Seedance Shot Ledger` 中“回传与重试”默认折叠区、`JSON callbacks` 输入、`导入回传`、`重试包 MD/JSON` 按钮可见；导入 `shot-2` 回传后统计从已完成 1 到 2，job/video URL 回显，控制台无 error。冒烟修改的是 ignored 的 `web/generated` 本地项目数据，不进入提交。
+- 浏览器 smoke：同一项目已确认“回传与重试”展开后 `待提交->已提交`、`自动择优`、当前剪辑版版本按钮可见；批量状态按钮和自动择优按钮均可触发，控制台无 error。冒烟修改的是 ignored 的 `web/generated` 本地项目数据，不进入提交。
 
 注意：
 
@@ -217,7 +228,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-接入 Seedance Shot Ledger
+完善 Seedance 回传、重试与择优流转
 ```
 
 ### P0：继续故事管理 UX 降噪
@@ -236,9 +247,9 @@ git diff --stat
 
 ### P0：Production Board 修复闭环继续补强
 
-已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、素材缺口报告、单故事素材绑定回写和 Seedance Shot Ledger 首版，下一步：
+已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、素材缺口报告、单故事素材绑定回写、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优和批量状态流转首版，下一步：
 
-- Seedance 真实上传、批量导入、跨项目资产库和失败重试包继续接到 Production Board 或项目工作台。
+- Seedance 真实上传、外部文件批量导入、跨项目资产库、上传状态历史和失败重试再提交继续接到 Production Board 或项目工作台。
 - MCP 只读交付工具。
 
 ### P0-P1：Seedance 资产引用字段和素材校验
@@ -259,9 +270,9 @@ git diff --stat
 仍待做：
 
 - `@视频1` / `@音频1` 引用角色分配。
-- 真实文件上传、批量导入和失败重试闭环。
+- 真实文件上传和外部文件批量导入。
 - 跨项目资产库、上传状态历史和更多 provider 元数据。
-- Seedance Shot Ledger 的回传导入、自动择优、失败重试包和批量状态流转。
+- Seedance Shot Ledger 的失败重试再提交包和 provider 任务提交抽象。
 
 字段规则必须遵守：
 
@@ -362,19 +373,19 @@ ready 镜头
 如果只继续一个最小任务，建议做：
 
 ```text
-Seedance 回传导入与失败重试包
+Seedance 真实上传与外部素材批量导入首版
 ```
 
 理由：
 
-- 它直接承接已完成的结构化素材 slot、素材绑定、Shot Ledger 和交付包落盘。
-- 用户能从“哪些镜头已生成、失败、采用哪个版本”继续推进到“批量导入回片、失败镜头一键出重试包”。
-- 范围比 MCP 写入工具更小，仍可用类型、服务测试和前端 smoke 快速验证。
+- 它直接承接已完成的结构化素材 slot、素材绑定、素材缺口报告和 Shot Ledger。
+- 用户能从“手动粘 URL / file_id”继续推进到“批量导入素材文件或外部清单”。
+- 范围比跨项目资产库和 provider API 更小，仍可用类型、服务测试和前端 smoke 快速验证。
 
 如果准备做下一组任务，建议顺序：
 
 1. 收尾并提交当前改动。
 2. StoryStudio / Projects 继续降噪。
-3. Seedance 回传导入与失败重试包。
+3. Seedance 真实上传与外部素材批量导入首版。
 4. MCP `kb_generate_gears_delivery`。
 5. AI 漫剧 `export-seedance-subtitles`。

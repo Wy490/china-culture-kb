@@ -9,7 +9,14 @@ import type {
   StoryProjectListItem,
   StoryProjectRetainRecentResult,
   SeedanceAssetLibraryUpdateRequest,
+  SeedanceShotAutoSelectRequest,
+  SeedanceShotCallbackImportRequest,
+  SeedanceShotCallbackImportResult,
+  SeedanceShotRetryPackage,
+  SeedanceShotStatusBatchUpdateRequest,
+  SeedanceShotStatusBatchUpdateResult,
   SeedanceShotStatusUpdateRequest,
+  SeedanceShotVersionSelectRequest,
   StoryProductionBoard,
   StoryProductionBoardExportPackage,
   StoryProductionBoardRepairExportResult,
@@ -57,6 +64,26 @@ export function updateProjectSeedanceAssetLibrary(projectId: string, body: Seeda
 
 export function updateProjectSeedanceShotStatus(projectId: string, body: SeedanceShotStatusUpdateRequest) {
   return apiPost<StoryProjectDetail>(`/projects/${projectId}/production-board/seedance-shots`, body)
+}
+
+export function updateProjectSeedanceShotStatuses(projectId: string, body: SeedanceShotStatusBatchUpdateRequest) {
+  return apiPost<SeedanceShotStatusBatchUpdateResult>(`/projects/${projectId}/production-board/seedance-shots/batch`, body)
+}
+
+export function importProjectSeedanceShotCallbacks(projectId: string, body: SeedanceShotCallbackImportRequest) {
+  return apiPost<SeedanceShotCallbackImportResult>(`/projects/${projectId}/production-board/seedance-shots/import`, body)
+}
+
+export function selectProjectSeedanceShotVersion(projectId: string, body: SeedanceShotVersionSelectRequest) {
+  return apiPost<StoryProjectDetail>(`/projects/${projectId}/production-board/seedance-shots/select-version`, body)
+}
+
+export function autoSelectProjectSeedanceShotVersions(projectId: string, body: SeedanceShotAutoSelectRequest = {}) {
+  return apiPost<StoryProjectDetail>(`/projects/${projectId}/production-board/seedance-shots/auto-select`, body)
+}
+
+export function exportProjectSeedanceRetryPackage(projectId: string) {
+  return apiPost<SeedanceShotRetryPackage>(`/projects/${projectId}/production-board/export-seedance-retry-package`, {})
 }
 
 export function repairProjectProductionBoard(projectId: string, body: StoryProductionBoardRepairRequest = {}) {

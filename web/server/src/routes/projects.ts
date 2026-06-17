@@ -6,7 +6,11 @@ import {
   ProjectIdParamSchema,
   ProjectRetainRecentRequestSchema,
   SeedanceAssetLibraryUpdateRequestSchema,
+  SeedanceShotAutoSelectRequestSchema,
+  SeedanceShotCallbackImportRequestSchema,
+  SeedanceShotStatusBatchUpdateRequestSchema,
   SeedanceShotStatusUpdateRequestSchema,
+  SeedanceShotVersionSelectRequestSchema,
   StoryProductionBoardRepairRequestSchema,
   StoryQualityRepairRequestSchema,
   StorySceneRegenerateRequestSchema,
@@ -15,10 +19,13 @@ import {
 import {
   deleteProject,
   deleteProjects,
+  autoSelectProjectSeedanceShotVersions,
   exportProjectCurrentVersion,
   exportProjectProductionBoard,
+  exportProjectSeedanceRetryPackage,
   getProject,
   getProjectProductionBoard,
+  importProjectSeedanceShotCallbacks,
   listProjectSupplementTasks,
   listProjects,
   repairAndExportProjectProductionBoard,
@@ -26,8 +33,10 @@ import {
   repairProjectProductionBoard,
   regenerateProjectScene,
   retainRecentProjects,
+  selectProjectSeedanceShotVersion,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
+  updateProjectSeedanceShotStatuses,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
 
@@ -146,6 +155,80 @@ projectsRouter.post(
       const { projectId } = req.params as { projectId: string };
       const result = await updateProjectSeedanceShotStatus(projectId, req.body);
       res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-shots/batch',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceShotStatusBatchUpdateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await updateProjectSeedanceShotStatuses(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-shots/import',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceShotCallbackImportRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await importProjectSeedanceShotCallbacks(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-shots/select-version',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceShotVersionSelectRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await selectProjectSeedanceShotVersion(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-shots/auto-select',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceShotAutoSelectRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await autoSelectProjectSeedanceShotVersions(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/export-seedance-retry-package',
+  validateParams(ProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await exportProjectSeedanceRetryPackage(projectId);
+      res.status(result.ok ? 200 : 404).json(result);
     } catch (err) {
       next(err);
     }

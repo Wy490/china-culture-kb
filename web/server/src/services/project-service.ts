@@ -25,8 +25,18 @@ import type {
   SeedanceAssetLibrary,
   SeedanceAssetLibraryItem,
   SeedanceAssetLibraryUpdateRequest,
+  SeedanceShotCallbackImportRequest,
+  SeedanceShotCallbackImportResult,
+  SeedanceShotCallbackRequest,
   SeedanceShotLedgerItem,
+  SeedanceShotProductionStatus,
+  SeedanceShotRetryPackage,
+  SeedanceShotRetryPackageShot,
+  SeedanceShotAutoSelectRequest,
+  SeedanceShotStatusBatchUpdateRequest,
+  SeedanceShotStatusBatchUpdateResult,
   SeedanceShotStatusUpdateRequest,
+  SeedanceShotVersionSelectRequest,
   KnowledgeSupplementTaskUpdateRequest,
   KnowledgeSupplementTaskStatus,
   StorySceneRegenerateRequest,
@@ -334,6 +344,138 @@ function selectedSeedanceShotVersionId(
     if (version.status === 'ready' && version.video_url) return version.version_id;
   }
   return undefined;
+}
+
+function bestReadySeedanceShotVersion(
+  item: SeedanceShotLedgerItem,
+  minQualityScore?: number,
+): SeedanceShotLedgerItem['versions'][number] | undefined {
+  return item.versions
+    .filter(version => version.status === 'ready' && Boolean(version.video_url))
+    .filter(version =>
+      minQualityScore === undefined
+      || (typeof version.quality_score === 'number' && version.quality_score >= minQualityScore)
+    )
+    .sort((a, b) => {
+      const aScore = typeof a.quality_score === 'number' ? a.quality_score : -1;
+      const bScore = typeof b.quality_score === 'number' ? b.quality_score : -1;
+      if (aScore !== bScore) return bScore - aScore;
+      return b.created_at.localeCompare(a.created_at);
+    })[0];
+}
+
+function normalizeSeedanceShotCallbackStatus(
+  status: string | undefined,
+  hasVideoUrl: boolean,
+  hasFailureReason: boolean,
+): SeedanceShotProductionStatus {
+  const normalized = (status ?? '').trim().toLowerCase();
+  if (['ready', 'completed', 'complete', 'succeeded', 'success', 'done', 'finished'].includes(normalized)) {
+    return 'ready';
+  }
+  if (['failed', 'failure', 'error', 'errored', 'cancelled', 'canceled'].includes(normalized)) {
+    return 'failed';
+  }
+  if (['processing', 'running', 'generating', 'in_progress', 'in-progress'].includes(normalized)) {
+    return 'processing';
+  }
+  if (['submitted', 'queued', 'pending', 'accepted'].includes(normalized)) {
+    return 'submitted';
+  }
+  if (['skipped', 'skip'].includes(normalized)) {
+    return 'skipped';
+  }
+  if (hasFailureReason) return 'failed';
+  if (hasVideoUrl) return 'ready';
+  return 'processing';
+}
+
+function seedanceShotStatusText(status: SeedanceShotProductionStatus): string {
+  const map: Record<SeedanceShotProductionStatus, string> = {
+    not_started: '未开始',
+    prompt_exported: '待提交',
+    submitted: '已提交',
+    processing: '处理中',
+    ready: '已完成',
+    failed: '失败',
+    skipped: '跳过',
+  };
+  return map[status];
+}
+
+function callbackStringField(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function callbackNumberField(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function resolveSeedanceShotCallbackUpdate(
+  detail: StoryProjectDetail,
+  callback: SeedanceShotCallbackRequest,
+): SeedanceShotStatusUpdateRequest | string {
+  const providerJobId = callbackStringField(
+    callback.provider_job_id ?? callback.providerJobId ?? callback.job_id ?? callback.jobId,
+  );
+  const board = buildStoryProductionBoard(detail.current_story, {
+    seedanceAssetLibrary: detail.project.seedance_asset_library,
+    seedanceShotLedger: detail.project.seedance_shot_ledger,
+  });
+  const ledger = board.seedance_shot_ledger;
+  const matchedItem = providerJobId
+    ? ledger.items.find(item =>
+      item.provider_job_id === providerJobId
+      || item.versions.some(version => version.provider_job_id === providerJobId)
+    )
+    : undefined;
+  const shotId = callbackStringField(callback.shot_id ?? callback.shotId) ?? matchedItem?.shot_id;
+  if (!shotId) {
+    return providerJobId
+      ? `Seedance callback job "${providerJobId}" was not found in shot ledger`
+      : 'Seedance callback requires shot_id or a known provider_job_id/job_id';
+  }
+
+  const videoUrl = callbackStringField(callback.video_url ?? callback.videoUrl ?? callback.url);
+  const explicitFailureReason = callbackStringField(
+    callback.failure_reason ?? callback.failureReason ?? callback.error,
+  );
+  const callbackMessage = callbackStringField(callback.message);
+  const status = normalizeSeedanceShotCallbackStatus(callback.status, Boolean(videoUrl), Boolean(explicitFailureReason));
+  const failureReason = status === 'failed'
+    ? explicitFailureReason ?? callbackMessage
+    : undefined;
+  return {
+    shot_id: shotId,
+    status,
+    provider_job_id: providerJobId,
+    video_url: videoUrl,
+    failure_reason: failureReason,
+    note: callbackStringField(callback.note)
+      ?? callbackMessage
+      ?? `Seedance 回传导入：${seedanceShotStatusText(status)}`,
+    increment_retry: Boolean(callback.increment_retry ?? callback.incrementRetry),
+    quality_score: callbackNumberField(callback.quality_score ?? callback.qualityScore),
+    review_note: callbackStringField(callback.review_note ?? callback.reviewNote),
+  };
+}
+
+function shouldRetrySeedanceShot(item?: SeedanceShotLedgerItem): boolean {
+  if (!item) return true;
+  if (item.status === 'skipped') return false;
+  if (item.status === 'ready' && item.video_url) return false;
+  return true;
+}
+
+function seedanceShotRetrySuggestedAction(item?: SeedanceShotLedgerItem): string {
+  if (!item) return '尚未提交，按原提示词提交生成。';
+  if (item.status === 'failed') {
+    return item.retry_count > 0 ? '检查失败原因后再次提交，必要时微调负向约束。' : '按原提示词重新提交一次。';
+  }
+  if (item.status === 'ready' && !item.video_url) return '状态已完成但缺少视频 URL，优先向平台补拉结果。';
+  if (item.status === 'processing' || item.status === 'submitted') return '确认平台任务是否超时；如无结果则重新提交。';
+  if (item.status === 'prompt_exported' || item.status === 'not_started') return '按提示词提交生成。';
+  return '人工复核后决定是否重试。';
 }
 
 function uniqueSeedanceNotes(values: string[]): string[] {
@@ -717,6 +859,290 @@ export async function updateProjectSeedanceShotStatus(
   return getProject(project.project_id);
 }
 
+export async function updateProjectSeedanceShotStatuses(
+  projectId: string,
+  request: SeedanceShotStatusBatchUpdateRequest,
+): Promise<ApiResponse<SeedanceShotStatusBatchUpdateResult>> {
+  const firstDetail = await getProject(projectId);
+  if (!firstDetail.ok || !firstDetail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      firstDetail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  let currentDetail = firstDetail.data;
+  const failures: SeedanceShotStatusBatchUpdateResult['failures'] = [];
+  let updatedCount = 0;
+  for (const [index, update] of request.updates.entries()) {
+    const updateRes = await updateProjectSeedanceShotStatus(projectId, update);
+    if (updateRes.ok && updateRes.data) {
+      currentDetail = updateRes.data;
+      updatedCount += 1;
+    } else {
+      failures.push({
+        index,
+        shot_id: update.shot_id,
+        message: updateRes.error?.message ?? 'Seedance shot status update failed',
+      });
+    }
+  }
+
+  return success({
+    project: currentDetail.project,
+    seedance_shot_ledger: currentDetail.project.seedance_shot_ledger,
+    updated_count: updatedCount,
+    failed_count: failures.length,
+    failures,
+  });
+}
+
+export async function selectProjectSeedanceShotVersion(
+  projectId: string,
+  request: SeedanceShotVersionSelectRequest,
+): Promise<ApiResponse<StoryProjectDetail>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const productionId = seedanceShotProductionId(request.shot_id);
+  const item = board.seedance_shot_ledger.items.find(candidate => candidate.production_id === productionId);
+  if (!item) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Seedance shot "${request.shot_id}" not found in project "${projectId}"`);
+  }
+  const version = item.versions.find(candidate => candidate.version_id === request.version_id);
+  if (!version) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Seedance video version "${request.version_id}" was not found`);
+  }
+  if (version.status !== 'ready' || !version.video_url) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Seedance video version "${request.version_id}" is not ready for cutting`);
+  }
+
+  const updatedAt = new Date().toISOString();
+  const items = board.seedance_shot_ledger.items.map(candidate => {
+    if (candidate.production_id !== productionId) return candidate;
+    return {
+      ...candidate,
+      status: 'ready' as const,
+      updated_at: updatedAt,
+      completed_at: version.created_at,
+      provider_job_id: version.provider_job_id ?? candidate.provider_job_id,
+      video_url: version.video_url,
+      failure_reason: undefined,
+      selected_version_id: version.version_id,
+      notes: uniqueSeedanceNotes([
+        ...candidate.notes,
+        request.note ?? `已选择剪辑版本：${version.version_id}`,
+      ]),
+    };
+  });
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    seedance_shot_ledger: {
+      schema_version: 'seedance-shot-ledger/v1',
+      updated_at: updatedAt,
+      items,
+    },
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  return getProject(project.project_id);
+}
+
+export async function autoSelectProjectSeedanceShotVersions(
+  projectId: string,
+  request: SeedanceShotAutoSelectRequest = {},
+): Promise<ApiResponse<StoryProjectDetail>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const updatedAt = new Date().toISOString();
+  let selectedCount = 0;
+  const items = board.seedance_shot_ledger.items.map(item => {
+    if (item.selected_version_id && !request.overwrite_manual) return item;
+    const bestVersion = bestReadySeedanceShotVersion(item, request.min_quality_score);
+    if (!bestVersion) return item;
+    selectedCount += 1;
+    return {
+      ...item,
+      status: 'ready' as const,
+      updated_at: updatedAt,
+      completed_at: bestVersion.created_at,
+      provider_job_id: bestVersion.provider_job_id ?? item.provider_job_id,
+      video_url: bestVersion.video_url,
+      failure_reason: undefined,
+      selected_version_id: bestVersion.version_id,
+      notes: uniqueSeedanceNotes([
+        ...item.notes,
+        request.note ?? `自动择优剪辑版本：${bestVersion.version_id}`,
+      ]),
+    };
+  });
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: selectedCount > 0 ? updatedAt : project.updated_at,
+    seedance_shot_ledger: {
+      schema_version: 'seedance-shot-ledger/v1',
+      updated_at: selectedCount > 0 ? updatedAt : board.seedance_shot_ledger.updated_at,
+      items,
+    },
+  };
+  if (selectedCount > 0) {
+    await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  }
+  return selectedCount > 0 ? getProject(project.project_id) : success(detail.data);
+}
+
+export async function importProjectSeedanceShotCallbacks(
+  projectId: string,
+  request: SeedanceShotCallbackImportRequest,
+): Promise<ApiResponse<SeedanceShotCallbackImportResult>> {
+  const firstDetail = await getProject(projectId);
+  if (!firstDetail.ok || !firstDetail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      firstDetail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  let currentDetail = firstDetail.data;
+  const failures: SeedanceShotCallbackImportResult['failures'] = [];
+  let updatedCount = 0;
+  for (const [index, callback] of request.callbacks.entries()) {
+    const update = resolveSeedanceShotCallbackUpdate(currentDetail, callback);
+    const providerJobId = callbackStringField(
+      callback.provider_job_id ?? callback.providerJobId ?? callback.job_id ?? callback.jobId,
+    );
+    const shotId = callbackStringField(callback.shot_id ?? callback.shotId);
+    if (typeof update === 'string') {
+      failures.push({
+        index,
+        shot_id: shotId,
+        provider_job_id: providerJobId,
+        message: update,
+      });
+      continue;
+    }
+
+    const updateRes = await updateProjectSeedanceShotStatus(projectId, update);
+    if (updateRes.ok && updateRes.data) {
+      currentDetail = updateRes.data;
+      updatedCount += 1;
+    } else {
+      failures.push({
+        index,
+        shot_id: update.shot_id,
+        provider_job_id: providerJobId,
+        message: updateRes.error?.message ?? 'Seedance shot callback import failed',
+      });
+    }
+  }
+
+  return success({
+    project: currentDetail.project,
+    seedance_shot_ledger: currentDetail.project.seedance_shot_ledger,
+    updated_count: updatedCount,
+    failed_count: failures.length,
+    failures,
+  });
+}
+
+export async function exportProjectSeedanceRetryPackage(
+  projectId: string,
+): Promise<ApiResponse<SeedanceShotRetryPackage>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const ledgerMap = new Map(board.seedance_shot_ledger.items.map(item => [item.production_id, item]));
+  const promptKeys = new Set<string>();
+  const shots = board.shot_units
+    .reduce<SeedanceShotRetryPackageShot[]>((items, unit) => {
+      const productionId = seedanceShotProductionId(unit.shot_id);
+      promptKeys.add(productionId);
+      const item = ledgerMap.get(productionId);
+      if (!shouldRetrySeedanceShot(item)) return items;
+      items.push({
+        production_id: productionId,
+        shot_id: unit.shot_id,
+        source_scene_id: unit.source_scene_id,
+        status: item?.status ?? 'prompt_exported',
+        retry_count: item?.retry_count ?? 0,
+        failure_reason: item?.failure_reason,
+        provider_job_id: item?.provider_job_id,
+        last_video_url: item?.video_url,
+        suggested_action: seedanceShotRetrySuggestedAction(item),
+        prompt: {
+          duration_sec: unit.seedance_duration_sec,
+          characters: unit.characters,
+          location: unit.location,
+          script_text: unit.script_text,
+          visual_prompt: unit.visual_prompt,
+          camera_suggestion: unit.camera_suggestion,
+          seedance_prompt: unit.seedance_prompt,
+          seedance_asset_slots: unit.seedance_asset_slots,
+          seedance_validation_notes: unit.seedance_validation_notes,
+          negative_constraints: unit.negative_constraints,
+        },
+      });
+      return items;
+    }, []);
+  const missingPromptShots = board.seedance_shot_ledger.items
+    .filter(item => shouldRetrySeedanceShot(item))
+    .filter(item => !promptKeys.has(item.production_id))
+    .map(item => ({
+      production_id: item.production_id,
+      shot_id: item.shot_id,
+      source_scene_id: item.source_scene_id,
+      reason: '账本中存在待处理镜头，但当前 Production Board 找不到对应镜头',
+    }));
+  const basePackage: Omit<SeedanceShotRetryPackage, 'markdown'> = {
+    schema_version: 'story-seedance-retry-package/v1',
+    project,
+    storyId: board.storyId,
+    title: board.title,
+    exported_at: new Date().toISOString(),
+    total_retry_shot_count: shots.length,
+    skipped_ready_shot_count: board.seedance_shot_ledger.items.filter(item =>
+      item.status === 'ready' && Boolean(item.video_url)
+    ).length,
+    shots,
+    missing_prompt_shots: missingPromptShots,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildSeedanceRetryPackageMarkdown(basePackage),
+  });
+}
+
 export async function getProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoard>> {
   const detail = await getProject(projectId);
   if (!detail.ok || !detail.data) {
@@ -1045,6 +1471,58 @@ function buildSeedanceShotLedgerMarkdown(board: StoryProductionBoard): string {
       '',
     ]),
   ];
+  return lines.join('\n');
+}
+
+function buildSeedanceRetryPackageMarkdown(
+  pkg: Omit<SeedanceShotRetryPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.title} — Seedance 重试提交包`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> projectId: ${pkg.project.project_id}`,
+    `> storyId: ${pkg.storyId}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> 待重试镜头: ${pkg.total_retry_shot_count}`,
+    `> 已跳过可用镜头: ${pkg.skipped_ready_shot_count}`,
+    '',
+    '## 重试镜头',
+  ];
+  for (const shot of pkg.shots) {
+    lines.push(
+      '',
+      `### ${shot.shot_id} / 场景 ${shot.source_scene_id ?? '未记录'}`,
+      '',
+      `- 状态: ${seedanceShotStatusText(shot.status)}`,
+      `- 失败原因: ${shot.failure_reason ?? '未记录'}`,
+      `- 重试次数: ${shot.retry_count}`,
+      `- 上次 job: ${shot.provider_job_id ?? '未记录'}`,
+      `- 上次视频: ${shot.last_video_url ?? '未记录'}`,
+      `- 建议动作: ${shot.suggested_action}`,
+      `- 人物: ${shot.prompt.characters.join('、') || '未指定'}`,
+      `- 场景: ${shot.prompt.location}`,
+      `- 镜头: ${shot.prompt.camera_suggestion}`,
+      shot.prompt.seedance_asset_slots.length
+        ? `- 素材: ${shot.prompt.seedance_asset_slots.map(slot => `${slot.reference_slot}=${slot.label}`).join('；')}`
+        : '- 素材: 未记录',
+      shot.prompt.negative_constraints.length ? `- 禁止: ${shot.prompt.negative_constraints.join('；')}` : '- 禁止: 无',
+      '',
+      '```text',
+      shot.prompt.seedance_prompt,
+      '```',
+    );
+  }
+  if (pkg.missing_prompt_shots.length) {
+    lines.push(
+      '',
+      '## 缺少提示词的待处理镜头',
+      '',
+      ...pkg.missing_prompt_shots.map(item =>
+        `- ${item.shot_id} / 场景 ${item.source_scene_id ?? '未记录'}：${item.reason}`
+      ),
+    );
+  }
   return lines.join('\n');
 }
 

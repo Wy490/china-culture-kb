@@ -1142,6 +1142,123 @@ export interface SeedanceShotStatusUpdateRequest {
   review_note?: string;
 }
 
+export interface SeedanceShotStatusBatchUpdateRequest {
+  updates: SeedanceShotStatusUpdateRequest[];
+}
+
+export interface SeedanceShotStatusBatchUpdateFailure {
+  index: number;
+  shot_id?: string;
+  message: string;
+}
+
+export interface SeedanceShotStatusBatchUpdateResult {
+  project: StoryProjectMeta;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  updated_count: number;
+  failed_count: number;
+  failures: SeedanceShotStatusBatchUpdateFailure[];
+}
+
+export interface SeedanceShotVersionSelectRequest {
+  shot_id: string;
+  version_id: string;
+  note?: string;
+}
+
+export interface SeedanceShotAutoSelectRequest {
+  min_quality_score?: number;
+  overwrite_manual?: boolean;
+  note?: string;
+}
+
+export interface SeedanceShotCallbackRequest {
+  shot_id?: string;
+  shotId?: string;
+  provider_job_id?: string;
+  providerJobId?: string;
+  job_id?: string;
+  jobId?: string;
+  status?: string;
+  video_url?: string;
+  videoUrl?: string;
+  url?: string;
+  failure_reason?: string;
+  failureReason?: string;
+  error?: string;
+  message?: string;
+  note?: string;
+  increment_retry?: boolean;
+  incrementRetry?: boolean;
+  quality_score?: number;
+  qualityScore?: number;
+  review_note?: string;
+  reviewNote?: string;
+}
+
+export interface SeedanceShotCallbackImportRequest {
+  callbacks: SeedanceShotCallbackRequest[];
+}
+
+export interface SeedanceShotCallbackImportFailure {
+  index: number;
+  shot_id?: string;
+  provider_job_id?: string;
+  message: string;
+}
+
+export interface SeedanceShotCallbackImportResult {
+  project: StoryProjectMeta;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  updated_count: number;
+  failed_count: number;
+  failures: SeedanceShotCallbackImportFailure[];
+}
+
+export interface SeedanceShotRetryPrompt {
+  duration_sec: number;
+  characters: string[];
+  location: string;
+  script_text: string;
+  visual_prompt: string;
+  camera_suggestion: string;
+  seedance_prompt: string;
+  seedance_asset_slots: SeedanceShotAssetSlot[];
+  seedance_validation_notes: string[];
+  negative_constraints: string[];
+}
+
+export interface SeedanceShotRetryPackageShot {
+  production_id: string;
+  shot_id: string;
+  source_scene_id?: number;
+  status: SeedanceShotProductionStatus;
+  retry_count: number;
+  failure_reason?: string;
+  provider_job_id?: string;
+  last_video_url?: string;
+  suggested_action: string;
+  prompt: SeedanceShotRetryPrompt;
+}
+
+export interface SeedanceShotRetryPackage {
+  schema_version: 'story-seedance-retry-package/v1';
+  project: StoryProjectMeta;
+  storyId: string;
+  title: string;
+  exported_at: string;
+  total_retry_shot_count: number;
+  skipped_ready_shot_count: number;
+  shots: SeedanceShotRetryPackageShot[];
+  missing_prompt_shots: Array<{
+    production_id: string;
+    shot_id: string;
+    source_scene_id?: number;
+    reason: string;
+  }>;
+  markdown: string;
+}
+
 export interface SeedanceShotAssetBinding {
   shot_id: string;
   source_scene_id: number;

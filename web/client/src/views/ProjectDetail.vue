@@ -149,6 +149,52 @@
             <span>待提交 {{ seedanceShotStats.prompt_exported }}</span>
             <span>跳过 {{ seedanceShotStats.skipped }}</span>
           </div>
+          <details class="project-detail-page__seedance-shot-ledger-actions">
+            <summary>回传与重试</summary>
+            <textarea
+              v-model="seedanceCallbackImportText"
+              class="project-detail-page__seedance-callback-input"
+              rows="5"
+              placeholder="JSON callbacks"
+            />
+            <div class="project-detail-page__seedance-ledger-action-row">
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="importingSeedanceCallbacks"
+                @click="importSeedanceCallbacks"
+              >
+                {{ importingSeedanceCallbacks ? '导入中…' : '导入回传' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="batchingSeedanceShots"
+                @click="markPendingSeedanceShotsSubmitted"
+              >
+                {{ batchingSeedanceShots ? '流转中…' : '待提交→已提交' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="autoSelectingSeedanceShots"
+                @click="autoSelectSeedanceShotVersions"
+              >
+                {{ autoSelectingSeedanceShots ? '择优中…' : '自动择优' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="exportingSeedanceRetryPackage"
+                @click="exportSeedanceRetryPackageMarkdown"
+              >
+                重试包 MD
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="exportingSeedanceRetryPackage"
+                @click="exportSeedanceRetryPackageJson"
+              >
+                重试包 JSON
+              </button>
+            </div>
+          </details>
         </div>
         <div class="project-detail-page__seedance-asset-report">
           <div>
@@ -402,6 +448,25 @@
                     失败
                   </button>
                 </div>
+                <div
+                  v-if="readySeedanceShotVersions(shot.shot_id).length"
+                  class="project-detail-page__seedance-version-action-row"
+                >
+                  <button
+                    v-for="version in readySeedanceShotVersions(shot.shot_id)"
+                    :key="version.version_id"
+                    class="project-detail-page__repair-task-btn"
+                    :class="seedanceShotItem(shot.shot_id)?.selected_version_id === version.version_id ? 'project-detail-page__repair-task-btn--active' : ''"
+                    :disabled="selectingSeedanceVersionId === `${shot.shot_id}:${version.version_id}`"
+                    @click="selectSeedanceShotVersion(shot, version)"
+                  >
+                    {{ seedanceShotItem(shot.shot_id)?.selected_version_id === version.version_id ? '当前剪辑版' : '设为剪辑版' }}
+                    · {{ version.version_id }}
+                    <template v-if="typeof version.quality_score === 'number'">
+                      · {{ version.quality_score }}分
+                    </template>
+                  </button>
+                </div>
               </details>
             </div>
             <p>{{ shot.production_prompt }}</p>
@@ -632,16 +697,21 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   deleteProject,
+  autoSelectProjectSeedanceShotVersions,
   exportProjectCurrentVersion,
   exportProjectProductionBoard,
+  exportProjectSeedanceRetryPackage,
   getProject,
   getProjectProductionBoard,
+  importProjectSeedanceShotCallbacks,
   repairAndExportProjectProductionBoard,
   repairProjectQuality,
   repairProjectProductionBoard,
   regenerateProjectScene,
+  selectProjectSeedanceShotVersion,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
+  updateProjectSeedanceShotStatuses,
   updateProjectSupplementTask,
 } from '@/api/projects'
 import { getModelProfiles } from '@/api/system'
@@ -652,8 +722,10 @@ import type {
   AIModelProfile,
   KnowledgeSupplementTaskStatus,
   SeedanceAssetBindingItem,
+  SeedanceShotCallbackImportRequest,
   SeedanceShotLedgerItem,
   SeedanceShotProductionStatus,
+  SeedanceShotVideoVersion,
   StoryProjectDetail,
   StoryProjectStatus,
   StoryProjectVersionChangeType,
@@ -706,6 +778,12 @@ const bindingSeedanceAssetId = ref('')
 const seedanceShotJobInputs = ref<Record<string, string>>({})
 const seedanceShotVideoInputs = ref<Record<string, string>>({})
 const updatingSeedanceShotId = ref('')
+const seedanceCallbackImportText = ref('')
+const importingSeedanceCallbacks = ref(false)
+const exportingSeedanceRetryPackage = ref(false)
+const batchingSeedanceShots = ref(false)
+const autoSelectingSeedanceShots = ref(false)
+const selectingSeedanceVersionId = ref('')
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
@@ -843,6 +921,17 @@ const seedanceShotStats = computed(() => {
 
 function seedanceShotItem(shotId: string): SeedanceShotLedgerItem | null {
   return seedanceShotById.value.get(shotId) ?? null
+}
+
+function readySeedanceShotVersions(shotId: string): SeedanceShotVideoVersion[] {
+  return (seedanceShotItem(shotId)?.versions ?? [])
+    .filter(version => version.status === 'ready' && Boolean(version.video_url))
+    .sort((a, b) => {
+      const aScore = typeof a.quality_score === 'number' ? a.quality_score : -1
+      const bScore = typeof b.quality_score === 'number' ? b.quality_score : -1
+      if (aScore !== bScore) return bScore - aScore
+      return b.created_at.localeCompare(a.created_at)
+    })
 }
 
 function statusLabel(status: StoryProjectStatus): string {
@@ -1061,6 +1150,180 @@ async function markSeedanceShot(shot: StoryProductionBoardShotUnit, status: Seed
     error.value = res.error?.message ?? '更新 Seedance 镜头状态失败'
   }
   updatingSeedanceShotId.value = ''
+}
+
+function normalizeSeedanceCallbackImportPayload(): SeedanceShotCallbackImportRequest | null {
+  const raw = seedanceCallbackImportText.value.trim()
+  if (!raw) {
+    error.value = '请粘贴 Seedance 回传 JSON'
+    return null
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    error.value = 'Seedance 回传 JSON 解析失败'
+    return null
+  }
+  const record = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+    ? parsed as Record<string, unknown>
+    : null
+  const callbacks = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(record?.callbacks)
+      ? record.callbacks
+      : Array.isArray(record?.results)
+        ? record.results
+        : Array.isArray(record?.updates)
+          ? record.updates
+          : parsed
+            ? [parsed]
+            : []
+  if (!callbacks.length) {
+    error.value = 'Seedance 回传 JSON 中没有可导入记录'
+    return null
+  }
+  return { callbacks: callbacks as SeedanceShotCallbackImportRequest['callbacks'] }
+}
+
+async function importSeedanceCallbacks() {
+  if (!detail.value || importingSeedanceCallbacks.value) return
+  const body = normalizeSeedanceCallbackImportPayload()
+  if (!body) return
+  importingSeedanceCallbacks.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await importProjectSeedanceShotCallbacks(detail.value.project.project_id, body)
+  if (res.ok && res.data) {
+    detail.value = {
+      ...detail.value,
+      project: res.data.project,
+    }
+    seedanceCallbackImportText.value = ''
+    await loadProductionBoard()
+    successMessage.value = `Seedance 回传已导入：${res.data.updated_count} 条，失败 ${res.data.failed_count} 条`
+    if (res.data.failures.length) {
+      error.value = res.data.failures.map(item => `#${item.index + 1} ${item.message}`).join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? '导入 Seedance 回传失败'
+  }
+  importingSeedanceCallbacks.value = false
+}
+
+async function markPendingSeedanceShotsSubmitted() {
+  if (!detail.value || batchingSeedanceShots.value) return
+  const pendingItems = (productionBoard.value?.seedance_shot_ledger.items ?? [])
+    .filter(item => item.status === 'not_started' || item.status === 'prompt_exported')
+  if (!pendingItems.length) {
+    error.value = '没有待提交的 Seedance 镜头'
+    return
+  }
+  batchingSeedanceShots.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await updateProjectSeedanceShotStatuses(detail.value.project.project_id, {
+    updates: pendingItems.map(item => ({
+      shot_id: item.shot_id,
+      status: 'submitted',
+      note: '批量流转：已提交到 Seedance',
+    })),
+  })
+  if (res.ok && res.data) {
+    detail.value = {
+      ...detail.value,
+      project: res.data.project,
+    }
+    await loadProductionBoard()
+    successMessage.value = `Seedance 批量流转完成：${res.data.updated_count} 条，失败 ${res.data.failed_count} 条`
+    if (res.data.failures.length) {
+      error.value = res.data.failures.map(item => `#${item.index + 1} ${item.message}`).join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? '批量流转 Seedance 镜头失败'
+  }
+  batchingSeedanceShots.value = false
+}
+
+async function autoSelectSeedanceShotVersions() {
+  if (!detail.value || autoSelectingSeedanceShots.value) return
+  autoSelectingSeedanceShots.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await autoSelectProjectSeedanceShotVersions(detail.value.project.project_id, {
+    overwrite_manual: true,
+    note: '前端自动择优剪辑版',
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data
+    await loadProductionBoard()
+    const selectedCount = productionBoard.value?.seedance_shot_ledger.items.filter(item =>
+      Boolean(item.selected_version_id)
+    ).length ?? 0
+    successMessage.value = `Seedance 自动择优完成：当前 ${selectedCount} 个镜头已选剪辑版`
+  } else {
+    error.value = res.error?.message ?? 'Seedance 自动择优失败'
+  }
+  autoSelectingSeedanceShots.value = false
+}
+
+async function selectSeedanceShotVersion(
+  shot: StoryProductionBoardShotUnit,
+  version: SeedanceShotVideoVersion,
+) {
+  if (!detail.value || selectingSeedanceVersionId.value) return
+  selectingSeedanceVersionId.value = `${shot.shot_id}:${version.version_id}`
+  error.value = ''
+  successMessage.value = ''
+  const res = await selectProjectSeedanceShotVersion(detail.value.project.project_id, {
+    shot_id: shot.shot_id,
+    version_id: version.version_id,
+    note: `前端选择剪辑版：${version.version_id}`,
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data
+    await loadProductionBoard()
+    successMessage.value = `已选择 ${shot.shot_id} 剪辑版：${version.version_id}`
+  } else {
+    error.value = res.error?.message ?? '选择 Seedance 剪辑版失败'
+  }
+  selectingSeedanceVersionId.value = ''
+}
+
+async function exportSeedanceRetryPackageMarkdown() {
+  if (!detail.value || exportingSeedanceRetryPackage.value) return
+  exportingSeedanceRetryPackage.value = true
+  error.value = ''
+  const res = await exportProjectSeedanceRetryPackage(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.project_id}-seedance-retry-package.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    successMessage.value = `Seedance 重试包 Markdown 已导出 · ${res.data.total_retry_shot_count} 个镜头`
+  } else {
+    error.value = res.error?.message ?? '导出 Seedance 重试包失败'
+  }
+  exportingSeedanceRetryPackage.value = false
+}
+
+async function exportSeedanceRetryPackageJson() {
+  if (!detail.value || exportingSeedanceRetryPackage.value) return
+  exportingSeedanceRetryPackage.value = true
+  error.value = ''
+  const res = await exportProjectSeedanceRetryPackage(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.project_id}-seedance-retry-package.json`,
+      JSON.stringify(res.data, null, 2),
+      'application/json;charset=utf-8',
+    )
+    successMessage.value = `Seedance 重试包 JSON 已导出 · ${res.data.total_retry_shot_count} 个镜头`
+  } else {
+    error.value = res.error?.message ?? '导出 Seedance 重试包失败'
+  }
+  exportingSeedanceRetryPackage.value = false
 }
 
 function openSceneEditor(sceneId: number) {
@@ -1755,6 +2018,41 @@ watch(selectedModelProfileId, (value) => {
   gap: 6px;
 }
 
+.project-detail-page__seedance-shot-ledger-actions {
+  grid-column: 1 / -1;
+  border-top: 1px solid #edf1f4;
+  padding-top: 8px;
+}
+
+.project-detail-page__seedance-shot-ledger-actions summary {
+  cursor: pointer;
+  color: #34495e;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.project-detail-page__seedance-callback-input {
+  display: block;
+  width: 100%;
+  min-height: 112px;
+  margin-top: 8px;
+  border: 1px solid #ccd6dd;
+  border-radius: 4px;
+  padding: 8px;
+  color: #22313f;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.project-detail-page__seedance-ledger-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .project-detail-page__seedance-shot-ledger-stats span,
 .project-detail-page__seedance-shot-status span,
 .project-detail-page__seedance-shot-status small {
@@ -1817,6 +2115,15 @@ watch(selectedModelProfileId, (value) => {
   justify-content: flex-start !important;
   gap: 6px;
   margin-top: 7px;
+}
+
+.project-detail-page__seedance-version-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  border-top: 1px solid #e3e9ee;
+  padding-top: 8px;
 }
 
 .project-detail-page__seedance-shot-input {
@@ -2206,6 +2513,12 @@ watch(selectedModelProfileId, (value) => {
 
 .project-detail-page__repair-task-btn:hover:not(:disabled) {
   background: #f3f8fc;
+}
+
+.project-detail-page__repair-task-btn--active {
+  border-color: #1f6f9f;
+  background: #edf6fc;
+  color: #1f5f8b;
 }
 
 .project-detail-page__repair-task-btn:disabled {

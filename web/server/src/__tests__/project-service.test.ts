@@ -4,22 +4,27 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import type { StoryGenerateResult, StoryProjectVersionSnapshot } from '@shared/types.js';
 import {
+  autoSelectProjectSeedanceShotVersions,
   buildProjectId,
   createProjectFromGeneratedStory,
   deleteProject,
   deleteProjects,
   exportProjectCurrentVersion,
   exportProjectProductionBoard,
+  exportProjectSeedanceRetryPackage,
   getProject,
   getProjectProductionBoard,
+  importProjectSeedanceShotCallbacks,
   listProjects,
   listProjectSupplementTasks,
   regenerateProjectScene,
   repairAndExportProjectProductionBoard,
   repairProjectProductionBoard,
   retainRecentProjects,
+  selectProjectSeedanceShotVersion,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
+  updateProjectSeedanceShotStatuses,
   updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
@@ -371,6 +376,134 @@ describe('project-service', () => {
       video_url: 'https://example.com/seedance-videos/shot-1.mp4',
       quality_score: 88,
       review_note: '回片可用',
+    });
+
+    const submittedRes = await updateProjectSeedanceShotStatus(enriched.project_id!, {
+      shot_id: 'shot-2',
+      status: 'submitted',
+      provider_job_id: 'seedance-job-002',
+      note: '提交第二镜头',
+    });
+    expect(submittedRes.ok).toBe(true);
+
+    const importRes = await importProjectSeedanceShotCallbacks(enriched.project_id!, {
+      callbacks: [{
+        job_id: 'seedance-job-002',
+        status: 'success',
+        url: 'https://example.com/seedance-videos/shot-2.mp4',
+        qualityScore: 92,
+        reviewNote: '导入回片可用',
+        message: '平台回传成功',
+      }],
+    });
+    expect(importRes.ok).toBe(true);
+    expect(importRes.data?.updated_count).toBe(1);
+    expect(importRes.data?.failed_count).toBe(0);
+    expect(importRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: 'seedance-job-002',
+      video_url: 'https://example.com/seedance-videos/shot-2.mp4',
+      selected_version_id: 'seedance-shot-shot-2-v2',
+    });
+
+    const failedRes = await updateProjectSeedanceShotStatus(enriched.project_id!, {
+      shot_id: 'shot-2',
+      status: 'failed',
+      provider_job_id: 'seedance-job-003',
+      failure_reason: '人物手部变形',
+      increment_retry: true,
+      note: '重试失败',
+    });
+    expect(failedRes.ok).toBe(true);
+    const retryPackageRes = await exportProjectSeedanceRetryPackage(enriched.project_id!);
+    expect(retryPackageRes.ok).toBe(true);
+    expect(retryPackageRes.data?.schema_version).toBe('story-seedance-retry-package/v1');
+    expect(retryPackageRes.data?.total_retry_shot_count).toBe(1);
+    expect(retryPackageRes.data?.skipped_ready_shot_count).toBe(1);
+    expect(retryPackageRes.data?.shots[0]).toMatchObject({
+      shot_id: 'shot-2',
+      status: 'failed',
+      failure_reason: '人物手部变形',
+      provider_job_id: 'seedance-job-003',
+      retry_count: 1,
+    });
+    expect(retryPackageRes.data?.shots[0].prompt.seedance_prompt).toContain('0-3秒');
+    expect(retryPackageRes.data?.markdown).toContain('Seedance 重试提交包');
+    expect(retryPackageRes.data?.markdown).toContain('人物手部变形');
+
+    const selectRes = await selectProjectSeedanceShotVersion(enriched.project_id!, {
+      shot_id: 'shot-2',
+      version_id: 'seedance-shot-shot-2-v2',
+      note: '人工选择第二版',
+    });
+    expect(selectRes.ok).toBe(true);
+    const selectedShotTwo = selectRes.data?.project.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    );
+    expect(selectedShotTwo).toMatchObject({
+      status: 'ready',
+      video_url: 'https://example.com/seedance-videos/shot-2.mp4',
+      selected_version_id: 'seedance-shot-shot-2-v2',
+    });
+    expect(selectedShotTwo?.failure_reason).toBeUndefined();
+
+    const betterVersionRes = await updateProjectSeedanceShotStatus(enriched.project_id!, {
+      shot_id: 'shot-2',
+      status: 'ready',
+      provider_job_id: 'seedance-job-004',
+      video_url: 'https://example.com/seedance-videos/shot-2-v4.mp4',
+      quality_score: 98,
+      review_note: '自动择优候选',
+      note: '更高分回片',
+    });
+    expect(betterVersionRes.ok).toBe(true);
+    expect(betterVersionRes.data?.project.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )?.selected_version_id).toBe('seedance-shot-shot-2-v2');
+
+    const protectedAutoSelectRes = await autoSelectProjectSeedanceShotVersions(enriched.project_id!, {
+      min_quality_score: 95,
+    });
+    expect(protectedAutoSelectRes.ok).toBe(true);
+    expect(protectedAutoSelectRes.data?.project.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )?.selected_version_id).toBe('seedance-shot-shot-2-v2');
+
+    const autoSelectRes = await autoSelectProjectSeedanceShotVersions(enriched.project_id!, {
+      min_quality_score: 95,
+      overwrite_manual: true,
+      note: '覆盖人工选择进行自动择优',
+    });
+    expect(autoSelectRes.ok).toBe(true);
+    expect(autoSelectRes.data?.project.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'ready',
+      video_url: 'https://example.com/seedance-videos/shot-2-v4.mp4',
+      selected_version_id: 'seedance-shot-shot-2-v4',
+    });
+
+    const batchRes = await updateProjectSeedanceShotStatuses(enriched.project_id!, {
+      updates: [
+        { shot_id: 'shot-1', status: 'processing', note: '批量标记处理中' },
+        { shot_id: 'missing-shot', status: 'failed', failure_reason: '不存在的镜头' },
+      ],
+    });
+    expect(batchRes.ok).toBe(true);
+    expect(batchRes.data).toMatchObject({
+      updated_count: 1,
+      failed_count: 1,
+    });
+    expect(batchRes.data?.failures[0]).toMatchObject({
+      index: 1,
+      shot_id: 'missing-shot',
+    });
+    expect(batchRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'processing',
     });
   });
 
