@@ -25,6 +25,8 @@ import type {
   SeedanceAssetLibrary,
   SeedanceAssetLibraryItem,
   SeedanceAssetLibraryUpdateRequest,
+  SeedanceShotLedgerItem,
+  SeedanceShotStatusUpdateRequest,
   KnowledgeSupplementTaskUpdateRequest,
   KnowledgeSupplementTaskStatus,
   StorySceneRegenerateRequest,
@@ -46,7 +48,11 @@ import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerat
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import { enrichStoryQualityReport } from './quality-workflow-service.js';
 import { repairStoryWithQualityWorkflow } from './quality-repair-service.js';
-import { buildStoryProductionBoard } from './production-board-service.js';
+import {
+  buildStoryProductionBoard,
+  seedanceShotProductionId,
+  syncSeedanceShotLedgerWithShots,
+} from './production-board-service.js';
 import { repairStoryWithProductionBoard } from './production-board-repair-service.js';
 
 const ALL_VIDEO_TYPES: VideoType[] = [
@@ -275,6 +281,63 @@ function slugifySeedanceAssetLabel(value: string): string {
     .replace(/^-+|-+$/g, '');
   if (ascii) return ascii.slice(0, 80);
   return encodeURIComponent(value.trim()).replace(/%/g, '').slice(0, 80) || 'asset';
+}
+
+function appendSeedanceShotVideoVersion(params: {
+  existing?: SeedanceShotLedgerItem;
+  request: SeedanceShotStatusUpdateRequest;
+  updatedAt: string;
+}): SeedanceShotLedgerItem['versions'] {
+  const versions = params.existing?.versions ?? [];
+  const shouldAppend = Boolean(
+    params.request.video_url
+    || params.request.provider_job_id
+    || params.request.failure_reason
+    || params.request.status === 'ready'
+    || params.request.status === 'failed'
+  );
+  if (!shouldAppend) return versions;
+
+  const nextVersion = {
+    version_id: `${seedanceShotProductionId(params.request.shot_id)}-v${versions.length + 1}`,
+    status: params.request.status,
+    created_at: params.updatedAt,
+    provider_job_id: params.request.provider_job_id ?? params.existing?.provider_job_id,
+    video_url: params.request.video_url ?? params.existing?.video_url,
+    failure_reason: params.request.failure_reason,
+    note: params.request.note,
+    quality_score: params.request.quality_score,
+    review_note: params.request.review_note,
+  };
+  const last = versions[versions.length - 1];
+  if (
+    last
+    && last.status === nextVersion.status
+    && last.provider_job_id === nextVersion.provider_job_id
+    && last.video_url === nextVersion.video_url
+    && last.failure_reason === nextVersion.failure_reason
+  ) {
+    return versions;
+  }
+  return [...versions, nextVersion].slice(-12);
+}
+
+function selectedSeedanceShotVersionId(
+  versions: SeedanceShotLedgerItem['versions'],
+  currentVersionId?: string,
+): string | undefined {
+  if (currentVersionId && versions.some(version => version.version_id === currentVersionId)) {
+    return currentVersionId;
+  }
+  for (let index = versions.length - 1; index >= 0; index -= 1) {
+    const version = versions[index];
+    if (version.status === 'ready' && version.video_url) return version.version_id;
+  }
+  return undefined;
+}
+
+function uniqueSeedanceNotes(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))].slice(-12);
 }
 
 async function readStoryFromSource(projectId: string): Promise<{ story: StoryGenerateResult; createdAt: string } | null> {
@@ -575,6 +638,85 @@ export async function updateProjectSeedanceAssetLibrary(
   return getProject(project.project_id);
 }
 
+export async function updateProjectSeedanceShotStatus(
+  projectId: string,
+  request: SeedanceShotStatusUpdateRequest,
+): Promise<ApiResponse<StoryProjectDetail>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const shot = board.shot_units.find(unit => unit.shot_id === request.shot_id);
+  if (!shot) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Seedance shot "${request.shot_id}" not found in project "${projectId}"`);
+  }
+
+  const updatedAt = new Date().toISOString();
+  const currentLedger = syncSeedanceShotLedgerWithShots({
+    ledger: project.seedance_shot_ledger,
+    shotUnits: board.shot_units,
+    generatedAt: board.generated_at,
+  });
+  const productionId = seedanceShotProductionId(request.shot_id);
+  const existing = currentLedger.items.find(item => item.production_id === productionId);
+  const versions = appendSeedanceShotVideoVersion({
+    existing,
+    request,
+    updatedAt,
+  });
+  const nextItem: SeedanceShotLedgerItem = {
+    production_id: productionId,
+    shot_id: request.shot_id,
+    source_scene_id: shot.source_scene_id,
+    status: request.status,
+    prompt_exported_at: existing?.prompt_exported_at ?? board.generated_at,
+    submitted_at: request.status === 'submitted' || request.status === 'processing'
+      ? existing?.submitted_at ?? updatedAt
+      : existing?.submitted_at,
+    completed_at: request.status === 'ready' || request.status === 'failed'
+      ? updatedAt
+      : existing?.completed_at,
+    updated_at: updatedAt,
+    provider_job_id: request.provider_job_id ?? existing?.provider_job_id,
+    video_url: request.video_url ?? existing?.video_url,
+    failure_reason: request.failure_reason ?? (request.status === 'failed' ? existing?.failure_reason : undefined),
+    retry_count: (existing?.retry_count ?? 0) + (request.increment_retry ? 1 : 0),
+    notes: uniqueSeedanceNotes([
+      ...(existing?.notes ?? []),
+      request.note ?? `状态更新：${request.status}`,
+    ]),
+    versions,
+    selected_version_id: selectedSeedanceShotVersionId(versions, existing?.selected_version_id),
+  };
+  const items = [
+    ...currentLedger.items.filter(item => item.production_id !== productionId),
+    nextItem,
+  ].sort((a, b) =>
+    (a.source_scene_id ?? 0) - (b.source_scene_id ?? 0)
+    || a.shot_id.localeCompare(b.shot_id, 'zh-Hans-CN')
+  );
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    seedance_shot_ledger: {
+      schema_version: 'seedance-shot-ledger/v1',
+      updated_at: updatedAt,
+      items,
+    },
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  return getProject(project.project_id);
+}
+
 export async function getProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoard>> {
   const detail = await getProject(projectId);
   if (!detail.ok || !detail.data) {
@@ -585,6 +727,7 @@ export async function getProjectProductionBoard(projectId: string): Promise<ApiR
   }
   return success(buildStoryProductionBoard(detail.data.current_story, {
     seedanceAssetLibrary: detail.data.project.seedance_asset_library,
+    seedanceShotLedger: detail.data.project.seedance_shot_ledger,
   }));
 }
 
@@ -600,6 +743,7 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
   const { project, current_story } = detail.data;
   const board = buildStoryProductionBoard(current_story, {
     seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
   });
   const exportedAt = new Date().toISOString();
   const exportDir = resolve(projectDir(project.project_id), 'production-board');
@@ -689,6 +833,22 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
     'Seedance Asset Report Markdown',
     'seedance-asset-report.md',
     board.seedance_asset_report.markdown,
+    'text/markdown',
+  );
+  await writeExportFile(
+    'seedance-shot-ledger-json',
+    'seedance_shot_ledger',
+    'Seedance Shot Ledger JSON',
+    'seedance-shot-ledger.json',
+    JSON.stringify(board.seedance_shot_ledger, null, 2),
+    'application/json',
+  );
+  await writeExportFile(
+    'seedance-shot-ledger-markdown',
+    'seedance_shot_ledger',
+    'Seedance Shot Ledger Markdown',
+    'seedance-shot-ledger.md',
+    buildSeedanceShotLedgerMarkdown(board),
     'text/markdown',
   );
   await writeExportFile(
@@ -852,6 +1012,36 @@ function buildProductionBoardSeedanceMarkdown(board: StoryProductionBoard): stri
         : '- 校验: 无',
       '',
       unit.seedance_prompt,
+      '',
+    ]),
+  ];
+  return lines.join('\n');
+}
+
+function buildSeedanceShotLedgerMarkdown(board: StoryProductionBoard): string {
+  const lines = [
+    `# ${board.title} Seedance Shot Ledger`,
+    '',
+    `- 项目 ID: ${board.project_id ?? '未记录'}`,
+    `- 故事 ID: ${board.storyId}`,
+    `- 镜头数: ${board.seedance_shot_ledger.items.length}`,
+    `- 已完成: ${board.seedance_shot_ledger.items.filter(item => item.status === 'ready').length}`,
+    `- 处理中: ${board.seedance_shot_ledger.items.filter(item => item.status === 'processing').length}`,
+    `- 失败: ${board.seedance_shot_ledger.items.filter(item => item.status === 'failed').length}`,
+    '',
+    ...board.seedance_shot_ledger.items.flatMap(item => [
+      `## ${item.shot_id}`,
+      `- 状态: ${item.status}`,
+      `- 场景: ${item.source_scene_id ?? '未记录'}`,
+      `- 更新时间: ${item.updated_at}`,
+      item.provider_job_id ? `- Provider Job: ${item.provider_job_id}` : '- Provider Job: 未记录',
+      item.video_url ? `- 视频 URL: ${item.video_url}` : '- 视频 URL: 未记录',
+      item.selected_version_id ? `- 剪辑版: ${item.selected_version_id}` : '- 剪辑版: 未选择',
+      `- 重试次数: ${item.retry_count}`,
+      item.notes.length ? `- 备注: ${item.notes.join('；')}` : '- 备注: 无',
+      item.versions.length
+        ? `- 版本: ${item.versions.map(version => `${version.version_id}/${version.status}`).join('；')}`
+        : '- 版本: 无',
       '',
     ]),
   ];

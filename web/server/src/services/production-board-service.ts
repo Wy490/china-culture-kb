@@ -5,6 +5,8 @@ import type {
   SeedanceAssetLibrary,
   SeedanceAssetLibraryItem,
   SeedanceAssetReportPackage,
+  SeedanceShotLedger,
+  SeedanceShotLedgerItem,
   StoryGenerateResult,
   StoryProductionBoard,
   StoryProductionBoardDeliveryArtifact,
@@ -32,7 +34,7 @@ const DEFAULT_NEGATIVE_CONSTRAINTS = [
 
 export function buildStoryProductionBoard(
   story: StoryGenerateResult,
-  options: { seedanceAssetLibrary?: SeedanceAssetLibrary } = {},
+  options: { seedanceAssetLibrary?: SeedanceAssetLibrary; seedanceShotLedger?: SeedanceShotLedger } = {},
 ): StoryProductionBoard {
   const delivery = ensureGearsDeliveryPackage(story);
   const seedancePackage = buildSeedancePromptPackage(story);
@@ -57,6 +59,11 @@ export function buildStoryProductionBoard(
     generatedAt,
     assetLibrary: options.seedanceAssetLibrary,
   });
+  const seedanceShotLedger = syncSeedanceShotLedgerWithShots({
+    ledger: options.seedanceShotLedger,
+    shotUnits,
+    generatedAt,
+  });
   const deliveryManifest = buildDeliveryManifest(shotUnits, supervisionReport, repairPlan, qaReport, seedanceAssetReport);
   const pkgWithoutMarkdown: Omit<StoryProductionBoard, 'markdown'> = {
     schema_version: 'story-production-board/v1',
@@ -71,6 +78,7 @@ export function buildStoryProductionBoard(
     director_plan: directorPlan,
     shot_units: shotUnits,
     seedance_asset_report: seedanceAssetReport,
+    seedance_shot_ledger: seedanceShotLedger,
     continuity_constraints: continuityConstraints,
     negative_constraints: DEFAULT_NEGATIVE_CONSTRAINTS,
     supervision_report: supervisionReport,
@@ -329,6 +337,84 @@ function buildSeedanceAssetReport(input: {
     ...basePackage,
     markdown: renderSeedanceAssetReportMarkdown(basePackage),
   };
+}
+
+export function syncSeedanceShotLedgerWithShots(input: {
+  ledger?: SeedanceShotLedger;
+  shotUnits: StoryProductionBoardShotUnit[];
+  generatedAt: string;
+}): SeedanceShotLedger {
+  const map = new Map(normalizeSeedanceShotLedger(input.ledger).items.map(item => [item.production_id, item]));
+  const currentProductionIds = new Set<string>();
+  for (const unit of input.shotUnits) {
+    const productionId = seedanceShotProductionId(unit.shot_id);
+    currentProductionIds.add(productionId);
+    const existing = map.get(productionId);
+    map.set(productionId, {
+      production_id: productionId,
+      shot_id: unit.shot_id,
+      source_scene_id: unit.source_scene_id,
+      status: existing?.status && existing.status !== 'not_started' ? existing.status : 'prompt_exported',
+      prompt_exported_at: existing?.prompt_exported_at ?? input.generatedAt,
+      submitted_at: existing?.submitted_at,
+      completed_at: existing?.completed_at,
+      updated_at: existing?.updated_at ?? input.generatedAt,
+      provider_job_id: existing?.provider_job_id,
+      video_url: existing?.video_url,
+      failure_reason: existing?.failure_reason,
+      retry_count: existing?.retry_count ?? 0,
+      notes: existing?.notes?.length
+        ? uniqueStrings(existing.notes).slice(-12)
+        : [`提示词已生成：${input.generatedAt}`],
+      versions: normalizeSeedanceShotVideoVersions(existing),
+      selected_version_id: existing?.selected_version_id,
+    });
+  }
+  return {
+    schema_version: 'seedance-shot-ledger/v1',
+    updated_at: input.ledger?.updated_at ?? input.generatedAt,
+    items: [...map.values()]
+      .filter(item => currentProductionIds.has(item.production_id))
+      .sort((a, b) =>
+        (a.source_scene_id ?? 0) - (b.source_scene_id ?? 0)
+        || a.shot_id.localeCompare(b.shot_id, 'zh-Hans-CN')
+      ),
+  };
+}
+
+function normalizeSeedanceShotLedger(ledger?: SeedanceShotLedger): SeedanceShotLedger {
+  return {
+    schema_version: 'seedance-shot-ledger/v1',
+    updated_at: ledger?.updated_at,
+    items: (ledger?.items ?? [])
+      .filter(item => item.shot_id?.trim())
+      .map(item => ({
+        ...item,
+        production_id: item.production_id || seedanceShotProductionId(item.shot_id),
+        shot_id: item.shot_id.trim(),
+        status: item.status ?? 'not_started',
+        updated_at: item.updated_at ?? ledger?.updated_at ?? new Date(0).toISOString(),
+        retry_count: item.retry_count ?? 0,
+        notes: uniqueStrings(item.notes ?? []).slice(-12),
+        versions: normalizeSeedanceShotVideoVersions(item),
+      })),
+  };
+}
+
+function normalizeSeedanceShotVideoVersions(
+  item?: Partial<SeedanceShotLedgerItem>,
+): SeedanceShotLedgerItem['versions'] {
+  return (item?.versions ?? []).map(version => ({
+    ...version,
+    version_id: version.version_id,
+    status: version.status,
+    created_at: version.created_at,
+  }));
+}
+
+export function seedanceShotProductionId(shotId: string): string {
+  const slug = shotId.trim().toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '');
+  return `seedance-shot-${slug || 'shot'}`;
 }
 
 function seedanceBindingState(
@@ -615,6 +701,16 @@ function seedanceAssetRoleLabel(role: SeedanceAssetBindingItem['role']): string 
   return '声音参考';
 }
 
+function seedanceShotStatusLabel(status: SeedanceShotLedgerItem['status']): string {
+  if (status === 'not_started') return '未开始';
+  if (status === 'prompt_exported') return '待提交';
+  if (status === 'submitted') return '已提交';
+  if (status === 'processing') return '处理中';
+  if (status === 'ready') return '已完成';
+  if (status === 'failed') return '失败';
+  return '跳过';
+}
+
 function buildRepairPlan(report: StoryProductionBoardSupervisionReport): StoryProductionBoardRepairPlan {
   const tasks = [
     buildTaskForAction(report.issues, 'normalize_period_costumes'),
@@ -691,6 +787,13 @@ function buildDeliveryManifest(
       label: 'Seedance Asset Report',
       status: seedanceAssetReport.unbound_shot_count > 0 ? 'needs_repair' : 'ready',
       description: '按素材 slot 聚合人物、场景和道具引用，标记缺槽位、缺文件和待上传镜头。',
+    },
+    {
+      artifact_id: 'seedance-shot-ledger',
+      kind: 'seedance_shot_ledger',
+      label: 'Seedance Shot Ledger',
+      status: 'ready',
+      description: '每个 Seedance 镜头的提交、生成、回片、失败和选用版本状态。',
     },
   ];
   return {
@@ -989,6 +1092,15 @@ function renderProductionBoardMarkdown(pkg: Omit<StoryProductionBoard, 'markdown
     `- 受影响镜头: ${pkg.seedance_asset_report.unbound_shot_count}/${pkg.seedance_asset_report.shot_binding_count}`,
     ...(pkg.seedance_asset_report.assets.slice(0, 12).map(asset =>
       `- [${seedanceAssetBindingStatusLabel(asset.status)}] ${asset.reference_slot ?? '未分配槽位'} · ${seedanceAssetKindLabel(asset.kind)}「${asset.label}」 · 镜头 ${asset.source_shot_ids.join('、') || '无'}`
+    )),
+    '',
+    '## Seedance Shot Ledger',
+    `- 镜头总数: ${pkg.seedance_shot_ledger.items.length}`,
+    `- 已完成: ${pkg.seedance_shot_ledger.items.filter(item => item.status === 'ready').length}`,
+    `- 处理中: ${pkg.seedance_shot_ledger.items.filter(item => item.status === 'processing').length}`,
+    `- 失败: ${pkg.seedance_shot_ledger.items.filter(item => item.status === 'failed').length}`,
+    ...(pkg.seedance_shot_ledger.items.slice(0, 12).map(item =>
+      `- [${seedanceShotStatusLabel(item.status)}] ${item.shot_id} · 场景 ${item.source_scene_id ?? '未记录'}${item.provider_job_id ? ` · job ${item.provider_job_id}` : ''}${item.video_url ? ` · ${item.video_url}` : ''}`
     )),
     '',
     '## 角色资产',

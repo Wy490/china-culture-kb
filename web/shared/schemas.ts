@@ -387,6 +387,28 @@ export const SeedanceAssetLibraryUpdateRequestSchema = z.object({
   })).min(1).max(200),
 });
 
+const SeedanceShotProductionStatusSchema = z.enum([
+  'not_started',
+  'prompt_exported',
+  'submitted',
+  'processing',
+  'ready',
+  'failed',
+  'skipped',
+]);
+
+export const SeedanceShotStatusUpdateRequestSchema = z.object({
+  shot_id: z.string().trim().min(1).max(80),
+  status: SeedanceShotProductionStatusSchema,
+  provider_job_id: z.string().trim().min(1).max(120).optional(),
+  video_url: z.string().trim().url().optional(),
+  failure_reason: z.string().trim().min(1).max(500).optional(),
+  note: z.string().trim().min(1).max(500).optional(),
+  increment_retry: z.boolean().optional(),
+  quality_score: z.number().min(0).max(100).optional(),
+  review_note: z.string().trim().min(1).max(500).optional(),
+});
+
 export const StorySceneRegenerateRequestSchema = z.object({
   scene_id: z.number().int().min(1),
   intent: z.enum([

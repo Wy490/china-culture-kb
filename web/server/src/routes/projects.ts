@@ -6,6 +6,7 @@ import {
   ProjectIdParamSchema,
   ProjectRetainRecentRequestSchema,
   SeedanceAssetLibraryUpdateRequestSchema,
+  SeedanceShotStatusUpdateRequestSchema,
   StoryProductionBoardRepairRequestSchema,
   StoryQualityRepairRequestSchema,
   StorySceneRegenerateRequestSchema,
@@ -26,6 +27,7 @@ import {
   regenerateProjectScene,
   retainRecentProjects,
   updateProjectSeedanceAssetLibrary,
+  updateProjectSeedanceShotStatus,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
 
@@ -129,6 +131,21 @@ projectsRouter.post(
       const { projectId } = req.params as { projectId: string };
       const result = await updateProjectSeedanceAssetLibrary(projectId, req.body);
       res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-shots',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceShotStatusUpdateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await updateProjectSeedanceShotStatus(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
     } catch (err) {
       next(err);
     }

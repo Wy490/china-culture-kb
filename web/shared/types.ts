@@ -791,6 +791,7 @@ export interface StoryProjectMeta extends StoryProjectListItem {
   current_version_id: string;
   version_count: number;
   seedance_asset_library?: SeedanceAssetLibrary;
+  seedance_shot_ledger?: SeedanceShotLedger;
 }
 
 export interface StoryProjectVersionSnapshot {
@@ -1082,6 +1083,63 @@ export interface SeedanceAssetLibraryUpdateRequest {
     file_id?: string;
     description?: string;
   }>;
+}
+
+export type SeedanceShotProductionStatus =
+  | 'not_started'
+  | 'prompt_exported'
+  | 'submitted'
+  | 'processing'
+  | 'ready'
+  | 'failed'
+  | 'skipped';
+
+export interface SeedanceShotVideoVersion {
+  version_id: string;
+  status: SeedanceShotProductionStatus;
+  created_at: string;
+  provider_job_id?: string;
+  video_url?: string;
+  failure_reason?: string;
+  note?: string;
+  quality_score?: number;
+  review_note?: string;
+}
+
+export interface SeedanceShotLedgerItem {
+  production_id: string;
+  shot_id: string;
+  source_scene_id?: number;
+  status: SeedanceShotProductionStatus;
+  prompt_exported_at?: string;
+  submitted_at?: string;
+  completed_at?: string;
+  updated_at: string;
+  provider_job_id?: string;
+  video_url?: string;
+  failure_reason?: string;
+  retry_count: number;
+  notes: string[];
+  versions: SeedanceShotVideoVersion[];
+  selected_version_id?: string;
+}
+
+export interface SeedanceShotLedger {
+  schema_version: 'seedance-shot-ledger/v1';
+  updated_at?: string;
+  items: SeedanceShotLedgerItem[];
+}
+
+export interface SeedanceShotStatusUpdateRequest {
+  shot_id: string;
+  status: SeedanceShotProductionStatus;
+  provider_job_id?: string;
+  video_url?: string;
+  failure_reason?: string;
+  note?: string;
+  increment_retry?: boolean;
+  quality_score?: number;
+  review_note?: string;
 }
 
 export interface SeedanceShotAssetBinding {
@@ -1903,7 +1961,8 @@ export type StoryProductionBoardDeliveryArtifactKind =
   | 'supervision_report'
   | 'repair_plan'
   | 'seedance_prompts'
-  | 'seedance_asset_report';
+  | 'seedance_asset_report'
+  | 'seedance_shot_ledger';
 
 export interface StoryProductionBoardDeliveryArtifact {
   artifact_id: string;
@@ -1944,6 +2003,7 @@ export interface StoryProductionBoard {
   director_plan: StoryProductionBoardDirectorPlan[];
   shot_units: StoryProductionBoardShotUnit[];
   seedance_asset_report: SeedanceAssetReportPackage;
+  seedance_shot_ledger: SeedanceShotLedger;
   continuity_constraints: string[];
   negative_constraints: string[];
   supervision_report: StoryProductionBoardSupervisionReport;

@@ -80,6 +80,7 @@
               · 角色资产 {{ productionBoard.character_assets.length }}
               · 场景资产 {{ productionBoard.location_assets.length }}
               · 待上传素材 {{ productionBoard.seedance_asset_report.upload_required_count }}
+              · Seedance 完成 {{ seedanceShotStats.ready }}/{{ seedanceShotStats.total }}
             </p>
           </div>
           <div class="project-detail-page__production-actions">
@@ -131,6 +132,22 @@
             >
               {{ artifact.label }}
             </span>
+          </div>
+        </div>
+        <div class="project-detail-page__seedance-shot-ledger">
+          <div>
+            <strong>Seedance Shot Ledger</strong>
+            <p>
+              {{ seedanceShotStats.total }} 个镜头
+              · 已提交 {{ seedanceShotStats.submitted }}
+              · 处理中 {{ seedanceShotStats.processing }}
+              · 已完成 {{ seedanceShotStats.ready }}
+              · 失败 {{ seedanceShotStats.failed }}
+            </p>
+          </div>
+          <div class="project-detail-page__seedance-shot-ledger-stats">
+            <span>待提交 {{ seedanceShotStats.prompt_exported }}</span>
+            <span>跳过 {{ seedanceShotStats.skipped }}</span>
           </div>
         </div>
         <div class="project-detail-page__seedance-asset-report">
@@ -321,6 +338,71 @@
             <div>
               <strong>{{ shot.shot_id }} · 场景 {{ shot.source_scene_id }}</strong>
               <span>{{ shot.duration_sec }} 秒 · Seedance {{ shot.seedance_duration_sec }} 秒 · {{ shot.panel_count }} 格 · {{ shot.location }}</span>
+            </div>
+            <div
+              v-if="seedanceShotItem(shot.shot_id)"
+              class="project-detail-page__seedance-shot-status"
+              :class="`project-detail-page__seedance-shot-status--${seedanceShotItem(shot.shot_id)?.status}`"
+            >
+              <span>
+                {{ seedanceShotStatusLabel(seedanceShotItem(shot.shot_id)?.status ?? 'not_started') }}
+                · {{ formatDate(seedanceShotItem(shot.shot_id)?.updated_at ?? '') }}
+              </span>
+              <small v-if="seedanceShotItem(shot.shot_id)?.provider_job_id">
+                job {{ seedanceShotItem(shot.shot_id)?.provider_job_id }}
+              </small>
+              <small v-if="seedanceShotItem(shot.shot_id)?.video_url">
+                {{ seedanceShotItem(shot.shot_id)?.video_url }}
+              </small>
+              <small v-if="seedanceShotItem(shot.shot_id)?.versions.length">
+                版本 {{ seedanceShotItem(shot.shot_id)?.versions.length }}
+                <template v-if="seedanceShotItem(shot.shot_id)?.selected_version_id">
+                  · 剪辑版 {{ seedanceShotItem(shot.shot_id)?.selected_version_id }}
+                </template>
+              </small>
+              <details class="project-detail-page__seedance-shot-actions">
+                <summary>更新状态</summary>
+                <div class="project-detail-page__seedance-shot-action-row">
+                  <input
+                    v-model="seedanceShotJobInputs[shot.shot_id]"
+                    class="project-detail-page__seedance-shot-input"
+                    placeholder="job id"
+                  >
+                  <input
+                    v-model="seedanceShotVideoInputs[shot.shot_id]"
+                    class="project-detail-page__seedance-shot-input"
+                    placeholder="video URL"
+                  >
+                  <button
+                    class="project-detail-page__repair-task-btn"
+                    :disabled="updatingSeedanceShotId === shot.shot_id"
+                    @click="markSeedanceShot(shot, 'submitted')"
+                  >
+                    已提交
+                  </button>
+                  <button
+                    class="project-detail-page__repair-task-btn"
+                    :disabled="updatingSeedanceShotId === shot.shot_id"
+                    @click="markSeedanceShot(shot, 'processing')"
+                  >
+                    处理中
+                  </button>
+                  <button
+                    class="project-detail-page__repair-task-btn"
+                    :disabled="updatingSeedanceShotId === shot.shot_id"
+                    @click="markSeedanceShot(shot, 'ready')"
+                  >
+                    完成
+                  </button>
+                  <button
+                    class="project-detail-page__repair-task-btn"
+                    :disabled="updatingSeedanceShotId === shot.shot_id"
+                    @click="markSeedanceShot(shot, 'failed')"
+                  >
+                    失败
+                  </button>
+                </div>
+              </details>
             </div>
             <p>{{ shot.production_prompt }}</p>
             <details class="project-detail-page__seedance-prompt">
@@ -559,6 +641,7 @@ import {
   repairProjectProductionBoard,
   regenerateProjectScene,
   updateProjectSeedanceAssetLibrary,
+  updateProjectSeedanceShotStatus,
   updateProjectSupplementTask,
 } from '@/api/projects'
 import { getModelProfiles } from '@/api/system'
@@ -569,6 +652,8 @@ import type {
   AIModelProfile,
   KnowledgeSupplementTaskStatus,
   SeedanceAssetBindingItem,
+  SeedanceShotLedgerItem,
+  SeedanceShotProductionStatus,
   StoryProjectDetail,
   StoryProjectStatus,
   StoryProjectVersionChangeType,
@@ -618,6 +703,9 @@ const repairingProductionBoardTaskId = ref('')
 const repairingProductionBoardScope = ref('')
 const seedanceAssetFileInputs = ref<Record<string, string>>({})
 const bindingSeedanceAssetId = ref('')
+const seedanceShotJobInputs = ref<Record<string, string>>({})
+const seedanceShotVideoInputs = ref<Record<string, string>>({})
+const updatingSeedanceShotId = ref('')
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
@@ -731,6 +819,32 @@ const productionRepairHistory = computed<ProductionRepairHistoryItem[]>(() => {
   })
 })
 
+const seedanceShotById = computed(() => {
+  return new Map((productionBoard.value?.seedance_shot_ledger.items ?? []).map(item => [item.shot_id, item]))
+})
+
+const seedanceShotStats = computed(() => {
+  const stats: Record<SeedanceShotProductionStatus | 'total', number> = {
+    total: 0,
+    not_started: 0,
+    prompt_exported: 0,
+    submitted: 0,
+    processing: 0,
+    ready: 0,
+    failed: 0,
+    skipped: 0,
+  }
+  for (const item of productionBoard.value?.seedance_shot_ledger.items ?? []) {
+    stats.total += 1
+    stats[item.status] += 1
+  }
+  return stats
+})
+
+function seedanceShotItem(shotId: string): SeedanceShotLedgerItem | null {
+  return seedanceShotById.value.get(shotId) ?? null
+}
+
 function statusLabel(status: StoryProjectStatus): string {
   const map: Record<StoryProjectStatus, string> = {
     draft: '草稿',
@@ -822,6 +936,19 @@ function seedanceAssetStatusLabel(status: string): string {
   return map[status] ?? status
 }
 
+function seedanceShotStatusLabel(status: SeedanceShotProductionStatus): string {
+  const map: Record<SeedanceShotProductionStatus, string> = {
+    not_started: '未开始',
+    prompt_exported: '待提交',
+    submitted: '已提交',
+    processing: '处理中',
+    ready: '已完成',
+    failed: '失败',
+    skipped: '跳过',
+  }
+  return map[status]
+}
+
 function versionLabel(type: StoryProjectVersionChangeType): string {
   if (type === 'initial_generation') return '初次生成'
   if (type === 'quality_repair') return '质量修复'
@@ -910,6 +1037,30 @@ async function bindSeedanceAsset(asset: SeedanceAssetBindingItem) {
     error.value = res.error?.message ?? '绑定 Seedance 素材失败'
   }
   bindingSeedanceAssetId.value = ''
+}
+
+async function markSeedanceShot(shot: StoryProductionBoardShotUnit, status: SeedanceShotProductionStatus) {
+  if (!detail.value || updatingSeedanceShotId.value) return
+  updatingSeedanceShotId.value = shot.shot_id
+  error.value = ''
+  successMessage.value = ''
+  const jobId = (seedanceShotJobInputs.value[shot.shot_id] ?? '').trim()
+  const videoUrl = (seedanceShotVideoInputs.value[shot.shot_id] ?? '').trim()
+  const res = await updateProjectSeedanceShotStatus(detail.value.project.project_id, {
+    shot_id: shot.shot_id,
+    status,
+    provider_job_id: jobId || undefined,
+    video_url: /^https?:\/\//i.test(videoUrl) ? videoUrl : undefined,
+    note: `前端快捷标记：${seedanceShotStatusLabel(status)}`,
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data
+    await loadProductionBoard()
+    successMessage.value = `已更新 ${shot.shot_id}：${seedanceShotStatusLabel(status)}`
+  } else {
+    error.value = res.error?.message ?? '更新 Seedance 镜头状态失败'
+  }
+  updatingSeedanceShotId.value = ''
 }
 
 function openSceneEditor(sceneId: number) {
@@ -1574,6 +1725,110 @@ watch(selectedModelProfileId, (value) => {
   color: #b13b2e !important;
 }
 
+.project-detail-page__seedance-shot-ledger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.project-detail-page__seedance-shot-ledger strong {
+  color: #22313f;
+}
+
+.project-detail-page__seedance-shot-ledger p {
+  margin: 4px 0 0;
+  color: #526575;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.project-detail-page__seedance-shot-ledger-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.project-detail-page__seedance-shot-ledger-stats span,
+.project-detail-page__seedance-shot-status span,
+.project-detail-page__seedance-shot-status small {
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  padding: 3px 6px;
+  background: #f8fafb;
+  color: #455866;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__seedance-shot-status {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-start !important;
+  gap: 6px;
+  margin-top: 8px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 7px;
+}
+
+.project-detail-page__seedance-shot-status small {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.project-detail-page__seedance-shot-status--ready {
+  border-color: #b8dbc8;
+  background: #f4fbf6;
+}
+
+.project-detail-page__seedance-shot-status--processing,
+.project-detail-page__seedance-shot-status--submitted {
+  border-color: #c7dff0;
+  background: #f4f9fc;
+}
+
+.project-detail-page__seedance-shot-status--failed {
+  border-color: #f0c4bd;
+  background: #fff7f6;
+}
+
+.project-detail-page__seedance-shot-actions {
+  flex-basis: 100%;
+}
+
+.project-detail-page__seedance-shot-actions summary {
+  cursor: pointer;
+  color: #2f4358;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.project-detail-page__seedance-shot-action-row {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-start !important;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.project-detail-page__seedance-shot-input {
+  width: 140px;
+  min-width: 0;
+  border: 1px solid #ccd6dd;
+  border-radius: 4px;
+  padding: 5px 6px;
+  color: #22313f;
+  font-size: 12px;
+}
+
 .project-detail-page__export-package {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2004,6 +2259,12 @@ watch(selectedModelProfileId, (value) => {
   line-height: 1.4;
 }
 
+.project-detail-page__seedance-shot-status small {
+  display: inline-flex;
+  margin-top: 0;
+  color: #455866;
+}
+
 .project-detail-page__quality-main {
   min-width: 0;
 }
@@ -2354,12 +2615,14 @@ watch(selectedModelProfileId, (value) => {
 
   .project-detail-page__delivery-manifest,
   .project-detail-page__seedance-asset-report,
+  .project-detail-page__seedance-shot-ledger,
   .project-detail-page__export-package {
     grid-template-columns: 1fr;
   }
 
   .project-detail-page__delivery-artifacts,
   .project-detail-page__seedance-asset-items,
+  .project-detail-page__seedance-shot-ledger-stats,
   .project-detail-page__export-files {
     justify-content: flex-start;
   }

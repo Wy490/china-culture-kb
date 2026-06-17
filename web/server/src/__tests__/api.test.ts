@@ -582,6 +582,72 @@ describe('Projects API', () => {
     });
   });
 
+  describe('POST /api/projects/:projectId/production-board/seedance-shots', () => {
+    it('updates a Seedance shot ledger item through the route', async () => {
+      const baseStory = makeApiProductionRepairStory();
+      const story: StoryGenerateResult = {
+        ...baseStory,
+        storyId: '20260617-story-aps1',
+        title: 'API Seedance 镜头状态测试故事',
+        gears_segments_url: '/api/stories/20260617-story-aps1/gears-segments',
+        gears_delivery: baseStory.gears_delivery
+          ? {
+              ...baseStory.gears_delivery,
+              storyId: '20260617-story-aps1',
+              title: 'API Seedance 镜头状态测试故事',
+            }
+          : undefined,
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T12:05:00.000Z');
+      const beforeBoardRes = await request.get(`/api/projects/${enriched.project_id}/production-board`);
+      expect(beforeBoardRes.status).toBe(200);
+      expectSuccess(beforeBoardRes.body);
+      expect(beforeBoardRes.body.data.seedance_shot_ledger.items[0]).toMatchObject({
+        shot_id: 'shot-1',
+        status: 'prompt_exported',
+      });
+
+      const updateRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots`)
+        .send({
+          shot_id: 'shot-1',
+          status: 'ready',
+          provider_job_id: 'seedance-job-api-001',
+          video_url: 'https://example.com/api/shot-1.mp4',
+          quality_score: 91,
+          review_note: 'API 回片可用',
+          note: 'API 测试更新',
+        });
+
+      expect(updateRes.status).toBe(200);
+      expectSuccess(updateRes.body);
+      const item = updateRes.body.data.project.seedance_shot_ledger.items.find((ledgerItem: any) =>
+        ledgerItem.shot_id === 'shot-1'
+      );
+      expect(item).toMatchObject({
+        status: 'ready',
+        provider_job_id: 'seedance-job-api-001',
+        video_url: 'https://example.com/api/shot-1.mp4',
+        selected_version_id: 'seedance-shot-shot-1-v1',
+      });
+      expect(item.versions[0]).toMatchObject({
+        status: 'ready',
+        quality_score: 91,
+        review_note: 'API 回片可用',
+      });
+
+      const afterBoardRes = await request.get(`/api/projects/${enriched.project_id}/production-board`);
+      expect(afterBoardRes.status).toBe(200);
+      expectSuccess(afterBoardRes.body);
+      expect(afterBoardRes.body.data.seedance_shot_ledger.items.find((ledgerItem: any) =>
+        ledgerItem.shot_id === 'shot-1'
+      )).toMatchObject({
+        status: 'ready',
+        video_url: 'https://example.com/api/shot-1.mp4',
+      });
+    });
+  });
+
   describe('POST /api/projects/batch-delete', () => {
     it('validates project_ids', async () => {
       const res = await request.post('/api/projects/batch-delete').send({ project_ids: [] });

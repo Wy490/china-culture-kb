@@ -19,6 +19,7 @@ import {
   repairProjectProductionBoard,
   retainRecentProjects,
   updateProjectSeedanceAssetLibrary,
+  updateProjectSeedanceShotStatus,
   updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
@@ -286,6 +287,13 @@ describe('project-service', () => {
     expect(boardRes.data?.seedance_asset_report.total_asset_count).toBeGreaterThan(0);
     expect(boardRes.data?.seedance_asset_report.upload_required_count).toBeGreaterThan(0);
     expect(boardRes.data?.seedance_asset_report.shots[0].missing_asset_ids.length).toBeGreaterThan(0);
+    expect(boardRes.data?.seedance_shot_ledger.schema_version).toBe('seedance-shot-ledger/v1');
+    expect(boardRes.data?.seedance_shot_ledger.items).toHaveLength(story.scene_breakdown.length);
+    expect(boardRes.data?.seedance_shot_ledger.items[0]).toMatchObject({
+      shot_id: 'shot-1',
+      status: 'prompt_exported',
+      retry_count: 0,
+    });
     expect(boardRes.data?.supervision_report.issue_count).toBeGreaterThan(0);
     expect(boardRes.data?.supervision_report.priority_fixes.length).toBeGreaterThan(0);
     expect(boardRes.data?.repair_plan.task_count).toBeGreaterThan(0);
@@ -293,6 +301,7 @@ describe('project-service', () => {
     expect(boardRes.data?.delivery_manifest.stage).toBe('needs_repair');
     expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('seedance_prompts');
     expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('seedance_asset_report');
+    expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('seedance_shot_ledger');
     expect(boardRes.data?.qa_report.score).toBeGreaterThanOrEqual(0);
     expect(boardRes.data?.qa_report.issues.some(issue => issue.includes('连续性约束不足'))).toBe(true);
     expect(boardRes.data?.markdown).toContain('## 镜头单元');
@@ -300,6 +309,7 @@ describe('project-service', () => {
     expect(boardRes.data?.markdown).toContain('## 生产修复包');
     expect(boardRes.data?.markdown).toContain('## 交付清单');
     expect(boardRes.data?.markdown).toContain('## Seedance 素材缺口');
+    expect(boardRes.data?.markdown).toContain('## Seedance Shot Ledger');
     expect(boardRes.data?.markdown).toContain('Seedance');
     expect(boardRes.data?.markdown).toContain('Seedance 素材 slot');
 
@@ -332,6 +342,36 @@ describe('project-service', () => {
       needs_upload: false,
       file_url: 'https://example.com/seedance-assets/asset-001.png',
     });
+
+    const shotStatusRes = await updateProjectSeedanceShotStatus(enriched.project_id!, {
+      shot_id: 'shot-1',
+      status: 'ready',
+      provider_job_id: 'seedance-job-001',
+      video_url: 'https://example.com/seedance-videos/shot-1.mp4',
+      quality_score: 88,
+      review_note: '回片可用',
+      note: '测试回片',
+    });
+    expect(shotStatusRes.ok).toBe(true);
+    expect(shotStatusRes.data?.project.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: 'seedance-job-001',
+      video_url: 'https://example.com/seedance-videos/shot-1.mp4',
+      retry_count: 0,
+      selected_version_id: 'seedance-shot-shot-1-v1',
+    });
+    const shotBoardRes = await getProjectProductionBoard(enriched.project_id!);
+    expect(shotBoardRes.data?.seedance_shot_ledger.items.find(item =>
+      item.shot_id === 'shot-1'
+    )?.versions[0]).toMatchObject({
+      status: 'ready',
+      provider_job_id: 'seedance-job-001',
+      video_url: 'https://example.com/seedance-videos/shot-1.mp4',
+      quality_score: 88,
+      review_note: '回片可用',
+    });
   });
 
   it('exports a production board package to the project directory', async () => {
@@ -356,6 +396,8 @@ describe('project-service', () => {
       'production-board/seedance-prompts.md',
       'production-board/seedance-asset-report.json',
       'production-board/seedance-asset-report.md',
+      'production-board/seedance-shot-ledger.json',
+      'production-board/seedance-shot-ledger.md',
     ]));
 
     const exportDir = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'production-board');
@@ -363,11 +405,13 @@ describe('project-service', () => {
     expect(await exists(resolve(exportDir, 'production-board.json'))).toBe(true);
     expect(await exists(resolve(exportDir, 'seedance-prompts.md'))).toBe(true);
     expect(await exists(resolve(exportDir, 'seedance-asset-report.md'))).toBe(true);
+    expect(await exists(resolve(exportDir, 'seedance-shot-ledger.md'))).toBe(true);
 
     const manifest = JSON.parse(await readFile(resolve(exportDir, 'manifest.json'), 'utf-8'));
     expect(manifest.schema_version).toBe('story-production-board-manifest/v1');
     expect(manifest.delivery_manifest.artifacts.map((artifact: { kind: string }) => artifact.kind)).toContain('seedance_prompts');
     expect(manifest.delivery_manifest.artifacts.map((artifact: { kind: string }) => artifact.kind)).toContain('seedance_asset_report');
+    expect(manifest.delivery_manifest.artifacts.map((artifact: { kind: string }) => artifact.kind)).toContain('seedance_shot_ledger');
 
     const seedanceMarkdown = await readFile(resolve(exportDir, 'seedance-prompts.md'), 'utf-8');
     expect(seedanceMarkdown).toContain('Seedance 2.0 镜头提示词');
@@ -380,11 +424,16 @@ describe('project-service', () => {
     expect(seedanceAssetReport.schema_version).toBe('seedance-asset-report/v1');
     expect(seedanceAssetReport.assets[0].status).toBe('missing_file');
     expect(seedanceAssetReport.markdown).toContain('Seedance 素材缺口报告');
+    const seedanceShotLedger = JSON.parse(await readFile(resolve(exportDir, 'seedance-shot-ledger.json'), 'utf-8'));
+    expect(seedanceShotLedger.schema_version).toBe('seedance-shot-ledger/v1');
+    expect(seedanceShotLedger.items[0].status).toBe('prompt_exported');
+    const seedanceShotLedgerMarkdown = await readFile(resolve(exportDir, 'seedance-shot-ledger.md'), 'utf-8');
+    expect(seedanceShotLedgerMarkdown).toContain('Seedance Shot Ledger');
 
     const detail = await getProject(enriched.project_id!);
     expect(detail.data?.project.status).toBe('exported');
     expect(detail.data?.versions[0].production_board_export).toMatchObject({
-      file_count: 9,
+      file_count: 11,
       delivery_stage: exportRes.data?.board.delivery_manifest.stage,
     });
   });

@@ -9,7 +9,7 @@
 整体判断：
 
 - Story Agent MVP：约 75%
-- Production Board / GEARS / Seedance 交付链：约 70%
+- Production Board / GEARS / Seedance 交付链：约 72%
 - AI 漫剧系列生产链：约 45%
 - 可商用制作中台：约 35-40%
 
@@ -189,13 +189,15 @@
 - 独立 `seedance-asset-report.json` / `.md` 交付文件
 - 单故事素材库绑定回写首版
 - 文件 URL / file_id 持久化首版
+- 单故事 Seedance Shot Ledger 首版
+- 独立 `seedance-shot-ledger.json` / `.md` 交付文件
 
 仍缺：
 
 - `@视频1` / `@音频1` 引用校验
 - 真实文件上传和批量导入
 - 跨项目资产库与上传状态历史
-- 失败重试闭环
+- 回传导入、自动择优和失败重试闭环
 
 ### 3.4 GEARS / 外部制作工具集成仍偏文件交付
 
@@ -298,14 +300,14 @@
 - Prompt Complexity / Duration 校验
 - Production Board 级素材缺口报告（已完成首版）
 - 单故事素材库绑定回写（已完成首版）
-- Seedance Shot Ledger
+- Seedance Shot Ledger（已完成首版）
 - 按镜头记录：
-  - 生成状态
-  - provider job id
-  - 视频 URL
-  - 版本
-  - 评分
-  - 选用版本
+  - 生成状态（已完成首版）
+  - provider job id（已完成首版）
+  - 视频 URL（已完成首版）
+  - 版本（已完成首版）
+  - 评分（已完成首版）
+  - 选用版本（已完成首版）
 - 失败重试包
 
 验收标准：
