@@ -1844,6 +1844,14 @@ export interface StoryProductionBoardRepairResult {
   trace: StoryProductionBoardRepairTrace;
 }
 
+export interface StoryProductionBoardRepairExportResult {
+  schema_version: 'story-production-board-repair-export/v1';
+  project: StoryProjectMeta;
+  detail: StoryProjectDetail;
+  repair: StoryProductionBoardRepairResult;
+  export_package: StoryProductionBoardExportPackage;
+}
+
 // ---------------------------------------------------------------------------
 // Story outline analysis — multi-knowledge matching
 // ---------------------------------------------------------------------------

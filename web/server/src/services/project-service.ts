@@ -34,6 +34,7 @@ import type {
   StoryProductionBoard,
   StoryProductionBoardExportFile,
   StoryProductionBoardExportPackage,
+  StoryProductionBoardRepairExportResult,
   StoryProductionBoardRepairRequest,
   StoryProductionBoardRepairResult,
 } from '@shared/types.js';
@@ -1087,6 +1088,52 @@ export async function repairProjectProductionBoard(
     before_board: repair.beforeBoard,
     after_board: repair.afterBoard,
     trace: repair.trace,
+  });
+}
+
+export async function repairAndExportProjectProductionBoard(
+  projectId: string,
+  request: StoryProductionBoardRepairRequest,
+): Promise<ApiResponse<StoryProductionBoardRepairExportResult>> {
+  const repairResult = await repairProjectProductionBoard(projectId, request);
+  if (!repairResult.ok || !repairResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      repairResult.error?.message ?? `Project "${projectId}" not found`,
+      repairResult.error?.details,
+    );
+  }
+
+  const exportResult = await exportProjectProductionBoard(projectId);
+  if (!exportResult.ok || !exportResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      exportResult.error?.message ?? `Project "${projectId}" production board export failed`,
+      exportResult.error?.details,
+    );
+  }
+
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detailResult.error?.message ?? `Project "${projectId}" not found after production board export`,
+      detailResult.error?.details,
+    );
+  }
+
+  const repair: StoryProductionBoardRepairResult = {
+    ...repairResult.data,
+    project: detailResult.data.project,
+    detail: detailResult.data,
+  };
+
+  return success({
+    schema_version: 'story-production-board-repair-export/v1',
+    project: detailResult.data.project,
+    detail: detailResult.data,
+    repair,
+    export_package: exportResult.data,
   });
 }
 

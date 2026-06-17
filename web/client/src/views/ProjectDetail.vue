@@ -98,7 +98,14 @@
             </button>
             <button
               class="project-detail-page__action-btn project-detail-page__action-btn--primary"
-              :disabled="exportingProductionBoard"
+              :disabled="productionBoardRepairBusy || exportingProductionBoard"
+              @click="submitProductionBoardRepairAndExport"
+            >
+              {{ repairingAndExportingProductionBoard ? '修复落盘中…' : '修复并落盘' }}
+            </button>
+            <button
+              class="project-detail-page__action-btn project-detail-page__action-btn--primary"
+              :disabled="productionBoardRepairBusy || exportingProductionBoard"
               @click="saveProductionBoardPackage"
             >
               {{ exportingProductionBoard ? '落盘中…' : '一键落盘交付包' }}
@@ -406,6 +413,7 @@ import {
   exportProjectProductionBoard,
   getProject,
   getProjectProductionBoard,
+  repairAndExportProjectProductionBoard,
   repairProjectQuality,
   repairProjectProductionBoard,
   regenerateProjectScene,
@@ -454,6 +462,7 @@ const productionRepairTrace = ref<StoryProductionBoardRepairTrace | null>(null)
 const loadingProductionBoard = ref(false)
 const exportingProductionBoard = ref(false)
 const repairingProductionBoard = ref(false)
+const repairingAndExportingProductionBoard = ref(false)
 const repairingProductionBoardTaskId = ref('')
 
 const selectedModelProfile = computed(() => {
@@ -511,7 +520,9 @@ const qualitySceneIds = computed(() => {
 })
 
 const productionBoardRepairBusy = computed(() => {
-  return repairingProductionBoard.value || repairingProductionBoardTaskId.value !== ''
+  return repairingProductionBoard.value
+    || repairingAndExportingProductionBoard.value
+    || repairingProductionBoardTaskId.value !== ''
 })
 
 const productionRepairDiffRows = computed(() => {
@@ -822,6 +833,7 @@ async function exportProductionBoardMarkdown() {
 
 async function saveProductionBoardPackage() {
   if (!detail.value) return
+  if (productionBoardRepairBusy.value || exportingProductionBoard.value) return
   exportingProductionBoard.value = true
   error.value = ''
   successMessage.value = ''
@@ -846,7 +858,7 @@ async function saveProductionBoardPackage() {
 
 async function submitProductionBoardRepair(applyAll: boolean) {
   if (!detail.value) return
-  if (productionBoardRepairBusy.value) return
+  if (productionBoardRepairBusy.value || exportingProductionBoard.value) return
   repairingProductionBoard.value = true
   error.value = ''
   successMessage.value = ''
@@ -868,9 +880,33 @@ async function submitProductionBoardRepair(applyAll: boolean) {
   repairingProductionBoard.value = false
 }
 
+async function submitProductionBoardRepairAndExport() {
+  if (!detail.value) return
+  if (productionBoardRepairBusy.value || exportingProductionBoard.value) return
+  repairingAndExportingProductionBoard.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await repairAndExportProjectProductionBoard(detail.value.project.project_id, {
+    apply_all: true,
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data.detail
+    productionBoard.value = res.data.export_package.board
+    productionBoardExport.value = res.data.export_package
+    productionRepairResult.value = res.data.repair
+    productionRepairTrace.value = res.data.repair.trace
+    successMessage.value = res.data.repair.trace.applied
+      ? `生产修复已生成新版本并落盘：${res.data.export_package.files.length} 个文件`
+      : `生产修复未产生变化，已落盘当前交付包：${res.data.export_package.files.length} 个文件`
+  } else {
+    error.value = res.error?.message ?? '生产修复并落盘失败'
+  }
+  repairingAndExportingProductionBoard.value = false
+}
+
 async function submitProductionBoardTaskRepair(task: StoryProductionBoardRepairTask) {
   if (!detail.value) return
-  if (productionBoardRepairBusy.value) return
+  if (productionBoardRepairBusy.value || exportingProductionBoard.value) return
   repairingProductionBoardTaskId.value = task.task_id
   error.value = ''
   successMessage.value = ''

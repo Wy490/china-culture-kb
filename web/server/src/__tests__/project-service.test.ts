@@ -15,6 +15,7 @@ import {
   listProjects,
   listProjectSupplementTasks,
   regenerateProjectScene,
+  repairAndExportProjectProductionBoard,
   repairProjectProductionBoard,
   retainRecentProjects,
   updateProjectCurrentGearsWebhookStatus,
@@ -331,6 +332,46 @@ describe('project-service', () => {
 
     const detail = await getProject(enriched.project_id!);
     expect(detail.data?.project.status).toBe('exported');
+  });
+
+  it('repairs production board issues and exports the repaired package in one step', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const baseStory = makeStory();
+    const story: StoryGenerateResult = {
+      ...baseStory,
+      scene_breakdown: baseStory.scene_breakdown.map(scene => scene.scene_id === 1
+        ? {
+            ...scene,
+            visual_prompt: `质量：待补；${scene.visual_prompt}`,
+          }
+        : scene),
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+
+    const result = await repairAndExportProjectProductionBoard(enriched.project_id!, {
+      apply_all: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data?.schema_version).toBe('story-production-board-repair-export/v1');
+    expect(result.data?.repair.trace.applied).toBe(true);
+    expect(result.data?.repair.trace.applied_actions).toContain('clean_prompt');
+    expect(result.data?.detail.project.status).toBe('exported');
+    expect(result.data?.detail.project.version_count).toBe(2);
+    expect(result.data?.detail.current_story.scene_breakdown[0].visual_prompt).not.toMatch(/质量|待补/);
+    expect(result.data?.export_package.files.map(file => file.relative_path)).toEqual(expect.arrayContaining([
+      'production-board/manifest.json',
+      'production-board/production-board.json',
+      'production-board/seedance-prompts.md',
+    ]));
+    expect(result.data?.export_package.board.shot_units[0].visual_prompt).not.toMatch(/质量|待补/);
+
+    const exportDir = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'production-board');
+    expect(await exists(resolve(exportDir, 'manifest.json'))).toBe(true);
+    expect(await exists(resolve(exportDir, 'production-board.json'))).toBe(true);
   });
 
   it('repairs production board blockers into a new project version', async () => {

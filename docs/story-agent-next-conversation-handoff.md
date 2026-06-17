@@ -104,6 +104,10 @@ MCP 原则：
   - 剩余修复任务数
   - 变更场景列表
 - Production Board 空修复不再创建新版本。
+- Production Board 增加“修复并落盘”一键流程：
+  - 后端新增 `POST /api/projects/:projectId/production-board/repair-export`。
+  - 服务层复用生产修复和交付包导出，不新开第二套逻辑。
+  - 前端新增“修复并落盘”按钮，成功后沿用修复 diff 和交付包状态。
 
 ### 3.3 后端与测试基础
 
@@ -120,37 +124,34 @@ MCP 原则：
 当前未提交改动文件：
 
 - `docs/story-agent-production-workbench-development-plan.md`
+- `docs/story-agent-next-conversation-handoff.md`
+- `web/client/src/api/projects.ts`
 - `web/client/src/views/ProjectDetail.vue`
-- `web/client/src/views/Projects.vue`
-- `web/client/src/views/StoryStudio.vue`
 - `web/server/src/__tests__/api.test.ts`
 - `web/server/src/__tests__/project-service.test.ts`
-- `web/server/src/services/ai-comic-series-service.ts`
-- `web/server/src/services/gears-webhook-service.ts`
+- `web/server/src/routes/projects.ts`
 - `web/server/src/services/project-service.ts`
-- `web/server/src/services/story-service.ts`
-- `docs/story-agent-next-conversation-handoff.md`
+- `web/shared/types.ts`
 
 ## 4. 已验证内容
 
-已通过：
+本轮重新通过：
 
 ```bash
 cd web/client && npm run lint
 cd web/server && npm run lint
 cd web/server && npm test -- src/__tests__/project-service.test.ts
-cd web/server && npm test -- src/__tests__/gears-webhook-service.test.ts
-cd web/server && npm test -- src/__tests__/outline-service.test.ts
 cd web/server && npm test -- src/__tests__/api.test.ts
 git diff --check
 ```
 
 测试结果：
 
-- `project-service.test.ts`：21 passed。
-- `gears-webhook-service.test.ts`：5 passed。
-- `outline-service.test.ts`：14 passed。
-- `api.test.ts`：78 passed。
+- `project-service.test.ts`：22 passed。
+- `api.test.ts`：79 passed。
+- `web/client && npm run lint`：passed。
+- `web/server && npm run lint`：passed。
+- `git diff --check`：passed。
 
 注意：
 
@@ -193,9 +194,8 @@ git diff --stat
 
 ### P0：Production Board 修复闭环继续补强
 
-已完成单任务修复和轻量 diff，下一步：
+已完成单任务修复、轻量 diff 和“修复并落盘”首版，下一步：
 
-- “修复并落盘”一键流程。
 - Production Repair History。
 - 按镜头 / 问题类别修复。
 - 修复后自动重新生成 Board，并明确 ready / blocked。
@@ -305,7 +305,7 @@ ready 镜头
 可以直接把下面这段发给新对话：
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-conversation-handoff.md，再阅读其中列出的计划文档和技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动。优先收尾当前工作区并继续 P0：故事管理 UX 降噪、Production Board 修复并落盘、Seedance 资产引用字段和素材校验。用户体验不能做复杂，默认界面只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-conversation-handoff.md，再阅读其中列出的计划文档和技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动。优先收尾当前工作区并继续 P0：故事管理 UX 降噪、Production Repair History、Seedance 资产引用字段和素材校验。用户体验不能做复杂，默认界面只保留高频主路径。
 ```
 
 ## 10. 下一步执行建议
@@ -313,20 +313,20 @@ ready 镜头
 如果只继续一个最小任务，建议做：
 
 ```text
-Production Board “修复并落盘”一键流程
+Production Repair History
 ```
 
 理由：
 
-- 它直接承接本轮已完成的单任务修复和 diff。
-- 用户能从“发现问题”一路走到“交付包落盘”。
+- 它直接承接已完成的单任务修复、diff 和修复并落盘。
+- 用户能追踪每次生产修复做了什么、是否生成版本、是否已经导出交付包。
 - 范围比 Seedance 资产引用更小，验证更快。
 
 如果准备做下一组任务，建议顺序：
 
 1. 收尾并提交当前改动。
 2. StoryStudio / Projects 继续降噪。
-3. Production Board 修复并落盘。
+3. Production Repair History。
 4. Seedance 资产引用字段和校验。
 5. MCP `kb_generate_gears_delivery`。
 6. AI 漫剧 `export-seedance-subtitles`。

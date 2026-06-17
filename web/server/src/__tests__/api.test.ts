@@ -441,6 +441,48 @@ describe('Projects API', () => {
     });
   });
 
+  describe('POST /api/projects/:projectId/production-board/repair-export', () => {
+    it('repairs production board issues and exports the package through one route', async () => {
+      const baseStory = makeApiProductionRepairStory();
+      const story: StoryGenerateResult = {
+        ...baseStory,
+        storyId: '20260617-story-apx1',
+        title: 'API 生产修复落盘测试故事',
+        gears_segments_url: '/api/stories/20260617-story-apx1/gears-segments',
+        gears_delivery: baseStory.gears_delivery
+          ? {
+              ...baseStory.gears_delivery,
+              storyId: '20260617-story-apx1',
+              title: 'API 生产修复落盘测试故事',
+            }
+          : undefined,
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T11:30:00.000Z');
+
+      const res = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/repair-export`)
+        .send({ apply_all: true });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.schema_version).toBe('story-production-board-repair-export/v1');
+      expect(res.body.data.repair.trace.applied).toBe(true);
+      expect(res.body.data.repair.trace.applied_actions.length).toBeGreaterThan(0);
+      expect(res.body.data.repair.trace.after_blockers).toBeLessThanOrEqual(
+        res.body.data.repair.trace.before_blockers,
+      );
+      expect(res.body.data.detail.project.status).toBe('exported');
+      expect(res.body.data.detail.project.version_count).toBe(2);
+      expect(res.body.data.export_package.schema_version).toBe('story-production-board-export/v1');
+      expect(res.body.data.export_package.files.map((file: any) => file.relative_path)).toEqual(expect.arrayContaining([
+        'production-board/manifest.json',
+        'production-board/production-board.json',
+        'production-board/seedance-prompts.md',
+      ]));
+      expect(res.body.data.export_package.board.shot_units[0].visual_prompt).not.toMatch(/质量|待补/);
+    });
+  });
+
   describe('POST /api/projects/batch-delete', () => {
     it('validates project_ids', async () => {
       const res = await request.post('/api/projects/batch-delete').send({ project_ids: [] });

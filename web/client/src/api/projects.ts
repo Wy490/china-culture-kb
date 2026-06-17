@@ -10,6 +10,7 @@ import type {
   StoryProjectRetainRecentResult,
   StoryProductionBoard,
   StoryProductionBoardExportPackage,
+  StoryProductionBoardRepairExportResult,
   StoryProductionBoardRepairRequest,
   StoryProductionBoardRepairResult,
   StorySceneRegenerateRequest,
@@ -50,6 +51,10 @@ export function exportProjectProductionBoard(projectId: string) {
 
 export function repairProjectProductionBoard(projectId: string, body: StoryProductionBoardRepairRequest = {}) {
   return apiPost<StoryProductionBoardRepairResult>(`/projects/${projectId}/production-board/repair`, body)
+}
+
+export function repairAndExportProjectProductionBoard(projectId: string, body: StoryProductionBoardRepairRequest = {}) {
+  return apiPost<StoryProductionBoardRepairExportResult>(`/projects/${projectId}/production-board/repair-export`, body)
 }
 
 export function deleteProject(projectId: string) {

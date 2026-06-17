@@ -19,6 +19,7 @@ import {
   getProjectProductionBoard,
   listProjectSupplementTasks,
   listProjects,
+  repairAndExportProjectProductionBoard,
   repairProjectQuality,
   repairProjectProductionBoard,
   regenerateProjectScene,
@@ -125,6 +126,21 @@ projectsRouter.post(
     try {
       const { projectId } = req.params as { projectId: string };
       const result = await repairProjectProductionBoard(projectId, req.body);
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/repair-export',
+  validateParams(ProjectIdParamSchema),
+  validateBody(StoryProductionBoardRepairRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await repairAndExportProjectProductionBoard(projectId, req.body);
       res.status(result.ok ? 200 : 400).json(result);
     } catch (err) {
       next(err);
