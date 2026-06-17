@@ -369,6 +369,54 @@
 
       <section class="project-detail-page__versions">
         <h2 class="project-detail-page__section-title">版本记录</h2>
+        <div v-if="productionRepairHistory.length" class="project-detail-page__repair-history">
+          <div class="project-detail-page__repair-history-head">
+            <strong>Production Repair History</strong>
+            <span>{{ productionRepairHistory.length }} 次生产修复</span>
+          </div>
+          <article
+            v-for="version in productionRepairHistory"
+            :key="version.version_id"
+            class="project-detail-page__repair-history-item"
+          >
+            <div class="project-detail-page__repair-history-title">
+              <strong>{{ version.version_id }}</strong>
+              <span>{{ formatDate(version.created_at) }}</span>
+            </div>
+            <div class="project-detail-page__repair-history-metrics">
+              <span>
+                {{ version.production_board_repair_trace?.applied ? '已应用' : '未变化' }}
+              </span>
+              <span>
+                阻断 {{ version.production_board_repair_trace?.before_blockers ?? 0 }} → {{ version.production_board_repair_trace?.after_blockers ?? 0 }}
+              </span>
+              <span>
+                {{ productionStageLabel(version.production_board_repair_trace?.before_stage) }}
+                →
+                {{ productionStageLabel(version.production_board_repair_trace?.after_stage) }}
+              </span>
+              <span v-if="version.production_board_export">
+                已落盘 {{ version.production_board_export.file_count }} 个文件
+              </span>
+              <span v-else>未记录交付包</span>
+            </div>
+            <div
+              v-if="version.production_board_repair_trace?.applied_actions.length"
+              class="project-detail-page__repair-history-actions"
+            >
+              <span
+                v-for="action in version.production_board_repair_trace.applied_actions"
+                :key="`${version.version_id}-${action}`"
+              >
+                {{ repairActionLabel(action) }}
+              </span>
+            </div>
+            <p v-if="version.note">{{ version.note }}</p>
+            <small v-if="version.production_board_export">
+              交付时间 {{ formatDate(version.production_board_export.exported_at) }}
+            </small>
+          </article>
+        </div>
         <div class="project-detail-page__version-list">
           <div v-for="version in detail.versions" :key="version.version_id" class="project-detail-page__version-card">
             <strong>{{ version.version_id }}</strong>
@@ -429,6 +477,7 @@ import type {
   StoryProjectDetail,
   StoryProjectStatus,
   StoryProjectVersionChangeType,
+  StoryProjectVersionSummary,
   StoryProductionBoard,
   StoryProductionBoardExportPackage,
   StoryProductionBoardRepairResult,
@@ -440,6 +489,10 @@ import type {
 const route = useRoute()
 const router = useRouter()
 const MODEL_PROFILE_STORAGE_KEY = 'story-agent.model-profile-id'
+
+type ProductionRepairHistoryItem = StoryProjectVersionSummary & {
+  production_board_repair_trace: StoryProductionBoardRepairTrace
+}
 
 const detail = ref<StoryProjectDetail | null>(null)
 const loading = ref(false)
@@ -568,6 +621,12 @@ const productionRepairChangedSceneText = computed(() => {
   return ids.length ? ids.map(sceneId => `场景 ${sceneId}`).join('、') : ''
 })
 
+const productionRepairHistory = computed<ProductionRepairHistoryItem[]>(() => {
+  return (detail.value?.versions ?? []).filter((version): version is ProductionRepairHistoryItem => {
+    return version.change_type === 'production_board_repair' && Boolean(version.production_board_repair_trace)
+  })
+})
+
 function statusLabel(status: StoryProjectStatus): string {
   const map: Record<StoryProjectStatus, string> = {
     draft: '草稿',
@@ -630,6 +689,15 @@ function repairActionLabel(action: string): string {
     split_duration: '时长拆分',
   }
   return map[action] ?? action
+}
+
+function productionStageLabel(stage?: string): string {
+  const map: Record<string, string> = {
+    blocked: '阻断',
+    needs_repair: '需修复',
+    ready: 'Ready',
+  }
+  return stage ? (map[stage] ?? stage) : '未记录'
 }
 
 function versionLabel(type: StoryProjectVersionChangeType): string {
@@ -1760,6 +1828,90 @@ watch(selectedModelProfileId, (value) => {
   color: #6b7884;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.project-detail-page__repair-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.project-detail-page__repair-history-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #314252;
+  font-size: 13px;
+}
+
+.project-detail-page__repair-history-head span {
+  color: #647380;
+  font-weight: 700;
+}
+
+.project-detail-page__repair-history-item {
+  border: 1px solid #d9e2ea;
+  border-radius: 6px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.project-detail-page__repair-history-title,
+.project-detail-page__repair-history-metrics,
+.project-detail-page__repair-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.project-detail-page__repair-history-title {
+  justify-content: space-between;
+  color: #22313f;
+  font-size: 13px;
+}
+
+.project-detail-page__repair-history-title span,
+.project-detail-page__repair-history-item small {
+  color: #647380;
+}
+
+.project-detail-page__repair-history-metrics {
+  margin-top: 8px;
+}
+
+.project-detail-page__repair-history-metrics span,
+.project-detail-page__repair-history-actions span {
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  background: #f8fafb;
+  padding: 3px 6px;
+  color: #455866;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__repair-history-actions {
+  margin-top: 8px;
+}
+
+.project-detail-page__repair-history-actions span {
+  border-color: #b8dbc8;
+  color: #1b7f4a;
+}
+
+.project-detail-page__repair-history-item p {
+  margin: 8px 0 0;
+  color: #526575;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.project-detail-page__repair-history-item small {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
 }
 
 .project-detail-page__version-list {

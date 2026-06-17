@@ -108,6 +108,10 @@ MCP 原则：
   - 后端新增 `POST /api/projects/:projectId/production-board/repair-export`。
   - 服务层复用生产修复和交付包导出，不新开第二套逻辑。
   - 前端新增“修复并落盘”按钮，成功后沿用修复 diff 和交付包状态。
+- Production Repair History 首版：
+  - 生产修复版本摘要回读 `production_board_repair_trace`。
+  - Production Board 导出会把交付包时间、目录、文件数和交付阶段写入当前版本快照。
+  - 项目详情页版本记录区域新增 Production Repair History 面板。
 
 ### 3.3 后端与测试基础
 
@@ -125,11 +129,9 @@ MCP 原则：
 
 - `docs/story-agent-production-workbench-development-plan.md`
 - `docs/story-agent-next-conversation-handoff.md`
-- `web/client/src/api/projects.ts`
 - `web/client/src/views/ProjectDetail.vue`
 - `web/server/src/__tests__/api.test.ts`
 - `web/server/src/__tests__/project-service.test.ts`
-- `web/server/src/routes/projects.ts`
 - `web/server/src/services/project-service.ts`
 - `web/shared/types.ts`
 
@@ -194,9 +196,8 @@ git diff --stat
 
 ### P0：Production Board 修复闭环继续补强
 
-已完成单任务修复、轻量 diff 和“修复并落盘”首版，下一步：
+已完成单任务修复、轻量 diff、“修复并落盘”和 Production Repair History 首版，下一步：
 
-- Production Repair History。
 - 按镜头 / 问题类别修复。
 - 修复后自动重新生成 Board，并明确 ready / blocked。
 - 更细的逐场景 diff，按需展开，不要默认铺满页面。
@@ -305,7 +306,7 @@ ready 镜头
 可以直接把下面这段发给新对话：
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-conversation-handoff.md，再阅读其中列出的计划文档和技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动。优先收尾当前工作区并继续 P0：故事管理 UX 降噪、Production Repair History、Seedance 资产引用字段和素材校验。用户体验不能做复杂，默认界面只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-conversation-handoff.md，再阅读其中列出的计划文档和技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动。优先收尾当前工作区并继续 P0：故事管理 UX 降噪、Production Board 按镜头 / 问题类别修复、Seedance 资产引用字段和素材校验。用户体验不能做复杂，默认界面只保留高频主路径。
 ```
 
 ## 10. 下一步执行建议
@@ -313,20 +314,20 @@ ready 镜头
 如果只继续一个最小任务，建议做：
 
 ```text
-Production Repair History
+Production Board 按镜头 / 问题类别修复
 ```
 
 理由：
 
-- 它直接承接已完成的单任务修复、diff 和修复并落盘。
-- 用户能追踪每次生产修复做了什么、是否生成版本、是否已经导出交付包。
+- 它直接承接已完成的单任务修复、diff、修复并落盘和修复历史。
+- 用户能从“修这个任务”进一步细化到“修这个镜头 / 这类问题”。
 - 范围比 Seedance 资产引用更小，验证更快。
 
 如果准备做下一组任务，建议顺序：
 
 1. 收尾并提交当前改动。
 2. StoryStudio / Projects 继续降噪。
-3. Production Repair History。
+3. Production Board 按镜头 / 问题类别修复。
 4. Seedance 资产引用字段和校验。
 5. MCP `kb_generate_gears_delivery`。
 6. AI 漫剧 `export-seedance-subtitles`。

@@ -782,6 +782,8 @@ export interface StoryProjectVersionSummary {
   quality_passed?: boolean;
   genre_score?: number;
   quality_issue_count?: number;
+  production_board_repair_trace?: StoryProductionBoardRepairTrace;
+  production_board_export?: StoryProductionBoardExportRecord;
 }
 
 export interface StoryProjectMeta extends StoryProjectListItem {
@@ -798,6 +800,7 @@ export interface StoryProjectVersionSnapshot {
   scene_ids_changed: number[];
   note?: string;
   quality_report?: StoryQualityReport | GenreQualityReport;
+  production_board_export?: StoryProductionBoardExportRecord;
   story: StoryGenerateResult;
 }
 
@@ -805,6 +808,14 @@ export interface StoryProjectDetail {
   project: StoryProjectMeta;
   current_story: StoryGenerateResult;
   versions: StoryProjectVersionSummary[];
+}
+
+export interface StoryProductionBoardExportRecord {
+  exported_at: string;
+  export_dir: string;
+  file_count: number;
+  delivery_stage: StoryProductionBoardDeliveryStage;
+  delivery_stage_label: string;
 }
 
 export interface StoryProjectExportSummary {

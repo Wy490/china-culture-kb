@@ -34,6 +34,7 @@ import type {
   StoryProductionBoard,
   StoryProductionBoardExportFile,
   StoryProductionBoardExportPackage,
+  StoryProductionBoardExportRecord,
   StoryProductionBoardRepairExportResult,
   StoryProductionBoardRepairRequest,
   StoryProductionBoardRepairResult,
@@ -173,12 +174,17 @@ function toVersionSummary(snapshot: StoryProjectVersionSnapshot): StoryProjectVe
   const qualitySource = snapshot.quality_report
     ? { quality_report: snapshot.quality_report }
     : snapshot.story;
+  const productionBoardRepairTrace = snapshot.change_type === 'production_board_repair'
+    ? snapshot.story.production_board_repair_trace?.[snapshot.story.production_board_repair_trace.length - 1]
+    : undefined;
   return {
     version_id: snapshot.version_id,
     created_at: snapshot.created_at,
     change_type: snapshot.change_type,
     scene_ids_changed: snapshot.scene_ids_changed,
     note: snapshot.note,
+    production_board_repair_trace: productionBoardRepairTrace,
+    production_board_export: snapshot.production_board_export,
     ...qualitySummary(qualitySource),
   };
 }
@@ -399,6 +405,21 @@ async function persistProjectVersion(
   return updatedMeta;
 }
 
+async function updateProjectVersionProductionBoardExport(
+  projectId: string,
+  versionId: string,
+  productionBoardExport: StoryProductionBoardExportRecord,
+): Promise<void> {
+  const versionPath = projectVersionPath(projectId, versionId);
+  if (!(await pathExists(versionPath))) return;
+
+  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(versionPath);
+  await writeJsonFile(versionPath, {
+    ...snapshot,
+    production_board_export: productionBoardExport,
+  });
+}
+
 export async function createProjectFromGeneratedStory(
   story: StoryGenerateResult,
   createdAt: string,
@@ -576,6 +597,13 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
     updated_at: exportedAt,
   };
   await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await updateProjectVersionProductionBoardExport(project.project_id, project.current_version_id, {
+    exported_at: exportedAt,
+    export_dir: exportDir,
+    file_count: files.length,
+    delivery_stage: board.delivery_manifest.stage,
+    delivery_stage_label: board.delivery_manifest.stage_label,
+  });
 
   return success({
     schema_version: 'story-production-board-export/v1',

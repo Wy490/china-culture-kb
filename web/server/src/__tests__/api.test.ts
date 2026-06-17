@@ -473,6 +473,14 @@ describe('Projects API', () => {
       );
       expect(res.body.data.detail.project.status).toBe('exported');
       expect(res.body.data.detail.project.version_count).toBe(2);
+      const repairVersion = res.body.data.detail.versions.find(
+        (version: any) => version.change_type === 'production_board_repair',
+      );
+      expect(repairVersion.production_board_repair_trace.applied).toBe(true);
+      expect(repairVersion.production_board_export).toMatchObject({
+        file_count: res.body.data.export_package.files.length,
+        delivery_stage: res.body.data.export_package.board.delivery_manifest.stage,
+      });
       expect(res.body.data.export_package.schema_version).toBe('story-production-board-export/v1');
       expect(res.body.data.export_package.files.map((file: any) => file.relative_path)).toEqual(expect.arrayContaining([
         'production-board/manifest.json',

@@ -332,6 +332,10 @@ describe('project-service', () => {
 
     const detail = await getProject(enriched.project_id!);
     expect(detail.data?.project.status).toBe('exported');
+    expect(detail.data?.versions[0].production_board_export).toMatchObject({
+      file_count: 7,
+      delivery_stage: exportRes.data?.board.delivery_manifest.stage,
+    });
   });
 
   it('repairs production board issues and exports the repaired package in one step', async () => {
@@ -361,6 +365,12 @@ describe('project-service', () => {
     expect(result.data?.repair.trace.applied_actions).toContain('clean_prompt');
     expect(result.data?.detail.project.status).toBe('exported');
     expect(result.data?.detail.project.version_count).toBe(2);
+    expect(result.data?.detail.versions[0].production_board_repair_trace?.applied).toBe(true);
+    expect(result.data?.detail.versions[0].production_board_repair_trace?.applied_actions).toContain('clean_prompt');
+    expect(result.data?.detail.versions[0].production_board_export).toMatchObject({
+      file_count: result.data?.export_package.files.length,
+      delivery_stage: result.data?.export_package.board.delivery_manifest.stage,
+    });
     expect(result.data?.detail.current_story.scene_breakdown[0].visual_prompt).not.toMatch(/质量|待补/);
     expect(result.data?.export_package.files.map(file => file.relative_path)).toEqual(expect.arrayContaining([
       'production-board/manifest.json',
@@ -439,6 +449,8 @@ describe('project-service', () => {
     expect(repairRes.data?.trace.after_blockers).toBeLessThan(repairRes.data?.trace.before_blockers ?? 999);
     expect(repairRes.data?.detail.project.version_count).toBe(2);
     expect(repairRes.data?.detail.versions[0].change_type).toBe('production_board_repair');
+    expect(repairRes.data?.detail.versions[0].production_board_repair_trace?.applied_actions).toContain('normalize_period_costumes');
+    expect(repairRes.data?.detail.versions[0].production_board_export).toBeUndefined();
     expect(repairRes.data?.detail.current_story.gears_delivery?.character_assets[0].clothing).toContain('宋代');
     expect(repairRes.data?.after_board.character_assets[0].clothing).toContain('宋代');
   });
