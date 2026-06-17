@@ -3,7 +3,7 @@
 > 日期：2026-06-17  
 > 当前分支：`codex-ai-comic-series-longform`  
 > 适用场景：在新的 Codex / Claude 对话中继续 Story Agent、Production Board、GEARS / Seedance 交付链开发。  
-> 当前状态：本轮开发成果尚未提交，继续前先执行 `git status --short`。
+> 当前状态：继续前先执行 `git status --short`；如有未提交改动，先确认来源和范围再推进。
 
 ## 1. 新对话优先阅读
 
@@ -31,7 +31,7 @@
 | 模块 | 进度判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
-| Production Board / GEARS / Seedance 交付链 | 约 66% -> 本轮推进到约 68% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff 和 Seedance 素材 slot 首版。 |
+| Production Board / GEARS / Seedance 交付链 | 约 66% -> 本轮推进到约 69% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot 和素材缺口报告首版。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划已具备；字幕/混音/片头片尾/final delivery 仍待做。 |
 | 可商用制作中台 | 约 35-40% | 主链路可用，但还缺 UX 降噪、资产绑定、状态总览、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 35-40% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story` 已完成；GEARS/Seedance/repair/version 写入工具待做。 |
@@ -126,6 +126,11 @@ MCP 原则：
   - Production Board 镜头单元新增 `seedance_asset_slots` 和 `seedance_material_validation`，Seedance JSON/Markdown 导出会带出素材 slot 与复杂度/时长风险。
   - Seedance prompt 会为每个 `@图片` 引用写明人物、场景或道具用途。
   - Production Board 展示层会清理画面提示中的生成优先级、来源说明、质量信号等内部前缀；修复计划仍用原始提示识别 `clean_prompt` 任务，便于回写项目版本。
+- Production Board 级 Seedance 素材缺口报告首版：
+  - `StoryProductionBoard` 新增 `seedance_asset_report`，按素材 slot 聚合素材状态、待上传数量、缺槽位和受影响镜头。
+  - 交付清单新增 `Seedance Asset Report` artifact。
+  - Production Board 导出包新增 `seedance-asset-report.json` 和 `seedance-asset-report.md`。
+  - 项目详情页展示待上传素材、缺槽位、受影响镜头和前 8 个缺文件素材。
 
 ### 3.3 后端与测试基础
 
@@ -141,14 +146,12 @@ MCP 原则：
 
 当前未提交改动文件：
 
-- `docs/story-agent-production-workbench-development-plan.md`
 - `docs/story-agent-next-conversation-handoff.md`
+- `docs/story-agent-production-workbench-development-plan.md`
 - `web/client/src/views/ProjectDetail.vue`
 - `web/server/src/__tests__/project-service.test.ts`
-- `web/server/src/__tests__/seedance-prompt-service.test.ts`
 - `web/server/src/services/production-board-service.ts`
 - `web/server/src/services/project-service.ts`
-- `web/server/src/services/seedance-prompt-service.ts`
 - `web/shared/types.ts`
 
 ## 4. 已验证内容
@@ -173,6 +176,7 @@ git diff --check
 - `web/server && npm run lint`：passed。
 - `git diff --check`：passed。
 - 浏览器 smoke：`http://127.0.0.1:5174/projects/20260617-story-5xh7--ai_comic_drama` 的 Production Board / Seedance 展开区已确认素材 slot、素材校验、复杂度、风险标签、`@图片` 均可见；Seedance 提示词和镜头邻近区域未见 `生成优先级`、`本场景基于`、`具体细节请核实来源`、`核心画面是`，控制台无 error。
+- 浏览器 smoke：`http://localhost:5173/projects/20260617-story-5xh7--ai_comic_drama` 的 Production Board 已确认 `Seedance Asset Report` artifact、素材缺口摘要、待上传数量、缺文件素材 chips、`@图片` 可见，控制台无 error。
 
 注意：
 
@@ -191,12 +195,12 @@ git diff --stat
 ```
 
 2. 复核当前未提交改动。
-3. 如果没有新增问题，提交当前成果。
+3. 如果有未提交改动且没有新增问题，先提交当前成果。
 
 建议提交信息：
 
 ```text
-补齐 Seedance 素材引用 slot 和校验
+接入 Seedance 素材缺口报告
 ```
 
 ### P0：继续故事管理 UX 降噪
@@ -231,12 +235,13 @@ git diff --stat
 - `@图片1` 引用角色/场景/道具用途分配。
 - 素材数量限制校验。
 - Prompt Complexity / Duration 校验。
+- Production Board 级素材缺口报告。
 
 仍待做：
 
 - `@视频1` / `@音频1` 引用角色分配。
 - 资产库绑定、上传状态和缺失文件提示。
-- Production Board 级素材缺口报告。
+- 真实资产库绑定、上传状态回写和文件 URL / file_id 持久化。
 - Seedance Shot Ledger 与镜头状态继续增强。
 
 字段规则必须遵守：

@@ -575,6 +575,22 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
     'text/markdown',
   );
   await writeExportFile(
+    'seedance-asset-report-json',
+    'seedance_asset_report',
+    'Seedance Asset Report JSON',
+    'seedance-asset-report.json',
+    JSON.stringify(board.seedance_asset_report, null, 2),
+    'application/json',
+  );
+  await writeExportFile(
+    'seedance-asset-report-markdown',
+    'seedance_asset_report',
+    'Seedance Asset Report Markdown',
+    'seedance-asset-report.md',
+    board.seedance_asset_report.markdown,
+    'text/markdown',
+  );
+  await writeExportFile(
     'delivery-manifest',
     'delivery_manifest',
     'Delivery Manifest',

@@ -282,18 +282,23 @@ describe('project-service', () => {
     expect(boardRes.data?.shot_units[0].seedance_prompt).toContain('0-3秒');
     expect(boardRes.data?.shot_units[0].seedance_asset_slots.length).toBeGreaterThan(0);
     expect(boardRes.data?.shot_units[0].seedance_material_validation.prompt_complexity_score).toBeGreaterThan(0);
+    expect(boardRes.data?.seedance_asset_report.total_asset_count).toBeGreaterThan(0);
+    expect(boardRes.data?.seedance_asset_report.upload_required_count).toBeGreaterThan(0);
+    expect(boardRes.data?.seedance_asset_report.shots[0].missing_asset_ids.length).toBeGreaterThan(0);
     expect(boardRes.data?.supervision_report.issue_count).toBeGreaterThan(0);
     expect(boardRes.data?.supervision_report.priority_fixes.length).toBeGreaterThan(0);
     expect(boardRes.data?.repair_plan.task_count).toBeGreaterThan(0);
     expect(boardRes.data?.repair_plan.tasks.map(task => task.action)).toContain('add_continuity');
     expect(boardRes.data?.delivery_manifest.stage).toBe('needs_repair');
     expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('seedance_prompts');
+    expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('seedance_asset_report');
     expect(boardRes.data?.qa_report.score).toBeGreaterThanOrEqual(0);
     expect(boardRes.data?.qa_report.issues.some(issue => issue.includes('连续性约束不足'))).toBe(true);
     expect(boardRes.data?.markdown).toContain('## 镜头单元');
     expect(boardRes.data?.markdown).toContain('## 监督检查');
     expect(boardRes.data?.markdown).toContain('## 生产修复包');
     expect(boardRes.data?.markdown).toContain('## 交付清单');
+    expect(boardRes.data?.markdown).toContain('## Seedance 素材缺口');
     expect(boardRes.data?.markdown).toContain('Seedance');
     expect(boardRes.data?.markdown).toContain('Seedance 素材 slot');
   });
@@ -318,16 +323,20 @@ describe('project-service', () => {
       'production-board/repair-plan.json',
       'production-board/seedance-prompts.json',
       'production-board/seedance-prompts.md',
+      'production-board/seedance-asset-report.json',
+      'production-board/seedance-asset-report.md',
     ]));
 
     const exportDir = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'production-board');
     expect(await exists(resolve(exportDir, 'manifest.json'))).toBe(true);
     expect(await exists(resolve(exportDir, 'production-board.json'))).toBe(true);
     expect(await exists(resolve(exportDir, 'seedance-prompts.md'))).toBe(true);
+    expect(await exists(resolve(exportDir, 'seedance-asset-report.md'))).toBe(true);
 
     const manifest = JSON.parse(await readFile(resolve(exportDir, 'manifest.json'), 'utf-8'));
     expect(manifest.schema_version).toBe('story-production-board-manifest/v1');
     expect(manifest.delivery_manifest.artifacts.map((artifact: { kind: string }) => artifact.kind)).toContain('seedance_prompts');
+    expect(manifest.delivery_manifest.artifacts.map((artifact: { kind: string }) => artifact.kind)).toContain('seedance_asset_report');
 
     const seedanceMarkdown = await readFile(resolve(exportDir, 'seedance-prompts.md'), 'utf-8');
     expect(seedanceMarkdown).toContain('Seedance 2.0 镜头提示词');
@@ -336,11 +345,15 @@ describe('project-service', () => {
     const seedanceJson = JSON.parse(await readFile(resolve(exportDir, 'seedance-prompts.json'), 'utf-8'));
     expect(seedanceJson.shot_units[0].asset_slots.length).toBeGreaterThan(0);
     expect(seedanceJson.shot_units[0].material_validation.prompt_complexity_score).toBeGreaterThan(0);
+    const seedanceAssetReport = JSON.parse(await readFile(resolve(exportDir, 'seedance-asset-report.json'), 'utf-8'));
+    expect(seedanceAssetReport.schema_version).toBe('seedance-asset-report/v1');
+    expect(seedanceAssetReport.assets[0].status).toBe('missing_file');
+    expect(seedanceAssetReport.markdown).toContain('Seedance 素材缺口报告');
 
     const detail = await getProject(enriched.project_id!);
     expect(detail.data?.project.status).toBe('exported');
     expect(detail.data?.versions[0].production_board_export).toMatchObject({
-      file_count: 7,
+      file_count: 9,
       delivery_stage: exportRes.data?.board.delivery_manifest.stage,
     });
   });

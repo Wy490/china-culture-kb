@@ -1,6 +1,8 @@
 import type {
   GearsDeliveryPackage,
   GearsSegment,
+  SeedanceAssetBindingItem,
+  SeedanceAssetReportPackage,
   StoryGenerateResult,
   StoryProductionBoard,
   StoryProductionBoardDeliveryArtifact,
@@ -43,19 +45,26 @@ export function buildStoryProductionBoard(story: StoryGenerateResult): StoryProd
   const supervisionReport = buildSupervisionReport(story, delivery, shotUnits);
   const repairPlan = buildRepairPlan(supervisionReport);
   const qaReport = buildQaReport(shotUnits, delivery.validation_notes, supervisionReport);
-  const deliveryManifest = buildDeliveryManifest(shotUnits, supervisionReport, repairPlan, qaReport);
+  const generatedAt = new Date().toISOString();
+  const seedanceAssetReport = buildSeedanceAssetReport({
+    story,
+    shotUnits,
+    generatedAt,
+  });
+  const deliveryManifest = buildDeliveryManifest(shotUnits, supervisionReport, repairPlan, qaReport, seedanceAssetReport);
   const pkgWithoutMarkdown: Omit<StoryProductionBoard, 'markdown'> = {
     schema_version: 'story-production-board/v1',
     project_id: story.project_id,
     storyId: story.storyId,
     title: story.title,
-    generated_at: new Date().toISOString(),
+    generated_at: generatedAt,
     character_assets: delivery.character_assets,
     location_assets: delivery.scene_assets,
     costume_assets: costumeAssets,
     prop_assets: propAssets,
     director_plan: directorPlan,
     shot_units: shotUnits,
+    seedance_asset_report: seedanceAssetReport,
     continuity_constraints: continuityConstraints,
     negative_constraints: DEFAULT_NEGATIVE_CONSTRAINTS,
     supervision_report: supervisionReport,
@@ -239,6 +248,142 @@ function buildQaReport(
   };
 }
 
+function buildSeedanceAssetReport(input: {
+  story: StoryGenerateResult;
+  shotUnits: StoryProductionBoardShotUnit[];
+  generatedAt: string;
+}): SeedanceAssetReportPackage {
+  const assets = new Map<string, SeedanceAssetBindingItem>();
+  const shots = input.shotUnits.map(unit => {
+    for (const slot of unit.seedance_asset_slots) {
+      upsertSeedanceAssetBinding(assets, {
+        asset_id: slot.asset_id,
+        label: slot.label,
+        kind: slot.kind,
+        modality: slot.modality,
+        role: slot.role,
+        reference_slot: slot.reference_slot,
+        prompt_usage: slot.prompt_usage,
+        source_scene_ids: [unit.source_scene_id],
+        source_shot_ids: [unit.shot_id],
+        required_by_shot_count: 1,
+        ...seedanceBindingState(slot.reference_slot),
+      });
+    }
+    const requiredAssetIds = uniqueStrings(unit.seedance_asset_slots.map(slot => slot.asset_id));
+    const missingAssetIds = uniqueStrings(unit.seedance_asset_slots
+      .filter(slot => seedanceBindingState(slot.reference_slot).status !== 'bound')
+      .map(slot => slot.asset_id));
+    return {
+      shot_id: unit.shot_id,
+      source_scene_id: unit.source_scene_id,
+      required_asset_ids: requiredAssetIds,
+      missing_asset_ids: missingAssetIds,
+      reference_slots: uniqueStrings(unit.seedance_asset_slots.map(slot => slot.reference_slot).filter(Boolean)),
+      prompt_preview: summarizeText(unit.seedance_prompt, 120),
+    };
+  });
+  const assetList = [...assets.values()].sort((a, b) => {
+    const statusWeight: Record<SeedanceAssetBindingItem['status'], number> = {
+      missing_reference_slot: 0,
+      missing_file: 1,
+      bound: 2,
+    };
+    if (a.status !== b.status) return statusWeight[a.status] - statusWeight[b.status];
+    if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+    return a.label.localeCompare(b.label, 'zh-CN');
+  });
+  const basePackage: Omit<SeedanceAssetReportPackage, 'markdown'> = {
+    schema_version: 'seedance-asset-report/v1',
+    project_id: input.story.project_id,
+    storyId: input.story.storyId,
+    title: input.story.title,
+    generated_at: input.generatedAt,
+    total_asset_count: assetList.length,
+    missing_reference_slot_count: assetList.filter(asset => !asset.has_reference_slot).length,
+    upload_required_count: assetList.filter(asset => asset.needs_upload).length,
+    shot_binding_count: shots.length,
+    unbound_shot_count: shots.filter(shot => shot.missing_asset_ids.length > 0).length,
+    assets: assetList,
+    shots,
+  };
+  return {
+    ...basePackage,
+    markdown: renderSeedanceAssetReportMarkdown(basePackage),
+  };
+}
+
+function seedanceBindingState(referenceSlot?: string): Pick<SeedanceAssetBindingItem, 'has_reference_slot' | 'is_bound' | 'needs_upload' | 'status'> {
+  const hasReferenceSlot = Boolean(referenceSlot?.trim());
+  return {
+    has_reference_slot: hasReferenceSlot,
+    is_bound: false,
+    needs_upload: true,
+    status: hasReferenceSlot ? 'missing_file' : 'missing_reference_slot',
+  };
+}
+
+function upsertSeedanceAssetBinding(
+  assets: Map<string, SeedanceAssetBindingItem>,
+  next: SeedanceAssetBindingItem,
+): void {
+  const existing = assets.get(next.asset_id);
+  if (!existing) {
+    assets.set(next.asset_id, {
+      ...next,
+      source_scene_ids: uniqueNumbers(next.source_scene_ids),
+      source_shot_ids: uniqueStrings(next.source_shot_ids),
+    });
+    return;
+  }
+  const referenceSlot = existing.reference_slot ?? next.reference_slot;
+  const hasReferenceSlot = existing.has_reference_slot || next.has_reference_slot;
+  const isBound = existing.is_bound || next.is_bound;
+  const sourceShotIds = uniqueStrings([...existing.source_shot_ids, ...next.source_shot_ids]);
+  assets.set(next.asset_id, {
+    ...existing,
+    reference_slot: referenceSlot,
+    prompt_usage: existing.prompt_usage ?? next.prompt_usage,
+    source_scene_ids: uniqueNumbers([...existing.source_scene_ids, ...next.source_scene_ids]),
+    source_shot_ids: sourceShotIds,
+    required_by_shot_count: sourceShotIds.length,
+    has_reference_slot: hasReferenceSlot,
+    is_bound: isBound,
+    needs_upload: !isBound,
+    status: isBound ? 'bound' : hasReferenceSlot ? 'missing_file' : 'missing_reference_slot',
+  });
+}
+
+function renderSeedanceAssetReportMarkdown(pkg: Omit<SeedanceAssetReportPackage, 'markdown'>): string {
+  const lines = [
+    `# ${pkg.title} Seedance 素材缺口报告`,
+    '',
+    `- 项目 ID: ${pkg.project_id ?? '未记录'}`,
+    `- 故事 ID: ${pkg.storyId}`,
+    `- 生成时间: ${pkg.generated_at}`,
+    `- 素材总数: ${pkg.total_asset_count}`,
+    `- 待上传文件: ${pkg.upload_required_count}`,
+    `- 缺引用槽位: ${pkg.missing_reference_slot_count}`,
+    `- 受影响镜头: ${pkg.unbound_shot_count}/${pkg.shot_binding_count}`,
+    '',
+    '## 素材状态',
+    ...(pkg.assets.length ? pkg.assets.map(asset => [
+      `- [${seedanceAssetBindingStatusLabel(asset.status)}] ${asset.reference_slot ?? '未分配槽位'} · ${seedanceAssetKindLabel(asset.kind)}「${asset.label}」`,
+      `  - 用途: ${seedanceAssetRoleLabel(asset.role)}；格式: ${asset.modality}；镜头: ${asset.source_shot_ids.join('、') || '无'}；使用次数: ${asset.required_by_shot_count}`,
+      asset.prompt_usage ? `  - 提示词用途: ${asset.prompt_usage}` : '',
+    ].filter(Boolean)).flat() : ['- 无']),
+    '',
+    '## 镜头缺口',
+    ...(pkg.shots.length ? pkg.shots.map(shot => [
+      `- ${shot.shot_id} / 场景 ${shot.source_scene_id}: ${shot.missing_asset_ids.length ? `缺 ${shot.missing_asset_ids.length} 个素材文件` : '素材已绑定'}`,
+      `  - slots: ${shot.reference_slots.join('、') || '无'}`,
+      `  - prompt: ${shot.prompt_preview}`,
+    ]).flat() : ['- 无']),
+    '',
+  ];
+  return lines.join('\n');
+}
+
 function shotQaFlags(input: {
   scriptText: string;
   visualPrompt: string;
@@ -407,6 +552,39 @@ function uniqueStrings(values: string[]): string[] {
   return [...new Set(values)];
 }
 
+function uniqueNumbers(values: number[]): number[] {
+  return [...new Set(values)].sort((a, b) => a - b);
+}
+
+function summarizeText(value: string, maxLength: number): string {
+  const text = value.replace(/\s+/g, ' ').trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, Math.max(0, maxLength - 1)).trim()}…`;
+}
+
+function seedanceAssetBindingStatusLabel(status: SeedanceAssetBindingItem['status']): string {
+  if (status === 'bound') return '已绑定文件';
+  if (status === 'missing_file') return '缺文件';
+  return '缺引用槽位';
+}
+
+function seedanceAssetKindLabel(kind: SeedanceAssetBindingItem['kind']): string {
+  if (kind === 'character') return '人物';
+  if (kind === 'location') return '场景';
+  if (kind === 'prop') return '道具';
+  if (kind === 'camera') return '运镜';
+  return '音频';
+}
+
+function seedanceAssetRoleLabel(role: SeedanceAssetBindingItem['role']): string {
+  if (role === 'character_reference') return '人物形象参考';
+  if (role === 'location_reference') return '场景氛围参考';
+  if (role === 'prop_reference') return '道具外观参考';
+  if (role === 'camera_reference') return '运镜参考';
+  if (role === 'music_reference') return '音乐参考';
+  return '声音参考';
+}
+
 function buildRepairPlan(report: StoryProductionBoardSupervisionReport): StoryProductionBoardRepairPlan {
   const tasks = [
     buildTaskForAction(report.issues, 'normalize_period_costumes'),
@@ -428,6 +606,7 @@ function buildDeliveryManifest(
   supervisionReport: StoryProductionBoardSupervisionReport,
   repairPlan: StoryProductionBoardRepairPlan,
   qaReport: StoryProductionBoardQaReport,
+  seedanceAssetReport: SeedanceAssetReportPackage,
 ): StoryProductionBoardDeliveryManifest {
   const hasSeedancePrompts = shotUnits.length > 0
     && shotUnits.every(unit => unit.seedance_prompt.includes('0-3秒') && unit.seedance_duration_sec >= 4 && unit.seedance_duration_sec <= 15);
@@ -475,6 +654,13 @@ function buildDeliveryManifest(
       label: 'Seedance 2.0 Shot Prompts',
       status: hasSeedancePrompts ? stage : 'blocked',
       description: '每个镜头的 4-15 秒 Seedance 分时段视频提示词。',
+    },
+    {
+      artifact_id: 'seedance-asset-report',
+      kind: 'seedance_asset_report',
+      label: 'Seedance Asset Report',
+      status: seedanceAssetReport.unbound_shot_count > 0 ? 'needs_repair' : 'ready',
+      description: '按素材 slot 聚合人物、场景和道具引用，标记缺槽位、缺文件和待上传镜头。',
     },
   ];
   return {
@@ -765,6 +951,15 @@ function renderProductionBoardMarkdown(pkg: Omit<StoryProductionBoard, 'markdown
     `- 可用交付物: ${pkg.delivery_manifest.ready_artifact_count}/${pkg.delivery_manifest.artifacts.length}`,
     ...(pkg.delivery_manifest.blockers.length ? pkg.delivery_manifest.blockers.map(blocker => `- 阻断: ${blocker}`) : ['- 阻断: 无']),
     ...pkg.delivery_manifest.artifacts.map(artifact => `- [${artifact.status}] ${artifact.label}: ${artifact.description}`),
+    '',
+    '## Seedance 素材缺口',
+    `- 素材总数: ${pkg.seedance_asset_report.total_asset_count}`,
+    `- 待上传文件: ${pkg.seedance_asset_report.upload_required_count}`,
+    `- 缺引用槽位: ${pkg.seedance_asset_report.missing_reference_slot_count}`,
+    `- 受影响镜头: ${pkg.seedance_asset_report.unbound_shot_count}/${pkg.seedance_asset_report.shot_binding_count}`,
+    ...(pkg.seedance_asset_report.assets.slice(0, 12).map(asset =>
+      `- [${seedanceAssetBindingStatusLabel(asset.status)}] ${asset.reference_slot ?? '未分配槽位'} · ${seedanceAssetKindLabel(asset.kind)}「${asset.label}」 · 镜头 ${asset.source_shot_ids.join('、') || '无'}`
+    )),
     '',
     '## 角色资产',
     ...pkg.character_assets.map(asset => `- ${asset.name}: ${asset.role_position}；${asset.appearance_features}；服装：${asset.clothing}`),

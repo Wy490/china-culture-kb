@@ -1029,6 +1029,52 @@ export interface SeedanceShotAssetSlot {
   prompt_usage: string;
 }
 
+export type SeedanceAssetBindingStatus = 'bound' | 'missing_file' | 'missing_reference_slot';
+
+export interface SeedanceAssetBindingItem {
+  asset_id: string;
+  label: string;
+  kind: SeedanceAssetReferenceKind;
+  modality: SeedanceAssetModality;
+  role: SeedanceAssetSlotRole;
+  reference_slot?: string;
+  file_url?: string;
+  file_id?: string;
+  prompt_usage?: string;
+  source_scene_ids: number[];
+  source_shot_ids: string[];
+  required_by_shot_count: number;
+  has_reference_slot: boolean;
+  is_bound: boolean;
+  needs_upload: boolean;
+  status: SeedanceAssetBindingStatus;
+}
+
+export interface SeedanceShotAssetBinding {
+  shot_id: string;
+  source_scene_id: number;
+  required_asset_ids: string[];
+  missing_asset_ids: string[];
+  reference_slots: string[];
+  prompt_preview: string;
+}
+
+export interface SeedanceAssetReportPackage {
+  schema_version: 'seedance-asset-report/v1';
+  project_id?: string;
+  storyId: string;
+  title: string;
+  generated_at: string;
+  total_asset_count: number;
+  missing_reference_slot_count: number;
+  upload_required_count: number;
+  shot_binding_count: number;
+  unbound_shot_count: number;
+  assets: SeedanceAssetBindingItem[];
+  shots: SeedanceShotAssetBinding[];
+  markdown: string;
+}
+
 export type SeedanceDurationRisk = 'ok' | 'dense' | 'overloaded';
 
 export interface SeedanceShotMaterialValidation {
@@ -1822,7 +1868,8 @@ export type StoryProductionBoardDeliveryArtifactKind =
   | 'board_markdown'
   | 'supervision_report'
   | 'repair_plan'
-  | 'seedance_prompts';
+  | 'seedance_prompts'
+  | 'seedance_asset_report';
 
 export interface StoryProductionBoardDeliveryArtifact {
   artifact_id: string;
@@ -1862,6 +1909,7 @@ export interface StoryProductionBoard {
   prop_assets: StoryProductionBoardPropAsset[];
   director_plan: StoryProductionBoardDirectorPlan[];
   shot_units: StoryProductionBoardShotUnit[];
+  seedance_asset_report: SeedanceAssetReportPackage;
   continuity_constraints: string[];
   negative_constraints: string[];
   supervision_report: StoryProductionBoardSupervisionReport;

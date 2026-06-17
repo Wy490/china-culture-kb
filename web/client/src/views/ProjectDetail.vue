@@ -79,6 +79,7 @@
               · 镜头 {{ productionBoard.shot_units.length }}
               · 角色资产 {{ productionBoard.character_assets.length }}
               · 场景资产 {{ productionBoard.location_assets.length }}
+              · 待上传素材 {{ productionBoard.seedance_asset_report.upload_required_count }}
             </p>
           </div>
           <div class="project-detail-page__production-actions">
@@ -129,6 +130,26 @@
               :class="`project-detail-page__delivery-artifact--${artifact.status}`"
             >
               {{ artifact.label }}
+            </span>
+          </div>
+        </div>
+        <div class="project-detail-page__seedance-asset-report">
+          <div>
+            <strong>Seedance 素材缺口</strong>
+            <p>
+              {{ productionBoard.seedance_asset_report.total_asset_count }} 个素材
+              · 待上传 {{ productionBoard.seedance_asset_report.upload_required_count }}
+              · 缺槽位 {{ productionBoard.seedance_asset_report.missing_reference_slot_count }}
+              · 受影响镜头 {{ productionBoard.seedance_asset_report.unbound_shot_count }}/{{ productionBoard.seedance_asset_report.shot_binding_count }}
+            </p>
+          </div>
+          <div class="project-detail-page__seedance-asset-items">
+            <span
+              v-for="asset in productionBoard.seedance_asset_report.assets.slice(0, 8)"
+              :key="asset.asset_id"
+              :class="`project-detail-page__seedance-asset-item--${asset.status}`"
+            >
+              {{ asset.reference_slot ?? '未分配槽位' }} · {{ asset.label }} · {{ seedanceAssetStatusLabel(asset.status) }}
             </span>
           </div>
         </div>
@@ -773,6 +794,15 @@ function seedanceDurationRiskLabel(risk: string): string {
   return map[risk] ?? risk
 }
 
+function seedanceAssetStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    bound: '已绑定',
+    missing_file: '缺文件',
+    missing_reference_slot: '缺槽位',
+  }
+  return map[status] ?? status
+}
+
 function versionLabel(type: StoryProjectVersionChangeType): string {
   if (type === 'initial_generation') return '初次生成'
   if (type === 'quality_repair') return '质量修复'
@@ -1402,6 +1432,62 @@ watch(selectedModelProfileId, (value) => {
 }
 
 .project-detail-page__delivery-artifact--blocked {
+  border-color: #f0c4bd !important;
+  color: #b13b2e !important;
+}
+
+.project-detail-page__seedance-asset-report {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.project-detail-page__seedance-asset-report strong {
+  color: #22313f;
+}
+
+.project-detail-page__seedance-asset-report p {
+  margin: 4px 0 0;
+  color: #526575;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.project-detail-page__seedance-asset-items {
+  display: flex;
+  max-width: 520px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.project-detail-page__seedance-asset-items span {
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  padding: 3px 6px;
+  background: #f8fafb;
+  color: #455866;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__seedance-asset-item--bound {
+  border-color: #b8dbc8 !important;
+  color: #1b7f4a !important;
+}
+
+.project-detail-page__seedance-asset-item--missing_file {
+  border-color: #efcf8a !important;
+  color: #9a6300 !important;
+}
+
+.project-detail-page__seedance-asset-item--missing_reference_slot {
   border-color: #f0c4bd !important;
   color: #b13b2e !important;
 }
@@ -2185,11 +2271,13 @@ watch(selectedModelProfileId, (value) => {
   }
 
   .project-detail-page__delivery-manifest,
+  .project-detail-page__seedance-asset-report,
   .project-detail-page__export-package {
     grid-template-columns: 1fr;
   }
 
   .project-detail-page__delivery-artifacts,
+  .project-detail-page__seedance-asset-items,
   .project-detail-page__export-files {
     justify-content: flex-start;
   }
