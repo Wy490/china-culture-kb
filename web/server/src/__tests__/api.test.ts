@@ -439,6 +439,35 @@ describe('Projects API', () => {
         repairRes.body.data.after_board.supervision_report.issues.some((issue: any) => issue.category === 'period'),
       ).toBe(true);
     });
+
+    it('repairs only the requested production board category through the route', async () => {
+      const baseStory = makeApiProductionRepairStory();
+      const story: StoryGenerateResult = {
+        ...baseStory,
+        storyId: '20260617-story-apc1',
+        title: 'API 生产分类修复测试故事',
+        gears_segments_url: '/api/stories/20260617-story-apc1/gears-segments',
+        gears_delivery: baseStory.gears_delivery
+          ? {
+              ...baseStory.gears_delivery,
+              storyId: '20260617-story-apc1',
+              title: 'API 生产分类修复测试故事',
+            }
+          : undefined,
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T11:15:00.000Z');
+
+      const repairRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/repair`)
+        .send({ categories: ['prompt'] });
+
+      expect(repairRes.status).toBe(200);
+      expectSuccess(repairRes.body);
+      expect(repairRes.body.data.trace.applied_actions).toEqual(['clean_prompt']);
+      expect(repairRes.body.data.trace.applied_actions).not.toContain('normalize_period_costumes');
+      expect(repairRes.body.data.detail.current_story.scene_breakdown[0].visual_prompt).not.toMatch(/质量|待补/);
+      expect(repairRes.body.data.detail.current_story.gears_delivery.character_assets[0].clothing).toContain('清末民初');
+    });
   });
 
   describe('POST /api/projects/:projectId/production-board/repair-export', () => {

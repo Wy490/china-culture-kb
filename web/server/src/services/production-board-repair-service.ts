@@ -9,6 +9,7 @@ import type {
   StoryProductionBoardRepairRequest,
   StoryProductionBoardRepairTask,
   StoryProductionBoardRepairTrace,
+  StoryProductionBoardSupervisionIssue,
   StoryScene,
 } from '@shared/types.js';
 import { buildGearsDeliveryPackage, ensureGearsDeliveryPackage } from './gears-delivery-service.js';
@@ -25,7 +26,7 @@ export function repairStoryWithProductionBoard(
   trace: StoryProductionBoardRepairTrace;
 } {
   const beforeBoard = buildStoryProductionBoard(story);
-  const selectedTasks = selectProductionRepairTasks(beforeBoard.repair_plan.tasks, request);
+  const selectedTasks = selectProductionRepairTasks(beforeBoard, request);
   const appliedTaskIds: string[] = [];
   const skippedTaskIds: string[] = [];
   let nextStory: StoryGenerateResult = {
@@ -86,25 +87,88 @@ export function repairStoryWithProductionBoard(
 }
 
 function selectProductionRepairTasks(
-  tasks: StoryProductionBoardRepairTask[],
+  board: StoryProductionBoard,
   request: StoryProductionBoardRepairRequest,
 ): StoryProductionBoardRepairTask[] {
+  const tasks = board.repair_plan.tasks;
+  let selected = tasks;
+
   if (request.task_ids?.length) {
     const ids = new Set(request.task_ids);
-    return tasks.filter(task => ids.has(task.task_id));
+    selected = selected.filter(task => ids.has(task.task_id));
   }
   if (request.actions?.length) {
     const actions = new Set(request.actions);
-    return tasks.filter(task => actions.has(task.action));
+    selected = selected.filter(task => actions.has(task.action));
   }
   if (request.priorities?.length) {
     const priorities = new Set(request.priorities);
-    return tasks.filter(task => priorities.has(task.priority));
+    selected = selected.filter(task => priorities.has(task.priority));
   }
-  if (request.apply_all) return tasks;
+  if (!hasExplicitProductionRepairSelection(request)) {
+    if (request.apply_all) return tasks;
+    const blockers = tasks.filter(task => task.priority === 'P0');
+    selected = blockers.length ? blockers : tasks;
+  }
 
-  const blockers = tasks.filter(task => task.priority === 'P0');
-  return blockers.length ? blockers : tasks;
+  return selected
+    .map(task => scopeProductionRepairTask(board, task, request))
+    .filter((task): task is StoryProductionBoardRepairTask => Boolean(task));
+}
+
+function hasExplicitProductionRepairSelection(request: StoryProductionBoardRepairRequest): boolean {
+  return Boolean(
+    request.task_ids?.length
+    || request.actions?.length
+    || request.priorities?.length
+    || request.categories?.length
+    || request.shot_ids?.length
+    || request.scene_ids?.length,
+  );
+}
+
+function scopeProductionRepairTask(
+  board: StoryProductionBoard,
+  task: StoryProductionBoardRepairTask,
+  request: StoryProductionBoardRepairRequest,
+): StoryProductionBoardRepairTask | null {
+  if (!request.categories?.length && !request.shot_ids?.length && !request.scene_ids?.length) {
+    return task;
+  }
+
+  const taskIssueIds = new Set(task.target_issue_ids);
+  const targetIssues = board.supervision_report.issues.filter(issue =>
+    taskIssueIds.has(issue.issue_id) && productionRepairIssueMatchesRequest(issue, request),
+  );
+  if (!targetIssues.length) return null;
+
+  return {
+    ...task,
+    target_issue_ids: targetIssues.map(issue => issue.issue_id),
+    target_shot_ids: uniqueStrings(targetIssues.map(issue => issue.source_shot_id).filter((id): id is string => Boolean(id))),
+    target_scene_ids: [...new Set(targetIssues.map(issue => issue.source_scene_id).filter((id): id is number => typeof id === 'number'))]
+      .sort((a, b) => a - b),
+  };
+}
+
+function productionRepairIssueMatchesRequest(
+  issue: StoryProductionBoardSupervisionIssue,
+  request: StoryProductionBoardRepairRequest,
+): boolean {
+  if (request.categories?.length && !request.categories.includes(issue.category)) return false;
+
+  const hasTargetScope = Boolean(request.shot_ids?.length || request.scene_ids?.length);
+  if (!hasTargetScope) return true;
+
+  const shotMatches = issue.source_shot_id ? request.shot_ids?.includes(issue.source_shot_id) : false;
+  const sceneMatches = typeof issue.source_scene_id === 'number'
+    ? request.scene_ids?.includes(issue.source_scene_id)
+    : false;
+  return Boolean(shotMatches || sceneMatches);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'));
 }
 
 function applyProductionRepairTask(

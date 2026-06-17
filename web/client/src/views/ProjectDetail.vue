@@ -206,6 +206,15 @@
               <strong>{{ issue.title }}</strong>
               <p>{{ issue.detail }}</p>
               <small>{{ issue.fix_hint }}</small>
+              <div class="project-detail-page__inline-repair-actions">
+                <button
+                  class="project-detail-page__repair-task-btn"
+                  :disabled="productionBoardRepairBusy || exportingProductionBoard"
+                  @click="submitProductionBoardCategoryRepair(issue)"
+                >
+                  {{ repairingProductionBoardScope === productionCategoryRepairKey(issue.category) ? '修复中…' : '修复此类' }}
+                </button>
+              </div>
             </article>
           </div>
         </div>
@@ -253,6 +262,15 @@
               <small v-if="shot.seedance_validation_notes.length">{{ shot.seedance_validation_notes.join('；') }}</small>
             </details>
             <small v-if="shot.qa_flags.length > 0">{{ shot.qa_flags.join('；') }}</small>
+            <div class="project-detail-page__inline-repair-actions">
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="productionBoardRepairBusy || exportingProductionBoard"
+                @click="submitProductionBoardShotRepair(shot)"
+              >
+                {{ repairingProductionBoardScope === productionShotRepairKey(shot.shot_id) ? '修复中…' : '修复此镜头' }}
+              </button>
+            </div>
           </article>
         </div>
       </section>
@@ -483,6 +501,9 @@ import type {
   StoryProductionBoardRepairResult,
   StoryProductionBoardRepairTask,
   StoryProductionBoardRepairTrace,
+  StoryProductionBoardShotUnit,
+  StoryProductionBoardSupervisionCategory,
+  StoryProductionBoardSupervisionIssue,
   QualityRepairAction,
 } from '@shared/types'
 
@@ -517,6 +538,7 @@ const exportingProductionBoard = ref(false)
 const repairingProductionBoard = ref(false)
 const repairingAndExportingProductionBoard = ref(false)
 const repairingProductionBoardTaskId = ref('')
+const repairingProductionBoardScope = ref('')
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
@@ -576,6 +598,7 @@ const productionBoardRepairBusy = computed(() => {
   return repairingProductionBoard.value
     || repairingAndExportingProductionBoard.value
     || repairingProductionBoardTaskId.value !== ''
+    || repairingProductionBoardScope.value !== ''
 })
 
 const productionRepairDiffRows = computed(() => {
@@ -994,6 +1017,64 @@ async function submitProductionBoardTaskRepair(task: StoryProductionBoardRepairT
     error.value = res.error?.message ?? '单项生产修复失败'
   }
   repairingProductionBoardTaskId.value = ''
+}
+
+function productionCategoryRepairKey(category: StoryProductionBoardSupervisionCategory): string {
+  return `category:${category}`
+}
+
+function productionShotRepairKey(shotId: string): string {
+  return `shot:${shotId}`
+}
+
+async function submitProductionBoardCategoryRepair(issue: StoryProductionBoardSupervisionIssue) {
+  if (!detail.value) return
+  if (productionBoardRepairBusy.value || exportingProductionBoard.value) return
+  repairingProductionBoardScope.value = productionCategoryRepairKey(issue.category)
+  error.value = ''
+  successMessage.value = ''
+  const res = await repairProjectProductionBoard(detail.value.project.project_id, {
+    categories: [issue.category],
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data.detail
+    productionBoard.value = res.data.after_board
+    productionBoardExport.value = null
+    productionRepairResult.value = res.data
+    productionRepairTrace.value = res.data.trace
+    const category = categoryLabel(issue.category)
+    successMessage.value = res.data.trace.applied
+      ? `已修复「${category}」类问题并生成新版本`
+      : `「${category}」类问题未产生变化：${res.data.trace.reason}`
+  } else {
+    error.value = res.error?.message ?? '按问题类别生产修复失败'
+  }
+  repairingProductionBoardScope.value = ''
+}
+
+async function submitProductionBoardShotRepair(shot: StoryProductionBoardShotUnit) {
+  if (!detail.value) return
+  if (productionBoardRepairBusy.value || exportingProductionBoard.value) return
+  repairingProductionBoardScope.value = productionShotRepairKey(shot.shot_id)
+  error.value = ''
+  successMessage.value = ''
+  const res = await repairProjectProductionBoard(detail.value.project.project_id, {
+    shot_ids: [shot.shot_id],
+    scene_ids: [shot.source_scene_id],
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data.detail
+    productionBoard.value = res.data.after_board
+    productionBoardExport.value = null
+    productionRepairResult.value = res.data
+    productionRepairTrace.value = res.data.trace
+    successMessage.value = res.data.trace.applied
+      ? `已修复镜头「${shot.shot_id}」并生成新版本`
+      : `镜头「${shot.shot_id}」未产生变化：${res.data.trace.reason}`
+  } else {
+    error.value = res.error?.message ?? '按镜头生产修复失败'
+  }
+  repairingProductionBoardScope.value = ''
 }
 
 function downloadText(filename: string, text: string, type: string) {
@@ -1538,6 +1619,12 @@ watch(selectedModelProfileId, (value) => {
   justify-content: flex-end !important;
   margin-top: 8px;
   margin-bottom: 0 !important;
+}
+
+.project-detail-page__inline-repair-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .project-detail-page__repair-task-btn {

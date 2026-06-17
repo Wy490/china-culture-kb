@@ -1826,6 +1826,9 @@ export interface StoryProductionBoardExportPackage {
 export interface StoryProductionBoardRepairRequest {
   task_ids?: string[];
   actions?: StoryProductionBoardRepairAction[];
+  categories?: StoryProductionBoardSupervisionCategory[];
+  shot_ids?: string[];
+  scene_ids?: number[];
   priorities?: StoryProductionBoardRepairPriority[];
   apply_all?: boolean;
 }

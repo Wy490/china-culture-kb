@@ -392,6 +392,16 @@ export const StoryProductionBoardRepairRequestSchema = z.object({
     'add_continuity',
     'split_duration',
   ])).max(6).optional(),
+  categories: z.array(z.enum([
+    'asset',
+    'prompt',
+    'filmability',
+    'continuity',
+    'period',
+    'duration',
+  ])).max(6).optional(),
+  shot_ids: z.array(z.string().trim().min(1).max(120)).max(50).optional(),
+  scene_ids: z.array(z.number().int().min(1)).max(50).optional(),
   priorities: z.array(z.enum(['P0', 'P1', 'P2'])).max(3).optional(),
   apply_all: z.boolean().optional().default(false),
 });

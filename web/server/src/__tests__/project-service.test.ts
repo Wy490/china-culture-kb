@@ -525,6 +525,112 @@ describe('project-service', () => {
     expect(repairRes.data?.after_board.supervision_report.issues.some(issue => issue.category === 'period')).toBe(true);
   });
 
+  it('repairs only the requested production board issue category', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const baseStory = makeStory();
+    const story: StoryGenerateResult = {
+      ...baseStory,
+      storyId: '20260609-story-cat1',
+      gears_segments_url: '/api/stories/20260609-story-cat1/gears-segments',
+      scene_breakdown: baseStory.scene_breakdown.map(scene => scene.scene_id === 1
+        ? {
+            ...scene,
+            visual_prompt: `质量：待补；${scene.visual_prompt}`,
+          }
+        : scene),
+      gears_delivery: {
+        schema_version: 'gears-delivery/v1',
+        storyId: '20260609-story-cat1',
+        title: baseStory.title,
+        character_assets: [
+          {
+            name: '周敦颐',
+            role_position: '主角',
+            species_type: '人类',
+            ethnicity: ['东亚'],
+            gender: '男',
+            age_range: '青年',
+            appearance_features: '青年士人，神情克制',
+            clothing: '清末民初至五四前后中国青年固定服装：朴素学生长衫或短褂布鞋',
+          },
+        ],
+        character_gender_summary: {
+          total: 1,
+          male: 1,
+          female: 0,
+          other: 0,
+          unspecified: 0,
+          not_applicable: 0,
+        },
+        scene_assets: [{
+          name: '南安军衙',
+          scene_type: '室内',
+          description: '衙署案桌、烛火、案卷',
+          atmosphere: '紧张',
+        }],
+        units: [],
+        validation_notes: [],
+        markdown: '# GEARS',
+      },
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const beforeBoard = await getProjectProductionBoard(enriched.project_id!);
+    expect(beforeBoard.data?.repair_plan.tasks.some(task => task.action === 'clean_prompt')).toBe(true);
+    expect(beforeBoard.data?.repair_plan.tasks.some(task => task.action === 'normalize_period_costumes')).toBe(true);
+
+    const repairRes = await repairProjectProductionBoard(enriched.project_id!, {
+      categories: ['prompt'],
+    });
+
+    expect(repairRes.ok).toBe(true);
+    expect(repairRes.data?.trace.applied_actions).toEqual(['clean_prompt']);
+    expect(repairRes.data?.trace.applied_actions).not.toContain('normalize_period_costumes');
+    expect(repairRes.data?.detail.current_story.scene_breakdown[0].visual_prompt).not.toMatch(/质量|待补/);
+    expect(repairRes.data?.detail.current_story.gears_delivery?.character_assets[0].clothing).toContain('清末民初');
+  });
+
+  it('narrows production board repair to the requested shot target', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const baseStory = makeStory();
+    const story: StoryGenerateResult = {
+      ...baseStory,
+      storyId: '20260609-story-shot1',
+      gears_segments_url: '/api/stories/20260609-story-shot1/gears-segments',
+      scene_breakdown: baseStory.scene_breakdown.map(scene => ({
+        ...scene,
+        visual_prompt: `质量：待补；${scene.visual_prompt}`,
+      })),
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const beforeBoard = await getProjectProductionBoard(enriched.project_id!);
+    const cleanPromptTask = beforeBoard.data?.repair_plan.tasks.find(task => task.action === 'clean_prompt');
+    const targetShotId = cleanPromptTask?.target_shot_ids[0];
+    const targetSceneId = cleanPromptTask?.target_scene_ids[0];
+    const untouchedSceneId = cleanPromptTask?.target_scene_ids.find(sceneId => sceneId !== targetSceneId);
+
+    expect(targetShotId).toBeTruthy();
+    expect(targetSceneId).toBeTruthy();
+    expect(untouchedSceneId).toBeTruthy();
+
+    const repairRes = await repairProjectProductionBoard(enriched.project_id!, {
+      shot_ids: [targetShotId!],
+      scene_ids: [targetSceneId!],
+    });
+
+    expect(repairRes.ok).toBe(true);
+    expect(repairRes.data?.trace.applied_actions).toContain('clean_prompt');
+    expect(repairRes.data?.trace.changed_scene_ids).toEqual([targetSceneId]);
+    const scenes = repairRes.data?.detail.current_story.scene_breakdown ?? [];
+    expect(scenes.find(scene => scene.scene_id === targetSceneId)?.visual_prompt).not.toMatch(/质量|待补/);
+    expect(scenes.find(scene => scene.scene_id === untouchedSceneId)?.visual_prompt).toMatch(/质量|待补/);
+  });
+
   it('does not create a project version when production board repair changes nothing', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);

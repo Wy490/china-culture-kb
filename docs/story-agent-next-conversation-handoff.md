@@ -112,6 +112,10 @@ MCP 原则：
   - 生产修复版本摘要回读 `production_board_repair_trace`。
   - Production Board 导出会把交付包时间、目录、文件数和交付阶段写入当前版本快照。
   - 项目详情页版本记录区域新增 Production Repair History 面板。
+- Production Board 按镜头 / 问题类别修复首版：
+  - `StoryProductionBoardRepairRequest` 新增 `categories`、`shot_ids`、`scene_ids`。
+  - 服务层会把 repair task 的目标 issue / shot / scene 收窄到请求范围，避免按镜头修复时误改其它镜头。
+  - 项目详情页 Supervision 问题卡增加“修复此类”，镜头卡增加“修复此镜头”。
 
 ### 3.3 后端与测试基础
 
@@ -132,7 +136,8 @@ MCP 原则：
 - `web/client/src/views/ProjectDetail.vue`
 - `web/server/src/__tests__/api.test.ts`
 - `web/server/src/__tests__/project-service.test.ts`
-- `web/server/src/services/project-service.ts`
+- `web/server/src/services/production-board-repair-service.ts`
+- `web/shared/schemas.ts`
 - `web/shared/types.ts`
 
 ## 4. 已验证内容
@@ -149,8 +154,8 @@ git diff --check
 
 测试结果：
 
-- `project-service.test.ts`：22 passed。
-- `api.test.ts`：79 passed。
+- `project-service.test.ts`：24 passed。
+- `api.test.ts`：80 passed。
 - `web/client && npm run lint`：passed。
 - `web/server && npm run lint`：passed。
 - `git diff --check`：passed。
@@ -196,11 +201,10 @@ git diff --stat
 
 ### P0：Production Board 修复闭环继续补强
 
-已完成单任务修复、轻量 diff、“修复并落盘”和 Production Repair History 首版，下一步：
+已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History 和按镜头 / 问题类别修复首版，下一步：
 
-- 按镜头 / 问题类别修复。
-- 修复后自动重新生成 Board，并明确 ready / blocked。
 - 更细的逐场景 diff，按需展开，不要默认铺满页面。
+- Seedance 资产引用字段和素材校验。
 
 ### P0-P1：Seedance 资产引用字段和素材校验
 
@@ -306,7 +310,7 @@ ready 镜头
 可以直接把下面这段发给新对话：
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-conversation-handoff.md，再阅读其中列出的计划文档和技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动。优先收尾当前工作区并继续 P0：故事管理 UX 降噪、Production Board 按镜头 / 问题类别修复、Seedance 资产引用字段和素材校验。用户体验不能做复杂，默认界面只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-conversation-handoff.md，再阅读其中列出的计划文档和技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动。优先收尾当前工作区并继续 P0：故事管理 UX 降噪、Production Board 逐场景 diff、Seedance 资产引用字段和素材校验。用户体验不能做复杂，默认界面只保留高频主路径。
 ```
 
 ## 10. 下一步执行建议
@@ -314,20 +318,20 @@ ready 镜头
 如果只继续一个最小任务，建议做：
 
 ```text
-Production Board 按镜头 / 问题类别修复
+Production Board 逐场景 diff
 ```
 
 理由：
 
-- 它直接承接已完成的单任务修复、diff、修复并落盘和修复历史。
-- 用户能从“修这个任务”进一步细化到“修这个镜头 / 这类问题”。
+- 它直接承接已完成的单任务修复、按镜头/类别修复、diff、修复并落盘和修复历史。
+- 用户能从“修了哪些总体指标”进一步看到“具体哪些场景字段变了”。
 - 范围比 Seedance 资产引用更小，验证更快。
 
 如果准备做下一组任务，建议顺序：
 
 1. 收尾并提交当前改动。
 2. StoryStudio / Projects 继续降噪。
-3. Production Board 按镜头 / 问题类别修复。
+3. Production Board 逐场景 diff。
 4. Seedance 资产引用字段和校验。
 5. MCP `kb_generate_gears_delivery`。
 6. AI 漫剧 `export-seedance-subtitles`。
