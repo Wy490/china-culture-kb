@@ -164,6 +164,37 @@
           <p v-if="productionRepairChangedSceneText" class="project-detail-page__production-repair-scenes">
             变更场景：{{ productionRepairChangedSceneText }}
           </p>
+          <details
+            v-if="productionRepairSceneDiffs.length"
+            class="project-detail-page__production-scene-diffs"
+          >
+            <summary>逐场景 diff · {{ productionRepairSceneDiffs.length }} 个场景</summary>
+            <div class="project-detail-page__production-scene-diff-list">
+              <section
+                v-for="sceneDiff in productionRepairSceneDiffs"
+                :key="sceneDiff.scene_id"
+                class="project-detail-page__production-scene-diff"
+              >
+                <div class="project-detail-page__production-scene-diff-head">
+                  <strong>场景 {{ sceneDiff.scene_id }} · {{ sceneDiff.title }}</strong>
+                  <span>{{ sceneDiff.changed_fields.length }} 个字段</span>
+                </div>
+                <dl>
+                  <div v-for="field in sceneDiff.changed_fields" :key="field.field">
+                    <dt>{{ field.label }}</dt>
+                    <dd>
+                      <span>修复前</span>
+                      <p>{{ field.before }}</p>
+                    </dd>
+                    <dd>
+                      <span>修复后</span>
+                      <p>{{ field.after }}</p>
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+          </details>
         </div>
         <div class="project-detail-page__production-grid">
           <article>
@@ -643,6 +674,8 @@ const productionRepairChangedSceneText = computed(() => {
   const ids = productionRepairTrace.value?.changed_scene_ids ?? []
   return ids.length ? ids.map(sceneId => `场景 ${sceneId}`).join('、') : ''
 })
+
+const productionRepairSceneDiffs = computed(() => productionRepairTrace.value?.scene_diffs ?? [])
 
 const productionRepairHistory = computed<ProductionRepairHistoryItem[]>(() => {
   return (detail.value?.versions ?? []).filter((version): version is ProductionRepairHistoryItem => {
@@ -1467,6 +1500,95 @@ watch(selectedModelProfileId, (value) => {
   font-size: 12px !important;
 }
 
+.project-detail-page__production-scene-diffs {
+  margin-top: 10px;
+  border-top: 1px solid #d6e5dc;
+  padding-top: 8px;
+}
+
+.project-detail-page__production-scene-diffs summary {
+  cursor: pointer;
+  color: #22313f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__production-scene-diff-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.project-detail-page__production-scene-diff {
+  border: 1px solid #d6e5dc;
+  border-radius: 6px;
+  background: #fff;
+  padding: 9px;
+}
+
+.project-detail-page__production-scene-diff-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.project-detail-page__production-scene-diff-head strong {
+  min-width: 0;
+  color: #22313f;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.project-detail-page__production-scene-diff-head span {
+  flex-shrink: 0;
+  color: #63756d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__production-scene-diff dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.project-detail-page__production-scene-diff dl > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border-top: 1px solid #edf2ee;
+  padding-top: 7px;
+}
+
+.project-detail-page__production-scene-diff dt {
+  color: #22313f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__production-scene-diff dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.project-detail-page__production-scene-diff dd span {
+  display: block;
+  color: #63756d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__production-scene-diff dd p {
+  margin: 2px 0 0;
+  color: #394a57;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .project-detail-page__production-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2073,6 +2195,12 @@ watch(selectedModelProfileId, (value) => {
 
   .project-detail-page__repair-task-btn {
     justify-content: center;
+  }
+
+  .project-detail-page__production-scene-diff-head,
+  .project-detail-page__production-scene-diff dl > div {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }
 </style>

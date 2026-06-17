@@ -7,6 +7,7 @@ import type {
   StoryProductionBoard,
   StoryProductionBoardRepairAction,
   StoryProductionBoardRepairRequest,
+  StoryProductionBoardRepairSceneDiff,
   StoryProductionBoardRepairTask,
   StoryProductionBoardRepairTrace,
   StoryProductionBoardSupervisionIssue,
@@ -57,7 +58,8 @@ export function repairStoryWithProductionBoard(
   }
 
   const afterBoard = buildStoryProductionBoard(nextStory);
-  const changedSceneIds = collectChangedSceneIds(story, nextStory);
+  const sceneDiffs = collectProductionRepairSceneDiffs(story, nextStory);
+  const changedSceneIds = sceneDiffs.map(diff => diff.scene_id);
   const appliedActions = uniqueActions(selectedTasks.filter(task => appliedTaskIds.includes(task.task_id)));
   const trace: StoryProductionBoardRepairTrace = {
     trace_id: `${story.storyId}--production-board-repair-${Date.now()}`,
@@ -72,6 +74,7 @@ export function repairStoryWithProductionBoard(
     skipped_task_ids: skippedTaskIds,
     applied_actions: appliedActions,
     changed_scene_ids: changedSceneIds,
+    scene_diffs: sceneDiffs,
     note: buildProductionRepairNote(appliedActions, beforeBoard, afterBoard),
   };
 
@@ -468,17 +471,117 @@ function projectRepairComparableState(story: StoryGenerateResult) {
   };
 }
 
-function collectChangedSceneIds(before: StoryGenerateResult, after: StoryGenerateResult): number[] {
-  const changed = new Set<number>();
-  const beforeScenes = new Map(before.scene_breakdown.map(scene => [scene.scene_id, JSON.stringify(scene)]));
-  for (const scene of after.scene_breakdown) {
-    if (beforeScenes.get(scene.scene_id) !== JSON.stringify(scene)) changed.add(scene.scene_id);
-  }
-  const beforeSegments = new Map(before.gears_segments.map(segment => [segment.source_scene_id, JSON.stringify(segment)]));
-  for (const segment of after.gears_segments) {
-    if (beforeSegments.get(segment.source_scene_id) !== JSON.stringify(segment)) changed.add(segment.source_scene_id);
-  }
-  return [...changed].sort((a, b) => a - b);
+function collectProductionRepairSceneDiffs(
+  before: StoryGenerateResult,
+  after: StoryGenerateResult,
+): StoryProductionBoardRepairSceneDiff[] {
+  const beforeScenes = new Map(before.scene_breakdown.map(scene => [scene.scene_id, scene]));
+  const afterScenes = new Map(after.scene_breakdown.map(scene => [scene.scene_id, scene]));
+  const beforeSegments = new Map(before.gears_segments.map(segment => [segment.source_scene_id, segment]));
+  const afterSegments = new Map(after.gears_segments.map(segment => [segment.source_scene_id, segment]));
+  const sceneIds = new Set([
+    ...beforeScenes.keys(),
+    ...afterScenes.keys(),
+    ...beforeSegments.keys(),
+    ...afterSegments.keys(),
+  ]);
+
+  return [...sceneIds].sort((a, b) => a - b).flatMap(sceneId => {
+    const beforeScene = beforeScenes.get(sceneId);
+    const afterScene = afterScenes.get(sceneId);
+    const beforeSegment = beforeSegments.get(sceneId);
+    const afterSegment = afterSegments.get(sceneId);
+    const changedFields: StoryProductionBoardRepairSceneDiff['changed_fields'] = [];
+
+    compareProductionRepairField(changedFields, 'title', '标题', beforeScene?.title, afterScene?.title);
+    compareProductionRepairField(changedFields, 'duration_sec', '场景时长', beforeScene?.duration_sec, afterScene?.duration_sec);
+    compareProductionRepairField(changedFields, 'location', '地点', beforeScene?.location, afterScene?.location);
+    compareProductionRepairField(changedFields, 'time_of_day', '时间', beforeScene?.time_of_day, afterScene?.time_of_day);
+    compareProductionRepairField(changedFields, 'plot', '剧情', beforeScene?.plot, afterScene?.plot);
+    compareProductionRepairField(changedFields, 'key_action', '关键动作', beforeScene?.key_action, afterScene?.key_action);
+    compareProductionRepairField(changedFields, 'visual_prompt', '画面提示', beforeScene?.visual_prompt, afterScene?.visual_prompt);
+    compareProductionRepairField(changedFields, 'camera_suggestion', '镜头建议', beforeScene?.camera_suggestion, afterScene?.camera_suggestion);
+    compareProductionRepairField(changedFields, 'cultural_note', '文化提示', beforeScene?.cultural_note, afterScene?.cultural_note);
+    compareProductionRepairField(changedFields, 'conflict', '冲突', beforeScene?.conflict, afterScene?.conflict);
+    compareProductionRepairField(
+      changedFields,
+      'dialogue_or_narration',
+      '对白/旁白',
+      beforeScene?.dialogue_or_narration,
+      afterScene?.dialogue_or_narration,
+    );
+    compareProductionRepairField(changedFields, 'factual_basis', '事实依据', beforeScene?.factual_basis, afterScene?.factual_basis);
+    compareProductionRepairField(
+      changedFields,
+      'fictionalized_elements',
+      '戏剧化补足',
+      beforeScene?.fictionalized_elements,
+      afterScene?.fictionalized_elements,
+    );
+    compareProductionRepairField(
+      changedFields,
+      'gears.duration_sec',
+      'GEARS 时长',
+      beforeSegment?.duration_sec,
+      afterSegment?.duration_sec,
+    );
+    compareProductionRepairField(
+      changedFields,
+      'gears.script_text',
+      'GEARS 剧本文本',
+      beforeSegment?.script_text,
+      afterSegment?.script_text,
+    );
+    compareProductionRepairField(
+      changedFields,
+      'gears.visual_focus',
+      'GEARS 视觉焦点',
+      beforeSegment?.visual_focus,
+      afterSegment?.visual_focus,
+    );
+    compareProductionRepairField(
+      changedFields,
+      'gears.cultural_constraints',
+      'GEARS 文化约束',
+      beforeSegment?.cultural_constraints,
+      afterSegment?.cultural_constraints,
+    );
+    compareProductionRepairField(
+      changedFields,
+      'gears.segment_prompt_hint',
+      'GEARS 提示限制',
+      beforeSegment?.segment_prompt_hint,
+      afterSegment?.segment_prompt_hint,
+    );
+
+    if (!changedFields.length) return [];
+    return [{
+      scene_id: sceneId,
+      title: afterScene?.title ?? beforeScene?.title ?? `场景 ${sceneId}`,
+      changed_fields: changedFields,
+    }];
+  });
+}
+
+function compareProductionRepairField(
+  changedFields: StoryProductionBoardRepairSceneDiff['changed_fields'],
+  field: string,
+  label: string,
+  beforeValue: unknown,
+  afterValue: unknown,
+): void {
+  const before = formatProductionRepairDiffValue(beforeValue);
+  const after = formatProductionRepairDiffValue(afterValue);
+  if (before === after) return;
+  changedFields.push({ field, label, before, after });
+}
+
+function formatProductionRepairDiffValue(value: unknown): string {
+  if (Array.isArray(value)) return value.length ? value.map(item => String(item).trim()).filter(Boolean).join('、') : '无';
+  if (value === undefined || value === null || value === '') return '无';
+  const text = String(value).replace(/\s+/g, ' ').trim();
+  if (!text) return '无';
+  return text.length > 180 ? `${text.slice(0, 180)}...` : text;
 }
 
 function uniqueActions(tasks: StoryProductionBoardRepairTask[]): StoryProductionBoardRepairAction[] {

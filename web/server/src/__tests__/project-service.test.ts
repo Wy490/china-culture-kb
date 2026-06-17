@@ -626,6 +626,9 @@ describe('project-service', () => {
     expect(repairRes.ok).toBe(true);
     expect(repairRes.data?.trace.applied_actions).toContain('clean_prompt');
     expect(repairRes.data?.trace.changed_scene_ids).toEqual([targetSceneId]);
+    expect(repairRes.data?.trace.scene_diffs).toHaveLength(1);
+    expect(repairRes.data?.trace.scene_diffs[0].scene_id).toBe(targetSceneId);
+    expect(repairRes.data?.trace.scene_diffs[0].changed_fields.map(field => field.field)).toContain('visual_prompt');
     const scenes = repairRes.data?.detail.current_story.scene_breakdown ?? [];
     expect(scenes.find(scene => scene.scene_id === targetSceneId)?.visual_prompt).not.toMatch(/质量|待补/);
     expect(scenes.find(scene => scene.scene_id === untouchedSceneId)?.visual_prompt).toMatch(/质量|待补/);

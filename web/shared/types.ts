@@ -1833,6 +1833,19 @@ export interface StoryProductionBoardRepairRequest {
   apply_all?: boolean;
 }
 
+export interface StoryProductionBoardRepairSceneFieldDiff {
+  field: string;
+  label: string;
+  before: string;
+  after: string;
+}
+
+export interface StoryProductionBoardRepairSceneDiff {
+  scene_id: number;
+  title: string;
+  changed_fields: StoryProductionBoardRepairSceneFieldDiff[];
+}
+
 export interface StoryProductionBoardRepairTrace {
   trace_id: string;
   attempted: true;
@@ -1846,6 +1859,7 @@ export interface StoryProductionBoardRepairTrace {
   skipped_task_ids: string[];
   applied_actions: StoryProductionBoardRepairAction[];
   changed_scene_ids: number[];
+  scene_diffs: StoryProductionBoardRepairSceneDiff[];
   note: string;
 }
 

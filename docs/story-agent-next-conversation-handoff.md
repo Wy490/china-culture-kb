@@ -31,7 +31,7 @@
 | 模块 | 进度判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
-| Production Board / GEARS / Seedance 交付链 | 约 60% -> 本轮推进到约 65% | Board、监督、批量修复、导出已可用；本轮补了单任务修复、结果 diff、空修复不增版本。 |
+| Production Board / GEARS / Seedance 交付链 | 约 65% -> 本轮推进到约 66% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复和逐场景 diff。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划已具备；字幕/混音/片头片尾/final delivery 仍待做。 |
 | 可商用制作中台 | 约 35-40% | 主链路可用，但还缺 UX 降噪、资产绑定、状态总览、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 35-40% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story` 已完成；GEARS/Seedance/repair/version 写入工具待做。 |
@@ -116,6 +116,10 @@ MCP 原则：
   - `StoryProductionBoardRepairRequest` 新增 `categories`、`shot_ids`、`scene_ids`。
   - 服务层会把 repair task 的目标 issue / shot / scene 收窄到请求范围，避免按镜头修复时误改其它镜头。
   - 项目详情页 Supervision 问题卡增加“修复此类”，镜头卡增加“修复此镜头”。
+- Production Board 逐场景 diff 首版：
+  - `StoryProductionBoardRepairTrace` 新增 `scene_diffs`，按场景记录被生产修复改动的字段。
+  - 服务层从 `scene_breakdown` 和 `gears_segments` 对比生成字段级 diff，`changed_scene_ids` 与 `scene_diffs` 保持同源。
+  - 项目详情页在生产修复结果中默认折叠展示逐场景 diff，避免默认铺满页面。
 
 ### 3.3 后端与测试基础
 
@@ -137,7 +141,6 @@ MCP 原则：
 - `web/server/src/__tests__/api.test.ts`
 - `web/server/src/__tests__/project-service.test.ts`
 - `web/server/src/services/production-board-repair-service.ts`
-- `web/shared/schemas.ts`
 - `web/shared/types.ts`
 
 ## 4. 已验证内容
@@ -182,7 +185,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-完善 Story Agent 工作台故事管理与 Production Board 单项修复
+补齐 Production Board 逐场景修复 diff
 ```
 
 ### P0：继续故事管理 UX 降噪
@@ -201,9 +204,8 @@ git diff --stat
 
 ### P0：Production Board 修复闭环继续补强
 
-已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History 和按镜头 / 问题类别修复首版，下一步：
+已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版和逐场景 diff 首版，下一步：
 
-- 更细的逐场景 diff，按需展开，不要默认铺满页面。
 - Seedance 资产引用字段和素材校验。
 
 ### P0-P1：Seedance 资产引用字段和素材校验
@@ -310,7 +312,7 @@ ready 镜头
 可以直接把下面这段发给新对话：
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-conversation-handoff.md，再阅读其中列出的计划文档和技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动。优先收尾当前工作区并继续 P0：故事管理 UX 降噪、Production Board 逐场景 diff、Seedance 资产引用字段和素材校验。用户体验不能做复杂，默认界面只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-conversation-handoff.md，再阅读其中列出的计划文档和技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动。优先收尾当前工作区并继续 P0：故事管理 UX 降噪、Seedance 资产引用字段和素材校验、MCP 只读交付工具。用户体验不能做复杂，默认界面只保留高频主路径。
 ```
 
 ## 10. 下一步执行建议
@@ -318,20 +320,19 @@ ready 镜头
 如果只继续一个最小任务，建议做：
 
 ```text
-Production Board 逐场景 diff
+Seedance 资产引用字段和素材校验
 ```
 
 理由：
 
-- 它直接承接已完成的单任务修复、按镜头/类别修复、diff、修复并落盘和修复历史。
-- 用户能从“修了哪些总体指标”进一步看到“具体哪些场景字段变了”。
-- 范围比 Seedance 资产引用更小，验证更快。
+- 它直接承接已完成的 Production Board、Seedance 镜头提示词、交付包落盘和逐场景 diff。
+- 用户能从“文本提示词”继续升级到“视频模型生产包”，为参考图、素材 slot 和 `@图片1` 等引用做好结构基础。
+- 范围比 MCP 写入工具更小，仍可用类型、服务测试和前端 smoke 快速验证。
 
 如果准备做下一组任务，建议顺序：
 
 1. 收尾并提交当前改动。
 2. StoryStudio / Projects 继续降噪。
-3. Production Board 逐场景 diff。
-4. Seedance 资产引用字段和校验。
-5. MCP `kb_generate_gears_delivery`。
-6. AI 漫剧 `export-seedance-subtitles`。
+3. Seedance 资产引用字段和校验。
+4. MCP `kb_generate_gears_delivery`。
+5. AI 漫剧 `export-seedance-subtitles`。

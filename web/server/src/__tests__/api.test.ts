@@ -465,6 +465,8 @@ describe('Projects API', () => {
       expectSuccess(repairRes.body);
       expect(repairRes.body.data.trace.applied_actions).toEqual(['clean_prompt']);
       expect(repairRes.body.data.trace.applied_actions).not.toContain('normalize_period_costumes');
+      expect(repairRes.body.data.trace.scene_diffs.length).toBeGreaterThan(0);
+      expect(repairRes.body.data.trace.scene_diffs[0].changed_fields.map((field: any) => field.field)).toContain('visual_prompt');
       expect(repairRes.body.data.detail.current_story.scene_breakdown[0].visual_prompt).not.toMatch(/质量|待补/);
       expect(repairRes.body.data.detail.current_story.gears_delivery.character_assets[0].clothing).toContain('清末民初');
     });
