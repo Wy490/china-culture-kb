@@ -26,7 +26,7 @@ function makeStory(): StoryGenerateResult {
         characters: ['少年', '师兄'],
         visual_prompt: '质量信号：书院门外，雨水，灯笼，少年与师兄对峙',
         camera_suggestion: '建立镜头后慢推到少年近景',
-        cultural_note: '书院空间为影视化场景',
+        cultural_note: '本场景基于测试条目，具体细节请核实来源；生成优先级：剧情推进与资料完整保持均衡。',
         conflict: '入门资格与旧案任务冲突',
         dialogue_or_narration: '师兄：天亮前，拿证据来。',
         source_entries: ['测试条目'],
@@ -51,14 +51,24 @@ describe('seedance-prompt-service', () => {
     expect(pkg.target_platform).toBe('seedance_2_0');
     expect(pkg.shot_units.length).toBeGreaterThan(0);
     expect(pkg.asset_reference_plan.some(item => item.includes('@图片1'))).toBe(true);
+    expect(pkg.asset_references.some(item => item.kind === 'character' && item.reference_slot === '@图片1')).toBe(true);
+    expect(pkg.material_validation.image_count).toBeGreaterThan(0);
+    expect(pkg.material_validation.image_count).toBeLessThanOrEqual(pkg.material_validation.max_image_files);
     expect(pkg.markdown).toContain('Seedance 2.0 镜头提示词包');
+    expect(pkg.markdown).toContain('素材 slot');
 
     for (const unit of pkg.shot_units) {
       expect(unit.duration_sec).toBeGreaterThanOrEqual(4);
       expect(unit.duration_sec).toBeLessThanOrEqual(15);
+      expect(unit.asset_slots.length).toBeGreaterThan(0);
+      expect(unit.material_validation.total_file_count).toBe(unit.asset_slots.length);
+      expect(unit.material_validation.prompt_complexity_score).toBeGreaterThan(0);
       expect(unit.seedance_prompt).toContain('0-3秒');
+      expect(unit.seedance_prompt).toContain('@图片');
       expect(unit.seedance_prompt).toContain('风格：');
       expect(unit.seedance_prompt).not.toContain('质量信号');
+      expect(unit.seedance_prompt).not.toContain('生成优先级');
+      expect(unit.seedance_prompt).not.toContain('本场景基于');
       expect(unit.negative_constraints).toContain('不要出现质量报告、来源说明或内部字段名');
     }
   });

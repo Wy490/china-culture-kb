@@ -993,6 +993,73 @@ export interface GearsDeliveryPackage {
   validation_notes: string[];
 }
 
+export type SeedanceAssetModality = 'image' | 'video' | 'audio';
+
+export type SeedanceAssetReferenceKind = 'character' | 'location' | 'prop' | 'camera' | 'audio';
+
+export type SeedanceAssetSlotRole =
+  | 'character_reference'
+  | 'location_reference'
+  | 'prop_reference'
+  | 'camera_reference'
+  | 'music_reference'
+  | 'sound_reference';
+
+export interface SeedanceAssetReference {
+  asset_id: string;
+  kind: SeedanceAssetReferenceKind;
+  label: string;
+  modality: SeedanceAssetModality;
+  reference_slot: string;
+  role: SeedanceAssetSlotRole;
+  description: string;
+  source_scene_ids: number[];
+  source_shot_ids: string[];
+  required: boolean;
+}
+
+export interface SeedanceShotAssetSlot {
+  asset_id: string;
+  label: string;
+  kind: SeedanceAssetReferenceKind;
+  modality: SeedanceAssetModality;
+  reference_slot: string;
+  role: SeedanceAssetSlotRole;
+  required: boolean;
+  prompt_usage: string;
+}
+
+export type SeedanceDurationRisk = 'ok' | 'dense' | 'overloaded';
+
+export interface SeedanceShotMaterialValidation {
+  total_file_count: number;
+  image_count: number;
+  video_count: number;
+  audio_count: number;
+  max_total_files: number;
+  max_image_files: number;
+  max_video_files: number;
+  max_audio_files: number;
+  missing_required_slots: string[];
+  prompt_complexity_score: number;
+  duration_sec: number;
+  duration_risk: SeedanceDurationRisk;
+  warnings: string[];
+}
+
+export interface SeedancePackageMaterialValidation {
+  total_file_count: number;
+  image_count: number;
+  video_count: number;
+  audio_count: number;
+  max_total_files: number;
+  max_image_files: number;
+  max_video_files: number;
+  max_audio_files: number;
+  over_limit: boolean;
+  warnings: string[];
+}
+
 export interface SeedancePromptShotUnit {
   shot_id: string;
   source_scene_id: number;
@@ -1005,6 +1072,8 @@ export interface SeedancePromptShotUnit {
   camera_suggestion: string;
   continuity_notes: string[];
   negative_constraints: string[];
+  asset_slots: SeedanceShotAssetSlot[];
+  material_validation: SeedanceShotMaterialValidation;
   seedance_prompt: string;
 }
 
@@ -1016,6 +1085,8 @@ export interface SeedancePromptPackage {
   prompt_language: 'zh';
   total_duration_sec: number;
   asset_reference_plan: string[];
+  asset_references: SeedanceAssetReference[];
+  material_validation: SeedancePackageMaterialValidation;
   shot_units: SeedancePromptShotUnit[];
   validation_notes: string[];
   markdown: string;
@@ -1665,6 +1736,8 @@ export interface StoryProductionBoardShotUnit {
   seedance_prompt: string;
   seedance_duration_sec: number;
   seedance_validation_notes: string[];
+  seedance_asset_slots: SeedanceShotAssetSlot[];
+  seedance_material_validation: SeedanceShotMaterialValidation;
   continuity_notes: string[];
   cultural_boundary: string;
   negative_constraints: string[];

@@ -1,8 +1,12 @@
 import type {
   GearsDeliveryPackage,
   GearsDeliveryUnit,
+  SeedanceAssetReference,
+  SeedancePackageMaterialValidation,
   SeedancePromptPackage,
   SeedancePromptShotUnit,
+  SeedanceShotAssetSlot,
+  SeedanceShotMaterialValidation,
   StoryGenerateResult,
   StoryScene,
 } from '@shared/types.js';
@@ -17,21 +21,36 @@ const PROMPT_NOISE_WORDS = [
   '摘要',
   '核心画面是',
   '为什么必须面对',
+  '生成优先级',
+  '具体细节请核实来源',
   '应该',
   '注意',
 ];
 
+const SEEDANCE_LIMITS = {
+  maxTotalFiles: 12,
+  maxImageFiles: 9,
+  maxVideoFiles: 3,
+  maxAudioFiles: 3,
+};
+
+const PROP_CANDIDATES = ['案卷', '文书', '判词', '毛笔', '书信', '旧信', '印章', '石碑', '莲', '灯', '伞', '铜铃', '香炉'];
+
 export function buildSeedancePromptPackage(story: StoryGenerateResult): SeedancePromptPackage {
   const delivery = ensureGearsDeliveryPackage(story);
   const sceneById = new Map(story.scene_breakdown.map(scene => [scene.scene_id, scene]));
+  const assetReferences = buildAssetReferences(story, delivery);
   const shotUnits = delivery.units.map(unit => buildShotUnit({
     story,
     delivery,
     unit,
     scene: sceneById.get(unit.source_scene_id),
+    assetReferences,
   }));
+  const materialValidation = buildPackageMaterialValidation(assetReferences);
   const validationNotes = [
     ...delivery.validation_notes.map(note => `GEARS: ${note}`),
+    ...materialValidation.warnings,
     ...shotUnits.flatMap(validateShotUnit),
   ].filter((item, index, arr) => arr.indexOf(item) === index);
   const basePackage: Omit<SeedancePromptPackage, 'markdown'> = {
@@ -41,7 +60,9 @@ export function buildSeedancePromptPackage(story: StoryGenerateResult): Seedance
     target_platform: 'seedance_2_0',
     prompt_language: 'zh',
     total_duration_sec: shotUnits.reduce((sum, unit) => sum + unit.duration_sec, 0),
-    asset_reference_plan: buildAssetReferencePlan(delivery),
+    asset_reference_plan: assetReferences.map(formatAssetReferencePlanItem),
+    asset_references: assetReferences,
+    material_validation: materialValidation,
     shot_units: shotUnits,
     validation_notes: validationNotes,
   };
@@ -56,6 +77,7 @@ function buildShotUnit(input: {
   delivery: GearsDeliveryPackage;
   unit: GearsDeliveryUnit;
   scene?: StoryScene;
+  assetReferences: SeedanceAssetReference[];
 }): SeedancePromptShotUnit {
   const { unit, scene } = input;
   const durationSec = clampDuration(unit.suggested_duration_sec);
@@ -76,6 +98,22 @@ function buildShotUnit(input: {
     scene?.source_entries?.length ? `来源条目：${scene.source_entries.join('、')}` : undefined,
   ]);
   const negativeConstraints = buildNegativeConstraints(scene, visualPrompt, unit.script_text);
+  const assetSlots = buildShotAssetSlots({
+    references: input.assetReferences,
+    shotId: `shot-${unit.unit_id}`,
+    sourceSceneId: unit.source_scene_id,
+    characters,
+    location,
+    text: [unit.script_text, visualPrompt, cameraSuggestion].join(' '),
+  });
+  const materialValidation = buildShotMaterialValidation({
+    shotId: `shot-${unit.unit_id}`,
+    durationSec,
+    characters,
+    location,
+    text: [unit.script_text, visualPrompt, cameraSuggestion].join(' '),
+    assetSlots,
+  });
   return {
     shot_id: `shot-${unit.unit_id}`,
     source_scene_id: unit.source_scene_id,
@@ -88,6 +126,8 @@ function buildShotUnit(input: {
     camera_suggestion: cameraSuggestion,
     continuity_notes: continuityNotes,
     negative_constraints: negativeConstraints,
+    asset_slots: assetSlots,
+    material_validation: materialValidation,
     seedance_prompt: buildSeedancePrompt({
       durationSec,
       location,
@@ -97,6 +137,7 @@ function buildShotUnit(input: {
       cameraSuggestion,
       continuityNotes,
       negativeConstraints,
+      assetSlots,
     }),
   };
 }
@@ -110,12 +151,15 @@ function buildSeedancePrompt(input: {
   cameraSuggestion: string;
   continuityNotes: string[];
   negativeConstraints: string[];
+  assetSlots: SeedanceShotAssetSlot[];
 }): string {
   const subject = input.characters.length > 0 ? input.characters.join('、') : '主要人物';
   const midPoint = input.durationSec <= 8 ? Math.max(4, input.durationSec - 2) : 7;
   const endPoint = input.durationSec;
+  const assetLine = buildShotAssetUsageLine(input.assetSlots);
   const lines = [
     `生成 ${input.durationSec} 秒视频。主体：${subject}。场景：${input.location}。`,
+    assetLine,
     `0-3秒：${input.visualPrompt}；${subject}进入画面，完成初始动作；镜头：${input.cameraSuggestion}。`,
     input.durationSec <= 8
       ? `3-${endPoint}秒：${input.scriptText}；突出表情、手部动作和空间关系，结尾留出半秒定格。`
@@ -131,15 +175,248 @@ function buildSeedancePrompt(input: {
   return lines.filter(Boolean).join('\n');
 }
 
-function buildAssetReferencePlan(delivery: GearsDeliveryPackage): string[] {
-  const characterRefs = delivery.character_assets.slice(0, 9).map((character, index) =>
-    `@图片${index + 1} 可作为人物「${character.name}」形象参考：${character.appearance_features}；服装：${character.clothing}`
-  );
-  const sceneOffset = characterRefs.length;
-  const sceneRefs = delivery.scene_assets.slice(0, Math.max(0, 9 - sceneOffset)).map((scene, index) =>
-    `@图片${sceneOffset + index + 1} 可作为场景「${scene.name}」氛围参考：${scene.description}`
-  );
-  return [...characterRefs, ...sceneRefs];
+function buildAssetReferences(
+  story: StoryGenerateResult,
+  delivery: GearsDeliveryPackage,
+): SeedanceAssetReference[] {
+  const planned = [
+    ...delivery.character_assets.map(character => {
+      const sourceSceneIds = story.scene_breakdown
+        .filter(scene => scene.characters?.includes(character.name))
+        .map(scene => scene.scene_id);
+      return {
+        kind: 'character' as const,
+        label: character.name,
+        role: 'character_reference' as const,
+        description: `${character.appearance_features}；服装：${character.clothing}`,
+        source_scene_ids: sourceSceneIds,
+      };
+    }),
+    ...delivery.scene_assets.map(sceneAsset => {
+      const sourceSceneIds = story.scene_breakdown
+        .filter(scene => scene.location === sceneAsset.name || scene.location.includes(sceneAsset.name) || sceneAsset.name.includes(scene.location))
+        .map(scene => scene.scene_id);
+      return {
+        kind: 'location' as const,
+        label: sceneAsset.name,
+        role: 'location_reference' as const,
+        description: `${sceneAsset.description}；氛围：${sceneAsset.atmosphere}`,
+        source_scene_ids: sourceSceneIds,
+      };
+    }),
+    ...buildPropReferenceSeeds(story),
+  ];
+
+  return planned.slice(0, SEEDANCE_LIMITS.maxImageFiles).map((item, index) => ({
+    asset_id: seedanceAssetId(item.kind, item.label),
+    kind: item.kind,
+    label: item.label,
+    modality: 'image',
+    reference_slot: `@图片${index + 1}`,
+    role: item.role,
+    description: item.description,
+    source_scene_ids: uniqueNumbers(item.source_scene_ids),
+    source_shot_ids: uniqueNumbers(item.source_scene_ids).map(sceneId => `shot-${sceneId}`),
+    required: true,
+  }));
+}
+
+function buildPropReferenceSeeds(story: StoryGenerateResult): Array<{
+  kind: 'prop';
+  label: string;
+  role: 'prop_reference';
+  description: string;
+  source_scene_ids: number[];
+}> {
+  const propMap = new Map<string, Set<number>>();
+  for (const scene of story.scene_breakdown) {
+    const text = [scene.title, scene.plot, scene.key_action, scene.visual_prompt, scene.dialogue_or_narration].join(' ');
+    for (const prop of PROP_CANDIDATES) {
+      if (!text.includes(prop)) continue;
+      if (!propMap.has(prop)) propMap.set(prop, new Set());
+      propMap.get(prop)?.add(scene.scene_id);
+    }
+  }
+  return [...propMap.entries()].map(([label, sceneIds]) => ({
+    kind: 'prop',
+    label,
+    role: 'prop_reference',
+    description: `${label}作为关键道具外观参考，需在相关镜头中保持造型、材质和位置连续。`,
+    source_scene_ids: [...sceneIds].sort((a, b) => a - b),
+  }));
+}
+
+function formatAssetReferencePlanItem(reference: SeedanceAssetReference): string {
+  if (reference.kind === 'character') {
+    return `${reference.reference_slot} 可作为人物「${reference.label}」形象参考：${reference.description}`;
+  }
+  if (reference.kind === 'location') {
+    return `${reference.reference_slot} 可作为场景「${reference.label}」氛围参考：${reference.description}`;
+  }
+  if (reference.kind === 'prop') {
+    return `${reference.reference_slot} 可作为道具「${reference.label}」外观参考：${reference.description}`;
+  }
+  if (reference.kind === 'camera') return `${reference.reference_slot} 可作为运镜参考：${reference.description}`;
+  return `${reference.reference_slot} 可作为音频参考：${reference.description}`;
+}
+
+function buildShotAssetSlots(input: {
+  references: SeedanceAssetReference[];
+  shotId: string;
+  sourceSceneId: number;
+  characters: string[];
+  location: string;
+  text: string;
+}): SeedanceShotAssetSlot[] {
+  return input.references
+    .filter(reference => {
+      if (reference.kind === 'character') return input.characters.includes(reference.label);
+      if (reference.kind === 'location') {
+        return input.location === reference.label
+          || input.location.includes(reference.label)
+          || reference.label.includes(input.location)
+          || reference.source_scene_ids.includes(input.sourceSceneId);
+      }
+      if (reference.kind === 'prop') return reference.source_scene_ids.includes(input.sourceSceneId) || input.text.includes(reference.label);
+      return reference.source_shot_ids.includes(input.shotId);
+    })
+    .map(reference => ({
+      asset_id: reference.asset_id,
+      label: reference.label,
+      kind: reference.kind,
+      modality: reference.modality,
+      reference_slot: reference.reference_slot,
+      role: reference.role,
+      required: reference.required,
+      prompt_usage: seedanceSlotUsage(reference),
+    }));
+}
+
+function seedanceSlotUsage(reference: SeedanceAssetReference): string {
+  if (reference.kind === 'character') return `${reference.reference_slot} 作为人物「${reference.label}」形象参考`;
+  if (reference.kind === 'location') return `${reference.reference_slot} 作为场景「${reference.label}」氛围参考`;
+  if (reference.kind === 'prop') return `${reference.reference_slot} 作为道具「${reference.label}」外观参考`;
+  if (reference.kind === 'camera') return `${reference.reference_slot} 作为运镜和节奏参考`;
+  return `${reference.reference_slot} 作为音乐或音效参考`;
+}
+
+function buildShotAssetUsageLine(slots: SeedanceShotAssetSlot[]): string {
+  if (!slots.length) return '';
+  return `素材引用：${slots.map(slot => slot.prompt_usage).join('；')}。`;
+}
+
+function buildPackageMaterialValidation(references: SeedanceAssetReference[]): SeedancePackageMaterialValidation {
+  const imageCount = references.filter(reference => reference.modality === 'image').length;
+  const videoCount = references.filter(reference => reference.modality === 'video').length;
+  const audioCount = references.filter(reference => reference.modality === 'audio').length;
+  const totalFileCount = imageCount + videoCount + audioCount;
+  const warnings = [
+    totalFileCount > SEEDANCE_LIMITS.maxTotalFiles
+      ? `素材总数 ${totalFileCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxTotalFiles}`
+      : '',
+    imageCount > SEEDANCE_LIMITS.maxImageFiles
+      ? `图片素材 ${imageCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxImageFiles}`
+      : '',
+    videoCount > SEEDANCE_LIMITS.maxVideoFiles
+      ? `视频素材 ${videoCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxVideoFiles}`
+      : '',
+    audioCount > SEEDANCE_LIMITS.maxAudioFiles
+      ? `音频素材 ${audioCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxAudioFiles}`
+      : '',
+  ].filter(Boolean);
+  return {
+    total_file_count: totalFileCount,
+    image_count: imageCount,
+    video_count: videoCount,
+    audio_count: audioCount,
+    max_total_files: SEEDANCE_LIMITS.maxTotalFiles,
+    max_image_files: SEEDANCE_LIMITS.maxImageFiles,
+    max_video_files: SEEDANCE_LIMITS.maxVideoFiles,
+    max_audio_files: SEEDANCE_LIMITS.maxAudioFiles,
+    over_limit: warnings.length > 0,
+    warnings,
+  };
+}
+
+function buildShotMaterialValidation(input: {
+  shotId: string;
+  durationSec: number;
+  characters: string[];
+  location: string;
+  text: string;
+  assetSlots: SeedanceShotAssetSlot[];
+}): SeedanceShotMaterialValidation {
+  const imageCount = input.assetSlots.filter(slot => slot.modality === 'image').length;
+  const videoCount = input.assetSlots.filter(slot => slot.modality === 'video').length;
+  const audioCount = input.assetSlots.filter(slot => slot.modality === 'audio').length;
+  const totalFileCount = imageCount + videoCount + audioCount;
+  const promptComplexityScore = estimatePromptComplexity(input.text, input.assetSlots.length);
+  const durationRisk = durationRiskForPrompt(input.durationSec, promptComplexityScore);
+  const requiredSlots = [
+    ...input.characters.map(character => `character:${character}`),
+    input.location.trim() ? `location:${input.location}` : '',
+  ].filter(Boolean);
+  const presentSlots = new Set(input.assetSlots.map(slot => `${slot.kind}:${slot.label}`));
+  const missingRequiredSlots = requiredSlots.filter(required => !presentSlots.has(required));
+  const warnings = [
+    totalFileCount > SEEDANCE_LIMITS.maxTotalFiles
+      ? `素材总数 ${totalFileCount} 超过单条提示可控范围 ${SEEDANCE_LIMITS.maxTotalFiles}`
+      : '',
+    imageCount > SEEDANCE_LIMITS.maxImageFiles
+      ? `图片素材 ${imageCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxImageFiles}`
+      : '',
+    videoCount > SEEDANCE_LIMITS.maxVideoFiles
+      ? `视频素材 ${videoCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxVideoFiles}`
+      : '',
+    audioCount > SEEDANCE_LIMITS.maxAudioFiles
+      ? `音频素材 ${audioCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxAudioFiles}`
+      : '',
+    missingRequiredSlots.length ? `缺少必需素材引用槽位：${missingRequiredSlots.join('、')}` : '',
+    durationRisk === 'overloaded'
+      ? `提示复杂度 ${promptComplexityScore}/100 对 ${input.durationSec} 秒时长过载`
+      : '',
+    durationRisk === 'dense'
+      ? `提示复杂度 ${promptComplexityScore}/100 偏高，建议拆分动作或延长时长`
+      : '',
+    /真人|写实人脸|真实人物|照片/.test(input.text) ? '存在写实真人脸素材风险，避免上传可识别真人脸参考' : '',
+  ].filter(Boolean);
+  return {
+    total_file_count: totalFileCount,
+    image_count: imageCount,
+    video_count: videoCount,
+    audio_count: audioCount,
+    max_total_files: SEEDANCE_LIMITS.maxTotalFiles,
+    max_image_files: SEEDANCE_LIMITS.maxImageFiles,
+    max_video_files: SEEDANCE_LIMITS.maxVideoFiles,
+    max_audio_files: SEEDANCE_LIMITS.maxAudioFiles,
+    missing_required_slots: missingRequiredSlots,
+    prompt_complexity_score: promptComplexityScore,
+    duration_sec: input.durationSec,
+    duration_risk: durationRisk,
+    warnings,
+  };
+}
+
+function estimatePromptComplexity(text: string, slotCount: number): number {
+  const timeMarkerCount = (text.match(/\d+[-—~至到]\d+秒/g) ?? []).length;
+  const punctuationBeats = (text.match(/[，。；;、]/g) ?? []).length;
+  const actionHints = (text.match(/镜头|动作|表情|道具|转折|冲突|对峙|特写|推|拉|摇|跟随/g) ?? []).length;
+  return Math.min(100, Math.round(
+    slotCount * 10
+    + Math.min(35, text.length / 18)
+    + Math.min(25, punctuationBeats * 2)
+    + Math.min(20, actionHints * 2)
+    + timeMarkerCount * 4,
+  ));
+}
+
+function durationRiskForPrompt(durationSec: number, complexityScore: number): 'ok' | 'dense' | 'overloaded' {
+  if (durationSec <= 5 && complexityScore >= 60) return 'overloaded';
+  if (durationSec <= 8 && complexityScore >= 76) return 'overloaded';
+  if (complexityScore >= 88) return 'overloaded';
+  if (durationSec <= 8 && complexityScore >= 58) return 'dense';
+  if (complexityScore >= 72) return 'dense';
+  return 'ok';
 }
 
 function renderSeedanceMarkdown(pkg: Omit<SeedancePromptPackage, 'markdown'>): string {
@@ -149,6 +426,7 @@ function renderSeedanceMarkdown(pkg: Omit<SeedancePromptPackage, 'markdown'>): s
     `> schema: ${pkg.schema_version}`,
     `> storyId: ${pkg.storyId}`,
     `> 总时长: ${pkg.total_duration_sec} 秒`,
+    `> 素材: ${pkg.material_validation.total_file_count}/${pkg.material_validation.max_total_files} 个文件（图片 ${pkg.material_validation.image_count}/${pkg.material_validation.max_image_files}）`,
     '',
     '## 参考素材分配',
     ...(pkg.asset_reference_plan.length ? pkg.asset_reference_plan.map(item => `- ${item}`) : ['- 未配置参考素材；可直接使用文本提示生成。']),
@@ -163,6 +441,12 @@ function renderSeedanceMarkdown(pkg: Omit<SeedancePromptPackage, 'markdown'>): s
       `- 人物: ${unit.characters.join('、') || '未指定'}`,
       `- 场景: ${unit.location}`,
       `- 镜头: ${unit.camera_suggestion}`,
+      unit.asset_slots.length
+        ? `- 素材 slot: ${unit.asset_slots.map(slot => `${slot.reference_slot}=${slot.label}`).join('；')}`
+        : '- 素材 slot: 无',
+      unit.material_validation.warnings.length
+        ? `- 素材校验: ${unit.material_validation.warnings.join('；')}`
+        : `- 素材校验: 通过 · 复杂度 ${unit.material_validation.prompt_complexity_score}/100`,
       unit.continuity_notes.length ? `- 连续性: ${unit.continuity_notes.join('；')}` : '- 连续性: 无',
       unit.negative_constraints.length ? `- 禁止: ${unit.negative_constraints.join('；')}` : '- 禁止: 无',
       '',
@@ -181,6 +465,7 @@ function validateShotUnit(unit: SeedancePromptShotUnit): string[] {
   const notes: string[] = [];
   if (unit.duration_sec < 4 || unit.duration_sec > 15) notes.push(`${unit.shot_id} 时长不在 Seedance 建议范围 4-15 秒`);
   if (!unit.characters.length) notes.push(`${unit.shot_id} 缺少人物锚点`);
+  notes.push(...unit.material_validation.warnings.map(warning => `${unit.shot_id} ${warning}`));
   if (hasPromptNoise(unit.visual_prompt) || hasPromptNoise(unit.seedance_prompt)) notes.push(`${unit.shot_id} 提示词可能混入分析/质量说明`);
   if (unit.script_text.includes('【文本待补】')) notes.push(`${unit.shot_id} 缺少可生成的脚本文本`);
   return notes;
@@ -221,13 +506,16 @@ function cleanPrompt(value: string): string {
 }
 
 function stripPromptNoise(value: string): string {
-  let text = value;
+  let text = value
+    .replace(/【文本待补】/g, '')
+    .replace(/生成优先级[:：][^。；\n]*(?:。|；|\n)?/g, '')
+    .replace(/本场景基于[^，。；\n]*(?:，具体细节请核实来源)?/g, '')
+    .replace(/来源条目[:：][^。；\n]*(?:。|；|\n)?/g, '')
+    .replace(/(?:质量|分析|建议)[:：][^。；\n]*/g, '');
   for (const word of PROMPT_NOISE_WORDS) {
     text = text.replaceAll(word, '');
   }
   return text
-    .replace(/【文本待补】/g, '')
-    .replace(/(?:质量|分析|建议)[:：][^。；\n]*/g, '')
     .trim();
 }
 
@@ -239,4 +527,22 @@ function compactStrings(items: Array<string | undefined | null | false>): string
   return items
     .map(item => typeof item === 'string' ? item.trim() : '')
     .filter(Boolean);
+}
+
+function uniqueNumbers(values: number[]): number[] {
+  return [...new Set(values)].sort((a, b) => a - b);
+}
+
+function seedanceAssetId(kind: SeedanceAssetReference['kind'], label: string): string {
+  return `seedance-asset-${kind}-${slugify(label)}`;
+}
+
+function slugify(value: string): string {
+  const ascii = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (ascii) return ascii.slice(0, 80);
+  return encodeURIComponent(value.trim()).replace(/%/g, '').slice(0, 80) || 'asset';
 }

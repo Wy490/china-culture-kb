@@ -289,6 +289,14 @@
             <p>{{ shot.production_prompt }}</p>
             <details class="project-detail-page__seedance-prompt">
               <summary>Seedance 提示词</summary>
+              <small v-if="shot.seedance_asset_slots.length">
+                素材 slot：{{ shot.seedance_asset_slots.map(slot => `${slot.reference_slot}=${slot.label}`).join('；') }}
+              </small>
+              <small>
+                素材校验：{{ shot.seedance_material_validation.total_file_count }}/{{ shot.seedance_material_validation.max_total_files }} 个文件
+                · 复杂度 {{ shot.seedance_material_validation.prompt_complexity_score }}/100
+                · {{ seedanceDurationRiskLabel(shot.seedance_material_validation.duration_risk) }}
+              </small>
               <pre>{{ shot.seedance_prompt }}</pre>
               <small v-if="shot.seedance_validation_notes.length">{{ shot.seedance_validation_notes.join('；') }}</small>
             </details>
@@ -754,6 +762,15 @@ function productionStageLabel(stage?: string): string {
     ready: 'Ready',
   }
   return stage ? (map[stage] ?? stage) : '未记录'
+}
+
+function seedanceDurationRiskLabel(risk: string): string {
+  const map: Record<string, string> = {
+    ok: '节奏可控',
+    dense: '信息偏密',
+    overloaded: '时长过载',
+  }
+  return map[risk] ?? risk
 }
 
 function versionLabel(type: StoryProjectVersionChangeType): string {

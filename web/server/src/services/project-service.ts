@@ -705,6 +705,8 @@ function buildProductionBoardSeedanceExport(board: StoryProductionBoard) {
       characters: unit.characters,
       location: unit.location,
       prompt: unit.seedance_prompt,
+      asset_slots: unit.seedance_asset_slots,
+      material_validation: unit.seedance_material_validation,
       validation_notes: unit.seedance_validation_notes,
     })),
   };
@@ -724,6 +726,10 @@ function buildProductionBoardSeedanceMarkdown(board: StoryProductionBoard): stri
       `- 时长: ${unit.seedance_duration_sec} 秒`,
       `- 场景: ${unit.location}`,
       `- 角色: ${unit.characters.join('、') || '未指定'}`,
+      unit.seedance_asset_slots.length
+        ? `- 素材 slot: ${unit.seedance_asset_slots.map(slot => `${slot.reference_slot}=${slot.label}`).join('；')}`
+        : '- 素材 slot: 无',
+      `- 素材校验: 文件 ${unit.seedance_material_validation.total_file_count}/${unit.seedance_material_validation.max_total_files}；复杂度 ${unit.seedance_material_validation.prompt_complexity_score}/100；风险 ${unit.seedance_material_validation.duration_risk}`,
       unit.seedance_validation_notes.length
         ? `- 校验: ${unit.seedance_validation_notes.join('；')}`
         : '- 校验: 无',

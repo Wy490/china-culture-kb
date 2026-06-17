@@ -79,7 +79,8 @@ function buildShotUnits(
     const unit = delivery.units.find(item => item.source_scene_id === scene.scene_id);
     const seedanceUnit = seedanceBySceneId.get(scene.scene_id);
     const scriptText = segment?.script_text || scene.dialogue_or_narration || scene.key_action || scene.plot;
-    const visualPrompt = cleanPrompt(scene.visual_prompt);
+    const originalVisualPrompt = scene.visual_prompt;
+    const visualPrompt = cleanPrompt(originalVisualPrompt);
     const cameraSuggestion = cleanPrompt(scene.camera_suggestion);
     const continuityNotes = [
       scene.cultural_note,
@@ -87,14 +88,24 @@ function buildShotUnits(
       ...(scene.fictionalized_elements?.map(item => `戏剧化补足：${item}`) ?? []),
       ...(segment?.cultural_constraints ?? []),
     ].filter((note): note is string => Boolean(note));
-    const qaFlags = shotQaFlags({
+    const seedanceAssetSlots = seedanceUnit?.asset_slots ?? [];
+    const seedanceMaterialValidation = seedanceUnit?.material_validation ?? fallbackSeedanceMaterialValidation({
+      durationSec: seedanceUnit?.duration_sec ?? Math.max(4, Math.min(15, Math.round(scene.duration_sec || 8))),
+      characters: scene.characters ?? [],
+      location: scene.location,
+    });
+    const qaFlags = [
+      ...shotQaFlags({
       scriptText,
       visualPrompt,
+      originalVisualPrompt,
       cameraSuggestion,
       characters: scene.characters ?? [],
       location: scene.location,
       segment,
-    });
+      }),
+      ...seedanceMaterialValidation.warnings.map(warning => `Seedance 素材校验：${warning}`),
+    ];
     return {
       shot_id: `shot-${scene.scene_id}`,
       source_scene_id: scene.scene_id,
@@ -122,7 +133,11 @@ function buildShotUnits(
         cameraSuggestion,
       }),
       seedance_duration_sec: seedanceUnit?.duration_sec ?? Math.max(4, Math.min(15, Math.round(scene.duration_sec || 8))),
-      seedance_validation_notes: seedanceUnit ? [] : ['未找到对应 Seedance 单元，已使用 Production Board 兜底提示词。'],
+      seedance_validation_notes: seedanceUnit
+        ? seedanceMaterialValidation.warnings
+        : ['未找到对应 Seedance 单元，已使用 Production Board 兜底提示词。'],
+      seedance_asset_slots: seedanceAssetSlots,
+      seedance_material_validation: seedanceMaterialValidation,
       continuity_notes: continuityNotes,
       cultural_boundary: scene.factual_basis
         ? `事实依据：${scene.factual_basis}`
@@ -188,9 +203,13 @@ function buildQaReport(
   validationNotes: string[],
   supervisionReport: StoryProductionBoardSupervisionReport,
 ): StoryProductionBoardQaReport {
-  const missingAssetRefs = shotUnits
+  const missingShotAnchors = shotUnits
     .filter(unit => unit.characters.length === 0 || !unit.location)
     .map(unit => unit.shot_id);
+  const missingSeedanceSlots = shotUnits.flatMap(unit =>
+    unit.seedance_material_validation.missing_required_slots.map(slot => `${unit.shot_id}: ${slot}`),
+  );
+  const missingAssetRefs = [...missingShotAnchors, ...missingSeedanceSlots];
   const promptPollutionFlags = shotUnits.flatMap(unit =>
     unit.qa_flags
       .filter(flag => flag.includes('提示词杂质'))
@@ -223,6 +242,7 @@ function buildQaReport(
 function shotQaFlags(input: {
   scriptText: string;
   visualPrompt: string;
+  originalVisualPrompt?: string;
   cameraSuggestion: string;
   characters: string[];
   location: string;
@@ -234,7 +254,7 @@ function shotQaFlags(input: {
   if (!input.cameraSuggestion.trim()) flags.push('缺少 camera_suggestion');
   if (input.characters.length === 0) flags.push('缺少角色资产引用');
   if (!input.location.trim()) flags.push('缺少场景资产引用');
-  if (/(质量|分析|应该|注意|来源显示|TODO|待补)/.test(input.visualPrompt)) {
+  if (hasPromptPollution(`${input.originalVisualPrompt ?? ''} ${input.visualPrompt}`)) {
     flags.push('提示词杂质：visual_prompt 含内部说明或待补信息');
   }
   if (!input.segment?.segment_prompt_hint) flags.push('连续性风险：缺少 segment_prompt_hint');
@@ -295,7 +315,11 @@ function buildSupervisionReport(
       }));
     }
 
-    if (hasPromptPollution(unit.visual_prompt) || hasPromptPollution(unit.production_prompt)) {
+    if (
+      hasPromptPollution(unit.visual_prompt)
+      || hasPromptPollution(unit.production_prompt)
+      || unit.qa_flags.some(flag => flag.includes('提示词杂质'))
+    ) {
       issues.push(supervisionIssue({
         category: 'prompt',
         severity: 'warn',
@@ -588,7 +612,7 @@ function supervisionIssue(input: {
 }
 
 function hasPromptPollution(value: string): boolean {
-  return /(质量|分析|应该|注意|来源显示|TODO|待补|知识库缺失|生成优先级|不可写成已验证史实)/.test(value);
+  return /(质量|分析|应该|注意|来源显示|来源条目|TODO|待补|知识库缺失|生成优先级|具体细节请核实来源|不可写成已验证史实)/.test(value);
 }
 
 function isFilmable(unit: StoryProductionBoardShotUnit): boolean {
@@ -683,10 +707,45 @@ function buildFallbackSeedancePrompt(input: {
   ].join('\n');
 }
 
+function fallbackSeedanceMaterialValidation(input: {
+  durationSec: number;
+  characters: string[];
+  location: string;
+}): StoryProductionBoardShotUnit['seedance_material_validation'] {
+  const missingRequiredSlots = [
+    ...input.characters.map(character => `character:${character}`),
+    input.location.trim() ? `location:${input.location}` : '',
+  ].filter(Boolean);
+  return {
+    total_file_count: 0,
+    image_count: 0,
+    video_count: 0,
+    audio_count: 0,
+    max_total_files: 12,
+    max_image_files: 9,
+    max_video_files: 3,
+    max_audio_files: 3,
+    missing_required_slots: missingRequiredSlots,
+    prompt_complexity_score: 0,
+    duration_sec: input.durationSec,
+    duration_risk: 'ok',
+    warnings: missingRequiredSlots.length
+      ? [`缺少必需素材引用槽位：${missingRequiredSlots.join('、')}`]
+      : [],
+  };
+}
+
 function cleanPrompt(value: string): string {
   return value
     .replace(/^(视觉提示|画面提示|镜头建议|分析|注意)[:：]\s*/g, '')
-    .replace(/来源显示[:：].*/g, '')
+    .replace(/生成优先级[:：][^。；\n]*(?:。|；|\n)?/g, '')
+    .replace(/本场景基于[^，。；\n]*(?:，具体细节请核实来源)?/g, '')
+    .replace(/来源显示[:：][^。；\n]*(?:。|；|\n)?/g, '')
+    .replace(/来源条目[:：][^。；\n]*(?:。|；|\n)?/g, '')
+    .replace(/(?:质量信号|建议调整|类型匹配|资料显示|摘要|核心画面是|为什么必须面对)[:：]?/g, '')
+    .replace(/(?:质量|分析|应该|注意|TODO|待补|知识库缺失)[:：]?/g, '')
+    .replace(/具体细节请核实来源/g, '')
+    .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
@@ -753,6 +812,10 @@ function renderProductionBoardMarkdown(pkg: Omit<StoryProductionBoard, 'markdown
       `- Camera: ${unit.camera_suggestion}`,
       `- Production Prompt:\n${unit.production_prompt}`,
       `- Seedance ${unit.seedance_duration_sec}s Prompt:\n${unit.seedance_prompt}`,
+      unit.seedance_asset_slots.length
+        ? `- Seedance 素材 slot: ${unit.seedance_asset_slots.map(slot => `${slot.reference_slot}=${slot.label}`).join('；')}`
+        : '- Seedance 素材 slot: 无',
+      `- Seedance 素材校验: 文件 ${unit.seedance_material_validation.total_file_count}/${unit.seedance_material_validation.max_total_files}；复杂度 ${unit.seedance_material_validation.prompt_complexity_score}/100；风险 ${unit.seedance_material_validation.duration_risk}`,
       unit.seedance_validation_notes.length ? `- Seedance 校验: ${unit.seedance_validation_notes.join('；')}` : '- Seedance 校验: 无',
       `- QA: ${unit.qa_flags.join('；') || '无'}`,
       '',

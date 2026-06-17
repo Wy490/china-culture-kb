@@ -280,6 +280,8 @@ describe('project-service', () => {
     expect(boardRes.data?.shot_units[0].seedance_duration_sec).toBeGreaterThanOrEqual(4);
     expect(boardRes.data?.shot_units[0].seedance_duration_sec).toBeLessThanOrEqual(15);
     expect(boardRes.data?.shot_units[0].seedance_prompt).toContain('0-3秒');
+    expect(boardRes.data?.shot_units[0].seedance_asset_slots.length).toBeGreaterThan(0);
+    expect(boardRes.data?.shot_units[0].seedance_material_validation.prompt_complexity_score).toBeGreaterThan(0);
     expect(boardRes.data?.supervision_report.issue_count).toBeGreaterThan(0);
     expect(boardRes.data?.supervision_report.priority_fixes.length).toBeGreaterThan(0);
     expect(boardRes.data?.repair_plan.task_count).toBeGreaterThan(0);
@@ -293,6 +295,7 @@ describe('project-service', () => {
     expect(boardRes.data?.markdown).toContain('## 生产修复包');
     expect(boardRes.data?.markdown).toContain('## 交付清单');
     expect(boardRes.data?.markdown).toContain('Seedance');
+    expect(boardRes.data?.markdown).toContain('Seedance 素材 slot');
   });
 
   it('exports a production board package to the project directory', async () => {
@@ -329,6 +332,10 @@ describe('project-service', () => {
     const seedanceMarkdown = await readFile(resolve(exportDir, 'seedance-prompts.md'), 'utf-8');
     expect(seedanceMarkdown).toContain('Seedance 2.0 镜头提示词');
     expect(seedanceMarkdown).toContain('0-3秒');
+    expect(seedanceMarkdown).toContain('素材 slot');
+    const seedanceJson = JSON.parse(await readFile(resolve(exportDir, 'seedance-prompts.json'), 'utf-8'));
+    expect(seedanceJson.shot_units[0].asset_slots.length).toBeGreaterThan(0);
+    expect(seedanceJson.shot_units[0].material_validation.prompt_complexity_score).toBeGreaterThan(0);
 
     const detail = await getProject(enriched.project_id!);
     expect(detail.data?.project.status).toBe('exported');
