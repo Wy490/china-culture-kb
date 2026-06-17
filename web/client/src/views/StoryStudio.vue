@@ -493,20 +493,33 @@
           <div v-else-if="recentStoryProjectsError" class="story-studio__recent-state story-studio__recent-state--error">
             {{ recentStoryProjectsError }}
           </div>
-          <div v-else-if="recentStoryPreview.length > 0" class="story-studio__recent-list">
-            <RouterLink
-              v-for="project in recentStoryPreview"
-              :key="project.project_id"
-              class="story-studio__recent-item"
-              :to="`/projects/${project.project_id}`"
-            >
-              <span class="story-studio__recent-title">{{ project.title }}</span>
-              <span class="story-studio__recent-meta">
-                {{ videoTypeLabel(project.video_type) }} · {{ formatStoryProjectDate(project.updated_at) }}
-              </span>
-            </RouterLink>
-          </div>
-          <div v-else class="story-studio__recent-state">暂无故事草稿</div>
+          <template v-else>
+            <div v-if="recentStoryProjectsMessage" class="story-studio__recent-state story-studio__recent-state--success">
+              {{ recentStoryProjectsMessage }}
+            </div>
+            <div v-if="recentStoryPreview.length > 0" class="story-studio__recent-list">
+              <article
+                v-for="project in recentStoryPreview"
+                :key="project.project_id"
+                class="story-studio__recent-item"
+              >
+                <RouterLink class="story-studio__recent-link" :to="`/projects/${project.project_id}`">
+                  <span class="story-studio__recent-title">{{ project.title }}</span>
+                  <span class="story-studio__recent-meta">
+                    {{ videoTypeLabel(project.video_type) }} · {{ formatStoryProjectDate(project.updated_at) }}
+                  </span>
+                </RouterLink>
+                <button
+                  class="story-studio__recent-delete"
+                  :disabled="deletingRecentProjectId === project.project_id"
+                  @click="handleDeleteRecentStory(project)"
+                >
+                  {{ deletingRecentProjectId === project.project_id ? '删除中…' : '删除' }}
+                </button>
+              </article>
+            </div>
+            <div v-else class="story-studio__recent-state">暂无故事草稿</div>
+          </template>
         </section>
       </div>
     </main>
@@ -519,7 +532,7 @@ import { useRoute } from 'vue-router'
 import { storyPlan, storyGenerate, storyOutlineAnalyze } from '@/api/stories'
 import { searchEntries, matchEntries, entriesMultiMatch } from '@/api/entries'
 import { getModelProfiles, getNarrativePatternCatalog } from '@/api/system'
-import { listProjects } from '@/api/projects'
+import { deleteProject, listProjects } from '@/api/projects'
 import type {
   AIModelProfile,
   EntrySearchResult,
@@ -683,6 +696,8 @@ const generateError = ref('')
 const recentStoryProjects = ref<StoryProjectListItem[]>([])
 const recentStoryProjectsLoading = ref(false)
 const recentStoryProjectsError = ref('')
+const recentStoryProjectsMessage = ref('')
+const deletingRecentProjectId = ref('')
 
 const hasAnyEntrySource = computed(() => {
   if (inputMode.value === 'entry') return !!selectedEntry.value
@@ -775,6 +790,7 @@ function storyProjectTime(project: StoryProjectListItem): number {
 async function loadRecentStoryProjects() {
   recentStoryProjectsLoading.value = true
   recentStoryProjectsError.value = ''
+  recentStoryProjectsMessage.value = ''
   const res = await listProjects()
   if (res.ok && res.data) {
     recentStoryProjects.value = [...res.data].sort((a, b) => {
@@ -784,6 +800,23 @@ async function loadRecentStoryProjects() {
     recentStoryProjectsError.value = res.error?.message ?? '加载最近故事失败'
   }
   recentStoryProjectsLoading.value = false
+}
+
+async function handleDeleteRecentStory(project: StoryProjectListItem) {
+  const confirmed = window.confirm(`确定删除《${project.title}》吗？这会删除生成故事文件和项目版本记录。`)
+  if (!confirmed) return
+
+  deletingRecentProjectId.value = project.project_id
+  recentStoryProjectsError.value = ''
+  recentStoryProjectsMessage.value = ''
+  const res = await deleteProject(project.project_id)
+  if (res.ok && res.data) {
+    recentStoryProjects.value = recentStoryProjects.value.filter(item => item.project_id !== project.project_id)
+    recentStoryProjectsMessage.value = `已删除《${project.title}》，清理 ${res.data.removed_story_file_count ?? 0} 个关联故事文件`
+  } else {
+    recentStoryProjectsError.value = res.error?.message ?? '删除最近故事失败'
+  }
+  deletingRecentProjectId.value = ''
 }
 
 // --- Entry search handlers ---
@@ -1778,7 +1811,14 @@ async function handleGenerate() {
   gap: 12px;
   padding: 9px 0;
   border-bottom: 1px solid #edf1f3;
+}
+.story-studio__recent-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
   text-decoration: none;
+  min-width: 0;
 }
 .story-studio__recent-title {
   overflow: hidden;
@@ -1793,6 +1833,21 @@ async function handleGenerate() {
   font-size: 12px;
   white-space: nowrap;
 }
+.story-studio__recent-delete {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #f0c4bd;
+  border-radius: 4px;
+  background: #fff;
+  color: #b13b2e;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.story-studio__recent-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 .story-studio__recent-state {
   padding: 12px 0;
   color: #7f8c8d;
@@ -1800,6 +1855,9 @@ async function handleGenerate() {
 }
 .story-studio__recent-state--error {
   color: #c0392b;
+}
+.story-studio__recent-state--success {
+  color: #1f7a44;
 }
 
 /* Video type groups */
@@ -1856,7 +1914,8 @@ async function handleGenerate() {
     width: 100%;
   }
   .story-studio__recent-head,
-  .story-studio__recent-item {
+  .story-studio__recent-item,
+  .story-studio__recent-link {
     align-items: flex-start;
     grid-template-columns: 1fr;
   }
@@ -1866,6 +1925,9 @@ async function handleGenerate() {
   .story-studio__recent-manage {
     width: 100%;
     text-align: center;
+  }
+  .story-studio__recent-delete {
+    width: 100%;
   }
   .story-studio__recent-meta {
     white-space: normal;

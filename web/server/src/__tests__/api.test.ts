@@ -7,9 +7,9 @@
 //  - Story plan, generate, list, detail, gears-segments endpoints
 //  - Error handling (404, validation, internal)
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { resolve } from 'path';
-import { mkdtemp, rm, symlink } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import supertest from 'supertest';
 import express from 'express';
@@ -22,23 +22,71 @@ import { systemRouter } from '../routes/system.js';
 import { projectsRouter } from '../routes/projects.js';
 import { gearsCallbackRouter } from '../routes/gears-callback.js';
 import { outlineRouter } from '../routes/outline.js';
+import { createProjectFromGeneratedStory } from '../services/project-service.js';
+import type { StoryGenerateResult } from '@shared/types.js';
 
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
+const ORIGINAL_WEB_GENERATED_ROOT = process.env.WEB_GENERATED_ROOT;
 const ORIGINAL_SEEDANCE_CALLBACK_SECRET = process.env.SEEDANCE_CALLBACK_SECRET;
+const DEFAULT_PROJECTS_ROOT = resolve(import.meta.dirname, '..', '..', '..', 'web', 'generated', 'projects');
 let testWorkspaceRoot = '';
+let defaultProjectDirsBefore = new Set<string>();
+
+async function readDirNameSet(dirPath: string): Promise<Set<string>> {
+  try {
+    return new Set(await readdir(dirPath));
+  } catch {
+    return new Set();
+  }
+}
+
+async function cleanupDefaultProjectArtifacts(): Promise<void> {
+  const currentDirs = await readDirNameSet(DEFAULT_PROJECTS_ROOT);
+  for (const projectId of currentDirs) {
+    if (defaultProjectDirsBefore.has(projectId)) continue;
+    if (!/^\d{8}-story-[0-9a-z]+--[a-z_]+$/.test(projectId)) continue;
+
+    const dirPath = resolve(DEFAULT_PROJECTS_ROOT, projectId);
+    try {
+      const raw = JSON.parse(await readFile(resolve(dirPath, 'project.json'), 'utf-8')) as {
+        source_domain?: string;
+      };
+      if (raw.source_domain === 'china_culture') {
+        await rm(dirPath, { recursive: true, force: true });
+      }
+    } catch {
+      continue;
+    }
+  }
+}
 
 beforeAll(async () => {
+  defaultProjectDirsBefore = await readDirNameSet(DEFAULT_PROJECTS_ROOT);
   testWorkspaceRoot = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-api-'));
   const realDataRoot = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
   await symlink(realDataRoot, resolve(testWorkspaceRoot, 'data'), 'dir');
   process.env.KB_ROOT = resolve(testWorkspaceRoot, 'data');
+  process.env.WEB_GENERATED_ROOT = resolve(testWorkspaceRoot, 'web', 'generated');
+});
+
+beforeEach(() => {
+  if (testWorkspaceRoot) {
+    process.env.KB_ROOT = resolve(testWorkspaceRoot, 'data');
+    process.env.WEB_GENERATED_ROOT = resolve(testWorkspaceRoot, 'web', 'generated');
+  }
 });
 
 afterAll(async () => {
+  await cleanupDefaultProjectArtifacts();
   if (ORIGINAL_KB_ROOT === undefined) {
     delete process.env.KB_ROOT;
   } else {
     process.env.KB_ROOT = ORIGINAL_KB_ROOT;
+  }
+  if (ORIGINAL_WEB_GENERATED_ROOT === undefined) {
+    delete process.env.WEB_GENERATED_ROOT;
+  } else {
+    process.env.WEB_GENERATED_ROOT = ORIGINAL_WEB_GENERATED_ROOT;
   }
   if (ORIGINAL_SEEDANCE_CALLBACK_SECRET === undefined) {
     delete process.env.SEEDANCE_CALLBACK_SECRET;
@@ -91,6 +139,155 @@ function expectFailure(body: any, code?: string) {
   if (code) {
     expect(body.error.code).toBe(code);
   }
+}
+
+function makeApiStory(): StoryGenerateResult {
+  return {
+    storyId: '20260617-story-api1',
+    title: 'API 删除测试故事',
+    generation_type: 'character_story',
+    video_type: 'character_story',
+    presentation_style: 'cinematic',
+    source_entry: '周敦颐——理学开山鼻祖',
+    logline: '一纸判词前的选择。',
+    theme: '人物故事',
+    full_text: '第一场原文。\n\n第二场原文。',
+    scene_breakdown: [
+      {
+        scene_id: 1,
+        title: '雨夜开场',
+        duration_sec: 30,
+        location: '南安军衙',
+        time_of_day: '雨夜',
+        dramatic_function: '钩子开场',
+        plot: '周敦颐看着案卷迟迟没有落笔。',
+        key_action: '停笔凝视',
+        characters: ['周敦颐'],
+        visual_prompt: '烛火、案卷、未签的判词',
+        camera_suggestion: '近景切入',
+        cultural_note: '基于知识库条目',
+        conflict: '签还是不签',
+        dialogue_or_narration: '旁白：这一笔落下，就是一条命。',
+        source_entries: ['周敦颐——理学开山鼻祖'],
+      },
+      {
+        scene_id: 2,
+        title: '正面交锋',
+        duration_sec: 30,
+        location: '军衙堂前',
+        time_of_day: '白天',
+        dramatic_function: '冲突升级',
+        plot: '上官逼他签字，周敦颐坚持重审。',
+        key_action: '当面拒签',
+        characters: ['周敦颐', '上官'],
+        visual_prompt: '堂前对峙，案卷摊开',
+        camera_suggestion: '中近景对切',
+        cultural_note: '基于知识库条目',
+        conflict: '权势与良知对撞',
+        dialogue_or_narration: '周敦颐：此案有疑，我不能签。',
+        source_entries: ['周敦颐——理学开山鼻祖'],
+      },
+    ],
+    gears_segments: [
+      {
+        segment_id: 1,
+        source_scene_id: 1,
+        duration_sec: 30,
+        panel_count: 6,
+        script_text: '第一场分段',
+        purpose: '钩子开场',
+        visual_focus: ['南安军衙', '案卷'],
+        cultural_constraints: ['基于知识库条目'],
+        video_type: 'character_story',
+        presentation_style: 'cinematic',
+      },
+      {
+        segment_id: 2,
+        source_scene_id: 2,
+        duration_sec: 30,
+        panel_count: 6,
+        script_text: '第二场分段',
+        purpose: '冲突升级',
+        visual_focus: ['军衙堂前', '案卷'],
+        cultural_constraints: ['基于知识库条目'],
+        video_type: 'character_story',
+        presentation_style: 'cinematic',
+      },
+    ],
+    gears_segments_url: '/api/stories/20260617-story-api1/gears-segments',
+    cultural_constraints: ['基于知识库条目'],
+    credibility_note: '基本可靠',
+    story_structure: 'single_event_drama',
+    model_profile_id: 'claude_sonnet',
+    quality_report: {
+      hasCentralEvent: true,
+      hasConflict: true,
+      hasProtagonistChoice: true,
+      hasSceneAction: true,
+      hasClimax: true,
+      hasEndingTheme: true,
+      isNotBiographySummary: true,
+      passed: true,
+      issues: [],
+      video_type: 'character_story',
+      story_structure: 'single_event_drama',
+      genre_score: 92,
+      missing_required_elements: [],
+      weak_beats: [],
+      forbidden_patterns_found: [],
+      repair_actions: [],
+    },
+  };
+}
+
+function makeApiProductionRepairStory(): StoryGenerateResult {
+  const baseStory = makeApiStory();
+  return {
+    ...baseStory,
+    storyId: '20260617-story-apr1',
+    title: 'API 生产修复测试故事',
+    gears_segments_url: '/api/stories/20260617-story-apr1/gears-segments',
+    scene_breakdown: baseStory.scene_breakdown.map(scene => scene.scene_id === 1
+      ? {
+          ...scene,
+          visual_prompt: `质量：待补；${scene.visual_prompt}`,
+        }
+      : scene),
+    gears_delivery: {
+      schema_version: 'gears-delivery/v1',
+      storyId: '20260617-story-apr1',
+      title: 'API 生产修复测试故事',
+      character_assets: [
+        {
+          name: '周敦颐',
+          role_position: '主角',
+          species_type: '人类',
+          ethnicity: ['东亚'],
+          gender: '男',
+          age_range: '青年',
+          appearance_features: '青年士人，神情克制',
+          clothing: '清末民初至五四前后中国青年固定服装：朴素学生长衫或短褂布鞋',
+        },
+      ],
+      character_gender_summary: {
+        total: 1,
+        male: 1,
+        female: 0,
+        other: 0,
+        unspecified: 0,
+        not_applicable: 0,
+      },
+      scene_assets: [{
+        name: '南安军衙',
+        scene_type: '室内',
+        description: '衙署案桌、烛火、案卷',
+        atmosphere: '紧张',
+      }],
+      units: [],
+      validation_notes: [],
+      markdown: '# GEARS',
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -179,6 +376,68 @@ describe('Projects API', () => {
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
+    });
+  });
+
+  describe('DELETE /api/projects/:projectId', () => {
+    it('returns story cleanup stats used by project deletion UI', async () => {
+      const story = makeApiStory();
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:00:00.000Z');
+      const storyDir = resolve(testWorkspaceRoot, 'web', 'generated', 'stories', story.video_type);
+      await mkdir(storyDir, { recursive: true });
+      await writeFile(
+        resolve(storyDir, `${story.storyId}.json`),
+        JSON.stringify({
+          ...story,
+          project_id: enriched.project_id,
+          current_version_id: enriched.current_version_id,
+          _request_meta: { created_at: '2026-06-17T10:00:00.000Z' },
+        }, null, 2),
+        'utf-8',
+      );
+
+      const res = await request.delete(`/api/projects/${enriched.project_id}`);
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.deleted).toBe(true);
+      expect(res.body.data.project_id).toBe(enriched.project_id);
+      expect(res.body.data.story_ids).toContain(story.storyId);
+      expect(res.body.data.removed_story_file_count).toBe(1);
+
+      const detailRes = await request.get(`/api/projects/${enriched.project_id}`);
+      expect(detailRes.status).toBe(404);
+      expectFailure(detailRes.body, 'STORY_NOT_FOUND');
+    });
+  });
+
+  describe('POST /api/projects/:projectId/production-board/repair', () => {
+    it('repairs only the requested production board task id through the route', async () => {
+      const story = makeApiProductionRepairStory();
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T11:00:00.000Z');
+
+      const boardRes = await request.get(`/api/projects/${enriched.project_id}/production-board`);
+      expect(boardRes.status).toBe(200);
+      expectSuccess(boardRes.body);
+      const cleanPromptTask = boardRes.body.data.repair_plan.tasks.find((task: any) => task.action === 'clean_prompt');
+
+      expect(cleanPromptTask).toBeTruthy();
+      expect(boardRes.body.data.repair_plan.tasks.some((task: any) => task.action === 'normalize_period_costumes')).toBe(true);
+
+      const repairRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/repair`)
+        .send({ task_ids: [cleanPromptTask.task_id] });
+
+      expect(repairRes.status).toBe(200);
+      expectSuccess(repairRes.body);
+      expect(repairRes.body.data.trace.applied_task_ids).toEqual([cleanPromptTask.task_id]);
+      expect(repairRes.body.data.trace.applied_actions).toEqual(['clean_prompt']);
+      expect(repairRes.body.data.detail.project.version_count).toBe(2);
+      expect(repairRes.body.data.detail.current_story.scene_breakdown[0].visual_prompt).not.toMatch(/质量|待补/);
+      expect(repairRes.body.data.detail.current_story.gears_delivery.character_assets[0].clothing).toContain('清末民初');
+      expect(
+        repairRes.body.data.after_board.supervision_report.issues.some((issue: any) => issue.category === 'period'),
+      ).toBe(true);
     });
   });
 

@@ -3884,8 +3884,12 @@ function kbRoot(): string {
   return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', 'data');
 }
 
+function generatedRoot(): string {
+  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
+}
+
 function seriesProjectsRoot(): string {
-  return resolve(kbRoot(), '..', 'web', 'generated', 'ai-comic-series-projects');
+  return resolve(generatedRoot(), 'ai-comic-series-projects');
 }
 
 function seriesProjectPath(seriesProjectId: string): string {

@@ -250,8 +250,12 @@ function kbRoot(): string {
   return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', 'data');
 }
 
+function webGeneratedRoot(): string {
+  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
+}
+
 function generatedRoot(): string {
-  return resolve(kbRoot(), '..', 'web', 'generated', 'stories');
+  return resolve(webGeneratedRoot(), 'stories');
 }
 
 // ---------------------------------------------------------------------------

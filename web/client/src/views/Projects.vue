@@ -65,7 +65,11 @@
       </details>
     </section>
 
-    <section v-if="showStoryProjects && projects.length > 0" class="projects-page__bulkbar">
+    <section
+      v-if="showStoryProjects && projects.length > 0"
+      class="projects-page__bulkbar"
+      :class="{ 'projects-page__bulkbar--active': selectedProjectIds.length > 0 }"
+    >
       <label class="projects-page__bulk-check">
         <input
           type="checkbox"
@@ -96,13 +100,18 @@
         >
           清除筛选外选择
         </button>
-        <button
-          class="projects-page__muted-btn"
-          :disabled="projects.length <= RETAIN_RECENT_COUNT || retainingRecent || batchDeleting || deletingProjectId !== ''"
-          @click="handleRetainRecentProjects"
-        >
-          {{ retainingRecent ? '清理中…' : `仅保留最近 ${RETAIN_RECENT_COUNT} 个` }}
-        </button>
+        <details class="projects-page__cleanup-actions">
+          <summary class="projects-page__cleanup-summary">清理操作</summary>
+          <div class="projects-page__cleanup-body">
+            <button
+              class="projects-page__muted-btn"
+              :disabled="projects.length <= RETAIN_RECENT_COUNT || retainingRecent || batchDeleting || deletingProjectId !== ''"
+              @click="handleRetainRecentProjects"
+            >
+              {{ retainingRecent ? '清理中…' : `仅保留最近 ${RETAIN_RECENT_COUNT} 个` }}
+            </button>
+          </div>
+        </details>
         <button
           class="projects-page__danger-btn"
           :disabled="selectedVisibleProjectIds.length === 0 || batchDeleting || deletingProjectId !== ''"
@@ -271,14 +280,17 @@
             <thead>
               <tr>
                 <th class="projects-page__select-col">
-                  <input
-                    type="checkbox"
-                    :checked="allFilteredSelected"
-                    :indeterminate.prop="someFilteredSelected && !allFilteredSelected"
-                    :disabled="batchDeleting || deletingProjectId !== ''"
-                    :aria-label="allFilteredSelected ? '取消选择当前故事项目' : '全选当前故事项目'"
-                    @change="toggleSelectFiltered"
-                  />
+                  <label class="projects-page__table-select-all">
+                    <input
+                      type="checkbox"
+                      :checked="allFilteredSelected"
+                      :indeterminate.prop="someFilteredSelected && !allFilteredSelected"
+                      :disabled="batchDeleting || deletingProjectId !== ''"
+                      :aria-label="allFilteredSelected ? '取消选择当前故事项目' : '全选当前故事项目'"
+                      @change="toggleSelectFiltered"
+                    />
+                    <span>全选</span>
+                  </label>
                 </th>
                 <th>故事</th>
                 <th>类型 / 状态</th>
@@ -301,6 +313,7 @@
                       :value="project.project_id"
                       :disabled="batchDeleting || deletingProjectId !== ''"
                     />
+                    <span>{{ selectedProjectIds.includes(project.project_id) ? '已选' : '选择' }}</span>
                   </label>
                 </td>
                 <td>
@@ -982,6 +995,12 @@ onMounted(async () => {
   background: #f8fafb;
 }
 
+.projects-page__bulkbar--active {
+  border-color: #9cc8e6;
+  background: #f2f8fd;
+  box-shadow: 0 6px 18px rgba(41, 128, 185, 0.08);
+}
+
 .projects-page__bulk-check {
   display: inline-flex;
   gap: 8px;
@@ -1022,6 +1041,53 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.projects-page__cleanup-actions {
+  position: relative;
+}
+
+.projects-page__cleanup-summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  background: #fff;
+  color: #51606d;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.projects-page__cleanup-summary::-webkit-details-marker {
+  display: none;
+}
+
+.projects-page__cleanup-summary::after {
+  content: '▾';
+  margin-left: 6px;
+  color: #7c8894;
+  font-size: 11px;
+}
+
+.projects-page__cleanup-actions[open] .projects-page__cleanup-summary::after {
+  content: '▴';
+}
+
+.projects-page__cleanup-body {
+  position: absolute;
+  right: 0;
+  z-index: 5;
+  min-width: 170px;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(31, 45, 61, 0.12);
 }
 
 .projects-page__muted-btn,
@@ -1242,8 +1308,22 @@ onMounted(async () => {
 }
 
 .projects-page__select-col {
-  width: 42px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 70px;
+  min-width: 70px;
+  background: #fff;
   text-align: center !important;
+}
+
+.projects-page__story-table th.projects-page__select-col {
+  z-index: 3;
+  background: #f8fafb;
+}
+
+.projects-page__story-row--selected .projects-page__select-col {
+  background: #f4f9fd;
 }
 
 .projects-page__actions-col {
@@ -1251,13 +1331,28 @@ onMounted(async () => {
   text-align: right !important;
 }
 
+.projects-page__table-select-all,
 .projects-page__row-check {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  min-height: 28px;
+  gap: 3px;
+  min-width: 44px;
+  min-height: 34px;
   cursor: pointer;
+  color: #51606d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.projects-page__table-select-all input,
+.projects-page__row-check input {
+  margin: 0;
+}
+
+.projects-page__story-row--selected .projects-page__row-check {
+  color: #2b78b7;
 }
 
 .projects-page__story-title {
@@ -1591,6 +1686,17 @@ onMounted(async () => {
 
   .projects-page__bulk-actions {
     flex-direction: column;
+  }
+
+  .projects-page__cleanup-actions,
+  .projects-page__cleanup-summary,
+  .projects-page__cleanup-body {
+    width: 100%;
+  }
+
+  .projects-page__cleanup-body {
+    position: static;
+    box-shadow: none;
   }
 
   .projects-page__filters-body {

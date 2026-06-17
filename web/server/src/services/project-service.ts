@@ -60,12 +60,16 @@ function kbRoot(): string {
   return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', 'data');
 }
 
+function generatedRoot(): string {
+  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
+}
+
 function storiesRoot(): string {
-  return resolve(kbRoot(), '..', 'web', 'generated', 'stories');
+  return resolve(generatedRoot(), 'stories');
 }
 
 function projectsRoot(): string {
-  return resolve(kbRoot(), '..', 'web', 'generated', 'projects');
+  return resolve(generatedRoot(), 'projects');
 }
 
 function projectDir(projectId: string): string {
@@ -1050,6 +1054,17 @@ export async function repairProjectProductionBoard(
 
   const { project, current_story } = detailResult.data;
   const repair = repairStoryWithProductionBoard(current_story, request);
+  if (!repair.trace.applied) {
+    return success({
+      schema_version: 'story-production-board-repair/v1',
+      project,
+      detail: detailResult.data,
+      before_board: repair.beforeBoard,
+      after_board: repair.afterBoard,
+      trace: repair.trace,
+    });
+  }
+
   const updatedMeta = await persistProjectVersion(
     project,
     repair.story,
@@ -1161,10 +1176,11 @@ export async function updateProjectCurrentGearsDelivery(
   gearsDelivery: GearsDeliveryPackage,
 ): Promise<void> {
   if (!projectId) return;
-  const project = await readProjectMeta(projectId);
-  if (!project) return;
+  const metaPath = projectMetaPath(projectId);
+  if (!(await pathExists(metaPath))) return;
 
-  const currentPath = projectVersionPath(projectId, project.current_version_id);
+  const project = await readJsonFile<StoryProjectMeta>(metaPath);
+  const currentPath = resolve(dirname(metaPath), 'versions', `${project.current_version_id}.json`);
   if (!(await pathExists(currentPath))) return;
 
   const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
@@ -1183,7 +1199,7 @@ export async function updateProjectCurrentGearsDelivery(
   };
 
   await writeJsonFile(currentPath, updatedSnapshot);
-  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+  await writeJsonFile(metaPath, updatedMeta);
 }
 
 export async function updateProjectCurrentGearsWebhookStatus(
@@ -1192,10 +1208,11 @@ export async function updateProjectCurrentGearsWebhookStatus(
   gearsWebhook: GearsWebhookStatus,
 ): Promise<void> {
   if (!projectId) return;
-  const project = await readProjectMeta(projectId);
-  if (!project) return;
+  const metaPath = projectMetaPath(projectId);
+  if (!(await pathExists(metaPath))) return;
 
-  const currentPath = projectVersionPath(projectId, project.current_version_id);
+  const project = await readJsonFile<StoryProjectMeta>(metaPath);
+  const currentPath = resolve(dirname(metaPath), 'versions', `${project.current_version_id}.json`);
   if (!(await pathExists(currentPath))) return;
 
   const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
@@ -1215,7 +1232,7 @@ export async function updateProjectCurrentGearsWebhookStatus(
   };
 
   await writeJsonFile(currentPath, updatedSnapshot);
-  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+  await writeJsonFile(metaPath, updatedMeta);
   await updateSourceStory(snapshot.story, raw => ({
     ...raw,
     gears_webhook: gearsWebhook,
@@ -1230,10 +1247,11 @@ export async function updateProjectCurrentGearsVideo(
   gearsVideo: GearsVideoResult,
 ): Promise<void> {
   if (!projectId) return;
-  const project = await readProjectMeta(projectId);
-  if (!project) return;
+  const metaPath = projectMetaPath(projectId);
+  if (!(await pathExists(metaPath))) return;
 
-  const currentPath = projectVersionPath(projectId, project.current_version_id);
+  const project = await readJsonFile<StoryProjectMeta>(metaPath);
+  const currentPath = resolve(dirname(metaPath), 'versions', `${project.current_version_id}.json`);
   if (!(await pathExists(currentPath))) return;
 
   const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
@@ -1256,7 +1274,7 @@ export async function updateProjectCurrentGearsVideo(
   };
 
   await writeJsonFile(currentPath, updatedSnapshot);
-  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+  await writeJsonFile(metaPath, updatedMeta);
   await updateSourceStory(snapshot.story, raw => ({
     ...raw,
     gears_video: gearsVideo,

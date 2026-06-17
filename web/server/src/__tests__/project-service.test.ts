@@ -402,6 +402,99 @@ describe('project-service', () => {
     expect(repairRes.data?.after_board.character_assets[0].clothing).toContain('宋代');
   });
 
+  it('repairs only the requested production board task id', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const baseStory = makeStory();
+    const story: StoryGenerateResult = {
+      ...baseStory,
+      scene_breakdown: baseStory.scene_breakdown.map(scene => scene.scene_id === 1
+        ? {
+            ...scene,
+            visual_prompt: `质量：待补；${scene.visual_prompt}`,
+          }
+        : scene),
+      gears_delivery: {
+        schema_version: 'gears-delivery/v1',
+        storyId: baseStory.storyId,
+        title: baseStory.title,
+        character_assets: [
+          {
+            name: '周敦颐',
+            role_position: '主角',
+            species_type: '人类',
+            ethnicity: ['东亚'],
+            gender: '男',
+            age_range: '青年',
+            appearance_features: '青年士人，神情克制',
+            clothing: '清末民初至五四前后中国青年固定服装：朴素学生长衫或短褂布鞋',
+          },
+        ],
+        character_gender_summary: {
+          total: 1,
+          male: 1,
+          female: 0,
+          other: 0,
+          unspecified: 0,
+          not_applicable: 0,
+        },
+        scene_assets: [{
+          name: '南安军衙',
+          scene_type: '室内',
+          description: '衙署案桌、烛火、案卷',
+          atmosphere: '紧张',
+        }],
+        units: [],
+        validation_notes: [],
+        markdown: '# GEARS',
+      },
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const beforeBoard = await getProjectProductionBoard(enriched.project_id!);
+    const cleanPromptTask = beforeBoard.data?.repair_plan.tasks.find(task => task.action === 'clean_prompt');
+
+    expect(cleanPromptTask).toBeTruthy();
+    expect(beforeBoard.data?.repair_plan.tasks.some(task => task.action === 'normalize_period_costumes')).toBe(true);
+
+    const repairRes = await repairProjectProductionBoard(enriched.project_id!, {
+      task_ids: [cleanPromptTask!.task_id],
+    });
+
+    expect(repairRes.ok).toBe(true);
+    expect(repairRes.data?.trace.applied_task_ids).toEqual([cleanPromptTask!.task_id]);
+    expect(repairRes.data?.trace.applied_actions).toEqual(['clean_prompt']);
+    expect(repairRes.data?.trace.applied_task_ids).not.toContain('repair-normalize_period_costumes');
+    expect(repairRes.data?.detail.project.version_count).toBe(2);
+    expect(repairRes.data?.detail.current_story.scene_breakdown[0].visual_prompt).not.toMatch(/质量|待补/);
+    expect(repairRes.data?.detail.current_story.gears_delivery?.character_assets[0].clothing).toContain('清末民初');
+    expect(repairRes.data?.after_board.supervision_report.issues.some(issue => issue.category === 'period')).toBe(true);
+  });
+
+  it('does not create a project version when production board repair changes nothing', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+
+    const repairRes = await repairProjectProductionBoard(enriched.project_id!, {
+      task_ids: ['repair-task-that-does-not-exist'],
+    });
+
+    expect(repairRes.ok).toBe(true);
+    expect(repairRes.data?.trace.applied).toBe(false);
+    expect(repairRes.data?.trace.applied_task_ids).toEqual([]);
+    expect(repairRes.data?.detail.project.version_count).toBe(1);
+    expect(repairRes.data?.detail.versions).toHaveLength(1);
+
+    const detail = await getProject(enriched.project_id!);
+    expect(detail.data?.project.version_count).toBe(1);
+    expect(detail.data?.versions.map(version => version.change_type)).toEqual(['initial_generation']);
+  });
+
   it('updates GEARS webhook status on the current project and source story file', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);

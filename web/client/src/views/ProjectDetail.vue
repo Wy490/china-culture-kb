@@ -84,14 +84,14 @@
           <div class="project-detail-page__production-actions">
             <button
               class="project-detail-page__action-btn project-detail-page__action-btn--primary"
-              :disabled="repairingProductionBoard"
+              :disabled="productionBoardRepairBusy"
               @click="submitProductionBoardRepair(true)"
             >
               {{ repairingProductionBoard ? '修复中…' : '执行生产修复' }}
             </button>
             <button
               class="project-detail-page__action-btn"
-              :disabled="repairingProductionBoard"
+              :disabled="productionBoardRepairBusy"
               @click="submitProductionBoardRepair(false)"
             >
               修复 P0
@@ -139,11 +139,24 @@
         <div v-if="productionRepairTrace" class="project-detail-page__production-repair-result">
           <strong>{{ productionRepairTrace.applied ? '生产修复已生成新版本' : '生产修复未产生变化' }}</strong>
           <p>{{ productionRepairTrace.note }}</p>
-          <span>
+          <span class="project-detail-page__production-repair-summary">
             {{ productionRepairTrace.applied_task_ids.length }} 个任务已应用
             · 阻断 {{ productionRepairTrace.before_blockers }} → {{ productionRepairTrace.after_blockers }}
             · {{ productionRepairTrace.before_stage }} → {{ productionRepairTrace.after_stage }}
           </span>
+          <div v-if="productionRepairDiffRows.length" class="project-detail-page__production-repair-diff">
+            <article
+              v-for="row in productionRepairDiffRows"
+              :key="row.label"
+              :class="row.changed ? 'project-detail-page__production-repair-diff-item--changed' : ''"
+            >
+              <span>{{ row.label }}</span>
+              <strong>{{ row.before }} → {{ row.after }}</strong>
+            </article>
+          </div>
+          <p v-if="productionRepairChangedSceneText" class="project-detail-page__production-repair-scenes">
+            变更场景：{{ productionRepairChangedSceneText }}
+          </p>
         </div>
         <div class="project-detail-page__production-grid">
           <article>
@@ -208,6 +221,15 @@
               <strong>{{ task.title }}</strong>
               <p>{{ task.instruction }}</p>
               <small>{{ task.expected_output }}</small>
+              <div class="project-detail-page__repair-task-actions">
+                <button
+                  class="project-detail-page__repair-task-btn"
+                  :disabled="productionBoardRepairBusy"
+                  @click="submitProductionBoardTaskRepair(task)"
+                >
+                  {{ repairingProductionBoardTaskId === task.task_id ? '修复中…' : '修复此项' }}
+                </button>
+              </div>
             </article>
           </div>
         </div>
@@ -401,6 +423,8 @@ import type {
   StoryProjectVersionChangeType,
   StoryProductionBoard,
   StoryProductionBoardExportPackage,
+  StoryProductionBoardRepairResult,
+  StoryProductionBoardRepairTask,
   StoryProductionBoardRepairTrace,
   QualityRepairAction,
 } from '@shared/types'
@@ -425,10 +449,12 @@ const successMessage = ref('')
 const showQualityScenesOnly = ref(false)
 const productionBoard = ref<StoryProductionBoard | null>(null)
 const productionBoardExport = ref<StoryProductionBoardExportPackage | null>(null)
+const productionRepairResult = ref<StoryProductionBoardRepairResult | null>(null)
 const productionRepairTrace = ref<StoryProductionBoardRepairTrace | null>(null)
 const loadingProductionBoard = ref(false)
 const exportingProductionBoard = ref(false)
 const repairingProductionBoard = ref(false)
+const repairingProductionBoardTaskId = ref('')
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
@@ -482,6 +508,53 @@ const qualitySceneIds = computed(() => {
     }
   }
   return [...ids].sort((a, b) => a - b)
+})
+
+const productionBoardRepairBusy = computed(() => {
+  return repairingProductionBoard.value || repairingProductionBoardTaskId.value !== ''
+})
+
+const productionRepairDiffRows = computed(() => {
+  const result = productionRepairResult.value
+  if (!result) return []
+
+  const rows = [
+    {
+      label: '交付阶段',
+      before: result.before_board.delivery_manifest.stage_label,
+      after: result.after_board.delivery_manifest.stage_label,
+    },
+    {
+      label: '阻断项',
+      before: `${result.before_board.supervision_report.blockers} 个`,
+      after: `${result.after_board.supervision_report.blockers} 个`,
+    },
+    {
+      label: '监督分',
+      before: `${result.before_board.supervision_report.score}/100`,
+      after: `${result.after_board.supervision_report.score}/100`,
+    },
+    {
+      label: 'QA 分',
+      before: `${result.before_board.qa_report.score}/100`,
+      after: `${result.after_board.qa_report.score}/100`,
+    },
+    {
+      label: '修复任务',
+      before: `${result.before_board.repair_plan.task_count} 个`,
+      after: `${result.after_board.repair_plan.task_count} 个`,
+    },
+  ]
+
+  return rows.map(row => ({
+    ...row,
+    changed: row.before !== row.after,
+  }))
+})
+
+const productionRepairChangedSceneText = computed(() => {
+  const ids = productionRepairTrace.value?.changed_scene_ids ?? []
+  return ids.length ? ids.map(sceneId => `场景 ${sceneId}`).join('、') : ''
 })
 
 function statusLabel(status: StoryProjectStatus): string {
@@ -570,6 +643,7 @@ async function loadProject(projectId: string) {
     detail.value = res.data
     productionBoard.value = null
     productionBoardExport.value = null
+    productionRepairResult.value = null
     productionRepairTrace.value = null
     showQualityScenesOnly.value = false
     if (!selectedModelProfileId.value && res.data.current_story.model_profile_id) {
@@ -590,6 +664,7 @@ async function loadProductionBoard() {
   if (res.ok && res.data) {
     productionBoard.value = res.data
     productionBoardExport.value = null
+    productionRepairResult.value = null
     productionRepairTrace.value = null
     successMessage.value = `Production Board 已生成：${res.data.shot_units.length} 个镜头单元`
   } else {
@@ -625,6 +700,7 @@ async function submitSceneRewrite() {
     detail.value = res.data
     productionBoard.value = null
     productionBoardExport.value = null
+    productionRepairResult.value = null
     productionRepairTrace.value = null
     const quality = res.data.current_story.quality_report
     const qualityTail = quality
@@ -653,6 +729,7 @@ async function submitQualityRepair(action?: QualityRepairAction) {
     detail.value = res.data
     productionBoard.value = null
     productionBoardExport.value = null
+    productionRepairResult.value = null
     productionRepairTrace.value = null
     const trace = res.data.current_story.repair_trace?.[res.data.current_story.repair_trace.length - 1]
     const quality = res.data.current_story.quality_report
@@ -769,6 +846,7 @@ async function saveProductionBoardPackage() {
 
 async function submitProductionBoardRepair(applyAll: boolean) {
   if (!detail.value) return
+  if (productionBoardRepairBusy.value) return
   repairingProductionBoard.value = true
   error.value = ''
   successMessage.value = ''
@@ -779,6 +857,7 @@ async function submitProductionBoardRepair(applyAll: boolean) {
     detail.value = res.data.detail
     productionBoard.value = res.data.after_board
     productionBoardExport.value = null
+    productionRepairResult.value = res.data
     productionRepairTrace.value = res.data.trace
     successMessage.value = res.data.trace.applied
       ? `生产修复已生成新版本：${res.data.trace.applied_task_ids.length} 个任务`
@@ -787,6 +866,30 @@ async function submitProductionBoardRepair(applyAll: boolean) {
     error.value = res.error?.message ?? '生产修复失败'
   }
   repairingProductionBoard.value = false
+}
+
+async function submitProductionBoardTaskRepair(task: StoryProductionBoardRepairTask) {
+  if (!detail.value) return
+  if (productionBoardRepairBusy.value) return
+  repairingProductionBoardTaskId.value = task.task_id
+  error.value = ''
+  successMessage.value = ''
+  const res = await repairProjectProductionBoard(detail.value.project.project_id, {
+    task_ids: [task.task_id],
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data.detail
+    productionBoard.value = res.data.after_board
+    productionBoardExport.value = null
+    productionRepairResult.value = res.data
+    productionRepairTrace.value = res.data.trace
+    successMessage.value = res.data.trace.applied
+      ? `已修复「${task.title}」并生成新版本`
+      : `「${task.title}」未产生变化：${res.data.trace.reason}`
+  } else {
+    error.value = res.error?.message ?? '单项生产修复失败'
+  }
+  repairingProductionBoardTaskId.value = ''
 }
 
 function downloadText(filename: string, text: string, type: string) {
@@ -1130,10 +1233,53 @@ watch(selectedModelProfileId, (value) => {
   line-height: 1.45;
 }
 
-.project-detail-page__production-repair-result span {
+.project-detail-page__production-repair-summary {
+  display: block;
   color: #1b7f4a;
   font-size: 12px;
   font-weight: 700;
+}
+
+.project-detail-page__production-repair-diff {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.project-detail-page__production-repair-diff article {
+  min-width: 0;
+  border: 1px solid #d6e5dc;
+  border-radius: 4px;
+  background: #fff;
+  padding: 7px 8px;
+}
+
+.project-detail-page__production-repair-diff-item--changed {
+  border-color: #9ecfb4 !important;
+  background: #f3fbf6 !important;
+}
+
+.project-detail-page__production-repair-diff span {
+  display: block;
+  color: #63756d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__production-repair-diff strong {
+  display: block;
+  margin-top: 3px;
+  color: #22313f;
+  font-size: 12px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.project-detail-page__production-repair-scenes {
+  margin-top: 8px !important;
+  color: #526575 !important;
+  font-size: 12px !important;
 }
 
 .project-detail-page__production-grid {
@@ -1282,6 +1428,36 @@ watch(selectedModelProfileId, (value) => {
 .project-detail-page__supervision-issue small,
 .project-detail-page__repair-task small {
   color: #8a5a18;
+}
+
+.project-detail-page__repair-task-actions {
+  justify-content: flex-end !important;
+  margin-top: 8px;
+  margin-bottom: 0 !important;
+}
+
+.project-detail-page__repair-task-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid #2980b9;
+  border-radius: 4px;
+  background: #fff;
+  color: #2471a3;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.project-detail-page__repair-task-btn:hover:not(:disabled) {
+  background: #f3f8fc;
+}
+
+.project-detail-page__repair-task-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .project-detail-page__shot div {
@@ -1610,8 +1786,18 @@ watch(selectedModelProfileId, (value) => {
 
   .project-detail-page__report-strip,
   .project-detail-page__repair-actions,
+  .project-detail-page__production-repair-diff,
   .project-detail-page__supervision-list {
     grid-template-columns: 1fr;
+  }
+
+  .project-detail-page__repair-task-actions,
+  .project-detail-page__repair-task-btn {
+    width: 100%;
+  }
+
+  .project-detail-page__repair-task-btn {
+    justify-content: center;
   }
 }
 </style>

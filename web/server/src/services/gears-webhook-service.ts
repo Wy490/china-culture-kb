@@ -42,7 +42,7 @@ function kbRoot(): string {
 }
 
 function generatedRoot(): string {
-  return resolve(kbRoot(), '..', 'web', 'generated');
+  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
 }
 
 function webhookFailuresPath(): string {
