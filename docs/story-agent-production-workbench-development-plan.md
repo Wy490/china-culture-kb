@@ -209,6 +209,7 @@
 - 单故事 Seedance provider 通用 poll adapter 首版
 - 项目详情页 Seedance provider 自动轮询入口首版
 - 单故事 Seedance provider 通用 submit adapter 首版
+- 项目详情页 Seedance provider adapter 提交入口首版
 - 单故事 Seedance provider 队列状态总览首版
 - 项目详情页 Seedance provider 队列健康条首版
 - 单故事 Seedance provider 人工重试策略首版
@@ -339,6 +340,7 @@
 - 自动选择最佳版本（已完成首版）
 - 失败重试包（已完成首版）
 - provider 任务提交抽象（已完成首版）
+- provider adapter 提交入口 UI（已完成首版）
 - provider 队列状态总览（已完成首版）
 - provider 自动轮询入口 UI（已完成首版）
 - provider 人工重试策略（已完成首版）

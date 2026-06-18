@@ -225,6 +225,7 @@ MCP 原则：
   - 服务端读取 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT`，把待提交镜头、Seedance prompt、素材 slot、素材校验和素材库 POST 给外部 adapter。
   - adapter 返回真实 `provider_job_id` / `provider_queue_id` / queue position 后，会覆盖本地占位 job 并写入 Shot Ledger 与 provider queue batch。
   - 支持 `SEEDANCE_PROVIDER_SUBMIT_API_TOKEN` 或 `SEEDANCE_PROVIDER_API_TOKEN` bearer 鉴权；未配置 endpoint 返回 400，外部 adapter HTTP/网络错误返回 502。
+  - 项目详情页“回传与重试”折叠区新增“提交 adapter”，与本地账本“提交到 Seedance”分开，点击后带 `use_provider_adapter=true` 触发外部 submit worker。
 - 单故事 Seedance provider 队列状态总览首版：
   - 共享类型新增 `SeedanceShotProviderQueueOverviewRequest` / `SeedanceShotProviderQueueOverviewResult`，并补齐批次概览与注意项结构。
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。

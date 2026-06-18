@@ -265,10 +265,17 @@
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
-                :disabled="submittingSeedanceProvider"
-                @click="submitSeedanceProviderJobs"
+                :disabled="submittingSeedanceProvider || submittingSeedanceProviderAdapter"
+                @click="submitSeedanceProviderJobs(false)"
               >
                 {{ submittingSeedanceProvider ? '提交中…' : '提交到 Seedance' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="submittingSeedanceProvider || submittingSeedanceProviderAdapter"
+                @click="submitSeedanceProviderJobs(true)"
+              >
+                {{ submittingSeedanceProviderAdapter ? '提交中…' : '提交 adapter' }}
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
@@ -1036,6 +1043,7 @@ const exportingSeedanceRetryPackage = ref(false)
 const batchingSeedanceShots = ref(false)
 const autoSelectingSeedanceShots = ref(false)
 const submittingSeedanceProvider = ref(false)
+const submittingSeedanceProviderAdapter = ref(false)
 const pollingSeedanceProvider = ref(false)
 const recoveringSeedanceProvider = ref(false)
 const loadingSeedanceProviderOverview = ref(false)
@@ -1868,15 +1876,22 @@ async function markPendingSeedanceShotsSubmitted() {
   batchingSeedanceShots.value = false
 }
 
-async function submitSeedanceProviderJobs() {
-  if (!detail.value || submittingSeedanceProvider.value) return
-  submittingSeedanceProvider.value = true
+async function submitSeedanceProviderJobs(useProviderAdapter = false) {
+  if (!detail.value || submittingSeedanceProvider.value || submittingSeedanceProviderAdapter.value) return
+  if (useProviderAdapter) {
+    submittingSeedanceProviderAdapter.value = true
+  } else {
+    submittingSeedanceProvider.value = true
+  }
   error.value = ''
   successMessage.value = ''
   const res = await submitProjectSeedanceShotsToProvider(detail.value.project.project_id, {
     provider: 'seedance',
     queue_priority: 'normal',
-    note: '前端提交到 Seedance provider 任务队列',
+    use_provider_adapter: useProviderAdapter,
+    note: useProviderAdapter
+      ? '前端通过 Seedance provider adapter 提交任务队列'
+      : '前端提交到 Seedance provider 任务队列',
   })
   if (res.ok && res.data) {
     detail.value = {
@@ -1884,14 +1899,21 @@ async function submitSeedanceProviderJobs() {
       project: res.data.project,
     }
     await loadProductionBoard()
-    successMessage.value = `Seedance provider 提交完成：${res.data.submitted_count} 条，跳过 ${res.data.skipped_count} 条，失败 ${res.data.failed_count} 条`
+    const adapterText = res.data.provider_adapter
+      ? `，adapter 接收 ${res.data.provider_adapter.accepted_count} 条`
+      : ''
+    successMessage.value = `Seedance provider 提交完成：${res.data.submitted_count} 条，跳过 ${res.data.skipped_count} 条，失败 ${res.data.failed_count} 条${adapterText}`
     if (res.data.failures.length) {
       error.value = res.data.failures.map(item => `${item.shot_id ?? `#${item.index + 1}`} ${item.message}`).join('；')
     }
   } else {
     error.value = res.error?.message ?? '提交 Seedance provider 任务失败'
   }
-  submittingSeedanceProvider.value = false
+  if (useProviderAdapter) {
+    submittingSeedanceProviderAdapter.value = false
+  } else {
+    submittingSeedanceProvider.value = false
+  }
 }
 
 async function pollSeedanceProviderJobs() {
