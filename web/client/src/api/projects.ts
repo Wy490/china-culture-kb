@@ -22,6 +22,8 @@ import type {
   SeedanceShotProviderCallbackResult,
   SeedanceShotProviderPollRequest,
   SeedanceShotProviderPollResult,
+  SeedanceShotProviderQueueOverviewRequest,
+  SeedanceShotProviderQueueOverviewResult,
   SeedanceShotProviderRecoveryRequest,
   SeedanceShotProviderRecoveryResult,
   SeedanceShotProviderSubmitRequest,
@@ -110,6 +112,10 @@ export function importProjectSeedanceProviderCallback(projectId: string, body: S
 
 export function pollProjectSeedanceProviderQueue(projectId: string, body: SeedanceShotProviderPollRequest = {}) {
   return apiPost<SeedanceShotProviderPollResult>(`/projects/${projectId}/production-board/seedance-shots/poll-provider`, body)
+}
+
+export function getProjectSeedanceProviderQueueOverview(projectId: string, body: SeedanceShotProviderQueueOverviewRequest = {}) {
+  return apiPost<SeedanceShotProviderQueueOverviewResult>(`/projects/${projectId}/production-board/seedance-shots/provider-overview`, body)
 }
 
 export function selectProjectSeedanceShotVersion(projectId: string, body: SeedanceShotVersionSelectRequest) {

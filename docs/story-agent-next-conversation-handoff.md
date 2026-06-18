@@ -228,6 +228,7 @@ MCP 原则：
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。
   - 可按 `provider` / `queue_id` 过滤，返回状态计数、活跃数、完成数、失败数、可重试数、超时数、缺视频数、批次汇总和注意项。
   - 批次概览会基于当前 Shot Ledger 回看 `ready/failed/submitted/processing`，注意项复用失败分类、provider 错误码和重试建议。
+  - 项目详情页 Seedance Shot Ledger 接入“Provider 队列健康”条，展示批次、活跃、完成、失败、可重试、超时、注意项和前三条注意项，并支持刷新。
 - 前端质量反馈视图首版：
   - 项目详情页“当前版本质量”新增类型反馈面板。
   - 默认聚合显示缺失要素、弱节拍、不适配表达、修复建议。
@@ -282,6 +283,7 @@ git diff --check
 - `web/client && npm run lint`：passed。
 - `web/server && npm run lint`：passed。
 - `git diff --check`：passed。
+- API smoke：`20260618-story-5xha--ai_comic_drama` 本地 ignored 项目通过 `submit-provider` 提交 5 条任务，`provider-overview` 返回 200，total=5、active=5、attention=5；用于验证 ProjectDetail 新接入的 overview API 有真实数据。
 - MCP 真实项目 smoke：`20260617-story-5xh7--ai_comic_drama` 通过 `kb_repair_story(auto_apply=true)` 从 v1 写入 v2，`scene_ids_changed=[4,5]`，质量分 83 -> 100，issue 2 -> 0；`kb_get_project_context(include_versions=true)` 回读 v1/v2 正常。该 smoke 修改的是 ignored 的 `web/generated` 本地项目数据，不进入提交。
 - HTTP smoke：`http://127.0.0.1:5173/projects/20260617-story-5xh7--ai_comic_drama` 返回 200；`http://127.0.0.1:3000/api/projects/20260617-story-5xh7--ai_comic_drama` 返回 200，API 回读当前版本为 v2、质量分 100、issue 0。
 - 浏览器 smoke 限制：本机缺 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`，Playwright / Chrome DevTools 均无法启动；本轮用 build + HTTP smoke 替代。

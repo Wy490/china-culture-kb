@@ -156,6 +156,39 @@
             <span>{{ latestSeedanceProviderQueueBatch.submitted_count }} 个任务</span>
             <span>{{ formatDate(latestSeedanceProviderQueueBatch.updated_at) }}</span>
           </div>
+          <div v-if="seedanceProviderOverview" class="project-detail-page__seedance-provider-overview">
+            <div class="project-detail-page__seedance-provider-overview-head">
+              <strong>Provider 队列健康</strong>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="loadingSeedanceProviderOverview"
+                @click="loadSeedanceProviderOverview(true)"
+              >
+                {{ loadingSeedanceProviderOverview ? '刷新中…' : '刷新' }}
+              </button>
+            </div>
+            <div class="project-detail-page__seedance-provider-overview-metrics">
+              <span>批次 {{ seedanceProviderOverview.batch_count }}</span>
+              <span>活跃 {{ seedanceProviderOverview.active_count }}</span>
+              <span>完成 {{ seedanceProviderOverview.ready_count }}</span>
+              <span>失败 {{ seedanceProviderOverview.failed_count }}</span>
+              <span>可重试 {{ seedanceProviderOverview.retryable_count }}</span>
+              <span>超时 {{ seedanceProviderOverview.timed_out_count }}</span>
+              <span>注意项 {{ seedanceProviderOverview.attention_count }}</span>
+            </div>
+            <div
+              v-if="seedanceProviderOverview.attention_items.length"
+              class="project-detail-page__seedance-provider-attention"
+            >
+              <small
+                v-for="item in seedanceProviderOverview.attention_items.slice(0, 3)"
+                :key="`${item.shot_id}-${item.status}-${item.updated_at}`"
+                :title="item.suggested_action"
+              >
+                {{ seedanceProviderAttentionText(item) }}
+              </small>
+            </div>
+          </div>
           <details class="project-detail-page__seedance-shot-ledger-actions">
             <summary>回传与重试</summary>
             <textarea
@@ -841,6 +874,7 @@ import {
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   getProjectSeedanceGlobalAssetLibrary,
+  getProjectSeedanceProviderQueueOverview,
   getProject,
   getProjectProductionBoard,
   importProjectSeedanceAssetBatch,
@@ -873,6 +907,7 @@ import type {
   SeedanceGlobalAssetLibraryItem,
   SeedanceShotCallbackImportRequest,
   SeedanceShotLedgerItem,
+  SeedanceShotProviderQueueOverviewResult,
   SeedanceShotProductionStatus,
   SeedanceShotVideoVersion,
   StoryProjectDetail,
@@ -940,6 +975,8 @@ const batchingSeedanceShots = ref(false)
 const autoSelectingSeedanceShots = ref(false)
 const submittingSeedanceProvider = ref(false)
 const recoveringSeedanceProvider = ref(false)
+const loadingSeedanceProviderOverview = ref(false)
+const seedanceProviderOverview = ref<SeedanceShotProviderQueueOverviewResult | null>(null)
 const selectingSeedanceVersionId = ref('')
 
 const selectedModelProfile = computed(() => {
@@ -1332,6 +1369,33 @@ function seedanceShotStatusLabel(status: SeedanceShotProductionStatus): string {
   return map[status]
 }
 
+function seedanceFailureCategoryLabel(category?: string): string {
+  const map: Record<string, string> = {
+    asset_missing: '素材缺失',
+    prompt_invalid: '提示词非法',
+    content_policy: '内容审核',
+    provider_timeout: '平台超时',
+    provider_quota: '额度不足',
+    provider_auth: '鉴权失败',
+    provider_rate_limit: '平台限流',
+    provider_server_error: '平台异常',
+    network_error: '网络错误',
+    unknown: '未知失败',
+  }
+  return category ? (map[category] ?? category) : '待复核'
+}
+
+function seedanceProviderAttentionText(item: SeedanceShotProviderQueueOverviewResult['attention_items'][number]): string {
+  const queueText = item.provider_queue_position ? `#${item.provider_queue_position}` : ''
+  const waitText = item.minutes_waiting > 0 ? ` · 等待 ${item.minutes_waiting} 分钟` : ''
+  const failureText = item.status === 'failed'
+    ? ` · ${seedanceFailureCategoryLabel(item.failure_category)}`
+    : item.timed_out
+      ? ' · 已超时'
+      : ''
+  return `${item.shot_id}${queueText ? ` ${queueText}` : ''} · ${seedanceShotStatusLabel(item.status)}${failureText}${waitText}`
+}
+
 function versionLabel(type: StoryProjectVersionChangeType): string {
   if (type === 'initial_generation') return '初次生成'
   if (type === 'quality_repair') return '质量修复'
@@ -1356,6 +1420,7 @@ async function loadProject(projectId: string) {
     productionBoardExport.value = null
     productionRepairResult.value = null
     productionRepairTrace.value = null
+    seedanceProviderOverview.value = null
     seedanceGlobalAssets.value = []
     showQualityScenesOnly.value = false
     if (!selectedModelProfileId.value && res.data.current_story.model_profile_id) {
@@ -1398,11 +1463,36 @@ async function loadProductionBoard() {
     productionRepairResult.value = null
     productionRepairTrace.value = null
     await loadSeedanceGlobalAssets()
+    await loadSeedanceProviderOverview()
     successMessage.value = `Production Board 已生成：${res.data.shot_units.length} 个镜头单元`
   } else {
     error.value = res.error?.message ?? '生成 Production Board 失败'
   }
   loadingProductionBoard.value = false
+}
+
+async function loadSeedanceProviderOverview(showMessage = false) {
+  if (!detail.value || loadingSeedanceProviderOverview.value) return
+  loadingSeedanceProviderOverview.value = true
+  if (showMessage) {
+    error.value = ''
+    successMessage.value = ''
+  }
+  const latestBatch = latestSeedanceProviderQueueBatch.value
+  const res = await getProjectSeedanceProviderQueueOverview(detail.value.project.project_id, {
+    provider: latestBatch?.provider,
+    queue_id: latestBatch?.queue_id,
+    timeout_minutes: 120,
+  })
+  if (res.ok && res.data) {
+    seedanceProviderOverview.value = res.data
+    if (showMessage) {
+      successMessage.value = `Seedance provider 队列已刷新：注意项 ${res.data.attention_count} 条`
+    }
+  } else if (showMessage) {
+    error.value = res.error?.message ?? '刷新 Seedance provider 队列失败'
+  }
+  loadingSeedanceProviderOverview.value = false
 }
 
 async function bindSeedanceAsset(asset: SeedanceAssetBindingItem) {
@@ -2628,6 +2718,32 @@ watch(selectedModelProfileId, (value) => {
   overflow-wrap: anywhere;
 }
 
+.project-detail-page__seedance-provider-overview {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+  border-top: 1px solid #edf1f4;
+  padding-top: 8px;
+}
+
+.project-detail-page__seedance-provider-overview-head,
+.project-detail-page__seedance-provider-overview-metrics,
+.project-detail-page__seedance-provider-attention {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.project-detail-page__seedance-provider-overview-head {
+  justify-content: space-between;
+}
+
+.project-detail-page__seedance-provider-attention small {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .project-detail-page__seedance-shot-ledger-actions {
   grid-column: 1 / -1;
   border-top: 1px solid #edf1f4;
@@ -2665,6 +2781,8 @@ watch(selectedModelProfileId, (value) => {
 
 .project-detail-page__seedance-shot-ledger-stats span,
 .project-detail-page__seedance-provider-queue span,
+.project-detail-page__seedance-provider-overview-metrics span,
+.project-detail-page__seedance-provider-attention small,
 .project-detail-page__seedance-shot-status span,
 .project-detail-page__seedance-shot-status small {
   border: 1px solid #d7dee5;
