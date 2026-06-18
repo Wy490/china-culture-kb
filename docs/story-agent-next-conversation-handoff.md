@@ -34,7 +34,7 @@
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
 | Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 95% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、provider 队列状态总览、人工重试策略和重试执行自动化首版。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划已具备；字幕/混音/片头片尾/final delivery 仍待做。 |
-| 可商用制作中台 | 约 42% | 主链路可用，但还缺 UX 降噪、真实 provider、真实平台错误码映射、回滚、审片返修和稳定压测。 |
+| 可商用制作中台 | 约 42% | 主链路可用，但还缺 UX 降噪、真实 provider、平台专用错误码映射扩展、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 75-80% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story`、`kb_generate_gears_delivery`、`kb_generate_seedance_prompt`、`kb_repair_story(auto_apply=false/true)`、`kb_update_project_version` 已完成；真实项目 auto_apply smoke 已通过，后续剩更深模型修复链路和前端质量反馈增强。 |
 
 当前主线已经不是“能不能生成故事”，而是“生成后能不能低复杂度管理、修复、交付、回片、装配”。
@@ -212,6 +212,7 @@ MCP 原则：
 - 单故事 Seedance provider 失败分类首版：
   - 共享类型新增 `SeedanceProviderFailureCategory`，状态更新、外部回传、轮询结果、版本记录、ledger 和重试包都可携带 `failure_category` 与 `provider_error_code`。
   - 回传归一化会根据显式分类、provider 错误码、失败原因和 message 推断素材缺失、提示词非法、内容审核、超时、额度、鉴权、限流、服务端、网络和未知错误。
+  - 新增 provider 错误码别名映射层，优先识别 `INSUFFICIENT_BALANCE`、`TOKEN_EXPIRED`、`INVALID_PROMPT`、`POLICY_BLOCKED`、`RATE_LIMIT_429` 等 code，再用失败文案关键词兜底。
   - 超时恢复默认写入 `provider_timeout` / `PROVIDER_TIMEOUT`，重试包 Markdown / JSON 会显示失败分类、provider 错误码和分类化建议动作。
   - Production Board 同步 ledger 时保留失败分类和错误码，避免导出重试包时丢失 provider 失败上下文。
 - 单故事 Seedance provider 通用 poll adapter 首版：
@@ -291,10 +292,10 @@ git diff --check
 
 测试结果：
 
-- `project-service.test.ts`：30 passed。
+- `project-service.test.ts`：31 passed。
 - `api.test.ts`：85 passed。
-- `web/server && npm test`：24 files passed，236 tests passed。
-- `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写、provider poll dry-run / provider_results 应用、失败分类进入 retry package、通用 provider submit adapter mock 提交、poll adapter mock 查询写回、provider 队列状态总览的超时/失败/批次汇总、provider 人工重试策略的可重提/阻断候选，以及 provider 重试执行自动化只提交可重提镜头。
+- `web/server && npm test`：24 files passed，237 tests passed。
+- `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写、provider poll dry-run / provider_results 应用、失败分类进入 retry package、通用错误码别名映射、通用 provider submit adapter mock 提交、poll adapter mock 查询写回、provider 队列状态总览的超时/失败/批次汇总、provider 人工重试策略的可重提/阻断候选，以及 provider 重试执行自动化只提交可重提镜头。
 - `api.test.ts` 已覆盖 `POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback`、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`、`/provider-retry-submit`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应。
 - `web/client && npm run lint`：passed。
 - `web/client && npm run build`：passed。
@@ -360,7 +361,7 @@ git diff --stat
 已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、外部素材批量导入与上传态字段、真实文件上传、跨项目素材库复用、素材上传历史 UI、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、provider 队列状态总览、人工重试策略和重试执行自动化首版，下一步：
 
 - 真实 Seedance / 外部 provider 平台 SDK/HTTP submit/query 实现。
-- 基于真实平台错误码继续扩展失败分类映射，并接入真实 provider SDK/HTTP。
+- 基于具体平台错误码继续扩展失败分类映射，并接入真实 provider SDK/HTTP。
 
 ### P0-P1：Seedance 资产引用字段和素材校验
 
@@ -393,7 +394,7 @@ git diff --stat
 仍待做：
 
 - 真实 Seedance / 外部 provider 平台 SDK/HTTP submit/query 实现。
-- 真实平台错误码映射扩展和真实 provider SDK/HTTP。
+- 平台专用错误码映射扩展和真实 provider SDK/HTTP。
 
 字段规则必须遵守：
 

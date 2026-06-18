@@ -541,6 +541,54 @@ function normalizeProviderFailureCategory(value: unknown): SeedanceProviderFailu
     : undefined;
 }
 
+const PROVIDER_ERROR_CODE_CATEGORY_PATTERNS: Array<{
+  pattern: RegExp;
+  category: SeedanceProviderFailureCategory;
+}> = [
+  {
+    pattern: /(?:ASSET|MATERIAL|REFERENCE|FILE|UPLOAD).*(?:MISSING|NOT_FOUND|NOTFOUND|FAILED|EXPIRED|INVALID)/,
+    category: 'asset_missing',
+  },
+  {
+    pattern: /(?:PROMPT|PARAM|PARAMETER|ARGUMENT|REQUEST).*(?:INVALID|TOO_LONG|TOOLONG|BAD|ERROR)|BAD_REQUEST|INVALID_ARGUMENT/,
+    category: 'prompt_invalid',
+  },
+  {
+    pattern: /(?:POLICY|SAFETY|MODERATION|CONTENT|COPYRIGHT).*(?:BLOCKED|REJECTED|FAILED|VIOLATION|DENIED)|SENSITIVE_CONTENT/,
+    category: 'content_policy',
+  },
+  {
+    pattern: /(?:TASK|JOB|PROVIDER|GENERATION).*(?:TIMEOUT|TIMED_OUT)|DEADLINE_EXCEEDED/,
+    category: 'provider_timeout',
+  },
+  {
+    pattern: /(?:QUOTA|BALANCE|BILLING|PAYMENT|CREDIT).*(?:EXCEEDED|INSUFFICIENT|REQUIRED|LOW|EMPTY)|INSUFFICIENT_BALANCE/,
+    category: 'provider_quota',
+  },
+  {
+    pattern: /(?:AUTH|TOKEN|SIGNATURE|PERMISSION|CREDENTIAL).*(?:FAILED|INVALID|EXPIRED|DENIED|MISSING)|UNAUTHORIZED|FORBIDDEN/,
+    category: 'provider_auth',
+  },
+  {
+    pattern: /(?:RATE_LIMIT|RATELIMIT|TOO_MANY_REQUESTS|THROTTLED|THROTTLE|429)/,
+    category: 'provider_rate_limit',
+  },
+  {
+    pattern: /(?:INTERNAL|SERVER|SERVICE|GATEWAY).*(?:ERROR|UNAVAILABLE|TIMEOUT|FAILED)|HTTP_5\d\d|(?:^|_)5\d\d(?:_|$)/,
+    category: 'provider_server_error',
+  },
+  {
+    pattern: /(?:NETWORK|SOCKET|DNS|CONNECTION|ECONN|ETIMEDOUT).*(?:ERROR|FAILED|RESET|REFUSED|TIMEOUT)?/,
+    category: 'network_error',
+  },
+];
+
+function classifySeedanceProviderErrorCode(value?: string): SeedanceProviderFailureCategory | undefined {
+  const normalized = value?.trim().toUpperCase().replace(/[\s.-]+/g, '_');
+  if (!normalized) return undefined;
+  return PROVIDER_ERROR_CODE_CATEGORY_PATTERNS.find(item => item.pattern.test(normalized))?.category;
+}
+
 function classifySeedanceProviderFailure(input: {
   explicitCategory?: unknown;
   providerErrorCode?: string;
@@ -549,6 +597,8 @@ function classifySeedanceProviderFailure(input: {
 }): SeedanceProviderFailureCategory | undefined {
   const explicit = normalizeProviderFailureCategory(input.explicitCategory);
   if (explicit) return explicit;
+  const codeCategory = classifySeedanceProviderErrorCode(input.providerErrorCode);
+  if (codeCategory) return codeCategory;
   const text = [input.providerErrorCode, input.failureReason, input.message]
     .filter(Boolean)
     .join(' ')

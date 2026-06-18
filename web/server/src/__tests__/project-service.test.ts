@@ -1060,6 +1060,63 @@ describe('project-service', () => {
     expect(retryPackageRes.data?.markdown).toContain('Provider 错误码: RATE_LIMIT_429');
   });
 
+  it('maps provider error code aliases into failure categories', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'provider-code-map-test',
+      queue_id: 'provider-code-map-queue-001',
+      note: 'provider 错误码映射测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+
+    const callbackRes = await importProjectSeedanceShotCallbacks(enriched.project_id!, {
+      callbacks: [{
+        jobId: 'provider-code-map-test-shot-1',
+        status: 'failed',
+        errorCode: 'INSUFFICIENT_BALANCE',
+        error: 'provider failed',
+      }, {
+        jobId: 'provider-code-map-test-shot-2',
+        status: 'failed',
+        errorCode: 'TOKEN_EXPIRED',
+        error: 'provider failed',
+      }],
+    });
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'failed',
+      failure_category: 'provider_quota',
+      provider_error_code: 'INSUFFICIENT_BALANCE',
+    });
+    expect(callbackRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'failed',
+      failure_category: 'provider_auth',
+      provider_error_code: 'TOKEN_EXPIRED',
+    });
+
+    const retryPackageRes = await exportProjectSeedanceRetryPackage(enriched.project_id!);
+    expect(retryPackageRes.ok).toBe(true);
+    expect(retryPackageRes.data?.shots.find(shot => shot.shot_id === 'shot-1')).toMatchObject({
+      failure_category: 'provider_quota',
+      suggested_action: '先确认 provider 额度或余额，再重新提交。',
+    });
+    expect(retryPackageRes.data?.shots.find(shot => shot.shot_id === 'shot-2')).toMatchObject({
+      failure_category: 'provider_auth',
+      suggested_action: '先检查 provider 凭证和权限配置，再重新提交。',
+    });
+  });
+
   it('builds a Seedance provider queue overview with timeout and failure summaries', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);

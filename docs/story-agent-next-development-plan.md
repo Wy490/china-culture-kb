@@ -12,7 +12,7 @@
 | Production Board / GEARS / Seedance | 约 95% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划已有；字幕、混音、片头片尾、final delivery 待做。 |
-| 可商用制作中台 | 约 42% | 主链路可用；还缺 UX 降噪、真实外部 provider、真实平台错误码映射、审片返修和稳定压测。 |
+| 可商用制作中台 | 约 42% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、审片返修和稳定压测。 |
 
 ## 2. 本轮完成内容
 
@@ -55,6 +55,7 @@
   - 内部状态更新、外部回传和轮询结果都可携带 `failure_category` 与 `provider_error_code`。
   - 超时恢复默认写入 `provider_timeout` / `PROVIDER_TIMEOUT`；重试包 Markdown / JSON 会带出失败分类、provider 错误码和分类化建议动作。
   - Production Board 同步 `seedance_shot_ledger` 时会保留失败分类和错误码，避免导出重试包时丢字段。
+  - 新增 provider 错误码别名映射层，`INSUFFICIENT_BALANCE`、`TOKEN_EXPIRED` 等 code 可在失败文案很短时直接归入额度、鉴权等类别。
 - Seedance provider 通用 poll adapter 首版：
   - `SeedanceShotProviderPollRequest` 新增 `use_provider_adapter`。
   - 服务端读取 `SEEDANCE_PROVIDER_POLL_ENDPOINT`，把 dry-run 产生的 `poll_targets` POST 给外部 adapter。
@@ -110,7 +111,7 @@ git diff --check
 
 - `web/client`：lint passed。
 - `web/client`：build passed。
-- `web/server`：lint passed；`project-service.test.ts` 30 passed，`api.test.ts` 85 passed；全量 24 files / 236 tests passed。
+- `web/server`：lint passed；`project-service.test.ts` 31 passed，`api.test.ts` 85 passed；全量 24 files / 237 tests passed。
 - `web/client`：lint passed；ProjectDetail provider overview API smoke 通过，提交 5 条 provider 任务后 overview 返回 5 个总镜头 / 5 个活跃 / 5 个注意项。
 - `git diff --check`：passed。
 
@@ -147,12 +148,12 @@ git diff --stat
 
 - 外部 provider 回传 schema 已完成首版。
 - provider 轮询入口已完成首版，可返回待查询 job / queue，也可应用 provider status snapshots。
-- provider 失败分类和错误码传递已完成首版，后续真实 adapter 只需补平台错误码映射。
+- provider 失败分类、错误码传递和通用错误码别名映射已完成首版，后续真实 adapter 只需补具体平台专用错误码。
 - 通用 submit/poll adapter 已完成首版，可通过 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` / `SEEDANCE_PROVIDER_POLL_ENDPOINT` 连接外部 worker。
 - 队列状态总览已完成首版，可直接读取 provider/queue 健康度、超时和失败注意项。
 - 人工重试策略已完成只读首版，可直接输出可重提/需先处理的候选镜头清单。
 - 重试执行自动化已完成首版，可把可重提候选一键重新提交到 provider 队列。
-- 下一步支持具体 Seedance / 外部 provider 的平台 SDK/HTTP 实现、鉴权参数和平台错误码映射。
+- 下一步支持具体 Seedance / 外部 provider 的平台 SDK/HTTP 实现、鉴权参数和平台专用错误码映射。
 - 将真实回传结果接入现有超时恢复、失败分类和重试包链路。
 
 建议先做最小切片：
