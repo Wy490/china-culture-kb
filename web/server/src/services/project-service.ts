@@ -44,6 +44,7 @@ import type {
   SeedanceShotProviderCallbackRequest,
   SeedanceShotProviderCallbackResult,
   SeedanceShotProviderPollRequest,
+  SeedanceShotProviderPollAdapterSummary,
   SeedanceShotProviderPollResult,
   SeedanceShotProviderPollTarget,
   SeedanceShotRetryPackage,
@@ -645,6 +646,134 @@ function seedanceProviderPollTargets(input: {
       };
     });
   return { checkedCount: checkedItems.length, targets };
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function configuredSeedanceProviderPollEndpoint(): string | undefined {
+  const endpoint = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT?.trim();
+  return endpoint || undefined;
+}
+
+function seedanceProviderPollTimeoutMs(): number {
+  const parsed = Number(process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 10000;
+  return Math.min(parsed, 30000);
+}
+
+function seedanceProviderPollResultArray(payload: unknown): unknown[] | undefined {
+  if (Array.isArray(payload)) return payload;
+  if (!isObjectRecord(payload)) return undefined;
+  const direct = payload.provider_results ?? payload.providerResults ?? payload.results ?? payload.items;
+  if (Array.isArray(direct)) return direct;
+  const data = payload.data;
+  if (Array.isArray(data)) return data;
+  if (isObjectRecord(data)) {
+    const nested = data.provider_results ?? data.providerResults ?? data.results ?? data.items;
+    if (Array.isArray(nested)) return nested;
+  }
+  return undefined;
+}
+
+function normalizeSeedanceProviderPollAdapterResults(
+  payload: unknown,
+): SeedanceShotProviderCallbackRequest[] | string {
+  if (isObjectRecord(payload) && payload.ok === false) {
+    const error = isObjectRecord(payload.error) ? payload.error.message : undefined;
+    return typeof error === 'string' && error.trim()
+      ? `Seedance provider adapter failed: ${error.trim()}`
+      : 'Seedance provider adapter returned ok=false';
+  }
+  const rawResults = seedanceProviderPollResultArray(payload);
+  if (!rawResults) {
+    return 'Seedance provider adapter response must be an array or include provider_results/results/items';
+  }
+  const results: SeedanceShotProviderCallbackRequest[] = [];
+  for (const [index, item] of rawResults.entries()) {
+    if (!isObjectRecord(item)) {
+      return `Seedance provider adapter result #${index + 1} must be an object`;
+    }
+    const shotId = callbackStringField(item.shot_id ?? item.shotId);
+    const providerJobId = callbackStringField(
+      item.provider_job_id ?? item.providerJobId ?? item.job_id ?? item.jobId,
+    );
+    const providerQueueId = callbackStringField(
+      item.provider_queue_id ?? item.providerQueueId ?? item.queue_id ?? item.queueId,
+    );
+    if (!shotId && !providerJobId && !providerQueueId) {
+      return `Seedance provider adapter result #${index + 1} requires shot_id, provider_job_id/job_id, or provider_queue_id/queue_id`;
+    }
+    results.push(item as SeedanceShotProviderCallbackRequest);
+  }
+  return results;
+}
+
+async function querySeedanceProviderPollAdapter(input: {
+  projectId: string;
+  provider?: string;
+  queueId?: string;
+  note?: string;
+  targets: SeedanceShotProviderPollTarget[];
+}): Promise<ApiResponse<{
+  providerResults: SeedanceShotProviderCallbackRequest[];
+  summary: SeedanceShotProviderPollAdapterSummary;
+}>> {
+  const endpoint = configuredSeedanceProviderPollEndpoint();
+  if (!endpoint) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'SEEDANCE_PROVIDER_POLL_ENDPOINT is required when use_provider_adapter=true',
+    );
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), seedanceProviderPollTimeoutMs());
+  try {
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    const token = process.env.SEEDANCE_PROVIDER_API_TOKEN?.trim();
+    if (token) headers.authorization = `Bearer ${token}`;
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        schema_version: 'seedance-provider-poll/v1',
+        project_id: input.projectId,
+        provider: input.provider,
+        queue_id: input.queueId,
+        note: input.note,
+        targets: input.targets,
+      }),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      return fail(
+        ErrorCodes.INTERNAL_ERROR,
+        `Seedance provider adapter returned HTTP ${response.status}`,
+        { status: response.status, body: text.slice(0, 500) },
+      );
+    }
+    const payload = text.trim() ? JSON.parse(text) as unknown : [];
+    const providerResults = normalizeSeedanceProviderPollAdapterResults(payload);
+    if (typeof providerResults === 'string') {
+      return fail(ErrorCodes.VALIDATION_ERROR, providerResults);
+    }
+    return success({
+      providerResults,
+      summary: {
+        endpoint_configured: true,
+        queried_count: input.targets.length,
+        returned_count: providerResults.length,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    return fail(ErrorCodes.INTERNAL_ERROR, `Seedance provider adapter request failed: ${message}`);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function callbackStringField(value: unknown): string | undefined {
@@ -2202,11 +2331,70 @@ export async function pollProjectSeedanceProviderQueue(
   };
   const beforeTargets = buildTargets(detail.data);
 
-  if (!request.provider_results?.length) {
+  if (request.use_provider_adapter && request.provider_results?.length) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'use_provider_adapter cannot be combined with provider_results',
+    );
+  }
+
+  let providerResults = request.provider_results?.map(result => ({
+    ...result,
+    provider: result.provider ?? provider,
+    note: result.note ?? request.note,
+  }));
+  let providerAdapterSummary: SeedanceShotProviderPollAdapterSummary | undefined;
+
+  if (request.use_provider_adapter) {
+    if (!beforeTargets.targets.length) {
+      return success({
+        project: detail.data.project,
+        seedance_shot_ledger: detail.data.project.seedance_shot_ledger,
+        dry_run: false,
+        provider,
+        queue_id: queueId,
+        checked_count: beforeTargets.checkedCount,
+        pollable_count: 0,
+        updated_count: 0,
+        failed_count: 0,
+        poll_targets: [],
+        provider_adapter: {
+          endpoint_configured: Boolean(configuredSeedanceProviderPollEndpoint()),
+          queried_count: 0,
+          returned_count: 0,
+        },
+        failures: [],
+      });
+    }
+    const adapterRes = await querySeedanceProviderPollAdapter({
+      projectId,
+      provider,
+      queueId,
+      note: request.note,
+      targets: beforeTargets.targets,
+    });
+    if (!adapterRes.ok || !adapterRes.data) {
+      return fail(
+        adapterRes.error?.code === ErrorCodes.VALIDATION_ERROR
+          ? ErrorCodes.VALIDATION_ERROR
+          : ErrorCodes.INTERNAL_ERROR,
+        adapterRes.error?.message ?? 'Seedance provider adapter failed',
+        adapterRes.error?.details,
+      );
+    }
+    providerResults = adapterRes.data.providerResults.map(result => ({
+      ...result,
+      provider: result.provider ?? provider,
+      note: result.note ?? request.note,
+    }));
+    providerAdapterSummary = adapterRes.data.summary;
+  }
+
+  if (!providerResults?.length) {
     return success({
       project: detail.data.project,
       seedance_shot_ledger: detail.data.project.seedance_shot_ledger,
-      dry_run: true,
+      dry_run: !request.use_provider_adapter,
       provider,
       queue_id: queueId,
       checked_count: beforeTargets.checkedCount,
@@ -2214,15 +2402,11 @@ export async function pollProjectSeedanceProviderQueue(
       updated_count: 0,
       failed_count: 0,
       poll_targets: beforeTargets.targets,
+      provider_adapter: providerAdapterSummary,
       failures: [],
     });
   }
 
-  const providerResults = request.provider_results.map(result => ({
-    ...result,
-    provider: result.provider ?? provider,
-    note: result.note ?? request.note,
-  }));
   const importRes = await importProjectSeedanceShotCallbacks(projectId, { callbacks: providerResults });
   if (!importRes.ok || !importRes.data) {
     return importRes as ApiResponse<SeedanceShotProviderPollResult>;
@@ -2244,6 +2428,7 @@ export async function pollProjectSeedanceProviderQueue(
     updated_count: importRes.data.updated_count,
     failed_count: importRes.data.failed_count,
     poll_targets: afterTargets.targets,
+    provider_adapter: providerAdapterSummary,
     failures: importRes.data.failures,
   });
 }

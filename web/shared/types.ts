@@ -1545,8 +1545,15 @@ export interface SeedanceShotProviderPollRequest {
   statuses?: SeedanceShotProviderRecoverableStatus[];
   limit?: number;
   include_prompt?: boolean;
+  use_provider_adapter?: boolean;
   provider_results?: SeedanceShotProviderCallbackRequest[];
   note?: string;
+}
+
+export interface SeedanceShotProviderPollAdapterSummary {
+  endpoint_configured: boolean;
+  queried_count: number;
+  returned_count: number;
 }
 
 export interface SeedanceShotProviderPollResult {
@@ -1560,6 +1567,7 @@ export interface SeedanceShotProviderPollResult {
   updated_count: number;
   failed_count: number;
   poll_targets: SeedanceShotProviderPollTarget[];
+  provider_adapter?: SeedanceShotProviderPollAdapterSummary;
   failures: SeedanceShotCallbackImportFailure[];
 }
 

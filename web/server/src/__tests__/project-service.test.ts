@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
@@ -39,6 +39,9 @@ import {
 
 const TEMP_DIRS: string[] = [];
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
+const ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN = process.env.SEEDANCE_PROVIDER_API_TOKEN;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
 
 async function exists(path: string): Promise<boolean> {
   try {
@@ -154,6 +157,22 @@ afterEach(async () => {
   } else {
     process.env.KB_ROOT = ORIGINAL_KB_ROOT;
   }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
+  } else {
+    process.env.SEEDANCE_PROVIDER_API_TOKEN = ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
+  }
+  vi.unstubAllGlobals();
   for (const dir of TEMP_DIRS.splice(0)) {
     await rm(dir, { recursive: true, force: true });
   }
@@ -921,6 +940,103 @@ describe('project-service', () => {
     });
     expect(retryPackageRes.data?.markdown).toContain('失败分类: provider_rate_limit');
     expect(retryPackageRes.data?.markdown).toContain('Provider 错误码: RATE_LIMIT_429');
+  });
+
+  it('queries a configured Seedance provider adapter and applies returned statuses', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = 'https://adapter.example.test/seedance/poll';
+    process.env.SEEDANCE_PROVIDER_API_TOKEN = 'adapter-token';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'provider-adapter-test',
+      queue_id: 'provider-adapter-queue-001',
+      note: 'provider adapter 测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(String(_url)).toBe('https://adapter.example.test/seedance/poll');
+      expect(init?.method).toBe('POST');
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer adapter-token');
+      const body = JSON.parse(String(init?.body)) as {
+        project_id: string;
+        provider?: string;
+        queue_id?: string;
+        targets: Array<{ shot_id: string; provider_job_id?: string; seedance_prompt?: string }>;
+      };
+      expect(body.project_id).toBe(enriched.project_id);
+      expect(body.provider).toBe('seedance');
+      expect(body.queue_id).toBe('provider-adapter-queue-001');
+      expect(body.targets).toHaveLength(2);
+      expect(body.targets[0]).toMatchObject({
+        shot_id: 'shot-1',
+        provider_job_id: 'provider-adapter-test-shot-1',
+      });
+      expect(body.targets[0].seedance_prompt).toContain('0-3秒');
+      return new Response(JSON.stringify({
+        provider_results: [{
+          job_id: 'provider-adapter-test-shot-1',
+          status: 'completed',
+          video_url: 'https://example.com/seedance-videos/provider-adapter-shot-1.mp4',
+          quality_score: 94,
+          review_note: 'adapter 回片可用',
+        }, {
+          job_id: 'provider-adapter-test-shot-2',
+          status: 'failed',
+          provider_error_code: 'POLICY_BLOCKED',
+          failure_category: 'content_policy',
+          failure_reason: '内容审核未通过',
+        }],
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const pollApplyRes = await pollProjectSeedanceProviderQueue(enriched.project_id!, {
+      provider: 'seedance',
+      queue_id: 'provider-adapter-queue-001',
+      include_prompt: true,
+      use_provider_adapter: true,
+      note: 'provider adapter 应用回传',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pollApplyRes.ok).toBe(true);
+    expect(pollApplyRes.data).toMatchObject({
+      dry_run: false,
+      provider: 'seedance',
+      queue_id: 'provider-adapter-queue-001',
+      checked_count: 2,
+      pollable_count: 0,
+      updated_count: 2,
+      failed_count: 0,
+      provider_adapter: {
+        endpoint_configured: true,
+        queried_count: 2,
+        returned_count: 2,
+      },
+    });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: 'provider-adapter-test-shot-1',
+      video_url: 'https://example.com/seedance-videos/provider-adapter-shot-1.mp4',
+      selected_version_id: 'seedance-shot-shot-1-v2',
+    });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'failed',
+      provider_job_id: 'provider-adapter-test-shot-2',
+      failure_reason: '内容审核未通过',
+      failure_category: 'content_policy',
+      provider_error_code: 'POLICY_BLOCKED',
+    });
   });
 
   it('exports a production board package to the project directory', async () => {

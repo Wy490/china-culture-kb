@@ -9,7 +9,7 @@
 | 模块 | 当前判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
-| Production Board / GEARS / Seedance | 约 91% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类和 provider 错误码传递首版已完成。 |
+| Production Board / GEARS / Seedance | 约 92% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递和通用 poll adapter 首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划已有；字幕、混音、片头片尾、final delivery 待做。 |
 | 可商用制作中台 | 约 35-40% | 主链路可用；还缺 UX 降噪、状态总览、真实外部 provider、审片返修和稳定压测。 |
@@ -55,13 +55,18 @@
   - 内部状态更新、外部回传和轮询结果都可携带 `failure_category` 与 `provider_error_code`。
   - 超时恢复默认写入 `provider_timeout` / `PROVIDER_TIMEOUT`；重试包 Markdown / JSON 会带出失败分类、provider 错误码和分类化建议动作。
   - Production Board 同步 `seedance_shot_ledger` 时会保留失败分类和错误码，避免导出重试包时丢字段。
+- Seedance provider 通用 poll adapter 首版：
+  - `SeedanceShotProviderPollRequest` 新增 `use_provider_adapter`。
+  - 服务端读取 `SEEDANCE_PROVIDER_POLL_ENDPOINT`，把 dry-run 产生的 `poll_targets` POST 给外部 adapter。
+  - adapter 可返回顶层数组、`provider_results`、`results` 或 `items`，服务端会复用既有回传归一化写回 Shot Ledger。
+  - 支持 `SEEDANCE_PROVIDER_API_TOKEN` bearer 鉴权和 `SEEDANCE_PROVIDER_POLL_TIMEOUT_MS` 超时控制；外部 adapter 网络/HTTP 错误在路由层返回 502。
 
 ### 文档同步
 
 - 更新 `docs/story-agent-next-conversation-handoff.md`。
 - 更新 `docs/story-agent-production-workbench-development-plan.md`。
 - 更新 `开发文档/story-agent-mcp-quality-delivery-implementation-plan.md`。
-- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”；外部回传 schema、轮询入口和失败分类已完成首版。
+- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”；外部回传 schema、轮询入口、失败分类和通用 poll adapter 已完成首版。
 
 ## 3. 已验证命令
 
@@ -76,7 +81,7 @@ git diff --check
 最近一次结果：
 
 - `web/client`：lint passed。
-- `web/server`：lint passed；`project-service.test.ts` 26 passed，`api.test.ts` 85 passed；全量 24 files / 232 tests passed。
+- `web/server`：lint passed；`project-service.test.ts` 27 passed，`api.test.ts` 85 passed；全量 24 files / 233 tests passed。
 - `git diff --check`：passed。
 
 注意：`web/server` 的 API 测试会启动本地 HTTP server，在沙箱中可能触发 `listen EPERM 0.0.0.0`，需要允许非沙箱运行。
@@ -103,24 +108,26 @@ git diff --stat
 建议提交信息：
 
 ```text
-新增 Seedance provider 失败分类
+新增 Seedance provider adapter 查询入口
 ```
 
-### P0：Seedance provider 真实 API adapter
+### P0：Seedance provider 平台专用 adapter
 
 目标：
 
 - 外部 provider 回传 schema 已完成首版。
 - provider 轮询入口已完成首版，可返回待查询 job / queue，也可应用 provider status snapshots。
 - provider 失败分类和错误码传递已完成首版，后续真实 adapter 只需补平台错误码映射。
-- 支持根据 provider job / queue 查询真实状态。
+- 通用 poll adapter 已完成首版，可通过 `SEEDANCE_PROVIDER_POLL_ENDPOINT` 查询外部 worker。
+- 下一步支持具体 Seedance / 外部 provider 的 submit/query API、鉴权参数和平台错误码映射。
 - 将真实回传结果接入现有超时恢复、失败分类和重试包链路。
 
 建议先做最小切片：
 
 ```text
 SeedanceProviderAdapter
-  -> query provider_job_id status
+  -> submit real provider job
+  -> query real provider_job_id status
   -> map platform error code when needed
   -> feed poll-provider provider_results
   -> tests
@@ -157,5 +164,5 @@ export-seedance-subtitles
 ## 6. 新对话开场指令
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先收尾当前工作区，然后继续 P0：Seedance provider 真实 API adapter、MCP 更深模型修复链路、故事管理 UX 降噪。默认界面保持简单，只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先收尾当前工作区，然后继续 P0：Seedance provider 平台专用 submit/query adapter、MCP 更深模型修复链路、故事管理 UX 降噪。默认界面保持简单，只保留高频主路径。
 ```

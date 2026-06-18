@@ -400,7 +400,15 @@ projectsRouter.post(
     try {
       const { projectId } = req.params as { projectId: string };
       const result = await pollProjectSeedanceProviderQueue(projectId, req.body);
-      res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.VALIDATION_ERROR
+            ? 400
+            : result.error?.code === ErrorCodes.INTERNAL_ERROR
+              ? 502
+              : 404,
+      ).json(result);
     } catch (err) {
       next(err);
     }

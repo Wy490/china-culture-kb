@@ -1002,6 +1002,24 @@ describe('Projects API', () => {
       ]));
       expect(dryRunRes.body.data.poll_targets[0].seedance_prompt).toContain('0-3秒');
 
+      const previousAdapterEndpoint = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
+      delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
+      const missingAdapterRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/poll-provider`)
+        .send({
+          provider: 'seedance',
+          queue_id: 'api-provider-poll-queue-001',
+          use_provider_adapter: true,
+        });
+      if (previousAdapterEndpoint === undefined) {
+        delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
+      } else {
+        process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = previousAdapterEndpoint;
+      }
+      expect(missingAdapterRes.status).toBe(400);
+      expectFailure(missingAdapterRes.body, 'VALIDATION_ERROR');
+      expect(missingAdapterRes.body.error.message).toContain('SEEDANCE_PROVIDER_POLL_ENDPOINT');
+
       const applyRes = await request
         .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/poll-provider`)
         .send({

@@ -584,6 +584,7 @@ export const SeedanceShotProviderPollRequestSchema = z.object({
   statuses: z.array(SeedanceShotProviderRecoverableStatusSchema).min(1).max(2).optional(),
   limit: z.number().int().min(1).max(200).optional().default(100),
   include_prompt: z.boolean().optional().default(false),
+  use_provider_adapter: z.boolean().optional().default(false),
   provider_results: z.array(SeedanceShotProviderCallbackRequestSchema).min(1).max(200).optional(),
   note: z.string().trim().min(1).max(500).optional(),
 });
