@@ -6,6 +6,7 @@ import { success } from '@shared/types.js';
 import type {
   AIModelProfile,
   ProvinceInfo,
+  SeedanceProviderAdapterContractInfo,
   SeedanceProviderAdapterConfigInfo,
   TypeInfo,
   VideoType,
@@ -132,6 +133,106 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
     generated_at: new Date().toISOString(),
   };
   res.json(success(config));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/seedance-provider-adapter-contract — safe worker contract
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
+  const contract: SeedanceProviderAdapterContractInfo = {
+    provider: 'seedance',
+    submit: {
+      schema_version: 'seedance-provider-submit/v1',
+      endpoint_env: 'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT',
+      auth_envs: ['SEEDANCE_PROVIDER_SUBMIT_API_TOKEN', 'SEEDANCE_PROVIDER_API_TOKEN'],
+      timeout_env: 'SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS',
+      request_fields: [
+        'schema_version',
+        'project_id',
+        'storyId',
+        'title',
+        'provider',
+        'queue_id',
+        'queue_priority',
+        'note',
+        'seedance_asset_library',
+        'shots[]',
+        'shots[].shot_id',
+        'shots[].source_scene_id',
+        'shots[].provider_job_id',
+        'shots[].provider_queue_position',
+        'shots[].duration_sec',
+        'shots[].seedance_prompt',
+        'shots[].seedance_asset_slots',
+        'shots[].seedance_material_validation',
+        'shots[].seedance_validation_notes',
+        'shots[].negative_constraints',
+      ],
+      accepted_response_shapes: [
+        'top-level array',
+        '{ submitted_shots: [...] }',
+        '{ provider_results: [...] }',
+        '{ results: [...] }',
+        '{ items: [...] }',
+        '{ data: [...] }',
+      ],
+      normalized_result_fields: [
+        'shot_id',
+        'provider_job_id | job_id | jobId',
+        'provider_queue_id | queue_id | queueId',
+        'provider_queue_position | queue_position | queuePosition',
+        'status',
+      ],
+      notes: [
+        'Each accepted result must include a shot_id and provider job id.',
+        'Returned queue id/position override local placeholders when present.',
+      ],
+    },
+    poll: {
+      schema_version: 'seedance-provider-poll/v1',
+      endpoint_env: 'SEEDANCE_PROVIDER_POLL_ENDPOINT',
+      auth_envs: ['SEEDANCE_PROVIDER_API_TOKEN'],
+      timeout_env: 'SEEDANCE_PROVIDER_POLL_TIMEOUT_MS',
+      request_fields: [
+        'schema_version',
+        'project_id',
+        'provider',
+        'queue_id',
+        'note',
+        'targets[]',
+        'targets[].shot_id',
+        'targets[].provider_job_id',
+        'targets[].provider_queue_id',
+        'targets[].provider_queue_position',
+        'targets[].status',
+        'targets[].seedance_prompt',
+      ],
+      accepted_response_shapes: [
+        'top-level array',
+        '{ provider_results: [...] }',
+        '{ results: [...] }',
+        '{ items: [...] }',
+        '{ data: [...] }',
+      ],
+      normalized_result_fields: [
+        'provider_job_id | job_id | jobId',
+        'status',
+        'video_url | url',
+        'failure_reason | error',
+        'failure_category',
+        'provider_error_code | errorCode',
+        'quality_score | qualityScore',
+        'review_note | reviewNote',
+      ],
+      notes: [
+        'Poll results are normalized through the provider callback path.',
+        'Failed results can carry failure_category/provider_error_code for retry planning.',
+      ],
+    },
+    generated_at: new Date().toISOString(),
+  };
+  res.json(success(contract));
 });
 
 // ---------------------------------------------------------------------------

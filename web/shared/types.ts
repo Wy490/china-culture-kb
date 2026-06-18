@@ -3912,6 +3912,24 @@ export interface SeedanceProviderAdapterConfigInfo {
   generated_at: string;
 }
 
+export interface SeedanceProviderAdapterContractSection {
+  schema_version: string;
+  endpoint_env: string;
+  auth_envs: string[];
+  timeout_env: string;
+  request_fields: string[];
+  accepted_response_shapes: string[];
+  normalized_result_fields: string[];
+  notes: string[];
+}
+
+export interface SeedanceProviderAdapterContractInfo {
+  provider: 'seedance';
+  submit: SeedanceProviderAdapterContractSection;
+  poll: SeedanceProviderAdapterContractSection;
+  generated_at: string;
+}
+
 export interface TypeInfo {
   name: string;
   recommended_generation_types: GenerationType[];

@@ -73,6 +73,9 @@
   - 项目详情页 Seedance Shot Ledger 顶部新增 adapter 配置 chips，可在点击提交/轮询前看到 submit adapter、poll adapter 和 token 状态。
   - “提交 adapter”和“轮询 provider”会按配置状态禁用，未配置 endpoint 时不再等到点击后才返回 400。
   - 响应新增缺失 env var 清单、配置 warning 和下一步动作，项目详情页会直接显示缺 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` / `SEEDANCE_PROVIDER_POLL_ENDPOINT` 等诊断信息。
+- Seedance provider adapter 合约元数据首版：
+  - 新增 `GET /api/system/seedance-provider-adapter-contract`，返回 submit/poll schema version、env key、请求字段、可接受响应形态和归一化字段。
+  - 合约接口不返回 endpoint URL 或 token 原文，可给外部 worker / Agent 对接前读取。
 - Seedance provider 队列状态总览首版：
   - 新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。
   - 可按 `provider` / `queue_id` 过滤，返回状态计数、活跃数、完成数、失败数、可重试数、超时数、缺视频数和注意项。
@@ -116,7 +119,7 @@ git diff --check
 
 - `web/client`：lint passed。
 - `web/client`：build passed。
-- `web/server`：lint passed；`project-service.test.ts` 31 passed，`api.test.ts` 86 passed；全量 24 files / 238 tests passed。
+- `web/server`：lint passed；`project-service.test.ts` 31 passed，`api.test.ts` 87 passed；全量 24 files / 239 tests passed。
 - `web/client`：lint passed；ProjectDetail provider overview API smoke 通过，提交 5 条 provider 任务后 overview 返回 5 个总镜头 / 5 个活跃 / 5 个注意项。
 - `git diff --check`：passed。
 

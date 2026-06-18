@@ -3,6 +3,7 @@ import type {
   AIModelProfile,
   NarrativePatternCatalog,
   ProvinceInfo,
+  SeedanceProviderAdapterContractInfo,
   SeedanceProviderAdapterConfigInfo,
   TypeInfo,
 } from '@shared/types'
@@ -29,4 +30,8 @@ export function getNarrativePatternCatalog() {
 
 export function getSeedanceProviderAdapterConfig() {
   return apiGet<SeedanceProviderAdapterConfigInfo>('/system/seedance-provider-config')
+}
+
+export function getSeedanceProviderAdapterContract() {
+  return apiGet<SeedanceProviderAdapterContractInfo>('/system/seedance-provider-adapter-contract')
 }

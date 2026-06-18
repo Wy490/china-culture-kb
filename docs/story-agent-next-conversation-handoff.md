@@ -233,6 +233,9 @@ MCP 原则：
   - 项目详情页 Seedance Shot Ledger 顶部新增 adapter 配置 chips，点击提交/轮询前即可看到 submit adapter、poll adapter、token 和 timeout 状态。
   - “提交 adapter”和“轮询 provider”按钮会按配置状态禁用，避免未配置 endpoint 时误触发 adapter 请求。
   - 响应和前端 chips 已补缺失 env var、配置 warning 和下一步动作，便于直接排查真实 provider worker 接入前的配置问题。
+- 单故事 Seedance provider adapter 合约元数据首版：
+  - 后端新增 `GET /api/system/seedance-provider-adapter-contract`，返回 submit/poll schema version、env key、请求字段、可接受响应形态和归一化字段。
+  - 合约接口不返回 endpoint URL 或 token 原文，外部 worker / Agent 可先读取该接口再实现 submit/query。
 - 单故事 Seedance provider 队列状态总览首版：
   - 共享类型新增 `SeedanceShotProviderQueueOverviewRequest` / `SeedanceShotProviderQueueOverviewResult`，并补齐批次概览与注意项结构。
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。
@@ -299,10 +302,10 @@ git diff --check
 测试结果：
 
 - `project-service.test.ts`：31 passed。
-- `api.test.ts`：86 passed。
-- `web/server && npm test`：24 files passed，238 tests passed。
+- `api.test.ts`：87 passed。
+- `web/server && npm test`：24 files passed，239 tests passed。
 - `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写、provider poll dry-run / provider_results 应用、失败分类进入 retry package、通用错误码别名映射、通用 provider submit adapter mock 提交、poll adapter mock 查询写回、provider 队列状态总览的超时/失败/批次汇总、provider 人工重试策略的可重提/阻断候选，以及 provider 重试执行自动化只提交可重提镜头。
-- `api.test.ts` 已覆盖 `GET /api/system/seedance-provider-config` 不泄露 endpoint/token 原文，`POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback`、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`、`/provider-retry-submit`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应。
+- `api.test.ts` 已覆盖 `GET /api/system/seedance-provider-config` / `GET /api/system/seedance-provider-adapter-contract` 不泄露 endpoint/token 原文，`POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback`、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`、`/provider-retry-submit`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应。
 - `web/client && npm run lint`：passed。
 - `web/client && npm run build`：passed。
 - `web/server && npm run lint`：passed。

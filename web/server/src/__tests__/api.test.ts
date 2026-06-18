@@ -463,6 +463,44 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/seedance-provider-adapter-contract', () => {
+    it('returns safe submit and poll adapter contract metadata', async () => {
+      const res = await request.get('/api/system/seedance-provider-adapter-contract');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        provider: 'seedance',
+        submit: {
+          schema_version: 'seedance-provider-submit/v1',
+          endpoint_env: 'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT',
+          auth_envs: ['SEEDANCE_PROVIDER_SUBMIT_API_TOKEN', 'SEEDANCE_PROVIDER_API_TOKEN'],
+          timeout_env: 'SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS',
+        },
+        poll: {
+          schema_version: 'seedance-provider-poll/v1',
+          endpoint_env: 'SEEDANCE_PROVIDER_POLL_ENDPOINT',
+          auth_envs: ['SEEDANCE_PROVIDER_API_TOKEN'],
+          timeout_env: 'SEEDANCE_PROVIDER_POLL_TIMEOUT_MS',
+        },
+      });
+      expect(res.body.data.submit.request_fields).toEqual(expect.arrayContaining([
+        'shots[].seedance_prompt',
+        'shots[].seedance_asset_slots',
+      ]));
+      expect(res.body.data.submit.accepted_response_shapes).toEqual(expect.arrayContaining([
+        '{ submitted_shots: [...] }',
+        '{ provider_results: [...] }',
+      ]));
+      expect(res.body.data.poll.request_fields).toContain('targets[].provider_job_id');
+      expect(res.body.data.poll.normalized_result_fields).toEqual(expect.arrayContaining([
+        'video_url | url',
+        'provider_error_code | errorCode',
+      ]));
+      expect(JSON.stringify(res.body.data)).not.toContain('http');
+      expect(JSON.stringify(res.body.data)).not.toContain('secret');
+    });
+  });
+
 });
 
 describe('Projects API', () => {
