@@ -20,6 +20,7 @@ import {
   listProjectSeedanceGlobalAssetLibrary,
   listProjects,
   listProjectSupplementTasks,
+  pollProjectSeedanceProviderQueue,
   regenerateProjectScene,
   recoverProjectSeedanceProviderQueue,
   repairAndExportProjectProductionBoard,
@@ -815,6 +816,81 @@ describe('project-service', () => {
       provider_queue_id: 'provider-callback-queue-001',
       provider_queue_position: 1,
       video_url: 'https://example.com/seedance-videos/provider-callback-shot-1.mp4',
+      selected_version_id: 'seedance-shot-shot-1-v2',
+    });
+  });
+
+  it('polls Seedance provider targets and applies returned status snapshots', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1'],
+      provider: 'seedance',
+      job_prefix: 'provider-poll-test',
+      queue_id: 'provider-poll-queue-001',
+      note: 'provider poll 测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+
+    const dryRunRes = await pollProjectSeedanceProviderQueue(enriched.project_id!, {
+      provider: 'seedance',
+      queue_id: 'provider-poll-queue-001',
+      include_prompt: true,
+    });
+    expect(dryRunRes.ok).toBe(true);
+    expect(dryRunRes.data).toMatchObject({
+      dry_run: true,
+      provider: 'seedance',
+      queue_id: 'provider-poll-queue-001',
+      checked_count: 1,
+      pollable_count: 1,
+      updated_count: 0,
+    });
+    expect(dryRunRes.data?.poll_targets[0]).toMatchObject({
+      shot_id: 'shot-1',
+      provider_job_id: 'provider-poll-test-shot-1',
+      provider_queue_id: 'provider-poll-queue-001',
+      provider_queue_position: 1,
+      status: 'submitted',
+    });
+    expect(dryRunRes.data?.poll_targets[0].seedance_prompt).toContain('0-3秒');
+
+    const pollApplyRes = await pollProjectSeedanceProviderQueue(enriched.project_id!, {
+      provider: 'seedance',
+      queue_id: 'provider-poll-queue-001',
+      provider_results: [{
+        jobId: 'provider-poll-test-shot-1',
+        status: 'success',
+        url: 'https://example.com/seedance-videos/provider-poll-shot-1.mp4',
+        qualityScore: 95,
+        reviewNote: 'poll 回片可用',
+        message: 'provider poll completed',
+      }],
+      note: 'provider poll 应用回传',
+    });
+    expect(pollApplyRes.ok).toBe(true);
+    expect(pollApplyRes.data).toMatchObject({
+      dry_run: false,
+      provider: 'seedance',
+      queue_id: 'provider-poll-queue-001',
+      checked_count: 1,
+      pollable_count: 0,
+      updated_count: 1,
+      failed_count: 0,
+      poll_targets: [],
+    });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'ready',
+      provider: 'seedance',
+      provider_job_id: 'provider-poll-test-shot-1',
+      provider_queue_id: 'provider-poll-queue-001',
+      video_url: 'https://example.com/seedance-videos/provider-poll-shot-1.mp4',
       selected_version_id: 'seedance-shot-shot-1-v2',
     });
   });

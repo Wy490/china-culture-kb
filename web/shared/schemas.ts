@@ -557,6 +557,17 @@ export const SeedanceShotProviderCallbackRequestSchema = SeedanceShotCallbackReq
   payload: z.unknown().optional(),
 }));
 
+export const SeedanceShotProviderPollRequestSchema = z.object({
+  provider: z.string().trim().min(1).max(80).optional(),
+  queue_id: z.string().trim().min(1).max(120).optional(),
+  shot_ids: z.array(z.string().trim().min(1).max(80)).min(1).max(200).optional(),
+  statuses: z.array(SeedanceShotProviderRecoverableStatusSchema).min(1).max(2).optional(),
+  limit: z.number().int().min(1).max(200).optional().default(100),
+  include_prompt: z.boolean().optional().default(false),
+  provider_results: z.array(SeedanceShotProviderCallbackRequestSchema).min(1).max(200).optional(),
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
 export const StorySceneRegenerateRequestSchema = z.object({
   scene_id: z.number().int().min(1),
   intent: z.enum([

@@ -204,11 +204,12 @@
 - 单故事 Seedance provider 队列元数据首版
 - 单故事 Seedance provider 超时恢复首版
 - 单故事 Seedance provider 外部回传 schema 首版
+- 单故事 Seedance provider 轮询入口首版
 - 单故事 Seedance `@视频1` / `@音频1` 引用校验首版
 
 仍缺：
 
-- 真实 Seedance / 外部 provider API 对接、自动轮询和更细失败分类
+- 真实 Seedance / 外部 provider API 对接和更细失败分类
 
 ### 3.4 GEARS / 外部制作工具集成仍偏文件交付
 
@@ -460,7 +461,7 @@
 - 当前系统已经能生成 Board、发现问题、执行批量生产修复和落盘。
 - 但用户还缺少“我只想修这个问题”的精细控制。
 - 修复前后 diff 能显著提升信任感。
-- Seedance 资产引用、`@视频/@音频` 引用校验、单故事资产绑定、素材缺口报告、外部素材批量导入、上传态字段、真实文件上传、跨项目资产库复用、素材上传历史 UI、Shot Ledger、回传导入、失败重试包、手动/自动择优、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、provider 外部回传 schema、MCP GEARS 只读交付工具、MCP Seedance prompt 只读工具、MCP repair dry-run、MCP 受控版本写入、MCP repair auto_apply 安全应用、真实项目 smoke 和前端质量反馈视图首版已进入工作台；下一步补真实 provider API、自动轮询和更细失败分类。
+- Seedance 资产引用、`@视频/@音频` 引用校验、单故事资产绑定、素材缺口报告、外部素材批量导入、上传态字段、真实文件上传、跨项目资产库复用、素材上传历史 UI、Shot Ledger、回传导入、失败重试包、手动/自动择优、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、provider 外部回传 schema、provider 轮询入口、MCP GEARS 只读交付工具、MCP Seedance prompt 只读工具、MCP repair dry-run、MCP 受控版本写入、MCP repair auto_apply 安全应用、真实项目 smoke 和前端质量反馈视图首版已进入工作台；下一步补真实 provider API 和更细失败分类。
 
 建议下一阶段验收闭环：
 
@@ -598,6 +599,7 @@ Production Board 必须继续承担三件事：
 - Seedance provider 队列元数据进入工作台（已完成首版）
 - Seedance provider 超时恢复进入工作台（已完成首版）
 - Seedance provider 外部回传 schema 进入工作台（已完成首版）
+- Seedance provider 轮询入口进入工作台（已完成首版）
 - Seedance `@视频1` / `@音频1` 引用校验进入提示词包和素材校验（已完成首版）
 - MCP `kb_repair_story(auto_apply=false)` 只读修复建议进入 Agent 工具链（已完成首版）
 - MCP `kb_update_project_version` 受控版本写入进入 Agent 工具链（已完成首版）

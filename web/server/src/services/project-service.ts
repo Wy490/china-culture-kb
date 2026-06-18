@@ -42,6 +42,9 @@ import type {
   SeedanceShotProductionStatus,
   SeedanceShotProviderCallbackRequest,
   SeedanceShotProviderCallbackResult,
+  SeedanceShotProviderPollRequest,
+  SeedanceShotProviderPollResult,
+  SeedanceShotProviderPollTarget,
   SeedanceShotRetryPackage,
   SeedanceShotRetryPackageShot,
   SeedanceShotAutoSelectRequest,
@@ -533,6 +536,47 @@ function seedanceShotWaitingMinutes(item: SeedanceShotLedgerItem, nowMs: number)
   const timestamp = Date.parse(item.submitted_at ?? item.updated_at);
   if (!Number.isFinite(timestamp)) return 0;
   return Math.max(0, Math.floor((nowMs - timestamp) / 60000));
+}
+
+function seedanceProviderPollTargets(input: {
+  board: StoryProductionBoard;
+  statuses: Set<SeedanceShotProviderRecoverableStatus>;
+  provider?: string;
+  queueId?: string;
+  shotIds?: Set<string>;
+  limit: number;
+  includePrompt: boolean;
+  nowMs: number;
+}): { checkedCount: number; targets: SeedanceShotProviderPollTarget[] } {
+  const shotById = new Map(input.board.shot_units.map(shot => [shot.shot_id, shot]));
+  const checkedItems = input.board.seedance_shot_ledger.items.filter(item => {
+    if (!input.statuses.has(item.status as SeedanceShotProviderRecoverableStatus)) return false;
+    if (input.provider && item.provider !== input.provider) return false;
+    if (input.queueId && item.provider_queue_id !== input.queueId) return false;
+    if (input.shotIds && !input.shotIds.has(item.shot_id)) return false;
+    return true;
+  });
+  const targets = checkedItems
+    .filter(item => Boolean(item.provider_job_id))
+    .slice(0, input.limit)
+    .map(item => {
+      const shot = shotById.get(item.shot_id);
+      return {
+        shot_id: item.shot_id,
+        source_scene_id: item.source_scene_id,
+        status: item.status as SeedanceShotProviderRecoverableStatus,
+        provider: item.provider,
+        provider_job_id: item.provider_job_id,
+        provider_queue_id: item.provider_queue_id,
+        provider_queue_position: item.provider_queue_position,
+        submitted_at: item.submitted_at,
+        updated_at: item.updated_at,
+        minutes_waiting: seedanceShotWaitingMinutes(item, input.nowMs),
+        retry_count: item.retry_count,
+        seedance_prompt: input.includePrompt ? shot?.seedance_prompt : undefined,
+      };
+    });
+  return { checkedCount: checkedItems.length, targets };
 }
 
 function callbackStringField(value: unknown): string | undefined {
@@ -2013,6 +2057,90 @@ export async function importProjectSeedanceProviderCallback(
     event_id: callbackStringField(
       request.event_id ?? request.eventId ?? request.callback_id ?? request.callbackId,
     ),
+  });
+}
+
+export async function pollProjectSeedanceProviderQueue(
+  projectId: string,
+  request: SeedanceShotProviderPollRequest = {},
+): Promise<ApiResponse<SeedanceShotProviderPollResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const statuses = new Set<SeedanceShotProviderRecoverableStatus>(
+    request.statuses?.length ? request.statuses : ['submitted', 'processing'],
+  );
+  const provider = request.provider?.trim();
+  const queueId = request.queue_id?.trim();
+  const shotIds = request.shot_ids?.length ? new Set(request.shot_ids) : undefined;
+  const limit = request.limit ?? 100;
+  const nowMs = Date.now();
+  const buildTargets = (projectDetail: StoryProjectDetail) => {
+    const board = buildStoryProductionBoard(projectDetail.current_story, {
+      seedanceAssetLibrary: projectDetail.project.seedance_asset_library,
+      seedanceShotLedger: projectDetail.project.seedance_shot_ledger,
+    });
+    return seedanceProviderPollTargets({
+      board,
+      statuses,
+      provider,
+      queueId,
+      shotIds,
+      limit,
+      includePrompt: Boolean(request.include_prompt),
+      nowMs,
+    });
+  };
+  const beforeTargets = buildTargets(detail.data);
+
+  if (!request.provider_results?.length) {
+    return success({
+      project: detail.data.project,
+      seedance_shot_ledger: detail.data.project.seedance_shot_ledger,
+      dry_run: true,
+      provider,
+      queue_id: queueId,
+      checked_count: beforeTargets.checkedCount,
+      pollable_count: beforeTargets.targets.length,
+      updated_count: 0,
+      failed_count: 0,
+      poll_targets: beforeTargets.targets,
+      failures: [],
+    });
+  }
+
+  const providerResults = request.provider_results.map(result => ({
+    ...result,
+    provider: result.provider ?? provider,
+    note: result.note ?? request.note,
+  }));
+  const importRes = await importProjectSeedanceShotCallbacks(projectId, { callbacks: providerResults });
+  if (!importRes.ok || !importRes.data) {
+    return importRes as ApiResponse<SeedanceShotProviderPollResult>;
+  }
+
+  const refreshedDetail = await getProject(projectId);
+  const afterTargets = refreshedDetail.ok && refreshedDetail.data
+    ? buildTargets(refreshedDetail.data)
+    : { checkedCount: 0, targets: [] };
+
+  return success({
+    project: importRes.data.project,
+    seedance_shot_ledger: importRes.data.seedance_shot_ledger,
+    dry_run: false,
+    provider,
+    queue_id: queueId,
+    checked_count: beforeTargets.checkedCount,
+    pollable_count: afterTargets.targets.length,
+    updated_count: importRes.data.updated_count,
+    failed_count: importRes.data.failed_count,
+    poll_targets: afterTargets.targets,
+    failures: importRes.data.failures,
   });
 }
 

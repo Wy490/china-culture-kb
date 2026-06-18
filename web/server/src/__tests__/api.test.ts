@@ -942,6 +942,93 @@ describe('Projects API', () => {
       });
     });
 
+    it('polls Seedance provider jobs and applies returned statuses through the route', async () => {
+      const baseStory = makeApiProductionRepairStory();
+      const story: StoryGenerateResult = {
+        ...baseStory,
+        storyId: '20260617-story-apspoll',
+        title: 'API Seedance Provider Poll 测试故事',
+        gears_segments_url: '/api/stories/20260617-story-apspoll/gears-segments',
+        gears_delivery: baseStory.gears_delivery
+          ? {
+              ...baseStory.gears_delivery,
+              storyId: '20260617-story-apspoll',
+              title: 'API Seedance Provider Poll 测试故事',
+            }
+          : undefined,
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T12:09:00.000Z');
+
+      const submitRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/submit-provider`)
+        .send({
+          shot_ids: ['shot-1'],
+          provider: 'seedance',
+          job_prefix: 'api-provider-poll-job',
+          queue_id: 'api-provider-poll-queue-001',
+          note: 'API provider poll 测试提交',
+        });
+      expect(submitRes.status).toBe(200);
+      expectSuccess(submitRes.body);
+
+      const dryRunRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/poll-provider`)
+        .send({
+          provider: 'seedance',
+          queue_id: 'api-provider-poll-queue-001',
+          include_prompt: true,
+        });
+      expect(dryRunRes.status).toBe(200);
+      expectSuccess(dryRunRes.body);
+      expect(dryRunRes.body.data).toMatchObject({
+        dry_run: true,
+        checked_count: 1,
+        pollable_count: 1,
+        updated_count: 0,
+        poll_targets: [{
+          shot_id: 'shot-1',
+          provider_job_id: 'api-provider-poll-job-shot-1',
+          provider_queue_id: 'api-provider-poll-queue-001',
+          status: 'submitted',
+        }],
+      });
+      expect(dryRunRes.body.data.poll_targets[0].seedance_prompt).toContain('0-3秒');
+
+      const applyRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/poll-provider`)
+        .send({
+          provider: 'seedance',
+          queue_id: 'api-provider-poll-queue-001',
+          provider_results: [{
+            provider_job_id: 'api-provider-poll-job-shot-1',
+            status: 'completed',
+            video_url: 'https://example.com/api/provider-poll-shot-1.mp4',
+            quality_score: 97,
+            review_note: 'provider poll route 回片可用',
+            message: 'provider completed',
+          }],
+          note: 'API provider poll 应用回传',
+        });
+      expect(applyRes.status).toBe(200);
+      expectSuccess(applyRes.body);
+      expect(applyRes.body.data).toMatchObject({
+        dry_run: false,
+        checked_count: 1,
+        pollable_count: 0,
+        updated_count: 1,
+        failed_count: 0,
+        poll_targets: [],
+      });
+      expect(applyRes.body.data.seedance_shot_ledger.items.find((item: any) =>
+        item.shot_id === 'shot-1'
+      )).toMatchObject({
+        status: 'ready',
+        provider_job_id: 'api-provider-poll-job-shot-1',
+        provider_queue_id: 'api-provider-poll-queue-001',
+        video_url: 'https://example.com/api/provider-poll-shot-1.mp4',
+      });
+    });
+
     it('imports Seedance callbacks and exports a retry package', async () => {
       const baseStory = makeApiProductionRepairStory();
       const story: StoryGenerateResult = {

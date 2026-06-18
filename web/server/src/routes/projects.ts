@@ -13,6 +13,7 @@ import {
   SeedanceShotAutoSelectRequestSchema,
   SeedanceShotCallbackImportRequestSchema,
   SeedanceShotProviderCallbackRequestSchema,
+  SeedanceShotProviderPollRequestSchema,
   SeedanceShotProviderRecoveryRequestSchema,
   SeedanceShotProviderSubmitRequestSchema,
   SeedanceShotStatusBatchUpdateRequestSchema,
@@ -38,6 +39,7 @@ import {
   importProjectSeedanceShotCallbacks,
   listProjectSupplementTasks,
   listProjects,
+  pollProjectSeedanceProviderQueue,
   recoverProjectSeedanceProviderQueue,
   repairAndExportProjectProductionBoard,
   repairProjectQuality,
@@ -383,6 +385,21 @@ projectsRouter.post(
     try {
       const { projectId } = req.params as { projectId: string };
       const result = await recoverProjectSeedanceProviderQueue(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-shots/poll-provider',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceShotProviderPollRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await pollProjectSeedanceProviderQueue(projectId, req.body);
       res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
     } catch (err) {
       next(err);

@@ -1429,6 +1429,21 @@ export interface SeedanceShotProviderRecoveryResult {
   timed_out_shots: SeedanceShotProviderRecoveryItem[];
 }
 
+export interface SeedanceShotProviderPollTarget {
+  shot_id: string;
+  source_scene_id?: number;
+  status: SeedanceShotProviderRecoverableStatus;
+  provider?: string;
+  provider_job_id?: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
+  submitted_at?: string;
+  updated_at: string;
+  minutes_waiting: number;
+  retry_count: number;
+  seedance_prompt?: string;
+}
+
 export interface SeedanceShotCallbackRequest {
   shot_id?: string;
   shotId?: string;
@@ -1495,6 +1510,31 @@ export interface SeedanceShotProviderCallbackResult extends SeedanceShotCallback
   provider_queue_id?: string;
   provider_queue_position?: number;
   event_id?: string;
+}
+
+export interface SeedanceShotProviderPollRequest {
+  provider?: string;
+  queue_id?: string;
+  shot_ids?: string[];
+  statuses?: SeedanceShotProviderRecoverableStatus[];
+  limit?: number;
+  include_prompt?: boolean;
+  provider_results?: SeedanceShotProviderCallbackRequest[];
+  note?: string;
+}
+
+export interface SeedanceShotProviderPollResult {
+  project: StoryProjectMeta;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  dry_run: boolean;
+  provider?: string;
+  queue_id?: string;
+  checked_count: number;
+  pollable_count: number;
+  updated_count: number;
+  failed_count: number;
+  poll_targets: SeedanceShotProviderPollTarget[];
+  failures: SeedanceShotCallbackImportFailure[];
 }
 
 export interface SeedanceShotRetryPrompt {

@@ -9,7 +9,7 @@
 | 模块 | 当前判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
-| Production Board / GEARS / Seedance | 约 89% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema 首版已完成。 |
+| Production Board / GEARS / Seedance | 约 90% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划已有；字幕、混音、片头片尾、final delivery 待做。 |
 | 可商用制作中台 | 约 35-40% | 主链路可用；还缺 UX 降噪、状态总览、真实外部 provider、审片返修和稳定压测。 |
@@ -46,13 +46,17 @@
   - 回传可按 job 匹配，也可按 `queue_id + queue_position` 映射到 Shot Ledger。
   - 状态归一化复用内部回传导入，ready/failed/processing/submitted 等平台状态会更新 `seedance_shot_ledger`。
   - 修复状态更新丢失 provider / queue 元数据的问题。
+- Seedance provider 轮询入口首版：
+  - 新增 `POST /api/projects/:projectId/production-board/seedance-shots/poll-provider`
+  - dry-run 返回待轮询的 provider job / queue 目标，可选带出镜头提示词。
+  - 带 `provider_results` 时可应用外部适配器查询到的状态快照，复用回传归一化写回 Shot Ledger。
 
 ### 文档同步
 
 - 更新 `docs/story-agent-next-conversation-handoff.md`。
 - 更新 `docs/story-agent-production-workbench-development-plan.md`。
 - 更新 `开发文档/story-agent-mcp-quality-delivery-implementation-plan.md`。
-- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”；外部回传 schema 已完成首版。
+- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”；外部回传 schema 和轮询入口已完成首版。
 
 ## 3. 已验证命令
 
@@ -100,22 +104,22 @@ git diff --stat
 完善 Story Agent MCP 与 Seedance provider 生产链
 ```
 
-### P0：Seedance provider 自动轮询 / 真实 API
+### P0：Seedance provider 真实 API / 失败分类
 
 目标：
 
 - 外部 provider 回传 schema 已完成首版。
-- 支持根据 provider job / queue 查询状态。
-- 建立自动轮询入口或 worker 形态。
+- provider 轮询入口已完成首版，可返回待查询 job / queue，也可应用 provider status snapshots。
+- 支持根据 provider job / queue 查询真实状态。
 - 将超时恢复、失败分类、重试包和真实回传结果串起来。
 
 建议先做最小切片：
 
 ```text
-SeedanceProviderCallbackSchema
-  -> normalize provider status
-  -> map provider job to shot ledger
-  -> update status / video_url / failure_reason
+SeedanceProviderAdapter
+  -> query provider_job_id status
+  -> normalize failure category
+  -> feed poll-provider provider_results
   -> tests
 ```
 
@@ -150,5 +154,5 @@ export-seedance-subtitles
 ## 6. 新对话开场指令
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先收尾当前工作区，然后继续 P0：Seedance provider 外部回传 schema / 自动轮询 / 真实 API、MCP 更深模型修复链路、故事管理 UX 降噪。默认界面保持简单，只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先收尾当前工作区，然后继续 P0：Seedance provider 真实 API adapter / 失败分类、MCP 更深模型修复链路、故事管理 UX 降噪。默认界面保持简单，只保留高频主路径。
 ```
