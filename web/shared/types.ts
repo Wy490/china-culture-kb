@@ -3920,6 +3920,8 @@ export interface SeedanceProviderAdapterContractSection {
   request_fields: string[];
   accepted_response_shapes: string[];
   normalized_result_fields: string[];
+  request_example: Record<string, unknown>;
+  response_examples: Array<Record<string, unknown>>;
   notes: string[];
 }
 

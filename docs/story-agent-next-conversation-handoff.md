@@ -236,6 +236,7 @@ MCP 原则：
 - 单故事 Seedance provider adapter 合约元数据首版：
   - 后端新增 `GET /api/system/seedance-provider-adapter-contract`，返回 submit/poll schema version、env key、请求字段、可接受响应形态和归一化字段。
   - 合约接口不返回 endpoint URL 或 token 原文，外部 worker / Agent 可先读取该接口再实现 submit/query。
+  - 合约接口新增 submit/poll 的 `request_example` 和 `response_examples`，用于真实 worker smoke 对照。
 - 单故事 Seedance provider 队列状态总览首版：
   - 共享类型新增 `SeedanceShotProviderQueueOverviewRequest` / `SeedanceShotProviderQueueOverviewResult`，并补齐批次概览与注意项结构。
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。

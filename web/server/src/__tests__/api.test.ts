@@ -491,10 +491,37 @@ describe('System API', () => {
         '{ submitted_shots: [...] }',
         '{ provider_results: [...] }',
       ]));
+      expect(res.body.data.submit.request_example).toMatchObject({
+        schema_version: 'seedance-provider-submit/v1',
+        provider: 'seedance',
+        shots: [expect.objectContaining({
+          shot_id: 'shot-1',
+          seedance_prompt: expect.stringContaining('0-3秒'),
+        })],
+      });
+      expect(res.body.data.submit.response_examples[0].submitted_shots[0]).toMatchObject({
+        shot_id: 'shot-1',
+        provider_job_id: 'real-seedance-job-001',
+      });
       expect(res.body.data.poll.request_fields).toContain('targets[].provider_job_id');
       expect(res.body.data.poll.normalized_result_fields).toEqual(expect.arrayContaining([
         'video_url | url',
         'provider_error_code | errorCode',
+      ]));
+      expect(res.body.data.poll.request_example.targets[0]).toMatchObject({
+        shot_id: 'shot-1',
+        provider_job_id: 'real-seedance-job-001',
+      });
+      expect(res.body.data.poll.response_examples[0].provider_results).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          status: 'completed',
+          video_url: 'seedance-video-shot-1.mp4',
+        }),
+        expect.objectContaining({
+          status: 'failed',
+          failure_category: 'content_policy',
+          provider_error_code: 'POLICY_BLOCKED',
+        }),
       ]));
       expect(JSON.stringify(res.body.data)).not.toContain('http');
       expect(JSON.stringify(res.body.data)).not.toContain('secret');

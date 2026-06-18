@@ -76,6 +76,7 @@
 - Seedance provider adapter 合约元数据首版：
   - 新增 `GET /api/system/seedance-provider-adapter-contract`，返回 submit/poll schema version、env key、请求字段、可接受响应形态和归一化字段。
   - 合约接口不返回 endpoint URL 或 token 原文，可给外部 worker / Agent 对接前读取。
+  - 合约接口新增 `request_example` 和 `response_examples`，外部 worker 可直接按示例实现 submit/query smoke。
 - Seedance provider 队列状态总览首版：
   - 新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。
   - 可按 `provider` / `queue_id` 过滤，返回状态计数、活跃数、完成数、失败数、可重试数、超时数、缺视频数和注意项。
