@@ -71,6 +71,7 @@ npm run start          # node dist/index.js
 | `SEEDANCE_PROVIDER_POLL_TIMEOUT_MS` | `30000` | poll worker 请求超时毫秒数，最大 30000 |
 | `SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE` | `batch` | submit adapter 请求模式；设为 `per_shot` 时每个镜头单独 POST，适合平台单任务创建接口 |
 | `SEEDANCE_PROVIDER_POLL_REQUEST_MODE` | `batch` | poll adapter 请求模式；设为 `per_target` 时每个 provider job 单独 POST，适合平台单任务查询接口 |
+| `SEEDANCE_PROVIDER_POLL_HTTP_METHOD` | `POST` | poll adapter 请求方法；设为 `GET` 时不发送 JSON body，可在 `SEEDANCE_PROVIDER_POLL_ENDPOINT` 中使用 `{provider_job_id}`、`{shot_id}`、`{provider_queue_id}` 等模板字段 |
 
 Seedance 系列镜头生产回调地址为 `/api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-callback`。回调可用 `job_id` / `provider_job_id` 定位镜头，也可用 `episode_no + shot_id` 定位；支持回写 `video_url`、失败原因、质量分和评审备注。
 

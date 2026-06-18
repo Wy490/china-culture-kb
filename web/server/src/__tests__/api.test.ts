@@ -43,6 +43,7 @@ const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER
 const ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL = process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD = process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
 const DEFAULT_PROJECTS_ROOT = resolve(import.meta.dirname, '..', '..', '..', 'web', 'generated', 'projects');
 let testWorkspaceRoot = '';
 let defaultProjectDirsBefore = new Set<string>();
@@ -182,6 +183,11 @@ afterAll(async () => {
     delete process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
   } else {
     process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD = ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
   }
   await rm(testWorkspaceRoot, { recursive: true, force: true });
 });
@@ -452,6 +458,7 @@ describe('System API', () => {
         appBaseUrl: process.env.APP_BASE_URL,
         submitRequestMode: process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE,
         pollRequestMode: process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE,
+        pollHttpMethod: process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD,
       };
       try {
         process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = 'https://adapter.example.test/seedance/submit';
@@ -468,6 +475,7 @@ describe('System API', () => {
         process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL = 'https://public.example.test';
         process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = 'per_shot';
         process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = 'per_target';
+        process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD = 'GET';
 
         const res = await request.get('/api/system/seedance-provider-config');
         expect(res.status).toBe(200);
@@ -493,6 +501,8 @@ describe('System API', () => {
             'SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE',
             'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
           ],
+          poll_http_method: 'GET',
+          poll_http_method_env: 'SEEDANCE_PROVIDER_POLL_HTTP_METHOD',
           submit_auth_header: 'X-Submit-Key',
           poll_auth_header: 'X-Shared-Token',
           submit_auth_scheme: 'raw',
@@ -531,6 +541,7 @@ describe('System API', () => {
         delete process.env.APP_BASE_URL;
         delete process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
         delete process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
+        delete process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
 
         const missingRes = await request.get('/api/system/seedance-provider-config');
         expect(missingRes.status).toBe(200);
@@ -545,6 +556,7 @@ describe('System API', () => {
           callback_base_configured: false,
           submit_request_mode: 'batch',
           poll_request_mode: 'batch',
+          poll_http_method: 'POST',
           submit_auth_header: 'authorization',
           poll_auth_header: 'authorization',
           submit_auth_scheme: 'Bearer',
@@ -601,6 +613,8 @@ describe('System API', () => {
         else process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = previous.submitRequestMode;
         if (previous.pollRequestMode === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
         else process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = previous.pollRequestMode;
+        if (previous.pollHttpMethod === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
+        else process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD = previous.pollHttpMethod;
       }
     });
   });
@@ -640,6 +654,13 @@ describe('System API', () => {
           timeout_env: 'SEEDANCE_PROVIDER_POLL_TIMEOUT_MS',
           request_mode_env: 'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
           request_modes: ['batch', 'per_target'],
+          http_method_env: 'SEEDANCE_PROVIDER_POLL_HTTP_METHOD',
+          http_methods: ['POST', 'GET'],
+          endpoint_template_fields: expect.arrayContaining([
+            '{provider_job_id}',
+            '{shot_id}',
+            '{provider_queue_id}',
+          ]),
         },
       });
       expect(res.body.data.submit.request_fields).toEqual(expect.arrayContaining([
@@ -702,7 +723,9 @@ describe('System API', () => {
           code: 'RISK_CONTROL',
         }),
       ]));
-      expect(JSON.stringify(res.body.data)).not.toContain('http');
+      expect(JSON.stringify(res.body.data)).not.toContain('https://');
+      expect(JSON.stringify(res.body.data)).not.toContain('http://');
+      expect(JSON.stringify(res.body.data)).not.toContain('adapter.example.test');
       expect(JSON.stringify(res.body.data)).not.toContain('secret');
     });
   });

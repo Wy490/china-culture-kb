@@ -123,6 +123,8 @@ const SEEDANCE_PROVIDER_REQUEST_MODE_ENVS = [
   'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
 ];
 
+const SEEDANCE_PROVIDER_POLL_HTTP_METHOD_ENV = 'SEEDANCE_PROVIDER_POLL_HTTP_METHOD';
+
 function submitRequestMode(): 'batch' | 'per_shot' {
   return process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE?.trim().toLowerCase() === 'per_shot'
     ? 'per_shot'
@@ -133,6 +135,12 @@ function pollRequestMode(): 'batch' | 'per_target' {
   return process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE?.trim().toLowerCase() === 'per_target'
     ? 'per_target'
     : 'batch';
+}
+
+function pollHttpMethod(): 'POST' | 'GET' {
+  return process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD?.trim().toUpperCase() === 'GET'
+    ? 'GET'
+    : 'POST';
 }
 
 systemRouter.get('/seedance-provider-config', (_req, res) => {
@@ -172,6 +180,8 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
     submit_request_mode: submitRequestMode(),
     poll_request_mode: pollRequestMode(),
     request_mode_envs: SEEDANCE_PROVIDER_REQUEST_MODE_ENVS,
+    poll_http_method: pollHttpMethod(),
+    poll_http_method_env: SEEDANCE_PROVIDER_POLL_HTTP_METHOD_ENV,
     submit_auth_header: providerAuthHeader('submit'),
     poll_auth_header: providerAuthHeader('poll'),
     submit_auth_scheme: providerAuthScheme('submit'),
@@ -323,6 +333,23 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       timeout_env: 'SEEDANCE_PROVIDER_POLL_TIMEOUT_MS',
       request_mode_env: 'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
       request_modes: ['batch', 'per_target'],
+      http_method_env: SEEDANCE_PROVIDER_POLL_HTTP_METHOD_ENV,
+      http_methods: ['POST', 'GET'],
+      endpoint_template_fields: [
+        '{project_id}',
+        '{projectId}',
+        '{provider}',
+        '{queue_id}',
+        '{queueId}',
+        '{shot_id}',
+        '{shotId}',
+        '{provider_job_id}',
+        '{providerJobId}',
+        '{job_id}',
+        '{jobId}',
+        '{provider_queue_id}',
+        '{providerQueueId}',
+      ],
       request_fields: [
         'schema_version',
         'request_mode',
@@ -395,6 +422,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'Poll results are normalized through the provider callback path.',
         'Failed results can carry failure_category/provider_error_code for retry planning.',
         'Set SEEDANCE_PROVIDER_POLL_REQUEST_MODE=per_target when a platform endpoint queries one provider job per request.',
+        'When SEEDANCE_PROVIDER_POLL_HTTP_METHOD=GET, the endpoint can use template fields such as {provider_job_id} and no JSON body is sent.',
       ],
     },
     generated_at: new Date().toISOString(),

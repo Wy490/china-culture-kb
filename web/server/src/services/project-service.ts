@@ -35,6 +35,7 @@ import type {
   SeedanceAssetLibrary,
   SeedanceAssetLibraryItem,
   SeedanceAssetLibraryUpdateRequest,
+  SeedanceProviderPollHttpMethod,
   SeedanceProviderPollRequestMode,
   SeedanceProviderSubmitRequestMode,
   SeedanceShotCallbackImportRequest,
@@ -1227,6 +1228,43 @@ function seedanceProviderPollRequestMode(): SeedanceProviderPollRequestMode {
     : 'batch';
 }
 
+function seedanceProviderPollHttpMethod(): SeedanceProviderPollHttpMethod {
+  return process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD?.trim().toUpperCase() === 'GET'
+    ? 'GET'
+    : 'POST';
+}
+
+function seedanceProviderEndpointValue(value: unknown): string {
+  return value === undefined || value === null ? '' : encodeURIComponent(String(value));
+}
+
+function seedanceProviderPollEndpointForTarget(input: {
+  endpoint: string;
+  projectId: string;
+  provider?: string;
+  queueId?: string;
+  target?: SeedanceShotProviderPollTarget;
+}): string {
+  const values: Record<string, unknown> = {
+    project_id: input.projectId,
+    projectId: input.projectId,
+    provider: input.provider,
+    queue_id: input.queueId,
+    queueId: input.queueId,
+    shot_id: input.target?.shot_id,
+    shotId: input.target?.shot_id,
+    provider_job_id: input.target?.provider_job_id,
+    providerJobId: input.target?.provider_job_id,
+    job_id: input.target?.provider_job_id,
+    jobId: input.target?.provider_job_id,
+    provider_queue_id: input.target?.provider_queue_id,
+    providerQueueId: input.target?.provider_queue_id,
+  };
+  return input.endpoint.replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, key: string) =>
+    seedanceProviderEndpointValue(values[key])
+  );
+}
+
 function seedanceProviderSubmitTimeoutMs(): number {
   const parsed = Number(process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS);
   if (!Number.isFinite(parsed) || parsed <= 0) return 30000;
@@ -1604,9 +1642,10 @@ async function querySeedanceProviderPollAdapter(input: {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), seedanceProviderPollTimeoutMs());
   try {
-    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    const headers: Record<string, string> = {};
     applySeedanceProviderAdapterAuthHeader(headers, 'poll');
     const requestMode = seedanceProviderPollRequestMode();
+    const httpMethod = seedanceProviderPollHttpMethod();
     const basePayload = {
       schema_version: 'seedance-provider-poll/v1',
       request_mode: requestMode,
@@ -1619,15 +1658,28 @@ async function querySeedanceProviderPollAdapter(input: {
     if (requestMode === 'per_target') {
       const providerResults: SeedanceShotProviderCallbackRequest[] = [];
       for (const target of input.targets) {
-        const response = await fetch(endpoint, {
-          method: 'POST',
+        const requestPayload = {
+          ...basePayload,
+          target,
+          targets: [target],
+        };
+        const requestEndpoint = seedanceProviderPollEndpointForTarget({
+          endpoint,
+          projectId: input.projectId,
+          provider: input.provider,
+          queueId: input.queueId,
+          target,
+        });
+        const response = await fetch(requestEndpoint, {
+          method: httpMethod,
           headers,
           signal: controller.signal,
-          body: JSON.stringify({
-            ...basePayload,
-            target,
-            targets: [target],
-          }),
+          ...(httpMethod === 'POST'
+            ? {
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify(requestPayload),
+              }
+            : {}),
         });
         const text = await response.text();
         if (!response.ok) {
@@ -1649,20 +1701,32 @@ async function querySeedanceProviderPollAdapter(input: {
         summary: {
           endpoint_configured: true,
           request_mode: requestMode,
+          http_method: httpMethod,
           queried_count: input.targets.length,
           returned_count: providerResults.length,
         },
       });
     }
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
+    const requestPayload = {
+      ...basePayload,
+      targets: input.targets,
+    };
+    const response = await fetch(seedanceProviderPollEndpointForTarget({
+      endpoint,
+      projectId: input.projectId,
+      provider: input.provider,
+      queueId: input.queueId,
+    }), {
+      method: httpMethod,
       headers,
       signal: controller.signal,
-      body: JSON.stringify({
-        ...basePayload,
-        targets: input.targets,
-      }),
+      ...(httpMethod === 'POST'
+        ? {
+            headers: { ...headers, 'content-type': 'application/json' },
+            body: JSON.stringify(requestPayload),
+          }
+        : {}),
     });
     const text = await response.text();
     if (!response.ok) {
@@ -1682,6 +1746,7 @@ async function querySeedanceProviderPollAdapter(input: {
       summary: {
         endpoint_configured: true,
         request_mode: requestMode,
+        http_method: httpMethod,
         queried_count: input.targets.length,
         returned_count: providerResults.length,
       },
@@ -3397,6 +3462,7 @@ export async function pollProjectSeedanceProviderQueue(
         provider_adapter: {
           endpoint_configured: Boolean(configuredSeedanceProviderPollEndpoint()),
           request_mode: seedanceProviderPollRequestMode(),
+          http_method: seedanceProviderPollHttpMethod(),
           queried_count: 0,
           returned_count: 0,
         },

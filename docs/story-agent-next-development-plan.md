@@ -165,6 +165,7 @@ git diff --stat
 - 通用 submit/poll adapter 已完成首版，可通过 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` / `SEEDANCE_PROVIDER_POLL_ENDPOINT` 连接外部 worker，并已兼容 `data.tasks/taskId/taskStatus/outputUrl` 等平台式响应。
 - submit adapter 已能同时给外部 worker 提供项目级相对 path 与可选绝对 callback/poll URL；若 worker 不在同主机或同反向代理内，先配置 `SEEDANCE_PROVIDER_CALLBACK_BASE_URL`。
 - adapter 已支持 batch 与单任务 request mode，可先用 `per_shot` / `per_target` 对接平台单任务 HTTP，再逐步补官方字段映射。
+- poll adapter 已支持 `SEEDANCE_PROVIDER_POLL_HTTP_METHOD=GET` 与 endpoint URL 模板字段（如 `{provider_job_id}` / `{shot_id}` / `{provider_queue_id}`），可直接对接平台单任务查询 URL。
 - 队列状态总览已完成首版，可直接读取 provider/queue 健康度、超时和失败注意项。
 - 人工重试策略已完成只读首版，可直接输出可重提/需先处理的候选镜头清单。
 - 重试执行自动化已完成首版，可把可重提候选一键重新提交到 provider 队列。

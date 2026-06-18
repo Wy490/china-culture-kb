@@ -253,6 +253,7 @@ MCP 原则：
   - 配置状态接口新增 `callback_base_configured` 和可用 env 名列表，仍只返回布尔/名称，不泄漏真实公开基址。
   - submit/poll adapter 新增 request mode，默认 `batch`；`SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE=per_shot` 会逐镜头 POST，`SEEDANCE_PROVIDER_POLL_REQUEST_MODE=per_target` 会逐 provider job POST。
   - 平台返回单个任务对象或 `data` 下单个任务对象时也会被归一化，适合真实平台单任务创建/查询接口先行 smoke。
+  - poll adapter 支持 `SEEDANCE_PROVIDER_POLL_HTTP_METHOD=GET`，并可在 `SEEDANCE_PROVIDER_POLL_ENDPOINT` 中使用 `{provider_job_id}`、`{shot_id}`、`{provider_queue_id}` 等模板字段；GET 模式不发送 JSON body。
 - 单故事 Seedance provider 队列状态总览首版：
   - 共享类型新增 `SeedanceShotProviderQueueOverviewRequest` / `SeedanceShotProviderQueueOverviewResult`，并补齐批次概览与注意项结构。
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。
@@ -364,7 +365,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-支持 Seedance provider 单任务请求模式
+支持 Seedance provider poll GET 模板
 ```
 
 ### P0：继续故事管理 UX 降噪

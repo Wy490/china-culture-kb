@@ -1418,6 +1418,7 @@ export interface SeedanceShotProviderSubmitResult {
 
 export type SeedanceProviderSubmitRequestMode = 'batch' | 'per_shot';
 export type SeedanceProviderPollRequestMode = 'batch' | 'per_target';
+export type SeedanceProviderPollHttpMethod = 'POST' | 'GET';
 
 export interface SeedanceShotProviderSubmitAdapterSummary {
   endpoint_configured: boolean;
@@ -1596,6 +1597,7 @@ export interface SeedanceShotProviderPollRequest {
 export interface SeedanceShotProviderPollAdapterSummary {
   endpoint_configured: boolean;
   request_mode: SeedanceProviderPollRequestMode;
+  http_method: SeedanceProviderPollHttpMethod;
   queried_count: number;
   returned_count: number;
 }
@@ -3941,6 +3943,8 @@ export interface SeedanceProviderAdapterConfigInfo {
   submit_request_mode: SeedanceProviderSubmitRequestMode;
   poll_request_mode: SeedanceProviderPollRequestMode;
   request_mode_envs: string[];
+  poll_http_method: SeedanceProviderPollHttpMethod;
+  poll_http_method_env: string;
   submit_auth_header: string;
   poll_auth_header: string;
   submit_auth_scheme: string;
@@ -3967,6 +3971,9 @@ export interface SeedanceProviderAdapterContractSection {
   timeout_env: string;
   request_mode_env: string;
   request_modes: string[];
+  http_method_env?: string;
+  http_methods?: string[];
+  endpoint_template_fields?: string[];
   request_fields: string[];
   accepted_response_shapes: string[];
   normalized_result_fields: string[];

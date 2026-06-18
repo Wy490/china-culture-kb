@@ -55,6 +55,7 @@ const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER = process.env.SEEDANCE_PROVIDE
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD = process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
 
 async function exists(path: string): Promise<boolean> {
   try {
@@ -234,6 +235,11 @@ afterEach(async () => {
     delete process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
   } else {
     process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD = ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
   }
   vi.unstubAllGlobals();
   for (const dir of TEMP_DIRS.splice(0)) {
@@ -1644,6 +1650,79 @@ describe('project-service', () => {
       provider_job_id: 'provider-target-test-shot-2',
       failure_category: 'provider_auth',
       provider_error_code: 'ACCESS_DENIED',
+    });
+  });
+
+  it('queries a per-target Seedance provider adapter with GET endpoint templates', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = 'https://adapter.example.test/tasks/{provider_job_id}?shot={shot_id}&queue={provider_queue_id}';
+    process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = 'per_target';
+    process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD = 'GET';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'provider-template-test',
+      queue_id: 'provider-template-queue-001',
+      note: 'provider template 测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.method).toBe('GET');
+      expect(init?.body).toBeUndefined();
+      const url = String(_url);
+      if (url.includes('provider-template-test-shot-1')) {
+        expect(url).toBe('https://adapter.example.test/tasks/provider-template-test-shot-1?shot=shot-1&queue=provider-template-queue-001');
+        return new Response(JSON.stringify({
+          taskId: 'provider-template-test-shot-1',
+          state: 'SUCCEEDED',
+          outputUrl: 'https://example.com/seedance-videos/provider-template-shot-1.mp4',
+        }));
+      }
+      expect(url).toBe('https://adapter.example.test/tasks/provider-template-test-shot-2?shot=shot-2&queue=provider-template-queue-001');
+      return new Response(JSON.stringify({
+        taskId: 'provider-template-test-shot-2',
+        state: 'PROCESSING',
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const pollApplyRes = await pollProjectSeedanceProviderQueue(enriched.project_id!, {
+      provider: 'seedance',
+      queue_id: 'provider-template-queue-001',
+      include_prompt: true,
+      use_provider_adapter: true,
+      note: 'provider template 应用回传',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(pollApplyRes.ok).toBe(true);
+    expect(pollApplyRes.data).toMatchObject({
+      updated_count: 2,
+      provider_adapter: {
+        request_mode: 'per_target',
+        http_method: 'GET',
+        queried_count: 2,
+        returned_count: 2,
+      },
+    });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: 'provider-template-test-shot-1',
+      video_url: 'https://example.com/seedance-videos/provider-template-shot-1.mp4',
+    });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'processing',
+      provider_job_id: 'provider-template-test-shot-2',
     });
   });
 
