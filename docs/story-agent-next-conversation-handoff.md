@@ -231,6 +231,7 @@ MCP 原则：
   - 后端新增 `GET /api/system/seedance-provider-config`，返回 submit/poll endpoint 是否已配置、token 是否已配置和 submit/poll timeout。
   - 响应只暴露布尔状态和数值，不返回 endpoint URL 或 token 原文。
   - 项目详情页 Seedance Shot Ledger 顶部新增 adapter 配置 chips，点击提交/轮询前即可看到 submit adapter、poll adapter、token 和 timeout 状态。
+  - “提交 adapter”和“轮询 provider”按钮会按配置状态禁用，避免未配置 endpoint 时误触发 adapter 请求。
 - 单故事 Seedance provider 队列状态总览首版：
   - 共享类型新增 `SeedanceShotProviderQueueOverviewRequest` / `SeedanceShotProviderQueueOverviewResult`，并补齐批次概览与注意项结构。
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。

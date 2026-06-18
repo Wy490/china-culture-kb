@@ -295,14 +295,14 @@
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
-                :disabled="submittingSeedanceProvider || submittingSeedanceProviderAdapter"
+                :disabled="submittingSeedanceProvider || submittingSeedanceProviderAdapter || !seedanceProviderAdapterConfig?.ready_for_submit_adapter"
                 @click="submitSeedanceProviderJobs(true)"
               >
                 {{ submittingSeedanceProviderAdapter ? '提交中…' : '提交 adapter' }}
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
-                :disabled="pollingSeedanceProvider"
+                :disabled="pollingSeedanceProvider || !seedanceProviderAdapterConfig?.ready_for_poll_adapter"
                 @click="pollSeedanceProviderJobs"
               >
                 {{ pollingSeedanceProvider ? '轮询中…' : '轮询 provider' }}
