@@ -3894,6 +3894,20 @@ export interface AIModelProfile {
   capabilities: AIModelCapability[];
 }
 
+export interface SeedanceProviderAdapterConfigInfo {
+  provider: 'seedance';
+  submit_endpoint_configured: boolean;
+  poll_endpoint_configured: boolean;
+  submit_token_configured: boolean;
+  poll_token_configured: boolean;
+  shared_token_configured: boolean;
+  submit_timeout_ms: number;
+  poll_timeout_ms: number;
+  ready_for_submit_adapter: boolean;
+  ready_for_poll_adapter: boolean;
+  generated_at: string;
+}
+
 export interface TypeInfo {
   name: string;
   recommended_generation_types: GenerationType[];

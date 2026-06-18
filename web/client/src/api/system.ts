@@ -1,5 +1,11 @@
 import { apiGet } from './client'
-import type { AIModelProfile, NarrativePatternCatalog, ProvinceInfo, TypeInfo } from '@shared/types'
+import type {
+  AIModelProfile,
+  NarrativePatternCatalog,
+  ProvinceInfo,
+  SeedanceProviderAdapterConfigInfo,
+  TypeInfo,
+} from '@shared/types'
 
 export function getProvinces() {
   return apiGet<ProvinceInfo[]>('/system/provinces')
@@ -19,4 +25,8 @@ export function getModelProfiles() {
 
 export function getNarrativePatternCatalog() {
   return apiGet<NarrativePatternCatalog>('/system/narrative-patterns')
+}
+
+export function getSeedanceProviderAdapterConfig() {
+  return apiGet<SeedanceProviderAdapterConfigInfo>('/system/seedance-provider-config')
 }

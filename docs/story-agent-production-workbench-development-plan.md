@@ -211,6 +211,7 @@
 - 项目详情页 Seedance provider 自动轮询入口首版
 - 单故事 Seedance provider 通用 submit adapter 首版
 - 项目详情页 Seedance provider adapter 提交入口首版
+- 项目详情页 Seedance provider adapter 配置状态首版
 - 单故事 Seedance provider 队列状态总览首版
 - 项目详情页 Seedance provider 队列健康条首版
 - 单故事 Seedance provider 人工重试策略首版
@@ -342,6 +343,7 @@
 - 失败重试包（已完成首版）
 - provider 任务提交抽象（已完成首版）
 - provider adapter 提交入口 UI（已完成首版）
+- provider adapter 配置状态 UI（已完成首版）
 - provider 队列状态总览（已完成首版）
 - provider 自动轮询入口 UI（已完成首版）
 - provider 人工重试策略（已完成首版）
@@ -478,7 +480,7 @@
 - 当前系统已经能生成 Board、发现问题、执行批量生产修复和落盘。
 - 但用户还缺少“我只想修这个问题”的精细控制。
 - 修复前后 diff 能显著提升信任感。
-- Seedance 资产引用、`@视频/@音频` 引用校验、单故事资产绑定、素材缺口报告、外部素材批量导入、上传态字段、真实文件上传、跨项目资产库复用、素材上传历史 UI、Shot Ledger、回传导入、失败重试包、手动/自动择优、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、provider 外部回传 schema、provider 轮询入口、provider 失败分类、provider 通用错误码别名映射、provider 通用 submit/poll adapter、provider 队列状态总览、项目详情页 provider 队列健康条、provider 人工重试策略及 UI、provider 重试执行自动化、MCP GEARS 只读交付工具、MCP Seedance prompt 只读工具、MCP repair dry-run、MCP 受控版本写入、MCP repair auto_apply 安全应用、真实项目 smoke 和前端质量反馈视图首版已进入工作台；下一步补真实平台 SDK/HTTP submit/query 细节。
+- Seedance 资产引用、`@视频/@音频` 引用校验、单故事资产绑定、素材缺口报告、外部素材批量导入、上传态字段、真实文件上传、跨项目资产库复用、素材上传历史 UI、Shot Ledger、回传导入、失败重试包、手动/自动择优、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、provider 外部回传 schema、provider 轮询入口、provider 失败分类、provider 通用错误码别名映射、provider 通用 submit/poll adapter、provider adapter 配置状态、provider 队列状态总览、项目详情页 provider 队列健康条、provider 人工重试策略及 UI、provider 重试执行自动化、MCP GEARS 只读交付工具、MCP Seedance prompt 只读工具、MCP repair dry-run、MCP 受控版本写入、MCP repair auto_apply 安全应用、真实项目 smoke 和前端质量反馈视图首版已进入工作台；下一步补真实平台 SDK/HTTP submit/query 细节。
 
 建议下一阶段验收闭环：
 
@@ -621,6 +623,7 @@ Production Board 必须继续承担三件事：
 - Seedance provider 通用错误码别名映射进入工作台（已完成首版）
 - Seedance provider 通用 poll adapter 进入工作台（已完成首版）
 - Seedance provider 通用 submit adapter 进入工作台（已完成首版）
+- Seedance provider adapter 配置状态进入工作台（已完成首版）
 - Seedance provider 队列状态总览进入工作台（已完成首版）
 - ProjectDetail provider 队列健康条进入工作台（已完成首版）
 - Seedance provider 人工重试策略进入工作台（已完成首版）

@@ -28,6 +28,12 @@ import type { StoryGenerateResult } from '@shared/types.js';
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
 const ORIGINAL_WEB_GENERATED_ROOT = process.env.WEB_GENERATED_ROOT;
 const ORIGINAL_SEEDANCE_CALLBACK_SECRET = process.env.SEEDANCE_CALLBACK_SECRET;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
+const ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN = process.env.SEEDANCE_PROVIDER_API_TOKEN;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
 const DEFAULT_PROJECTS_ROOT = resolve(import.meta.dirname, '..', '..', '..', 'web', 'generated', 'projects');
 let testWorkspaceRoot = '';
 let defaultProjectDirsBefore = new Set<string>();
@@ -92,6 +98,36 @@ afterAll(async () => {
     delete process.env.SEEDANCE_CALLBACK_SECRET;
   } else {
     process.env.SEEDANCE_CALLBACK_SECRET = ORIGINAL_SEEDANCE_CALLBACK_SECRET;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_ENDPOINT === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
+  } else {
+    process.env.SEEDANCE_PROVIDER_API_TOKEN = ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
   }
   await rm(testWorkspaceRoot, { recursive: true, force: true });
 });
@@ -337,6 +373,61 @@ describe('System API', () => {
       expect(res.body.data.video_type_map.ai_comic_drama).toEqual(
         expect.arrayContaining(['mortal_growth', 'infinite_mission']),
       );
+    });
+  });
+
+  describe('GET /api/system/seedance-provider-config', () => {
+    it('returns safe provider adapter config status without secrets', async () => {
+      const previous = {
+        submitEndpoint: process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT,
+        pollEndpoint: process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT,
+        submitToken: process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN,
+        sharedToken: process.env.SEEDANCE_PROVIDER_API_TOKEN,
+        submitTimeout: process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS,
+        pollTimeout: process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS,
+      };
+      try {
+        process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = 'https://adapter.example.test/seedance/submit';
+        process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = 'https://adapter.example.test/seedance/poll';
+        process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = 'submit-secret';
+        process.env.SEEDANCE_PROVIDER_API_TOKEN = 'shared-secret';
+        process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = '12345';
+        process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = '23456';
+
+        const res = await request.get('/api/system/seedance-provider-config');
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          provider: 'seedance',
+          submit_endpoint_configured: true,
+          poll_endpoint_configured: true,
+          submit_token_configured: true,
+          poll_token_configured: true,
+          shared_token_configured: true,
+          submit_timeout_ms: 12345,
+          poll_timeout_ms: 23456,
+          ready_for_submit_adapter: true,
+          ready_for_poll_adapter: true,
+        });
+        expect(res.body.data).not.toHaveProperty('submit_endpoint');
+        expect(res.body.data).not.toHaveProperty('poll_endpoint');
+        expect(JSON.stringify(res.body.data)).not.toContain('submit-secret');
+        expect(JSON.stringify(res.body.data)).not.toContain('shared-secret');
+        expect(JSON.stringify(res.body.data)).not.toContain('adapter.example.test');
+      } finally {
+        if (previous.submitEndpoint === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+        else process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = previous.submitEndpoint;
+        if (previous.pollEndpoint === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
+        else process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = previous.pollEndpoint;
+        if (previous.submitToken === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
+        else process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = previous.submitToken;
+        if (previous.sharedToken === undefined) delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
+        else process.env.SEEDANCE_PROVIDER_API_TOKEN = previous.sharedToken;
+        if (previous.submitTimeout === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
+        else process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = previous.submitTimeout;
+        if (previous.pollTimeout === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
+        else process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = previous.pollTimeout;
+      }
     });
   });
 

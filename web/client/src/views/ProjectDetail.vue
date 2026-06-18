@@ -149,6 +149,29 @@
             <span>待提交 {{ seedanceShotStats.prompt_exported }}</span>
             <span>跳过 {{ seedanceShotStats.skipped }}</span>
           </div>
+          <div class="project-detail-page__seedance-provider-config">
+            <span v-if="loadingSeedanceProviderAdapterConfig">adapter 配置读取中</span>
+            <span v-else-if="seedanceProviderAdapterConfigError">
+              adapter 配置读取失败
+            </span>
+            <template v-else-if="seedanceProviderAdapterConfig">
+              <span :class="{ 'project-detail-page__seedance-provider-chip--ready': seedanceProviderAdapterConfig.ready_for_submit_adapter }">
+                submit adapter {{ seedanceProviderAdapterConfig.ready_for_submit_adapter ? '已配置' : '未配置' }}
+              </span>
+              <span :class="{ 'project-detail-page__seedance-provider-chip--ready': seedanceProviderAdapterConfig.ready_for_poll_adapter }">
+                poll adapter {{ seedanceProviderAdapterConfig.ready_for_poll_adapter ? '已配置' : '未配置' }}
+              </span>
+              <span>submit timeout {{ seedanceProviderAdapterConfig.submit_timeout_ms }}ms</span>
+              <span>poll timeout {{ seedanceProviderAdapterConfig.poll_timeout_ms }}ms</span>
+              <span>
+                token {{
+                  seedanceProviderAdapterConfig.submit_token_configured || seedanceProviderAdapterConfig.shared_token_configured
+                    ? '已配置'
+                    : '未配置'
+                }}
+              </span>
+            </template>
+          </div>
           <div v-if="latestSeedanceProviderQueueBatch" class="project-detail-page__seedance-provider-queue">
             <span>队列 {{ latestSeedanceProviderQueueBatch.queue_id }}</span>
             <span>{{ latestSeedanceProviderQueueBatch.provider }}</span>
@@ -961,13 +984,14 @@ import {
   updateProjectSupplementTask,
   uploadProjectSeedanceAssetFile,
 } from '@/api/projects'
-import { getModelProfiles } from '@/api/system'
+import { getModelProfiles, getSeedanceProviderAdapterConfig } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
 import GearsWebhookStatus from '@/components/GearsWebhookStatus.vue'
 import GearsVideoStatus from '@/components/GearsVideoStatus.vue'
 import type {
   AIModelProfile,
   KnowledgeSupplementTaskStatus,
+  SeedanceProviderAdapterConfigInfo,
   SeedanceAssetBatchImportRequest,
   SeedanceAssetBindingItem,
   SeedanceAssetHistoryEvent,
@@ -1046,6 +1070,9 @@ const submittingSeedanceProvider = ref(false)
 const submittingSeedanceProviderAdapter = ref(false)
 const pollingSeedanceProvider = ref(false)
 const recoveringSeedanceProvider = ref(false)
+const loadingSeedanceProviderAdapterConfig = ref(false)
+const seedanceProviderAdapterConfig = ref<SeedanceProviderAdapterConfigInfo | null>(null)
+const seedanceProviderAdapterConfigError = ref('')
 const loadingSeedanceProviderOverview = ref(false)
 const seedanceProviderOverview = ref<SeedanceShotProviderQueueOverviewResult | null>(null)
 const loadingSeedanceProviderRetryPlan = ref(false)
@@ -1586,6 +1613,20 @@ async function loadSeedanceProviderOverview(showMessage = false) {
     error.value = res.error?.message ?? '刷新 Seedance provider 队列失败'
   }
   loadingSeedanceProviderOverview.value = false
+}
+
+async function loadSeedanceProviderAdapterConfig() {
+  if (loadingSeedanceProviderAdapterConfig.value) return
+  loadingSeedanceProviderAdapterConfig.value = true
+  seedanceProviderAdapterConfigError.value = ''
+  const res = await getSeedanceProviderAdapterConfig()
+  if (res.ok && res.data) {
+    seedanceProviderAdapterConfig.value = res.data
+  } else {
+    seedanceProviderAdapterConfig.value = null
+    seedanceProviderAdapterConfigError.value = res.error?.message ?? '读取 Seedance provider adapter 配置失败'
+  }
+  loadingSeedanceProviderAdapterConfig.value = false
 }
 
 async function loadSeedanceProviderRetryPlan(showMessage = false) {
@@ -2429,6 +2470,8 @@ async function deleteCurrentProject() {
 }
 
 onMounted(() => {
+  loadSeedanceProviderAdapterConfig()
+
   getModelProfiles().then((res) => {
     if (res.ok && res.data && res.data.length > 0) {
       modelProfiles.value = res.data
@@ -2918,6 +2961,7 @@ watch(selectedModelProfileId, (value) => {
   gap: 6px;
 }
 
+.project-detail-page__seedance-provider-config,
 .project-detail-page__seedance-provider-queue {
   display: flex;
   grid-column: 1 / -1;
@@ -2925,9 +2969,16 @@ watch(selectedModelProfileId, (value) => {
   gap: 6px;
 }
 
+.project-detail-page__seedance-provider-config span,
 .project-detail-page__seedance-provider-queue span {
   max-width: 240px;
   overflow-wrap: anywhere;
+}
+
+.project-detail-page__seedance-provider-chip--ready {
+  border-color: #b8d8c5 !important;
+  background: #f3fbf6 !important;
+  color: #247142 !important;
 }
 
 .project-detail-page__seedance-provider-overview {
@@ -3004,6 +3055,7 @@ watch(selectedModelProfileId, (value) => {
 }
 
 .project-detail-page__seedance-shot-ledger-stats span,
+.project-detail-page__seedance-provider-config span,
 .project-detail-page__seedance-provider-queue span,
 .project-detail-page__seedance-provider-overview-metrics span,
 .project-detail-page__seedance-provider-attention small,

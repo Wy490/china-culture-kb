@@ -3,7 +3,14 @@
 import { Router } from 'express';
 import { mcpReadAllProvinceFiles, mcpParseEntries } from '../services/mcp-proxy.js';
 import { success } from '@shared/types.js';
-import type { AIModelProfile, ProvinceInfo, TypeInfo, VideoType, PresentationStyle } from '@shared/types.js';
+import type {
+  AIModelProfile,
+  ProvinceInfo,
+  SeedanceProviderAdapterConfigInfo,
+  TypeInfo,
+  VideoType,
+  PresentationStyle,
+} from '@shared/types.js';
 import { listModelProfiles } from '../services/model-catalog.js';
 import { getNarrativePatternCatalog } from '../services/narrative-pattern-library.js';
 
@@ -70,6 +77,36 @@ systemRouter.get('/models', (_req, res) => {
 
 systemRouter.get('/narrative-patterns', (_req, res) => {
   res.json(success(getNarrativePatternCatalog()));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/seedance-provider-config — safe adapter config status
+// ---------------------------------------------------------------------------
+
+function envFlag(name: string): boolean {
+  return Boolean(process.env[name]?.trim());
+}
+
+function envNumber(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+systemRouter.get('/seedance-provider-config', (_req, res) => {
+  const config: SeedanceProviderAdapterConfigInfo = {
+    provider: 'seedance',
+    submit_endpoint_configured: envFlag('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'),
+    poll_endpoint_configured: envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT'),
+    submit_token_configured: envFlag('SEEDANCE_PROVIDER_SUBMIT_API_TOKEN'),
+    poll_token_configured: envFlag('SEEDANCE_PROVIDER_API_TOKEN'),
+    shared_token_configured: envFlag('SEEDANCE_PROVIDER_API_TOKEN'),
+    submit_timeout_ms: envNumber('SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS', 30000),
+    poll_timeout_ms: envNumber('SEEDANCE_PROVIDER_POLL_TIMEOUT_MS', 30000),
+    ready_for_submit_adapter: envFlag('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'),
+    ready_for_poll_adapter: envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT'),
+    generated_at: new Date().toISOString(),
+  };
+  res.json(success(config));
 });
 
 // ---------------------------------------------------------------------------
