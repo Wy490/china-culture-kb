@@ -878,6 +878,70 @@ describe('Projects API', () => {
   });
 
   describe('POST /api/projects/:projectId/production-board/seedance-shots/import', () => {
+    it('imports an external Seedance provider callback through the route', async () => {
+      const baseStory = makeApiProductionRepairStory();
+      const story: StoryGenerateResult = {
+        ...baseStory,
+        storyId: '20260617-story-apspv',
+        title: 'API Seedance Provider Callback 测试故事',
+        gears_segments_url: '/api/stories/20260617-story-apspv/gears-segments',
+        gears_delivery: baseStory.gears_delivery
+          ? {
+              ...baseStory.gears_delivery,
+              storyId: '20260617-story-apspv',
+              title: 'API Seedance Provider Callback 测试故事',
+            }
+          : undefined,
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T12:08:00.000Z');
+
+      const submitRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/submit-provider`)
+        .send({
+          shot_ids: ['shot-1'],
+          provider: 'seedance',
+          job_prefix: 'api-provider-callback-job',
+          queue_id: 'api-provider-callback-queue-001',
+          note: 'API provider callback 测试提交',
+        });
+      expect(submitRes.status).toBe(200);
+      expectSuccess(submitRes.body);
+
+      const callbackRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-callback`)
+        .send({
+          provider: 'seedance',
+          queue_id: 'api-provider-callback-queue-001',
+          queue_position: 1,
+          status: 'succeeded',
+          url: 'https://example.com/api/provider-callback-shot-1.mp4',
+          quality_score: 96,
+          review_note: '外部 provider 回片稳定',
+          event_id: 'api-provider-callback-event-001',
+          message: 'provider succeeded',
+        });
+      expect(callbackRes.status).toBe(200);
+      expectSuccess(callbackRes.body);
+      expect(callbackRes.body.data).toMatchObject({
+        updated_count: 1,
+        failed_count: 0,
+        provider: 'seedance',
+        provider_queue_id: 'api-provider-callback-queue-001',
+        provider_queue_position: 1,
+        event_id: 'api-provider-callback-event-001',
+      });
+      expect(callbackRes.body.data.seedance_shot_ledger.items.find((item: any) =>
+        item.shot_id === 'shot-1'
+      )).toMatchObject({
+        status: 'ready',
+        provider: 'seedance',
+        provider_job_id: 'api-provider-callback-job-shot-1',
+        provider_queue_id: 'api-provider-callback-queue-001',
+        provider_queue_position: 1,
+        video_url: 'https://example.com/api/provider-callback-shot-1.mp4',
+      });
+    });
+
     it('imports Seedance callbacks and exports a retry package', async () => {
       const baseStory = makeApiProductionRepairStory();
       const story: StoryGenerateResult = {

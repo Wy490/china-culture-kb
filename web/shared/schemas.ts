@@ -453,7 +453,10 @@ const SeedanceShotProviderRecoverableStatusSchema = z.enum(['submitted', 'proces
 export const SeedanceShotStatusUpdateRequestSchema = z.object({
   shot_id: z.string().trim().min(1).max(80),
   status: SeedanceShotProductionStatusSchema,
+  provider: z.string().trim().min(1).max(80).optional(),
   provider_job_id: z.string().trim().min(1).max(120).optional(),
+  provider_queue_id: z.string().trim().min(1).max(120).optional(),
+  provider_queue_position: z.number().int().min(1).max(10000).optional(),
   video_url: z.string().trim().url().optional(),
   failure_reason: z.string().trim().min(1).max(500).optional(),
   note: z.string().trim().min(1).max(500).optional(),
@@ -498,10 +501,19 @@ export const SeedanceShotProviderRecoveryRequestSchema = z.object({
 export const SeedanceShotCallbackRequestSchema = z.object({
   shot_id: z.string().trim().min(1).max(80).optional(),
   shotId: z.string().trim().min(1).max(80).optional(),
+  provider: z.string().trim().min(1).max(80).optional(),
   provider_job_id: z.string().trim().min(1).max(120).optional(),
   providerJobId: z.string().trim().min(1).max(120).optional(),
   job_id: z.string().trim().min(1).max(120).optional(),
   jobId: z.string().trim().min(1).max(120).optional(),
+  provider_queue_id: z.string().trim().min(1).max(120).optional(),
+  providerQueueId: z.string().trim().min(1).max(120).optional(),
+  queue_id: z.string().trim().min(1).max(120).optional(),
+  queueId: z.string().trim().min(1).max(120).optional(),
+  provider_queue_position: z.number().int().min(1).max(10000).optional(),
+  providerQueuePosition: z.number().int().min(1).max(10000).optional(),
+  queue_position: z.number().int().min(1).max(10000).optional(),
+  queuePosition: z.number().int().min(1).max(10000).optional(),
   status: z.string().trim().min(1).max(80).optional(),
   video_url: z.string().trim().url().optional(),
   videoUrl: z.string().trim().url().optional(),
@@ -525,13 +537,25 @@ export const SeedanceShotCallbackRequestSchema = z.object({
     || data.providerJobId
     || data.job_id
     || data.jobId
+    || data.provider_queue_id
+    || data.providerQueueId
+    || data.queue_id
+    || data.queueId
   ),
-  { message: 'callback requires shot_id or provider_job_id/job_id' },
+  { message: 'callback requires shot_id, provider_job_id/job_id, or provider_queue_id/queue_id' },
 );
 
 export const SeedanceShotCallbackImportRequestSchema = z.object({
   callbacks: z.array(SeedanceShotCallbackRequestSchema).min(1).max(200),
 });
+
+export const SeedanceShotProviderCallbackRequestSchema = SeedanceShotCallbackRequestSchema.and(z.object({
+  event_id: z.string().trim().min(1).max(160).optional(),
+  eventId: z.string().trim().min(1).max(160).optional(),
+  callback_id: z.string().trim().min(1).max(160).optional(),
+  callbackId: z.string().trim().min(1).max(160).optional(),
+  payload: z.unknown().optional(),
+}));
 
 export const StorySceneRegenerateRequestSchema = z.object({
   scene_id: z.number().int().min(1),

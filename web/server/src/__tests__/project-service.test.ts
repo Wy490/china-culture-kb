@@ -15,6 +15,7 @@ import {
   getProject,
   getProjectProductionBoard,
   importProjectSeedanceAssetBatch,
+  importProjectSeedanceProviderCallback,
   importProjectSeedanceShotCallbacks,
   listProjectSeedanceGlobalAssetLibrary,
   listProjects,
@@ -764,6 +765,57 @@ describe('project-service', () => {
       item.shot_id === 'shot-1'
     )).toMatchObject({
       status: 'processing',
+    });
+  });
+
+  it('imports an external Seedance provider callback by queue metadata', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1'],
+      provider: 'seedance',
+      job_prefix: 'provider-callback-test',
+      queue_id: 'provider-callback-queue-001',
+      queue_priority: 'high',
+      note: 'provider callback 测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+    expect(submitRes.data?.submitted_count).toBe(1);
+
+    const callbackRes = await importProjectSeedanceProviderCallback(enriched.project_id!, {
+      provider: 'seedance',
+      queueId: 'provider-callback-queue-001',
+      queuePosition: 1,
+      status: 'completed',
+      videoUrl: 'https://example.com/seedance-videos/provider-callback-shot-1.mp4',
+      qualityScore: 94,
+      reviewNote: 'provider webhook 回片可用',
+      event_id: 'provider-event-001',
+      message: 'provider completed',
+    });
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data).toMatchObject({
+      updated_count: 1,
+      failed_count: 0,
+      provider: 'seedance',
+      provider_queue_id: 'provider-callback-queue-001',
+      provider_queue_position: 1,
+      event_id: 'provider-event-001',
+    });
+    expect(callbackRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'ready',
+      provider: 'seedance',
+      provider_job_id: 'provider-callback-test-shot-1',
+      provider_queue_id: 'provider-callback-queue-001',
+      provider_queue_position: 1,
+      video_url: 'https://example.com/seedance-videos/provider-callback-shot-1.mp4',
+      selected_version_id: 'seedance-shot-shot-1-v2',
     });
   });
 

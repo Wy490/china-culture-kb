@@ -32,7 +32,7 @@
 | 模块 | 进度判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
-| Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 88% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据和 provider 超时恢复首版。 |
+| Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 89% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复和外部回传 schema 首版。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划已具备；字幕/混音/片头片尾/final delivery 仍待做。 |
 | 可商用制作中台 | 约 35-40% | 主链路可用，但还缺 UX 降噪、资产绑定、状态总览、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 75-80% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story`、`kb_generate_gears_delivery`、`kb_generate_seedance_prompt`、`kb_repair_story(auto_apply=false/true)`、`kb_update_project_version` 已完成；真实项目 auto_apply smoke 已通过，后续剩更深模型修复链路和前端质量反馈增强。 |
@@ -197,6 +197,12 @@ MCP 原则：
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/recover-provider`，默认 dry-run 扫描 `submitted` / `processing` 超时镜头。
   - 请求显式 `mark_timed_out_failed=true` 时，会把超时镜头标为 `failed`，追加 failed 版本并保留 provider job / queue 元数据。
   - 项目详情页“回传与重试”折叠区新增“标记超时失败”按钮，默认按 120 分钟检查。
+- 单故事 Seedance provider 外部回传 schema 首版：
+  - 共享类型新增 `SeedanceShotProviderCallbackRequest` / `SeedanceShotProviderCallbackResult`。
+  - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-callback`，支持外部 provider 单条 webhook 回传。
+  - 回传支持 `provider`、`provider_job_id/job_id`、`provider_queue_id/queue_id`、`provider_queue_position/queue_position`、`event_id`、`video_url/url`、`failure_reason/error`、质量分和 review note。
+  - 状态归一化复用内部回传导入；可按 job 匹配，也可按 `queue_id + queue_position` 映射到 Shot Ledger。
+  - 修复 `updateProjectSeedanceShotStatus` 更新 ready/failed 时丢失 provider / queue 元数据的问题。
 - 前端质量反馈视图首版：
   - 项目详情页“当前版本质量”新增类型反馈面板。
   - 默认聚合显示缺失要素、弱节拍、不适配表达、修复建议。
@@ -262,11 +268,11 @@ git diff --check
 
 测试结果：
 
-- `project-service.test.ts`：24 passed。
+- `project-service.test.ts`：25 passed。
 - `seedance-prompt-service.test.ts`：1 passed。
-- `api.test.ts`：83 passed。
-- `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增和重复提交跳过。
-- `api.test.ts` 已覆盖 `POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`。
+- `api.test.ts`：84 passed。
+- `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过，以及外部 provider callback 按 queue 元数据回写。
+- `api.test.ts` 已覆盖 `POST /api/projects/:projectId/production-board/seedance-shots/submit-provider` 和 `/provider-callback`。
 - `seedance-prompt-service.test.ts` 已覆盖 `@视频1` 运镜/节奏参考和 `@音频1` 音乐/音效参考的生成、计数和镜头 prompt 用途说明。
 - `generate-gears-delivery.test.ts`：4 passed，覆盖 `project_id`、`story_json`、`story_id`、非法 ID 和缺失项目。
 - `generate-seedance-prompt.test.ts`：4 passed，覆盖 `project_id`、`story_json`、`story_id`、非法 ID、缺失项目、`@视频/@音频` 引用和 Markdown 开关。
@@ -336,7 +342,8 @@ git diff --stat
 
 已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、外部素材批量导入与上传态字段、真实文件上传、跨项目素材库复用、素材上传历史 UI、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据和 provider 超时恢复首版，下一步：
 
-- provider 外部回传 schema、自动轮询和真实 Seedance / 外部 provider API 对接。
+- provider 自动轮询和真实 Seedance / 外部 provider API 对接。
+- 更细的 provider 失败原因分类、人工重试策略和队列状态总览。
 - 更细的失败原因分类、人工重试策略和队列状态总览。
 
 ### P0-P1：Seedance 资产引用字段和素材校验
@@ -488,13 +495,13 @@ ready 镜头
 如果只继续一个最小任务，建议做：
 
 ```text
-Seedance provider 外部回传 schema 和真实 API 对接
+Seedance provider 自动轮询和真实 API 对接
 ```
 
 理由：
 
 - MCP 诊断、修复建议、受控版本写入、安全 auto_apply、真实项目回读和前端质量反馈首版都已经跑通。
-- Provider 队列元数据和超时恢复首版已经落地，下一步要补外部回传 schema、自动轮询和真实 provider API。
+- Provider 队列元数据、超时恢复和外部回传 schema 首版已经落地，下一步要补自动轮询和真实 provider API。
 - 这会把“提示词包”继续推进到“可持续生产任务流”。
 
 如果准备做下一组任务，建议顺序：

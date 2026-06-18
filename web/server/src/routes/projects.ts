@@ -12,6 +12,7 @@ import {
   SeedanceAssetReuseRequestSchema,
   SeedanceShotAutoSelectRequestSchema,
   SeedanceShotCallbackImportRequestSchema,
+  SeedanceShotProviderCallbackRequestSchema,
   SeedanceShotProviderRecoveryRequestSchema,
   SeedanceShotProviderSubmitRequestSchema,
   SeedanceShotStatusBatchUpdateRequestSchema,
@@ -33,6 +34,7 @@ import {
   getProjectProductionBoard,
   listProjectSeedanceGlobalAssetLibrary,
   importProjectSeedanceAssetBatch,
+  importProjectSeedanceProviderCallback,
   importProjectSeedanceShotCallbacks,
   listProjectSupplementTasks,
   listProjects,
@@ -396,6 +398,21 @@ projectsRouter.post(
     try {
       const { projectId } = req.params as { projectId: string };
       const result = await importProjectSeedanceShotCallbacks(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-shots/provider-callback',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceShotProviderCallbackRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await importProjectSeedanceProviderCallback(projectId, req.body);
       res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
     } catch (err) {
       next(err);

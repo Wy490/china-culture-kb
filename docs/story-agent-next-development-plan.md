@@ -9,7 +9,7 @@
 | 模块 | 当前判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
-| Production Board / GEARS / Seedance | 约 88% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复首版已完成。 |
+| Production Board / GEARS / Seedance | 约 89% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema 首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划已有；字幕、混音、片头片尾、final delivery 待做。 |
 | 可商用制作中台 | 约 35-40% | 主链路可用；还缺 UX 降噪、状态总览、真实外部 provider、审片返修和稳定压测。 |
@@ -40,13 +40,19 @@
   - 默认 dry-run 扫描 `submitted` / `processing` 超时镜头。
   - `mark_timed_out_failed=true` 时标记 failed，并追加 failed 版本。
   - 前端“回传与重试”增加“标记超时失败”。
+- Seedance provider 外部回传 schema 首版：
+  - 新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-callback`
+  - 支持外部 provider 单条回传的 `provider`、job、queue、event、视频 URL、失败原因、质量分和 review note。
+  - 回传可按 job 匹配，也可按 `queue_id + queue_position` 映射到 Shot Ledger。
+  - 状态归一化复用内部回传导入，ready/failed/processing/submitted 等平台状态会更新 `seedance_shot_ledger`。
+  - 修复状态更新丢失 provider / queue 元数据的问题。
 
 ### 文档同步
 
 - 更新 `docs/story-agent-next-conversation-handoff.md`。
 - 更新 `docs/story-agent-production-workbench-development-plan.md`。
 - 更新 `开发文档/story-agent-mcp-quality-delivery-implementation-plan.md`。
-- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”。
+- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”；外部回传 schema 已完成首版。
 
 ## 3. 已验证命令
 
@@ -94,11 +100,11 @@ git diff --stat
 完善 Story Agent MCP 与 Seedance provider 生产链
 ```
 
-### P0：Seedance provider 外部回传 schema / 自动轮询 / 真实 API
+### P0：Seedance provider 自动轮询 / 真实 API
 
 目标：
 
-- 定义外部 provider 回传 schema。
+- 外部 provider 回传 schema 已完成首版。
 - 支持根据 provider job / queue 查询状态。
 - 建立自动轮询入口或 worker 形态。
 - 将超时恢复、失败分类、重试包和真实回传结果串起来。

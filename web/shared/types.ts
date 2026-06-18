@@ -1319,7 +1319,10 @@ export interface SeedanceShotProviderQueue {
 export interface SeedanceShotStatusUpdateRequest {
   shot_id: string;
   status: SeedanceShotProductionStatus;
+  provider?: string;
   provider_job_id?: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
   video_url?: string;
   failure_reason?: string;
   note?: string;
@@ -1429,10 +1432,19 @@ export interface SeedanceShotProviderRecoveryResult {
 export interface SeedanceShotCallbackRequest {
   shot_id?: string;
   shotId?: string;
+  provider?: string;
   provider_job_id?: string;
   providerJobId?: string;
   job_id?: string;
   jobId?: string;
+  provider_queue_id?: string;
+  providerQueueId?: string;
+  queue_id?: string;
+  queueId?: string;
+  provider_queue_position?: number;
+  providerQueuePosition?: number;
+  queue_position?: number;
+  queuePosition?: number;
   status?: string;
   video_url?: string;
   videoUrl?: string;
@@ -1448,6 +1460,14 @@ export interface SeedanceShotCallbackRequest {
   qualityScore?: number;
   review_note?: string;
   reviewNote?: string;
+}
+
+export interface SeedanceShotProviderCallbackRequest extends SeedanceShotCallbackRequest {
+  event_id?: string;
+  eventId?: string;
+  callback_id?: string;
+  callbackId?: string;
+  payload?: unknown;
 }
 
 export interface SeedanceShotCallbackImportRequest {
@@ -1467,6 +1487,14 @@ export interface SeedanceShotCallbackImportResult {
   updated_count: number;
   failed_count: number;
   failures: SeedanceShotCallbackImportFailure[];
+}
+
+export interface SeedanceShotProviderCallbackResult extends SeedanceShotCallbackImportResult {
+  provider?: string;
+  provider_job_id?: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
+  event_id?: string;
 }
 
 export interface SeedanceShotRetryPrompt {

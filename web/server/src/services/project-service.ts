@@ -40,6 +40,8 @@ import type {
   SeedanceShotCallbackRequest,
   SeedanceShotLedgerItem,
   SeedanceShotProductionStatus,
+  SeedanceShotProviderCallbackRequest,
+  SeedanceShotProviderCallbackResult,
   SeedanceShotRetryPackage,
   SeedanceShotRetryPackageShot,
   SeedanceShotAutoSelectRequest,
@@ -545,25 +547,50 @@ function resolveSeedanceShotCallbackUpdate(
   detail: StoryProjectDetail,
   callback: SeedanceShotCallbackRequest,
 ): SeedanceShotStatusUpdateRequest | string {
+  const provider = callbackStringField(callback.provider);
   const providerJobId = callbackStringField(
     callback.provider_job_id ?? callback.providerJobId ?? callback.job_id ?? callback.jobId,
+  );
+  const providerQueueId = callbackStringField(
+    callback.provider_queue_id ?? callback.providerQueueId ?? callback.queue_id ?? callback.queueId,
+  );
+  const providerQueuePosition = callbackNumberField(
+    callback.provider_queue_position
+      ?? callback.providerQueuePosition
+      ?? callback.queue_position
+      ?? callback.queuePosition,
   );
   const board = buildStoryProductionBoard(detail.current_story, {
     seedanceAssetLibrary: detail.project.seedance_asset_library,
     seedanceShotLedger: detail.project.seedance_shot_ledger,
   });
   const ledger = board.seedance_shot_ledger;
-  const matchedItem = providerJobId
+  const queueMatches = providerQueueId
+    ? ledger.items.filter(item => item.provider_queue_id === providerQueueId)
+    : [];
+  let matchedItem = providerJobId
     ? ledger.items.find(item =>
       item.provider_job_id === providerJobId
       || item.versions.some(version => version.provider_job_id === providerJobId)
     )
     : undefined;
+  if (!matchedItem && providerQueueId && providerQueuePosition !== undefined) {
+    matchedItem = queueMatches.find(item => item.provider_queue_position === providerQueuePosition);
+  }
+  if (!matchedItem && providerQueueId && providerQueuePosition === undefined && queueMatches.length === 1) {
+    [matchedItem] = queueMatches;
+  }
   const shotId = callbackStringField(callback.shot_id ?? callback.shotId) ?? matchedItem?.shot_id;
   if (!shotId) {
+    if (providerQueueId && queueMatches.length > 1 && providerQueuePosition === undefined) {
+      return `Seedance callback queue "${providerQueueId}" matched multiple shots; provide provider_queue_position/queue_position or shot_id`;
+    }
+    if (providerQueueId && !queueMatches.length) {
+      return `Seedance callback queue "${providerQueueId}" was not found in shot ledger`;
+    }
     return providerJobId
       ? `Seedance callback job "${providerJobId}" was not found in shot ledger`
-      : 'Seedance callback requires shot_id or a known provider_job_id/job_id';
+      : 'Seedance callback requires shot_id, a known provider_job_id/job_id, or a known provider_queue_id/queue_id';
   }
 
   const videoUrl = callbackStringField(callback.video_url ?? callback.videoUrl ?? callback.url);
@@ -578,7 +605,10 @@ function resolveSeedanceShotCallbackUpdate(
   return {
     shot_id: shotId,
     status,
+    provider: provider ?? matchedItem?.provider,
     provider_job_id: providerJobId,
+    provider_queue_id: providerQueueId ?? matchedItem?.provider_queue_id,
+    provider_queue_position: providerQueuePosition ?? matchedItem?.provider_queue_position,
     video_url: videoUrl,
     failure_reason: failureReason,
     note: callbackStringField(callback.note)
@@ -1439,7 +1469,10 @@ export async function updateProjectSeedanceShotStatus(
       ? updatedAt
       : existing?.completed_at,
     updated_at: updatedAt,
+    provider: request.provider ?? existing?.provider,
     provider_job_id: request.provider_job_id ?? existing?.provider_job_id,
+    provider_queue_id: request.provider_queue_id ?? existing?.provider_queue_id,
+    provider_queue_position: request.provider_queue_position ?? existing?.provider_queue_position,
     video_url: request.video_url ?? existing?.video_url,
     failure_reason: request.failure_reason ?? (request.status === 'failed' ? existing?.failure_reason : undefined),
     retry_count: (existing?.retry_count ?? 0) + (request.increment_retry ? 1 : 0),
@@ -1951,6 +1984,35 @@ export async function importProjectSeedanceShotCallbacks(
     updated_count: updatedCount,
     failed_count: failures.length,
     failures,
+  });
+}
+
+export async function importProjectSeedanceProviderCallback(
+  projectId: string,
+  request: SeedanceShotProviderCallbackRequest,
+): Promise<ApiResponse<SeedanceShotProviderCallbackResult>> {
+  const importRes = await importProjectSeedanceShotCallbacks(projectId, { callbacks: [request] });
+  if (!importRes.ok || !importRes.data) {
+    return importRes as ApiResponse<SeedanceShotProviderCallbackResult>;
+  }
+  return success({
+    ...importRes.data,
+    provider: callbackStringField(request.provider),
+    provider_job_id: callbackStringField(
+      request.provider_job_id ?? request.providerJobId ?? request.job_id ?? request.jobId,
+    ),
+    provider_queue_id: callbackStringField(
+      request.provider_queue_id ?? request.providerQueueId ?? request.queue_id ?? request.queueId,
+    ),
+    provider_queue_position: callbackNumberField(
+      request.provider_queue_position
+        ?? request.providerQueuePosition
+        ?? request.queue_position
+        ?? request.queuePosition,
+    ),
+    event_id: callbackStringField(
+      request.event_id ?? request.eventId ?? request.callback_id ?? request.callbackId,
+    ),
   });
 }
 

@@ -18,6 +18,8 @@ import type {
   SeedanceShotAutoSelectRequest,
   SeedanceShotCallbackImportRequest,
   SeedanceShotCallbackImportResult,
+  SeedanceShotProviderCallbackRequest,
+  SeedanceShotProviderCallbackResult,
   SeedanceShotProviderRecoveryRequest,
   SeedanceShotProviderRecoveryResult,
   SeedanceShotProviderSubmitRequest,
@@ -98,6 +100,10 @@ export function updateProjectSeedanceShotStatuses(projectId: string, body: Seeda
 
 export function importProjectSeedanceShotCallbacks(projectId: string, body: SeedanceShotCallbackImportRequest) {
   return apiPost<SeedanceShotCallbackImportResult>(`/projects/${projectId}/production-board/seedance-shots/import`, body)
+}
+
+export function importProjectSeedanceProviderCallback(projectId: string, body: SeedanceShotProviderCallbackRequest) {
+  return apiPost<SeedanceShotProviderCallbackResult>(`/projects/${projectId}/production-board/seedance-shots/provider-callback`, body)
 }
 
 export function selectProjectSeedanceShotVersion(projectId: string, body: SeedanceShotVersionSelectRequest) {
