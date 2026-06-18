@@ -93,6 +93,24 @@ function envNumber(name: string, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function providerAuthHeader(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER
+    : process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_AUTH_HEADER?.trim()
+    || 'authorization';
+}
+
+function providerAuthScheme(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME
+    : process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_AUTH_SCHEME?.trim()
+    || 'Bearer';
+}
+
 systemRouter.get('/seedance-provider-config', (_req, res) => {
   const submitEndpointConfigured = envFlag('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT');
   const pollEndpointConfigured = envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT');
@@ -124,6 +142,10 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
     poll_token_configured: sharedTokenConfigured,
     shared_token_configured: sharedTokenConfigured,
     callback_secret_configured: callbackSecretConfigured,
+    submit_auth_header: providerAuthHeader('submit'),
+    poll_auth_header: providerAuthHeader('poll'),
+    submit_auth_scheme: providerAuthScheme('submit'),
+    poll_auth_scheme: providerAuthScheme('poll'),
     submit_timeout_ms: envNumber('SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS', 30000),
     poll_timeout_ms: envNumber('SEEDANCE_PROVIDER_POLL_TIMEOUT_MS', 30000),
     ready_for_submit_adapter: submitEndpointConfigured,
@@ -153,6 +175,10 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       schema_version: 'seedance-provider-submit/v1',
       endpoint_env: 'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT',
       auth_envs: ['SEEDANCE_PROVIDER_SUBMIT_API_TOKEN', 'SEEDANCE_PROVIDER_API_TOKEN'],
+      auth_header_envs: ['SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER', 'SEEDANCE_PROVIDER_AUTH_HEADER'],
+      auth_scheme_envs: ['SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME', 'SEEDANCE_PROVIDER_AUTH_SCHEME'],
+      default_auth_header: 'Authorization',
+      default_auth_scheme: 'Bearer',
       timeout_env: 'SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS',
       request_fields: [
         'schema_version',
@@ -242,12 +268,17 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'Each accepted result must include a shot_id and provider job id.',
         'Returned queue id/position override local placeholders when present.',
         'When callback auth is configured, provider_callback_path requires one callback auth header.',
+        'Set auth scheme to raw/none/no_scheme when a worker expects the token without a prefix.',
       ],
     },
     poll: {
       schema_version: 'seedance-provider-poll/v1',
       endpoint_env: 'SEEDANCE_PROVIDER_POLL_ENDPOINT',
       auth_envs: ['SEEDANCE_PROVIDER_API_TOKEN'],
+      auth_header_envs: ['SEEDANCE_PROVIDER_POLL_AUTH_HEADER', 'SEEDANCE_PROVIDER_AUTH_HEADER'],
+      auth_scheme_envs: ['SEEDANCE_PROVIDER_POLL_AUTH_SCHEME', 'SEEDANCE_PROVIDER_AUTH_SCHEME'],
+      default_auth_header: 'Authorization',
+      default_auth_scheme: 'Bearer',
       timeout_env: 'SEEDANCE_PROVIDER_POLL_TIMEOUT_MS',
       request_fields: [
         'schema_version',

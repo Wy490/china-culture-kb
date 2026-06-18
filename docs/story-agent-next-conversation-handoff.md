@@ -219,14 +219,15 @@ MCP 原则：
 - 单故事 Seedance provider 通用 poll adapter 首版：
   - `SeedanceShotProviderPollRequest` 新增 `use_provider_adapter`，响应新增 `provider_adapter` 查询摘要。
   - 服务端读取 `SEEDANCE_PROVIDER_POLL_ENDPOINT`，把 dry-run 产生的 `poll_targets` POST 给外部 adapter，并接受顶层数组、`provider_results`、`results`、`items`、`tasks`、`data.tasks` 等返回形态。
-  - 支持 `SEEDANCE_PROVIDER_API_TOKEN` bearer 鉴权和 `SEEDANCE_PROVIDER_POLL_TIMEOUT_MS` 超时控制。
+  - 默认支持 `SEEDANCE_PROVIDER_API_TOKEN` bearer 鉴权；也可通过 `SEEDANCE_PROVIDER_POLL_AUTH_HEADER` / `SEEDANCE_PROVIDER_POLL_AUTH_SCHEME` 或通用 auth env 改成 `X-API-Key`、`Token`、裸 token 等模式。
+  - 支持 `SEEDANCE_PROVIDER_POLL_TIMEOUT_MS` 超时控制。
   - adapter 返回结果继续复用内部 callback 归一化、失败分类和 Shot Ledger 写回；未配置 endpoint 返回 400，外部 adapter HTTP/网络错误返回 502。
   - 项目详情页“轮询 provider”入口会设置 `include_prompt=true` / `use_provider_adapter=true`，用于从工作台直接触发外部查询 worker。
 - 单故事 Seedance provider 通用 submit adapter 首版：
   - `SeedanceShotProviderSubmitRequest` 新增 `use_provider_adapter`，响应新增 `provider_adapter` 提交摘要。
   - 服务端读取 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT`，把待提交镜头、Seedance prompt、素材 slot、素材校验和素材库 POST 给外部 adapter。
   - adapter 返回真实 `provider_job_id` / `provider_queue_id` / queue position 后，会覆盖本地占位 job 并写入 Shot Ledger 与 provider queue batch。
-  - 支持 `SEEDANCE_PROVIDER_SUBMIT_API_TOKEN` 或 `SEEDANCE_PROVIDER_API_TOKEN` bearer 鉴权；未配置 endpoint 返回 400，外部 adapter HTTP/网络错误返回 502。
+  - 默认支持 `SEEDANCE_PROVIDER_SUBMIT_API_TOKEN` 或 `SEEDANCE_PROVIDER_API_TOKEN` bearer 鉴权；也可通过 submit/auth env 自定义 header 名和 scheme。未配置 endpoint 返回 400，外部 adapter HTTP/网络错误返回 502。
   - 项目详情页“回传与重试”折叠区新增“提交 adapter”，与本地账本“提交到 Seedance”分开，点击后带 `use_provider_adapter=true` 触发外部 submit worker。
 - 单故事 Seedance provider 平台式响应兼容层首版：
   - submit/poll adapter 可接受 `tasks`、`task_list`、`jobs`、`records`、`data.tasks` 等外部 worker 常见返回形态。
@@ -237,6 +238,7 @@ MCP 原则：
   - 后端新增 `GET /api/system/seedance-provider-config`，返回 submit/poll endpoint 是否已配置、token 是否已配置和 submit/poll timeout。
   - 响应只暴露布尔状态和数值，不返回 endpoint URL 或 token 原文。
   - 响应新增 `callback_secret_configured`，可在接入真实 worker 前确认 provider 回传 webhook 是否启用共享凭据保护。
+  - 响应新增 submit/poll 有效鉴权 header 和 scheme，只暴露名称/模式，不暴露 token。
   - 项目详情页 Seedance Shot Ledger 顶部新增 adapter 配置 chips，点击提交/轮询前即可看到 submit adapter、poll adapter、token 和 timeout 状态。
   - “提交 adapter”和“轮询 provider”按钮会按配置状态禁用，避免未配置 endpoint 时误触发 adapter 请求。
   - 响应和前端 chips 已补缺失 env var、配置 warning 和下一步动作，便于直接排查真实 provider worker 接入前的配置问题。
@@ -244,6 +246,7 @@ MCP 原则：
   - 后端新增 `GET /api/system/seedance-provider-adapter-contract`，返回 submit/poll schema version、env key、请求字段、可接受响应形态和归一化字段。
   - 合约接口不返回 endpoint URL 或 token 原文，外部 worker / Agent 可先读取该接口再实现 submit/query。
   - 合约接口新增 `callback_auth_env` 和 `callback_auth_headers`，外部 worker 可按约定给 `provider_callback_path` 带回调鉴权头。
+  - 合约接口新增 `auth_header_envs`、`auth_scheme_envs`、默认 header 和默认 scheme，便于真实 worker 适配 `Authorization`、`X-API-Key`、`Token`、裸 token 等鉴权模式。
   - 合约接口新增 submit/poll 的 `request_example` 和 `response_examples`，用于真实 worker smoke 对照。
   - submit adapter payload 已带 `provider_callback_path` 和 `provider_poll_path` 相对路径，worker 可不猜项目级回传/轮询 API。
 - 单故事 Seedance provider 队列状态总览首版：
@@ -283,22 +286,21 @@ MCP 原则：
 - 修复后台 webhook / gears video / gears delivery 异步回写时因环境变量恢复而串到默认 generated 目录的问题。
 - API 测试会隔离生成物，当前已确认不再留下 `web/web/generated/projects` 测试残留。
 
-当前追加改动范围（提交前）：
+近期 Seedance provider 关键文件：
 
 - `docs/story-agent-next-development-plan.md`
 - `docs/story-agent-next-conversation-handoff.md`
-- `docs/story-agent-production-workbench-development-plan.md`
-- `开发文档/story-agent-mcp-quality-delivery-implementation-plan.md`
 - `web/server/src/__tests__/api.test.ts`
 - `web/server/src/__tests__/project-service.test.ts`
-- `web/server/src/routes/projects.ts`
+- `web/server/src/routes/system.ts`
 - `web/server/src/services/project-service.ts`
 - `web/shared/schemas.ts`
 - `web/shared/types.ts`
+- `docs/deployment-guide.md`
 
 ## 4. 已验证内容
 
-近期验证清单（当前追加改动已重跑）：
+近期验证清单：
 
 ```bash
 cd web/client && npm run lint
@@ -358,7 +360,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-增强 Seedance provider 平台响应兼容
+增强 Seedance provider adapter 鉴权配置
 ```
 
 ### P0：继续故事管理 UX 降噪

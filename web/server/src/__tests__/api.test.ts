@@ -32,6 +32,12 @@ const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = process.env.SEEDANCE_PROVIDER
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
 const ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN = process.env.SEEDANCE_PROVIDER_API_TOKEN;
+const ORIGINAL_SEEDANCE_PROVIDER_AUTH_HEADER = process.env.SEEDANCE_PROVIDER_AUTH_HEADER;
+const ORIGINAL_SEEDANCE_PROVIDER_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_AUTH_SCHEME;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER = process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
 const DEFAULT_PROJECTS_ROOT = resolve(import.meta.dirname, '..', '..', '..', 'web', 'generated', 'projects');
@@ -118,6 +124,36 @@ afterAll(async () => {
     delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
   } else {
     process.env.SEEDANCE_PROVIDER_API_TOKEN = ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_AUTH_HEADER === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_AUTH_HEADER;
+  } else {
+    process.env.SEEDANCE_PROVIDER_AUTH_HEADER = ORIGINAL_SEEDANCE_PROVIDER_AUTH_HEADER;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_AUTH_SCHEME === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_AUTH_SCHEME;
+  } else {
+    process.env.SEEDANCE_PROVIDER_AUTH_SCHEME = ORIGINAL_SEEDANCE_PROVIDER_AUTH_SCHEME;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER = ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
   }
   if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS === undefined) {
     delete process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
@@ -383,6 +419,12 @@ describe('System API', () => {
         pollEndpoint: process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT,
         submitToken: process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN,
         sharedToken: process.env.SEEDANCE_PROVIDER_API_TOKEN,
+        authHeader: process.env.SEEDANCE_PROVIDER_AUTH_HEADER,
+        authScheme: process.env.SEEDANCE_PROVIDER_AUTH_SCHEME,
+        submitAuthHeader: process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER,
+        submitAuthScheme: process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME,
+        pollAuthHeader: process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER,
+        pollAuthScheme: process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME,
         callbackSecret: process.env.SEEDANCE_CALLBACK_SECRET,
         submitTimeout: process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS,
         pollTimeout: process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS,
@@ -392,6 +434,10 @@ describe('System API', () => {
         process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = 'https://adapter.example.test/seedance/poll';
         process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = 'submit-secret';
         process.env.SEEDANCE_PROVIDER_API_TOKEN = 'shared-secret';
+        process.env.SEEDANCE_PROVIDER_AUTH_HEADER = 'X-Shared-Token';
+        process.env.SEEDANCE_PROVIDER_AUTH_SCHEME = 'Token';
+        process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = 'X-Submit-Key';
+        process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = 'raw';
         process.env.SEEDANCE_CALLBACK_SECRET = 'callback-secret';
         process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = '12345';
         process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = '23456';
@@ -407,6 +453,10 @@ describe('System API', () => {
           poll_token_configured: true,
           shared_token_configured: true,
           callback_secret_configured: true,
+          submit_auth_header: 'X-Submit-Key',
+          poll_auth_header: 'X-Shared-Token',
+          submit_auth_scheme: 'raw',
+          poll_auth_scheme: 'Token',
           submit_timeout_ms: 12345,
           poll_timeout_ms: 23456,
           ready_for_submit_adapter: true,
@@ -427,6 +477,12 @@ describe('System API', () => {
         delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
         delete process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
         delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
+        delete process.env.SEEDANCE_PROVIDER_AUTH_HEADER;
+        delete process.env.SEEDANCE_PROVIDER_AUTH_SCHEME;
+        delete process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER;
+        delete process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
+        delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+        delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
         delete process.env.SEEDANCE_CALLBACK_SECRET;
 
         const missingRes = await request.get('/api/system/seedance-provider-config');
@@ -439,6 +495,10 @@ describe('System API', () => {
           poll_token_configured: false,
           shared_token_configured: false,
           callback_secret_configured: false,
+          submit_auth_header: 'authorization',
+          poll_auth_header: 'authorization',
+          submit_auth_scheme: 'Bearer',
+          poll_auth_scheme: 'Bearer',
           ready_for_submit_adapter: false,
           ready_for_poll_adapter: false,
           missing_submit_requirements: ['SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'],
@@ -461,6 +521,18 @@ describe('System API', () => {
         else process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = previous.submitToken;
         if (previous.sharedToken === undefined) delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
         else process.env.SEEDANCE_PROVIDER_API_TOKEN = previous.sharedToken;
+        if (previous.authHeader === undefined) delete process.env.SEEDANCE_PROVIDER_AUTH_HEADER;
+        else process.env.SEEDANCE_PROVIDER_AUTH_HEADER = previous.authHeader;
+        if (previous.authScheme === undefined) delete process.env.SEEDANCE_PROVIDER_AUTH_SCHEME;
+        else process.env.SEEDANCE_PROVIDER_AUTH_SCHEME = previous.authScheme;
+        if (previous.submitAuthHeader === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER;
+        else process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = previous.submitAuthHeader;
+        if (previous.submitAuthScheme === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
+        else process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = previous.submitAuthScheme;
+        if (previous.pollAuthHeader === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+        else process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER = previous.pollAuthHeader;
+        if (previous.pollAuthScheme === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
+        else process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = previous.pollAuthScheme;
         if (previous.callbackSecret === undefined) delete process.env.SEEDANCE_CALLBACK_SECRET;
         else process.env.SEEDANCE_CALLBACK_SECRET = previous.callbackSecret;
         if (previous.submitTimeout === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
@@ -487,12 +559,20 @@ describe('System API', () => {
           schema_version: 'seedance-provider-submit/v1',
           endpoint_env: 'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT',
           auth_envs: ['SEEDANCE_PROVIDER_SUBMIT_API_TOKEN', 'SEEDANCE_PROVIDER_API_TOKEN'],
+          auth_header_envs: ['SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER', 'SEEDANCE_PROVIDER_AUTH_HEADER'],
+          auth_scheme_envs: ['SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME', 'SEEDANCE_PROVIDER_AUTH_SCHEME'],
+          default_auth_header: 'Authorization',
+          default_auth_scheme: 'Bearer',
           timeout_env: 'SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS',
         },
         poll: {
           schema_version: 'seedance-provider-poll/v1',
           endpoint_env: 'SEEDANCE_PROVIDER_POLL_ENDPOINT',
           auth_envs: ['SEEDANCE_PROVIDER_API_TOKEN'],
+          auth_header_envs: ['SEEDANCE_PROVIDER_POLL_AUTH_HEADER', 'SEEDANCE_PROVIDER_AUTH_HEADER'],
+          auth_scheme_envs: ['SEEDANCE_PROVIDER_POLL_AUTH_SCHEME', 'SEEDANCE_PROVIDER_AUTH_SCHEME'],
+          default_auth_header: 'Authorization',
+          default_auth_scheme: 'Bearer',
           timeout_env: 'SEEDANCE_PROVIDER_POLL_TIMEOUT_MS',
         },
       });

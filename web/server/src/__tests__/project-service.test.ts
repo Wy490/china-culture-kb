@@ -44,9 +44,13 @@ const TEMP_DIRS: string[] = [];
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
 const ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN = process.env.SEEDANCE_PROVIDER_API_TOKEN;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER = process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
 
 async function exists(path: string): Promise<boolean> {
@@ -173,6 +177,16 @@ afterEach(async () => {
   } else {
     process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
   }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
+  }
   if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS === undefined) {
     delete process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
   } else {
@@ -187,6 +201,16 @@ afterEach(async () => {
     delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
   } else {
     process.env.SEEDANCE_PROVIDER_API_TOKEN = ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER = ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
   }
   if (ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS === undefined) {
     delete process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
@@ -815,13 +839,16 @@ describe('project-service', () => {
     process.env.KB_ROOT = resolve(root, 'data');
     process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = 'https://adapter.example.test/seedance/submit';
     process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = 'submit-token';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = 'X-Api-Key';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = 'raw';
 
     const story = makeStory();
     const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
     const submitFetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       expect(String(_url)).toBe('https://adapter.example.test/seedance/submit');
       expect(init?.method).toBe('POST');
-      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer submit-token');
+      expect((init?.headers as Record<string, string>)['X-Api-Key']).toBe('submit-token');
+      expect((init?.headers as Record<string, string>).authorization).toBeUndefined();
       const body = JSON.parse(String(init?.body)) as {
         project_id: string;
         provider?: string;
@@ -1350,6 +1377,8 @@ describe('project-service', () => {
     process.env.KB_ROOT = resolve(root, 'data');
     process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = 'https://adapter.example.test/seedance/poll';
     process.env.SEEDANCE_PROVIDER_API_TOKEN = 'adapter-token';
+    process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER = 'X-Provider-Token';
+    process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = 'Token';
 
     const story = makeStory();
     const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
@@ -1365,7 +1394,8 @@ describe('project-service', () => {
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       expect(String(_url)).toBe('https://adapter.example.test/seedance/poll');
       expect(init?.method).toBe('POST');
-      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer adapter-token');
+      expect((init?.headers as Record<string, string>)['X-Provider-Token']).toBe('Token adapter-token');
+      expect((init?.headers as Record<string, string>).authorization).toBeUndefined();
       const body = JSON.parse(String(init?.body)) as {
         project_id: string;
         provider?: string;

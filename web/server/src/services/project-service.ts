@@ -1164,6 +1164,51 @@ function seedanceProviderPollTimeoutMs(): number {
   return Math.min(parsed, 30000);
 }
 
+function seedanceProviderAdapterAuthHeader(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER
+    : process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_AUTH_HEADER?.trim()
+    || 'authorization';
+}
+
+function seedanceProviderAdapterAuthScheme(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME
+    : process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_AUTH_SCHEME?.trim()
+    || 'Bearer';
+}
+
+function seedanceProviderAdapterToken(kind: 'submit' | 'poll'): string | undefined {
+  if (kind === 'submit') {
+    return process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN?.trim()
+      || process.env.SEEDANCE_PROVIDER_API_TOKEN?.trim()
+      || undefined;
+  }
+  return process.env.SEEDANCE_PROVIDER_API_TOKEN?.trim() || undefined;
+}
+
+function seedanceProviderAdapterAuthValue(token: string, scheme: string): string {
+  const normalized = scheme.trim();
+  if (!normalized || ['raw', 'none', 'no_scheme'].includes(normalized.toLowerCase())) return token;
+  return `${normalized} ${token}`;
+}
+
+function applySeedanceProviderAdapterAuthHeader(
+  headers: Record<string, string>,
+  kind: 'submit' | 'poll',
+): void {
+  const token = seedanceProviderAdapterToken(kind);
+  if (!token) return;
+  headers[seedanceProviderAdapterAuthHeader(kind)] = seedanceProviderAdapterAuthValue(
+    token,
+    seedanceProviderAdapterAuthScheme(kind),
+  );
+}
+
 function seedanceProviderSubmitResultArray(payload: unknown): unknown[] | undefined {
   return seedanceProviderResultArray(payload);
 }
@@ -1293,9 +1338,7 @@ async function querySeedanceProviderSubmitAdapter(input: {
   const timer = setTimeout(() => controller.abort(), seedanceProviderSubmitTimeoutMs());
   try {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
-    const token = process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN?.trim()
-      || process.env.SEEDANCE_PROVIDER_API_TOKEN?.trim();
-    if (token) headers.authorization = `Bearer ${token}`;
+    applySeedanceProviderAdapterAuthHeader(headers, 'submit');
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -1417,8 +1460,7 @@ async function querySeedanceProviderPollAdapter(input: {
   const timer = setTimeout(() => controller.abort(), seedanceProviderPollTimeoutMs());
   try {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
-    const token = process.env.SEEDANCE_PROVIDER_API_TOKEN?.trim();
-    if (token) headers.authorization = `Bearer ${token}`;
+    applySeedanceProviderAdapterAuthHeader(headers, 'poll');
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,

@@ -56,6 +56,18 @@ npm run start          # node dist/index.js
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `SEEDANCE_CALLBACK_SECRET` | 空 | 配置后，Seedance 生产回调必须携带 `x-seedance-callback-secret` 或 `Authorization: Bearer <secret>` |
+| `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` | 空 | 单故事 Seedance provider submit worker 地址 |
+| `SEEDANCE_PROVIDER_POLL_ENDPOINT` | 空 | 单故事 Seedance provider poll/query worker 地址 |
+| `SEEDANCE_PROVIDER_SUBMIT_API_TOKEN` | 空 | submit worker 专用 token；未配置时回落到 `SEEDANCE_PROVIDER_API_TOKEN` |
+| `SEEDANCE_PROVIDER_API_TOKEN` | 空 | submit/poll worker 通用 token |
+| `SEEDANCE_PROVIDER_AUTH_HEADER` | `authorization` | submit/poll worker 通用鉴权 header 名 |
+| `SEEDANCE_PROVIDER_AUTH_SCHEME` | `Bearer` | submit/poll worker 通用鉴权 scheme；设为 `raw` / `none` / `no_scheme` 时发送裸 token |
+| `SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER` | 空 | submit worker 专用鉴权 header 名，优先于通用 header |
+| `SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME` | 空 | submit worker 专用鉴权 scheme，优先于通用 scheme |
+| `SEEDANCE_PROVIDER_POLL_AUTH_HEADER` | 空 | poll worker 专用鉴权 header 名，优先于通用 header |
+| `SEEDANCE_PROVIDER_POLL_AUTH_SCHEME` | 空 | poll worker 专用鉴权 scheme，优先于通用 scheme |
+| `SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS` | `30000` | submit worker 请求超时毫秒数，最大 60000 |
+| `SEEDANCE_PROVIDER_POLL_TIMEOUT_MS` | `30000` | poll worker 请求超时毫秒数，最大 30000 |
 
 Seedance 系列镜头生产回调地址为 `/api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-callback`。回调可用 `job_id` / `provider_job_id` 定位镜头，也可用 `episode_no + shot_id` 定位；支持回写 `video_url`、失败原因、质量分和评审备注。
 
