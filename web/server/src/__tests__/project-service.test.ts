@@ -14,6 +14,7 @@ import {
   exportProjectSeedanceRetryPackage,
   getProject,
   getProjectSeedanceProviderQueueOverview,
+  getProjectSeedanceProviderRetryPlan,
   getProjectProductionBoard,
   importProjectSeedanceAssetBatch,
   importProjectSeedanceProviderCallback,
@@ -1146,6 +1147,92 @@ describe('project-service', () => {
         suggested_action: '等待限流窗口恢复后再重新提交。',
       }),
     ]));
+  });
+
+  it('builds a Seedance provider retry plan with resubmit and blocked candidates', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'provider-retry-plan-test',
+      queue_id: 'provider-retry-plan-queue-001',
+      note: 'provider retry plan 测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+
+    const callbackRes = await importProjectSeedanceShotCallbacks(enriched.project_id!, {
+      callbacks: [{
+        jobId: 'provider-retry-plan-test-shot-2',
+        status: 'failed',
+        errorCode: 'ASSET_MISSING',
+        error: '缺少参考素材文件',
+      }],
+    });
+    expect(callbackRes.ok).toBe(true);
+
+    const projectFile = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'project.json');
+    const staleProject = JSON.parse(await readFile(projectFile, 'utf8')) as StoryProjectMeta;
+    staleProject.seedance_shot_ledger = {
+      ...staleProject.seedance_shot_ledger!,
+      items: staleProject.seedance_shot_ledger!.items.map(item =>
+        item.shot_id === 'shot-1'
+          ? {
+              ...item,
+              submitted_at: '2026-06-09T10:00:00.000Z',
+              updated_at: '2026-06-09T10:00:00.000Z',
+            }
+          : item
+      ),
+    };
+    await writeFile(projectFile, JSON.stringify(staleProject, null, 2));
+
+    const retryPlanRes = await getProjectSeedanceProviderRetryPlan(enriched.project_id!, {
+      provider: 'seedance',
+      queue_id: 'provider-retry-plan-queue-001',
+      timeout_minutes: 60,
+      max_retry_count: 3,
+    });
+    expect(retryPlanRes.ok).toBe(true);
+    expect(retryPlanRes.data).toMatchObject({
+      provider: 'seedance',
+      queue_id: 'provider-retry-plan-queue-001',
+      timeout_minutes: 60,
+      max_retry_count: 3,
+      candidate_count: 2,
+      resubmittable_count: 1,
+      blocked_count: 1,
+      high_priority_count: 1,
+      reason_counts: {
+        failed: 1,
+        timed_out: 1,
+        ready_missing_video: 0,
+        unsubmitted: 0,
+      },
+    });
+    expect(retryPlanRes.data?.candidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        shot_id: 'shot-1',
+        retry_reason: 'timed_out',
+        priority: 'high',
+        can_resubmit: true,
+      }),
+      expect.objectContaining({
+        shot_id: 'shot-2',
+        retry_reason: 'failed',
+        priority: 'normal',
+        failure_category: 'asset_missing',
+        provider_error_code: 'ASSET_MISSING',
+        can_resubmit: false,
+        block_reason: '素材缺失，补齐或重新绑定素材后再提交。',
+      }),
+    ]));
+    expect(retryPlanRes.data?.markdown).toContain('Seedance provider 人工重试策略');
+    expect(retryPlanRes.data?.markdown).toContain('可直接重提: 1');
   });
 
   it('queries a configured Seedance provider adapter and applies returned statuses', async () => {

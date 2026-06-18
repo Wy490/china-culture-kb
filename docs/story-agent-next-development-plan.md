@@ -9,10 +9,10 @@
 | 模块 | 当前判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
-| Production Board / GEARS / Seedance | 约 94% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter 和 provider 队列状态总览首版已完成。 |
+| Production Board / GEARS / Seedance | 约 94% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、provider 队列状态总览和人工重试策略首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划已有；字幕、混音、片头片尾、final delivery 待做。 |
-| 可商用制作中台 | 约 40% | 主链路可用；还缺 UX 降噪、真实外部 provider、人工重试策略、审片返修和稳定压测。 |
+| 可商用制作中台 | 约 40% | 主链路可用；还缺 UX 降噪、真实外部 provider、重试执行自动化、审片返修和稳定压测。 |
 
 ## 2. 本轮完成内容
 
@@ -71,13 +71,18 @@
   - 批次汇总会从当前 Shot Ledger 回看 ready/failed/active/timed_out 状态，避免只依赖提交时的 batch 原始状态。
   - 注意项按超时、失败、处理中、已提交优先排序，并带出失败分类、provider 错误码和复用的重试建议。
   - 项目详情页 Seedance Shot Ledger 已接入“Provider 队列健康”条，显示批次、活跃、完成、失败、可重试、超时和注意项，并支持手动刷新。
+- Seedance provider 人工重试策略首版：
+  - 新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-retry-plan`。
+  - 可按 `provider` / `queue_id` / `timeout_minutes` / `max_retry_count` / 失败分类过滤，返回失败、超时、完成但缺视频和可选未提交镜头。
+  - 每个候选镜头会标注优先级、重试原因、是否可直接重提、阻断原因、失败分类、provider 错误码和建议动作。
+  - Markdown 输出可直接给人工制作或外部 worker 复核。
 
 ### 文档同步
 
 - 更新 `docs/story-agent-next-conversation-handoff.md`。
 - 更新 `docs/story-agent-production-workbench-development-plan.md`。
 - 更新 `开发文档/story-agent-mcp-quality-delivery-implementation-plan.md`。
-- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”；外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter 和队列状态总览已完成首版。
+- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”；外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、队列状态总览和人工重试策略已完成首版。
 
 ## 3. 已验证命令
 
@@ -92,7 +97,7 @@ git diff --check
 最近一次结果：
 
 - `web/client`：lint passed。
-- `web/server`：lint passed；`project-service.test.ts` 29 passed，`api.test.ts` 85 passed；全量 24 files / 235 tests passed。
+- `web/server`：lint passed；`project-service.test.ts` 30 passed，`api.test.ts` 85 passed；全量 24 files / 236 tests passed。
 - `web/client`：lint passed；ProjectDetail provider overview API smoke 通过，提交 5 条 provider 任务后 overview 返回 5 个总镜头 / 5 个活跃 / 5 个注意项。
 - `git diff --check`：passed。
 
@@ -120,7 +125,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-新增 Seedance provider 队列状态总览
+新增 Seedance provider 人工重试策略
 ```
 
 ### P0：Seedance provider 平台专用 adapter
@@ -132,6 +137,7 @@ git diff --stat
 - provider 失败分类和错误码传递已完成首版，后续真实 adapter 只需补平台错误码映射。
 - 通用 submit/poll adapter 已完成首版，可通过 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` / `SEEDANCE_PROVIDER_POLL_ENDPOINT` 连接外部 worker。
 - 队列状态总览已完成首版，可直接读取 provider/queue 健康度、超时和失败注意项。
+- 人工重试策略已完成只读首版，可直接输出可重提/需先处理的候选镜头清单。
 - 下一步支持具体 Seedance / 外部 provider 的平台 SDK/HTTP 实现、鉴权参数和平台错误码映射。
 - 将真实回传结果接入现有超时恢复、失败分类和重试包链路。
 

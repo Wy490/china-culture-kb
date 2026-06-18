@@ -15,6 +15,7 @@ import {
   SeedanceShotProviderCallbackRequestSchema,
   SeedanceShotProviderPollRequestSchema,
   SeedanceShotProviderQueueOverviewRequestSchema,
+  SeedanceShotProviderRetryPlanRequestSchema,
   SeedanceShotProviderRecoveryRequestSchema,
   SeedanceShotProviderSubmitRequestSchema,
   SeedanceShotStatusBatchUpdateRequestSchema,
@@ -34,6 +35,7 @@ import {
   exportProjectSeedanceRetryPackage,
   getProject,
   getProjectSeedanceProviderQueueOverview,
+  getProjectSeedanceProviderRetryPlan,
   getProjectProductionBoard,
   listProjectSeedanceGlobalAssetLibrary,
   importProjectSeedanceAssetBatch,
@@ -433,6 +435,21 @@ projectsRouter.post(
     try {
       const { projectId } = req.params as { projectId: string };
       const result = await getProjectSeedanceProviderQueueOverview(projectId, req.body);
+      res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-shots/provider-retry-plan',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceShotProviderRetryPlanRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await getProjectSeedanceProviderRetryPlan(projectId, req.body);
       res.status(result.ok ? 200 : 404).json(result);
     } catch (err) {
       next(err);

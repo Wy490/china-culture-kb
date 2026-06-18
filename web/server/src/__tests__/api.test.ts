@@ -1126,6 +1126,37 @@ describe('Projects API', () => {
           provider_error_code: 'ASSET_MISSING',
         }),
       ]);
+
+      const retryPlanRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-retry-plan`)
+        .send({
+          provider: 'seedance',
+          queue_id: 'api-provider-poll-queue-001',
+          timeout_minutes: 1,
+        });
+      expect(retryPlanRes.status).toBe(200);
+      expectSuccess(retryPlanRes.body);
+      expect(retryPlanRes.body.data).toMatchObject({
+        provider: 'seedance',
+        queue_id: 'api-provider-poll-queue-001',
+        candidate_count: 1,
+        resubmittable_count: 0,
+        blocked_count: 1,
+        reason_counts: {
+          failed: 1,
+          timed_out: 0,
+          ready_missing_video: 0,
+          unsubmitted: 0,
+        },
+      });
+      expect(retryPlanRes.body.data.candidates).toEqual([
+        expect.objectContaining({
+          shot_id: 'shot-2',
+          retry_reason: 'failed',
+          failure_category: 'asset_missing',
+          can_resubmit: false,
+        }),
+      ]);
     });
 
     it('imports Seedance callbacks and exports a retry package', async () => {

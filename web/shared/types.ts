@@ -1647,6 +1647,62 @@ export interface SeedanceShotProviderQueueOverviewResult {
   attention_items: SeedanceShotProviderQueueAttentionItem[];
 }
 
+export type SeedanceShotProviderRetryPlanReason =
+  | 'failed'
+  | 'timed_out'
+  | 'ready_missing_video'
+  | 'unsubmitted';
+
+export type SeedanceShotProviderRetryPlanPriority = 'high' | 'normal' | 'low';
+
+export interface SeedanceShotProviderRetryPlanRequest {
+  provider?: string;
+  queue_id?: string;
+  timeout_minutes?: number;
+  max_retry_count?: number;
+  include_unsubmitted?: boolean;
+  failure_categories?: SeedanceProviderFailureCategory[];
+}
+
+export interface SeedanceShotProviderRetryPlanCandidate {
+  shot_id: string;
+  source_scene_id?: number;
+  status: SeedanceShotProductionStatus;
+  retry_reason: SeedanceShotProviderRetryPlanReason;
+  priority: SeedanceShotProviderRetryPlanPriority;
+  provider?: string;
+  provider_job_id?: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
+  submitted_at?: string;
+  updated_at: string;
+  minutes_waiting: number;
+  retry_count: number;
+  failure_reason?: string;
+  failure_category?: SeedanceProviderFailureCategory;
+  provider_error_code?: string;
+  suggested_action: string;
+  can_resubmit: boolean;
+  block_reason?: string;
+}
+
+export interface SeedanceShotProviderRetryPlanResult {
+  project: StoryProjectMeta;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  provider?: string;
+  queue_id?: string;
+  generated_at: string;
+  timeout_minutes: number;
+  max_retry_count?: number;
+  candidate_count: number;
+  resubmittable_count: number;
+  blocked_count: number;
+  high_priority_count: number;
+  reason_counts: Record<SeedanceShotProviderRetryPlanReason, number>;
+  candidates: SeedanceShotProviderRetryPlanCandidate[];
+  markdown: string;
+}
+
 export interface SeedanceShotRetryPrompt {
   duration_sec: number;
   characters: string[];

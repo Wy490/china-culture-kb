@@ -51,6 +51,11 @@ import type {
   SeedanceShotProviderQueueBatchOverview,
   SeedanceShotProviderQueueOverviewRequest,
   SeedanceShotProviderQueueOverviewResult,
+  SeedanceShotProviderRetryPlanCandidate,
+  SeedanceShotProviderRetryPlanPriority,
+  SeedanceShotProviderRetryPlanReason,
+  SeedanceShotProviderRetryPlanRequest,
+  SeedanceShotProviderRetryPlanResult,
   SeedanceShotRetryPackage,
   SeedanceShotRetryPackageShot,
   SeedanceShotAutoSelectRequest,
@@ -777,6 +782,121 @@ function seedanceProviderAttentionSort(
     return 5;
   };
   return rank(a) - rank(b)
+    || b.minutes_waiting - a.minutes_waiting
+    || (a.provider_queue_position ?? 0) - (b.provider_queue_position ?? 0)
+    || (a.source_scene_id ?? 0) - (b.source_scene_id ?? 0)
+    || a.shot_id.localeCompare(b.shot_id, 'zh-Hans-CN');
+}
+
+function seedanceProviderEmptyRetryReasonCounts(): Record<SeedanceShotProviderRetryPlanReason, number> {
+  return {
+    failed: 0,
+    timed_out: 0,
+    ready_missing_video: 0,
+    unsubmitted: 0,
+  };
+}
+
+function seedanceProviderRetryBlockReason(item: SeedanceShotLedgerItem): string | undefined {
+  if (item.status === 'ready' && !item.video_url) return '状态已完成但缺少视频 URL，建议先向平台补拉结果。';
+  if (item.failure_category === 'asset_missing') return '素材缺失，补齐或重新绑定素材后再提交。';
+  if (item.failure_category === 'prompt_invalid') return '提示词或参数非法，修正 Seedance 提示词后再提交。';
+  if (item.failure_category === 'content_policy') return '内容审核未通过，调整敏感或版权相关表达后再提交。';
+  if (item.failure_category === 'provider_quota') return 'provider 额度或余额不足，恢复额度后再提交。';
+  if (item.failure_category === 'provider_auth') return 'provider 鉴权或权限失败，修复凭证后再提交。';
+  return undefined;
+}
+
+function seedanceProviderRetryReason(input: {
+  item: SeedanceShotLedgerItem;
+  timeoutMinutes: number;
+  nowMs: number;
+  includeUnsubmitted: boolean;
+}): SeedanceShotProviderRetryPlanReason | undefined {
+  if (input.item.status === 'failed') return 'failed';
+  if (
+    seedanceProviderIsActiveStatus(input.item.status)
+    && seedanceShotWaitingMinutes(input.item, input.nowMs) >= input.timeoutMinutes
+  ) {
+    return 'timed_out';
+  }
+  if (input.item.status === 'ready' && !input.item.video_url) return 'ready_missing_video';
+  if (
+    input.includeUnsubmitted
+    && (input.item.status === 'not_started' || input.item.status === 'prompt_exported')
+  ) {
+    return 'unsubmitted';
+  }
+  return undefined;
+}
+
+function seedanceProviderRetryPriority(
+  reason: SeedanceShotProviderRetryPlanReason,
+  item: SeedanceShotLedgerItem,
+): SeedanceShotProviderRetryPlanPriority {
+  if (reason === 'timed_out') return 'high';
+  if (reason === 'failed') {
+    if (
+      item.failure_category === 'provider_timeout'
+      || item.failure_category === 'provider_rate_limit'
+      || item.failure_category === 'provider_server_error'
+      || item.failure_category === 'network_error'
+    ) {
+      return 'high';
+    }
+    return 'normal';
+  }
+  if (reason === 'ready_missing_video') return 'normal';
+  return 'low';
+}
+
+function seedanceProviderRetryCandidate(input: {
+  item: SeedanceShotLedgerItem;
+  reason: SeedanceShotProviderRetryPlanReason;
+  timeoutMinutes: number;
+  nowMs: number;
+  maxRetryCount?: number;
+}): SeedanceShotProviderRetryPlanCandidate {
+  const blockReason = seedanceProviderRetryBlockReason(input.item);
+  const maxRetryBlocked = typeof input.maxRetryCount === 'number'
+    && input.item.retry_count >= input.maxRetryCount;
+  const canResubmit = !blockReason && !maxRetryBlocked && input.reason !== 'ready_missing_video';
+  return {
+    shot_id: input.item.shot_id,
+    source_scene_id: input.item.source_scene_id,
+    status: input.item.status,
+    retry_reason: input.reason,
+    priority: seedanceProviderRetryPriority(input.reason, input.item),
+    provider: input.item.provider,
+    provider_job_id: input.item.provider_job_id,
+    provider_queue_id: input.item.provider_queue_id,
+    provider_queue_position: input.item.provider_queue_position,
+    submitted_at: input.item.submitted_at,
+    updated_at: input.item.updated_at,
+    minutes_waiting: seedanceShotWaitingMinutes(input.item, input.nowMs),
+    retry_count: input.item.retry_count,
+    failure_reason: input.item.failure_reason,
+    failure_category: input.item.failure_category,
+    provider_error_code: input.item.provider_error_code,
+    suggested_action: seedanceShotRetrySuggestedAction(input.item),
+    can_resubmit: canResubmit,
+    block_reason: maxRetryBlocked
+      ? `已达到最大重试次数 ${input.maxRetryCount}`
+      : blockReason,
+  };
+}
+
+function seedanceProviderRetryCandidateSort(
+  a: SeedanceShotProviderRetryPlanCandidate,
+  b: SeedanceShotProviderRetryPlanCandidate,
+): number {
+  const priorityRank: Record<SeedanceShotProviderRetryPlanPriority, number> = {
+    high: 0,
+    normal: 1,
+    low: 2,
+  };
+  return priorityRank[a.priority] - priorityRank[b.priority]
+    || Number(b.can_resubmit) - Number(a.can_resubmit)
     || b.minutes_waiting - a.minutes_waiting
     || (a.provider_queue_position ?? 0) - (b.provider_queue_position ?? 0)
     || (a.source_scene_id ?? 0) - (b.source_scene_id ?? 0)
@@ -2956,6 +3076,82 @@ export async function getProjectSeedanceProviderQueueOverview(
   });
 }
 
+export async function getProjectSeedanceProviderRetryPlan(
+  projectId: string,
+  request: SeedanceShotProviderRetryPlanRequest = {},
+): Promise<ApiResponse<SeedanceShotProviderRetryPlanResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const provider = request.provider?.trim();
+  const queueId = request.queue_id?.trim();
+  const timeoutMinutes = request.timeout_minutes ?? 120;
+  const generatedAt = new Date().toISOString();
+  const nowMs = Date.parse(generatedAt);
+  const failureCategories = request.failure_categories?.length
+    ? new Set(request.failure_categories)
+    : undefined;
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const currentLedger = syncSeedanceShotLedgerWithShots({
+    ledger: project.seedance_shot_ledger,
+    shotUnits: board.shot_units,
+    generatedAt: board.generated_at,
+  });
+  const candidates = currentLedger.items
+    .filter(item => seedanceProviderMatchesOverviewFilter({ item, provider, queueId }))
+    .filter(item => !failureCategories || (item.failure_category && failureCategories.has(item.failure_category)))
+    .reduce<SeedanceShotProviderRetryPlanCandidate[]>((items, item) => {
+      const reason = seedanceProviderRetryReason({
+        item,
+        timeoutMinutes,
+        nowMs,
+        includeUnsubmitted: Boolean(request.include_unsubmitted),
+      });
+      if (!reason) return items;
+      items.push(seedanceProviderRetryCandidate({
+        item,
+        reason,
+        timeoutMinutes,
+        nowMs,
+        maxRetryCount: request.max_retry_count,
+      }));
+      return items;
+    }, [])
+    .sort(seedanceProviderRetryCandidateSort);
+  const reasonCounts = seedanceProviderEmptyRetryReasonCounts();
+  candidates.forEach(candidate => {
+    reasonCounts[candidate.retry_reason] += 1;
+  });
+  const basePlan: Omit<SeedanceShotProviderRetryPlanResult, 'markdown'> = {
+    project,
+    seedance_shot_ledger: currentLedger,
+    provider,
+    queue_id: queueId,
+    generated_at: generatedAt,
+    timeout_minutes: timeoutMinutes,
+    max_retry_count: request.max_retry_count,
+    candidate_count: candidates.length,
+    resubmittable_count: candidates.filter(candidate => candidate.can_resubmit).length,
+    blocked_count: candidates.filter(candidate => !candidate.can_resubmit).length,
+    high_priority_count: candidates.filter(candidate => candidate.priority === 'high').length,
+    reason_counts: reasonCounts,
+    candidates,
+  };
+  return success({
+    ...basePlan,
+    markdown: buildSeedanceProviderRetryPlanMarkdown(basePlan),
+  });
+}
+
 export async function exportProjectSeedanceRetryPackage(
   projectId: string,
 ): Promise<ApiResponse<SeedanceShotRetryPackage>> {
@@ -3363,6 +3559,66 @@ function buildSeedanceShotLedgerMarkdown(board: StoryProductionBoard): string {
       '',
     ]),
   ];
+  return lines.join('\n');
+}
+
+function seedanceProviderRetryReasonText(reason: SeedanceShotProviderRetryPlanReason): string {
+  const map: Record<SeedanceShotProviderRetryPlanReason, string> = {
+    failed: '失败回片',
+    timed_out: '等待超时',
+    ready_missing_video: '完成但缺视频',
+    unsubmitted: '尚未提交',
+  };
+  return map[reason];
+}
+
+function buildSeedanceProviderRetryPlanMarkdown(
+  plan: Omit<SeedanceShotProviderRetryPlanResult, 'markdown'>,
+): string {
+  const lines = [
+    `# ${plan.project.title} — Seedance provider 人工重试策略`,
+    '',
+    `> projectId: ${plan.project.project_id}`,
+    `> generatedAt: ${plan.generated_at}`,
+    `> provider: ${plan.provider ?? '全部'}`,
+    `> queueId: ${plan.queue_id ?? '全部'}`,
+    `> timeoutMinutes: ${plan.timeout_minutes}`,
+    typeof plan.max_retry_count === 'number' ? `> maxRetryCount: ${plan.max_retry_count}` : '> maxRetryCount: 未限制',
+    '',
+    '## 摘要',
+    '',
+    `- 候选镜头: ${plan.candidate_count}`,
+    `- 可直接重提: ${plan.resubmittable_count}`,
+    `- 需先处理: ${plan.blocked_count}`,
+    `- 高优先级: ${plan.high_priority_count}`,
+    `- 原因分布: 失败 ${plan.reason_counts.failed}；超时 ${plan.reason_counts.timed_out}；缺视频 ${plan.reason_counts.ready_missing_video}；未提交 ${plan.reason_counts.unsubmitted}`,
+    '',
+    '## 候选镜头',
+  ];
+  if (!plan.candidates.length) {
+    lines.push('', '- 暂无需要人工重试的镜头。');
+    return lines.join('\n');
+  }
+  for (const item of plan.candidates) {
+    lines.push(
+      '',
+      `### ${item.shot_id} / 场景 ${item.source_scene_id ?? '未记录'}`,
+      '',
+      `- 优先级: ${item.priority}`,
+      `- 原因: ${seedanceProviderRetryReasonText(item.retry_reason)}`,
+      `- 状态: ${seedanceShotStatusText(item.status)}`,
+      `- 可直接重提: ${item.can_resubmit ? '是' : '否'}`,
+      item.block_reason ? `- 阻断原因: ${item.block_reason}` : '- 阻断原因: 无',
+      `- 等待时间: ${item.minutes_waiting} 分钟`,
+      `- 重试次数: ${item.retry_count}`,
+      `- provider job: ${item.provider_job_id ?? '未记录'}`,
+      `- queue: ${item.provider_queue_id ?? '未记录'}${item.provider_queue_position ? ` #${item.provider_queue_position}` : ''}`,
+      `- 失败分类: ${item.failure_category ?? '未分类'}`,
+      `- Provider 错误码: ${item.provider_error_code ?? '未记录'}`,
+      `- 失败原因: ${item.failure_reason ?? '未记录'}`,
+      `- 建议动作: ${item.suggested_action}`,
+    );
+  }
   return lines.join('\n');
 }
 
