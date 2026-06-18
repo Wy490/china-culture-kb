@@ -188,6 +188,50 @@
                 {{ seedanceProviderAttentionText(item) }}
               </small>
             </div>
+            <details
+              v-if="seedanceProviderRetryPlan"
+              class="project-detail-page__seedance-provider-retry-plan"
+            >
+              <summary>
+                人工重试策略 · 候选 {{ seedanceProviderRetryPlan.candidate_count }}
+                · 可重提 {{ seedanceProviderRetryPlan.resubmittable_count }}
+                · 需先处理 {{ seedanceProviderRetryPlan.blocked_count }}
+              </summary>
+              <div class="project-detail-page__seedance-ledger-action-row">
+                <button
+                  class="project-detail-page__repair-task-btn"
+                  :disabled="loadingSeedanceProviderRetryPlan"
+                  @click="loadSeedanceProviderRetryPlan(true)"
+                >
+                  {{ loadingSeedanceProviderRetryPlan ? '刷新中…' : '刷新策略' }}
+                </button>
+                <button
+                  class="project-detail-page__repair-task-btn"
+                  :disabled="!seedanceProviderRetryPlan.candidate_count"
+                  @click="exportSeedanceProviderRetryPlanMarkdown"
+                >
+                  导出策略 MD
+                </button>
+              </div>
+              <div class="project-detail-page__seedance-provider-overview-metrics">
+                <span>高优先 {{ seedanceProviderRetryPlan.high_priority_count }}</span>
+                <span>失败 {{ seedanceProviderRetryPlan.reason_counts.failed }}</span>
+                <span>超时 {{ seedanceProviderRetryPlan.reason_counts.timed_out }}</span>
+                <span>缺视频 {{ seedanceProviderRetryPlan.reason_counts.ready_missing_video }}</span>
+              </div>
+              <div
+                v-if="seedanceProviderRetryPlan.candidates.length"
+                class="project-detail-page__seedance-provider-attention"
+              >
+                <small
+                  v-for="item in seedanceProviderRetryPlan.candidates.slice(0, 4)"
+                  :key="`${item.shot_id}-${item.retry_reason}-${item.updated_at}`"
+                  :title="item.block_reason ?? item.suggested_action"
+                >
+                  {{ seedanceProviderRetryCandidateText(item) }}
+                </small>
+              </div>
+            </details>
           </div>
           <details class="project-detail-page__seedance-shot-ledger-actions">
             <summary>回传与重试</summary>
@@ -875,6 +919,7 @@ import {
   exportProjectSeedanceRetryPackage,
   getProjectSeedanceGlobalAssetLibrary,
   getProjectSeedanceProviderQueueOverview,
+  getProjectSeedanceProviderRetryPlan,
   getProject,
   getProjectProductionBoard,
   importProjectSeedanceAssetBatch,
@@ -908,6 +953,7 @@ import type {
   SeedanceShotCallbackImportRequest,
   SeedanceShotLedgerItem,
   SeedanceShotProviderQueueOverviewResult,
+  SeedanceShotProviderRetryPlanResult,
   SeedanceShotProductionStatus,
   SeedanceShotVideoVersion,
   StoryProjectDetail,
@@ -977,6 +1023,8 @@ const submittingSeedanceProvider = ref(false)
 const recoveringSeedanceProvider = ref(false)
 const loadingSeedanceProviderOverview = ref(false)
 const seedanceProviderOverview = ref<SeedanceShotProviderQueueOverviewResult | null>(null)
+const loadingSeedanceProviderRetryPlan = ref(false)
+const seedanceProviderRetryPlan = ref<SeedanceShotProviderRetryPlanResult | null>(null)
 const selectingSeedanceVersionId = ref('')
 
 const selectedModelProfile = computed(() => {
@@ -1396,6 +1444,23 @@ function seedanceProviderAttentionText(item: SeedanceShotProviderQueueOverviewRe
   return `${item.shot_id}${queueText ? ` ${queueText}` : ''} · ${seedanceShotStatusLabel(item.status)}${failureText}${waitText}`
 }
 
+function seedanceRetryReasonLabel(reason: SeedanceShotProviderRetryPlanResult['candidates'][number]['retry_reason']): string {
+  const map: Record<SeedanceShotProviderRetryPlanResult['candidates'][number]['retry_reason'], string> = {
+    failed: '失败回片',
+    timed_out: '等待超时',
+    ready_missing_video: '缺视频',
+    unsubmitted: '未提交',
+  }
+  return map[reason]
+}
+
+function seedanceProviderRetryCandidateText(item: SeedanceShotProviderRetryPlanResult['candidates'][number]): string {
+  const resubmitText = item.can_resubmit ? '可重提' : '先处理'
+  const queueText = item.provider_queue_position ? ` #${item.provider_queue_position}` : ''
+  const failureText = item.failure_category ? ` · ${seedanceFailureCategoryLabel(item.failure_category)}` : ''
+  return `${item.shot_id}${queueText} · ${seedanceRetryReasonLabel(item.retry_reason)} · ${resubmitText}${failureText}`
+}
+
 function versionLabel(type: StoryProjectVersionChangeType): string {
   if (type === 'initial_generation') return '初次生成'
   if (type === 'quality_repair') return '质量修复'
@@ -1421,6 +1486,7 @@ async function loadProject(projectId: string) {
     productionRepairResult.value = null
     productionRepairTrace.value = null
     seedanceProviderOverview.value = null
+    seedanceProviderRetryPlan.value = null
     seedanceGlobalAssets.value = []
     showQualityScenesOnly.value = false
     if (!selectedModelProfileId.value && res.data.current_story.model_profile_id) {
@@ -1464,6 +1530,7 @@ async function loadProductionBoard() {
     productionRepairTrace.value = null
     await loadSeedanceGlobalAssets()
     await loadSeedanceProviderOverview()
+    await loadSeedanceProviderRetryPlan()
     successMessage.value = `Production Board 已生成：${res.data.shot_units.length} 个镜头单元`
   } else {
     error.value = res.error?.message ?? '生成 Production Board 失败'
@@ -1493,6 +1560,31 @@ async function loadSeedanceProviderOverview(showMessage = false) {
     error.value = res.error?.message ?? '刷新 Seedance provider 队列失败'
   }
   loadingSeedanceProviderOverview.value = false
+}
+
+async function loadSeedanceProviderRetryPlan(showMessage = false) {
+  if (!detail.value || loadingSeedanceProviderRetryPlan.value) return
+  loadingSeedanceProviderRetryPlan.value = true
+  if (showMessage) {
+    error.value = ''
+    successMessage.value = ''
+  }
+  const latestBatch = latestSeedanceProviderQueueBatch.value
+  const res = await getProjectSeedanceProviderRetryPlan(detail.value.project.project_id, {
+    provider: latestBatch?.provider,
+    queue_id: latestBatch?.queue_id,
+    timeout_minutes: 120,
+    max_retry_count: 3,
+  })
+  if (res.ok && res.data) {
+    seedanceProviderRetryPlan.value = res.data
+    if (showMessage) {
+      successMessage.value = `Seedance provider 重试策略已刷新：候选 ${res.data.candidate_count} 条`
+    }
+  } else if (showMessage) {
+    error.value = res.error?.message ?? '刷新 Seedance provider 重试策略失败'
+  }
+  loadingSeedanceProviderRetryPlan.value = false
 }
 
 async function bindSeedanceAsset(asset: SeedanceAssetBindingItem) {
@@ -1886,6 +1978,20 @@ async function exportSeedanceRetryPackageJson() {
     error.value = res.error?.message ?? '导出 Seedance 重试包失败'
   }
   exportingSeedanceRetryPackage.value = false
+}
+
+async function exportSeedanceProviderRetryPlanMarkdown() {
+  if (!detail.value) return
+  if (!seedanceProviderRetryPlan.value) {
+    await loadSeedanceProviderRetryPlan()
+  }
+  if (!seedanceProviderRetryPlan.value) return
+  downloadText(
+    `${detail.value.project.project_id}-seedance-provider-retry-plan.md`,
+    seedanceProviderRetryPlan.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = `Seedance provider 重试策略已导出 · ${seedanceProviderRetryPlan.value.candidate_count} 个候选`
 }
 
 function openSceneEditor(sceneId: number) {
@@ -2742,6 +2848,18 @@ watch(selectedModelProfileId, (value) => {
 .project-detail-page__seedance-provider-attention small {
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+
+.project-detail-page__seedance-provider-retry-plan {
+  border-top: 1px solid #edf1f4;
+  padding-top: 8px;
+}
+
+.project-detail-page__seedance-provider-retry-plan summary {
+  cursor: pointer;
+  color: #34495e;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .project-detail-page__seedance-shot-ledger-actions {

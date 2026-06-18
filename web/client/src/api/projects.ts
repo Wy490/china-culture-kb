@@ -24,6 +24,8 @@ import type {
   SeedanceShotProviderPollResult,
   SeedanceShotProviderQueueOverviewRequest,
   SeedanceShotProviderQueueOverviewResult,
+  SeedanceShotProviderRetryPlanRequest,
+  SeedanceShotProviderRetryPlanResult,
   SeedanceShotProviderRecoveryRequest,
   SeedanceShotProviderRecoveryResult,
   SeedanceShotProviderSubmitRequest,
@@ -116,6 +118,10 @@ export function pollProjectSeedanceProviderQueue(projectId: string, body: Seedan
 
 export function getProjectSeedanceProviderQueueOverview(projectId: string, body: SeedanceShotProviderQueueOverviewRequest = {}) {
   return apiPost<SeedanceShotProviderQueueOverviewResult>(`/projects/${projectId}/production-board/seedance-shots/provider-overview`, body)
+}
+
+export function getProjectSeedanceProviderRetryPlan(projectId: string, body: SeedanceShotProviderRetryPlanRequest = {}) {
+  return apiPost<SeedanceShotProviderRetryPlanResult>(`/projects/${projectId}/production-board/seedance-shots/provider-retry-plan`, body)
 }
 
 export function selectProjectSeedanceShotVersion(projectId: string, body: SeedanceShotVersionSelectRequest) {
