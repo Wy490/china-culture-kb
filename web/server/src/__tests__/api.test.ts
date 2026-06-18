@@ -1088,6 +1088,44 @@ describe('Projects API', () => {
         failure_category: 'asset_missing',
         provider_error_code: 'ASSET_MISSING',
       });
+
+      const overviewRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-overview`)
+        .send({
+          provider: 'seedance',
+          queue_id: 'api-provider-poll-queue-001',
+          timeout_minutes: 1,
+        });
+      expect(overviewRes.status).toBe(200);
+      expectSuccess(overviewRes.body);
+      expect(overviewRes.body.data).toMatchObject({
+        provider: 'seedance',
+        queue_id: 'api-provider-poll-queue-001',
+        total_shot_count: 2,
+        active_count: 0,
+        ready_count: 1,
+        failed_count: 1,
+        retryable_count: 1,
+        timed_out_count: 0,
+        attention_count: 1,
+        latest_queue_batch: {
+          queue_id: 'api-provider-poll-queue-001',
+          ready_count: 1,
+          failed_item_count: 1,
+        },
+      });
+      expect(overviewRes.body.data.status_counts).toMatchObject({
+        ready: 1,
+        failed: 1,
+      });
+      expect(overviewRes.body.data.attention_items).toEqual([
+        expect.objectContaining({
+          shot_id: 'shot-2',
+          status: 'failed',
+          failure_category: 'asset_missing',
+          provider_error_code: 'ASSET_MISSING',
+        }),
+      ]);
     });
 
     it('imports Seedance callbacks and exports a retry package', async () => {

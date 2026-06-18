@@ -1580,6 +1580,73 @@ export interface SeedanceShotProviderPollResult {
   failures: SeedanceShotCallbackImportFailure[];
 }
 
+export interface SeedanceShotProviderQueueOverviewRequest {
+  provider?: string;
+  queue_id?: string;
+  timeout_minutes?: number;
+  include_completed?: boolean;
+}
+
+export interface SeedanceShotProviderQueueBatchOverview {
+  queue_id: string;
+  provider: string;
+  priority: SeedanceShotProviderQueuePriority;
+  created_at: string;
+  updated_at: string;
+  note?: string;
+  item_count: number;
+  submitted_count: number;
+  skipped_count: number;
+  failed_count: number;
+  active_count: number;
+  ready_count: number;
+  failed_item_count: number;
+  timed_out_count: number;
+}
+
+export interface SeedanceShotProviderQueueAttentionItem {
+  shot_id: string;
+  source_scene_id?: number;
+  status: SeedanceShotProductionStatus;
+  provider?: string;
+  provider_job_id?: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
+  submitted_at?: string;
+  updated_at: string;
+  minutes_waiting: number;
+  timed_out: boolean;
+  retry_count: number;
+  video_url?: string;
+  failure_reason?: string;
+  failure_category?: SeedanceProviderFailureCategory;
+  provider_error_code?: string;
+  suggested_action: string;
+}
+
+export interface SeedanceShotProviderQueueOverviewResult {
+  project: StoryProjectMeta;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  seedance_provider_queue?: SeedanceShotProviderQueue;
+  provider?: string;
+  queue_id?: string;
+  generated_at: string;
+  timeout_minutes: number;
+  total_shot_count: number;
+  status_counts: Record<SeedanceShotProductionStatus, number>;
+  active_count: number;
+  ready_count: number;
+  failed_count: number;
+  retryable_count: number;
+  timed_out_count: number;
+  missing_video_count: number;
+  attention_count: number;
+  batch_count: number;
+  latest_queue_batch?: SeedanceShotProviderQueueBatchOverview;
+  queue_batches: SeedanceShotProviderQueueBatchOverview[];
+  attention_items: SeedanceShotProviderQueueAttentionItem[];
+}
+
 export interface SeedanceShotRetryPrompt {
   duration_sec: number;
   characters: string[];

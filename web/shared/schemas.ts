@@ -590,6 +590,13 @@ export const SeedanceShotProviderPollRequestSchema = z.object({
   note: z.string().trim().min(1).max(500).optional(),
 });
 
+export const SeedanceShotProviderQueueOverviewRequestSchema = z.object({
+  provider: z.string().trim().min(1).max(80).optional(),
+  queue_id: z.string().trim().min(1).max(120).optional(),
+  timeout_minutes: z.number().int().min(1).max(10080).optional().default(120),
+  include_completed: z.boolean().optional().default(false),
+});
+
 export const StorySceneRegenerateRequestSchema = z.object({
   scene_id: z.number().int().min(1),
   intent: z.enum([

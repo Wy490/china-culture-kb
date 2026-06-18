@@ -13,6 +13,7 @@ import {
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   getProject,
+  getProjectSeedanceProviderQueueOverview,
   getProjectProductionBoard,
   importProjectSeedanceAssetBatch,
   importProjectSeedanceProviderCallback,
@@ -1055,6 +1056,96 @@ describe('project-service', () => {
     });
     expect(retryPackageRes.data?.markdown).toContain('失败分类: provider_rate_limit');
     expect(retryPackageRes.data?.markdown).toContain('Provider 错误码: RATE_LIMIT_429');
+  });
+
+  it('builds a Seedance provider queue overview with timeout and failure summaries', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'provider-overview-test',
+      queue_id: 'provider-overview-queue-001',
+      queue_priority: 'high',
+      note: 'provider overview 测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+
+    const callbackRes = await importProjectSeedanceShotCallbacks(enriched.project_id!, {
+      callbacks: [{
+        jobId: 'provider-overview-test-shot-2',
+        status: 'failed',
+        errorCode: 'RATE_LIMIT_429',
+        error: '平台限流，请稍后重试',
+      }],
+    });
+    expect(callbackRes.ok).toBe(true);
+
+    const projectFile = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'project.json');
+    const staleProject = JSON.parse(await readFile(projectFile, 'utf8')) as StoryProjectMeta;
+    staleProject.seedance_shot_ledger = {
+      ...staleProject.seedance_shot_ledger!,
+      items: staleProject.seedance_shot_ledger!.items.map(item =>
+        item.shot_id === 'shot-1'
+          ? {
+              ...item,
+              submitted_at: '2026-06-09T10:00:00.000Z',
+              updated_at: '2026-06-09T10:00:00.000Z',
+            }
+          : item
+      ),
+    };
+    await writeFile(projectFile, JSON.stringify(staleProject, null, 2));
+
+    const overviewRes = await getProjectSeedanceProviderQueueOverview(enriched.project_id!, {
+      provider: 'seedance',
+      queue_id: 'provider-overview-queue-001',
+      timeout_minutes: 60,
+    });
+    expect(overviewRes.ok).toBe(true);
+    expect(overviewRes.data).toMatchObject({
+      provider: 'seedance',
+      queue_id: 'provider-overview-queue-001',
+      timeout_minutes: 60,
+      total_shot_count: 2,
+      active_count: 1,
+      failed_count: 1,
+      retryable_count: 2,
+      timed_out_count: 1,
+      attention_count: 2,
+      batch_count: 1,
+      status_counts: {
+        submitted: 1,
+        failed: 1,
+      },
+      latest_queue_batch: {
+        queue_id: 'provider-overview-queue-001',
+        provider: 'seedance',
+        priority: 'high',
+        active_count: 1,
+        failed_item_count: 1,
+        timed_out_count: 1,
+      },
+    });
+    expect(overviewRes.data?.attention_items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        shot_id: 'shot-1',
+        status: 'submitted',
+        timed_out: true,
+        suggested_action: '确认平台任务是否超时；如无结果则重新提交。',
+      }),
+      expect.objectContaining({
+        shot_id: 'shot-2',
+        status: 'failed',
+        failure_category: 'provider_rate_limit',
+        provider_error_code: 'RATE_LIMIT_429',
+        suggested_action: '等待限流窗口恢复后再重新提交。',
+      }),
+    ]));
   });
 
   it('queries a configured Seedance provider adapter and applies returned statuses', async () => {

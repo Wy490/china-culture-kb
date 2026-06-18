@@ -47,6 +47,10 @@ import type {
   SeedanceShotProviderPollAdapterSummary,
   SeedanceShotProviderPollResult,
   SeedanceShotProviderPollTarget,
+  SeedanceShotProviderQueueAttentionItem,
+  SeedanceShotProviderQueueBatchOverview,
+  SeedanceShotProviderQueueOverviewRequest,
+  SeedanceShotProviderQueueOverviewResult,
   SeedanceShotRetryPackage,
   SeedanceShotRetryPackageShot,
   SeedanceShotAutoSelectRequest,
@@ -99,6 +103,16 @@ const ALL_VIDEO_TYPES: VideoType[] = [
   'scene_short', 'landscape_mood',
   'documentary_short', 'explainer_video', 'lecture_video', 'education_training',
   'children_story', 'social_short', 'ai_comic_drama',
+];
+
+const SEEDANCE_SHOT_PRODUCTION_STATUSES: SeedanceShotProductionStatus[] = [
+  'not_started',
+  'prompt_exported',
+  'submitted',
+  'processing',
+  'ready',
+  'failed',
+  'skipped',
 ];
 
 type StoredStoryFile = StoryGenerateResult & {
@@ -649,6 +663,124 @@ function seedanceProviderPollTargets(input: {
       };
     });
   return { checkedCount: checkedItems.length, targets };
+}
+
+function seedanceProviderEmptyStatusCounts(): Record<SeedanceShotProductionStatus, number> {
+  return Object.fromEntries(
+    SEEDANCE_SHOT_PRODUCTION_STATUSES.map(status => [status, 0]),
+  ) as Record<SeedanceShotProductionStatus, number>;
+}
+
+function seedanceProviderIsActiveStatus(status: SeedanceShotProductionStatus): boolean {
+  return status === 'submitted' || status === 'processing';
+}
+
+function seedanceProviderMatchesOverviewFilter(input: {
+  item: SeedanceShotLedgerItem;
+  provider?: string;
+  queueId?: string;
+}): boolean {
+  if (input.provider && input.item.provider !== input.provider) return false;
+  if (input.queueId && input.item.provider_queue_id !== input.queueId) return false;
+  return true;
+}
+
+function seedanceProviderBatchOverview(input: {
+  batch: SeedanceShotProviderQueueBatch;
+  ledgerByShotId: Map<string, SeedanceShotLedgerItem>;
+  timeoutMinutes: number;
+  nowMs: number;
+}): SeedanceShotProviderQueueBatchOverview {
+  let activeCount = 0;
+  let readyCount = 0;
+  let failedItemCount = 0;
+  let timedOutCount = 0;
+  for (const batchItem of input.batch.items) {
+    const ledgerItem = input.ledgerByShotId.get(batchItem.shot_id);
+    const status = ledgerItem?.status ?? batchItem.status;
+    if (seedanceProviderIsActiveStatus(status)) {
+      activeCount += 1;
+      const minutesWaiting = ledgerItem
+        ? seedanceShotWaitingMinutes(ledgerItem, input.nowMs)
+        : Math.max(0, Math.floor((input.nowMs - Date.parse(batchItem.queued_at)) / 60000));
+      if (minutesWaiting >= input.timeoutMinutes) {
+        timedOutCount += 1;
+      }
+    }
+    if (status === 'ready') readyCount += 1;
+    if (status === 'failed') failedItemCount += 1;
+  }
+  return {
+    queue_id: input.batch.queue_id,
+    provider: input.batch.provider,
+    priority: input.batch.priority,
+    created_at: input.batch.created_at,
+    updated_at: input.batch.updated_at,
+    note: input.batch.note,
+    item_count: input.batch.items.length,
+    submitted_count: input.batch.submitted_count,
+    skipped_count: input.batch.skipped_count,
+    failed_count: input.batch.failed_count,
+    active_count: activeCount,
+    ready_count: readyCount,
+    failed_item_count: failedItemCount,
+    timed_out_count: timedOutCount,
+  };
+}
+
+function seedanceProviderAttentionItem(input: {
+  item: SeedanceShotLedgerItem;
+  timeoutMinutes: number;
+  nowMs: number;
+}): SeedanceShotProviderQueueAttentionItem {
+  const minutesWaiting = seedanceShotWaitingMinutes(input.item, input.nowMs);
+  const timedOut = seedanceProviderIsActiveStatus(input.item.status)
+    && minutesWaiting >= input.timeoutMinutes;
+  return {
+    shot_id: input.item.shot_id,
+    source_scene_id: input.item.source_scene_id,
+    status: input.item.status,
+    provider: input.item.provider,
+    provider_job_id: input.item.provider_job_id,
+    provider_queue_id: input.item.provider_queue_id,
+    provider_queue_position: input.item.provider_queue_position,
+    submitted_at: input.item.submitted_at,
+    updated_at: input.item.updated_at,
+    minutes_waiting: minutesWaiting,
+    timed_out: timedOut,
+    retry_count: input.item.retry_count,
+    video_url: input.item.video_url,
+    failure_reason: input.item.failure_reason,
+    failure_category: input.item.failure_category,
+    provider_error_code: input.item.provider_error_code,
+    suggested_action: seedanceShotRetrySuggestedAction(input.item),
+  };
+}
+
+function seedanceProviderNeedsAttention(item: SeedanceShotProviderQueueAttentionItem): boolean {
+  if (item.timed_out) return true;
+  if (item.status === 'submitted' || item.status === 'processing' || item.status === 'failed') return true;
+  if (item.status === 'ready' && !item.video_url) return true;
+  return false;
+}
+
+function seedanceProviderAttentionSort(
+  a: SeedanceShotProviderQueueAttentionItem,
+  b: SeedanceShotProviderQueueAttentionItem,
+): number {
+  const rank = (item: SeedanceShotProviderQueueAttentionItem) => {
+    if (item.timed_out) return 0;
+    if (item.status === 'failed') return 1;
+    if (item.status === 'processing') return 2;
+    if (item.status === 'submitted') return 3;
+    if (item.status === 'ready') return 4;
+    return 5;
+  };
+  return rank(a) - rank(b)
+    || b.minutes_waiting - a.minutes_waiting
+    || (a.provider_queue_position ?? 0) - (b.provider_queue_position ?? 0)
+    || (a.source_scene_id ?? 0) - (b.source_scene_id ?? 0)
+    || a.shot_id.localeCompare(b.shot_id, 'zh-Hans-CN');
 }
 
 type SeedanceProviderSubmitCandidate = {
@@ -2734,6 +2866,93 @@ export async function pollProjectSeedanceProviderQueue(
     poll_targets: afterTargets.targets,
     provider_adapter: providerAdapterSummary,
     failures: importRes.data.failures,
+  });
+}
+
+export async function getProjectSeedanceProviderQueueOverview(
+  projectId: string,
+  request: SeedanceShotProviderQueueOverviewRequest = {},
+): Promise<ApiResponse<SeedanceShotProviderQueueOverviewResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const provider = request.provider?.trim();
+  const queueId = request.queue_id?.trim();
+  const timeoutMinutes = request.timeout_minutes ?? 120;
+  const generatedAt = new Date().toISOString();
+  const nowMs = Date.parse(generatedAt);
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const currentLedger = syncSeedanceShotLedgerWithShots({
+    ledger: project.seedance_shot_ledger,
+    shotUnits: board.shot_units,
+    generatedAt: board.generated_at,
+  });
+  const ledgerItems = currentLedger.items.filter(item =>
+    seedanceProviderMatchesOverviewFilter({ item, provider, queueId })
+  );
+  const ledgerByShotId = new Map(currentLedger.items.map(item => [item.shot_id, item]));
+  const statusCounts = seedanceProviderEmptyStatusCounts();
+  ledgerItems.forEach(item => {
+    statusCounts[item.status] += 1;
+  });
+
+  const queueBatches = (project.seedance_provider_queue?.batches ?? [])
+    .filter(batch => (!provider || batch.provider === provider) && (!queueId || batch.queue_id === queueId))
+    .map(batch => seedanceProviderBatchOverview({
+      batch,
+      ledgerByShotId,
+      timeoutMinutes,
+      nowMs,
+    }))
+    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+  const latestQueueId = project.seedance_provider_queue?.latest_queue_id;
+  const latestQueueBatch = queueBatches.find(batch => batch.queue_id === latestQueueId)
+    ?? [...queueBatches].sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0];
+
+  const allAttentionItems = ledgerItems
+    .map(item => seedanceProviderAttentionItem({ item, timeoutMinutes, nowMs }))
+    .filter(item => (
+      request.include_completed
+        ? seedanceProviderNeedsAttention(item) || Boolean(item.provider_job_id || item.provider_queue_id)
+        : seedanceProviderNeedsAttention(item)
+    ))
+    .sort(seedanceProviderAttentionSort);
+  const timedOutCount = ledgerItems.filter(item =>
+    seedanceProviderIsActiveStatus(item.status)
+    && seedanceShotWaitingMinutes(item, nowMs) >= timeoutMinutes
+  ).length;
+  const missingVideoCount = ledgerItems.filter(item => item.status === 'ready' && !item.video_url).length;
+
+  return success({
+    project,
+    seedance_shot_ledger: currentLedger,
+    seedance_provider_queue: project.seedance_provider_queue,
+    provider,
+    queue_id: queueId,
+    generated_at: generatedAt,
+    timeout_minutes: timeoutMinutes,
+    total_shot_count: ledgerItems.length,
+    status_counts: statusCounts,
+    active_count: statusCounts.submitted + statusCounts.processing,
+    ready_count: statusCounts.ready,
+    failed_count: statusCounts.failed,
+    retryable_count: ledgerItems.filter(item => shouldRetrySeedanceShot(item)).length,
+    timed_out_count: timedOutCount,
+    missing_video_count: missingVideoCount,
+    attention_count: allAttentionItems.length,
+    batch_count: queueBatches.length,
+    latest_queue_batch: latestQueueBatch,
+    queue_batches: queueBatches,
+    attention_items: allAttentionItems,
   });
 }
 

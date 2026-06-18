@@ -14,6 +14,7 @@ import {
   SeedanceShotCallbackImportRequestSchema,
   SeedanceShotProviderCallbackRequestSchema,
   SeedanceShotProviderPollRequestSchema,
+  SeedanceShotProviderQueueOverviewRequestSchema,
   SeedanceShotProviderRecoveryRequestSchema,
   SeedanceShotProviderSubmitRequestSchema,
   SeedanceShotStatusBatchUpdateRequestSchema,
@@ -32,6 +33,7 @@ import {
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   getProject,
+  getProjectSeedanceProviderQueueOverview,
   getProjectProductionBoard,
   listProjectSeedanceGlobalAssetLibrary,
   importProjectSeedanceAssetBatch,
@@ -417,6 +419,21 @@ projectsRouter.post(
               ? 502
               : 404,
       ).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-shots/provider-overview',
+  validateParams(ProjectIdParamSchema),
+  validateBody(SeedanceShotProviderQueueOverviewRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await getProjectSeedanceProviderQueueOverview(projectId, req.body);
+      res.status(result.ok ? 200 : 404).json(result);
     } catch (err) {
       next(err);
     }
