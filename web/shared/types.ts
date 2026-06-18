@@ -3931,6 +3931,8 @@ export interface SeedanceProviderAdapterConfigInfo {
   poll_token_configured: boolean;
   shared_token_configured: boolean;
   callback_secret_configured: boolean;
+  callback_base_configured: boolean;
+  callback_base_envs: string[];
   submit_auth_header: string;
   poll_auth_header: string;
   submit_auth_scheme: string;

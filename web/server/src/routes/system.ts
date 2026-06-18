@@ -111,12 +111,20 @@ function providerAuthScheme(kind: 'submit' | 'poll'): string {
     || 'Bearer';
 }
 
+const SEEDANCE_PROVIDER_CALLBACK_BASE_ENVS = [
+  'SEEDANCE_PROVIDER_CALLBACK_BASE_URL',
+  'GEARS_CALLBACK_BASE_URL',
+  'PUBLIC_API_BASE_URL',
+  'APP_BASE_URL',
+];
+
 systemRouter.get('/seedance-provider-config', (_req, res) => {
   const submitEndpointConfigured = envFlag('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT');
   const pollEndpointConfigured = envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT');
   const submitTokenConfigured = envFlag('SEEDANCE_PROVIDER_SUBMIT_API_TOKEN');
   const sharedTokenConfigured = envFlag('SEEDANCE_PROVIDER_API_TOKEN');
   const callbackSecretConfigured = envFlag('SEEDANCE_CALLBACK_SECRET');
+  const callbackBaseConfigured = SEEDANCE_PROVIDER_CALLBACK_BASE_ENVS.some(envFlag);
   const missingSubmitRequirements = submitEndpointConfigured ? [] : ['SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'];
   const missingPollRequirements = pollEndpointConfigured ? [] : ['SEEDANCE_PROVIDER_POLL_ENDPOINT'];
   const configurationWarnings = [
@@ -142,6 +150,8 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
     poll_token_configured: sharedTokenConfigured,
     shared_token_configured: sharedTokenConfigured,
     callback_secret_configured: callbackSecretConfigured,
+    callback_base_configured: callbackBaseConfigured,
+    callback_base_envs: SEEDANCE_PROVIDER_CALLBACK_BASE_ENVS,
     submit_auth_header: providerAuthHeader('submit'),
     poll_auth_header: providerAuthHeader('poll'),
     submit_auth_scheme: providerAuthScheme('submit'),
@@ -190,6 +200,8 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'queue_priority',
         'provider_callback_path',
         'provider_poll_path',
+        'provider_callback_url',
+        'provider_poll_url',
         'note',
         'seedance_asset_library',
         'shots[]',
@@ -231,6 +243,8 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         queue_priority: 'normal',
         provider_callback_path: '/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/provider-callback',
         provider_poll_path: '/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/poll-provider',
+        provider_callback_url: '<PUBLIC_API_BASE_URL>/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/provider-callback',
+        provider_poll_url: '<PUBLIC_API_BASE_URL>/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/poll-provider',
         note: 'adapter submit smoke',
         seedance_asset_library: {
           schema_version: 'seedance-asset-library/v1',
@@ -268,6 +282,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'Each accepted result must include a shot_id and provider job id.',
         'Returned queue id/position override local placeholders when present.',
         'When callback auth is configured, provider_callback_path requires one callback auth header.',
+        'When a public callback base URL is configured, submit payload also includes provider_callback_url and provider_poll_url.',
         'Set auth scheme to raw/none/no_scheme when a worker expects the token without a prefix.',
       ],
     },

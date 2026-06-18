@@ -40,6 +40,7 @@ const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER = process.env.SEEDANCE_PROVIDE
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
+const ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL = process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
 const DEFAULT_PROJECTS_ROOT = resolve(import.meta.dirname, '..', '..', '..', 'web', 'generated', 'projects');
 let testWorkspaceRoot = '';
 let defaultProjectDirsBefore = new Set<string>();
@@ -164,6 +165,11 @@ afterAll(async () => {
     delete process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
   } else {
     process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
+  } else {
+    process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL = ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
   }
   await rm(testWorkspaceRoot, { recursive: true, force: true });
 });
@@ -428,6 +434,10 @@ describe('System API', () => {
         callbackSecret: process.env.SEEDANCE_CALLBACK_SECRET,
         submitTimeout: process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS,
         pollTimeout: process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS,
+        callbackBaseUrl: process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL,
+        gearsCallbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+        publicApiBaseUrl: process.env.PUBLIC_API_BASE_URL,
+        appBaseUrl: process.env.APP_BASE_URL,
       };
       try {
         process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = 'https://adapter.example.test/seedance/submit';
@@ -441,6 +451,7 @@ describe('System API', () => {
         process.env.SEEDANCE_CALLBACK_SECRET = 'callback-secret';
         process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = '12345';
         process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = '23456';
+        process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL = 'https://public.example.test';
 
         const res = await request.get('/api/system/seedance-provider-config');
         expect(res.status).toBe(200);
@@ -453,6 +464,13 @@ describe('System API', () => {
           poll_token_configured: true,
           shared_token_configured: true,
           callback_secret_configured: true,
+          callback_base_configured: true,
+          callback_base_envs: [
+            'SEEDANCE_PROVIDER_CALLBACK_BASE_URL',
+            'GEARS_CALLBACK_BASE_URL',
+            'PUBLIC_API_BASE_URL',
+            'APP_BASE_URL',
+          ],
           submit_auth_header: 'X-Submit-Key',
           poll_auth_header: 'X-Shared-Token',
           submit_auth_scheme: 'raw',
@@ -472,6 +490,7 @@ describe('System API', () => {
         expect(JSON.stringify(res.body.data)).not.toContain('shared-secret');
         expect(JSON.stringify(res.body.data)).not.toContain('callback-secret');
         expect(JSON.stringify(res.body.data)).not.toContain('adapter.example.test');
+        expect(JSON.stringify(res.body.data)).not.toContain('public.example.test');
 
         delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
         delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
@@ -484,6 +503,10 @@ describe('System API', () => {
         delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
         delete process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
         delete process.env.SEEDANCE_CALLBACK_SECRET;
+        delete process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
+        delete process.env.GEARS_CALLBACK_BASE_URL;
+        delete process.env.PUBLIC_API_BASE_URL;
+        delete process.env.APP_BASE_URL;
 
         const missingRes = await request.get('/api/system/seedance-provider-config');
         expect(missingRes.status).toBe(200);
@@ -495,6 +518,7 @@ describe('System API', () => {
           poll_token_configured: false,
           shared_token_configured: false,
           callback_secret_configured: false,
+          callback_base_configured: false,
           submit_auth_header: 'authorization',
           poll_auth_header: 'authorization',
           submit_auth_scheme: 'Bearer',
@@ -539,6 +563,14 @@ describe('System API', () => {
         else process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = previous.submitTimeout;
         if (previous.pollTimeout === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
         else process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = previous.pollTimeout;
+        if (previous.callbackBaseUrl === undefined) delete process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
+        else process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+        if (previous.gearsCallbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.gearsCallbackBaseUrl;
+        if (previous.publicApiBaseUrl === undefined) delete process.env.PUBLIC_API_BASE_URL;
+        else process.env.PUBLIC_API_BASE_URL = previous.publicApiBaseUrl;
+        if (previous.appBaseUrl === undefined) delete process.env.APP_BASE_URL;
+        else process.env.APP_BASE_URL = previous.appBaseUrl;
       }
     });
   });
@@ -579,6 +611,8 @@ describe('System API', () => {
       expect(res.body.data.submit.request_fields).toEqual(expect.arrayContaining([
         'provider_callback_path',
         'provider_poll_path',
+        'provider_callback_url',
+        'provider_poll_url',
         'shots[].seedance_prompt',
         'shots[].seedance_asset_slots',
       ]));
@@ -592,6 +626,8 @@ describe('System API', () => {
         provider: 'seedance',
         provider_callback_path: '/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/provider-callback',
         provider_poll_path: '/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/poll-provider',
+        provider_callback_url: '<PUBLIC_API_BASE_URL>/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/provider-callback',
+        provider_poll_url: '<PUBLIC_API_BASE_URL>/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/poll-provider',
         shots: [expect.objectContaining({
           shot_id: 'shot-1',
           seedance_prompt: expect.stringContaining('0-3秒'),

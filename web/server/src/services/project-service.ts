@@ -162,6 +162,27 @@ function projectSeedanceProviderApiPath(projectId: string, action: 'provider-cal
   return `/api/projects/${projectId}/production-board/seedance-shots/${action}`;
 }
 
+function configuredSeedanceProviderCallbackBaseUrl(): string | undefined {
+  const baseUrl = process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL?.trim()
+    || process.env.GEARS_CALLBACK_BASE_URL?.trim()
+    || process.env.PUBLIC_API_BASE_URL?.trim()
+    || process.env.APP_BASE_URL?.trim();
+  return baseUrl || undefined;
+}
+
+function joinPublicUrl(baseUrl: string, path: string): string {
+  return `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+}
+
+function projectSeedanceProviderApiUrl(
+  projectId: string,
+  action: 'provider-callback' | 'poll-provider',
+): string | undefined {
+  const baseUrl = configuredSeedanceProviderCallbackBaseUrl();
+  if (!baseUrl) return undefined;
+  return joinPublicUrl(baseUrl, projectSeedanceProviderApiPath(projectId, action));
+}
+
 async function pathExists(targetPath: string): Promise<boolean> {
   try {
     await stat(targetPath);
@@ -1339,6 +1360,8 @@ async function querySeedanceProviderSubmitAdapter(input: {
   try {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     applySeedanceProviderAdapterAuthHeader(headers, 'submit');
+    const providerCallbackPath = projectSeedanceProviderApiPath(input.projectId, 'provider-callback');
+    const providerPollPath = projectSeedanceProviderApiPath(input.projectId, 'poll-provider');
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -1351,8 +1374,10 @@ async function querySeedanceProviderSubmitAdapter(input: {
         provider: input.provider,
         queue_id: input.queueId,
         queue_priority: input.queuePriority,
-        provider_callback_path: projectSeedanceProviderApiPath(input.projectId, 'provider-callback'),
-        provider_poll_path: projectSeedanceProviderApiPath(input.projectId, 'poll-provider'),
+        provider_callback_path: providerCallbackPath,
+        provider_poll_path: providerPollPath,
+        provider_callback_url: projectSeedanceProviderApiUrl(input.projectId, 'provider-callback'),
+        provider_poll_url: projectSeedanceProviderApiUrl(input.projectId, 'poll-provider'),
         note: input.note,
         seedance_asset_library: input.assetLibrary,
         shots: input.candidates.map(candidate => ({

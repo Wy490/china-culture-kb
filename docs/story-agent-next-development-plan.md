@@ -84,6 +84,8 @@
   - 合约接口新增 `auth_header_envs`、`auth_scheme_envs`、默认 header 和默认 scheme，真实 worker 可按平台鉴权习惯选择 bearer、token 前缀或裸 token。
   - 合约接口新增 `request_example` 和 `response_examples`，外部 worker 可直接按示例实现 submit/query smoke。
   - submit adapter payload 新增 `provider_callback_path` 和 `provider_poll_path` 相对路径，外部 worker 可直接按项目路径回传或查询状态。
+  - submit adapter payload 新增可选 `provider_callback_url` 和 `provider_poll_url` 绝对 URL；服务端优先读取 `SEEDANCE_PROVIDER_CALLBACK_BASE_URL`，并回落到 `GEARS_CALLBACK_BASE_URL` / `PUBLIC_API_BASE_URL` / `APP_BASE_URL`。
+  - 配置状态新增 `callback_base_configured` 和可用 env 名列表，只暴露是否配置，不返回真实公开基址。
 - Seedance provider 平台式响应兼容层首版：
   - submit/poll adapter 可接受顶层数组、`submitted_shots` / `provider_results` / `results` / `items`，以及 `tasks`、`task_list`、`jobs`、`records`、`data.tasks` 等更贴近平台 worker 的返回形态。
   - 结果字段兼容 `taskId/task_id/id/requestId`、`batchId/batch_id`、`taskStatus/state/phase`、`outputUrl/fileUrl/downloadUrl/resultUrl`、`score/quality`。
@@ -159,6 +161,7 @@ git diff --stat
 - provider 轮询入口已完成首版，可返回待查询 job / queue，也可应用 provider status snapshots。
 - provider 失败分类、错误码传递和通用错误码别名映射已完成首版，且已补平台常见错误码别名。
 - 通用 submit/poll adapter 已完成首版，可通过 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` / `SEEDANCE_PROVIDER_POLL_ENDPOINT` 连接外部 worker，并已兼容 `data.tasks/taskId/taskStatus/outputUrl` 等平台式响应。
+- submit adapter 已能同时给外部 worker 提供项目级相对 path 与可选绝对 callback/poll URL；若 worker 不在同主机或同反向代理内，先配置 `SEEDANCE_PROVIDER_CALLBACK_BASE_URL`。
 - 队列状态总览已完成首版，可直接读取 provider/queue 健康度、超时和失败注意项。
 - 人工重试策略已完成只读首版，可直接输出可重提/需先处理的候选镜头清单。
 - 重试执行自动化已完成首版，可把可重提候选一键重新提交到 provider 队列。

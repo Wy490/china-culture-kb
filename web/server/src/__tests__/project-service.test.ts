@@ -47,6 +47,7 @@ const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = process.env.SEEDANCE_PROVIDE
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
+const ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL = process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
 const ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN = process.env.SEEDANCE_PROVIDER_API_TOKEN;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER = process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
@@ -191,6 +192,11 @@ afterEach(async () => {
     delete process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
   } else {
     process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
+  } else {
+    process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL = ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
   }
   if (ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT === undefined) {
     delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
@@ -841,6 +847,7 @@ describe('project-service', () => {
     process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = 'submit-token';
     process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = 'X-Api-Key';
     process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = 'raw';
+    process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL = 'https://story.example.test/root/';
 
     const story = makeStory();
     const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
@@ -856,6 +863,8 @@ describe('project-service', () => {
         queue_priority?: string;
         provider_callback_path?: string;
         provider_poll_path?: string;
+        provider_callback_url?: string;
+        provider_poll_url?: string;
         shots: Array<{ shot_id: string; provider_job_id?: string; seedance_prompt?: string; seedance_asset_slots?: unknown[] }>;
       };
       expect(body.project_id).toBe(enriched.project_id);
@@ -867,6 +876,12 @@ describe('project-service', () => {
       );
       expect(body.provider_poll_path).toBe(
         `/api/projects/${enriched.project_id}/production-board/seedance-shots/poll-provider`,
+      );
+      expect(body.provider_callback_url).toBe(
+        `https://story.example.test/root/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-callback`,
+      );
+      expect(body.provider_poll_url).toBe(
+        `https://story.example.test/root/api/projects/${enriched.project_id}/production-board/seedance-shots/poll-provider`,
       );
       expect(body.shots).toHaveLength(2);
       expect(body.shots[0]).toMatchObject({

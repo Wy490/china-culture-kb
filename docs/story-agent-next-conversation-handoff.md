@@ -249,6 +249,8 @@ MCP 原则：
   - 合约接口新增 `auth_header_envs`、`auth_scheme_envs`、默认 header 和默认 scheme，便于真实 worker 适配 `Authorization`、`X-API-Key`、`Token`、裸 token 等鉴权模式。
   - 合约接口新增 submit/poll 的 `request_example` 和 `response_examples`，用于真实 worker smoke 对照。
   - submit adapter payload 已带 `provider_callback_path` 和 `provider_poll_path` 相对路径，worker 可不猜项目级回传/轮询 API。
+  - submit adapter payload 也会在配置公开 API 基址时附带 `provider_callback_url` 和 `provider_poll_url` 绝对地址；配置优先级为 `SEEDANCE_PROVIDER_CALLBACK_BASE_URL`、`GEARS_CALLBACK_BASE_URL`、`PUBLIC_API_BASE_URL`、`APP_BASE_URL`。
+  - 配置状态接口新增 `callback_base_configured` 和可用 env 名列表，仍只返回布尔/名称，不泄漏真实公开基址。
 - 单故事 Seedance provider 队列状态总览首版：
   - 共享类型新增 `SeedanceShotProviderQueueOverviewRequest` / `SeedanceShotProviderQueueOverviewResult`，并补齐批次概览与注意项结构。
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。
@@ -360,7 +362,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-增强 Seedance provider adapter 鉴权配置
+补充 Seedance provider 绝对回传 URL
 ```
 
 ### P0：继续故事管理 UX 降噪
