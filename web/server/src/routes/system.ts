@@ -184,14 +184,16 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         '{ provider_results: [...] }',
         '{ results: [...] }',
         '{ items: [...] }',
+        '{ tasks: [...] }',
         '{ data: [...] }',
+        '{ data: { tasks: [...] } }',
       ],
       normalized_result_fields: [
         'shot_id',
-        'provider_job_id | job_id | jobId',
-        'provider_queue_id | queue_id | queueId',
-        'provider_queue_position | queue_position | queuePosition',
-        'status',
+        'provider_job_id | job_id | jobId | task_id | taskId | request_id | requestId | id',
+        'provider_queue_id | queue_id | queueId | batch_id | batchId',
+        'provider_queue_position | queue_position | queuePosition | position',
+        'status | task_status | taskStatus | state | phase',
       ],
       request_example: {
         schema_version: 'seedance-provider-submit/v1',
@@ -226,13 +228,15 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         }],
       },
       response_examples: [{
-        submitted_shots: [{
-          shot_id: 'shot-1',
-          provider_job_id: 'real-seedance-job-001',
-          provider_queue_id: 'real-seedance-queue-001',
-          provider_queue_position: 1,
-          status: 'submitted',
-        }],
+        data: {
+          tasks: [{
+            shot_id: 'shot-1',
+            taskId: 'real-seedance-job-001',
+            batchId: 'real-seedance-queue-001',
+            position: 1,
+            taskStatus: 'queued',
+          }],
+        },
       }],
       notes: [
         'Each accepted result must include a shot_id and provider job id.',
@@ -264,16 +268,19 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         '{ provider_results: [...] }',
         '{ results: [...] }',
         '{ items: [...] }',
+        '{ tasks: [...] }',
         '{ data: [...] }',
+        '{ data: { tasks: [...] } }',
       ],
       normalized_result_fields: [
-        'provider_job_id | job_id | jobId',
-        'status',
-        'video_url | url',
-        'failure_reason | error',
+        'provider_job_id | job_id | jobId | task_id | taskId | request_id | requestId | id',
+        'provider_queue_id | queue_id | queueId | batch_id | batchId',
+        'status | task_status | taskStatus | state | phase',
+        'video_url | videoUrl | output_url | outputUrl | file_url | fileUrl | download_url | downloadUrl | result_url | resultUrl | url',
+        'failure_reason | failureReason | error_message | errorMessage | reason | error | message | msg',
         'failure_category',
-        'provider_error_code | errorCode',
-        'quality_score | qualityScore',
+        'provider_error_code | providerErrorCode | error_code | errorCode | status_code | statusCode | code',
+        'quality_score | qualityScore | score | quality',
         'review_note | reviewNote',
       ],
       request_example: {
@@ -292,19 +299,20 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         }],
       },
       response_examples: [{
-        provider_results: [{
-          provider_job_id: 'real-seedance-job-001',
-          status: 'completed',
-          video_url: 'seedance-video-shot-1.mp4',
-          quality_score: 92,
-          review_note: '画面可用',
-        }, {
-          provider_job_id: 'real-seedance-job-002',
-          status: 'failed',
-          failure_reason: '内容审核未通过',
-          failure_category: 'content_policy',
-          provider_error_code: 'POLICY_BLOCKED',
-        }],
+        data: {
+          tasks: [{
+            taskId: 'real-seedance-job-001',
+            state: 'SUCCEEDED',
+            outputUrl: 'seedance-video-shot-1.mp4',
+            score: 92,
+            reviewNote: '画面可用',
+          }, {
+            taskId: 'real-seedance-job-002',
+            state: 'FAILED',
+            errorMessage: '内容审核未通过',
+            code: 'RISK_CONTROL',
+          }],
+        },
       }],
       notes: [
         'Poll results are normalized through the provider callback path.',

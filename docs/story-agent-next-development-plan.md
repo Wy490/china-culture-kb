@@ -9,7 +9,7 @@
 | 模块 | 当前判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
-| Production Board / GEARS / Seedance | 约 95% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
+| Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划已有；字幕、混音、片头片尾、final delivery 待做。 |
 | 可商用制作中台 | 约 42% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、审片返修和稳定压测。 |
@@ -81,6 +81,11 @@
   - 合约接口新增 `callback_auth_env` 和 `callback_auth_headers`，外部 worker 可按约定给 `provider_callback_path` 带回调鉴权头。
   - 合约接口新增 `request_example` 和 `response_examples`，外部 worker 可直接按示例实现 submit/query smoke。
   - submit adapter payload 新增 `provider_callback_path` 和 `provider_poll_path` 相对路径，外部 worker 可直接按项目路径回传或查询状态。
+- Seedance provider 平台式响应兼容层首版：
+  - submit/poll adapter 可接受顶层数组、`submitted_shots` / `provider_results` / `results` / `items`，以及 `tasks`、`task_list`、`jobs`、`records`、`data.tasks` 等更贴近平台 worker 的返回形态。
+  - 结果字段兼容 `taskId/task_id/id/requestId`、`batchId/batch_id`、`taskStatus/state/phase`、`outputUrl/fileUrl/downloadUrl/resultUrl`、`score/quality`。
+  - 单故事 `provider-callback` schema 同步支持这些字段别名，真实 worker 可直接回传平台式任务字段。
+  - provider 错误码别名扩展 `RISK_CONTROL`、`NO_CREDIT`、`ACCOUNT_ARREARS`、`ACCESS_DENIED`、`INVALID_SIGNATURE`、`QPS/TPS/CONCURRENCY`、`SYSTEM/MODEL` 等类别映射。
 - Seedance provider 队列状态总览首版：
   - 新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。
   - 可按 `provider` / `queue_id` 过滤，返回状态计数、活跃数、完成数、失败数、可重试数、超时数、缺视频数和注意项。
@@ -132,8 +137,6 @@ git diff --check
 
 ## 4. 当前工作区提醒
 
-- 当前仍有未提交改动。
-- `data/provinces/湖南.md` 是已有脏改动，不属于本轮 Story Agent/Seedance 推进范围；新对话不要随意覆盖或回滚。
 - 新对话开始必须先执行：
 
 ```bash
@@ -141,19 +144,9 @@ git status --short
 git diff --stat
 ```
 
+- 若出现未提交改动，先复核是否属于当前推进范围；不要覆盖或回滚用户已有改动。
+
 ## 5. 下一阶段优先级
-
-### P0：收尾当前工作区
-
-1. 复核 `git status --short` 和 `git diff --stat`。
-2. 确认没有意外文件后提交当前成果。
-3. 不要覆盖用户已有改动，尤其是 `data/provinces/湖南.md`。
-
-建议提交信息：
-
-```text
-新增 Seedance provider 重试执行自动化
-```
 
 ### P0：Seedance provider 平台专用 adapter
 
@@ -161,12 +154,12 @@ git diff --stat
 
 - 外部 provider 回传 schema 已完成首版。
 - provider 轮询入口已完成首版，可返回待查询 job / queue，也可应用 provider status snapshots。
-- provider 失败分类、错误码传递和通用错误码别名映射已完成首版，后续真实 adapter 只需补具体平台专用错误码。
-- 通用 submit/poll adapter 已完成首版，可通过 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` / `SEEDANCE_PROVIDER_POLL_ENDPOINT` 连接外部 worker。
+- provider 失败分类、错误码传递和通用错误码别名映射已完成首版，且已补平台常见错误码别名。
+- 通用 submit/poll adapter 已完成首版，可通过 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` / `SEEDANCE_PROVIDER_POLL_ENDPOINT` 连接外部 worker，并已兼容 `data.tasks/taskId/taskStatus/outputUrl` 等平台式响应。
 - 队列状态总览已完成首版，可直接读取 provider/queue 健康度、超时和失败注意项。
 - 人工重试策略已完成只读首版，可直接输出可重提/需先处理的候选镜头清单。
 - 重试执行自动化已完成首版，可把可重提候选一键重新提交到 provider 队列。
-- 下一步支持具体 Seedance / 外部 provider 的平台 SDK/HTTP 实现、鉴权参数和平台专用错误码映射。
+- 下一步支持具体 Seedance / 外部 provider 的平台 SDK/HTTP 实现、鉴权参数、官方字段映射和真实凭证 smoke。
 - 将真实回传结果接入现有超时恢复、失败分类和重试包链路。
 
 建议先做最小切片：

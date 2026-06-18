@@ -849,19 +849,21 @@ describe('project-service', () => {
       expect(body.shots[0].seedance_prompt).toContain('0-3秒');
       expect(body.shots[0].seedance_asset_slots).toBeInstanceOf(Array);
       return new Response(JSON.stringify({
-        submitted_shots: [{
-          shot_id: 'shot-1',
-          provider_job_id: 'real-seedance-job-shot-1',
-          provider_queue_id: 'real-seedance-queue-001',
-          provider_queue_position: 11,
-          status: 'processing',
-        }, {
-          shot_id: 'shot-2',
-          provider_job_id: 'real-seedance-job-shot-2',
-          provider_queue_id: 'real-seedance-queue-001',
-          provider_queue_position: 12,
-          status: 'submitted',
-        }],
+        data: {
+          tasks: [{
+            shot_id: 'shot-1',
+            taskId: 'real-seedance-job-shot-1',
+            batchId: 'real-seedance-queue-001',
+            position: 11,
+            taskStatus: 'running',
+          }, {
+            shot_id: 'shot-2',
+            task_id: 'real-seedance-job-shot-2',
+            batch_id: 'real-seedance-queue-001',
+            position: 12,
+            task_status: 'queued',
+          }],
+        },
       }));
     });
     vi.stubGlobal('fetch', submitFetchMock);
@@ -1380,19 +1382,20 @@ describe('project-service', () => {
       });
       expect(body.targets[0].seedance_prompt).toContain('0-3秒');
       return new Response(JSON.stringify({
-        provider_results: [{
-          job_id: 'provider-adapter-test-shot-1',
-          status: 'completed',
-          video_url: 'https://example.com/seedance-videos/provider-adapter-shot-1.mp4',
-          quality_score: 94,
-          review_note: 'adapter 回片可用',
-        }, {
-          job_id: 'provider-adapter-test-shot-2',
-          status: 'failed',
-          provider_error_code: 'POLICY_BLOCKED',
-          failure_category: 'content_policy',
-          failure_reason: '内容审核未通过',
-        }],
+        data: {
+          tasks: [{
+            taskId: 'provider-adapter-test-shot-1',
+            state: 'SUCCEEDED',
+            outputUrl: 'https://example.com/seedance-videos/provider-adapter-shot-1.mp4',
+            score: 94,
+            review_note: 'adapter 回片可用',
+          }, {
+            task_id: 'provider-adapter-test-shot-2',
+            task_status: 'FAILED',
+            code: 'RISK_CONTROL',
+            error_message: '内容审核未通过',
+          }],
+        },
       }));
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -1435,7 +1438,7 @@ describe('project-service', () => {
       provider_job_id: 'provider-adapter-test-shot-2',
       failure_reason: '内容审核未通过',
       failure_category: 'content_policy',
-      provider_error_code: 'POLICY_BLOCKED',
+      provider_error_code: 'RISK_CONTROL',
     });
   });
 

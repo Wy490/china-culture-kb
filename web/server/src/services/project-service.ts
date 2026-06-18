@@ -505,7 +505,7 @@ function normalizeSeedanceShotCallbackStatus(
   hasFailureReason: boolean,
 ): SeedanceShotProductionStatus {
   const normalized = (status ?? '').trim().toLowerCase();
-  if (['ready', 'completed', 'complete', 'succeeded', 'success', 'done', 'finished'].includes(normalized)) {
+  if (['ready', 'completed', 'complete', 'succeeded', 'succeed', 'successed', 'success', 'done', 'finished'].includes(normalized)) {
     return 'ready';
   }
   if (['failed', 'failure', 'error', 'errored', 'cancelled', 'canceled'].includes(normalized)) {
@@ -514,7 +514,7 @@ function normalizeSeedanceShotCallbackStatus(
   if (['processing', 'running', 'generating', 'in_progress', 'in-progress'].includes(normalized)) {
     return 'processing';
   }
-  if (['submitted', 'queued', 'pending', 'accepted'].includes(normalized)) {
+  if (['submitted', 'queued', 'queueing', 'pending', 'waiting', 'accepted', 'created', 'started'].includes(normalized)) {
     return 'submitted';
   }
   if (['skipped', 'skip'].includes(normalized)) {
@@ -550,15 +550,15 @@ const PROVIDER_ERROR_CODE_CATEGORY_PATTERNS: Array<{
   category: SeedanceProviderFailureCategory;
 }> = [
   {
-    pattern: /(?:ASSET|MATERIAL|REFERENCE|FILE|UPLOAD).*(?:MISSING|NOT_FOUND|NOTFOUND|FAILED|EXPIRED|INVALID)/,
+    pattern: /(?:ASSET|MATERIAL|REFERENCE|RESOURCE|FILE|UPLOAD).*(?:MISSING|NOT_FOUND|NOTFOUND|FAILED|EXPIRED|INVALID)/,
     category: 'asset_missing',
   },
   {
-    pattern: /(?:PROMPT|PARAM|PARAMETER|ARGUMENT|REQUEST).*(?:INVALID|TOO_LONG|TOOLONG|BAD|ERROR)|BAD_REQUEST|INVALID_ARGUMENT/,
+    pattern: /(?:PROMPT|PARAM|PARAMETER|ARGUMENT|REQUEST|INPUT).*(?:INVALID|TOO_LONG|TOOLONG|BAD|ERROR)|BAD_REQUEST|INVALID_ARGUMENT|PARAMS_ERROR|INVALID_REQUEST/,
     category: 'prompt_invalid',
   },
   {
-    pattern: /(?:POLICY|SAFETY|MODERATION|CONTENT|COPYRIGHT).*(?:BLOCKED|REJECTED|FAILED|VIOLATION|DENIED)|SENSITIVE_CONTENT/,
+    pattern: /(?:POLICY|SAFETY|MODERATION|CONTENT|COPYRIGHT|CENSOR|AUDIT|RISK|NSFW).*(?:BLOCKED|REJECTED|FAILED|VIOLATION|DENIED)|SENSITIVE_CONTENT|RISK_CONTROL/,
     category: 'content_policy',
   },
   {
@@ -566,19 +566,19 @@ const PROVIDER_ERROR_CODE_CATEGORY_PATTERNS: Array<{
     category: 'provider_timeout',
   },
   {
-    pattern: /(?:QUOTA|BALANCE|BILLING|PAYMENT|CREDIT).*(?:EXCEEDED|INSUFFICIENT|REQUIRED|LOW|EMPTY)|INSUFFICIENT_BALANCE/,
+    pattern: /(?:QUOTA|BALANCE|BILLING|PAYMENT|CREDIT).*(?:EXCEEDED|INSUFFICIENT|REQUIRED|LOW|EMPTY)|INSUFFICIENT_BALANCE|NO_CREDIT|ACCOUNT_ARREARS/,
     category: 'provider_quota',
   },
   {
-    pattern: /(?:AUTH|TOKEN|SIGNATURE|PERMISSION|CREDENTIAL).*(?:FAILED|INVALID|EXPIRED|DENIED|MISSING)|UNAUTHORIZED|FORBIDDEN/,
+    pattern: /(?:AUTH|TOKEN|SIGNATURE|PERMISSION|CREDENTIAL|ACCESS).*(?:FAILED|INVALID|EXPIRED|DENIED|MISSING)|UNAUTHORIZED|FORBIDDEN|ACCESS_DENIED|INVALID_SIGNATURE/,
     category: 'provider_auth',
   },
   {
-    pattern: /(?:RATE_LIMIT|RATELIMIT|TOO_MANY_REQUESTS|THROTTLED|THROTTLE|429)/,
+    pattern: /(?:RATE_LIMIT|RATELIMIT|TOO_MANY_REQUESTS|THROTTLED|THROTTLE|QPS|TPS|CONCURRENCY|429)/,
     category: 'provider_rate_limit',
   },
   {
-    pattern: /(?:INTERNAL|SERVER|SERVICE|GATEWAY).*(?:ERROR|UNAVAILABLE|TIMEOUT|FAILED)|HTTP_5\d\d|(?:^|_)5\d\d(?:_|$)/,
+    pattern: /(?:INTERNAL|SERVER|SERVICE|GATEWAY|SYSTEM|MODEL).*(?:ERROR|UNAVAILABLE|TIMEOUT|FAILED|BUSY)|HTTP_5\d\d|(?:^|_)5\d\d(?:_|$)/,
     category: 'provider_server_error',
   },
   {
@@ -978,6 +978,170 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+const SEEDANCE_PROVIDER_RESULT_ARRAY_KEYS = [
+  'submitted_shots',
+  'submittedShots',
+  'provider_results',
+  'providerResults',
+  'results',
+  'items',
+  'tasks',
+  'task_list',
+  'taskList',
+  'jobs',
+  'job_list',
+  'jobList',
+  'records',
+  'list',
+];
+
+const SEEDANCE_PROVIDER_RESULT_CONTAINER_KEYS = [
+  'data',
+  'result',
+  'response',
+  'payload',
+  'output',
+];
+
+function seedanceProviderArrayField(record: Record<string, unknown>, keys: string[]): unknown[] | undefined {
+  for (const key of keys) {
+    const value = record[key];
+    if (Array.isArray(value)) return value;
+  }
+  return undefined;
+}
+
+function seedanceProviderResultArray(payload: unknown): unknown[] | undefined {
+  if (Array.isArray(payload)) return payload;
+  if (!isObjectRecord(payload)) return undefined;
+  const direct = seedanceProviderArrayField(payload, SEEDANCE_PROVIDER_RESULT_ARRAY_KEYS);
+  if (direct) return direct;
+  for (const key of SEEDANCE_PROVIDER_RESULT_CONTAINER_KEYS) {
+    const nested = payload[key];
+    if (Array.isArray(nested)) return nested;
+    if (isObjectRecord(nested)) {
+      const nestedArray = seedanceProviderArrayField(nested, SEEDANCE_PROVIDER_RESULT_ARRAY_KEYS);
+      if (nestedArray) return nestedArray;
+    }
+  }
+  return undefined;
+}
+
+function seedanceProviderStringField(value: unknown): string | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return callbackStringField(value);
+}
+
+function seedanceProviderResultStatus(item: Record<string, unknown>): string | undefined {
+  return seedanceProviderStringField(
+    item.status ?? item.task_status ?? item.taskStatus ?? item.state ?? item.phase,
+  );
+}
+
+function seedanceProviderResultJobId(item: Record<string, unknown>): string | undefined {
+  return seedanceProviderStringField(
+    item.provider_job_id
+      ?? item.providerJobId
+      ?? item.job_id
+      ?? item.jobId
+      ?? item.task_id
+      ?? item.taskId
+      ?? item.request_id
+      ?? item.requestId
+      ?? item.id,
+  );
+}
+
+function seedanceProviderResultQueueId(item: Record<string, unknown>): string | undefined {
+  return seedanceProviderStringField(
+    item.provider_queue_id
+      ?? item.providerQueueId
+      ?? item.queue_id
+      ?? item.queueId
+      ?? item.batch_id
+      ?? item.batchId,
+  );
+}
+
+function seedanceProviderResultQueuePosition(item: Record<string, unknown>): number | undefined {
+  return callbackNumberField(
+    item.provider_queue_position
+      ?? item.providerQueuePosition
+      ?? item.queue_position
+      ?? item.queuePosition
+      ?? item.position,
+  );
+}
+
+function seedanceProviderResultVideoUrl(item: Record<string, unknown>): string | undefined {
+  return callbackStringField(
+    item.video_url
+      ?? item.videoUrl
+      ?? item.output_url
+      ?? item.outputUrl
+      ?? item.file_url
+      ?? item.fileUrl
+      ?? item.download_url
+      ?? item.downloadUrl
+      ?? item.result_url
+      ?? item.resultUrl
+      ?? item.url,
+  );
+}
+
+function seedanceProviderResultErrorCode(item: Record<string, unknown>): string | undefined {
+  const error = item.error;
+  return seedanceProviderStringField(
+    item.provider_error_code
+      ?? item.providerErrorCode
+      ?? item.error_code
+      ?? item.errorCode
+      ?? item.status_code
+      ?? item.statusCode
+      ?? item.code
+      ?? (isObjectRecord(error) ? error.code ?? error.error_code ?? error.errorCode : undefined),
+  );
+}
+
+function seedanceProviderResultMessage(item: Record<string, unknown>): string | undefined {
+  const error = item.error;
+  return callbackStringField(
+    item.failure_reason
+      ?? item.failureReason
+      ?? item.error_message
+      ?? item.errorMessage
+      ?? item.reason
+      ?? item.message
+      ?? item.msg
+      ?? (typeof error === 'string' ? error : undefined)
+      ?? (isObjectRecord(error) ? error.message ?? error.msg ?? error.reason ?? error.detail : undefined),
+  );
+}
+
+function seedanceProviderResultQualityScore(item: Record<string, unknown>): number | undefined {
+  return callbackNumberField(item.quality_score ?? item.qualityScore ?? item.score ?? item.quality);
+}
+
+function seedanceProviderCallbackRequestFromAdapterItem(item: Record<string, unknown>): SeedanceShotProviderCallbackRequest {
+  return {
+    provider: callbackStringField(item.provider),
+    shot_id: callbackStringField(item.shot_id ?? item.shotId),
+    job_id: seedanceProviderResultJobId(item),
+    queue_id: seedanceProviderResultQueueId(item),
+    queue_position: seedanceProviderResultQueuePosition(item),
+    status: seedanceProviderResultStatus(item),
+    url: seedanceProviderResultVideoUrl(item),
+    failure_reason: seedanceProviderResultMessage(item),
+    failure_category: normalizeProviderFailureCategory(item.failure_category ?? item.failureCategory),
+    provider_error_code: seedanceProviderResultErrorCode(item),
+    quality_score: seedanceProviderResultQualityScore(item),
+    review_note: callbackStringField(item.review_note ?? item.reviewNote),
+    message: callbackStringField(item.message ?? item.msg),
+    note: callbackStringField(item.note),
+    payload: item,
+  };
+}
+
 function configuredSeedanceProviderSubmitEndpoint(): string | undefined {
   const endpoint = process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT?.trim();
   return endpoint || undefined;
@@ -1001,27 +1165,7 @@ function seedanceProviderPollTimeoutMs(): number {
 }
 
 function seedanceProviderSubmitResultArray(payload: unknown): unknown[] | undefined {
-  if (Array.isArray(payload)) return payload;
-  if (!isObjectRecord(payload)) return undefined;
-  const direct = payload.submitted_shots
-    ?? payload.submittedShots
-    ?? payload.provider_results
-    ?? payload.providerResults
-    ?? payload.results
-    ?? payload.items;
-  if (Array.isArray(direct)) return direct;
-  const data = payload.data;
-  if (Array.isArray(data)) return data;
-  if (isObjectRecord(data)) {
-    const nested = data.submitted_shots
-      ?? data.submittedShots
-      ?? data.provider_results
-      ?? data.providerResults
-      ?? data.results
-      ?? data.items;
-    if (Array.isArray(nested)) return nested;
-  }
-  return undefined;
+  return seedanceProviderResultArray(payload);
 }
 
 function normalizeSeedanceProviderSubmitAdapterStatus(value: unknown): 'submitted' | 'processing' | 'failed' {
@@ -1048,7 +1192,7 @@ function normalizeSeedanceProviderSubmitAdapterResults(input: {
   }
   const rawResults = seedanceProviderSubmitResultArray(input.payload);
   if (!rawResults) {
-    return 'Seedance provider submit adapter response must be an array or include submitted_shots/provider_results/results/items';
+    return 'Seedance provider submit adapter response must be an array or include submitted_shots/provider_results/results/items/tasks/data.tasks';
   }
 
   const candidatesByShotId = new Map(input.candidates.map(candidate => [candidate.item.shot_id, candidate]));
@@ -1059,7 +1203,8 @@ function normalizeSeedanceProviderSubmitAdapterResults(input: {
     if (!isObjectRecord(item)) {
       return `Seedance provider submit adapter result #${index + 1} must be an object`;
     }
-    const shotId = callbackStringField(item.shot_id ?? item.shotId);
+    const shotId = callbackStringField(item.shot_id ?? item.shotId)
+      ?? (rawResults.length === 1 && input.candidates.length === 1 ? input.candidates[0].item.shot_id : undefined);
     if (!shotId) {
       return `Seedance provider submit adapter result #${index + 1} requires shot_id`;
     }
@@ -1073,8 +1218,8 @@ function normalizeSeedanceProviderSubmitAdapterResults(input: {
       continue;
     }
     seenShotIds.add(shotId);
-    const status = normalizeSeedanceProviderSubmitAdapterStatus(item.status);
-    const message = callbackStringField(item.failure_reason ?? item.failureReason ?? item.error ?? item.message);
+    const status = normalizeSeedanceProviderSubmitAdapterStatus(seedanceProviderResultStatus(item));
+    const message = seedanceProviderResultMessage(item);
     if (status === 'failed') {
       failures.push({
         index: candidate.queuePosition - 1,
@@ -1083,9 +1228,7 @@ function normalizeSeedanceProviderSubmitAdapterResults(input: {
       });
       continue;
     }
-    const providerJobId = callbackStringField(
-      item.provider_job_id ?? item.providerJobId ?? item.job_id ?? item.jobId ?? item.task_id ?? item.taskId,
-    );
+    const providerJobId = seedanceProviderResultJobId(item);
     if (!providerJobId) {
       failures.push({
         index: candidate.queuePosition - 1,
@@ -1097,15 +1240,8 @@ function normalizeSeedanceProviderSubmitAdapterResults(input: {
     accepted.push({
       shot_id: shotId,
       provider_job_id: providerJobId,
-      provider_queue_id: callbackStringField(
-        item.provider_queue_id ?? item.providerQueueId ?? item.queue_id ?? item.queueId,
-      ),
-      provider_queue_position: callbackNumberField(
-        item.provider_queue_position
-          ?? item.providerQueuePosition
-          ?? item.queue_position
-          ?? item.queuePosition,
-      ),
+      provider_queue_id: seedanceProviderResultQueueId(item),
+      provider_queue_position: seedanceProviderResultQueuePosition(item),
       status,
     });
   }
@@ -1216,17 +1352,7 @@ async function querySeedanceProviderSubmitAdapter(input: {
 }
 
 function seedanceProviderPollResultArray(payload: unknown): unknown[] | undefined {
-  if (Array.isArray(payload)) return payload;
-  if (!isObjectRecord(payload)) return undefined;
-  const direct = payload.provider_results ?? payload.providerResults ?? payload.results ?? payload.items;
-  if (Array.isArray(direct)) return direct;
-  const data = payload.data;
-  if (Array.isArray(data)) return data;
-  if (isObjectRecord(data)) {
-    const nested = data.provider_results ?? data.providerResults ?? data.results ?? data.items;
-    if (Array.isArray(nested)) return nested;
-  }
-  return undefined;
+  return seedanceProviderResultArray(payload);
 }
 
 function normalizeSeedanceProviderPollAdapterResults(
@@ -1240,24 +1366,31 @@ function normalizeSeedanceProviderPollAdapterResults(
   }
   const rawResults = seedanceProviderPollResultArray(payload);
   if (!rawResults) {
-    return 'Seedance provider adapter response must be an array or include provider_results/results/items';
+    return 'Seedance provider adapter response must be an array or include provider_results/results/items/tasks/data.tasks';
   }
   const results: SeedanceShotProviderCallbackRequest[] = [];
   for (const [index, item] of rawResults.entries()) {
     if (!isObjectRecord(item)) {
       return `Seedance provider adapter result #${index + 1} must be an object`;
     }
-    const shotId = callbackStringField(item.shot_id ?? item.shotId);
+    const normalizedItem = seedanceProviderCallbackRequestFromAdapterItem(item);
+    const shotId = callbackStringField(normalizedItem.shot_id ?? normalizedItem.shotId);
     const providerJobId = callbackStringField(
-      item.provider_job_id ?? item.providerJobId ?? item.job_id ?? item.jobId,
+      normalizedItem.provider_job_id
+        ?? normalizedItem.providerJobId
+        ?? normalizedItem.job_id
+        ?? normalizedItem.jobId,
     );
     const providerQueueId = callbackStringField(
-      item.provider_queue_id ?? item.providerQueueId ?? item.queue_id ?? item.queueId,
+      normalizedItem.provider_queue_id
+        ?? normalizedItem.providerQueueId
+        ?? normalizedItem.queue_id
+        ?? normalizedItem.queueId,
     );
     if (!shotId && !providerJobId && !providerQueueId) {
       return `Seedance provider adapter result #${index + 1} requires shot_id, provider_job_id/job_id, or provider_queue_id/queue_id`;
     }
-    results.push(item as SeedanceShotProviderCallbackRequest);
+    results.push(normalizedItem);
   }
   return results;
 }
@@ -1341,17 +1474,31 @@ function resolveSeedanceShotCallbackUpdate(
   callback: SeedanceShotCallbackRequest,
 ): SeedanceShotStatusUpdateRequest | string {
   const provider = callbackStringField(callback.provider);
-  const providerJobId = callbackStringField(
-    callback.provider_job_id ?? callback.providerJobId ?? callback.job_id ?? callback.jobId,
+  const providerJobId = seedanceProviderStringField(
+    callback.provider_job_id
+      ?? callback.providerJobId
+      ?? callback.job_id
+      ?? callback.jobId
+      ?? callback.task_id
+      ?? callback.taskId
+      ?? callback.request_id
+      ?? callback.requestId
+      ?? callback.id,
   );
-  const providerQueueId = callbackStringField(
-    callback.provider_queue_id ?? callback.providerQueueId ?? callback.queue_id ?? callback.queueId,
+  const providerQueueId = seedanceProviderStringField(
+    callback.provider_queue_id
+      ?? callback.providerQueueId
+      ?? callback.queue_id
+      ?? callback.queueId
+      ?? callback.batch_id
+      ?? callback.batchId,
   );
   const providerQueuePosition = callbackNumberField(
     callback.provider_queue_position
       ?? callback.providerQueuePosition
       ?? callback.queue_position
-      ?? callback.queuePosition,
+      ?? callback.queuePosition
+      ?? callback.position,
   );
   const board = buildStoryProductionBoard(detail.current_story, {
     seedanceAssetLibrary: detail.project.seedance_asset_library,
@@ -1386,15 +1533,41 @@ function resolveSeedanceShotCallbackUpdate(
       : 'Seedance callback requires shot_id, a known provider_job_id/job_id, or a known provider_queue_id/queue_id';
   }
 
-  const videoUrl = callbackStringField(callback.video_url ?? callback.videoUrl ?? callback.url);
+  const videoUrl = callbackStringField(
+    callback.video_url
+      ?? callback.videoUrl
+      ?? callback.output_url
+      ?? callback.outputUrl
+      ?? callback.file_url
+      ?? callback.fileUrl
+      ?? callback.download_url
+      ?? callback.downloadUrl
+      ?? callback.result_url
+      ?? callback.resultUrl
+      ?? callback.url,
+  );
   const explicitFailureReason = callbackStringField(
-    callback.failure_reason ?? callback.failureReason ?? callback.error,
+    callback.failure_reason
+      ?? callback.failureReason
+      ?? callback.error_message
+      ?? callback.errorMessage
+      ?? callback.reason
+      ?? callback.error,
   );
-  const providerErrorCode = callbackStringField(
-    callback.provider_error_code ?? callback.providerErrorCode ?? callback.error_code ?? callback.errorCode,
+  const providerErrorCode = seedanceProviderStringField(
+    callback.provider_error_code
+      ?? callback.providerErrorCode
+      ?? callback.error_code
+      ?? callback.errorCode
+      ?? callback.status_code
+      ?? callback.statusCode
+      ?? callback.code,
   );
-  const callbackMessage = callbackStringField(callback.message);
-  const status = normalizeSeedanceShotCallbackStatus(callback.status, Boolean(videoUrl), Boolean(explicitFailureReason));
+  const callbackMessage = callbackStringField(callback.message ?? callback.msg);
+  const callbackStatus = callbackStringField(
+    callback.status ?? callback.task_status ?? callback.taskStatus ?? callback.state ?? callback.phase,
+  );
+  const status = normalizeSeedanceShotCallbackStatus(callbackStatus, Boolean(videoUrl), Boolean(explicitFailureReason));
   const failureReason = status === 'failed'
     ? explicitFailureReason ?? callbackMessage
     : undefined;
@@ -1421,7 +1594,7 @@ function resolveSeedanceShotCallbackUpdate(
       ?? callbackMessage
       ?? `Seedance 回传导入：${seedanceShotStatusText(status)}`,
     increment_retry: Boolean(callback.increment_retry ?? callback.incrementRetry),
-    quality_score: callbackNumberField(callback.quality_score ?? callback.qualityScore),
+    quality_score: callbackNumberField(callback.quality_score ?? callback.qualityScore ?? callback.score ?? callback.quality),
     review_note: callbackStringField(callback.review_note ?? callback.reviewNote),
   };
 }
@@ -2892,16 +3065,30 @@ export async function importProjectSeedanceProviderCallback(
     ...importRes.data,
     provider: callbackStringField(request.provider),
     provider_job_id: callbackStringField(
-      request.provider_job_id ?? request.providerJobId ?? request.job_id ?? request.jobId,
+      request.provider_job_id
+        ?? request.providerJobId
+        ?? request.job_id
+        ?? request.jobId
+        ?? request.task_id
+        ?? request.taskId
+        ?? request.request_id
+        ?? request.requestId
+        ?? request.id,
     ),
     provider_queue_id: callbackStringField(
-      request.provider_queue_id ?? request.providerQueueId ?? request.queue_id ?? request.queueId,
+      request.provider_queue_id
+        ?? request.providerQueueId
+        ?? request.queue_id
+        ?? request.queueId
+        ?? request.batch_id
+        ?? request.batchId,
     ),
     provider_queue_position: callbackNumberField(
       request.provider_queue_position
         ?? request.providerQueuePosition
         ?? request.queue_position
-        ?? request.queuePosition,
+        ?? request.queuePosition
+        ?? request.position,
     ),
     event_id: callbackStringField(
       request.event_id ?? request.eventId ?? request.callback_id ?? request.callbackId,

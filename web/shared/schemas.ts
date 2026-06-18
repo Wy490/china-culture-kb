@@ -461,6 +461,10 @@ const SeedanceProviderFailureCategorySchema = z.enum([
   'network_error',
   'unknown',
 ]);
+const SeedanceProviderCodeValueSchema = z.union([
+  z.string().trim().min(1).max(120),
+  z.number().int(),
+]);
 
 export const SeedanceShotStatusUpdateRequestSchema = z.object({
   shot_id: z.string().trim().min(1).max(80),
@@ -522,33 +526,62 @@ export const SeedanceShotCallbackRequestSchema = z.object({
   providerJobId: z.string().trim().min(1).max(120).optional(),
   job_id: z.string().trim().min(1).max(120).optional(),
   jobId: z.string().trim().min(1).max(120).optional(),
+  task_id: z.string().trim().min(1).max(120).optional(),
+  taskId: z.string().trim().min(1).max(120).optional(),
+  request_id: z.string().trim().min(1).max(120).optional(),
+  requestId: z.string().trim().min(1).max(120).optional(),
+  id: z.string().trim().min(1).max(120).optional(),
   provider_queue_id: z.string().trim().min(1).max(120).optional(),
   providerQueueId: z.string().trim().min(1).max(120).optional(),
   queue_id: z.string().trim().min(1).max(120).optional(),
   queueId: z.string().trim().min(1).max(120).optional(),
+  batch_id: z.string().trim().min(1).max(120).optional(),
+  batchId: z.string().trim().min(1).max(120).optional(),
   provider_queue_position: z.number().int().min(1).max(10000).optional(),
   providerQueuePosition: z.number().int().min(1).max(10000).optional(),
   queue_position: z.number().int().min(1).max(10000).optional(),
   queuePosition: z.number().int().min(1).max(10000).optional(),
+  position: z.number().int().min(1).max(10000).optional(),
   status: z.string().trim().min(1).max(80).optional(),
+  task_status: z.string().trim().min(1).max(80).optional(),
+  taskStatus: z.string().trim().min(1).max(80).optional(),
+  state: z.string().trim().min(1).max(80).optional(),
+  phase: z.string().trim().min(1).max(80).optional(),
   video_url: z.string().trim().url().optional(),
   videoUrl: z.string().trim().url().optional(),
+  output_url: z.string().trim().url().optional(),
+  outputUrl: z.string().trim().url().optional(),
+  file_url: z.string().trim().url().optional(),
+  fileUrl: z.string().trim().url().optional(),
+  download_url: z.string().trim().url().optional(),
+  downloadUrl: z.string().trim().url().optional(),
+  result_url: z.string().trim().url().optional(),
+  resultUrl: z.string().trim().url().optional(),
   url: z.string().trim().url().optional(),
   failure_reason: z.string().trim().min(1).max(500).optional(),
   failureReason: z.string().trim().min(1).max(500).optional(),
+  error_message: z.string().trim().min(1).max(500).optional(),
+  errorMessage: z.string().trim().min(1).max(500).optional(),
+  reason: z.string().trim().min(1).max(500).optional(),
   failure_category: SeedanceProviderFailureCategorySchema.optional(),
   failureCategory: SeedanceProviderFailureCategorySchema.optional(),
-  provider_error_code: z.string().trim().min(1).max(120).optional(),
-  providerErrorCode: z.string().trim().min(1).max(120).optional(),
-  error_code: z.string().trim().min(1).max(120).optional(),
-  errorCode: z.string().trim().min(1).max(120).optional(),
+  provider_error_code: SeedanceProviderCodeValueSchema.optional(),
+  providerErrorCode: SeedanceProviderCodeValueSchema.optional(),
+  error_code: SeedanceProviderCodeValueSchema.optional(),
+  errorCode: SeedanceProviderCodeValueSchema.optional(),
+  status_code: SeedanceProviderCodeValueSchema.optional(),
+  statusCode: SeedanceProviderCodeValueSchema.optional(),
+  code: SeedanceProviderCodeValueSchema.optional(),
   error: z.string().trim().min(1).max(500).optional(),
   message: z.string().trim().min(1).max(500).optional(),
+  msg: z.string().trim().min(1).max(500).optional(),
   note: z.string().trim().min(1).max(500).optional(),
   increment_retry: z.boolean().optional(),
   incrementRetry: z.boolean().optional(),
   quality_score: z.number().min(0).max(100).optional(),
   qualityScore: z.number().min(0).max(100).optional(),
+  score: z.number().min(0).max(100).optional(),
+  quality: z.number().min(0).max(100).optional(),
   review_note: z.string().trim().min(1).max(500).optional(),
   reviewNote: z.string().trim().min(1).max(500).optional(),
 }).refine(
@@ -559,10 +592,17 @@ export const SeedanceShotCallbackRequestSchema = z.object({
     || data.providerJobId
     || data.job_id
     || data.jobId
+    || data.task_id
+    || data.taskId
+    || data.request_id
+    || data.requestId
+    || data.id
     || data.provider_queue_id
     || data.providerQueueId
     || data.queue_id
     || data.queueId
+    || data.batch_id
+    || data.batchId
   ),
   { message: 'callback requires shot_id, provider_job_id/job_id, or provider_queue_id/queue_id' },
 );

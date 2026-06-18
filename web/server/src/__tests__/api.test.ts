@@ -505,6 +505,7 @@ describe('System API', () => {
       expect(res.body.data.submit.accepted_response_shapes).toEqual(expect.arrayContaining([
         '{ submitted_shots: [...] }',
         '{ provider_results: [...] }',
+        '{ data: { tasks: [...] } }',
       ]));
       expect(res.body.data.submit.request_example).toMatchObject({
         schema_version: 'seedance-provider-submit/v1',
@@ -516,28 +517,27 @@ describe('System API', () => {
           seedance_prompt: expect.stringContaining('0-3秒'),
         })],
       });
-      expect(res.body.data.submit.response_examples[0].submitted_shots[0]).toMatchObject({
+      expect(res.body.data.submit.response_examples[0].data.tasks[0]).toMatchObject({
         shot_id: 'shot-1',
-        provider_job_id: 'real-seedance-job-001',
+        taskId: 'real-seedance-job-001',
       });
       expect(res.body.data.poll.request_fields).toContain('targets[].provider_job_id');
       expect(res.body.data.poll.normalized_result_fields).toEqual(expect.arrayContaining([
-        'video_url | url',
-        'provider_error_code | errorCode',
+        'video_url | videoUrl | output_url | outputUrl | file_url | fileUrl | download_url | downloadUrl | result_url | resultUrl | url',
+        'provider_error_code | providerErrorCode | error_code | errorCode | status_code | statusCode | code',
       ]));
       expect(res.body.data.poll.request_example.targets[0]).toMatchObject({
         shot_id: 'shot-1',
         provider_job_id: 'real-seedance-job-001',
       });
-      expect(res.body.data.poll.response_examples[0].provider_results).toEqual(expect.arrayContaining([
+      expect(res.body.data.poll.response_examples[0].data.tasks).toEqual(expect.arrayContaining([
         expect.objectContaining({
-          status: 'completed',
-          video_url: 'seedance-video-shot-1.mp4',
+          state: 'SUCCEEDED',
+          outputUrl: 'seedance-video-shot-1.mp4',
         }),
         expect.objectContaining({
-          status: 'failed',
-          failure_category: 'content_policy',
-          provider_error_code: 'POLICY_BLOCKED',
+          state: 'FAILED',
+          code: 'RISK_CONTROL',
         }),
       ]));
       expect(JSON.stringify(res.body.data)).not.toContain('http');
@@ -1179,14 +1179,15 @@ describe('Projects API', () => {
           .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-callback`)
           .send({
             provider: 'seedance',
-            queue_id: 'api-provider-callback-queue-001',
-            queue_position: 1,
-            status: 'succeeded',
-            url: 'https://example.com/api/provider-callback-shot-1.mp4',
-            quality_score: 96,
+            taskId: 'api-provider-callback-job-shot-1',
+            batchId: 'api-provider-callback-queue-001',
+            position: 1,
+            taskStatus: 'succeeded',
+            outputUrl: 'https://example.com/api/provider-callback-shot-1.mp4',
+            score: 96,
             review_note: '外部 provider 回片稳定',
             event_id: 'api-provider-callback-event-001',
-            message: 'provider succeeded',
+            msg: 'provider succeeded',
           });
         expect(callbackRes.status).toBe(200);
         expectSuccess(callbackRes.body);
