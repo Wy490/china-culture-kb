@@ -39,6 +39,9 @@ import {
 
 const TEMP_DIRS: string[] = [];
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
 const ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN = process.env.SEEDANCE_PROVIDER_API_TOKEN;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
@@ -156,6 +159,21 @@ afterEach(async () => {
     delete process.env.KB_ROOT;
   } else {
     process.env.KB_ROOT = ORIGINAL_KB_ROOT;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_ENDPOINT === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
   }
   if (ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT === undefined) {
     delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
@@ -785,6 +803,103 @@ describe('project-service', () => {
       item.shot_id === 'shot-1'
     )).toMatchObject({
       status: 'processing',
+    });
+  });
+
+  it('submits Seedance shots through a configured provider adapter', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = 'https://adapter.example.test/seedance/submit';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = 'submit-token';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitFetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(String(_url)).toBe('https://adapter.example.test/seedance/submit');
+      expect(init?.method).toBe('POST');
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer submit-token');
+      const body = JSON.parse(String(init?.body)) as {
+        project_id: string;
+        provider?: string;
+        queue_id?: string;
+        queue_priority?: string;
+        shots: Array<{ shot_id: string; provider_job_id?: string; seedance_prompt?: string; seedance_asset_slots?: unknown[] }>;
+      };
+      expect(body.project_id).toBe(enriched.project_id);
+      expect(body.provider).toBe('seedance');
+      expect(body.queue_id).toBe('adapter-submit-queue-local');
+      expect(body.queue_priority).toBe('high');
+      expect(body.shots).toHaveLength(2);
+      expect(body.shots[0]).toMatchObject({
+        shot_id: 'shot-1',
+        provider_job_id: 'adapter-submit-local-shot-1',
+      });
+      expect(body.shots[0].seedance_prompt).toContain('0-3秒');
+      expect(body.shots[0].seedance_asset_slots).toBeInstanceOf(Array);
+      return new Response(JSON.stringify({
+        submitted_shots: [{
+          shot_id: 'shot-1',
+          provider_job_id: 'real-seedance-job-shot-1',
+          provider_queue_id: 'real-seedance-queue-001',
+          provider_queue_position: 11,
+          status: 'processing',
+        }, {
+          shot_id: 'shot-2',
+          provider_job_id: 'real-seedance-job-shot-2',
+          provider_queue_id: 'real-seedance-queue-001',
+          provider_queue_position: 12,
+          status: 'submitted',
+        }],
+      }));
+    });
+    vi.stubGlobal('fetch', submitFetchMock);
+
+    const adapterSubmitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'adapter-submit-local',
+      queue_id: 'adapter-submit-queue-local',
+      queue_priority: 'high',
+      use_provider_adapter: true,
+      note: '真实 adapter 提交',
+    });
+    expect(submitFetchMock).toHaveBeenCalledTimes(1);
+    expect(adapterSubmitRes.ok).toBe(true);
+    expect(adapterSubmitRes.data).toMatchObject({
+      submitted_count: 2,
+      skipped_count: 0,
+      failed_count: 0,
+      provider_adapter: {
+        endpoint_configured: true,
+        requested_count: 2,
+        accepted_count: 2,
+        failed_count: 0,
+      },
+    });
+    expect(adapterSubmitRes.data?.provider_queue_batch).toMatchObject({
+      queue_id: 'real-seedance-queue-001',
+      provider: 'seedance',
+      priority: 'high',
+      items: [{
+        shot_id: 'shot-1',
+        provider_job_id: 'real-seedance-job-shot-1',
+        queue_position: 11,
+        status: 'processing',
+      }, {
+        shot_id: 'shot-2',
+        provider_job_id: 'real-seedance-job-shot-2',
+        queue_position: 12,
+        status: 'submitted',
+      }],
+    });
+    expect(adapterSubmitRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'processing',
+      provider_job_id: 'real-seedance-job-shot-1',
+      provider_queue_id: 'real-seedance-queue-001',
+      provider_queue_position: 11,
     });
   });
 

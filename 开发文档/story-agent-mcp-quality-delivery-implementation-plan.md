@@ -769,6 +769,7 @@ kb_repair_story(auto_apply=true，需 repaired_story_json)
 单故事 Seedance provider 轮询入口首版
 单故事 Seedance provider 失败分类和错误码传递首版
 单故事 Seedance provider 通用 poll adapter 首版
+单故事 Seedance provider 通用 submit adapter 首版
 ```
 
 完成原因：
@@ -790,13 +791,13 @@ npm test
 下一步建议继续实现：
 
 ```text
-repair_story 模型生成链路 + Seedance provider 平台专用 submit/query adapter
+repair_story 模型生成链路 + Seedance provider 平台 SDK/HTTP submit/query 实现
 ```
 
 原因：
 
 - MCP 已经能读项目、验证质量、生成 GEARS/Seedance 只读交付包、给出修复建议，并能受控新增项目版本；
-- Web 工作台已有 provider 提交抽象、队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类和通用 poll adapter，下一层应补真实平台 submit/query API 细节；
+- Web 工作台已有 provider 提交抽象、队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类和通用 submit/poll adapter，下一层应补真实平台 SDK/HTTP submit/query 细节；
 - `kb_repair_story(auto_apply=true)` 仍要求调用方提供 `repaired_story_json`，下一步要让模型根据 repair_actions 生成可校验快照。
 
 - 质量报告已经能指出问题；

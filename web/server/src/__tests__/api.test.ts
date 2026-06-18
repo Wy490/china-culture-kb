@@ -858,6 +858,25 @@ describe('Projects API', () => {
         provider_queue_position: 1,
       });
 
+      const previousSubmitAdapterEndpoint = process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+      delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+      const missingSubmitAdapterRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/submit-provider`)
+        .send({
+          shot_ids: ['shot-2'],
+          provider: 'seedance',
+          overwrite_existing: true,
+          use_provider_adapter: true,
+        });
+      if (previousSubmitAdapterEndpoint === undefined) {
+        delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+      } else {
+        process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = previousSubmitAdapterEndpoint;
+      }
+      expect(missingSubmitAdapterRes.status).toBe(400);
+      expectFailure(missingSubmitAdapterRes.body, 'VALIDATION_ERROR');
+      expect(missingSubmitAdapterRes.body.error.message).toContain('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT');
+
       const providerRecoveryRes = await request
         .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/recover-provider`)
         .send({

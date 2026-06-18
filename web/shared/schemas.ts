@@ -501,6 +501,7 @@ export const SeedanceShotProviderSubmitRequestSchema = z.object({
   job_prefix: z.string().trim().min(1).max(80).optional(),
   queue_id: z.string().trim().min(1).max(120).optional(),
   queue_priority: SeedanceShotProviderQueuePrioritySchema.optional().default('normal'),
+  use_provider_adapter: z.boolean().optional().default(false),
   overwrite_existing: z.boolean().optional().default(false),
   note: z.string().trim().min(1).max(500).optional(),
 });

@@ -52,11 +52,14 @@ import type {
   SeedanceShotAutoSelectRequest,
   SeedanceShotProviderQueue,
   SeedanceShotProviderQueueBatch,
+  SeedanceShotProviderQueuePriority,
   SeedanceShotProviderRecoveryItem,
   SeedanceShotProviderRecoveryRequest,
   SeedanceShotProviderRecoveryResult,
   SeedanceShotProviderRecoverableStatus,
   SeedanceShotProviderSubmitRequest,
+  SeedanceShotProviderSubmitAdapterSummary,
+  SeedanceShotProviderSubmitFailure,
   SeedanceShotProviderSubmitResult,
   SeedanceShotStatusBatchUpdateRequest,
   SeedanceShotStatusBatchUpdateResult,
@@ -648,8 +651,28 @@ function seedanceProviderPollTargets(input: {
   return { checkedCount: checkedItems.length, targets };
 }
 
+type SeedanceProviderSubmitCandidate = {
+  item: SeedanceShotLedgerItem;
+  shot: StoryProductionBoard['shot_units'][number];
+  providerJobId: string;
+  queuePosition: number;
+};
+
+type SeedanceProviderSubmitAdapterAcceptedItem = {
+  shot_id: string;
+  provider_job_id: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
+  status: 'submitted' | 'processing';
+};
+
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function configuredSeedanceProviderSubmitEndpoint(): string | undefined {
+  const endpoint = process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT?.trim();
+  return endpoint || undefined;
 }
 
 function configuredSeedanceProviderPollEndpoint(): string | undefined {
@@ -657,10 +680,229 @@ function configuredSeedanceProviderPollEndpoint(): string | undefined {
   return endpoint || undefined;
 }
 
+function seedanceProviderSubmitTimeoutMs(): number {
+  const parsed = Number(process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 30000;
+  return Math.min(parsed, 60000);
+}
+
 function seedanceProviderPollTimeoutMs(): number {
   const parsed = Number(process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS);
   if (!Number.isFinite(parsed) || parsed <= 0) return 10000;
   return Math.min(parsed, 30000);
+}
+
+function seedanceProviderSubmitResultArray(payload: unknown): unknown[] | undefined {
+  if (Array.isArray(payload)) return payload;
+  if (!isObjectRecord(payload)) return undefined;
+  const direct = payload.submitted_shots
+    ?? payload.submittedShots
+    ?? payload.provider_results
+    ?? payload.providerResults
+    ?? payload.results
+    ?? payload.items;
+  if (Array.isArray(direct)) return direct;
+  const data = payload.data;
+  if (Array.isArray(data)) return data;
+  if (isObjectRecord(data)) {
+    const nested = data.submitted_shots
+      ?? data.submittedShots
+      ?? data.provider_results
+      ?? data.providerResults
+      ?? data.results
+      ?? data.items;
+    if (Array.isArray(nested)) return nested;
+  }
+  return undefined;
+}
+
+function normalizeSeedanceProviderSubmitAdapterStatus(value: unknown): 'submitted' | 'processing' | 'failed' {
+  if (typeof value !== 'string') return 'submitted';
+  const normalized = value.trim().toLowerCase();
+  if (['processing', 'running', 'in_progress'].includes(normalized)) return 'processing';
+  if (['failed', 'failure', 'error', 'rejected', 'blocked'].includes(normalized)) return 'failed';
+  return 'submitted';
+}
+
+function normalizeSeedanceProviderSubmitAdapterResults(input: {
+  payload: unknown;
+  candidates: SeedanceProviderSubmitCandidate[];
+}): {
+  accepted: SeedanceProviderSubmitAdapterAcceptedItem[];
+  failures: SeedanceShotProviderSubmitFailure[];
+  summary: SeedanceShotProviderSubmitAdapterSummary;
+} | string {
+  if (isObjectRecord(input.payload) && input.payload.ok === false) {
+    const error = isObjectRecord(input.payload.error) ? input.payload.error.message : undefined;
+    return typeof error === 'string' && error.trim()
+      ? `Seedance provider submit adapter failed: ${error.trim()}`
+      : 'Seedance provider submit adapter returned ok=false';
+  }
+  const rawResults = seedanceProviderSubmitResultArray(input.payload);
+  if (!rawResults) {
+    return 'Seedance provider submit adapter response must be an array or include submitted_shots/provider_results/results/items';
+  }
+
+  const candidatesByShotId = new Map(input.candidates.map(candidate => [candidate.item.shot_id, candidate]));
+  const accepted: SeedanceProviderSubmitAdapterAcceptedItem[] = [];
+  const failures: SeedanceShotProviderSubmitFailure[] = [];
+  const seenShotIds = new Set<string>();
+  for (const [index, item] of rawResults.entries()) {
+    if (!isObjectRecord(item)) {
+      return `Seedance provider submit adapter result #${index + 1} must be an object`;
+    }
+    const shotId = callbackStringField(item.shot_id ?? item.shotId);
+    if (!shotId) {
+      return `Seedance provider submit adapter result #${index + 1} requires shot_id`;
+    }
+    const candidate = candidatesByShotId.get(shotId);
+    if (!candidate) {
+      failures.push({
+        index,
+        shot_id: shotId,
+        message: `Seedance provider submit adapter returned unknown shot "${shotId}"`,
+      });
+      continue;
+    }
+    seenShotIds.add(shotId);
+    const status = normalizeSeedanceProviderSubmitAdapterStatus(item.status);
+    const message = callbackStringField(item.failure_reason ?? item.failureReason ?? item.error ?? item.message);
+    if (status === 'failed') {
+      failures.push({
+        index: candidate.queuePosition - 1,
+        shot_id: shotId,
+        message: message ?? 'Seedance provider submit adapter rejected this shot',
+      });
+      continue;
+    }
+    const providerJobId = callbackStringField(
+      item.provider_job_id ?? item.providerJobId ?? item.job_id ?? item.jobId ?? item.task_id ?? item.taskId,
+    );
+    if (!providerJobId) {
+      failures.push({
+        index: candidate.queuePosition - 1,
+        shot_id: shotId,
+        message: 'Seedance provider submit adapter accepted shot without provider_job_id/job_id',
+      });
+      continue;
+    }
+    accepted.push({
+      shot_id: shotId,
+      provider_job_id: providerJobId,
+      provider_queue_id: callbackStringField(
+        item.provider_queue_id ?? item.providerQueueId ?? item.queue_id ?? item.queueId,
+      ),
+      provider_queue_position: callbackNumberField(
+        item.provider_queue_position
+          ?? item.providerQueuePosition
+          ?? item.queue_position
+          ?? item.queuePosition,
+      ),
+      status,
+    });
+  }
+
+  input.candidates.forEach(candidate => {
+    if (seenShotIds.has(candidate.item.shot_id)) return;
+    failures.push({
+      index: candidate.queuePosition - 1,
+      shot_id: candidate.item.shot_id,
+      message: 'Seedance provider submit adapter did not return this shot',
+    });
+  });
+
+  return {
+    accepted,
+    failures,
+    summary: {
+      endpoint_configured: true,
+      requested_count: input.candidates.length,
+      accepted_count: accepted.length,
+      failed_count: failures.length,
+    },
+  };
+}
+
+async function querySeedanceProviderSubmitAdapter(input: {
+  projectId: string;
+  story: StoryGenerateResult;
+  provider: string;
+  queueId: string;
+  queuePriority: SeedanceShotProviderQueuePriority;
+  note?: string;
+  assetLibrary?: SeedanceAssetLibrary;
+  candidates: SeedanceProviderSubmitCandidate[];
+}): Promise<ApiResponse<{
+  accepted: SeedanceProviderSubmitAdapterAcceptedItem[];
+  failures: SeedanceShotProviderSubmitFailure[];
+  summary: SeedanceShotProviderSubmitAdapterSummary;
+}>> {
+  const endpoint = configuredSeedanceProviderSubmitEndpoint();
+  if (!endpoint) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT is required when use_provider_adapter=true',
+    );
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), seedanceProviderSubmitTimeoutMs());
+  try {
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    const token = process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN?.trim()
+      || process.env.SEEDANCE_PROVIDER_API_TOKEN?.trim();
+    if (token) headers.authorization = `Bearer ${token}`;
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        schema_version: 'seedance-provider-submit/v1',
+        project_id: input.projectId,
+        storyId: input.story.storyId,
+        title: input.story.title,
+        provider: input.provider,
+        queue_id: input.queueId,
+        queue_priority: input.queuePriority,
+        note: input.note,
+        seedance_asset_library: input.assetLibrary,
+        shots: input.candidates.map(candidate => ({
+          shot_id: candidate.item.shot_id,
+          source_scene_id: candidate.shot.source_scene_id,
+          provider_job_id: candidate.providerJobId,
+          provider_queue_position: candidate.queuePosition,
+          duration_sec: candidate.shot.seedance_duration_sec,
+          seedance_prompt: candidate.shot.seedance_prompt,
+          seedance_asset_slots: candidate.shot.seedance_asset_slots,
+          seedance_material_validation: candidate.shot.seedance_material_validation,
+          seedance_validation_notes: candidate.shot.seedance_validation_notes,
+          negative_constraints: candidate.shot.negative_constraints,
+        })),
+      }),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      return fail(
+        ErrorCodes.INTERNAL_ERROR,
+        `Seedance provider submit adapter returned HTTP ${response.status}`,
+        { status: response.status, body: text.slice(0, 500) },
+      );
+    }
+    const payload = text.trim() ? JSON.parse(text) as unknown : [];
+    const normalized = normalizeSeedanceProviderSubmitAdapterResults({
+      payload,
+      candidates: input.candidates,
+    });
+    if (typeof normalized === 'string') {
+      return fail(ErrorCodes.VALIDATION_ERROR, normalized);
+    }
+    return success(normalized);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    return fail(ErrorCodes.INTERNAL_ERROR, `Seedance provider submit adapter request failed: ${message}`);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function seedanceProviderPollResultArray(payload: unknown): unknown[] | undefined {
@@ -1941,7 +2183,7 @@ export async function submitProjectSeedanceShotsToProvider(
   const { project, current_story } = detail.data;
   const updatedAt = new Date().toISOString();
   const provider = request.provider?.trim() || 'seedance';
-  const queueId = request.queue_id?.trim() || seedanceProviderQueueId(provider, updatedAt);
+  let queueId = request.queue_id?.trim() || seedanceProviderQueueId(provider, updatedAt);
   const queuePriority = request.queue_priority ?? 'normal';
   const queueNote = request.note?.trim();
   const board = buildStoryProductionBoard(current_story, {
@@ -1973,48 +2215,108 @@ export async function submitProjectSeedanceShotsToProvider(
     });
   }
 
-  const items = currentLedger.items.map((item, index) => {
+  const candidates: SeedanceProviderSubmitCandidate[] = [];
+  currentLedger.items.forEach((item, index) => {
     const shot = shotUnitById.get(item.shot_id);
-    if (!shot) return item;
-    if (requestedShotIds && !requestedShotIds.has(item.shot_id)) return item;
-    if (failures.some(failure => failure.shot_id === item.shot_id)) return item;
+    if (!shot) return;
+    if (requestedShotIds && !requestedShotIds.has(item.shot_id)) return;
+    if (failures.some(failure => failure.shot_id === item.shot_id)) return;
     if (item.provider_job_id && item.status !== 'failed' && !request.overwrite_existing) {
       skippedCount += 1;
-      return item;
+      return;
     }
     if (!submitStatuses.has(item.status) && !request.overwrite_existing) {
       skippedCount += 1;
-      return item;
+      return;
     }
 
     const providerJobId = request.job_prefix?.trim()
       ? `${request.job_prefix.trim()}-${item.shot_id}`
       : seedanceProviderJobId(provider, item.shot_id, index);
-    const queuePosition = queueItems.length + 1;
+    const queuePosition = candidates.length + 1;
+    candidates.push({
+      item,
+      shot,
+      providerJobId,
+      queuePosition,
+    });
+  });
+
+  let providerAdapterSummary: SeedanceShotProviderSubmitAdapterSummary | undefined;
+  let acceptedSubmissions: SeedanceProviderSubmitAdapterAcceptedItem[] = candidates.map(candidate => ({
+    shot_id: candidate.item.shot_id,
+    provider_job_id: candidate.providerJobId,
+    provider_queue_position: candidate.queuePosition,
+    status: 'submitted',
+  }));
+
+  if (request.use_provider_adapter && candidates.length) {
+    const adapterRes = await querySeedanceProviderSubmitAdapter({
+      projectId,
+      story: current_story,
+      provider,
+      queueId,
+      queuePriority,
+      note: queueNote,
+      assetLibrary: project.seedance_asset_library,
+      candidates,
+    });
+    if (!adapterRes.ok || !adapterRes.data) {
+      return fail(
+        adapterRes.error?.code === ErrorCodes.VALIDATION_ERROR
+          ? ErrorCodes.VALIDATION_ERROR
+          : ErrorCodes.INTERNAL_ERROR,
+        adapterRes.error?.message ?? 'Seedance provider submit adapter failed',
+        adapterRes.error?.details,
+      );
+    }
+    acceptedSubmissions = adapterRes.data.accepted;
+    failures.push(...adapterRes.data.failures);
+    providerAdapterSummary = adapterRes.data.summary;
+    const acceptedQueueIds = [
+      ...new Set(acceptedSubmissions.map(item => item.provider_queue_id).filter(Boolean) as string[]),
+    ];
+    if (acceptedQueueIds.length === 1) {
+      [queueId] = acceptedQueueIds;
+    }
+  }
+
+  const acceptedByShotId = new Map(acceptedSubmissions.map(item => [item.shot_id, item]));
+  const candidatesByShotId = new Map(candidates.map(candidate => [candidate.item.shot_id, candidate]));
+  const items = currentLedger.items.map(item => {
+    const candidate = candidatesByShotId.get(item.shot_id);
+    if (!candidate) return item;
+    const accepted = acceptedByShotId.get(item.shot_id);
+    if (!accepted) return item;
+    const shot = candidate.shot;
+    const providerJobId = accepted.provider_job_id;
+    const providerQueueId = accepted.provider_queue_id ?? queueId;
+    const queuePosition = accepted.provider_queue_position ?? candidate.queuePosition;
+    const status = accepted.status;
     submittedShots.push({
       shot_id: item.shot_id,
       provider_job_id: providerJobId,
-      provider_queue_id: queueId,
+      provider_queue_id: providerQueueId,
       provider_queue_position: queuePosition,
-      status: 'submitted',
+      status,
     });
     queueItems.push({
       shot_id: item.shot_id,
       source_scene_id: shot.source_scene_id,
       provider_job_id: providerJobId,
-      status: 'submitted',
+      status,
       queue_position: queuePosition,
       queued_at: updatedAt,
     });
     return {
       ...item,
       source_scene_id: shot.source_scene_id,
-      status: 'submitted' as const,
+      status,
       submitted_at: updatedAt,
       updated_at: updatedAt,
       provider,
       provider_job_id: providerJobId,
-      provider_queue_id: queueId,
+      provider_queue_id: providerQueueId,
       provider_queue_position: queuePosition,
       failure_reason: undefined,
       failure_category: undefined,
@@ -2028,7 +2330,7 @@ export async function submitProjectSeedanceShotsToProvider(
         existing: item,
         request: {
           shot_id: item.shot_id,
-          status: 'submitted',
+          status,
           provider_job_id: providerJobId,
           note: queueNote || `提交到 ${provider}`,
         },
@@ -2045,6 +2347,7 @@ export async function submitProjectSeedanceShotsToProvider(
       project,
       seedance_shot_ledger: currentLedger,
       seedance_provider_queue: project.seedance_provider_queue,
+      provider_adapter: providerAdapterSummary,
       submitted_count: 0,
       skipped_count: skippedCount,
       failed_count: failures.length,
@@ -2082,6 +2385,7 @@ export async function submitProjectSeedanceShotsToProvider(
     seedance_shot_ledger: updatedProject.seedance_shot_ledger,
     seedance_provider_queue: updatedProject.seedance_provider_queue,
     provider_queue_batch: providerQueueBatch,
+    provider_adapter: providerAdapterSummary,
     submitted_count: submittedShots.length,
     skipped_count: skippedCount,
     failed_count: failures.length,

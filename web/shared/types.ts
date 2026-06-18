@@ -1385,6 +1385,7 @@ export interface SeedanceShotProviderSubmitRequest {
   job_prefix?: string;
   queue_id?: string;
   queue_priority?: SeedanceShotProviderQueuePriority;
+  use_provider_adapter?: boolean;
   overwrite_existing?: boolean;
   note?: string;
 }
@@ -1400,6 +1401,7 @@ export interface SeedanceShotProviderSubmitResult {
   seedance_shot_ledger?: SeedanceShotLedger;
   seedance_provider_queue?: SeedanceShotProviderQueue;
   provider_queue_batch?: SeedanceShotProviderQueueBatch;
+  provider_adapter?: SeedanceShotProviderSubmitAdapterSummary;
   submitted_count: number;
   skipped_count: number;
   failed_count: number;
@@ -1411,6 +1413,13 @@ export interface SeedanceShotProviderSubmitResult {
     status: SeedanceShotProductionStatus;
   }>;
   failures: SeedanceShotProviderSubmitFailure[];
+}
+
+export interface SeedanceShotProviderSubmitAdapterSummary {
+  endpoint_configured: boolean;
+  requested_count: number;
+  accepted_count: number;
+  failed_count: number;
 }
 
 export type SeedanceShotProviderRecoverableStatus = 'submitted' | 'processing';
