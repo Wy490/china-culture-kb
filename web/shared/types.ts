@@ -1419,6 +1419,7 @@ export interface SeedanceShotProviderSubmitResult {
 export type SeedanceProviderSubmitRequestMode = 'batch' | 'per_shot';
 export type SeedanceProviderPollRequestMode = 'batch' | 'per_target';
 export type SeedanceProviderPollHttpMethod = 'POST' | 'GET';
+export type SeedanceProviderAdapterPayloadMode = 'story_agent' | 'platform';
 
 export interface SeedanceShotProviderSubmitAdapterSummary {
   endpoint_configured: boolean;
@@ -1482,6 +1483,10 @@ export interface SeedanceShotProviderPollTarget {
 export interface SeedanceShotCallbackRequest {
   shot_id?: string;
   shotId?: string;
+  external_id?: string;
+  externalId?: string;
+  custom_id?: string;
+  customId?: string;
   provider?: string;
   provider_job_id?: string;
   providerJobId?: string;
@@ -3937,18 +3942,27 @@ export interface SeedanceProviderAdapterConfigInfo {
   submit_token_configured: boolean;
   poll_token_configured: boolean;
   shared_token_configured: boolean;
+  submit_signature_configured: boolean;
+  poll_signature_configured: boolean;
   callback_secret_configured: boolean;
   callback_base_configured: boolean;
   callback_base_envs: string[];
   submit_request_mode: SeedanceProviderSubmitRequestMode;
   poll_request_mode: SeedanceProviderPollRequestMode;
   request_mode_envs: string[];
+  submit_payload_mode: SeedanceProviderAdapterPayloadMode;
+  poll_payload_mode: SeedanceProviderAdapterPayloadMode;
+  payload_mode_envs: string[];
   poll_http_method: SeedanceProviderPollHttpMethod;
   poll_http_method_env: string;
   submit_auth_header: string;
   poll_auth_header: string;
   submit_auth_scheme: string;
   poll_auth_scheme: string;
+  submit_signature_header: string;
+  poll_signature_header: string;
+  submit_timestamp_header: string;
+  poll_timestamp_header: string;
   submit_timeout_ms: number;
   poll_timeout_ms: number;
   ready_for_submit_adapter: boolean;
@@ -3971,6 +3985,15 @@ export interface SeedanceProviderAdapterContractSection {
   timeout_env: string;
   request_mode_env: string;
   request_modes: string[];
+  payload_mode_env?: string;
+  payload_modes?: string[];
+  signature_envs?: string[];
+  signature_header_envs?: string[];
+  timestamp_header_envs?: string[];
+  default_signature_header?: string;
+  default_timestamp_header?: string;
+  signature_base?: string;
+  platform_field_envs?: string[];
   http_method_env?: string;
   http_methods?: string[];
   endpoint_template_fields?: string[];

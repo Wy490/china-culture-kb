@@ -521,6 +521,10 @@ export const SeedanceShotProviderRecoveryRequestSchema = z.object({
 export const SeedanceShotCallbackRequestSchema = z.object({
   shot_id: z.string().trim().min(1).max(80).optional(),
   shotId: z.string().trim().min(1).max(80).optional(),
+  external_id: z.string().trim().min(1).max(80).optional(),
+  externalId: z.string().trim().min(1).max(80).optional(),
+  custom_id: z.string().trim().min(1).max(80).optional(),
+  customId: z.string().trim().min(1).max(80).optional(),
   provider: z.string().trim().min(1).max(80).optional(),
   provider_job_id: z.string().trim().min(1).max(120).optional(),
   providerJobId: z.string().trim().min(1).max(120).optional(),
@@ -588,6 +592,10 @@ export const SeedanceShotCallbackRequestSchema = z.object({
   data => Boolean(
     data.shot_id
     || data.shotId
+    || data.external_id
+    || data.externalId
+    || data.custom_id
+    || data.customId
     || data.provider_job_id
     || data.providerJobId
     || data.job_id

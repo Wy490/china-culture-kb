@@ -1,6 +1,6 @@
 import { dirname, extname, resolve } from 'node:path';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import {
   fail,
   success,
@@ -44,6 +44,7 @@ import type {
   SeedanceShotLedgerItem,
   SeedanceShotProductionStatus,
   SeedanceProviderFailureCategory,
+  SeedanceProviderAdapterPayloadMode,
   SeedanceShotProviderCallbackRequest,
   SeedanceShotProviderCallbackResult,
   SeedanceShotProviderPollRequest,
@@ -1040,6 +1041,10 @@ function seedanceProviderLooksLikeResultRecord(record: Record<string, unknown>):
   return [
     'shot_id',
     'shotId',
+    'external_id',
+    'externalId',
+    'custom_id',
+    'customId',
     'provider_job_id',
     'providerJobId',
     'job_id',
@@ -1099,6 +1104,17 @@ function seedanceProviderStringField(value: unknown): string | undefined {
 function seedanceProviderResultStatus(item: Record<string, unknown>): string | undefined {
   return seedanceProviderStringField(
     item.status ?? item.task_status ?? item.taskStatus ?? item.state ?? item.phase,
+  );
+}
+
+function seedanceProviderResultShotId(item: Record<string, unknown>): string | undefined {
+  return callbackStringField(
+    item.shot_id
+      ?? item.shotId
+      ?? item.external_id
+      ?? item.externalId
+      ?? item.custom_id
+      ?? item.customId,
   );
 }
 
@@ -1189,7 +1205,7 @@ function seedanceProviderResultQualityScore(item: Record<string, unknown>): numb
 function seedanceProviderCallbackRequestFromAdapterItem(item: Record<string, unknown>): SeedanceShotProviderCallbackRequest {
   return {
     provider: callbackStringField(item.provider),
-    shot_id: callbackStringField(item.shot_id ?? item.shotId),
+    shot_id: seedanceProviderResultShotId(item),
     job_id: seedanceProviderResultJobId(item),
     queue_id: seedanceProviderResultQueueId(item),
     queue_position: seedanceProviderResultQueuePosition(item),
@@ -1232,6 +1248,236 @@ function seedanceProviderPollHttpMethod(): SeedanceProviderPollHttpMethod {
   return process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD?.trim().toUpperCase() === 'GET'
     ? 'GET'
     : 'POST';
+}
+
+function seedanceProviderAdapterPayloadMode(kind: 'submit' | 'poll'): SeedanceProviderAdapterPayloadMode {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE
+    : process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE;
+  const value = specific?.trim() || process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE?.trim();
+  return value?.toLowerCase() === 'platform' ? 'platform' : 'story_agent';
+}
+
+function seedanceProviderPlatformField(envName: string, fallback: string): string {
+  const value = process.env[envName]?.trim();
+  return value || fallback;
+}
+
+function setSeedanceProviderPlatformField(
+  target: Record<string, unknown>,
+  path: string,
+  value: unknown,
+): void {
+  if (!path.trim() || value === undefined || value === null) return;
+  if (typeof value === 'string' && !value.trim()) return;
+  if (Array.isArray(value) && value.length === 0) return;
+  const parts = path.split('.').map(part => part.trim()).filter(Boolean);
+  if (!parts.length) return;
+  let cursor = target;
+  for (const part of parts.slice(0, -1)) {
+    const existing = cursor[part];
+    if (!isObjectRecord(existing)) {
+      cursor[part] = {};
+    }
+    cursor = cursor[part] as Record<string, unknown>;
+  }
+  cursor[parts[parts.length - 1]] = value;
+}
+
+function seedanceProviderModelValue(): string | undefined {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_MODEL?.trim()
+    || process.env.SEEDANCE_PROVIDER_MODEL?.trim()
+    || undefined;
+}
+
+function seedanceProviderPlatformSubmitMetadata(input: {
+  projectId: string;
+  story: StoryGenerateResult;
+  provider: string;
+  queueId: string;
+  queuePriority: SeedanceShotProviderQueuePriority;
+  note?: string;
+  candidate?: SeedanceProviderSubmitCandidate;
+}): Record<string, unknown> {
+  return {
+    schema_version: 'seedance-provider-platform-submit/v1',
+    project_id: input.projectId,
+    story_id: input.story.storyId,
+    title: input.story.title,
+    provider: input.provider,
+    queue_id: input.queueId,
+    queue_priority: input.queuePriority,
+    note: input.note,
+    shot_id: input.candidate?.item.shot_id,
+    source_scene_id: input.candidate?.shot.source_scene_id,
+    local_provider_job_id: input.candidate?.providerJobId,
+    provider_queue_position: input.candidate?.queuePosition,
+  };
+}
+
+function seedanceProviderPlatformSubmitShotPayload(input: {
+  projectId: string;
+  story: StoryGenerateResult;
+  provider: string;
+  queueId: string;
+  queuePriority: SeedanceShotProviderQueuePriority;
+  providerCallbackUrl?: string;
+  providerPollUrl?: string;
+  note?: string;
+  candidate: SeedanceProviderSubmitCandidate;
+}): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  const shot = input.candidate.shot;
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_PROMPT_FIELD', 'prompt'),
+    shot.seedance_prompt,
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_DURATION_FIELD', 'duration'),
+    shot.seedance_duration_sec,
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_EXTERNAL_ID_FIELD', 'external_id'),
+    input.candidate.item.shot_id,
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_CALLBACK_URL_FIELD', 'callback_url'),
+    input.providerCallbackUrl,
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_POLL_URL_FIELD', 'poll_url'),
+    input.providerPollUrl,
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_MODEL_FIELD', 'model'),
+    seedanceProviderModelValue(),
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_ASSETS_FIELD', 'assets'),
+    shot.seedance_asset_slots,
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_NEGATIVE_PROMPT_FIELD', 'negative_prompt'),
+    shot.negative_constraints?.join('；'),
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_METADATA_FIELD', 'metadata'),
+    seedanceProviderPlatformSubmitMetadata(input),
+  );
+  return payload;
+}
+
+function seedanceProviderPlatformSubmitBatchPayload(input: {
+  projectId: string;
+  story: StoryGenerateResult;
+  provider: string;
+  queueId: string;
+  queuePriority: SeedanceShotProviderQueuePriority;
+  providerCallbackUrl?: string;
+  providerPollUrl?: string;
+  note?: string;
+  candidates: SeedanceProviderSubmitCandidate[];
+}): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_TASKS_FIELD', 'tasks'),
+    input.candidates.map(candidate => seedanceProviderPlatformSubmitShotPayload({ ...input, candidate })),
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_CALLBACK_URL_FIELD', 'callback_url'),
+    input.providerCallbackUrl,
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_SUBMIT_METADATA_FIELD', 'metadata'),
+    seedanceProviderPlatformSubmitMetadata(input),
+  );
+  return payload;
+}
+
+function seedanceProviderPlatformPollMetadata(input: {
+  projectId: string;
+  provider?: string;
+  queueId?: string;
+  note?: string;
+  target?: SeedanceShotProviderPollTarget;
+}): Record<string, unknown> {
+  return {
+    schema_version: 'seedance-provider-platform-poll/v1',
+    project_id: input.projectId,
+    provider: input.provider,
+    queue_id: input.queueId,
+    note: input.note,
+    shot_id: input.target?.shot_id,
+    source_scene_id: input.target?.source_scene_id,
+    provider_job_id: input.target?.provider_job_id,
+    provider_queue_id: input.target?.provider_queue_id,
+    provider_queue_position: input.target?.provider_queue_position,
+    retry_count: input.target?.retry_count,
+  };
+}
+
+function seedanceProviderPlatformPollTargetPayload(input: {
+  projectId: string;
+  provider?: string;
+  queueId?: string;
+  note?: string;
+  target: SeedanceShotProviderPollTarget;
+}): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_POLL_TASK_ID_FIELD', 'task_id'),
+    input.target.provider_job_id,
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_POLL_EXTERNAL_ID_FIELD', 'external_id'),
+    input.target.shot_id,
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_POLL_METADATA_FIELD', 'metadata'),
+    seedanceProviderPlatformPollMetadata(input),
+  );
+  return payload;
+}
+
+function seedanceProviderPlatformPollBatchPayload(input: {
+  projectId: string;
+  provider?: string;
+  queueId?: string;
+  note?: string;
+  targets: SeedanceShotProviderPollTarget[];
+}): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_POLL_TASK_IDS_FIELD', 'task_ids'),
+    input.targets.map(target => target.provider_job_id).filter(Boolean),
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_POLL_TARGETS_FIELD', 'targets'),
+    input.targets.map(target => seedanceProviderPlatformPollTargetPayload({ ...input, target })),
+  );
+  setSeedanceProviderPlatformField(
+    payload,
+    seedanceProviderPlatformField('SEEDANCE_PROVIDER_POLL_METADATA_FIELD', 'metadata'),
+    seedanceProviderPlatformPollMetadata(input),
+  );
+  return payload;
 }
 
 function seedanceProviderEndpointValue(value: unknown): string {
@@ -1322,6 +1568,101 @@ function applySeedanceProviderAdapterAuthHeader(
   );
 }
 
+function seedanceProviderAdapterSignatureSecret(kind: 'submit' | 'poll'): string | undefined {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET
+    : process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_SIGNATURE_SECRET?.trim()
+    || undefined;
+}
+
+function seedanceProviderAdapterSignatureHeader(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER
+    : process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_SIGNATURE_HEADER?.trim()
+    || 'X-Seedance-Signature';
+}
+
+function seedanceProviderAdapterTimestampHeader(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER
+    : process.env.SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_TIMESTAMP_HEADER?.trim()
+    || 'X-Seedance-Timestamp';
+}
+
+function seedanceProviderAdapterSignatureAlgorithm(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_ALGORITHM
+    : process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_ALGORITHM;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_SIGNATURE_ALGORITHM?.trim()
+    || 'sha256';
+}
+
+function seedanceProviderAdapterSignaturePrefix(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_PREFIX
+    : process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_PREFIX;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_SIGNATURE_PREFIX?.trim()
+    || 'sha256=';
+}
+
+function applySeedanceProviderAdapterSignatureHeaders(input: {
+  headers: Record<string, string>;
+  kind: 'submit' | 'poll';
+  method: 'POST' | 'GET';
+  endpoint: string;
+  bodyText: string;
+}): void {
+  const secret = seedanceProviderAdapterSignatureSecret(input.kind);
+  if (!secret) return;
+  const timestamp = new Date().toISOString();
+  const signatureBase = [
+    input.method,
+    input.endpoint,
+    timestamp,
+    input.bodyText,
+  ].join('\n');
+  const digest = createHmac(seedanceProviderAdapterSignatureAlgorithm(input.kind), secret)
+    .update(signatureBase)
+    .digest('hex');
+  input.headers[seedanceProviderAdapterTimestampHeader(input.kind)] = timestamp;
+  input.headers[seedanceProviderAdapterSignatureHeader(input.kind)] =
+    `${seedanceProviderAdapterSignaturePrefix(input.kind)}${digest}`;
+}
+
+function seedanceProviderAdapterRequestInit(input: {
+  kind: 'submit' | 'poll';
+  method: 'POST' | 'GET';
+  endpoint: string;
+  signal: AbortSignal;
+  body?: unknown;
+}): RequestInit {
+  const headers: Record<string, string> = {};
+  const bodyText = input.body === undefined ? '' : JSON.stringify(input.body);
+  if (input.body !== undefined) headers['content-type'] = 'application/json';
+  applySeedanceProviderAdapterAuthHeader(headers, input.kind);
+  applySeedanceProviderAdapterSignatureHeaders({
+    headers,
+    kind: input.kind,
+    method: input.method,
+    endpoint: input.endpoint,
+    bodyText,
+  });
+  return {
+    method: input.method,
+    headers,
+    signal: input.signal,
+    ...(input.body === undefined ? {} : { body: bodyText }),
+  };
+}
+
 function seedanceProviderSubmitResultArray(payload: unknown): unknown[] | undefined {
   return seedanceProviderResultArray(payload);
 }
@@ -1362,7 +1703,7 @@ function normalizeSeedanceProviderSubmitAdapterResults(input: {
     if (!isObjectRecord(item)) {
       return `Seedance provider submit adapter result #${index + 1} must be an object`;
     }
-    const shotId = callbackStringField(item.shot_id ?? item.shotId)
+    const shotId = seedanceProviderResultShotId(item)
       ?? (rawResults.length === 1 && input.candidates.length === 1 ? input.candidates[0].item.shot_id : undefined);
     if (!shotId) {
       return `Seedance provider submit adapter result #${index + 1} requires shot_id`;
@@ -1452,11 +1793,12 @@ async function querySeedanceProviderSubmitAdapter(input: {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), seedanceProviderSubmitTimeoutMs());
   try {
-    const headers: Record<string, string> = { 'content-type': 'application/json' };
-    applySeedanceProviderAdapterAuthHeader(headers, 'submit');
     const requestMode = seedanceProviderSubmitRequestMode();
+    const payloadMode = seedanceProviderAdapterPayloadMode('submit');
     const providerCallbackPath = projectSeedanceProviderApiPath(input.projectId, 'provider-callback');
     const providerPollPath = projectSeedanceProviderApiPath(input.projectId, 'poll-provider');
+    const providerCallbackUrl = projectSeedanceProviderApiUrl(input.projectId, 'provider-callback');
+    const providerPollUrl = projectSeedanceProviderApiUrl(input.projectId, 'poll-provider');
     const basePayload = {
       schema_version: 'seedance-provider-submit/v1',
       request_mode: requestMode,
@@ -1468,8 +1810,8 @@ async function querySeedanceProviderSubmitAdapter(input: {
       queue_priority: input.queuePriority,
       provider_callback_path: providerCallbackPath,
       provider_poll_path: providerPollPath,
-      provider_callback_url: projectSeedanceProviderApiUrl(input.projectId, 'provider-callback'),
-      provider_poll_url: projectSeedanceProviderApiUrl(input.projectId, 'poll-provider'),
+      provider_callback_url: providerCallbackUrl,
+      provider_poll_url: providerPollUrl,
       note: input.note,
       seedance_asset_library: input.assetLibrary,
     };
@@ -1493,16 +1835,30 @@ async function querySeedanceProviderSubmitAdapter(input: {
       const accepted: SeedanceProviderSubmitAdapterAcceptedItem[] = [];
       const failures: SeedanceShotProviderSubmitFailure[] = [];
       for (const item of shotPayloads) {
-        const response = await fetch(endpoint, {
+        const body = payloadMode === 'platform'
+          ? seedanceProviderPlatformSubmitShotPayload({
+              projectId: input.projectId,
+              story: input.story,
+              provider: input.provider,
+              queueId: input.queueId,
+              queuePriority: input.queuePriority,
+              providerCallbackUrl,
+              providerPollUrl,
+              note: input.note,
+              candidate: item.candidate,
+            })
+          : {
+              ...basePayload,
+              shot: item.shot,
+              shots: [item.shot],
+            };
+        const response = await fetch(endpoint, seedanceProviderAdapterRequestInit({
+          kind: 'submit',
           method: 'POST',
-          headers,
+          endpoint,
           signal: controller.signal,
-          body: JSON.stringify({
-            ...basePayload,
-            shot: item.shot,
-            shots: [item.shot],
-          }),
-        });
+          body,
+        }));
         const text = await response.text();
         if (!response.ok) {
           failures.push({
@@ -1542,15 +1898,29 @@ async function querySeedanceProviderSubmitAdapter(input: {
       });
     }
 
-    const response = await fetch(endpoint, {
+    const body = payloadMode === 'platform'
+      ? seedanceProviderPlatformSubmitBatchPayload({
+          projectId: input.projectId,
+          story: input.story,
+          provider: input.provider,
+          queueId: input.queueId,
+          queuePriority: input.queuePriority,
+          providerCallbackUrl,
+          providerPollUrl,
+          note: input.note,
+          candidates: input.candidates,
+        })
+      : {
+          ...basePayload,
+          shots: shotPayloads.map(item => item.shot),
+        };
+    const response = await fetch(endpoint, seedanceProviderAdapterRequestInit({
+      kind: 'submit',
       method: 'POST',
-      headers,
+      endpoint,
       signal: controller.signal,
-      body: JSON.stringify({
-        ...basePayload,
-        shots: shotPayloads.map(item => item.shot),
-      }),
-    });
+      body,
+    }));
     const text = await response.text();
     if (!response.ok) {
       return fail(
@@ -1642,10 +2012,9 @@ async function querySeedanceProviderPollAdapter(input: {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), seedanceProviderPollTimeoutMs());
   try {
-    const headers: Record<string, string> = {};
-    applySeedanceProviderAdapterAuthHeader(headers, 'poll');
     const requestMode = seedanceProviderPollRequestMode();
     const httpMethod = seedanceProviderPollHttpMethod();
+    const payloadMode = seedanceProviderAdapterPayloadMode('poll');
     const basePayload = {
       schema_version: 'seedance-provider-poll/v1',
       request_mode: requestMode,
@@ -1670,17 +2039,24 @@ async function querySeedanceProviderPollAdapter(input: {
           queueId: input.queueId,
           target,
         });
-        const response = await fetch(requestEndpoint, {
+        const body = httpMethod === 'POST'
+          ? (payloadMode === 'platform'
+              ? seedanceProviderPlatformPollTargetPayload({
+                  projectId: input.projectId,
+                  provider: input.provider,
+                  queueId: input.queueId,
+                  note: input.note,
+                  target,
+                })
+              : requestPayload)
+          : undefined;
+        const response = await fetch(requestEndpoint, seedanceProviderAdapterRequestInit({
+          kind: 'poll',
           method: httpMethod,
-          headers,
+          endpoint: requestEndpoint,
           signal: controller.signal,
-          ...(httpMethod === 'POST'
-            ? {
-                headers: { ...headers, 'content-type': 'application/json' },
-                body: JSON.stringify(requestPayload),
-              }
-            : {}),
-        });
+          body,
+        }));
         const text = await response.text();
         if (!response.ok) {
           return fail(
@@ -1712,22 +2088,30 @@ async function querySeedanceProviderPollAdapter(input: {
       ...basePayload,
       targets: input.targets,
     };
-    const response = await fetch(seedanceProviderPollEndpointForTarget({
+    const requestEndpoint = seedanceProviderPollEndpointForTarget({
       endpoint,
       projectId: input.projectId,
       provider: input.provider,
       queueId: input.queueId,
-    }), {
-      method: httpMethod,
-      headers,
-      signal: controller.signal,
-      ...(httpMethod === 'POST'
-        ? {
-            headers: { ...headers, 'content-type': 'application/json' },
-            body: JSON.stringify(requestPayload),
-          }
-        : {}),
     });
+    const body = httpMethod === 'POST'
+      ? (payloadMode === 'platform'
+          ? seedanceProviderPlatformPollBatchPayload({
+              projectId: input.projectId,
+              provider: input.provider,
+              queueId: input.queueId,
+              note: input.note,
+              targets: input.targets,
+            })
+          : requestPayload)
+      : undefined;
+    const response = await fetch(requestEndpoint, seedanceProviderAdapterRequestInit({
+      kind: 'poll',
+      method: httpMethod,
+      endpoint: requestEndpoint,
+      signal: controller.signal,
+      body,
+    }));
     const text = await response.text();
     if (!response.ok) {
       return fail(
@@ -1818,7 +2202,14 @@ function resolveSeedanceShotCallbackUpdate(
   if (!matchedItem && providerQueueId && providerQueuePosition === undefined && queueMatches.length === 1) {
     [matchedItem] = queueMatches;
   }
-  const shotId = callbackStringField(callback.shot_id ?? callback.shotId) ?? matchedItem?.shot_id;
+  const shotId = callbackStringField(
+    callback.shot_id
+      ?? callback.shotId
+      ?? callback.external_id
+      ?? callback.externalId
+      ?? callback.custom_id
+      ?? callback.customId,
+  ) ?? matchedItem?.shot_id;
   if (!shotId) {
     if (providerQueueId && queueMatches.length > 1 && providerQueuePosition === undefined) {
       return `Seedance callback queue "${providerQueueId}" matched multiple shots; provide provider_queue_position/queue_position or shot_id`;
@@ -3317,7 +3708,14 @@ export async function importProjectSeedanceShotCallbacks(
     const providerJobId = callbackStringField(
       callback.provider_job_id ?? callback.providerJobId ?? callback.job_id ?? callback.jobId,
     );
-    const shotId = callbackStringField(callback.shot_id ?? callback.shotId);
+    const shotId = callbackStringField(
+      callback.shot_id
+        ?? callback.shotId
+        ?? callback.external_id
+        ?? callback.externalId
+        ?? callback.custom_id
+        ?? callback.customId,
+    );
     if (typeof update === 'string') {
       failures.push({
         index,

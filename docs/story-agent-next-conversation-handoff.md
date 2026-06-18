@@ -32,7 +32,7 @@
 | 模块 | 进度判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
-| Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 96% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、provider 队列状态总览、人工重试策略和重试执行自动化首版。 |
+| Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 96% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划已具备；字幕/混音/片头片尾/final delivery 仍待做。 |
 | 可商用制作中台 | 约 42% | 主链路可用，但还缺 UX 降噪、真实 provider、平台专用错误码映射扩展、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 75-80% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story`、`kb_generate_gears_delivery`、`kb_generate_seedance_prompt`、`kb_repair_story(auto_apply=false/true)`、`kb_update_project_version` 已完成；真实项目 auto_apply smoke 已通过，后续剩更深模型修复链路和前端质量反馈增强。 |
@@ -234,6 +234,13 @@ MCP 原则：
   - 结果字段兼容 `taskId/task_id/id/requestId`、`batchId/batch_id`、`taskStatus/state/phase`、`outputUrl/fileUrl/downloadUrl/resultUrl`、`score/quality`。
   - `provider-callback` schema 同步支持这些字段别名，真实 worker 可直接以平台任务字段回传。
   - 系统合约接口的 accepted response shapes、normalized fields 和 response examples 已更新为平台式示例。
+- 单故事 Seedance provider platform payload / HMAC 签名首版：
+  - adapter 默认仍使用 `story_agent` 合同；配置 `SEEDANCE_PROVIDER_PAYLOAD_MODE=platform` 或 submit/poll 专用 payload mode 后，会把 Story Agent 镜头映射成平台常见字段。
+  - submit platform payload 默认包含 `tasks[].prompt`、`duration`、`external_id`、`callback_url`、`poll_url`、`assets`、`negative_prompt`、`metadata`，字段名可通过 `SEEDANCE_PROVIDER_SUBMIT_*_FIELD` 改名。
+  - poll platform payload 默认包含 `task_ids`、`targets[].task_id`、`external_id`、`metadata`，字段名可通过 `SEEDANCE_PROVIDER_POLL_*_FIELD` 改名。
+  - 配置 `SEEDANCE_PROVIDER_SIGNATURE_SECRET` 或 submit/poll 专用 secret 后，会写入签名头与时间戳头；签名基串为 `METHOD\nURL\nTIMESTAMP\nJSON_BODY`。
+  - adapter 响应和直接 webhook 已兼容 `external_id/externalId/custom_id/customId`，可直接映射回 `shot_id`。
+  - 配置状态和合约接口同步暴露 payload mode、签名配置状态、签名 header、timestamp header、平台字段 env 和 platform payload 示例，不泄露密钥。
 - 单故事 Seedance provider adapter 配置状态首版：
   - 后端新增 `GET /api/system/seedance-provider-config`，返回 submit/poll endpoint 是否已配置、token 是否已配置和 submit/poll timeout。
   - 响应只暴露布尔状态和数值，不返回 endpoint URL 或 token 原文。
@@ -384,7 +391,7 @@ git diff --stat
 
 ### P0：Production Board 修复闭环继续补强
 
-已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、外部素材批量导入与上传态字段、真实文件上传、跨项目素材库复用、素材上传历史 UI、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、provider 队列状态总览、人工重试策略和重试执行自动化首版，下一步：
+已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、外部素材批量导入与上传态字段、真实文件上传、跨项目素材库复用、素材上传历史 UI、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、platform payload / HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版，下一步：
 
 - 真实 Seedance / 外部 provider 平台 SDK/HTTP submit/query 实现。
 - 基于官方响应字段和真实平台错误码继续扩展字段映射，并接入真实 provider SDK/HTTP 凭证 smoke。
@@ -550,7 +557,7 @@ Seedance provider 平台 SDK/HTTP submit/query 实现
 理由：
 
 - MCP 诊断、修复建议、受控版本写入、安全 auto_apply、真实项目回读和前端质量反馈首版都已经跑通。
-- Provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、队列状态总览、人工重试策略和重试执行自动化首版已经落地，下一步要补真实平台 SDK/HTTP submit/query 细节。
+- Provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、platform payload / HMAC 签名、队列状态总览、人工重试策略和重试执行自动化首版已经落地，下一步要用真实平台凭证跑 submit/query/callback smoke，并补官方错误码映射。
 - 这会把“提示词包”继续推进到“可持续生产任务流”。
 
 如果准备做下一组任务，建议顺序：

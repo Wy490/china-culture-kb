@@ -482,7 +482,7 @@
 - 当前系统已经能生成 Board、发现问题、执行批量生产修复和落盘。
 - 但用户还缺少“我只想修这个问题”的精细控制。
 - 修复前后 diff 能显著提升信任感。
-- Seedance 资产引用、`@视频/@音频` 引用校验、单故事资产绑定、素材缺口报告、外部素材批量导入、上传态字段、真实文件上传、跨项目资产库复用、素材上传历史 UI、Shot Ledger、回传导入、失败重试包、手动/自动择优、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、provider 外部回传 schema、provider 轮询入口、provider 失败分类、provider 通用错误码别名映射、provider 通用 submit/poll adapter、provider adapter 配置状态、provider adapter 合约元数据、provider 队列状态总览、项目详情页 provider 队列健康条、provider 人工重试策略及 UI、provider 重试执行自动化、MCP GEARS 只读交付工具、MCP Seedance prompt 只读工具、MCP repair dry-run、MCP 受控版本写入、MCP repair auto_apply 安全应用、真实项目 smoke 和前端质量反馈视图首版已进入工作台；下一步补真实平台 SDK/HTTP submit/query 细节。
+- Seedance 资产引用、`@视频/@音频` 引用校验、单故事资产绑定、素材缺口报告、外部素材批量导入、上传态字段、真实文件上传、跨项目资产库复用、素材上传历史 UI、Shot Ledger、回传导入、失败重试包、手动/自动择优、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、provider 外部回传 schema、provider 轮询入口、provider 失败分类、provider 通用错误码别名映射、provider 通用 submit/poll adapter、provider platform payload 映射、provider HMAC 签名、provider adapter 配置状态、provider adapter 合约元数据、provider 队列状态总览、项目详情页 provider 队列健康条、provider 人工重试策略及 UI、provider 重试执行自动化、MCP GEARS 只读交付工具、MCP Seedance prompt 只读工具、MCP repair dry-run、MCP 受控版本写入、MCP repair auto_apply 安全应用、真实项目 smoke 和前端质量反馈视图首版已进入工作台；下一步用真实凭证跑 submit/query/callback smoke，并补官方错误码映射。
 
 建议下一阶段验收闭环：
 

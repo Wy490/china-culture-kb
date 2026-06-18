@@ -9,7 +9,7 @@
 | 模块 | 当前判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
-| Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
+| Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划已有；字幕、混音、片头片尾、final delivery 待做。 |
 | 可商用制作中台 | 约 42% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、审片返修和稳定压测。 |
@@ -114,13 +114,19 @@
   - 项目详情页“回传与重试”折叠区新增“轮询 provider”。
   - 默认使用最新 provider queue batch 的 `provider` / `queue_id`，请求 `include_prompt=true` 和 `use_provider_adapter=true`。
   - 轮询成功后回写项目快照并刷新 Production Board、Provider 队列健康和人工重试策略，页面提示更新数、待轮询数和 adapter 返回数。
+- Seedance provider platform payload / 签名 adapter 首版：
+  - 新增 `SEEDANCE_PROVIDER_PAYLOAD_MODE`、`SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE`、`SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE`，默认保持 `story_agent` 合同，启用 `platform` 后 submit 映射为 `tasks[].prompt/duration/external_id/callback_url/metadata`，poll 映射为 `task_ids/targets[].task_id/external_id/metadata`。
+  - submit/poll 平台字段支持 env 改名，适合先对接真实平台 HTTP 单任务或批量接口，不再必须另写外部 worker 做字段翻译。
+  - 新增 HMAC 签名支持：`SEEDANCE_PROVIDER_SIGNATURE_SECRET` 或 submit/poll 专用 secret 会写入签名头和时间戳头；签名基串为 `METHOD\nURL\nTIMESTAMP\nJSON_BODY`。
+  - adapter 响应和直接 webhook 兼容 `external_id/externalId/custom_id/customId`，可映射回 Story Agent `shot_id`。
+  - `GET /api/system/seedance-provider-config` 与 `GET /api/system/seedance-provider-adapter-contract` 已同步暴露 payload mode、签名配置状态、签名 header、平台字段 env 和 platform payload 示例，不泄漏密钥。
 
 ### 文档同步
 
 - 更新 `docs/story-agent-next-conversation-handoff.md`。
 - 更新 `docs/story-agent-production-workbench-development-plan.md`。
 - 更新 `开发文档/story-agent-mcp-quality-delivery-implementation-plan.md`。
-- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”；外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、队列状态总览、人工重试策略和重试执行自动化已完成首版。
+- 保持下一阶段方向从“队列化准备”推进到“外部回传 schema、自动轮询、真实 provider API”；外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、platform payload / HMAC 签名、队列状态总览、人工重试策略和重试执行自动化已完成首版。
 
 ## 3. 已验证命令
 
@@ -136,7 +142,7 @@ git diff --check
 
 - `web/client`：lint passed。
 - `web/client`：build passed。
-- `web/server`：lint passed；`project-service.test.ts` 31 passed，`api.test.ts` 89 passed；全量 24 files / 241 tests passed。
+- `web/server`：lint passed；`project-service.test.ts` 36 passed，`api.test.ts` 89 passed；全量 24 files / 246 tests passed。
 - `web/client`：lint passed；ProjectDetail provider overview API smoke 通过，提交 5 条 provider 任务后 overview 返回 5 个总镜头 / 5 个活跃 / 5 个注意项。
 - `git diff --check`：passed。
 
@@ -163,22 +169,23 @@ git diff --stat
 - provider 轮询入口已完成首版，可返回待查询 job / queue，也可应用 provider status snapshots。
 - provider 失败分类、错误码传递和通用错误码别名映射已完成首版，且已补平台常见错误码别名。
 - 通用 submit/poll adapter 已完成首版，可通过 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` / `SEEDANCE_PROVIDER_POLL_ENDPOINT` 连接外部 worker，并已兼容 `data.tasks/taskId/taskStatus/outputUrl` 等平台式响应。
+- adapter 已支持 `story_agent` / `platform` 两种 payload mode；platform mode 可把镜头提交映射为平台常见 `prompt/duration/external_id/callback_url/metadata`，把查询映射为 `task_id/task_ids`，并支持 HMAC 签名和字段 env 改名。
 - submit adapter 已能同时给外部 worker 提供项目级相对 path 与可选绝对 callback/poll URL；若 worker 不在同主机或同反向代理内，先配置 `SEEDANCE_PROVIDER_CALLBACK_BASE_URL`。
 - adapter 已支持 batch 与单任务 request mode，可先用 `per_shot` / `per_target` 对接平台单任务 HTTP，再逐步补官方字段映射。
 - poll adapter 已支持 `SEEDANCE_PROVIDER_POLL_HTTP_METHOD=GET` 与 endpoint URL 模板字段（如 `{provider_job_id}` / `{shot_id}` / `{provider_queue_id}`），可直接对接平台单任务查询 URL。
 - 队列状态总览已完成首版，可直接读取 provider/queue 健康度、超时和失败注意项。
 - 人工重试策略已完成只读首版，可直接输出可重提/需先处理的候选镜头清单。
 - 重试执行自动化已完成首版，可把可重提候选一键重新提交到 provider 队列。
-- 下一步支持具体 Seedance / 外部 provider 的平台 SDK/HTTP 实现、鉴权参数、官方字段映射和真实凭证 smoke。
+- 下一步支持具体 Seedance / 外部 provider 的平台 SDK/HTTP SDK 封装、官方错误码扩展和真实凭证 smoke。
 - 将真实回传结果接入现有超时恢复、失败分类和重试包链路。
 
 建议先做最小切片：
 
 ```text
 SeedanceProviderAdapter
-  -> implement platform-specific submit HTTP/SDK call
-  -> implement platform-specific status query HTTP/SDK call
-  -> map platform error code when needed
+  -> run real credential submit smoke with platform payload/signature
+  -> run real credential query/callback smoke
+  -> map remaining official platform error codes
   -> feed poll-provider provider_results
   -> tests
 ```

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { createHmac } from 'node:crypto';
 import type { StoryGenerateResult, StoryProjectMeta, StoryProjectVersionSnapshot } from '@shared/types.js';
 import {
   autoSelectProjectSeedanceShotVersions,
@@ -49,13 +50,23 @@ const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = process.env.SEEDANCE_PROVI
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
 const ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL = process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
+const ORIGINAL_SEEDANCE_PROVIDER_PAYLOAD_MODE = process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE = process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET = process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER = process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER = process.env.SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_MODEL = process.env.SEEDANCE_PROVIDER_SUBMIT_MODEL;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
 const ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN = process.env.SEEDANCE_PROVIDER_API_TOKEN;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER = process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE = process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD = process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET = process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER = process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER = process.env.SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER;
 
 async function exists(path: string): Promise<boolean> {
   try {
@@ -64,6 +75,24 @@ async function exists(path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function expectProviderSignature(input: {
+  init?: RequestInit;
+  method: 'POST' | 'GET';
+  endpoint: string;
+  secret: string;
+  signatureHeader: string;
+  timestampHeader: string;
+}): void {
+  const headers = input.init?.headers as Record<string, string>;
+  const timestamp = headers[input.timestampHeader];
+  expect(timestamp).toBeTruthy();
+  const bodyText = input.init?.body === undefined ? '' : String(input.init.body);
+  const expected = `sha256=${createHmac('sha256', input.secret)
+    .update([input.method, input.endpoint, timestamp, bodyText].join('\n'))
+    .digest('hex')}`;
+  expect(headers[input.signatureHeader]).toBe(expected);
 }
 
 function makeStory(): StoryGenerateResult {
@@ -206,6 +235,36 @@ afterEach(async () => {
   } else {
     process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
   }
+  if (ORIGINAL_SEEDANCE_PROVIDER_PAYLOAD_MODE === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE;
+  } else {
+    process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE = ORIGINAL_SEEDANCE_PROVIDER_PAYLOAD_MODE;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_MODEL === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_MODEL;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_MODEL = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_MODEL;
+  }
   if (ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT === undefined) {
     delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
   } else {
@@ -236,10 +295,30 @@ afterEach(async () => {
   } else {
     process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
   }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE = ORIGINAL_SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE;
+  }
   if (ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD === undefined) {
     delete process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
   } else {
     process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD = ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET = ORIGINAL_SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER = ORIGINAL_SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER = ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER;
   }
   vi.unstubAllGlobals();
   for (const dir of TEMP_DIRS.splice(0)) {
@@ -1042,6 +1121,120 @@ describe('project-service', () => {
     });
   });
 
+  it('submits Seedance shots through a platform payload adapter with HMAC signature', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = 'https://platform.example.test/seedance/tasks';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE = 'platform';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET = 'submit-signing-secret';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER = 'X-Platform-Signature';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER = 'X-Platform-Timestamp';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_MODEL = 'seedance-platform-v1';
+    process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL = 'https://story.example.test/root/';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitFetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const endpoint = 'https://platform.example.test/seedance/tasks';
+      expect(String(_url)).toBe(endpoint);
+      expect(init?.method).toBe('POST');
+      expectProviderSignature({
+        init,
+        method: 'POST',
+        endpoint,
+        secret: 'submit-signing-secret',
+        signatureHeader: 'X-Platform-Signature',
+        timestampHeader: 'X-Platform-Timestamp',
+      });
+      const body = JSON.parse(String(init?.body)) as {
+        schema_version?: string;
+        tasks?: Array<{
+          prompt?: string;
+          duration?: number;
+          external_id?: string;
+          callback_url?: string;
+          poll_url?: string;
+          model?: string;
+          assets?: unknown[];
+          negative_prompt?: string;
+          metadata?: Record<string, unknown>;
+        }>;
+        metadata?: Record<string, unknown>;
+      };
+      expect(body.schema_version).toBeUndefined();
+      expect(body.tasks).toHaveLength(2);
+      expect(body.tasks?.[0]).toMatchObject({
+        prompt: expect.stringContaining('0-3秒'),
+        external_id: 'shot-1',
+        callback_url: `https://story.example.test/root/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-callback`,
+        poll_url: `https://story.example.test/root/api/projects/${enriched.project_id}/production-board/seedance-shots/poll-provider`,
+        model: 'seedance-platform-v1',
+        metadata: {
+          project_id: enriched.project_id,
+          story_id: story.storyId,
+          shot_id: 'shot-1',
+          local_provider_job_id: 'platform-submit-local-shot-1',
+          provider_queue_position: 1,
+        },
+      });
+      expect(body.tasks?.[0].assets).toBeInstanceOf(Array);
+      expect(body.tasks?.[0].negative_prompt).toContain('不要');
+      expect(body.metadata).toMatchObject({
+        schema_version: 'seedance-provider-platform-submit/v1',
+        project_id: enriched.project_id,
+      });
+      return new Response(JSON.stringify({
+        data: {
+          tasks: [{
+            external_id: 'shot-1',
+            task_id: 'platform-real-job-shot-1',
+            batch_id: 'platform-real-queue',
+            position: 3,
+            status: 'queued',
+          }, {
+            external_id: 'shot-2',
+            task_id: 'platform-real-job-shot-2',
+            batch_id: 'platform-real-queue',
+            position: 4,
+            status: 'running',
+          }],
+        },
+      }));
+    });
+    vi.stubGlobal('fetch', submitFetchMock);
+
+    const adapterSubmitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'platform-submit-local',
+      queue_id: 'platform-submit-local-queue',
+      use_provider_adapter: true,
+      note: 'platform payload submit',
+    });
+
+    expect(submitFetchMock).toHaveBeenCalledTimes(1);
+    expect(adapterSubmitRes.ok).toBe(true);
+    expect(adapterSubmitRes.data).toMatchObject({
+      submitted_count: 2,
+      failed_count: 0,
+      provider_queue_batch: {
+        queue_id: 'platform-real-queue',
+        items: [{
+          shot_id: 'shot-1',
+          provider_job_id: 'platform-real-job-shot-1',
+          queue_position: 3,
+          status: 'submitted',
+        }, {
+          shot_id: 'shot-2',
+          provider_job_id: 'platform-real-job-shot-2',
+          queue_position: 4,
+          status: 'processing',
+        }],
+      },
+    });
+  });
+
   it('imports an external Seedance provider callback by queue metadata', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
@@ -1568,6 +1761,121 @@ describe('project-service', () => {
       failure_reason: '内容审核未通过',
       failure_category: 'content_policy',
       provider_error_code: 'RISK_CONTROL',
+    });
+  });
+
+  it('queries a platform payload provider adapter with HMAC signature', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = 'https://platform.example.test/seedance/tasks/query';
+    process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE = 'platform';
+    process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET = 'poll-signing-secret';
+    process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER = 'X-Poll-Signature';
+    process.env.SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER = 'X-Poll-Timestamp';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'platform-poll-test',
+      queue_id: 'platform-poll-queue-001',
+      note: 'platform poll 测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const endpoint = 'https://platform.example.test/seedance/tasks/query';
+      expect(String(_url)).toBe(endpoint);
+      expect(init?.method).toBe('POST');
+      expectProviderSignature({
+        init,
+        method: 'POST',
+        endpoint,
+        secret: 'poll-signing-secret',
+        signatureHeader: 'X-Poll-Signature',
+        timestampHeader: 'X-Poll-Timestamp',
+      });
+      const body = JSON.parse(String(init?.body)) as {
+        schema_version?: string;
+        task_ids?: string[];
+        targets?: Array<{
+          task_id?: string;
+          external_id?: string;
+          metadata?: Record<string, unknown>;
+        }>;
+        metadata?: Record<string, unknown>;
+      };
+      expect(body.schema_version).toBeUndefined();
+      expect(body.task_ids).toEqual([
+        'platform-poll-test-shot-1',
+        'platform-poll-test-shot-2',
+      ]);
+      expect(body.targets?.[0]).toMatchObject({
+        task_id: 'platform-poll-test-shot-1',
+        external_id: 'shot-1',
+        metadata: {
+          project_id: enriched.project_id,
+          shot_id: 'shot-1',
+          provider_job_id: 'platform-poll-test-shot-1',
+        },
+      });
+      expect(body.metadata).toMatchObject({
+        schema_version: 'seedance-provider-platform-poll/v1',
+        project_id: enriched.project_id,
+      });
+      return new Response(JSON.stringify({
+        data: {
+          tasks: [{
+            external_id: 'shot-1',
+            task_id: 'platform-poll-test-shot-1',
+            state: 'SUCCEEDED',
+            output_url: 'https://example.com/seedance-videos/platform-poll-shot-1.mp4',
+          }, {
+            external_id: 'shot-2',
+            task_id: 'platform-poll-test-shot-2',
+            state: 'FAILED',
+            code: 'NO_CREDIT',
+            errorMessage: '余额不足',
+          }],
+        },
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const pollApplyRes = await pollProjectSeedanceProviderQueue(enriched.project_id!, {
+      provider: 'seedance',
+      queue_id: 'platform-poll-queue-001',
+      use_provider_adapter: true,
+      note: 'platform payload poll',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pollApplyRes.ok).toBe(true);
+    expect(pollApplyRes.data).toMatchObject({
+      dry_run: false,
+      updated_count: 2,
+      provider_adapter: {
+        request_mode: 'batch',
+        queried_count: 2,
+        returned_count: 2,
+      },
+    });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: 'platform-poll-test-shot-1',
+      video_url: 'https://example.com/seedance-videos/platform-poll-shot-1.mp4',
+    });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'failed',
+      provider_job_id: 'platform-poll-test-shot-2',
+      failure_category: 'provider_quota',
+      provider_error_code: 'NO_CREDIT',
     });
   });
 

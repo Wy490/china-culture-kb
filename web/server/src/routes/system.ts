@@ -123,6 +123,53 @@ const SEEDANCE_PROVIDER_REQUEST_MODE_ENVS = [
   'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
 ];
 
+const SEEDANCE_PROVIDER_PAYLOAD_MODE_ENVS = [
+  'SEEDANCE_PROVIDER_PAYLOAD_MODE',
+  'SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE',
+  'SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE',
+];
+
+const SEEDANCE_PROVIDER_SIGNATURE_ENVS = [
+  'SEEDANCE_PROVIDER_SIGNATURE_SECRET',
+  'SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET',
+  'SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET',
+];
+
+const SEEDANCE_PROVIDER_SIGNATURE_HEADER_ENVS = [
+  'SEEDANCE_PROVIDER_SIGNATURE_HEADER',
+  'SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER',
+  'SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER',
+];
+
+const SEEDANCE_PROVIDER_TIMESTAMP_HEADER_ENVS = [
+  'SEEDANCE_PROVIDER_TIMESTAMP_HEADER',
+  'SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER',
+  'SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER',
+];
+
+const SEEDANCE_PROVIDER_SUBMIT_PLATFORM_FIELD_ENVS = [
+  'SEEDANCE_PROVIDER_SUBMIT_TASKS_FIELD',
+  'SEEDANCE_PROVIDER_SUBMIT_PROMPT_FIELD',
+  'SEEDANCE_PROVIDER_SUBMIT_DURATION_FIELD',
+  'SEEDANCE_PROVIDER_SUBMIT_EXTERNAL_ID_FIELD',
+  'SEEDANCE_PROVIDER_SUBMIT_CALLBACK_URL_FIELD',
+  'SEEDANCE_PROVIDER_SUBMIT_POLL_URL_FIELD',
+  'SEEDANCE_PROVIDER_SUBMIT_MODEL_FIELD',
+  'SEEDANCE_PROVIDER_SUBMIT_ASSETS_FIELD',
+  'SEEDANCE_PROVIDER_SUBMIT_NEGATIVE_PROMPT_FIELD',
+  'SEEDANCE_PROVIDER_SUBMIT_METADATA_FIELD',
+  'SEEDANCE_PROVIDER_MODEL',
+  'SEEDANCE_PROVIDER_SUBMIT_MODEL',
+];
+
+const SEEDANCE_PROVIDER_POLL_PLATFORM_FIELD_ENVS = [
+  'SEEDANCE_PROVIDER_POLL_TASK_ID_FIELD',
+  'SEEDANCE_PROVIDER_POLL_TASK_IDS_FIELD',
+  'SEEDANCE_PROVIDER_POLL_EXTERNAL_ID_FIELD',
+  'SEEDANCE_PROVIDER_POLL_TARGETS_FIELD',
+  'SEEDANCE_PROVIDER_POLL_METADATA_FIELD',
+];
+
 const SEEDANCE_PROVIDER_POLL_HTTP_METHOD_ENV = 'SEEDANCE_PROVIDER_POLL_HTTP_METHOD';
 
 function submitRequestMode(): 'batch' | 'per_shot' {
@@ -143,6 +190,39 @@ function pollHttpMethod(): 'POST' | 'GET' {
     : 'POST';
 }
 
+function providerPayloadMode(kind: 'submit' | 'poll'): 'story_agent' | 'platform' {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE
+    : process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE;
+  const value = specific?.trim() || process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE?.trim();
+  return value?.toLowerCase() === 'platform' ? 'platform' : 'story_agent';
+}
+
+function providerSignatureConfigured(kind: 'submit' | 'poll'): boolean {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET
+    : process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET;
+  return Boolean(specific?.trim() || process.env.SEEDANCE_PROVIDER_SIGNATURE_SECRET?.trim());
+}
+
+function providerSignatureHeader(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER
+    : process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_SIGNATURE_HEADER?.trim()
+    || 'X-Seedance-Signature';
+}
+
+function providerTimestampHeader(kind: 'submit' | 'poll'): string {
+  const specific = kind === 'submit'
+    ? process.env.SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER
+    : process.env.SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER;
+  return specific?.trim()
+    || process.env.SEEDANCE_PROVIDER_TIMESTAMP_HEADER?.trim()
+    || 'X-Seedance-Timestamp';
+}
+
 systemRouter.get('/seedance-provider-config', (_req, res) => {
   const submitEndpointConfigured = envFlag('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT');
   const pollEndpointConfigured = envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT');
@@ -150,6 +230,10 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
   const sharedTokenConfigured = envFlag('SEEDANCE_PROVIDER_API_TOKEN');
   const callbackSecretConfigured = envFlag('SEEDANCE_CALLBACK_SECRET');
   const callbackBaseConfigured = SEEDANCE_PROVIDER_CALLBACK_BASE_ENVS.some(envFlag);
+  const submitPayloadMode = providerPayloadMode('submit');
+  const pollPayloadMode = providerPayloadMode('poll');
+  const submitSignatureConfigured = providerSignatureConfigured('submit');
+  const pollSignatureConfigured = providerSignatureConfigured('poll');
   const missingSubmitRequirements = submitEndpointConfigured ? [] : ['SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'];
   const missingPollRequirements = pollEndpointConfigured ? [] : ['SEEDANCE_PROVIDER_POLL_ENDPOINT'];
   const configurationWarnings = [
@@ -158,6 +242,12 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
       : []),
     ...(!sharedTokenConfigured
       ? ['poll adapter 未配置 SEEDANCE_PROVIDER_API_TOKEN；仅适用于不要求鉴权的外部 worker。']
+      : []),
+    ...(submitPayloadMode === 'platform' && !submitSignatureConfigured
+      ? ['submit adapter 已启用 platform payload，但未配置签名密钥；仅适用于不要求请求签名的平台。']
+      : []),
+    ...(pollPayloadMode === 'platform' && !pollSignatureConfigured
+      ? ['poll adapter 已启用 platform payload，但未配置签名密钥；仅适用于不要求请求签名的平台。']
       : []),
   ];
   const nextActions = [
@@ -174,18 +264,27 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
     submit_token_configured: submitTokenConfigured,
     poll_token_configured: sharedTokenConfigured,
     shared_token_configured: sharedTokenConfigured,
+    submit_signature_configured: submitSignatureConfigured,
+    poll_signature_configured: pollSignatureConfigured,
     callback_secret_configured: callbackSecretConfigured,
     callback_base_configured: callbackBaseConfigured,
     callback_base_envs: SEEDANCE_PROVIDER_CALLBACK_BASE_ENVS,
     submit_request_mode: submitRequestMode(),
     poll_request_mode: pollRequestMode(),
     request_mode_envs: SEEDANCE_PROVIDER_REQUEST_MODE_ENVS,
+    submit_payload_mode: submitPayloadMode,
+    poll_payload_mode: pollPayloadMode,
+    payload_mode_envs: SEEDANCE_PROVIDER_PAYLOAD_MODE_ENVS,
     poll_http_method: pollHttpMethod(),
     poll_http_method_env: SEEDANCE_PROVIDER_POLL_HTTP_METHOD_ENV,
     submit_auth_header: providerAuthHeader('submit'),
     poll_auth_header: providerAuthHeader('poll'),
     submit_auth_scheme: providerAuthScheme('submit'),
     poll_auth_scheme: providerAuthScheme('poll'),
+    submit_signature_header: providerSignatureHeader('submit'),
+    poll_signature_header: providerSignatureHeader('poll'),
+    submit_timestamp_header: providerTimestampHeader('submit'),
+    poll_timestamp_header: providerTimestampHeader('poll'),
     submit_timeout_ms: envNumber('SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS', 30000),
     poll_timeout_ms: envNumber('SEEDANCE_PROVIDER_POLL_TIMEOUT_MS', 30000),
     ready_for_submit_adapter: submitEndpointConfigured,
@@ -222,6 +321,15 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       timeout_env: 'SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS',
       request_mode_env: 'SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE',
       request_modes: ['batch', 'per_shot'],
+      payload_mode_env: 'SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE',
+      payload_modes: ['story_agent', 'platform'],
+      signature_envs: SEEDANCE_PROVIDER_SIGNATURE_ENVS,
+      signature_header_envs: SEEDANCE_PROVIDER_SIGNATURE_HEADER_ENVS,
+      timestamp_header_envs: SEEDANCE_PROVIDER_TIMESTAMP_HEADER_ENVS,
+      default_signature_header: 'X-Seedance-Signature',
+      default_timestamp_header: 'X-Seedance-Timestamp',
+      signature_base: 'METHOD\\nURL\\nTIMESTAMP\\nJSON_BODY',
+      platform_field_envs: SEEDANCE_PROVIDER_SUBMIT_PLATFORM_FIELD_ENVS,
       request_fields: [
         'schema_version',
         'request_mode',
@@ -249,6 +357,12 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'shots[].seedance_material_validation',
         'shots[].seedance_validation_notes',
         'shots[].negative_constraints',
+        'platform mode: tasks[]',
+        'platform mode: prompt',
+        'platform mode: duration',
+        'platform mode: external_id',
+        'platform mode: callback_url',
+        'platform mode: metadata',
       ],
       accepted_response_shapes: [
         'top-level array',
@@ -261,7 +375,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         '{ data: { tasks: [...] } }',
       ],
       normalized_result_fields: [
-        'shot_id',
+        'shot_id | external_id | externalId | custom_id | customId',
         'provider_job_id | job_id | jobId | task_id | taskId | request_id | requestId | id',
         'provider_queue_id | queue_id | queueId | batch_id | batchId',
         'provider_queue_position | queue_position | queuePosition | position',
@@ -312,6 +426,25 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
             taskStatus: 'queued',
           }],
         },
+      }, {
+        platform_payload_mode: {
+          tasks: [{
+            prompt: '0-3秒：少年站在祠堂门口。3-7秒：风吹动族谱。7-12秒：他抬头望向光。风格：AI漫画短剧。',
+            duration: 12,
+            external_id: 'shot-1',
+            callback_url: '<PUBLIC_API_BASE_URL>/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/provider-callback',
+            negative_prompt: '不要现代服饰',
+            metadata: {
+              project_id: '20260618-story-demo--ai_comic_drama',
+              shot_id: 'shot-1',
+              local_provider_job_id: 'local-seedance-job-shot-1',
+            },
+          }],
+          metadata: {
+            schema_version: 'seedance-provider-platform-submit/v1',
+            project_id: '20260618-story-demo--ai_comic_drama',
+          },
+        },
       }],
       notes: [
         'Each accepted result must include a shot_id and provider job id.',
@@ -319,6 +452,8 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'When callback auth is configured, provider_callback_path requires one callback auth header.',
         'When a public callback base URL is configured, submit payload also includes provider_callback_url and provider_poll_url.',
         'Set SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE=per_shot when a platform endpoint accepts one shot/task per request.',
+        'Set SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE=platform when the platform endpoint expects prompt/duration/external_id style fields instead of the Story Agent contract.',
+        'Set SEEDANCE_PROVIDER_SIGNATURE_SECRET or SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET to add HMAC request signature headers.',
         'Set auth scheme to raw/none/no_scheme when a worker expects the token without a prefix.',
       ],
     },
@@ -333,6 +468,15 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       timeout_env: 'SEEDANCE_PROVIDER_POLL_TIMEOUT_MS',
       request_mode_env: 'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
       request_modes: ['batch', 'per_target'],
+      payload_mode_env: 'SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE',
+      payload_modes: ['story_agent', 'platform'],
+      signature_envs: SEEDANCE_PROVIDER_SIGNATURE_ENVS,
+      signature_header_envs: SEEDANCE_PROVIDER_SIGNATURE_HEADER_ENVS,
+      timestamp_header_envs: SEEDANCE_PROVIDER_TIMESTAMP_HEADER_ENVS,
+      default_signature_header: 'X-Seedance-Signature',
+      default_timestamp_header: 'X-Seedance-Timestamp',
+      signature_base: 'METHOD\\nURL\\nTIMESTAMP\\nJSON_BODY',
+      platform_field_envs: SEEDANCE_PROVIDER_POLL_PLATFORM_FIELD_ENVS,
       http_method_env: SEEDANCE_PROVIDER_POLL_HTTP_METHOD_ENV,
       http_methods: ['POST', 'GET'],
       endpoint_template_fields: [
@@ -365,6 +509,10 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'targets[].provider_queue_position',
         'targets[].status',
         'targets[].seedance_prompt',
+        'platform mode: task_id',
+        'platform mode: task_ids',
+        'platform mode: external_id',
+        'platform mode: metadata',
       ],
       accepted_response_shapes: [
         'top-level array',
@@ -376,6 +524,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         '{ data: { tasks: [...] } }',
       ],
       normalized_result_fields: [
+        'shot_id | external_id | externalId | custom_id | customId',
         'provider_job_id | job_id | jobId | task_id | taskId | request_id | requestId | id',
         'provider_queue_id | queue_id | queueId | batch_id | batchId',
         'status | task_status | taskStatus | state | phase',
@@ -417,12 +566,30 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
             code: 'RISK_CONTROL',
           }],
         },
+      }, {
+        platform_payload_mode: {
+          task_ids: ['real-seedance-job-001', 'real-seedance-job-002'],
+          targets: [{
+            task_id: 'real-seedance-job-001',
+            external_id: 'shot-1',
+            metadata: {
+              project_id: '20260618-story-demo--ai_comic_drama',
+              shot_id: 'shot-1',
+            },
+          }],
+          metadata: {
+            schema_version: 'seedance-provider-platform-poll/v1',
+            project_id: '20260618-story-demo--ai_comic_drama',
+          },
+        },
       }],
       notes: [
         'Poll results are normalized through the provider callback path.',
         'Failed results can carry failure_category/provider_error_code for retry planning.',
         'Set SEEDANCE_PROVIDER_POLL_REQUEST_MODE=per_target when a platform endpoint queries one provider job per request.',
         'When SEEDANCE_PROVIDER_POLL_HTTP_METHOD=GET, the endpoint can use template fields such as {provider_job_id} and no JSON body is sent.',
+        'Set SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE=platform when the platform query endpoint expects task_id/task_ids style fields instead of the Story Agent contract.',
+        'Set SEEDANCE_PROVIDER_SIGNATURE_SECRET or SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET to add HMAC request signature headers.',
       ],
     },
     generated_at: new Date().toISOString(),

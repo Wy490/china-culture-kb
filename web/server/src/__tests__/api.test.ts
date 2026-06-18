@@ -458,6 +458,14 @@ describe('System API', () => {
         appBaseUrl: process.env.APP_BASE_URL,
         submitRequestMode: process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE,
         pollRequestMode: process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE,
+        payloadMode: process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE,
+        submitPayloadMode: process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE,
+        pollPayloadMode: process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE,
+        signatureSecret: process.env.SEEDANCE_PROVIDER_SIGNATURE_SECRET,
+        submitSignatureSecret: process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET,
+        pollSignatureSecret: process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET,
+        signatureHeader: process.env.SEEDANCE_PROVIDER_SIGNATURE_HEADER,
+        timestampHeader: process.env.SEEDANCE_PROVIDER_TIMESTAMP_HEADER,
         pollHttpMethod: process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD,
       };
       try {
@@ -475,6 +483,10 @@ describe('System API', () => {
         process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL = 'https://public.example.test';
         process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = 'per_shot';
         process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = 'per_target';
+        process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE = 'platform';
+        process.env.SEEDANCE_PROVIDER_SIGNATURE_SECRET = 'signature-secret';
+        process.env.SEEDANCE_PROVIDER_SIGNATURE_HEADER = 'X-Provider-Signature';
+        process.env.SEEDANCE_PROVIDER_TIMESTAMP_HEADER = 'X-Provider-Timestamp';
         process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD = 'GET';
 
         const res = await request.get('/api/system/seedance-provider-config');
@@ -487,6 +499,8 @@ describe('System API', () => {
           submit_token_configured: true,
           poll_token_configured: true,
           shared_token_configured: true,
+          submit_signature_configured: true,
+          poll_signature_configured: true,
           callback_secret_configured: true,
           callback_base_configured: true,
           callback_base_envs: [
@@ -501,12 +515,23 @@ describe('System API', () => {
             'SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE',
             'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
           ],
+          submit_payload_mode: 'platform',
+          poll_payload_mode: 'platform',
+          payload_mode_envs: [
+            'SEEDANCE_PROVIDER_PAYLOAD_MODE',
+            'SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE',
+            'SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE',
+          ],
           poll_http_method: 'GET',
           poll_http_method_env: 'SEEDANCE_PROVIDER_POLL_HTTP_METHOD',
           submit_auth_header: 'X-Submit-Key',
           poll_auth_header: 'X-Shared-Token',
           submit_auth_scheme: 'raw',
           poll_auth_scheme: 'Token',
+          submit_signature_header: 'X-Provider-Signature',
+          poll_signature_header: 'X-Provider-Signature',
+          submit_timestamp_header: 'X-Provider-Timestamp',
+          poll_timestamp_header: 'X-Provider-Timestamp',
           submit_timeout_ms: 12345,
           poll_timeout_ms: 23456,
           ready_for_submit_adapter: true,
@@ -521,6 +546,7 @@ describe('System API', () => {
         expect(JSON.stringify(res.body.data)).not.toContain('submit-secret');
         expect(JSON.stringify(res.body.data)).not.toContain('shared-secret');
         expect(JSON.stringify(res.body.data)).not.toContain('callback-secret');
+        expect(JSON.stringify(res.body.data)).not.toContain('signature-secret');
         expect(JSON.stringify(res.body.data)).not.toContain('adapter.example.test');
         expect(JSON.stringify(res.body.data)).not.toContain('public.example.test');
 
@@ -541,6 +567,14 @@ describe('System API', () => {
         delete process.env.APP_BASE_URL;
         delete process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
         delete process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
+        delete process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE;
+        delete process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE;
+        delete process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE;
+        delete process.env.SEEDANCE_PROVIDER_SIGNATURE_SECRET;
+        delete process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET;
+        delete process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET;
+        delete process.env.SEEDANCE_PROVIDER_SIGNATURE_HEADER;
+        delete process.env.SEEDANCE_PROVIDER_TIMESTAMP_HEADER;
         delete process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
 
         const missingRes = await request.get('/api/system/seedance-provider-config');
@@ -552,15 +586,23 @@ describe('System API', () => {
           submit_token_configured: false,
           poll_token_configured: false,
           shared_token_configured: false,
+          submit_signature_configured: false,
+          poll_signature_configured: false,
           callback_secret_configured: false,
           callback_base_configured: false,
           submit_request_mode: 'batch',
           poll_request_mode: 'batch',
+          submit_payload_mode: 'story_agent',
+          poll_payload_mode: 'story_agent',
           poll_http_method: 'POST',
           submit_auth_header: 'authorization',
           poll_auth_header: 'authorization',
           submit_auth_scheme: 'Bearer',
           poll_auth_scheme: 'Bearer',
+          submit_signature_header: 'X-Seedance-Signature',
+          poll_signature_header: 'X-Seedance-Signature',
+          submit_timestamp_header: 'X-Seedance-Timestamp',
+          poll_timestamp_header: 'X-Seedance-Timestamp',
           ready_for_submit_adapter: false,
           ready_for_poll_adapter: false,
           missing_submit_requirements: ['SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'],
@@ -613,6 +655,22 @@ describe('System API', () => {
         else process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = previous.submitRequestMode;
         if (previous.pollRequestMode === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
         else process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = previous.pollRequestMode;
+        if (previous.payloadMode === undefined) delete process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE;
+        else process.env.SEEDANCE_PROVIDER_PAYLOAD_MODE = previous.payloadMode;
+        if (previous.submitPayloadMode === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE;
+        else process.env.SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE = previous.submitPayloadMode;
+        if (previous.pollPayloadMode === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE;
+        else process.env.SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE = previous.pollPayloadMode;
+        if (previous.signatureSecret === undefined) delete process.env.SEEDANCE_PROVIDER_SIGNATURE_SECRET;
+        else process.env.SEEDANCE_PROVIDER_SIGNATURE_SECRET = previous.signatureSecret;
+        if (previous.submitSignatureSecret === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET;
+        else process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET = previous.submitSignatureSecret;
+        if (previous.pollSignatureSecret === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET;
+        else process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET = previous.pollSignatureSecret;
+        if (previous.signatureHeader === undefined) delete process.env.SEEDANCE_PROVIDER_SIGNATURE_HEADER;
+        else process.env.SEEDANCE_PROVIDER_SIGNATURE_HEADER = previous.signatureHeader;
+        if (previous.timestampHeader === undefined) delete process.env.SEEDANCE_PROVIDER_TIMESTAMP_HEADER;
+        else process.env.SEEDANCE_PROVIDER_TIMESTAMP_HEADER = previous.timestampHeader;
         if (previous.pollHttpMethod === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
         else process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD = previous.pollHttpMethod;
       }
@@ -642,6 +700,16 @@ describe('System API', () => {
           timeout_env: 'SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS',
           request_mode_env: 'SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE',
           request_modes: ['batch', 'per_shot'],
+          payload_mode_env: 'SEEDANCE_PROVIDER_SUBMIT_PAYLOAD_MODE',
+          payload_modes: ['story_agent', 'platform'],
+          signature_envs: [
+            'SEEDANCE_PROVIDER_SIGNATURE_SECRET',
+            'SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET',
+            'SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET',
+          ],
+          default_signature_header: 'X-Seedance-Signature',
+          default_timestamp_header: 'X-Seedance-Timestamp',
+          signature_base: 'METHOD\\nURL\\nTIMESTAMP\\nJSON_BODY',
         },
         poll: {
           schema_version: 'seedance-provider-poll/v1',
@@ -654,6 +722,10 @@ describe('System API', () => {
           timeout_env: 'SEEDANCE_PROVIDER_POLL_TIMEOUT_MS',
           request_mode_env: 'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
           request_modes: ['batch', 'per_target'],
+          payload_mode_env: 'SEEDANCE_PROVIDER_POLL_PAYLOAD_MODE',
+          payload_modes: ['story_agent', 'platform'],
+          default_signature_header: 'X-Seedance-Signature',
+          default_timestamp_header: 'X-Seedance-Timestamp',
           http_method_env: 'SEEDANCE_PROVIDER_POLL_HTTP_METHOD',
           http_methods: ['POST', 'GET'],
           endpoint_template_fields: expect.arrayContaining([
@@ -672,6 +744,8 @@ describe('System API', () => {
         'shot',
         'shots[].seedance_prompt',
         'shots[].seedance_asset_slots',
+        'platform mode: prompt',
+        'platform mode: metadata',
       ]));
       expect(res.body.data.submit.accepted_response_shapes).toEqual(expect.arrayContaining([
         '{ submitted_shots: [...] }',
@@ -695,10 +769,16 @@ describe('System API', () => {
         shot_id: 'shot-1',
         taskId: 'real-seedance-job-001',
       });
+      expect(res.body.data.submit.response_examples[1].platform_payload_mode.tasks[0]).toMatchObject({
+        prompt: expect.stringContaining('0-3秒'),
+        external_id: 'shot-1',
+      });
       expect(res.body.data.poll.request_fields).toEqual(expect.arrayContaining([
         'request_mode',
         'target',
         'targets[].provider_job_id',
+        'platform mode: task_id',
+        'platform mode: task_ids',
       ]));
       expect(res.body.data.poll.normalized_result_fields).toEqual(expect.arrayContaining([
         'video_url | videoUrl | output_url | outputUrl | file_url | fileUrl | download_url | downloadUrl | result_url | resultUrl | url',
@@ -723,6 +803,9 @@ describe('System API', () => {
           code: 'RISK_CONTROL',
         }),
       ]));
+      expect(res.body.data.poll.response_examples[1].platform_payload_mode).toMatchObject({
+        task_ids: ['real-seedance-job-001', 'real-seedance-job-002'],
+      });
       expect(JSON.stringify(res.body.data)).not.toContain('https://');
       expect(JSON.stringify(res.body.data)).not.toContain('http://');
       expect(JSON.stringify(res.body.data)).not.toContain('adapter.example.test');
