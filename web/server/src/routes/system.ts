@@ -155,6 +155,8 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'provider',
         'queue_id',
         'queue_priority',
+        'provider_callback_path',
+        'provider_poll_path',
         'note',
         'seedance_asset_library',
         'shots[]',
@@ -192,6 +194,8 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         provider: 'seedance',
         queue_id: 'seedance-queue-demo-001',
         queue_priority: 'normal',
+        provider_callback_path: '/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/provider-callback',
+        provider_poll_path: '/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/poll-provider',
         note: 'adapter submit smoke',
         seedance_asset_library: {
           schema_version: 'seedance-asset-library/v1',

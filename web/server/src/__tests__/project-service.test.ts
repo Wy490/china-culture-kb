@@ -827,12 +827,20 @@ describe('project-service', () => {
         provider?: string;
         queue_id?: string;
         queue_priority?: string;
+        provider_callback_path?: string;
+        provider_poll_path?: string;
         shots: Array<{ shot_id: string; provider_job_id?: string; seedance_prompt?: string; seedance_asset_slots?: unknown[] }>;
       };
       expect(body.project_id).toBe(enriched.project_id);
       expect(body.provider).toBe('seedance');
       expect(body.queue_id).toBe('adapter-submit-queue-local');
       expect(body.queue_priority).toBe('high');
+      expect(body.provider_callback_path).toBe(
+        `/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-callback`,
+      );
+      expect(body.provider_poll_path).toBe(
+        `/api/projects/${enriched.project_id}/production-board/seedance-shots/poll-provider`,
+      );
       expect(body.shots).toHaveLength(2);
       expect(body.shots[0]).toMatchObject({
         shot_id: 'shot-1',

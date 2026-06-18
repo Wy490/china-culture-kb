@@ -158,6 +158,10 @@ function projectVersionPath(projectId: string, versionId: string): string {
   return resolve(projectVersionsDir(projectId), `${versionId}.json`);
 }
 
+function projectSeedanceProviderApiPath(projectId: string, action: 'provider-callback' | 'poll-provider'): string {
+  return `/api/projects/${projectId}/production-board/seedance-shots/${action}`;
+}
+
 async function pathExists(targetPath: string): Promise<boolean> {
   try {
     await stat(targetPath);
@@ -1168,6 +1172,8 @@ async function querySeedanceProviderSubmitAdapter(input: {
         provider: input.provider,
         queue_id: input.queueId,
         queue_priority: input.queuePriority,
+        provider_callback_path: projectSeedanceProviderApiPath(input.projectId, 'provider-callback'),
+        provider_poll_path: projectSeedanceProviderApiPath(input.projectId, 'poll-provider'),
         note: input.note,
         seedance_asset_library: input.assetLibrary,
         shots: input.candidates.map(candidate => ({

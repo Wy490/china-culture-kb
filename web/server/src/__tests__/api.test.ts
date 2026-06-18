@@ -484,6 +484,8 @@ describe('System API', () => {
         },
       });
       expect(res.body.data.submit.request_fields).toEqual(expect.arrayContaining([
+        'provider_callback_path',
+        'provider_poll_path',
         'shots[].seedance_prompt',
         'shots[].seedance_asset_slots',
       ]));
@@ -494,6 +496,8 @@ describe('System API', () => {
       expect(res.body.data.submit.request_example).toMatchObject({
         schema_version: 'seedance-provider-submit/v1',
         provider: 'seedance',
+        provider_callback_path: '/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/provider-callback',
+        provider_poll_path: '/api/projects/20260618-story-demo--ai_comic_drama/production-board/seedance-shots/poll-provider',
         shots: [expect.objectContaining({
           shot_id: 'shot-1',
           seedance_prompt: expect.stringContaining('0-3秒'),
