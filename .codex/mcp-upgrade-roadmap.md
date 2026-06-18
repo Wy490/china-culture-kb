@@ -77,16 +77,25 @@ Implementation target:
 
 Purpose: create or execute a repair pass for a weak story.
 
+Status: implemented. `auto_apply=false` returns a dry-run plan; `auto_apply=true` safely writes a new version only when the caller provides `project_id` and `repaired_story_json`.
+
 Input:
 
-- `story_json` or `story_id`
-- `repair_instruction`
+- `project_id`, `story_json`, or `story_id`
+- optional `repaired_story_json` for safe apply
+- optional `user_instruction`
+- optional `max_actions`
+- optional `include_markdown`
 - optional `auto_apply`
 
 Output:
 
-- repair prompt package or repaired story
-- updated quality report
+- quality snapshot
+- source issues
+- repair actions
+- target scenes
+- risk notes
+- optional update result and after-quality snapshot when applied
 
 Implementation target:
 
@@ -165,6 +174,8 @@ Implementation target:
 
 Purpose: save an agent-produced patch as a new project version.
 
+Status: implemented as a controlled write MCP tool.
+
 Input:
 
 - `project_id`
@@ -177,6 +188,16 @@ Output:
 
 - new `version_id`
 - updated project metadata
+- changed scene ids
+- preserved fields
+- quality summary
+
+Guardrails:
+
+- always append a new project version
+- do not overwrite old version snapshots
+- do not write `data/provinces/*.md`
+- do not overwrite `web/generated/stories/{video_type}/{storyId}.json`
 
 Implementation target:
 
@@ -184,16 +205,17 @@ Implementation target:
 
 ## Implementation Order
 
-1. Add read-only tools first:
+1. Add read-only tools first (implemented):
    - `kb_get_project_context`
    - `kb_generate_story_blueprint`
    - `kb_validate_genre_story`
-2. Add delivery helpers:
+2. Add delivery helpers (implemented):
    - `kb_generate_gears_delivery`
    - `kb_generate_seedance_prompt`
 3. Add mutation tools last:
-   - `kb_repair_story`
-   - `kb_update_project_version`
+   - `kb_repair_story(auto_apply=false)` (implemented)
+   - `kb_update_project_version` (implemented)
+   - `kb_repair_story(auto_apply=true, requires repaired_story_json)` (implemented)
 
 ## Guardrails
 

@@ -1,5 +1,6 @@
-import { dirname, resolve } from 'node:path';
+import { dirname, extname, resolve } from 'node:path';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import {
   fail,
   success,
@@ -22,6 +23,15 @@ import type {
   StoryProjectDeleteResult,
   StoryProjectRetainRecentResult,
   ProjectSupplementTaskListItem,
+  SeedanceAssetBatchImportRequest,
+  SeedanceAssetBatchImportResult,
+  SeedanceAssetFileUploadResult,
+  SeedanceAssetHistoryEvent,
+  SeedanceAssetHistoryEventType,
+  SeedanceAssetReuseRequest,
+  SeedanceAssetReuseResult,
+  SeedanceGlobalAssetLibrary,
+  SeedanceGlobalAssetLibraryItem,
   SeedanceAssetLibrary,
   SeedanceAssetLibraryItem,
   SeedanceAssetLibraryUpdateRequest,
@@ -33,6 +43,14 @@ import type {
   SeedanceShotRetryPackage,
   SeedanceShotRetryPackageShot,
   SeedanceShotAutoSelectRequest,
+  SeedanceShotProviderQueue,
+  SeedanceShotProviderQueueBatch,
+  SeedanceShotProviderRecoveryItem,
+  SeedanceShotProviderRecoveryRequest,
+  SeedanceShotProviderRecoveryResult,
+  SeedanceShotProviderRecoverableStatus,
+  SeedanceShotProviderSubmitRequest,
+  SeedanceShotProviderSubmitResult,
   SeedanceShotStatusBatchUpdateRequest,
   SeedanceShotStatusBatchUpdateResult,
   SeedanceShotStatusUpdateRequest,
@@ -244,6 +262,71 @@ function buildProjectMeta(
   };
 }
 
+const SEEDANCE_ASSET_HISTORY_LIMIT = 25;
+
+function normalizeSeedanceAssetHistory(history?: SeedanceAssetHistoryEvent[]): SeedanceAssetHistoryEvent[] | undefined {
+  const events = (history ?? [])
+    .filter(event => event.event_id?.trim() && event.event_type && event.created_at)
+    .map(event => ({
+      event_id: event.event_id.trim(),
+      event_type: event.event_type,
+      created_at: event.created_at,
+      upload_status: event.upload_status,
+      provider: event.provider,
+      provider_asset_id: event.provider_asset_id,
+      file_url: event.file_url,
+      file_id: event.file_id,
+      local_path: event.local_path,
+      original_filename: event.original_filename,
+      mime_type: event.mime_type,
+      size_bytes: event.size_bytes,
+      source_project_id: event.source_project_id,
+      source_project_title: event.source_project_title,
+      source_asset_id: event.source_asset_id,
+      note: event.note,
+    }))
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .slice(-SEEDANCE_ASSET_HISTORY_LIMIT);
+  return events.length ? events : undefined;
+}
+
+function seedanceAssetHistoryEvent(params: {
+  asset: SeedanceAssetLibraryItem;
+  eventType: SeedanceAssetHistoryEventType;
+  createdAt: string;
+  note?: string;
+  sourceProject?: StoryProjectMeta;
+  sourceAssetId?: string;
+}): SeedanceAssetHistoryEvent {
+  return {
+    event_id: `seedance-asset-event-${params.createdAt.replace(/[^0-9]/g, '').slice(0, 14)}-${randomUUID().slice(0, 8)}`,
+    event_type: params.eventType,
+    created_at: params.createdAt,
+    upload_status: params.asset.upload_status,
+    provider: params.asset.provider,
+    provider_asset_id: params.asset.provider_asset_id,
+    file_url: params.asset.file_url,
+    file_id: params.asset.file_id,
+    local_path: params.asset.local_path,
+    original_filename: params.asset.original_filename,
+    mime_type: params.asset.mime_type,
+    size_bytes: params.asset.size_bytes,
+    source_project_id: params.sourceProject?.project_id,
+    source_project_title: params.sourceProject?.title,
+    source_asset_id: params.sourceAssetId,
+    note: params.note,
+  };
+}
+
+function appendSeedanceAssetHistory(
+  previous: SeedanceAssetLibraryItem | undefined,
+  event: SeedanceAssetHistoryEvent,
+): SeedanceAssetHistoryEvent[] {
+  return [...(normalizeSeedanceAssetHistory(previous?.history) ?? []), event]
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .slice(-SEEDANCE_ASSET_HISTORY_LIMIT);
+}
+
 function normalizeSeedanceAssetLibrary(library?: SeedanceAssetLibrary): SeedanceAssetLibrary {
   return {
     schema_version: 'seedance-asset-library/v1',
@@ -259,6 +342,15 @@ function normalizeSeedanceAssetLibrary(library?: SeedanceAssetLibrary): Seedance
         reference_slot: item.reference_slot,
         file_url: item.file_url,
         file_id: item.file_id,
+        local_path: item.local_path,
+        original_filename: item.original_filename,
+        mime_type: item.mime_type,
+        size_bytes: item.size_bytes,
+        provider: item.provider,
+        provider_asset_id: item.provider_asset_id,
+        upload_status: item.upload_status,
+        upload_error: item.upload_error,
+        history: normalizeSeedanceAssetHistory(item.history),
         description: item.description,
         updated_at: item.updated_at ?? library?.updated_at ?? new Date(0).toISOString(),
       })),
@@ -281,6 +373,10 @@ function defaultSeedanceAssetRole(kind: SeedanceAssetLibraryItem['kind']): Seeda
 
 function seedanceAssetId(kind: SeedanceAssetLibraryItem['kind'], label: string): string {
   return `seedance-asset-${kind}-${slugifySeedanceAssetLabel(label)}`;
+}
+
+function seedanceAssetLookupKey(kind: SeedanceAssetLibraryItem['kind'], label: string): string {
+  return `${kind}:${label.trim().toLowerCase()}`;
 }
 
 function slugifySeedanceAssetLabel(value: string): string {
@@ -401,6 +497,40 @@ function seedanceShotStatusText(status: SeedanceShotProductionStatus): string {
     skipped: '跳过',
   };
   return map[status];
+}
+
+function seedanceProviderJobId(provider: string, shotId: string, index: number): string {
+  const providerSlug = slugifySeedanceAssetLabel(provider).slice(0, 40) || 'provider';
+  const shotSlug = slugifySeedanceAssetLabel(shotId).slice(0, 40) || `shot-${index + 1}`;
+  return `${providerSlug}-${shotSlug}-${randomUUID().slice(0, 8)}`;
+}
+
+function seedanceProviderQueueId(provider: string, updatedAt: string): string {
+  const providerSlug = slugifySeedanceAssetLabel(provider).slice(0, 40) || 'provider';
+  const timestamp = updatedAt.replace(/[-:.TZ]/g, '').slice(0, 14);
+  return `${providerSlug}-queue-${timestamp}-${randomUUID().slice(0, 6)}`;
+}
+
+function appendSeedanceProviderQueueBatch(
+  existing: SeedanceShotProviderQueue | undefined,
+  batch: SeedanceShotProviderQueueBatch,
+): SeedanceShotProviderQueue {
+  const batches = [
+    ...(existing?.batches ?? []).filter(item => item.queue_id !== batch.queue_id),
+    batch,
+  ].slice(-12);
+  return {
+    schema_version: 'seedance-provider-queue/v1',
+    updated_at: batch.updated_at,
+    latest_queue_id: batch.queue_id,
+    batches,
+  };
+}
+
+function seedanceShotWaitingMinutes(item: SeedanceShotLedgerItem, nowMs: number): number {
+  const timestamp = Date.parse(item.submitted_at ?? item.updated_at);
+  if (!Number.isFinite(timestamp)) return 0;
+  return Math.max(0, Math.floor((nowMs - timestamp) / 60000));
 }
 
 function callbackStringField(value: unknown): string | undefined {
@@ -716,6 +846,22 @@ export async function listProjects(): Promise<ApiResponse<StoryProjectListItem[]
   return success(projects);
 }
 
+async function readAllProjectMetas(): Promise<StoryProjectMeta[]> {
+  await ensureProjectsFromStories();
+  let projectIds: string[];
+  try {
+    projectIds = await readdir(projectsRoot());
+  } catch {
+    return [];
+  }
+  const projects: StoryProjectMeta[] = [];
+  for (const projectId of projectIds) {
+    const meta = await readProjectMeta(projectId);
+    if (meta) projects.push(meta);
+  }
+  return projects;
+}
+
 export async function getProject(projectId: string): Promise<ApiResponse<StoryProjectDetail>> {
   const project = await ensureProjectExists(projectId);
   if (!project) {
@@ -751,7 +897,7 @@ export async function updateProjectSeedanceAssetLibrary(
     const kind = item.kind;
     const assetId = item.asset_id?.trim() || seedanceAssetId(kind, label);
     const previous = byId.get(assetId);
-    byId.set(assetId, {
+    const asset: SeedanceAssetLibraryItem = {
       asset_id: assetId,
       kind,
       label,
@@ -760,8 +906,25 @@ export async function updateProjectSeedanceAssetLibrary(
       reference_slot: item.reference_slot?.trim() || previous?.reference_slot,
       file_url: item.file_url?.trim() || previous?.file_url,
       file_id: item.file_id?.trim() || previous?.file_id,
+      local_path: item.local_path?.trim() || previous?.local_path,
+      original_filename: item.original_filename?.trim() || previous?.original_filename,
+      mime_type: item.mime_type?.trim() || previous?.mime_type,
+      size_bytes: item.size_bytes ?? previous?.size_bytes,
+      provider: item.provider?.trim() || previous?.provider,
+      provider_asset_id: item.provider_asset_id?.trim() || previous?.provider_asset_id,
+      upload_status: item.upload_status ?? previous?.upload_status,
+      upload_error: item.upload_error?.trim() || previous?.upload_error,
       description: item.description?.trim() || previous?.description,
       updated_at: updatedAt,
+    };
+    byId.set(assetId, {
+      ...asset,
+      history: appendSeedanceAssetHistory(previous, seedanceAssetHistoryEvent({
+        asset,
+        eventType: 'manual_bind',
+        createdAt: updatedAt,
+        note: item.description?.trim() || '前端手动绑定素材',
+      })),
     });
   }
   const updatedProject: StoryProjectMeta = {
@@ -778,6 +941,454 @@ export async function updateProjectSeedanceAssetLibrary(
   };
   await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
   return getProject(project.project_id);
+}
+
+export async function importProjectSeedanceAssetBatch(
+  projectId: string,
+  request: SeedanceAssetBatchImportRequest,
+): Promise<ApiResponse<SeedanceAssetBatchImportResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const updatedAt = new Date().toISOString();
+  const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const reportAssets = board.seedance_asset_report.assets;
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  const reportById = new Map(reportAssets.map(item => [item.asset_id, item]));
+  const reportByKey = new Map(reportAssets.map(item => [seedanceAssetLookupKey(item.kind, item.label), item]));
+  const skippedItems: SeedanceAssetBatchImportResult['skipped_items'] = [];
+  const updatedAssetIds: string[] = [];
+  let matchedExistingCount = 0;
+
+  request.items.forEach((item, index) => {
+    const label = item.label?.trim();
+    const kind = item.kind;
+    const directAssetId = item.asset_id?.trim();
+    const reportMatch = directAssetId
+      ? reportById.get(directAssetId)
+      : kind && label
+        ? reportByKey.get(seedanceAssetLookupKey(kind, label))
+        : undefined;
+    const previous = directAssetId ? byId.get(directAssetId) : undefined;
+    const resolvedKind = kind ?? reportMatch?.kind ?? previous?.kind;
+    const resolvedLabel = label || reportMatch?.label || previous?.label;
+    const assetId = directAssetId || reportMatch?.asset_id || (
+      resolvedKind && resolvedLabel ? seedanceAssetId(resolvedKind, resolvedLabel) : undefined
+    );
+    if (!assetId || !resolvedKind || !resolvedLabel) {
+      skippedItems.push({
+        index,
+        reason: '缺少 asset_id，或缺少可推断的 label+kind',
+        asset_id: directAssetId,
+        label,
+      });
+      return;
+    }
+    const hasImportValue = Boolean(
+      item.file_url?.trim()
+      || item.file_id?.trim()
+      || item.local_path?.trim()
+      || item.provider_asset_id?.trim()
+      || item.upload_status
+    );
+    if (!hasImportValue) {
+      skippedItems.push({
+        index,
+        reason: '缺少 file_url、file_id、local_path、provider_asset_id 或 upload_status',
+        asset_id: assetId,
+        label: resolvedLabel,
+      });
+      return;
+    }
+
+    const existing = byId.get(assetId);
+    if (existing || reportMatch) matchedExistingCount += 1;
+    const asset: SeedanceAssetLibraryItem = {
+      asset_id: assetId,
+      kind: resolvedKind,
+      label: resolvedLabel,
+      modality: item.modality ?? existing?.modality ?? reportMatch?.modality ?? defaultSeedanceAssetModality(resolvedKind),
+      role: item.role ?? existing?.role ?? reportMatch?.role ?? defaultSeedanceAssetRole(resolvedKind),
+      reference_slot: item.reference_slot?.trim() || existing?.reference_slot || reportMatch?.reference_slot,
+      file_url: item.file_url?.trim() || existing?.file_url,
+      file_id: item.file_id?.trim() || existing?.file_id,
+      local_path: item.local_path?.trim() || existing?.local_path,
+      original_filename: item.original_filename?.trim() || existing?.original_filename,
+      mime_type: item.mime_type?.trim() || existing?.mime_type,
+      size_bytes: item.size_bytes ?? existing?.size_bytes,
+      provider: item.provider?.trim() || existing?.provider,
+      provider_asset_id: item.provider_asset_id?.trim() || existing?.provider_asset_id,
+      upload_status: item.upload_status ?? existing?.upload_status,
+      upload_error: item.upload_error?.trim() || existing?.upload_error,
+      description: item.description?.trim() || existing?.description || reportMatch?.prompt_usage,
+      updated_at: updatedAt,
+    };
+    byId.set(assetId, {
+      ...asset,
+      history: appendSeedanceAssetHistory(existing, seedanceAssetHistoryEvent({
+        asset,
+        eventType: 'batch_import',
+        createdAt: updatedAt,
+        note: request.source_note ?? item.description?.trim() ?? '批量导入素材清单',
+      })),
+    });
+    updatedAssetIds.push(assetId);
+  });
+
+  if (!updatedAssetIds.length) {
+    return success({
+      detail: detail.data,
+      imported_count: 0,
+      matched_existing_count: 0,
+      skipped_count: skippedItems.length,
+      updated_asset_ids: [],
+      skipped_items: skippedItems,
+      source_note: request.source_note,
+    });
+  }
+
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    seedance_asset_library: {
+      schema_version: 'seedance-asset-library/v1',
+      updated_at: updatedAt,
+      items: [...byId.values()].sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+        return a.label.localeCompare(b.label, 'zh-CN');
+      }),
+    },
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  const nextDetail = await getProject(project.project_id);
+  if (!nextDetail.ok || !nextDetail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      nextDetail.error?.message ?? `Project "${projectId}" not found after Seedance asset import`,
+    );
+  }
+  return success({
+    detail: nextDetail.data,
+    imported_count: updatedAssetIds.length,
+    matched_existing_count: matchedExistingCount,
+    skipped_count: skippedItems.length,
+    updated_asset_ids: [...new Set(updatedAssetIds)],
+    skipped_items: skippedItems,
+    source_note: request.source_note,
+  });
+}
+
+export async function uploadProjectSeedanceAssetFile(
+  projectId: string,
+  request: {
+    asset_id?: string;
+    label?: string;
+    kind?: SeedanceAssetLibraryItem['kind'];
+    modality?: SeedanceAssetLibraryItem['modality'];
+    role?: SeedanceAssetLibraryItem['role'];
+    reference_slot?: string;
+    description?: string;
+    file: {
+      original_filename: string;
+      mime_type: string;
+      buffer: Buffer;
+    };
+  },
+): Promise<ApiResponse<SeedanceAssetFileUploadResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+  if (!request.file.buffer.length) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Uploaded Seedance asset file is empty');
+  }
+
+  const { project, current_story } = detail.data;
+  const updatedAt = new Date().toISOString();
+  const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const reportAssets = board.seedance_asset_report.assets;
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  const reportById = new Map(reportAssets.map(item => [item.asset_id, item]));
+  const reportByKey = new Map(reportAssets.map(item => [seedanceAssetLookupKey(item.kind, item.label), item]));
+  const label = request.label?.trim();
+  const kind = request.kind;
+  const directAssetId = request.asset_id?.trim();
+  const reportMatch = directAssetId
+    ? reportById.get(directAssetId)
+    : kind && label
+      ? reportByKey.get(seedanceAssetLookupKey(kind, label))
+      : undefined;
+  const previous = directAssetId ? byId.get(directAssetId) : undefined;
+  const resolvedKind = kind ?? reportMatch?.kind ?? previous?.kind;
+  const resolvedLabel = label || reportMatch?.label || previous?.label;
+  const assetId = directAssetId || reportMatch?.asset_id || (
+    resolvedKind && resolvedLabel ? seedanceAssetId(resolvedKind, resolvedLabel) : undefined
+  );
+  if (!assetId || !resolvedKind || !resolvedLabel) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'asset_id or label+kind is required for Seedance asset upload');
+  }
+
+  const extension = seedanceAssetUploadExtension(request.file.original_filename, request.file.mime_type);
+  const fileId = `seedance-upload-${slugifySeedanceAssetLabel(assetId)}-${randomUUID().slice(0, 8)}`;
+  const filename = `${fileId}${extension}`;
+  const uploadDir = resolve(projectDir(project.project_id), 'seedance-assets', 'uploads');
+  await mkdir(uploadDir, { recursive: true });
+  await writeFile(resolve(uploadDir, filename), request.file.buffer);
+  const localPath = `projects/${project.project_id}/seedance-assets/uploads/${filename}`;
+  const existing = byId.get(assetId);
+  const asset: SeedanceAssetLibraryItem = {
+    asset_id: assetId,
+    kind: resolvedKind,
+    label: resolvedLabel,
+    modality: request.modality ?? existing?.modality ?? reportMatch?.modality ?? defaultSeedanceAssetModality(resolvedKind),
+    role: request.role ?? existing?.role ?? reportMatch?.role ?? defaultSeedanceAssetRole(resolvedKind),
+    reference_slot: request.reference_slot?.trim() || existing?.reference_slot || reportMatch?.reference_slot,
+    file_id: fileId,
+    local_path: localPath,
+    original_filename: request.file.original_filename,
+    mime_type: request.file.mime_type,
+    size_bytes: request.file.buffer.length,
+    provider: 'local_upload',
+    provider_asset_id: fileId,
+    upload_status: 'uploaded',
+    upload_error: undefined,
+    description: request.description?.trim() || existing?.description || reportMatch?.prompt_usage,
+    updated_at: updatedAt,
+  };
+  const assetWithHistory: SeedanceAssetLibraryItem = {
+    ...asset,
+    history: appendSeedanceAssetHistory(existing, seedanceAssetHistoryEvent({
+      asset,
+      eventType: 'file_upload',
+      createdAt: updatedAt,
+      note: request.file.original_filename,
+    })),
+  };
+  byId.set(assetId, assetWithHistory);
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    seedance_asset_library: {
+      schema_version: 'seedance-asset-library/v1',
+      updated_at: updatedAt,
+      items: [...byId.values()].sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+        return a.label.localeCompare(b.label, 'zh-CN');
+      }),
+    },
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  const nextDetail = await getProject(project.project_id);
+  if (!nextDetail.ok || !nextDetail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      nextDetail.error?.message ?? `Project "${projectId}" not found after Seedance asset upload`,
+    );
+  }
+  return success({
+    detail: nextDetail.data,
+    asset: assetWithHistory,
+    file_id: fileId,
+    local_path: localPath,
+    original_filename: request.file.original_filename,
+    mime_type: request.file.mime_type,
+    size_bytes: request.file.buffer.length,
+  });
+}
+
+function seedanceAssetUploadExtension(filename: string, mimeType: string): string {
+  const ext = extname(filename).toLowerCase().replace(/[^a-z0-9.]/g, '');
+  if (ext && ext.length <= 12) return ext;
+  if (mimeType === 'image/png') return '.png';
+  if (mimeType === 'image/jpeg') return '.jpg';
+  if (mimeType === 'image/webp') return '.webp';
+  if (mimeType === 'video/mp4') return '.mp4';
+  if (mimeType === 'audio/mpeg') return '.mp3';
+  if (mimeType === 'audio/wav') return '.wav';
+  return '.bin';
+}
+
+function isReusableSeedanceAsset(item: SeedanceAssetLibraryItem): boolean {
+  return Boolean(
+    item.file_url
+    || item.file_id
+    || item.local_path
+    || item.provider_asset_id
+    || item.upload_status === 'uploaded'
+    || item.upload_status === 'external'
+  );
+}
+
+function toGlobalSeedanceAssetItem(project: StoryProjectMeta, item: SeedanceAssetLibraryItem): SeedanceGlobalAssetLibraryItem {
+  return {
+    global_asset_id: `${project.project_id}:${item.asset_id}`,
+    source_project_id: project.project_id,
+    source_project_title: project.title,
+    source_asset_id: item.asset_id,
+    label: item.label,
+    kind: item.kind,
+    modality: item.modality,
+    role: item.role,
+    reference_slot: item.reference_slot,
+    file_url: item.file_url,
+    file_id: item.file_id,
+    local_path: item.local_path,
+    original_filename: item.original_filename,
+    mime_type: item.mime_type,
+    size_bytes: item.size_bytes,
+    provider: item.provider,
+    provider_asset_id: item.provider_asset_id,
+    upload_status: item.upload_status,
+    upload_error: item.upload_error,
+    description: item.description,
+    updated_at: item.updated_at,
+  };
+}
+
+export async function listProjectSeedanceGlobalAssetLibrary(
+  projectId: string,
+): Promise<ApiResponse<SeedanceGlobalAssetLibrary>> {
+  const project = await ensureProjectExists(projectId);
+  if (!project) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" not found`);
+  }
+  const projects = await readAllProjectMetas();
+  const items = projects
+    .filter(meta => meta.project_id !== projectId)
+    .flatMap(meta => normalizeSeedanceAssetLibrary(meta.seedance_asset_library).items
+      .filter(isReusableSeedanceAsset)
+      .map(item => toGlobalSeedanceAssetItem(meta, item)));
+  items.sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+    const labelCmp = a.label.localeCompare(b.label, 'zh-CN');
+    if (labelCmp !== 0) return labelCmp;
+    return b.updated_at.localeCompare(a.updated_at);
+  });
+  return success({
+    schema_version: 'seedance-global-asset-library/v1',
+    generated_at: new Date().toISOString(),
+    current_project_id: projectId,
+    total_asset_count: items.length,
+    reusable_asset_count: items.length,
+    items,
+  });
+}
+
+export async function reuseProjectSeedanceAsset(
+  projectId: string,
+  request: SeedanceAssetReuseRequest,
+): Promise<ApiResponse<SeedanceAssetReuseResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+  const sourceProject = await ensureProjectExists(request.source_project_id);
+  if (!sourceProject) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Source project "${request.source_project_id}" not found`);
+  }
+  const sourceItem = normalizeSeedanceAssetLibrary(sourceProject.seedance_asset_library)
+    .items.find(item => item.asset_id === request.source_asset_id);
+  if (!sourceItem || !isReusableSeedanceAsset(sourceItem)) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Source asset "${request.source_asset_id}" is not reusable`);
+  }
+
+  const { project, current_story } = detail.data;
+  const updatedAt = new Date().toISOString();
+  const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const reportAssets = board.seedance_asset_report.assets;
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  const reportById = new Map(reportAssets.map(item => [item.asset_id, item]));
+  const reportByKey = new Map(reportAssets.map(item => [seedanceAssetLookupKey(item.kind, item.label), item]));
+  const targetKind = request.target_kind ?? sourceItem.kind;
+  const targetLabel = request.target_label?.trim() || sourceItem.label;
+  const reportMatch = request.target_asset_id
+    ? reportById.get(request.target_asset_id)
+    : reportByKey.get(seedanceAssetLookupKey(targetKind, targetLabel));
+  const targetAssetId = request.target_asset_id?.trim()
+    || reportMatch?.asset_id
+    || seedanceAssetId(targetKind, targetLabel);
+  const existing = byId.get(targetAssetId);
+  const reusedAsset: SeedanceAssetLibraryItem = {
+    asset_id: targetAssetId,
+    kind: targetKind,
+    label: targetLabel,
+    modality: existing?.modality ?? reportMatch?.modality ?? sourceItem.modality,
+    role: existing?.role ?? reportMatch?.role ?? sourceItem.role,
+    reference_slot: request.reference_slot?.trim() || existing?.reference_slot || reportMatch?.reference_slot || sourceItem.reference_slot,
+    file_url: sourceItem.file_url,
+    file_id: sourceItem.file_id,
+    local_path: sourceItem.local_path,
+    original_filename: sourceItem.original_filename,
+    mime_type: sourceItem.mime_type,
+    size_bytes: sourceItem.size_bytes,
+    provider: sourceItem.provider,
+    provider_asset_id: sourceItem.provider_asset_id,
+    upload_status: sourceItem.upload_status ?? 'external',
+    upload_error: undefined,
+    description: request.description?.trim() || existing?.description || reportMatch?.prompt_usage || sourceItem.description,
+    updated_at: updatedAt,
+  };
+  const reusedAssetWithHistory: SeedanceAssetLibraryItem = {
+    ...reusedAsset,
+    history: appendSeedanceAssetHistory(existing, seedanceAssetHistoryEvent({
+      asset: reusedAsset,
+      eventType: 'cross_project_reuse',
+      createdAt: updatedAt,
+      sourceProject,
+      sourceAssetId: sourceItem.asset_id,
+      note: `复用自 ${sourceProject.title}`,
+    })),
+  };
+  byId.set(targetAssetId, reusedAssetWithHistory);
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    seedance_asset_library: {
+      schema_version: 'seedance-asset-library/v1',
+      updated_at: updatedAt,
+      items: [...byId.values()].sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+        return a.label.localeCompare(b.label, 'zh-CN');
+      }),
+    },
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  const nextDetail = await getProject(project.project_id);
+  if (!nextDetail.ok || !nextDetail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      nextDetail.error?.message ?? `Project "${projectId}" not found after Seedance asset reuse`,
+    );
+  }
+  return success({
+    detail: nextDetail.data,
+    reused_asset: reusedAssetWithHistory,
+    source_asset: toGlobalSeedanceAssetItem(sourceProject, sourceItem),
+  });
 }
 
 export async function updateProjectSeedanceShotStatus(
@@ -1010,6 +1621,283 @@ export async function autoSelectProjectSeedanceShotVersions(
     await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
   }
   return selectedCount > 0 ? getProject(project.project_id) : success(detail.data);
+}
+
+export async function submitProjectSeedanceShotsToProvider(
+  projectId: string,
+  request: SeedanceShotProviderSubmitRequest = {},
+): Promise<ApiResponse<SeedanceShotProviderSubmitResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const updatedAt = new Date().toISOString();
+  const provider = request.provider?.trim() || 'seedance';
+  const queueId = request.queue_id?.trim() || seedanceProviderQueueId(provider, updatedAt);
+  const queuePriority = request.queue_priority ?? 'normal';
+  const queueNote = request.note?.trim();
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const currentLedger = syncSeedanceShotLedgerWithShots({
+    ledger: project.seedance_shot_ledger,
+    shotUnits: board.shot_units,
+    generatedAt: board.generated_at,
+  });
+  const requestedShotIds = request.shot_ids?.length ? new Set(request.shot_ids) : undefined;
+  const failures: SeedanceShotProviderSubmitResult['failures'] = [];
+  const submittedShots: SeedanceShotProviderSubmitResult['submitted_shots'] = [];
+  const queueItems: SeedanceShotProviderQueueBatch['items'] = [];
+  const submitStatuses = new Set<SeedanceShotProductionStatus>(['not_started', 'prompt_exported', 'failed']);
+  const shotUnitById = new Map(board.shot_units.map(unit => [unit.shot_id, unit]));
+  let skippedCount = 0;
+
+  if (requestedShotIds) {
+    [...requestedShotIds].forEach((shotId, index) => {
+      if (!shotUnitById.has(shotId)) {
+        failures.push({
+          index,
+          shot_id: shotId,
+          message: `Seedance shot "${shotId}" not found in project "${projectId}"`,
+        });
+      }
+    });
+  }
+
+  const items = currentLedger.items.map((item, index) => {
+    const shot = shotUnitById.get(item.shot_id);
+    if (!shot) return item;
+    if (requestedShotIds && !requestedShotIds.has(item.shot_id)) return item;
+    if (failures.some(failure => failure.shot_id === item.shot_id)) return item;
+    if (item.provider_job_id && item.status !== 'failed' && !request.overwrite_existing) {
+      skippedCount += 1;
+      return item;
+    }
+    if (!submitStatuses.has(item.status) && !request.overwrite_existing) {
+      skippedCount += 1;
+      return item;
+    }
+
+    const providerJobId = request.job_prefix?.trim()
+      ? `${request.job_prefix.trim()}-${item.shot_id}`
+      : seedanceProviderJobId(provider, item.shot_id, index);
+    const queuePosition = queueItems.length + 1;
+    submittedShots.push({
+      shot_id: item.shot_id,
+      provider_job_id: providerJobId,
+      provider_queue_id: queueId,
+      provider_queue_position: queuePosition,
+      status: 'submitted',
+    });
+    queueItems.push({
+      shot_id: item.shot_id,
+      source_scene_id: shot.source_scene_id,
+      provider_job_id: providerJobId,
+      status: 'submitted',
+      queue_position: queuePosition,
+      queued_at: updatedAt,
+    });
+    return {
+      ...item,
+      source_scene_id: shot.source_scene_id,
+      status: 'submitted' as const,
+      submitted_at: updatedAt,
+      updated_at: updatedAt,
+      provider,
+      provider_job_id: providerJobId,
+      provider_queue_id: queueId,
+      provider_queue_position: queuePosition,
+      failure_reason: undefined,
+      retry_count: item.status === 'failed' ? item.retry_count + 1 : item.retry_count,
+      notes: uniqueSeedanceNotes([
+        ...item.notes,
+        queueNote || `提交到 ${provider}：${providerJobId}`,
+      ]),
+      versions: appendSeedanceShotVideoVersion({
+        existing: item,
+        request: {
+          shot_id: item.shot_id,
+          status: 'submitted',
+          provider_job_id: providerJobId,
+          note: queueNote || `提交到 ${provider}`,
+        },
+        updatedAt,
+      }),
+    };
+  }).sort((a, b) =>
+    (a.source_scene_id ?? 0) - (b.source_scene_id ?? 0)
+    || a.shot_id.localeCompare(b.shot_id, 'zh-Hans-CN')
+  );
+
+  if (!submittedShots.length) {
+    return success({
+      project,
+      seedance_shot_ledger: currentLedger,
+      seedance_provider_queue: project.seedance_provider_queue,
+      submitted_count: 0,
+      skipped_count: skippedCount,
+      failed_count: failures.length,
+      submitted_shots: [],
+      failures,
+    });
+  }
+
+  const providerQueueBatch: SeedanceShotProviderQueueBatch = {
+    queue_id: queueId,
+    provider,
+    priority: queuePriority,
+    created_at: updatedAt,
+    updated_at: updatedAt,
+    submitted_count: submittedShots.length,
+    skipped_count: skippedCount,
+    failed_count: failures.length,
+    note: queueNote,
+    items: queueItems,
+  };
+  const providerQueue = appendSeedanceProviderQueueBatch(project.seedance_provider_queue, providerQueueBatch);
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    seedance_shot_ledger: {
+      schema_version: 'seedance-shot-ledger/v1',
+      updated_at: updatedAt,
+      items,
+    },
+    seedance_provider_queue: providerQueue,
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  return success({
+    project: updatedProject,
+    seedance_shot_ledger: updatedProject.seedance_shot_ledger,
+    seedance_provider_queue: updatedProject.seedance_provider_queue,
+    provider_queue_batch: providerQueueBatch,
+    submitted_count: submittedShots.length,
+    skipped_count: skippedCount,
+    failed_count: failures.length,
+    submitted_shots: submittedShots,
+    failures,
+  });
+}
+
+export async function recoverProjectSeedanceProviderQueue(
+  projectId: string,
+  request: SeedanceShotProviderRecoveryRequest = {},
+): Promise<ApiResponse<SeedanceShotProviderRecoveryResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const timeoutMinutes = request.timeout_minutes ?? 120;
+  const recoverableStatuses = new Set<SeedanceShotProviderRecoverableStatus>(
+    request.statuses?.length ? request.statuses : ['submitted', 'processing'],
+  );
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const currentLedger = syncSeedanceShotLedgerWithShots({
+    ledger: project.seedance_shot_ledger,
+    shotUnits: board.shot_units,
+    generatedAt: board.generated_at,
+  });
+  const updatedAt = new Date().toISOString();
+  const nowMs = Date.parse(updatedAt);
+  const checkedItems = currentLedger.items.filter((item): item is SeedanceShotLedgerItem & {
+    status: SeedanceShotProviderRecoverableStatus;
+  } => recoverableStatuses.has(item.status as SeedanceShotProviderRecoverableStatus));
+  const timedOutShots: SeedanceShotProviderRecoveryItem[] = checkedItems
+    .map(item => {
+      const minutesWaiting = seedanceShotWaitingMinutes(item, nowMs);
+      const failureReason = `Provider task timed out after ${timeoutMinutes} minutes`;
+      return {
+        shot_id: item.shot_id,
+        source_scene_id: item.source_scene_id,
+        status: item.status,
+        provider: item.provider,
+        provider_job_id: item.provider_job_id,
+        provider_queue_id: item.provider_queue_id,
+        provider_queue_position: item.provider_queue_position,
+        submitted_at: item.submitted_at,
+        updated_at: item.updated_at,
+        minutes_waiting: minutesWaiting,
+        failure_reason: failureReason,
+      };
+    })
+    .filter(item => item.minutes_waiting >= timeoutMinutes);
+
+  if (!request.mark_timed_out_failed || !timedOutShots.length) {
+    return success({
+      project,
+      seedance_shot_ledger: currentLedger,
+      dry_run: !request.mark_timed_out_failed,
+      timeout_minutes: timeoutMinutes,
+      checked_count: checkedItems.length,
+      timed_out_count: timedOutShots.length,
+      updated_count: 0,
+      timed_out_shots: timedOutShots,
+    });
+  }
+
+  const timedOutByShotId = new Map(timedOutShots.map(item => [item.shot_id, item]));
+  const note = request.note?.trim();
+  const items = currentLedger.items.map(item => {
+    const timedOut = timedOutByShotId.get(item.shot_id);
+    if (!timedOut) return item;
+    const failureReason = timedOut.failure_reason ?? `Provider task timed out after ${timeoutMinutes} minutes`;
+    return {
+      ...item,
+      status: 'failed' as const,
+      completed_at: updatedAt,
+      updated_at: updatedAt,
+      failure_reason: failureReason,
+      notes: uniqueSeedanceNotes([
+        ...item.notes,
+        note ?? `Provider 超时恢复：等待 ${timedOut.minutes_waiting} 分钟`,
+      ]),
+      versions: appendSeedanceShotVideoVersion({
+        existing: item,
+        request: {
+          shot_id: item.shot_id,
+          status: 'failed',
+          provider_job_id: item.provider_job_id,
+          failure_reason: failureReason,
+          note: note ?? `Provider 超时恢复：等待 ${timedOut.minutes_waiting} 分钟`,
+        },
+        updatedAt,
+      }),
+    };
+  });
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    seedance_shot_ledger: {
+      schema_version: 'seedance-shot-ledger/v1',
+      updated_at: updatedAt,
+      items,
+    },
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  return success({
+    project: updatedProject,
+    seedance_shot_ledger: updatedProject.seedance_shot_ledger,
+    dry_run: false,
+    timeout_minutes: timeoutMinutes,
+    checked_count: checkedItems.length,
+    timed_out_count: timedOutShots.length,
+    updated_count: timedOutShots.length,
+    timed_out_shots: timedOutShots,
+  });
 }
 
 export async function importProjectSeedanceShotCallbacks(

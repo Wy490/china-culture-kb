@@ -21,9 +21,14 @@
 
 - 项目级 Codex skills 已建立；
 - Mac Codex 已接入 `china-culture-kb` MCP；
-- MCP 已新增只读工具：
+- MCP 已新增 Story Agent 工具：
   - `kb_get_project_context`
   - `kb_generate_story_blueprint`
+  - `kb_validate_genre_story`
+  - `kb_generate_gears_delivery`
+  - `kb_generate_seedance_prompt`
+  - `kb_repair_story(auto_apply=false)`
+  - `kb_update_project_version`
 - MCP 全量测试已恢复绿色；
 - Story Agent Web 端已有类型片 profile、StoryBlueprint、项目版本、质量报告、GEARS delivery 等基础模块。
 
@@ -58,7 +63,7 @@ Knowledge entry / user material
 
 ### 2.1 已完成 MCP 工具
 
-当前 `china-culture-kb` MCP 工具数：17。
+当前 `china-culture-kb` MCP 工具数：21。
 
 新增 Story Agent 相关工具：
 
@@ -67,6 +72,10 @@ Knowledge entry / user material
 | `kb_get_project_context` | 已完成 | 读取项目元数据、当前 story、版本摘要，可选完整版本快照和 exports |
 | `kb_generate_story_blueprint` | 已完成 | 从知识库条目生成类型片 StoryBlueprint |
 | `kb_validate_genre_story` | 已完成 | 只读校验 Story Agent 结果的类型片质量，支持 project_id、story_id、story_json |
+| `kb_generate_gears_delivery` | 已完成 | 只读生成 GEARS 交付包，支持 project_id、story_id、story_json |
+| `kb_generate_seedance_prompt` | 已完成 | 只读生成 Seedance 2.0 镜头提示词包和素材引用计划 |
+| `kb_repair_story(auto_apply=false)` | 已完成 | 只读生成修复动作、目标场景、字段提示和风险说明 |
+| `kb_update_project_version` | 已完成 | 将 Agent 产出的 story snapshot 受控写入项目新版本，不覆盖旧版本 |
 
 ### 2.2 已完成配置
 
@@ -100,10 +109,9 @@ Knowledge entry / user material
 3. `kb_generate_seedance_prompt`
 4. `kb_repair_story(auto_apply=false)`
 
-最后再实现写入型 MCP：
+最后再实现自动应用型 MCP：
 
-1. `kb_update_project_version`
-2. `kb_repair_story(auto_apply=true)`
+1. `kb_repair_story(auto_apply=true)`
 
 原因：
 
@@ -502,7 +510,7 @@ web/server/src/services/quality-repair-service.ts
 - 修复包能引用质量报告问题；
 - 目标场景明确；
 - 不把虚构补足写成事实；
-- `auto_apply=true` 前必须完成版本写入工具。
+- `auto_apply=true` 安全应用首版已完成：必须由调用方提供 `repaired_story_json`，工具会先校验修复后 story，再通过 `kb_update_project_version` 写入新版本。
 
 ---
 
@@ -570,6 +578,29 @@ kb_update_project_version
 - 测试覆盖非法 project id、缺失 snapshot、无效 JSON；
 - 全量测试通过。
 
+### 8.6 当前实现状态
+
+已完成首版：
+
+- 实现文件：`mcp-server/src/tools/update-project-version.ts`。
+- 测试文件：`mcp-server/__tests__/update-project-version.test.ts`。
+- 注册工具：`kb_update_project_version`。
+- 输入限定 `change_type` 为 `scene_regeneration`、`quality_repair`、`production_board_repair`。
+- 写入时新增版本快照并更新 `project.json`，不覆盖旧版本、不写省份知识库、不覆盖 generated story 原始文件。
+- `snapshot_json` 省略 `quality_report`、`story_blueprint`、`gears_segments` 等关键字段时，会从当前版本补回并返回 `preserved_fields`。
+- 已通过 `npm test -- __tests__/update-project-version.test.ts`、`npm test`、`npm run build`。
+
+### 8.7 Repair auto_apply 当前实现状态
+
+已完成安全应用首版：
+
+- `kb_repair_story` 新增 `repaired_story_json` 和 `user_instruction`。
+- `auto_apply=true` 时必须同时提供 `project_id` 和 `repaired_story_json`。
+- 工具不会自行虚构修复正文；只负责校验调用方提供的修复后 story，并调用 `kb_update_project_version` 写入 `quality_repair` 新版本。
+- 返回 `after_quality_snapshot`、`update_result`、`risk_notes`。
+- 缺少 `repaired_story_json` 时只返回 dry-run 和阻断说明。
+- 已通过 `npm test -- __tests__/repair-story.test.ts`、`npm test`、`npm run build`。
+
 ---
 
 ## 9. Phase 6：前端质量反馈视图
@@ -585,6 +616,8 @@ kb_update_project_version
 - 修复建议；
 - GEARS readiness；
 - Seedance prompt readiness。
+
+当前状态：已完成首版。
 
 ### 9.2 可能改动文件
 
@@ -609,11 +642,11 @@ web/shared/schemas.ts
 
 ### 9.4 验收标准
 
-- 项目详情页能显示质量报告；
-- 用户能知道为什么“不像 AI 漫剧”；
-- 用户能知道为什么“不适合 GEARS 交付”；
-- 质量问题能关联到 scene 或 segment；
-- 浏览器 smoke 通过。
+- 项目详情页能显示质量报告；已完成。
+- 用户能知道为什么“不像 AI 漫剧”；已通过缺失要素、弱节拍、不适配表达和修复建议首版覆盖。
+- 用户能知道为什么“不适合 GEARS 交付”；已有 GEARS Readiness 卡片。
+- 质量问题能关联到 scene 或 segment；修复动作已显示关联场景 ID 和标题。
+- 浏览器 smoke：本机缺 Chrome 可执行文件，已用 `web/client npm run build`、本地页面 200 和 API 200 替代；后续需在有 Chrome 的环境补视觉回归。
 
 ---
 
@@ -652,9 +685,9 @@ web/shared/schemas.ts
 1. kb_validate_genre_story
 2. kb_generate_gears_delivery
 3. kb_generate_seedance_prompt
-4. kb_repair_story(auto_apply=false)
-5. kb_update_project_version
-6. kb_repair_story(auto_apply=true)
+4. kb_repair_story(auto_apply=false)（已完成）
+5. kb_update_project_version（已完成）
+6. kb_repair_story(auto_apply=true)（已完成安全应用首版）
 7. 前端质量反馈视图
 8. 文档与配置总收口
 ```
@@ -672,7 +705,7 @@ web/shared/schemas.ts
 [ ] npm run build
 [ ] npm test -- {tool}
 [ ] npm test
-[ ] 真实项目 smoke
+[x] 真实项目 smoke
 [ ] 更新 .claude/settings.local.json
 [ ] 更新 .codex/mcp-upgrade-roadmap.md
 [ ] 更新 .codex/mcp-config.md
@@ -725,6 +758,13 @@ web/shared/schemas.ts
 
 ```text
 kb_validate_genre_story
+kb_generate_gears_delivery
+kb_generate_seedance_prompt
+kb_repair_story(auto_apply=false)
+kb_update_project_version
+kb_repair_story(auto_apply=true，需 repaired_story_json)
+单故事 Seedance provider 队列元数据首版
+单故事 Seedance provider 超时恢复首版
 ```
 
 完成原因：
@@ -746,10 +786,14 @@ npm test
 下一步建议继续实现：
 
 ```text
-kb_generate_gears_delivery
+repair_story 模型生成链路 + Seedance provider 外部回传 schema/自动轮询/真实 API
 ```
 
 原因：
+
+- MCP 已经能读项目、验证质量、生成 GEARS/Seedance 只读交付包、给出修复建议，并能受控新增项目版本；
+- Web 工作台已有 provider 提交抽象、队列元数据和超时恢复，下一层应补自动轮询、真实回传协议和真实 provider API；
+- `kb_repair_story(auto_apply=true)` 仍要求调用方提供 `repaired_story_json`，下一步要让模型根据 repair_actions 生成可校验快照。
 
 - 质量报告已经能指出问题；
 - GEARS 交付包是修复和 Seedance prompt 之前最直接的生产输出；

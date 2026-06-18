@@ -30,6 +30,18 @@ export async function apiPost<T>(path: string, body: unknown): Promise<ApiRespon
   }
 }
 
+export async function apiPostForm<T>(path: string, body: FormData): Promise<ApiResponse<T>> {
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      body,
+    })
+    return res.json() as Promise<ApiResponse<T>>
+  } catch (err: any) {
+    return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
+  }
+}
+
 export async function apiPatch<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
   try {
     const res = await fetch(`${API_BASE}${path}`, {

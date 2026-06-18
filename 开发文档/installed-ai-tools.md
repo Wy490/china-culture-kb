@@ -27,7 +27,7 @@ This document records the AI tools, MCP servers, skills, plugins, and supporting
 
 | MCP name | Type | Command / URL | Status / Purpose |
 | --- | --- | --- | --- |
-| `china-culture-kb` | stdio | `node mcp-server/dist/index.js` (cwd: `d:/china-culture-kb`) | **Project-level** — 中国传统文化知识库，17 个工具（搜索、详情、添加、匹配、补充、采集、验证、B站视频、文章、录入、脚本、故事、索引、地区条目、项目上下文、故事蓝图、类型质量校验） |
+| `china-culture-kb` | stdio | `node mcp-server/dist/index.js` (cwd: `d:/china-culture-kb`) | **Project-level** — 中国传统文化知识库，21 个工具（搜索、详情、添加、匹配、补充、采集、验证、B站视频、文章、录入、脚本、故事、索引、地区条目、项目上下文、故事蓝图、类型质量校验、GEARS 交付包、Seedance 提示词包、修复 dry-run、项目版本写入） |
 | `github` | http | `https://api.githubcopilot.com/mcp/` | **Plugin-level** — GitHub 官方 MCP（Issue、PR、代码搜索、API 操作）；认证: `GITHUB_PERSONAL_ACCESS_TOKEN` |
 
 ### Mac — Claude Code & Codex Shared MCP
@@ -234,7 +234,7 @@ Project MCP setup notes live in `.codex/mcp-config.md`; the Story Agent MCP upgr
 
 > Note: this local skill is not installed on Windows; the **superpowers** plugin provides overlapping discipline (TDD, debugging, verification) and the **writing-plans** skill covers structured development workflow.
 
-## china-culture-kb MCP Server Tools (17)
+## china-culture-kb MCP Server Tools (21)
 
 Project-level MCP server, available on Windows in the `china-culture-kb` project workspace.
 
@@ -257,6 +257,10 @@ Project-level MCP server, available on Windows in the `china-culture-kb` project
 | `kb_get_project_context` | 读取 Story Agent 项目上下文 | project_id, include_versions, include_exports |
 | `kb_generate_story_blueprint` | 生成 Story Agent 类型片蓝图 | entry_name, video_type, presentation_style, story_structure, target_duration, central_event, user_outline, region_hint |
 | `kb_validate_genre_story` | 校验 Story Agent 类型片质量 | project_id, story_id, story_json, include_repair_actions |
+| `kb_generate_gears_delivery` | 生成 GEARS 只读交付包 | project_id, story_id, story_json, include_markdown |
+| `kb_generate_seedance_prompt` | 生成 Seedance 2.0 只读提示词包 | project_id, story_id, story_json, include_markdown |
+| `kb_repair_story` | 生成 Story Agent 修复建议，可安全应用调用方提供的修复后快照 | project_id, story_id, story_json, repaired_story_json, user_instruction, auto_apply, include_markdown, max_actions |
+| `kb_update_project_version` | 受控写入 Story Agent 项目新版本 | project_id, change_type, change_target, snapshot_json, user_instruction |
 
 ## Supporting CLI Tools
 

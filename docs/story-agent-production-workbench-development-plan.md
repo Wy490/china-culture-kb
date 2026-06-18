@@ -9,7 +9,7 @@
 整体判断：
 
 - Story Agent MVP：约 75%
-- Production Board / GEARS / Seedance 交付链：约 76%
+- Production Board / GEARS / Seedance 交付链：约 88%
 - AI 漫剧系列生产链：约 45%
 - 可商用制作中台：约 35-40%
 
@@ -195,13 +195,19 @@
 - 单故事 Seedance 失败重试包 Markdown / JSON 首版
 - 单故事 Seedance 手动/自动择优首版
 - 单故事 Seedance 批量状态流转首版
+- 单故事 Seedance 外部素材清单批量导入首版
+- 单故事 Seedance 素材上传态字段首版
+- 单故事 Seedance 真实文件上传首版
+- 单故事 Seedance 跨项目资产库复用首版
+- 单故事 Seedance 素材上传历史 UI 首版
+- 单故事 Seedance provider 任务提交抽象首版
+- 单故事 Seedance provider 队列元数据首版
+- 单故事 Seedance provider 超时恢复首版
+- 单故事 Seedance `@视频1` / `@音频1` 引用校验首版
 
 仍缺：
 
-- `@视频1` / `@音频1` 引用校验
-- 真实文件上传和外部文件批量导入
-- 跨项目资产库与上传状态历史
-- 失败重试再提交包和 provider 任务提交抽象
+- 真实 Seedance / 外部 provider API 对接、自动轮询、外部回传 schema 和更细失败分类
 
 ### 3.4 GEARS / 外部制作工具集成仍偏文件交付
 
@@ -299,11 +305,14 @@
 - 角色参考图字段
 - 场景参考图字段
 - 道具参考图字段
-- `@图片1` / `@视频1` / `@音频1` 引用角色分配
+- `@图片1` / `@视频1` / `@音频1` 引用角色分配（已完成首版）
 - 素材数量限制校验
 - Prompt Complexity / Duration 校验
 - Production Board 级素材缺口报告（已完成首版）
 - 单故事素材库绑定回写（已完成首版）
+- 外部素材清单批量导入（已完成首版）
+- 素材上传态字段（已完成首版）
+- 真实文件上传（已完成首版）
 - Seedance Shot Ledger（已完成首版）
 - 回传导入（已完成首版）
 - 批量状态流转（已完成首版）
@@ -317,6 +326,8 @@
 - 手动选择剪辑版（已完成首版）
 - 自动选择最佳版本（已完成首版）
 - 失败重试包（已完成首版）
+- provider 任务提交抽象（已完成首版）
+- `@视频1` / `@音频1` 引用校验（已完成首版）
 
 验收标准：
 
@@ -389,9 +400,9 @@
 开发项：
 
 - GEARS Webhook 完善
-- Seedance 任务 API 抽象
+- Seedance 任务 API 抽象（本地 provider 提交账本已完成首版，真实外部 API 对接待做）
 - 回传视频状态（单故事首版已完成）
-- 失败重试（重试包首版已完成，重新提交待做）
+- 失败重试（重试包和失败镜头 provider 重新提交首版已完成，真实重试队列待做）
 - 版本对比
 - 自动选择最佳版本（单故事首版已完成）
 - 剪辑包生成
@@ -448,7 +459,7 @@
 - 当前系统已经能生成 Board、发现问题、执行批量生产修复和落盘。
 - 但用户还缺少“我只想修这个问题”的精细控制。
 - 修复前后 diff 能显著提升信任感。
-- Seedance 资产引用、单故事资产绑定、素材缺口报告、Shot Ledger、回传导入、失败重试包和手动/自动择优已进入工作台；下一步要接真实上传、外部素材批量导入、上传状态历史和跨项目资产库。
+- Seedance 资产引用、`@视频/@音频` 引用校验、单故事资产绑定、素材缺口报告、外部素材批量导入、上传态字段、真实文件上传、跨项目资产库复用、素材上传历史 UI、Shot Ledger、回传导入、失败重试包、手动/自动择优、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、MCP GEARS 只读交付工具、MCP Seedance prompt 只读工具、MCP repair dry-run、MCP 受控版本写入、MCP repair auto_apply 安全应用、真实项目 smoke 和前端质量反馈视图首版已进入工作台；下一步补真实 provider API、自动轮询、外部回传 schema 和更细失败分类。
 
 建议下一阶段验收闭环：
 
@@ -578,5 +589,17 @@ Production Board 必须继续承担三件事：
 - Seedance 资产引用字段进入 Board 和导出包（已完成首版）
 - Seedance 资产库绑定和缺口报告进入工作台（已完成首版）
 - Seedance Shot Ledger 回传、重试包、手动/自动择优和批量状态流转进入工作台（已完成首版）
-- Seedance 真实上传、外部素材批量导入、上传状态历史仍待做
+- Seedance 外部素材批量导入和上传态字段进入工作台（已完成首版）
+- Seedance 真实文件上传进入工作台（已完成首版）
+- Seedance 跨项目资产库复用进入工作台（已完成首版）
+- Seedance 素材上传历史 UI 进入工作台（已完成首版）
+- Seedance provider 任务提交进入工作台（已完成首版）
+- Seedance provider 队列元数据进入工作台（已完成首版）
+- Seedance provider 超时恢复进入工作台（已完成首版）
+- Seedance `@视频1` / `@音频1` 引用校验进入提示词包和素材校验（已完成首版）
+- MCP `kb_repair_story(auto_apply=false)` 只读修复建议进入 Agent 工具链（已完成首版）
+- MCP `kb_update_project_version` 受控版本写入进入 Agent 工具链（已完成首版）
+- MCP `kb_repair_story(auto_apply=true)` 安全自动应用进入 Agent 工具链（已完成首版，需调用方提供 `repaired_story_json`）
+- MCP 自动修复真实项目 smoke 通过（已完成首版）
+- 项目详情页前端质量反馈视图进入工作台（已完成首版）
 - 相关服务测试、构建和浏览器烟测通过

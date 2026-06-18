@@ -364,6 +364,7 @@ export const ProjectRetainRecentRequestSchema = z.object({
 
 const SeedanceAssetReferenceKindSchema = z.enum(['character', 'location', 'prop', 'camera', 'audio']);
 const SeedanceAssetModalitySchema = z.enum(['image', 'video', 'audio']);
+const SeedanceAssetUploadStatusSchema = z.enum(['pending_upload', 'uploaded', 'failed', 'external']);
 const SeedanceAssetSlotRoleSchema = z.enum([
   'character_reference',
   'location_reference',
@@ -383,8 +384,57 @@ export const SeedanceAssetLibraryUpdateRequestSchema = z.object({
     reference_slot: z.string().trim().min(1).max(40).optional(),
     file_url: z.string().trim().min(1).max(1000).optional(),
     file_id: z.string().trim().min(1).max(160).optional(),
+    local_path: z.string().trim().min(1).max(1000).optional(),
+    original_filename: z.string().trim().min(1).max(255).optional(),
+    mime_type: z.string().trim().min(1).max(120).optional(),
+    size_bytes: z.number().int().min(0).max(200 * 1024 * 1024).optional(),
+    provider: z.string().trim().min(1).max(80).optional(),
+    provider_asset_id: z.string().trim().min(1).max(200).optional(),
+    upload_status: SeedanceAssetUploadStatusSchema.optional(),
+    upload_error: z.string().trim().min(1).max(500).optional(),
     description: z.string().trim().max(500).optional(),
   })).min(1).max(200),
+});
+
+const SeedanceAssetBatchImportItemSchema = z.object({
+  asset_id: z.string().trim().min(1).max(160).optional(),
+  label: z.string().trim().min(1).max(120).optional(),
+  kind: SeedanceAssetReferenceKindSchema.optional(),
+  modality: SeedanceAssetModalitySchema.optional(),
+  role: SeedanceAssetSlotRoleSchema.optional(),
+  reference_slot: z.string().trim().min(1).max(40).optional(),
+  file_url: z.string().trim().min(1).max(1000).optional(),
+  file_id: z.string().trim().min(1).max(160).optional(),
+  local_path: z.string().trim().min(1).max(1000).optional(),
+  original_filename: z.string().trim().min(1).max(255).optional(),
+  mime_type: z.string().trim().min(1).max(120).optional(),
+  size_bytes: z.number().int().min(0).max(200 * 1024 * 1024).optional(),
+  provider: z.string().trim().min(1).max(80).optional(),
+  provider_asset_id: z.string().trim().min(1).max(200).optional(),
+  upload_status: SeedanceAssetUploadStatusSchema.optional(),
+  upload_error: z.string().trim().min(1).max(500).optional(),
+  description: z.string().trim().max(500).optional(),
+}).refine(
+  item => Boolean(item.asset_id || (item.label && item.kind)),
+  'asset_id or label+kind is required',
+).refine(
+  item => Boolean(item.file_url || item.file_id || item.local_path || item.provider_asset_id || item.upload_status),
+  'file_url, file_id, local_path, provider_asset_id or upload_status is required',
+);
+
+export const SeedanceAssetBatchImportRequestSchema = z.object({
+  source_note: z.string().trim().min(1).max(500).optional(),
+  items: z.array(SeedanceAssetBatchImportItemSchema).min(1).max(500),
+});
+
+export const SeedanceAssetReuseRequestSchema = z.object({
+  source_project_id: ProjectIdValueSchema,
+  source_asset_id: z.string().trim().min(1).max(160),
+  target_asset_id: z.string().trim().min(1).max(160).optional(),
+  target_label: z.string().trim().min(1).max(120).optional(),
+  target_kind: SeedanceAssetReferenceKindSchema.optional(),
+  reference_slot: z.string().trim().min(1).max(40).optional(),
+  description: z.string().trim().max(500).optional(),
 });
 
 const SeedanceShotProductionStatusSchema = z.enum([
@@ -396,6 +446,9 @@ const SeedanceShotProductionStatusSchema = z.enum([
   'failed',
   'skipped',
 ]);
+
+const SeedanceShotProviderQueuePrioritySchema = z.enum(['low', 'normal', 'high']);
+const SeedanceShotProviderRecoverableStatusSchema = z.enum(['submitted', 'processing']);
 
 export const SeedanceShotStatusUpdateRequestSchema = z.object({
   shot_id: z.string().trim().min(1).max(80),
@@ -422,6 +475,23 @@ export const SeedanceShotVersionSelectRequestSchema = z.object({
 export const SeedanceShotAutoSelectRequestSchema = z.object({
   min_quality_score: z.number().min(0).max(100).optional(),
   overwrite_manual: z.boolean().optional().default(false),
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const SeedanceShotProviderSubmitRequestSchema = z.object({
+  shot_ids: z.array(z.string().trim().min(1).max(80)).min(1).max(200).optional(),
+  provider: z.string().trim().min(1).max(80).optional(),
+  job_prefix: z.string().trim().min(1).max(80).optional(),
+  queue_id: z.string().trim().min(1).max(120).optional(),
+  queue_priority: SeedanceShotProviderQueuePrioritySchema.optional().default('normal'),
+  overwrite_existing: z.boolean().optional().default(false),
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const SeedanceShotProviderRecoveryRequestSchema = z.object({
+  timeout_minutes: z.number().int().min(1).max(10080).optional().default(120),
+  statuses: z.array(SeedanceShotProviderRecoverableStatusSchema).min(1).max(2).optional(),
+  mark_timed_out_failed: z.boolean().optional().default(false),
   note: z.string().trim().min(1).max(500).optional(),
 });
 

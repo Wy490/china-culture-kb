@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import type { StoryGenerateResult, StoryProjectVersionSnapshot } from '@shared/types.js';
+import type { StoryGenerateResult, StoryProjectMeta, StoryProjectVersionSnapshot } from '@shared/types.js';
 import {
   autoSelectProjectSeedanceShotVersions,
   buildProjectId,
@@ -14,19 +14,25 @@ import {
   exportProjectSeedanceRetryPackage,
   getProject,
   getProjectProductionBoard,
+  importProjectSeedanceAssetBatch,
   importProjectSeedanceShotCallbacks,
+  listProjectSeedanceGlobalAssetLibrary,
   listProjects,
   listProjectSupplementTasks,
   regenerateProjectScene,
+  recoverProjectSeedanceProviderQueue,
   repairAndExportProjectProductionBoard,
   repairProjectProductionBoard,
+  reuseProjectSeedanceAsset,
   retainRecentProjects,
   selectProjectSeedanceShotVersion,
+  submitProjectSeedanceShotsToProvider,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
   updateProjectSeedanceShotStatuses,
   updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
+  uploadProjectSeedanceAssetFile,
 } from '../services/project-service.js';
 
 const TEMP_DIRS: string[] = [];
@@ -336,6 +342,10 @@ describe('project-service', () => {
     expect(updateRes.data?.project.seedance_asset_library?.items[0]).toMatchObject({
       asset_id: bindableAsset!.asset_id,
       file_url: 'https://example.com/seedance-assets/asset-001.png',
+      history: [expect.objectContaining({
+        event_type: 'manual_bind',
+        file_url: 'https://example.com/seedance-assets/asset-001.png',
+      })],
     });
     const boundBoardRes = await getProjectProductionBoard(enriched.project_id!);
     expect(boundBoardRes.ok).toBe(true);
@@ -346,6 +356,150 @@ describe('project-service', () => {
       is_bound: true,
       needs_upload: false,
       file_url: 'https://example.com/seedance-assets/asset-001.png',
+    });
+    const batchAsset = boundBoardRes.data!.seedance_asset_report.assets.find(asset => asset.status === 'missing_file');
+    expect(batchAsset).toBeTruthy();
+    const batchImportRes = await importProjectSeedanceAssetBatch(enriched.project_id!, {
+      source_note: '测试批量导入素材清单',
+      items: [{
+        asset_id: batchAsset!.asset_id,
+        provider: 'seedance',
+        provider_asset_id: 'seedance-provider-asset-002',
+        upload_status: 'uploaded',
+        local_path: '/tmp/seedance-assets/asset-002.png',
+      }, {
+        asset_id: 'missing-asset',
+        upload_status: 'pending_upload',
+      }],
+    });
+    expect(batchImportRes.ok).toBe(true);
+    expect(batchImportRes.data?.imported_count).toBe(1);
+    expect(batchImportRes.data?.matched_existing_count).toBe(1);
+    expect(batchImportRes.data?.skipped_count).toBe(1);
+    expect(batchImportRes.data?.updated_asset_ids).toContain(batchAsset!.asset_id);
+    expect(batchImportRes.data?.detail.project.seedance_asset_library?.items.find(asset =>
+      asset.asset_id === batchAsset!.asset_id
+    )?.history).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event_type: 'batch_import',
+        provider_asset_id: 'seedance-provider-asset-002',
+        note: '测试批量导入素材清单',
+      }),
+    ]));
+    const batchBoardRes = await getProjectProductionBoard(enriched.project_id!);
+    expect(batchBoardRes.ok).toBe(true);
+    expect(batchBoardRes.data?.seedance_asset_report.assets.find(asset =>
+      asset.asset_id === batchAsset!.asset_id
+    )).toMatchObject({
+      status: 'bound',
+      is_bound: true,
+      needs_upload: false,
+      provider: 'seedance',
+      provider_asset_id: 'seedance-provider-asset-002',
+      upload_status: 'uploaded',
+    });
+    const uploadAsset = batchBoardRes.data!.seedance_asset_report.assets.find(asset => asset.status === 'missing_file');
+    expect(uploadAsset).toBeTruthy();
+    const uploadRes = await uploadProjectSeedanceAssetFile(enriched.project_id!, {
+      asset_id: uploadAsset!.asset_id,
+      label: uploadAsset!.label,
+      kind: uploadAsset!.kind,
+      modality: uploadAsset!.modality,
+      role: uploadAsset!.role,
+      reference_slot: uploadAsset!.reference_slot,
+      description: uploadAsset!.prompt_usage,
+      file: {
+        original_filename: 'seedance-upload-test.png',
+        mime_type: 'image/png',
+        buffer: Buffer.from('seedance-upload-binary'),
+      },
+    });
+    expect(uploadRes.ok).toBe(true);
+    expect(uploadRes.data?.asset).toMatchObject({
+      asset_id: uploadAsset!.asset_id,
+      original_filename: 'seedance-upload-test.png',
+      mime_type: 'image/png',
+      size_bytes: Buffer.from('seedance-upload-binary').length,
+      provider: 'local_upload',
+      upload_status: 'uploaded',
+      history: [expect.objectContaining({
+        event_type: 'file_upload',
+        original_filename: 'seedance-upload-test.png',
+      })],
+    });
+    expect(uploadRes.data?.local_path).toContain(`projects/${enriched.project_id}/seedance-assets/uploads/`);
+    const uploadedFilePath = resolve(root, 'web', 'generated', uploadRes.data!.local_path);
+    expect(await readFile(uploadedFilePath, 'utf-8')).toBe('seedance-upload-binary');
+    const uploadBoardRes = await getProjectProductionBoard(enriched.project_id!);
+    expect(uploadBoardRes.ok).toBe(true);
+    expect(uploadBoardRes.data?.seedance_asset_report.assets.find(asset =>
+      asset.asset_id === uploadAsset!.asset_id
+    )).toMatchObject({
+      status: 'bound',
+      is_bound: true,
+      needs_upload: false,
+      provider: 'local_upload',
+      upload_status: 'uploaded',
+      original_filename: 'seedance-upload-test.png',
+    });
+
+    const targetStory: StoryGenerateResult = {
+      ...story,
+      storyId: '20260609-story-reuse',
+      title: '拒签冤案复用目标',
+      gears_segments_url: '/api/stories/20260609-story-reuse/gears-segments',
+    };
+    const targetProject = await createProjectFromGeneratedStory(targetStory, '2026-06-09T10:30:00.000Z');
+    const globalLibraryRes = await listProjectSeedanceGlobalAssetLibrary(targetProject.project_id!);
+    expect(globalLibraryRes.ok).toBe(true);
+    const reusableAsset = globalLibraryRes.data?.items.find(asset =>
+      asset.source_project_id === enriched.project_id && asset.source_asset_id === uploadAsset!.asset_id
+    );
+    expect(reusableAsset).toMatchObject({
+      provider: 'local_upload',
+      upload_status: 'uploaded',
+      original_filename: 'seedance-upload-test.png',
+    });
+    const targetBoardRes = await getProjectProductionBoard(targetProject.project_id!);
+    const targetAsset = targetBoardRes.data?.seedance_asset_report.assets.find(asset =>
+      asset.asset_id === uploadAsset!.asset_id
+    );
+    expect(targetAsset).toMatchObject({
+      status: 'missing_file',
+      is_bound: false,
+    });
+    const reuseRes = await reuseProjectSeedanceAsset(targetProject.project_id!, {
+      source_project_id: enriched.project_id!,
+      source_asset_id: uploadAsset!.asset_id,
+      target_asset_id: targetAsset!.asset_id,
+      target_label: targetAsset!.label,
+      target_kind: targetAsset!.kind,
+      reference_slot: targetAsset!.reference_slot,
+      description: targetAsset!.prompt_usage,
+    });
+    expect(reuseRes.ok).toBe(true);
+    expect(reuseRes.data?.reused_asset).toMatchObject({
+      asset_id: targetAsset!.asset_id,
+      label: targetAsset!.label,
+      provider: 'local_upload',
+      upload_status: 'uploaded',
+      original_filename: 'seedance-upload-test.png',
+      history: [expect.objectContaining({
+        event_type: 'cross_project_reuse',
+        source_project_id: enriched.project_id,
+        source_asset_id: uploadAsset!.asset_id,
+      })],
+    });
+    const reusedBoardRes = await getProjectProductionBoard(targetProject.project_id!);
+    expect(reusedBoardRes.data?.seedance_asset_report.assets.find(asset =>
+      asset.asset_id === targetAsset!.asset_id
+    )).toMatchObject({
+      status: 'bound',
+      is_bound: true,
+      needs_upload: false,
+      provider: 'local_upload',
+      upload_status: 'uploaded',
+      original_filename: 'seedance-upload-test.png',
     });
 
     const shotStatusRes = await updateProjectSeedanceShotStatus(enriched.project_id!, {
@@ -433,6 +587,112 @@ describe('project-service', () => {
     expect(retryPackageRes.data?.markdown).toContain('Seedance 重试提交包');
     expect(retryPackageRes.data?.markdown).toContain('人物手部变形');
 
+    const providerSubmitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-2'],
+      provider: 'seedance',
+      job_prefix: 'seedance-provider-submit-test',
+      queue_id: 'seedance-provider-queue-test-001',
+      queue_priority: 'high',
+      note: '测试 provider 提交',
+    });
+    expect(providerSubmitRes.ok).toBe(true);
+    expect(providerSubmitRes.data?.submitted_count).toBe(1);
+    expect(providerSubmitRes.data?.skipped_count).toBe(0);
+    expect(providerSubmitRes.data?.provider_queue_batch).toMatchObject({
+      queue_id: 'seedance-provider-queue-test-001',
+      provider: 'seedance',
+      priority: 'high',
+      submitted_count: 1,
+      skipped_count: 0,
+      failed_count: 0,
+      items: [{
+        shot_id: 'shot-2',
+        provider_job_id: 'seedance-provider-submit-test-shot-2',
+        queue_position: 1,
+        status: 'submitted',
+      }],
+    });
+    expect(providerSubmitRes.data?.project.seedance_provider_queue).toMatchObject({
+      schema_version: 'seedance-provider-queue/v1',
+      latest_queue_id: 'seedance-provider-queue-test-001',
+    });
+    expect(providerSubmitRes.data?.submitted_shots[0]).toMatchObject({
+      shot_id: 'shot-2',
+      provider_job_id: 'seedance-provider-submit-test-shot-2',
+      provider_queue_id: 'seedance-provider-queue-test-001',
+      provider_queue_position: 1,
+      status: 'submitted',
+    });
+    expect(providerSubmitRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'submitted',
+      provider: 'seedance',
+      provider_job_id: 'seedance-provider-submit-test-shot-2',
+      provider_queue_id: 'seedance-provider-queue-test-001',
+      provider_queue_position: 1,
+      retry_count: 2,
+    });
+    const providerSubmitAgainRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-2'],
+      provider: 'seedance',
+      job_prefix: 'seedance-provider-submit-again',
+    });
+    expect(providerSubmitAgainRes.ok).toBe(true);
+    expect(providerSubmitAgainRes.data?.submitted_count).toBe(0);
+    expect(providerSubmitAgainRes.data?.skipped_count).toBe(1);
+
+    const projectFile = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'project.json');
+    const staleProject = JSON.parse(await readFile(projectFile, 'utf8')) as StoryProjectMeta;
+    staleProject.seedance_shot_ledger = {
+      ...staleProject.seedance_shot_ledger!,
+      items: staleProject.seedance_shot_ledger!.items.map(item =>
+        item.shot_id === 'shot-2'
+          ? {
+              ...item,
+              submitted_at: '2026-06-09T10:00:00.000Z',
+              updated_at: '2026-06-09T10:00:00.000Z',
+            }
+          : item
+      ),
+    };
+    await writeFile(projectFile, JSON.stringify(staleProject, null, 2));
+    const providerRecoveryDryRunRes = await recoverProjectSeedanceProviderQueue(enriched.project_id!, {
+      timeout_minutes: 60,
+    });
+    expect(providerRecoveryDryRunRes.ok).toBe(true);
+    expect(providerRecoveryDryRunRes.data).toMatchObject({
+      dry_run: true,
+      timeout_minutes: 60,
+      checked_count: 1,
+      timed_out_count: 1,
+      updated_count: 0,
+      timed_out_shots: [{
+        shot_id: 'shot-2',
+        provider_job_id: 'seedance-provider-submit-test-shot-2',
+        provider_queue_id: 'seedance-provider-queue-test-001',
+      }],
+    });
+    const providerRecoveryRes = await recoverProjectSeedanceProviderQueue(enriched.project_id!, {
+      timeout_minutes: 60,
+      mark_timed_out_failed: true,
+      note: '测试 provider 超时恢复',
+    });
+    expect(providerRecoveryRes.ok).toBe(true);
+    expect(providerRecoveryRes.data).toMatchObject({
+      dry_run: false,
+      timed_out_count: 1,
+      updated_count: 1,
+    });
+    expect(providerRecoveryRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'failed',
+      provider_job_id: 'seedance-provider-submit-test-shot-2',
+      provider_queue_id: 'seedance-provider-queue-test-001',
+      failure_reason: 'Provider task timed out after 60 minutes',
+    });
+
     const selectRes = await selectProjectSeedanceShotVersion(enriched.project_id!, {
       shot_id: 'shot-2',
       version_id: 'seedance-shot-shot-2-v2',
@@ -482,7 +742,7 @@ describe('project-service', () => {
     )).toMatchObject({
       status: 'ready',
       video_url: 'https://example.com/seedance-videos/shot-2-v4.mp4',
-      selected_version_id: 'seedance-shot-shot-2-v4',
+      selected_version_id: 'seedance-shot-shot-2-v6',
     });
 
     const batchRes = await updateProjectSeedanceShotStatuses(enriched.project_id!, {

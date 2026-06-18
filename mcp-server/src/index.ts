@@ -18,6 +18,10 @@ import { generateStory } from './tools/generate-story.js';
 import { getProjectContext } from './tools/get-project-context.js';
 import { generateStoryBlueprint } from './tools/generate-story-blueprint.js';
 import { validateGenreStory } from './tools/validate-genre-story.js';
+import { generateGearsDelivery } from './tools/generate-gears-delivery.js';
+import { generateSeedancePrompt } from './tools/generate-seedance-prompt.js';
+import { repairStory } from './tools/repair-story.js';
+import { updateProjectVersion } from './tools/update-project-version.js';
 import { CultureEntry, SourceType, ScriptType } from './types.js';
 
 const server = new McpServer({
@@ -479,6 +483,109 @@ server.tool(
     const result = await validateGenreStory(input);
     if (!result) {
       return { content: [{ type: 'text', text: '未找到可校验的故事或项目' }] };
+    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_repair_story — dry-run repair plan generation and optional safe apply
+server.tool(
+  'kb_repair_story',
+  '生成 Story Agent 修复建议。可从 project_id、story_id 或 story_json 读取；auto_apply=true 且提供 repaired_story_json 时，会通过 kb_update_project_version 写入新版本。',
+  {
+    project_id: z.string().optional().describe('故事项目 ID，优先读取当前版本'),
+    story_id: z.string().optional().describe('故事 ID，读取 web/generated/stories 下的故事 JSON'),
+    story_json: z.string().optional().describe('直接传入 StoryGenerateResult JSON 字符串'),
+    repaired_story_json: z.string().optional().describe('修复后的 StoryGenerateResult JSON；auto_apply=true 时必须提供，工具不会自行虚构修复正文'),
+    user_instruction: z.string().optional().describe('修复说明；auto_apply=true 时会保存为版本 note'),
+    auto_apply: z.boolean().optional().describe('是否自动写入修复；只有提供 project_id 和 repaired_story_json 时才会新增项目版本'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+    max_actions: z.number().int().min(1).max(50).optional().describe('最多返回多少条修复动作，默认 12'),
+  },
+  async (input) => {
+    const result = await repairStory(input);
+    if (!result) {
+      return { content: [{ type: 'text', text: '未找到可修复的故事或项目' }] };
+    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_update_project_version — append a new Story Agent project version
+server.tool(
+  'kb_update_project_version',
+  '将 Agent 产出的 story snapshot 保存为项目新版本。只写 web/generated/projects/<projectId>/versions 和 project.json，不覆盖旧版本，不写知识库省份文件。',
+  {
+    project_id: z.string().describe('故事项目 ID，例如 20260614-story-5xim--ai_comic_drama'),
+    change_type: z.enum(['scene_regeneration', 'quality_repair', 'production_board_repair']).describe('版本变更类型'),
+    change_target: z.object({
+      scene_ids: z.array(z.number().int().positive()).optional().describe('本次变更涉及的场景 ID；不传时会根据场景快照差异推断'),
+    }).optional().describe('变更目标范围'),
+    snapshot_json: z.string().describe('要保存为新版本的 StoryGenerateResult JSON 字符串。可省略部分关键字段，工具会从当前版本补回。'),
+    user_instruction: z.string().optional().describe('本次写入说明，会保存到版本 note'),
+  },
+  async (input) => {
+    const result = await updateProjectVersion(input);
+    if (!result) {
+      return { content: [{ type: 'text', text: `未找到项目：${input.project_id}` }] };
+    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_generate_gears_delivery — read-only GEARS delivery package generation
+server.tool(
+  'kb_generate_gears_delivery',
+  '生成 GEARS 只读交付包。可从 project_id、story_id 或 story_json 读取，返回 units、assets、validation notes，不写项目文件。',
+  {
+    project_id: z.string().optional().describe('故事项目 ID，优先读取当前版本'),
+    story_id: z.string().optional().describe('故事 ID，读取 web/generated/stories 下的故事 JSON'),
+    story_json: z.string().optional().describe('直接传入 StoryGenerateResult JSON 字符串'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await generateGearsDelivery(input);
+    if (!result) {
+      return { content: [{ type: 'text', text: '未找到可生成 GEARS 交付包的故事或项目' }] };
+    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_generate_seedance_prompt — read-only Seedance prompt package generation
+server.tool(
+  'kb_generate_seedance_prompt',
+  '生成 Seedance 2.0 只读提示词包。可从 project_id、story_id 或 story_json 读取，返回 shot_units、asset_references、material_validation，不写项目文件。',
+  {
+    project_id: z.string().optional().describe('故事项目 ID，优先读取当前版本'),
+    story_id: z.string().optional().describe('故事 ID，读取 web/generated/stories 下的故事 JSON'),
+    story_json: z.string().optional().describe('直接传入 StoryGenerateResult JSON 字符串'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await generateSeedancePrompt(input);
+    if (!result) {
+      return { content: [{ type: 'text', text: '未找到可生成 Seedance 提示词包的故事或项目' }] };
     }
     return {
       content: [{

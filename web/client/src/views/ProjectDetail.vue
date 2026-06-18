@@ -149,6 +149,13 @@
             <span>待提交 {{ seedanceShotStats.prompt_exported }}</span>
             <span>跳过 {{ seedanceShotStats.skipped }}</span>
           </div>
+          <div v-if="latestSeedanceProviderQueueBatch" class="project-detail-page__seedance-provider-queue">
+            <span>队列 {{ latestSeedanceProviderQueueBatch.queue_id }}</span>
+            <span>{{ latestSeedanceProviderQueueBatch.provider }}</span>
+            <span>{{ seedanceQueuePriorityLabel(latestSeedanceProviderQueueBatch.priority) }}</span>
+            <span>{{ latestSeedanceProviderQueueBatch.submitted_count }} 个任务</span>
+            <span>{{ formatDate(latestSeedanceProviderQueueBatch.updated_at) }}</span>
+          </div>
           <details class="project-detail-page__seedance-shot-ledger-actions">
             <summary>回传与重试</summary>
             <textarea
@@ -171,6 +178,20 @@
                 @click="markPendingSeedanceShotsSubmitted"
               >
                 {{ batchingSeedanceShots ? '流转中…' : '待提交→已提交' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="submittingSeedanceProvider"
+                @click="submitSeedanceProviderJobs"
+              >
+                {{ submittingSeedanceProvider ? '提交中…' : '提交到 Seedance' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="recoveringSeedanceProvider"
+                @click="recoverSeedanceProviderTimeouts"
+              >
+                {{ recoveringSeedanceProvider ? '检查中…' : '标记超时失败' }}
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
@@ -205,6 +226,50 @@
               · 缺槽位 {{ productionBoard.seedance_asset_report.missing_reference_slot_count }}
               · 受影响镜头 {{ productionBoard.seedance_asset_report.unbound_shot_count }}/{{ productionBoard.seedance_asset_report.shot_binding_count }}
             </p>
+            <details class="project-detail-page__seedance-asset-import">
+              <summary>批量导入素材</summary>
+              <textarea
+                v-model="seedanceAssetBatchImportText"
+                class="project-detail-page__seedance-asset-import-textarea"
+                rows="4"
+                placeholder='[{"asset_id":"seedance-asset-character-xxx","file_id":"seedance-file-001","upload_status":"uploaded"}]'
+              />
+              <div class="project-detail-page__seedance-ledger-action-row">
+                <button
+                  class="project-detail-page__repair-task-btn"
+                  :disabled="importingSeedanceAssets"
+                  @click="importSeedanceAssetBatchFromText"
+                >
+                  {{ importingSeedanceAssets ? '导入中…' : '导入素材清单' }}
+                </button>
+              </div>
+            </details>
+            <details class="project-detail-page__seedance-asset-import">
+              <summary>跨项目素材库</summary>
+              <div class="project-detail-page__seedance-global-assets">
+                <span>
+                  {{ loadingSeedanceGlobalAssets ? '加载中…' : `${seedanceGlobalAssets.length} 个可复用素材` }}
+                </span>
+                <button
+                  class="project-detail-page__repair-task-btn"
+                  :disabled="loadingSeedanceGlobalAssets"
+                  @click="loadSeedanceGlobalAssets(true)"
+                >
+                  刷新
+                </button>
+              </div>
+              <div
+                v-if="seedanceGlobalAssets.length"
+                class="project-detail-page__seedance-global-preview"
+              >
+                <small
+                  v-for="source in seedanceGlobalAssets.slice(0, 6)"
+                  :key="source.global_asset_id"
+                >
+                  {{ source.kind }} · {{ source.label }} · {{ source.source_project_title }}
+                </small>
+              </div>
+            </details>
           </div>
           <div class="project-detail-page__seedance-asset-items">
             <article
@@ -213,7 +278,7 @@
               :class="`project-detail-page__seedance-asset-item--${asset.status}`"
             >
               <span>{{ asset.reference_slot ?? '未分配槽位' }} · {{ asset.label }} · {{ seedanceAssetStatusLabel(asset.status) }}</span>
-              <small v-if="asset.is_bound">{{ asset.file_url ?? asset.file_id }}</small>
+              <small v-if="asset.is_bound">{{ seedanceAssetBindingValue(asset) }}</small>
               <template v-else>
                 <input
                   v-model="seedanceAssetFileInputs[asset.asset_id]"
@@ -227,7 +292,43 @@
                 >
                   {{ bindingSeedanceAssetId === asset.asset_id ? '绑定中…' : '绑定' }}
                 </button>
+                <label class="project-detail-page__seedance-asset-upload">
+                  <span>{{ uploadingSeedanceAssetId === asset.asset_id ? '上传中…' : '上传文件' }}</span>
+                  <input
+                    type="file"
+                    :accept="seedanceAssetFileAccept(asset)"
+                    :disabled="uploadingSeedanceAssetId === asset.asset_id"
+                    @change="uploadSeedanceAssetFile(asset, $event)"
+                  >
+                </label>
+                <div
+                  v-if="matchingGlobalSeedanceAssets(asset).length"
+                  class="project-detail-page__seedance-asset-source-list"
+                >
+                  <button
+                    v-for="source in matchingGlobalSeedanceAssets(asset)"
+                    :key="source.global_asset_id"
+                    class="project-detail-page__seedance-asset-source-btn"
+                    :disabled="reusingSeedanceAssetId === seedanceAssetReuseKey(asset, source)"
+                    :title="seedanceGlobalAssetValue(source)"
+                    @click="reuseGlobalSeedanceAsset(asset, source)"
+                  >
+                    {{ reusingSeedanceAssetId === seedanceAssetReuseKey(asset, source) ? '复用中…' : `复用 ${source.source_project_title}` }}
+                  </button>
+                </div>
               </template>
+              <details
+                v-if="seedanceAssetHistory(asset).length"
+                class="project-detail-page__seedance-asset-history"
+              >
+                <summary>上传历史 {{ seedanceAssetHistory(asset).length }}</summary>
+                <small
+                  v-for="event in seedanceAssetHistory(asset)"
+                  :key="event.event_id"
+                >
+                  {{ formatDate(event.created_at) }} · {{ seedanceAssetHistoryTypeLabel(event.event_type) }} · {{ seedanceAssetHistoryValue(event) }}
+                </small>
+              </details>
             </article>
           </div>
         </div>
@@ -397,6 +498,12 @@
               <small v-if="seedanceShotItem(shot.shot_id)?.provider_job_id">
                 job {{ seedanceShotItem(shot.shot_id)?.provider_job_id }}
               </small>
+              <small v-if="seedanceShotItem(shot.shot_id)?.provider_queue_id">
+                queue {{ seedanceShotItem(shot.shot_id)?.provider_queue_id }}
+                <template v-if="seedanceShotItem(shot.shot_id)?.provider_queue_position">
+                  #{{ seedanceShotItem(shot.shot_id)?.provider_queue_position }}
+                </template>
+              </small>
               <small v-if="seedanceShotItem(shot.shot_id)?.video_url">
                 {{ seedanceShotItem(shot.shot_id)?.video_url }}
               </small>
@@ -515,6 +622,38 @@
           <ul v-if="currentQuality.issues.length > 0" class="project-detail-page__quality-list">
             <li v-for="issue in currentQuality.issues.slice(0, 4)" :key="issue">{{ issue }}</li>
           </ul>
+          <div
+            v-if="qualityFeedbackGroups.length > 0 || qualityActionSceneSummaries.length > 0"
+            class="project-detail-page__quality-feedback"
+          >
+            <article
+              v-for="group in qualityFeedbackGroups"
+              :key="group.key"
+              class="project-detail-page__quality-feedback-card"
+            >
+              <div>
+                <strong>{{ group.label }}</strong>
+                <span>{{ group.items.length }}</span>
+              </div>
+              <ul>
+                <li v-for="item in group.items.slice(0, 3)" :key="item">{{ item }}</li>
+              </ul>
+            </article>
+            <article
+              v-if="qualityActionSceneSummaries.length > 0"
+              class="project-detail-page__quality-feedback-card"
+            >
+              <div>
+                <strong>修复场景</strong>
+                <span>{{ qualityActionSceneSummaries.length }}</span>
+              </div>
+              <ul>
+                <li v-for="item in qualityActionSceneSummaries.slice(0, 3)" :key="item.action_id">
+                  {{ item.label }}：{{ item.scene_text }}
+                </li>
+              </ul>
+            </article>
+          </div>
           <div v-if="qualityReportCards.length > 0" class="project-detail-page__report-strip">
             <article
               v-for="card in qualityReportCards"
@@ -701,18 +840,24 @@ import {
   exportProjectCurrentVersion,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
+  getProjectSeedanceGlobalAssetLibrary,
   getProject,
   getProjectProductionBoard,
+  importProjectSeedanceAssetBatch,
   importProjectSeedanceShotCallbacks,
+  recoverProjectSeedanceProviderQueue,
   repairAndExportProjectProductionBoard,
   repairProjectQuality,
   repairProjectProductionBoard,
   regenerateProjectScene,
+  reuseProjectSeedanceAsset,
   selectProjectSeedanceShotVersion,
+  submitProjectSeedanceShotsToProvider,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
   updateProjectSeedanceShotStatuses,
   updateProjectSupplementTask,
+  uploadProjectSeedanceAssetFile,
 } from '@/api/projects'
 import { getModelProfiles } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
@@ -721,7 +866,11 @@ import GearsVideoStatus from '@/components/GearsVideoStatus.vue'
 import type {
   AIModelProfile,
   KnowledgeSupplementTaskStatus,
+  SeedanceAssetBatchImportRequest,
   SeedanceAssetBindingItem,
+  SeedanceAssetHistoryEvent,
+  SeedanceAssetLibraryItem,
+  SeedanceGlobalAssetLibraryItem,
   SeedanceShotCallbackImportRequest,
   SeedanceShotLedgerItem,
   SeedanceShotProductionStatus,
@@ -775,6 +924,12 @@ const repairingProductionBoardTaskId = ref('')
 const repairingProductionBoardScope = ref('')
 const seedanceAssetFileInputs = ref<Record<string, string>>({})
 const bindingSeedanceAssetId = ref('')
+const seedanceAssetBatchImportText = ref('')
+const importingSeedanceAssets = ref(false)
+const uploadingSeedanceAssetId = ref('')
+const seedanceGlobalAssets = ref<SeedanceGlobalAssetLibraryItem[]>([])
+const loadingSeedanceGlobalAssets = ref(false)
+const reusingSeedanceAssetId = ref('')
 const seedanceShotJobInputs = ref<Record<string, string>>({})
 const seedanceShotVideoInputs = ref<Record<string, string>>({})
 const updatingSeedanceShotId = ref('')
@@ -783,6 +938,8 @@ const importingSeedanceCallbacks = ref(false)
 const exportingSeedanceRetryPackage = ref(false)
 const batchingSeedanceShots = ref(false)
 const autoSelectingSeedanceShots = ref(false)
+const submittingSeedanceProvider = ref(false)
+const recoveringSeedanceProvider = ref(false)
 const selectingSeedanceVersionId = ref('')
 
 const selectedModelProfile = computed(() => {
@@ -790,6 +947,12 @@ const selectedModelProfile = computed(() => {
 })
 
 const currentQuality = computed(() => detail.value?.current_story.quality_report ?? null)
+
+type QualityFeedbackGroup = {
+  key: string
+  label: string
+  items: string[]
+}
 
 const qualityReportCards = computed(() => {
   const quality = currentQuality.value
@@ -820,6 +983,54 @@ const qualityReportCards = computed(() => {
     })
   }
   return cards
+})
+
+const qualityFeedbackGroups = computed<QualityFeedbackGroup[]>(() => {
+  const quality = currentQuality.value
+  if (!quality) return []
+  return [
+    {
+      key: 'missing',
+      label: '缺失要素',
+      items: quality.missing_required_elements ?? [],
+    },
+    {
+      key: 'weak-beats',
+      label: '弱节拍',
+      items: quality.weak_beats ?? [],
+    },
+    {
+      key: 'forbidden',
+      label: '不适配表达',
+      items: quality.forbidden_patterns_found ?? [],
+    },
+    {
+      key: 'repair',
+      label: '修复建议',
+      items: quality.repair_actions ?? [],
+    },
+  ].filter(group => group.items.length > 0)
+})
+
+const sceneTitleById = computed(() => {
+  const scenes = detail.value?.current_story.scene_breakdown ?? []
+  return new Map(scenes.map(scene => [scene.scene_id, scene.title]))
+})
+
+const qualityActionSceneSummaries = computed(() => {
+  const actions = currentQuality.value?.repair_action_items ?? []
+  return actions
+    .filter(action => action.scene_ids.length > 0)
+    .map(action => ({
+      action_id: action.action_id,
+      label: action.label,
+      scene_text: action.scene_ids
+        .map(sceneId => {
+          const title = sceneTitleById.value.get(sceneId)
+          return title ? `${sceneId} ${title}` : `${sceneId}`
+        })
+        .join('、'),
+    }))
 })
 
 const qualitySceneIds = computed(() => {
@@ -917,6 +1128,16 @@ const seedanceShotStats = computed(() => {
     stats[item.status] += 1
   }
   return stats
+})
+
+const latestSeedanceProviderQueueBatch = computed(() => {
+  const queue = detail.value?.project.seedance_provider_queue
+  if (!queue?.batches.length) return null
+  return queue.batches.find(batch => batch.queue_id === queue.latest_queue_id) ?? queue.batches[queue.batches.length - 1]
+})
+
+const seedanceAssetLibraryById = computed(() => {
+  return new Map((detail.value?.project.seedance_asset_library?.items ?? []).map(item => [item.asset_id, item]))
 })
 
 function seedanceShotItem(shotId: string): SeedanceShotLedgerItem | null {
@@ -1025,6 +1246,79 @@ function seedanceAssetStatusLabel(status: string): string {
   return map[status] ?? status
 }
 
+function seedanceAssetBindingValue(asset: SeedanceAssetBindingItem): string {
+  return asset.file_url
+    ?? asset.file_id
+    ?? asset.provider_asset_id
+    ?? asset.local_path
+    ?? asset.upload_status
+    ?? '已绑定'
+}
+
+function seedanceAssetFileAccept(asset: SeedanceAssetBindingItem): string {
+  if (asset.modality === 'video') return 'video/*'
+  if (asset.modality === 'audio') return 'audio/*'
+  return 'image/*'
+}
+
+function seedanceAssetReuseKey(asset: SeedanceAssetBindingItem, source: SeedanceGlobalAssetLibraryItem): string {
+  return `${asset.asset_id}:${source.global_asset_id}`
+}
+
+function seedanceGlobalAssetValue(asset: SeedanceGlobalAssetLibraryItem): string {
+  return asset.file_url
+    ?? asset.file_id
+    ?? asset.provider_asset_id
+    ?? asset.local_path
+    ?? asset.upload_status
+    ?? '可复用'
+}
+
+function seedanceAssetLibraryItem(asset: SeedanceAssetBindingItem): SeedanceAssetLibraryItem | null {
+  return seedanceAssetLibraryById.value.get(asset.asset_id) ?? null
+}
+
+function seedanceAssetHistory(asset: SeedanceAssetBindingItem): SeedanceAssetHistoryEvent[] {
+  return [...(seedanceAssetLibraryItem(asset)?.history ?? [])]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 4)
+}
+
+function seedanceAssetHistoryTypeLabel(type: SeedanceAssetHistoryEvent['event_type']): string {
+  const map: Record<SeedanceAssetHistoryEvent['event_type'], string> = {
+    manual_bind: '手动绑定',
+    batch_import: '批量导入',
+    file_upload: '文件上传',
+    cross_project_reuse: '跨项目复用',
+  }
+  return map[type]
+}
+
+function seedanceAssetHistoryValue(event: SeedanceAssetHistoryEvent): string {
+  const value = event.file_url
+    ?? event.file_id
+    ?? event.provider_asset_id
+    ?? event.local_path
+    ?? event.upload_status
+  const source = event.source_project_title ? ` · ${event.source_project_title}` : ''
+  return `${value ?? '状态更新'}${source}`
+}
+
+function matchingGlobalSeedanceAssets(asset: SeedanceAssetBindingItem): SeedanceGlobalAssetLibraryItem[] {
+  return seedanceGlobalAssets.value
+    .filter(source => source.kind === asset.kind && source.label === asset.label)
+    .slice(0, 3)
+}
+
+function seedanceQueuePriorityLabel(priority: string): string {
+  const map: Record<string, string> = {
+    low: '低优先',
+    normal: '常规',
+    high: '高优先',
+  }
+  return map[priority] ?? priority
+}
+
 function seedanceShotStatusLabel(status: SeedanceShotProductionStatus): string {
   const map: Record<SeedanceShotProductionStatus, string> = {
     not_started: '未开始',
@@ -1062,6 +1356,7 @@ async function loadProject(projectId: string) {
     productionBoardExport.value = null
     productionRepairResult.value = null
     productionRepairTrace.value = null
+    seedanceGlobalAssets.value = []
     showQualityScenesOnly.value = false
     if (!selectedModelProfileId.value && res.data.current_story.model_profile_id) {
       selectedModelProfileId.value = res.data.current_story.model_profile_id
@@ -1070,6 +1365,25 @@ async function loadProject(projectId: string) {
     error.value = res.error?.message ?? '加载故事项目失败'
   }
   loading.value = false
+}
+
+async function loadSeedanceGlobalAssets(showMessage = false) {
+  if (!detail.value) return
+  loadingSeedanceGlobalAssets.value = true
+  if (showMessage) {
+    error.value = ''
+    successMessage.value = ''
+  }
+  const res = await getProjectSeedanceGlobalAssetLibrary(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    seedanceGlobalAssets.value = res.data.items
+    if (showMessage) {
+      successMessage.value = `跨项目素材库已刷新：${res.data.reusable_asset_count} 个可复用素材`
+    }
+  } else if (showMessage) {
+    error.value = res.error?.message ?? '刷新跨项目素材库失败'
+  }
+  loadingSeedanceGlobalAssets.value = false
 }
 
 async function loadProductionBoard() {
@@ -1083,6 +1397,7 @@ async function loadProductionBoard() {
     productionBoardExport.value = null
     productionRepairResult.value = null
     productionRepairTrace.value = null
+    await loadSeedanceGlobalAssets()
     successMessage.value = `Production Board 已生成：${res.data.shot_units.length} 个镜头单元`
   } else {
     error.value = res.error?.message ?? '生成 Production Board 失败'
@@ -1126,6 +1441,114 @@ async function bindSeedanceAsset(asset: SeedanceAssetBindingItem) {
     error.value = res.error?.message ?? '绑定 Seedance 素材失败'
   }
   bindingSeedanceAssetId.value = ''
+}
+
+async function uploadSeedanceAssetFile(asset: SeedanceAssetBindingItem, event: Event) {
+  if (!detail.value || uploadingSeedanceAssetId.value) return
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  uploadingSeedanceAssetId.value = asset.asset_id
+  error.value = ''
+  successMessage.value = ''
+  const form = new FormData()
+  form.append('file', file)
+  form.append('asset_id', asset.asset_id)
+  form.append('kind', asset.kind)
+  form.append('label', asset.label)
+  form.append('modality', asset.modality)
+  form.append('role', asset.role)
+  if (asset.reference_slot) form.append('reference_slot', asset.reference_slot)
+  if (asset.prompt_usage) form.append('description', asset.prompt_usage)
+  const res = await uploadProjectSeedanceAssetFile(detail.value.project.project_id, form)
+  if (res.ok && res.data) {
+    detail.value = res.data.detail
+    await loadProductionBoard()
+    successMessage.value = `Seedance 素材已上传：${asset.label}`
+  } else {
+    error.value = res.error?.message ?? '上传 Seedance 素材失败'
+  }
+  input.value = ''
+  uploadingSeedanceAssetId.value = ''
+}
+
+async function reuseGlobalSeedanceAsset(asset: SeedanceAssetBindingItem, source: SeedanceGlobalAssetLibraryItem) {
+  if (!detail.value || reusingSeedanceAssetId.value) return
+  reusingSeedanceAssetId.value = seedanceAssetReuseKey(asset, source)
+  error.value = ''
+  successMessage.value = ''
+  const res = await reuseProjectSeedanceAsset(detail.value.project.project_id, {
+    source_project_id: source.source_project_id,
+    source_asset_id: source.source_asset_id,
+    target_asset_id: asset.asset_id,
+    target_label: asset.label,
+    target_kind: asset.kind,
+    reference_slot: asset.reference_slot,
+    description: asset.prompt_usage,
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data.detail
+    await loadProductionBoard()
+    successMessage.value = `已复用跨项目素材：${source.source_project_title} · ${asset.label}`
+  } else {
+    error.value = res.error?.message ?? '复用跨项目素材失败'
+  }
+  reusingSeedanceAssetId.value = ''
+}
+
+function normalizeSeedanceAssetBatchImportPayload(): SeedanceAssetBatchImportRequest | null {
+  const raw = seedanceAssetBatchImportText.value.trim()
+  if (!raw) {
+    error.value = '请粘贴 Seedance 素材清单 JSON'
+    return null
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    error.value = 'Seedance 素材清单 JSON 解析失败'
+    return null
+  }
+  const record = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+    ? parsed as Record<string, unknown>
+    : null
+  const items = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(record?.items)
+      ? record.items
+      : Array.isArray(record?.assets)
+        ? record.assets
+        : []
+  if (!items.length) {
+    error.value = 'Seedance 素材清单中没有可导入记录'
+    return null
+  }
+  return {
+    source_note: '前端批量导入素材清单',
+    items: items as SeedanceAssetBatchImportRequest['items'],
+  }
+}
+
+async function importSeedanceAssetBatchFromText() {
+  if (!detail.value || importingSeedanceAssets.value) return
+  const body = normalizeSeedanceAssetBatchImportPayload()
+  if (!body) return
+  importingSeedanceAssets.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await importProjectSeedanceAssetBatch(detail.value.project.project_id, body)
+  if (res.ok && res.data) {
+    detail.value = res.data.detail
+    seedanceAssetBatchImportText.value = ''
+    await loadProductionBoard()
+    successMessage.value = `Seedance 素材已导入：${res.data.imported_count} 条，跳过 ${res.data.skipped_count} 条`
+    if (res.data.skipped_items.length) {
+      error.value = res.data.skipped_items.map(item => `#${item.index + 1} ${item.reason}`).join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? '导入 Seedance 素材清单失败'
+  }
+  importingSeedanceAssets.value = false
 }
 
 async function markSeedanceShot(shot: StoryProductionBoardShotUnit, status: SeedanceShotProductionStatus) {
@@ -1243,6 +1666,55 @@ async function markPendingSeedanceShotsSubmitted() {
     error.value = res.error?.message ?? '批量流转 Seedance 镜头失败'
   }
   batchingSeedanceShots.value = false
+}
+
+async function submitSeedanceProviderJobs() {
+  if (!detail.value || submittingSeedanceProvider.value) return
+  submittingSeedanceProvider.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await submitProjectSeedanceShotsToProvider(detail.value.project.project_id, {
+    provider: 'seedance',
+    queue_priority: 'normal',
+    note: '前端提交到 Seedance provider 任务队列',
+  })
+  if (res.ok && res.data) {
+    detail.value = {
+      ...detail.value,
+      project: res.data.project,
+    }
+    await loadProductionBoard()
+    successMessage.value = `Seedance provider 提交完成：${res.data.submitted_count} 条，跳过 ${res.data.skipped_count} 条，失败 ${res.data.failed_count} 条`
+    if (res.data.failures.length) {
+      error.value = res.data.failures.map(item => `${item.shot_id ?? `#${item.index + 1}`} ${item.message}`).join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? '提交 Seedance provider 任务失败'
+  }
+  submittingSeedanceProvider.value = false
+}
+
+async function recoverSeedanceProviderTimeouts() {
+  if (!detail.value || recoveringSeedanceProvider.value) return
+  recoveringSeedanceProvider.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await recoverProjectSeedanceProviderQueue(detail.value.project.project_id, {
+    timeout_minutes: 120,
+    mark_timed_out_failed: true,
+    note: '前端标记 Seedance provider 超时失败',
+  })
+  if (res.ok && res.data) {
+    detail.value = {
+      ...detail.value,
+      project: res.data.project,
+    }
+    await loadProductionBoard()
+    successMessage.value = `Seedance provider 超时检查完成：检查 ${res.data.checked_count} 条，超时 ${res.data.timed_out_count} 条，标记失败 ${res.data.updated_count} 条`
+  } else {
+    error.value = res.error?.message ?? '检查 Seedance provider 超时失败'
+  }
+  recoveringSeedanceProvider.value = false
 }
 
 async function autoSelectSeedanceShotVersions() {
@@ -1930,6 +2402,67 @@ watch(selectedModelProfileId, (value) => {
   line-height: 1.45;
 }
 
+.project-detail-page__seedance-asset-import {
+  margin-top: 8px;
+}
+
+.project-detail-page__seedance-asset-import summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #526575;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__seedance-asset-import-textarea {
+  display: block;
+  width: min(520px, 100%);
+  min-width: 0;
+  margin-top: 6px;
+  border: 1px solid #ccd6dd;
+  border-radius: 4px;
+  padding: 8px;
+  color: #22313f;
+  font-size: 12px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.project-detail-page__seedance-global-assets {
+  display: flex;
+  width: min(520px, 100%);
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.project-detail-page__seedance-global-assets span {
+  color: #526575;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__seedance-global-preview {
+  display: flex;
+  width: min(520px, 100%);
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.project-detail-page__seedance-global-preview small {
+  max-width: 180px;
+  overflow-wrap: anywhere;
+  border: 1px solid #dbe4ea;
+  border-radius: 4px;
+  padding: 3px 5px;
+  background: #f8fafb;
+  color: #526575;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .project-detail-page__seedance-asset-items {
   display: flex;
   max-width: 520px;
@@ -1971,6 +2504,71 @@ watch(selectedModelProfileId, (value) => {
   padding: 4px 6px;
   color: #22313f;
   font-size: 12px;
+}
+
+.project-detail-page__seedance-asset-upload {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  border: 1px solid #cbd7e1;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: #fff;
+  color: #2f5f7f;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.project-detail-page__seedance-asset-upload input {
+  display: none;
+}
+
+.project-detail-page__seedance-asset-source-list {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.project-detail-page__seedance-asset-source-btn {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  border: 1px solid #cbd7e1;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: #fff;
+  color: #2f5f7f;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.project-detail-page__seedance-asset-source-btn:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.project-detail-page__seedance-asset-history {
+  width: 100%;
+}
+
+.project-detail-page__seedance-asset-history summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #526575;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.project-detail-page__seedance-asset-history small {
+  display: block;
+  max-width: 240px;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  color: #647380;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .project-detail-page__seedance-asset-item--bound {
@@ -2018,6 +2616,18 @@ watch(selectedModelProfileId, (value) => {
   gap: 6px;
 }
 
+.project-detail-page__seedance-provider-queue {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.project-detail-page__seedance-provider-queue span {
+  max-width: 240px;
+  overflow-wrap: anywhere;
+}
+
 .project-detail-page__seedance-shot-ledger-actions {
   grid-column: 1 / -1;
   border-top: 1px solid #edf1f4;
@@ -2054,6 +2664,7 @@ watch(selectedModelProfileId, (value) => {
 }
 
 .project-detail-page__seedance-shot-ledger-stats span,
+.project-detail-page__seedance-provider-queue span,
 .project-detail-page__seedance-shot-status span,
 .project-detail-page__seedance-shot-status small {
   border: 1px solid #d7dee5;
@@ -2613,6 +3224,50 @@ watch(selectedModelProfileId, (value) => {
   line-height: 1.45;
 }
 
+.project-detail-page__quality-feedback {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.project-detail-page__quality-feedback-card {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.project-detail-page__quality-feedback-card div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.project-detail-page__quality-feedback-card strong {
+  color: #22313f;
+  font-size: 13px;
+}
+
+.project-detail-page__quality-feedback-card span {
+  border: 1px solid #d7dee5;
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: #5e6d78;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.project-detail-page__quality-feedback-card ul {
+  margin: 8px 0 0;
+  padding-left: 17px;
+  color: #4c5e6f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .project-detail-page__report-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2945,6 +3600,7 @@ watch(selectedModelProfileId, (value) => {
   }
 
   .project-detail-page__report-strip,
+  .project-detail-page__quality-feedback,
   .project-detail-page__repair-actions,
   .project-detail-page__production-repair-diff,
   .project-detail-page__supervision-list {

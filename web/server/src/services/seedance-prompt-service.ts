@@ -35,6 +35,8 @@ const SEEDANCE_LIMITS = {
 };
 
 const PROP_CANDIDATES = ['案卷', '文书', '判词', '毛笔', '书信', '旧信', '印章', '石碑', '莲', '灯', '伞', '铜铃', '香炉'];
+const CAMERA_REFERENCE_KEYWORDS = ['@视频', '参考视频', '视频参考', '运镜参考', '镜头参考', '节奏参考', '动作参考'];
+const AUDIO_REFERENCE_KEYWORDS = ['@音频', '参考音频', '音频参考', '音乐参考', '音效参考', '配乐参考', '声音参考', '环境声参考'];
 
 export function buildSeedancePromptPackage(story: StoryGenerateResult): SeedancePromptPackage {
   const delivery = ensureGearsDeliveryPackage(story);
@@ -207,7 +209,7 @@ function buildAssetReferences(
     ...buildPropReferenceSeeds(story),
   ];
 
-  return planned.slice(0, SEEDANCE_LIMITS.maxImageFiles).map((item, index) => ({
+  const imageReferences: SeedanceAssetReference[] = planned.slice(0, SEEDANCE_LIMITS.maxImageFiles).map((item, index) => ({
     asset_id: seedanceAssetId(item.kind, item.label),
     kind: item.kind,
     label: item.label,
@@ -219,6 +221,35 @@ function buildAssetReferences(
     source_shot_ids: uniqueNumbers(item.source_scene_ids).map(sceneId => `shot-${sceneId}`),
     required: true,
   }));
+  const cameraReferences: SeedanceAssetReference[] = buildCameraReferenceSeeds(story)
+    .slice(0, SEEDANCE_LIMITS.maxVideoFiles)
+    .map((item, index) => ({
+      asset_id: seedanceAssetId('camera', item.label),
+      kind: 'camera',
+      label: item.label,
+      modality: 'video',
+      reference_slot: `@视频${index + 1}`,
+      role: 'camera_reference',
+      description: item.description,
+      source_scene_ids: uniqueNumbers(item.source_scene_ids),
+      source_shot_ids: uniqueNumbers(item.source_scene_ids).map(sceneId => `shot-${sceneId}`),
+      required: false,
+    }));
+  const audioReferences: SeedanceAssetReference[] = buildAudioReferenceSeeds(story)
+    .slice(0, SEEDANCE_LIMITS.maxAudioFiles)
+    .map((item, index) => ({
+      asset_id: seedanceAssetId('audio', item.label),
+      kind: 'audio',
+      label: item.label,
+      modality: 'audio',
+      reference_slot: `@音频${index + 1}`,
+      role: item.role,
+      description: item.description,
+      source_scene_ids: uniqueNumbers(item.source_scene_ids),
+      source_shot_ids: uniqueNumbers(item.source_scene_ids).map(sceneId => `shot-${sceneId}`),
+      required: false,
+    }));
+  return [...imageReferences, ...cameraReferences, ...audioReferences];
 }
 
 function buildPropReferenceSeeds(story: StoryGenerateResult): Array<{
@@ -246,6 +277,77 @@ function buildPropReferenceSeeds(story: StoryGenerateResult): Array<{
   }));
 }
 
+function buildCameraReferenceSeeds(story: StoryGenerateResult): Array<{
+  label: string;
+  description: string;
+  source_scene_ids: number[];
+}> {
+  const sourceSceneIds = story.scene_breakdown
+    .filter(scene => includesAny([
+      scene.camera_suggestion,
+      scene.visual_prompt,
+      scene.key_action,
+      scene.plot,
+      scene.dialogue_or_narration,
+    ].join(' '), CAMERA_REFERENCE_KEYWORDS))
+    .map(scene => scene.scene_id);
+  if (!sourceSceneIds.length) return [];
+  return [{
+    label: '运镜节奏参考',
+    description: '参考镜头运动、动作衔接和节奏变化，不替代人物、场景或道具画面资产。',
+    source_scene_ids: uniqueNumbers(sourceSceneIds),
+  }];
+}
+
+function buildAudioReferenceSeeds(story: StoryGenerateResult): Array<{
+  label: string;
+  role: 'music_reference' | 'sound_reference';
+  description: string;
+  source_scene_ids: number[];
+}> {
+  const musicSceneIds: number[] = [];
+  const soundSceneIds: number[] = [];
+  for (const scene of story.scene_breakdown) {
+    const text = [
+      scene.title,
+      scene.plot,
+      scene.key_action,
+      scene.visual_prompt,
+      scene.dialogue_or_narration,
+      scene.cultural_note,
+    ].join(' ');
+    if (!includesAny(text, AUDIO_REFERENCE_KEYWORDS)) continue;
+    if (/音乐|配乐|BGM|bgm/i.test(text)) {
+      musicSceneIds.push(scene.scene_id);
+    } else {
+      soundSceneIds.push(scene.scene_id);
+    }
+  }
+  return [
+    musicSceneIds.length
+      ? {
+        label: '背景音乐参考',
+        role: 'music_reference' as const,
+        description: '参考背景音乐的情绪、节奏和强弱变化，不替代可见画面描述。',
+        source_scene_ids: uniqueNumbers(musicSceneIds),
+      }
+      : undefined,
+    soundSceneIds.length
+      ? {
+        label: '环境音效参考',
+        role: 'sound_reference' as const,
+        description: '参考环境声、动作音效和空间声场，不替代对白或旁白内容。',
+        source_scene_ids: uniqueNumbers(soundSceneIds),
+      }
+      : undefined,
+  ].filter((item): item is {
+    label: string;
+    role: 'music_reference' | 'sound_reference';
+    description: string;
+    source_scene_ids: number[];
+  } => Boolean(item));
+}
+
 function formatAssetReferencePlanItem(reference: SeedanceAssetReference): string {
   if (reference.kind === 'character') {
     return `${reference.reference_slot} 可作为人物「${reference.label}」形象参考：${reference.description}`;
@@ -256,8 +358,8 @@ function formatAssetReferencePlanItem(reference: SeedanceAssetReference): string
   if (reference.kind === 'prop') {
     return `${reference.reference_slot} 可作为道具「${reference.label}」外观参考：${reference.description}`;
   }
-  if (reference.kind === 'camera') return `${reference.reference_slot} 可作为运镜参考：${reference.description}`;
-  return `${reference.reference_slot} 可作为音频参考：${reference.description}`;
+  if (reference.kind === 'camera') return `${reference.reference_slot} 可作为运镜和节奏参考：${reference.description}`;
+  return `${reference.reference_slot} 可作为背景音乐或音效参考：${reference.description}`;
 }
 
 function buildShotAssetSlots(input: {
@@ -278,7 +380,7 @@ function buildShotAssetSlots(input: {
           || reference.source_scene_ids.includes(input.sourceSceneId);
       }
       if (reference.kind === 'prop') return reference.source_scene_ids.includes(input.sourceSceneId) || input.text.includes(reference.label);
-      return reference.source_shot_ids.includes(input.shotId);
+      return reference.source_scene_ids.includes(input.sourceSceneId) || reference.source_shot_ids.includes(input.shotId);
     })
     .map(reference => ({
       asset_id: reference.asset_id,
@@ -323,6 +425,7 @@ function buildPackageMaterialValidation(references: SeedanceAssetReference[]): S
     audioCount > SEEDANCE_LIMITS.maxAudioFiles
       ? `音频素材 ${audioCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxAudioFiles}`
       : '',
+    ...validateAssetReferenceSlots(references),
   ].filter(Boolean);
   return {
     total_file_count: totalFileCount,
@@ -371,6 +474,7 @@ function buildShotMaterialValidation(input: {
     audioCount > SEEDANCE_LIMITS.maxAudioFiles
       ? `音频素材 ${audioCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxAudioFiles}`
       : '',
+    ...validateAssetReferenceSlots(input.assetSlots),
     missingRequiredSlots.length ? `缺少必需素材引用槽位：${missingRequiredSlots.join('、')}` : '',
     durationRisk === 'overloaded'
       ? `提示复杂度 ${promptComplexityScore}/100 对 ${input.durationSec} 秒时长过载`
@@ -395,6 +499,30 @@ function buildShotMaterialValidation(input: {
     duration_risk: durationRisk,
     warnings,
   };
+}
+
+function validateAssetReferenceSlots(
+  slots: Array<Pick<SeedanceAssetReference, 'kind' | 'modality' | 'reference_slot' | 'role' | 'label'>>,
+): string[] {
+  return slots.flatMap(slot => {
+    const warnings: string[] = [];
+    if (slot.modality === 'image' && !slot.reference_slot.startsWith('@图片')) {
+      warnings.push(`${slot.label} 图片素材引用槽位应使用 @图片 前缀`);
+    }
+    if (slot.modality === 'video') {
+      if (!slot.reference_slot.startsWith('@视频')) warnings.push(`${slot.label} 视频素材引用槽位应使用 @视频 前缀`);
+      if (slot.kind !== 'camera' || slot.role !== 'camera_reference') {
+        warnings.push(`${slot.label} 视频素材需标注为运镜/节奏参考`);
+      }
+    }
+    if (slot.modality === 'audio') {
+      if (!slot.reference_slot.startsWith('@音频')) warnings.push(`${slot.label} 音频素材引用槽位应使用 @音频 前缀`);
+      if (slot.kind !== 'audio' || !['music_reference', 'sound_reference'].includes(slot.role)) {
+        warnings.push(`${slot.label} 音频素材需标注为音乐或音效参考`);
+      }
+    }
+    return warnings;
+  });
 }
 
 function estimatePromptComplexity(text: string, slotCount: number): number {
@@ -426,7 +554,7 @@ function renderSeedanceMarkdown(pkg: Omit<SeedancePromptPackage, 'markdown'>): s
     `> schema: ${pkg.schema_version}`,
     `> storyId: ${pkg.storyId}`,
     `> 总时长: ${pkg.total_duration_sec} 秒`,
-    `> 素材: ${pkg.material_validation.total_file_count}/${pkg.material_validation.max_total_files} 个文件（图片 ${pkg.material_validation.image_count}/${pkg.material_validation.max_image_files}）`,
+    `> 素材: ${pkg.material_validation.total_file_count}/${pkg.material_validation.max_total_files} 个文件（图片 ${pkg.material_validation.image_count}/${pkg.material_validation.max_image_files}，视频 ${pkg.material_validation.video_count}/${pkg.material_validation.max_video_files}，音频 ${pkg.material_validation.audio_count}/${pkg.material_validation.max_audio_files}）`,
     '',
     '## 参考素材分配',
     ...(pkg.asset_reference_plan.length ? pkg.asset_reference_plan.map(item => `- ${item}`) : ['- 未配置参考素材；可直接使用文本提示生成。']),
@@ -531,6 +659,10 @@ function compactStrings(items: Array<string | undefined | null | false>): string
 
 function uniqueNumbers(values: number[]): number[] {
   return [...new Set(values)].sort((a, b) => a - b);
+}
+
+function includesAny(value: string, keywords: string[]): boolean {
+  return keywords.some(keyword => value.includes(keyword));
 }
 
 function seedanceAssetId(kind: SeedanceAssetReference['kind'], label: string): string {

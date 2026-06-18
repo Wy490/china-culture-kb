@@ -25,10 +25,10 @@ function makeStory(): StoryGenerateResult {
         key_action: '少年抓紧书箱，抬头追问规则。',
         characters: ['少年', '师兄'],
         visual_prompt: '质量信号：书院门外，雨水，灯笼，少年与师兄对峙',
-        camera_suggestion: '建立镜头后慢推到少年近景',
+        camera_suggestion: '运镜参考：参考视频素材的横移节奏，建立镜头后慢推到少年近景',
         cultural_note: '本场景基于测试条目，具体细节请核实来源；生成优先级：剧情推进与资料完整保持均衡。',
         conflict: '入门资格与旧案任务冲突',
-        dialogue_or_narration: '师兄：天亮前，拿证据来。',
+        dialogue_or_narration: '师兄：天亮前，拿证据来。音乐参考：雨声下压，低鼓点推进紧张感。',
         source_entries: ['测试条目'],
       },
     ],
@@ -51,8 +51,14 @@ describe('seedance-prompt-service', () => {
     expect(pkg.target_platform).toBe('seedance_2_0');
     expect(pkg.shot_units.length).toBeGreaterThan(0);
     expect(pkg.asset_reference_plan.some(item => item.includes('@图片1'))).toBe(true);
+    expect(pkg.asset_reference_plan.some(item => item.includes('@视频1') && item.includes('运镜和节奏'))).toBe(true);
+    expect(pkg.asset_reference_plan.some(item => item.includes('@音频1') && item.includes('背景音乐或音效'))).toBe(true);
     expect(pkg.asset_references.some(item => item.kind === 'character' && item.reference_slot === '@图片1')).toBe(true);
+    expect(pkg.asset_references.some(item => item.kind === 'camera' && item.modality === 'video' && item.reference_slot === '@视频1')).toBe(true);
+    expect(pkg.asset_references.some(item => item.kind === 'audio' && item.modality === 'audio' && item.reference_slot === '@音频1')).toBe(true);
     expect(pkg.material_validation.image_count).toBeGreaterThan(0);
+    expect(pkg.material_validation.video_count).toBe(1);
+    expect(pkg.material_validation.audio_count).toBe(1);
     expect(pkg.material_validation.image_count).toBeLessThanOrEqual(pkg.material_validation.max_image_files);
     expect(pkg.markdown).toContain('Seedance 2.0 镜头提示词包');
     expect(pkg.markdown).toContain('素材 slot');
@@ -65,6 +71,8 @@ describe('seedance-prompt-service', () => {
       expect(unit.material_validation.prompt_complexity_score).toBeGreaterThan(0);
       expect(unit.seedance_prompt).toContain('0-3秒');
       expect(unit.seedance_prompt).toContain('@图片');
+      expect(unit.seedance_prompt).toContain('@视频1 作为运镜和节奏参考');
+      expect(unit.seedance_prompt).toContain('@音频1 作为音乐或音效参考');
       expect(unit.seedance_prompt).toContain('风格：');
       expect(unit.seedance_prompt).not.toContain('质量信号');
       expect(unit.seedance_prompt).not.toContain('生成优先级');

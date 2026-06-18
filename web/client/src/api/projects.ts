@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from './client'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPostForm } from './client'
 import type {
   KnowledgeSupplementTaskUpdateRequest,
   StoryProjectBatchDeleteResult,
@@ -8,10 +8,20 @@ import type {
   StoryProjectExportPackage,
   StoryProjectListItem,
   StoryProjectRetainRecentResult,
+  SeedanceAssetBatchImportRequest,
+  SeedanceAssetBatchImportResult,
+  SeedanceAssetFileUploadResult,
+  SeedanceAssetReuseRequest,
+  SeedanceAssetReuseResult,
+  SeedanceGlobalAssetLibrary,
   SeedanceAssetLibraryUpdateRequest,
   SeedanceShotAutoSelectRequest,
   SeedanceShotCallbackImportRequest,
   SeedanceShotCallbackImportResult,
+  SeedanceShotProviderRecoveryRequest,
+  SeedanceShotProviderRecoveryResult,
+  SeedanceShotProviderSubmitRequest,
+  SeedanceShotProviderSubmitResult,
   SeedanceShotRetryPackage,
   SeedanceShotStatusBatchUpdateRequest,
   SeedanceShotStatusBatchUpdateResult,
@@ -62,6 +72,22 @@ export function updateProjectSeedanceAssetLibrary(projectId: string, body: Seeda
   return apiPost<StoryProjectDetail>(`/projects/${projectId}/production-board/seedance-assets`, body)
 }
 
+export function importProjectSeedanceAssetBatch(projectId: string, body: SeedanceAssetBatchImportRequest) {
+  return apiPost<SeedanceAssetBatchImportResult>(`/projects/${projectId}/production-board/seedance-assets/import`, body)
+}
+
+export function uploadProjectSeedanceAssetFile(projectId: string, body: FormData) {
+  return apiPostForm<SeedanceAssetFileUploadResult>(`/projects/${projectId}/production-board/seedance-assets/upload`, body)
+}
+
+export function getProjectSeedanceGlobalAssetLibrary(projectId: string) {
+  return apiGet<SeedanceGlobalAssetLibrary>(`/projects/${projectId}/production-board/seedance-assets/global`)
+}
+
+export function reuseProjectSeedanceAsset(projectId: string, body: SeedanceAssetReuseRequest) {
+  return apiPost<SeedanceAssetReuseResult>(`/projects/${projectId}/production-board/seedance-assets/reuse`, body)
+}
+
 export function updateProjectSeedanceShotStatus(projectId: string, body: SeedanceShotStatusUpdateRequest) {
   return apiPost<StoryProjectDetail>(`/projects/${projectId}/production-board/seedance-shots`, body)
 }
@@ -80,6 +106,14 @@ export function selectProjectSeedanceShotVersion(projectId: string, body: Seedan
 
 export function autoSelectProjectSeedanceShotVersions(projectId: string, body: SeedanceShotAutoSelectRequest = {}) {
   return apiPost<StoryProjectDetail>(`/projects/${projectId}/production-board/seedance-shots/auto-select`, body)
+}
+
+export function submitProjectSeedanceShotsToProvider(projectId: string, body: SeedanceShotProviderSubmitRequest = {}) {
+  return apiPost<SeedanceShotProviderSubmitResult>(`/projects/${projectId}/production-board/seedance-shots/submit-provider`, body)
+}
+
+export function recoverProjectSeedanceProviderQueue(projectId: string, body: SeedanceShotProviderRecoveryRequest = {}) {
+  return apiPost<SeedanceShotProviderRecoveryResult>(`/projects/${projectId}/production-board/seedance-shots/recover-provider`, body)
 }
 
 export function exportProjectSeedanceRetryPackage(projectId: string) {

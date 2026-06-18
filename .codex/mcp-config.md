@@ -55,16 +55,17 @@ Use the Windows workspace path:
 
 ## Current Tool Surface
 
-The server currently exposes knowledge-base search, entry detail, source collection, source verification, article/video intake, script generation, story generation, region entry writing, index query, Story Agent project context, StoryBlueprint generation, and genre quality validation tools.
+The server currently exposes knowledge-base search, entry detail, source collection, source verification, article/video intake, script generation, story generation, region entry writing, index query, Story Agent project context, StoryBlueprint generation, genre quality validation, GEARS delivery packaging, Seedance prompt packaging, repair dry-run planning, and controlled project version updates.
 
 Story Agent follow-up tools planned or recently added for this project:
 
 - `kb_generate_story_blueprint` (implemented)
 - `kb_validate_genre_story` (implemented)
-- `kb_repair_story`
-- `kb_generate_gears_delivery`
-- `kb_generate_seedance_prompt`
+- `kb_repair_story(auto_apply=false)` (implemented)
+- `kb_repair_story(auto_apply=true, requires repaired_story_json)` (implemented)
+- `kb_generate_gears_delivery` (implemented)
+- `kb_generate_seedance_prompt` (implemented)
 - `kb_get_project_context` (implemented)
-- `kb_update_project_version`
+- `kb_update_project_version` (implemented)
 
 See `mcp-upgrade-roadmap.md` for the intended schema, implementation order, and guardrails.

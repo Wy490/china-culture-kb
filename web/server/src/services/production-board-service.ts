@@ -285,6 +285,14 @@ function buildSeedanceAssetReport(input: {
         reference_slot: referenceSlot,
         file_url: libraryItem?.file_url,
         file_id: libraryItem?.file_id,
+        local_path: libraryItem?.local_path,
+        original_filename: libraryItem?.original_filename,
+        mime_type: libraryItem?.mime_type,
+        size_bytes: libraryItem?.size_bytes,
+        provider: libraryItem?.provider,
+        provider_asset_id: libraryItem?.provider_asset_id,
+        upload_status: libraryItem?.upload_status,
+        upload_error: libraryItem?.upload_error,
         prompt_usage: slot.prompt_usage ?? libraryItem?.description,
         source_scene_ids: [unit.source_scene_id],
         source_shot_ids: [unit.shot_id],
@@ -359,7 +367,10 @@ export function syncSeedanceShotLedgerWithShots(input: {
       submitted_at: existing?.submitted_at,
       completed_at: existing?.completed_at,
       updated_at: existing?.updated_at ?? input.generatedAt,
+      provider: existing?.provider,
       provider_job_id: existing?.provider_job_id,
+      provider_queue_id: existing?.provider_queue_id,
+      provider_queue_position: existing?.provider_queue_position,
       video_url: existing?.video_url,
       failure_reason: existing?.failure_reason,
       retry_count: existing?.retry_count ?? 0,
@@ -422,7 +433,13 @@ function seedanceBindingState(
   libraryItem?: SeedanceAssetLibraryItem,
 ): Pick<SeedanceAssetBindingItem, 'has_reference_slot' | 'is_bound' | 'needs_upload' | 'status'> {
   const hasReferenceSlot = Boolean(referenceSlot?.trim());
-  const isBound = hasReferenceSlot && Boolean(libraryItem?.file_url || libraryItem?.file_id);
+  const hasUploadedProviderAsset = libraryItem?.upload_status === 'uploaded' || libraryItem?.upload_status === 'external';
+  const isBound = hasReferenceSlot && Boolean(
+    libraryItem?.file_url
+    || libraryItem?.file_id
+    || libraryItem?.provider_asset_id
+    || hasUploadedProviderAsset
+  );
   return {
     has_reference_slot: hasReferenceSlot,
     is_bound: isBound,
@@ -447,14 +464,36 @@ function upsertSeedanceAssetBinding(
   const referenceSlot = existing.reference_slot ?? next.reference_slot;
   const fileUrl = existing.file_url ?? next.file_url;
   const fileId = existing.file_id ?? next.file_id;
+  const localPath = existing.local_path ?? next.local_path;
+  const originalFilename = existing.original_filename ?? next.original_filename;
+  const mimeType = existing.mime_type ?? next.mime_type;
+  const sizeBytes = existing.size_bytes ?? next.size_bytes;
+  const provider = existing.provider ?? next.provider;
+  const providerAssetId = existing.provider_asset_id ?? next.provider_asset_id;
+  const uploadStatus = existing.upload_status ?? next.upload_status;
+  const uploadError = existing.upload_error ?? next.upload_error;
   const hasReferenceSlot = existing.has_reference_slot || next.has_reference_slot;
-  const isBound = hasReferenceSlot && Boolean(fileUrl || fileId);
+  const isBound = hasReferenceSlot && Boolean(
+    fileUrl
+    || fileId
+    || providerAssetId
+    || uploadStatus === 'uploaded'
+    || uploadStatus === 'external'
+  );
   const sourceShotIds = uniqueStrings([...existing.source_shot_ids, ...next.source_shot_ids]);
   assets.set(next.asset_id, {
     ...existing,
     reference_slot: referenceSlot,
     file_url: fileUrl,
     file_id: fileId,
+    local_path: localPath,
+    original_filename: originalFilename,
+    mime_type: mimeType,
+    size_bytes: sizeBytes,
+    provider,
+    provider_asset_id: providerAssetId,
+    upload_status: uploadStatus,
+    upload_error: uploadError,
     prompt_usage: existing.prompt_usage ?? next.prompt_usage,
     source_scene_ids: uniqueNumbers([...existing.source_scene_ids, ...next.source_scene_ids]),
     source_shot_ids: sourceShotIds,
@@ -482,6 +521,9 @@ function renderSeedanceAssetReportMarkdown(pkg: Omit<SeedanceAssetReportPackage,
     ...(pkg.assets.length ? pkg.assets.map(asset => [
       `- [${seedanceAssetBindingStatusLabel(asset.status)}] ${asset.reference_slot ?? '未分配槽位'} · ${seedanceAssetKindLabel(asset.kind)}「${asset.label}」`,
       `  - 用途: ${seedanceAssetRoleLabel(asset.role)}；格式: ${asset.modality}；镜头: ${asset.source_shot_ids.join('、') || '无'}；使用次数: ${asset.required_by_shot_count}`,
+      asset.original_filename ? `  - 文件: ${asset.original_filename}${asset.size_bytes ? `；大小: ${asset.size_bytes} bytes` : ''}` : '',
+      asset.provider_asset_id ? `  - Provider 素材: ${asset.provider ?? 'unknown'} / ${asset.provider_asset_id}` : '',
+      asset.upload_status ? `  - 上传状态: ${asset.upload_status}${asset.upload_error ? `；错误: ${asset.upload_error}` : ''}` : '',
       asset.prompt_usage ? `  - 提示词用途: ${asset.prompt_usage}` : '',
     ].filter(Boolean)).flat() : ['- 无']),
     '',

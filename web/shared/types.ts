@@ -792,6 +792,7 @@ export interface StoryProjectMeta extends StoryProjectListItem {
   version_count: number;
   seedance_asset_library?: SeedanceAssetLibrary;
   seedance_shot_ledger?: SeedanceShotLedger;
+  seedance_provider_queue?: SeedanceShotProviderQueue;
 }
 
 export interface StoryProjectVersionSnapshot {
@@ -999,6 +1000,8 @@ export type SeedanceAssetModality = 'image' | 'video' | 'audio';
 
 export type SeedanceAssetReferenceKind = 'character' | 'location' | 'prop' | 'camera' | 'audio';
 
+export type SeedanceAssetUploadStatus = 'pending_upload' | 'uploaded' | 'failed' | 'external';
+
 export type SeedanceAssetSlotRole =
   | 'character_reference'
   | 'location_reference'
@@ -1033,6 +1036,31 @@ export interface SeedanceShotAssetSlot {
 
 export type SeedanceAssetBindingStatus = 'bound' | 'missing_file' | 'missing_reference_slot';
 
+export type SeedanceAssetHistoryEventType =
+  | 'manual_bind'
+  | 'batch_import'
+  | 'file_upload'
+  | 'cross_project_reuse';
+
+export interface SeedanceAssetHistoryEvent {
+  event_id: string;
+  event_type: SeedanceAssetHistoryEventType;
+  created_at: string;
+  upload_status?: SeedanceAssetUploadStatus;
+  provider?: string;
+  provider_asset_id?: string;
+  file_url?: string;
+  file_id?: string;
+  local_path?: string;
+  original_filename?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  source_project_id?: string;
+  source_project_title?: string;
+  source_asset_id?: string;
+  note?: string;
+}
+
 export interface SeedanceAssetBindingItem {
   asset_id: string;
   label: string;
@@ -1042,6 +1070,14 @@ export interface SeedanceAssetBindingItem {
   reference_slot?: string;
   file_url?: string;
   file_id?: string;
+  local_path?: string;
+  original_filename?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  provider?: string;
+  provider_asset_id?: string;
+  upload_status?: SeedanceAssetUploadStatus;
+  upload_error?: string;
   prompt_usage?: string;
   source_scene_ids: number[];
   source_shot_ids: string[];
@@ -1061,6 +1097,15 @@ export interface SeedanceAssetLibraryItem {
   reference_slot?: string;
   file_url?: string;
   file_id?: string;
+  local_path?: string;
+  original_filename?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  provider?: string;
+  provider_asset_id?: string;
+  upload_status?: SeedanceAssetUploadStatus;
+  upload_error?: string;
+  history?: SeedanceAssetHistoryEvent[];
   description?: string;
   updated_at: string;
 }
@@ -1081,8 +1126,115 @@ export interface SeedanceAssetLibraryUpdateRequest {
     reference_slot?: string;
     file_url?: string;
     file_id?: string;
+    local_path?: string;
+    original_filename?: string;
+    mime_type?: string;
+    size_bytes?: number;
+    provider?: string;
+    provider_asset_id?: string;
+    upload_status?: SeedanceAssetUploadStatus;
+    upload_error?: string;
     description?: string;
   }>;
+}
+
+export interface SeedanceAssetBatchImportRequest {
+  source_note?: string;
+  items: Array<{
+    asset_id?: string;
+    label?: string;
+    kind?: SeedanceAssetReferenceKind;
+    modality?: SeedanceAssetModality;
+    role?: SeedanceAssetSlotRole;
+    reference_slot?: string;
+    file_url?: string;
+    file_id?: string;
+    local_path?: string;
+    original_filename?: string;
+    mime_type?: string;
+    size_bytes?: number;
+    provider?: string;
+    provider_asset_id?: string;
+    upload_status?: SeedanceAssetUploadStatus;
+    upload_error?: string;
+    description?: string;
+  }>;
+}
+
+export interface SeedanceAssetBatchImportSkippedItem {
+  index: number;
+  reason: string;
+  asset_id?: string;
+  label?: string;
+}
+
+export interface SeedanceAssetBatchImportResult {
+  detail: StoryProjectDetail;
+  imported_count: number;
+  matched_existing_count: number;
+  skipped_count: number;
+  updated_asset_ids: string[];
+  skipped_items: SeedanceAssetBatchImportSkippedItem[];
+  source_note?: string;
+}
+
+export interface SeedanceAssetFileUploadResult {
+  detail: StoryProjectDetail;
+  asset: SeedanceAssetLibraryItem;
+  file_id: string;
+  local_path: string;
+  original_filename: string;
+  mime_type: string;
+  size_bytes: number;
+}
+
+export interface SeedanceGlobalAssetLibraryItem {
+  global_asset_id: string;
+  source_project_id: string;
+  source_project_title: string;
+  source_asset_id: string;
+  label: string;
+  kind: SeedanceAssetReferenceKind;
+  modality: SeedanceAssetModality;
+  role: SeedanceAssetSlotRole;
+  reference_slot?: string;
+  file_url?: string;
+  file_id?: string;
+  local_path?: string;
+  original_filename?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  provider?: string;
+  provider_asset_id?: string;
+  upload_status?: SeedanceAssetUploadStatus;
+  upload_error?: string;
+  description?: string;
+  updated_at: string;
+}
+
+export interface SeedanceGlobalAssetLibrary {
+  schema_version: 'seedance-global-asset-library/v1';
+  generated_at: string;
+  current_project_id?: string;
+  total_asset_count: number;
+  reusable_asset_count: number;
+  items: SeedanceGlobalAssetLibraryItem[];
+}
+
+export interface SeedanceAssetReuseRequest {
+  source_project_id: string;
+  source_asset_id: string;
+  target_asset_id?: string;
+  target_label?: string;
+  target_kind?: SeedanceAssetReferenceKind;
+  reference_slot?: string;
+  description?: string;
+}
+
+export interface SeedanceAssetReuseResult {
+  detail: StoryProjectDetail;
+  reused_asset: SeedanceAssetLibraryItem;
+  source_asset: SeedanceGlobalAssetLibraryItem;
 }
 
 export type SeedanceShotProductionStatus =
@@ -1115,7 +1267,10 @@ export interface SeedanceShotLedgerItem {
   submitted_at?: string;
   completed_at?: string;
   updated_at: string;
+  provider?: string;
   provider_job_id?: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
   video_url?: string;
   failure_reason?: string;
   retry_count: number;
@@ -1128,6 +1283,37 @@ export interface SeedanceShotLedger {
   schema_version: 'seedance-shot-ledger/v1';
   updated_at?: string;
   items: SeedanceShotLedgerItem[];
+}
+
+export type SeedanceShotProviderQueuePriority = 'low' | 'normal' | 'high';
+
+export interface SeedanceShotProviderQueueItem {
+  shot_id: string;
+  source_scene_id?: number;
+  provider_job_id: string;
+  status: SeedanceShotProductionStatus;
+  queue_position: number;
+  queued_at: string;
+}
+
+export interface SeedanceShotProviderQueueBatch {
+  queue_id: string;
+  provider: string;
+  priority: SeedanceShotProviderQueuePriority;
+  created_at: string;
+  updated_at: string;
+  submitted_count: number;
+  skipped_count: number;
+  failed_count: number;
+  note?: string;
+  items: SeedanceShotProviderQueueItem[];
+}
+
+export interface SeedanceShotProviderQueue {
+  schema_version: 'seedance-provider-queue/v1';
+  updated_at: string;
+  latest_queue_id?: string;
+  batches: SeedanceShotProviderQueueBatch[];
 }
 
 export interface SeedanceShotStatusUpdateRequest {
@@ -1170,6 +1356,74 @@ export interface SeedanceShotAutoSelectRequest {
   min_quality_score?: number;
   overwrite_manual?: boolean;
   note?: string;
+}
+
+export interface SeedanceShotProviderSubmitRequest {
+  shot_ids?: string[];
+  provider?: string;
+  job_prefix?: string;
+  queue_id?: string;
+  queue_priority?: SeedanceShotProviderQueuePriority;
+  overwrite_existing?: boolean;
+  note?: string;
+}
+
+export interface SeedanceShotProviderSubmitFailure {
+  index: number;
+  shot_id?: string;
+  message: string;
+}
+
+export interface SeedanceShotProviderSubmitResult {
+  project: StoryProjectMeta;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  seedance_provider_queue?: SeedanceShotProviderQueue;
+  provider_queue_batch?: SeedanceShotProviderQueueBatch;
+  submitted_count: number;
+  skipped_count: number;
+  failed_count: number;
+  submitted_shots: Array<{
+    shot_id: string;
+    provider_job_id: string;
+    provider_queue_id: string;
+    provider_queue_position: number;
+    status: SeedanceShotProductionStatus;
+  }>;
+  failures: SeedanceShotProviderSubmitFailure[];
+}
+
+export type SeedanceShotProviderRecoverableStatus = 'submitted' | 'processing';
+
+export interface SeedanceShotProviderRecoveryRequest {
+  timeout_minutes?: number;
+  statuses?: SeedanceShotProviderRecoverableStatus[];
+  mark_timed_out_failed?: boolean;
+  note?: string;
+}
+
+export interface SeedanceShotProviderRecoveryItem {
+  shot_id: string;
+  source_scene_id?: number;
+  status: SeedanceShotProviderRecoverableStatus;
+  provider?: string;
+  provider_job_id?: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
+  submitted_at?: string;
+  updated_at: string;
+  minutes_waiting: number;
+  failure_reason?: string;
+}
+
+export interface SeedanceShotProviderRecoveryResult {
+  project: StoryProjectMeta;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  dry_run: boolean;
+  timeout_minutes: number;
+  checked_count: number;
+  timed_out_count: number;
+  updated_count: number;
+  timed_out_shots: SeedanceShotProviderRecoveryItem[];
 }
 
 export interface SeedanceShotCallbackRequest {
