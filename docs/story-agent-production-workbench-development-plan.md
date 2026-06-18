@@ -11,7 +11,7 @@
 - Story Agent MVP：约 75%
 - Production Board / GEARS / Seedance 交付链：约 95%
 - AI 漫剧系列生产链：约 45%
-- 可商用制作中台：约 35-40%
+- 可商用制作中台：约 42%
 
 当前已经跑通的主链路：
 
@@ -207,6 +207,7 @@
 - 单故事 Seedance provider 轮询入口首版
 - 单故事 Seedance provider 失败分类和错误码传递首版
 - 单故事 Seedance provider 通用 poll adapter 首版
+- 项目详情页 Seedance provider 自动轮询入口首版
 - 单故事 Seedance provider 通用 submit adapter 首版
 - 单故事 Seedance provider 队列状态总览首版
 - 项目详情页 Seedance provider 队列健康条首版
@@ -339,6 +340,7 @@
 - 失败重试包（已完成首版）
 - provider 任务提交抽象（已完成首版）
 - provider 队列状态总览（已完成首版）
+- provider 自动轮询入口 UI（已完成首版）
 - provider 人工重试策略（已完成首版）
 - provider 重试执行自动化（已完成首版）
 - `@视频1` / `@音频1` 引用校验（已完成首版）

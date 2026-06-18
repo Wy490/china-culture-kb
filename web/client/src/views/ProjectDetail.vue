@@ -272,6 +272,13 @@
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
+                :disabled="pollingSeedanceProvider"
+                @click="pollSeedanceProviderJobs"
+              >
+                {{ pollingSeedanceProvider ? '轮询中…' : '轮询 provider' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
                 :disabled="recoveringSeedanceProvider"
                 @click="recoverSeedanceProviderTimeouts"
               >
@@ -931,6 +938,7 @@ import {
   getProjectProductionBoard,
   importProjectSeedanceAssetBatch,
   importProjectSeedanceShotCallbacks,
+  pollProjectSeedanceProviderQueue,
   recoverProjectSeedanceProviderQueue,
   repairAndExportProjectProductionBoard,
   repairProjectQuality,
@@ -1028,6 +1036,7 @@ const exportingSeedanceRetryPackage = ref(false)
 const batchingSeedanceShots = ref(false)
 const autoSelectingSeedanceShots = ref(false)
 const submittingSeedanceProvider = ref(false)
+const pollingSeedanceProvider = ref(false)
 const recoveringSeedanceProvider = ref(false)
 const loadingSeedanceProviderOverview = ref(false)
 const seedanceProviderOverview = ref<SeedanceShotProviderQueueOverviewResult | null>(null)
@@ -1883,6 +1892,38 @@ async function submitSeedanceProviderJobs() {
     error.value = res.error?.message ?? '提交 Seedance provider 任务失败'
   }
   submittingSeedanceProvider.value = false
+}
+
+async function pollSeedanceProviderJobs() {
+  if (!detail.value || pollingSeedanceProvider.value) return
+  pollingSeedanceProvider.value = true
+  error.value = ''
+  successMessage.value = ''
+  const latestBatch = latestSeedanceProviderQueueBatch.value
+  const res = await pollProjectSeedanceProviderQueue(detail.value.project.project_id, {
+    provider: latestBatch?.provider ?? 'seedance',
+    queue_id: latestBatch?.queue_id,
+    include_prompt: true,
+    use_provider_adapter: true,
+    note: '前端轮询 Seedance provider 状态',
+  })
+  if (res.ok && res.data) {
+    detail.value = {
+      ...detail.value,
+      project: res.data.project,
+    }
+    await loadProductionBoard()
+    const adapterText = res.data.provider_adapter
+      ? `，adapter 返回 ${res.data.provider_adapter.returned_count} 条`
+      : ''
+    successMessage.value = `Seedance provider 轮询完成：更新 ${res.data.updated_count} 条，待轮询 ${res.data.pollable_count} 条${adapterText}`
+    if (res.data.failures.length) {
+      error.value = res.data.failures.map(item => `${item.shot_id ?? `#${item.index + 1}`} ${item.message}`).join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? '轮询 Seedance provider 状态失败'
+  }
+  pollingSeedanceProvider.value = false
 }
 
 async function recoverSeedanceProviderTimeouts() {

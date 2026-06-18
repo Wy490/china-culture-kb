@@ -208,6 +208,7 @@ MCP 原则：
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/poll-provider`。
   - dry-run 会按 provider、queue、shot、状态筛选待查询 job，可选带出 Seedance prompt 供外部 worker 使用。
   - 请求带 `provider_results` 时会把外部 adapter 查询到的状态快照归一化并写回 Shot Ledger。
+  - 项目详情页“回传与重试”折叠区新增“轮询 provider”，默认用最新 provider queue batch 调用 poll adapter，并在成功后刷新 Production Board、队列健康和人工重试策略。
 - 单故事 Seedance provider 失败分类首版：
   - 共享类型新增 `SeedanceProviderFailureCategory`，状态更新、外部回传、轮询结果、版本记录、ledger 和重试包都可携带 `failure_category` 与 `provider_error_code`。
   - 回传归一化会根据显式分类、provider 错误码、失败原因和 message 推断素材缺失、提示词非法、内容审核、超时、额度、鉴权、限流、服务端、网络和未知错误。
@@ -218,6 +219,7 @@ MCP 原则：
   - 服务端读取 `SEEDANCE_PROVIDER_POLL_ENDPOINT`，把 dry-run 产生的 `poll_targets` POST 给外部 adapter，并接受顶层数组、`provider_results`、`results` 或 `items` 返回形态。
   - 支持 `SEEDANCE_PROVIDER_API_TOKEN` bearer 鉴权和 `SEEDANCE_PROVIDER_POLL_TIMEOUT_MS` 超时控制。
   - adapter 返回结果继续复用内部 callback 归一化、失败分类和 Shot Ledger 写回；未配置 endpoint 返回 400，外部 adapter HTTP/网络错误返回 502。
+  - 项目详情页“轮询 provider”入口会设置 `include_prompt=true` / `use_provider_adapter=true`，用于从工作台直接触发外部查询 worker。
 - 单故事 Seedance provider 通用 submit adapter 首版：
   - `SeedanceShotProviderSubmitRequest` 新增 `use_provider_adapter`，响应新增 `provider_adapter` 提交摘要。
   - 服务端读取 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT`，把待提交镜头、Seedance prompt、素材 slot、素材校验和素材库 POST 给外部 adapter。
@@ -294,6 +296,7 @@ git diff --check
 - `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写、provider poll dry-run / provider_results 应用、失败分类进入 retry package、通用 provider submit adapter mock 提交、poll adapter mock 查询写回、provider 队列状态总览的超时/失败/批次汇总、provider 人工重试策略的可重提/阻断候选，以及 provider 重试执行自动化只提交可重提镜头。
 - `api.test.ts` 已覆盖 `POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback`、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`、`/provider-retry-submit`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应。
 - `web/client && npm run lint`：passed。
+- `web/client && npm run build`：passed。
 - `web/server && npm run lint`：passed。
 - `git diff --check`：passed。
 - API smoke：`20260618-story-5xha--ai_comic_drama` 本地 ignored 项目通过 `submit-provider` 提交 5 条任务，`provider-overview` 返回 200，total=5、active=5、attention=5；用于验证 ProjectDetail 新接入的 overview API 有真实数据。
