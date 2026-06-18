@@ -408,12 +408,44 @@ describe('System API', () => {
           poll_timeout_ms: 23456,
           ready_for_submit_adapter: true,
           ready_for_poll_adapter: true,
+          missing_submit_requirements: [],
+          missing_poll_requirements: [],
+          next_actions: ['adapter endpoint 已就绪，可执行提交或轮询 smoke。'],
         });
+        expect(res.body.data.configuration_warnings).toEqual([]);
         expect(res.body.data).not.toHaveProperty('submit_endpoint');
         expect(res.body.data).not.toHaveProperty('poll_endpoint');
         expect(JSON.stringify(res.body.data)).not.toContain('submit-secret');
         expect(JSON.stringify(res.body.data)).not.toContain('shared-secret');
         expect(JSON.stringify(res.body.data)).not.toContain('adapter.example.test');
+
+        delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+        delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
+        delete process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
+        delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
+
+        const missingRes = await request.get('/api/system/seedance-provider-config');
+        expect(missingRes.status).toBe(200);
+        expectSuccess(missingRes.body);
+        expect(missingRes.body.data).toMatchObject({
+          submit_endpoint_configured: false,
+          poll_endpoint_configured: false,
+          submit_token_configured: false,
+          poll_token_configured: false,
+          shared_token_configured: false,
+          ready_for_submit_adapter: false,
+          ready_for_poll_adapter: false,
+          missing_submit_requirements: ['SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'],
+          missing_poll_requirements: ['SEEDANCE_PROVIDER_POLL_ENDPOINT'],
+        });
+        expect(missingRes.body.data.next_actions).toEqual(expect.arrayContaining([
+          '配置 SEEDANCE_PROVIDER_SUBMIT_ENDPOINT 以启用提交 adapter。',
+          '配置 SEEDANCE_PROVIDER_POLL_ENDPOINT 以启用轮询 adapter。',
+        ]));
+        expect(missingRes.body.data.configuration_warnings).toEqual(expect.arrayContaining([
+          'submit adapter 未配置 bearer token；仅适用于不要求鉴权的外部 worker。',
+          'poll adapter 未配置 SEEDANCE_PROVIDER_API_TOKEN；仅适用于不要求鉴权的外部 worker。',
+        ]));
       } finally {
         if (previous.submitEndpoint === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
         else process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = previous.submitEndpoint;

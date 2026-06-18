@@ -93,17 +93,42 @@ function envNumber(name: string, fallback: number): number {
 }
 
 systemRouter.get('/seedance-provider-config', (_req, res) => {
+  const submitEndpointConfigured = envFlag('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT');
+  const pollEndpointConfigured = envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT');
+  const submitTokenConfigured = envFlag('SEEDANCE_PROVIDER_SUBMIT_API_TOKEN');
+  const sharedTokenConfigured = envFlag('SEEDANCE_PROVIDER_API_TOKEN');
+  const missingSubmitRequirements = submitEndpointConfigured ? [] : ['SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'];
+  const missingPollRequirements = pollEndpointConfigured ? [] : ['SEEDANCE_PROVIDER_POLL_ENDPOINT'];
+  const configurationWarnings = [
+    ...(!submitTokenConfigured && !sharedTokenConfigured
+      ? ['submit adapter 未配置 bearer token；仅适用于不要求鉴权的外部 worker。']
+      : []),
+    ...(!sharedTokenConfigured
+      ? ['poll adapter 未配置 SEEDANCE_PROVIDER_API_TOKEN；仅适用于不要求鉴权的外部 worker。']
+      : []),
+  ];
+  const nextActions = [
+    ...(submitEndpointConfigured ? [] : ['配置 SEEDANCE_PROVIDER_SUBMIT_ENDPOINT 以启用提交 adapter。']),
+    ...(pollEndpointConfigured ? [] : ['配置 SEEDANCE_PROVIDER_POLL_ENDPOINT 以启用轮询 adapter。']),
+    ...(submitEndpointConfigured && pollEndpointConfigured
+      ? ['adapter endpoint 已就绪，可执行提交或轮询 smoke。']
+      : []),
+  ];
   const config: SeedanceProviderAdapterConfigInfo = {
     provider: 'seedance',
-    submit_endpoint_configured: envFlag('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'),
-    poll_endpoint_configured: envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT'),
-    submit_token_configured: envFlag('SEEDANCE_PROVIDER_SUBMIT_API_TOKEN'),
-    poll_token_configured: envFlag('SEEDANCE_PROVIDER_API_TOKEN'),
-    shared_token_configured: envFlag('SEEDANCE_PROVIDER_API_TOKEN'),
+    submit_endpoint_configured: submitEndpointConfigured,
+    poll_endpoint_configured: pollEndpointConfigured,
+    submit_token_configured: submitTokenConfigured,
+    poll_token_configured: sharedTokenConfigured,
+    shared_token_configured: sharedTokenConfigured,
     submit_timeout_ms: envNumber('SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS', 30000),
     poll_timeout_ms: envNumber('SEEDANCE_PROVIDER_POLL_TIMEOUT_MS', 30000),
-    ready_for_submit_adapter: envFlag('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'),
-    ready_for_poll_adapter: envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT'),
+    ready_for_submit_adapter: submitEndpointConfigured,
+    ready_for_poll_adapter: pollEndpointConfigured,
+    missing_submit_requirements: missingSubmitRequirements,
+    missing_poll_requirements: missingPollRequirements,
+    configuration_warnings: configurationWarnings,
+    next_actions: nextActions,
     generated_at: new Date().toISOString(),
   };
   res.json(success(config));

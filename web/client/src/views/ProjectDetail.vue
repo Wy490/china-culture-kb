@@ -170,6 +170,24 @@
                     : '未配置'
                 }}
               </span>
+              <span
+                v-for="item in seedanceProviderAdapterConfig.missing_submit_requirements"
+                :key="`submit-${item}`"
+              >
+                缺 {{ item }}
+              </span>
+              <span
+                v-for="item in seedanceProviderAdapterConfig.missing_poll_requirements"
+                :key="`poll-${item}`"
+              >
+                缺 {{ item }}
+              </span>
+              <span
+                v-for="item in seedanceProviderAdapterConfig.next_actions.slice(0, 2)"
+                :key="item"
+              >
+                {{ item }}
+              </span>
             </template>
           </div>
           <div v-if="latestSeedanceProviderQueueBatch" class="project-detail-page__seedance-provider-queue">

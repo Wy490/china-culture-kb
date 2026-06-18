@@ -3905,6 +3905,10 @@ export interface SeedanceProviderAdapterConfigInfo {
   poll_timeout_ms: number;
   ready_for_submit_adapter: boolean;
   ready_for_poll_adapter: boolean;
+  missing_submit_requirements: string[];
+  missing_poll_requirements: string[];
+  configuration_warnings: string[];
+  next_actions: string[];
   generated_at: string;
 }
 
