@@ -449,6 +449,18 @@ const SeedanceShotProductionStatusSchema = z.enum([
 
 const SeedanceShotProviderQueuePrioritySchema = z.enum(['low', 'normal', 'high']);
 const SeedanceShotProviderRecoverableStatusSchema = z.enum(['submitted', 'processing']);
+const SeedanceProviderFailureCategorySchema = z.enum([
+  'asset_missing',
+  'prompt_invalid',
+  'content_policy',
+  'provider_timeout',
+  'provider_quota',
+  'provider_auth',
+  'provider_rate_limit',
+  'provider_server_error',
+  'network_error',
+  'unknown',
+]);
 
 export const SeedanceShotStatusUpdateRequestSchema = z.object({
   shot_id: z.string().trim().min(1).max(80),
@@ -459,6 +471,8 @@ export const SeedanceShotStatusUpdateRequestSchema = z.object({
   provider_queue_position: z.number().int().min(1).max(10000).optional(),
   video_url: z.string().trim().url().optional(),
   failure_reason: z.string().trim().min(1).max(500).optional(),
+  failure_category: SeedanceProviderFailureCategorySchema.optional(),
+  provider_error_code: z.string().trim().min(1).max(120).optional(),
   note: z.string().trim().min(1).max(500).optional(),
   increment_retry: z.boolean().optional(),
   quality_score: z.number().min(0).max(100).optional(),
@@ -520,6 +534,12 @@ export const SeedanceShotCallbackRequestSchema = z.object({
   url: z.string().trim().url().optional(),
   failure_reason: z.string().trim().min(1).max(500).optional(),
   failureReason: z.string().trim().min(1).max(500).optional(),
+  failure_category: SeedanceProviderFailureCategorySchema.optional(),
+  failureCategory: SeedanceProviderFailureCategorySchema.optional(),
+  provider_error_code: z.string().trim().min(1).max(120).optional(),
+  providerErrorCode: z.string().trim().min(1).max(120).optional(),
+  error_code: z.string().trim().min(1).max(120).optional(),
+  errorCode: z.string().trim().min(1).max(120).optional(),
   error: z.string().trim().min(1).max(500).optional(),
   message: z.string().trim().min(1).max(500).optional(),
   note: z.string().trim().min(1).max(500).optional(),

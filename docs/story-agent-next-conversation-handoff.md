@@ -32,7 +32,7 @@
 | 模块 | 进度判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
-| Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 90% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema 和轮询入口首版。 |
+| Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 91% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类和 provider 错误码传递首版。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划已具备；字幕/混音/片头片尾/final delivery 仍待做。 |
 | 可商用制作中台 | 约 35-40% | 主链路可用，但还缺 UX 降噪、资产绑定、状态总览、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 75-80% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story`、`kb_generate_gears_delivery`、`kb_generate_seedance_prompt`、`kb_repair_story(auto_apply=false/true)`、`kb_update_project_version` 已完成；真实项目 auto_apply smoke 已通过，后续剩更深模型修复链路和前端质量反馈增强。 |
@@ -208,6 +208,11 @@ MCP 原则：
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/poll-provider`。
   - dry-run 会按 provider、queue、shot、状态筛选待查询 job，可选带出 Seedance prompt 供外部 worker 使用。
   - 请求带 `provider_results` 时会把外部 adapter 查询到的状态快照归一化并写回 Shot Ledger。
+- 单故事 Seedance provider 失败分类首版：
+  - 共享类型新增 `SeedanceProviderFailureCategory`，状态更新、外部回传、轮询结果、版本记录、ledger 和重试包都可携带 `failure_category` 与 `provider_error_code`。
+  - 回传归一化会根据显式分类、provider 错误码、失败原因和 message 推断素材缺失、提示词非法、内容审核、超时、额度、鉴权、限流、服务端、网络和未知错误。
+  - 超时恢复默认写入 `provider_timeout` / `PROVIDER_TIMEOUT`，重试包 Markdown / JSON 会显示失败分类、provider 错误码和分类化建议动作。
+  - Production Board 同步 ledger 时保留失败分类和错误码，避免导出重试包时丢失 provider 失败上下文。
 - 前端质量反馈视图首版：
   - 项目详情页“当前版本质量”新增类型反馈面板。
   - 默认聚合显示缺失要素、弱节拍、不适配表达、修复建议。
@@ -226,37 +231,27 @@ MCP 原则：
 - 修复后台 webhook / gears video / gears delivery 异步回写时因环境变量恢复而串到默认 generated 目录的问题。
 - API 测试会隔离生成物，当前已确认不再留下 `web/web/generated/projects` 测试残留。
 
-本轮改动范围（提交前）：
+当前追加改动范围（提交前）：
 
+- `docs/story-agent-next-development-plan.md`
 - `docs/story-agent-next-conversation-handoff.md`
 - `docs/story-agent-production-workbench-development-plan.md`
-- `mcp-server/src/tools/generate-gears-delivery.ts`
-- `mcp-server/src/tools/generate-seedance-prompt.ts`
-- `mcp-server/src/tools/repair-story.ts`
-- `mcp-server/src/tools/update-project-version.ts`
-- `mcp-server/src/index.ts`
-- `mcp-server/__tests__/generate-gears-delivery.test.ts`
-- `mcp-server/__tests__/generate-seedance-prompt.test.ts`
-- `mcp-server/__tests__/repair-story.test.ts`
-- `mcp-server/__tests__/update-project-version.test.ts`
-- `web/client/src/api/projects.ts`
-- `web/client/src/api/client.ts`
-- `web/client/src/views/ProjectDetail.vue`
+- `开发文档/story-agent-mcp-quality-delivery-implementation-plan.md`
 - `web/server/src/__tests__/api.test.ts`
 - `web/server/src/__tests__/project-service.test.ts`
 - `web/server/src/services/production-board-service.ts`
-- `web/server/src/routes/projects.ts`
 - `web/server/src/services/project-service.ts`
 - `web/shared/schemas.ts`
 - `web/shared/types.ts`
 
 ## 4. 已验证内容
 
-本轮重新通过：
+近期验证清单（当前追加改动已重跑 `web/client` lint、`web/server` lint/test；MCP/build 项为上一轮完整验证记录）：
 
 ```bash
 cd web/client && npm run lint
 cd web/server && npm run lint
+cd web/server && npm test
 cd web/server && npm test -- src/__tests__/seedance-prompt-service.test.ts
 cd web/server && npm test -- src/__tests__/project-service.test.ts
 cd web/server && npm test -- src/__tests__/api.test.ts
@@ -267,7 +262,6 @@ cd mcp-server && npm test -- __tests__/update-project-version.test.ts
 cd mcp-server && npm test
 cd mcp-server && npm run build
 cd web/client && npm run build
-cd web/server && npm run lint
 git diff --check
 ```
 
@@ -276,8 +270,9 @@ git diff --check
 - `project-service.test.ts`：26 passed。
 - `seedance-prompt-service.test.ts`：1 passed。
 - `api.test.ts`：85 passed。
-- `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写，以及 provider poll dry-run / provider_results 应用。
-- `api.test.ts` 已覆盖 `POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback` 和 `/poll-provider`。
+- `web/server && npm test`：24 files passed，232 tests passed。
+- `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写、provider poll dry-run / provider_results 应用、失败分类进入 retry package。
+- `api.test.ts` 已覆盖 `POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback`、`/poll-provider`，以及 provider 失败错误码归一化写回 ledger。
 - `seedance-prompt-service.test.ts` 已覆盖 `@视频1` 运镜/节奏参考和 `@音频1` 音乐/音效参考的生成、计数和镜头 prompt 用途说明。
 - `generate-gears-delivery.test.ts`：4 passed，覆盖 `project_id`、`story_json`、`story_id`、非法 ID 和缺失项目。
 - `generate-seedance-prompt.test.ts`：4 passed，覆盖 `project_id`、`story_json`、`story_id`、非法 ID、缺失项目、`@视频/@音频` 引用和 Markdown 开关。
@@ -326,7 +321,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-完善 Seedance 制作链素材与 provider 提交
+新增 Seedance provider 失败分类
 ```
 
 ### P0：继续故事管理 UX 降噪
@@ -345,11 +340,10 @@ git diff --stat
 
 ### P0：Production Board 修复闭环继续补强
 
-已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、外部素材批量导入与上传态字段、真实文件上传、跨项目素材库复用、素材上传历史 UI、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据和 provider 超时恢复首版，下一步：
+已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、外部素材批量导入与上传态字段、真实文件上传、跨项目素材库复用、素材上传历史 UI、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口和失败分类首版，下一步：
 
 - 真实 Seedance / 外部 provider API adapter 对接。
-- 更细的 provider 失败原因分类、人工重试策略和队列状态总览。
-- 更细的失败原因分类、人工重试策略和队列状态总览。
+- 基于真实平台错误码继续扩展失败分类映射、人工重试策略和队列状态总览。
 
 ### P0-P1：Seedance 资产引用字段和素材校验
 
@@ -371,12 +365,13 @@ git diff --stat
 - 素材上传历史 UI 首版。
 - Seedance Shot Ledger 首版。
 - Seedance provider 任务提交抽象首版。
+- Seedance provider 失败分类和错误码传递首版。
 - `@视频1` / `@音频1` 引用校验首版。
 
 仍待做：
 
-- 更多 provider 元数据。
-- 真实 Seedance / 外部 provider API 对接、队列化和错误恢复。
+- 真实 Seedance / 外部 provider API 对接。
+- 队列状态总览、人工重试策略和真实平台错误码映射扩展。
 
 字段规则必须遵守：
 
@@ -394,7 +389,7 @@ MCP 计划的下一步是把已验证的修复闭环接入更深模型修复链�
 
 1. 更深模型修复链路：根据 repair_actions 产出 `repaired_story_json`。
 2. 前端质量反馈增强：质量 drilldown、真实浏览器视觉回归。
-3. Seedance provider 元数据与队列化准备。
+3. Seedance provider 真实 API adapter。
 
 `kb_generate_gears_delivery` 已完成首版：
 
@@ -492,7 +487,7 @@ ready 镜头
 可以直接把下面这段发给新对话：
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先收尾当前工作区，然后继续 P0：Seedance provider 真实 API adapter / 失败分类、MCP 更深模型修复链路、故事管理 UX 降噪。默认界面保持简单，只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先收尾当前工作区，然后继续 P0：Seedance provider 真实 API adapter、MCP 更深模型修复链路、故事管理 UX 降噪。默认界面保持简单，只保留高频主路径。
 ```
 
 ## 10. 下一步执行建议
@@ -500,19 +495,19 @@ ready 镜头
 如果只继续一个最小任务，建议做：
 
 ```text
-Seedance provider 真实 API adapter 和失败分类
+Seedance provider 真实 API adapter
 ```
 
 理由：
 
 - MCP 诊断、修复建议、受控版本写入、安全 auto_apply、真实项目回读和前端质量反馈首版都已经跑通。
-- Provider 队列元数据、超时恢复、外部回传 schema 和轮询入口首版已经落地，下一步要补真实 provider API adapter 和失败分类。
+- Provider 队列元数据、超时恢复、外部回传 schema、轮询入口和失败分类首版已经落地，下一步要补真实 provider API adapter。
 - 这会把“提示词包”继续推进到“可持续生产任务流”。
 
 如果准备做下一组任务，建议顺序：
 
 1. 收尾并提交当前改动。
 2. StoryStudio / Projects 继续降噪。
-3. Seedance provider 元数据与队列化准备。
+3. Seedance provider 真实 API adapter。
 4. MCP 更深模型修复链路。
 5. AI 漫剧 `export-seedance-subtitles`。

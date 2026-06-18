@@ -962,7 +962,7 @@ describe('Projects API', () => {
       const submitRes = await request
         .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/submit-provider`)
         .send({
-          shot_ids: ['shot-1'],
+          shot_ids: ['shot-1', 'shot-2'],
           provider: 'seedance',
           job_prefix: 'api-provider-poll-job',
           queue_id: 'api-provider-poll-queue-001',
@@ -982,16 +982,24 @@ describe('Projects API', () => {
       expectSuccess(dryRunRes.body);
       expect(dryRunRes.body.data).toMatchObject({
         dry_run: true,
-        checked_count: 1,
-        pollable_count: 1,
+        checked_count: 2,
+        pollable_count: 2,
         updated_count: 0,
-        poll_targets: [{
+      });
+      expect(dryRunRes.body.data.poll_targets).toEqual(expect.arrayContaining([
+        expect.objectContaining({
           shot_id: 'shot-1',
           provider_job_id: 'api-provider-poll-job-shot-1',
           provider_queue_id: 'api-provider-poll-queue-001',
           status: 'submitted',
-        }],
-      });
+        }),
+        expect.objectContaining({
+          shot_id: 'shot-2',
+          provider_job_id: 'api-provider-poll-job-shot-2',
+          provider_queue_id: 'api-provider-poll-queue-001',
+          status: 'submitted',
+        }),
+      ]));
       expect(dryRunRes.body.data.poll_targets[0].seedance_prompt).toContain('0-3秒');
 
       const applyRes = await request
@@ -1006,6 +1014,12 @@ describe('Projects API', () => {
             quality_score: 97,
             review_note: 'provider poll route 回片可用',
             message: 'provider completed',
+          }, {
+            provider_job_id: 'api-provider-poll-job-shot-2',
+            status: 'error',
+            provider_error_code: 'ASSET_MISSING',
+            failure_reason: '缺少参考素材文件',
+            message: 'missing asset',
           }],
           note: 'API provider poll 应用回传',
         });
@@ -1013,9 +1027,9 @@ describe('Projects API', () => {
       expectSuccess(applyRes.body);
       expect(applyRes.body.data).toMatchObject({
         dry_run: false,
-        checked_count: 1,
+        checked_count: 2,
         pollable_count: 0,
-        updated_count: 1,
+        updated_count: 2,
         failed_count: 0,
         poll_targets: [],
       });
@@ -1026,6 +1040,16 @@ describe('Projects API', () => {
         provider_job_id: 'api-provider-poll-job-shot-1',
         provider_queue_id: 'api-provider-poll-queue-001',
         video_url: 'https://example.com/api/provider-poll-shot-1.mp4',
+      });
+      expect(applyRes.body.data.seedance_shot_ledger.items.find((item: any) =>
+        item.shot_id === 'shot-2'
+      )).toMatchObject({
+        status: 'failed',
+        provider_job_id: 'api-provider-poll-job-shot-2',
+        provider_queue_id: 'api-provider-poll-queue-001',
+        failure_reason: '缺少参考素材文件',
+        failure_category: 'asset_missing',
+        provider_error_code: 'ASSET_MISSING',
       });
     });
 

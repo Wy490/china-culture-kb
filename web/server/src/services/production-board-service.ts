@@ -373,6 +373,8 @@ export function syncSeedanceShotLedgerWithShots(input: {
       provider_queue_position: existing?.provider_queue_position,
       video_url: existing?.video_url,
       failure_reason: existing?.failure_reason,
+      failure_category: existing?.failure_category,
+      provider_error_code: existing?.provider_error_code,
       retry_count: existing?.retry_count ?? 0,
       notes: existing?.notes?.length
         ? uniqueStrings(existing.notes).slice(-12)

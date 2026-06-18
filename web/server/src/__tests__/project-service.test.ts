@@ -828,7 +828,7 @@ describe('project-service', () => {
     const story = makeStory();
     const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
     const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
-      shot_ids: ['shot-1'],
+      shot_ids: ['shot-1', 'shot-2'],
       provider: 'seedance',
       job_prefix: 'provider-poll-test',
       queue_id: 'provider-poll-queue-001',
@@ -846,8 +846,8 @@ describe('project-service', () => {
       dry_run: true,
       provider: 'seedance',
       queue_id: 'provider-poll-queue-001',
-      checked_count: 1,
-      pollable_count: 1,
+      checked_count: 2,
+      pollable_count: 2,
       updated_count: 0,
     });
     expect(dryRunRes.data?.poll_targets[0]).toMatchObject({
@@ -869,6 +869,12 @@ describe('project-service', () => {
         qualityScore: 95,
         reviewNote: 'poll 回片可用',
         message: 'provider poll completed',
+      }, {
+        jobId: 'provider-poll-test-shot-2',
+        status: 'failed',
+        errorCode: 'RATE_LIMIT_429',
+        error: '平台限流，请稍后重试',
+        message: 'provider rate limited',
       }],
       note: 'provider poll 应用回传',
     });
@@ -877,9 +883,9 @@ describe('project-service', () => {
       dry_run: false,
       provider: 'seedance',
       queue_id: 'provider-poll-queue-001',
-      checked_count: 1,
+      checked_count: 2,
       pollable_count: 0,
-      updated_count: 1,
+      updated_count: 2,
       failed_count: 0,
       poll_targets: [],
     });
@@ -893,6 +899,28 @@ describe('project-service', () => {
       video_url: 'https://example.com/seedance-videos/provider-poll-shot-1.mp4',
       selected_version_id: 'seedance-shot-shot-1-v2',
     });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'failed',
+      provider: 'seedance',
+      provider_job_id: 'provider-poll-test-shot-2',
+      provider_queue_id: 'provider-poll-queue-001',
+      failure_reason: '平台限流，请稍后重试',
+      failure_category: 'provider_rate_limit',
+      provider_error_code: 'RATE_LIMIT_429',
+    });
+
+    const retryPackageRes = await exportProjectSeedanceRetryPackage(enriched.project_id!);
+    expect(retryPackageRes.ok).toBe(true);
+    expect(retryPackageRes.data?.shots.find(shot => shot.shot_id === 'shot-2')).toMatchObject({
+      failure_reason: '平台限流，请稍后重试',
+      failure_category: 'provider_rate_limit',
+      provider_error_code: 'RATE_LIMIT_429',
+      suggested_action: '等待限流窗口恢复后再重新提交。',
+    });
+    expect(retryPackageRes.data?.markdown).toContain('失败分类: provider_rate_limit');
+    expect(retryPackageRes.data?.markdown).toContain('Provider 错误码: RATE_LIMIT_429');
   });
 
   it('exports a production board package to the project directory', async () => {

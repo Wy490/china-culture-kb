@@ -40,6 +40,7 @@ import type {
   SeedanceShotCallbackRequest,
   SeedanceShotLedgerItem,
   SeedanceShotProductionStatus,
+  SeedanceProviderFailureCategory,
   SeedanceShotProviderCallbackRequest,
   SeedanceShotProviderCallbackResult,
   SeedanceShotProviderPollRequest,
@@ -416,6 +417,8 @@ function appendSeedanceShotVideoVersion(params: {
     provider_job_id: params.request.provider_job_id ?? params.existing?.provider_job_id,
     video_url: params.request.video_url ?? params.existing?.video_url,
     failure_reason: params.request.failure_reason,
+    failure_category: params.request.failure_category,
+    provider_error_code: params.request.provider_error_code,
     note: params.request.note,
     quality_score: params.request.quality_score,
     review_note: params.request.review_note,
@@ -427,6 +430,8 @@ function appendSeedanceShotVideoVersion(params: {
     && last.provider_job_id === nextVersion.provider_job_id
     && last.video_url === nextVersion.video_url
     && last.failure_reason === nextVersion.failure_reason
+    && last.failure_category === nextVersion.failure_category
+    && last.provider_error_code === nextVersion.provider_error_code
   ) {
     return versions;
   }
@@ -489,6 +494,69 @@ function normalizeSeedanceShotCallbackStatus(
   if (hasFailureReason) return 'failed';
   if (hasVideoUrl) return 'ready';
   return 'processing';
+}
+
+function normalizeProviderFailureCategory(value: unknown): SeedanceProviderFailureCategory | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim();
+  const categories: SeedanceProviderFailureCategory[] = [
+    'asset_missing',
+    'prompt_invalid',
+    'content_policy',
+    'provider_timeout',
+    'provider_quota',
+    'provider_auth',
+    'provider_rate_limit',
+    'provider_server_error',
+    'network_error',
+    'unknown',
+  ];
+  return categories.includes(normalized as SeedanceProviderFailureCategory)
+    ? normalized as SeedanceProviderFailureCategory
+    : undefined;
+}
+
+function classifySeedanceProviderFailure(input: {
+  explicitCategory?: unknown;
+  providerErrorCode?: string;
+  failureReason?: string;
+  message?: string;
+}): SeedanceProviderFailureCategory | undefined {
+  const explicit = normalizeProviderFailureCategory(input.explicitCategory);
+  if (explicit) return explicit;
+  const text = [input.providerErrorCode, input.failureReason, input.message]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  if (!text.trim()) return undefined;
+  if (/(asset|material|file|upload|reference|missing|not_found|not found|素材|文件|上传|缺失|缺少)/.test(text)) {
+    return 'asset_missing';
+  }
+  if (/(prompt|parameter|invalid|bad_request|400|提示词|参数|格式|无效|过长|超长)/.test(text)) {
+    return 'prompt_invalid';
+  }
+  if (/(policy|safety|moderation|copyright|sensitive|violation|违规|审核|安全|敏感|版权)/.test(text)) {
+    return 'content_policy';
+  }
+  if (/(timeout|timed out|deadline|超时|等待过久)/.test(text)) {
+    return 'provider_timeout';
+  }
+  if (/(quota|insufficient|balance|billing|payment|余额|额度|配额|欠费)/.test(text)) {
+    return 'provider_quota';
+  }
+  if (/(auth|unauthorized|forbidden|401|403|token|permission|鉴权|认证|权限|令牌)/.test(text)) {
+    return 'provider_auth';
+  }
+  if (/(rate|too_many|429|throttle|限流|频率|过多请求)/.test(text)) {
+    return 'provider_rate_limit';
+  }
+  if (/(5\d\d|server|internal|unavailable|gateway|平台异常|服务异常|服务器|不可用)/.test(text)) {
+    return 'provider_server_error';
+  }
+  if (/(network|socket|dns|connection|econn|网络|连接)/.test(text)) {
+    return 'network_error';
+  }
+  return 'unknown';
 }
 
 function seedanceShotStatusText(status: SeedanceShotProductionStatus): string {
@@ -641,10 +709,21 @@ function resolveSeedanceShotCallbackUpdate(
   const explicitFailureReason = callbackStringField(
     callback.failure_reason ?? callback.failureReason ?? callback.error,
   );
+  const providerErrorCode = callbackStringField(
+    callback.provider_error_code ?? callback.providerErrorCode ?? callback.error_code ?? callback.errorCode,
+  );
   const callbackMessage = callbackStringField(callback.message);
   const status = normalizeSeedanceShotCallbackStatus(callback.status, Boolean(videoUrl), Boolean(explicitFailureReason));
   const failureReason = status === 'failed'
     ? explicitFailureReason ?? callbackMessage
+    : undefined;
+  const failureCategory = status === 'failed'
+    ? classifySeedanceProviderFailure({
+        explicitCategory: callback.failure_category ?? callback.failureCategory,
+        providerErrorCode,
+        failureReason,
+        message: callbackMessage,
+      })
     : undefined;
   return {
     shot_id: shotId,
@@ -655,6 +734,8 @@ function resolveSeedanceShotCallbackUpdate(
     provider_queue_position: providerQueuePosition ?? matchedItem?.provider_queue_position,
     video_url: videoUrl,
     failure_reason: failureReason,
+    failure_category: failureCategory,
+    provider_error_code: status === 'failed' ? providerErrorCode : undefined,
     note: callbackStringField(callback.note)
       ?? callbackMessage
       ?? `Seedance 回传导入：${seedanceShotStatusText(status)}`,
@@ -674,6 +755,16 @@ function shouldRetrySeedanceShot(item?: SeedanceShotLedgerItem): boolean {
 function seedanceShotRetrySuggestedAction(item?: SeedanceShotLedgerItem): string {
   if (!item) return '尚未提交，按原提示词提交生成。';
   if (item.status === 'failed') {
+    if (item.failure_category === 'asset_missing') return '先补齐或重新绑定缺失素材，再重新提交。';
+    if (item.failure_category === 'prompt_invalid') return '先精简或修正 Seedance 提示词，再重新提交。';
+    if (item.failure_category === 'content_policy') return '先调整敏感画面、人物或版权相关表达，再重新提交。';
+    if (item.failure_category === 'provider_timeout') return '先确认平台任务是否仍在处理；超时无结果时重新提交。';
+    if (item.failure_category === 'provider_quota') return '先确认 provider 额度或余额，再重新提交。';
+    if (item.failure_category === 'provider_auth') return '先检查 provider 凭证和权限配置，再重新提交。';
+    if (item.failure_category === 'provider_rate_limit') return '等待限流窗口恢复后再重新提交。';
+    if (item.failure_category === 'provider_server_error' || item.failure_category === 'network_error') {
+      return '稍后重试；若连续失败，保留错误码并切换 provider 或人工检查。';
+    }
     return item.retry_count > 0 ? '检查失败原因后再次提交，必要时微调负向约束。' : '按原提示词重新提交一次。';
   }
   if (item.status === 'ready' && !item.video_url) return '状态已完成但缺少视频 URL，优先向平台补拉结果。';
@@ -1519,6 +1610,8 @@ export async function updateProjectSeedanceShotStatus(
     provider_queue_position: request.provider_queue_position ?? existing?.provider_queue_position,
     video_url: request.video_url ?? existing?.video_url,
     failure_reason: request.failure_reason ?? (request.status === 'failed' ? existing?.failure_reason : undefined),
+    failure_category: request.failure_category ?? (request.status === 'failed' ? existing?.failure_category : undefined),
+    provider_error_code: request.provider_error_code ?? (request.status === 'failed' ? existing?.provider_error_code : undefined),
     retry_count: (existing?.retry_count ?? 0) + (request.increment_retry ? 1 : 0),
     notes: uniqueSeedanceNotes([
       ...(existing?.notes ?? []),
@@ -1626,6 +1719,8 @@ export async function selectProjectSeedanceShotVersion(
       provider_job_id: version.provider_job_id ?? candidate.provider_job_id,
       video_url: version.video_url,
       failure_reason: undefined,
+      failure_category: undefined,
+      provider_error_code: undefined,
       selected_version_id: version.version_id,
       notes: uniqueSeedanceNotes([
         ...candidate.notes,
@@ -1678,6 +1773,8 @@ export async function autoSelectProjectSeedanceShotVersions(
       provider_job_id: bestVersion.provider_job_id ?? item.provider_job_id,
       video_url: bestVersion.video_url,
       failure_reason: undefined,
+      failure_category: undefined,
+      provider_error_code: undefined,
       selected_version_id: bestVersion.version_id,
       notes: uniqueSeedanceNotes([
         ...item.notes,
@@ -1791,6 +1888,8 @@ export async function submitProjectSeedanceShotsToProvider(
       provider_queue_id: queueId,
       provider_queue_position: queuePosition,
       failure_reason: undefined,
+      failure_category: undefined,
+      provider_error_code: undefined,
       retry_count: item.status === 'failed' ? item.retry_count + 1 : item.retry_count,
       notes: uniqueSeedanceNotes([
         ...item.notes,
@@ -1909,6 +2008,7 @@ export async function recoverProjectSeedanceProviderQueue(
         updated_at: item.updated_at,
         minutes_waiting: minutesWaiting,
         failure_reason: failureReason,
+        failure_category: 'provider_timeout' as const,
       };
     })
     .filter(item => item.minutes_waiting >= timeoutMinutes);
@@ -1938,6 +2038,8 @@ export async function recoverProjectSeedanceProviderQueue(
       completed_at: updatedAt,
       updated_at: updatedAt,
       failure_reason: failureReason,
+      failure_category: 'provider_timeout' as const,
+      provider_error_code: 'PROVIDER_TIMEOUT',
       notes: uniqueSeedanceNotes([
         ...item.notes,
         note ?? `Provider 超时恢复：等待 ${timedOut.minutes_waiting} 分钟`,
@@ -1949,6 +2051,8 @@ export async function recoverProjectSeedanceProviderQueue(
           status: 'failed',
           provider_job_id: item.provider_job_id,
           failure_reason: failureReason,
+          failure_category: 'provider_timeout',
+          provider_error_code: 'PROVIDER_TIMEOUT',
           note: note ?? `Provider 超时恢复：等待 ${timedOut.minutes_waiting} 分钟`,
         },
         updatedAt,
@@ -2175,6 +2279,8 @@ export async function exportProjectSeedanceRetryPackage(
         status: item?.status ?? 'prompt_exported',
         retry_count: item?.retry_count ?? 0,
         failure_reason: item?.failure_reason,
+        failure_category: item?.failure_category,
+        provider_error_code: item?.provider_error_code,
         provider_job_id: item?.provider_job_id,
         last_video_url: item?.video_url,
         suggested_action: seedanceShotRetrySuggestedAction(item),
@@ -2574,6 +2680,8 @@ function buildSeedanceRetryPackageMarkdown(
       '',
       `- 状态: ${seedanceShotStatusText(shot.status)}`,
       `- 失败原因: ${shot.failure_reason ?? '未记录'}`,
+      `- 失败分类: ${shot.failure_category ?? '未分类'}`,
+      `- Provider 错误码: ${shot.provider_error_code ?? '未记录'}`,
       `- 重试次数: ${shot.retry_count}`,
       `- 上次 job: ${shot.provider_job_id ?? '未记录'}`,
       `- 上次视频: ${shot.last_video_url ?? '未记录'}`,

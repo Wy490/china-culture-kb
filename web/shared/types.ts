@@ -1246,6 +1246,18 @@ export type SeedanceShotProductionStatus =
   | 'failed'
   | 'skipped';
 
+export type SeedanceProviderFailureCategory =
+  | 'asset_missing'
+  | 'prompt_invalid'
+  | 'content_policy'
+  | 'provider_timeout'
+  | 'provider_quota'
+  | 'provider_auth'
+  | 'provider_rate_limit'
+  | 'provider_server_error'
+  | 'network_error'
+  | 'unknown';
+
 export interface SeedanceShotVideoVersion {
   version_id: string;
   status: SeedanceShotProductionStatus;
@@ -1253,6 +1265,8 @@ export interface SeedanceShotVideoVersion {
   provider_job_id?: string;
   video_url?: string;
   failure_reason?: string;
+  failure_category?: SeedanceProviderFailureCategory;
+  provider_error_code?: string;
   note?: string;
   quality_score?: number;
   review_note?: string;
@@ -1273,6 +1287,8 @@ export interface SeedanceShotLedgerItem {
   provider_queue_position?: number;
   video_url?: string;
   failure_reason?: string;
+  failure_category?: SeedanceProviderFailureCategory;
+  provider_error_code?: string;
   retry_count: number;
   notes: string[];
   versions: SeedanceShotVideoVersion[];
@@ -1325,6 +1341,8 @@ export interface SeedanceShotStatusUpdateRequest {
   provider_queue_position?: number;
   video_url?: string;
   failure_reason?: string;
+  failure_category?: SeedanceProviderFailureCategory;
+  provider_error_code?: string;
   note?: string;
   increment_retry?: boolean;
   quality_score?: number;
@@ -1416,6 +1434,8 @@ export interface SeedanceShotProviderRecoveryItem {
   updated_at: string;
   minutes_waiting: number;
   failure_reason?: string;
+  failure_category?: SeedanceProviderFailureCategory;
+  provider_error_code?: string;
 }
 
 export interface SeedanceShotProviderRecoveryResult {
@@ -1466,6 +1486,12 @@ export interface SeedanceShotCallbackRequest {
   url?: string;
   failure_reason?: string;
   failureReason?: string;
+  failure_category?: SeedanceProviderFailureCategory;
+  failureCategory?: SeedanceProviderFailureCategory;
+  provider_error_code?: string;
+  providerErrorCode?: string;
+  error_code?: string;
+  errorCode?: string;
   error?: string;
   message?: string;
   note?: string;
@@ -1557,6 +1583,8 @@ export interface SeedanceShotRetryPackageShot {
   status: SeedanceShotProductionStatus;
   retry_count: number;
   failure_reason?: string;
+  failure_category?: SeedanceProviderFailureCategory;
+  provider_error_code?: string;
   provider_job_id?: string;
   last_video_url?: string;
   suggested_action: string;
