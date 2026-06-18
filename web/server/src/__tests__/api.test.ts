@@ -383,6 +383,7 @@ describe('System API', () => {
         pollEndpoint: process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT,
         submitToken: process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN,
         sharedToken: process.env.SEEDANCE_PROVIDER_API_TOKEN,
+        callbackSecret: process.env.SEEDANCE_CALLBACK_SECRET,
         submitTimeout: process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS,
         pollTimeout: process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS,
       };
@@ -391,6 +392,7 @@ describe('System API', () => {
         process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = 'https://adapter.example.test/seedance/poll';
         process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = 'submit-secret';
         process.env.SEEDANCE_PROVIDER_API_TOKEN = 'shared-secret';
+        process.env.SEEDANCE_CALLBACK_SECRET = 'callback-secret';
         process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = '12345';
         process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = '23456';
 
@@ -404,6 +406,7 @@ describe('System API', () => {
           submit_token_configured: true,
           poll_token_configured: true,
           shared_token_configured: true,
+          callback_secret_configured: true,
           submit_timeout_ms: 12345,
           poll_timeout_ms: 23456,
           ready_for_submit_adapter: true,
@@ -417,12 +420,14 @@ describe('System API', () => {
         expect(res.body.data).not.toHaveProperty('poll_endpoint');
         expect(JSON.stringify(res.body.data)).not.toContain('submit-secret');
         expect(JSON.stringify(res.body.data)).not.toContain('shared-secret');
+        expect(JSON.stringify(res.body.data)).not.toContain('callback-secret');
         expect(JSON.stringify(res.body.data)).not.toContain('adapter.example.test');
 
         delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
         delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
         delete process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN;
         delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
+        delete process.env.SEEDANCE_CALLBACK_SECRET;
 
         const missingRes = await request.get('/api/system/seedance-provider-config');
         expect(missingRes.status).toBe(200);
@@ -433,6 +438,7 @@ describe('System API', () => {
           submit_token_configured: false,
           poll_token_configured: false,
           shared_token_configured: false,
+          callback_secret_configured: false,
           ready_for_submit_adapter: false,
           ready_for_poll_adapter: false,
           missing_submit_requirements: ['SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'],
@@ -455,6 +461,8 @@ describe('System API', () => {
         else process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = previous.submitToken;
         if (previous.sharedToken === undefined) delete process.env.SEEDANCE_PROVIDER_API_TOKEN;
         else process.env.SEEDANCE_PROVIDER_API_TOKEN = previous.sharedToken;
+        if (previous.callbackSecret === undefined) delete process.env.SEEDANCE_CALLBACK_SECRET;
+        else process.env.SEEDANCE_CALLBACK_SECRET = previous.callbackSecret;
         if (previous.submitTimeout === undefined) delete process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
         else process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = previous.submitTimeout;
         if (previous.pollTimeout === undefined) delete process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
@@ -470,6 +478,11 @@ describe('System API', () => {
       expectSuccess(res.body);
       expect(res.body.data).toMatchObject({
         provider: 'seedance',
+        callback_auth_env: 'SEEDANCE_CALLBACK_SECRET',
+        callback_auth_headers: [
+          'Authorization: Bearer <SECRET>',
+          'X-Seedance-Callback-Secret: <SECRET>',
+        ],
         submit: {
           schema_version: 'seedance-provider-submit/v1',
           endpoint_env: 'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT',
@@ -1089,6 +1102,47 @@ describe('Projects API', () => {
   });
 
   describe('POST /api/projects/:projectId/production-board/seedance-shots/import', () => {
+    it('requires provider callback secret when configured for single-story projects', async () => {
+      const previousCallbackSecret = process.env.SEEDANCE_CALLBACK_SECRET;
+      process.env.SEEDANCE_CALLBACK_SECRET = 'test-seedance-secret';
+      try {
+        const res = await request
+          .post('/api/projects/20260617-story-apspv--ai_comic_drama/production-board/seedance-shots/provider-callback')
+          .send({
+            provider: 'seedance',
+            jobId: 'single-story-provider-secret-job-001',
+            status: 'COMPLETED',
+            videoUrl: 'https://example.com/api/provider-callback-secret-shot.mp4',
+          });
+        expect(res.status).toBe(401);
+        expectFailure(res.body, 'VALIDATION_ERROR');
+      } finally {
+        if (previousCallbackSecret === undefined) delete process.env.SEEDANCE_CALLBACK_SECRET;
+        else process.env.SEEDANCE_CALLBACK_SECRET = previousCallbackSecret;
+      }
+    });
+
+    it('accepts bearer callback secret before looking up the single-story project', async () => {
+      const previousCallbackSecret = process.env.SEEDANCE_CALLBACK_SECRET;
+      process.env.SEEDANCE_CALLBACK_SECRET = 'test-seedance-secret';
+      try {
+        const res = await request
+          .post('/api/projects/20260617-story-apspv--ai_comic_drama/production-board/seedance-shots/provider-callback')
+          .set('Authorization', 'Bearer test-seedance-secret')
+          .send({
+            provider: 'seedance',
+            jobId: 'single-story-provider-secret-job-001',
+            status: 'COMPLETED',
+            videoUrl: 'https://example.com/api/provider-callback-secret-shot.mp4',
+          });
+        expect(res.status).toBe(404);
+        expectFailure(res.body, 'STORY_NOT_FOUND');
+      } finally {
+        if (previousCallbackSecret === undefined) delete process.env.SEEDANCE_CALLBACK_SECRET;
+        else process.env.SEEDANCE_CALLBACK_SECRET = previousCallbackSecret;
+      }
+    });
+
     it('imports an external Seedance provider callback through the route', async () => {
       const baseStory = makeApiProductionRepairStory();
       const story: StoryGenerateResult = {
@@ -1118,39 +1172,46 @@ describe('Projects API', () => {
       expect(submitRes.status).toBe(200);
       expectSuccess(submitRes.body);
 
-      const callbackRes = await request
-        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-callback`)
-        .send({
+      const previousCallbackSecret = process.env.SEEDANCE_CALLBACK_SECRET;
+      delete process.env.SEEDANCE_CALLBACK_SECRET;
+      try {
+        const callbackRes = await request
+          .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-callback`)
+          .send({
+            provider: 'seedance',
+            queue_id: 'api-provider-callback-queue-001',
+            queue_position: 1,
+            status: 'succeeded',
+            url: 'https://example.com/api/provider-callback-shot-1.mp4',
+            quality_score: 96,
+            review_note: '外部 provider 回片稳定',
+            event_id: 'api-provider-callback-event-001',
+            message: 'provider succeeded',
+          });
+        expect(callbackRes.status).toBe(200);
+        expectSuccess(callbackRes.body);
+        expect(callbackRes.body.data).toMatchObject({
+          updated_count: 1,
+          failed_count: 0,
           provider: 'seedance',
-          queue_id: 'api-provider-callback-queue-001',
-          queue_position: 1,
-          status: 'succeeded',
-          url: 'https://example.com/api/provider-callback-shot-1.mp4',
-          quality_score: 96,
-          review_note: '外部 provider 回片稳定',
+          provider_queue_id: 'api-provider-callback-queue-001',
+          provider_queue_position: 1,
           event_id: 'api-provider-callback-event-001',
-          message: 'provider succeeded',
         });
-      expect(callbackRes.status).toBe(200);
-      expectSuccess(callbackRes.body);
-      expect(callbackRes.body.data).toMatchObject({
-        updated_count: 1,
-        failed_count: 0,
-        provider: 'seedance',
-        provider_queue_id: 'api-provider-callback-queue-001',
-        provider_queue_position: 1,
-        event_id: 'api-provider-callback-event-001',
-      });
-      expect(callbackRes.body.data.seedance_shot_ledger.items.find((item: any) =>
-        item.shot_id === 'shot-1'
-      )).toMatchObject({
-        status: 'ready',
-        provider: 'seedance',
-        provider_job_id: 'api-provider-callback-job-shot-1',
-        provider_queue_id: 'api-provider-callback-queue-001',
-        provider_queue_position: 1,
-        video_url: 'https://example.com/api/provider-callback-shot-1.mp4',
-      });
+        expect(callbackRes.body.data.seedance_shot_ledger.items.find((item: any) =>
+          item.shot_id === 'shot-1'
+        )).toMatchObject({
+          status: 'ready',
+          provider: 'seedance',
+          provider_job_id: 'api-provider-callback-job-shot-1',
+          provider_queue_id: 'api-provider-callback-queue-001',
+          provider_queue_position: 1,
+          video_url: 'https://example.com/api/provider-callback-shot-1.mp4',
+        });
+      } finally {
+        if (previousCallbackSecret === undefined) delete process.env.SEEDANCE_CALLBACK_SECRET;
+        else process.env.SEEDANCE_CALLBACK_SECRET = previousCallbackSecret;
+      }
     });
 
     it('polls Seedance provider jobs and applies returned statuses through the route', async () => {

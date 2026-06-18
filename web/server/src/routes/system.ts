@@ -98,6 +98,7 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
   const pollEndpointConfigured = envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT');
   const submitTokenConfigured = envFlag('SEEDANCE_PROVIDER_SUBMIT_API_TOKEN');
   const sharedTokenConfigured = envFlag('SEEDANCE_PROVIDER_API_TOKEN');
+  const callbackSecretConfigured = envFlag('SEEDANCE_CALLBACK_SECRET');
   const missingSubmitRequirements = submitEndpointConfigured ? [] : ['SEEDANCE_PROVIDER_SUBMIT_ENDPOINT'];
   const missingPollRequirements = pollEndpointConfigured ? [] : ['SEEDANCE_PROVIDER_POLL_ENDPOINT'];
   const configurationWarnings = [
@@ -122,6 +123,7 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
     submit_token_configured: submitTokenConfigured,
     poll_token_configured: sharedTokenConfigured,
     shared_token_configured: sharedTokenConfigured,
+    callback_secret_configured: callbackSecretConfigured,
     submit_timeout_ms: envNumber('SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS', 30000),
     poll_timeout_ms: envNumber('SEEDANCE_PROVIDER_POLL_TIMEOUT_MS', 30000),
     ready_for_submit_adapter: submitEndpointConfigured,
@@ -142,6 +144,11 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
 systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
   const contract: SeedanceProviderAdapterContractInfo = {
     provider: 'seedance',
+    callback_auth_env: 'SEEDANCE_CALLBACK_SECRET',
+    callback_auth_headers: [
+      'Authorization: Bearer <SECRET>',
+      'X-Seedance-Callback-Secret: <SECRET>',
+    ],
     submit: {
       schema_version: 'seedance-provider-submit/v1',
       endpoint_env: 'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT',
@@ -230,6 +237,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       notes: [
         'Each accepted result must include a shot_id and provider job id.',
         'Returned queue id/position override local placeholders when present.',
+        'When callback auth is configured, provider_callback_path requires one callback auth header.',
       ],
     },
     poll: {

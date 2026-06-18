@@ -3901,6 +3901,7 @@ export interface SeedanceProviderAdapterConfigInfo {
   submit_token_configured: boolean;
   poll_token_configured: boolean;
   shared_token_configured: boolean;
+  callback_secret_configured: boolean;
   submit_timeout_ms: number;
   poll_timeout_ms: number;
   ready_for_submit_adapter: boolean;
@@ -3927,6 +3928,8 @@ export interface SeedanceProviderAdapterContractSection {
 
 export interface SeedanceProviderAdapterContractInfo {
   provider: 'seedance';
+  callback_auth_env: string;
+  callback_auth_headers: string[];
   submit: SeedanceProviderAdapterContractSection;
   poll: SeedanceProviderAdapterContractSection;
   generated_at: string;

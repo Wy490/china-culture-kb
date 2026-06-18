@@ -201,6 +201,7 @@ MCP 原则：
   - 共享类型新增 `SeedanceShotProviderCallbackRequest` / `SeedanceShotProviderCallbackResult`。
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-callback`，支持外部 provider 单条 webhook 回传。
   - 回传支持 `provider`、`provider_job_id/job_id`、`provider_queue_id/queue_id`、`provider_queue_position/queue_position`、`event_id`、`video_url/url`、`failure_reason/error`、质量分和 review note。
+  - 若配置 `SEEDANCE_CALLBACK_SECRET`，单故事 provider webhook 必须携带 `Authorization: Bearer <secret>` 或 `X-Seedance-Callback-Secret`。
   - 状态归一化复用内部回传导入；可按 job 匹配，也可按 `queue_id + queue_position` 映射到 Shot Ledger。
   - 修复 `updateProjectSeedanceShotStatus` 更新 ready/failed 时丢失 provider / queue 元数据的问题。
 - 单故事 Seedance provider 轮询入口首版：
@@ -230,12 +231,14 @@ MCP 原则：
 - 单故事 Seedance provider adapter 配置状态首版：
   - 后端新增 `GET /api/system/seedance-provider-config`，返回 submit/poll endpoint 是否已配置、token 是否已配置和 submit/poll timeout。
   - 响应只暴露布尔状态和数值，不返回 endpoint URL 或 token 原文。
+  - 响应新增 `callback_secret_configured`，可在接入真实 worker 前确认 provider 回传 webhook 是否启用共享凭据保护。
   - 项目详情页 Seedance Shot Ledger 顶部新增 adapter 配置 chips，点击提交/轮询前即可看到 submit adapter、poll adapter、token 和 timeout 状态。
   - “提交 adapter”和“轮询 provider”按钮会按配置状态禁用，避免未配置 endpoint 时误触发 adapter 请求。
   - 响应和前端 chips 已补缺失 env var、配置 warning 和下一步动作，便于直接排查真实 provider worker 接入前的配置问题。
 - 单故事 Seedance provider adapter 合约元数据首版：
   - 后端新增 `GET /api/system/seedance-provider-adapter-contract`，返回 submit/poll schema version、env key、请求字段、可接受响应形态和归一化字段。
   - 合约接口不返回 endpoint URL 或 token 原文，外部 worker / Agent 可先读取该接口再实现 submit/query。
+  - 合约接口新增 `callback_auth_env` 和 `callback_auth_headers`，外部 worker 可按约定给 `provider_callback_path` 带回调鉴权头。
   - 合约接口新增 submit/poll 的 `request_example` 和 `response_examples`，用于真实 worker smoke 对照。
   - submit adapter payload 已带 `provider_callback_path` 和 `provider_poll_path` 相对路径，worker 可不猜项目级回传/轮询 API。
 - 单故事 Seedance provider 队列状态总览首版：
@@ -304,10 +307,10 @@ git diff --check
 测试结果：
 
 - `project-service.test.ts`：31 passed。
-- `api.test.ts`：87 passed。
-- `web/server && npm test`：24 files passed，239 tests passed。
+- `api.test.ts`：89 passed。
+- `web/server && npm test`：24 files passed，241 tests passed。
 - `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写、provider poll dry-run / provider_results 应用、失败分类进入 retry package、通用错误码别名映射、通用 provider submit adapter mock 提交、poll adapter mock 查询写回、provider 队列状态总览的超时/失败/批次汇总、provider 人工重试策略的可重提/阻断候选，以及 provider 重试执行自动化只提交可重提镜头。
-- `api.test.ts` 已覆盖 `GET /api/system/seedance-provider-config` / `GET /api/system/seedance-provider-adapter-contract` 不泄露 endpoint/token 原文，`POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback`、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`、`/provider-retry-submit`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应。
+- `api.test.ts` 已覆盖 `GET /api/system/seedance-provider-config` / `GET /api/system/seedance-provider-adapter-contract` 不泄露 endpoint/token 原文，`POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback` 的 `SEEDANCE_CALLBACK_SECRET` 鉴权、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`、`/provider-retry-submit`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应。
 - `web/client && npm run lint`：passed。
 - `web/client && npm run build`：passed。
 - `web/server && npm run lint`：passed。

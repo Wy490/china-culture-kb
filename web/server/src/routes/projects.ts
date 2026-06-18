@@ -1,5 +1,6 @@
+import { timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
-import type { Request } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { validateBody, validateParams } from '../middleware/validate.js';
 import { fail, ErrorCodes } from '@shared/types.js';
 import {
@@ -72,6 +73,37 @@ type MultipartFile = {
   mime_type: string;
   buffer: Buffer;
 };
+
+function seedanceCallbackSecretFromRequest(req: Request): string | undefined {
+  const explicit = req.header('x-seedance-callback-secret')?.trim();
+  if (explicit) return explicit;
+  const authorization = req.header('authorization')?.trim();
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim();
+}
+
+function safeEqualText(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function validateSeedanceProviderCallbackSecret(req: Request, res: Response, next: NextFunction): void {
+  const expectedSecret = process.env.SEEDANCE_CALLBACK_SECRET?.trim();
+  if (!expectedSecret) {
+    next();
+    return;
+  }
+  const providedSecret = seedanceCallbackSecretFromRequest(req);
+  if (providedSecret && safeEqualText(providedSecret, expectedSecret)) {
+    next();
+    return;
+  }
+  res.status(401).json(fail(
+    ErrorCodes.VALIDATION_ERROR,
+    'Seedance provider callback secret is missing or invalid',
+  ));
+}
 
 async function readRequestBody(req: Request, maxBytes: number): Promise<Buffer> {
   return await new Promise((resolvePromise, reject) => {
@@ -500,6 +532,7 @@ projectsRouter.post(
 projectsRouter.post(
   '/:projectId/production-board/seedance-shots/provider-callback',
   validateParams(ProjectIdParamSchema),
+  validateSeedanceProviderCallbackSecret,
   validateBody(SeedanceShotProviderCallbackRequestSchema),
   async (req, res, next) => {
     try {
