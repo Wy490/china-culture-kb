@@ -251,6 +251,8 @@ MCP 原则：
   - submit adapter payload 已带 `provider_callback_path` 和 `provider_poll_path` 相对路径，worker 可不猜项目级回传/轮询 API。
   - submit adapter payload 也会在配置公开 API 基址时附带 `provider_callback_url` 和 `provider_poll_url` 绝对地址；配置优先级为 `SEEDANCE_PROVIDER_CALLBACK_BASE_URL`、`GEARS_CALLBACK_BASE_URL`、`PUBLIC_API_BASE_URL`、`APP_BASE_URL`。
   - 配置状态接口新增 `callback_base_configured` 和可用 env 名列表，仍只返回布尔/名称，不泄漏真实公开基址。
+  - submit/poll adapter 新增 request mode，默认 `batch`；`SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE=per_shot` 会逐镜头 POST，`SEEDANCE_PROVIDER_POLL_REQUEST_MODE=per_target` 会逐 provider job POST。
+  - 平台返回单个任务对象或 `data` 下单个任务对象时也会被归一化，适合真实平台单任务创建/查询接口先行 smoke。
 - 单故事 Seedance provider 队列状态总览首版：
   - 共享类型新增 `SeedanceShotProviderQueueOverviewRequest` / `SeedanceShotProviderQueueOverviewResult`，并补齐批次概览与注意项结构。
   - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-overview`。
@@ -362,7 +364,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-补充 Seedance provider 绝对回传 URL
+支持 Seedance provider 单任务请求模式
 ```
 
 ### P0：继续故事管理 UX 降噪

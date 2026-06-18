@@ -48,11 +48,13 @@ const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = process.env.SEEDANCE_PROVI
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME;
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS;
 const ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL = process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
+const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT = process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
 const ORIGINAL_SEEDANCE_PROVIDER_API_TOKEN = process.env.SEEDANCE_PROVIDER_API_TOKEN;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_HEADER = process.env.SEEDANCE_PROVIDER_POLL_AUTH_HEADER;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_AUTH_SCHEME = process.env.SEEDANCE_PROVIDER_POLL_AUTH_SCHEME;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
+const ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
 
 async function exists(path: string): Promise<boolean> {
   try {
@@ -198,6 +200,11 @@ afterEach(async () => {
   } else {
     process.env.SEEDANCE_PROVIDER_CALLBACK_BASE_URL = ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL;
   }
+  if (ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
+  } else {
+    process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
+  }
   if (ORIGINAL_SEEDANCE_PROVIDER_POLL_ENDPOINT === undefined) {
     delete process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT;
   } else {
@@ -222,6 +229,11 @@ afterEach(async () => {
     delete process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
   } else {
     process.env.SEEDANCE_PROVIDER_POLL_TIMEOUT_MS = ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMEOUT_MS;
+  }
+  if (ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE === undefined) {
+    delete process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
+  } else {
+    process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
   }
   vi.unstubAllGlobals();
   for (const dir of TEMP_DIRS.splice(0)) {
@@ -958,6 +970,72 @@ describe('project-service', () => {
     });
   });
 
+  it('submits Seedance shots through a per-shot provider adapter', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = 'https://adapter.example.test/seedance/submit-one';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = 'per_shot';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitFetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(String(_url)).toBe('https://adapter.example.test/seedance/submit-one');
+      const body = JSON.parse(String(init?.body)) as {
+        request_mode?: string;
+        shot?: { shot_id: string; provider_job_id?: string };
+        shots?: Array<{ shot_id: string; provider_job_id?: string }>;
+      };
+      expect(body.request_mode).toBe('per_shot');
+      expect(body.shot).toBeDefined();
+      expect(body.shots).toHaveLength(1);
+      if (body.shot?.shot_id === 'shot-1') {
+        return new Response(JSON.stringify({
+          taskId: 'real-per-shot-job-1',
+          batchId: 'real-per-shot-queue',
+          taskStatus: 'running',
+        }));
+      }
+      return new Response(JSON.stringify({
+        data: {
+          task_id: 'real-per-shot-job-2',
+          batch_id: 'real-per-shot-queue',
+          task_status: 'queued',
+        },
+      }));
+    });
+    vi.stubGlobal('fetch', submitFetchMock);
+
+    const adapterSubmitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'adapter-submit-local',
+      queue_id: 'adapter-submit-queue-local',
+      use_provider_adapter: true,
+      note: '逐镜头 adapter 提交',
+    });
+
+    expect(submitFetchMock).toHaveBeenCalledTimes(2);
+    expect(adapterSubmitRes.ok).toBe(true);
+    expect(adapterSubmitRes.data).toMatchObject({
+      submitted_count: 2,
+      failed_count: 0,
+      provider_adapter: {
+        request_mode: 'per_shot',
+        requested_count: 2,
+        accepted_count: 2,
+        failed_count: 0,
+      },
+      submitted_shots: [{
+        shot_id: 'shot-1',
+        provider_job_id: 'real-per-shot-job-1',
+      }, {
+        shot_id: 'shot-2',
+        provider_job_id: 'real-per-shot-job-2',
+      }],
+    });
+  });
+
   it('imports an external Seedance provider callback by queue metadata', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
@@ -1484,6 +1562,88 @@ describe('project-service', () => {
       failure_reason: '内容审核未通过',
       failure_category: 'content_policy',
       provider_error_code: 'RISK_CONTROL',
+    });
+  });
+
+  it('queries a per-target Seedance provider adapter and applies single-task responses', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.SEEDANCE_PROVIDER_POLL_ENDPOINT = 'https://adapter.example.test/seedance/poll-one';
+    process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE = 'per_target';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectSeedanceShotsToProvider(enriched.project_id!, {
+      shot_ids: ['shot-1', 'shot-2'],
+      provider: 'seedance',
+      job_prefix: 'provider-target-test',
+      queue_id: 'provider-target-queue-001',
+      note: 'provider target 测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(String(_url)).toBe('https://adapter.example.test/seedance/poll-one');
+      const body = JSON.parse(String(init?.body)) as {
+        request_mode?: string;
+        target?: { shot_id: string; provider_job_id?: string };
+        targets?: Array<{ shot_id: string; provider_job_id?: string }>;
+      };
+      expect(body.request_mode).toBe('per_target');
+      expect(body.target).toBeDefined();
+      expect(body.targets).toHaveLength(1);
+      if (body.target?.shot_id === 'shot-1') {
+        return new Response(JSON.stringify({
+          taskId: 'provider-target-test-shot-1',
+          state: 'SUCCEEDED',
+          outputUrl: 'https://example.com/seedance-videos/provider-target-shot-1.mp4',
+        }));
+      }
+      return new Response(JSON.stringify({
+        data: {
+          task_id: 'provider-target-test-shot-2',
+          task_status: 'FAILED',
+          error_code: 'ACCESS_DENIED',
+          error_message: '鉴权失败',
+        },
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const pollApplyRes = await pollProjectSeedanceProviderQueue(enriched.project_id!, {
+      provider: 'seedance',
+      queue_id: 'provider-target-queue-001',
+      include_prompt: true,
+      use_provider_adapter: true,
+      note: 'provider target 应用回传',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(pollApplyRes.ok).toBe(true);
+    expect(pollApplyRes.data).toMatchObject({
+      dry_run: false,
+      updated_count: 2,
+      provider_adapter: {
+        request_mode: 'per_target',
+        queried_count: 2,
+        returned_count: 2,
+      },
+    });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: 'provider-target-test-shot-1',
+      video_url: 'https://example.com/seedance-videos/provider-target-shot-1.mp4',
+    });
+    expect(pollApplyRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'failed',
+      provider_job_id: 'provider-target-test-shot-2',
+      failure_category: 'provider_auth',
+      provider_error_code: 'ACCESS_DENIED',
     });
   });
 

@@ -118,6 +118,23 @@ const SEEDANCE_PROVIDER_CALLBACK_BASE_ENVS = [
   'APP_BASE_URL',
 ];
 
+const SEEDANCE_PROVIDER_REQUEST_MODE_ENVS = [
+  'SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE',
+  'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
+];
+
+function submitRequestMode(): 'batch' | 'per_shot' {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE?.trim().toLowerCase() === 'per_shot'
+    ? 'per_shot'
+    : 'batch';
+}
+
+function pollRequestMode(): 'batch' | 'per_target' {
+  return process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE?.trim().toLowerCase() === 'per_target'
+    ? 'per_target'
+    : 'batch';
+}
+
 systemRouter.get('/seedance-provider-config', (_req, res) => {
   const submitEndpointConfigured = envFlag('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT');
   const pollEndpointConfigured = envFlag('SEEDANCE_PROVIDER_POLL_ENDPOINT');
@@ -152,6 +169,9 @@ systemRouter.get('/seedance-provider-config', (_req, res) => {
     callback_secret_configured: callbackSecretConfigured,
     callback_base_configured: callbackBaseConfigured,
     callback_base_envs: SEEDANCE_PROVIDER_CALLBACK_BASE_ENVS,
+    submit_request_mode: submitRequestMode(),
+    poll_request_mode: pollRequestMode(),
+    request_mode_envs: SEEDANCE_PROVIDER_REQUEST_MODE_ENVS,
     submit_auth_header: providerAuthHeader('submit'),
     poll_auth_header: providerAuthHeader('poll'),
     submit_auth_scheme: providerAuthScheme('submit'),
@@ -190,8 +210,11 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       default_auth_header: 'Authorization',
       default_auth_scheme: 'Bearer',
       timeout_env: 'SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS',
+      request_mode_env: 'SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE',
+      request_modes: ['batch', 'per_shot'],
       request_fields: [
         'schema_version',
+        'request_mode',
         'project_id',
         'storyId',
         'title',
@@ -204,6 +227,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'provider_poll_url',
         'note',
         'seedance_asset_library',
+        'shot',
         'shots[]',
         'shots[].shot_id',
         'shots[].source_scene_id',
@@ -235,6 +259,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       ],
       request_example: {
         schema_version: 'seedance-provider-submit/v1',
+        request_mode: 'batch',
         project_id: '20260618-story-demo--ai_comic_drama',
         storyId: '20260618-story-demo',
         title: '示例故事',
@@ -283,6 +308,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
         'Returned queue id/position override local placeholders when present.',
         'When callback auth is configured, provider_callback_path requires one callback auth header.',
         'When a public callback base URL is configured, submit payload also includes provider_callback_url and provider_poll_url.',
+        'Set SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE=per_shot when a platform endpoint accepts one shot/task per request.',
         'Set auth scheme to raw/none/no_scheme when a worker expects the token without a prefix.',
       ],
     },
@@ -295,12 +321,16 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       default_auth_header: 'Authorization',
       default_auth_scheme: 'Bearer',
       timeout_env: 'SEEDANCE_PROVIDER_POLL_TIMEOUT_MS',
+      request_mode_env: 'SEEDANCE_PROVIDER_POLL_REQUEST_MODE',
+      request_modes: ['batch', 'per_target'],
       request_fields: [
         'schema_version',
+        'request_mode',
         'project_id',
         'provider',
         'queue_id',
         'note',
+        'target',
         'targets[]',
         'targets[].shot_id',
         'targets[].provider_job_id',
@@ -331,6 +361,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       ],
       request_example: {
         schema_version: 'seedance-provider-poll/v1',
+        request_mode: 'batch',
         project_id: '20260618-story-demo--ai_comic_drama',
         provider: 'seedance',
         queue_id: 'real-seedance-queue-001',
@@ -363,6 +394,7 @@ systemRouter.get('/seedance-provider-adapter-contract', (_req, res) => {
       notes: [
         'Poll results are normalized through the provider callback path.',
         'Failed results can carry failure_category/provider_error_code for retry planning.',
+        'Set SEEDANCE_PROVIDER_POLL_REQUEST_MODE=per_target when a platform endpoint queries one provider job per request.',
       ],
     },
     generated_at: new Date().toISOString(),
