@@ -212,6 +212,13 @@
                 >
                   导出策略 MD
                 </button>
+                <button
+                  class="project-detail-page__repair-task-btn"
+                  :disabled="submittingSeedanceProviderRetryPlan || seedanceProviderRetryPlan.resubmittable_count === 0"
+                  @click="submitSeedanceProviderRetryPlan"
+                >
+                  {{ submittingSeedanceProviderRetryPlan ? '提交中…' : '提交可重提' }}
+                </button>
               </div>
               <div class="project-detail-page__seedance-provider-overview-metrics">
                 <span>高优先 {{ seedanceProviderRetryPlan.high_priority_count }}</span>
@@ -931,6 +938,7 @@ import {
   regenerateProjectScene,
   reuseProjectSeedanceAsset,
   selectProjectSeedanceShotVersion,
+  submitProjectSeedanceProviderRetryPlan,
   submitProjectSeedanceShotsToProvider,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
@@ -1025,6 +1033,7 @@ const loadingSeedanceProviderOverview = ref(false)
 const seedanceProviderOverview = ref<SeedanceShotProviderQueueOverviewResult | null>(null)
 const loadingSeedanceProviderRetryPlan = ref(false)
 const seedanceProviderRetryPlan = ref<SeedanceShotProviderRetryPlanResult | null>(null)
+const submittingSeedanceProviderRetryPlan = ref(false)
 const selectingSeedanceVersionId = ref('')
 
 const selectedModelProfile = computed(() => {
@@ -1992,6 +2001,40 @@ async function exportSeedanceProviderRetryPlanMarkdown() {
     'text/markdown;charset=utf-8',
   )
   successMessage.value = `Seedance provider 重试策略已导出 · ${seedanceProviderRetryPlan.value.candidate_count} 个候选`
+}
+
+async function submitSeedanceProviderRetryPlan() {
+  if (!detail.value || submittingSeedanceProviderRetryPlan.value) return
+  if (!seedanceProviderRetryPlan.value?.resubmittable_count) {
+    error.value = '当前没有可直接重提的 Seedance provider 镜头'
+    return
+  }
+  submittingSeedanceProviderRetryPlan.value = true
+  error.value = ''
+  successMessage.value = ''
+  const latestBatch = latestSeedanceProviderQueueBatch.value
+  const res = await submitProjectSeedanceProviderRetryPlan(detail.value.project.project_id, {
+    provider: latestBatch?.provider ?? 'seedance',
+    queue_id: latestBatch?.queue_id,
+    timeout_minutes: 120,
+    max_retry_count: 3,
+    queue_priority: 'high',
+    note: '前端执行 Seedance provider 人工重试策略',
+  })
+  if (res.ok && res.data) {
+    detail.value = {
+      ...detail.value,
+      project: res.data.project,
+    }
+    await loadProductionBoard()
+    successMessage.value = `Seedance provider 重试提交完成：提交 ${res.data.submitted_count} 条，阻断 ${res.data.skipped_blocked_count} 条`
+    if (res.data.failures.length) {
+      error.value = res.data.failures.map(item => `${item.shot_id ?? `#${item.index + 1}`} ${item.message}`).join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? '执行 Seedance provider 重试策略失败'
+  }
+  submittingSeedanceProviderRetryPlan.value = false
 }
 
 function openSceneEditor(sceneId: number) {

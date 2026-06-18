@@ -1157,6 +1157,24 @@ describe('Projects API', () => {
           can_resubmit: false,
         }),
       ]);
+
+      const retrySubmitRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-shots/provider-retry-submit`)
+        .send({
+          provider: 'seedance',
+          queue_id: 'api-provider-poll-queue-001',
+          timeout_minutes: 1,
+          note: 'API provider retry submit 测试',
+        });
+      expect(retrySubmitRes.status).toBe(200);
+      expectSuccess(retrySubmitRes.body);
+      expect(retrySubmitRes.body.data).toMatchObject({
+        selected_shot_ids: [],
+        skipped_blocked_count: 1,
+        submitted_count: 0,
+        skipped_count: 0,
+        failed_count: 0,
+      });
     });
 
     it('imports Seedance callbacks and exports a retry package', async () => {

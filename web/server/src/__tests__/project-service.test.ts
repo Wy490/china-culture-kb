@@ -30,6 +30,7 @@ import {
   reuseProjectSeedanceAsset,
   retainRecentProjects,
   selectProjectSeedanceShotVersion,
+  submitProjectSeedanceProviderRetryPlan,
   submitProjectSeedanceShotsToProvider,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
@@ -1233,6 +1234,47 @@ describe('project-service', () => {
     ]));
     expect(retryPlanRes.data?.markdown).toContain('Seedance provider 人工重试策略');
     expect(retryPlanRes.data?.markdown).toContain('可直接重提: 1');
+
+    const retrySubmitRes = await submitProjectSeedanceProviderRetryPlan(enriched.project_id!, {
+      provider: 'seedance',
+      queue_id: 'provider-retry-plan-queue-001',
+      target_queue_id: 'provider-retry-plan-resubmit-001',
+      job_prefix: 'provider-retry-resubmit',
+      timeout_minutes: 60,
+      max_retry_count: 3,
+      note: 'provider retry plan 自动重提交',
+    });
+    expect(retrySubmitRes.ok).toBe(true);
+    expect(retrySubmitRes.data).toMatchObject({
+      selected_shot_ids: ['shot-1'],
+      skipped_blocked_count: 1,
+      submitted_count: 1,
+      skipped_count: 0,
+      failed_count: 0,
+      provider_queue_batch: {
+        queue_id: 'provider-retry-plan-resubmit-001',
+        submitted_count: 1,
+        items: [{
+          shot_id: 'shot-1',
+          provider_job_id: 'provider-retry-resubmit-shot-1',
+        }],
+      },
+    });
+    expect(retrySubmitRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'submitted',
+      provider_job_id: 'provider-retry-resubmit-shot-1',
+      provider_queue_id: 'provider-retry-plan-resubmit-001',
+      retry_count: 1,
+    });
+    expect(retrySubmitRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-2'
+    )).toMatchObject({
+      status: 'failed',
+      provider_job_id: 'provider-retry-plan-test-shot-2',
+      failure_category: 'asset_missing',
+    });
   });
 
   it('queries a configured Seedance provider adapter and applies returned statuses', async () => {

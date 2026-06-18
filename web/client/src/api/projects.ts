@@ -26,6 +26,8 @@ import type {
   SeedanceShotProviderQueueOverviewResult,
   SeedanceShotProviderRetryPlanRequest,
   SeedanceShotProviderRetryPlanResult,
+  SeedanceShotProviderRetrySubmitRequest,
+  SeedanceShotProviderRetrySubmitResult,
   SeedanceShotProviderRecoveryRequest,
   SeedanceShotProviderRecoveryResult,
   SeedanceShotProviderSubmitRequest,
@@ -122,6 +124,10 @@ export function getProjectSeedanceProviderQueueOverview(projectId: string, body:
 
 export function getProjectSeedanceProviderRetryPlan(projectId: string, body: SeedanceShotProviderRetryPlanRequest = {}) {
   return apiPost<SeedanceShotProviderRetryPlanResult>(`/projects/${projectId}/production-board/seedance-shots/provider-retry-plan`, body)
+}
+
+export function submitProjectSeedanceProviderRetryPlan(projectId: string, body: SeedanceShotProviderRetrySubmitRequest = {}) {
+  return apiPost<SeedanceShotProviderRetrySubmitResult>(`/projects/${projectId}/production-board/seedance-shots/provider-retry-submit`, body)
 }
 
 export function selectProjectSeedanceShotVersion(projectId: string, body: SeedanceShotVersionSelectRequest) {

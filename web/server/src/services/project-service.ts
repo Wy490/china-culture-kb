@@ -56,6 +56,8 @@ import type {
   SeedanceShotProviderRetryPlanReason,
   SeedanceShotProviderRetryPlanRequest,
   SeedanceShotProviderRetryPlanResult,
+  SeedanceShotProviderRetrySubmitRequest,
+  SeedanceShotProviderRetrySubmitResult,
   SeedanceShotRetryPackage,
   SeedanceShotRetryPackageShot,
   SeedanceShotAutoSelectRequest,
@@ -2573,7 +2575,9 @@ export async function submitProjectSeedanceShotsToProvider(
       failure_reason: undefined,
       failure_category: undefined,
       provider_error_code: undefined,
-      retry_count: item.status === 'failed' ? item.retry_count + 1 : item.retry_count,
+      retry_count: item.status === 'failed' || (request.increment_retry && Boolean(item.provider_job_id))
+        ? item.retry_count + 1
+        : item.retry_count,
       notes: uniqueSeedanceNotes([
         ...item.notes,
         queueNote || `提交到 ${provider}：${providerJobId}`,
@@ -3149,6 +3153,71 @@ export async function getProjectSeedanceProviderRetryPlan(
   return success({
     ...basePlan,
     markdown: buildSeedanceProviderRetryPlanMarkdown(basePlan),
+  });
+}
+
+export async function submitProjectSeedanceProviderRetryPlan(
+  projectId: string,
+  request: SeedanceShotProviderRetrySubmitRequest = {},
+): Promise<ApiResponse<SeedanceShotProviderRetrySubmitResult>> {
+  const retryPlanRes = await getProjectSeedanceProviderRetryPlan(projectId, request);
+  if (!retryPlanRes.ok || !retryPlanRes.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      retryPlanRes.error?.message ?? `Project "${projectId}" not found`,
+      retryPlanRes.error?.details,
+    );
+  }
+
+  const retryPlan = retryPlanRes.data;
+  const selectedShotIds = retryPlan.candidates
+    .filter(candidate => candidate.can_resubmit)
+    .slice(0, request.limit)
+    .map(candidate => candidate.shot_id);
+  if (!selectedShotIds.length) {
+    return success({
+      project: retryPlan.project,
+      seedance_shot_ledger: retryPlan.seedance_shot_ledger,
+      retry_plan: retryPlan,
+      selected_shot_ids: [],
+      skipped_blocked_count: retryPlan.blocked_count,
+      submitted_count: 0,
+      skipped_count: 0,
+      failed_count: 0,
+      submitted_shots: [],
+      failures: [],
+    });
+  }
+
+  const submitRes = await submitProjectSeedanceShotsToProvider(projectId, {
+    shot_ids: selectedShotIds,
+    provider: request.provider,
+    job_prefix: request.job_prefix,
+    queue_id: request.target_queue_id,
+    queue_priority: request.queue_priority,
+    use_provider_adapter: request.use_provider_adapter,
+    overwrite_existing: true,
+    increment_retry: true,
+    note: request.note ?? 'Seedance provider 人工重试策略执行',
+  });
+  if (!submitRes.ok || !submitRes.data) {
+    return submitRes as ApiResponse<SeedanceShotProviderRetrySubmitResult>;
+  }
+
+  return success({
+    project: submitRes.data.project,
+    seedance_shot_ledger: submitRes.data.seedance_shot_ledger,
+    seedance_provider_queue: submitRes.data.seedance_provider_queue,
+    retry_plan: retryPlan,
+    selected_shot_ids: selectedShotIds,
+    skipped_blocked_count: retryPlan.blocked_count,
+    provider_queue_batch: submitRes.data.provider_queue_batch,
+    provider_adapter: submitRes.data.provider_adapter,
+    submitted_count: submitRes.data.submitted_count,
+    skipped_count: submitRes.data.skipped_count,
+    failed_count: submitRes.data.failed_count,
+    submitted_shots: submitRes.data.submitted_shots,
+    failures: submitRes.data.failures,
   });
 }
 

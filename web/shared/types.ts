@@ -1387,6 +1387,7 @@ export interface SeedanceShotProviderSubmitRequest {
   queue_priority?: SeedanceShotProviderQueuePriority;
   use_provider_adapter?: boolean;
   overwrite_existing?: boolean;
+  increment_retry?: boolean;
   note?: string;
 }
 
@@ -1701,6 +1702,31 @@ export interface SeedanceShotProviderRetryPlanResult {
   reason_counts: Record<SeedanceShotProviderRetryPlanReason, number>;
   candidates: SeedanceShotProviderRetryPlanCandidate[];
   markdown: string;
+}
+
+export interface SeedanceShotProviderRetrySubmitRequest extends SeedanceShotProviderRetryPlanRequest {
+  target_queue_id?: string;
+  queue_priority?: SeedanceShotProviderQueuePriority;
+  job_prefix?: string;
+  use_provider_adapter?: boolean;
+  limit?: number;
+  note?: string;
+}
+
+export interface SeedanceShotProviderRetrySubmitResult {
+  project: StoryProjectMeta;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  seedance_provider_queue?: SeedanceShotProviderQueue;
+  retry_plan: SeedanceShotProviderRetryPlanResult;
+  selected_shot_ids: string[];
+  skipped_blocked_count: number;
+  provider_queue_batch?: SeedanceShotProviderQueueBatch;
+  provider_adapter?: SeedanceShotProviderSubmitAdapterSummary;
+  submitted_count: number;
+  skipped_count: number;
+  failed_count: number;
+  submitted_shots: SeedanceShotProviderSubmitResult['submitted_shots'];
+  failures: SeedanceShotProviderSubmitFailure[];
 }
 
 export interface SeedanceShotRetryPrompt {

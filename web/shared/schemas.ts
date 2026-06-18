@@ -503,6 +503,7 @@ export const SeedanceShotProviderSubmitRequestSchema = z.object({
   queue_priority: SeedanceShotProviderQueuePrioritySchema.optional().default('normal'),
   use_provider_adapter: z.boolean().optional().default(false),
   overwrite_existing: z.boolean().optional().default(false),
+  increment_retry: z.boolean().optional().default(false),
   note: z.string().trim().min(1).max(500).optional(),
 });
 
@@ -604,6 +605,15 @@ export const SeedanceShotProviderRetryPlanRequestSchema = z.object({
   max_retry_count: z.number().int().min(0).max(20).optional(),
   include_unsubmitted: z.boolean().optional().default(false),
   failure_categories: z.array(SeedanceProviderFailureCategorySchema).min(1).max(10).optional(),
+});
+
+export const SeedanceShotProviderRetrySubmitRequestSchema = SeedanceShotProviderRetryPlanRequestSchema.extend({
+  target_queue_id: z.string().trim().min(1).max(120).optional(),
+  queue_priority: SeedanceShotProviderQueuePrioritySchema.optional().default('normal'),
+  job_prefix: z.string().trim().min(1).max(80).optional(),
+  use_provider_adapter: z.boolean().optional().default(false),
+  limit: z.number().int().min(1).max(200).optional(),
+  note: z.string().trim().min(1).max(500).optional(),
 });
 
 export const StorySceneRegenerateRequestSchema = z.object({

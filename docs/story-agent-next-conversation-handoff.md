@@ -32,9 +32,9 @@
 | 模块 | 进度判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
-| Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 94% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、provider 队列状态总览和人工重试策略首版。 |
+| Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 95% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、provider 队列状态总览、人工重试策略和重试执行自动化首版。 |
 | AI 漫剧系列生产链 | 约 45% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划已具备；字幕/混音/片头片尾/final delivery 仍待做。 |
-| 可商用制作中台 | 约 40% | 主链路可用，但还缺 UX 降噪、真实 provider、重试执行自动化、回滚、审片返修和稳定压测。 |
+| 可商用制作中台 | 约 42% | 主链路可用，但还缺 UX 降噪、真实 provider、真实平台错误码映射、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 75-80% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story`、`kb_generate_gears_delivery`、`kb_generate_seedance_prompt`、`kb_repair_story(auto_apply=false/true)`、`kb_update_project_version` 已完成；真实项目 auto_apply smoke 已通过，后续剩更深模型修复链路和前端质量反馈增强。 |
 
 当前主线已经不是“能不能生成故事”，而是“生成后能不能低复杂度管理、修复、交付、回片、装配”。
@@ -236,6 +236,12 @@ MCP 原则：
   - 候选镜头会区分失败、超时、完成但缺视频和可选未提交，并标注优先级、能否直接重提、阻断原因、错误码和建议动作。
   - 返回 Markdown，便于人工制作、外部 worker 或审片返修流程复核。
   - 项目详情页“Provider 队列健康”下新增默认折叠的“人工重试策略”，可刷新策略并导出 Markdown。
+- 单故事 Seedance provider 重试执行自动化首版：
+  - 共享类型新增 `SeedanceShotProviderRetrySubmitRequest` / `SeedanceShotProviderRetrySubmitResult`。
+  - 后端新增 `POST /api/projects/:projectId/production-board/seedance-shots/provider-retry-submit`。
+  - 服务层会先读取 retry plan，只选择 `can_resubmit=true` 的候选镜头重新提交，阻断项保留给人工处理。
+  - 执行重试复用 `submit-provider`，支持 target queue、job prefix、provider adapter 和高优先级队列；旧 job 重提会递增 retry_count。
+  - 项目详情页“人工重试策略”新增“提交可重提”，执行成功后刷新 Production Board、队列健康和策略。
 - 前端质量反馈视图首版：
   - 项目详情页“当前版本质量”新增类型反馈面板。
   - 默认聚合显示缺失要素、弱节拍、不适配表达、修复建议。
@@ -285,8 +291,8 @@ git diff --check
 - `project-service.test.ts`：30 passed。
 - `api.test.ts`：85 passed。
 - `web/server && npm test`：24 files passed，236 tests passed。
-- `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写、provider poll dry-run / provider_results 应用、失败分类进入 retry package、通用 provider submit adapter mock 提交、poll adapter mock 查询写回、provider 队列状态总览的超时/失败/批次汇总，以及 provider 人工重试策略的可重提/阻断候选。
-- `api.test.ts` 已覆盖 `POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback`、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应。
+- `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写、provider poll dry-run / provider_results 应用、失败分类进入 retry package、通用 provider submit adapter mock 提交、poll adapter mock 查询写回、provider 队列状态总览的超时/失败/批次汇总、provider 人工重试策略的可重提/阻断候选，以及 provider 重试执行自动化只提交可重提镜头。
+- `api.test.ts` 已覆盖 `POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback`、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`、`/provider-retry-submit`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应。
 - `web/client && npm run lint`：passed。
 - `web/server && npm run lint`：passed。
 - `git diff --check`：passed。
@@ -328,7 +334,7 @@ git diff --stat
 建议提交信息：
 
 ```text
-新增 Seedance provider 人工重试策略
+新增 Seedance provider 重试执行自动化
 ```
 
 ### P0：继续故事管理 UX 降噪
@@ -347,10 +353,10 @@ git diff --stat
 
 ### P0：Production Board 修复闭环继续补强
 
-已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、外部素材批量导入与上传态字段、真实文件上传、跨项目素材库复用、素材上传历史 UI、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、provider 队列状态总览和人工重试策略首版，下一步：
+已完成单任务修复、轻量 diff、“修复并落盘”、Production Repair History、按镜头 / 问题类别修复首版、逐场景 diff 首版、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、外部素材批量导入与上传态字段、真实文件上传、跨项目素材库复用、素材上传历史 UI、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、provider 队列状态总览、人工重试策略和重试执行自动化首版，下一步：
 
 - 真实 Seedance / 外部 provider 平台 SDK/HTTP submit/query 实现。
-- 基于真实平台错误码继续扩展失败分类映射，并接入重试执行自动化。
+- 基于真实平台错误码继续扩展失败分类映射，并接入真实 provider SDK/HTTP。
 
 ### P0-P1：Seedance 资产引用字段和素材校验
 
@@ -377,12 +383,13 @@ git diff --stat
 - Seedance provider 通用 submit adapter 首版。
 - Seedance provider 队列状态总览首版。
 - Seedance provider 人工重试策略首版。
+- Seedance provider 重试执行自动化首版。
 - `@视频1` / `@音频1` 引用校验首版。
 
 仍待做：
 
 - 真实 Seedance / 外部 provider 平台 SDK/HTTP submit/query 实现。
-- 重试执行自动化和真实平台错误码映射扩展。
+- 真实平台错误码映射扩展和真实 provider SDK/HTTP。
 
 字段规则必须遵守：
 
@@ -512,7 +519,7 @@ Seedance provider 平台 SDK/HTTP submit/query 实现
 理由：
 
 - MCP 诊断、修复建议、受控版本写入、安全 auto_apply、真实项目回读和前端质量反馈首版都已经跑通。
-- Provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、队列状态总览和人工重试策略首版已经落地，下一步要补真实平台 SDK/HTTP submit/query 细节。
+- Provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、队列状态总览、人工重试策略和重试执行自动化首版已经落地，下一步要补真实平台 SDK/HTTP submit/query 细节。
 - 这会把“提示词包”继续推进到“可持续生产任务流”。
 
 如果准备做下一组任务，建议顺序：
