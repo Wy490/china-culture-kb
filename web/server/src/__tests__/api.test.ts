@@ -1980,6 +1980,40 @@ describe('Seedance Subtitle API', () => {
   });
 });
 
+describe('Seedance Audio API', () => {
+  it('validates audio library item kind', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-audio-library')
+      .send({ items: [{ kind: 'voiceover', label: '旁白', file_url: 'https://example.com/audio.mp3' }] });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('validates audio mix output filename', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-audio/mix')
+      .send({ output_filename: '../bad.mp4' });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts an audio mix dry-run request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-audio/mix')
+      .send({ dry_run: true, audio_profile: 'balanced_dialogue' });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('returns 404 for a missing series project audio plan', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-audio-plan')
+      .send({});
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+});
+
 describe('Seedance Cut Assembly API', () => {
   it('validates cut assembly request body', async () => {
     const res = await request

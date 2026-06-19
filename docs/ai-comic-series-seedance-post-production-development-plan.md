@@ -29,7 +29,7 @@
 当前能力边界：
 
 - 已能把 Seedance 回片组织为可剪辑资产，并自动抽缩略图、装配初版成片。
-- 已能生成后期精修计划，并执行 SRT 字幕文件输出与可选字幕烧录；混音、片头片尾渲染和最终交付装配仍待建设。
+- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，并导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本；真实混音素材生产、片头片尾渲染和最终交付装配仍待建设。
 - 外部剪辑平台尚未有专用导入格式。
 - 审片返修闭环仍处于待建设状态。
 
@@ -194,6 +194,8 @@ Seedance prompts
 
 将音频 cue 从文字建议升级为可绑定、可检查、可执行的音频资产计划。
 
+当前状态：已完成首版。
+
 ### 后端任务
 
 - 新增 `seedance_audio_library`。
@@ -215,17 +217,32 @@ Seedance prompts
 - 合并 finishing plan 与 audio library。
 - 输出混音轨道、缺失音频、建议素材和绑定状态。
 
+实现状态：
+
+- `web/shared/types.ts` 已新增音频素材库、音频计划包、混音请求、混音结果和混音账本类型。
+- `web/shared/schemas.ts` 已新增音频素材库更新和混音请求 schema。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增音频素材库保存、音频计划导出、素材绑定状态归一化和 Markdown 输出。
+- `web/server/src/routes/outline.ts` 已新增 `seedance-audio-library` 与 `export-seedance-audio-plan` 路由。
+
 ### 前端任务
 
 - 支持音频素材 JSON 导入。
 - 精修面板显示音频资产绑定状态。
 - 支持导出音频计划 Markdown / JSON。
 
+实现状态：
+
+- `AiComicSeriesStudio.vue` 已新增音频素材 JSON 导入、音频计划 Markdown / JSON 导出和混音状态展示。
+
 ### 测试
 
 - 音频库 normalize / clone 测试。
 - 音频计划导出测试。
 - 缺失音频统计测试。
+
+实现状态：
+
+- 已覆盖缺失音频计划导出、素材绑定后计划更新、音频素材库请求校验和缺失项目响应。
 
 ### 验收标准
 
@@ -237,6 +254,8 @@ Seedance prompts
 ### 目标
 
 调用 ffmpeg 将背景音乐、环境声、音效与视频合成为带音频的成片。
+
+当前状态：dry-run / mock runner 首版已完成；真实素材路径和完整混音策略仍需继续打磨。
 
 ### 后端任务
 
@@ -251,10 +270,16 @@ Seedance prompts
   - `output_path`
   - `ffmpeg_command`
   - `source_video_path`
-  - `audio_asset_count`
+  - `source_audio_count`
   - `missing_audio_count`
   - `mixed_at`
   - `failure_reason`
+
+实现状态：
+
+- `seedance-audio/mix` 已支持 `dry_run`、`overwrite`、`episode_no`、`input_video_path`、`output_filename` 和 `audio_profile`。
+- 服务层已生成可复现 ffmpeg 命令，并将 dry-run / mock runner 结果写回 `seedance_audio_mix`。
+- 当前首版优先保证计划可审查和命令可复现；真实执行时还需要继续补足素材路径约束、原声混合策略和失败专项断言。
 
 ### 前端任务
 
@@ -262,12 +287,21 @@ Seedance prompts
 - 工作台增加“执行混音”。
 - 显示混音输出路径和失败原因。
 
+实现状态：
+
+- 系列工作台已新增“混音 dry-run”和混音状态卡，显示源视频、素材数、缺失音频数、状态、输出路径和失败原因。
+
 ### 测试
 
 - `filter_complex` 生成测试。
 - dry-run 测试。
 - mock runner 成功/失败测试。
 - API validation 测试。
+
+实现状态：
+
+- 已覆盖混音 dry-run 命令、音频输入路径安全校验、混音请求 validation 和缺失项目响应。
+- 待补：真实 ffmpeg 成功/失败专项、原声混合策略和多分集边界测试。
 
 ### 验收标准
 
@@ -548,35 +582,33 @@ Seedance prompts
 
 推荐按以下顺序继续：
 
-1. `seedance_audio_library`
-2. `export-seedance-audio-plan`
-3. `seedance-audio/mix`
-4. `export-seedance-title-card-plan`
-5. `seedance-title-cards/render`
-6. `seedance-final/assemble`
-7. `seedance-production-dashboard`
-8. `export-seedance-editing-platform-package`
-9. `seedance_review_ledger`
-10. 30 集压测和性能优化
+1. `export-seedance-title-card-plan`
+2. `seedance-title-cards/render`
+3. `seedance-final/assemble`
+4. `seedance-audio/mix` 真实素材执行增强
+5. `seedance-production-dashboard`
+6. `export-seedance-editing-platform-package`
+7. `seedance_review_ledger`
+8. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
 
 下一步建议优先实现：
 
 ```text
-seedance_audio_library
-  -> export-seedance-audio-plan
-  -> seedance-audio/mix dry-run
-  -> 前端音频素材导入与混音状态
+export-seedance-title-card-plan
+  -> seedance-title-cards/render dry-run
+  -> seedance-final/assemble dry-run
+  -> 前端最终交付依赖状态
 ```
 
 原因：
 
-- 直接承接当前已完成的成片精修计划包和字幕 worker。
+- 直接承接当前已完成的剪辑装配、字幕 worker 和音频计划 / 混音 dry-run。
 - 不依赖第三方平台。
-- 可先从音频素材 JSON 导入和 dry-run 混音开始，不必一次实现真实素材生产。
-- ffmpeg 依赖和 worker 模式已经在缩略图、剪辑装配和字幕烧录中跑通。
-- 能把系统从“可输出字幕交付件”推进到“可输出带音频的后期装配计划”。
+- 可先用 dry-run 和 mock runner 建立 title card / final delivery 账本，再逐步补真实素材生产细节。
+- ffmpeg 依赖和 worker 模式已经在缩略图、剪辑装配、字幕烧录和混音 dry-run 中跑通。
+- 能把系统从“可输出带音频的后期装配计划”推进到“可审查最终交付依赖和成片装配命令”。
 
 该切片完成后，系统后期链路将达到：
 
@@ -588,6 +620,7 @@ ready 镜头
   -> SRT 字幕文件
   -> 字幕烧录成片
   -> 音频计划
+  -> 混音 dry-run / 音频账本
 ```
 
-这会为后续混音、片头片尾和最终成片装配打下稳定基础。
+这会为后续片头片尾、最终成片装配和真实混音执行增强打下稳定基础。

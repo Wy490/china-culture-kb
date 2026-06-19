@@ -11,8 +11,8 @@
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
 | Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
-| AI 漫剧系列生产链 | 约 52% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、sidecar 字幕文件和 burn-in 字幕 worker 首版已有；混音、片头片尾、final delivery 待做。 |
-| 可商用制作中台 | 约 45% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、音频/最终成片、审片返修和稳定压测。 |
+| AI 漫剧系列生产链 | 约 58% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、sidecar 字幕文件、burn-in 字幕 worker、音频素材库、音频计划和混音 dry-run 首版已有；片头片尾、final delivery、审片返修待做。 |
+| 可商用制作中台 | 约 47% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、真实混音执行/最终成片、审片返修和稳定压测。 |
 
 ## 2. 本轮完成内容
 
@@ -126,6 +126,13 @@
   - 新增 `seedance_subtitle_render` 账本，记录 SRT 路径、输出路径、ffmpeg 命令、渲染状态、失败原因和 cue 数。
   - 系列工作台新增“导出 SRT 字幕”“生成字幕文件”“烧录字幕成片”和字幕渲染状态卡。
   - 服务测试覆盖 SRT 包、分集 SRT、sidecar dry-run、sidecar 写盘和 burn-in mock runner；API 测试覆盖字幕导出/渲染请求校验。
+- AI 漫剧 Seedance 音频链路首版：
+  - 新增 `seedance_audio_library`，支持保存音乐、环境声、音效、旁白等音频素材条目。
+  - 新增 `export-seedance-audio-plan`，把成片精修计划里的 audio cues 与音频素材库合并为 Markdown / JSON 音频计划。
+  - 新增 `seedance-audio/mix`，支持 `dry_run`、分集筛选、输入视频路径、输出文件名、audio profile 和可复现 ffmpeg 命令。
+  - 新增 `seedance_audio_mix` 账本，记录状态、源视频、输出路径、素材数、缺失音频数、失败原因和 ffmpeg 命令。
+  - 系列工作台新增“导出音频计划 Markdown / JSON”“导入音频素材”和“混音 dry-run”，并展示混音状态卡。
+  - 服务测试覆盖缺失音频计划、素材绑定、混音 dry-run 命令和输入路径校验；API 测试覆盖音频素材库、混音请求和缺失项目校验。
 
 ### 文档同步
 
@@ -148,7 +155,7 @@ git diff --check
 
 - `web/client`：lint passed。
 - `web/client`：build passed。
-- `web/server`：lint passed；`project-service.test.ts` 36 passed，`api.test.ts` 92 passed；全量 24 files / 249 tests passed。
+- `web/server`：lint passed；`project-service.test.ts` 36 passed，`api.test.ts` 96 passed；全量 24 files / 253 tests passed。
 - `web/client`：lint passed；ProjectDetail provider overview API smoke 通过，提交 5 条 provider 任务后 overview 返回 5 个总镜头 / 5 个活跃 / 5 个注意项。
 - `git diff --check`：passed。
 
@@ -213,19 +220,19 @@ SeedanceProviderAdapter
 - 筛选区增加更明显重置入口。
 - 项目工作台默认只保留高频主路径，高级制作动作放折叠区。
 
-### P1：AI 漫剧音频链路
+### P1：AI 漫剧片头片尾与最终装配
 
 下一块建议做：
 
 ```text
-seedance_audio_library
-  -> export-seedance-audio-plan
-  -> seedance-audio/mix dry-run
-  -> 前端音频素材导入与混音状态
+export-seedance-title-card-plan
+  -> seedance-title-cards/render dry-run
+  -> seedance-final/assemble dry-run
+  -> 前端最终交付依赖状态
 ```
 
 ## 6. 新对话开场指令
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform，当前有未提交改动。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先收尾当前工作区，然后继续 P0：Seedance provider 平台 SDK/HTTP submit/query 实现、MCP 更深模型修复链路、故事管理 UX 降噪。默认界面保持简单，只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先确认工作区状态，然后继续 P0：Seedance provider 平台 SDK/HTTP submit/query 实现、MCP 更深模型修复链路、故事管理 UX 降噪；AI 漫剧后期下一块做片头片尾卡与 final delivery dry-run。默认界面保持简单，只保留高频主路径。
 ```

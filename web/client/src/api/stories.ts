@@ -24,6 +24,8 @@ import type {
   AiComicSeedanceAssetLibraryUpdateRequest,
   AiComicSeedanceCutAssemblyRequest,
   AiComicSeriesSeedanceAssetReportPackage,
+  AiComicSeriesSeedanceAudioMixResult,
+  AiComicSeriesSeedanceAudioPlanPackage,
   AiComicSeriesSeedanceCutAssemblyResult,
   AiComicSeriesSeedanceCutPackage,
   AiComicSeriesSeedanceEditAssetPackage,
@@ -36,6 +38,8 @@ import type {
   AiComicSeriesSeedanceThumbnailCaptureResult,
   AiComicSeriesSeedanceVersionComparisonPackage,
   AiComicSeedanceProductionAutoSelectRequest,
+  AiComicSeedanceAudioLibraryUpdateRequest,
+  AiComicSeedanceAudioMixRequest,
   AiComicSeedanceProductionBatchUpdateRequest,
   AiComicSeedanceProductionCallbackRequest,
   AiComicSeedanceProductionStatusUpdateRequest,
@@ -237,6 +241,23 @@ export function renderAiComicSeriesSeedanceSubtitles(
   )
 }
 
+export function exportAiComicSeriesSeedanceAudioPlanPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceAudioPlanPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-audio-plan`,
+    {},
+  )
+}
+
+export function mixAiComicSeriesSeedanceAudio(
+  seriesProjectId: string,
+  req: AiComicSeedanceAudioMixRequest = {},
+) {
+  return apiPost<AiComicSeriesSeedanceAudioMixResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-audio/mix`,
+    req,
+  )
+}
+
 export function captureAiComicSeriesSeedanceThumbnails(
   seriesProjectId: string,
   req: AiComicSeedanceThumbnailCaptureRequest = {},
@@ -253,6 +274,16 @@ export function updateAiComicSeriesSeedanceAssetLibrary(
 ) {
   return apiPost<AiComicSeriesProjectDetail>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-asset-library`,
+    req,
+  )
+}
+
+export function updateAiComicSeriesSeedanceAudioLibrary(
+  seriesProjectId: string,
+  req: AiComicSeedanceAudioLibraryUpdateRequest,
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-audio-library`,
     req,
   )
 }

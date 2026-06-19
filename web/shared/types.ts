@@ -2240,6 +2240,145 @@ export interface AiComicSeriesSeedanceSubtitleRenderResult {
   seedance_subtitle_render: AiComicSeedanceSubtitleRenderLedger;
 }
 
+export interface AiComicSeedanceAudioLibraryItem {
+  asset_id: string;
+  kind: AiComicSeedanceFinishingTrackKind;
+  label: string;
+  file_url?: string;
+  file_id?: string;
+  duration_sec?: number;
+  license_note?: string;
+  loopable?: boolean;
+  bpm?: number;
+  mood_tags: string[];
+  updated_at: string;
+}
+
+export interface AiComicSeedanceAudioLibrary {
+  schema_version: 'ai-comic-seedance-audio-library/v1';
+  updated_at?: string;
+  items: AiComicSeedanceAudioLibraryItem[];
+}
+
+export interface AiComicSeedanceAudioLibraryUpdateRequest {
+  items: Array<{
+    asset_id?: string;
+    kind: AiComicSeedanceFinishingTrackKind;
+    label: string;
+    file_url?: string;
+    file_id?: string;
+    duration_sec?: number;
+    license_note?: string;
+    loopable?: boolean;
+    bpm?: number;
+    mood_tags?: string[];
+  }>;
+}
+
+export type AiComicSeedanceAudioAssetStatus = 'bound' | 'missing_asset' | 'optional_missing';
+
+export interface AiComicSeedanceAudioPlanCue extends AiComicSeedanceFinishingAudioCue {
+  asset_id: string;
+  asset_label: string;
+  asset_status: AiComicSeedanceAudioAssetStatus;
+  file_url?: string;
+  file_id?: string;
+  asset_duration_sec?: number;
+  loopable?: boolean;
+  volume_db: number;
+  ducking: boolean;
+  fade_in_sec: number;
+  fade_out_sec: number;
+  mix_track: AiComicSeedanceFinishingTrackKind;
+  generated_prompt: string;
+  needs_manual_review: boolean;
+}
+
+export interface AiComicSeriesSeedanceAudioPlanPackage {
+  schema_version: 'ai-comic-series-seedance-audio-plan/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  exported_at: string;
+  source_cut_output_path?: string;
+  audio_root: string;
+  total_duration_sec: number;
+  total_audio_cue_count: number;
+  bound_cue_count: number;
+  missing_audio_count: number;
+  audio_cues: AiComicSeedanceAudioPlanCue[];
+  missing_audio: Array<{
+    cue_id: string;
+    episode_no: number;
+    shot_id?: string;
+    kind: AiComicSeedanceFinishingTrackKind;
+    asset_id: string;
+    asset_label: string;
+    priority: AiComicSeedanceFinishingAudioCue['priority'];
+    reason: string;
+  }>;
+  suggested_assets: Array<{
+    asset_id: string;
+    kind: AiComicSeedanceFinishingTrackKind;
+    label: string;
+    cue_count: number;
+    prompt: string;
+  }>;
+  markdown: string;
+}
+
+export type AiComicSeedanceAudioMixStatus =
+  | 'not_started'
+  | 'planned'
+  | 'mixing'
+  | 'ready'
+  | 'failed'
+  | 'skipped';
+
+export type AiComicSeedanceAudioMixProfile = 'balanced_dialogue' | 'music_forward' | 'ambient_soft';
+
+export interface AiComicSeedanceAudioMixRequest {
+  dry_run?: boolean;
+  overwrite?: boolean;
+  episode_no?: number;
+  input_video_path?: string;
+  output_filename?: string;
+  audio_profile?: AiComicSeedanceAudioMixProfile;
+}
+
+export interface AiComicSeedanceAudioMixLedger {
+  schema_version: 'ai-comic-seedance-audio-mix-ledger/v1';
+  updated_at?: string;
+  status: AiComicSeedanceAudioMixStatus;
+  output_path?: string;
+  output_filename?: string;
+  input_video_path?: string;
+  ffmpeg_command?: string;
+  mixed_at?: string;
+  failure_reason?: string;
+  dry_run?: boolean;
+  audio_profile: AiComicSeedanceAudioMixProfile;
+  source_audio_count: number;
+  missing_audio_count: number;
+}
+
+export interface AiComicSeriesSeedanceAudioMixResult {
+  schema_version: 'ai-comic-series-seedance-audio-mix-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  executed_at: string;
+  dry_run: boolean;
+  status: 'planned' | 'mixed' | 'failed' | 'skipped';
+  output_path: string;
+  output_filename: string;
+  input_video_path?: string;
+  ffmpeg_command: string;
+  audio_profile: AiComicSeedanceAudioMixProfile;
+  source_audio_count: number;
+  missing_audio_count: number;
+  failure_reason?: string;
+  seedance_audio_mix: AiComicSeedanceAudioMixLedger;
+}
+
 export interface AiComicSeedanceRetryPackageShot {
   production_id: string;
   episode_no: number;
@@ -3412,6 +3551,8 @@ export interface AiComicSeriesProjectDetail {
   seedance_asset_library?: AiComicSeedanceAssetLibrary;
   seedance_cut_assembly?: AiComicSeedanceCutAssemblyLedger;
   seedance_subtitle_render?: AiComicSeedanceSubtitleRenderLedger;
+  seedance_audio_library?: AiComicSeedanceAudioLibrary;
+  seedance_audio_mix?: AiComicSeedanceAudioMixLedger;
 }
 
 export interface AiComicSeriesBibleCharacterRow {

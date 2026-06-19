@@ -1247,6 +1247,32 @@ export const AiComicSeedanceSubtitleRenderRequestSchema = z.object({
   input_video_path: z.string().trim().min(1).max(500).optional(),
 });
 
+const AiComicSeedanceAudioKindSchema = z.enum(['dialogue', 'narration', 'music', 'sound_effect', 'ambient']);
+
+export const AiComicSeedanceAudioLibraryUpdateRequestSchema = z.object({
+  items: z.array(z.object({
+    asset_id: z.string().trim().min(1).max(120).optional(),
+    kind: AiComicSeedanceAudioKindSchema,
+    label: z.string().trim().min(1).max(120),
+    file_url: z.string().trim().min(1).max(1000).optional(),
+    file_id: z.string().trim().min(1).max(160).optional(),
+    duration_sec: z.number().min(0.1).max(7200).optional(),
+    license_note: z.string().trim().max(500).optional(),
+    loopable: z.boolean().optional(),
+    bpm: z.number().min(20).max(260).optional(),
+    mood_tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+  })).min(1).max(300),
+});
+
+export const AiComicSeedanceAudioMixRequestSchema = z.object({
+  dry_run: z.boolean().optional().default(true),
+  overwrite: z.boolean().optional().default(false),
+  episode_no: z.number().int().min(1).max(120).optional(),
+  input_video_path: z.string().trim().min(1).max(500).optional(),
+  output_filename: z.string().trim().regex(/^[0-9A-Za-z._-]+\.mp4$/).optional(),
+  audio_profile: z.enum(['balanced_dialogue', 'music_forward', 'ambient_soft']).optional().default('balanced_dialogue'),
+});
+
 export const AiComicSeriesLedgerRebuildRequestSchema = z.object({
   from_episode_no: z.number().int().min(1).max(120).optional().default(1),
 });

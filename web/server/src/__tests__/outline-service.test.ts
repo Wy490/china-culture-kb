@@ -11,6 +11,7 @@ import {
   deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
   exportAiComicSeriesSeedanceAssetReportPackage,
+  exportAiComicSeriesSeedanceAudioPlanPackage,
   exportAiComicSeriesSeedanceCutPackage,
   exportAiComicSeriesSeedanceEditAssetPackage,
   exportAiComicSeriesSeedanceFinishingPlanPackage,
@@ -23,12 +24,14 @@ import {
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
+  mixAiComicSeriesSeedanceAudio,
   previewAiComicEpisodeContext,
   rebuildAiComicSeriesContinuityLedger,
   renderAiComicSeriesSeedanceSubtitles,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
+  updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
@@ -942,6 +945,80 @@ describe('outline-service', () => {
     );
     expect(unsafeSubtitleInputRes.ok).toBe(false);
     expect(unsafeSubtitleInputRes.error?.code).toBe('VALIDATION_ERROR');
+
+    const audioPlanMissingRes = await exportAiComicSeriesSeedanceAudioPlanPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(audioPlanMissingRes.ok).toBe(true);
+    expect(audioPlanMissingRes.data?.schema_version).toBe('ai-comic-series-seedance-audio-plan/v1');
+    expect(audioPlanMissingRes.data?.total_audio_cue_count).toBe(finishingPlanRes.data?.audio_cues.length);
+    expect(audioPlanMissingRes.data?.missing_audio_count).toBeGreaterThan(0);
+    expect(audioPlanMissingRes.data?.suggested_assets.length).toBeGreaterThan(0);
+    expect(audioPlanMissingRes.data?.markdown).toContain('Seedance 音频计划');
+
+    const firstSuggestedAudio = audioPlanMissingRes.data!.suggested_assets[0];
+    const audioLibraryRes = await updateAiComicSeriesSeedanceAudioLibrary(
+      saveRes.data!.project.series_project_id,
+      {
+        items: [{
+          asset_id: firstSuggestedAudio.asset_id,
+          kind: firstSuggestedAudio.kind,
+          label: firstSuggestedAudio.label,
+          file_url: 'https://example.com/audio/series-bed.mp3',
+          duration_sec: 120,
+          license_note: '测试授权',
+          loopable: true,
+          bpm: 72,
+          mood_tags: ['克制', '古风'],
+        }],
+      },
+    );
+    expect(audioLibraryRes.ok).toBe(true);
+    expect(audioLibraryRes.data?.seedance_audio_library?.items[0]).toMatchObject({
+      asset_id: firstSuggestedAudio.asset_id,
+      file_url: 'https://example.com/audio/series-bed.mp3',
+      loopable: true,
+    });
+
+    const audioPlanBoundRes = await exportAiComicSeriesSeedanceAudioPlanPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(audioPlanBoundRes.ok).toBe(true);
+    expect(audioPlanBoundRes.data?.bound_cue_count).toBeGreaterThan(0);
+    expect(audioPlanBoundRes.data?.audio_cues.find(cue =>
+      cue.asset_id === firstSuggestedAudio.asset_id
+    )).toMatchObject({
+      asset_status: 'bound',
+      file_url: 'https://example.com/audio/series-bed.mp3',
+      volume_db: expect.any(Number),
+      ducking: expect.any(Boolean),
+    });
+
+    const audioMixDryRunRes = await mixAiComicSeriesSeedanceAudio(
+      saveRes.data!.project.series_project_id,
+      { dry_run: true, audio_profile: 'music_forward' },
+    );
+    expect(audioMixDryRunRes.ok).toBe(true);
+    expect(audioMixDryRunRes.data?.schema_version).toBe('ai-comic-series-seedance-audio-mix-result/v1');
+    expect(audioMixDryRunRes.data?.status).toBe('planned');
+    expect(audioMixDryRunRes.data?.audio_profile).toBe('music_forward');
+    expect(audioMixDryRunRes.data?.source_audio_count).toBeGreaterThan(0);
+    expect(audioMixDryRunRes.data?.ffmpeg_command).toContain('-filter_complex');
+    expect(audioMixDryRunRes.data?.seedance_audio_mix).toMatchObject({
+      status: 'planned',
+      audio_profile: 'music_forward',
+      source_audio_count: audioMixDryRunRes.data?.source_audio_count,
+    });
+
+    const unsafeAudioMixInputRes = await mixAiComicSeriesSeedanceAudio(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: true,
+        input_video_path: '../outside.mp4',
+      },
+    );
+    expect(unsafeAudioMixInputRes.ok).toBe(false);
+    expect(unsafeAudioMixInputRes.error?.code).toBe('VALIDATION_ERROR');
 
     const retryPackageRes = await exportAiComicSeriesSeedanceRetryPackage(saveRes.data!.project.series_project_id);
     expect(retryPackageRes.ok).toBe(true);

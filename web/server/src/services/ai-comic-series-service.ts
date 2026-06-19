@@ -34,6 +34,11 @@ import type {
   AiComicSeedanceAssetLibrary,
   AiComicSeedanceAssetLibraryItem,
   AiComicSeedanceAssetLibraryUpdateRequest,
+  AiComicSeedanceAudioLibrary,
+  AiComicSeedanceAudioLibraryUpdateRequest,
+  AiComicSeedanceAudioMixLedger,
+  AiComicSeedanceAudioMixProfile,
+  AiComicSeedanceAudioMixRequest,
   AiComicSeedanceThumbnailCaptureRequest,
   AiComicSeedanceThumbnailCaptureResultShot,
   AiComicSeedanceThumbnailStatus,
@@ -56,8 +61,11 @@ import type {
   AiComicSeriesSeedanceCutAssemblyResult,
   AiComicSeriesSeedanceSubtitlePackage,
   AiComicSeriesSeedanceSubtitleRenderResult,
+  AiComicSeriesSeedanceAudioMixResult,
+  AiComicSeriesSeedanceAudioPlanPackage,
   AiComicSeedanceThumbnailPlanEpisode,
   AiComicSeriesSeedanceFinishingPlanPackage,
+  AiComicSeedanceAudioPlanCue,
   AiComicSeedanceFinishingAudioCue,
   AiComicSeedanceFinishingShot,
   AiComicSeedanceFinishingSubtitleCue,
@@ -152,6 +160,12 @@ type FfmpegSubtitleBurnInRunner = (params: {
   subtitlePath: string;
   outputPath: string;
 }) => Promise<void>;
+type FfmpegAudioMixRunner = (params: {
+  ffmpegPath: string;
+  inputVideoPath: string;
+  audioInputs: SeedanceAudioMixInput[];
+  outputPath: string;
+}) => Promise<void>;
 
 interface SeedanceCutAssemblyProfile {
   assemblyMode: 'copy' | 'transcode';
@@ -161,6 +175,15 @@ interface SeedanceCutAssemblyProfile {
   preset: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'medium' | 'slow';
   width?: number;
   height?: number;
+}
+
+interface SeedanceAudioMixInput {
+  input_path: string;
+  start_sec: number;
+  end_sec: number;
+  volume_db: number;
+  fade_in_sec: number;
+  fade_out_sec: number;
 }
 
 const execFileAsync = promisify(execFile);
@@ -1313,6 +1336,71 @@ function buildAiComicSeriesSeedanceSubtitleMarkdown(
   return lines.join('\n');
 }
 
+function buildAiComicSeriesSeedanceAudioPlanMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceAudioPlanPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Seedance 音频计划`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> sourceCut: ${pkg.source_cut_output_path ?? '尚未装配'}`,
+    `> audioRoot: ${pkg.audio_root}`,
+    `> cueCount: ${pkg.total_audio_cue_count}`,
+    `> boundCueCount: ${pkg.bound_cue_count}`,
+    `> missingAudioCount: ${pkg.missing_audio_count}`,
+    `> duration: ${pkg.total_duration_sec} 秒`,
+    '',
+    '## 音频 Cue',
+    ...markdownTable(
+      ['Cue', '时间', '类型', '优先级', '素材', '状态', '音量', '淡入/淡出', '说明'],
+      pkg.audio_cues.map(cue => [
+        cue.cue_id,
+        `${formatSeconds(cue.start_sec)}-${formatSeconds(cue.end_sec)}`,
+        seedanceAudioKindText(cue.kind),
+        seedanceCuePriorityText(cue.priority),
+        cue.asset_label,
+        seedanceAudioAssetStatusText(cue.asset_status),
+        `${cue.volume_db}dB`,
+        `${cue.fade_in_sec}s/${cue.fade_out_sec}s`,
+        cue.generated_prompt,
+      ]),
+    ),
+    '',
+    '## 建议素材',
+    ...markdownTable(
+      ['素材 ID', '类型', '标签', 'Cue 数', '提示'],
+      pkg.suggested_assets.map(asset => [
+        asset.asset_id,
+        seedanceAudioKindText(asset.kind),
+        asset.label,
+        String(asset.cue_count),
+        asset.prompt,
+      ]),
+    ),
+  ];
+  if (pkg.missing_audio.length > 0) {
+    lines.push(
+      '',
+      '## 缺失音频',
+      ...markdownTable(
+        ['Cue', '集数', '镜头', '类型', '素材', '优先级', '原因'],
+        pkg.missing_audio.map(item => [
+          item.cue_id,
+          `第${item.episode_no}集`,
+          item.shot_id ?? '全片',
+          seedanceAudioKindText(item.kind),
+          item.asset_label,
+          seedanceCuePriorityText(item.priority),
+          item.reason,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
+}
+
 function markdownTable(headers: string[], rows: string[][]): string[] {
   if (rows.length === 0) return ['- 未记录'];
   const cleanCell = (value: string): string => value.replace(/\|/g, '｜').replace(/\n/g, ' ').trim() || '未记录';
@@ -1578,6 +1666,15 @@ function seedanceAudioKindText(kind: AiComicSeedanceFinishingAudioCue['kind']): 
     ambient: '环境声',
   };
   return map[kind];
+}
+
+function seedanceAudioAssetStatusText(status: AiComicSeedanceAudioPlanCue['asset_status']): string {
+  const map: Record<AiComicSeedanceAudioPlanCue['asset_status'], string> = {
+    bound: '已绑定',
+    missing_asset: '缺素材',
+    optional_missing: '可选缺失',
+  };
+  return map[status];
 }
 
 function seedanceCuePriorityText(priority: AiComicSeedanceFinishingAudioCue['priority']): string {
@@ -1852,6 +1949,8 @@ export async function saveAiComicSeriesProject(
     seedance_asset_library: cloneSeedanceAssetLibrary(existing?.seedance_asset_library),
     seedance_cut_assembly: cloneSeedanceCutAssemblyLedger(existing?.seedance_cut_assembly),
     seedance_subtitle_render: cloneSeedanceSubtitleRenderLedger(existing?.seedance_subtitle_render),
+    seedance_audio_library: cloneSeedanceAudioLibrary(existing?.seedance_audio_library),
+    seedance_audio_mix: cloneSeedanceAudioMixLedger(existing?.seedance_audio_mix),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -1994,6 +2093,8 @@ export async function copyAiComicSeriesProject(
     seedance_asset_library: cloneSeedanceAssetLibrary(existing.seedance_asset_library),
     seedance_cut_assembly: cloneSeedanceCutAssemblyLedger(existing.seedance_cut_assembly),
     seedance_subtitle_render: cloneSeedanceSubtitleRenderLedger(existing.seedance_subtitle_render),
+    seedance_audio_library: cloneSeedanceAudioLibrary(existing.seedance_audio_library),
+    seedance_audio_mix: cloneSeedanceAudioMixLedger(existing.seedance_audio_mix),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -2424,6 +2525,54 @@ export async function updateAiComicSeriesSeedanceAssetLibrary(
     },
     seedance_asset_library: {
       schema_version: 'ai-comic-seedance-asset-library/v1',
+      updated_at: updatedAt,
+      items: [...byId.values()].sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+        return a.label.localeCompare(b.label, 'zh-CN');
+      }),
+    },
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  return success(detail);
+}
+
+export async function updateAiComicSeriesSeedanceAudioLibrary(
+  seriesProjectId: string,
+  request: AiComicSeedanceAudioLibraryUpdateRequest,
+): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const updatedAt = new Date().toISOString();
+  const current = normalizeSeedanceAudioLibrary(existing.seedance_audio_library);
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  for (const item of request.items) {
+    const label = item.label.trim();
+    const assetId = item.asset_id?.trim() || seedanceAudioAssetId(item.kind, label);
+    const previous = byId.get(assetId);
+    byId.set(assetId, {
+      asset_id: assetId,
+      kind: item.kind,
+      label,
+      file_url: item.file_url?.trim() || previous?.file_url,
+      file_id: item.file_id?.trim() || previous?.file_id,
+      duration_sec: item.duration_sec ?? previous?.duration_sec,
+      license_note: item.license_note?.trim() || previous?.license_note,
+      loopable: item.loopable ?? previous?.loopable,
+      bpm: item.bpm ?? previous?.bpm,
+      mood_tags: unique([...(item.mood_tags ?? previous?.mood_tags ?? [])].map(tag => tag.trim()).filter(Boolean)),
+      updated_at: updatedAt,
+    });
+  }
+  const detail: AiComicSeriesProjectDetail = {
+    ...existing,
+    project: {
+      ...existing.project,
+      updated_at: updatedAt,
+    },
+    seedance_audio_library: {
+      schema_version: 'ai-comic-seedance-audio-library/v1',
       updated_at: updatedAt,
       items: [...byId.values()].sort((a, b) => {
         if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
@@ -3337,6 +3486,222 @@ export async function renderAiComicSeriesSeedanceSubtitles(
   });
 }
 
+export async function exportAiComicSeriesSeedanceAudioPlanPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceAudioPlanPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const finishingPlanRes = await exportAiComicSeriesSeedanceFinishingPlanPackage(seriesProjectId);
+  if (!finishingPlanRes.ok || !finishingPlanRes.data) {
+    return fail(
+      normalizeErrorCode(finishingPlanRes.error?.code),
+      finishingPlanRes.error?.message ?? 'Export Seedance finishing plan failed',
+    );
+  }
+
+  const finishingPlan = finishingPlanRes.data;
+  const audioLibrary = normalizeSeedanceAudioLibrary(detail.seedance_audio_library);
+  const libraryById = new Map(audioLibrary.items.map(item => [item.asset_id, item]));
+  const audioCues = finishingPlan.audio_cues.map(cue => buildSeedanceAudioPlanCue(cue, libraryById));
+  const missingAudio = audioCues
+    .filter(cue => cue.asset_status === 'missing_asset')
+    .map(cue => ({
+      cue_id: cue.cue_id,
+      episode_no: cue.episode_no,
+      shot_id: cue.shot_id,
+      kind: cue.kind,
+      asset_id: cue.asset_id,
+      asset_label: cue.asset_label,
+      priority: cue.priority,
+      reason: '音频素材库中缺少 file_url 或 file_id',
+    }));
+  const suggestedAssetMap = new Map<string, {
+    asset_id: string;
+    kind: AiComicSeedanceFinishingAudioCue['kind'];
+    label: string;
+    prompts: string[];
+    cue_count: number;
+  }>();
+  for (const cue of audioCues) {
+    const current = suggestedAssetMap.get(cue.asset_id) ?? {
+      asset_id: cue.asset_id,
+      kind: cue.kind,
+      label: cue.asset_label,
+      prompts: [],
+      cue_count: 0,
+    };
+    current.cue_count += 1;
+    current.prompts.push(cue.generated_prompt);
+    suggestedAssetMap.set(cue.asset_id, current);
+  }
+  const suggestedAssets = [...suggestedAssetMap.values()]
+    .map(item => ({
+      asset_id: item.asset_id,
+      kind: item.kind,
+      label: item.label,
+      cue_count: item.cue_count,
+      prompt: summarizeText(unique(item.prompts).join('；'), 120),
+    }))
+    .sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+      return a.label.localeCompare(b.label, 'zh-CN');
+    });
+  const exportedAt = new Date().toISOString();
+  const basePackage: Omit<AiComicSeriesSeedanceAudioPlanPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-audio-plan/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    exported_at: exportedAt,
+    source_cut_output_path: finishingPlan.source_cut_output_path,
+    audio_root: `audio/${seriesProjectId}`,
+    total_duration_sec: finishingPlan.total_duration_sec,
+    total_audio_cue_count: audioCues.length,
+    bound_cue_count: audioCues.filter(cue => cue.asset_status === 'bound').length,
+    missing_audio_count: missingAudio.length,
+    audio_cues: audioCues,
+    missing_audio: missingAudio,
+    suggested_assets: suggestedAssets,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceAudioPlanMarkdown(basePackage),
+  });
+}
+
+export async function mixAiComicSeriesSeedanceAudio(
+  seriesProjectId: string,
+  request: AiComicSeedanceAudioMixRequest = {},
+  options: { runner?: FfmpegAudioMixRunner } = {},
+): Promise<ApiResponse<AiComicSeriesSeedanceAudioMixResult>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const audioPlanRes = await exportAiComicSeriesSeedanceAudioPlanPackage(seriesProjectId);
+  if (!audioPlanRes.ok || !audioPlanRes.data) {
+    return fail(
+      normalizeErrorCode(audioPlanRes.error?.code),
+      audioPlanRes.error?.message ?? 'Export Seedance audio plan failed',
+    );
+  }
+
+  const audioProfile: AiComicSeedanceAudioMixProfile = request.audio_profile ?? 'balanced_dialogue';
+  const dryRun = request.dry_run ?? true;
+  const overwrite = request.overwrite ?? false;
+  const executedAt = new Date().toISOString();
+  const sourceVideoPath = request.input_video_path
+    ?? seedanceAudioMixDefaultInputPath(detail);
+  if (!sourceVideoPath) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'Seedance audio mix requires a cut assembly output, burn-in subtitle output, or input_video_path',
+    );
+  }
+
+  const outputFilename = request.output_filename?.trim()
+    || seedanceAudioMixFilename(seriesProjectId, request.episode_no);
+  const outputPath = `cuts/${seriesProjectId}/${outputFilename}`;
+  const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  let absoluteInputVideoPath: string;
+  let absoluteOutputPath: string;
+  try {
+    absoluteInputVideoPath = resolveSeedanceProjectOutputPath(projectDir, sourceVideoPath);
+    absoluteOutputPath = resolveSeedanceProjectOutputPath(projectDir, outputPath);
+  } catch (err) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+
+  const audioInputs = audioPlanRes.data.audio_cues
+    .filter(cue => request.episode_no === undefined || cue.episode_no === request.episode_no)
+    .filter(cue => cue.asset_status === 'bound')
+    .map(cue => ({
+      input_path: cue.file_url ?? cue.file_id!,
+      start_sec: cue.start_sec,
+      end_sec: cue.end_sec,
+      volume_db: seedanceAudioProfileVolume(cue.volume_db, cue.kind, audioProfile),
+      fade_in_sec: cue.fade_in_sec,
+      fade_out_sec: cue.fade_out_sec,
+    }));
+  const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
+  const ffmpegCommand = buildFfmpegAudioMixCommand(ffmpegPath, sourceVideoPath, audioInputs, outputPath);
+  const runner = options.runner ?? runFfmpegAudioMix;
+  let status: AiComicSeriesSeedanceAudioMixResult['status'] = dryRun ? 'planned' : 'mixed';
+  let failureReason: string | undefined;
+
+  try {
+    const alreadyReady = !overwrite && !dryRun && await pathExists(absoluteOutputPath);
+    if (alreadyReady) {
+      status = 'skipped';
+    } else if (!dryRun) {
+      if (audioInputs.length === 0) {
+        throw new Error('No bound audio assets are available for audio mix');
+      }
+      await mkdir(dirname(absoluteOutputPath), { recursive: true });
+      await runner({
+        ffmpegPath,
+        inputVideoPath: absoluteInputVideoPath,
+        audioInputs,
+        outputPath: absoluteOutputPath,
+      });
+    }
+  } catch (err) {
+    status = 'failed';
+    failureReason = err instanceof Error ? err.message : String(err);
+  }
+
+  const mixLedger: AiComicSeedanceAudioMixLedger = {
+    schema_version: 'ai-comic-seedance-audio-mix-ledger/v1',
+    updated_at: executedAt,
+    status: status === 'mixed'
+      ? 'ready'
+      : status === 'planned'
+        ? 'planned'
+        : status,
+    output_path: outputPath,
+    output_filename: outputFilename,
+    input_video_path: sourceVideoPath,
+    ffmpeg_command: ffmpegCommand,
+    mixed_at: status === 'mixed' ? executedAt : detail.seedance_audio_mix?.mixed_at,
+    failure_reason: failureReason,
+    dry_run: dryRun,
+    audio_profile: audioProfile,
+    source_audio_count: audioInputs.length,
+    missing_audio_count: audioPlanRes.data.missing_audio_count,
+  };
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: executedAt,
+    },
+    seedance_audio_mix: mixLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+
+  return success({
+    schema_version: 'ai-comic-series-seedance-audio-mix-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    executed_at: executedAt,
+    dry_run: dryRun,
+    status,
+    output_path: outputPath,
+    output_filename: outputFilename,
+    input_video_path: sourceVideoPath,
+    ffmpeg_command: ffmpegCommand,
+    audio_profile: audioProfile,
+    source_audio_count: audioInputs.length,
+    missing_audio_count: audioPlanRes.data.missing_audio_count,
+    failure_reason: failureReason,
+    seedance_audio_mix: mixLedger,
+  });
+}
+
 export async function captureAiComicSeriesSeedanceThumbnails(
   seriesProjectId: string,
   request: AiComicSeedanceThumbnailCaptureRequest = {},
@@ -4199,6 +4564,8 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
     seedance_asset_library: cloneSeedanceAssetLibrary(detail.seedance_asset_library),
     seedance_cut_assembly: cloneSeedanceCutAssemblyLedger(detail.seedance_cut_assembly),
     seedance_subtitle_render: cloneSeedanceSubtitleRenderLedger(detail.seedance_subtitle_render),
+    seedance_audio_library: cloneSeedanceAudioLibrary(detail.seedance_audio_library),
+    seedance_audio_mix: cloneSeedanceAudioMixLedger(detail.seedance_audio_mix),
     series_quality_audit: detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
       plan: detail.plan,
       generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
@@ -4375,6 +4742,43 @@ function cloneSeedanceAssetLibrary(
   };
 }
 
+function normalizeSeedanceAudioLibrary(
+  library?: AiComicSeedanceAudioLibrary,
+): AiComicSeedanceAudioLibrary {
+  return {
+    schema_version: 'ai-comic-seedance-audio-library/v1',
+    updated_at: library?.updated_at,
+    items: (library?.items ?? [])
+      .filter(item => item.label?.trim())
+      .map(item => ({
+        asset_id: item.asset_id || seedanceAudioAssetId(item.kind, item.label),
+        kind: item.kind,
+        label: item.label.trim(),
+        file_url: item.file_url,
+        file_id: item.file_id,
+        duration_sec: item.duration_sec,
+        license_note: item.license_note,
+        loopable: item.loopable,
+        bpm: item.bpm,
+        mood_tags: [...(item.mood_tags ?? [])],
+        updated_at: item.updated_at ?? library?.updated_at ?? new Date(0).toISOString(),
+      })),
+  };
+}
+
+function cloneSeedanceAudioLibrary(
+  library?: AiComicSeedanceAudioLibrary,
+): AiComicSeedanceAudioLibrary {
+  const normalized = normalizeSeedanceAudioLibrary(library);
+  return {
+    ...normalized,
+    items: normalized.items.map(item => ({
+      ...item,
+      mood_tags: [...item.mood_tags],
+    })),
+  };
+}
+
 function normalizeSeedanceCutAssemblyLedger(
   ledger?: AiComicSeedanceCutAssemblyLedger,
 ): AiComicSeedanceCutAssemblyLedger | undefined {
@@ -4432,6 +4836,34 @@ function cloneSeedanceSubtitleRenderLedger(
   ledger?: AiComicSeedanceSubtitleRenderLedger,
 ): AiComicSeedanceSubtitleRenderLedger | undefined {
   const normalized = normalizeSeedanceSubtitleRenderLedger(ledger);
+  return normalized ? { ...normalized } : undefined;
+}
+
+function normalizeSeedanceAudioMixLedger(
+  ledger?: AiComicSeedanceAudioMixLedger,
+): AiComicSeedanceAudioMixLedger | undefined {
+  if (!ledger) return undefined;
+  return {
+    schema_version: 'ai-comic-seedance-audio-mix-ledger/v1',
+    updated_at: ledger.updated_at,
+    status: ledger.status ?? 'not_started',
+    output_path: ledger.output_path,
+    output_filename: ledger.output_filename,
+    input_video_path: ledger.input_video_path,
+    ffmpeg_command: ledger.ffmpeg_command,
+    mixed_at: ledger.mixed_at,
+    failure_reason: ledger.failure_reason,
+    dry_run: ledger.dry_run,
+    audio_profile: ledger.audio_profile ?? 'balanced_dialogue',
+    source_audio_count: ledger.source_audio_count ?? 0,
+    missing_audio_count: ledger.missing_audio_count ?? 0,
+  };
+}
+
+function cloneSeedanceAudioMixLedger(
+  ledger?: AiComicSeedanceAudioMixLedger,
+): AiComicSeedanceAudioMixLedger | undefined {
+  const normalized = normalizeSeedanceAudioMixLedger(ledger);
   return normalized ? { ...normalized } : undefined;
 }
 
@@ -4590,6 +5022,10 @@ function seedanceProductionId(episodeNo: number, shotId: string): string {
   return `seedance-e${episodeNo}-${slugifyConstraintKey(shotId)}`;
 }
 
+function seedanceAudioAssetId(kind: AiComicSeedanceFinishingAudioCue['kind'], label: string): string {
+  return `audio-${kind}-${slugifyConstraintKey(label)}`;
+}
+
 function seedanceThumbnailFilename(episodeNo: number, shotId: string): string {
   return `e${String(episodeNo).padStart(2, '0')}-${slugifyConstraintKey(shotId)}.jpg`;
 }
@@ -4611,6 +5047,86 @@ function seedanceSubtitleBurnInFilename(seriesProjectId: string, episodeNo?: num
   if (trimmed?.toLowerCase().endsWith('.srt')) return trimmed.replace(/\.srt$/i, '.subtitled.mp4');
   const scope = episodeNo ? `e${String(episodeNo).padStart(2, '0')}` : 'full-series';
   return `${seriesProjectId}-${scope}-seedance-subtitled.mp4`;
+}
+
+function seedanceAudioMixFilename(seriesProjectId: string, episodeNo?: number): string {
+  const scope = episodeNo ? `e${String(episodeNo).padStart(2, '0')}` : 'full-series';
+  return `${seriesProjectId}-${scope}-seedance-audio-mix.mp4`;
+}
+
+function buildSeedanceAudioPlanCue(
+  cue: AiComicSeedanceFinishingAudioCue,
+  libraryById: Map<string, AiComicSeedanceAudioLibrary['items'][number]>,
+): AiComicSeedanceAudioPlanCue {
+  const assetLabel = seedanceAudioCueAssetLabel(cue);
+  const assetId = seedanceAudioAssetId(cue.kind, assetLabel);
+  const asset = libraryById.get(assetId);
+  const isBound = Boolean(asset?.file_url || asset?.file_id);
+  const assetStatus: AiComicSeedanceAudioPlanCue['asset_status'] = isBound
+    ? 'bound'
+    : cue.priority === 'optional'
+      ? 'optional_missing'
+      : 'missing_asset';
+  return {
+    ...cue,
+    asset_id: assetId,
+    asset_label: assetLabel,
+    asset_status: assetStatus,
+    file_url: asset?.file_url,
+    file_id: asset?.file_id,
+    asset_duration_sec: asset?.duration_sec,
+    loopable: asset?.loopable,
+    volume_db: seedanceAudioDefaultVolume(cue.kind),
+    ducking: cue.kind === 'music' || cue.kind === 'ambient',
+    fade_in_sec: cue.kind === 'music' || cue.kind === 'ambient' ? 1.5 : 0.1,
+    fade_out_sec: cue.kind === 'music' || cue.kind === 'ambient' ? 1.5 : 0.1,
+    mix_track: cue.kind,
+    generated_prompt: cue.text,
+    needs_manual_review: assetStatus === 'missing_asset',
+  };
+}
+
+function seedanceAudioCueAssetLabel(cue: AiComicSeedanceFinishingAudioCue): string {
+  if (cue.kind === 'music' && cue.cue_id === 'aud-series-bed') return '系列配乐底';
+  if (cue.kind === 'ambient' && cue.shot_id) return `环境声-${cue.shot_id}`;
+  if (cue.kind === 'sound_effect' && cue.shot_id) return `音效-${cue.shot_id}`;
+  if (cue.kind === 'dialogue' && cue.shot_id) return `对白处理-${cue.shot_id}`;
+  if (cue.kind === 'narration' && cue.shot_id) return `旁白处理-${cue.shot_id}`;
+  return `${seedanceAudioKindText(cue.kind)}-第${cue.episode_no}集`;
+}
+
+function seedanceAudioDefaultVolume(kind: AiComicSeedanceFinishingAudioCue['kind']): number {
+  const map: Record<AiComicSeedanceFinishingAudioCue['kind'], number> = {
+    dialogue: -6,
+    narration: -7,
+    music: -18,
+    sound_effect: -12,
+    ambient: -24,
+  };
+  return map[kind];
+}
+
+function seedanceAudioProfileVolume(
+  baseVolumeDb: number,
+  kind: AiComicSeedanceFinishingAudioCue['kind'],
+  profile: AiComicSeedanceAudioMixProfile,
+): number {
+  if (profile === 'music_forward' && kind === 'music') return baseVolumeDb + 4;
+  if (profile === 'music_forward' && (kind === 'dialogue' || kind === 'narration')) return baseVolumeDb - 1;
+  if (profile === 'ambient_soft' && kind === 'ambient') return baseVolumeDb - 4;
+  if (profile === 'ambient_soft' && kind === 'sound_effect') return baseVolumeDb - 2;
+  return baseVolumeDb;
+}
+
+function seedanceAudioMixDefaultInputPath(detail: AiComicSeriesProjectDetail): string | undefined {
+  if (
+    detail.seedance_subtitle_render?.status === 'ready'
+    && detail.seedance_subtitle_render.mode === 'burn_in'
+    && detail.seedance_subtitle_render.output_path
+  ) {
+    return detail.seedance_subtitle_render.output_path;
+  }
+  return detail.seedance_cut_assembly?.output_path;
 }
 
 function buildFfmpegThumbnailCommand(
@@ -4646,6 +5162,19 @@ function buildFfmpegSubtitleBurnInCommand(
   return [
     executable,
     ...ffmpegSubtitleBurnInArgs(inputVideoPath, subtitlePath, outputPath).map(shellDoubleQuoteIfNeeded),
+  ].join(' ');
+}
+
+function buildFfmpegAudioMixCommand(
+  ffmpegPath: string,
+  inputVideoPath: string,
+  audioInputs: SeedanceAudioMixInput[],
+  outputPath: string,
+): string {
+  const executable = ffmpegPath === 'ffmpeg' ? 'ffmpeg' : shellDoubleQuote(ffmpegPath);
+  return [
+    executable,
+    ...ffmpegAudioMixArgs(inputVideoPath, audioInputs, outputPath).map(shellDoubleQuoteIfNeeded),
   ].join(' ');
 }
 
@@ -4745,6 +5274,49 @@ function ffmpegSubtitleBurnInArgs(
   ];
 }
 
+function ffmpegAudioMixArgs(
+  inputVideoPath: string,
+  audioInputs: SeedanceAudioMixInput[],
+  outputPath: string,
+): string[] {
+  const inputs = ['-y', '-i', inputVideoPath, ...audioInputs.flatMap(input => ['-i', input.input_path])];
+  if (audioInputs.length === 0) return [...inputs, '-c', 'copy', outputPath];
+  const filters = audioInputs.map((input, index) => {
+    const inputIndex = index + 1;
+    const durationSec = Math.max(0.1, input.end_sec - input.start_sec);
+    const fadeOutStart = Math.max(0, durationSec - input.fade_out_sec);
+    const delayMs = Math.max(0, Math.round(input.start_sec * 1000));
+    return `[${inputIndex}:a]${[
+      `volume=${input.volume_db}dB`,
+      `atrim=0:${durationSec}`,
+      'asetpts=PTS-STARTPTS',
+      `afade=t=in:st=0:d=${input.fade_in_sec}`,
+      `afade=t=out:st=${fadeOutStart}:d=${input.fade_out_sec}`,
+      `adelay=${delayMs}|${delayMs}`,
+      `[a${index}]`,
+    ].join(',')}`;
+  });
+  const mixLabels = audioInputs.map((_, index) => `[a${index}]`).join('');
+  const filterComplex = `${filters.join(';')};${mixLabels}amix=inputs=${audioInputs.length}:duration=longest:dropout_transition=2[aout]`;
+  return [
+    ...inputs,
+    '-filter_complex',
+    filterComplex,
+    '-map',
+    '0:v:0',
+    '-map',
+    '[aout]',
+    '-c:v',
+    'copy',
+    '-c:a',
+    'aac',
+    '-shortest',
+    '-movflags',
+    '+faststart',
+    outputPath,
+  ];
+}
+
 function shellDoubleQuoteIfNeeded(value: string): string {
   return /^[A-Za-z0-9_./:=,+?-]+$/.test(value) ? value : shellDoubleQuote(value);
 }
@@ -4791,6 +5363,19 @@ async function runFfmpegSubtitleBurnIn(params: {
   await execFileAsync(
     params.ffmpegPath,
     ffmpegSubtitleBurnInArgs(params.inputVideoPath, params.subtitlePath, params.outputPath),
+    { timeout: 600_000 },
+  );
+}
+
+async function runFfmpegAudioMix(params: {
+  ffmpegPath: string;
+  inputVideoPath: string;
+  audioInputs: SeedanceAudioMixInput[];
+  outputPath: string;
+}): Promise<void> {
+  await execFileAsync(
+    params.ffmpegPath,
+    ffmpegAudioMixArgs(params.inputVideoPath, params.audioInputs, params.outputPath),
     { timeout: 600_000 },
   );
 }

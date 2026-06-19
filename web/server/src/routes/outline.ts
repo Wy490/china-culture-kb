@@ -8,6 +8,8 @@ import { validateBody, validateParams } from '../middleware/validate.js';
 import {
   AiComicEpisodeContextPreviewRequestSchema,
   AiComicEpisodeGenerateRequestSchema,
+  AiComicSeedanceAudioLibraryUpdateRequestSchema,
+  AiComicSeedanceAudioMixRequestSchema,
   AiComicSeedanceAssetLibraryUpdateRequestSchema,
   AiComicSeedanceProductionAutoSelectRequestSchema,
   AiComicSeedanceProductionBatchUpdateRequestSchema,
@@ -37,6 +39,7 @@ import {
   deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
   exportAiComicSeriesSeedanceAssetReportPackage,
+  exportAiComicSeriesSeedanceAudioPlanPackage,
   exportAiComicSeriesSeedanceCutPackage,
   exportAiComicSeriesSeedanceEditAssetPackage,
   exportAiComicSeriesSeedanceFinishingPlanPackage,
@@ -50,11 +53,13 @@ import {
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
+  mixAiComicSeriesSeedanceAudio,
   rebuildAiComicSeriesContinuityLedger,
   renderAiComicSeriesSeedanceSubtitles,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
+  updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
@@ -364,6 +369,37 @@ outlineRouter.post(
   },
 );
 
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-audio-plan — export audio asset and mix plan
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/export-seedance-audio-plan',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await exportAiComicSeriesSeedanceAudioPlanPackage(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-audio/mix — dry-run or run audio mix
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-audio/mix',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceAudioMixRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await mixAiComicSeriesSeedanceAudio(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-thumbnails/capture — run or dry-run thumbnail capture worker
 outlineRouter.post(
   '/ai-comic-series-projects/:seriesProjectId/seedance-thumbnails/capture',
@@ -389,6 +425,22 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await updateAiComicSeriesSeedanceAssetLibrary(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-audio-library — save Seedance audio asset bindings
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-audio-library',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceAudioLibraryUpdateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await updateAiComicSeriesSeedanceAudioLibrary(seriesProjectId, req.body);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

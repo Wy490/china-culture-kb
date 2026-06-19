@@ -353,6 +353,20 @@
                   >
                     导出 SRT 字幕
                   </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceAudioPlanMarkdown"
+                  >
+                    导出音频计划 Markdown
+                  </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceAudioPlanJson"
+                  >
+                    导出音频计划 JSON
+                  </button>
                 </div>
               </details>
             </div>
@@ -608,6 +622,13 @@
                 </button>
                 <button
                   class="series-studio__ghost-button"
+                  :disabled="mixingSeedanceAudio || !seedanceCutAssembly?.output_path"
+                  @click="mixSeedanceAudioDryRun"
+                >
+                  {{ mixingSeedanceAudio ? '规划中...' : '混音 dry-run' }}
+                </button>
+                <button
+                  class="series-studio__ghost-button"
                   :disabled="batchUpdatingSeedance"
                   @click="seedanceReturnImportInput?.click()"
                 >
@@ -619,6 +640,13 @@
                   @click="seedanceAssetImportInput?.click()"
                 >
                   导入素材绑定
+                </button>
+                <button
+                  class="series-studio__ghost-button"
+                  :disabled="batchUpdatingSeedance"
+                  @click="seedanceAudioImportInput?.click()"
+                >
+                  导入音频素材
                 </button>
                 <input
                   ref="seedanceReturnImportInput"
@@ -633,6 +661,13 @@
                   type="file"
                   accept="application/json,.json"
                   @change="importSeedanceAssetLibraryJson"
+                >
+                <input
+                  ref="seedanceAudioImportInput"
+                  class="series-studio__file-input"
+                  type="file"
+                  accept="application/json,.json"
+                  @change="importSeedanceAudioLibraryJson"
                 >
               </div>
             </div>
@@ -658,6 +693,18 @@
               · {{ seedanceSubtitleRender.mode === 'burn_in' ? '烧录字幕' : '侧挂 SRT' }}
               <template v-if="seedanceSubtitleRender.output_path"> · {{ seedanceSubtitleRender.output_path }}</template>
               <template v-if="seedanceSubtitleRender.failure_reason"> · {{ seedanceSubtitleRender.failure_reason }}</template>
+            </p>
+          </div>
+          <div v-if="seedanceAudioMix" class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>音频混音</strong>
+              <span>{{ seedanceAudioMix.source_audio_count }} 个音频 · 缺 {{ seedanceAudioMix.missing_audio_count }} · {{ seedanceAudioMix.updated_at ? formatDate(seedanceAudioMix.updated_at) : '未更新' }}</span>
+            </div>
+            <p>
+              {{ seedanceAudioMixStatusLabel(seedanceAudioMix.status) }}
+              · {{ seedanceAudioMixProfileLabel(seedanceAudioMix.audio_profile) }}
+              <template v-if="seedanceAudioMix.output_path"> · {{ seedanceAudioMix.output_path }}</template>
+              <template v-if="seedanceAudioMix.failure_reason"> · {{ seedanceAudioMix.failure_reason }}</template>
             </p>
           </div>
           <div v-if="showSeedanceVersionComparison" class="series-studio__seedance-comparison">
@@ -1469,6 +1516,7 @@ import {
   deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
   exportAiComicSeriesSeedanceAssetReportPackage,
+  exportAiComicSeriesSeedanceAudioPlanPackage,
   exportAiComicSeriesSeedanceCutPackage,
   exportAiComicSeriesSeedanceEditAssetPackage,
   exportAiComicSeriesSeedanceFinishingPlanPackage,
@@ -1480,11 +1528,13 @@ import {
   aiComicSeriesPlan,
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
+  mixAiComicSeriesSeedanceAudio,
   rebuildAiComicSeriesLedger,
   renderAiComicSeriesSeedanceSubtitles,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
+  updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '@/api/stories'
@@ -1510,6 +1560,8 @@ import type {
   AiComicSeedanceProductionStatus,
   AiComicSeedanceProductionStatusUpdateRequest,
   AiComicSeedanceAssetLibraryUpdateRequest,
+  AiComicSeedanceAudioLibraryUpdateRequest,
+  AiComicSeedanceAudioMixLedger,
   AiComicSeedanceCutAssemblyLedger,
   AiComicSeedanceShotProductionItem,
   AiComicSeedanceSubtitleRenderLedger,
@@ -1564,6 +1616,7 @@ const seriesQualityAudit = ref<AiComicSeriesQualityAudit | null>(null)
 const seedanceProduction = ref<AiComicSeedanceProductionLedger | null>(null)
 const seedanceCutAssembly = ref<AiComicSeedanceCutAssemblyLedger | null>(null)
 const seedanceSubtitleRender = ref<AiComicSeedanceSubtitleRenderLedger | null>(null)
+const seedanceAudioMix = ref<AiComicSeedanceAudioMixLedger | null>(null)
 const seedanceVersionComparison = ref<AiComicSeriesSeedanceVersionComparisonPackage | null>(null)
 const showSeedanceVersionComparison = ref(false)
 const loadingSeedanceVersionComparison = ref(false)
@@ -1572,8 +1625,10 @@ const batchUpdatingSeedance = ref(false)
 const capturingSeedanceThumbnails = ref(false)
 const assemblingSeedanceCut = ref(false)
 const renderingSeedanceSubtitles = ref(false)
+const mixingSeedanceAudio = ref(false)
 const seedanceReturnImportInput = ref<HTMLInputElement | null>(null)
 const seedanceAssetImportInput = ref<HTMLInputElement | null>(null)
+const seedanceAudioImportInput = ref<HTMLInputElement | null>(null)
 const editingEpisodeNo = ref<number | null>(null)
 const episodeEditDraft = ref<EpisodeEditDraft | null>(null)
 const episodeEditError = ref('')
@@ -1878,6 +1933,7 @@ async function loadSeriesProject(id: string) {
     seedanceProduction.value = res.data.seedance_production ?? null
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
+    seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
     seedanceVersionComparison.value = null
     showSeedanceVersionComparison.value = false
     applyPlan(res.data.plan)
@@ -1917,6 +1973,7 @@ async function handlePlan() {
   seedanceProduction.value = null
   seedanceCutAssembly.value = null
   seedanceSubtitleRender.value = null
+  seedanceAudioMix.value = null
   seedanceVersionComparison.value = null
   showSeedanceVersionComparison.value = false
 
@@ -2363,6 +2420,7 @@ async function saveCurrentProject(options: {
     seedanceProduction.value = res.data.seedance_production ?? null
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
+    seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
     saveStatus.value = 'saved'
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = options.message
@@ -2406,6 +2464,7 @@ async function handleRebuildLedger() {
     seedanceProduction.value = res.data.seedance_production ?? null
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
+    seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
     applyPlan(res.data.plan)
     saveStatus.value = 'saved'
     saveErrorMessage.value = ''
@@ -2763,6 +2822,42 @@ async function exportSeriesSeedanceSrt() {
   exportingSeedance.value = false
 }
 
+async function exportSeriesSeedanceAudioPlanMarkdown() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceAudioPlanPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-audio-plan.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 音频计划 Markdown 已导出 · 缺素材 ${res.data.missing_audio_count} 项`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 音频计划失败'
+  }
+  exportingSeedance.value = false
+}
+
+async function exportSeriesSeedanceAudioPlanJson() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceAudioPlanPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-audio-plan.json`,
+      JSON.stringify(res.data, null, 2),
+      'application/json;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 音频计划 JSON 已导出 · ${res.data.total_audio_cue_count} 条 cue`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 音频计划失败'
+  }
+  exportingSeedance.value = false
+}
+
 async function toggleSeedanceVersionComparison() {
   showSeedanceVersionComparison.value = !showSeedanceVersionComparison.value
   if (showSeedanceVersionComparison.value && !seedanceVersionComparison.value) {
@@ -2939,6 +3034,25 @@ async function renderSeedanceSubtitles(mode: 'sidecar' | 'burn_in') {
   renderingSeedanceSubtitles.value = false
 }
 
+async function mixSeedanceAudioDryRun() {
+  if (!seriesProjectId.value || mixingSeedanceAudio.value) return
+  mixingSeedanceAudio.value = true
+  errorMessage.value = ''
+  const res = await mixAiComicSeriesSeedanceAudio(seriesProjectId.value, {
+    dry_run: true,
+    overwrite: false,
+    audio_profile: 'balanced_dialogue',
+  })
+  if (res.ok && res.data) {
+    seedanceAudioMix.value = res.data.seedance_audio_mix
+    lastSavedAt.value = res.data.project.updated_at
+    saveMessage.value = `混音 dry-run 已生成 · 绑定音频 ${res.data.source_audio_count} 个 · 缺 ${res.data.missing_audio_count} 项`
+  } else {
+    errorMessage.value = res.error?.message ?? '生成 Seedance 混音 dry-run 失败'
+  }
+  mixingSeedanceAudio.value = false
+}
+
 async function batchMarkSeedanceProduction(
   fromStatus: AiComicSeedanceProductionStatus,
   toStatus: AiComicSeedanceProductionStatus,
@@ -3019,6 +3133,42 @@ async function importSeedanceAssetLibraryJson(event: Event) {
   }
 }
 
+async function importSeedanceAudioLibraryJson(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || !seriesProjectId.value) return
+  try {
+    const text = await file.text()
+    const parsed = JSON.parse(text) as unknown
+    const rawItems = Array.isArray(parsed)
+      ? parsed
+      : isRecord(parsed) && Array.isArray(parsed.items)
+        ? parsed.items
+        : []
+    const items = rawItems
+      .map(parseSeedanceAudioLibraryItem)
+      .filter((item): item is AiComicSeedanceAudioLibraryUpdateRequest['items'][number] => Boolean(item))
+    if (items.length === 0) {
+      errorMessage.value = '音频素材 JSON 没有可识别的素材项。'
+      return
+    }
+    batchUpdatingSeedance.value = true
+    errorMessage.value = ''
+    const res = await updateAiComicSeriesSeedanceAudioLibrary(seriesProjectId.value, { items })
+    if (res.ok && res.data) {
+      lastSavedAt.value = res.data.project.updated_at
+      saveMessage.value = `已导入 ${items.length} 条 Seedance 音频素材`
+    } else {
+      errorMessage.value = res.error?.message ?? '导入 Seedance 音频素材失败'
+    }
+  } catch {
+    errorMessage.value = '音频素材 JSON 解析失败'
+  } finally {
+    batchUpdatingSeedance.value = false
+    input.value = ''
+  }
+}
+
 async function submitSeedanceProductionBatch(
   body: AiComicSeedanceProductionBatchUpdateRequest,
   message: string,
@@ -3074,6 +3224,27 @@ function parseSeedanceReturnUpdate(value: unknown): AiComicSeedanceProductionSta
   }
 }
 
+function parseSeedanceAudioLibraryItem(
+  value: unknown,
+): AiComicSeedanceAudioLibraryUpdateRequest['items'][number] | null {
+  if (!isRecord(value)) return null
+  const kind = String(value.kind ?? '').trim()
+  const label = String(value.label ?? value.name ?? '').trim()
+  if (!isSeedanceAudioKind(kind) || !label) return null
+  return {
+    asset_id: stringField(value.asset_id ?? value.assetId),
+    kind,
+    label,
+    file_url: stringField(value.file_url ?? value.fileUrl ?? value.url),
+    file_id: stringField(value.file_id ?? value.fileId),
+    duration_sec: numberField(value.duration_sec ?? value.durationSec),
+    license_note: stringField(value.license_note ?? value.licenseNote),
+    loopable: booleanField(value.loopable),
+    bpm: numberField(value.bpm),
+    mood_tags: stringListField(value.mood_tags ?? value.moodTags ?? value.tags),
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object')
 }
@@ -3082,8 +3253,32 @@ function stringField(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }
 
+function numberField(value: unknown): number | undefined {
+  const next = Number(value)
+  return Number.isFinite(next) ? next : undefined
+}
+
+function booleanField(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined
+}
+
+function stringListField(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const items = value.map(item => String(item).trim()).filter(Boolean)
+    return items.length ? items : undefined
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value.split(/[，,]/).map(item => item.trim()).filter(Boolean)
+  }
+  return undefined
+}
+
 function isSeedanceAssetKind(value: unknown): value is AiComicSeedanceAssetLibraryUpdateRequest['items'][number]['kind'] {
   return ['character', 'location', 'unknown'].includes(String(value))
+}
+
+function isSeedanceAudioKind(value: unknown): value is AiComicSeedanceAudioLibraryUpdateRequest['items'][number]['kind'] {
+  return ['dialogue', 'narration', 'music', 'sound_effect', 'ambient'].includes(String(value))
 }
 
 function isSeedanceProductionStatus(value: unknown): value is AiComicSeedanceProductionStatus {
@@ -3180,6 +3375,7 @@ function clearCurrentProject() {
   seedanceProduction.value = null
   seedanceCutAssembly.value = null
   seedanceSubtitleRender.value = null
+  seedanceAudioMix.value = null
   episodeResult.value = null
   episodeErrorMessage.value = ''
   generatedEpisodeNo.value = null
@@ -3299,6 +3495,27 @@ function seedanceSubtitleRenderStatusLabel(status: string): string {
     skipped: '跳过',
   }
   return map[status] ?? status
+}
+
+function seedanceAudioMixStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    not_started: '未开始',
+    planned: '已规划',
+    mixing: '混音中',
+    ready: '已生成',
+    failed: '失败',
+    skipped: '跳过',
+  }
+  return map[status] ?? status
+}
+
+function seedanceAudioMixProfileLabel(profile: string): string {
+  const map: Record<string, string> = {
+    balanced_dialogue: '对白优先',
+    music_forward: '音乐前置',
+    ambient_soft: '弱环境声',
+  }
+  return map[profile] ?? profile
 }
 
 function hookTypeLabel(type?: AiComicEndingHookType): string {
