@@ -2533,6 +2533,103 @@ export interface AiComicSeriesSeedanceFinalDeliveryResult {
   markdown: string;
 }
 
+export type AiComicSeedanceEditingPlatformFormat =
+  | 'generic_json'
+  | 'csv_timeline'
+  | 'srt'
+  | 'asset_manifest';
+
+export type AiComicSeedanceEditingPlatformTimelineItemType = 'video_shot' | 'title_card';
+export type AiComicSeedanceEditingPlatformTrack = 'video' | 'title';
+
+export interface AiComicSeedanceEditingPlatformTimelineItem {
+  item_id: string;
+  item_type: AiComicSeedanceEditingPlatformTimelineItemType;
+  track: AiComicSeedanceEditingPlatformTrack;
+  episode_no?: number;
+  source_id: string;
+  source_path: string;
+  label: string;
+  start_sec: number;
+  end_sec: number;
+  duration_sec: number;
+  source_start_sec?: number;
+  source_end_sec?: number;
+  transition_in?: string;
+  transition_out?: string;
+  notes: string[];
+}
+
+export type AiComicSeedanceEditingPlatformAssetType =
+  | 'video'
+  | 'audio'
+  | 'subtitle'
+  | 'title_card'
+  | 'thumbnail'
+  | 'final_delivery';
+
+export type AiComicSeedanceEditingPlatformAssetStatus =
+  | 'ready'
+  | 'planned'
+  | 'missing'
+  | 'optional_missing'
+  | 'unknown';
+
+export interface AiComicSeedanceEditingPlatformAsset {
+  asset_id: string;
+  asset_type: AiComicSeedanceEditingPlatformAssetType;
+  label: string;
+  path_or_url?: string;
+  episode_no?: number;
+  shot_id?: string;
+  status: AiComicSeedanceEditingPlatformAssetStatus;
+  source: string;
+  missing: boolean;
+  notes: string[];
+}
+
+export interface AiComicSeedanceEditingPlatformSubtitleCue {
+  cue_id: string;
+  episode_no: number;
+  shot_id?: string;
+  start_sec: number;
+  end_sec: number;
+  start_timecode: string;
+  end_timecode: string;
+  text: string;
+  source: AiComicSeedanceFinishingSubtitleCue['source'];
+}
+
+export interface AiComicSeedanceEditingPlatformMissingAsset {
+  asset_id: string;
+  asset_type: AiComicSeedanceEditingPlatformAssetType;
+  label: string;
+  episode_no?: number;
+  shot_id?: string;
+  reason: string;
+  source: string;
+}
+
+export interface AiComicSeriesSeedanceEditingPlatformPackage {
+  schema_version: 'ai-comic-series-editing-platform-package/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  exported_at: string;
+  formats: AiComicSeedanceEditingPlatformFormat[];
+  source_cut_output_path?: string;
+  final_delivery_output_path?: string;
+  timeline_total_duration_sec: number;
+  timeline: AiComicSeedanceEditingPlatformTimelineItem[];
+  assets: AiComicSeedanceEditingPlatformAsset[];
+  subtitle_cues: AiComicSeedanceEditingPlatformSubtitleCue[];
+  missing_assets: AiComicSeedanceEditingPlatformMissingAsset[];
+  import_notes: string[];
+  csv_timeline: string;
+  asset_manifest_csv: string;
+  srt_content: string;
+  markdown: string;
+}
+
 export interface AiComicSeedanceRetryPackageShot {
   production_id: string;
   episode_no: number;

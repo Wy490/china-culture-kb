@@ -381,6 +381,34 @@
                   >
                     导出片头片尾计划 JSON
                   </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceEditingPlatformPackageJson"
+                  >
+                    导出剪辑平台包 JSON
+                  </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceEditingPlatformTimelineCsv"
+                  >
+                    导出剪辑平台时间线 CSV
+                  </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceEditingPlatformSrt"
+                  >
+                    导出剪辑平台 SRT
+                  </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceEditingPlatformAssetManifestCsv"
+                  >
+                    导出剪辑平台素材清单
+                  </button>
                 </div>
               </details>
             </div>
@@ -1578,6 +1606,7 @@ import {
   exportAiComicSeriesSeedanceAudioPlanPackage,
   exportAiComicSeriesSeedanceCutPackage,
   exportAiComicSeriesSeedanceEditAssetPackage,
+  exportAiComicSeriesSeedanceEditingPlatformPackage,
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
   exportAiComicSeriesSeedanceRetryPackage,
@@ -2965,6 +2994,78 @@ async function exportSeriesSeedanceTitleCardPlanJson() {
     saveMessage.value = `Seedance 片头片尾计划 JSON 已导出 · ${res.data.total_duration_sec} 秒`
   } else {
     errorMessage.value = res.error?.message ?? '导出 Seedance 片头片尾计划失败'
+  }
+  exportingSeedance.value = false
+}
+
+async function exportSeriesSeedanceEditingPlatformPackageJson() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceEditingPlatformPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-editing-platform-package.json`,
+      JSON.stringify(res.data, null, 2),
+      'application/json;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 剪辑平台包 JSON 已导出 · ${res.data.timeline.length} 个时间线项`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 剪辑平台包失败'
+  }
+  exportingSeedance.value = false
+}
+
+async function exportSeriesSeedanceEditingPlatformTimelineCsv() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceEditingPlatformPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-editing-timeline.csv`,
+      res.data.csv_timeline,
+      'text/csv;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 剪辑平台时间线 CSV 已导出 · ${res.data.timeline_total_duration_sec} 秒`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 剪辑平台时间线失败'
+  }
+  exportingSeedance.value = false
+}
+
+async function exportSeriesSeedanceEditingPlatformSrt() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceEditingPlatformPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-editing-timeline.srt`,
+      res.data.srt_content,
+      'text/plain;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 剪辑平台 SRT 已导出 · ${res.data.subtitle_cues.length} 条 cue`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 剪辑平台 SRT 失败'
+  }
+  exportingSeedance.value = false
+}
+
+async function exportSeriesSeedanceEditingPlatformAssetManifestCsv() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceEditingPlatformPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-editing-asset-manifest.csv`,
+      res.data.asset_manifest_csv,
+      'text/csv;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 剪辑平台素材清单已导出 · 缺失 ${res.data.missing_assets.length} 项`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 剪辑平台素材清单失败'
   }
   exportingSeedance.value = false
 }

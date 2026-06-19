@@ -29,6 +29,7 @@ import type {
   AiComicSeriesSeedanceCutAssemblyResult,
   AiComicSeriesSeedanceCutPackage,
   AiComicSeriesSeedanceEditAssetPackage,
+  AiComicSeriesSeedanceEditingPlatformPackage,
   AiComicSeriesSeedanceFinalDeliveryResult,
   AiComicSeriesSeedanceExportPackage,
   AiComicSeriesSeedanceFinishingPlanPackage,
@@ -266,6 +267,13 @@ export function mixAiComicSeriesSeedanceAudio(
 export function exportAiComicSeriesSeedanceTitleCardPlanPackage(seriesProjectId: string) {
   return apiPost<AiComicSeriesSeedanceTitleCardPlanPackage>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-title-card-plan`,
+    {},
+  )
+}
+
+export function exportAiComicSeriesSeedanceEditingPlatformPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceEditingPlatformPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-editing-platform-package`,
     {},
   )
 }

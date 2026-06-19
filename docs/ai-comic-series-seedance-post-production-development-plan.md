@@ -29,8 +29,8 @@
 当前能力边界：
 
 - 已能把 Seedance 回片组织为可剪辑资产，并自动抽缩略图、装配初版成片。
-- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并生成片头片尾计划、片头片尾 render dry-run 和 final delivery dry-run；真实混音素材生产、真实片头片尾渲染和最终交付真实装配仍待增强。
-- 外部剪辑平台尚未有专用导入格式。
+- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并生成片头片尾计划、片头片尾 render dry-run、final delivery dry-run 和外部剪辑平台包；真实混音素材生产、真实片头片尾渲染和最终交付真实装配仍待增强。
+- 外部剪辑平台已有通用 JSON / CSV / SRT / asset manifest 首版，平台专用 FCPXML / Premiere XML / 剪映草稿格式仍待适配。
 - 审片返修闭环仍处于待建设状态。
 
 ## 2. 总体目标
@@ -448,6 +448,8 @@ Seedance prompts
 
 ## 11. 阶段七：外部剪辑平台导入包
 
+当前状态：首版已完成；后续可继续补 FCPXML / Premiere XML / 剪映草稿格式适配和真实平台导入 smoke。
+
 ### 目标
 
 支持把项目资产交给剪映、Premiere、DaVinci 或通用剪辑平台继续处理。
@@ -475,21 +477,29 @@ Seedance prompts
   - missing assets
   - import notes
 
+已落地：
+
+- `web/shared/types.ts` 新增 `AiComicSeriesSeedanceEditingPlatformPackage`、timeline item、asset、subtitle cue 和 missing asset 类型。
+- `web/server/src/services/ai-comic-series-service.ts` 新增 `exportAiComicSeriesSeedanceEditingPlatformPackage`。
+- 时间线会串联系列片头、分集片头、镜头、分集片尾和系列片尾，并把字幕 cue 偏移到这条外部剪辑时间线。
+- 包内同时输出 `csv_timeline`、`asset_manifest_csv`、`srt_content`、JSON 和 Markdown 摘要。
+- missing assets 汇总缺失镜头、缺失音频和 final delivery dependency。
+- `web/server/src/routes/outline.ts` 新增 `export-seedance-editing-platform-package` 路由。
+
 ### 前端任务
 
 - 工作台增加“外部剪辑平台导出”。
-- 支持选择导出格式。
+- 工作台已新增剪辑平台 JSON、时间线 CSV、SRT 和素材清单 CSV 快捷导出。
 - 项目总览支持 generic package 快捷导出。
 
 ### 测试
 
-- JSON package 测试。
-- CSV 时间线测试。
-- asset manifest 测试。
+- 服务测试覆盖 JSON package、CSV 时间线、SRT、asset manifest、title card/audio assets 和 Markdown。
+- API 测试覆盖缺失项目 404。
 
 ### 验收标准
 
-- 不依赖真实平台也能输出完整剪辑清单。
+- 不依赖真实平台也能输出完整剪辑清单。已完成。
 - 后续适配具体平台时只需增加 formatter。
 
 ## 12. 阶段八：生产总览 dashboard
@@ -621,10 +631,9 @@ Seedance prompts
 1. `seedance-audio/mix` 真实素材执行增强
 2. `seedance-title-cards/render` 真实渲染增强
 3. `seedance-final/assemble` 真实装配和 manifest 写盘
-4. `export-seedance-editing-platform-package`
-5. `seedance-production-dashboard`
-6. `seedance_review_ledger`
-7. 30 集压测和性能优化
+4. `seedance-production-dashboard`
+5. `seedance_review_ledger`
+6. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
 
@@ -634,12 +643,12 @@ Seedance prompts
 seedance-audio/mix real runner hardening
   -> seedance-title-cards/render real/mock success
   -> seedance-final/assemble manifest
-  -> export-seedance-editing-platform-package
+  -> seedance-production-dashboard
 ```
 
 原因：
 
-- 直接承接当前已完成的剪辑装配、字幕 worker、音频计划 / 混音 dry-run、片头片尾 dry-run 和 final delivery dry-run。
+- 直接承接当前已完成的剪辑装配、字幕 worker、音频计划 / 混音 dry-run、片头片尾 dry-run、final delivery dry-run 和外部剪辑平台包。
 - 不依赖第三方平台。
 - 可先用 mock runner 和真实路径校验把 dry-run 账本推进到 ready 账本，再逐步补真实视觉模板。
 - ffmpeg 依赖和 worker 模式已经在缩略图、剪辑装配、字幕烧录和混音 dry-run 中跑通。

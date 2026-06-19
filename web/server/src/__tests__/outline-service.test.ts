@@ -15,6 +15,7 @@ import {
   exportAiComicSeriesSeedanceAudioPlanPackage,
   exportAiComicSeriesSeedanceCutPackage,
   exportAiComicSeriesSeedanceEditAssetPackage,
+  exportAiComicSeriesSeedanceEditingPlatformPackage,
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
   exportAiComicSeriesSeedanceRetryPackage,
@@ -1077,6 +1078,32 @@ describe('outline-service', () => {
       status: 'planned',
       output_profile: 'mp4_h264_720p',
     });
+
+    const editingPlatformPackageRes = await exportAiComicSeriesSeedanceEditingPlatformPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(editingPlatformPackageRes.ok).toBe(true);
+    expect(editingPlatformPackageRes.data?.schema_version).toBe('ai-comic-series-editing-platform-package/v1');
+    expect(editingPlatformPackageRes.data?.formats).toEqual([
+      'generic_json',
+      'csv_timeline',
+      'srt',
+      'asset_manifest',
+    ]);
+    expect(editingPlatformPackageRes.data?.timeline.length).toBeGreaterThan(
+      finishingPlanRes.data!.shots.length,
+    );
+    expect(editingPlatformPackageRes.data?.timeline[0]).toMatchObject({
+      item_type: 'title_card',
+      start_sec: 0,
+    });
+    expect(editingPlatformPackageRes.data?.timeline.some(item => item.item_type === 'video_shot')).toBe(true);
+    expect(editingPlatformPackageRes.data?.csv_timeline).toContain('item_id,item_type,track');
+    expect(editingPlatformPackageRes.data?.asset_manifest_csv).toContain('asset_id,asset_type,label');
+    expect(editingPlatformPackageRes.data?.srt_content).toContain('-->');
+    expect(editingPlatformPackageRes.data?.assets.some(asset => asset.asset_type === 'title_card')).toBe(true);
+    expect(editingPlatformPackageRes.data?.assets.some(asset => asset.asset_type === 'audio')).toBe(true);
+    expect(editingPlatformPackageRes.data?.markdown).toContain('Seedance 外部剪辑平台交付包');
 
     const retryPackageRes = await exportAiComicSeriesSeedanceRetryPackage(saveRes.data!.project.series_project_id);
     expect(retryPackageRes.ok).toBe(true);
