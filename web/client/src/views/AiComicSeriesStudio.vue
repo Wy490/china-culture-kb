@@ -556,6 +556,77 @@
           </div>
         </section>
 
+        <section v-if="seedanceDashboard" class="series-studio__section series-studio__quality">
+          <div class="series-studio__section-header">
+            <h2>Seedance 生产总览</h2>
+            <span>{{ seedanceDashboard.summary.ready_count }} ready · {{ seedanceDashboard.summary.blocker_count }} 阻断</span>
+            <button
+              class="series-studio__ghost-button"
+              :disabled="loadingSeedanceDashboard"
+              @click="loadSeedanceDashboard"
+            >
+              {{ loadingSeedanceDashboard ? '刷新中...' : '刷新总览' }}
+            </button>
+          </div>
+          <div class="series-studio__quality-grid">
+            <article>
+              <strong>{{ seedanceDashboard.summary.total_shot_count }}</strong>
+              <span>总镜头</span>
+            </article>
+            <article>
+              <strong>{{ seedanceDashboard.summary.ready_count }}</strong>
+              <span>Ready</span>
+            </article>
+            <article>
+              <strong>{{ seedanceDashboard.summary.failed_count }}</strong>
+              <span>失败</span>
+            </article>
+            <article>
+              <strong>{{ seedanceDashboard.summary.selected_version_count }}</strong>
+              <span>已选剪辑版</span>
+            </article>
+            <article>
+              <strong>{{ seedanceDashboard.summary.thumbnail_ready_count }}</strong>
+              <span>缩略图</span>
+            </article>
+            <article>
+              <strong>{{ seedanceDashboard.summary.next_action_count }}</strong>
+              <span>下一步</span>
+            </article>
+          </div>
+          <div class="series-studio__episode-audit-list">
+            <span
+              v-for="item in seedanceDashboard.status_items"
+              :key="item.key"
+              :class="['series-studio__episode-audit', dashboardStatusClass(item.status)]"
+            >
+              {{ item.label }} · {{ item.status_text }}
+            </span>
+          </div>
+          <div v-if="seedanceDashboard.blockers.length > 0" class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>阻断项</strong>
+              <span>{{ seedanceDashboard.blockers.length }} 项</span>
+            </div>
+            <ul>
+              <li v-for="blocker in seedanceDashboard.blockers.slice(0, 6)" :key="blocker.blocker_id">
+                {{ dashboardSeverityLabel(blocker.severity) }} · {{ blocker.label }}：{{ blocker.detail }}
+              </li>
+            </ul>
+          </div>
+          <div v-if="seedanceDashboard.next_actions.length > 0" class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>下一步</strong>
+              <span>{{ seedanceDashboard.next_actions.length }} 项</span>
+            </div>
+            <ul>
+              <li v-for="action in seedanceDashboard.next_actions.slice(0, 6)" :key="action.action_key">
+                P{{ action.priority }} · {{ action.label }}：{{ action.detail }}
+              </li>
+            </ul>
+          </div>
+        </section>
+
         <section v-if="seedanceProduction?.items.length" class="series-studio__section series-studio__quality">
           <div class="series-studio__section-header">
             <h2>Seedance 生产状态</h2>
@@ -1616,6 +1687,7 @@ import {
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   aiComicSeriesPlan,
   getAiComicSeriesProject,
+  getAiComicSeriesSeedanceProductionDashboard,
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
   rebuildAiComicSeriesLedger,
@@ -1658,6 +1730,7 @@ import type {
   AiComicSeedanceSubtitleRenderLedger,
   AiComicSeedanceTitleCardRenderLedger,
   AiComicSeedanceVersionComparisonShot,
+  AiComicSeriesSeedanceDashboard,
   AiComicSeriesSeedanceVersionComparisonPackage,
   NarrativePattern,
   NarrativePatternCatalog,
@@ -1711,6 +1784,8 @@ const seedanceSubtitleRender = ref<AiComicSeedanceSubtitleRenderLedger | null>(n
 const seedanceAudioMix = ref<AiComicSeedanceAudioMixLedger | null>(null)
 const seedanceTitleCardRender = ref<AiComicSeedanceTitleCardRenderLedger | null>(null)
 const seedanceFinalDelivery = ref<AiComicSeedanceFinalDeliveryLedger | null>(null)
+const seedanceDashboard = ref<AiComicSeriesSeedanceDashboard | null>(null)
+const loadingSeedanceDashboard = ref(false)
 const seedanceVersionComparison = ref<AiComicSeriesSeedanceVersionComparisonPackage | null>(null)
 const showSeedanceVersionComparison = ref(false)
 const loadingSeedanceVersionComparison = ref(false)
@@ -2032,18 +2107,33 @@ async function loadSeriesProject(id: string) {
     seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
     seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
     seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
+    seedanceDashboard.value = null
     seedanceVersionComparison.value = null
     showSeedanceVersionComparison.value = false
     applyPlan(res.data.plan)
+    await loadSeedanceDashboard()
     saveMessage.value = `已保存：${res.data.project.series_project_id} · ${formatDate(res.data.project.updated_at)}`
     saveStatus.value = 'saved'
     saveErrorMessage.value = ''
     lastSavedAt.value = res.data.project.updated_at
     affectedEpisodeNos.value = []
   } else {
+    seedanceDashboard.value = null
     errorMessage.value = res.error?.message ?? '加载系列规划失败'
   }
   planning.value = false
+}
+
+async function loadSeedanceDashboard() {
+  if (!seriesProjectId.value || loadingSeedanceDashboard.value) return
+  loadingSeedanceDashboard.value = true
+  const res = await getAiComicSeriesSeedanceProductionDashboard(seriesProjectId.value)
+  if (res.ok && res.data) {
+    seedanceDashboard.value = res.data
+  } else {
+    seedanceDashboard.value = null
+  }
+  loadingSeedanceDashboard.value = false
 }
 
 async function handlePlan() {
@@ -3114,6 +3204,7 @@ async function markSeedanceProduction(
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = `已更新 ${item.shot_id}：${seedanceProductionStatusLabel(status)}`
     await refreshSeedanceVersionComparisonIfVisible()
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '更新 Seedance 生产状态失败'
   }
@@ -3138,6 +3229,7 @@ async function selectSeedanceProductionVersion(
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = `已选择 ${item.shot_id} 的剪辑版本：${versionId}`
     await refreshSeedanceVersionComparisonIfVisible()
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '选择 Seedance 剪辑版本失败'
   }
@@ -3162,6 +3254,7 @@ async function selectSeedanceComparisonVersion(
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = `已选择 ${shot.shot_id} 的剪辑版本：${versionId}`
     await loadSeedanceVersionComparison()
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '选择 Seedance 剪辑版本失败'
   }
@@ -3182,6 +3275,7 @@ async function autoSelectSeedanceProductionVersions() {
     const selectedCount = (res.data.seedance_production?.items ?? []).filter(item => item.selected_version_id).length
     saveMessage.value = `已自动择优剪辑版 · 当前 ${selectedCount} 个镜头有剪辑版本`
     await refreshSeedanceVersionComparisonIfVisible()
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '自动择优 Seedance 剪辑版本失败'
   }
@@ -3200,6 +3294,7 @@ async function captureSeedanceThumbnails() {
     seedanceProduction.value = res.data.seedance_production
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = `缩略图抽帧完成 · 生成 ${res.data.captured_count} 个 · 跳过 ${res.data.skipped_count} 个 · 失败 ${res.data.failed_count} 个`
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '生成 Seedance 缩略图失败'
   }
@@ -3220,6 +3315,7 @@ async function assembleSeedanceCut(mode: 'copy' | 'transcode') {
     seedanceCutAssembly.value = res.data.seedance_cut_assembly
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = `${mode === 'transcode' ? '转码装配' : '剪辑装配'}${res.data.status === 'assembled' ? '完成' : seedanceCutAssemblyStatusLabel(res.data.seedance_cut_assembly.status)} · ${res.data.source_shot_count} 个镜头`
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '装配 Seedance 剪辑成片失败'
   }
@@ -3240,6 +3336,7 @@ async function renderSeedanceSubtitles(mode: 'sidecar' | 'burn_in') {
     lastSavedAt.value = res.data.project.updated_at
     const action = mode === 'burn_in' ? '字幕烧录' : '字幕文件生成'
     saveMessage.value = `${action}${res.data.status === 'rendered' ? '完成' : seedanceSubtitleRenderStatusLabel(res.data.seedance_subtitle_render.status)} · ${res.data.cue_count} 条 cue`
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '处理 Seedance 字幕失败'
   }
@@ -3259,6 +3356,7 @@ async function mixSeedanceAudioDryRun() {
     seedanceAudioMix.value = res.data.seedance_audio_mix
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = `混音 dry-run 已生成 · 绑定音频 ${res.data.source_audio_count} 个 · 缺 ${res.data.missing_audio_count} 项`
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '生成 Seedance 混音 dry-run 失败'
   }
@@ -3278,6 +3376,7 @@ async function renderSeedanceTitleCardsDryRun() {
     seedanceTitleCardRender.value = res.data.seedance_title_card_render
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = `片头片尾 dry-run 已生成 · ${res.data.card_count} 张卡`
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '生成 Seedance 片头片尾 dry-run 失败'
   }
@@ -3301,6 +3400,7 @@ async function assembleSeedanceFinalDryRun() {
     seedanceFinalDelivery.value = res.data.seedance_final_delivery
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = `最终交付 dry-run 已生成 · 阻断 ${res.data.dependency_status.missing_dependencies.length} 项`
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '生成 Seedance 最终交付 dry-run 失败'
   }
@@ -3436,6 +3536,7 @@ async function submitSeedanceProductionBatch(
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = message
     await refreshSeedanceVersionComparisonIfVisible()
+    await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '批量更新 Seedance 生产状态失败'
   }
@@ -3700,6 +3801,24 @@ function memoryConflictSeverityLabel(severity: AiComicMemoryConflictSeverity): s
     blocking: '阻断',
     warning: '警告',
     watch: '观察',
+  }
+  return map[severity]
+}
+
+function dashboardStatusClass(status: AiComicSeriesSeedanceDashboard['status_items'][number]['status']): string {
+  if (status === 'ready') return 'series-studio__episode-audit--passed'
+  if (status === 'failed' || status === 'blocked') return 'series-studio__episode-audit--needs_attention'
+  if (status === 'needs_action' || status === 'planned' || status === 'in_progress') {
+    return 'series-studio__episode-audit--unknown'
+  }
+  return 'series-studio__episode-audit--not_generated'
+}
+
+function dashboardSeverityLabel(severity: AiComicSeriesSeedanceDashboard['blockers'][number]['severity']): string {
+  const map: Record<AiComicSeriesSeedanceDashboard['blockers'][number]['severity'], string> = {
+    blocking: '阻断',
+    warning: '提醒',
+    info: '信息',
   }
   return map[severity]
 }

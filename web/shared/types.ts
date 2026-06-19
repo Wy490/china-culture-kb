@@ -2630,6 +2630,104 @@ export interface AiComicSeriesSeedanceEditingPlatformPackage {
   markdown: string;
 }
 
+export type AiComicSeedanceDashboardStatusKey =
+  | 'prompt_export'
+  | 'shot_production'
+  | 'thumbnail_capture'
+  | 'cut_assembly'
+  | 'subtitle_render'
+  | 'audio_mix'
+  | 'title_card_render'
+  | 'final_delivery'
+  | 'editing_platform_package';
+
+export type AiComicSeedanceDashboardItemStatus =
+  | 'not_started'
+  | 'needs_action'
+  | 'in_progress'
+  | 'planned'
+  | 'ready'
+  | 'failed'
+  | 'skipped'
+  | 'blocked';
+
+export type AiComicSeedanceDashboardBlockerSeverity = 'blocking' | 'warning' | 'info';
+
+export interface AiComicSeedanceDashboardSummary {
+  generated_episode_count: number;
+  total_episode_count: number;
+  total_shot_count: number;
+  prompt_exported_count: number;
+  submitted_count: number;
+  processing_count: number;
+  ready_count: number;
+  failed_count: number;
+  skipped_count: number;
+  selected_version_count: number;
+  ready_version_count: number;
+  thumbnail_ready_count: number;
+  thumbnail_failed_count: number;
+  missing_shot_count: number;
+  blocker_count: number;
+  next_action_count: number;
+  production_status_counts: Record<AiComicSeedanceProductionStatus, number>;
+}
+
+export interface AiComicSeedanceDashboardStatusItem {
+  key: AiComicSeedanceDashboardStatusKey;
+  label: string;
+  status: AiComicSeedanceDashboardItemStatus;
+  status_text: string;
+  updated_at?: string;
+  output_path?: string;
+  count_text?: string;
+  notes: string[];
+}
+
+export interface AiComicSeedanceDashboardBlocker {
+  blocker_id: string;
+  severity: AiComicSeedanceDashboardBlockerSeverity;
+  label: string;
+  detail: string;
+  related_status_key?: AiComicSeedanceDashboardStatusKey;
+  action_key?: string;
+  action_label?: string;
+}
+
+export interface AiComicSeedanceDashboardNextAction {
+  action_key: string;
+  label: string;
+  detail: string;
+  priority: number;
+  related_status_key?: AiComicSeedanceDashboardStatusKey;
+  disabled_reason?: string;
+}
+
+export interface AiComicSeedanceDashboardEpisode {
+  episode_no: number;
+  episode_title: string;
+  story_id?: string;
+  total_shot_count: number;
+  ready_shot_count: number;
+  failed_shot_count: number;
+  selected_version_count: number;
+  thumbnail_ready_count: number;
+  blocker_count: number;
+}
+
+export interface AiComicSeriesSeedanceDashboard {
+  schema_version: 'ai-comic-series-seedance-dashboard/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  generated_at: string;
+  summary: AiComicSeedanceDashboardSummary;
+  status_items: AiComicSeedanceDashboardStatusItem[];
+  blockers: AiComicSeedanceDashboardBlocker[];
+  next_actions: AiComicSeedanceDashboardNextAction[];
+  episodes: AiComicSeedanceDashboardEpisode[];
+  markdown: string;
+}
+
 export interface AiComicSeedanceRetryPackageShot {
   production_id: string;
   episode_no: number;

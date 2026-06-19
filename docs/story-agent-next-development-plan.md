@@ -11,7 +11,7 @@
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
 | Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
-| AI 漫剧系列生产链 | 约 67% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run 和外部剪辑平台包首版已有；真实混音/真实片头片尾渲染、final manifest、审片返修待做。 |
+| AI 漫剧系列生产链 | 约 69% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run、外部剪辑平台包和生产总览 dashboard 首版已有；真实混音/真实片头片尾渲染、final manifest、审片返修待做。 |
 | 可商用制作中台 | 约 49% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、真实混音执行/最终成片、审片返修和稳定压测。 |
 
 ## 2. 本轮完成内容
@@ -146,6 +146,12 @@
   - 素材清单汇总视频、音频、字幕、片头片尾、缩略图和最终交付输出，并聚合缺失镜头、缺失音频和 final dependency。
   - 系列工作台新增剪辑平台 JSON、时间线 CSV、SRT 和素材清单 CSV 导出按钮。
   - 服务测试覆盖包 schema、格式、时间线、素材和 SRT；API 测试覆盖缺失项目响应。
+- AI 漫剧 Seedance 生产总览 dashboard 首版：
+  - 新增 `seedance-production-dashboard`，输出 `ai-comic-series-seedance-dashboard/v1`。
+  - 后端聚合提示词导出、镜头生产、缩略图、剪辑装配、字幕、混音、片头片尾、最终交付和外部剪辑包状态。
+  - dashboard 返回 summary、status_items、blockers、next_actions、episodes 和 Markdown 摘要。
+  - 系列工作台新增“Seedance 生产总览”面板，展示总镜头、ready、失败、已选剪辑版、缩略图、阻断项和下一步动作。
+  - 服务测试覆盖 dashboard 汇总、失败 blocker、下一步动作、分集摘要和 Markdown；API 测试覆盖缺失项目响应。
 
 ### 文档同步
 
@@ -168,7 +174,7 @@ git diff --check
 
 - `web/client`：lint passed。
 - `web/client`：build passed。
-- `web/server`：lint passed；`project-service.test.ts` 36 passed，`api.test.ts` 102 passed；全量 24 files / 259 tests passed。
+- `web/server`：lint passed；`project-service.test.ts` 36 passed，`api.test.ts` 103 passed；全量 24 files / 260 tests passed。
 - `web/client`：lint passed；ProjectDetail provider overview API smoke 通过，提交 5 条 provider 任务后 overview 返回 5 个总镜头 / 5 个活跃 / 5 个注意项。
 - `git diff --check`：passed。
 
@@ -233,7 +239,7 @@ SeedanceProviderAdapter
 - 筛选区增加更明显重置入口。
 - 项目工作台默认只保留高频主路径，高级制作动作放折叠区。
 
-### P1：AI 漫剧真实执行增强与生产 dashboard
+### P1：AI 漫剧真实执行增强与 final manifest
 
 下一块建议做：
 
@@ -241,11 +247,11 @@ SeedanceProviderAdapter
 seedance-audio/mix real runner hardening
   -> seedance-title-cards/render real/mock success
   -> seedance-final/assemble manifest
-  -> seedance-production-dashboard
+  -> seedance_review_ledger
 ```
 
 ## 6. 新对话开场指令
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先确认工作区状态，然后继续 P0：Seedance provider 平台 SDK/HTTP submit/query 实现、MCP 更深模型修复链路、故事管理 UX 降噪；AI 漫剧后期下一块做真实混音/片头片尾渲染增强、final manifest 或生产 dashboard。默认界面保持简单，只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先确认工作区状态，然后继续 P0：Seedance provider 平台 SDK/HTTP submit/query 实现、MCP 更深模型修复链路、故事管理 UX 降噪；AI 漫剧后期下一块做真实混音/片头片尾渲染增强、final manifest 或审片返修账本。默认界面保持简单，只保留高频主路径。
 ```

@@ -29,7 +29,7 @@
 当前能力边界：
 
 - 已能把 Seedance 回片组织为可剪辑资产，并自动抽缩略图、装配初版成片。
-- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并生成片头片尾计划、片头片尾 render dry-run、final delivery dry-run 和外部剪辑平台包；真实混音素材生产、真实片头片尾渲染和最终交付真实装配仍待增强。
+- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并生成片头片尾计划、片头片尾 render dry-run、final delivery dry-run、外部剪辑平台包和生产总览 dashboard；真实混音素材生产、真实片头片尾渲染和最终交付真实装配仍待增强。
 - 外部剪辑平台已有通用 JSON / CSV / SRT / asset manifest 首版，平台专用 FCPXML / Premiere XML / 剪映草稿格式仍待适配。
 - 审片返修闭环仍处于待建设状态。
 
@@ -504,6 +504,8 @@ Seedance prompts
 
 ## 12. 阶段八：生产总览 dashboard
 
+当前状态：首版已完成；项目总览页 badge 和 blocker 对应操作入口仍可继续增强。
+
 ### 目标
 
 将分散的生产状态汇总成可执行的生产仪表盘。
@@ -527,22 +529,30 @@ Seedance prompts
   - blockers
   - next_actions
 
+已落地：
+
+- `web/shared/types.ts` 新增 `AiComicSeriesSeedanceDashboard`、summary、status item、blocker、next action 和 episode summary 类型。
+- `web/server/src/services/ai-comic-series-service.ts` 新增 `getAiComicSeriesSeedanceProductionDashboard`，只读聚合当前项目账本，不写项目文件。
+- `web/server/src/routes/outline.ts` 新增 `seedance-production-dashboard` 路由。
+- dashboard 会聚合提示词导出、镜头生产、缩略图、剪辑装配、字幕、混音、片头片尾、最终交付和外部剪辑包。
+- 输出 blockers、next_actions 和 Markdown 摘要，方便制作人直接判断下一步。
+
 ### 前端任务
 
-- 系列工作台顶部增加生产仪表盘。
+- 系列工作台已新增“Seedance 生产总览”面板。
 - 项目总览页显示最终状态 badge。
 - 每个 blocker 提供对应操作入口。
 
 ### 测试
 
-- dashboard 汇总测试。
-- blocker 优先级测试。
-- 前端类型检查。
+- 服务测试覆盖 dashboard 汇总、失败 blocker、下一步动作、分集摘要和 Markdown。
+- API 测试覆盖缺失项目 404。
+- 前端类型检查覆盖 dashboard 面板接入。
 
 ### 验收标准
 
-- 用户打开项目即可知道下一步该做什么。
-- 所有 worker 状态都能在一个地方看到。
+- 用户打开项目即可知道下一步该做什么。已完成首版。
+- 所有 worker 状态都能在一个地方看到。已完成首版。
 
 ## 13. 阶段九：审片与返修闭环
 
@@ -631,9 +641,8 @@ Seedance prompts
 1. `seedance-audio/mix` 真实素材执行增强
 2. `seedance-title-cards/render` 真实渲染增强
 3. `seedance-final/assemble` 真实装配和 manifest 写盘
-4. `seedance-production-dashboard`
-5. `seedance_review_ledger`
-6. 30 集压测和性能优化
+4. `seedance_review_ledger`
+5. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
 
@@ -643,12 +652,12 @@ Seedance prompts
 seedance-audio/mix real runner hardening
   -> seedance-title-cards/render real/mock success
   -> seedance-final/assemble manifest
-  -> seedance-production-dashboard
+  -> seedance_review_ledger
 ```
 
 原因：
 
-- 直接承接当前已完成的剪辑装配、字幕 worker、音频计划 / 混音 dry-run、片头片尾 dry-run、final delivery dry-run 和外部剪辑平台包。
+- 直接承接当前已完成的剪辑装配、字幕 worker、音频计划 / 混音 dry-run、片头片尾 dry-run、final delivery dry-run、外部剪辑平台包和生产总览 dashboard。
 - 不依赖第三方平台。
 - 可先用 mock runner 和真实路径校验把 dry-run 账本推进到 ready 账本，再逐步补真实视觉模板。
 - ffmpeg 依赖和 worker 模式已经在缩略图、剪辑装配、字幕烧录和混音 dry-run 中跑通。

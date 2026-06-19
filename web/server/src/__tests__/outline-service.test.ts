@@ -26,6 +26,7 @@ import {
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
+  getAiComicSeriesSeedanceProductionDashboard,
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
   previewAiComicEpisodeContext,
@@ -1104,6 +1105,21 @@ describe('outline-service', () => {
     expect(editingPlatformPackageRes.data?.assets.some(asset => asset.asset_type === 'title_card')).toBe(true);
     expect(editingPlatformPackageRes.data?.assets.some(asset => asset.asset_type === 'audio')).toBe(true);
     expect(editingPlatformPackageRes.data?.markdown).toContain('Seedance 外部剪辑平台交付包');
+
+    const dashboardRes = await getAiComicSeriesSeedanceProductionDashboard(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(dashboardRes.ok).toBe(true);
+    expect(dashboardRes.data?.schema_version).toBe('ai-comic-series-seedance-dashboard/v1');
+    expect(dashboardRes.data?.summary.total_shot_count).toBeGreaterThan(0);
+    expect(dashboardRes.data?.summary.ready_count).toBeGreaterThan(0);
+    expect(dashboardRes.data?.summary.failed_count).toBeGreaterThan(0);
+    expect(dashboardRes.data?.status_items.some(item => item.key === 'final_delivery')).toBe(true);
+    expect(dashboardRes.data?.status_items.some(item => item.key === 'editing_platform_package')).toBe(true);
+    expect(dashboardRes.data?.blockers.some(blocker => blocker.blocker_id === 'failed-shots')).toBe(true);
+    expect(dashboardRes.data?.next_actions.some(action => action.action_key === 'export_retry_package')).toBe(true);
+    expect(dashboardRes.data?.episodes.length).toBeGreaterThan(0);
+    expect(dashboardRes.data?.markdown).toContain('Seedance 生产总览');
 
     const retryPackageRes = await exportAiComicSeriesSeedanceRetryPackage(saveRes.data!.project.series_project_id);
     expect(retryPackageRes.ok).toBe(true);

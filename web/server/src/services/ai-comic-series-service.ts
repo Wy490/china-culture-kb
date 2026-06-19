@@ -43,10 +43,18 @@ import type {
   AiComicSeedanceFinalDeliveryLedger,
   AiComicSeedanceFinalDeliveryOutputProfile,
   AiComicSeedanceFinalDeliveryRequest,
+  AiComicSeedanceFinalDeliveryStatus,
   AiComicSeedanceEditingPlatformAsset,
   AiComicSeedanceEditingPlatformMissingAsset,
   AiComicSeedanceEditingPlatformSubtitleCue,
   AiComicSeedanceEditingPlatformTimelineItem,
+  AiComicSeedanceDashboardBlocker,
+  AiComicSeedanceDashboardEpisode,
+  AiComicSeedanceDashboardItemStatus,
+  AiComicSeedanceDashboardNextAction,
+  AiComicSeedanceDashboardStatusKey,
+  AiComicSeedanceDashboardStatusItem,
+  AiComicSeedanceDashboardSummary,
   AiComicSeedanceThumbnailCaptureRequest,
   AiComicSeedanceThumbnailCaptureResultShot,
   AiComicSeedanceThumbnailStatus,
@@ -75,6 +83,7 @@ import type {
   AiComicSeriesSeedanceSubtitleRenderResult,
   AiComicSeriesSeedanceAudioMixResult,
   AiComicSeriesSeedanceAudioPlanPackage,
+  AiComicSeriesSeedanceDashboard,
   AiComicSeriesSeedanceEditingPlatformPackage,
   AiComicSeriesSeedanceFinalDeliveryResult,
   AiComicSeriesSeedanceTitleCardPlanPackage,
@@ -1572,6 +1581,70 @@ function buildAiComicSeriesSeedanceEditingPlatformMarkdown(
     );
   }
   return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceDashboardMarkdown(
+  dashboard: Omit<AiComicSeriesSeedanceDashboard, 'markdown'>,
+): string {
+  return [
+    `# ${dashboard.series_title} — Seedance 生产总览`,
+    '',
+    `> schema: ${dashboard.schema_version}`,
+    `> seriesProjectId: ${dashboard.project.series_project_id}`,
+    `> generatedAt: ${dashboard.generated_at}`,
+    `> episodes: ${dashboard.summary.generated_episode_count}/${dashboard.summary.total_episode_count}`,
+    `> shots: ${dashboard.summary.total_shot_count}`,
+    `> ready: ${dashboard.summary.ready_count}`,
+    `> failed: ${dashboard.summary.failed_count}`,
+    `> blockers: ${dashboard.summary.blocker_count}`,
+    '',
+    '## 状态',
+    ...markdownTable(
+      ['环节', '状态', '数量/路径', '备注'],
+      dashboard.status_items.map(item => [
+        item.label,
+        item.status_text,
+        item.output_path ?? item.count_text ?? '未记录',
+        item.notes.join('；') || '无',
+      ]),
+    ),
+    '',
+    '## 阻断项',
+    ...markdownTable(
+      ['级别', '问题', '详情', '动作'],
+      dashboard.blockers.map(blocker => [
+        seedanceDashboardSeverityText(blocker.severity),
+        blocker.label,
+        blocker.detail,
+        blocker.action_label ?? '人工判断',
+      ]),
+    ),
+    '',
+    '## 下一步动作',
+    ...markdownTable(
+      ['优先级', '动作', '说明'],
+      dashboard.next_actions.map(action => [
+        String(action.priority),
+        action.label,
+        action.disabled_reason ? `${action.detail}；${action.disabled_reason}` : action.detail,
+      ]),
+    ),
+    '',
+    '## 分集',
+    ...markdownTable(
+      ['集数', '标题', '镜头', 'Ready', '失败', '已选版本', '缩略图', '阻断'],
+      dashboard.episodes.map(episode => [
+        `第${episode.episode_no}集`,
+        episode.episode_title,
+        String(episode.total_shot_count),
+        String(episode.ready_shot_count),
+        String(episode.failed_shot_count),
+        String(episode.selected_version_count),
+        String(episode.thumbnail_ready_count),
+        String(episode.blocker_count),
+      ]),
+    ),
+  ].join('\n');
 }
 
 function markdownTable(headers: string[], rows: string[][]): string[] {
@@ -4288,6 +4361,29 @@ export async function exportAiComicSeriesSeedanceEditingPlatformPackage(
   });
 }
 
+export async function getAiComicSeriesSeedanceProductionDashboard(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceDashboard>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const cutPackageRes = await exportAiComicSeriesSeedanceCutPackage(seriesProjectId);
+  if (!cutPackageRes.ok || !cutPackageRes.data) {
+    return fail(
+      normalizeErrorCode(cutPackageRes.error?.code),
+      cutPackageRes.error?.message ?? 'Export Seedance cut package failed',
+    );
+  }
+
+  const dashboard = buildSeedanceProductionDashboard(detail, cutPackageRes.data);
+  return success({
+    ...dashboard,
+    markdown: buildAiComicSeriesSeedanceDashboardMarkdown(dashboard),
+  });
+}
+
 export async function captureAiComicSeriesSeedanceThumbnails(
   seriesProjectId: string,
   request: AiComicSeedanceThumbnailCaptureRequest = {},
@@ -6296,6 +6392,565 @@ function seedanceEditingAssetStatusText(status: AiComicSeedanceEditingPlatformAs
     unknown: '未知',
   };
   return map[status];
+}
+
+function buildSeedanceProductionDashboard(
+  detail: AiComicSeriesProjectDetail,
+  cutPackage: AiComicSeriesSeedanceCutPackage,
+): Omit<AiComicSeriesSeedanceDashboard, 'markdown'> {
+  const ledger = normalizeSeedanceProductionLedger(detail.seedance_production);
+  const statusCounts = seedanceDashboardProductionStatusCounts(ledger);
+  const readyVersionCount = ledger.items.reduce((sum, item) =>
+    sum + item.versions.filter(version => version.status === 'ready' && Boolean(version.video_url)).length,
+  0);
+  const thumbnailReadyCount = ledger.items.filter(item => item.thumbnail?.status === 'ready').length;
+  const thumbnailFailedCount = ledger.items.filter(item => item.thumbnail?.status === 'failed').length;
+  const summary: AiComicSeedanceDashboardSummary = {
+    generated_episode_count: Object.keys(detail.generated_episode_story_ids ?? {}).length,
+    total_episode_count: detail.plan.episode_count,
+    total_shot_count: ledger.items.length,
+    prompt_exported_count: ledger.items.filter(item => item.status !== 'not_started' || Boolean(item.prompt_exported_at)).length,
+    submitted_count: statusCounts.submitted,
+    processing_count: statusCounts.processing,
+    ready_count: statusCounts.ready,
+    failed_count: statusCounts.failed,
+    skipped_count: statusCounts.skipped,
+    selected_version_count: ledger.items.filter(item => Boolean(item.selected_version_id)).length,
+    ready_version_count: readyVersionCount,
+    thumbnail_ready_count: thumbnailReadyCount,
+    thumbnail_failed_count: thumbnailFailedCount,
+    missing_shot_count: cutPackage.total_missing_shot_count,
+    blocker_count: 0,
+    next_action_count: 0,
+    production_status_counts: statusCounts,
+  };
+  const finalDependencyStatus = resolveSeedanceFinalDependencyStatus(detail, {
+    dryRun: true,
+    includeSubtitles: true,
+    includeAudioMix: true,
+    includeTitleCards: true,
+  });
+  const statusItems = buildSeedanceDashboardStatusItems(detail, summary, finalDependencyStatus);
+  const blockers = buildSeedanceDashboardBlockers(detail, summary, finalDependencyStatus);
+  const nextActions = buildSeedanceDashboardNextActions(detail, summary, finalDependencyStatus);
+  summary.blocker_count = blockers.length;
+  summary.next_action_count = nextActions.length;
+
+  return {
+    schema_version: 'ai-comic-series-seedance-dashboard/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    generated_at: new Date().toISOString(),
+    summary,
+    status_items: statusItems,
+    blockers,
+    next_actions: nextActions,
+    episodes: buildSeedanceDashboardEpisodes(detail, ledger),
+  };
+}
+
+function seedanceDashboardProductionStatusCounts(
+  ledger: AiComicSeedanceProductionLedger,
+): Record<AiComicSeedanceProductionStatus, number> {
+  const counts: Record<AiComicSeedanceProductionStatus, number> = {
+    not_started: 0,
+    prompt_exported: 0,
+    submitted: 0,
+    processing: 0,
+    ready: 0,
+    failed: 0,
+    skipped: 0,
+  };
+  for (const item of ledger.items) {
+    counts[item.status] += 1;
+  }
+  return counts;
+}
+
+function buildSeedanceDashboardStatusItems(
+  detail: AiComicSeriesProjectDetail,
+  summary: AiComicSeedanceDashboardSummary,
+  finalDependencyStatus: AiComicSeedanceFinalDependencyStatus,
+): AiComicSeedanceDashboardStatusItem[] {
+  return [
+    {
+      key: 'prompt_export',
+      label: '提示词导出',
+      status: summary.total_shot_count > 0 ? 'ready' : summary.generated_episode_count > 0 ? 'needs_action' : 'not_started',
+      status_text: summary.total_shot_count > 0 ? '已导出' : '未导出',
+      updated_at: detail.seedance_production?.updated_at,
+      count_text: `${summary.prompt_exported_count}/${summary.total_shot_count || summary.generated_episode_count}`,
+      notes: summary.total_shot_count > 0
+        ? [`${summary.total_shot_count} 个镜头进入生产账本`]
+        : ['需要先导出系列 Seedance 镜头提示词包'],
+    },
+    {
+      key: 'shot_production',
+      label: '镜头生产',
+      status: seedanceDashboardProductionStatus(summary),
+      status_text: seedanceDashboardItemStatusText(seedanceDashboardProductionStatus(summary)),
+      updated_at: detail.seedance_production?.updated_at,
+      count_text: `ready ${summary.ready_count} / failed ${summary.failed_count} / active ${summary.submitted_count + summary.processing_count}`,
+      notes: [`已选剪辑版本 ${summary.selected_version_count} 个；ready 版本 ${summary.ready_version_count} 个`],
+    },
+    {
+      key: 'thumbnail_capture',
+      label: '缩略图',
+      status: seedanceDashboardThumbnailStatus(summary),
+      status_text: seedanceDashboardItemStatusText(seedanceDashboardThumbnailStatus(summary)),
+      count_text: `${summary.thumbnail_ready_count}/${summary.ready_count}`,
+      notes: summary.thumbnail_failed_count > 0 ? [`失败 ${summary.thumbnail_failed_count} 个`] : [],
+    },
+    seedanceDashboardLedgerStatusItem({
+      key: 'cut_assembly',
+      label: '剪辑装配',
+      status: detail.seedance_cut_assembly?.status,
+      updatedAt: detail.seedance_cut_assembly?.updated_at,
+      outputPath: detail.seedance_cut_assembly?.output_path,
+      fallbackNeedsAction: summary.ready_count > 0,
+      countText: detail.seedance_cut_assembly
+        ? `${detail.seedance_cut_assembly.source_shot_count} 个镜头`
+        : undefined,
+      notes: [
+        detail.seedance_cut_assembly?.failure_reason ?? '',
+        detail.seedance_cut_assembly?.dry_run ? 'dry-run 账本' : '',
+      ].filter(Boolean),
+    }),
+    seedanceDashboardLedgerStatusItem({
+      key: 'subtitle_render',
+      label: '字幕',
+      status: detail.seedance_subtitle_render?.status,
+      updatedAt: detail.seedance_subtitle_render?.updated_at,
+      outputPath: detail.seedance_subtitle_render?.output_path ?? detail.seedance_subtitle_render?.srt_path,
+      fallbackNeedsAction: seedanceLedgerUsable(detail.seedance_cut_assembly?.status, true),
+      countText: detail.seedance_subtitle_render
+        ? `${detail.seedance_subtitle_render.cue_count} 条 cue`
+        : undefined,
+      notes: [
+        detail.seedance_subtitle_render?.mode === 'burn_in' ? '烧录字幕' : detail.seedance_subtitle_render ? '侧挂 SRT' : '',
+        detail.seedance_subtitle_render?.failure_reason ?? '',
+      ].filter(Boolean),
+    }),
+    seedanceDashboardLedgerStatusItem({
+      key: 'audio_mix',
+      label: '音频混音',
+      status: detail.seedance_audio_mix?.status,
+      updatedAt: detail.seedance_audio_mix?.updated_at,
+      outputPath: detail.seedance_audio_mix?.output_path,
+      fallbackNeedsAction: seedanceLedgerUsable(detail.seedance_cut_assembly?.status, true),
+      countText: detail.seedance_audio_mix
+        ? `音频 ${detail.seedance_audio_mix.source_audio_count} / 缺 ${detail.seedance_audio_mix.missing_audio_count}`
+        : undefined,
+      notes: [
+        detail.seedance_audio_mix?.audio_profile ?? '',
+        detail.seedance_audio_mix?.failure_reason ?? '',
+      ].filter(Boolean),
+    }),
+    seedanceDashboardLedgerStatusItem({
+      key: 'title_card_render',
+      label: '片头片尾',
+      status: detail.seedance_title_card_render?.status,
+      updatedAt: detail.seedance_title_card_render?.updated_at,
+      outputPath: detail.seedance_title_card_render?.output_paths[0],
+      fallbackNeedsAction: summary.ready_count > 0,
+      countText: detail.seedance_title_card_render
+        ? `${detail.seedance_title_card_render.rendered_count}/${detail.seedance_title_card_render.card_count} 张卡`
+        : undefined,
+      notes: [
+        detail.seedance_title_card_render?.output_profile ?? '',
+        detail.seedance_title_card_render?.failure_reason ?? '',
+      ].filter(Boolean),
+    }),
+    {
+      key: 'final_delivery',
+      label: '最终交付',
+      status: seedanceDashboardFinalStatus(detail.seedance_final_delivery?.status, finalDependencyStatus),
+      status_text: seedanceDashboardItemStatusText(
+        seedanceDashboardFinalStatus(detail.seedance_final_delivery?.status, finalDependencyStatus),
+      ),
+      updated_at: detail.seedance_final_delivery?.updated_at,
+      output_path: detail.seedance_final_delivery?.output_path,
+      count_text: `${finalDependencyStatus.missing_dependencies.length} 个依赖缺失`,
+      notes: [
+        detail.seedance_final_delivery?.output_profile ?? '',
+        ...finalDependencyStatus.warnings,
+        detail.seedance_final_delivery?.failure_reason ?? '',
+      ].filter(Boolean),
+    },
+    {
+      key: 'editing_platform_package',
+      label: '外部剪辑包',
+      status: summary.ready_count > 0 ? 'ready' : 'not_started',
+      status_text: summary.ready_count > 0 ? '可导出' : '未就绪',
+      count_text: summary.ready_count > 0 ? 'JSON / CSV / SRT / manifest' : undefined,
+      notes: summary.ready_count > 0
+        ? ['可导出通用剪辑平台交付包']
+        : ['需要至少一个 ready 镜头'],
+    },
+  ];
+}
+
+function buildSeedanceDashboardBlockers(
+  detail: AiComicSeriesProjectDetail,
+  summary: AiComicSeedanceDashboardSummary,
+  finalDependencyStatus: AiComicSeedanceFinalDependencyStatus,
+): AiComicSeedanceDashboardBlocker[] {
+  const blockers: AiComicSeedanceDashboardBlocker[] = [];
+  const add = (blocker: AiComicSeedanceDashboardBlocker) => blockers.push(blocker);
+  if (summary.generated_episode_count === 0) {
+    add({
+      blocker_id: 'no-generated-episodes',
+      severity: 'blocking',
+      label: '尚未生成分集',
+      detail: '系列规划还没有可生产的分集故事。',
+      action_key: 'generate_next_episode',
+      action_label: '生成分集',
+    });
+  }
+  if (summary.generated_episode_count > 0 && summary.total_shot_count === 0) {
+    add({
+      blocker_id: 'no-seedance-prompts',
+      severity: 'blocking',
+      label: '尚未导出 Seedance 提示词',
+      detail: '生产账本为空，无法提交镜头或装配成片。',
+      related_status_key: 'prompt_export',
+      action_key: 'export_seedance_prompts',
+      action_label: '导出提示词包',
+    });
+  }
+  if (summary.failed_count > 0) {
+    add({
+      blocker_id: 'failed-shots',
+      severity: 'blocking',
+      label: `${summary.failed_count} 个镜头失败`,
+      detail: '失败镜头需要重试、跳过或人工替换，正式成片前不可忽略。',
+      related_status_key: 'shot_production',
+      action_key: 'export_retry_package',
+      action_label: '导出重试包',
+    });
+  }
+  if (summary.missing_shot_count > 0) {
+    add({
+      blocker_id: 'missing-ready-shots',
+      severity: summary.ready_count === 0 ? 'blocking' : 'warning',
+      label: `${summary.missing_shot_count} 个镜头未 ready`,
+      detail: '剪辑包只会纳入 ready 且有视频 URL 的镜头。',
+      related_status_key: 'shot_production',
+      action_key: 'import_seedance_returns',
+      action_label: '导入回片',
+    });
+  }
+  if (summary.ready_count > 0 && summary.selected_version_count < summary.ready_count) {
+    add({
+      blocker_id: 'unselected-ready-versions',
+      severity: 'warning',
+      label: 'ready 镜头未全部选中剪辑版',
+      detail: `ready ${summary.ready_count} 个，已选 ${summary.selected_version_count} 个。`,
+      related_status_key: 'shot_production',
+      action_key: 'auto_select_versions',
+      action_label: '自动择优剪辑版',
+    });
+  }
+  if (summary.thumbnail_failed_count > 0) {
+    add({
+      blocker_id: 'thumbnail-failed',
+      severity: 'warning',
+      label: `${summary.thumbnail_failed_count} 个缩略图抽帧失败`,
+      detail: '缩略图不阻断成片，但会影响审片和外部素材交接。',
+      related_status_key: 'thumbnail_capture',
+      action_key: 'capture_thumbnails',
+      action_label: '重新抽帧',
+    });
+  }
+  addSeedanceLedgerBlocker(blockers, 'cut_assembly', '剪辑装配', detail.seedance_cut_assembly?.status, detail.seedance_cut_assembly?.failure_reason);
+  addSeedanceLedgerBlocker(blockers, 'subtitle_render', '字幕', detail.seedance_subtitle_render?.status, detail.seedance_subtitle_render?.failure_reason);
+  addSeedanceLedgerBlocker(blockers, 'audio_mix', '音频混音', detail.seedance_audio_mix?.status, detail.seedance_audio_mix?.failure_reason);
+  addSeedanceLedgerBlocker(blockers, 'title_card_render', '片头片尾', detail.seedance_title_card_render?.status, detail.seedance_title_card_render?.failure_reason);
+  addSeedanceLedgerBlocker(blockers, 'final_delivery', '最终交付', detail.seedance_final_delivery?.status, detail.seedance_final_delivery?.failure_reason);
+  for (const dependency of finalDependencyStatus.missing_dependencies) {
+    add({
+      blocker_id: `final-dependency-${slugifyConstraintKey(dependency)}`,
+      severity: 'warning',
+      label: dependency,
+      detail: '最终交付 dry-run 仍缺少该依赖。',
+      related_status_key: 'final_delivery',
+      action_key: 'assemble_final_delivery',
+      action_label: '刷新最终交付计划',
+    });
+  }
+  return blockers;
+}
+
+function addSeedanceLedgerBlocker(
+  blockers: AiComicSeedanceDashboardBlocker[],
+  key: AiComicSeedanceDashboardStatusItem['key'],
+  label: string,
+  status?: string,
+  failureReason?: string,
+): void {
+  if (status !== 'failed') return;
+  blockers.push({
+    blocker_id: `${key}-failed`,
+    severity: 'blocking',
+    label: `${label}失败`,
+    detail: failureReason ?? `${label}账本状态为 failed。`,
+    related_status_key: key,
+  });
+}
+
+function buildSeedanceDashboardNextActions(
+  detail: AiComicSeriesProjectDetail,
+  summary: AiComicSeedanceDashboardSummary,
+  finalDependencyStatus: AiComicSeedanceFinalDependencyStatus,
+): AiComicSeedanceDashboardNextAction[] {
+  const actions: AiComicSeedanceDashboardNextAction[] = [];
+  const add = (action: AiComicSeedanceDashboardNextAction) => actions.push(action);
+  if (summary.generated_episode_count === 0) {
+    add({
+      action_key: 'generate_next_episode',
+      label: '生成第一集',
+      detail: '先生成至少一集，再导出 Seedance 镜头提示词。',
+      priority: 10,
+    });
+  }
+  if (summary.generated_episode_count > 0 && summary.total_shot_count === 0) {
+    add({
+      action_key: 'export_seedance_prompts',
+      label: '导出 Seedance 提示词包',
+      detail: '创建生产账本并进入镜头提交/回片流程。',
+      priority: 20,
+      related_status_key: 'prompt_export',
+    });
+  }
+  if (summary.production_status_counts.prompt_exported > 0) {
+    add({
+      action_key: 'mark_submitted',
+      label: '批量标记已提交',
+      detail: `${summary.production_status_counts.prompt_exported} 个镜头仍停留在提示词已导出。`,
+      priority: 30,
+      related_status_key: 'shot_production',
+    });
+  }
+  if (summary.submitted_count + summary.processing_count > 0) {
+    add({
+      action_key: 'import_seedance_returns',
+      label: '导入或轮询回片',
+      detail: `${summary.submitted_count + summary.processing_count} 个镜头仍在制作链路中。`,
+      priority: 40,
+      related_status_key: 'shot_production',
+    });
+  }
+  if (summary.failed_count > 0) {
+    add({
+      action_key: 'export_retry_package',
+      label: '导出失败重试包',
+      detail: `${summary.failed_count} 个镜头失败，需要重试或人工处理。`,
+      priority: 45,
+      related_status_key: 'shot_production',
+    });
+  }
+  if (summary.ready_count > 0 && summary.selected_version_count < summary.ready_count) {
+    add({
+      action_key: 'auto_select_versions',
+      label: '自动择优剪辑版',
+      detail: `ready ${summary.ready_count} 个，已选 ${summary.selected_version_count} 个。`,
+      priority: 50,
+      related_status_key: 'shot_production',
+    });
+  }
+  if (summary.ready_count > 0 && summary.thumbnail_ready_count < summary.ready_count) {
+    add({
+      action_key: 'capture_thumbnails',
+      label: '生成缩略图',
+      detail: `ready 镜头 ${summary.ready_count} 个，缩略图 ${summary.thumbnail_ready_count} 个。`,
+      priority: 60,
+      related_status_key: 'thumbnail_capture',
+    });
+  }
+  if (summary.ready_count > 0 && !seedanceLedgerUsable(detail.seedance_cut_assembly?.status, true)) {
+    add({
+      action_key: 'assemble_cut',
+      label: '装配剪辑成片',
+      detail: '已有 ready 镜头，可以生成初版剪辑成片。',
+      priority: 70,
+      related_status_key: 'cut_assembly',
+    });
+  }
+  if (seedanceLedgerUsable(detail.seedance_cut_assembly?.status, true)) {
+    if (!seedanceLedgerUsable(detail.seedance_subtitle_render?.status, true)) {
+      add({
+        action_key: 'render_subtitles',
+        label: '生成字幕文件',
+        detail: '剪辑成片已可用，可以生成侧挂 SRT 或烧录字幕。',
+        priority: 80,
+        related_status_key: 'subtitle_render',
+      });
+    }
+    if (!seedanceLedgerUsable(detail.seedance_audio_mix?.status, true)) {
+      add({
+        action_key: 'mix_audio',
+        label: '生成混音计划',
+        detail: '剪辑成片已可用，可以规划或执行音频混音。',
+        priority: 90,
+        related_status_key: 'audio_mix',
+      });
+    }
+  }
+  if (summary.ready_count > 0 && !seedanceLedgerUsable(detail.seedance_title_card_render?.status, true)) {
+    add({
+      action_key: 'render_title_cards',
+      label: '生成片头片尾计划',
+      detail: '补齐系列片头、分集片头片尾和系列片尾。',
+      priority: 100,
+      related_status_key: 'title_card_render',
+    });
+  }
+  if (
+    finalDependencyStatus.missing_dependencies.length === 0
+    && !seedanceLedgerUsable(detail.seedance_final_delivery?.status, true)
+  ) {
+    add({
+      action_key: 'assemble_final_delivery',
+      label: '生成最终交付 dry-run',
+      detail: '剪辑、字幕、混音和片头片尾依赖已可用。',
+      priority: 110,
+      related_status_key: 'final_delivery',
+    });
+  }
+  if (summary.ready_count > 0) {
+    add({
+      action_key: 'export_editing_platform_package',
+      label: '导出外部剪辑平台包',
+      detail: '输出 JSON、CSV 时间线、SRT 和素材清单。',
+      priority: 120,
+      related_status_key: 'editing_platform_package',
+    });
+  }
+  return actions.sort((a, b) => a.priority - b.priority).slice(0, 8);
+}
+
+function buildSeedanceDashboardEpisodes(
+  detail: AiComicSeriesProjectDetail,
+  ledger: AiComicSeedanceProductionLedger,
+): AiComicSeedanceDashboardEpisode[] {
+  const itemsByEpisode = new Map<number, AiComicSeedanceShotProductionItem[]>();
+  for (const item of ledger.items) {
+    itemsByEpisode.set(item.episode_no, [...(itemsByEpisode.get(item.episode_no) ?? []), item]);
+  }
+  return detail.plan.episodes
+    .filter(episode => Boolean(detail.generated_episode_story_ids[String(episode.episode_no)]) || itemsByEpisode.has(episode.episode_no))
+    .map(episode => {
+      const items = itemsByEpisode.get(episode.episode_no) ?? [];
+      const ready = items.filter(item => item.status === 'ready' && Boolean(item.video_url)).length;
+      const failed = items.filter(item => item.status === 'failed').length;
+      const selected = items.filter(item => Boolean(item.selected_version_id)).length;
+      const thumbnailReady = items.filter(item => item.thumbnail?.status === 'ready').length;
+      return {
+        episode_no: episode.episode_no,
+        episode_title: episode.title,
+        story_id: detail.generated_episode_story_ids[String(episode.episode_no)],
+        total_shot_count: items.length,
+        ready_shot_count: ready,
+        failed_shot_count: failed,
+        selected_version_count: selected,
+        thumbnail_ready_count: thumbnailReady,
+        blocker_count: failed + Math.max(0, items.length - ready),
+      };
+    })
+    .sort((a, b) => a.episode_no - b.episode_no);
+}
+
+function seedanceDashboardProductionStatus(
+  summary: AiComicSeedanceDashboardSummary,
+): AiComicSeedanceDashboardItemStatus {
+  if (summary.total_shot_count === 0) return 'not_started';
+  if (summary.failed_count > 0) return 'failed';
+  if (summary.processing_count > 0 || summary.submitted_count > 0) return 'in_progress';
+  if (summary.ready_count > 0 && summary.ready_count + summary.skipped_count >= summary.total_shot_count) return 'ready';
+  if (summary.production_status_counts.prompt_exported > 0) return 'needs_action';
+  return 'not_started';
+}
+
+function seedanceDashboardThumbnailStatus(
+  summary: AiComicSeedanceDashboardSummary,
+): AiComicSeedanceDashboardItemStatus {
+  if (summary.thumbnail_failed_count > 0) return 'failed';
+  if (summary.ready_count === 0) return 'not_started';
+  if (summary.thumbnail_ready_count >= summary.ready_count) return 'ready';
+  if (summary.thumbnail_ready_count > 0) return 'in_progress';
+  return 'needs_action';
+}
+
+function seedanceDashboardFinalStatus(
+  status: AiComicSeedanceFinalDeliveryStatus | undefined,
+  dependencyStatus: AiComicSeedanceFinalDependencyStatus,
+): AiComicSeedanceDashboardItemStatus {
+  if (status === 'ready') return 'ready';
+  if (status === 'failed') return 'failed';
+  if (status === 'assembling') return 'in_progress';
+  if (status === 'planned') {
+    return dependencyStatus.missing_dependencies.length > 0 ? 'blocked' : 'planned';
+  }
+  if (status === 'skipped') return 'skipped';
+  return dependencyStatus.missing_dependencies.length > 0 ? 'blocked' : 'not_started';
+}
+
+function seedanceDashboardLedgerStatusItem(params: {
+  key: AiComicSeedanceDashboardStatusKey;
+  label: string;
+  status?: string;
+  updatedAt?: string;
+  outputPath?: string;
+  fallbackNeedsAction?: boolean;
+  countText?: string;
+  notes: string[];
+}): AiComicSeedanceDashboardStatusItem {
+  const status = seedanceDashboardLedgerStatus(params.status, params.fallbackNeedsAction);
+  return {
+    key: params.key,
+    label: params.label,
+    status,
+    status_text: seedanceDashboardItemStatusText(status),
+    updated_at: params.updatedAt,
+    output_path: params.outputPath,
+    count_text: params.countText,
+    notes: params.notes,
+  };
+}
+
+function seedanceDashboardLedgerStatus(
+  status?: string,
+  fallbackNeedsAction = false,
+): AiComicSeedanceDashboardItemStatus {
+  if (status === 'ready') return 'ready';
+  if (status === 'failed') return 'failed';
+  if (status === 'assembling' || status === 'rendering' || status === 'mixing') return 'in_progress';
+  if (status === 'planned') return 'planned';
+  if (status === 'skipped') return 'skipped';
+  return fallbackNeedsAction ? 'needs_action' : 'not_started';
+}
+
+function seedanceDashboardItemStatusText(status: AiComicSeedanceDashboardItemStatus): string {
+  const map: Record<AiComicSeedanceDashboardItemStatus, string> = {
+    not_started: '未开始',
+    needs_action: '待处理',
+    in_progress: '进行中',
+    planned: '已规划',
+    ready: '已就绪',
+    failed: '失败',
+    skipped: '已跳过',
+    blocked: '受阻',
+  };
+  return map[status];
+}
+
+function seedanceDashboardSeverityText(severity: AiComicSeedanceDashboardBlocker['severity']): string {
+  const map: Record<AiComicSeedanceDashboardBlocker['severity'], string> = {
+    blocking: '阻断',
+    warning: '提醒',
+    info: '信息',
+  };
+  return map[severity];
 }
 
 function resolveSeedanceFinalDependencyStatus(

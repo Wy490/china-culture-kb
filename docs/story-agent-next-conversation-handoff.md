@@ -33,7 +33,7 @@
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
 | Production Board / GEARS / Seedance 交付链 | 约 66% -> 已推进到约 96% | Board、监督、批量修复、导出已可用；近期补了单任务修复、结果 diff、空修复不增版本、按镜头/类别修复、逐场景 diff、Seedance 素材 slot、`@图片/@视频/@音频` 引用校验、素材缺口报告、单故事素材绑定回写、素材上传态/外部批量导入/真实文件上传、跨项目素材库复用首版、素材上传历史 UI 首版、Seedance Shot Ledger、单故事回传导入、失败重试包、手动/自动择优、批量状态流转、provider 任务提交抽象、provider 队列元数据、provider 超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版。 |
-| AI 漫剧系列生产链 | 约 67% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run 和外部剪辑平台包首版已具备；真实混音/真实片头片尾渲染、final manifest 和审片返修仍待做。 |
+| AI 漫剧系列生产链 | 约 69% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图、初版装配、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run、外部剪辑平台包和生产总览 dashboard 首版已具备；真实混音/真实片头片尾渲染、final manifest 和审片返修仍待做。 |
 | 可商用制作中台 | 约 49% | 主链路可用，但还缺 UX 降噪、真实 provider、平台专用错误码映射扩展、真实混音执行/最终成片、回滚、审片返修和稳定压测。 |
 | MCP Story Agent 闭环 | 约 75-80% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story`、`kb_generate_gears_delivery`、`kb_generate_seedance_prompt`、`kb_repair_story(auto_apply=false/true)`、`kb_update_project_version` 已完成；真实项目 auto_apply smoke 已通过，后续剩更深模型修复链路和前端质量反馈增强。 |
 
@@ -326,10 +326,10 @@ git diff --check
 测试结果：
 
 - `project-service.test.ts`：36 passed。
-- `api.test.ts`：102 passed。
-- `web/server && npm test`：24 files passed，259 tests passed。
+- `api.test.ts`：103 passed。
+- `web/server && npm test`：24 files passed，260 tests passed。
 - `project-service.test.ts` 已覆盖 provider 提交失败镜头、生成 job id、失败镜头 retry_count 递增、重复提交跳过、外部 provider callback 按 queue 元数据回写、provider poll dry-run / provider_results 应用、失败分类进入 retry package、通用错误码别名映射、通用 provider submit adapter mock 提交、poll adapter mock 查询写回、provider 队列状态总览的超时/失败/批次汇总、provider 人工重试策略的可重提/阻断候选，以及 provider 重试执行自动化只提交可重提镜头。
-- `api.test.ts` 已覆盖 `GET /api/system/seedance-provider-config` / `GET /api/system/seedance-provider-adapter-contract` 不泄露 endpoint/token 原文，`POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback` 的 `SEEDANCE_CALLBACK_SECRET` 鉴权、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`、`/provider-retry-submit`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应；AI 漫剧 API 已覆盖外部剪辑平台包缺失项目响应。
+- `api.test.ts` 已覆盖 `GET /api/system/seedance-provider-config` / `GET /api/system/seedance-provider-adapter-contract` 不泄露 endpoint/token 原文，`POST /api/projects/:projectId/production-board/seedance-shots/submit-provider`、`/provider-callback` 的 `SEEDANCE_CALLBACK_SECRET` 鉴权、`/poll-provider`、`/provider-overview`、`/provider-retry-plan`、`/provider-retry-submit`，以及 provider 失败错误码归一化写回 ledger、submit/poll adapter 未配置 endpoint 的 400 响应；AI 漫剧 API 已覆盖外部剪辑平台包和生产总览 dashboard 缺失项目响应。
 - `web/client && npm run lint`：passed。
 - `web/client && npm run build`：passed。
 - `web/server && npm run lint`：passed。
@@ -560,6 +560,22 @@ export-seedance-editing-platform-package
 - 系列工作台新增剪辑平台 JSON、时间线 CSV、SRT 和素材清单 CSV 导出。
 - 服务测试覆盖 schema、格式、时间线、SRT、素材清单和 Markdown；API 测试覆盖缺失项目响应。
 
+已完成生产总览 dashboard 首版：
+
+```text
+seedance-production-dashboard
+  -> summary / status_items / blockers / next_actions / episodes
+  -> 前端 Seedance 生产总览
+```
+
+已落地：
+
+- 后端新增 `ai-comic-series-seedance-dashboard/v1` 类型和 `getAiComicSeriesSeedanceProductionDashboard`。
+- API 新增 `seedance-production-dashboard`。
+- dashboard 聚合提示词导出、镜头生产、缩略图、剪辑装配、字幕、混音、片头片尾、最终交付和外部剪辑包状态。
+- 系列工作台新增 Seedance 生产总览面板，显示总镜头、ready、失败、已选剪辑版、缩略图、阻断项和下一步动作。
+- 服务测试覆盖 dashboard 汇总、失败 blocker、下一步动作、分集摘要和 Markdown；API 测试覆盖缺失项目响应。
+
 当前后期链路变成：
 
 ```text
@@ -574,21 +590,22 @@ ready 镜头
   -> 片头片尾计划 / render dry-run
   -> final delivery dry-run / 依赖账本
   -> 外部剪辑平台包
+  -> 生产总览 dashboard
 ```
 
-下一步最小可交付切片建议转向真实执行增强和生产 dashboard：
+下一步最小可交付切片建议转向真实执行增强和 final manifest：
 
 ```text
 seedance-audio/mix real runner hardening
   -> seedance-title-cards/render real/mock success
   -> seedance-final/assemble manifest
-  -> seedance-production-dashboard
+  -> seedance_review_ledger
 ```
 
 原因：
 
-- 当前已完成剪辑装配、缩略图、成片精修计划、字幕 worker、音频计划 / 混音 dry-run、片头片尾 dry-run、final delivery dry-run 和外部剪辑平台包。
-- 现在可以把 dry-run 账本推进为真实或 mock runner ready 账本，再做 final manifest 或生产 dashboard。
+- 当前已完成剪辑装配、缩略图、成片精修计划、字幕 worker、音频计划 / 混音 dry-run、片头片尾 dry-run、final delivery dry-run、外部剪辑平台包和生产总览 dashboard。
+- 现在可以把 dry-run 账本推进为真实或 mock runner ready 账本，再做 final manifest 或审片返修账本。
 - ffmpeg worker 模式已在缩略图、剪辑装配、字幕烧录和混音 dry-run 中跑通。
 
 片头片尾 / final delivery dry-run 之后再做：
@@ -597,8 +614,7 @@ seedance-audio/mix real runner hardening
 2. 片头片尾真实渲染增强。
 3. final delivery manifest 和真实装配。
 4. 审片返修账本。
-5. 生产 dashboard。
-6. 30 集以上大系列压测。
+5. 30 集以上大系列压测。
 
 ## 8. 不要做的事
 
@@ -615,7 +631,7 @@ seedance-audio/mix real runner hardening
 可以直接把下面这段发给新对话：
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先确认工作区状态，然后继续 P0：Seedance provider 平台 SDK/HTTP submit/query 实现、MCP 更深模型修复链路、故事管理 UX 降噪；AI 漫剧后期下一块做真实混音/片头片尾渲染增强、外部剪辑包或生产 dashboard。默认界面保持简单，只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先确认工作区状态，然后继续 P0：Seedance provider 平台 SDK/HTTP submit/query 实现、MCP 更深模型修复链路、故事管理 UX 降噪；AI 漫剧后期下一块做真实混音/片头片尾渲染增强、final manifest 或审片返修账本。默认界面保持简单，只保留高频主路径。
 ```
 
 ## 10. 下一步执行建议
@@ -630,7 +646,7 @@ Seedance provider 平台 SDK/HTTP submit/query 实现
 
 - MCP 诊断、修复建议、受控版本写入、安全 auto_apply、真实项目回读和前端质量反馈首版都已经跑通。
 - Provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、通用 submit/poll adapter、platform payload / HMAC 签名、队列状态总览、人工重试策略和重试执行自动化首版已经落地，下一步要用真实平台凭证跑 submit/query/callback smoke，并补官方错误码映射。
-- AI 漫剧字幕、音频、片头片尾 dry-run、final delivery dry-run 和外部剪辑平台包首版已经落地，下一步转入真实执行增强、final manifest 或生产 dashboard。
+- AI 漫剧字幕、音频、片头片尾 dry-run、final delivery dry-run、外部剪辑平台包和生产总览 dashboard 首版已经落地，下一步转入真实执行增强、final manifest 或审片返修账本。
 - 这会把“提示词包”继续推进到“可持续生产任务流”。
 
 如果准备做下一组任务，建议顺序：
@@ -639,4 +655,4 @@ Seedance provider 平台 SDK/HTTP submit/query 实现
 2. StoryStudio / Projects 继续降噪。
 3. Seedance provider 平台 SDK/HTTP submit/query 实现。
 4. MCP 更深模型修复链路。
-5. AI 漫剧真实混音 / 片头片尾渲染增强、final manifest 或生产 dashboard。
+5. AI 漫剧真实混音 / 片头片尾渲染增强、final manifest 或审片返修账本。

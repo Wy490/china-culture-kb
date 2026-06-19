@@ -57,6 +57,7 @@ import {
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
+  getAiComicSeriesSeedanceProductionDashboard,
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
   rebuildAiComicSeriesContinuityLedger,
@@ -399,6 +400,21 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await mixAiComicSeriesSeedanceAudio(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-dashboard — summarize Seedance production blockers and next actions
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-production-dashboard',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await getAiComicSeriesSeedanceProductionDashboard(seriesProjectId);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

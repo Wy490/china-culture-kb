@@ -2062,6 +2062,14 @@ describe('Seedance Title Cards and Final Delivery API', () => {
     expect(res.status).toBe(404);
     expectFailure(res.body, 'STORY_NOT_FOUND');
   });
+
+  it('returns 404 for a missing series project production dashboard', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-production-dashboard')
+      .send({});
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
 });
 
 describe('Seedance Cut Assembly API', () => {
