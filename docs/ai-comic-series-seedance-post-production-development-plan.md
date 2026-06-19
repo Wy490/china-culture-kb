@@ -29,7 +29,7 @@
 当前能力边界：
 
 - 已能把 Seedance 回片组织为可剪辑资产，并自动抽缩略图、装配初版成片。
-- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，并导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本；真实混音素材生产、片头片尾渲染和最终交付装配仍待建设。
+- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并生成片头片尾计划、片头片尾 render dry-run 和 final delivery dry-run；真实混音素材生产、真实片头片尾渲染和最终交付真实装配仍待增强。
 - 外部剪辑平台尚未有专用导入格式。
 - 审片返修闭环仍处于待建设状态。
 
@@ -315,6 +315,8 @@ Seedance prompts
 
 将 title cards 渲染成视频片段，并参与最终装配。
 
+当前状态：计划包和 render dry-run 首版已完成；真实渲染需要继续补字体配置、视觉模板和成功/失败专项。
+
 ### 后端任务
 
 - 新导出：`export-seedance-title-card-plan`
@@ -332,17 +334,33 @@ Seedance prompts
 - 支持 `FFMPEG_FONT_PATH` 配置。
 - 字体缺失时返回明确错误。
 
+实现状态：
+
+- `web/shared/types.ts` 已新增片头片尾计划、render 请求、render 结果和 render 账本类型。
+- `web/shared/schemas.ts` 已新增 `AiComicSeedanceTitleCardRenderRequestSchema`。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增 title card plan 导出、`color + drawtext` ffmpeg 命令、render dry-run 和账本写回。
+- `web/server/src/routes/outline.ts` 已新增 `export-seedance-title-card-plan` 与 `seedance-title-cards/render` 路由。
+
 ### 前端任务
 
 - 工作台增加“导出片头片尾计划”。
 - 工作台增加“渲染片头片尾”。
 - 显示 card 渲染状态。
 
+实现状态：
+
+- `AiComicSeriesStudio.vue` 已新增片头片尾计划 Markdown / JSON 导出、“片头片尾 dry-run”和片头片尾状态卡。
+
 ### 测试
 
 - title card plan 测试。
 - 字体缺失错误测试。
 - mock runner 渲染测试。
+
+实现状态：
+
+- 已覆盖 title card plan、render dry-run、ffmpeg command hint 和 API validation。
+- 待补：真实 runner 成功/失败专项、字体缺失专项和视觉模板回归。
 
 ### 验收标准
 
@@ -355,6 +373,8 @@ Seedance prompts
 ### 目标
 
 将视频镜头、片头片尾、字幕、混音合成为最终交付文件。
+
+当前状态：final delivery dry-run 首版已完成；真实装配、精确片头片尾插入时间线和 manifest 写盘仍需继续打磨。
 
 ### 后端任务
 
@@ -383,6 +403,13 @@ Seedance prompts
   - `delivery/{seriesProjectId}/{seriesProjectId}-final.srt`
   - `delivery/{seriesProjectId}/{seriesProjectId}-manifest.json`
 
+实现状态：
+
+- `web/shared/types.ts` 已新增 final delivery 请求、依赖状态、结果和账本类型。
+- `web/shared/schemas.ts` 已新增 `AiComicSeedanceFinalDeliveryRequestSchema`。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增 `seedance-final/assemble`，支持 strict/tolerant 缺依赖模式、planned 依赖 dry-run 串联、final ffmpeg 命令和 Markdown 摘要。
+- `web/server/src/routes/outline.ts` 已新增 `seedance-final/assemble` 路由。
+
 ### 前端任务
 
 - 工作台增加“最终交付”区域。
@@ -397,12 +424,21 @@ Seedance prompts
 - 增加一键最终装配。
 - 项目总览显示最终交付状态。
 
+实现状态：
+
+- 系列工作台已新增“最终交付 dry-run”和最终交付状态卡，展示剪辑、字幕、混音、片头片尾依赖状态。
+
 ### 测试
 
 - final dry-run 测试。
 - strict / tolerant 缺依赖测试。
 - mock runner 成功测试。
 - API route 测试。
+
+实现状态：
+
+- 已覆盖 strict 缺片头片尾依赖、final delivery dry-run、ffmpeg concat 命令和 API validation。
+- 待补：真实 runner 成功/失败专项、manifest 写盘、精确 title card 时间线和 strict/tolerant 更多组合。
 
 ### 验收标准
 
@@ -582,33 +618,32 @@ Seedance prompts
 
 推荐按以下顺序继续：
 
-1. `export-seedance-title-card-plan`
-2. `seedance-title-cards/render`
-3. `seedance-final/assemble`
-4. `seedance-audio/mix` 真实素材执行增强
+1. `seedance-audio/mix` 真实素材执行增强
+2. `seedance-title-cards/render` 真实渲染增强
+3. `seedance-final/assemble` 真实装配和 manifest 写盘
+4. `export-seedance-editing-platform-package`
 5. `seedance-production-dashboard`
-6. `export-seedance-editing-platform-package`
-7. `seedance_review_ledger`
-8. 30 集压测和性能优化
+6. `seedance_review_ledger`
+7. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
 
 下一步建议优先实现：
 
 ```text
-export-seedance-title-card-plan
-  -> seedance-title-cards/render dry-run
-  -> seedance-final/assemble dry-run
-  -> 前端最终交付依赖状态
+seedance-audio/mix real runner hardening
+  -> seedance-title-cards/render real/mock success
+  -> seedance-final/assemble manifest
+  -> export-seedance-editing-platform-package
 ```
 
 原因：
 
-- 直接承接当前已完成的剪辑装配、字幕 worker 和音频计划 / 混音 dry-run。
+- 直接承接当前已完成的剪辑装配、字幕 worker、音频计划 / 混音 dry-run、片头片尾 dry-run 和 final delivery dry-run。
 - 不依赖第三方平台。
-- 可先用 dry-run 和 mock runner 建立 title card / final delivery 账本，再逐步补真实素材生产细节。
+- 可先用 mock runner 和真实路径校验把 dry-run 账本推进到 ready 账本，再逐步补真实视觉模板。
 - ffmpeg 依赖和 worker 模式已经在缩略图、剪辑装配、字幕烧录和混音 dry-run 中跑通。
-- 能把系统从“可输出带音频的后期装配计划”推进到“可审查最终交付依赖和成片装配命令”。
+- 能把系统从“可审查最终交付依赖和成片装配命令”推进到“可交给外部剪辑平台或真实 worker 执行”。
 
 该切片完成后，系统后期链路将达到：
 
@@ -621,6 +656,8 @@ ready 镜头
   -> 字幕烧录成片
   -> 音频计划
   -> 混音 dry-run / 音频账本
+  -> 片头片尾计划 / render dry-run
+  -> final delivery dry-run / 依赖账本
 ```
 
-这会为后续片头片尾、最终成片装配和真实混音执行增强打下稳定基础。
+这会为后续真实混音、真实片头片尾渲染、最终成片装配和外部剪辑平台包打下稳定基础。

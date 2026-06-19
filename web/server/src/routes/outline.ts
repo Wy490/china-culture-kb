@@ -11,6 +11,7 @@ import {
   AiComicSeedanceAudioLibraryUpdateRequestSchema,
   AiComicSeedanceAudioMixRequestSchema,
   AiComicSeedanceAssetLibraryUpdateRequestSchema,
+  AiComicSeedanceFinalDeliveryRequestSchema,
   AiComicSeedanceProductionAutoSelectRequestSchema,
   AiComicSeedanceProductionBatchUpdateRequestSchema,
   AiComicSeedanceProductionCallbackRequestSchema,
@@ -20,6 +21,7 @@ import {
   AiComicSeedanceSubtitleExportRequestSchema,
   AiComicSeedanceSubtitleRenderRequestSchema,
   AiComicSeedanceThumbnailCaptureRequestSchema,
+  AiComicSeedanceTitleCardRenderRequestSchema,
   AiComicSeriesLedgerRebuildRequestSchema,
   AiComicSeriesProjectArchiveRequestSchema,
   AiComicSeriesProjectCopyRequestSchema,
@@ -33,6 +35,7 @@ import {
   archiveAiComicSeriesProject,
   applyAiComicSeriesSeedanceProductionCallback,
   assembleAiComicSeriesSeedanceCut,
+  assembleAiComicSeriesSeedanceFinalDelivery,
   autoSelectAiComicSeriesSeedanceProductionVersions,
   captureAiComicSeriesSeedanceThumbnails,
   copyAiComicSeriesProject,
@@ -47,6 +50,7 @@ import {
   exportAiComicSeriesSeedanceRetryPackage,
   exportAiComicSeriesSeedanceSubtitlePackage,
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
+  exportAiComicSeriesSeedanceTitleCardPlanPackage,
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   previewAiComicEpisodeContext,
   generateAiComicEpisodeFromPlan,
@@ -56,6 +60,7 @@ import {
   mixAiComicSeriesSeedanceAudio,
   rebuildAiComicSeriesContinuityLedger,
   renderAiComicSeriesSeedanceSubtitles,
+  renderAiComicSeriesSeedanceTitleCards,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
@@ -393,6 +398,53 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await mixAiComicSeriesSeedanceAudio(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-title-card-plan — export title card plan
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/export-seedance-title-card-plan',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await exportAiComicSeriesSeedanceTitleCardPlanPackage(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-title-cards/render — dry-run or render title cards
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-title-cards/render',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceTitleCardRenderRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await renderAiComicSeriesSeedanceTitleCards(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-final/assemble — dry-run or assemble final delivery
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-final/assemble',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceFinalDeliveryRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await assembleAiComicSeriesSeedanceFinalDelivery(seriesProjectId, req.body);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

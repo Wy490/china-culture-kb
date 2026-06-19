@@ -5,6 +5,7 @@ import {
   archiveAiComicSeriesProject,
   applyAiComicSeriesSeedanceProductionCallback,
   assembleAiComicSeriesSeedanceCut,
+  assembleAiComicSeriesSeedanceFinalDelivery,
   autoSelectAiComicSeriesSeedanceProductionVersions,
   captureAiComicSeriesSeedanceThumbnails,
   copyAiComicSeriesProject,
@@ -19,6 +20,7 @@ import {
   exportAiComicSeriesSeedanceRetryPackage,
   exportAiComicSeriesSeedanceSubtitlePackage,
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
+  exportAiComicSeriesSeedanceTitleCardPlanPackage,
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
@@ -28,6 +30,7 @@ import {
   previewAiComicEpisodeContext,
   rebuildAiComicSeriesContinuityLedger,
   renderAiComicSeriesSeedanceSubtitles,
+  renderAiComicSeriesSeedanceTitleCards,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
@@ -1019,6 +1022,61 @@ describe('outline-service', () => {
     );
     expect(unsafeAudioMixInputRes.ok).toBe(false);
     expect(unsafeAudioMixInputRes.error?.code).toBe('VALIDATION_ERROR');
+
+    const titleCardPlanRes = await exportAiComicSeriesSeedanceTitleCardPlanPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(titleCardPlanRes.ok).toBe(true);
+    expect(titleCardPlanRes.data?.schema_version).toBe('ai-comic-series-seedance-title-card-plan/v1');
+    expect(titleCardPlanRes.data?.cards.length).toBeGreaterThan(0);
+    expect(titleCardPlanRes.data?.cards[0]).toMatchObject({
+      output_path: expect.stringContaining('title-cards/'),
+      safe_area: expect.any(String),
+      ffmpeg_command_hint: expect.stringContaining('drawtext='),
+    });
+    expect(titleCardPlanRes.data?.markdown).toContain('Seedance 片头片尾卡计划');
+
+    const finalStrictMissingTitleRes = await assembleAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      { dry_run: true, missing_dependency_mode: 'strict', include_title_cards: true },
+    );
+    expect(finalStrictMissingTitleRes.ok).toBe(false);
+    expect(finalStrictMissingTitleRes.error?.code).toBe('VALIDATION_ERROR');
+
+    const titleCardRenderDryRunRes = await renderAiComicSeriesSeedanceTitleCards(
+      saveRes.data!.project.series_project_id,
+      { dry_run: true, output_profile: 'mp4_h264_720p' },
+    );
+    expect(titleCardRenderDryRunRes.ok).toBe(true);
+    expect(titleCardRenderDryRunRes.data?.schema_version).toBe('ai-comic-series-seedance-title-card-render-result/v1');
+    expect(titleCardRenderDryRunRes.data?.status).toBe('planned');
+    expect(titleCardRenderDryRunRes.data?.output_profile).toBe('mp4_h264_720p');
+    expect(titleCardRenderDryRunRes.data?.ffmpeg_commands[0]).toContain('color=');
+    expect(titleCardRenderDryRunRes.data?.seedance_title_card_render).toMatchObject({
+      status: 'planned',
+      card_count: titleCardRenderDryRunRes.data?.card_count,
+      rendered_count: 0,
+    });
+
+    const finalDeliveryDryRunRes = await assembleAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      { dry_run: true, missing_dependency_mode: 'strict', output_profile: 'mp4_h264_720p' },
+    );
+    expect(finalDeliveryDryRunRes.ok).toBe(true);
+    expect(finalDeliveryDryRunRes.data?.schema_version).toBe('ai-comic-series-seedance-final-delivery-result/v1');
+    expect(finalDeliveryDryRunRes.data?.status).toBe('planned');
+    expect(finalDeliveryDryRunRes.data?.dependency_status).toMatchObject({
+      cut_ready: true,
+      subtitle_ready: true,
+      audio_mix_ready: true,
+      title_cards_ready: true,
+    });
+    expect(finalDeliveryDryRunRes.data?.ffmpeg_command).toContain('-f concat');
+    expect(finalDeliveryDryRunRes.data?.markdown).toContain('Seedance 最终交付计划');
+    expect(finalDeliveryDryRunRes.data?.seedance_final_delivery).toMatchObject({
+      status: 'planned',
+      output_profile: 'mp4_h264_720p',
+    });
 
     const retryPackageRes = await exportAiComicSeriesSeedanceRetryPackage(saveRes.data!.project.series_project_id);
     expect(retryPackageRes.ok).toBe(true);

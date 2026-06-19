@@ -39,6 +39,10 @@ import type {
   AiComicSeedanceAudioMixLedger,
   AiComicSeedanceAudioMixProfile,
   AiComicSeedanceAudioMixRequest,
+  AiComicSeedanceFinalDependencyStatus,
+  AiComicSeedanceFinalDeliveryLedger,
+  AiComicSeedanceFinalDeliveryOutputProfile,
+  AiComicSeedanceFinalDeliveryRequest,
   AiComicSeedanceThumbnailCaptureRequest,
   AiComicSeedanceThumbnailCaptureResultShot,
   AiComicSeedanceThumbnailStatus,
@@ -46,6 +50,10 @@ import type {
   AiComicSeedanceSubtitleRenderLedger,
   AiComicSeedanceSubtitleRenderMode,
   AiComicSeedanceSubtitleRenderRequest,
+  AiComicSeedanceTitleCardOutputProfile,
+  AiComicSeedanceTitleCardPlanCard,
+  AiComicSeedanceTitleCardRenderLedger,
+  AiComicSeedanceTitleCardRenderRequest,
   AiComicSeedanceVideoVersion,
   AiComicSeedanceCutPackageEpisode,
   AiComicSeedanceRetryPackageEpisode,
@@ -63,6 +71,9 @@ import type {
   AiComicSeriesSeedanceSubtitleRenderResult,
   AiComicSeriesSeedanceAudioMixResult,
   AiComicSeriesSeedanceAudioPlanPackage,
+  AiComicSeriesSeedanceFinalDeliveryResult,
+  AiComicSeriesSeedanceTitleCardPlanPackage,
+  AiComicSeriesSeedanceTitleCardRenderResult,
   AiComicSeedanceThumbnailPlanEpisode,
   AiComicSeriesSeedanceFinishingPlanPackage,
   AiComicSeedanceAudioPlanCue,
@@ -165,6 +176,21 @@ type FfmpegAudioMixRunner = (params: {
   inputVideoPath: string;
   audioInputs: SeedanceAudioMixInput[];
   outputPath: string;
+}) => Promise<void>;
+type FfmpegTitleCardRenderRunner = (params: {
+  ffmpegPath: string;
+  card: AiComicSeedanceTitleCardPlanCard;
+  outputPath: string;
+  profile: AiComicSeedanceTitleCardOutputProfile;
+  fontPath: string;
+}) => Promise<void>;
+type FfmpegFinalDeliveryRunner = (params: {
+  ffmpegPath: string;
+  concatListPath?: string;
+  inputVideoPath: string;
+  outputPath: string;
+  outputProfile: AiComicSeedanceFinalDeliveryOutputProfile;
+  useConcat: boolean;
 }) => Promise<void>;
 
 interface SeedanceCutAssemblyProfile {
@@ -1401,6 +1427,79 @@ function buildAiComicSeriesSeedanceAudioPlanMarkdown(
   return lines.join('\n');
 }
 
+function buildAiComicSeriesSeedanceTitleCardPlanMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceTitleCardPlanPackage, 'markdown'>,
+): string {
+  return [
+    `# ${pkg.series_title} — Seedance 片头片尾卡计划`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> titleCardRoot: ${pkg.title_card_root}`,
+    `> cardCount: ${pkg.total_card_count}`,
+    `> duration: ${pkg.total_duration_sec} 秒`,
+    '',
+    '## 卡片',
+    ...markdownTable(
+      ['卡片', '位置', '集数', '时长', '文案', '输出', '安全区', '转场', '视觉备注'],
+      pkg.cards.map(card => [
+        card.card_id,
+        seedanceTitleCardPlacementText(card.placement),
+        card.episode_no ? `第${card.episode_no}集` : '系列',
+        `${card.duration_sec}秒`,
+        card.text,
+        card.output_path,
+        card.safe_area,
+        `${card.transition_in}/${card.transition_out}`,
+        card.visual_note,
+      ]),
+    ),
+  ].join('\n');
+}
+
+function buildAiComicSeriesSeedanceFinalDeliveryMarkdown(
+  pkg: Pick<AiComicSeriesSeedanceFinalDeliveryResult, 'series_title' | 'executed_at' | 'output_path' | 'output_profile' | 'dependency_status' | 'ffmpeg_command'> & {
+    project: AiComicSeriesProjectMeta;
+    schema_version: string;
+  },
+): string {
+  return [
+    `# ${pkg.series_title} — Seedance 最终交付计划`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> executedAt: ${pkg.executed_at}`,
+    `> output: ${pkg.output_path}`,
+    `> profile: ${pkg.output_profile}`,
+    '',
+    '## 依赖状态',
+    ...markdownTable(
+      ['依赖', '状态', '路径'],
+      [
+        ['剪辑成片', pkg.dependency_status.cut_ready ? '可用' : '缺失', pkg.dependency_status.source_cut_path ?? '未记录'],
+        ['字幕', pkg.dependency_status.subtitle_ready ? '可用' : '缺失/跳过', pkg.dependency_status.subtitle_path ?? '未记录'],
+        ['混音', pkg.dependency_status.audio_mix_ready ? '可用' : '缺失/跳过', pkg.dependency_status.audio_mix_path ?? '未记录'],
+        ['片头片尾', pkg.dependency_status.title_cards_ready ? '可用' : '缺失/跳过', pkg.dependency_status.title_card_paths.join('、') || '未记录'],
+      ],
+    ),
+    '',
+    '## 缺失与警告',
+    ...(pkg.dependency_status.missing_dependencies.length > 0
+      ? pkg.dependency_status.missing_dependencies.map(item => `- ${item}`)
+      : ['- 无阻断依赖']),
+    ...(pkg.dependency_status.warnings.length > 0
+      ? ['', ...pkg.dependency_status.warnings.map(item => `- ${item}`)]
+      : []),
+    '',
+    '## ffmpeg',
+    '',
+    '```bash',
+    pkg.ffmpeg_command,
+    '```',
+  ].join('\n');
+}
+
 function markdownTable(headers: string[], rows: string[][]): string[] {
   if (rows.length === 0) return ['- 未记录'];
   const cleanCell = (value: string): string => value.replace(/\|/g, '｜').replace(/\n/g, ' ').trim() || '未记录';
@@ -1951,6 +2050,8 @@ export async function saveAiComicSeriesProject(
     seedance_subtitle_render: cloneSeedanceSubtitleRenderLedger(existing?.seedance_subtitle_render),
     seedance_audio_library: cloneSeedanceAudioLibrary(existing?.seedance_audio_library),
     seedance_audio_mix: cloneSeedanceAudioMixLedger(existing?.seedance_audio_mix),
+    seedance_title_card_render: cloneSeedanceTitleCardRenderLedger(existing?.seedance_title_card_render),
+    seedance_final_delivery: cloneSeedanceFinalDeliveryLedger(existing?.seedance_final_delivery),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -2095,6 +2196,8 @@ export async function copyAiComicSeriesProject(
     seedance_subtitle_render: cloneSeedanceSubtitleRenderLedger(existing.seedance_subtitle_render),
     seedance_audio_library: cloneSeedanceAudioLibrary(existing.seedance_audio_library),
     seedance_audio_mix: cloneSeedanceAudioMixLedger(existing.seedance_audio_mix),
+    seedance_title_card_render: cloneSeedanceTitleCardRenderLedger(existing.seedance_title_card_render),
+    seedance_final_delivery: cloneSeedanceFinalDeliveryLedger(existing.seedance_final_delivery),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -3702,6 +3805,317 @@ export async function mixAiComicSeriesSeedanceAudio(
   });
 }
 
+export async function exportAiComicSeriesSeedanceTitleCardPlanPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceTitleCardPlanPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const finishingPlanRes = await exportAiComicSeriesSeedanceFinishingPlanPackage(seriesProjectId);
+  if (!finishingPlanRes.ok || !finishingPlanRes.data) {
+    return fail(
+      normalizeErrorCode(finishingPlanRes.error?.code),
+      finishingPlanRes.error?.message ?? 'Export Seedance finishing plan failed',
+    );
+  }
+
+  const exportedAt = new Date().toISOString();
+  const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
+  const cards = finishingPlanRes.data.title_cards.map(card =>
+    buildSeedanceTitleCardPlanCard(seriesProjectId, card, ffmpegPath),
+  );
+  const basePackage: Omit<AiComicSeriesSeedanceTitleCardPlanPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-title-card-plan/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    exported_at: exportedAt,
+    title_card_root: `title-cards/${seriesProjectId}`,
+    total_card_count: cards.length,
+    total_duration_sec: cards.reduce((sum, card) => sum + card.duration_sec, 0),
+    cards,
+  };
+
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceTitleCardPlanMarkdown(basePackage),
+  });
+}
+
+export async function renderAiComicSeriesSeedanceTitleCards(
+  seriesProjectId: string,
+  request: AiComicSeedanceTitleCardRenderRequest = {},
+  options: { runner?: FfmpegTitleCardRenderRunner } = {},
+): Promise<ApiResponse<AiComicSeriesSeedanceTitleCardRenderResult>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const planRes = await exportAiComicSeriesSeedanceTitleCardPlanPackage(seriesProjectId);
+  if (!planRes.ok || !planRes.data) {
+    return fail(
+      normalizeErrorCode(planRes.error?.code),
+      planRes.error?.message ?? 'Export Seedance title card plan failed',
+    );
+  }
+
+  const dryRun = request.dry_run ?? true;
+  const overwrite = request.overwrite ?? false;
+  const outputProfile: AiComicSeedanceTitleCardOutputProfile = request.output_profile ?? 'mp4_h264_1080p';
+  const cards = planRes.data.cards.filter(card =>
+    request.episode_no === undefined
+    || card.episode_no === request.episode_no
+    || card.placement === 'series_opening'
+    || card.placement === 'series_ending',
+  );
+  if (cards.length === 0) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      request.episode_no
+        ? `No title cards found for episode ${request.episode_no}`
+        : 'No title cards found for render',
+    );
+  }
+
+  const fontPath = request.font_path?.trim() || process.env.FFMPEG_FONT_PATH?.trim();
+  if (!dryRun) {
+    if (!fontPath) {
+      return fail(ErrorCodes.VALIDATION_ERROR, 'FFMPEG_FONT_PATH or font_path is required to render title cards');
+    }
+    if (!(await pathExists(fontPath))) {
+      return fail(ErrorCodes.VALIDATION_ERROR, `Title card font not found: ${fontPath}`);
+    }
+  }
+
+  const executedAt = new Date().toISOString();
+  const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
+  const runner = options.runner ?? runFfmpegTitleCardRender;
+  const renderFontPath = fontPath ?? '<FFMPEG_FONT_PATH>';
+  const outputPaths: string[] = [];
+  const ffmpegCommands: string[] = [];
+  let renderedCount = 0;
+  let status: AiComicSeriesSeedanceTitleCardRenderResult['status'] = dryRun ? 'planned' : 'rendered';
+  let failureReason: string | undefined;
+
+  try {
+    for (const card of cards) {
+      const absoluteOutputPath = resolveSeedanceProjectOutputPath(projectDir, card.output_path);
+      const alreadyReady = !overwrite && !dryRun && await pathExists(absoluteOutputPath);
+      outputPaths.push(card.output_path);
+      ffmpegCommands.push(buildFfmpegTitleCardCommand(ffmpegPath, card, outputProfile, renderFontPath, card.output_path));
+      if (alreadyReady) {
+        renderedCount += 1;
+        continue;
+      }
+      if (!dryRun) {
+        await mkdir(dirname(absoluteOutputPath), { recursive: true });
+        await runner({
+          ffmpegPath,
+          card,
+          outputPath: absoluteOutputPath,
+          profile: outputProfile,
+          fontPath: renderFontPath,
+        });
+        renderedCount += 1;
+      }
+    }
+    if (!dryRun && renderedCount === 0) status = 'skipped';
+  } catch (err) {
+    status = 'failed';
+    failureReason = err instanceof Error ? err.message : String(err);
+  }
+
+  const renderLedger: AiComicSeedanceTitleCardRenderLedger = {
+    schema_version: 'ai-comic-seedance-title-card-render-ledger/v1',
+    updated_at: executedAt,
+    status: status === 'rendered'
+      ? 'ready'
+      : status === 'planned'
+        ? 'planned'
+        : status,
+    output_profile: outputProfile,
+    card_count: cards.length,
+    rendered_count: dryRun ? 0 : renderedCount,
+    output_paths: outputPaths,
+    ffmpeg_commands: ffmpegCommands,
+    rendered_at: status === 'rendered' ? executedAt : detail.seedance_title_card_render?.rendered_at,
+    failure_reason: failureReason,
+    dry_run: dryRun,
+    font_path: fontPath,
+  };
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: executedAt,
+    },
+    seedance_title_card_render: renderLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+
+  return success({
+    schema_version: 'ai-comic-series-seedance-title-card-render-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    executed_at: executedAt,
+    dry_run: dryRun,
+    status,
+    output_profile: outputProfile,
+    card_count: cards.length,
+    rendered_count: dryRun ? 0 : renderedCount,
+    output_paths: outputPaths,
+    ffmpeg_commands: ffmpegCommands,
+    failure_reason: failureReason,
+    seedance_title_card_render: renderLedger,
+  });
+}
+
+export async function assembleAiComicSeriesSeedanceFinalDelivery(
+  seriesProjectId: string,
+  request: AiComicSeedanceFinalDeliveryRequest = {},
+  options: { runner?: FfmpegFinalDeliveryRunner } = {},
+): Promise<ApiResponse<AiComicSeriesSeedanceFinalDeliveryResult>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const dryRun = request.dry_run ?? true;
+  const overwrite = request.overwrite ?? false;
+  const includeSubtitles = request.include_subtitles ?? true;
+  const includeAudioMix = request.include_audio_mix ?? true;
+  const includeTitleCards = request.include_title_cards ?? true;
+  const missingDependencyMode = request.missing_dependency_mode ?? 'strict';
+  const outputProfile: AiComicSeedanceFinalDeliveryOutputProfile = request.output_profile ?? 'mp4_h264_1080p';
+  const executedAt = new Date().toISOString();
+  const dependencyStatus = resolveSeedanceFinalDependencyStatus(detail, {
+    dryRun,
+    includeSubtitles,
+    includeAudioMix,
+    includeTitleCards,
+  });
+  if (!dependencyStatus.source_cut_path) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Seedance final delivery requires a cut assembly output');
+  }
+  if (missingDependencyMode === 'strict' && dependencyStatus.missing_dependencies.length > 0) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `Seedance final delivery missing dependencies: ${dependencyStatus.missing_dependencies.join('；')}`,
+    );
+  }
+
+  const outputFilename = request.output_filename?.trim() || seedanceFinalDeliveryFilename(seriesProjectId);
+  const outputPath = `delivery/${seriesProjectId}/${outputFilename}`;
+  const concatListPath = `delivery/${seriesProjectId}/${outputFilename.replace(/\.mp4$/i, '.concat.txt')}`;
+  const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const absoluteOutputPath = resolveSeedanceProjectOutputPath(projectDir, outputPath);
+  const absoluteConcatListPath = resolveSeedanceProjectOutputPath(projectDir, concatListPath);
+  const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
+  const titleCardPaths = includeTitleCards && dependencyStatus.title_cards_ready
+    ? dependencyStatus.title_card_paths
+    : [];
+  const concatInputs = [...titleCardPaths, dependencyStatus.source_cut_path];
+  const useConcat = concatInputs.length > 1;
+  const ffmpegCommand = buildFfmpegFinalDeliveryCommand(
+    ffmpegPath,
+    useConcat ? concatListPath : dependencyStatus.source_cut_path,
+    outputPath,
+    outputProfile,
+    useConcat,
+  );
+  const runner = options.runner ?? runFfmpegFinalDelivery;
+  let status: AiComicSeriesSeedanceFinalDeliveryResult['status'] = dryRun ? 'planned' : 'assembled';
+  let failureReason: string | undefined;
+
+  try {
+    await mkdir(dirname(absoluteConcatListPath), { recursive: true });
+    if (useConcat) {
+      await writeFile(
+        absoluteConcatListPath,
+        `${concatInputs
+          .map(item => ffmpegConcatFileLine(resolveSeedanceProjectOutputPath(projectDir, item)))
+          .join('\n')}\n`,
+        'utf-8',
+      );
+    }
+    const alreadyReady = !overwrite && !dryRun && await pathExists(absoluteOutputPath);
+    if (alreadyReady) {
+      status = 'skipped';
+    } else if (!dryRun) {
+      await mkdir(dirname(absoluteOutputPath), { recursive: true });
+      await runner({
+        ffmpegPath,
+        concatListPath: useConcat ? absoluteConcatListPath : undefined,
+        inputVideoPath: resolveSeedanceProjectOutputPath(projectDir, dependencyStatus.source_cut_path),
+        outputPath: absoluteOutputPath,
+        outputProfile,
+        useConcat,
+      });
+    }
+  } catch (err) {
+    status = 'failed';
+    failureReason = err instanceof Error ? err.message : String(err);
+  }
+
+  const deliveryLedger: AiComicSeedanceFinalDeliveryLedger = {
+    schema_version: 'ai-comic-seedance-final-delivery-ledger/v1',
+    updated_at: executedAt,
+    status: status === 'assembled'
+      ? 'ready'
+      : status === 'planned'
+        ? 'planned'
+        : status,
+    output_path: outputPath,
+    output_filename: outputFilename,
+    ffmpeg_command: ffmpegCommand,
+    source_cut_path: dependencyStatus.source_cut_path,
+    subtitle_path: dependencyStatus.subtitle_path,
+    audio_mix_path: dependencyStatus.audio_mix_path,
+    title_card_paths: titleCardPaths,
+    delivered_at: status === 'assembled' ? executedAt : detail.seedance_final_delivery?.delivered_at,
+    failure_reason: failureReason,
+    dry_run: dryRun,
+    output_profile: outputProfile,
+    dependency_status: dependencyStatus,
+  };
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: executedAt,
+    },
+    seedance_final_delivery: deliveryLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+
+  return success({
+    schema_version: 'ai-comic-series-seedance-final-delivery-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    executed_at: executedAt,
+    dry_run: dryRun,
+    status,
+    output_path: outputPath,
+    output_filename: outputFilename,
+    ffmpeg_command: ffmpegCommand,
+    output_profile: outputProfile,
+    dependency_status: dependencyStatus,
+    failure_reason: failureReason,
+    seedance_final_delivery: deliveryLedger,
+    markdown: buildAiComicSeriesSeedanceFinalDeliveryMarkdown({
+      schema_version: 'ai-comic-series-seedance-final-delivery-result/v1',
+      project: updatedDetail.project,
+      series_title: updatedDetail.plan.series_title,
+      executed_at: executedAt,
+      output_path: outputPath,
+      output_profile: outputProfile,
+      dependency_status: dependencyStatus,
+      ffmpeg_command: ffmpegCommand,
+    }),
+  });
+}
+
 export async function captureAiComicSeriesSeedanceThumbnails(
   seriesProjectId: string,
   request: AiComicSeedanceThumbnailCaptureRequest = {},
@@ -4566,6 +4980,8 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
     seedance_subtitle_render: cloneSeedanceSubtitleRenderLedger(detail.seedance_subtitle_render),
     seedance_audio_library: cloneSeedanceAudioLibrary(detail.seedance_audio_library),
     seedance_audio_mix: cloneSeedanceAudioMixLedger(detail.seedance_audio_mix),
+    seedance_title_card_render: cloneSeedanceTitleCardRenderLedger(detail.seedance_title_card_render),
+    seedance_final_delivery: cloneSeedanceFinalDeliveryLedger(detail.seedance_final_delivery),
     series_quality_audit: detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
       plan: detail.plan,
       generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
@@ -4867,6 +5283,88 @@ function cloneSeedanceAudioMixLedger(
   return normalized ? { ...normalized } : undefined;
 }
 
+function normalizeSeedanceTitleCardRenderLedger(
+  ledger?: AiComicSeedanceTitleCardRenderLedger,
+): AiComicSeedanceTitleCardRenderLedger | undefined {
+  if (!ledger) return undefined;
+  return {
+    schema_version: 'ai-comic-seedance-title-card-render-ledger/v1',
+    updated_at: ledger.updated_at,
+    status: ledger.status ?? 'not_started',
+    output_profile: ledger.output_profile ?? 'mp4_h264_1080p',
+    card_count: ledger.card_count ?? 0,
+    rendered_count: ledger.rendered_count ?? 0,
+    output_paths: [...(ledger.output_paths ?? [])],
+    ffmpeg_commands: [...(ledger.ffmpeg_commands ?? [])],
+    rendered_at: ledger.rendered_at,
+    failure_reason: ledger.failure_reason,
+    dry_run: ledger.dry_run,
+    font_path: ledger.font_path,
+  };
+}
+
+function cloneSeedanceTitleCardRenderLedger(
+  ledger?: AiComicSeedanceTitleCardRenderLedger,
+): AiComicSeedanceTitleCardRenderLedger | undefined {
+  const normalized = normalizeSeedanceTitleCardRenderLedger(ledger);
+  return normalized
+    ? {
+        ...normalized,
+        output_paths: [...normalized.output_paths],
+        ffmpeg_commands: [...normalized.ffmpeg_commands],
+      }
+    : undefined;
+}
+
+function normalizeSeedanceFinalDeliveryLedger(
+  ledger?: AiComicSeedanceFinalDeliveryLedger,
+): AiComicSeedanceFinalDeliveryLedger | undefined {
+  if (!ledger) return undefined;
+  return {
+    schema_version: 'ai-comic-seedance-final-delivery-ledger/v1',
+    updated_at: ledger.updated_at,
+    status: ledger.status ?? 'not_started',
+    output_path: ledger.output_path,
+    output_filename: ledger.output_filename,
+    ffmpeg_command: ledger.ffmpeg_command,
+    source_cut_path: ledger.source_cut_path,
+    subtitle_path: ledger.subtitle_path,
+    audio_mix_path: ledger.audio_mix_path,
+    title_card_paths: [...(ledger.title_card_paths ?? [])],
+    delivered_at: ledger.delivered_at,
+    failure_reason: ledger.failure_reason,
+    dry_run: ledger.dry_run,
+    output_profile: ledger.output_profile ?? 'mp4_h264_1080p',
+    dependency_status: ledger.dependency_status ?? {
+      cut_ready: false,
+      subtitle_ready: false,
+      audio_mix_ready: false,
+      title_cards_ready: false,
+      title_card_paths: [],
+      missing_dependencies: [],
+      warnings: [],
+    },
+  };
+}
+
+function cloneSeedanceFinalDeliveryLedger(
+  ledger?: AiComicSeedanceFinalDeliveryLedger,
+): AiComicSeedanceFinalDeliveryLedger | undefined {
+  const normalized = normalizeSeedanceFinalDeliveryLedger(ledger);
+  return normalized
+    ? {
+        ...normalized,
+        title_card_paths: [...normalized.title_card_paths],
+        dependency_status: {
+          ...normalized.dependency_status,
+          title_card_paths: [...normalized.dependency_status.title_card_paths],
+          missing_dependencies: [...normalized.dependency_status.missing_dependencies],
+          warnings: [...normalized.dependency_status.warnings],
+        },
+      }
+    : undefined;
+}
+
 function syncSeedanceProductionLedgerWithExport(params: {
   ledger?: AiComicSeedanceProductionLedger;
   episodes: AiComicSeriesSeedanceEpisodePackage[];
@@ -5129,6 +5627,112 @@ function seedanceAudioMixDefaultInputPath(detail: AiComicSeriesProjectDetail): s
   return detail.seedance_cut_assembly?.output_path;
 }
 
+function seedanceTitleCardFilename(cardId: string): string {
+  return `${slugifyConstraintKey(cardId)}.mp4`;
+}
+
+function seedanceFinalDeliveryFilename(seriesProjectId: string): string {
+  return `${seriesProjectId}-seedance-final.mp4`;
+}
+
+function buildSeedanceTitleCardPlanCard(
+  seriesProjectId: string,
+  card: AiComicSeriesSeedanceFinishingPlanPackage['title_cards'][number],
+  ffmpegPath: string,
+): AiComicSeedanceTitleCardPlanCard {
+  const outputFilename = seedanceTitleCardFilename(card.card_id);
+  const outputPath = `title-cards/${seriesProjectId}/${outputFilename}`;
+  const planCard: AiComicSeedanceTitleCardPlanCard = {
+    card_id: card.card_id,
+    placement: card.placement,
+    episode_no: card.episode_no,
+    duration_sec: card.duration_sec,
+    text: card.text,
+    visual_note: card.visual_note,
+    safe_area: '上下左右 8% 文字安全区',
+    font_style: '高对比白字，半透明深色底，不遮挡主体',
+    background_source: card.episode_no ? `episode-${card.episode_no}-theme-frame` : 'series-key-visual',
+    transition_in: card.placement.endsWith('opening') ? 'fade_in' : 'cut',
+    transition_out: card.placement.endsWith('ending') ? 'fade_out' : 'cut',
+    output_filename: outputFilename,
+    output_path: outputPath,
+    ffmpeg_command_hint: '',
+  };
+  return {
+    ...planCard,
+    ffmpeg_command_hint: buildFfmpegTitleCardCommand(
+      ffmpegPath,
+      planCard,
+      'mp4_h264_1080p',
+      '<FFMPEG_FONT_PATH>',
+      outputPath,
+    ),
+  };
+}
+
+function resolveSeedanceFinalDependencyStatus(
+  detail: AiComicSeriesProjectDetail,
+  options: {
+    dryRun: boolean;
+    includeSubtitles: boolean;
+    includeAudioMix: boolean;
+    includeTitleCards: boolean;
+  },
+): AiComicSeedanceFinalDependencyStatus {
+  const warnings: string[] = [];
+  const missingDependencies: string[] = [];
+  const cutReady = seedanceLedgerUsable(detail.seedance_cut_assembly?.status, options.dryRun)
+    && Boolean(detail.seedance_cut_assembly?.output_path);
+  const subtitleReady = !options.includeSubtitles
+    || (seedanceLedgerUsable(detail.seedance_subtitle_render?.status, options.dryRun)
+      && Boolean(detail.seedance_subtitle_render?.output_path || detail.seedance_subtitle_render?.srt_path));
+  const audioMixReady = !options.includeAudioMix
+    || (seedanceLedgerUsable(detail.seedance_audio_mix?.status, options.dryRun)
+      && Boolean(detail.seedance_audio_mix?.output_path));
+  const titleCardsReady = !options.includeTitleCards
+    || (seedanceLedgerUsable(detail.seedance_title_card_render?.status, options.dryRun)
+      && (detail.seedance_title_card_render?.output_paths.length ?? 0) > 0);
+
+  if (!cutReady) missingDependencies.push('剪辑装配输出缺失');
+  if (options.includeSubtitles && !subtitleReady) missingDependencies.push('字幕文件或烧录字幕输出缺失');
+  if (options.includeAudioMix && !audioMixReady) missingDependencies.push('混音输出缺失');
+  if (options.includeTitleCards && !titleCardsReady) missingDependencies.push('片头片尾卡输出缺失');
+  if (!options.includeSubtitles) warnings.push('已按请求跳过字幕依赖');
+  if (!options.includeAudioMix) warnings.push('已按请求跳过混音依赖');
+  if (!options.includeTitleCards) warnings.push('已按请求跳过片头片尾依赖');
+
+  const subtitlePath = detail.seedance_subtitle_render?.output_path
+    ?? detail.seedance_subtitle_render?.srt_path;
+  const audioMixPath = detail.seedance_audio_mix?.output_path;
+  const sourceCutPath = options.includeAudioMix && audioMixReady && audioMixPath
+    ? audioMixPath
+    : options.includeSubtitles
+      && detail.seedance_subtitle_render?.mode === 'burn_in'
+      && subtitleReady
+      && detail.seedance_subtitle_render.output_path
+      ? detail.seedance_subtitle_render.output_path
+      : detail.seedance_cut_assembly?.output_path;
+
+  return {
+    cut_ready: cutReady,
+    subtitle_ready: subtitleReady,
+    audio_mix_ready: audioMixReady,
+    title_cards_ready: titleCardsReady,
+    source_cut_path: sourceCutPath,
+    subtitle_path: options.includeSubtitles && subtitleReady ? subtitlePath : undefined,
+    audio_mix_path: options.includeAudioMix && audioMixReady ? audioMixPath : undefined,
+    title_card_paths: options.includeTitleCards && titleCardsReady
+      ? [...(detail.seedance_title_card_render?.output_paths ?? [])]
+      : [],
+    missing_dependencies: missingDependencies,
+    warnings,
+  };
+}
+
+function seedanceLedgerUsable(status: string | undefined, dryRun: boolean): boolean {
+  return status === 'ready' || (dryRun && status === 'planned');
+}
+
 function buildFfmpegThumbnailCommand(
   ffmpegPath: string,
   captureTimeSec: number,
@@ -5175,6 +5779,34 @@ function buildFfmpegAudioMixCommand(
   return [
     executable,
     ...ffmpegAudioMixArgs(inputVideoPath, audioInputs, outputPath).map(shellDoubleQuoteIfNeeded),
+  ].join(' ');
+}
+
+function buildFfmpegTitleCardCommand(
+  ffmpegPath: string,
+  card: AiComicSeedanceTitleCardPlanCard,
+  profile: AiComicSeedanceTitleCardOutputProfile,
+  fontPath: string,
+  outputPath: string,
+): string {
+  const executable = ffmpegPath === 'ffmpeg' ? 'ffmpeg' : shellDoubleQuote(ffmpegPath);
+  return [
+    executable,
+    ...ffmpegTitleCardArgs(card, profile, fontPath, outputPath).map(shellDoubleQuoteIfNeeded),
+  ].join(' ');
+}
+
+function buildFfmpegFinalDeliveryCommand(
+  ffmpegPath: string,
+  inputPath: string,
+  outputPath: string,
+  outputProfile: AiComicSeedanceFinalDeliveryOutputProfile,
+  useConcat: boolean,
+): string {
+  const executable = ffmpegPath === 'ffmpeg' ? 'ffmpeg' : shellDoubleQuote(ffmpegPath);
+  return [
+    executable,
+    ...ffmpegFinalDeliveryArgs(inputPath, outputPath, outputProfile, useConcat).map(shellDoubleQuoteIfNeeded),
   ].join(' ');
 }
 
@@ -5317,6 +5949,91 @@ function ffmpegAudioMixArgs(
   ];
 }
 
+function ffmpegTitleCardArgs(
+  card: AiComicSeedanceTitleCardPlanCard,
+  profile: AiComicSeedanceTitleCardOutputProfile,
+  fontPath: string,
+  outputPath: string,
+): string[] {
+  const size = profile === 'mp4_h264_720p'
+    ? { width: 1280, height: 720, fontSize: 54 }
+    : { width: 1920, height: 1080, fontSize: 78 };
+  const backgroundColor = card.placement === 'series_opening' || card.placement === 'series_ending'
+    ? '0x111827'
+    : '0x1f2937';
+  const drawtext = [
+    `fontfile=${escapeFfmpegDrawtextValue(fontPath)}`,
+    `text=${escapeFfmpegDrawtextValue(card.text)}`,
+    'fontcolor=white',
+    `fontsize=${size.fontSize}`,
+    'x=(w-text_w)/2',
+    'y=(h-text_h)/2',
+    'box=1',
+    'boxcolor=black@0.42',
+    'boxborderw=28',
+  ].join(':');
+  return [
+    '-y',
+    '-f',
+    'lavfi',
+    '-i',
+    `color=c=${backgroundColor}:s=${size.width}x${size.height}:d=${card.duration_sec}`,
+    '-vf',
+    `drawtext=${drawtext}`,
+    '-r',
+    '25',
+    '-an',
+    '-c:v',
+    'libx264',
+    '-pix_fmt',
+    'yuv420p',
+    '-movflags',
+    '+faststart',
+    outputPath,
+  ];
+}
+
+function ffmpegFinalDeliveryArgs(
+  inputPath: string,
+  outputPath: string,
+  outputProfile: AiComicSeedanceFinalDeliveryOutputProfile,
+  useConcat: boolean,
+): string[] {
+  const base = useConcat
+    ? ['-y', '-f', 'concat', '-safe', '0', '-i', inputPath]
+    : ['-y', '-i', inputPath];
+  if (outputProfile === 'source_copy') {
+    return [...base, '-c', 'copy', '-movflags', '+faststart', outputPath];
+  }
+  const size = outputProfile === 'mp4_h264_720p'
+    ? { width: 1280, height: 720 }
+    : { width: 1920, height: 1080 };
+  return [
+    ...base,
+    '-map',
+    '0:v:0',
+    '-map',
+    '0:a?',
+    '-vf',
+    `scale=${size.width}:${size.height}:force_original_aspect_ratio=decrease,pad=${size.width}:${size.height}:(ow-iw)/2:(oh-ih)/2`,
+    '-c:v',
+    'libx264',
+    '-preset',
+    'medium',
+    '-crf',
+    '20',
+    '-pix_fmt',
+    'yuv420p',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '192k',
+    '-movflags',
+    '+faststart',
+    outputPath,
+  ];
+}
+
 function shellDoubleQuoteIfNeeded(value: string): string {
   return /^[A-Za-z0-9_./:=,+?-]+$/.test(value) ? value : shellDoubleQuote(value);
 }
@@ -5380,6 +6097,40 @@ async function runFfmpegAudioMix(params: {
   );
 }
 
+async function runFfmpegTitleCardRender(params: {
+  ffmpegPath: string;
+  card: AiComicSeedanceTitleCardPlanCard;
+  outputPath: string;
+  profile: AiComicSeedanceTitleCardOutputProfile;
+  fontPath: string;
+}): Promise<void> {
+  await execFileAsync(
+    params.ffmpegPath,
+    ffmpegTitleCardArgs(params.card, params.profile, params.fontPath, params.outputPath),
+    { timeout: 180_000 },
+  );
+}
+
+async function runFfmpegFinalDelivery(params: {
+  ffmpegPath: string;
+  concatListPath?: string;
+  inputVideoPath: string;
+  outputPath: string;
+  outputProfile: AiComicSeedanceFinalDeliveryOutputProfile;
+  useConcat: boolean;
+}): Promise<void> {
+  await execFileAsync(
+    params.ffmpegPath,
+    ffmpegFinalDeliveryArgs(
+      params.useConcat ? params.concatListPath! : params.inputVideoPath,
+      params.outputPath,
+      params.outputProfile,
+      params.useConcat,
+    ),
+    { timeout: 900_000 },
+  );
+}
+
 function resolveSeedanceThumbnailOutputPath(projectDir: string, outputPath: string): string {
   return resolveSeedanceProjectOutputPath(projectDir, outputPath);
 }
@@ -5395,6 +6146,16 @@ function resolveSeedanceProjectOutputPath(projectDir: string, outputPath: string
 
 function ffmpegConcatFileLine(value: string): string {
   return `file '${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function escapeFfmpegDrawtextValue(value: string): string {
+  return `'${value
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/:/g, '\\:')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+    .replace(/%/g, '\\%')}'`;
 }
 
 function formatSrtTimecode(seconds: number): string {

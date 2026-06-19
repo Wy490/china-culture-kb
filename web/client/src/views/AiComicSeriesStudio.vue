@@ -367,6 +367,20 @@
                   >
                     导出音频计划 JSON
                   </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceTitleCardPlanMarkdown"
+                  >
+                    导出片头片尾计划 Markdown
+                  </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceTitleCardPlanJson"
+                  >
+                    导出片头片尾计划 JSON
+                  </button>
                 </div>
               </details>
             </div>
@@ -629,6 +643,20 @@
                 </button>
                 <button
                   class="series-studio__ghost-button"
+                  :disabled="renderingSeedanceTitleCards"
+                  @click="renderSeedanceTitleCardsDryRun"
+                >
+                  {{ renderingSeedanceTitleCards ? '规划中...' : '片头片尾 dry-run' }}
+                </button>
+                <button
+                  class="series-studio__ghost-button"
+                  :disabled="assemblingSeedanceFinal || !seedanceCutAssembly?.output_path"
+                  @click="assembleSeedanceFinalDryRun"
+                >
+                  {{ assemblingSeedanceFinal ? '规划中...' : '最终交付 dry-run' }}
+                </button>
+                <button
+                  class="series-studio__ghost-button"
                   :disabled="batchUpdatingSeedance"
                   @click="seedanceReturnImportInput?.click()"
                 >
@@ -706,6 +734,36 @@
               <template v-if="seedanceAudioMix.output_path"> · {{ seedanceAudioMix.output_path }}</template>
               <template v-if="seedanceAudioMix.failure_reason"> · {{ seedanceAudioMix.failure_reason }}</template>
             </p>
+          </div>
+          <div v-if="seedanceTitleCardRender" class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>片头片尾</strong>
+              <span>{{ seedanceTitleCardRender.card_count }} 张卡 · {{ seedanceTitleCardRender.updated_at ? formatDate(seedanceTitleCardRender.updated_at) : '未更新' }}</span>
+            </div>
+            <p>
+              {{ seedanceTitleCardRenderStatusLabel(seedanceTitleCardRender.status) }}
+              · {{ seedanceTitleCardRender.output_profile }}
+              <template v-if="seedanceTitleCardRender.output_paths.length > 0"> · {{ seedanceTitleCardRender.output_paths[0] }}</template>
+              <template v-if="seedanceTitleCardRender.failure_reason"> · {{ seedanceTitleCardRender.failure_reason }}</template>
+            </p>
+          </div>
+          <div v-if="seedanceFinalDelivery" class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>最终交付</strong>
+              <span>{{ seedanceFinalDelivery.dependency_status.missing_dependencies.length }} 个阻断 · {{ seedanceFinalDelivery.updated_at ? formatDate(seedanceFinalDelivery.updated_at) : '未更新' }}</span>
+            </div>
+            <p>
+              {{ seedanceFinalDeliveryStatusLabel(seedanceFinalDelivery.status) }}
+              · {{ seedanceFinalDelivery.output_profile }}
+              <template v-if="seedanceFinalDelivery.output_path"> · {{ seedanceFinalDelivery.output_path }}</template>
+              <template v-if="seedanceFinalDelivery.failure_reason"> · {{ seedanceFinalDelivery.failure_reason }}</template>
+            </p>
+            <div class="series-studio__episode-audit-list">
+              <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.cut_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">剪辑</span>
+              <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.subtitle_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">字幕</span>
+              <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.audio_mix_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">混音</span>
+              <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.title_cards_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">片头片尾</span>
+            </div>
           </div>
           <div v-if="showSeedanceVersionComparison" class="series-studio__seedance-comparison">
             <div class="series-studio__thread-closure-head">
@@ -1509,6 +1567,7 @@ import {
   aiComicEpisodeContextPreview,
   aiComicEpisodeGenerate,
   assembleAiComicSeriesSeedanceCut,
+  assembleAiComicSeriesSeedanceFinalDelivery,
   archiveAiComicSeriesProject,
   autoSelectAiComicSeriesSeedanceProductionVersions,
   captureAiComicSeriesSeedanceThumbnails,
@@ -1524,6 +1583,7 @@ import {
   exportAiComicSeriesSeedanceRetryPackage,
   exportAiComicSeriesSeedanceSubtitlePackage,
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
+  exportAiComicSeriesSeedanceTitleCardPlanPackage,
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   aiComicSeriesPlan,
   getAiComicSeriesProject,
@@ -1531,6 +1591,7 @@ import {
   mixAiComicSeriesSeedanceAudio,
   rebuildAiComicSeriesLedger,
   renderAiComicSeriesSeedanceSubtitles,
+  renderAiComicSeriesSeedanceTitleCards,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
@@ -1563,8 +1624,10 @@ import type {
   AiComicSeedanceAudioLibraryUpdateRequest,
   AiComicSeedanceAudioMixLedger,
   AiComicSeedanceCutAssemblyLedger,
+  AiComicSeedanceFinalDeliveryLedger,
   AiComicSeedanceShotProductionItem,
   AiComicSeedanceSubtitleRenderLedger,
+  AiComicSeedanceTitleCardRenderLedger,
   AiComicSeedanceVersionComparisonShot,
   AiComicSeriesSeedanceVersionComparisonPackage,
   NarrativePattern,
@@ -1617,6 +1680,8 @@ const seedanceProduction = ref<AiComicSeedanceProductionLedger | null>(null)
 const seedanceCutAssembly = ref<AiComicSeedanceCutAssemblyLedger | null>(null)
 const seedanceSubtitleRender = ref<AiComicSeedanceSubtitleRenderLedger | null>(null)
 const seedanceAudioMix = ref<AiComicSeedanceAudioMixLedger | null>(null)
+const seedanceTitleCardRender = ref<AiComicSeedanceTitleCardRenderLedger | null>(null)
+const seedanceFinalDelivery = ref<AiComicSeedanceFinalDeliveryLedger | null>(null)
 const seedanceVersionComparison = ref<AiComicSeriesSeedanceVersionComparisonPackage | null>(null)
 const showSeedanceVersionComparison = ref(false)
 const loadingSeedanceVersionComparison = ref(false)
@@ -1626,6 +1691,8 @@ const capturingSeedanceThumbnails = ref(false)
 const assemblingSeedanceCut = ref(false)
 const renderingSeedanceSubtitles = ref(false)
 const mixingSeedanceAudio = ref(false)
+const renderingSeedanceTitleCards = ref(false)
+const assemblingSeedanceFinal = ref(false)
 const seedanceReturnImportInput = ref<HTMLInputElement | null>(null)
 const seedanceAssetImportInput = ref<HTMLInputElement | null>(null)
 const seedanceAudioImportInput = ref<HTMLInputElement | null>(null)
@@ -1934,6 +2001,8 @@ async function loadSeriesProject(id: string) {
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
     seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
+    seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
+    seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
     seedanceVersionComparison.value = null
     showSeedanceVersionComparison.value = false
     applyPlan(res.data.plan)
@@ -1974,6 +2043,8 @@ async function handlePlan() {
   seedanceCutAssembly.value = null
   seedanceSubtitleRender.value = null
   seedanceAudioMix.value = null
+  seedanceTitleCardRender.value = null
+  seedanceFinalDelivery.value = null
   seedanceVersionComparison.value = null
   showSeedanceVersionComparison.value = false
 
@@ -2421,6 +2492,8 @@ async function saveCurrentProject(options: {
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
     seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
+    seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
+    seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
     saveStatus.value = 'saved'
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = options.message
@@ -2465,6 +2538,8 @@ async function handleRebuildLedger() {
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
     seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
+    seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
+    seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
     applyPlan(res.data.plan)
     saveStatus.value = 'saved'
     saveErrorMessage.value = ''
@@ -2858,6 +2933,42 @@ async function exportSeriesSeedanceAudioPlanJson() {
   exportingSeedance.value = false
 }
 
+async function exportSeriesSeedanceTitleCardPlanMarkdown() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceTitleCardPlanPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-title-card-plan.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 片头片尾计划 Markdown 已导出 · ${res.data.total_card_count} 张卡`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 片头片尾计划失败'
+  }
+  exportingSeedance.value = false
+}
+
+async function exportSeriesSeedanceTitleCardPlanJson() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceTitleCardPlanPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-title-card-plan.json`,
+      JSON.stringify(res.data, null, 2),
+      'application/json;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 片头片尾计划 JSON 已导出 · ${res.data.total_duration_sec} 秒`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 片头片尾计划失败'
+  }
+  exportingSeedance.value = false
+}
+
 async function toggleSeedanceVersionComparison() {
   showSeedanceVersionComparison.value = !showSeedanceVersionComparison.value
   if (showSeedanceVersionComparison.value && !seedanceVersionComparison.value) {
@@ -3051,6 +3162,48 @@ async function mixSeedanceAudioDryRun() {
     errorMessage.value = res.error?.message ?? '生成 Seedance 混音 dry-run 失败'
   }
   mixingSeedanceAudio.value = false
+}
+
+async function renderSeedanceTitleCardsDryRun() {
+  if (!seriesProjectId.value || renderingSeedanceTitleCards.value) return
+  renderingSeedanceTitleCards.value = true
+  errorMessage.value = ''
+  const res = await renderAiComicSeriesSeedanceTitleCards(seriesProjectId.value, {
+    dry_run: true,
+    overwrite: false,
+    output_profile: 'mp4_h264_1080p',
+  })
+  if (res.ok && res.data) {
+    seedanceTitleCardRender.value = res.data.seedance_title_card_render
+    lastSavedAt.value = res.data.project.updated_at
+    saveMessage.value = `片头片尾 dry-run 已生成 · ${res.data.card_count} 张卡`
+  } else {
+    errorMessage.value = res.error?.message ?? '生成 Seedance 片头片尾 dry-run 失败'
+  }
+  renderingSeedanceTitleCards.value = false
+}
+
+async function assembleSeedanceFinalDryRun() {
+  if (!seriesProjectId.value || assemblingSeedanceFinal.value) return
+  assemblingSeedanceFinal.value = true
+  errorMessage.value = ''
+  const res = await assembleAiComicSeriesSeedanceFinalDelivery(seriesProjectId.value, {
+    dry_run: true,
+    overwrite: false,
+    include_subtitles: true,
+    include_audio_mix: true,
+    include_title_cards: true,
+    missing_dependency_mode: 'tolerant',
+    output_profile: 'mp4_h264_1080p',
+  })
+  if (res.ok && res.data) {
+    seedanceFinalDelivery.value = res.data.seedance_final_delivery
+    lastSavedAt.value = res.data.project.updated_at
+    saveMessage.value = `最终交付 dry-run 已生成 · 阻断 ${res.data.dependency_status.missing_dependencies.length} 项`
+  } else {
+    errorMessage.value = res.error?.message ?? '生成 Seedance 最终交付 dry-run 失败'
+  }
+  assemblingSeedanceFinal.value = false
 }
 
 async function batchMarkSeedanceProduction(
@@ -3376,6 +3529,8 @@ function clearCurrentProject() {
   seedanceCutAssembly.value = null
   seedanceSubtitleRender.value = null
   seedanceAudioMix.value = null
+  seedanceTitleCardRender.value = null
+  seedanceFinalDelivery.value = null
   episodeResult.value = null
   episodeErrorMessage.value = ''
   generatedEpisodeNo.value = null
@@ -3516,6 +3671,30 @@ function seedanceAudioMixProfileLabel(profile: string): string {
     ambient_soft: '弱环境声',
   }
   return map[profile] ?? profile
+}
+
+function seedanceTitleCardRenderStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    not_started: '未开始',
+    planned: '已规划',
+    rendering: '渲染中',
+    ready: '已生成',
+    failed: '失败',
+    skipped: '跳过',
+  }
+  return map[status] ?? status
+}
+
+function seedanceFinalDeliveryStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    not_started: '未开始',
+    planned: '已规划',
+    assembling: '装配中',
+    ready: '已生成',
+    failed: '失败',
+    skipped: '跳过',
+  }
+  return map[status] ?? status
 }
 
 function hookTypeLabel(type?: AiComicEndingHookType): string {

@@ -29,6 +29,7 @@ import type {
   AiComicSeriesSeedanceCutAssemblyResult,
   AiComicSeriesSeedanceCutPackage,
   AiComicSeriesSeedanceEditAssetPackage,
+  AiComicSeriesSeedanceFinalDeliveryResult,
   AiComicSeriesSeedanceExportPackage,
   AiComicSeriesSeedanceFinishingPlanPackage,
   AiComicSeriesSeedanceRetryPackage,
@@ -36,10 +37,13 @@ import type {
   AiComicSeriesSeedanceSubtitleRenderResult,
   AiComicSeriesSeedanceThumbnailPlanPackage,
   AiComicSeriesSeedanceThumbnailCaptureResult,
+  AiComicSeriesSeedanceTitleCardPlanPackage,
+  AiComicSeriesSeedanceTitleCardRenderResult,
   AiComicSeriesSeedanceVersionComparisonPackage,
   AiComicSeedanceProductionAutoSelectRequest,
   AiComicSeedanceAudioLibraryUpdateRequest,
   AiComicSeedanceAudioMixRequest,
+  AiComicSeedanceFinalDeliveryRequest,
   AiComicSeedanceProductionBatchUpdateRequest,
   AiComicSeedanceProductionCallbackRequest,
   AiComicSeedanceProductionStatusUpdateRequest,
@@ -47,6 +51,7 @@ import type {
   AiComicSeedanceSubtitleExportRequest,
   AiComicSeedanceSubtitleRenderRequest,
   AiComicSeedanceThumbnailCaptureRequest,
+  AiComicSeedanceTitleCardRenderRequest,
   AiComicSeriesPlanRequest,
   AiComicSeriesPlan,
 } from '@shared/types'
@@ -254,6 +259,33 @@ export function mixAiComicSeriesSeedanceAudio(
 ) {
   return apiPost<AiComicSeriesSeedanceAudioMixResult>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-audio/mix`,
+    req,
+  )
+}
+
+export function exportAiComicSeriesSeedanceTitleCardPlanPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceTitleCardPlanPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-title-card-plan`,
+    {},
+  )
+}
+
+export function renderAiComicSeriesSeedanceTitleCards(
+  seriesProjectId: string,
+  req: AiComicSeedanceTitleCardRenderRequest = {},
+) {
+  return apiPost<AiComicSeriesSeedanceTitleCardRenderResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-title-cards/render`,
+    req,
+  )
+}
+
+export function assembleAiComicSeriesSeedanceFinalDelivery(
+  seriesProjectId: string,
+  req: AiComicSeedanceFinalDeliveryRequest = {},
+) {
+  return apiPost<AiComicSeriesSeedanceFinalDeliveryResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-final/assemble`,
     req,
   )
 }

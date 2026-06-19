@@ -2014,6 +2014,48 @@ describe('Seedance Audio API', () => {
   });
 });
 
+describe('Seedance Title Cards and Final Delivery API', () => {
+  it('validates title card output profile', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-title-cards/render')
+      .send({ output_profile: 'vertical_9_16' });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts a title card dry-run request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-title-cards/render')
+      .send({ dry_run: true, output_profile: 'mp4_h264_1080p' });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('validates final delivery output filename', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-final/assemble')
+      .send({ output_filename: '../bad.mp4' });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts a final delivery dry-run request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-final/assemble')
+      .send({ dry_run: true, missing_dependency_mode: 'tolerant' });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('returns 404 for a missing series project title card plan', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-title-card-plan')
+      .send({});
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+});
+
 describe('Seedance Cut Assembly API', () => {
   it('validates cut assembly request body', async () => {
     const res = await request

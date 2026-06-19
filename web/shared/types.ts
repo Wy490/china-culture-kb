@@ -2379,6 +2379,160 @@ export interface AiComicSeriesSeedanceAudioMixResult {
   seedance_audio_mix: AiComicSeedanceAudioMixLedger;
 }
 
+export type AiComicSeedanceTitleCardPlacement =
+  | 'series_opening'
+  | 'episode_opening'
+  | 'episode_ending'
+  | 'series_ending';
+
+export interface AiComicSeedanceTitleCardPlanCard {
+  card_id: string;
+  placement: AiComicSeedanceTitleCardPlacement;
+  episode_no?: number;
+  duration_sec: number;
+  text: string;
+  visual_note: string;
+  safe_area: string;
+  font_style: string;
+  background_source: string;
+  transition_in: string;
+  transition_out: string;
+  output_filename: string;
+  output_path: string;
+  ffmpeg_command_hint: string;
+}
+
+export interface AiComicSeriesSeedanceTitleCardPlanPackage {
+  schema_version: 'ai-comic-series-seedance-title-card-plan/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  exported_at: string;
+  title_card_root: string;
+  total_card_count: number;
+  total_duration_sec: number;
+  cards: AiComicSeedanceTitleCardPlanCard[];
+  markdown: string;
+}
+
+export type AiComicSeedanceTitleCardRenderStatus =
+  | 'not_started'
+  | 'planned'
+  | 'rendering'
+  | 'ready'
+  | 'failed'
+  | 'skipped';
+
+export type AiComicSeedanceTitleCardOutputProfile = 'mp4_h264_1080p' | 'mp4_h264_720p';
+
+export interface AiComicSeedanceTitleCardRenderRequest {
+  dry_run?: boolean;
+  overwrite?: boolean;
+  episode_no?: number;
+  output_profile?: AiComicSeedanceTitleCardOutputProfile;
+  font_path?: string;
+}
+
+export interface AiComicSeedanceTitleCardRenderLedger {
+  schema_version: 'ai-comic-seedance-title-card-render-ledger/v1';
+  updated_at?: string;
+  status: AiComicSeedanceTitleCardRenderStatus;
+  output_profile: AiComicSeedanceTitleCardOutputProfile;
+  card_count: number;
+  rendered_count: number;
+  output_paths: string[];
+  ffmpeg_commands: string[];
+  rendered_at?: string;
+  failure_reason?: string;
+  dry_run?: boolean;
+  font_path?: string;
+}
+
+export interface AiComicSeriesSeedanceTitleCardRenderResult {
+  schema_version: 'ai-comic-series-seedance-title-card-render-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  executed_at: string;
+  dry_run: boolean;
+  status: 'planned' | 'rendered' | 'failed' | 'skipped';
+  output_profile: AiComicSeedanceTitleCardOutputProfile;
+  card_count: number;
+  rendered_count: number;
+  output_paths: string[];
+  ffmpeg_commands: string[];
+  failure_reason?: string;
+  seedance_title_card_render: AiComicSeedanceTitleCardRenderLedger;
+}
+
+export type AiComicSeedanceFinalDeliveryStatus =
+  | 'not_started'
+  | 'planned'
+  | 'assembling'
+  | 'ready'
+  | 'failed'
+  | 'skipped';
+
+export type AiComicSeedanceFinalDeliveryOutputProfile = 'mp4_h264_1080p' | 'mp4_h264_720p' | 'source_copy';
+export type AiComicSeedanceMissingDependencyMode = 'strict' | 'tolerant';
+
+export interface AiComicSeedanceFinalDeliveryRequest {
+  dry_run?: boolean;
+  overwrite?: boolean;
+  include_subtitles?: boolean;
+  include_audio_mix?: boolean;
+  include_title_cards?: boolean;
+  missing_dependency_mode?: AiComicSeedanceMissingDependencyMode;
+  output_profile?: AiComicSeedanceFinalDeliveryOutputProfile;
+  output_filename?: string;
+}
+
+export interface AiComicSeedanceFinalDependencyStatus {
+  cut_ready: boolean;
+  subtitle_ready: boolean;
+  audio_mix_ready: boolean;
+  title_cards_ready: boolean;
+  source_cut_path?: string;
+  subtitle_path?: string;
+  audio_mix_path?: string;
+  title_card_paths: string[];
+  missing_dependencies: string[];
+  warnings: string[];
+}
+
+export interface AiComicSeedanceFinalDeliveryLedger {
+  schema_version: 'ai-comic-seedance-final-delivery-ledger/v1';
+  updated_at?: string;
+  status: AiComicSeedanceFinalDeliveryStatus;
+  output_path?: string;
+  output_filename?: string;
+  ffmpeg_command?: string;
+  source_cut_path?: string;
+  subtitle_path?: string;
+  audio_mix_path?: string;
+  title_card_paths: string[];
+  delivered_at?: string;
+  failure_reason?: string;
+  dry_run?: boolean;
+  output_profile: AiComicSeedanceFinalDeliveryOutputProfile;
+  dependency_status: AiComicSeedanceFinalDependencyStatus;
+}
+
+export interface AiComicSeriesSeedanceFinalDeliveryResult {
+  schema_version: 'ai-comic-series-seedance-final-delivery-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  executed_at: string;
+  dry_run: boolean;
+  status: 'planned' | 'assembled' | 'failed' | 'skipped';
+  output_path: string;
+  output_filename: string;
+  ffmpeg_command: string;
+  output_profile: AiComicSeedanceFinalDeliveryOutputProfile;
+  dependency_status: AiComicSeedanceFinalDependencyStatus;
+  failure_reason?: string;
+  seedance_final_delivery: AiComicSeedanceFinalDeliveryLedger;
+  markdown: string;
+}
+
 export interface AiComicSeedanceRetryPackageShot {
   production_id: string;
   episode_no: number;
@@ -3553,6 +3707,8 @@ export interface AiComicSeriesProjectDetail {
   seedance_subtitle_render?: AiComicSeedanceSubtitleRenderLedger;
   seedance_audio_library?: AiComicSeedanceAudioLibrary;
   seedance_audio_mix?: AiComicSeedanceAudioMixLedger;
+  seedance_title_card_render?: AiComicSeedanceTitleCardRenderLedger;
+  seedance_final_delivery?: AiComicSeedanceFinalDeliveryLedger;
 }
 
 export interface AiComicSeriesBibleCharacterRow {
