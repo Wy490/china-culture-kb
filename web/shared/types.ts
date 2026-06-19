@@ -2908,6 +2908,14 @@ export interface AiComicSeedanceRetryPackageShot {
   failure_reason?: string;
   provider_job_id?: string;
   last_video_url?: string;
+  retry_reason: 'production_status' | 'review_required';
+  review_issues?: Array<{
+    review_id: string;
+    severity: AiComicSeedanceReviewSeverity;
+    issue_type: AiComicSeedanceReviewIssueType;
+    note: string;
+    repair_action: AiComicSeedanceReviewRepairAction;
+  }>;
   suggested_action: string;
   prompt: SeedancePromptShotUnit;
 }
@@ -2926,6 +2934,7 @@ export interface AiComicSeriesSeedanceRetryPackage {
   series_title: string;
   exported_at: string;
   total_retry_shot_count: number;
+  review_required_shot_count: number;
   episodes: AiComicSeedanceRetryPackageEpisode[];
   skipped_ready_shot_count: number;
   missing_prompt_shots: Array<{

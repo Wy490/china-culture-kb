@@ -11,7 +11,7 @@
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
 | Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
-| AI 漫剧系列生产链 | 约 72% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run、final manifest、审片返修 ledger、外部剪辑平台包和生产总览 dashboard 首版已有；下一步是真实混音、真实片头片尾渲染和真实最终装配。 |
+| AI 漫剧系列生产链 | 约 73% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、外部剪辑平台包和生产总览 dashboard 首版已有；下一步是真实混音、真实片头片尾渲染和真实最终装配。 |
 | 可商用制作中台 | 约 50% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、真实混音执行/最终成片、审片返修联动深化和稳定压测。 |
 
 ## 2. 本轮完成内容
@@ -156,9 +156,10 @@
   - 新增 `seedance_review_ledger`，支持 final / cut / shot / subtitle / audio / title_card 审片目标。
   - 新增审片意见、解决审片意见和导出审片返修包服务/API。
   - 返修包输出 open review、retry candidate、final reassemble required 和 Markdown 摘要。
+  - 未解决 shot 审片意见会进入 Seedance 重试包；未解决 final reassemble 审片意见会阻断 strict final delivery dry-run。
   - dashboard 聚合 open/blocking 审片数，并把未解决审片意见纳入 blocker / next action。
   - 系列工作台最终交付区新增审片返修轻量录入、open 列表、标记解决和返修包导出。
-  - 服务测试覆盖 review ledger、retry candidate、final reassemble blocker；API 测试覆盖 review 路由校验和缺失项目响应。
+  - 服务测试覆盖 review ledger、retry candidate、final reassemble blocker、review retry package 和 strict final guard；API 测试覆盖 review 路由校验和缺失项目响应。
 
 ### 文档同步
 
@@ -254,7 +255,7 @@ SeedanceProviderAdapter
 seedance-audio/mix real runner hardening
   -> seedance-title-cards/render real/mock success
   -> seedance-final/assemble real runner hardening
-  -> seedance_review_ledger retry/final reassemble automation
+  -> seedance_review_ledger retry submit/final reassemble execution
 ```
 
 ## 6. 新对话开场指令

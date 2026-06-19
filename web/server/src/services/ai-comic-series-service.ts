@@ -81,6 +81,7 @@ import type {
   AiComicSeedanceVideoVersion,
   AiComicSeedanceCutPackageEpisode,
   AiComicSeedanceRetryPackageEpisode,
+  AiComicSeedanceRetryPackageShot,
   AiComicSeriesSeedanceCutPackage,
   AiComicSeedanceCutAssemblyLedger,
   AiComicSeedanceCutAssemblyRequest,
@@ -969,6 +970,7 @@ function buildAiComicSeriesSeedanceRetryMarkdown(
     `> seriesProjectId: ${pkg.project.series_project_id}`,
     `> exportedAt: ${pkg.exported_at}`,
     `> 待重试镜头: ${pkg.total_retry_shot_count}`,
+    `> 审片要求重做: ${pkg.review_required_shot_count}`,
     `> 已跳过可用镜头: ${pkg.skipped_ready_shot_count}`,
     '',
     '## 重试镜头',
@@ -987,10 +989,18 @@ function buildAiComicSeriesSeedanceRetryMarkdown(
         `#### ${shot.shot_id} / 场景 ${shot.source_scene_id ?? '未记录'}`,
         '',
         `- 状态: ${seedanceProductionStatusText(shot.status)}`,
+        `- 重试原因: ${shot.retry_reason === 'review_required' ? '审片返修' : '生产状态'}`,
         `- 失败原因: ${shot.failure_reason ?? '未记录'}`,
         `- 重试次数: ${shot.retry_count}`,
         `- 上次 job: ${shot.provider_job_id ?? '未记录'}`,
         `- 建议动作: ${shot.suggested_action}`,
+        ...(shot.review_issues?.length
+          ? [
+              `- 审片意见: ${shot.review_issues
+                .map(issue => `${seedanceReviewSeverityText(issue.severity)} / ${seedanceReviewIssueTypeText(issue.issue_type)} / ${seedanceReviewRepairActionText(issue.repair_action)}：${issue.note}`)
+                .join('；')}`,
+            ]
+          : []),
         `- 人物: ${shot.prompt.characters.join('、') || '未指定'}`,
         `- 场景: ${shot.prompt.location}`,
         `- 镜头: ${shot.prompt.camera_suggestion}`,
@@ -3057,6 +3067,7 @@ export async function exportAiComicSeriesSeedanceRetryPackage(
 
   const ledger = normalizeSeedanceProductionLedger(detail.seedance_production);
   const ledgerMap = new Map(ledger.items.map(item => [item.production_id, item]));
+  const reviewIssuesByProductionId = seedanceRetryReviewIssuesByProductionId(detail);
   const exportedAt = new Date().toISOString();
   const retryEpisodes: AiComicSeedanceRetryPackageEpisode[] = [];
   const promptKeys = new Set<string>();
@@ -3072,7 +3083,8 @@ export async function exportAiComicSeriesSeedanceRetryPackage(
         const productionId = seedanceProductionId(episode.episode_no, unit.shot_id);
         promptKeys.add(productionId);
         const item = ledgerMap.get(productionId);
-        if (!shouldRetrySeedanceProductionItem(item)) return null;
+        const reviewIssues = reviewIssuesByProductionId.get(productionId) ?? [];
+        if (!shouldRetrySeedanceProductionItem(item) && reviewIssues.length === 0) return null;
         return {
           production_id: productionId,
           episode_no: episode.episode_no,
@@ -3085,9 +3097,11 @@ export async function exportAiComicSeriesSeedanceRetryPackage(
           failure_reason: item?.failure_reason,
           provider_job_id: item?.provider_job_id,
           last_video_url: item?.video_url,
-          suggested_action: seedanceRetrySuggestedAction(item),
+          retry_reason: reviewIssues.length > 0 ? 'review_required' : 'production_status',
+          review_issues: reviewIssues.length > 0 ? reviewIssues : undefined,
+          suggested_action: seedanceRetrySuggestedAction(item, reviewIssues),
           prompt: unit,
-        };
+        } satisfies AiComicSeedanceRetryPackageShot;
       })
       .filter((shot): shot is NonNullable<typeof shot> => Boolean(shot));
     if (shots.length > 0) {
@@ -3102,7 +3116,7 @@ export async function exportAiComicSeriesSeedanceRetryPackage(
   }
 
   const missingPromptShots = ledger.items
-    .filter(item => shouldRetrySeedanceProductionItem(item))
+    .filter(item => shouldRetrySeedanceProductionItem(item) || (reviewIssuesByProductionId.get(item.production_id)?.length ?? 0) > 0)
     .filter(item => !promptKeys.has(item.production_id))
     .map(item => ({
       episode_no: item.episode_no,
@@ -3116,8 +3130,15 @@ export async function exportAiComicSeriesSeedanceRetryPackage(
     series_title: detail.plan.series_title,
     exported_at: exportedAt,
     total_retry_shot_count: retryEpisodes.reduce((sum, episode) => sum + episode.retry_shot_count, 0),
+    review_required_shot_count: retryEpisodes.reduce((sum, episode) =>
+      sum + episode.shots.filter(shot => shot.retry_reason === 'review_required').length,
+    0),
     episodes: retryEpisodes,
-    skipped_ready_shot_count: ledger.items.filter(item => item.status === 'ready' && Boolean(item.video_url)).length,
+    skipped_ready_shot_count: ledger.items.filter(item =>
+      item.status === 'ready'
+      && Boolean(item.video_url)
+      && (reviewIssuesByProductionId.get(item.production_id)?.length ?? 0) === 0
+    ).length,
     missing_prompt_shots: missingPromptShots,
   };
   return success({
@@ -4164,6 +4185,13 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     return fail(
       ErrorCodes.VALIDATION_ERROR,
       `Seedance final delivery missing dependencies: ${dependencyStatus.missing_dependencies.join('；')}`,
+    );
+  }
+  const reviewLedger = normalizeSeedanceReviewLedger(detail.seedance_review_ledger);
+  if (missingDependencyMode === 'strict' && reviewLedger?.final_reassemble_required) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'Seedance final delivery has unresolved review issues requiring final reassembly',
     );
   }
 
@@ -8400,9 +8428,56 @@ function shouldRetrySeedanceProductionItem(
   return true;
 }
 
+function seedanceRetryReviewIssuesByProductionId(
+  detail: AiComicSeriesProjectDetail,
+): Map<string, NonNullable<AiComicSeedanceRetryPackageShot['review_issues']>> {
+  const productionLedger = normalizeSeedanceProductionLedger(detail.seedance_production);
+  const reviewLedger = normalizeSeedanceReviewLedger(detail.seedance_review_ledger);
+  const reviewIssuesByProductionId = new Map<string, NonNullable<AiComicSeedanceRetryPackageShot['review_issues']>>();
+  const reviewItems = (reviewLedger?.items ?? []).filter(item =>
+    seedanceReviewItemOpen(item)
+    && item.target_type === 'shot'
+    && (item.repair_action === 'redo_shot' || item.repair_action === 'reselect_version')
+  );
+  for (const review of reviewItems) {
+    for (const productionItem of productionLedger.items) {
+      if (!seedanceReviewTargetsProductionItem(review, productionItem)) continue;
+      const issues = reviewIssuesByProductionId.get(productionItem.production_id) ?? [];
+      issues.push({
+        review_id: review.review_id,
+        severity: review.severity,
+        issue_type: review.issue_type,
+        note: review.note,
+        repair_action: review.repair_action,
+      });
+      reviewIssuesByProductionId.set(productionItem.production_id, issues);
+    }
+  }
+  return reviewIssuesByProductionId;
+}
+
+function seedanceReviewTargetsProductionItem(
+  review: AiComicSeedanceReviewItem,
+  item: AiComicSeedanceShotProductionItem,
+): boolean {
+  if (review.episode_no && review.episode_no !== item.episode_no) return false;
+  const reviewTargets = new Set([
+    review.target_id,
+    review.shot_id,
+  ].filter(Boolean));
+  return reviewTargets.has(item.shot_id) || reviewTargets.has(item.production_id);
+}
+
 function seedanceRetrySuggestedAction(
   item?: AiComicSeedanceShotProductionItem,
+  reviewIssues: NonNullable<AiComicSeedanceRetryPackageShot['review_issues']> = [],
 ): string {
+  if (reviewIssues.some(issue => issue.repair_action === 'reselect_version')) {
+    return '审片意见要求重选剪辑版；先回到版本对比，必要时再重新提交。';
+  }
+  if (reviewIssues.length > 0) {
+    return '审片意见要求重做该镜头；按原提示词或微调后重新提交。';
+  }
   if (!item) return '尚未提交，按原提示词提交生成。';
   if (item.status === 'failed') return item.retry_count > 0 ? '检查失败原因后再次提交，必要时微调负向约束。' : '按原提示词重新提交一次。';
   if (item.status === 'ready' && !item.video_url) return '状态已完成但缺少视频 URL，优先向平台补拉结果。';

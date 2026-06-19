@@ -1122,6 +1122,14 @@ describe('outline-service', () => {
       final_reassemble_required: true,
     });
 
+    const blockedFinalDeliveryRes = await assembleAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      { dry_run: true, missing_dependency_mode: 'strict', output_profile: 'mp4_h264_720p' },
+    );
+    expect(blockedFinalDeliveryRes.ok).toBe(false);
+    expect(blockedFinalDeliveryRes.error?.code).toBe('VALIDATION_ERROR');
+    expect(blockedFinalDeliveryRes.error?.message).toContain('review');
+
     const shotReviewRes = await addAiComicSeriesSeedanceReview(
       saveRes.data!.project.series_project_id,
       {
@@ -1137,6 +1145,27 @@ describe('outline-service', () => {
     );
     expect(shotReviewRes.ok).toBe(true);
     expect(shotReviewRes.data?.seedance_review_ledger.open_count).toBe(2);
+
+    const reviewRetryPackageRes = await exportAiComicSeriesSeedanceRetryPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(reviewRetryPackageRes.ok).toBe(true);
+    expect(reviewRetryPackageRes.data?.review_required_shot_count).toBeGreaterThan(0);
+    const reviewedRetryShot = reviewRetryPackageRes.data?.episodes
+      .flatMap(episode => episode.shots)
+      .find(shot => shot.shot_id === firstProductionItem.shot_id);
+    expect(reviewedRetryShot).toMatchObject({
+      retry_reason: 'review_required',
+      review_issues: [
+        {
+          review_id: shotReviewRes.data!.review_item.review_id,
+          note: '主角表情不稳，建议重做该镜头。',
+          repair_action: 'redo_shot',
+        },
+      ],
+    });
+    expect(reviewedRetryShot?.suggested_action).toContain('审片意见');
+    expect(reviewRetryPackageRes.data?.markdown).toContain('主角表情不稳');
 
     const reviewDashboardRes = await getAiComicSeriesSeedanceProductionDashboard(
       saveRes.data!.project.series_project_id,
@@ -1222,6 +1251,7 @@ describe('outline-service', () => {
     expect(retryPackageRes.ok).toBe(true);
     expect(retryPackageRes.data?.schema_version).toBe('ai-comic-series-seedance-retry-package/v1');
     expect(retryPackageRes.data?.total_retry_shot_count).toBeGreaterThan(0);
+    expect(retryPackageRes.data?.review_required_shot_count).toBeGreaterThan(0);
     expect(retryPackageRes.data?.episodes.flatMap(episode => episode.shots).some(shot =>
       shot.shot_id === retryCandidate!.shot_id
       && shot.failure_reason === '人物手部变形'
@@ -1229,6 +1259,7 @@ describe('outline-service', () => {
     )).toBe(true);
     expect(retryPackageRes.data?.markdown).toContain('Seedance 重试提交包');
     expect(retryPackageRes.data?.markdown).toContain('人物手部变形');
+    expect(retryPackageRes.data?.markdown).toContain('审片意见要求重做');
 
     const versionComparisonRes = await exportAiComicSeriesSeedanceVersionComparisonPackage(
       saveRes.data!.project.series_project_id,

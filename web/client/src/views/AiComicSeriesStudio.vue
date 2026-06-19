@@ -2911,7 +2911,7 @@ async function exportSeriesSeedanceRetryMarkdown() {
       res.data.markdown,
       'text/markdown;charset=utf-8',
     )
-    saveMessage.value = `Seedance 重试包 Markdown 已导出 · ${res.data.total_retry_shot_count} 个镜头`
+    saveMessage.value = `Seedance 重试包 Markdown 已导出 · ${res.data.total_retry_shot_count} 个镜头 · 审片 ${res.data.review_required_shot_count}`
   } else {
     errorMessage.value = res.error?.message ?? '导出 Seedance 重试包失败'
   }
@@ -2929,7 +2929,7 @@ async function exportSeriesSeedanceRetryJson() {
       JSON.stringify(res.data, null, 2),
       'application/json;charset=utf-8',
     )
-    saveMessage.value = `Seedance 重试包 JSON 已导出 · ${res.data.total_retry_shot_count} 个镜头`
+    saveMessage.value = `Seedance 重试包 JSON 已导出 · ${res.data.total_retry_shot_count} 个镜头 · 审片 ${res.data.review_required_shot_count}`
   } else {
     errorMessage.value = res.error?.message ?? '导出 Seedance 重试包失败'
   }

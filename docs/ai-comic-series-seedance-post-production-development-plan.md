@@ -557,7 +557,7 @@ Seedance prompts
 
 ## 13. 阶段九：审片与返修闭环
 
-当前状态：review ledger、返修包导出、dashboard blocker 和工作台轻量录入首版已完成；后续继续深化版本对比面板标注、自动生成重试包和最终重装配计划。
+当前状态：review ledger、返修包导出、dashboard blocker、工作台轻量录入、审片驱动重试包和 strict final guard 首版已完成；后续继续深化版本对比面板标注、retry submit 执行和最终重装配真实执行。
 
 ### 目标
 
@@ -658,7 +658,7 @@ Seedance prompts
 1. `seedance-audio/mix` 真实素材执行增强
 2. `seedance-title-cards/render` 真实渲染增强
 3. `seedance-final/assemble` 真实装配 hardening
-4. `seedance_review_ledger` 到 retry package / final reassemble 自动联动
+4. `seedance_review_ledger` 到 retry submit / final reassemble 真实执行自动化
 5. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
@@ -669,7 +669,7 @@ Seedance prompts
 seedance-audio/mix real runner hardening
   -> seedance-title-cards/render real/mock success
   -> seedance-final/assemble real runner hardening
-  -> seedance_review_ledger retry/final reassemble automation
+  -> seedance_review_ledger retry submit/final reassemble execution
 ```
 
 原因：
