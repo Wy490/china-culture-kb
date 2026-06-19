@@ -11,7 +11,7 @@
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
 | Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
-| AI 漫剧系列生产链 | 约 76% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、重试执行计划、本地重试提交、系列 provider 超时恢复、外部剪辑平台包和生产总览 dashboard 首版已有；下一步是真实混音、真实片头片尾渲染和真实最终装配。 |
+| AI 漫剧系列生产链 | 约 77% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、重试执行计划、本地重试提交、retry submit adapter、系列 provider 超时恢复、外部剪辑平台包和生产总览 dashboard 首版已有；下一步是真实混音、真实片头片尾渲染和真实最终装配。 |
 | 可商用制作中台 | 约 50% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、真实混音执行/最终成片、审片返修联动深化和稳定压测。 |
 
 ## 2. 本轮完成内容
@@ -162,11 +162,13 @@
   - 未解决 shot 审片意见会进入 Seedance 重试包；未解决 final reassemble 审片意见会阻断 strict final delivery dry-run。
   - 新增 `ai-comic-series-seedance-retry-execution-plan/v1`，把重试包进一步拆成可直接提交、需人工处理和缺提示词镜头。
   - 新增 `ai-comic-series-seedance-retry-submit-result/v1`，可把执行计划里可提交候选写回生产账本为 submitted，并生成本地 provider job id。
+  - `seedance-retry/submit` 已支持 `use_provider_adapter=true`，读取 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT`、submit auth env、HMAC 签名 env 和 `SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE`，把审片返修候选提交给外部 worker。
+  - retry submit adapter 支持 batch / per_shot 请求、`production_id` 优先匹配、常见 `results/items/tasks/submitted_shots` 响应形态、provider queue 元数据和 `submitted/processing/failed` 归一化；仅回写 provider 接受的镜头，失败项返回 `provider_failures`。
   - 新增 `ai-comic-series-seedance-provider-recovery-result/v1`，支持 dry-run 扫描 submitted/processing 超时镜头，并可标记 failed。
   - final reassemble 审片意见默认仍会阻断 strict final delivery；显式执行重装配并成功写出 final delivery 后，可自动解决对应 `reassemble_final` 审片项。
   - dashboard 聚合 open/blocking 审片数，并把未解决审片意见纳入 blocker / next action。
   - 系列工作台最终交付区新增审片返修轻量录入、open 列表、标记解决和返修包导出。
-  - 服务测试覆盖 review ledger、retry candidate、final reassemble blocker、final reassemble 自动解决、review retry package、retry execution plan、retry submit、provider recovery 和 strict final guard；API 测试覆盖 review / retry execution / retry submit / provider recovery 路由校验和缺失项目响应。
+  - 服务测试覆盖 review ledger、retry candidate、final reassemble blocker、final reassemble 自动解决、review retry package、retry execution plan、本地 retry submit、retry submit adapter、provider recovery 和 strict final guard；API 测试覆盖 review / retry execution / retry submit / provider recovery 路由校验和缺失项目响应。
 
 ### 文档同步
 
@@ -181,19 +183,21 @@
 cd web/client && npm run lint
 cd web/server && npm run lint
 cd web/server && npm test -- src/__tests__/project-service.test.ts
-cd web/server && npm test -- src/__tests__/api.test.ts
-cd web/server && npm test
+cd web/server && npm test -- --run src/__tests__/outline-service.test.ts
+cd web/server && npm test -- --run src/__tests__/api.test.ts
+cd web/server && npm test -- --fileParallelism=false
+cd web && npm run build -w server
 git diff --check
 ```
 最近一次结果：
 
 - `web/client`：lint passed。
 - `web/client`：build passed。
-- `web/server`：lint passed；`project-service.test.ts` 36 passed，`api.test.ts` 103 passed；全量 24 files / 260 tests passed。
+- `web/server`：lint passed；`outline-service.test.ts` 14 passed，`api.test.ts` 112 passed；串行全量 24 files / 269 tests passed；server build passed。
 - `web/client`：lint passed；ProjectDetail provider overview API smoke 通过，提交 5 条 provider 任务后 overview 返回 5 个总镜头 / 5 个活跃 / 5 个注意项。
 - `git diff --check`：passed。
 
-注意：`web/server` 的 API 测试会启动本地 HTTP server，在沙箱中可能触发 `listen EPERM 0.0.0.0`，需要允许非沙箱运行。
+注意：`web/server` 的 API 测试会启动本地 HTTP server，在沙箱中可能触发 `listen EPERM 0.0.0.0`，需要允许非沙箱运行；全量默认并行跑可能因测试共享临时根出现隔离波动，串行模式已通过。
 
 ## 4. 当前工作区提醒
 
@@ -259,8 +263,7 @@ SeedanceProviderAdapter
 下一块建议做：
 
 ```text
-seedance_review_ledger retry submit adapter
-  -> seedance-audio/mix real ffmpeg and multi-episode hardening
+seedance-audio/mix real ffmpeg and multi-episode hardening
   -> seedance-title-cards/render real ffmpeg and visual template regression
   -> seedance-final/assemble real ffmpeg and precise title-card timeline
 ```

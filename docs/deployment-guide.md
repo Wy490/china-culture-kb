@@ -56,7 +56,7 @@ npm run start          # node dist/index.js
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `SEEDANCE_CALLBACK_SECRET` | 空 | 配置后，Seedance 生产回调必须携带 `x-seedance-callback-secret` 或 `Authorization: Bearer <secret>` |
-| `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` | 空 | 单故事 Seedance provider submit worker 地址 |
+| `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` | 空 | 单故事 Seedance provider submit worker 地址；也用于 AI 漫剧系列 retry submit adapter |
 | `SEEDANCE_PROVIDER_POLL_ENDPOINT` | 空 | 单故事 Seedance provider poll/query worker 地址 |
 | `SEEDANCE_PROVIDER_CALLBACK_BASE_URL` | 空 | 外部 worker 可访问的 API 基址；配置后 submit payload 会附带 `provider_callback_url` / `provider_poll_url`，未配置时回落到 `GEARS_CALLBACK_BASE_URL` / `PUBLIC_API_BASE_URL` / `APP_BASE_URL` |
 | `SEEDANCE_PROVIDER_SUBMIT_API_TOKEN` | 空 | submit worker 专用 token；未配置时回落到 `SEEDANCE_PROVIDER_API_TOKEN` |

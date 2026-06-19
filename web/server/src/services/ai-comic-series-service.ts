@@ -1,6 +1,7 @@
 // web/server/src/services/ai-comic-series-service.ts — AI comic series planning
 
 import { execFile } from 'node:child_process';
+import { createHmac } from 'node:crypto';
 import { promisify } from 'node:util';
 import { dirname, resolve } from 'node:path';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
@@ -162,7 +163,10 @@ import type {
   KnowledgeNeed,
   KnowledgePack,
   NarrativePatternId,
+  SeedanceProviderSubmitRequestMode,
   SeedancePromptShotUnit,
+  SeedanceShotProviderSubmitAdapterSummary,
+  SeedanceShotProviderSubmitFailure,
   StoryDetectedCharacter,
   StoryGenerateResult,
   SupportedDuration,
@@ -191,6 +195,18 @@ const PHASE_TEMPLATES = [
 ];
 
 type StoredAiComicSeriesProject = AiComicSeriesProjectDetail;
+type AiComicSeriesRetrySubmitCandidate = {
+  candidate: AiComicSeedanceRetryExecutionCandidate;
+  local_provider_job_id: string;
+  queue_position: number;
+};
+type AiComicSeriesRetrySubmitAcceptedItem = {
+  candidate: AiComicSeedanceRetryExecutionCandidate;
+  provider_job_id: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
+  status: Extract<AiComicSeedanceProductionStatus, 'submitted' | 'processing'>;
+};
 type FfmpegThumbnailRunner = (params: {
   ffmpegPath: string;
   videoUrl: string;
@@ -1102,28 +1118,62 @@ function buildAiComicSeriesSeedanceRetryExecutionMarkdown(
 function buildAiComicSeriesSeedanceRetrySubmitMarkdown(
   result: Omit<AiComicSeriesSeedanceRetrySubmitResult, 'markdown'>,
 ): string {
-  return [
+  const lines = [
     `# ${result.series_title} — Seedance 重试提交结果`,
     '',
     `> schema: ${result.schema_version}`,
     `> seriesProjectId: ${result.project.series_project_id}`,
     `> submittedAt: ${result.submitted_at}`,
     `> submittedCount: ${result.submitted_count}`,
+    `> failedCount: ${result.failed_count ?? 0}`,
     `> skippedBlocked: ${result.skipped_blocked_count}`,
     `> skippedDueToLimit: ${result.skipped_due_to_limit_count}`,
+  ];
+  if (result.provider_adapter) {
+    lines.push(
+      '',
+      '## Provider Adapter',
+      ...markdownTable(
+        ['模式', '请求数', '接受数', '失败数'],
+        [[
+          result.provider_adapter.request_mode,
+          String(result.provider_adapter.requested_count),
+          String(result.provider_adapter.accepted_count),
+          String(result.provider_adapter.failed_count),
+        ]],
+      ),
+    );
+  }
+  lines.push(
     '',
     '## 已提交镜头',
     ...markdownTable(
-      ['集数', '镜头', 'job', '重试次数', '原因'],
+      ['集数', '镜头', 'job', '状态', '重试次数', '原因'],
       result.submitted_shots.map(shot => [
         `第${shot.episode_no}集`,
         shot.shot_id,
         shot.provider_job_id,
+        shot.status ?? 'submitted',
         String(shot.retry_count),
         shot.retry_reason === 'review_required' ? '审片返修' : '生产状态',
       ]),
     ),
-  ].join('\n');
+  );
+  if (result.provider_failures?.length) {
+    lines.push(
+      '',
+      '## Provider 失败项',
+      ...markdownTable(
+        ['序号', '镜头', '原因'],
+        result.provider_failures.map(failure => [
+          String(failure.index + 1),
+          failure.shot_id ?? '-',
+          failure.message,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
 }
 
 function buildAiComicSeriesSeedanceProviderRecoveryMarkdown(
@@ -3424,6 +3474,7 @@ export async function submitAiComicSeriesSeedanceRetryExecutionPlan(
       submitted_count: 0,
       skipped_blocked_count: executionPlan.blocked_count,
       skipped_due_to_limit_count: 0,
+      failed_count: 0,
       submitted_shots: [],
     };
     return success({
@@ -3433,54 +3484,101 @@ export async function submitAiComicSeriesSeedanceRetryExecutionPlan(
   }
 
   const jobPrefix = slugifyConstraintKey(request.job_prefix?.trim() || `series-retry-${seriesProjectId}`).slice(0, 60);
-  const jobsByProductionId = new Map(selectedCandidates.map((candidate, index) => [
-    candidate.production_id,
-    seedanceRetrySubmitProviderJobId(jobPrefix, candidate, index, submittedAt),
-  ]));
-  const updateRes = await updateAiComicSeriesSeedanceProductionStatuses(seriesProjectId, {
-    updates: selectedCandidates.map(candidate => ({
-      episode_no: candidate.episode_no,
-      shot_id: candidate.shot_id,
-      status: 'submitted',
-      provider_job_id: jobsByProductionId.get(candidate.production_id)!,
-      increment_retry: candidate.status !== 'not_started' && candidate.status !== 'prompt_exported',
-      note: request.note ?? `Seedance 重试执行计划提交：${candidate.suggested_action}`,
-    })),
-  });
-  if (!updateRes.ok || !updateRes.data) {
-    return fail(
-      normalizeErrorCode(updateRes.error?.code),
-      updateRes.error?.message ?? 'Submit Seedance retry execution plan failed',
-      updateRes.error?.details,
-    );
+  const retrySubmitCandidates: AiComicSeriesRetrySubmitCandidate[] = selectedCandidates.map((candidate, index) => ({
+    candidate,
+    local_provider_job_id: seedanceRetrySubmitProviderJobId(jobPrefix, candidate, index, submittedAt),
+    queue_position: index + 1,
+  }));
+  let providerAdapterSummary: SeedanceShotProviderSubmitAdapterSummary | undefined;
+  let providerFailures: SeedanceShotProviderSubmitFailure[] = [];
+  let acceptedSubmissions: AiComicSeriesRetrySubmitAcceptedItem[] = retrySubmitCandidates.map(item => ({
+    candidate: item.candidate,
+    provider_job_id: item.local_provider_job_id,
+    provider_queue_position: item.queue_position,
+    status: 'submitted',
+  }));
+
+  if (request.use_provider_adapter) {
+    const adapterRes = await queryAiComicSeriesSeedanceRetrySubmitAdapter({
+      seriesProjectId,
+      executionPlan,
+      submittedAt,
+      note: request.note,
+      candidates: retrySubmitCandidates,
+    });
+    if (!adapterRes.ok || !adapterRes.data) {
+      return fail(
+        adapterRes.error?.code === ErrorCodes.VALIDATION_ERROR
+          ? ErrorCodes.VALIDATION_ERROR
+          : ErrorCodes.INTERNAL_ERROR,
+        adapterRes.error?.message ?? 'Seedance provider submit adapter failed',
+        adapterRes.error?.details,
+      );
+    }
+    acceptedSubmissions = adapterRes.data.accepted;
+    providerFailures = adapterRes.data.failures;
+    providerAdapterSummary = adapterRes.data.summary;
   }
 
-  const updatedItemsByProductionId = new Map(
-    (updateRes.data.seedance_production?.items ?? []).map(item => [item.production_id, item]),
-  );
-  const submittedShots: AiComicSeedanceRetrySubmitShot[] = selectedCandidates.map(candidate => {
-    const updated = updatedItemsByProductionId.get(candidate.production_id);
+  let resultProject = executionPlan.project;
+  let resultSeriesTitle = executionPlan.series_title;
+  let seedanceProduction: AiComicSeedanceProductionLedger | undefined;
+  const updatedItemsByProductionId = new Map<string, AiComicSeedanceShotProductionItem>();
+  if (acceptedSubmissions.length > 0) {
+    const updateRes = await updateAiComicSeriesSeedanceProductionStatuses(seriesProjectId, {
+      updates: acceptedSubmissions.map(accepted => ({
+        episode_no: accepted.candidate.episode_no,
+        shot_id: accepted.candidate.shot_id,
+        status: accepted.status,
+        provider_job_id: accepted.provider_job_id,
+        increment_retry: accepted.candidate.status !== 'not_started' && accepted.candidate.status !== 'prompt_exported',
+        note: request.note ?? `Seedance 重试执行计划提交：${accepted.candidate.suggested_action}`,
+      })),
+    });
+    if (!updateRes.ok || !updateRes.data) {
+      return fail(
+        normalizeErrorCode(updateRes.error?.code),
+        updateRes.error?.message ?? 'Submit Seedance retry execution plan failed',
+        updateRes.error?.details,
+      );
+    }
+    resultProject = updateRes.data.project;
+    resultSeriesTitle = updateRes.data.plan.series_title;
+    seedanceProduction = updateRes.data.seedance_production;
+    for (const item of updateRes.data.seedance_production?.items ?? []) {
+      updatedItemsByProductionId.set(item.production_id, item);
+    }
+  }
+
+  const submittedShots: AiComicSeedanceRetrySubmitShot[] = acceptedSubmissions.map(accepted => {
+    const updated = updatedItemsByProductionId.get(accepted.candidate.production_id);
     return {
-      production_id: candidate.production_id,
-      episode_no: candidate.episode_no,
-      shot_id: candidate.shot_id,
-      provider_job_id: jobsByProductionId.get(candidate.production_id)!,
-      retry_count: updated?.retry_count ?? candidate.retry_count,
-      retry_reason: candidate.retry_reason,
+      production_id: accepted.candidate.production_id,
+      episode_no: accepted.candidate.episode_no,
+      shot_id: accepted.candidate.shot_id,
+      provider_job_id: accepted.provider_job_id,
+      provider_queue_id: accepted.provider_queue_id,
+      provider_queue_position: accepted.provider_queue_position,
+      status: accepted.status,
+      retry_count: updated?.retry_count ?? accepted.candidate.retry_count,
+      retry_reason: accepted.candidate.retry_reason,
     };
   });
   const result: Omit<AiComicSeriesSeedanceRetrySubmitResult, 'markdown'> = {
     schema_version: 'ai-comic-series-seedance-retry-submit-result/v1',
-    project: updateRes.data.project,
-    series_title: updateRes.data.plan.series_title,
+    project: resultProject,
+    series_title: resultSeriesTitle,
     submitted_at: submittedAt,
     retry_execution_plan: executionPlan,
     selected_shot_ids: selectedCandidates.map(candidate => candidate.shot_id),
     submitted_count: submittedShots.length,
     skipped_blocked_count: executionPlan.blocked_count,
     skipped_due_to_limit_count: Math.max(0, allSubmitCandidates.length - selectedCandidates.length),
+    failed_count: providerFailures.length,
+    provider_adapter: providerAdapterSummary,
+    provider_failures: providerFailures.length > 0 ? providerFailures : undefined,
     submitted_shots: submittedShots,
-    seedance_production: updateRes.data.seedance_production,
+    seedance_production: seedanceProduction,
   };
   return success({
     ...result,
@@ -9011,6 +9109,605 @@ function seedanceRetrySubmitProviderJobId(
 ): string {
   const timestamp = submittedAt.replace(/\D/g, '').slice(0, 14);
   return `${jobPrefix}-${candidate.production_id}-${index + 1}-${timestamp}`.slice(0, 120);
+}
+
+function configuredAiComicSeriesSeedanceProviderSubmitEndpoint(): string | undefined {
+  const endpoint = process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT?.trim();
+  return endpoint || undefined;
+}
+
+function aiComicSeriesSeedanceProviderSubmitRequestMode(): SeedanceProviderSubmitRequestMode {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE?.trim().toLowerCase() === 'per_shot'
+    ? 'per_shot'
+    : 'batch';
+}
+
+function aiComicSeriesSeedanceProviderSubmitTimeoutMs(): number {
+  const parsed = Number(process.env.SEEDANCE_PROVIDER_SUBMIT_TIMEOUT_MS);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 30000;
+  return Math.min(parsed, 60000);
+}
+
+function aiComicSeriesSeedanceProviderAdapterAuthHeader(): string {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER?.trim()
+    || process.env.SEEDANCE_PROVIDER_AUTH_HEADER?.trim()
+    || 'authorization';
+}
+
+function aiComicSeriesSeedanceProviderAdapterAuthScheme(): string {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME?.trim()
+    || process.env.SEEDANCE_PROVIDER_AUTH_SCHEME?.trim()
+    || 'Bearer';
+}
+
+function aiComicSeriesSeedanceProviderAdapterToken(): string | undefined {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN?.trim()
+    || process.env.SEEDANCE_PROVIDER_API_TOKEN?.trim()
+    || undefined;
+}
+
+function aiComicSeriesSeedanceProviderAdapterAuthValue(token: string, scheme: string): string {
+  const normalized = scheme.trim();
+  if (!normalized || ['raw', 'none', 'no_scheme'].includes(normalized.toLowerCase())) return token;
+  return `${normalized} ${token}`;
+}
+
+function applyAiComicSeriesSeedanceProviderAdapterAuthHeader(headers: Record<string, string>): void {
+  const token = aiComicSeriesSeedanceProviderAdapterToken();
+  if (!token) return;
+  headers[aiComicSeriesSeedanceProviderAdapterAuthHeader()] = aiComicSeriesSeedanceProviderAdapterAuthValue(
+    token,
+    aiComicSeriesSeedanceProviderAdapterAuthScheme(),
+  );
+}
+
+function aiComicSeriesSeedanceProviderAdapterSignatureSecret(): string | undefined {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET?.trim()
+    || process.env.SEEDANCE_PROVIDER_SIGNATURE_SECRET?.trim()
+    || undefined;
+}
+
+function aiComicSeriesSeedanceProviderAdapterSignatureHeader(): string {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_HEADER?.trim()
+    || process.env.SEEDANCE_PROVIDER_SIGNATURE_HEADER?.trim()
+    || 'X-Seedance-Signature';
+}
+
+function aiComicSeriesSeedanceProviderAdapterTimestampHeader(): string {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_TIMESTAMP_HEADER?.trim()
+    || process.env.SEEDANCE_PROVIDER_TIMESTAMP_HEADER?.trim()
+    || 'X-Seedance-Timestamp';
+}
+
+function aiComicSeriesSeedanceProviderAdapterSignatureAlgorithm(): string {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_ALGORITHM?.trim()
+    || process.env.SEEDANCE_PROVIDER_SIGNATURE_ALGORITHM?.trim()
+    || 'sha256';
+}
+
+function aiComicSeriesSeedanceProviderAdapterSignaturePrefix(): string {
+  return process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_PREFIX?.trim()
+    || process.env.SEEDANCE_PROVIDER_SIGNATURE_PREFIX?.trim()
+    || 'sha256=';
+}
+
+function applyAiComicSeriesSeedanceProviderAdapterSignatureHeaders(input: {
+  headers: Record<string, string>;
+  endpoint: string;
+  bodyText: string;
+}): void {
+  const secret = aiComicSeriesSeedanceProviderAdapterSignatureSecret();
+  if (!secret) return;
+  const timestamp = new Date().toISOString();
+  const signatureBase = ['POST', input.endpoint, timestamp, input.bodyText].join('\n');
+  const digest = createHmac(aiComicSeriesSeedanceProviderAdapterSignatureAlgorithm(), secret)
+    .update(signatureBase)
+    .digest('hex');
+  input.headers[aiComicSeriesSeedanceProviderAdapterTimestampHeader()] = timestamp;
+  input.headers[aiComicSeriesSeedanceProviderAdapterSignatureHeader()] =
+    `${aiComicSeriesSeedanceProviderAdapterSignaturePrefix()}${digest}`;
+}
+
+function aiComicSeriesSeedanceProviderAdapterRequestInit(input: {
+  endpoint: string;
+  signal: AbortSignal;
+  body: unknown;
+}): RequestInit {
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  const bodyText = JSON.stringify(input.body);
+  applyAiComicSeriesSeedanceProviderAdapterAuthHeader(headers);
+  applyAiComicSeriesSeedanceProviderAdapterSignatureHeaders({
+    headers,
+    endpoint: input.endpoint,
+    bodyText,
+  });
+  return {
+    method: 'POST',
+    headers,
+    signal: input.signal,
+    body: bodyText,
+  };
+}
+
+const AI_COMIC_SERIES_SEEDANCE_PROVIDER_RESULT_ARRAY_KEYS = [
+  'submitted_shots',
+  'submittedShots',
+  'provider_results',
+  'providerResults',
+  'results',
+  'items',
+  'tasks',
+  'task_list',
+  'taskList',
+  'jobs',
+  'job_list',
+  'jobList',
+  'records',
+  'list',
+];
+
+const AI_COMIC_SERIES_SEEDANCE_PROVIDER_RESULT_CONTAINER_KEYS = [
+  'data',
+  'result',
+  'response',
+  'payload',
+  'output',
+];
+
+function aiComicSeriesSeedanceProviderArrayField(
+  record: Record<string, unknown>,
+  keys: string[],
+): unknown[] | undefined {
+  for (const key of keys) {
+    const value = record[key];
+    if (Array.isArray(value)) return value;
+  }
+  return undefined;
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function aiComicSeriesSeedanceProviderLooksLikeResultRecord(record: Record<string, unknown>): boolean {
+  const error = record.error;
+  return [
+    'production_id',
+    'productionId',
+    'shot_id',
+    'shotId',
+    'external_id',
+    'externalId',
+    'custom_id',
+    'customId',
+    'provider_job_id',
+    'providerJobId',
+    'job_id',
+    'jobId',
+    'task_id',
+    'taskId',
+    'request_id',
+    'requestId',
+    'id',
+    'status',
+    'task_status',
+    'taskStatus',
+    'state',
+    'phase',
+    'code',
+    'error_code',
+    'errorCode',
+  ].some(key => record[key] !== undefined)
+    || typeof error === 'string'
+    || isObjectRecord(error);
+}
+
+function aiComicSeriesSeedanceProviderResultArray(payload: unknown): unknown[] | undefined {
+  if (Array.isArray(payload)) return payload;
+  if (!isObjectRecord(payload)) return undefined;
+  const direct = aiComicSeriesSeedanceProviderArrayField(
+    payload,
+    AI_COMIC_SERIES_SEEDANCE_PROVIDER_RESULT_ARRAY_KEYS,
+  );
+  if (direct) return direct;
+  for (const key of AI_COMIC_SERIES_SEEDANCE_PROVIDER_RESULT_CONTAINER_KEYS) {
+    const nested = payload[key];
+    if (Array.isArray(nested)) return nested;
+    if (isObjectRecord(nested)) {
+      const nestedArray = aiComicSeriesSeedanceProviderArrayField(
+        nested,
+        AI_COMIC_SERIES_SEEDANCE_PROVIDER_RESULT_ARRAY_KEYS,
+      );
+      if (nestedArray) return nestedArray;
+      if (aiComicSeriesSeedanceProviderLooksLikeResultRecord(nested)) return [nested];
+    }
+  }
+  if (aiComicSeriesSeedanceProviderLooksLikeResultRecord(payload)) return [payload];
+  return undefined;
+}
+
+function aiComicSeriesSeedanceProviderStringField(value: unknown): string | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return callbackStringField(value);
+}
+
+function aiComicSeriesSeedanceProviderNumberField(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function aiComicSeriesSeedanceProviderResultProductionId(item: Record<string, unknown>): string | undefined {
+  return callbackStringField(item.production_id ?? item.productionId);
+}
+
+function aiComicSeriesSeedanceProviderResultShotId(item: Record<string, unknown>): string | undefined {
+  return callbackStringField(
+    item.shot_id
+      ?? item.shotId
+      ?? item.external_id
+      ?? item.externalId
+      ?? item.custom_id
+      ?? item.customId,
+  );
+}
+
+function aiComicSeriesSeedanceProviderResultStatus(item: Record<string, unknown>): string | undefined {
+  return aiComicSeriesSeedanceProviderStringField(
+    item.status ?? item.task_status ?? item.taskStatus ?? item.state ?? item.phase,
+  );
+}
+
+function aiComicSeriesSeedanceProviderResultJobId(item: Record<string, unknown>): string | undefined {
+  return aiComicSeriesSeedanceProviderStringField(
+    item.provider_job_id
+      ?? item.providerJobId
+      ?? item.job_id
+      ?? item.jobId
+      ?? item.task_id
+      ?? item.taskId
+      ?? item.request_id
+      ?? item.requestId
+      ?? item.id,
+  );
+}
+
+function aiComicSeriesSeedanceProviderResultQueueId(item: Record<string, unknown>): string | undefined {
+  return aiComicSeriesSeedanceProviderStringField(
+    item.provider_queue_id
+      ?? item.providerQueueId
+      ?? item.queue_id
+      ?? item.queueId
+      ?? item.batch_id
+      ?? item.batchId,
+  );
+}
+
+function aiComicSeriesSeedanceProviderResultQueuePosition(item: Record<string, unknown>): number | undefined {
+  return aiComicSeriesSeedanceProviderNumberField(
+    item.provider_queue_position
+      ?? item.providerQueuePosition
+      ?? item.queue_position
+      ?? item.queuePosition
+      ?? item.position,
+  );
+}
+
+function aiComicSeriesSeedanceProviderResultMessage(item: Record<string, unknown>): string | undefined {
+  const error = item.error;
+  return callbackStringField(
+    item.failure_reason
+      ?? item.failureReason
+      ?? item.error_message
+      ?? item.errorMessage
+      ?? item.reason
+      ?? item.message
+      ?? item.msg
+      ?? (typeof error === 'string' ? error : undefined)
+      ?? (isObjectRecord(error) ? error.message ?? error.msg ?? error.reason ?? error.detail : undefined),
+  );
+}
+
+function normalizeAiComicSeriesSeedanceProviderSubmitAdapterStatus(
+  value: unknown,
+): Extract<AiComicSeedanceProductionStatus, 'submitted' | 'processing'> | 'failed' {
+  if (typeof value !== 'string') return 'submitted';
+  const normalized = value.trim().toLowerCase();
+  if (['processing', 'running', 'in_progress', 'in-progress', 'generating'].includes(normalized)) return 'processing';
+  if (['failed', 'failure', 'error', 'rejected', 'blocked', 'cancelled', 'canceled'].includes(normalized)) {
+    return 'failed';
+  }
+  return 'submitted';
+}
+
+function aiComicSeriesRetrySubmitCandidateByShotId(
+  candidates: AiComicSeriesRetrySubmitCandidate[],
+  shotId: string,
+): AiComicSeriesRetrySubmitCandidate | 'ambiguous' | undefined {
+  const matches = candidates.filter(item => item.candidate.shot_id === shotId);
+  if (matches.length === 1) return matches[0];
+  if (matches.length > 1) return 'ambiguous';
+  return undefined;
+}
+
+function normalizeAiComicSeriesSeedanceProviderSubmitAdapterResults(input: {
+  payload: unknown;
+  candidates: AiComicSeriesRetrySubmitCandidate[];
+  requestMode: SeedanceProviderSubmitRequestMode;
+}): {
+  accepted: AiComicSeriesRetrySubmitAcceptedItem[];
+  failures: SeedanceShotProviderSubmitFailure[];
+  summary: SeedanceShotProviderSubmitAdapterSummary;
+} | string {
+  if (isObjectRecord(input.payload) && input.payload.ok === false) {
+    const error = isObjectRecord(input.payload.error) ? input.payload.error.message : undefined;
+    return typeof error === 'string' && error.trim()
+      ? `Seedance provider submit adapter failed: ${error.trim()}`
+      : 'Seedance provider submit adapter returned ok=false';
+  }
+  const rawResults = aiComicSeriesSeedanceProviderResultArray(input.payload);
+  if (!rawResults) {
+    return 'Seedance provider submit adapter response must be an array or include submitted_shots/provider_results/results/items/tasks/data.tasks';
+  }
+
+  const candidatesByProductionId = new Map(input.candidates.map(item => [item.candidate.production_id, item]));
+  const accepted: AiComicSeriesRetrySubmitAcceptedItem[] = [];
+  const failures: SeedanceShotProviderSubmitFailure[] = [];
+  const seenProductionIds = new Set<string>();
+  for (const [index, item] of rawResults.entries()) {
+    if (!isObjectRecord(item)) {
+      return `Seedance provider submit adapter result #${index + 1} must be an object`;
+    }
+    const productionId = aiComicSeriesSeedanceProviderResultProductionId(item)
+      ?? (rawResults.length === 1 && input.candidates.length === 1
+        ? input.candidates[0].candidate.production_id
+        : undefined);
+    const shotId = aiComicSeriesSeedanceProviderResultShotId(item);
+    let candidateRef = productionId ? candidatesByProductionId.get(productionId) : undefined;
+    if (!candidateRef && shotId) {
+      const byShotId = aiComicSeriesRetrySubmitCandidateByShotId(input.candidates, shotId);
+      if (byShotId === 'ambiguous') {
+        failures.push({
+          index,
+          shot_id: shotId,
+          message: `Seedance provider submit adapter returned ambiguous shot_id "${shotId}"; include production_id`,
+        });
+        continue;
+      }
+      candidateRef = byShotId;
+    }
+    if (!candidateRef) {
+      failures.push({
+        index,
+        shot_id: shotId ?? productionId,
+        message: `Seedance provider submit adapter returned unknown shot "${shotId ?? productionId ?? 'unknown'}"`,
+      });
+      continue;
+    }
+    seenProductionIds.add(candidateRef.candidate.production_id);
+    const status = normalizeAiComicSeriesSeedanceProviderSubmitAdapterStatus(
+      aiComicSeriesSeedanceProviderResultStatus(item),
+    );
+    const message = aiComicSeriesSeedanceProviderResultMessage(item);
+    if (status === 'failed') {
+      failures.push({
+        index: candidateRef.queue_position - 1,
+        shot_id: candidateRef.candidate.shot_id,
+        message: message ?? 'Seedance provider submit adapter rejected this shot',
+      });
+      continue;
+    }
+    const providerJobId = aiComicSeriesSeedanceProviderResultJobId(item);
+    if (!providerJobId) {
+      failures.push({
+        index: candidateRef.queue_position - 1,
+        shot_id: candidateRef.candidate.shot_id,
+        message: 'Seedance provider submit adapter accepted shot without provider_job_id/job_id',
+      });
+      continue;
+    }
+    accepted.push({
+      candidate: candidateRef.candidate,
+      provider_job_id: providerJobId,
+      provider_queue_id: aiComicSeriesSeedanceProviderResultQueueId(item),
+      provider_queue_position: aiComicSeriesSeedanceProviderResultQueuePosition(item),
+      status,
+    });
+  }
+
+  input.candidates.forEach(candidateRef => {
+    if (seenProductionIds.has(candidateRef.candidate.production_id)) return;
+    failures.push({
+      index: candidateRef.queue_position - 1,
+      shot_id: candidateRef.candidate.shot_id,
+      message: 'Seedance provider submit adapter did not return this shot',
+    });
+  });
+
+  return {
+    accepted,
+    failures,
+    summary: {
+      endpoint_configured: true,
+      request_mode: input.requestMode,
+      requested_count: input.candidates.length,
+      accepted_count: accepted.length,
+      failed_count: failures.length,
+    },
+  };
+}
+
+function aiComicSeriesRetrySubmitAdapterShotPayload(
+  item: AiComicSeriesRetrySubmitCandidate,
+): Record<string, unknown> {
+  const prompt = item.candidate.prompt;
+  return {
+    production_id: item.candidate.production_id,
+    episode_no: item.candidate.episode_no,
+    episode_title: item.candidate.episode_title,
+    story_id: item.candidate.story_id,
+    shot_id: item.candidate.shot_id,
+    source_scene_id: item.candidate.source_scene_id,
+    status: item.candidate.status,
+    retry_count: item.candidate.retry_count,
+    retry_reason: item.candidate.retry_reason,
+    priority: item.candidate.priority,
+    suggested_action: item.candidate.suggested_action,
+    failure_reason: item.candidate.failure_reason,
+    previous_provider_job_id: item.candidate.provider_job_id,
+    local_provider_job_id: item.local_provider_job_id,
+    provider_queue_position: item.queue_position,
+    review_issues: item.candidate.review_issues,
+    duration_sec: prompt.duration_sec,
+    characters: prompt.characters,
+    location: prompt.location,
+    script_text: prompt.script_text,
+    visual_prompt: prompt.visual_prompt,
+    camera_suggestion: prompt.camera_suggestion,
+    continuity_notes: prompt.continuity_notes,
+    negative_constraints: prompt.negative_constraints,
+    asset_slots: prompt.asset_slots,
+    material_validation: prompt.material_validation,
+    seedance_prompt: prompt.seedance_prompt,
+  };
+}
+
+function aiComicSeriesRetrySubmitAdapterBasePayload(input: {
+  seriesProjectId: string;
+  executionPlan: AiComicSeriesSeedanceRetryExecutionPlan;
+  requestMode: SeedanceProviderSubmitRequestMode;
+  submittedAt: string;
+  note?: string;
+  candidates: AiComicSeriesRetrySubmitCandidate[];
+}): Record<string, unknown> {
+  return {
+    schema_version: 'ai-comic-series-seedance-retry-submit/v1',
+    request_mode: input.requestMode,
+    series_project_id: input.seriesProjectId,
+    series_title: input.executionPlan.series_title,
+    source_retry_execution_plan_exported_at: input.executionPlan.exported_at,
+    submitted_at: input.submittedAt,
+    note: input.note,
+    shots: input.candidates.map(aiComicSeriesRetrySubmitAdapterShotPayload),
+  };
+}
+
+async function queryAiComicSeriesSeedanceRetrySubmitAdapter(input: {
+  seriesProjectId: string;
+  executionPlan: AiComicSeriesSeedanceRetryExecutionPlan;
+  submittedAt: string;
+  note?: string;
+  candidates: AiComicSeriesRetrySubmitCandidate[];
+}): Promise<ApiResponse<{
+  accepted: AiComicSeriesRetrySubmitAcceptedItem[];
+  failures: SeedanceShotProviderSubmitFailure[];
+  summary: SeedanceShotProviderSubmitAdapterSummary;
+}>> {
+  const endpoint = configuredAiComicSeriesSeedanceProviderSubmitEndpoint();
+  if (!endpoint) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT is required when use_provider_adapter=true',
+    );
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), aiComicSeriesSeedanceProviderSubmitTimeoutMs());
+  try {
+    const requestMode = aiComicSeriesSeedanceProviderSubmitRequestMode();
+    const basePayload = aiComicSeriesRetrySubmitAdapterBasePayload({
+      seriesProjectId: input.seriesProjectId,
+      executionPlan: input.executionPlan,
+      requestMode,
+      submittedAt: input.submittedAt,
+      note: input.note,
+      candidates: input.candidates,
+    });
+
+    if (requestMode === 'per_shot') {
+      const accepted: AiComicSeriesRetrySubmitAcceptedItem[] = [];
+      const failures: SeedanceShotProviderSubmitFailure[] = [];
+      for (const candidate of input.candidates) {
+        const shot = aiComicSeriesRetrySubmitAdapterShotPayload(candidate);
+        const body = {
+          ...basePayload,
+          shot,
+          shots: [shot],
+        };
+        const response = await fetch(endpoint, aiComicSeriesSeedanceProviderAdapterRequestInit({
+          endpoint,
+          signal: controller.signal,
+          body,
+        }));
+        const text = await response.text();
+        if (!response.ok) {
+          failures.push({
+            index: candidate.queue_position - 1,
+            shot_id: candidate.candidate.shot_id,
+            message: `Seedance provider submit adapter returned HTTP ${response.status}: ${text.slice(0, 200)}`,
+          });
+          continue;
+        }
+        const payload = text.trim() ? JSON.parse(text) as unknown : [];
+        const normalized = normalizeAiComicSeriesSeedanceProviderSubmitAdapterResults({
+          payload,
+          candidates: [candidate],
+          requestMode,
+        });
+        if (typeof normalized === 'string') {
+          failures.push({
+            index: candidate.queue_position - 1,
+            shot_id: candidate.candidate.shot_id,
+            message: normalized,
+          });
+          continue;
+        }
+        accepted.push(...normalized.accepted);
+        failures.push(...normalized.failures);
+      }
+      return success({
+        accepted,
+        failures,
+        summary: {
+          endpoint_configured: true,
+          request_mode: requestMode,
+          requested_count: input.candidates.length,
+          accepted_count: accepted.length,
+          failed_count: failures.length,
+        },
+      });
+    }
+
+    const response = await fetch(endpoint, aiComicSeriesSeedanceProviderAdapterRequestInit({
+      endpoint,
+      signal: controller.signal,
+      body: basePayload,
+    }));
+    const text = await response.text();
+    if (!response.ok) {
+      return fail(
+        ErrorCodes.INTERNAL_ERROR,
+        `Seedance provider submit adapter returned HTTP ${response.status}`,
+        { status: response.status, body: text.slice(0, 500) },
+      );
+    }
+    const payload = text.trim() ? JSON.parse(text) as unknown : [];
+    const normalized = normalizeAiComicSeriesSeedanceProviderSubmitAdapterResults({
+      payload,
+      candidates: input.candidates,
+      requestMode,
+    });
+    if (typeof normalized === 'string') {
+      return fail(ErrorCodes.VALIDATION_ERROR, normalized);
+    }
+    return success(normalized);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    return fail(ErrorCodes.INTERNAL_ERROR, `Seedance provider submit adapter request failed: ${message}`);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function seedanceProviderRecoveryItem(

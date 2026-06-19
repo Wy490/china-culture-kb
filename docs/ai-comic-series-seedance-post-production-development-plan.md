@@ -558,7 +558,7 @@ Seedance prompts
 
 ## 13. 阶段九：审片与返修闭环
 
-当前状态：review ledger、返修包导出、dashboard blocker、工作台轻量录入、审片驱动重试包、重试执行计划、本地重试提交、系列 provider 超时恢复、strict final guard 和 final reassemble 执行闭环首版已完成；后续继续深化版本对比面板标注和 retry submit adapter。
+当前状态：review ledger、返修包导出、dashboard blocker、工作台轻量录入、审片驱动重试包、重试执行计划、本地重试提交、retry submit adapter、系列 provider 超时恢复、strict final guard 和 final reassemble 执行闭环首版已完成；后续继续深化版本对比面板标注和真实执行增强。
 
 ### 目标
 
@@ -584,7 +584,7 @@ Seedance prompts
   - 导出返修包
   - 根据评审意见生成重试包或重装配计划
   - 导出重试执行计划，区分可直接提交、需人工处理和缺提示词镜头
-  - 提交重试执行计划，将可提交候选写回生产账本为 submitted
+  - 提交重试执行计划，可本地写回 submitted，也可通过 provider adapter 调用外部 worker 后按真实 job/status 回写
   - 扫描 submitted/processing 超时镜头，并可标记为 failed
   - 最终重装配成功后可自动解决 reassemble_final 审片意见
 - 返修类型：
@@ -608,6 +608,7 @@ Seedance prompts
 - `web/server/src/services/ai-comic-series-service.ts` 已新增审片意见、解决审片意见和导出审片返修包服务，并把 open review 计入 dashboard status / blocker / next action。
 - `web/server/src/services/ai-comic-series-service.ts` 已新增 Seedance 重试执行计划导出，复用重试包并输出可提交/阻断候选。
 - `web/server/src/services/ai-comic-series-service.ts` 已新增 Seedance 重试提交服务，生成本地 provider job id 并复用批量生产账本更新。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增系列 retry submit adapter：`use_provider_adapter=true` 时读取 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT`，支持 batch/per_shot、submit auth env、HMAC 签名 env、provider response 归一化、queue 元数据和部分失败返回。
 - `web/server/src/services/ai-comic-series-service.ts` 已新增 Seedance provider 超时恢复服务，支持 dry-run 和 mark failed。
 - `web/server/src/services/ai-comic-series-service.ts` 已新增 final reassemble 执行闭环：strict 默认仍阻断未解决 final reassemble 审片，显式执行成功后可自动解决对应审片意见。
 - `web/server/src/routes/outline.ts` 已新增 `seedance-reviews`、`seedance-reviews/resolve`、`export-seedance-review-repair-package`、`export-seedance-retry-execution-plan`、`seedance-retry/submit` 和 `seedance-provider/recover-timeouts` 路由。
@@ -621,7 +622,7 @@ Seedance prompts
 
 实现状态：
 
-- 服务测试覆盖新增 final/shot 审片意见、final reassemble 执行后自动解决、返修包导出、retry candidate 计数、retry execution plan、retry submit、provider recovery 和 final reassemble dashboard blocker。
+- 服务测试覆盖新增 final/shot 审片意见、final reassemble 执行后自动解决、返修包导出、retry candidate 计数、retry execution plan、本地 retry submit、retry submit adapter、provider recovery 和 final reassemble dashboard blocker。
 - API 测试覆盖 review add/resolve/export、retry execution plan、retry submit、provider recovery 路由校验和缺失项目响应。
 
 ### 验收标准
@@ -664,19 +665,17 @@ Seedance prompts
 
 推荐按以下顺序继续：
 
-1. `seedance_review_ledger` 到 retry submit adapter
-2. `seedance-audio/mix` 真实 ffmpeg 专项和多分集边界增强
-3. `seedance-title-cards/render` 真实 ffmpeg / 视觉模板回归
-4. `seedance-final/assemble` 真实 ffmpeg 专项和精确片头片尾时间线
-5. 30 集压测和性能优化
+1. `seedance-audio/mix` 真实 ffmpeg 专项和多分集边界增强
+2. `seedance-title-cards/render` 真实 ffmpeg / 视觉模板回归
+3. `seedance-final/assemble` 真实 ffmpeg 专项和精确片头片尾时间线
+4. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
 
 下一步建议优先实现：
 
 ```text
-seedance_review_ledger retry submit adapter
-  -> seedance-audio/mix real ffmpeg and multi-episode hardening
+seedance-audio/mix real ffmpeg and multi-episode hardening
   -> seedance-title-cards/render real ffmpeg and visual template regression
   -> seedance-final/assemble real ffmpeg and precise title-card timeline
 ```

@@ -1695,6 +1695,104 @@ describe('outline-service', () => {
     });
     expect(recoveryApplyRes.data?.markdown).toContain('Seedance 超时恢复');
 
+    const providerEnvKeys = [
+      'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT',
+      'SEEDANCE_PROVIDER_SUBMIT_API_TOKEN',
+      'SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER',
+      'SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME',
+      'SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE',
+      'SEEDANCE_PROVIDER_SIGNATURE_SECRET',
+      'SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET',
+      'SEEDANCE_PROVIDER_SIGNATURE_ALGORITHM',
+      'SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_ALGORITHM',
+    ];
+    const previousProviderEnv = new Map(providerEnvKeys.map(key => [key, process.env[key]]));
+    const originalFetch = globalThis.fetch;
+    const providerFetchCalls: Array<{
+      url: string;
+      headers: Record<string, string>;
+      body: Record<string, unknown>;
+    }> = [];
+    process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = 'https://adapter.example.test/series/retry-submit';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_API_TOKEN = 'series-submit-token';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_HEADER = 'X-Series-Submit-Key';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_AUTH_SCHEME = 'Token';
+    process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = 'batch';
+    delete process.env.SEEDANCE_PROVIDER_SIGNATURE_SECRET;
+    delete process.env.SEEDANCE_PROVIDER_SUBMIT_SIGNATURE_SECRET;
+    globalThis.fetch = (async (input, init) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      const shots = body.shots as Array<Record<string, unknown>>;
+      expect(body.schema_version).toBe('ai-comic-series-seedance-retry-submit/v1');
+      expect(body.request_mode).toBe('batch');
+      expect(shots).toHaveLength(1);
+      expect(typeof shots[0].seedance_prompt).toBe('string');
+      expect(String(shots[0].seedance_prompt).length).toBeGreaterThan(0);
+      providerFetchCalls.push({
+        url: String(input),
+        headers: init?.headers as Record<string, string>,
+        body,
+      });
+      return new Response(JSON.stringify({
+        results: [
+          {
+            production_id: shots[0].production_id,
+            shot_id: shots[0].shot_id,
+            provider_job_id: 'series-adapter-job-001',
+            status: 'processing',
+            provider_queue_id: 'series-adapter-queue',
+            provider_queue_position: '7',
+          },
+        ],
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    try {
+      const retryAdapterSubmitRes = await submitAiComicSeriesSeedanceRetryExecutionPlan(
+        saveRes.data!.project.series_project_id,
+        {
+          limit: 1,
+          job_prefix: 'series-adapter-retry',
+          use_provider_adapter: true,
+          note: '服务测试 adapter 提交重试执行计划',
+        },
+      );
+      expect(retryAdapterSubmitRes.ok).toBe(true);
+      expect(providerFetchCalls).toHaveLength(1);
+      expect(providerFetchCalls[0].url).toBe('https://adapter.example.test/series/retry-submit');
+      expect(providerFetchCalls[0].headers['X-Series-Submit-Key']).toBe('Token series-submit-token');
+      expect(retryAdapterSubmitRes.data?.provider_adapter).toMatchObject({
+        request_mode: 'batch',
+        requested_count: 1,
+        accepted_count: 1,
+        failed_count: 0,
+      });
+      expect(retryAdapterSubmitRes.data?.failed_count).toBe(0);
+      expect(retryAdapterSubmitRes.data?.submitted_count).toBe(1);
+      const adapterSubmittedShot = retryAdapterSubmitRes.data?.submitted_shots[0];
+      expect(adapterSubmittedShot).toMatchObject({
+        provider_job_id: 'series-adapter-job-001',
+        provider_queue_id: 'series-adapter-queue',
+        provider_queue_position: 7,
+        status: 'processing',
+      });
+      expect(retryAdapterSubmitRes.data?.seedance_production?.items.find(item =>
+        item.production_id === adapterSubmittedShot?.production_id
+      )).toMatchObject({
+        status: 'processing',
+        provider_job_id: 'series-adapter-job-001',
+      });
+      expect(retryAdapterSubmitRes.data?.markdown).toContain('Provider Adapter');
+    } finally {
+      globalThis.fetch = originalFetch;
+      for (const [key, value] of previousProviderEnv.entries()) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+
     const editedPlan = {
       ...planRes.data!,
       episodes: planRes.data!.episodes.map(episode =>

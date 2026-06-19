@@ -3006,6 +3006,7 @@ export interface AiComicSeriesSeedanceRetryExecutionPlan {
 export interface AiComicSeedanceRetrySubmitRequest {
   limit?: number;
   job_prefix?: string;
+  use_provider_adapter?: boolean;
   note?: string;
 }
 
@@ -3014,6 +3015,9 @@ export interface AiComicSeedanceRetrySubmitShot {
   episode_no: number;
   shot_id: string;
   provider_job_id: string;
+  provider_queue_id?: string;
+  provider_queue_position?: number;
+  status?: Extract<AiComicSeedanceProductionStatus, 'submitted' | 'processing'>;
   retry_count: number;
   retry_reason: AiComicSeedanceRetryReason;
 }
@@ -3028,6 +3032,9 @@ export interface AiComicSeriesSeedanceRetrySubmitResult {
   submitted_count: number;
   skipped_blocked_count: number;
   skipped_due_to_limit_count: number;
+  failed_count?: number;
+  provider_adapter?: SeedanceShotProviderSubmitAdapterSummary;
+  provider_failures?: SeedanceShotProviderSubmitFailure[];
   submitted_shots: AiComicSeedanceRetrySubmitShot[];
   seedance_production?: AiComicSeedanceProductionLedger;
   markdown: string;

@@ -2109,7 +2109,7 @@ describe('Seedance Title Cards and Final Delivery API', () => {
   it('accepts a retry submit request before looking up the series project', async () => {
     const res = await request
       .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-retry/submit')
-      .send({ limit: 2, job_prefix: 'api-retry-test' });
+      .send({ limit: 2, job_prefix: 'api-retry-test', use_provider_adapter: true });
     expect(res.status).toBe(404);
     expectFailure(res.body, 'STORY_NOT_FOUND');
   });
