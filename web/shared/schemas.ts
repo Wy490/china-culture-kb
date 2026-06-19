@@ -1303,6 +1303,9 @@ export const AiComicSeedanceFinalDeliveryRequestSchema = z.object({
   include_audio_mix: z.boolean().optional().default(true),
   include_title_cards: z.boolean().optional().default(true),
   missing_dependency_mode: z.enum(['strict', 'tolerant']).optional().default('strict'),
+  allow_open_final_reviews: z.boolean().optional().default(false),
+  resolve_reassemble_reviews: z.boolean().optional().default(false),
+  resolved_note: z.string().trim().min(1).max(500).optional(),
   output_profile: z.enum(['mp4_h264_1080p', 'mp4_h264_720p', 'source_copy']).optional().default('mp4_h264_1080p'),
   output_filename: z.string().trim().regex(/^[0-9A-Za-z._-]+\.mp4$/).optional(),
 });

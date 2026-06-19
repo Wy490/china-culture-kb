@@ -163,9 +163,10 @@
   - 新增 `ai-comic-series-seedance-retry-execution-plan/v1`，把重试包进一步拆成可直接提交、需人工处理和缺提示词镜头。
   - 新增 `ai-comic-series-seedance-retry-submit-result/v1`，可把执行计划里可提交候选写回生产账本为 submitted，并生成本地 provider job id。
   - 新增 `ai-comic-series-seedance-provider-recovery-result/v1`，支持 dry-run 扫描 submitted/processing 超时镜头，并可标记 failed。
+  - final reassemble 审片意见默认仍会阻断 strict final delivery；显式执行重装配并成功写出 final delivery 后，可自动解决对应 `reassemble_final` 审片项。
   - dashboard 聚合 open/blocking 审片数，并把未解决审片意见纳入 blocker / next action。
   - 系列工作台最终交付区新增审片返修轻量录入、open 列表、标记解决和返修包导出。
-  - 服务测试覆盖 review ledger、retry candidate、final reassemble blocker、review retry package、retry execution plan、retry submit、provider recovery 和 strict final guard；API 测试覆盖 review / retry execution / retry submit / provider recovery 路由校验和缺失项目响应。
+  - 服务测试覆盖 review ledger、retry candidate、final reassemble blocker、final reassemble 自动解决、review retry package、retry execution plan、retry submit、provider recovery 和 strict final guard；API 测试覆盖 review / retry execution / retry submit / provider recovery 路由校验和缺失项目响应。
 
 ### 文档同步
 
@@ -258,7 +259,7 @@ SeedanceProviderAdapter
 下一块建议做：
 
 ```text
-seedance_review_ledger retry submit adapter/final reassemble execution
+seedance_review_ledger retry submit adapter
   -> seedance-audio/mix real ffmpeg and multi-episode hardening
   -> seedance-title-cards/render real ffmpeg and visual template regression
   -> seedance-final/assemble real ffmpeg and precise title-card timeline

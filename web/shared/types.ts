@@ -2481,6 +2481,9 @@ export interface AiComicSeedanceFinalDeliveryRequest {
   include_audio_mix?: boolean;
   include_title_cards?: boolean;
   missing_dependency_mode?: AiComicSeedanceMissingDependencyMode;
+  allow_open_final_reviews?: boolean;
+  resolve_reassemble_reviews?: boolean;
+  resolved_note?: string;
   output_profile?: AiComicSeedanceFinalDeliveryOutputProfile;
   output_filename?: string;
 }

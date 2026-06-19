@@ -4518,6 +4518,8 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
   const includeAudioMix = request.include_audio_mix ?? true;
   const includeTitleCards = request.include_title_cards ?? true;
   const missingDependencyMode = request.missing_dependency_mode ?? 'strict';
+  const allowOpenFinalReviews = request.allow_open_final_reviews ?? false;
+  const resolveReassembleReviews = request.resolve_reassemble_reviews ?? false;
   const outputProfile: AiComicSeedanceFinalDeliveryOutputProfile = request.output_profile ?? 'mp4_h264_1080p';
   const executedAt = new Date().toISOString();
   const dependencyStatus = resolveSeedanceFinalDependencyStatus(detail, {
@@ -4536,7 +4538,7 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     );
   }
   const reviewLedger = normalizeSeedanceReviewLedger(detail.seedance_review_ledger);
-  if (missingDependencyMode === 'strict' && reviewLedger?.final_reassemble_required) {
+  if (missingDependencyMode === 'strict' && reviewLedger?.final_reassemble_required && !allowOpenFinalReviews) {
     return fail(
       ErrorCodes.VALIDATION_ERROR,
       'Seedance final delivery has unresolved review issues requiring final reassembly',
@@ -4652,6 +4654,14 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     });
   }
 
+  const resolvedReviewLedger = status === 'assembled' && resolveReassembleReviews
+    ? resolveSeedanceFinalReassembleReviews(
+      reviewLedger,
+      executedAt,
+      request.resolved_note?.trim() || '最终重装配已执行，final delivery 已重新写出。',
+    )
+    : reviewLedger;
+
   const deliveryLedger: AiComicSeedanceFinalDeliveryLedger = {
     schema_version: 'ai-comic-seedance-final-delivery-ledger/v1',
     updated_at: executedAt,
@@ -4681,6 +4691,7 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
       updated_at: executedAt,
     },
     seedance_final_delivery: deliveryLedger,
+    seedance_review_ledger: resolvedReviewLedger,
   };
   await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
 
@@ -6272,6 +6283,25 @@ function summarizeSeedanceReviewLedger(
     final_reassemble_required: openItems.some(item => item.repair_action === 'reassemble_final'),
     items,
   };
+}
+
+function resolveSeedanceFinalReassembleReviews(
+  ledger: AiComicSeedanceReviewLedger | undefined,
+  resolvedAt: string,
+  resolvedNote: string,
+): AiComicSeedanceReviewLedger | undefined {
+  if (!ledger) return ledger;
+  const updatedItems = ledger.items.map(item =>
+    seedanceReviewItemOpen(item) && item.repair_action === 'reassemble_final'
+      ? {
+          ...item,
+          status: 'resolved' as const,
+          resolved_at: resolvedAt,
+          resolved_note: resolvedNote,
+        }
+      : item
+  );
+  return summarizeSeedanceReviewLedger(updatedItems, resolvedAt);
 }
 
 function seedanceReviewItemOpen(item: AiComicSeedanceReviewItem): boolean {

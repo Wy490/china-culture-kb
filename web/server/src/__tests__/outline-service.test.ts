@@ -1414,6 +1414,43 @@ describe('outline-service', () => {
     expect(blockedFinalDeliveryRes.error?.code).toBe('VALIDATION_ERROR');
     expect(blockedFinalDeliveryRes.error?.message).toContain('review');
 
+    const reviewReassembleRes = await assembleAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        include_subtitles: false,
+        include_title_cards: false,
+        missing_dependency_mode: 'strict',
+        allow_open_final_reviews: true,
+        resolve_reassemble_reviews: true,
+        resolved_note: '测试最终重装配已完成',
+        output_profile: 'mp4_h264_720p',
+        output_filename: 'review-reassemble-final.mp4',
+      },
+      {
+        runner: async params => {
+          await writeFile(params.outputPath, 'fake review reassembled final');
+        },
+      },
+    );
+    expect(reviewReassembleRes.ok).toBe(true);
+    expect(reviewReassembleRes.data?.status).toBe('assembled');
+    expect(reviewReassembleRes.data?.seedance_final_delivery).toMatchObject({
+      status: 'ready',
+      output_filename: 'review-reassemble-final.mp4',
+    });
+    const getAfterReassembleRes = await getAiComicSeriesProject(saveRes.data!.project.series_project_id);
+    expect(getAfterReassembleRes.ok).toBe(true);
+    expect(getAfterReassembleRes.data?.seedance_review_ledger?.final_reassemble_required).toBe(false);
+    expect(getAfterReassembleRes.data?.seedance_review_ledger?.open_count).toBe(0);
+    expect(getAfterReassembleRes.data?.seedance_review_ledger?.items.find(item =>
+      item.review_id === finalReviewRes.data!.review_item.review_id
+    )).toMatchObject({
+      status: 'resolved',
+      resolved_note: '测试最终重装配已完成',
+    });
+
     const shotReviewRes = await addAiComicSeriesSeedanceReview(
       saveRes.data!.project.series_project_id,
       {
@@ -1428,7 +1465,7 @@ describe('outline-service', () => {
       },
     );
     expect(shotReviewRes.ok).toBe(true);
-    expect(shotReviewRes.data?.seedance_review_ledger.open_count).toBe(2);
+    expect(shotReviewRes.data?.seedance_review_ledger.open_count).toBe(1);
 
     const reviewRetryPackageRes = await exportAiComicSeriesSeedanceRetryPackage(
       saveRes.data!.project.series_project_id,
@@ -1456,12 +1493,12 @@ describe('outline-service', () => {
     );
     expect(reviewDashboardRes.ok).toBe(true);
     expect(reviewDashboardRes.data?.summary).toMatchObject({
-      open_review_count: 2,
-      blocking_review_count: 1,
-      final_reassemble_required: true,
+      open_review_count: 1,
+      blocking_review_count: 0,
+      final_reassemble_required: false,
     });
     expect(reviewDashboardRes.data?.status_items.find(item => item.key === 'review_ledger')).toMatchObject({
-      status: 'blocked',
+      status: 'needs_action',
     });
     expect(reviewDashboardRes.data?.blockers.some(blocker => blocker.blocker_id === 'open-seedance-reviews')).toBe(true);
 
@@ -1471,10 +1508,10 @@ describe('outline-service', () => {
     expect(reviewRepairPackageRes.ok).toBe(true);
     expect(reviewRepairPackageRes.data?.schema_version).toBe('ai-comic-series-seedance-review-repair-package/v1');
     expect(reviewRepairPackageRes.data).toMatchObject({
-      open_count: 2,
-      blocking_count: 1,
+      open_count: 1,
+      blocking_count: 0,
       retry_candidate_count: 1,
-      final_reassemble_required: true,
+      final_reassemble_required: false,
     });
     expect(reviewRepairPackageRes.data?.markdown).toContain('Seedance 审片返修包');
 
