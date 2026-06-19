@@ -41,6 +41,10 @@ import type {
   AiComicSeedanceAudioMixRequest,
   AiComicSeedanceFinalDependencyStatus,
   AiComicSeedanceFinalDeliveryLedger,
+  AiComicSeedanceFinalDeliveryManifest,
+  AiComicSeedanceFinalDeliveryManifestDeliverable,
+  AiComicSeedanceFinalDeliveryManifestDeliverableStatus,
+  AiComicSeedanceFinalDeliveryManifestInput,
   AiComicSeedanceFinalDeliveryOutputProfile,
   AiComicSeedanceFinalDeliveryRequest,
   AiComicSeedanceFinalDeliveryStatus,
@@ -1473,7 +1477,7 @@ function buildAiComicSeriesSeedanceTitleCardPlanMarkdown(
 }
 
 function buildAiComicSeriesSeedanceFinalDeliveryMarkdown(
-  pkg: Pick<AiComicSeriesSeedanceFinalDeliveryResult, 'series_title' | 'executed_at' | 'output_path' | 'output_profile' | 'dependency_status' | 'ffmpeg_command'> & {
+  pkg: Pick<AiComicSeriesSeedanceFinalDeliveryResult, 'series_title' | 'executed_at' | 'output_path' | 'manifest_path' | 'output_profile' | 'dependency_status' | 'ffmpeg_command'> & {
     project: AiComicSeriesProjectMeta;
     schema_version: string;
   },
@@ -1485,6 +1489,7 @@ function buildAiComicSeriesSeedanceFinalDeliveryMarkdown(
     `> seriesProjectId: ${pkg.project.series_project_id}`,
     `> executedAt: ${pkg.executed_at}`,
     `> output: ${pkg.output_path}`,
+    `> manifest: ${pkg.manifest_path}`,
     `> profile: ${pkg.output_profile}`,
     '',
     '## 依赖状态',
@@ -4154,9 +4159,11 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
 
   const outputFilename = request.output_filename?.trim() || seedanceFinalDeliveryFilename(seriesProjectId);
   const outputPath = `delivery/${seriesProjectId}/${outputFilename}`;
+  const manifestPath = `delivery/${seriesProjectId}/${seedanceFinalDeliveryManifestFilename(outputFilename)}`;
   const concatListPath = `delivery/${seriesProjectId}/${outputFilename.replace(/\.mp4$/i, '.concat.txt')}`;
   const projectDir = dirname(seriesProjectPath(seriesProjectId));
   const absoluteOutputPath = resolveSeedanceProjectOutputPath(projectDir, outputPath);
+  const absoluteManifestPath = resolveSeedanceProjectOutputPath(projectDir, manifestPath);
   const absoluteConcatListPath = resolveSeedanceProjectOutputPath(projectDir, concatListPath);
   const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
   const titleCardPaths = includeTitleCards && dependencyStatus.title_cards_ready
@@ -4205,6 +4212,52 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     failureReason = err instanceof Error ? err.message : String(err);
   }
 
+  let manifest = buildSeedanceFinalDeliveryManifest({
+    project: detail.project,
+    seriesTitle: detail.plan.series_title,
+    generatedAt: executedAt,
+    dryRun,
+    status,
+    outputProfile,
+    outputPath,
+    outputFilename,
+    manifestPath,
+    concatListPath: useConcat ? concatListPath : undefined,
+    ffmpegCommand,
+    dependencyStatus,
+    includeSubtitles,
+    includeAudioMix,
+    includeTitleCards,
+    failureReason,
+    manifestDeliverableStatus: 'ready',
+  });
+  try {
+    await mkdir(dirname(absoluteManifestPath), { recursive: true });
+    await writeFile(absoluteManifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+  } catch (err) {
+    status = 'failed';
+    failureReason = err instanceof Error ? err.message : String(err);
+    manifest = buildSeedanceFinalDeliveryManifest({
+      project: detail.project,
+      seriesTitle: detail.plan.series_title,
+      generatedAt: executedAt,
+      dryRun,
+      status,
+      outputProfile,
+      outputPath,
+      outputFilename,
+      manifestPath,
+      concatListPath: useConcat ? concatListPath : undefined,
+      ffmpegCommand,
+      dependencyStatus,
+      includeSubtitles,
+      includeAudioMix,
+      includeTitleCards,
+      failureReason,
+      manifestDeliverableStatus: 'failed',
+    });
+  }
+
   const deliveryLedger: AiComicSeedanceFinalDeliveryLedger = {
     schema_version: 'ai-comic-seedance-final-delivery-ledger/v1',
     updated_at: executedAt,
@@ -4215,6 +4268,7 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
         : status,
     output_path: outputPath,
     output_filename: outputFilename,
+    manifest_path: manifestPath,
     ffmpeg_command: ffmpegCommand,
     source_cut_path: dependencyStatus.source_cut_path,
     subtitle_path: dependencyStatus.subtitle_path,
@@ -4245,17 +4299,20 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     status,
     output_path: outputPath,
     output_filename: outputFilename,
+    manifest_path: manifestPath,
     ffmpeg_command: ffmpegCommand,
     output_profile: outputProfile,
     dependency_status: dependencyStatus,
     failure_reason: failureReason,
     seedance_final_delivery: deliveryLedger,
+    manifest,
     markdown: buildAiComicSeriesSeedanceFinalDeliveryMarkdown({
       schema_version: 'ai-comic-series-seedance-final-delivery-result/v1',
       project: updatedDetail.project,
       series_title: updatedDetail.plan.series_title,
       executed_at: executedAt,
       output_path: outputPath,
+      manifest_path: manifestPath,
       output_profile: outputProfile,
       dependency_status: dependencyStatus,
       ffmpeg_command: ffmpegCommand,
@@ -5594,6 +5651,7 @@ function normalizeSeedanceFinalDeliveryLedger(
     status: ledger.status ?? 'not_started',
     output_path: ledger.output_path,
     output_filename: ledger.output_filename,
+    manifest_path: ledger.manifest_path,
     ffmpeg_command: ledger.ffmpeg_command,
     source_cut_path: ledger.source_cut_path,
     subtitle_path: ledger.subtitle_path,
@@ -5901,6 +5959,157 @@ function seedanceTitleCardFilename(cardId: string): string {
 
 function seedanceFinalDeliveryFilename(seriesProjectId: string): string {
   return `${seriesProjectId}-seedance-final.mp4`;
+}
+
+function seedanceFinalDeliveryManifestFilename(outputFilename: string): string {
+  const stem = outputFilename.replace(/\.[^/.]+$/, '');
+  return `${stem || 'seedance-final'}.manifest.json`;
+}
+
+function seedanceFinalManifestDeliverableStatus(
+  status: AiComicSeriesSeedanceFinalDeliveryResult['status'],
+): AiComicSeedanceFinalDeliveryManifestDeliverableStatus {
+  if (status === 'assembled') return 'ready';
+  return status;
+}
+
+function buildSeedanceFinalDeliveryManifest(params: {
+  project: AiComicSeriesProjectMeta;
+  seriesTitle: string;
+  generatedAt: string;
+  dryRun: boolean;
+  status: AiComicSeriesSeedanceFinalDeliveryResult['status'];
+  outputProfile: AiComicSeedanceFinalDeliveryOutputProfile;
+  outputPath: string;
+  outputFilename: string;
+  manifestPath: string;
+  concatListPath?: string;
+  ffmpegCommand: string;
+  dependencyStatus: AiComicSeedanceFinalDependencyStatus;
+  includeSubtitles: boolean;
+  includeAudioMix: boolean;
+  includeTitleCards: boolean;
+  failureReason?: string;
+  manifestDeliverableStatus: AiComicSeedanceFinalDeliveryManifestDeliverableStatus;
+}): AiComicSeedanceFinalDeliveryManifest {
+  const inputs: AiComicSeedanceFinalDeliveryManifestInput[] = [
+    {
+      input_id: 'source-cut',
+      input_type: 'source_cut',
+      path: params.dependencyStatus.source_cut_path ?? '',
+      ready: params.dependencyStatus.cut_ready,
+      role: 'final delivery source video',
+      notes: params.dependencyStatus.source_cut_path ? [] : ['剪辑装配输出缺失'],
+    },
+  ];
+  if (params.includeSubtitles || params.dependencyStatus.subtitle_path) {
+    inputs.push({
+      input_id: 'subtitle-render',
+      input_type: 'subtitle',
+      path: params.dependencyStatus.subtitle_path ?? '',
+      ready: params.dependencyStatus.subtitle_ready,
+      role: 'subtitle sidecar or burn-in source',
+      notes: params.dependencyStatus.subtitle_path ? [] : ['字幕文件或烧录字幕输出缺失'],
+    });
+  }
+  if (params.includeAudioMix || params.dependencyStatus.audio_mix_path) {
+    inputs.push({
+      input_id: 'audio-mix',
+      input_type: 'audio_mix',
+      path: params.dependencyStatus.audio_mix_path ?? '',
+      ready: params.dependencyStatus.audio_mix_ready,
+      role: 'mixed audio source',
+      notes: params.dependencyStatus.audio_mix_path ? [] : ['混音输出缺失'],
+    });
+  }
+  if (params.includeTitleCards && params.dependencyStatus.title_card_paths.length === 0) {
+    inputs.push({
+      input_id: 'title-card-missing',
+      input_type: 'title_card',
+      path: '',
+      ready: false,
+      role: 'opening or closing card source',
+      notes: ['片头片尾卡输出缺失'],
+    });
+  } else {
+    params.dependencyStatus.title_card_paths.forEach((path, index) => {
+      inputs.push({
+        input_id: `title-card-${index + 1}`,
+        input_type: 'title_card',
+        path,
+        ready: params.dependencyStatus.title_cards_ready,
+        role: 'opening or closing card source',
+        notes: [],
+      });
+    });
+  }
+  if (params.concatListPath) {
+    inputs.push({
+      input_id: 'concat-list',
+      input_type: 'concat_list',
+      path: params.concatListPath,
+      ready: params.status !== 'failed',
+      role: 'ffmpeg concat list',
+      notes: params.dryRun ? ['dry-run 也会写入 concat list 以便复核'] : [],
+    });
+  }
+
+  const deliverables: AiComicSeedanceFinalDeliveryManifestDeliverable[] = [
+    {
+      deliverable_id: 'final-video',
+      deliverable_type: 'final_video',
+      path: params.outputPath,
+      status: seedanceFinalManifestDeliverableStatus(params.status),
+      notes: [
+        params.dryRun ? 'dry-run 仅规划最终视频输出' : '',
+        params.failureReason ? `失败：${params.failureReason}` : '',
+      ].filter(Boolean),
+    },
+    {
+      deliverable_id: 'delivery-manifest',
+      deliverable_type: 'manifest',
+      path: params.manifestPath,
+      status: params.manifestDeliverableStatus,
+      notes: ['最终交付清单 JSON'],
+    },
+  ];
+  if (params.concatListPath) {
+    deliverables.push({
+      deliverable_id: 'concat-list',
+      deliverable_type: 'concat_list',
+      path: params.concatListPath,
+      status: params.status === 'failed' ? 'failed' : 'ready',
+      notes: ['ffmpeg concat 输入列表'],
+    });
+  }
+
+  const validationNotes = [
+    params.dryRun ? 'dry-run：未执行最终 ffmpeg 输出' : '已请求执行最终 ffmpeg 输出',
+    params.dependencyStatus.missing_dependencies.length > 0
+      ? `缺失依赖：${params.dependencyStatus.missing_dependencies.join('；')}`
+      : '依赖已满足',
+    ...params.dependencyStatus.warnings,
+    params.failureReason ? `失败：${params.failureReason}` : '',
+  ].filter(Boolean);
+
+  return {
+    schema_version: 'ai-comic-seedance-final-delivery-manifest/v1',
+    project: params.project,
+    series_title: params.seriesTitle,
+    generated_at: params.generatedAt,
+    dry_run: params.dryRun,
+    status: params.status,
+    output_profile: params.outputProfile,
+    output_path: params.outputPath,
+    output_filename: params.outputFilename,
+    manifest_path: params.manifestPath,
+    concat_list_path: params.concatListPath,
+    ffmpeg_command: params.ffmpegCommand,
+    dependency_status: params.dependencyStatus,
+    inputs,
+    deliverables,
+    validation_notes: validationNotes,
+  };
 }
 
 function buildSeedanceTitleCardPlanCard(

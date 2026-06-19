@@ -2498,12 +2498,66 @@ export interface AiComicSeedanceFinalDependencyStatus {
   warnings: string[];
 }
 
+export type AiComicSeedanceFinalDeliveryExecutionStatus = 'planned' | 'assembled' | 'failed' | 'skipped';
+export type AiComicSeedanceFinalDeliveryManifestInputType =
+  | 'source_cut'
+  | 'subtitle'
+  | 'audio_mix'
+  | 'title_card'
+  | 'concat_list';
+export type AiComicSeedanceFinalDeliveryManifestDeliverableType =
+  | 'final_video'
+  | 'manifest'
+  | 'concat_list';
+export type AiComicSeedanceFinalDeliveryManifestDeliverableStatus =
+  | 'planned'
+  | 'ready'
+  | 'failed'
+  | 'skipped';
+
+export interface AiComicSeedanceFinalDeliveryManifestInput {
+  input_id: string;
+  input_type: AiComicSeedanceFinalDeliveryManifestInputType;
+  path: string;
+  ready: boolean;
+  role: string;
+  notes: string[];
+}
+
+export interface AiComicSeedanceFinalDeliveryManifestDeliverable {
+  deliverable_id: string;
+  deliverable_type: AiComicSeedanceFinalDeliveryManifestDeliverableType;
+  path: string;
+  status: AiComicSeedanceFinalDeliveryManifestDeliverableStatus;
+  notes: string[];
+}
+
+export interface AiComicSeedanceFinalDeliveryManifest {
+  schema_version: 'ai-comic-seedance-final-delivery-manifest/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  generated_at: string;
+  dry_run: boolean;
+  status: AiComicSeedanceFinalDeliveryExecutionStatus;
+  output_profile: AiComicSeedanceFinalDeliveryOutputProfile;
+  output_path: string;
+  output_filename: string;
+  manifest_path: string;
+  concat_list_path?: string;
+  ffmpeg_command: string;
+  dependency_status: AiComicSeedanceFinalDependencyStatus;
+  inputs: AiComicSeedanceFinalDeliveryManifestInput[];
+  deliverables: AiComicSeedanceFinalDeliveryManifestDeliverable[];
+  validation_notes: string[];
+}
+
 export interface AiComicSeedanceFinalDeliveryLedger {
   schema_version: 'ai-comic-seedance-final-delivery-ledger/v1';
   updated_at?: string;
   status: AiComicSeedanceFinalDeliveryStatus;
   output_path?: string;
   output_filename?: string;
+  manifest_path?: string;
   ffmpeg_command?: string;
   source_cut_path?: string;
   subtitle_path?: string;
@@ -2522,14 +2576,16 @@ export interface AiComicSeriesSeedanceFinalDeliveryResult {
   series_title: string;
   executed_at: string;
   dry_run: boolean;
-  status: 'planned' | 'assembled' | 'failed' | 'skipped';
+  status: AiComicSeedanceFinalDeliveryExecutionStatus;
   output_path: string;
   output_filename: string;
+  manifest_path: string;
   ffmpeg_command: string;
   output_profile: AiComicSeedanceFinalDeliveryOutputProfile;
   dependency_status: AiComicSeedanceFinalDependencyStatus;
   failure_reason?: string;
   seedance_final_delivery: AiComicSeedanceFinalDeliveryLedger;
+  manifest: AiComicSeedanceFinalDeliveryManifest;
   markdown: string;
 }
 

@@ -29,7 +29,7 @@
 当前能力边界：
 
 - 已能把 Seedance 回片组织为可剪辑资产，并自动抽缩略图、装配初版成片。
-- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并生成片头片尾计划、片头片尾 render dry-run、final delivery dry-run、外部剪辑平台包和生产总览 dashboard；真实混音素材生产、真实片头片尾渲染和最终交付真实装配仍待增强。
+- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并生成片头片尾计划、片头片尾 render dry-run、final delivery dry-run、final manifest、外部剪辑平台包和生产总览 dashboard；真实混音素材生产、真实片头片尾渲染和最终交付真实装配仍待增强。
 - 外部剪辑平台已有通用 JSON / CSV / SRT / asset manifest 首版，平台专用 FCPXML / Premiere XML / 剪映草稿格式仍待适配。
 - 审片返修闭环仍处于待建设状态。
 
@@ -374,7 +374,7 @@ Seedance prompts
 
 将视频镜头、片头片尾、字幕、混音合成为最终交付文件。
 
-当前状态：final delivery dry-run 首版已完成；真实装配、精确片头片尾插入时间线和 manifest 写盘仍需继续打磨。
+当前状态：final delivery dry-run 和 manifest 写盘首版已完成；真实装配、精确片头片尾插入时间线仍需继续打磨。
 
 ### 后端任务
 
@@ -391,6 +391,7 @@ Seedance prompts
   - `status`
   - `output_path`
   - `output_filename`
+  - `manifest_path`
   - `ffmpeg_command`
   - `source_cut_path`
   - `subtitle_path`
@@ -407,7 +408,7 @@ Seedance prompts
 
 - `web/shared/types.ts` 已新增 final delivery 请求、依赖状态、结果和账本类型。
 - `web/shared/schemas.ts` 已新增 `AiComicSeedanceFinalDeliveryRequestSchema`。
-- `web/server/src/services/ai-comic-series-service.ts` 已新增 `seedance-final/assemble`，支持 strict/tolerant 缺依赖模式、planned 依赖 dry-run 串联、final ffmpeg 命令和 Markdown 摘要。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增 `seedance-final/assemble`，支持 strict/tolerant 缺依赖模式、planned 依赖 dry-run 串联、final ffmpeg 命令、manifest JSON 写盘和 Markdown 摘要。
 - `web/server/src/routes/outline.ts` 已新增 `seedance-final/assemble` 路由。
 
 ### 前端任务
@@ -426,7 +427,7 @@ Seedance prompts
 
 实现状态：
 
-- 系列工作台已新增“最终交付 dry-run”和最终交付状态卡，展示剪辑、字幕、混音、片头片尾依赖状态。
+- 系列工作台已新增“最终交付 dry-run”和最终交付状态卡，展示剪辑、字幕、混音、片头片尾依赖状态和 manifest 路径。
 
 ### 测试
 
@@ -437,8 +438,8 @@ Seedance prompts
 
 实现状态：
 
-- 已覆盖 strict 缺片头片尾依赖、final delivery dry-run、ffmpeg concat 命令和 API validation。
-- 待补：真实 runner 成功/失败专项、manifest 写盘、精确 title card 时间线和 strict/tolerant 更多组合。
+- 已覆盖 strict 缺片头片尾依赖、final delivery dry-run、ffmpeg concat 命令、manifest 写盘和 API validation。
+- 待补：真实 runner 成功/失败专项、精确 title card 时间线和 strict/tolerant 更多组合。
 
 ### 验收标准
 
@@ -640,7 +641,7 @@ Seedance prompts
 
 1. `seedance-audio/mix` 真实素材执行增强
 2. `seedance-title-cards/render` 真实渲染增强
-3. `seedance-final/assemble` 真实装配和 manifest 写盘
+3. `seedance-final/assemble` 真实装配 hardening
 4. `seedance_review_ledger`
 5. 30 集压测和性能优化
 
@@ -651,7 +652,7 @@ Seedance prompts
 ```text
 seedance-audio/mix real runner hardening
   -> seedance-title-cards/render real/mock success
-  -> seedance-final/assemble manifest
+  -> seedance-final/assemble real runner hardening
   -> seedance_review_ledger
 ```
 

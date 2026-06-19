@@ -855,6 +855,7 @@
               {{ seedanceFinalDeliveryStatusLabel(seedanceFinalDelivery.status) }}
               · {{ seedanceFinalDelivery.output_profile }}
               <template v-if="seedanceFinalDelivery.output_path"> · {{ seedanceFinalDelivery.output_path }}</template>
+              <template v-if="seedanceFinalDelivery.manifest_path"> · manifest {{ seedanceFinalDelivery.manifest_path }}</template>
               <template v-if="seedanceFinalDelivery.failure_reason"> · {{ seedanceFinalDelivery.failure_reason }}</template>
             </p>
             <div class="series-studio__episode-audit-list">
@@ -3399,7 +3400,7 @@ async function assembleSeedanceFinalDryRun() {
   if (res.ok && res.data) {
     seedanceFinalDelivery.value = res.data.seedance_final_delivery
     lastSavedAt.value = res.data.project.updated_at
-    saveMessage.value = `最终交付 dry-run 已生成 · 阻断 ${res.data.dependency_status.missing_dependencies.length} 项`
+    saveMessage.value = `最终交付 dry-run 已生成 · 阻断 ${res.data.dependency_status.missing_dependencies.length} 项 · manifest ${res.data.manifest_path}`
     await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '生成 Seedance 最终交付 dry-run 失败'

@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import {
@@ -1075,10 +1076,31 @@ describe('outline-service', () => {
     });
     expect(finalDeliveryDryRunRes.data?.ffmpeg_command).toContain('-f concat');
     expect(finalDeliveryDryRunRes.data?.markdown).toContain('Seedance 最终交付计划');
+    expect(finalDeliveryDryRunRes.data?.markdown).toContain('manifest');
+    expect(finalDeliveryDryRunRes.data?.manifest_path).toContain('delivery/');
+    expect(finalDeliveryDryRunRes.data?.manifest.schema_version).toBe('ai-comic-seedance-final-delivery-manifest/v1');
+    expect(finalDeliveryDryRunRes.data?.manifest.inputs.some(input => input.input_type === 'source_cut')).toBe(true);
+    expect(finalDeliveryDryRunRes.data?.manifest.inputs.some(input => input.input_type === 'concat_list')).toBe(true);
+    expect(finalDeliveryDryRunRes.data?.manifest.deliverables.some(deliverable => deliverable.deliverable_type === 'manifest')).toBe(true);
     expect(finalDeliveryDryRunRes.data?.seedance_final_delivery).toMatchObject({
       status: 'planned',
       output_profile: 'mp4_h264_720p',
+      manifest_path: expect.stringContaining('.manifest.json'),
     });
+    const finalDeliveryData = finalDeliveryDryRunRes.data!;
+    const generatedRoot = process.env.WEB_GENERATED_ROOT || resolve(process.env.KB_ROOT!, '..', 'web', 'generated');
+    const writtenManifestRaw = await readFile(
+      resolve(
+        generatedRoot,
+        'ai-comic-series-projects',
+        saveRes.data!.project.series_project_id,
+        finalDeliveryData.manifest_path,
+      ),
+      'utf-8',
+    );
+    const writtenManifest = JSON.parse(writtenManifestRaw) as typeof finalDeliveryData.manifest;
+    expect(writtenManifest.manifest_path).toBe(finalDeliveryData.manifest_path);
+    expect(writtenManifest.deliverables.map(deliverable => deliverable.deliverable_type)).toContain('final_video');
 
     const editingPlatformPackageRes = await exportAiComicSeriesSeedanceEditingPlatformPackage(
       saveRes.data!.project.series_project_id,
