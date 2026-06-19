@@ -34,6 +34,7 @@ import type {
   AiComicSeriesSeedanceFinalDeliveryResult,
   AiComicSeriesSeedanceExportPackage,
   AiComicSeriesSeedanceFinishingPlanPackage,
+  AiComicSeriesSeedanceRetryExecutionPlan,
   AiComicSeriesSeedanceRetryPackage,
   AiComicSeriesSeedanceReviewRepairPackage,
   AiComicSeriesSeedanceReviewUpdateResult,
@@ -193,6 +194,13 @@ export function assembleAiComicSeriesSeedanceCut(
 export function exportAiComicSeriesSeedanceRetryPackage(seriesProjectId: string) {
   return apiPost<AiComicSeriesSeedanceRetryPackage>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-retry-package`,
+    {},
+  )
+}
+
+export function exportAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId: string) {
+  return apiPost<AiComicSeriesSeedanceRetryExecutionPlan>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-retry-execution-plan`,
     {},
   )
 }

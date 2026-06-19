@@ -2896,6 +2896,17 @@ export interface AiComicSeriesSeedanceDashboard {
   markdown: string;
 }
 
+export type AiComicSeedanceRetryReason = 'production_status' | 'review_required';
+export type AiComicSeedanceRetryExecutionPriority = 'high' | 'normal' | 'low';
+
+export interface AiComicSeedanceRetryReviewIssue {
+  review_id: string;
+  severity: AiComicSeedanceReviewSeverity;
+  issue_type: AiComicSeedanceReviewIssueType;
+  note: string;
+  repair_action: AiComicSeedanceReviewRepairAction;
+}
+
 export interface AiComicSeedanceRetryPackageShot {
   production_id: string;
   episode_no: number;
@@ -2908,14 +2919,8 @@ export interface AiComicSeedanceRetryPackageShot {
   failure_reason?: string;
   provider_job_id?: string;
   last_video_url?: string;
-  retry_reason: 'production_status' | 'review_required';
-  review_issues?: Array<{
-    review_id: string;
-    severity: AiComicSeedanceReviewSeverity;
-    issue_type: AiComicSeedanceReviewIssueType;
-    note: string;
-    repair_action: AiComicSeedanceReviewRepairAction;
-  }>;
+  retry_reason: AiComicSeedanceRetryReason;
+  review_issues?: AiComicSeedanceRetryReviewIssue[];
   suggested_action: string;
   prompt: SeedancePromptShotUnit;
 }
@@ -2943,6 +2948,55 @@ export interface AiComicSeriesSeedanceRetryPackage {
     shot_id: string;
     reason: string;
   }>;
+  markdown: string;
+}
+
+export interface AiComicSeedanceRetryExecutionCandidate {
+  production_id: string;
+  episode_no: number;
+  episode_title: string;
+  story_id?: string;
+  shot_id: string;
+  source_scene_id?: number;
+  status: AiComicSeedanceProductionStatus;
+  retry_count: number;
+  retry_reason: AiComicSeedanceRetryReason;
+  priority: AiComicSeedanceRetryExecutionPriority;
+  can_submit: boolean;
+  block_reason?: string;
+  suggested_action: string;
+  failure_reason?: string;
+  provider_job_id?: string;
+  last_video_url?: string;
+  review_issues?: AiComicSeedanceRetryReviewIssue[];
+  prompt: SeedancePromptShotUnit;
+}
+
+export interface AiComicSeedanceRetryExecutionEpisode {
+  episode_no: number;
+  episode_title: string;
+  story_id?: string;
+  candidate_count: number;
+  ready_to_submit_count: number;
+  blocked_count: number;
+  candidates: AiComicSeedanceRetryExecutionCandidate[];
+}
+
+export interface AiComicSeriesSeedanceRetryExecutionPlan {
+  schema_version: 'ai-comic-series-seedance-retry-execution-plan/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  exported_at: string;
+  source_retry_package_exported_at: string;
+  total_retry_shot_count: number;
+  ready_to_submit_count: number;
+  blocked_count: number;
+  high_priority_count: number;
+  review_required_shot_count: number;
+  missing_prompt_shot_count: number;
+  reason_counts: Record<AiComicSeedanceRetryReason, number>;
+  episodes: AiComicSeedanceRetryExecutionEpisode[];
+  missing_prompt_shots: AiComicSeriesSeedanceRetryPackage['missing_prompt_shots'];
   markdown: string;
 }
 

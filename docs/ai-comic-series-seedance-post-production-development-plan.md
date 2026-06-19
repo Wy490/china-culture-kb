@@ -557,7 +557,7 @@ Seedance prompts
 
 ## 13. 阶段九：审片与返修闭环
 
-当前状态：review ledger、返修包导出、dashboard blocker、工作台轻量录入、审片驱动重试包和 strict final guard 首版已完成；后续继续深化版本对比面板标注、retry submit 执行和最终重装配真实执行。
+当前状态：review ledger、返修包导出、dashboard blocker、工作台轻量录入、审片驱动重试包、重试执行计划和 strict final guard 首版已完成；后续继续深化版本对比面板标注、retry submit adapter 和最终重装配真实执行。
 
 ### 目标
 
@@ -582,6 +582,7 @@ Seedance prompts
   - 标记已解决
   - 导出返修包
   - 根据评审意见生成重试包或重装配计划
+  - 导出重试执行计划，区分可直接提交、需人工处理和缺提示词镜头
 - 返修类型：
   - 镜头重做
   - 版本重选
@@ -601,8 +602,9 @@ Seedance prompts
 - `web/shared/types.ts` 已新增 `AiComicSeedanceReviewLedger`、review item、add/resolve request 和 review repair package 类型。
 - `web/shared/schemas.ts` 已新增 `AiComicSeedanceReviewAddRequestSchema` / `AiComicSeedanceReviewResolveRequestSchema`。
 - `web/server/src/services/ai-comic-series-service.ts` 已新增审片意见、解决审片意见和导出审片返修包服务，并把 open review 计入 dashboard status / blocker / next action。
-- `web/server/src/routes/outline.ts` 已新增 `seedance-reviews`、`seedance-reviews/resolve` 和 `export-seedance-review-repair-package` 路由。
-- 系列工作台最终交付区已新增审片返修轻量录入、open 列表、标记解决和返修包导出入口。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增 Seedance 重试执行计划导出，复用重试包并输出可提交/阻断候选。
+- `web/server/src/routes/outline.ts` 已新增 `seedance-reviews`、`seedance-reviews/resolve`、`export-seedance-review-repair-package` 和 `export-seedance-retry-execution-plan` 路由。
+- 系列工作台最终交付区已新增审片返修轻量录入、open 列表、标记解决和返修包导出入口；Seedance 导出区已新增重试执行计划导出入口。
 
 ### 测试
 
@@ -612,8 +614,8 @@ Seedance prompts
 
 实现状态：
 
-- 服务测试覆盖新增 final/shot 审片意见、解决审片意见、返修包导出、retry candidate 计数和 final reassemble dashboard blocker。
-- API 测试覆盖 review add/resolve/export 路由校验和缺失项目响应。
+- 服务测试覆盖新增 final/shot 审片意见、解决审片意见、返修包导出、retry candidate 计数、retry execution plan 和 final reassemble dashboard blocker。
+- API 测试覆盖 review add/resolve/export、retry execution plan 路由校验和缺失项目响应。
 
 ### 验收标准
 
@@ -658,7 +660,7 @@ Seedance prompts
 1. `seedance-audio/mix` 真实素材执行增强
 2. `seedance-title-cards/render` 真实渲染增强
 3. `seedance-final/assemble` 真实装配 hardening
-4. `seedance_review_ledger` 到 retry submit / final reassemble 真实执行自动化
+4. `seedance_review_ledger` 到 retry submit adapter / final reassemble 真实执行自动化
 5. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
@@ -669,7 +671,7 @@ Seedance prompts
 seedance-audio/mix real runner hardening
   -> seedance-title-cards/render real/mock success
   -> seedance-final/assemble real runner hardening
-  -> seedance_review_ledger retry submit/final reassemble execution
+  -> seedance_review_ledger retry submit adapter/final reassemble execution
 ```
 
 原因：

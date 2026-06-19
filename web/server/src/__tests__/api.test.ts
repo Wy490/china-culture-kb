@@ -2090,6 +2090,14 @@ describe('Seedance Title Cards and Final Delivery API', () => {
     expectFailure(res.body, 'STORY_NOT_FOUND');
   });
 
+  it('returns 404 for a missing series project retry execution plan', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-retry-execution-plan')
+      .send({});
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
   it('returns 404 for a missing series project title card plan', async () => {
     const res = await request
       .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-title-card-plan')

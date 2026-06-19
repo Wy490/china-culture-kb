@@ -82,10 +82,14 @@ import type {
   AiComicSeedanceCutPackageEpisode,
   AiComicSeedanceRetryPackageEpisode,
   AiComicSeedanceRetryPackageShot,
+  AiComicSeedanceRetryExecutionCandidate,
+  AiComicSeedanceRetryExecutionEpisode,
+  AiComicSeedanceRetryReason,
   AiComicSeriesSeedanceCutPackage,
   AiComicSeedanceCutAssemblyLedger,
   AiComicSeedanceCutAssemblyRequest,
   AiComicSeriesSeedanceRetryPackage,
+  AiComicSeriesSeedanceRetryExecutionPlan,
   AiComicSeriesSeedanceAssetReportPackage,
   AiComicSeriesSeedanceEditAssetPackage,
   AiComicSeedanceEditAssetPackageEpisode,
@@ -1019,6 +1023,65 @@ function buildAiComicSeriesSeedanceRetryMarkdown(
       ...markdownTable(
         ['集数', '镜头', '原因'],
         pkg.missing_prompt_shots.map(item => [
+          `第${item.episode_no}集：${item.episode_title}`,
+          item.shot_id,
+          item.reason,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceRetryExecutionMarkdown(
+  plan: Omit<AiComicSeriesSeedanceRetryExecutionPlan, 'markdown'>,
+): string {
+  const lines = [
+    `# ${plan.series_title} — Seedance 重试执行计划`,
+    '',
+    `> schema: ${plan.schema_version}`,
+    `> seriesProjectId: ${plan.project.series_project_id}`,
+    `> exportedAt: ${plan.exported_at}`,
+    `> retryPackageExportedAt: ${plan.source_retry_package_exported_at}`,
+    `> 待处理镜头: ${plan.total_retry_shot_count}`,
+    `> 可直接提交: ${plan.ready_to_submit_count}`,
+    `> 需人工处理: ${plan.blocked_count}`,
+    `> 审片返修: ${plan.review_required_shot_count}`,
+    `> 缺提示词: ${plan.missing_prompt_shot_count}`,
+    '',
+    '## 执行候选',
+  ];
+  for (const episode of plan.episodes) {
+    lines.push(
+      '',
+      `### 第${episode.episode_no}集：${episode.episode_title}`,
+      '',
+      `- storyId: ${episode.story_id ?? '未记录'}`,
+      `- 候选镜头: ${episode.candidate_count}`,
+      `- 可直接提交: ${episode.ready_to_submit_count}`,
+      `- 需人工处理: ${episode.blocked_count}`,
+    );
+    lines.push(
+      ...markdownTable(
+        ['镜头', '优先级', '状态', '原因', '可提交', '建议动作'],
+        episode.candidates.map(candidate => [
+          candidate.shot_id,
+          candidate.priority,
+          seedanceProductionStatusText(candidate.status),
+          candidate.retry_reason === 'review_required' ? '审片返修' : '生产状态',
+          candidate.can_submit ? '是' : `否：${candidate.block_reason ?? '需人工复核'}`,
+          candidate.suggested_action,
+        ]),
+      ),
+    );
+  }
+  if (plan.missing_prompt_shots.length > 0) {
+    lines.push(
+      '',
+      '## 缺失提示词镜头',
+      ...markdownTable(
+        ['集数', '镜头', '原因'],
+        plan.missing_prompt_shots.map(item => [
           `第${item.episode_no}集：${item.episode_title}`,
           item.shot_id,
           item.reason,
@@ -3144,6 +3207,58 @@ export async function exportAiComicSeriesSeedanceRetryPackage(
   return success({
     ...basePackage,
     markdown: buildAiComicSeriesSeedanceRetryMarkdown(basePackage),
+  });
+}
+
+export async function exportAiComicSeriesSeedanceRetryExecutionPlan(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceRetryExecutionPlan>> {
+  const retryPackageRes = await exportAiComicSeriesSeedanceRetryPackage(seriesProjectId);
+  if (!retryPackageRes.ok || !retryPackageRes.data) {
+    return fail(
+      normalizeErrorCode(retryPackageRes.error?.code),
+      retryPackageRes.error?.message ?? 'Export Seedance retry package failed',
+      retryPackageRes.error?.details,
+    );
+  }
+
+  const retryPackage = retryPackageRes.data;
+  const exportedAt = new Date().toISOString();
+  const episodes: AiComicSeedanceRetryExecutionEpisode[] = retryPackage.episodes.map(episode => {
+    const candidates = episode.shots
+      .map(shot => buildSeedanceRetryExecutionCandidate(shot))
+      .sort(seedanceRetryExecutionCandidateSort);
+    return {
+      episode_no: episode.episode_no,
+      episode_title: episode.episode_title,
+      story_id: episode.story_id,
+      candidate_count: candidates.length,
+      ready_to_submit_count: candidates.filter(candidate => candidate.can_submit).length,
+      blocked_count: candidates.filter(candidate => !candidate.can_submit).length,
+      candidates,
+    };
+  });
+  const allCandidates = episodes.flatMap(episode => episode.candidates);
+  const reasonCounts = seedanceRetryExecutionReasonCounts(allCandidates);
+  const basePlan: Omit<AiComicSeriesSeedanceRetryExecutionPlan, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-retry-execution-plan/v1',
+    project: retryPackage.project,
+    series_title: retryPackage.series_title,
+    exported_at: exportedAt,
+    source_retry_package_exported_at: retryPackage.exported_at,
+    total_retry_shot_count: retryPackage.total_retry_shot_count,
+    ready_to_submit_count: allCandidates.filter(candidate => candidate.can_submit).length,
+    blocked_count: allCandidates.filter(candidate => !candidate.can_submit).length,
+    high_priority_count: allCandidates.filter(candidate => candidate.priority === 'high').length,
+    review_required_shot_count: retryPackage.review_required_shot_count,
+    missing_prompt_shot_count: retryPackage.missing_prompt_shots.length,
+    reason_counts: reasonCounts,
+    episodes,
+    missing_prompt_shots: retryPackage.missing_prompt_shots,
+  };
+  return success({
+    ...basePlan,
+    markdown: buildAiComicSeriesSeedanceRetryExecutionMarkdown(basePlan),
   });
 }
 
@@ -8466,6 +8581,92 @@ function seedanceReviewTargetsProductionItem(
     review.shot_id,
   ].filter(Boolean));
   return reviewTargets.has(item.shot_id) || reviewTargets.has(item.production_id);
+}
+
+function buildSeedanceRetryExecutionCandidate(
+  shot: AiComicSeedanceRetryPackageShot,
+): AiComicSeedanceRetryExecutionCandidate {
+  const blockReason = seedanceRetryExecutionBlockReason(shot);
+  return {
+    production_id: shot.production_id,
+    episode_no: shot.episode_no,
+    episode_title: shot.episode_title,
+    story_id: shot.story_id,
+    shot_id: shot.shot_id,
+    source_scene_id: shot.source_scene_id,
+    status: shot.status,
+    retry_count: shot.retry_count,
+    retry_reason: shot.retry_reason,
+    priority: seedanceRetryExecutionPriority(shot, blockReason),
+    can_submit: !blockReason,
+    block_reason: blockReason,
+    suggested_action: blockReason ?? shot.suggested_action,
+    failure_reason: shot.failure_reason,
+    provider_job_id: shot.provider_job_id,
+    last_video_url: shot.last_video_url,
+    review_issues: shot.review_issues,
+    prompt: shot.prompt,
+  };
+}
+
+function seedanceRetryExecutionBlockReason(
+  shot: AiComicSeedanceRetryPackageShot,
+): string | undefined {
+  if (!shot.prompt.seedance_prompt.trim()) return '缺少 Seedance 提示词，需先重新导出提示词包。';
+  if (shot.review_issues?.some(issue => issue.repair_action === 'reselect_version')) {
+    return '审片要求重选剪辑版，需先进入版本对比选择可用版本。';
+  }
+  if (shot.status === 'submitted' || shot.status === 'processing') {
+    return '镜头仍在提交或处理中，需确认超时或失败后再重提。';
+  }
+  if (shot.status === 'ready' && !shot.last_video_url) {
+    return '镜头已 ready 但缺少视频 URL，优先补拉平台结果。';
+  }
+  if (shot.status === 'skipped') return '镜头已跳过，需人工确认是否恢复生产。';
+  return undefined;
+}
+
+function seedanceRetryExecutionPriority(
+  shot: AiComicSeedanceRetryPackageShot,
+  blockReason?: string,
+): AiComicSeedanceRetryExecutionCandidate['priority'] {
+  if (shot.review_issues?.some(issue => issue.severity === 'blocking' || issue.severity === 'major')) {
+    return 'high';
+  }
+  if (shot.status === 'failed') return 'high';
+  if (shot.status === 'submitted' || shot.status === 'processing') return 'normal';
+  if (blockReason) return 'normal';
+  if (shot.status === 'not_started' || shot.status === 'prompt_exported') return 'low';
+  return 'normal';
+}
+
+function seedanceRetryExecutionCandidateSort(
+  left: AiComicSeedanceRetryExecutionCandidate,
+  right: AiComicSeedanceRetryExecutionCandidate,
+): number {
+  const priorityRank: Record<AiComicSeedanceRetryExecutionCandidate['priority'], number> = {
+    high: 0,
+    normal: 1,
+    low: 2,
+  };
+  if (priorityRank[left.priority] !== priorityRank[right.priority]) {
+    return priorityRank[left.priority] - priorityRank[right.priority];
+  }
+  if (left.can_submit !== right.can_submit) return left.can_submit ? -1 : 1;
+  return compareSeedanceShotIds(left.shot_id, right.shot_id);
+}
+
+function seedanceRetryExecutionReasonCounts(
+  candidates: AiComicSeedanceRetryExecutionCandidate[],
+): Record<AiComicSeedanceRetryReason, number> {
+  const counts: Record<AiComicSeedanceRetryReason, number> = {
+    production_status: 0,
+    review_required: 0,
+  };
+  for (const candidate of candidates) {
+    counts[candidate.retry_reason] += 1;
+  }
+  return counts;
 }
 
 function seedanceRetrySuggestedAction(

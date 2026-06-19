@@ -20,6 +20,7 @@ import {
   exportAiComicSeriesSeedanceEditingPlatformPackage,
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
+  exportAiComicSeriesSeedanceRetryExecutionPlan,
   exportAiComicSeriesSeedanceRetryPackage,
   exportAiComicSeriesSeedanceReviewRepairPackage,
   exportAiComicSeriesSeedanceSubtitlePackage,
@@ -1260,6 +1261,40 @@ describe('outline-service', () => {
     expect(retryPackageRes.data?.markdown).toContain('Seedance 重试提交包');
     expect(retryPackageRes.data?.markdown).toContain('人物手部变形');
     expect(retryPackageRes.data?.markdown).toContain('审片意见要求重做');
+
+    const retryExecutionPlanRes = await exportAiComicSeriesSeedanceRetryExecutionPlan(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(retryExecutionPlanRes.ok).toBe(true);
+    expect(retryExecutionPlanRes.data?.schema_version).toBe('ai-comic-series-seedance-retry-execution-plan/v1');
+    expect(retryExecutionPlanRes.data?.total_retry_shot_count).toBe(retryPackageRes.data?.total_retry_shot_count);
+    expect(retryExecutionPlanRes.data?.ready_to_submit_count).toBeGreaterThan(0);
+    expect(retryExecutionPlanRes.data?.review_required_shot_count).toBeGreaterThan(0);
+    expect(retryExecutionPlanRes.data?.reason_counts.review_required).toBeGreaterThan(0);
+    const retryExecutionCandidates = retryExecutionPlanRes.data?.episodes.flatMap(episode => episode.candidates) ?? [];
+    expect(retryExecutionCandidates.find(candidate =>
+      candidate.shot_id === retryCandidate!.shot_id
+    )).toMatchObject({
+      retry_reason: 'production_status',
+      priority: 'high',
+      can_submit: true,
+      failure_reason: '人物手部变形',
+    });
+    expect(retryExecutionCandidates.find(candidate =>
+      candidate.shot_id === firstProductionItem.shot_id
+    )).toMatchObject({
+      retry_reason: 'review_required',
+      priority: 'high',
+      can_submit: true,
+      review_issues: [
+        {
+          review_id: shotReviewRes.data!.review_item.review_id,
+          repair_action: 'redo_shot',
+        },
+      ],
+    });
+    expect(retryExecutionPlanRes.data?.markdown).toContain('Seedance 重试执行计划');
+    expect(retryExecutionPlanRes.data?.markdown).toContain('可直接提交');
 
     const versionComparisonRes = await exportAiComicSeriesSeedanceVersionComparisonPackage(
       saveRes.data!.project.series_project_id,

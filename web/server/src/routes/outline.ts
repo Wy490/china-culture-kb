@@ -51,6 +51,7 @@ import {
   exportAiComicSeriesSeedanceEditingPlatformPackage,
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
+  exportAiComicSeriesSeedanceRetryExecutionPlan,
   exportAiComicSeriesSeedanceRetryPackage,
   exportAiComicSeriesSeedanceReviewRepairPackage,
   exportAiComicSeriesSeedanceSubtitlePackage,
@@ -267,6 +268,21 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await exportAiComicSeriesSeedanceRetryPackage(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-retry-execution-plan — export actionable retry execution plan
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/export-seedance-retry-execution-plan',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await exportAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

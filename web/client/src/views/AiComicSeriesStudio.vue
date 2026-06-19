@@ -279,6 +279,13 @@
                   <button
                     class="series-studio__ghost-button"
                     :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceRetryExecutionMarkdown"
+                  >
+                    导出重试执行计划
+                  </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
                     @click="exportSeriesSeedanceVersionComparisonMarkdown"
                   >
                     导出版本对比 Markdown
@@ -1772,6 +1779,7 @@ import {
   exportAiComicSeriesSeedanceEditingPlatformPackage,
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
+  exportAiComicSeriesSeedanceRetryExecutionPlan,
   exportAiComicSeriesSeedanceRetryPackage,
   exportAiComicSeriesSeedanceReviewRepairPackage,
   exportAiComicSeriesSeedanceSubtitlePackage,
@@ -2932,6 +2940,24 @@ async function exportSeriesSeedanceRetryJson() {
     saveMessage.value = `Seedance 重试包 JSON 已导出 · ${res.data.total_retry_shot_count} 个镜头 · 审片 ${res.data.review_required_shot_count}`
   } else {
     errorMessage.value = res.error?.message ?? '导出 Seedance 重试包失败'
+  }
+  exportingSeedance.value = false
+}
+
+async function exportSeriesSeedanceRetryExecutionMarkdown() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-retry-execution-plan.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 重试执行计划已导出 · 可提交 ${res.data.ready_to_submit_count} · 阻断 ${res.data.blocked_count}`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 重试执行计划失败'
   }
   exportingSeedance.value = false
 }
