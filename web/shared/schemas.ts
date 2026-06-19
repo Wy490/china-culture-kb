@@ -1167,6 +1167,12 @@ export const AiComicSeedanceProductionBatchUpdateRequestSchema = z.object({
   updates: z.array(AiComicSeedanceProductionStatusUpdateRequestSchema).min(1).max(200),
 });
 
+export const AiComicSeedanceRetrySubmitRequestSchema = z.object({
+  limit: z.number().int().min(1).max(200).optional(),
+  job_prefix: z.string().trim().min(1).max(80).optional(),
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
 export const AiComicSeedanceProductionCallbackRequestSchema = z.object({
   episode_no: z.number().int().min(1).max(120).optional(),
   episodeNo: z.number().int().min(1).max(120).optional(),

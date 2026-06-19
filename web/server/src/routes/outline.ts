@@ -15,6 +15,7 @@ import {
   AiComicSeedanceProductionAutoSelectRequestSchema,
   AiComicSeedanceProductionBatchUpdateRequestSchema,
   AiComicSeedanceProductionCallbackRequestSchema,
+  AiComicSeedanceRetrySubmitRequestSchema,
   AiComicSeedanceProductionStatusUpdateRequestSchema,
   AiComicSeedanceProductionVersionSelectRequestSchema,
   AiComicSeedanceReviewAddRequestSchema,
@@ -71,6 +72,7 @@ import {
   resolveAiComicSeriesSeedanceReview,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
+  submitAiComicSeriesSeedanceRetryExecutionPlan,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
@@ -283,6 +285,22 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await exportAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-retry/submit — submit actionable retry execution candidates
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-retry/submit',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceRetrySubmitRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await submitAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId, req.body);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

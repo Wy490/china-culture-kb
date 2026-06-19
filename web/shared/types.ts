@@ -3000,6 +3000,36 @@ export interface AiComicSeriesSeedanceRetryExecutionPlan {
   markdown: string;
 }
 
+export interface AiComicSeedanceRetrySubmitRequest {
+  limit?: number;
+  job_prefix?: string;
+  note?: string;
+}
+
+export interface AiComicSeedanceRetrySubmitShot {
+  production_id: string;
+  episode_no: number;
+  shot_id: string;
+  provider_job_id: string;
+  retry_count: number;
+  retry_reason: AiComicSeedanceRetryReason;
+}
+
+export interface AiComicSeriesSeedanceRetrySubmitResult {
+  schema_version: 'ai-comic-series-seedance-retry-submit-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  submitted_at: string;
+  retry_execution_plan: AiComicSeriesSeedanceRetryExecutionPlan;
+  selected_shot_ids: string[];
+  submitted_count: number;
+  skipped_blocked_count: number;
+  skipped_due_to_limit_count: number;
+  submitted_shots: AiComicSeedanceRetrySubmitShot[];
+  seedance_production?: AiComicSeedanceProductionLedger;
+  markdown: string;
+}
+
 export interface AiComicSeedanceVersionComparisonRow {
   version_id: string;
   status: AiComicSeedanceProductionStatus;

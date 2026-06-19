@@ -85,11 +85,14 @@ import type {
   AiComicSeedanceRetryExecutionCandidate,
   AiComicSeedanceRetryExecutionEpisode,
   AiComicSeedanceRetryReason,
+  AiComicSeedanceRetrySubmitRequest,
+  AiComicSeedanceRetrySubmitShot,
   AiComicSeriesSeedanceCutPackage,
   AiComicSeedanceCutAssemblyLedger,
   AiComicSeedanceCutAssemblyRequest,
   AiComicSeriesSeedanceRetryPackage,
   AiComicSeriesSeedanceRetryExecutionPlan,
+  AiComicSeriesSeedanceRetrySubmitResult,
   AiComicSeriesSeedanceAssetReportPackage,
   AiComicSeriesSeedanceEditAssetPackage,
   AiComicSeedanceEditAssetPackageEpisode,
@@ -1090,6 +1093,33 @@ function buildAiComicSeriesSeedanceRetryExecutionMarkdown(
     );
   }
   return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedanceRetrySubmitMarkdown(
+  result: Omit<AiComicSeriesSeedanceRetrySubmitResult, 'markdown'>,
+): string {
+  return [
+    `# ${result.series_title} — Seedance 重试提交结果`,
+    '',
+    `> schema: ${result.schema_version}`,
+    `> seriesProjectId: ${result.project.series_project_id}`,
+    `> submittedAt: ${result.submitted_at}`,
+    `> submittedCount: ${result.submitted_count}`,
+    `> skippedBlocked: ${result.skipped_blocked_count}`,
+    `> skippedDueToLimit: ${result.skipped_due_to_limit_count}`,
+    '',
+    '## 已提交镜头',
+    ...markdownTable(
+      ['集数', '镜头', 'job', '重试次数', '原因'],
+      result.submitted_shots.map(shot => [
+        `第${shot.episode_no}集`,
+        shot.shot_id,
+        shot.provider_job_id,
+        String(shot.retry_count),
+        shot.retry_reason === 'review_required' ? '审片返修' : '生产状态',
+      ]),
+    ),
+  ].join('\n');
 }
 
 function buildAiComicSeriesSeedanceVersionComparisonMarkdown(
@@ -3259,6 +3289,100 @@ export async function exportAiComicSeriesSeedanceRetryExecutionPlan(
   return success({
     ...basePlan,
     markdown: buildAiComicSeriesSeedanceRetryExecutionMarkdown(basePlan),
+  });
+}
+
+export async function submitAiComicSeriesSeedanceRetryExecutionPlan(
+  seriesProjectId: string,
+  request: AiComicSeedanceRetrySubmitRequest = {},
+): Promise<ApiResponse<AiComicSeriesSeedanceRetrySubmitResult>> {
+  const executionPlanRes = await exportAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId);
+  if (!executionPlanRes.ok || !executionPlanRes.data) {
+    return fail(
+      normalizeErrorCode(executionPlanRes.error?.code),
+      executionPlanRes.error?.message ?? 'Export Seedance retry execution plan failed',
+      executionPlanRes.error?.details,
+    );
+  }
+
+  const executionPlan = executionPlanRes.data;
+  const allSubmitCandidates = executionPlan.episodes
+    .flatMap(episode => episode.candidates)
+    .filter(candidate => candidate.can_submit);
+  const selectedCandidates = allSubmitCandidates.slice(0, request.limit);
+  const submittedAt = new Date().toISOString();
+  if (selectedCandidates.length === 0) {
+    const emptyResult: Omit<AiComicSeriesSeedanceRetrySubmitResult, 'markdown'> = {
+      schema_version: 'ai-comic-series-seedance-retry-submit-result/v1',
+      project: executionPlan.project,
+      series_title: executionPlan.series_title,
+      submitted_at: submittedAt,
+      retry_execution_plan: executionPlan,
+      selected_shot_ids: [],
+      submitted_count: 0,
+      skipped_blocked_count: executionPlan.blocked_count,
+      skipped_due_to_limit_count: 0,
+      submitted_shots: [],
+    };
+    return success({
+      ...emptyResult,
+      markdown: buildAiComicSeriesSeedanceRetrySubmitMarkdown(emptyResult),
+    });
+  }
+
+  const jobPrefix = slugifyConstraintKey(request.job_prefix?.trim() || `series-retry-${seriesProjectId}`).slice(0, 60);
+  const jobsByProductionId = new Map(selectedCandidates.map((candidate, index) => [
+    candidate.production_id,
+    seedanceRetrySubmitProviderJobId(jobPrefix, candidate, index, submittedAt),
+  ]));
+  const updateRes = await updateAiComicSeriesSeedanceProductionStatuses(seriesProjectId, {
+    updates: selectedCandidates.map(candidate => ({
+      episode_no: candidate.episode_no,
+      shot_id: candidate.shot_id,
+      status: 'submitted',
+      provider_job_id: jobsByProductionId.get(candidate.production_id)!,
+      increment_retry: candidate.status !== 'not_started' && candidate.status !== 'prompt_exported',
+      note: request.note ?? `Seedance 重试执行计划提交：${candidate.suggested_action}`,
+    })),
+  });
+  if (!updateRes.ok || !updateRes.data) {
+    return fail(
+      normalizeErrorCode(updateRes.error?.code),
+      updateRes.error?.message ?? 'Submit Seedance retry execution plan failed',
+      updateRes.error?.details,
+    );
+  }
+
+  const updatedItemsByProductionId = new Map(
+    (updateRes.data.seedance_production?.items ?? []).map(item => [item.production_id, item]),
+  );
+  const submittedShots: AiComicSeedanceRetrySubmitShot[] = selectedCandidates.map(candidate => {
+    const updated = updatedItemsByProductionId.get(candidate.production_id);
+    return {
+      production_id: candidate.production_id,
+      episode_no: candidate.episode_no,
+      shot_id: candidate.shot_id,
+      provider_job_id: jobsByProductionId.get(candidate.production_id)!,
+      retry_count: updated?.retry_count ?? candidate.retry_count,
+      retry_reason: candidate.retry_reason,
+    };
+  });
+  const result: Omit<AiComicSeriesSeedanceRetrySubmitResult, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-retry-submit-result/v1',
+    project: updateRes.data.project,
+    series_title: updateRes.data.plan.series_title,
+    submitted_at: submittedAt,
+    retry_execution_plan: executionPlan,
+    selected_shot_ids: selectedCandidates.map(candidate => candidate.shot_id),
+    submitted_count: submittedShots.length,
+    skipped_blocked_count: executionPlan.blocked_count,
+    skipped_due_to_limit_count: Math.max(0, allSubmitCandidates.length - selectedCandidates.length),
+    submitted_shots: submittedShots,
+    seedance_production: updateRes.data.seedance_production,
+  };
+  return success({
+    ...result,
+    markdown: buildAiComicSeriesSeedanceRetrySubmitMarkdown(result),
   });
 }
 
@@ -8667,6 +8791,16 @@ function seedanceRetryExecutionReasonCounts(
     counts[candidate.retry_reason] += 1;
   }
   return counts;
+}
+
+function seedanceRetrySubmitProviderJobId(
+  jobPrefix: string,
+  candidate: AiComicSeedanceRetryExecutionCandidate,
+  index: number,
+  submittedAt: string,
+): string {
+  const timestamp = submittedAt.replace(/\D/g, '').slice(0, 14);
+  return `${jobPrefix}-${candidate.production_id}-${index + 1}-${timestamp}`.slice(0, 120);
 }
 
 function seedanceRetrySuggestedAction(

@@ -2098,6 +2098,22 @@ describe('Seedance Title Cards and Final Delivery API', () => {
     expectFailure(res.body, 'STORY_NOT_FOUND');
   });
 
+  it('validates retry submit limit', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-retry/submit')
+      .send({ limit: 0 });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts a retry submit request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-retry/submit')
+      .send({ limit: 2, job_prefix: 'api-retry-test' });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
   it('returns 404 for a missing series project title card plan', async () => {
     const res = await request
       .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-title-card-plan')

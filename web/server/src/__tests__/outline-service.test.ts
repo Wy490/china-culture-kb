@@ -40,6 +40,7 @@ import {
   resolveAiComicSeriesSeedanceReview,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
+  submitAiComicSeriesSeedanceRetryExecutionPlan,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
@@ -1317,6 +1318,30 @@ describe('outline-service', () => {
     )).toBe(true);
     expect(versionComparisonRes.data?.markdown).toContain('Seedance 版本对比报告');
     expect(versionComparisonRes.data?.markdown).toContain('自动择优推荐');
+
+    const retrySubmitRes = await submitAiComicSeriesSeedanceRetryExecutionPlan(
+      saveRes.data!.project.series_project_id,
+      {
+        job_prefix: 'series-retry-test',
+        note: '服务测试提交重试执行计划',
+      },
+    );
+    expect(retrySubmitRes.ok).toBe(true);
+    expect(retrySubmitRes.data?.schema_version).toBe('ai-comic-series-seedance-retry-submit-result/v1');
+    expect(retrySubmitRes.data?.submitted_count).toBeGreaterThan(0);
+    expect(retrySubmitRes.data?.submitted_shots.some(shot =>
+      shot.production_id === retryCandidate!.production_id
+      && shot.provider_job_id.startsWith('series-retry-test-')
+      && shot.retry_count > retryCandidate!.retry_count
+    )).toBe(true);
+    const submittedRetryItem = retrySubmitRes.data?.seedance_production?.items.find(item =>
+      item.production_id === retryCandidate!.production_id
+    );
+    expect(submittedRetryItem).toMatchObject({
+      status: 'submitted',
+      provider_job_id: expect.stringContaining('series-retry-test-'),
+    });
+    expect(retrySubmitRes.data?.markdown).toContain('Seedance 重试提交结果');
 
     const editedPlan = {
       ...planRes.data!,

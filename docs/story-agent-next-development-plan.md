@@ -11,7 +11,7 @@
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
 | Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
-| AI 漫剧系列生产链 | 约 74% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、重试执行计划、外部剪辑平台包和生产总览 dashboard 首版已有；下一步是真实混音、真实片头片尾渲染和真实最终装配。 |
+| AI 漫剧系列生产链 | 约 75% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、重试执行计划、本地重试提交、外部剪辑平台包和生产总览 dashboard 首版已有；下一步是真实混音、真实片头片尾渲染和真实最终装配。 |
 | 可商用制作中台 | 约 50% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、真实混音执行/最终成片、审片返修联动深化和稳定压测。 |
 
 ## 2. 本轮完成内容
@@ -158,9 +158,10 @@
   - 返修包输出 open review、retry candidate、final reassemble required 和 Markdown 摘要。
   - 未解决 shot 审片意见会进入 Seedance 重试包；未解决 final reassemble 审片意见会阻断 strict final delivery dry-run。
   - 新增 `ai-comic-series-seedance-retry-execution-plan/v1`，把重试包进一步拆成可直接提交、需人工处理和缺提示词镜头。
+  - 新增 `ai-comic-series-seedance-retry-submit-result/v1`，可把执行计划里可提交候选写回生产账本为 submitted，并生成本地 provider job id。
   - dashboard 聚合 open/blocking 审片数，并把未解决审片意见纳入 blocker / next action。
   - 系列工作台最终交付区新增审片返修轻量录入、open 列表、标记解决和返修包导出。
-  - 服务测试覆盖 review ledger、retry candidate、final reassemble blocker、review retry package、retry execution plan 和 strict final guard；API 测试覆盖 review / retry execution 路由校验和缺失项目响应。
+  - 服务测试覆盖 review ledger、retry candidate、final reassemble blocker、review retry package、retry execution plan、retry submit 和 strict final guard；API 测试覆盖 review / retry execution / retry submit 路由校验和缺失项目响应。
 
 ### 文档同步
 

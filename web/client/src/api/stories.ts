@@ -36,6 +36,7 @@ import type {
   AiComicSeriesSeedanceFinishingPlanPackage,
   AiComicSeriesSeedanceRetryExecutionPlan,
   AiComicSeriesSeedanceRetryPackage,
+  AiComicSeriesSeedanceRetrySubmitResult,
   AiComicSeriesSeedanceReviewRepairPackage,
   AiComicSeriesSeedanceReviewUpdateResult,
   AiComicSeriesSeedanceSubtitlePackage,
@@ -55,6 +56,7 @@ import type {
   AiComicSeedanceProductionVersionSelectRequest,
   AiComicSeedanceReviewAddRequest,
   AiComicSeedanceReviewResolveRequest,
+  AiComicSeedanceRetrySubmitRequest,
   AiComicSeedanceSubtitleExportRequest,
   AiComicSeedanceSubtitleRenderRequest,
   AiComicSeedanceThumbnailCaptureRequest,
@@ -202,6 +204,16 @@ export function exportAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId: s
   return apiPost<AiComicSeriesSeedanceRetryExecutionPlan>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-retry-execution-plan`,
     {},
+  )
+}
+
+export function submitAiComicSeriesSeedanceRetryExecutionPlan(
+  seriesProjectId: string,
+  req: AiComicSeedanceRetrySubmitRequest = {},
+) {
+  return apiPost<AiComicSeriesSeedanceRetrySubmitResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-retry/submit`,
+    req,
   )
 }
 

@@ -721,6 +721,13 @@
                 </button>
                 <button
                   class="series-studio__ghost-button"
+                  :disabled="submittingSeedanceRetry || batchUpdatingSeedance"
+                  @click="submitSeedanceRetryExecutionPlan"
+                >
+                  {{ submittingSeedanceRetry ? '提交中...' : '提交重试计划' }}
+                </button>
+                <button
+                  class="series-studio__ghost-button"
                   :disabled="capturingSeedanceThumbnails || seedanceProductionStats.ready === 0"
                   @click="captureSeedanceThumbnails"
                 >
@@ -1797,6 +1804,7 @@ import {
   resolveAiComicSeriesSeedanceReview,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
+  submitAiComicSeriesSeedanceRetryExecutionPlan,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
@@ -1899,6 +1907,7 @@ const showSeedanceVersionComparison = ref(false)
 const loadingSeedanceVersionComparison = ref(false)
 const updatingSeedanceProductionId = ref('')
 const batchUpdatingSeedance = ref(false)
+const submittingSeedanceRetry = ref(false)
 const capturingSeedanceThumbnails = ref(false)
 const assemblingSeedanceCut = ref(false)
 const renderingSeedanceSubtitles = ref(false)
@@ -3642,6 +3651,25 @@ async function batchMarkSeedanceProduction(
     }))
   if (updates.length === 0) return
   await submitSeedanceProductionBatch({ updates }, `已批量更新 ${updates.length} 个镜头为${seedanceProductionStatusLabel(toStatus)}`)
+}
+
+async function submitSeedanceRetryExecutionPlan() {
+  if (!seriesProjectId.value || submittingSeedanceRetry.value) return
+  submittingSeedanceRetry.value = true
+  errorMessage.value = ''
+  const res = await submitAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId.value, {
+    job_prefix: 'series-retry',
+    note: '前端提交 Seedance 重试执行计划',
+  })
+  if (res.ok && res.data) {
+    seedanceProduction.value = res.data.seedance_production ?? seedanceProduction.value
+    lastSavedAt.value = res.data.project.updated_at
+    saveMessage.value = `Seedance 重试计划已提交 · ${res.data.submitted_count} 个镜头 · 阻断 ${res.data.skipped_blocked_count}`
+    await loadSeedanceDashboard()
+  } else {
+    errorMessage.value = res.error?.message ?? '提交 Seedance 重试计划失败'
+  }
+  submittingSeedanceRetry.value = false
 }
 
 async function importSeedanceReturnJson(event: Event) {
