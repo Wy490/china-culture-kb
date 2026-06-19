@@ -132,7 +132,8 @@
   - 新增 `seedance-audio/mix`，支持 `dry_run`、分集筛选、输入视频路径、输出文件名、audio profile 和可复现 ffmpeg 命令。
   - 新增 `seedance_audio_mix` 账本，记录状态、源视频、输出路径、素材数、缺失音频数、失败原因和 ffmpeg 命令。
   - 系列工作台新增“导出音频计划 Markdown / JSON”“导入音频素材”和“混音 dry-run”，并展示混音状态卡。
-  - 服务测试覆盖缺失音频计划、素材绑定、混音 dry-run 命令和输入路径校验；API 测试覆盖音频素材库、混音请求和缺失项目校验。
+  - 已补真实 runner 输入 hardening：非 dry-run 校验源视频、本地音频素材路径和文件存在，远程 URL / 协议路径会写入明确失败原因。
+  - 服务测试覆盖缺失音频计划、素材绑定、混音 dry-run 命令、远程音频失败、本地音频 fake runner 成功和输入路径校验；API 测试覆盖音频素材库、混音请求和缺失项目校验。
 - AI 漫剧 Seedance 片头片尾 / final delivery dry-run 首版：
   - 新增 `export-seedance-title-card-plan`，从 finishing plan 的 title cards 生成可执行片头片尾计划、输出路径和 ffmpeg command hint。
   - 新增 `seedance-title-cards/render`，支持 dry-run、分集筛选、output profile、`FFMPEG_FONT_PATH` 校验和 `seedance_title_card_render` 账本。
@@ -255,10 +256,10 @@ SeedanceProviderAdapter
 下一块建议做：
 
 ```text
-seedance-audio/mix real runner hardening
-  -> seedance-title-cards/render real/mock success
+seedance-title-cards/render real/mock success
   -> seedance-final/assemble real runner hardening
   -> seedance_review_ledger retry submit adapter/final reassemble execution
+  -> seedance-audio/mix real ffmpeg and multi-episode hardening
 ```
 
 ## 6. 新对话开场指令

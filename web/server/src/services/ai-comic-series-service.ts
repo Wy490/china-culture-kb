@@ -4268,11 +4268,15 @@ export async function mixAiComicSeriesSeedanceAudio(
       if (audioInputs.length === 0) {
         throw new Error('No bound audio assets are available for audio mix');
       }
+      if (!(await pathExists(absoluteInputVideoPath))) {
+        throw new Error(`Seedance audio mix input video not found: ${sourceVideoPath}`);
+      }
+      const runnerAudioInputs = await resolveSeedanceAudioMixRunnerInputs(projectDir, audioInputs);
       await mkdir(dirname(absoluteOutputPath), { recursive: true });
       await runner({
         ffmpegPath,
         inputVideoPath: absoluteInputVideoPath,
-        audioInputs,
+        audioInputs: runnerAudioInputs,
         outputPath: absoluteOutputPath,
       });
     }
@@ -6667,6 +6671,34 @@ function seedanceAudioMixDefaultInputPath(detail: AiComicSeriesProjectDetail): s
     return detail.seedance_subtitle_render.output_path;
   }
   return detail.seedance_cut_assembly?.output_path;
+}
+
+async function resolveSeedanceAudioMixRunnerInputs(
+  projectDir: string,
+  audioInputs: SeedanceAudioMixInput[],
+): Promise<SeedanceAudioMixInput[]> {
+  const resolvedInputs: SeedanceAudioMixInput[] = [];
+  for (const input of audioInputs) {
+    const inputPath = input.input_path.trim();
+    if (isProtocolPath(inputPath)) {
+      throw new Error(
+        `Seedance audio mix real runner requires local audio files; remote or protocol path is not supported: ${input.input_path}`,
+      );
+    }
+    const resolvedPath = resolveSeedanceProjectOutputPath(projectDir, inputPath);
+    if (!(await pathExists(resolvedPath))) {
+      throw new Error(`Seedance audio mix input audio not found: ${input.input_path}`);
+    }
+    resolvedInputs.push({
+      ...input,
+      input_path: resolvedPath,
+    });
+  }
+  return resolvedInputs;
+}
+
+function isProtocolPath(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/i.test(value);
 }
 
 function seedanceTitleCardFilename(cardId: string): string {

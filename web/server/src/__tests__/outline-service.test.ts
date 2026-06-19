@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
@@ -1068,6 +1068,96 @@ describe('outline-service', () => {
       audio_profile: 'music_forward',
       source_audio_count: audioMixDryRunRes.data?.source_audio_count,
     });
+
+    const projectDir = resolve(
+      outlineGeneratedRoot(),
+      'ai-comic-series-projects',
+      saveRes.data!.project.series_project_id,
+    );
+    const mixInputVideoPath = `cuts/${saveRes.data!.project.series_project_id}/audio-source.mp4`;
+    await mkdir(resolve(projectDir, 'cuts', saveRes.data!.project.series_project_id), { recursive: true });
+    await writeFile(resolve(projectDir, mixInputVideoPath), 'fake video source');
+    let remoteAudioRunnerCalled = false;
+    const remoteAudioMixRealRes = await mixAiComicSeriesSeedanceAudio(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        input_video_path: mixInputVideoPath,
+        output_filename: 'remote-audio-mix.mp4',
+      },
+      {
+        runner: async () => {
+          remoteAudioRunnerCalled = true;
+        },
+      },
+    );
+    expect(remoteAudioMixRealRes.ok).toBe(true);
+    expect(remoteAudioMixRealRes.data?.status).toBe('failed');
+    expect(remoteAudioRunnerCalled).toBe(false);
+    expect(remoteAudioMixRealRes.data?.failure_reason).toContain('requires local audio files');
+    expect(remoteAudioMixRealRes.data?.seedance_audio_mix).toMatchObject({
+      status: 'failed',
+      failure_reason: expect.stringContaining('requires local audio files'),
+    });
+
+    const localAudioPath = 'audio/local-series-bed.mp3';
+    await mkdir(resolve(projectDir, 'audio'), { recursive: true });
+    await writeFile(resolve(projectDir, localAudioPath), 'fake audio source');
+    const localAudioLibraryRes = await updateAiComicSeriesSeedanceAudioLibrary(
+      saveRes.data!.project.series_project_id,
+      {
+        items: [{
+          asset_id: firstSuggestedAudio.asset_id,
+          kind: firstSuggestedAudio.kind,
+          label: firstSuggestedAudio.label,
+          file_url: localAudioPath,
+          duration_sec: 120,
+          loopable: true,
+        }],
+      },
+    );
+    expect(localAudioLibraryRes.ok).toBe(true);
+
+    const runnerCalls: Array<{
+      inputVideoPath: string;
+      outputPath: string;
+      audioInputs: Array<{ input_path: string }>;
+    }> = [];
+    const realAudioMixRes = await mixAiComicSeriesSeedanceAudio(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        input_video_path: mixInputVideoPath,
+        output_filename: 'local-audio-mix.mp4',
+      },
+      {
+        runner: async params => {
+          runnerCalls.push({
+            inputVideoPath: params.inputVideoPath,
+            outputPath: params.outputPath,
+            audioInputs: params.audioInputs.map(input => ({ input_path: input.input_path })),
+          });
+          await writeFile(params.outputPath, 'fake mixed video');
+        },
+      },
+    );
+    expect(realAudioMixRes.ok).toBe(true);
+    expect(realAudioMixRes.data?.status).toBe('mixed');
+    expect(realAudioMixRes.data?.seedance_audio_mix).toMatchObject({
+      status: 'ready',
+      output_filename: 'local-audio-mix.mp4',
+    });
+    expect(runnerCalls).toHaveLength(1);
+    expect(runnerCalls[0].inputVideoPath).toBe(resolve(projectDir, mixInputVideoPath));
+    expect(runnerCalls[0].outputPath).toBe(resolve(
+      projectDir,
+      'cuts',
+      saveRes.data!.project.series_project_id,
+      'local-audio-mix.mp4',
+    ));
+    expect(runnerCalls[0].audioInputs[0].input_path).toBe(resolve(projectDir, localAudioPath));
 
     const unsafeAudioMixInputRes = await mixAiComicSeriesSeedanceAudio(
       saveRes.data!.project.series_project_id,

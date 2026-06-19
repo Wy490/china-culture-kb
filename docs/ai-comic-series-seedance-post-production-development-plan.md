@@ -255,7 +255,7 @@ Seedance prompts
 
 调用 ffmpeg 将背景音乐、环境声、音效与视频合成为带音频的成片。
 
-当前状态：dry-run / mock runner 首版已完成；真实素材路径和完整混音策略仍需继续打磨。
+当前状态：dry-run / mock runner 与真实素材路径校验首版已完成；完整混音策略仍需继续打磨。
 
 ### 后端任务
 
@@ -278,8 +278,9 @@ Seedance prompts
 实现状态：
 
 - `seedance-audio/mix` 已支持 `dry_run`、`overwrite`、`episode_no`、`input_video_path`、`output_filename` 和 `audio_profile`。
-- 服务层已生成可复现 ffmpeg 命令，并将 dry-run / mock runner 结果写回 `seedance_audio_mix`。
-- 当前首版优先保证计划可审查和命令可复现；真实执行时还需要继续补足素材路径约束、原声混合策略和失败专项断言。
+- 服务层已生成可复现 ffmpeg 命令，并将 dry-run / mock runner / fake runner 结果写回 `seedance_audio_mix`。
+- 真实执行已校验源视频存在、音频素材为项目内本地路径且文件存在；远程 URL 或协议路径会写入明确失败原因。
+- 当前首版优先保证计划可审查、命令可复现和真实 runner 输入安全；后续继续补原声混合策略、真实 ffmpeg 专项和多分集边界。
 
 ### 前端任务
 
@@ -300,7 +301,7 @@ Seedance prompts
 
 实现状态：
 
-- 已覆盖混音 dry-run 命令、音频输入路径安全校验、混音请求 validation 和缺失项目响应。
+- 已覆盖混音 dry-run 命令、远程音频素材真实执行失败、本地音频 fake runner 成功、音频输入路径安全校验、混音请求 validation 和缺失项目响应。
 - 待补：真实 ffmpeg 成功/失败专项、原声混合策略和多分集边界测试。
 
 ### 验收标准
@@ -661,10 +662,10 @@ Seedance prompts
 
 推荐按以下顺序继续：
 
-1. `seedance-audio/mix` 真实素材执行增强
-2. `seedance-title-cards/render` 真实渲染增强
-3. `seedance-final/assemble` 真实装配 hardening
-4. `seedance_review_ledger` 到 retry submit adapter / final reassemble 真实执行自动化
+1. `seedance-title-cards/render` 真实渲染增强
+2. `seedance-final/assemble` 真实装配 hardening
+3. `seedance_review_ledger` 到 retry submit adapter / final reassemble 真实执行自动化
+4. `seedance-audio/mix` 真实 ffmpeg 专项和多分集边界增强
 5. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
@@ -672,10 +673,10 @@ Seedance prompts
 下一步建议优先实现：
 
 ```text
-seedance-audio/mix real runner hardening
-  -> seedance-title-cards/render real/mock success
+seedance-title-cards/render real/mock success
   -> seedance-final/assemble real runner hardening
   -> seedance_review_ledger retry submit adapter/final reassemble execution
+  -> seedance-audio/mix real ffmpeg and multi-episode hardening
 ```
 
 原因：
