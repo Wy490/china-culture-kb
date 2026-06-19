@@ -48,6 +48,14 @@ import type {
   AiComicSeedanceFinalDeliveryOutputProfile,
   AiComicSeedanceFinalDeliveryRequest,
   AiComicSeedanceFinalDeliveryStatus,
+  AiComicSeedanceReviewAddRequest,
+  AiComicSeedanceReviewItem,
+  AiComicSeedanceReviewLedger,
+  AiComicSeedanceReviewRepairAction,
+  AiComicSeedanceReviewResolveRequest,
+  AiComicSeriesSeedanceReviewRepairPackage,
+  AiComicSeriesSeedanceReviewRepairPackageItem,
+  AiComicSeriesSeedanceReviewUpdateResult,
   AiComicSeedanceEditingPlatformAsset,
   AiComicSeedanceEditingPlatformMissingAsset,
   AiComicSeedanceEditingPlatformSubtitleCue,
@@ -2204,6 +2212,7 @@ export async function saveAiComicSeriesProject(
     seedance_audio_mix: cloneSeedanceAudioMixLedger(existing?.seedance_audio_mix),
     seedance_title_card_render: cloneSeedanceTitleCardRenderLedger(existing?.seedance_title_card_render),
     seedance_final_delivery: cloneSeedanceFinalDeliveryLedger(existing?.seedance_final_delivery),
+    seedance_review_ledger: cloneSeedanceReviewLedger(existing?.seedance_review_ledger),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -2350,6 +2359,7 @@ export async function copyAiComicSeriesProject(
     seedance_audio_mix: cloneSeedanceAudioMixLedger(existing.seedance_audio_mix),
     seedance_title_card_render: cloneSeedanceTitleCardRenderLedger(existing.seedance_title_card_render),
     seedance_final_delivery: cloneSeedanceFinalDeliveryLedger(existing.seedance_final_delivery),
+    seedance_review_ledger: cloneSeedanceReviewLedger(existing.seedance_review_ledger),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -4320,6 +4330,139 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
   });
 }
 
+export async function addAiComicSeriesSeedanceReview(
+  seriesProjectId: string,
+  request: AiComicSeedanceReviewAddRequest,
+): Promise<ApiResponse<AiComicSeriesSeedanceReviewUpdateResult>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const now = new Date().toISOString();
+  const targetId = request.target_id?.trim()
+    || request.shot_id?.trim()
+    || seedanceReviewDefaultTargetId(detail, request.target_type);
+  const reviewItem: AiComicSeedanceReviewItem = {
+    review_id: generateSeedanceReviewId(),
+    target_type: request.target_type,
+    target_id: targetId,
+    episode_no: request.episode_no,
+    shot_id: request.shot_id?.trim() || (request.target_type === 'shot' ? targetId : undefined),
+    status: 'open',
+    severity: request.severity,
+    issue_type: request.issue_type,
+    note: request.note.trim(),
+    repair_action: request.repair_action ?? seedanceReviewDefaultRepairAction(request.issue_type, request.target_type),
+    created_at: now,
+    created_by: request.created_by?.trim(),
+  };
+  const existingLedger = normalizeSeedanceReviewLedger(detail.seedance_review_ledger);
+  const seedanceReviewLedger = summarizeSeedanceReviewLedger(
+    [...(existingLedger?.items ?? []), reviewItem],
+    now,
+  );
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: now,
+    },
+    seedance_review_ledger: seedanceReviewLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+
+  return success({
+    schema_version: 'ai-comic-series-seedance-review-update-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    updated_at: now,
+    review_item: reviewItem,
+    seedance_review_ledger: seedanceReviewLedger,
+  });
+}
+
+export async function resolveAiComicSeriesSeedanceReview(
+  seriesProjectId: string,
+  request: AiComicSeedanceReviewResolveRequest,
+): Promise<ApiResponse<AiComicSeriesSeedanceReviewUpdateResult>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const existingLedger = normalizeSeedanceReviewLedger(detail.seedance_review_ledger);
+  const reviewItem = existingLedger?.items.find(item => item.review_id === request.review_id);
+  if (!reviewItem) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Seedance review "${request.review_id}" not found`);
+  }
+
+  const now = new Date().toISOString();
+  const updatedReviewItem: AiComicSeedanceReviewItem = {
+    ...reviewItem,
+    status: request.status ?? 'resolved',
+    resolved_at: now,
+    resolved_note: request.resolved_note?.trim(),
+  };
+  const seedanceReviewLedger = summarizeSeedanceReviewLedger(
+    (existingLedger?.items ?? []).map(item => item.review_id === request.review_id ? updatedReviewItem : item),
+    now,
+  );
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: now,
+    },
+    seedance_review_ledger: seedanceReviewLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+
+  return success({
+    schema_version: 'ai-comic-series-seedance-review-update-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    updated_at: now,
+    review_item: updatedReviewItem,
+    seedance_review_ledger: seedanceReviewLedger,
+  });
+}
+
+export async function exportAiComicSeriesSeedanceReviewRepairPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedanceReviewRepairPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const exportedAt = new Date().toISOString();
+  const ledger = normalizeSeedanceReviewLedger(detail.seedance_review_ledger)
+    ?? summarizeSeedanceReviewLedger([], exportedAt);
+  const items = ledger.items
+    .filter(seedanceReviewItemOpen)
+    .map(item => buildSeedanceReviewRepairPackageItem(item));
+  const retryCandidateCount = items.filter(item =>
+    item.target_type === 'shot'
+    && (item.repair_action === 'redo_shot' || item.repair_action === 'reselect_version')
+  ).length;
+  const pkg: Omit<AiComicSeriesSeedanceReviewRepairPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-review-repair-package/v1',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    exported_at: exportedAt,
+    open_count: items.length,
+    blocking_count: items.filter(item => item.severity === 'blocking').length,
+    retry_candidate_count: retryCandidateCount,
+    final_reassemble_required: items.some(item => item.repair_action === 'reassemble_final'),
+    items,
+  };
+  return success({
+    ...pkg,
+    markdown: buildAiComicSeriesSeedanceReviewRepairMarkdown(pkg),
+  });
+}
+
 export async function exportAiComicSeriesSeedanceEditingPlatformPackage(
   seriesProjectId: string,
 ): Promise<ApiResponse<AiComicSeriesSeedanceEditingPlatformPackage>> {
@@ -5307,6 +5450,7 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
     seedance_audio_mix: cloneSeedanceAudioMixLedger(detail.seedance_audio_mix),
     seedance_title_card_render: cloneSeedanceTitleCardRenderLedger(detail.seedance_title_card_render),
     seedance_final_delivery: cloneSeedanceFinalDeliveryLedger(detail.seedance_final_delivery),
+    seedance_review_ledger: cloneSeedanceReviewLedger(detail.seedance_review_ledger),
     series_quality_audit: detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
       plan: detail.plan,
       generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
@@ -5689,6 +5833,209 @@ function cloneSeedanceFinalDeliveryLedger(
         },
       }
     : undefined;
+}
+
+function normalizeSeedanceReviewLedger(
+  ledger?: AiComicSeedanceReviewLedger,
+): AiComicSeedanceReviewLedger | undefined {
+  if (!ledger) return undefined;
+  const items = (ledger.items ?? []).map(normalizeSeedanceReviewItem);
+  return summarizeSeedanceReviewLedger(items, ledger.updated_at);
+}
+
+function normalizeSeedanceReviewItem(item: AiComicSeedanceReviewItem): AiComicSeedanceReviewItem {
+  return {
+    review_id: item.review_id,
+    target_type: item.target_type ?? 'final',
+    target_id: item.target_id,
+    episode_no: item.episode_no,
+    shot_id: item.shot_id,
+    status: item.status ?? 'open',
+    severity: item.severity ?? 'major',
+    issue_type: item.issue_type ?? 'other',
+    note: item.note ?? '',
+    repair_action: item.repair_action ?? seedanceReviewDefaultRepairAction(item.issue_type ?? 'other', item.target_type ?? 'final'),
+    created_at: item.created_at,
+    created_by: item.created_by,
+    resolved_at: item.resolved_at,
+    resolved_note: item.resolved_note,
+  };
+}
+
+function cloneSeedanceReviewLedger(
+  ledger?: AiComicSeedanceReviewLedger,
+): AiComicSeedanceReviewLedger | undefined {
+  const normalized = normalizeSeedanceReviewLedger(ledger);
+  return normalized
+    ? {
+        ...normalized,
+        items: normalized.items.map(item => ({ ...item })),
+      }
+    : undefined;
+}
+
+function summarizeSeedanceReviewLedger(
+  items: AiComicSeedanceReviewItem[],
+  updatedAt?: string,
+): AiComicSeedanceReviewLedger {
+  const openItems = items.filter(item => seedanceReviewItemOpen(item));
+  return {
+    schema_version: 'ai-comic-seedance-review-ledger/v1',
+    updated_at: updatedAt,
+    open_count: openItems.length,
+    resolved_count: items.length - openItems.length,
+    blocking_count: openItems.filter(item => item.severity === 'blocking').length,
+    final_reassemble_required: openItems.some(item => item.repair_action === 'reassemble_final'),
+    items,
+  };
+}
+
+function seedanceReviewItemOpen(item: AiComicSeedanceReviewItem): boolean {
+  return item.status === 'open' || item.status === 'in_progress';
+}
+
+function generateSeedanceReviewId(): string {
+  return `review-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function seedanceReviewDefaultTargetId(
+  detail: AiComicSeriesProjectDetail,
+  targetType: AiComicSeedanceReviewAddRequest['target_type'],
+): string {
+  if (targetType === 'final') return detail.seedance_final_delivery?.output_path ?? 'final_delivery';
+  if (targetType === 'cut') return detail.seedance_cut_assembly?.output_path ?? 'cut_assembly';
+  if (targetType === 'subtitle') return detail.seedance_subtitle_render?.output_path ?? detail.seedance_subtitle_render?.srt_path ?? 'subtitle_render';
+  if (targetType === 'audio') return detail.seedance_audio_mix?.output_path ?? 'audio_mix';
+  if (targetType === 'title_card') return detail.seedance_title_card_render?.output_paths[0] ?? 'title_card_render';
+  return 'shot';
+}
+
+function seedanceReviewDefaultRepairAction(
+  issueType: AiComicSeedanceReviewItem['issue_type'],
+  targetType: AiComicSeedanceReviewItem['target_type'],
+): AiComicSeedanceReviewRepairAction {
+  if (targetType === 'shot') {
+    return issueType === 'technical' ? 'reselect_version' : 'redo_shot';
+  }
+  if (targetType === 'subtitle' || issueType === 'subtitle') return 'revise_subtitle';
+  if (targetType === 'audio' || issueType === 'audio') return 'adjust_audio';
+  if (targetType === 'title_card' || issueType === 'title_card') return 'revise_title_card';
+  if (targetType === 'final' || targetType === 'cut') return 'reassemble_final';
+  return 'manual_review';
+}
+
+function buildSeedanceReviewRepairPackageItem(
+  item: AiComicSeedanceReviewItem,
+): AiComicSeriesSeedanceReviewRepairPackageItem {
+  return {
+    review_id: item.review_id,
+    target_type: item.target_type,
+    target_id: item.target_id,
+    episode_no: item.episode_no,
+    shot_id: item.shot_id,
+    severity: item.severity,
+    issue_type: item.issue_type,
+    note: item.note,
+    repair_action: item.repair_action,
+    suggested_next_step: seedanceReviewSuggestedNextStep(item),
+  };
+}
+
+function seedanceReviewSuggestedNextStep(item: AiComicSeedanceReviewItem): string {
+  const map: Record<AiComicSeedanceReviewRepairAction, string> = {
+    redo_shot: '加入 Seedance 重试包，重做该镜头并保留旧版本用于对比。',
+    reselect_version: '回到版本对比，重新选择可用剪辑版或标记人工替换。',
+    revise_subtitle: '修订字幕 cue 或重新渲染字幕，再刷新最终交付。',
+    adjust_audio: '调整音频素材或混音参数，再重新生成混音。',
+    revise_title_card: '修改片头片尾卡文本或视觉，再重新渲染卡片。',
+    reassemble_final: '刷新最终交付装配，必要时重新写出 final manifest。',
+    manual_review: '进入人工复核，明确返修归属后再分派到镜头、字幕、音频或最终装配。',
+  };
+  return map[item.repair_action];
+}
+
+function buildAiComicSeriesSeedanceReviewRepairMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceReviewRepairPackage, 'markdown'>,
+): string {
+  return [
+    `# ${pkg.series_title} — Seedance 审片返修包`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> openReviews: ${pkg.open_count}`,
+    `> blockingReviews: ${pkg.blocking_count}`,
+    `> retryCandidates: ${pkg.retry_candidate_count}`,
+    `> finalReassembleRequired: ${pkg.final_reassemble_required ? 'yes' : 'no'}`,
+    '',
+    '## 返修项',
+    ...markdownTable(
+      ['ID', '目标', '严重度', '问题', '返修动作', '备注', '建议'],
+      pkg.items.map(item => [
+        item.review_id,
+        [
+          seedanceReviewTargetTypeText(item.target_type),
+          item.episode_no ? `第${item.episode_no}集` : '',
+          item.shot_id ?? item.target_id ?? '',
+        ].filter(Boolean).join(' · '),
+        seedanceReviewSeverityText(item.severity),
+        seedanceReviewIssueTypeText(item.issue_type),
+        seedanceReviewRepairActionText(item.repair_action),
+        item.note,
+        item.suggested_next_step,
+      ]),
+    ),
+  ].join('\n');
+}
+
+function seedanceReviewTargetTypeText(targetType: AiComicSeedanceReviewItem['target_type']): string {
+  const map: Record<AiComicSeedanceReviewItem['target_type'], string> = {
+    shot: '镜头',
+    cut: '剪辑版',
+    final: '最终成片',
+    subtitle: '字幕',
+    audio: '音频',
+    title_card: '片头片尾',
+  };
+  return map[targetType];
+}
+
+function seedanceReviewSeverityText(severity: AiComicSeedanceReviewItem['severity']): string {
+  const map: Record<AiComicSeedanceReviewItem['severity'], string> = {
+    blocking: '阻断',
+    major: '主要',
+    minor: '轻微',
+    note: '备注',
+  };
+  return map[severity];
+}
+
+function seedanceReviewIssueTypeText(issueType: AiComicSeedanceReviewItem['issue_type']): string {
+  const map: Record<AiComicSeedanceReviewItem['issue_type'], string> = {
+    visual: '画面',
+    continuity: '连续性',
+    subtitle: '字幕',
+    audio: '音频',
+    pacing: '节奏',
+    title_card: '片头片尾',
+    technical: '技术',
+    compliance: '合规',
+    other: '其它',
+  };
+  return map[issueType];
+}
+
+function seedanceReviewRepairActionText(action: AiComicSeedanceReviewRepairAction): string {
+  const map: Record<AiComicSeedanceReviewRepairAction, string> = {
+    redo_shot: '镜头重做',
+    reselect_version: '版本重选',
+    revise_subtitle: '字幕修订',
+    adjust_audio: '音频调整',
+    revise_title_card: '片头片尾修改',
+    reassemble_final: '最终重装配',
+    manual_review: '人工复核',
+  };
+  return map[action];
 }
 
 function syncSeedanceProductionLedgerWithExport(params: {
@@ -6614,6 +6961,7 @@ function buildSeedanceProductionDashboard(
   0);
   const thumbnailReadyCount = ledger.items.filter(item => item.thumbnail?.status === 'ready').length;
   const thumbnailFailedCount = ledger.items.filter(item => item.thumbnail?.status === 'failed').length;
+  const reviewLedger = normalizeSeedanceReviewLedger(detail.seedance_review_ledger);
   const summary: AiComicSeedanceDashboardSummary = {
     generated_episode_count: Object.keys(detail.generated_episode_story_ids ?? {}).length,
     total_episode_count: detail.plan.episode_count,
@@ -6629,6 +6977,9 @@ function buildSeedanceProductionDashboard(
     thumbnail_ready_count: thumbnailReadyCount,
     thumbnail_failed_count: thumbnailFailedCount,
     missing_shot_count: cutPackage.total_missing_shot_count,
+    open_review_count: reviewLedger?.open_count ?? 0,
+    blocking_review_count: reviewLedger?.blocking_count ?? 0,
+    final_reassemble_required: reviewLedger?.final_reassemble_required ?? false,
     blocker_count: 0,
     next_action_count: 0,
     production_status_counts: statusCounts,
@@ -6787,6 +7138,24 @@ function buildSeedanceDashboardStatusItems(
       ].filter(Boolean),
     },
     {
+      key: 'review_ledger',
+      label: '审片返修',
+      status: summary.open_review_count > 0
+        ? summary.blocking_review_count > 0 || summary.final_reassemble_required ? 'blocked' : 'needs_action'
+        : detail.seedance_review_ledger ? 'ready' : 'not_started',
+      status_text: summary.open_review_count > 0
+        ? `${summary.open_review_count} 条待处理`
+        : detail.seedance_review_ledger ? '已清零' : '未开始',
+      updated_at: detail.seedance_review_ledger?.updated_at,
+      count_text: summary.open_review_count > 0
+        ? `阻断 ${summary.blocking_review_count} / open ${summary.open_review_count}`
+        : undefined,
+      notes: [
+        summary.final_reassemble_required ? '需要最终重装配' : '',
+        summary.open_review_count > 0 ? '可导出审片返修包' : '',
+      ].filter(Boolean),
+    },
+    {
       key: 'editing_platform_package',
       label: '外部剪辑包',
       status: summary.ready_count > 0 ? 'ready' : 'not_started',
@@ -6876,6 +7245,20 @@ function buildSeedanceDashboardBlockers(
   addSeedanceLedgerBlocker(blockers, 'audio_mix', '音频混音', detail.seedance_audio_mix?.status, detail.seedance_audio_mix?.failure_reason);
   addSeedanceLedgerBlocker(blockers, 'title_card_render', '片头片尾', detail.seedance_title_card_render?.status, detail.seedance_title_card_render?.failure_reason);
   addSeedanceLedgerBlocker(blockers, 'final_delivery', '最终交付', detail.seedance_final_delivery?.status, detail.seedance_final_delivery?.failure_reason);
+  const reviewLedger = normalizeSeedanceReviewLedger(detail.seedance_review_ledger);
+  if ((reviewLedger?.open_count ?? 0) > 0) {
+    add({
+      blocker_id: 'open-seedance-reviews',
+      severity: (reviewLedger?.blocking_count ?? 0) > 0 ? 'blocking' : 'warning',
+      label: `${reviewLedger?.open_count ?? 0} 条审片意见待处理`,
+      detail: reviewLedger?.final_reassemble_required
+        ? '审片意见要求最终重装配，处理后需要刷新 final delivery。'
+        : '审片意见需要分派到镜头、字幕、音频或人工复核。',
+      related_status_key: 'review_ledger',
+      action_key: 'export_review_repair_package',
+      action_label: '导出返修包',
+    });
+  }
   for (const dependency of finalDependencyStatus.missing_dependencies) {
     add({
       blocker_id: `final-dependency-${slugifyConstraintKey(dependency)}`,
@@ -7024,6 +7407,18 @@ function buildSeedanceDashboardNextActions(
       detail: '剪辑、字幕、混音和片头片尾依赖已可用。',
       priority: 110,
       related_status_key: 'final_delivery',
+    });
+  }
+  const reviewLedger = normalizeSeedanceReviewLedger(detail.seedance_review_ledger);
+  if ((reviewLedger?.open_count ?? 0) > 0) {
+    add({
+      action_key: 'export_review_repair_package',
+      label: '导出审片返修包',
+      detail: reviewLedger?.final_reassemble_required
+        ? '审片意见包含最终重装配，先分派返修再刷新最终交付。'
+        : `${reviewLedger?.open_count ?? 0} 条审片意见待处理。`,
+      priority: 115,
+      related_status_key: 'review_ledger',
     });
   }
   if (summary.ready_count > 0) {

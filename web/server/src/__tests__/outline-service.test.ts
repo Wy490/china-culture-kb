@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import {
+  addAiComicSeriesSeedanceReview,
   archiveAiComicSeriesProject,
   applyAiComicSeriesSeedanceProductionCallback,
   assembleAiComicSeriesSeedanceCut,
@@ -20,6 +21,7 @@ import {
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
   exportAiComicSeriesSeedanceRetryPackage,
+  exportAiComicSeriesSeedanceReviewRepairPackage,
   exportAiComicSeriesSeedanceSubtitlePackage,
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
   exportAiComicSeriesSeedanceTitleCardPlanPackage,
@@ -34,6 +36,7 @@ import {
   rebuildAiComicSeriesContinuityLedger,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
+  resolveAiComicSeriesSeedanceReview,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
@@ -1101,6 +1104,78 @@ describe('outline-service', () => {
     const writtenManifest = JSON.parse(writtenManifestRaw) as typeof finalDeliveryData.manifest;
     expect(writtenManifest.manifest_path).toBe(finalDeliveryData.manifest_path);
     expect(writtenManifest.deliverables.map(deliverable => deliverable.deliverable_type)).toContain('final_video');
+
+    const finalReviewRes = await addAiComicSeriesSeedanceReview(
+      saveRes.data!.project.series_project_id,
+      {
+        target_type: 'final',
+        severity: 'blocking',
+        issue_type: 'technical',
+        note: '最终成片结尾黑场过长，需要重新装配。',
+        repair_action: 'reassemble_final',
+      },
+    );
+    expect(finalReviewRes.ok).toBe(true);
+    expect(finalReviewRes.data?.seedance_review_ledger).toMatchObject({
+      open_count: 1,
+      blocking_count: 1,
+      final_reassemble_required: true,
+    });
+
+    const shotReviewRes = await addAiComicSeriesSeedanceReview(
+      saveRes.data!.project.series_project_id,
+      {
+        target_type: 'shot',
+        target_id: firstProductionItem.shot_id,
+        episode_no: firstProductionItem.episode_no,
+        shot_id: firstProductionItem.shot_id,
+        severity: 'major',
+        issue_type: 'visual',
+        note: '主角表情不稳，建议重做该镜头。',
+        repair_action: 'redo_shot',
+      },
+    );
+    expect(shotReviewRes.ok).toBe(true);
+    expect(shotReviewRes.data?.seedance_review_ledger.open_count).toBe(2);
+
+    const reviewDashboardRes = await getAiComicSeriesSeedanceProductionDashboard(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(reviewDashboardRes.ok).toBe(true);
+    expect(reviewDashboardRes.data?.summary).toMatchObject({
+      open_review_count: 2,
+      blocking_review_count: 1,
+      final_reassemble_required: true,
+    });
+    expect(reviewDashboardRes.data?.status_items.find(item => item.key === 'review_ledger')).toMatchObject({
+      status: 'blocked',
+    });
+    expect(reviewDashboardRes.data?.blockers.some(blocker => blocker.blocker_id === 'open-seedance-reviews')).toBe(true);
+
+    const reviewRepairPackageRes = await exportAiComicSeriesSeedanceReviewRepairPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(reviewRepairPackageRes.ok).toBe(true);
+    expect(reviewRepairPackageRes.data?.schema_version).toBe('ai-comic-series-seedance-review-repair-package/v1');
+    expect(reviewRepairPackageRes.data).toMatchObject({
+      open_count: 2,
+      blocking_count: 1,
+      retry_candidate_count: 1,
+      final_reassemble_required: true,
+    });
+    expect(reviewRepairPackageRes.data?.markdown).toContain('Seedance 审片返修包');
+
+    const resolvedReviewRes = await resolveAiComicSeriesSeedanceReview(
+      saveRes.data!.project.series_project_id,
+      {
+        review_id: finalReviewRes.data!.review_item.review_id,
+        status: 'resolved',
+        resolved_note: '已重新装配并复核。',
+      },
+    );
+    expect(resolvedReviewRes.ok).toBe(true);
+    expect(resolvedReviewRes.data?.seedance_review_ledger.open_count).toBe(1);
+    expect(resolvedReviewRes.data?.seedance_review_ledger.final_reassemble_required).toBe(false);
 
     const editingPlatformPackageRes = await exportAiComicSeriesSeedanceEditingPlatformPackage(
       saveRes.data!.project.series_project_id,

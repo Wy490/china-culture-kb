@@ -756,6 +756,13 @@
                 </button>
                 <button
                   class="series-studio__ghost-button"
+                  :disabled="exportingSeedanceReviewPackage || openSeedanceReviews.length === 0"
+                  @click="exportSeriesSeedanceReviewRepairMarkdown"
+                >
+                  导出审片返修
+                </button>
+                <button
+                  class="series-studio__ghost-button"
                   :disabled="batchUpdatingSeedance"
                   @click="seedanceReturnImportInput?.click()"
                 >
@@ -863,6 +870,89 @@
               <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.subtitle_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">字幕</span>
               <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.audio_mix_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">混音</span>
               <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.title_cards_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">片头片尾</span>
+            </div>
+          </div>
+          <div v-if="seedanceReviewLedger || seedanceFinalDelivery" class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>审片返修</strong>
+              <span>{{ seedanceReviewLedger?.open_count ?? 0 }} 条待处理 · 阻断 {{ seedanceReviewLedger?.blocking_count ?? 0 }}</span>
+            </div>
+            <div class="series-studio__review-form">
+              <select v-model="seedanceReviewDraft.target_type" class="series-studio__select series-studio__select--compact">
+                <option value="final">最终成片</option>
+                <option value="cut">剪辑版</option>
+                <option value="shot">镜头</option>
+                <option value="subtitle">字幕</option>
+                <option value="audio">音频</option>
+                <option value="title_card">片头片尾</option>
+              </select>
+              <select v-model="seedanceReviewDraft.severity" class="series-studio__select series-studio__select--compact">
+                <option value="blocking">阻断</option>
+                <option value="major">主要</option>
+                <option value="minor">轻微</option>
+                <option value="note">备注</option>
+              </select>
+              <select v-model="seedanceReviewDraft.issue_type" class="series-studio__select series-studio__select--compact">
+                <option value="technical">技术</option>
+                <option value="visual">画面</option>
+                <option value="continuity">连续性</option>
+                <option value="subtitle">字幕</option>
+                <option value="audio">音频</option>
+                <option value="pacing">节奏</option>
+                <option value="title_card">片头片尾</option>
+                <option value="compliance">合规</option>
+                <option value="other">其它</option>
+              </select>
+              <select v-model="seedanceReviewDraft.repair_action" class="series-studio__select series-studio__select--compact">
+                <option value="reassemble_final">最终重装配</option>
+                <option value="redo_shot">镜头重做</option>
+                <option value="reselect_version">版本重选</option>
+                <option value="revise_subtitle">字幕修订</option>
+                <option value="adjust_audio">音频调整</option>
+                <option value="revise_title_card">片头片尾修改</option>
+                <option value="manual_review">人工复核</option>
+              </select>
+              <textarea
+                v-model="seedanceReviewDraft.note"
+                class="series-studio__textarea"
+                rows="2"
+                placeholder="记录审片意见"
+              />
+              <button
+                class="series-studio__ghost-button"
+                :disabled="addingSeedanceReview || !seedanceReviewDraft.note.trim()"
+                @click="addSeedanceReview"
+              >
+                {{ addingSeedanceReview ? '记录中...' : '记录意见' }}
+              </button>
+              <button
+                class="series-studio__ghost-button"
+                :disabled="exportingSeedanceReviewPackage || openSeedanceReviews.length === 0"
+                @click="exportSeriesSeedanceReviewRepairJson"
+              >
+                导出 JSON
+              </button>
+            </div>
+            <div v-if="openSeedanceReviews.length > 0" class="series-studio__thread-closure-list">
+              <article
+                v-for="item in openSeedanceReviews"
+                :key="item.review_id"
+                :class="['series-studio__thread-closure-item', item.severity === 'blocking' ? 'series-studio__thread-closure-item--blocking' : 'series-studio__thread-closure-item--warning']"
+              >
+                <div>
+                  <strong>{{ seedanceReviewTargetTypeLabel(item.target_type) }} · {{ seedanceReviewSeverityLabel(item.severity) }}</strong>
+                  <span>{{ seedanceReviewIssueTypeLabel(item.issue_type) }} · {{ seedanceReviewRepairActionLabel(item.repair_action) }}</span>
+                </div>
+                <p>{{ item.note }}</p>
+                <small v-if="item.target_id || item.shot_id">{{ item.shot_id || item.target_id }}</small>
+                <button
+                  class="series-studio__ghost-button"
+                  :disabled="resolvingSeedanceReviewId === item.review_id"
+                  @click="resolveSeedanceReview(item.review_id)"
+                >
+                  {{ resolvingSeedanceReviewId === item.review_id ? '处理中...' : '标记解决' }}
+                </button>
+              </article>
             </div>
           </div>
           <div v-if="showSeedanceVersionComparison" class="series-studio__seedance-comparison">
@@ -1664,6 +1754,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  addAiComicSeriesSeedanceReview,
   aiComicEpisodeContextPreview,
   aiComicEpisodeGenerate,
   assembleAiComicSeriesSeedanceCut,
@@ -1682,6 +1773,7 @@ import {
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
   exportAiComicSeriesSeedanceRetryPackage,
+  exportAiComicSeriesSeedanceReviewRepairPackage,
   exportAiComicSeriesSeedanceSubtitlePackage,
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
   exportAiComicSeriesSeedanceTitleCardPlanPackage,
@@ -1694,6 +1786,7 @@ import {
   rebuildAiComicSeriesLedger,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
+  resolveAiComicSeriesSeedanceReview,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
@@ -1727,6 +1820,11 @@ import type {
   AiComicSeedanceAudioMixLedger,
   AiComicSeedanceCutAssemblyLedger,
   AiComicSeedanceFinalDeliveryLedger,
+  AiComicSeedanceReviewIssueType,
+  AiComicSeedanceReviewLedger,
+  AiComicSeedanceReviewRepairAction,
+  AiComicSeedanceReviewSeverity,
+  AiComicSeedanceReviewTargetType,
   AiComicSeedanceShotProductionItem,
   AiComicSeedanceSubtitleRenderLedger,
   AiComicSeedanceTitleCardRenderLedger,
@@ -1785,6 +1883,7 @@ const seedanceSubtitleRender = ref<AiComicSeedanceSubtitleRenderLedger | null>(n
 const seedanceAudioMix = ref<AiComicSeedanceAudioMixLedger | null>(null)
 const seedanceTitleCardRender = ref<AiComicSeedanceTitleCardRenderLedger | null>(null)
 const seedanceFinalDelivery = ref<AiComicSeedanceFinalDeliveryLedger | null>(null)
+const seedanceReviewLedger = ref<AiComicSeedanceReviewLedger | null>(null)
 const seedanceDashboard = ref<AiComicSeriesSeedanceDashboard | null>(null)
 const loadingSeedanceDashboard = ref(false)
 const seedanceVersionComparison = ref<AiComicSeriesSeedanceVersionComparisonPackage | null>(null)
@@ -1798,6 +1897,16 @@ const renderingSeedanceSubtitles = ref(false)
 const mixingSeedanceAudio = ref(false)
 const renderingSeedanceTitleCards = ref(false)
 const assemblingSeedanceFinal = ref(false)
+const addingSeedanceReview = ref(false)
+const resolvingSeedanceReviewId = ref('')
+const exportingSeedanceReviewPackage = ref(false)
+const seedanceReviewDraft = ref({
+  target_type: 'final' as AiComicSeedanceReviewTargetType,
+  severity: 'major' as AiComicSeedanceReviewSeverity,
+  issue_type: 'technical' as AiComicSeedanceReviewIssueType,
+  repair_action: 'reassemble_final' as AiComicSeedanceReviewRepairAction,
+  note: '',
+})
 const seedanceReturnImportInput = ref<HTMLInputElement | null>(null)
 const seedanceAssetImportInput = ref<HTMLInputElement | null>(null)
 const seedanceAudioImportInput = ref<HTMLInputElement | null>(null)
@@ -1920,6 +2029,11 @@ const seedanceReadyVersionCount = computed(() =>
   (seedanceProduction.value?.items ?? []).reduce((count, item) =>
     count + item.versions.filter(version => version.status === 'ready' && Boolean(version.video_url)).length,
   0)
+)
+const openSeedanceReviews = computed(() =>
+  [...(seedanceReviewLedger.value?.items ?? [])]
+    .filter(item => item.status === 'open' || item.status === 'in_progress')
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
 )
 const seedanceThumbnailStats = computed(() => {
   const stats = {
@@ -2108,6 +2222,7 @@ async function loadSeriesProject(id: string) {
     seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
     seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
     seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
+    seedanceReviewLedger.value = res.data.seedance_review_ledger ?? null
     seedanceDashboard.value = null
     seedanceVersionComparison.value = null
     showSeedanceVersionComparison.value = false
@@ -2165,6 +2280,7 @@ async function handlePlan() {
   seedanceAudioMix.value = null
   seedanceTitleCardRender.value = null
   seedanceFinalDelivery.value = null
+  seedanceReviewLedger.value = null
   seedanceVersionComparison.value = null
   showSeedanceVersionComparison.value = false
 
@@ -2614,6 +2730,7 @@ async function saveCurrentProject(options: {
     seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
     seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
     seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
+    seedanceReviewLedger.value = res.data.seedance_review_ledger ?? null
     saveStatus.value = 'saved'
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = options.message
@@ -2817,6 +2934,42 @@ async function exportSeriesSeedanceRetryJson() {
     errorMessage.value = res.error?.message ?? '导出 Seedance 重试包失败'
   }
   exportingSeedance.value = false
+}
+
+async function exportSeriesSeedanceReviewRepairMarkdown() {
+  if (!seriesProjectId.value) return
+  exportingSeedanceReviewPackage.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceReviewRepairPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-review-repair-package.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 审片返修包 Markdown 已导出 · ${res.data.open_count} 条待处理`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 审片返修包失败'
+  }
+  exportingSeedanceReviewPackage.value = false
+}
+
+async function exportSeriesSeedanceReviewRepairJson() {
+  if (!seriesProjectId.value) return
+  exportingSeedanceReviewPackage.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceReviewRepairPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.series_project_id}-seedance-review-repair-package.json`,
+      JSON.stringify(res.data, null, 2),
+      'application/json;charset=utf-8',
+    )
+    saveMessage.value = `Seedance 审片返修包 JSON 已导出 · ${res.data.retry_candidate_count} 个镜头候选`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance 审片返修包失败'
+  }
+  exportingSeedanceReviewPackage.value = false
 }
 
 async function exportSeriesSeedanceVersionComparisonMarkdown() {
@@ -3408,6 +3561,46 @@ async function assembleSeedanceFinalDryRun() {
   assemblingSeedanceFinal.value = false
 }
 
+async function addSeedanceReview() {
+  if (!seriesProjectId.value || addingSeedanceReview.value || !seedanceReviewDraft.value.note.trim()) return
+  addingSeedanceReview.value = true
+  errorMessage.value = ''
+  const res = await addAiComicSeriesSeedanceReview(seriesProjectId.value, {
+    ...seedanceReviewDraft.value,
+    note: seedanceReviewDraft.value.note.trim(),
+  })
+  if (res.ok && res.data) {
+    seedanceReviewLedger.value = res.data.seedance_review_ledger
+    lastSavedAt.value = res.data.project.updated_at
+    seedanceReviewDraft.value.note = ''
+    saveMessage.value = `审片意见已记录 · ${res.data.seedance_review_ledger.open_count} 条待处理`
+    await loadSeedanceDashboard()
+  } else {
+    errorMessage.value = res.error?.message ?? '记录 Seedance 审片意见失败'
+  }
+  addingSeedanceReview.value = false
+}
+
+async function resolveSeedanceReview(reviewId: string) {
+  if (!seriesProjectId.value || resolvingSeedanceReviewId.value) return
+  resolvingSeedanceReviewId.value = reviewId
+  errorMessage.value = ''
+  const res = await resolveAiComicSeriesSeedanceReview(seriesProjectId.value, {
+    review_id: reviewId,
+    status: 'resolved',
+    resolved_note: '前端标记已解决',
+  })
+  if (res.ok && res.data) {
+    seedanceReviewLedger.value = res.data.seedance_review_ledger
+    lastSavedAt.value = res.data.project.updated_at
+    saveMessage.value = `审片意见已解决 · 剩余 ${res.data.seedance_review_ledger.open_count} 条`
+    await loadSeedanceDashboard()
+  } else {
+    errorMessage.value = res.error?.message ?? '解决 Seedance 审片意见失败'
+  }
+  resolvingSeedanceReviewId.value = ''
+}
+
 async function batchMarkSeedanceProduction(
   fromStatus: AiComicSeedanceProductionStatus,
   toStatus: AiComicSeedanceProductionStatus,
@@ -3734,6 +3927,7 @@ function clearCurrentProject() {
   seedanceAudioMix.value = null
   seedanceTitleCardRender.value = null
   seedanceFinalDelivery.value = null
+  seedanceReviewLedger.value = null
   episodeResult.value = null
   episodeErrorMessage.value = ''
   generatedEpisodeNo.value = null
@@ -3916,6 +4110,56 @@ function seedanceFinalDeliveryStatusLabel(status: string): string {
     skipped: '跳过',
   }
   return map[status] ?? status
+}
+
+function seedanceReviewTargetTypeLabel(targetType: AiComicSeedanceReviewTargetType): string {
+  const map: Record<AiComicSeedanceReviewTargetType, string> = {
+    shot: '镜头',
+    cut: '剪辑版',
+    final: '最终成片',
+    subtitle: '字幕',
+    audio: '音频',
+    title_card: '片头片尾',
+  }
+  return map[targetType]
+}
+
+function seedanceReviewSeverityLabel(severity: AiComicSeedanceReviewSeverity): string {
+  const map: Record<AiComicSeedanceReviewSeverity, string> = {
+    blocking: '阻断',
+    major: '主要',
+    minor: '轻微',
+    note: '备注',
+  }
+  return map[severity]
+}
+
+function seedanceReviewIssueTypeLabel(issueType: AiComicSeedanceReviewIssueType): string {
+  const map: Record<AiComicSeedanceReviewIssueType, string> = {
+    visual: '画面',
+    continuity: '连续性',
+    subtitle: '字幕',
+    audio: '音频',
+    pacing: '节奏',
+    title_card: '片头片尾',
+    technical: '技术',
+    compliance: '合规',
+    other: '其它',
+  }
+  return map[issueType]
+}
+
+function seedanceReviewRepairActionLabel(action: AiComicSeedanceReviewRepairAction): string {
+  const map: Record<AiComicSeedanceReviewRepairAction, string> = {
+    redo_shot: '镜头重做',
+    reselect_version: '版本重选',
+    revise_subtitle: '字幕修订',
+    adjust_audio: '音频调整',
+    revise_title_card: '片头片尾修改',
+    reassemble_final: '最终重装配',
+    manual_review: '人工复核',
+  }
+  return map[action]
 }
 
 function hookTypeLabel(type?: AiComicEndingHookType): string {
@@ -4686,6 +4930,18 @@ function episodeProjectPath(episodeNo: number): string {
 .series-studio__thread-closure-list {
   display: grid;
   gap: 8px;
+}
+
+.series-studio__review-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.series-studio__review-form .series-studio__textarea {
+  grid-column: 1 / -1;
+  min-height: 70px;
 }
 
 .series-studio__thread-closure-item {

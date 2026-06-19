@@ -2047,6 +2047,49 @@ describe('Seedance Title Cards and Final Delivery API', () => {
     expectFailure(res.body, 'STORY_NOT_FOUND');
   });
 
+  it('validates shot review target identity', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-reviews')
+      .send({
+        target_type: 'shot',
+        severity: 'major',
+        issue_type: 'visual',
+        note: '镜头需要重做',
+      });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts a final review request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-reviews')
+      .send({
+        target_type: 'final',
+        severity: 'blocking',
+        issue_type: 'technical',
+        note: '最终成片需要重新装配',
+        repair_action: 'reassemble_final',
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('accepts a review resolve request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-reviews/resolve')
+      .send({ review_id: 'review-test-001', status: 'resolved' });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('returns 404 for a missing series project review repair package', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-review-repair-package')
+      .send({});
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
   it('returns 404 for a missing series project title card plan', async () => {
     const res = await request
       .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-title-card-plan')

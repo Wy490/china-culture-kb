@@ -2589,6 +2589,114 @@ export interface AiComicSeriesSeedanceFinalDeliveryResult {
   markdown: string;
 }
 
+export type AiComicSeedanceReviewTargetType =
+  | 'shot'
+  | 'cut'
+  | 'final'
+  | 'subtitle'
+  | 'audio'
+  | 'title_card';
+export type AiComicSeedanceReviewStatus = 'open' | 'in_progress' | 'resolved' | 'wont_fix';
+export type AiComicSeedanceReviewSeverity = 'blocking' | 'major' | 'minor' | 'note';
+export type AiComicSeedanceReviewIssueType =
+  | 'visual'
+  | 'continuity'
+  | 'subtitle'
+  | 'audio'
+  | 'pacing'
+  | 'title_card'
+  | 'technical'
+  | 'compliance'
+  | 'other';
+export type AiComicSeedanceReviewRepairAction =
+  | 'redo_shot'
+  | 'reselect_version'
+  | 'revise_subtitle'
+  | 'adjust_audio'
+  | 'revise_title_card'
+  | 'reassemble_final'
+  | 'manual_review';
+
+export interface AiComicSeedanceReviewItem {
+  review_id: string;
+  target_type: AiComicSeedanceReviewTargetType;
+  target_id?: string;
+  episode_no?: number;
+  shot_id?: string;
+  status: AiComicSeedanceReviewStatus;
+  severity: AiComicSeedanceReviewSeverity;
+  issue_type: AiComicSeedanceReviewIssueType;
+  note: string;
+  repair_action: AiComicSeedanceReviewRepairAction;
+  created_at: string;
+  created_by?: string;
+  resolved_at?: string;
+  resolved_note?: string;
+}
+
+export interface AiComicSeedanceReviewLedger {
+  schema_version: 'ai-comic-seedance-review-ledger/v1';
+  updated_at?: string;
+  open_count: number;
+  resolved_count: number;
+  blocking_count: number;
+  final_reassemble_required: boolean;
+  items: AiComicSeedanceReviewItem[];
+}
+
+export interface AiComicSeedanceReviewAddRequest {
+  target_type: AiComicSeedanceReviewTargetType;
+  target_id?: string;
+  episode_no?: number;
+  shot_id?: string;
+  severity: AiComicSeedanceReviewSeverity;
+  issue_type: AiComicSeedanceReviewIssueType;
+  note: string;
+  repair_action?: AiComicSeedanceReviewRepairAction;
+  created_by?: string;
+}
+
+export interface AiComicSeedanceReviewResolveRequest {
+  review_id: string;
+  status?: Extract<AiComicSeedanceReviewStatus, 'resolved' | 'wont_fix'>;
+  resolved_note?: string;
+}
+
+export interface AiComicSeriesSeedanceReviewUpdateResult {
+  schema_version: 'ai-comic-series-seedance-review-update-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  updated_at: string;
+  review_item: AiComicSeedanceReviewItem;
+  seedance_review_ledger: AiComicSeedanceReviewLedger;
+}
+
+export interface AiComicSeriesSeedanceReviewRepairPackageItem {
+  review_id: string;
+  target_type: AiComicSeedanceReviewTargetType;
+  target_id?: string;
+  episode_no?: number;
+  shot_id?: string;
+  severity: AiComicSeedanceReviewSeverity;
+  issue_type: AiComicSeedanceReviewIssueType;
+  note: string;
+  repair_action: AiComicSeedanceReviewRepairAction;
+  suggested_next_step: string;
+}
+
+export interface AiComicSeriesSeedanceReviewRepairPackage {
+  schema_version: 'ai-comic-series-seedance-review-repair-package/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  exported_at: string;
+  open_count: number;
+  blocking_count: number;
+  retry_candidate_count: number;
+  final_reassemble_required: boolean;
+  items: AiComicSeriesSeedanceReviewRepairPackageItem[];
+  markdown: string;
+}
+
 export type AiComicSeedanceEditingPlatformFormat =
   | 'generic_json'
   | 'csv_timeline'
@@ -2695,6 +2803,7 @@ export type AiComicSeedanceDashboardStatusKey =
   | 'audio_mix'
   | 'title_card_render'
   | 'final_delivery'
+  | 'review_ledger'
   | 'editing_platform_package';
 
 export type AiComicSeedanceDashboardItemStatus =
@@ -2724,6 +2833,9 @@ export interface AiComicSeedanceDashboardSummary {
   thumbnail_ready_count: number;
   thumbnail_failed_count: number;
   missing_shot_count: number;
+  open_review_count: number;
+  blocking_review_count: number;
+  final_reassemble_required: boolean;
   blocker_count: number;
   next_action_count: number;
   production_status_counts: Record<AiComicSeedanceProductionStatus, number>;
@@ -3960,6 +4072,7 @@ export interface AiComicSeriesProjectDetail {
   seedance_audio_mix?: AiComicSeedanceAudioMixLedger;
   seedance_title_card_render?: AiComicSeedanceTitleCardRenderLedger;
   seedance_final_delivery?: AiComicSeedanceFinalDeliveryLedger;
+  seedance_review_ledger?: AiComicSeedanceReviewLedger;
 }
 
 export interface AiComicSeriesBibleCharacterRow {

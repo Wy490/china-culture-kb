@@ -17,6 +17,8 @@ import {
   AiComicSeedanceProductionCallbackRequestSchema,
   AiComicSeedanceProductionStatusUpdateRequestSchema,
   AiComicSeedanceProductionVersionSelectRequestSchema,
+  AiComicSeedanceReviewAddRequestSchema,
+  AiComicSeedanceReviewResolveRequestSchema,
   AiComicSeedanceCutAssemblyRequestSchema,
   AiComicSeedanceSubtitleExportRequestSchema,
   AiComicSeedanceSubtitleRenderRequestSchema,
@@ -32,6 +34,7 @@ import {
 } from '@shared/schemas.js';
 import { analyzeOutline } from '../services/outline-service.js';
 import {
+  addAiComicSeriesSeedanceReview,
   archiveAiComicSeriesProject,
   applyAiComicSeriesSeedanceProductionCallback,
   assembleAiComicSeriesSeedanceCut,
@@ -49,6 +52,7 @@ import {
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
   exportAiComicSeriesSeedanceRetryPackage,
+  exportAiComicSeriesSeedanceReviewRepairPackage,
   exportAiComicSeriesSeedanceSubtitlePackage,
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
   exportAiComicSeriesSeedanceTitleCardPlanPackage,
@@ -63,6 +67,7 @@ import {
   rebuildAiComicSeriesContinuityLedger,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
+  resolveAiComicSeriesSeedanceReview,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
@@ -477,6 +482,53 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await assembleAiComicSeriesSeedanceFinalDelivery(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-reviews — add a review issue
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-reviews',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceReviewAddRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await addAiComicSeriesSeedanceReview(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-reviews/resolve — resolve a review issue
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-reviews/resolve',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceReviewResolveRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await resolveAiComicSeriesSeedanceReview(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-review-repair-package — export review repair package
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/export-seedance-review-repair-package',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await exportAiComicSeriesSeedanceReviewRepairPackage(seriesProjectId);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

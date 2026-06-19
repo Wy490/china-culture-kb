@@ -1292,6 +1292,50 @@ export const AiComicSeedanceFinalDeliveryRequestSchema = z.object({
   output_filename: z.string().trim().regex(/^[0-9A-Za-z._-]+\.mp4$/).optional(),
 });
 
+const AiComicSeedanceReviewTargetTypeSchema = z.enum(['shot', 'cut', 'final', 'subtitle', 'audio', 'title_card']);
+const AiComicSeedanceReviewSeveritySchema = z.enum(['blocking', 'major', 'minor', 'note']);
+const AiComicSeedanceReviewIssueTypeSchema = z.enum([
+  'visual',
+  'continuity',
+  'subtitle',
+  'audio',
+  'pacing',
+  'title_card',
+  'technical',
+  'compliance',
+  'other',
+]);
+const AiComicSeedanceReviewRepairActionSchema = z.enum([
+  'redo_shot',
+  'reselect_version',
+  'revise_subtitle',
+  'adjust_audio',
+  'revise_title_card',
+  'reassemble_final',
+  'manual_review',
+]);
+
+export const AiComicSeedanceReviewAddRequestSchema = z.object({
+  target_type: AiComicSeedanceReviewTargetTypeSchema,
+  target_id: z.string().trim().min(1).max(160).optional(),
+  episode_no: z.number().int().min(1).max(120).optional(),
+  shot_id: z.string().trim().min(1).max(80).optional(),
+  severity: AiComicSeedanceReviewSeveritySchema,
+  issue_type: AiComicSeedanceReviewIssueTypeSchema,
+  note: z.string().trim().min(1).max(1000),
+  repair_action: AiComicSeedanceReviewRepairActionSchema.optional(),
+  created_by: z.string().trim().min(1).max(120).optional(),
+}).refine(
+  data => data.target_type !== 'shot' || Boolean(data.shot_id || data.target_id),
+  { message: 'shot review requires shot_id or target_id' },
+);
+
+export const AiComicSeedanceReviewResolveRequestSchema = z.object({
+  review_id: z.string().trim().min(1).max(120),
+  status: z.enum(['resolved', 'wont_fix']).optional().default('resolved'),
+  resolved_note: z.string().trim().min(1).max(1000).optional(),
+});
+
 export const AiComicSeriesLedgerRebuildRequestSchema = z.object({
   from_episode_no: z.number().int().min(1).max(120).optional().default(1),
 });

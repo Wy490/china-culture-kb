@@ -31,7 +31,7 @@
 - 已能把 Seedance 回片组织为可剪辑资产，并自动抽缩略图、装配初版成片。
 - 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并生成片头片尾计划、片头片尾 render dry-run、final delivery dry-run、final manifest、外部剪辑平台包和生产总览 dashboard；真实混音素材生产、真实片头片尾渲染和最终交付真实装配仍待增强。
 - 外部剪辑平台已有通用 JSON / CSV / SRT / asset manifest 首版，平台专用 FCPXML / Premiere XML / 剪映草稿格式仍待适配。
-- 审片返修闭环仍处于待建设状态。
+- 审片返修闭环首版已完成：可记录审片意见、标记解决、导出返修包，并在 dashboard 中形成 blocker / next action。
 
 ## 2. 总体目标
 
@@ -557,6 +557,8 @@ Seedance prompts
 
 ## 13. 阶段九：审片与返修闭环
 
+当前状态：review ledger、返修包导出、dashboard blocker 和工作台轻量录入首版已完成；后续继续深化版本对比面板标注、自动生成重试包和最终重装配计划。
+
 ### 目标
 
 让最终成片、剪辑版和镜头版本都能进入评审、返修、重导出流程。
@@ -566,12 +568,13 @@ Seedance prompts
 - 新账本：`seedance_review_ledger`
 - 评审字段：
   - `review_id`
-  - `target_type=shot|cut|final`
+  - `target_type=shot|cut|final|subtitle|audio|title_card`
   - `target_id`
   - `status`
   - `severity`
   - `issue_type`
   - `note`
+  - `repair_action`
   - `created_at`
   - `resolved_at`
 - 新接口：
@@ -593,11 +596,24 @@ Seedance prompts
 - 最终成片面板增加审片列表。
 - 支持一键导出返修包。
 
+实现状态：
+
+- `web/shared/types.ts` 已新增 `AiComicSeedanceReviewLedger`、review item、add/resolve request 和 review repair package 类型。
+- `web/shared/schemas.ts` 已新增 `AiComicSeedanceReviewAddRequestSchema` / `AiComicSeedanceReviewResolveRequestSchema`。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增审片意见、解决审片意见和导出审片返修包服务，并把 open review 计入 dashboard status / blocker / next action。
+- `web/server/src/routes/outline.ts` 已新增 `seedance-reviews`、`seedance-reviews/resolve` 和 `export-seedance-review-repair-package` 路由。
+- 系列工作台最终交付区已新增审片返修轻量录入、open 列表、标记解决和返修包导出入口。
+
 ### 测试
 
 - review ledger 测试。
-- review -> retry package 联动测试。
+- review -> retry candidate 联动测试。
 - review -> final reassemble blocker 测试。
+
+实现状态：
+
+- 服务测试覆盖新增 final/shot 审片意见、解决审片意见、返修包导出、retry candidate 计数和 final reassemble dashboard blocker。
+- API 测试覆盖 review add/resolve/export 路由校验和缺失项目响应。
 
 ### 验收标准
 
@@ -642,7 +658,7 @@ Seedance prompts
 1. `seedance-audio/mix` 真实素材执行增强
 2. `seedance-title-cards/render` 真实渲染增强
 3. `seedance-final/assemble` 真实装配 hardening
-4. `seedance_review_ledger`
+4. `seedance_review_ledger` 到 retry package / final reassemble 自动联动
 5. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
@@ -653,7 +669,7 @@ Seedance prompts
 seedance-audio/mix real runner hardening
   -> seedance-title-cards/render real/mock success
   -> seedance-final/assemble real runner hardening
-  -> seedance_review_ledger
+  -> seedance_review_ledger retry/final reassemble automation
 ```
 
 原因：
