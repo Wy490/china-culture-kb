@@ -4445,6 +4445,9 @@ export async function renderAiComicSeriesSeedanceTitleCards(
           profile: outputProfile,
           fontPath: renderFontPath,
         });
+        if (!(await pathExists(absoluteOutputPath))) {
+          throw new Error(`Seedance title card runner did not create output: ${card.output_path}`);
+        }
         renderedCount += 1;
       }
     }

@@ -316,7 +316,7 @@ Seedance prompts
 
 将 title cards 渲染成视频片段，并参与最终装配。
 
-当前状态：计划包和 render dry-run 首版已完成；真实渲染需要继续补字体配置、视觉模板和成功/失败专项。
+当前状态：计划包、render dry-run、字体校验和 fake runner 成功/失败首版已完成；真实视觉模板仍需继续打磨。
 
 ### 后端任务
 
@@ -339,7 +339,7 @@ Seedance prompts
 
 - `web/shared/types.ts` 已新增片头片尾计划、render 请求、render 结果和 render 账本类型。
 - `web/shared/schemas.ts` 已新增 `AiComicSeedanceTitleCardRenderRequestSchema`。
-- `web/server/src/services/ai-comic-series-service.ts` 已新增 title card plan 导出、`color + drawtext` ffmpeg 命令、render dry-run 和账本写回。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增 title card plan 导出、`color + drawtext` ffmpeg 命令、render dry-run、真实 runner 输出文件校验和账本写回。
 - `web/server/src/routes/outline.ts` 已新增 `export-seedance-title-card-plan` 与 `seedance-title-cards/render` 路由。
 
 ### 前端任务
@@ -360,8 +360,8 @@ Seedance prompts
 
 实现状态：
 
-- 已覆盖 title card plan、render dry-run、ffmpeg command hint 和 API validation。
-- 待补：真实 runner 成功/失败专项、字体缺失专项和视觉模板回归。
+- 已覆盖 title card plan、render dry-run、ffmpeg command hint、runner 未产出文件失败、fake runner 成功和 API validation。
+- 待补：真实 ffmpeg 成功/失败专项、字体缺失 API 专项和视觉模板回归。
 
 ### 验收标准
 
@@ -662,10 +662,10 @@ Seedance prompts
 
 推荐按以下顺序继续：
 
-1. `seedance-title-cards/render` 真实渲染增强
-2. `seedance-final/assemble` 真实装配 hardening
-3. `seedance_review_ledger` 到 retry submit adapter / final reassemble 真实执行自动化
-4. `seedance-audio/mix` 真实 ffmpeg 专项和多分集边界增强
+1. `seedance-final/assemble` 真实装配 hardening
+2. `seedance_review_ledger` 到 retry submit adapter / final reassemble 真实执行自动化
+3. `seedance-audio/mix` 真实 ffmpeg 专项和多分集边界增强
+4. `seedance-title-cards/render` 真实 ffmpeg / 视觉模板回归
 5. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
@@ -673,10 +673,10 @@ Seedance prompts
 下一步建议优先实现：
 
 ```text
-seedance-title-cards/render real/mock success
-  -> seedance-final/assemble real runner hardening
+seedance-final/assemble real runner hardening
   -> seedance_review_ledger retry submit adapter/final reassemble execution
   -> seedance-audio/mix real ffmpeg and multi-episode hardening
+  -> seedance-title-cards/render real ffmpeg and visual template regression
 ```
 
 原因：

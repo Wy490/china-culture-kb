@@ -1189,6 +1189,71 @@ describe('outline-service', () => {
     expect(finalStrictMissingTitleRes.ok).toBe(false);
     expect(finalStrictMissingTitleRes.error?.code).toBe('VALIDATION_ERROR');
 
+    const titleCardFontPath = resolve(projectDir, 'fonts', 'title-card-test.ttf');
+    await mkdir(resolve(projectDir, 'fonts'), { recursive: true });
+    await writeFile(titleCardFontPath, 'fake font');
+    let missingOutputTitleRunnerCalled = false;
+    const titleCardMissingOutputRes = await renderAiComicSeriesSeedanceTitleCards(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        output_profile: 'mp4_h264_720p',
+        font_path: titleCardFontPath,
+      },
+      {
+        runner: async () => {
+          missingOutputTitleRunnerCalled = true;
+        },
+      },
+    );
+    expect(titleCardMissingOutputRes.ok).toBe(true);
+    expect(titleCardMissingOutputRes.data?.status).toBe('failed');
+    expect(missingOutputTitleRunnerCalled).toBe(true);
+    expect(titleCardMissingOutputRes.data?.failure_reason).toContain('did not create output');
+    expect(titleCardMissingOutputRes.data?.seedance_title_card_render).toMatchObject({
+      status: 'failed',
+      rendered_count: 0,
+      failure_reason: expect.stringContaining('did not create output'),
+    });
+
+    const titleRenderCalls: Array<{
+      outputPath: string;
+      fontPath: string;
+      cardId: string;
+    }> = [];
+    const titleCardRenderRealRes = await renderAiComicSeriesSeedanceTitleCards(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        output_profile: 'mp4_h264_720p',
+        font_path: titleCardFontPath,
+      },
+      {
+        runner: async params => {
+          titleRenderCalls.push({
+            outputPath: params.outputPath,
+            fontPath: params.fontPath,
+            cardId: params.card.card_id,
+          });
+          await writeFile(params.outputPath, `fake title card ${params.card.card_id}`);
+        },
+      },
+    );
+    expect(titleCardRenderRealRes.ok).toBe(true);
+    expect(titleCardRenderRealRes.data?.status).toBe('rendered');
+    expect(titleCardRenderRealRes.data?.rendered_count).toBe(titleCardRenderRealRes.data?.card_count);
+    expect(titleCardRenderRealRes.data?.seedance_title_card_render).toMatchObject({
+      status: 'ready',
+      rendered_count: titleCardRenderRealRes.data?.card_count,
+      font_path: titleCardFontPath,
+    });
+    expect(titleRenderCalls).toHaveLength(titleCardRenderRealRes.data!.card_count);
+    expect(titleRenderCalls[0].fontPath).toBe(titleCardFontPath);
+    expect(titleRenderCalls[0].outputPath).toBe(resolve(projectDir, titleCardRenderRealRes.data!.output_paths[0]));
+    expect(titleRenderCalls[0].cardId).toBeTruthy();
+
     const titleCardRenderDryRunRes = await renderAiComicSeriesSeedanceTitleCards(
       saveRes.data!.project.series_project_id,
       { dry_run: true, output_profile: 'mp4_h264_720p' },
