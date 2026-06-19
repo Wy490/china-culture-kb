@@ -346,6 +346,13 @@
                   >
                     导出成片精修计划 JSON
                   </button>
+                  <button
+                    class="series-studio__ghost-button"
+                    :disabled="exportingSeedance || exportingBible || saveStatus === 'saving'"
+                    @click="exportSeriesSeedanceSrt"
+                  >
+                    导出 SRT 字幕
+                  </button>
                 </div>
               </details>
             </div>
@@ -587,6 +594,20 @@
                 </button>
                 <button
                   class="series-studio__ghost-button"
+                  :disabled="renderingSeedanceSubtitles || seedanceProductionStats.ready === 0"
+                  @click="renderSeedanceSubtitles('sidecar')"
+                >
+                  {{ renderingSeedanceSubtitles ? '处理中...' : '生成字幕文件' }}
+                </button>
+                <button
+                  class="series-studio__ghost-button"
+                  :disabled="renderingSeedanceSubtitles || !seedanceCutAssembly?.output_path"
+                  @click="renderSeedanceSubtitles('burn_in')"
+                >
+                  烧录字幕成片
+                </button>
+                <button
+                  class="series-studio__ghost-button"
                   :disabled="batchUpdatingSeedance"
                   @click="seedanceReturnImportInput?.click()"
                 >
@@ -625,6 +646,18 @@
               {{ seedanceCutAssemblyStatusLabel(seedanceCutAssembly.status) }}
               <template v-if="seedanceCutAssembly.output_path"> · {{ seedanceCutAssembly.output_path }}</template>
               <template v-if="seedanceCutAssembly.failure_reason"> · {{ seedanceCutAssembly.failure_reason }}</template>
+            </p>
+          </div>
+          <div v-if="seedanceSubtitleRender" class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>字幕渲染</strong>
+              <span>{{ seedanceSubtitleRender.cue_count }} 条 cue · {{ seedanceSubtitleRender.updated_at ? formatDate(seedanceSubtitleRender.updated_at) : '未更新' }}</span>
+            </div>
+            <p>
+              {{ seedanceSubtitleRenderStatusLabel(seedanceSubtitleRender.status) }}
+              · {{ seedanceSubtitleRender.mode === 'burn_in' ? '烧录字幕' : '侧挂 SRT' }}
+              <template v-if="seedanceSubtitleRender.output_path"> · {{ seedanceSubtitleRender.output_path }}</template>
+              <template v-if="seedanceSubtitleRender.failure_reason"> · {{ seedanceSubtitleRender.failure_reason }}</template>
             </p>
           </div>
           <div v-if="showSeedanceVersionComparison" class="series-studio__seedance-comparison">
@@ -1441,12 +1474,14 @@ import {
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
   exportAiComicSeriesSeedanceRetryPackage,
+  exportAiComicSeriesSeedanceSubtitlePackage,
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   aiComicSeriesPlan,
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
   rebuildAiComicSeriesLedger,
+  renderAiComicSeriesSeedanceSubtitles,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
@@ -1477,6 +1512,7 @@ import type {
   AiComicSeedanceAssetLibraryUpdateRequest,
   AiComicSeedanceCutAssemblyLedger,
   AiComicSeedanceShotProductionItem,
+  AiComicSeedanceSubtitleRenderLedger,
   AiComicSeedanceVersionComparisonShot,
   AiComicSeriesSeedanceVersionComparisonPackage,
   NarrativePattern,
@@ -1527,6 +1563,7 @@ const continuityLedger = ref<AiComicContinuityLedger | null>(null)
 const seriesQualityAudit = ref<AiComicSeriesQualityAudit | null>(null)
 const seedanceProduction = ref<AiComicSeedanceProductionLedger | null>(null)
 const seedanceCutAssembly = ref<AiComicSeedanceCutAssemblyLedger | null>(null)
+const seedanceSubtitleRender = ref<AiComicSeedanceSubtitleRenderLedger | null>(null)
 const seedanceVersionComparison = ref<AiComicSeriesSeedanceVersionComparisonPackage | null>(null)
 const showSeedanceVersionComparison = ref(false)
 const loadingSeedanceVersionComparison = ref(false)
@@ -1534,6 +1571,7 @@ const updatingSeedanceProductionId = ref('')
 const batchUpdatingSeedance = ref(false)
 const capturingSeedanceThumbnails = ref(false)
 const assemblingSeedanceCut = ref(false)
+const renderingSeedanceSubtitles = ref(false)
 const seedanceReturnImportInput = ref<HTMLInputElement | null>(null)
 const seedanceAssetImportInput = ref<HTMLInputElement | null>(null)
 const editingEpisodeNo = ref<number | null>(null)
@@ -1839,6 +1877,7 @@ async function loadSeriesProject(id: string) {
     seriesQualityAudit.value = res.data.series_quality_audit ?? null
     seedanceProduction.value = res.data.seedance_production ?? null
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
+    seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
     seedanceVersionComparison.value = null
     showSeedanceVersionComparison.value = false
     applyPlan(res.data.plan)
@@ -1877,6 +1916,7 @@ async function handlePlan() {
   seriesQualityAudit.value = null
   seedanceProduction.value = null
   seedanceCutAssembly.value = null
+  seedanceSubtitleRender.value = null
   seedanceVersionComparison.value = null
   showSeedanceVersionComparison.value = false
 
@@ -2322,6 +2362,7 @@ async function saveCurrentProject(options: {
     seriesQualityAudit.value = res.data.series_quality_audit ?? null
     seedanceProduction.value = res.data.seedance_production ?? null
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
+    seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
     saveStatus.value = 'saved'
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = options.message
@@ -2364,6 +2405,7 @@ async function handleRebuildLedger() {
     seriesQualityAudit.value = res.data.series_quality_audit ?? null
     seedanceProduction.value = res.data.seedance_production ?? null
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
+    seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
     applyPlan(res.data.plan)
     saveStatus.value = 'saved'
     saveErrorMessage.value = ''
@@ -2703,6 +2745,24 @@ async function exportSeriesSeedanceFinishingPlanJson() {
   exportingSeedance.value = false
 }
 
+async function exportSeriesSeedanceSrt() {
+  if (!seriesProjectId.value) return
+  exportingSeedance.value = true
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesSeedanceSubtitlePackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    downloadText(
+      res.data.srt_filename,
+      res.data.srt_content,
+      'text/plain;charset=utf-8',
+    )
+    saveMessage.value = `Seedance SRT 字幕已导出 · ${res.data.cue_count} 条 cue`
+  } else {
+    errorMessage.value = res.error?.message ?? '导出 Seedance SRT 字幕失败'
+  }
+  exportingSeedance.value = false
+}
+
 async function toggleSeedanceVersionComparison() {
   showSeedanceVersionComparison.value = !showSeedanceVersionComparison.value
   if (showSeedanceVersionComparison.value && !seedanceVersionComparison.value) {
@@ -2857,6 +2917,26 @@ async function assembleSeedanceCut(mode: 'copy' | 'transcode') {
     errorMessage.value = res.error?.message ?? '装配 Seedance 剪辑成片失败'
   }
   assemblingSeedanceCut.value = false
+}
+
+async function renderSeedanceSubtitles(mode: 'sidecar' | 'burn_in') {
+  if (!seriesProjectId.value || renderingSeedanceSubtitles.value) return
+  renderingSeedanceSubtitles.value = true
+  errorMessage.value = ''
+  const res = await renderAiComicSeriesSeedanceSubtitles(seriesProjectId.value, {
+    dry_run: false,
+    overwrite: false,
+    mode,
+  })
+  if (res.ok && res.data) {
+    seedanceSubtitleRender.value = res.data.seedance_subtitle_render
+    lastSavedAt.value = res.data.project.updated_at
+    const action = mode === 'burn_in' ? '字幕烧录' : '字幕文件生成'
+    saveMessage.value = `${action}${res.data.status === 'rendered' ? '完成' : seedanceSubtitleRenderStatusLabel(res.data.seedance_subtitle_render.status)} · ${res.data.cue_count} 条 cue`
+  } else {
+    errorMessage.value = res.error?.message ?? '处理 Seedance 字幕失败'
+  }
+  renderingSeedanceSubtitles.value = false
 }
 
 async function batchMarkSeedanceProduction(
@@ -3099,6 +3179,7 @@ function clearCurrentProject() {
   seriesQualityAudit.value = null
   seedanceProduction.value = null
   seedanceCutAssembly.value = null
+  seedanceSubtitleRender.value = null
   episodeResult.value = null
   episodeErrorMessage.value = ''
   generatedEpisodeNo.value = null
@@ -3201,6 +3282,18 @@ function seedanceCutAssemblyStatusLabel(status: string): string {
     not_started: '未开始',
     planned: '已规划',
     assembling: '装配中',
+    ready: '已生成',
+    failed: '失败',
+    skipped: '跳过',
+  }
+  return map[status] ?? status
+}
+
+function seedanceSubtitleRenderStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    not_started: '未开始',
+    planned: '已规划',
+    rendering: '处理中',
     ready: '已生成',
     failed: '失败',
     skipped: '跳过',

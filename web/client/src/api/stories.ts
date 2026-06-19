@@ -30,6 +30,8 @@ import type {
   AiComicSeriesSeedanceExportPackage,
   AiComicSeriesSeedanceFinishingPlanPackage,
   AiComicSeriesSeedanceRetryPackage,
+  AiComicSeriesSeedanceSubtitlePackage,
+  AiComicSeriesSeedanceSubtitleRenderResult,
   AiComicSeriesSeedanceThumbnailPlanPackage,
   AiComicSeriesSeedanceThumbnailCaptureResult,
   AiComicSeriesSeedanceVersionComparisonPackage,
@@ -38,6 +40,8 @@ import type {
   AiComicSeedanceProductionCallbackRequest,
   AiComicSeedanceProductionStatusUpdateRequest,
   AiComicSeedanceProductionVersionSelectRequest,
+  AiComicSeedanceSubtitleExportRequest,
+  AiComicSeedanceSubtitleRenderRequest,
   AiComicSeedanceThumbnailCaptureRequest,
   AiComicSeriesPlanRequest,
   AiComicSeriesPlan,
@@ -210,6 +214,26 @@ export function exportAiComicSeriesSeedanceFinishingPlanPackage(seriesProjectId:
   return apiPost<AiComicSeriesSeedanceFinishingPlanPackage>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-finishing-plan`,
     {},
+  )
+}
+
+export function exportAiComicSeriesSeedanceSubtitlePackage(
+  seriesProjectId: string,
+  req: AiComicSeedanceSubtitleExportRequest = {},
+) {
+  return apiPost<AiComicSeriesSeedanceSubtitlePackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-subtitles`,
+    req,
+  )
+}
+
+export function renderAiComicSeriesSeedanceSubtitles(
+  seriesProjectId: string,
+  req: AiComicSeedanceSubtitleRenderRequest = {},
+) {
+  return apiPost<AiComicSeriesSeedanceSubtitleRenderResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-subtitles/render`,
+    req,
   )
 }
 

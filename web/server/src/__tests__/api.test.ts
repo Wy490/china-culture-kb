@@ -1954,6 +1954,32 @@ describe('Seedance Finishing Plan API', () => {
   });
 });
 
+describe('Seedance Subtitle API', () => {
+  it('validates subtitle export filename', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-subtitles')
+      .send({ output_filename: '../bad.txt' });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('validates subtitle render mode', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-subtitles/render')
+      .send({ mode: 'overlay' });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts a subtitle dry-run request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-subtitles/render')
+      .send({ dry_run: true, mode: 'sidecar' });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+});
+
 describe('Seedance Cut Assembly API', () => {
   it('validates cut assembly request body', async () => {
     const res = await request

@@ -16,6 +16,7 @@ import {
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
   exportAiComicSeriesSeedanceRetryPackage,
+  exportAiComicSeriesSeedanceSubtitlePackage,
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   generateAiComicEpisodeFromPlan,
@@ -24,6 +25,7 @@ import {
   listAiComicSeriesProjects,
   previewAiComicEpisodeContext,
   rebuildAiComicSeriesContinuityLedger,
+  renderAiComicSeriesSeedanceSubtitles,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
@@ -854,6 +856,92 @@ describe('outline-service', () => {
     expect(finishingPlanRes.data?.title_cards.some(card => card.placement === 'series_opening')).toBe(true);
     expect(finishingPlanRes.data?.quality_checklist.length).toBeGreaterThan(0);
     expect(finishingPlanRes.data?.markdown).toContain('Seedance 成片精修计划');
+
+    const subtitlePackageRes = await exportAiComicSeriesSeedanceSubtitlePackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(subtitlePackageRes.ok).toBe(true);
+    expect(subtitlePackageRes.data?.schema_version)
+      .toBe('ai-comic-series-seedance-subtitle-package/v1');
+    expect(subtitlePackageRes.data?.subtitle_format).toBe('srt');
+    expect(subtitlePackageRes.data?.cue_count).toBe(finishingPlanRes.data?.subtitle_cues.length);
+    expect(subtitlePackageRes.data?.srt_path).toContain('full-series-seedance-subtitles.srt');
+    expect(subtitlePackageRes.data?.srt_content).toContain('1\n00:00:00,000 -->');
+    expect(subtitlePackageRes.data?.cues[0]).toMatchObject({
+      srt_index: 1,
+      start_timecode: '00:00:00,000',
+      episode_no: firstProductionItem.episode_no,
+      shot_id: firstProductionItem.shot_id,
+    });
+    expect(subtitlePackageRes.data?.markdown).toContain('Seedance SRT 字幕包');
+
+    const episodeSubtitlePackageRes = await exportAiComicSeriesSeedanceSubtitlePackage(
+      saveRes.data!.project.series_project_id,
+      { episode_no: firstProductionItem.episode_no, output_filename: 'episode-01.srt' },
+    );
+    expect(episodeSubtitlePackageRes.ok).toBe(true);
+    expect(episodeSubtitlePackageRes.data?.episode_no).toBe(firstProductionItem.episode_no);
+    expect(episodeSubtitlePackageRes.data?.srt_filename).toBe('episode-01.srt');
+    expect(episodeSubtitlePackageRes.data?.cues[0].start_timecode).toBe('00:00:00,000');
+
+    const subtitleDryRunRes = await renderAiComicSeriesSeedanceSubtitles(
+      saveRes.data!.project.series_project_id,
+      { dry_run: true, mode: 'sidecar' },
+    );
+    expect(subtitleDryRunRes.ok).toBe(true);
+    expect(subtitleDryRunRes.data?.schema_version)
+      .toBe('ai-comic-series-seedance-subtitle-render-result/v1');
+    expect(subtitleDryRunRes.data?.status).toBe('planned');
+    expect(subtitleDryRunRes.data?.seedance_subtitle_render).toMatchObject({
+      status: 'planned',
+      mode: 'sidecar',
+      cue_count: subtitlePackageRes.data?.cue_count,
+    });
+
+    const subtitleSidecarRes = await renderAiComicSeriesSeedanceSubtitles(
+      saveRes.data!.project.series_project_id,
+      { dry_run: false, overwrite: true, mode: 'sidecar' },
+    );
+    expect(subtitleSidecarRes.ok).toBe(true);
+    expect(subtitleSidecarRes.data?.status).toBe('rendered');
+    expect(subtitleSidecarRes.data?.output_path).toBe(subtitlePackageRes.data?.srt_path);
+    expect(subtitleSidecarRes.data?.seedance_subtitle_render).toMatchObject({
+      status: 'ready',
+      mode: 'sidecar',
+      srt_path: subtitlePackageRes.data?.srt_path,
+    });
+
+    const subtitleBurnInRes = await renderAiComicSeriesSeedanceSubtitles(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        mode: 'burn_in',
+        output_filename: 'episode-01-subtitled.mp4',
+      },
+      { runner: async () => undefined },
+    );
+    expect(subtitleBurnInRes.ok).toBe(true);
+    expect(subtitleBurnInRes.data?.status).toBe('rendered');
+    expect(subtitleBurnInRes.data?.output_filename).toBe('episode-01-subtitled.mp4');
+    expect(subtitleBurnInRes.data?.ffmpeg_command).toContain('-vf subtitles=');
+    expect(subtitleBurnInRes.data?.seedance_subtitle_render).toMatchObject({
+      status: 'ready',
+      mode: 'burn_in',
+      output_path: expect.stringContaining('/episode-01-subtitled.mp4'),
+      source_cut_output_path: cutAssemblyRes.data?.output_path,
+    });
+
+    const unsafeSubtitleInputRes = await renderAiComicSeriesSeedanceSubtitles(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: true,
+        mode: 'burn_in',
+        input_video_path: '../outside.mp4',
+      },
+    );
+    expect(unsafeSubtitleInputRes.ok).toBe(false);
+    expect(unsafeSubtitleInputRes.error?.code).toBe('VALIDATION_ERROR');
 
     const retryPackageRes = await exportAiComicSeriesSeedanceRetryPackage(saveRes.data!.project.series_project_id);
     expect(retryPackageRes.ok).toBe(true);

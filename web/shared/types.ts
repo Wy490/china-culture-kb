@@ -2159,6 +2159,87 @@ export interface AiComicSeriesSeedanceCutAssemblyResult {
   seedance_cut_assembly: AiComicSeedanceCutAssemblyLedger;
 }
 
+export type AiComicSeedanceSubtitleRenderMode = 'sidecar' | 'burn_in';
+export type AiComicSeedanceSubtitleRenderStatus =
+  | 'not_started'
+  | 'planned'
+  | 'rendering'
+  | 'ready'
+  | 'failed'
+  | 'skipped';
+
+export interface AiComicSeedanceSubtitleExportRequest {
+  episode_no?: number;
+  output_filename?: string;
+}
+
+export interface AiComicSeriesSeedanceSubtitlePackage {
+  schema_version: 'ai-comic-series-seedance-subtitle-package/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  exported_at: string;
+  subtitle_root: string;
+  episode_no?: number;
+  subtitle_format: 'srt';
+  srt_filename: string;
+  srt_path: string;
+  cue_count: number;
+  total_duration_sec: number;
+  cues: Array<AiComicSeedanceFinishingSubtitleCue & {
+    srt_index: number;
+    start_timecode: string;
+    end_timecode: string;
+  }>;
+  srt_content: string;
+  missing_shots: AiComicSeriesSeedanceCutPackage['missing_shots'];
+  markdown: string;
+}
+
+export interface AiComicSeedanceSubtitleRenderRequest {
+  dry_run?: boolean;
+  overwrite?: boolean;
+  mode?: AiComicSeedanceSubtitleRenderMode;
+  episode_no?: number;
+  output_filename?: string;
+  input_video_path?: string;
+}
+
+export interface AiComicSeedanceSubtitleRenderLedger {
+  schema_version: 'ai-comic-seedance-subtitle-render-ledger/v1';
+  updated_at?: string;
+  status: AiComicSeedanceSubtitleRenderStatus;
+  mode: AiComicSeedanceSubtitleRenderMode;
+  episode_no?: number;
+  srt_path?: string;
+  srt_filename?: string;
+  output_path?: string;
+  output_filename?: string;
+  ffmpeg_command?: string;
+  rendered_at?: string;
+  failure_reason?: string;
+  dry_run?: boolean;
+  cue_count: number;
+  source_cut_output_path?: string;
+}
+
+export interface AiComicSeriesSeedanceSubtitleRenderResult {
+  schema_version: 'ai-comic-series-seedance-subtitle-render-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  executed_at: string;
+  dry_run: boolean;
+  mode: AiComicSeedanceSubtitleRenderMode;
+  status: 'planned' | 'rendered' | 'failed' | 'skipped';
+  srt_path: string;
+  srt_filename: string;
+  output_path?: string;
+  output_filename?: string;
+  ffmpeg_command?: string;
+  cue_count: number;
+  failure_reason?: string;
+  seedance_subtitle_render: AiComicSeedanceSubtitleRenderLedger;
+}
+
 export interface AiComicSeedanceRetryPackageShot {
   production_id: string;
   episode_no: number;
@@ -3330,6 +3411,7 @@ export interface AiComicSeriesProjectDetail {
   seedance_production?: AiComicSeedanceProductionLedger;
   seedance_asset_library?: AiComicSeedanceAssetLibrary;
   seedance_cut_assembly?: AiComicSeedanceCutAssemblyLedger;
+  seedance_subtitle_render?: AiComicSeedanceSubtitleRenderLedger;
 }
 
 export interface AiComicSeriesBibleCharacterRow {

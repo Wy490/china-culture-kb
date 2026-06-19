@@ -1233,6 +1233,20 @@ export const AiComicSeedanceCutAssemblyRequestSchema = z.object({
   preset: z.enum(['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow']).optional(),
 });
 
+export const AiComicSeedanceSubtitleExportRequestSchema = z.object({
+  episode_no: z.number().int().min(1).max(120).optional(),
+  output_filename: z.string().trim().regex(/^[0-9A-Za-z._-]+\.srt$/).optional(),
+});
+
+export const AiComicSeedanceSubtitleRenderRequestSchema = z.object({
+  dry_run: z.boolean().optional().default(false),
+  overwrite: z.boolean().optional().default(false),
+  mode: z.enum(['sidecar', 'burn_in']).optional().default('sidecar'),
+  episode_no: z.number().int().min(1).max(120).optional(),
+  output_filename: z.string().trim().regex(/^[0-9A-Za-z._-]+\.(srt|mp4)$/).optional(),
+  input_video_path: z.string().trim().min(1).max(500).optional(),
+});
+
 export const AiComicSeriesLedgerRebuildRequestSchema = z.object({
   from_episode_no: z.number().int().min(1).max(120).optional().default(1),
 });

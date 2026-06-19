@@ -37,6 +37,10 @@ import type {
   AiComicSeedanceThumbnailCaptureRequest,
   AiComicSeedanceThumbnailCaptureResultShot,
   AiComicSeedanceThumbnailStatus,
+  AiComicSeedanceSubtitleExportRequest,
+  AiComicSeedanceSubtitleRenderLedger,
+  AiComicSeedanceSubtitleRenderMode,
+  AiComicSeedanceSubtitleRenderRequest,
   AiComicSeedanceVideoVersion,
   AiComicSeedanceCutPackageEpisode,
   AiComicSeedanceRetryPackageEpisode,
@@ -50,6 +54,8 @@ import type {
   AiComicSeriesSeedanceThumbnailPlanPackage,
   AiComicSeriesSeedanceThumbnailCaptureResult,
   AiComicSeriesSeedanceCutAssemblyResult,
+  AiComicSeriesSeedanceSubtitlePackage,
+  AiComicSeriesSeedanceSubtitleRenderResult,
   AiComicSeedanceThumbnailPlanEpisode,
   AiComicSeriesSeedanceFinishingPlanPackage,
   AiComicSeedanceFinishingAudioCue,
@@ -139,6 +145,12 @@ type FfmpegCutAssemblyRunner = (params: {
   concatListPath: string;
   outputPath: string;
   profile: SeedanceCutAssemblyProfile;
+}) => Promise<void>;
+type FfmpegSubtitleBurnInRunner = (params: {
+  ffmpegPath: string;
+  inputVideoPath: string;
+  subtitlePath: string;
+  outputPath: string;
 }) => Promise<void>;
 
 interface SeedanceCutAssemblyProfile {
@@ -1249,6 +1261,58 @@ function buildAiComicSeriesSeedanceFinishingPlanMarkdown(
   return lines.join('\n');
 }
 
+function buildAiComicSeriesSeedanceSubtitleMarkdown(
+  pkg: Omit<AiComicSeriesSeedanceSubtitlePackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Seedance SRT 字幕包`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> subtitleRoot: ${pkg.subtitle_root}`,
+    `> subtitlePath: ${pkg.srt_path}`,
+    `> scope: ${pkg.episode_no ? `第${pkg.episode_no}集` : '全系列'}`,
+    `> cueCount: ${pkg.cue_count}`,
+    `> duration: ${pkg.total_duration_sec} 秒`,
+    '',
+    '## 字幕 Cue',
+    ...markdownTable(
+      ['序号', '时间码', '集数', '镜头', '文本', '来源'],
+      pkg.cues.map(cue => [
+        String(cue.srt_index),
+        `${cue.start_timecode} --> ${cue.end_timecode}`,
+        `第${cue.episode_no}集`,
+        cue.shot_id,
+        cue.text,
+        seedanceSubtitleSourceText(cue.source),
+      ]),
+    ),
+    '',
+    '## SRT',
+    '',
+    '```srt',
+    pkg.srt_content.trim(),
+    '```',
+  ];
+  if (pkg.missing_shots.length > 0) {
+    lines.push(
+      '',
+      '## 未进入字幕包镜头',
+      ...markdownTable(
+        ['集数', '镜头', '状态', '原因'],
+        pkg.missing_shots.map(shot => [
+          `第${shot.episode_no}集`,
+          shot.shot_id,
+          seedanceProductionStatusText(shot.status),
+          shot.reason,
+        ]),
+      ),
+    );
+  }
+  return lines.join('\n');
+}
+
 function markdownTable(headers: string[], rows: string[][]): string[] {
   if (rows.length === 0) return ['- 未记录'];
   const cleanCell = (value: string): string => value.replace(/\|/g, '｜').replace(/\n/g, ' ').trim() || '未记录';
@@ -1787,6 +1851,7 @@ export async function saveAiComicSeriesProject(
     seedance_production: normalizeSeedanceProductionLedger(existing?.seedance_production),
     seedance_asset_library: cloneSeedanceAssetLibrary(existing?.seedance_asset_library),
     seedance_cut_assembly: cloneSeedanceCutAssemblyLedger(existing?.seedance_cut_assembly),
+    seedance_subtitle_render: cloneSeedanceSubtitleRenderLedger(existing?.seedance_subtitle_render),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -1928,6 +1993,7 @@ export async function copyAiComicSeriesProject(
     seedance_production: cloneSeedanceProductionLedger(existing.seedance_production),
     seedance_asset_library: cloneSeedanceAssetLibrary(existing.seedance_asset_library),
     seedance_cut_assembly: cloneSeedanceCutAssemblyLedger(existing.seedance_cut_assembly),
+    seedance_subtitle_render: cloneSeedanceSubtitleRenderLedger(existing.seedance_subtitle_render),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -3065,6 +3131,212 @@ export async function exportAiComicSeriesSeedanceFinishingPlanPackage(
   });
 }
 
+export async function exportAiComicSeriesSeedanceSubtitlePackage(
+  seriesProjectId: string,
+  request: AiComicSeedanceSubtitleExportRequest = {},
+): Promise<ApiResponse<AiComicSeriesSeedanceSubtitlePackage>> {
+  const finishingPlanRes = await exportAiComicSeriesSeedanceFinishingPlanPackage(seriesProjectId);
+  if (!finishingPlanRes.ok || !finishingPlanRes.data) {
+    return fail(
+      normalizeErrorCode(finishingPlanRes.error?.code),
+      finishingPlanRes.error?.message ?? 'Export Seedance finishing plan failed',
+    );
+  }
+
+  const finishingPlan = finishingPlanRes.data;
+  const selectedCues = finishingPlan.subtitle_cues
+    .filter(cue => request.episode_no === undefined || cue.episode_no === request.episode_no)
+    .sort((a, b) => a.start_sec - b.start_sec || a.end_sec - b.end_sec || a.cue_id.localeCompare(b.cue_id));
+  if (selectedCues.length === 0) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      request.episode_no
+        ? `No subtitle cues found for episode ${request.episode_no}`
+        : 'No subtitle cues found for Seedance SRT export',
+    );
+  }
+
+  const baseStartSec = request.episode_no === undefined
+    ? 0
+    : Math.min(...selectedCues.map(cue => cue.start_sec));
+  const cues = selectedCues.map((cue, index) => {
+    const startSec = Math.max(0, cue.start_sec - baseStartSec);
+    const endSec = Math.max(startSec + 0.5, cue.end_sec - baseStartSec);
+    return {
+      ...cue,
+      start_sec: startSec,
+      end_sec: endSec,
+      srt_index: index + 1,
+      start_timecode: formatSrtTimecode(startSec),
+      end_timecode: formatSrtTimecode(endSec),
+    };
+  });
+  const srtContent = buildSrtContent(cues);
+  const exportedAt = new Date().toISOString();
+  const subtitleRoot = `subtitles/${finishingPlan.project.series_project_id}`;
+  const srtFilename = seedanceSubtitleFilename(
+    finishingPlan.project.series_project_id,
+    request.episode_no,
+    request.output_filename,
+  );
+  const basePackage: Omit<AiComicSeriesSeedanceSubtitlePackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-subtitle-package/v1',
+    project: finishingPlan.project,
+    series_title: finishingPlan.series_title,
+    exported_at: exportedAt,
+    subtitle_root: subtitleRoot,
+    episode_no: request.episode_no,
+    subtitle_format: 'srt',
+    srt_filename: srtFilename,
+    srt_path: `${subtitleRoot}/${srtFilename}`,
+    cue_count: cues.length,
+    total_duration_sec: Math.max(...cues.map(cue => cue.end_sec)),
+    cues,
+    srt_content: srtContent,
+    missing_shots: finishingPlan.missing_shots,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedanceSubtitleMarkdown(basePackage),
+  });
+}
+
+export async function renderAiComicSeriesSeedanceSubtitles(
+  seriesProjectId: string,
+  request: AiComicSeedanceSubtitleRenderRequest = {},
+  options: { runner?: FfmpegSubtitleBurnInRunner } = {},
+): Promise<ApiResponse<AiComicSeriesSeedanceSubtitleRenderResult>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const mode: AiComicSeedanceSubtitleRenderMode = request.mode ?? 'sidecar';
+  const srtOutputFilename = request.output_filename?.toLowerCase().endsWith('.srt')
+    ? request.output_filename
+    : undefined;
+  const subtitlePackageRes = await exportAiComicSeriesSeedanceSubtitlePackage(seriesProjectId, {
+    episode_no: request.episode_no,
+    output_filename: srtOutputFilename,
+  });
+  if (!subtitlePackageRes.ok || !subtitlePackageRes.data) {
+    return fail(
+      normalizeErrorCode(subtitlePackageRes.error?.code),
+      subtitlePackageRes.error?.message ?? 'Export Seedance subtitle package failed',
+    );
+  }
+
+  const subtitlePackage = subtitlePackageRes.data;
+  const dryRun = request.dry_run ?? false;
+  const overwrite = request.overwrite ?? false;
+  const executedAt = new Date().toISOString();
+  const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const absoluteSrtPath = resolveSeedanceProjectOutputPath(projectDir, subtitlePackage.srt_path);
+  const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
+  const sourceCutOutputPath = request.input_video_path ?? detail.seedance_cut_assembly?.output_path;
+  const burnInOutputFilename = seedanceSubtitleBurnInFilename(
+    seriesProjectId,
+    request.episode_no,
+    request.output_filename,
+  );
+  const burnInOutputPath = `cuts/${seriesProjectId}/${burnInOutputFilename}`;
+  const renderOutputPath = mode === 'sidecar' ? subtitlePackage.srt_path : burnInOutputPath;
+  const renderOutputFilename = mode === 'sidecar' ? subtitlePackage.srt_filename : burnInOutputFilename;
+  const absoluteBurnInOutputPath = resolveSeedanceProjectOutputPath(projectDir, burnInOutputPath);
+  let absoluteInputVideoPath: string | undefined;
+  try {
+    absoluteInputVideoPath = sourceCutOutputPath
+      ? resolveSeedanceProjectOutputPath(projectDir, sourceCutOutputPath)
+      : undefined;
+  } catch (err) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+  const ffmpegCommand = mode === 'burn_in' && sourceCutOutputPath
+    ? buildFfmpegSubtitleBurnInCommand(ffmpegPath, sourceCutOutputPath, subtitlePackage.srt_path, burnInOutputPath)
+    : undefined;
+  const runner = options.runner ?? runFfmpegSubtitleBurnIn;
+  const targetPath = mode === 'sidecar' ? absoluteSrtPath : absoluteBurnInOutputPath;
+  let status: AiComicSeriesSeedanceSubtitleRenderResult['status'] = dryRun ? 'planned' : 'rendered';
+  let failureReason: string | undefined;
+
+  try {
+    const alreadyReady = !overwrite && !dryRun && await pathExists(targetPath);
+    if (alreadyReady) {
+      status = 'skipped';
+    } else if (!dryRun) {
+      await mkdir(dirname(absoluteSrtPath), { recursive: true });
+      await writeFile(absoluteSrtPath, subtitlePackage.srt_content, 'utf-8');
+      if (mode === 'burn_in') {
+        if (!sourceCutOutputPath || !absoluteInputVideoPath) {
+          throw new Error('Burn-in subtitle render requires a Seedance cut output or input_video_path');
+        }
+        await mkdir(dirname(absoluteBurnInOutputPath), { recursive: true });
+        await runner({
+          ffmpegPath,
+          inputVideoPath: absoluteInputVideoPath,
+          subtitlePath: absoluteSrtPath,
+          outputPath: absoluteBurnInOutputPath,
+        });
+      }
+    }
+  } catch (err) {
+    status = 'failed';
+    failureReason = err instanceof Error ? err.message : String(err);
+  }
+
+  const renderLedger: AiComicSeedanceSubtitleRenderLedger = {
+    schema_version: 'ai-comic-seedance-subtitle-render-ledger/v1',
+    updated_at: executedAt,
+    status: status === 'rendered'
+      ? 'ready'
+      : status === 'planned'
+        ? 'planned'
+        : status,
+    mode,
+    episode_no: request.episode_no,
+    srt_path: subtitlePackage.srt_path,
+    srt_filename: subtitlePackage.srt_filename,
+    output_path: renderOutputPath,
+    output_filename: renderOutputFilename,
+    ffmpeg_command: ffmpegCommand,
+    rendered_at: status === 'rendered' ? executedAt : detail.seedance_subtitle_render?.rendered_at,
+    failure_reason: failureReason,
+    dry_run: dryRun,
+    cue_count: subtitlePackage.cue_count,
+    source_cut_output_path: sourceCutOutputPath,
+  };
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: executedAt,
+    },
+    seedance_subtitle_render: renderLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+
+  return success({
+    schema_version: 'ai-comic-series-seedance-subtitle-render-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    executed_at: executedAt,
+    dry_run: dryRun,
+    mode,
+    status,
+    srt_path: subtitlePackage.srt_path,
+    srt_filename: subtitlePackage.srt_filename,
+    output_path: renderOutputPath,
+    output_filename: renderOutputFilename,
+    ffmpeg_command: ffmpegCommand,
+    cue_count: subtitlePackage.cue_count,
+    failure_reason: failureReason,
+    seedance_subtitle_render: renderLedger,
+  });
+}
+
 export async function captureAiComicSeriesSeedanceThumbnails(
   seriesProjectId: string,
   request: AiComicSeedanceThumbnailCaptureRequest = {},
@@ -3924,6 +4196,9 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
     continuity_ledger: continuityLedger,
     memory_recall_preferences: normalizeMemoryRecallPreferences(detail.memory_recall_preferences),
     seedance_production: normalizeSeedanceProductionLedger(detail.seedance_production),
+    seedance_asset_library: cloneSeedanceAssetLibrary(detail.seedance_asset_library),
+    seedance_cut_assembly: cloneSeedanceCutAssemblyLedger(detail.seedance_cut_assembly),
+    seedance_subtitle_render: cloneSeedanceSubtitleRenderLedger(detail.seedance_subtitle_render),
     series_quality_audit: detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
       plan: detail.plan,
       generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
@@ -4130,6 +4405,36 @@ function cloneSeedanceCutAssemblyLedger(
   return normalized ? { ...normalized } : undefined;
 }
 
+function normalizeSeedanceSubtitleRenderLedger(
+  ledger?: AiComicSeedanceSubtitleRenderLedger,
+): AiComicSeedanceSubtitleRenderLedger | undefined {
+  if (!ledger) return undefined;
+  return {
+    schema_version: 'ai-comic-seedance-subtitle-render-ledger/v1',
+    updated_at: ledger.updated_at,
+    status: ledger.status ?? 'not_started',
+    mode: ledger.mode ?? 'sidecar',
+    episode_no: ledger.episode_no,
+    srt_path: ledger.srt_path,
+    srt_filename: ledger.srt_filename,
+    output_path: ledger.output_path,
+    output_filename: ledger.output_filename,
+    ffmpeg_command: ledger.ffmpeg_command,
+    rendered_at: ledger.rendered_at,
+    failure_reason: ledger.failure_reason,
+    dry_run: ledger.dry_run,
+    cue_count: ledger.cue_count ?? 0,
+    source_cut_output_path: ledger.source_cut_output_path,
+  };
+}
+
+function cloneSeedanceSubtitleRenderLedger(
+  ledger?: AiComicSeedanceSubtitleRenderLedger,
+): AiComicSeedanceSubtitleRenderLedger | undefined {
+  const normalized = normalizeSeedanceSubtitleRenderLedger(ledger);
+  return normalized ? { ...normalized } : undefined;
+}
+
 function syncSeedanceProductionLedgerWithExport(params: {
   ledger?: AiComicSeedanceProductionLedger;
   episodes: AiComicSeriesSeedanceEpisodePackage[];
@@ -4294,6 +4599,20 @@ function seedanceCutAssemblyFilename(seriesProjectId: string, episodeNo?: number
   return `${seriesProjectId}-${scope}-seedance-cut.mp4`;
 }
 
+function seedanceSubtitleFilename(seriesProjectId: string, episodeNo?: number, requested?: string): string {
+  if (requested?.trim()) return requested.trim();
+  const scope = episodeNo ? `e${String(episodeNo).padStart(2, '0')}` : 'full-series';
+  return `${seriesProjectId}-${scope}-seedance-subtitles.srt`;
+}
+
+function seedanceSubtitleBurnInFilename(seriesProjectId: string, episodeNo?: number, requested?: string): string {
+  const trimmed = requested?.trim();
+  if (trimmed?.toLowerCase().endsWith('.mp4')) return trimmed;
+  if (trimmed?.toLowerCase().endsWith('.srt')) return trimmed.replace(/\.srt$/i, '.subtitled.mp4');
+  const scope = episodeNo ? `e${String(episodeNo).padStart(2, '0')}` : 'full-series';
+  return `${seriesProjectId}-${scope}-seedance-subtitled.mp4`;
+}
+
 function buildFfmpegThumbnailCommand(
   ffmpegPath: string,
   captureTimeSec: number,
@@ -4314,6 +4633,19 @@ function buildFfmpegCutAssemblyCommand(
   return [
     executable,
     ...ffmpegCutAssemblyArgs(concatListPath, outputPath, profile).map(shellDoubleQuoteIfNeeded),
+  ].join(' ');
+}
+
+function buildFfmpegSubtitleBurnInCommand(
+  ffmpegPath: string,
+  inputVideoPath: string,
+  subtitlePath: string,
+  outputPath: string,
+): string {
+  const executable = ffmpegPath === 'ffmpeg' ? 'ffmpeg' : shellDoubleQuote(ffmpegPath);
+  return [
+    executable,
+    ...ffmpegSubtitleBurnInArgs(inputVideoPath, subtitlePath, outputPath).map(shellDoubleQuoteIfNeeded),
   ].join(' ');
 }
 
@@ -4394,6 +4726,25 @@ function ffmpegCutAssemblyArgs(
   ];
 }
 
+function ffmpegSubtitleBurnInArgs(
+  inputVideoPath: string,
+  subtitlePath: string,
+  outputPath: string,
+): string[] {
+  return [
+    '-y',
+    '-i',
+    inputVideoPath,
+    '-vf',
+    `subtitles=${escapeFfmpegSubtitleFilterPath(subtitlePath)}`,
+    '-c:a',
+    'copy',
+    '-movflags',
+    '+faststart',
+    outputPath,
+  ];
+}
+
 function shellDoubleQuoteIfNeeded(value: string): string {
   return /^[A-Za-z0-9_./:=,+?-]+$/.test(value) ? value : shellDoubleQuote(value);
 }
@@ -4431,6 +4782,19 @@ async function runFfmpegCutAssembly(params: {
   );
 }
 
+async function runFfmpegSubtitleBurnIn(params: {
+  ffmpegPath: string;
+  inputVideoPath: string;
+  subtitlePath: string;
+  outputPath: string;
+}): Promise<void> {
+  await execFileAsync(
+    params.ffmpegPath,
+    ffmpegSubtitleBurnInArgs(params.inputVideoPath, params.subtitlePath, params.outputPath),
+    { timeout: 600_000 },
+  );
+}
+
 function resolveSeedanceThumbnailOutputPath(projectDir: string, outputPath: string): string {
   return resolveSeedanceProjectOutputPath(projectDir, outputPath);
 }
@@ -4446,6 +4810,50 @@ function resolveSeedanceProjectOutputPath(projectDir: string, outputPath: string
 
 function ffmpegConcatFileLine(value: string): string {
   return `file '${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function formatSrtTimecode(seconds: number): string {
+  const totalMs = Math.max(0, Math.round(seconds * 1000));
+  const ms = totalMs % 1000;
+  const totalSeconds = Math.floor(totalMs / 1000);
+  const sec = totalSeconds % 60;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const min = totalMinutes % 60;
+  const hour = Math.floor(totalMinutes / 60);
+  return [
+    String(hour).padStart(2, '0'),
+    String(min).padStart(2, '0'),
+    String(sec).padStart(2, '0'),
+  ].join(':') + `,${String(ms).padStart(3, '0')}`;
+}
+
+function buildSrtContent(
+  cues: Array<AiComicSeedanceFinishingSubtitleCue & {
+    srt_index: number;
+    start_timecode: string;
+    end_timecode: string;
+  }>,
+): string {
+  return `${cues.map(cue => [
+    String(cue.srt_index),
+    `${cue.start_timecode} --> ${cue.end_timecode}`,
+    sanitizeSrtText(cue.text),
+  ].join('\n')).join('\n\n')}\n`;
+}
+
+function sanitizeSrtText(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/-->/g, '->')
+    .trim();
+}
+
+function escapeFfmpegSubtitleFilterPath(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/:/g, '\\:')
+    .replace(/'/g, "\\'");
 }
 
 function seedanceThumbnailLedgerNote(

@@ -1,6 +1,6 @@
 # AI 漫剧长篇 Story Agent Seedance 后期生产开发计划
 
-> 日期：2026-06-16
+> 日期：2026-06-19
 > 范围：从 Seedance 镜头回片到字幕、音频、片头片尾、最终成片和外部剪辑平台交付。
 
 ## 1. 当前基线
@@ -23,11 +23,13 @@
 - 剪辑装配 worker，支持 source copy concat 与 H.264/AAC 转码装配。
 - `seedance_cut_assembly` 装配账本。
 - 成片精修计划包，包含镜头时间轴、缩略图、SRT 字幕 cue、音频 cue、片头片尾卡和质检清单。
+- SRT 字幕包导出、sidecar 字幕文件生成和 burn-in 字幕 worker。
+- `seedance_subtitle_render` 字幕渲染账本。
 
 当前能力边界：
 
 - 已能把 Seedance 回片组织为可剪辑资产，并自动抽缩略图、装配初版成片。
-- 已能生成后期精修计划，但还没有真正执行字幕烧录、混音、片头片尾渲染和最终交付装配。
+- 已能生成后期精修计划，并执行 SRT 字幕文件输出与可选字幕烧录；混音、片头片尾渲染和最终交付装配仍待建设。
 - 外部剪辑平台尚未有专用导入格式。
 - 审片返修闭环仍处于待建设状态。
 
@@ -123,6 +125,8 @@ Seedance prompts
 
 将字幕 cue 转成真实 `.srt` 文件，并支持可选字幕烧录。
 
+当前状态：已完成首版。
+
 ### 后端任务
 
 - 新增类型：
@@ -146,13 +150,23 @@ Seedance prompts
   - `rendered_at`
   - `failure_reason`
 
+实现状态：
+
+- `web/shared/types.ts` 已新增字幕包、渲染请求、渲染结果和渲染账本类型。
+- `web/shared/schemas.ts` 已新增字幕导出和渲染请求 schema。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增 SRT 包导出、SRT 写盘、burn-in ffmpeg 命令/runner 和账本写回。
+- `web/server/src/routes/outline.ts` 已新增 `export-seedance-subtitles` 与 `seedance-subtitles/render` 路由。
+
 ### 前端任务
 
 - 系列工作台增加“导出 SRT”。
 - 系列工作台增加“生成字幕文件”。
 - 系列工作台增加“烧录字幕”。
-- 项目总览页增加字幕快捷按钮。
 - 展示字幕 render 状态、输出路径和失败原因。
+
+实现状态：
+
+- `AiComicSeriesStudio.vue` 已新增导出 SRT、生成字幕文件、烧录字幕成片和字幕渲染状态卡。
 
 ### 测试
 
@@ -161,6 +175,11 @@ Seedance prompts
 - mock ffmpeg 成功测试。
 - mock ffmpeg 失败测试。
 - API validation 测试。
+
+实现状态：
+
+- 已覆盖 SRT 包、分集 SRT、sidecar dry-run、sidecar 写盘、burn-in mock runner 和 API validation。
+- 待补：mock ffmpeg 失败专项断言。
 
 ### 验收标准
 
@@ -529,38 +548,35 @@ Seedance prompts
 
 推荐按以下顺序继续：
 
-1. `export-seedance-subtitles`
-2. `seedance-subtitles/render` sidecar 模式
-3. `seedance-subtitles/render` burn-in 模式
-4. `seedance_audio_library`
-5. `export-seedance-audio-plan`
-6. `seedance-audio/mix`
-7. `export-seedance-title-card-plan`
-8. `seedance-title-cards/render`
-9. `seedance-final/assemble`
-10. `seedance-production-dashboard`
-11. `export-seedance-editing-platform-package`
-12. `seedance_review_ledger`
-13. 30 集压测和性能优化
+1. `seedance_audio_library`
+2. `export-seedance-audio-plan`
+3. `seedance-audio/mix`
+4. `export-seedance-title-card-plan`
+5. `seedance-title-cards/render`
+6. `seedance-final/assemble`
+7. `seedance-production-dashboard`
+8. `export-seedance-editing-platform-package`
+9. `seedance_review_ledger`
+10. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
 
 下一步建议优先实现：
 
 ```text
-export-seedance-subtitles
-  -> seedance-subtitles/render sidecar
-  -> seedance_subtitle_render ledger
-  -> 前端导出 SRT / 生成字幕文件
+seedance_audio_library
+  -> export-seedance-audio-plan
+  -> seedance-audio/mix dry-run
+  -> 前端音频素材导入与混音状态
 ```
 
 原因：
 
-- 直接承接当前已完成的成片精修计划包。
+- 直接承接当前已完成的成片精修计划包和字幕 worker。
 - 不依赖第三方平台。
-- 不需要先解决复杂音频素材来源。
-- ffmpeg 依赖和 worker 模式已经在缩略图、剪辑装配中跑通。
-- 能马上把系统从“可拼接视频”推进到“可输出字幕交付件”。
+- 可先从音频素材 JSON 导入和 dry-run 混音开始，不必一次实现真实素材生产。
+- ffmpeg 依赖和 worker 模式已经在缩略图、剪辑装配和字幕烧录中跑通。
+- 能把系统从“可输出字幕交付件”推进到“可输出带音频的后期装配计划”。
 
 该切片完成后，系统后期链路将达到：
 
@@ -570,6 +586,8 @@ ready 镜头
   -> 缩略图
   -> 精修计划
   -> SRT 字幕文件
+  -> 字幕烧录成片
+  -> 音频计划
 ```
 
-这会为后续字幕烧录、混音、片头片尾和最终成片装配打下稳定基础。
+这会为后续混音、片头片尾和最终成片装配打下稳定基础。

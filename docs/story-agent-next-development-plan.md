@@ -1,6 +1,6 @@
 # Story Agent 下一阶段开发计划
 
-> 日期：2026-06-18
+> 日期：2026-06-19
 > 分支：`codex-ai-comic-series-longform`
 > 用途：给新对话快速接续 Story Agent、Production Board、GEARS / Seedance 交付链开发。
 
@@ -11,8 +11,8 @@
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
 | Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
-| AI 漫剧系列生产链 | 约 45% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划已有；字幕、混音、片头片尾、final delivery 待做。 |
-| 可商用制作中台 | 约 42% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、审片返修和稳定压测。 |
+| AI 漫剧系列生产链 | 约 52% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、sidecar 字幕文件和 burn-in 字幕 worker 首版已有；混音、片头片尾、final delivery 待做。 |
+| 可商用制作中台 | 约 45% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、音频/最终成片、审片返修和稳定压测。 |
 
 ## 2. 本轮完成内容
 
@@ -120,6 +120,12 @@
   - 新增 HMAC 签名支持：`SEEDANCE_PROVIDER_SIGNATURE_SECRET` 或 submit/poll 专用 secret 会写入签名头和时间戳头；签名基串为 `METHOD\nURL\nTIMESTAMP\nJSON_BODY`。
   - adapter 响应和直接 webhook 兼容 `external_id/externalId/custom_id/customId`，可映射回 Story Agent `shot_id`。
   - `GET /api/system/seedance-provider-config` 与 `GET /api/system/seedance-provider-adapter-contract` 已同步暴露 payload mode、签名配置状态、签名 header、平台字段 env 和 platform payload 示例，不泄漏密钥。
+- AI 漫剧 Seedance 字幕链路首版：
+  - 新增 `export-seedance-subtitles`，从成片精修计划的 subtitle cues 生成合法 SRT、Markdown 和 JSON 字幕包。
+  - 新增 `seedance-subtitles/render` worker，支持 `dry_run`、`overwrite`、`episode_no`、`output_filename`、`mode=sidecar` 和 `mode=burn_in`。
+  - 新增 `seedance_subtitle_render` 账本，记录 SRT 路径、输出路径、ffmpeg 命令、渲染状态、失败原因和 cue 数。
+  - 系列工作台新增“导出 SRT 字幕”“生成字幕文件”“烧录字幕成片”和字幕渲染状态卡。
+  - 服务测试覆盖 SRT 包、分集 SRT、sidecar dry-run、sidecar 写盘和 burn-in mock runner；API 测试覆盖字幕导出/渲染请求校验。
 
 ### 文档同步
 
@@ -142,7 +148,7 @@ git diff --check
 
 - `web/client`：lint passed。
 - `web/client`：build passed。
-- `web/server`：lint passed；`project-service.test.ts` 36 passed，`api.test.ts` 89 passed；全量 24 files / 246 tests passed。
+- `web/server`：lint passed；`project-service.test.ts` 36 passed，`api.test.ts` 92 passed；全量 24 files / 249 tests passed。
 - `web/client`：lint passed；ProjectDetail provider overview API smoke 通过，提交 5 条 provider 任务后 overview 返回 5 个总镜头 / 5 个活跃 / 5 个注意项。
 - `git diff --check`：passed。
 
@@ -207,15 +213,15 @@ SeedanceProviderAdapter
 - 筛选区增加更明显重置入口。
 - 项目工作台默认只保留高频主路径，高级制作动作放折叠区。
 
-### P1：AI 漫剧字幕链路
+### P1：AI 漫剧音频链路
 
 下一块建议做：
 
 ```text
-export-seedance-subtitles
-  -> seedance-subtitles sidecar
-  -> subtitle render ledger
-  -> 前端导出 SRT
+seedance_audio_library
+  -> export-seedance-audio-plan
+  -> seedance-audio/mix dry-run
+  -> 前端音频素材导入与混音状态
 ```
 
 ## 6. 新对话开场指令

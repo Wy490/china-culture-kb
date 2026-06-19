@@ -15,6 +15,8 @@ import {
   AiComicSeedanceProductionStatusUpdateRequestSchema,
   AiComicSeedanceProductionVersionSelectRequestSchema,
   AiComicSeedanceCutAssemblyRequestSchema,
+  AiComicSeedanceSubtitleExportRequestSchema,
+  AiComicSeedanceSubtitleRenderRequestSchema,
   AiComicSeedanceThumbnailCaptureRequestSchema,
   AiComicSeriesLedgerRebuildRequestSchema,
   AiComicSeriesProjectArchiveRequestSchema,
@@ -40,6 +42,7 @@ import {
   exportAiComicSeriesSeedanceFinishingPlanPackage,
   exportAiComicSeriesSeedancePrompts,
   exportAiComicSeriesSeedanceRetryPackage,
+  exportAiComicSeriesSeedanceSubtitlePackage,
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   previewAiComicEpisodeContext,
@@ -48,6 +51,7 @@ import {
   getAiComicSeriesProject,
   listAiComicSeriesProjects,
   rebuildAiComicSeriesContinuityLedger,
+  renderAiComicSeriesSeedanceSubtitles,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   updateAiComicSeriesSeedanceAssetLibrary,
@@ -321,6 +325,38 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await exportAiComicSeriesSeedanceFinishingPlanPackage(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-subtitles — export SRT subtitle package
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/export-seedance-subtitles',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceSubtitleExportRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await exportAiComicSeriesSeedanceSubtitlePackage(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-subtitles/render — write sidecar SRT or burn subtitles into a cut
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-subtitles/render',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceSubtitleRenderRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await renderAiComicSeriesSeedanceSubtitles(seriesProjectId, req.body);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);
