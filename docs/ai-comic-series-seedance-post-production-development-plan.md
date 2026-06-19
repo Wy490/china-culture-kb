@@ -29,7 +29,7 @@
 当前能力边界：
 
 - 已能把 Seedance 回片组织为可剪辑资产，并自动抽缩略图、装配初版成片。
-- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并生成片头片尾计划、片头片尾 render dry-run、final delivery dry-run、final manifest、外部剪辑平台包和生产总览 dashboard；真实混音素材生产、真实片头片尾渲染和最终交付真实装配仍待增强。
+- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并完成混音真实 runner 输入/输出 hardening、分集时间轴归一和原声保留开关；已生成片头片尾计划、片头片尾 render dry-run、final delivery dry-run、final manifest、外部剪辑平台包和生产总览 dashboard；真实片头片尾渲染和最终交付真实装配仍待增强。
 - 外部剪辑平台已有通用 JSON / CSV / SRT / asset manifest 首版，平台专用 FCPXML / Premiere XML / 剪映草稿格式仍待适配。
 - 审片返修闭环首版已完成：可记录审片意见、标记解决、导出返修包，并在 dashboard 中形成 blocker / next action。
 
@@ -255,12 +255,12 @@ Seedance prompts
 
 调用 ffmpeg 将背景音乐、环境声、音效与视频合成为带音频的成片。
 
-当前状态：dry-run / mock runner 与真实素材路径校验首版已完成；完整混音策略仍需继续打磨。
+当前状态：dry-run / mock runner、真实素材路径校验、分集时间轴归一、原声保留开关和 runner 输出校验首版已完成；后续继续做真实 ffmpeg 媒体烟测和更细 ducking 策略。
 
 ### 后端任务
 
 - 新接口：`seedance-audio/mix`
-- 支持 `dry_run`、`overwrite`、`episode_no`、`input_video_path`、`output_filename`、`audio_profile`。
+- 支持 `dry_run`、`overwrite`、`episode_no`、`input_video_path`、`output_filename`、`audio_profile`、`include_original_audio` 和 `original_audio_volume_db`。
 - 生成 ffmpeg `filter_complex`。
 - 支持多音轨输入。
 - 支持 volume、fade、atrim、aloop、amix。
@@ -280,7 +280,9 @@ Seedance prompts
 - `seedance-audio/mix` 已支持 `dry_run`、`overwrite`、`episode_no`、`input_video_path`、`output_filename` 和 `audio_profile`。
 - 服务层已生成可复现 ffmpeg 命令，并将 dry-run / mock runner / fake runner 结果写回 `seedance_audio_mix`。
 - 真实执行已校验源视频存在、音频素材为项目内本地路径且文件存在；远程 URL 或协议路径会写入明确失败原因。
-- 当前首版优先保证计划可审查、命令可复现和真实 runner 输入安全；后续继续补原声混合策略、真实 ffmpeg 专项和多分集边界。
+- 分集混音会将该集 audio cues 从全系列时间轴归零，系列底乐可复用于单集，缺失音频数按分集范围统计。
+- `include_original_audio=true` 时会把源视频原声作为一条可控音量输入加入 `amix`；runner 成功返回后会校验输出文件是否真实产生。
+- 当前首版优先保证计划可审查、命令可复现和真实 runner 输入/输出安全；后续继续补真实 ffmpeg 媒体烟测和更细 ducking 策略。
 
 ### 前端任务
 
@@ -301,8 +303,8 @@ Seedance prompts
 
 实现状态：
 
-- 已覆盖混音 dry-run 命令、远程音频素材真实执行失败、本地音频 fake runner 成功、音频输入路径安全校验、混音请求 validation 和缺失项目响应。
-- 待补：真实 ffmpeg 成功/失败专项、原声混合策略和多分集边界测试。
+- 已覆盖混音 dry-run 命令、分集混音时间归一、原声保留、远程音频素材真实执行失败、runner 未产出失败、本地音频 fake runner 成功、音频输入路径安全校验、混音请求 validation 和缺失项目响应。
+- 待补：真实 ffmpeg 成功/失败媒体烟测和更细 ducking 策略测试。
 
 ### 验收标准
 
@@ -665,9 +667,9 @@ Seedance prompts
 
 推荐按以下顺序继续：
 
-1. `seedance-audio/mix` 真实 ffmpeg 专项和多分集边界增强
-2. `seedance-title-cards/render` 真实 ffmpeg / 视觉模板回归
-3. `seedance-final/assemble` 真实 ffmpeg 专项和精确片头片尾时间线
+1. `seedance-title-cards/render` 真实 ffmpeg / 视觉模板回归
+2. `seedance-final/assemble` 真实 ffmpeg 专项和精确片头片尾时间线
+3. `seedance-audio/mix` 真实 ffmpeg 媒体烟测和 ducking 细化
 4. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
@@ -675,9 +677,9 @@ Seedance prompts
 下一步建议优先实现：
 
 ```text
-seedance-audio/mix real ffmpeg and multi-episode hardening
-  -> seedance-title-cards/render real ffmpeg and visual template regression
+seedance-title-cards/render real ffmpeg and visual template regression
   -> seedance-final/assemble real ffmpeg and precise title-card timeline
+  -> seedance-audio/mix real media smoke and ducking refinement
 ```
 
 原因：
@@ -703,4 +705,4 @@ ready 镜头
   -> final delivery dry-run / 依赖账本
 ```
 
-这会为后续真实混音、真实片头片尾渲染、最终成片装配和外部剪辑平台包打下稳定基础。
+这会为后续真实片头片尾渲染、最终成片装配、真实混音媒体烟测和外部剪辑平台包打下稳定基础。

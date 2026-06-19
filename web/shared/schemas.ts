@@ -1287,6 +1287,8 @@ export const AiComicSeedanceAudioMixRequestSchema = z.object({
   input_video_path: z.string().trim().min(1).max(500).optional(),
   output_filename: z.string().trim().regex(/^[0-9A-Za-z._-]+\.mp4$/).optional(),
   audio_profile: z.enum(['balanced_dialogue', 'music_forward', 'ambient_soft']).optional().default('balanced_dialogue'),
+  include_original_audio: z.boolean().optional().default(false),
+  original_audio_volume_db: z.number().min(-48).max(12).optional().default(0),
 });
 
 export const AiComicSeedanceTitleCardRenderRequestSchema = z.object({

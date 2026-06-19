@@ -1123,7 +1123,52 @@ describe('outline-service', () => {
       inputVideoPath: string;
       outputPath: string;
       audioInputs: Array<{ input_path: string }>;
+      includeOriginalAudio: boolean;
+      originalAudioVolumeDb: number;
     }> = [];
+    const episodeAudioMixDryRunRes = await mixAiComicSeriesSeedanceAudio(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: true,
+        episode_no: firstProductionItem.episode_no,
+        input_video_path: mixInputVideoPath,
+        output_filename: 'episode-audio-mix.mp4',
+        include_original_audio: true,
+        original_audio_volume_db: -3,
+      },
+    );
+    expect(episodeAudioMixDryRunRes.ok).toBe(true);
+    expect(episodeAudioMixDryRunRes.data?.episode_no).toBe(firstProductionItem.episode_no);
+    expect(episodeAudioMixDryRunRes.data?.include_original_audio).toBe(true);
+    expect(episodeAudioMixDryRunRes.data?.original_audio_volume_db).toBe(-3);
+    expect(episodeAudioMixDryRunRes.data?.ffmpeg_command).toContain('[0:a]volume=-3dB');
+    expect(episodeAudioMixDryRunRes.data?.ffmpeg_command).toContain('adelay=0|0');
+    expect(episodeAudioMixDryRunRes.data?.seedance_audio_mix).toMatchObject({
+      status: 'planned',
+      episode_no: firstProductionItem.episode_no,
+      output_filename: 'episode-audio-mix.mp4',
+      include_original_audio: true,
+      original_audio_volume_db: -3,
+    });
+
+    const missingAudioOutputRes = await mixAiComicSeriesSeedanceAudio(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        input_video_path: mixInputVideoPath,
+        output_filename: 'missing-audio-output.mp4',
+      },
+      { runner: async () => undefined },
+    );
+    expect(missingAudioOutputRes.ok).toBe(true);
+    expect(missingAudioOutputRes.data?.status).toBe('failed');
+    expect(missingAudioOutputRes.data?.failure_reason).toContain('did not create output file');
+    expect(missingAudioOutputRes.data?.seedance_audio_mix).toMatchObject({
+      status: 'failed',
+      output_filename: 'missing-audio-output.mp4',
+    });
+
     const realAudioMixRes = await mixAiComicSeriesSeedanceAudio(
       saveRes.data!.project.series_project_id,
       {
@@ -1131,6 +1176,8 @@ describe('outline-service', () => {
         overwrite: true,
         input_video_path: mixInputVideoPath,
         output_filename: 'local-audio-mix.mp4',
+        include_original_audio: true,
+        original_audio_volume_db: -6,
       },
       {
         runner: async params => {
@@ -1138,6 +1185,8 @@ describe('outline-service', () => {
             inputVideoPath: params.inputVideoPath,
             outputPath: params.outputPath,
             audioInputs: params.audioInputs.map(input => ({ input_path: input.input_path })),
+            includeOriginalAudio: params.includeOriginalAudio,
+            originalAudioVolumeDb: params.originalAudioVolumeDb,
           });
           await writeFile(params.outputPath, 'fake mixed video');
         },
@@ -1148,7 +1197,10 @@ describe('outline-service', () => {
     expect(realAudioMixRes.data?.seedance_audio_mix).toMatchObject({
       status: 'ready',
       output_filename: 'local-audio-mix.mp4',
+      include_original_audio: true,
+      original_audio_volume_db: -6,
     });
+    expect(realAudioMixRes.data?.ffmpeg_command).toContain('[0:a]volume=-6dB');
     expect(runnerCalls).toHaveLength(1);
     expect(runnerCalls[0].inputVideoPath).toBe(resolve(projectDir, mixInputVideoPath));
     expect(runnerCalls[0].outputPath).toBe(resolve(
@@ -1158,6 +1210,8 @@ describe('outline-service', () => {
       'local-audio-mix.mp4',
     ));
     expect(runnerCalls[0].audioInputs[0].input_path).toBe(resolve(projectDir, localAudioPath));
+    expect(runnerCalls[0].includeOriginalAudio).toBe(true);
+    expect(runnerCalls[0].originalAudioVolumeDb).toBe(-6);
 
     const unsafeAudioMixInputRes = await mixAiComicSeriesSeedanceAudio(
       saveRes.data!.project.series_project_id,

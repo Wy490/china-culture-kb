@@ -11,7 +11,7 @@
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
 | Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
-| AI 漫剧系列生产链 | 约 77% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、片头片尾计划/render dry-run、final delivery dry-run、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、重试执行计划、本地重试提交、retry submit adapter、系列 provider 超时恢复、外部剪辑平台包和生产总览 dashboard 首版已有；下一步是真实混音、真实片头片尾渲染和真实最终装配。 |
+| AI 漫剧系列生产链 | 约 78% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、混音真实 runner hardening、片头片尾计划/render dry-run、final delivery dry-run、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、重试执行计划、本地重试提交、retry submit adapter、系列 provider 超时恢复、外部剪辑平台包和生产总览 dashboard 首版已有；下一步是真实片头片尾渲染和真实最终装配。 |
 | 可商用制作中台 | 约 50% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、真实混音执行/最终成片、审片返修联动深化和稳定压测。 |
 
 ## 2. 本轮完成内容
@@ -133,7 +133,9 @@
   - 新增 `seedance_audio_mix` 账本，记录状态、源视频、输出路径、素材数、缺失音频数、失败原因和 ffmpeg 命令。
   - 系列工作台新增“导出音频计划 Markdown / JSON”“导入音频素材”和“混音 dry-run”，并展示混音状态卡。
   - 已补真实 runner 输入 hardening：非 dry-run 校验源视频、本地音频素材路径和文件存在，远程 URL / 协议路径会写入明确失败原因。
-  - 服务测试覆盖缺失音频计划、素材绑定、混音 dry-run 命令、远程音频失败、本地音频 fake runner 成功和输入路径校验；API 测试覆盖音频素材库、混音请求和缺失项目校验。
+  - 已补多分集混音边界：分集混音会将该集 audio cues 时间轴归零，系列底乐可复用于单集，缺失音频数按分集范围统计。
+  - 已补真实混音输出校验和原声保留开关：`include_original_audio` / `original_audio_volume_db` 会进入 ffmpeg `amix`，runner 未产出文件会写入明确失败原因。
+  - 服务测试覆盖缺失音频计划、素材绑定、混音 dry-run 命令、分集混音时间归一、原声保留、远程音频失败、runner 未产出失败、本地音频 fake runner 成功和输入路径校验；API 测试覆盖音频素材库、混音请求和缺失项目校验。
 - AI 漫剧 Seedance 片头片尾 / final delivery dry-run 首版：
   - 新增 `export-seedance-title-card-plan`，从 finishing plan 的 title cards 生成可执行片头片尾计划、输出路径和 ffmpeg command hint。
   - 新增 `seedance-title-cards/render`，支持 dry-run、分集筛选、output profile、`FFMPEG_FONT_PATH` 校验和 `seedance_title_card_render` 账本。
@@ -263,13 +265,12 @@ SeedanceProviderAdapter
 下一块建议做：
 
 ```text
-seedance-audio/mix real ffmpeg and multi-episode hardening
-  -> seedance-title-cards/render real ffmpeg and visual template regression
+seedance-title-cards/render real ffmpeg and visual template regression
   -> seedance-final/assemble real ffmpeg and precise title-card timeline
 ```
 
 ## 6. 新对话开场指令
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先确认工作区状态，然后继续 P0：Seedance provider 平台 SDK/HTTP submit/query 实现、MCP 更深模型修复链路、故事管理 UX 降噪；AI 漫剧后期下一块做真实混音/片头片尾渲染增强、真实最终装配或审片联动深化。默认界面保持简单，只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先确认工作区状态，然后继续 P0：Seedance provider 平台 SDK/HTTP submit/query 实现、MCP 更深模型修复链路、故事管理 UX 降噪；AI 漫剧后期下一块做片头片尾真实 ffmpeg / 视觉模板回归、真实最终装配或真实 provider 轮询 smoke。默认界面保持简单，只保留高频主路径。
 ```

@@ -229,6 +229,8 @@ type FfmpegAudioMixRunner = (params: {
   ffmpegPath: string;
   inputVideoPath: string;
   audioInputs: SeedanceAudioMixInput[];
+  includeOriginalAudio: boolean;
+  originalAudioVolumeDb: number;
   outputPath: string;
 }) => Promise<void>;
 type FfmpegTitleCardRenderRunner = (params: {
@@ -4313,11 +4315,13 @@ export async function mixAiComicSeriesSeedanceAudio(
   }
 
   const audioProfile: AiComicSeedanceAudioMixProfile = request.audio_profile ?? 'balanced_dialogue';
+  const includeOriginalAudio = request.include_original_audio ?? false;
+  const originalAudioVolumeDb = request.original_audio_volume_db ?? 0;
   const dryRun = request.dry_run ?? true;
   const overwrite = request.overwrite ?? false;
   const executedAt = new Date().toISOString();
   const sourceVideoPath = request.input_video_path
-    ?? seedanceAudioMixDefaultInputPath(detail);
+    ?? seedanceAudioMixDefaultInputPath(detail, request.episode_no);
   if (!sourceVideoPath) {
     return fail(
       ErrorCodes.VALIDATION_ERROR,
@@ -4341,19 +4345,31 @@ export async function mixAiComicSeriesSeedanceAudio(
     );
   }
 
-  const audioInputs = audioPlanRes.data.audio_cues
-    .filter(cue => request.episode_no === undefined || cue.episode_no === request.episode_no)
-    .filter(cue => cue.asset_status === 'bound')
-    .map(cue => ({
-      input_path: cue.file_url ?? cue.file_id!,
-      start_sec: cue.start_sec,
-      end_sec: cue.end_sec,
-      volume_db: seedanceAudioProfileVolume(cue.volume_db, cue.kind, audioProfile),
-      fade_in_sec: cue.fade_in_sec,
-      fade_out_sec: cue.fade_out_sec,
-    }));
+  const audioMixScope = seedanceAudioMixScope(audioPlanRes.data, request.episode_no);
+  if (audioMixScope.selectedCueCount === 0) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      request.episode_no
+        ? `No audio cues found for episode ${request.episode_no}`
+        : 'No audio cues found for Seedance audio mix',
+    );
+  }
+  const audioInputs = audioMixScope.boundCues.map(cue => ({
+    input_path: cue.file_url ?? cue.file_id!,
+    start_sec: cue.start_sec,
+    end_sec: cue.end_sec,
+    volume_db: seedanceAudioProfileVolume(cue.volume_db, cue.kind, audioProfile),
+    fade_in_sec: cue.fade_in_sec,
+    fade_out_sec: cue.fade_out_sec,
+  }));
   const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
-  const ffmpegCommand = buildFfmpegAudioMixCommand(ffmpegPath, sourceVideoPath, audioInputs, outputPath);
+  const ffmpegCommand = buildFfmpegAudioMixCommand(
+    ffmpegPath,
+    sourceVideoPath,
+    audioInputs,
+    outputPath,
+    { includeOriginalAudio, originalAudioVolumeDb },
+  );
   const runner = options.runner ?? runFfmpegAudioMix;
   let status: AiComicSeriesSeedanceAudioMixResult['status'] = dryRun ? 'planned' : 'mixed';
   let failureReason: string | undefined;
@@ -4375,8 +4391,13 @@ export async function mixAiComicSeriesSeedanceAudio(
         ffmpegPath,
         inputVideoPath: absoluteInputVideoPath,
         audioInputs: runnerAudioInputs,
+        includeOriginalAudio,
+        originalAudioVolumeDb,
         outputPath: absoluteOutputPath,
       });
+      if (!(await pathExists(absoluteOutputPath))) {
+        throw new Error(`Seedance audio mix runner did not create output file: ${outputPath}`);
+      }
     }
   } catch (err) {
     status = 'failed';
@@ -4391,6 +4412,7 @@ export async function mixAiComicSeriesSeedanceAudio(
       : status === 'planned'
         ? 'planned'
         : status,
+    episode_no: request.episode_no,
     output_path: outputPath,
     output_filename: outputFilename,
     input_video_path: sourceVideoPath,
@@ -4399,8 +4421,10 @@ export async function mixAiComicSeriesSeedanceAudio(
     failure_reason: failureReason,
     dry_run: dryRun,
     audio_profile: audioProfile,
+    include_original_audio: includeOriginalAudio,
+    original_audio_volume_db: originalAudioVolumeDb,
     source_audio_count: audioInputs.length,
-    missing_audio_count: audioPlanRes.data.missing_audio_count,
+    missing_audio_count: audioMixScope.missingAudioCount,
   };
   const updatedDetail: AiComicSeriesProjectDetail = {
     ...detail,
@@ -4419,13 +4443,16 @@ export async function mixAiComicSeriesSeedanceAudio(
     executed_at: executedAt,
     dry_run: dryRun,
     status,
+    episode_no: request.episode_no,
     output_path: outputPath,
     output_filename: outputFilename,
     input_video_path: sourceVideoPath,
     ffmpeg_command: ffmpegCommand,
     audio_profile: audioProfile,
+    include_original_audio: includeOriginalAudio,
+    original_audio_volume_db: originalAudioVolumeDb,
     source_audio_count: audioInputs.length,
-    missing_audio_count: audioPlanRes.data.missing_audio_count,
+    missing_audio_count: audioMixScope.missingAudioCount,
     failure_reason: failureReason,
     seedance_audio_mix: mixLedger,
   });
@@ -6225,6 +6252,7 @@ function normalizeSeedanceAudioMixLedger(
     schema_version: 'ai-comic-seedance-audio-mix-ledger/v1',
     updated_at: ledger.updated_at,
     status: ledger.status ?? 'not_started',
+    episode_no: ledger.episode_no,
     output_path: ledger.output_path,
     output_filename: ledger.output_filename,
     input_video_path: ledger.input_video_path,
@@ -6233,6 +6261,8 @@ function normalizeSeedanceAudioMixLedger(
     failure_reason: ledger.failure_reason,
     dry_run: ledger.dry_run,
     audio_profile: ledger.audio_profile ?? 'balanced_dialogue',
+    include_original_audio: ledger.include_original_audio,
+    original_audio_volume_db: ledger.original_audio_volume_db,
     source_audio_count: ledger.source_audio_count ?? 0,
     missing_audio_count: ledger.missing_audio_count ?? 0,
   };
@@ -6801,15 +6831,83 @@ function seedanceAudioProfileVolume(
   return baseVolumeDb;
 }
 
-function seedanceAudioMixDefaultInputPath(detail: AiComicSeriesProjectDetail): string | undefined {
+function seedanceAudioMixScope(
+  audioPlan: AiComicSeriesSeedanceAudioPlanPackage,
+  episodeNo?: number,
+): {
+  selectedCueCount: number;
+  boundCues: AiComicSeedanceAudioPlanCue[];
+  missingAudioCount: number;
+} {
+  if (episodeNo === undefined) {
+    return {
+      selectedCueCount: audioPlan.audio_cues.length,
+      boundCues: audioPlan.audio_cues.filter(cue => cue.asset_status === 'bound'),
+      missingAudioCount: audioPlan.missing_audio_count,
+    };
+  }
+
+  const episodeCues = audioPlan.audio_cues.filter(cue =>
+    cue.episode_no === episodeNo && cue.cue_id !== 'aud-series-bed'
+  );
+  if (episodeCues.length === 0) {
+    return { selectedCueCount: 0, boundCues: [], missingAudioCount: 0 };
+  }
+  const baseStartSec = Math.min(...episodeCues.map(cue => cue.start_sec));
+  const episodeEndSec = Math.max(...episodeCues.map(cue => cue.end_sec));
+  const episodeDurationSec = Math.max(0.5, episodeEndSec - baseStartSec);
+  const selectedCues = audioPlan.audio_cues
+    .filter(cue => cue.episode_no === episodeNo || cue.cue_id === 'aud-series-bed')
+    .map(cue => {
+      if (cue.cue_id === 'aud-series-bed') {
+        return {
+          ...cue,
+          episode_no: episodeNo,
+          start_sec: 0,
+          end_sec: episodeDurationSec,
+        };
+      }
+      const startSec = Math.max(0, cue.start_sec - baseStartSec);
+      return {
+        ...cue,
+        start_sec: startSec,
+        end_sec: Math.max(startSec + 0.1, cue.end_sec - baseStartSec),
+      };
+    });
+  const missingAudioCount = audioPlan.missing_audio.filter(item =>
+    item.episode_no === episodeNo || item.cue_id === 'aud-series-bed'
+  ).length;
+  return {
+    selectedCueCount: selectedCues.length,
+    boundCues: selectedCues.filter(cue => cue.asset_status === 'bound'),
+    missingAudioCount,
+  };
+}
+
+function seedanceMixSourceMatches(sourceEpisodeNo: number | undefined, requestedEpisodeNo: number | undefined): boolean {
+  if (requestedEpisodeNo === undefined) return true;
+  return sourceEpisodeNo === requestedEpisodeNo;
+}
+
+function seedanceAudioMixDefaultInputPath(
+  detail: AiComicSeriesProjectDetail,
+  episodeNo?: number,
+): string | undefined {
   if (
     detail.seedance_subtitle_render?.status === 'ready'
     && detail.seedance_subtitle_render.mode === 'burn_in'
     && detail.seedance_subtitle_render.output_path
+    && seedanceMixSourceMatches(detail.seedance_subtitle_render.episode_no, episodeNo)
   ) {
     return detail.seedance_subtitle_render.output_path;
   }
-  return detail.seedance_cut_assembly?.output_path;
+  if (
+    detail.seedance_cut_assembly?.output_path
+    && seedanceMixSourceMatches(detail.seedance_cut_assembly.source_episode_no, episodeNo)
+  ) {
+    return detail.seedance_cut_assembly.output_path;
+  }
+  return undefined;
 }
 
 async function resolveSeedanceAudioMixRunnerInputs(
@@ -8236,11 +8334,15 @@ function buildFfmpegAudioMixCommand(
   inputVideoPath: string,
   audioInputs: SeedanceAudioMixInput[],
   outputPath: string,
+  options: {
+    includeOriginalAudio: boolean;
+    originalAudioVolumeDb: number;
+  } = { includeOriginalAudio: false, originalAudioVolumeDb: 0 },
 ): string {
   const executable = ffmpegPath === 'ffmpeg' ? 'ffmpeg' : shellDoubleQuote(ffmpegPath);
   return [
     executable,
-    ...ffmpegAudioMixArgs(inputVideoPath, audioInputs, outputPath).map(shellDoubleQuoteIfNeeded),
+    ...ffmpegAudioMixArgs(inputVideoPath, audioInputs, outputPath, options).map(shellDoubleQuoteIfNeeded),
   ].join(' ');
 }
 
@@ -8372,26 +8474,53 @@ function ffmpegAudioMixArgs(
   inputVideoPath: string,
   audioInputs: SeedanceAudioMixInput[],
   outputPath: string,
+  options: {
+    includeOriginalAudio: boolean;
+    originalAudioVolumeDb: number;
+  } = { includeOriginalAudio: false, originalAudioVolumeDb: 0 },
 ): string[] {
   const inputs = ['-y', '-i', inputVideoPath, ...audioInputs.flatMap(input => ['-i', input.input_path])];
-  if (audioInputs.length === 0) return [...inputs, '-c', 'copy', outputPath];
-  const filters = audioInputs.map((input, index) => {
+  if (audioInputs.length === 0 && !options.includeOriginalAudio) return [...inputs, '-c', 'copy', outputPath];
+  if (audioInputs.length === 0 && options.includeOriginalAudio) {
+    return [
+      ...inputs,
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a:0',
+      '-c:v',
+      'copy',
+      '-c:a',
+      'aac',
+      '-movflags',
+      '+faststart',
+      outputPath,
+    ];
+  }
+  const filters: string[] = [];
+  const mixLabels: string[] = [];
+  if (options.includeOriginalAudio) {
+    filters.push(`[0:a]volume=${options.originalAudioVolumeDb}dB[a0]`);
+    mixLabels.push('[a0]');
+  }
+  audioInputs.forEach((input, index) => {
     const inputIndex = index + 1;
+    const labelIndex = options.includeOriginalAudio ? index + 1 : index;
     const durationSec = Math.max(0.1, input.end_sec - input.start_sec);
     const fadeOutStart = Math.max(0, durationSec - input.fade_out_sec);
     const delayMs = Math.max(0, Math.round(input.start_sec * 1000));
-    return `[${inputIndex}:a]${[
+    filters.push(`[${inputIndex}:a]${[
       `volume=${input.volume_db}dB`,
       `atrim=0:${durationSec}`,
       'asetpts=PTS-STARTPTS',
       `afade=t=in:st=0:d=${input.fade_in_sec}`,
       `afade=t=out:st=${fadeOutStart}:d=${input.fade_out_sec}`,
       `adelay=${delayMs}|${delayMs}`,
-      `[a${index}]`,
-    ].join(',')}`;
+      `[a${labelIndex}]`,
+    ].join(',')}`);
+    mixLabels.push(`[a${labelIndex}]`);
   });
-  const mixLabels = audioInputs.map((_, index) => `[a${index}]`).join('');
-  const filterComplex = `${filters.join(';')};${mixLabels}amix=inputs=${audioInputs.length}:duration=longest:dropout_transition=2[aout]`;
+  const filterComplex = `${filters.join(';')};${mixLabels.join('')}amix=inputs=${mixLabels.length}:duration=longest:dropout_transition=2[aout]`;
   return [
     ...inputs,
     '-filter_complex',
@@ -8550,11 +8679,16 @@ async function runFfmpegAudioMix(params: {
   ffmpegPath: string;
   inputVideoPath: string;
   audioInputs: SeedanceAudioMixInput[];
+  includeOriginalAudio: boolean;
+  originalAudioVolumeDb: number;
   outputPath: string;
 }): Promise<void> {
   await execFileAsync(
     params.ffmpegPath,
-    ffmpegAudioMixArgs(params.inputVideoPath, params.audioInputs, params.outputPath),
+    ffmpegAudioMixArgs(params.inputVideoPath, params.audioInputs, params.outputPath, {
+      includeOriginalAudio: params.includeOriginalAudio,
+      originalAudioVolumeDb: params.originalAudioVolumeDb,
+    }),
     { timeout: 600_000 },
   );
 }

@@ -2000,7 +2000,12 @@ describe('Seedance Audio API', () => {
   it('accepts an audio mix dry-run request before looking up the series project', async () => {
     const res = await request
       .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-audio/mix')
-      .send({ dry_run: true, audio_profile: 'balanced_dialogue' });
+      .send({
+        dry_run: true,
+        audio_profile: 'balanced_dialogue',
+        include_original_audio: true,
+        original_audio_volume_db: -3,
+      });
     expect(res.status).toBe(404);
     expectFailure(res.body, 'STORY_NOT_FOUND');
   });

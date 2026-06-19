@@ -2343,12 +2343,15 @@ export interface AiComicSeedanceAudioMixRequest {
   input_video_path?: string;
   output_filename?: string;
   audio_profile?: AiComicSeedanceAudioMixProfile;
+  include_original_audio?: boolean;
+  original_audio_volume_db?: number;
 }
 
 export interface AiComicSeedanceAudioMixLedger {
   schema_version: 'ai-comic-seedance-audio-mix-ledger/v1';
   updated_at?: string;
   status: AiComicSeedanceAudioMixStatus;
+  episode_no?: number;
   output_path?: string;
   output_filename?: string;
   input_video_path?: string;
@@ -2357,6 +2360,8 @@ export interface AiComicSeedanceAudioMixLedger {
   failure_reason?: string;
   dry_run?: boolean;
   audio_profile: AiComicSeedanceAudioMixProfile;
+  include_original_audio?: boolean;
+  original_audio_volume_db?: number;
   source_audio_count: number;
   missing_audio_count: number;
 }
@@ -2368,11 +2373,14 @@ export interface AiComicSeriesSeedanceAudioMixResult {
   executed_at: string;
   dry_run: boolean;
   status: 'planned' | 'mixed' | 'failed' | 'skipped';
+  episode_no?: number;
   output_path: string;
   output_filename: string;
   input_video_path?: string;
   ffmpeg_command: string;
   audio_profile: AiComicSeedanceAudioMixProfile;
+  include_original_audio: boolean;
+  original_audio_volume_db: number;
   source_audio_count: number;
   missing_audio_count: number;
   failure_reason?: string;
