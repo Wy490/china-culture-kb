@@ -728,6 +728,13 @@
                 </button>
                 <button
                   class="series-studio__ghost-button"
+                  :disabled="recoveringSeedanceTimeouts || seedanceProductionStats.submitted + seedanceProductionStats.processing === 0"
+                  @click="recoverSeedanceProviderTimeouts"
+                >
+                  {{ recoveringSeedanceTimeouts ? '检查中...' : '标记超时失败' }}
+                </button>
+                <button
+                  class="series-studio__ghost-button"
                   :disabled="capturingSeedanceThumbnails || seedanceProductionStats.ready === 0"
                   @click="captureSeedanceThumbnails"
                 >
@@ -1798,6 +1805,7 @@ import {
   getAiComicSeriesSeedanceProductionDashboard,
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
+  recoverAiComicSeriesSeedanceProviderTimeouts,
   rebuildAiComicSeriesLedger,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
@@ -1908,6 +1916,7 @@ const loadingSeedanceVersionComparison = ref(false)
 const updatingSeedanceProductionId = ref('')
 const batchUpdatingSeedance = ref(false)
 const submittingSeedanceRetry = ref(false)
+const recoveringSeedanceTimeouts = ref(false)
 const capturingSeedanceThumbnails = ref(false)
 const assemblingSeedanceCut = ref(false)
 const renderingSeedanceSubtitles = ref(false)
@@ -3670,6 +3679,25 @@ async function submitSeedanceRetryExecutionPlan() {
     errorMessage.value = res.error?.message ?? '提交 Seedance 重试计划失败'
   }
   submittingSeedanceRetry.value = false
+}
+
+async function recoverSeedanceProviderTimeouts() {
+  if (!seriesProjectId.value || recoveringSeedanceTimeouts.value) return
+  recoveringSeedanceTimeouts.value = true
+  errorMessage.value = ''
+  const res = await recoverAiComicSeriesSeedanceProviderTimeouts(seriesProjectId.value, {
+    timeout_minutes: 120,
+    mark_timed_out_failed: true,
+  })
+  if (res.ok && res.data) {
+    seedanceProduction.value = res.data.seedance_production ?? seedanceProduction.value
+    lastSavedAt.value = res.data.project.updated_at
+    saveMessage.value = `Seedance 超时恢复完成 · 超时 ${res.data.timed_out_count} · 已标记 ${res.data.updated_count}`
+    await loadSeedanceDashboard()
+  } else {
+    errorMessage.value = res.error?.message ?? 'Seedance 超时恢复失败'
+  }
+  recoveringSeedanceTimeouts.value = false
 }
 
 async function importSeedanceReturnJson(event: Event) {

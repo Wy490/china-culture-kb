@@ -87,12 +87,16 @@ import type {
   AiComicSeedanceRetryReason,
   AiComicSeedanceRetrySubmitRequest,
   AiComicSeedanceRetrySubmitShot,
+  AiComicSeedanceProviderRecoveryItem,
+  AiComicSeedanceProviderRecoveryRequest,
+  AiComicSeedanceRecoverableProductionStatus,
   AiComicSeriesSeedanceCutPackage,
   AiComicSeedanceCutAssemblyLedger,
   AiComicSeedanceCutAssemblyRequest,
   AiComicSeriesSeedanceRetryPackage,
   AiComicSeriesSeedanceRetryExecutionPlan,
   AiComicSeriesSeedanceRetrySubmitResult,
+  AiComicSeriesSeedanceProviderRecoveryResult,
   AiComicSeriesSeedanceAssetReportPackage,
   AiComicSeriesSeedanceEditAssetPackage,
   AiComicSeedanceEditAssetPackageEpisode,
@@ -1117,6 +1121,35 @@ function buildAiComicSeriesSeedanceRetrySubmitMarkdown(
         shot.provider_job_id,
         String(shot.retry_count),
         shot.retry_reason === 'review_required' ? '审片返修' : '生产状态',
+      ]),
+    ),
+  ].join('\n');
+}
+
+function buildAiComicSeriesSeedanceProviderRecoveryMarkdown(
+  result: Omit<AiComicSeriesSeedanceProviderRecoveryResult, 'markdown'>,
+): string {
+  return [
+    `# ${result.series_title} — Seedance 超时恢复`,
+    '',
+    `> schema: ${result.schema_version}`,
+    `> seriesProjectId: ${result.project.series_project_id}`,
+    `> checkedAt: ${result.checked_at}`,
+    `> timeoutMinutes: ${result.timeout_minutes}`,
+    `> markTimedOutFailed: ${result.mark_timed_out_failed ? 'yes' : 'no'}`,
+    `> timedOutCount: ${result.timed_out_count}`,
+    `> updatedCount: ${result.updated_count}`,
+    '',
+    '## 超时镜头',
+    ...markdownTable(
+      ['集数', '镜头', '状态', '等待分钟', 'job', '重试次数'],
+      result.timed_out_shots.map(item => [
+        `第${item.episode_no}集`,
+        item.shot_id,
+        seedanceProductionStatusText(item.status),
+        String(item.minutes_waiting),
+        item.provider_job_id ?? '未记录',
+        String(item.retry_count),
       ]),
     ),
   ].join('\n');
@@ -2753,6 +2786,75 @@ export async function applyAiComicSeriesSeedanceProductionCallback(
       ?? `Seedance 外部回调：${seedanceProductionStatusText(status)}`,
     quality_score: callbackNumberField(request.quality_score ?? request.qualityScore),
     review_note: callbackStringField(request.review_note ?? request.reviewNote),
+  });
+}
+
+export async function recoverAiComicSeriesSeedanceProviderTimeouts(
+  seriesProjectId: string,
+  request: AiComicSeedanceProviderRecoveryRequest = {},
+): Promise<ApiResponse<AiComicSeriesSeedanceProviderRecoveryResult>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const checkedAt = new Date().toISOString();
+  const timeoutMinutes = request.timeout_minutes ?? 120;
+  const statuses = request.statuses?.length
+    ? request.statuses
+    : ['submitted', 'processing'] satisfies AiComicSeedanceRecoverableProductionStatus[];
+  const statusSet = new Set<AiComicSeedanceRecoverableProductionStatus>(statuses);
+  const ledger = normalizeSeedanceProductionLedger(existing.seedance_production);
+  const timedOutShots = ledger.items
+    .filter((item): item is AiComicSeedanceShotProductionItem & { status: AiComicSeedanceRecoverableProductionStatus } =>
+      statusSet.has(item.status as AiComicSeedanceRecoverableProductionStatus)
+    )
+    .map(item => seedanceProviderRecoveryItem(item, checkedAt))
+    .filter(item => item.minutes_waiting >= timeoutMinutes)
+    .sort((a, b) => b.minutes_waiting - a.minutes_waiting || compareSeedanceShotIds(a.shot_id, b.shot_id));
+
+  let project = existing.project;
+  let seedanceProduction = existing.seedance_production;
+  let updatedCount = 0;
+  if (request.mark_timed_out_failed && timedOutShots.length > 0) {
+    const updateRes = await updateAiComicSeriesSeedanceProductionStatuses(seriesProjectId, {
+      updates: timedOutShots.map(item => ({
+        episode_no: item.episode_no,
+        shot_id: item.shot_id,
+        status: 'failed',
+        provider_job_id: item.provider_job_id,
+        failure_reason: request.failure_reason ?? `Seedance provider timeout after ${timeoutMinutes} minutes`,
+        note: `Seedance 超时恢复：${item.status} 等待 ${item.minutes_waiting} 分钟`,
+      })),
+    });
+    if (!updateRes.ok || !updateRes.data) {
+      return fail(
+        normalizeErrorCode(updateRes.error?.code),
+        updateRes.error?.message ?? 'Recover Seedance provider timeouts failed',
+        updateRes.error?.details,
+      );
+    }
+    project = updateRes.data.project;
+    seedanceProduction = updateRes.data.seedance_production;
+    updatedCount = timedOutShots.length;
+  }
+
+  const result: Omit<AiComicSeriesSeedanceProviderRecoveryResult, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-provider-recovery-result/v1',
+    project,
+    series_title: existing.plan.series_title,
+    checked_at: checkedAt,
+    timeout_minutes: timeoutMinutes,
+    statuses,
+    mark_timed_out_failed: Boolean(request.mark_timed_out_failed),
+    timed_out_count: timedOutShots.length,
+    updated_count: updatedCount,
+    timed_out_shots: timedOutShots,
+    seedance_production: seedanceProduction,
+  };
+  return success({
+    ...result,
+    markdown: buildAiComicSeriesSeedanceProviderRecoveryMarkdown(result),
   });
 }
 
@@ -8801,6 +8903,32 @@ function seedanceRetrySubmitProviderJobId(
 ): string {
   const timestamp = submittedAt.replace(/\D/g, '').slice(0, 14);
   return `${jobPrefix}-${candidate.production_id}-${index + 1}-${timestamp}`.slice(0, 120);
+}
+
+function seedanceProviderRecoveryItem(
+  item: AiComicSeedanceShotProductionItem & { status: AiComicSeedanceRecoverableProductionStatus },
+  checkedAt: string,
+): AiComicSeedanceProviderRecoveryItem {
+  const waitingSince = item.submitted_at ?? item.updated_at;
+  return {
+    production_id: item.production_id,
+    episode_no: item.episode_no,
+    episode_title: item.episode_title,
+    shot_id: item.shot_id,
+    status: item.status,
+    provider_job_id: item.provider_job_id,
+    submitted_at: item.submitted_at,
+    updated_at: item.updated_at,
+    minutes_waiting: seedanceWaitingMinutes(waitingSince, checkedAt),
+    retry_count: item.retry_count,
+  };
+}
+
+function seedanceWaitingMinutes(since: string | undefined, until: string): number {
+  const sinceMs = Date.parse(since ?? until);
+  const untilMs = Date.parse(until);
+  if (!Number.isFinite(sinceMs) || !Number.isFinite(untilMs)) return 0;
+  return Math.max(0, Math.floor((untilMs - sinceMs) / 60_000));
 }
 
 function seedanceRetrySuggestedAction(

@@ -39,6 +39,7 @@ import type {
   AiComicSeriesSeedanceRetrySubmitResult,
   AiComicSeriesSeedanceReviewRepairPackage,
   AiComicSeriesSeedanceReviewUpdateResult,
+  AiComicSeriesSeedanceProviderRecoveryResult,
   AiComicSeriesSeedanceSubtitlePackage,
   AiComicSeriesSeedanceSubtitleRenderResult,
   AiComicSeriesSeedanceThumbnailPlanPackage,
@@ -54,6 +55,7 @@ import type {
   AiComicSeedanceProductionCallbackRequest,
   AiComicSeedanceProductionStatusUpdateRequest,
   AiComicSeedanceProductionVersionSelectRequest,
+  AiComicSeedanceProviderRecoveryRequest,
   AiComicSeedanceReviewAddRequest,
   AiComicSeedanceReviewResolveRequest,
   AiComicSeedanceRetrySubmitRequest,
@@ -213,6 +215,16 @@ export function submitAiComicSeriesSeedanceRetryExecutionPlan(
 ) {
   return apiPost<AiComicSeriesSeedanceRetrySubmitResult>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-retry/submit`,
+    req,
+  )
+}
+
+export function recoverAiComicSeriesSeedanceProviderTimeouts(
+  seriesProjectId: string,
+  req: AiComicSeedanceProviderRecoveryRequest = {},
+) {
+  return apiPost<AiComicSeriesSeedanceProviderRecoveryResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-provider/recover-timeouts`,
     req,
   )
 }

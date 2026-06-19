@@ -3030,6 +3030,46 @@ export interface AiComicSeriesSeedanceRetrySubmitResult {
   markdown: string;
 }
 
+export type AiComicSeedanceRecoverableProductionStatus = Extract<
+  AiComicSeedanceProductionStatus,
+  'submitted' | 'processing'
+>;
+
+export interface AiComicSeedanceProviderRecoveryRequest {
+  timeout_minutes?: number;
+  statuses?: AiComicSeedanceRecoverableProductionStatus[];
+  mark_timed_out_failed?: boolean;
+  failure_reason?: string;
+}
+
+export interface AiComicSeedanceProviderRecoveryItem {
+  production_id: string;
+  episode_no: number;
+  episode_title: string;
+  shot_id: string;
+  status: AiComicSeedanceRecoverableProductionStatus;
+  provider_job_id?: string;
+  submitted_at?: string;
+  updated_at: string;
+  minutes_waiting: number;
+  retry_count: number;
+}
+
+export interface AiComicSeriesSeedanceProviderRecoveryResult {
+  schema_version: 'ai-comic-series-seedance-provider-recovery-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  checked_at: string;
+  timeout_minutes: number;
+  statuses: AiComicSeedanceRecoverableProductionStatus[];
+  mark_timed_out_failed: boolean;
+  timed_out_count: number;
+  updated_count: number;
+  timed_out_shots: AiComicSeedanceProviderRecoveryItem[];
+  seedance_production?: AiComicSeedanceProductionLedger;
+  markdown: string;
+}
+
 export interface AiComicSeedanceVersionComparisonRow {
   version_id: string;
   status: AiComicSeedanceProductionStatus;

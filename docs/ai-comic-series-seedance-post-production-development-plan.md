@@ -557,7 +557,7 @@ Seedance prompts
 
 ## 13. 阶段九：审片与返修闭环
 
-当前状态：review ledger、返修包导出、dashboard blocker、工作台轻量录入、审片驱动重试包、重试执行计划、本地重试提交和 strict final guard 首版已完成；后续继续深化版本对比面板标注、retry submit adapter 和最终重装配真实执行。
+当前状态：review ledger、返修包导出、dashboard blocker、工作台轻量录入、审片驱动重试包、重试执行计划、本地重试提交、系列 provider 超时恢复和 strict final guard 首版已完成；后续继续深化版本对比面板标注、retry submit adapter 和最终重装配真实执行。
 
 ### 目标
 
@@ -584,6 +584,7 @@ Seedance prompts
   - 根据评审意见生成重试包或重装配计划
   - 导出重试执行计划，区分可直接提交、需人工处理和缺提示词镜头
   - 提交重试执行计划，将可提交候选写回生产账本为 submitted
+  - 扫描 submitted/processing 超时镜头，并可标记为 failed
 - 返修类型：
   - 镜头重做
   - 版本重选
@@ -605,8 +606,9 @@ Seedance prompts
 - `web/server/src/services/ai-comic-series-service.ts` 已新增审片意见、解决审片意见和导出审片返修包服务，并把 open review 计入 dashboard status / blocker / next action。
 - `web/server/src/services/ai-comic-series-service.ts` 已新增 Seedance 重试执行计划导出，复用重试包并输出可提交/阻断候选。
 - `web/server/src/services/ai-comic-series-service.ts` 已新增 Seedance 重试提交服务，生成本地 provider job id 并复用批量生产账本更新。
-- `web/server/src/routes/outline.ts` 已新增 `seedance-reviews`、`seedance-reviews/resolve`、`export-seedance-review-repair-package`、`export-seedance-retry-execution-plan` 和 `seedance-retry/submit` 路由。
-- 系列工作台最终交付区已新增审片返修轻量录入、open 列表、标记解决和返修包导出入口；Seedance 导出区已新增重试执行计划导出入口，生产操作区已新增提交重试计划入口。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增 Seedance provider 超时恢复服务，支持 dry-run 和 mark failed。
+- `web/server/src/routes/outline.ts` 已新增 `seedance-reviews`、`seedance-reviews/resolve`、`export-seedance-review-repair-package`、`export-seedance-retry-execution-plan`、`seedance-retry/submit` 和 `seedance-provider/recover-timeouts` 路由。
+- 系列工作台最终交付区已新增审片返修轻量录入、open 列表、标记解决和返修包导出入口；Seedance 导出区已新增重试执行计划导出入口，生产操作区已新增提交重试计划和标记超时失败入口。
 
 ### 测试
 
@@ -616,8 +618,8 @@ Seedance prompts
 
 实现状态：
 
-- 服务测试覆盖新增 final/shot 审片意见、解决审片意见、返修包导出、retry candidate 计数、retry execution plan、retry submit 和 final reassemble dashboard blocker。
-- API 测试覆盖 review add/resolve/export、retry execution plan、retry submit 路由校验和缺失项目响应。
+- 服务测试覆盖新增 final/shot 审片意见、解决审片意见、返修包导出、retry candidate 计数、retry execution plan、retry submit、provider recovery 和 final reassemble dashboard blocker。
+- API 测试覆盖 review add/resolve/export、retry execution plan、retry submit、provider recovery 路由校验和缺失项目响应。
 
 ### 验收标准
 

@@ -15,6 +15,7 @@ import {
   AiComicSeedanceProductionAutoSelectRequestSchema,
   AiComicSeedanceProductionBatchUpdateRequestSchema,
   AiComicSeedanceProductionCallbackRequestSchema,
+  AiComicSeedanceProviderRecoveryRequestSchema,
   AiComicSeedanceRetrySubmitRequestSchema,
   AiComicSeedanceProductionStatusUpdateRequestSchema,
   AiComicSeedanceProductionVersionSelectRequestSchema,
@@ -66,6 +67,7 @@ import {
   getAiComicSeriesSeedanceProductionDashboard,
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
+  recoverAiComicSeriesSeedanceProviderTimeouts,
   rebuildAiComicSeriesContinuityLedger,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
@@ -665,6 +667,22 @@ function safeEqualText(left: string, right: string): boolean {
   const rightBuffer = Buffer.from(right);
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-provider/recover-timeouts — dry-run or mark timed out provider tasks failed
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-provider/recover-timeouts',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceProviderRecoveryRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await recoverAiComicSeriesSeedanceProviderTimeouts(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-production-status — update one shot production status
 outlineRouter.post(

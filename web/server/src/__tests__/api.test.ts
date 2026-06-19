@@ -2114,6 +2114,22 @@ describe('Seedance Title Cards and Final Delivery API', () => {
     expectFailure(res.body, 'STORY_NOT_FOUND');
   });
 
+  it('validates provider recovery timeout minutes', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-provider/recover-timeouts')
+      .send({ timeout_minutes: -1 });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts a provider recovery request before looking up the series project', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-provider/recover-timeouts')
+      .send({ timeout_minutes: 0, mark_timed_out_failed: true });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
   it('returns 404 for a missing series project title card plan', async () => {
     const res = await request
       .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/export-seedance-title-card-plan')

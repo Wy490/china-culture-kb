@@ -1136,6 +1136,8 @@ const AiComicSeedanceProductionStatusSchema = z.enum([
   'skipped',
 ]);
 
+const AiComicSeedanceRecoverableProductionStatusSchema = z.enum(['submitted', 'processing']);
+
 const AiComicSeedanceAssetReferenceKindSchema = z.enum(['character', 'location', 'unknown']);
 
 export const AiComicSeedanceAssetLibraryUpdateRequestSchema = z.object({
@@ -1171,6 +1173,13 @@ export const AiComicSeedanceRetrySubmitRequestSchema = z.object({
   limit: z.number().int().min(1).max(200).optional(),
   job_prefix: z.string().trim().min(1).max(80).optional(),
   note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const AiComicSeedanceProviderRecoveryRequestSchema = z.object({
+  timeout_minutes: z.number().int().min(0).max(10080).optional().default(120),
+  statuses: z.array(AiComicSeedanceRecoverableProductionStatusSchema).min(1).max(2).optional(),
+  mark_timed_out_failed: z.boolean().optional().default(false),
+  failure_reason: z.string().trim().min(1).max(500).optional(),
 });
 
 export const AiComicSeedanceProductionCallbackRequestSchema = z.object({

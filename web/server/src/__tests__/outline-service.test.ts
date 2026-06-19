@@ -1,5 +1,6 @@
-import { beforeAll, describe, expect, it } from 'vitest';
-import { readFile } from 'node:fs/promises';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import {
@@ -34,6 +35,7 @@ import {
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
   previewAiComicEpisodeContext,
+  recoverAiComicSeriesSeedanceProviderTimeouts,
   rebuildAiComicSeriesContinuityLedger,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
@@ -47,9 +49,51 @@ import {
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
 
-beforeAll(() => {
-  if (!process.env.KB_ROOT) {
-    process.env.KB_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
+const ORIGINAL_WEB_GENERATED_ROOT = process.env.WEB_GENERATED_ROOT;
+let testWorkspaceRoot = '';
+
+function outlineKbRoot(): string {
+  return testWorkspaceRoot
+    ? resolve(testWorkspaceRoot, 'data')
+    : resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+}
+
+function outlineGeneratedRoot(): string {
+  return testWorkspaceRoot
+    ? resolve(testWorkspaceRoot, 'web', 'generated')
+    : (process.env.WEB_GENERATED_ROOT || resolve(outlineKbRoot(), '..', 'web', 'generated'));
+}
+
+function useOutlineTestRoots(): void {
+  process.env.KB_ROOT = outlineKbRoot();
+  process.env.WEB_GENERATED_ROOT = outlineGeneratedRoot();
+}
+
+beforeAll(async () => {
+  testWorkspaceRoot = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-outline-'));
+  const realDataRoot = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+  await symlink(realDataRoot, resolve(testWorkspaceRoot, 'data'), 'dir');
+  useOutlineTestRoots();
+});
+
+beforeEach(() => {
+  useOutlineTestRoots();
+});
+
+afterAll(async () => {
+  if (ORIGINAL_KB_ROOT === undefined) {
+    delete process.env.KB_ROOT;
+  } else {
+    process.env.KB_ROOT = ORIGINAL_KB_ROOT;
+  }
+  if (ORIGINAL_WEB_GENERATED_ROOT === undefined) {
+    delete process.env.WEB_GENERATED_ROOT;
+  } else {
+    process.env.WEB_GENERATED_ROOT = ORIGINAL_WEB_GENERATED_ROOT;
+  }
+  if (testWorkspaceRoot) {
+    await rm(testWorkspaceRoot, { recursive: true, force: true });
   }
 });
 
@@ -479,9 +523,11 @@ describe('outline-service', () => {
     });
     expect(planRes.ok).toBe(true);
 
+    useOutlineTestRoots();
     const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
     expect(saveRes.ok).toBe(true);
 
+    useOutlineTestRoots();
     const episodeRes = await generateAiComicEpisodeFromPlan({
       series_plan: planRes.data!,
       episode_no: 1,
@@ -490,6 +536,7 @@ describe('outline-service', () => {
     });
     expect(episodeRes.ok).toBe(true);
 
+    useOutlineTestRoots();
     const getRes = await getAiComicSeriesProject(saveRes.data!.project.series_project_id);
     expect(getRes.ok).toBe(true);
     expect(getRes.data?.continuity_ledger.last_generated_episode_no).toBe(1);
@@ -525,6 +572,7 @@ describe('outline-service', () => {
     expect(getRes.data?.series_quality_audit?.episode_reports[0].story_id).toBe(episodeRes.data?.storyId);
     expect(getRes.data?.series_quality_audit?.episode_reports[0].score).toBeTypeOf('number');
 
+    useOutlineTestRoots();
     const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(saveRes.data!.project.series_project_id);
     expect(seedanceExportRes.ok).toBe(true);
     expect(seedanceExportRes.data?.schema_version).toBe('ai-comic-series-seedance-export/v1');
@@ -1093,7 +1141,7 @@ describe('outline-service', () => {
       manifest_path: expect.stringContaining('.manifest.json'),
     });
     const finalDeliveryData = finalDeliveryDryRunRes.data!;
-    const generatedRoot = process.env.WEB_GENERATED_ROOT || resolve(process.env.KB_ROOT!, '..', 'web', 'generated');
+    const generatedRoot = outlineGeneratedRoot();
     const writtenManifestRaw = await readFile(
       resolve(
         generatedRoot,
@@ -1342,6 +1390,39 @@ describe('outline-service', () => {
       provider_job_id: expect.stringContaining('series-retry-test-'),
     });
     expect(retrySubmitRes.data?.markdown).toContain('Seedance 重试提交结果');
+
+    const recoveryDryRunRes = await recoverAiComicSeriesSeedanceProviderTimeouts(
+      saveRes.data!.project.series_project_id,
+      { timeout_minutes: 0, statuses: ['submitted'] },
+    );
+    expect(recoveryDryRunRes.ok).toBe(true);
+    expect(recoveryDryRunRes.data?.schema_version).toBe('ai-comic-series-seedance-provider-recovery-result/v1');
+    expect(recoveryDryRunRes.data?.timed_out_count).toBeGreaterThan(0);
+    expect(recoveryDryRunRes.data?.updated_count).toBe(0);
+    expect(recoveryDryRunRes.data?.timed_out_shots.some(shot =>
+      shot.production_id === retryCandidate!.production_id
+      && shot.provider_job_id?.startsWith('series-retry-test-')
+    )).toBe(true);
+
+    const recoveryApplyRes = await recoverAiComicSeriesSeedanceProviderTimeouts(
+      saveRes.data!.project.series_project_id,
+      {
+        timeout_minutes: 0,
+        statuses: ['submitted'],
+        mark_timed_out_failed: true,
+        failure_reason: '测试标记超时失败',
+      },
+    );
+    expect(recoveryApplyRes.ok).toBe(true);
+    expect(recoveryApplyRes.data?.updated_count).toBe(recoveryDryRunRes.data?.timed_out_count);
+    expect(recoveryApplyRes.data?.seedance_production?.items.find(item =>
+      item.production_id === retryCandidate!.production_id
+    )).toMatchObject({
+      status: 'failed',
+      failure_reason: '测试标记超时失败',
+      provider_job_id: expect.stringContaining('series-retry-test-'),
+    });
+    expect(recoveryApplyRes.data?.markdown).toContain('Seedance 超时恢复');
 
     const editedPlan = {
       ...planRes.data!,
