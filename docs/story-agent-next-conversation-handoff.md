@@ -593,27 +593,27 @@ ready 镜头
   -> 生产总览 dashboard
 ```
 
-下一步最小可交付切片建议转向最终装配 hardening 和审片联动深化：
+下一步最小可交付切片建议转向审片联动深化：
 
 ```text
-seedance-final/assemble real runner hardening
-  -> seedance_review_ledger retry submit adapter/final reassemble execution
+seedance_review_ledger retry submit adapter/final reassemble execution
   -> seedance-audio/mix real ffmpeg and multi-episode hardening
   -> seedance-title-cards/render real ffmpeg and visual template regression
+  -> seedance-final/assemble real ffmpeg and precise title-card timeline
 ```
 
 原因：
 
-- 当前已完成剪辑装配、缩略图、成片精修计划、字幕 worker、音频计划 / 混音 dry-run、混音真实 runner 输入 hardening、片头片尾 dry-run、片头片尾 fake runner 输出校验、final delivery dry-run、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、重试执行计划、本地重试提交、系列 provider 超时恢复、外部剪辑平台包和生产总览 dashboard。
+- 当前已完成剪辑装配、缩略图、成片精修计划、字幕 worker、音频计划 / 混音 dry-run、混音真实 runner 输入 hardening、片头片尾 dry-run、片头片尾 fake runner 输出校验、final delivery dry-run、final delivery fake runner 输出校验、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、重试执行计划、本地重试提交、系列 provider 超时恢复、外部剪辑平台包和生产总览 dashboard。
 - 现在可以把 dry-run 账本推进为真实或 mock runner ready 账本，再把本地重试提交进一步替换/扩展为 retry submit adapter，并把超时恢复接入真实 provider 轮询。
 - ffmpeg worker 模式已在缩略图、剪辑装配、字幕烧录和混音 dry-run 中跑通。
 
 片头片尾 / final delivery dry-run 之后再做：
 
-1. final delivery manifest 和真实装配。
-2. 审片返修联动深化。
-3. 混音 worker 真实 ffmpeg 专项和多分集边界增强。
-4. 片头片尾真实 ffmpeg / 视觉模板回归。
+1. 审片返修联动深化。
+2. 混音 worker 真实 ffmpeg 专项和多分集边界增强。
+3. 片头片尾真实 ffmpeg / 视觉模板回归。
+4. final delivery 真实 ffmpeg 专项和精确片头片尾时间线。
 5. 30 集以上大系列压测。
 
 ## 8. 不要做的事

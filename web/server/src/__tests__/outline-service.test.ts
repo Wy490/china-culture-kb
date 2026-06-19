@@ -1254,6 +1254,85 @@ describe('outline-service', () => {
     expect(titleRenderCalls[0].outputPath).toBe(resolve(projectDir, titleCardRenderRealRes.data!.output_paths[0]));
     expect(titleRenderCalls[0].cardId).toBeTruthy();
 
+    let missingOutputFinalRunnerCalled = false;
+    const finalMissingOutputRes = await assembleAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        include_subtitles: false,
+        missing_dependency_mode: 'strict',
+        output_profile: 'mp4_h264_720p',
+        output_filename: 'missing-final-delivery.mp4',
+      },
+      {
+        runner: async () => {
+          missingOutputFinalRunnerCalled = true;
+        },
+      },
+    );
+    expect(finalMissingOutputRes.ok).toBe(true);
+    expect(finalMissingOutputRes.data?.status).toBe('failed');
+    expect(missingOutputFinalRunnerCalled).toBe(true);
+    expect(finalMissingOutputRes.data?.failure_reason).toContain('did not create output');
+    expect(finalMissingOutputRes.data?.seedance_final_delivery).toMatchObject({
+      status: 'failed',
+      failure_reason: expect.stringContaining('did not create output'),
+    });
+    expect(finalMissingOutputRes.data?.manifest.status).toBe('failed');
+    expect(finalMissingOutputRes.data?.manifest.deliverables.find(deliverable =>
+      deliverable.deliverable_type === 'final_video'
+    )?.status).toBe('failed');
+
+    const finalRunnerCalls: Array<{
+      concatListPath?: string;
+      inputVideoPath: string;
+      outputPath: string;
+      useConcat: boolean;
+    }> = [];
+    const finalRealRes = await assembleAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        include_subtitles: false,
+        missing_dependency_mode: 'strict',
+        output_profile: 'mp4_h264_720p',
+        output_filename: 'local-final-delivery.mp4',
+      },
+      {
+        runner: async params => {
+          finalRunnerCalls.push({
+            concatListPath: params.concatListPath,
+            inputVideoPath: params.inputVideoPath,
+            outputPath: params.outputPath,
+            useConcat: params.useConcat,
+          });
+          await writeFile(params.outputPath, 'fake final delivery');
+        },
+      },
+    );
+    expect(finalRealRes.ok).toBe(true);
+    expect(finalRealRes.data?.status).toBe('assembled');
+    expect(finalRealRes.data?.seedance_final_delivery).toMatchObject({
+      status: 'ready',
+      output_filename: 'local-final-delivery.mp4',
+    });
+    expect(finalRealRes.data?.manifest.status).toBe('assembled');
+    expect(finalRealRes.data?.manifest.deliverables.find(deliverable =>
+      deliverable.deliverable_type === 'final_video'
+    )?.status).toBe('ready');
+    expect(finalRunnerCalls).toHaveLength(1);
+    expect(finalRunnerCalls[0].useConcat).toBe(true);
+    expect(finalRunnerCalls[0].concatListPath).toBe(resolve(
+      projectDir,
+      'delivery',
+      saveRes.data!.project.series_project_id,
+      'local-final-delivery.concat.txt',
+    ));
+    expect(finalRunnerCalls[0].inputVideoPath).toBe(resolve(projectDir, realAudioMixRes.data!.output_path));
+    expect(finalRunnerCalls[0].outputPath).toBe(resolve(projectDir, finalRealRes.data!.output_path));
+
     const titleCardRenderDryRunRes = await renderAiComicSeriesSeedanceTitleCards(
       saveRes.data!.project.series_project_id,
       { dry_run: true, output_profile: 'mp4_h264_720p' },

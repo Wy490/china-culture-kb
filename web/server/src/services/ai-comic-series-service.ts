@@ -4583,6 +4583,11 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     if (alreadyReady) {
       status = 'skipped';
     } else if (!dryRun) {
+      await assertSeedanceFinalDeliveryInputsExist(projectDir, dependencyStatus, {
+        includeSubtitles,
+        includeAudioMix,
+        includeTitleCards,
+      });
       await mkdir(dirname(absoluteOutputPath), { recursive: true });
       await runner({
         ffmpegPath,
@@ -4592,6 +4597,9 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
         outputProfile,
         useConcat,
       });
+      if (!(await pathExists(absoluteOutputPath))) {
+        throw new Error(`Seedance final delivery runner did not create output: ${outputPath}`);
+      }
     }
   } catch (err) {
     status = 'failed';
@@ -8018,6 +8026,41 @@ function resolveSeedanceFinalDependencyStatus(
     missing_dependencies: missingDependencies,
     warnings,
   };
+}
+
+async function assertSeedanceFinalDeliveryInputsExist(
+  projectDir: string,
+  dependencyStatus: AiComicSeedanceFinalDependencyStatus,
+  options: {
+    includeSubtitles: boolean;
+    includeAudioMix: boolean;
+    includeTitleCards: boolean;
+  },
+): Promise<void> {
+  const requiredInputs: Array<{ label: string; path?: string }> = [
+    { label: 'source cut', path: dependencyStatus.source_cut_path },
+  ];
+  if (options.includeSubtitles && dependencyStatus.subtitle_path) {
+    requiredInputs.push({ label: 'subtitle', path: dependencyStatus.subtitle_path });
+  }
+  if (options.includeAudioMix && dependencyStatus.audio_mix_path) {
+    requiredInputs.push({ label: 'audio mix', path: dependencyStatus.audio_mix_path });
+  }
+  if (options.includeTitleCards) {
+    dependencyStatus.title_card_paths.forEach((path, index) => {
+      requiredInputs.push({ label: `title card ${index + 1}`, path });
+    });
+  }
+
+  for (const input of requiredInputs) {
+    if (!input.path) {
+      throw new Error(`Seedance final delivery missing input path: ${input.label}`);
+    }
+    const absolutePath = resolveSeedanceProjectOutputPath(projectDir, input.path);
+    if (!(await pathExists(absolutePath))) {
+      throw new Error(`Seedance final delivery input not found: ${input.label} (${input.path})`);
+    }
+  }
 }
 
 function seedanceLedgerUsable(status: string | undefined, dryRun: boolean): boolean {

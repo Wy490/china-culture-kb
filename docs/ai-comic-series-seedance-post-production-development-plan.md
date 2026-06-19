@@ -375,7 +375,7 @@ Seedance prompts
 
 将视频镜头、片头片尾、字幕、混音合成为最终交付文件。
 
-当前状态：final delivery dry-run 和 manifest 写盘首版已完成；真实装配、精确片头片尾插入时间线仍需继续打磨。
+当前状态：final delivery dry-run、manifest 写盘和 fake runner 成功/失败首版已完成；精确片头片尾插入时间线仍需继续打磨。
 
 ### 后端任务
 
@@ -409,7 +409,7 @@ Seedance prompts
 
 - `web/shared/types.ts` 已新增 final delivery 请求、依赖状态、结果和账本类型。
 - `web/shared/schemas.ts` 已新增 `AiComicSeedanceFinalDeliveryRequestSchema`。
-- `web/server/src/services/ai-comic-series-service.ts` 已新增 `seedance-final/assemble`，支持 strict/tolerant 缺依赖模式、planned 依赖 dry-run 串联、final ffmpeg 命令、manifest JSON 写盘和 Markdown 摘要。
+- `web/server/src/services/ai-comic-series-service.ts` 已新增 `seedance-final/assemble`，支持 strict/tolerant 缺依赖模式、planned 依赖 dry-run 串联、真实执行依赖文件校验、runner 输出校验、final ffmpeg 命令、manifest JSON 写盘和 Markdown 摘要。
 - `web/server/src/routes/outline.ts` 已新增 `seedance-final/assemble` 路由。
 
 ### 前端任务
@@ -439,8 +439,8 @@ Seedance prompts
 
 实现状态：
 
-- 已覆盖 strict 缺片头片尾依赖、final delivery dry-run、ffmpeg concat 命令、manifest 写盘和 API validation。
-- 待补：真实 runner 成功/失败专项、精确 title card 时间线和 strict/tolerant 更多组合。
+- 已覆盖 strict 缺片头片尾依赖、final delivery dry-run、runner 未产出文件失败、fake runner 成功、ffmpeg concat 命令、manifest 写盘和 API validation。
+- 待补：真实 ffmpeg 成功/失败专项、精确 title card 时间线和 strict/tolerant 更多组合。
 
 ### 验收标准
 
@@ -662,10 +662,10 @@ Seedance prompts
 
 推荐按以下顺序继续：
 
-1. `seedance-final/assemble` 真实装配 hardening
-2. `seedance_review_ledger` 到 retry submit adapter / final reassemble 真实执行自动化
-3. `seedance-audio/mix` 真实 ffmpeg 专项和多分集边界增强
-4. `seedance-title-cards/render` 真实 ffmpeg / 视觉模板回归
+1. `seedance_review_ledger` 到 retry submit adapter / final reassemble 真实执行自动化
+2. `seedance-audio/mix` 真实 ffmpeg 专项和多分集边界增强
+3. `seedance-title-cards/render` 真实 ffmpeg / 视觉模板回归
+4. `seedance-final/assemble` 真实 ffmpeg 专项和精确片头片尾时间线
 5. 30 集压测和性能优化
 
 ## 16. 下一步最小可交付切片
@@ -673,10 +673,10 @@ Seedance prompts
 下一步建议优先实现：
 
 ```text
-seedance-final/assemble real runner hardening
-  -> seedance_review_ledger retry submit adapter/final reassemble execution
+seedance_review_ledger retry submit adapter/final reassemble execution
   -> seedance-audio/mix real ffmpeg and multi-episode hardening
   -> seedance-title-cards/render real ffmpeg and visual template regression
+  -> seedance-final/assemble real ffmpeg and precise title-card timeline
 ```
 
 原因：

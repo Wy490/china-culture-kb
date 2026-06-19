@@ -139,8 +139,9 @@
   - 新增 `seedance-title-cards/render`，支持 dry-run、分集筛选、output profile、`FFMPEG_FONT_PATH` 校验和 `seedance_title_card_render` 账本。
   - 已补片头片尾 fake runner hardening：非 dry-run 后校验输出文件存在，runner 未产出文件会写入明确失败原因，fake runner 成功会写回 ready 账本。
   - 新增 `seedance-final/assemble`，支持 dry-run、strict/tolerant 缺依赖模式、字幕/混音/片头片尾依赖状态、final ffmpeg 命令、`seedance_final_delivery` 账本和 final manifest JSON 写盘。
+  - 已补最终装配 fake runner hardening：非 dry-run 前校验依赖文件存在，runner 未产出最终视频会写入明确失败原因，fake runner 成功会写回 ready 账本和 ready manifest。
   - 系列工作台新增“导出片头片尾计划 Markdown / JSON”“片头片尾 dry-run”“最终交付 dry-run”和最终交付依赖状态卡，最终交付卡展示 manifest 路径。
-  - 服务测试覆盖 title card plan、render dry-run、runner 未产出失败、fake runner 成功、strict 缺依赖、final delivery dry-run 和 manifest 写盘；API 测试覆盖 title card/final 请求校验和缺失项目响应。
+  - 服务测试覆盖 title card plan、render dry-run、title/final runner 未产出失败、title/final fake runner 成功、strict 缺依赖、final delivery dry-run 和 manifest 写盘；API 测试覆盖 title card/final 请求校验和缺失项目响应。
 - AI 漫剧 Seedance 外部剪辑平台包首版：
   - 新增 `export-seedance-editing-platform-package`，输出 `ai-comic-series-editing-platform-package/v1`。
   - 首版支持 `generic_json`、`csv_timeline`、`srt` 和 `asset_manifest` 四种交付形态。
@@ -257,10 +258,10 @@ SeedanceProviderAdapter
 下一块建议做：
 
 ```text
-seedance-final/assemble real runner hardening
-  -> seedance_review_ledger retry submit adapter/final reassemble execution
+seedance_review_ledger retry submit adapter/final reassemble execution
   -> seedance-audio/mix real ffmpeg and multi-episode hardening
   -> seedance-title-cards/render real ffmpeg and visual template regression
+  -> seedance-final/assemble real ffmpeg and precise title-card timeline
 ```
 
 ## 6. 新对话开场指令
