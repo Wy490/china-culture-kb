@@ -437,6 +437,253 @@ export const SeedanceAssetReuseRequestSchema = z.object({
   description: z.string().trim().max(500).optional(),
 });
 
+const GearsExecutionJobTypeSchema = z.enum([
+  'storyboard_image',
+  'character_image',
+  'scene_image',
+  'seedance_video',
+  'subtitle_render',
+  'audio_mix',
+  'title_card_render',
+  'final_assemble',
+]);
+
+const GearsExecutionFailureCategorySchema = z.enum([
+  'asset_missing',
+  'payload_invalid',
+  'content_policy',
+  'provider_timeout',
+  'provider_quota',
+  'provider_auth',
+  'provider_rate_limit',
+  'provider_server_error',
+  'network_error',
+  'unknown',
+]);
+
+const GearsExecutionCodeValueSchema = z.union([
+  z.string().trim().min(1).max(120),
+  z.number().int(),
+]);
+
+const GearsExecutionProgressValueSchema = z.union([
+  z.number(),
+  z.string().trim().min(1).max(40),
+]);
+
+const GearsExecutionTimestampValueSchema = z.union([
+  z.string().trim().min(1).max(80),
+  z.number().finite(),
+]);
+
+const GearsExecutionArtifactSchema = z.object({
+  artifact_id: z.string().trim().min(1).max(160).optional(),
+  kind: z.string().trim().min(1).max(80).optional(),
+  url: z.string().trim().url(),
+  role: z.string().trim().min(1).max(80).optional(),
+  mime_type: z.string().trim().min(1).max(120).optional(),
+  source_unit_id: z.string().trim().min(1).max(160).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const GearsJobSubmitRequestSchema = z.object({
+  job_type: GearsExecutionJobTypeSchema.optional().default('seedance_video'),
+  source_unit_ids: z.array(z.string().trim().min(1).max(160)).min(1).max(200).optional(),
+  source_unit_id: z.string().trim().min(1).max(160).optional(),
+  use_gears_api: z.boolean().optional().default(false),
+  overwrite_existing: z.boolean().optional().default(false),
+  payload: z.record(z.string(), z.unknown()).optional(),
+  callback_url: z.string().trim().url().optional(),
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const GearsJobStatusSyncRequestSchema = z.object({
+  job_type: GearsExecutionJobTypeSchema.optional(),
+  source_unit_ids: z.array(z.string().trim().min(1).max(160)).min(1).max(200).optional(),
+  source_unit_id: z.string().trim().min(1).max(160).optional(),
+  include_completed: z.boolean().optional().default(false),
+  limit: z.number().int().min(1).max(200).optional().default(50),
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
+function isGearsCallbackObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasGearsCallbackIdentifier(value: unknown, depth = 0): boolean {
+  if (depth > 5) return false;
+  if (Array.isArray(value)) {
+    return value.some(item => hasGearsCallbackIdentifier(item, depth + 1));
+  }
+  if (!isGearsCallbackObject(value)) return false;
+  if (
+    value.gears_job_id
+    || value.gearsJobId
+    || value.job_id
+    || value.jobId
+    || value.task_id
+    || value.taskId
+    || value.id
+    || value.source_unit_id
+    || value.sourceUnitId
+    || value.external_id
+    || value.externalId
+    || value.custom_id
+    || value.customId
+    || value.shot_id
+    || value.shotId
+    || value.production_id
+    || value.productionId
+    || value.idempotency_key
+    || value.idempotencyKey
+  ) {
+    return true;
+  }
+  return [
+    'data',
+    'result',
+    'response',
+    'payload',
+    'job',
+    'task',
+    'item',
+    'record',
+    'callbacks',
+    'events',
+    'jobs',
+    'tasks',
+    'items',
+    'results',
+  ].some(key => hasGearsCallbackIdentifier(value[key], depth + 1));
+}
+
+export const GearsJobCallbackRequestSchema = z.object({
+  gears_job_id: z.string().trim().min(1).max(160).optional(),
+  gearsJobId: z.string().trim().min(1).max(160).optional(),
+  job_id: z.string().trim().min(1).max(160).optional(),
+  jobId: z.string().trim().min(1).max(160).optional(),
+  task_id: z.string().trim().min(1).max(160).optional(),
+  taskId: z.string().trim().min(1).max(160).optional(),
+  id: z.string().trim().min(1).max(160).optional(),
+  job_type: GearsExecutionJobTypeSchema.optional(),
+  jobType: GearsExecutionJobTypeSchema.optional(),
+  source_project_id: z.string().trim().min(1).max(180).optional(),
+  sourceProjectId: z.string().trim().min(1).max(180).optional(),
+  source_story_id: z.string().trim().min(1).max(120).optional(),
+  sourceStoryId: z.string().trim().min(1).max(120).optional(),
+  series_project_id: z.string().trim().min(1).max(180).optional(),
+  seriesProjectId: z.string().trim().min(1).max(180).optional(),
+  source_unit_id: z.string().trim().min(1).max(160).optional(),
+  sourceUnitId: z.string().trim().min(1).max(160).optional(),
+  external_id: z.string().trim().min(1).max(160).optional(),
+  externalId: z.string().trim().min(1).max(160).optional(),
+  custom_id: z.string().trim().min(1).max(160).optional(),
+  customId: z.string().trim().min(1).max(160).optional(),
+  shot_id: z.string().trim().min(1).max(120).optional(),
+  shotId: z.string().trim().min(1).max(120).optional(),
+  production_id: z.string().trim().min(1).max(160).optional(),
+  productionId: z.string().trim().min(1).max(160).optional(),
+  status: z.string().trim().min(1).max(80).optional(),
+  task_status: z.string().trim().min(1).max(80).optional(),
+  taskStatus: z.string().trim().min(1).max(80).optional(),
+  state: z.string().trim().min(1).max(80).optional(),
+  phase: z.string().trim().min(1).max(80).optional(),
+  progress: GearsExecutionProgressValueSchema.optional(),
+  progress_percent: GearsExecutionProgressValueSchema.optional(),
+  progressPercent: GearsExecutionProgressValueSchema.optional(),
+  percent: GearsExecutionProgressValueSchema.optional(),
+  percentage: GearsExecutionProgressValueSchema.optional(),
+  progress_ratio: GearsExecutionProgressValueSchema.optional(),
+  progressRatio: GearsExecutionProgressValueSchema.optional(),
+  provider_event_at: GearsExecutionTimestampValueSchema.optional(),
+  providerEventAt: GearsExecutionTimestampValueSchema.optional(),
+  event_time: GearsExecutionTimestampValueSchema.optional(),
+  eventTime: GearsExecutionTimestampValueSchema.optional(),
+  event_at: GearsExecutionTimestampValueSchema.optional(),
+  eventAt: GearsExecutionTimestampValueSchema.optional(),
+  timestamp: GearsExecutionTimestampValueSchema.optional(),
+  created_at: GearsExecutionTimestampValueSchema.optional(),
+  createdAt: GearsExecutionTimestampValueSchema.optional(),
+  updated_at: GearsExecutionTimestampValueSchema.optional(),
+  updatedAt: GearsExecutionTimestampValueSchema.optional(),
+  completed_at: GearsExecutionTimestampValueSchema.optional(),
+  completedAt: GearsExecutionTimestampValueSchema.optional(),
+  finished_at: GearsExecutionTimestampValueSchema.optional(),
+  finishedAt: GearsExecutionTimestampValueSchema.optional(),
+  artifacts: z.array(GearsExecutionArtifactSchema).max(200).optional(),
+  artifact_urls: z.array(z.string().trim().url()).max(200).optional(),
+  artifactUrls: z.array(z.string().trim().url()).max(200).optional(),
+  artifact_url: z.string().trim().url().optional(),
+  artifactUrl: z.string().trim().url().optional(),
+  video_url: z.string().trim().url().optional(),
+  videoUrl: z.string().trim().url().optional(),
+  output_url: z.string().trim().url().optional(),
+  outputUrl: z.string().trim().url().optional(),
+  file_url: z.string().trim().url().optional(),
+  fileUrl: z.string().trim().url().optional(),
+  manifest_url: z.string().trim().url().optional(),
+  manifestUrl: z.string().trim().url().optional(),
+  subtitle_url: z.string().trim().url().optional(),
+  subtitleUrl: z.string().trim().url().optional(),
+  srt_url: z.string().trim().url().optional(),
+  srtUrl: z.string().trim().url().optional(),
+  vtt_url: z.string().trim().url().optional(),
+  vttUrl: z.string().trim().url().optional(),
+  audio_url: z.string().trim().url().optional(),
+  audioUrl: z.string().trim().url().optional(),
+  image_url: z.string().trim().url().optional(),
+  imageUrl: z.string().trim().url().optional(),
+  thumbnail_url: z.string().trim().url().optional(),
+  thumbnailUrl: z.string().trim().url().optional(),
+  poster_url: z.string().trim().url().optional(),
+  posterUrl: z.string().trim().url().optional(),
+  url: z.string().trim().url().optional(),
+  failure_category: GearsExecutionFailureCategorySchema.optional(),
+  failureCategory: GearsExecutionFailureCategorySchema.optional(),
+  failure_reason: z.string().trim().min(1).max(500).optional(),
+  failureReason: z.string().trim().min(1).max(500).optional(),
+  error_code: GearsExecutionCodeValueSchema.optional(),
+  errorCode: GearsExecutionCodeValueSchema.optional(),
+  provider_error_code: GearsExecutionCodeValueSchema.optional(),
+  providerErrorCode: GearsExecutionCodeValueSchema.optional(),
+  code: GearsExecutionCodeValueSchema.optional(),
+  error: z.string().trim().min(1).max(500).optional(),
+  message: z.string().trim().min(1).max(500).optional(),
+  note: z.string().trim().min(1).max(500).optional(),
+  event_id: z.string().trim().min(1).max(160).optional(),
+  eventId: z.string().trim().min(1).max(160).optional(),
+  callback_id: z.string().trim().min(1).max(160).optional(),
+  callbackId: z.string().trim().min(1).max(160).optional(),
+  idempotency_key: z.string().trim().min(1).max(160).optional(),
+  idempotencyKey: z.string().trim().min(1).max(160).optional(),
+  quality_score: z.number().min(0).max(100).optional(),
+  qualityScore: z.number().min(0).max(100).optional(),
+  review_note: z.string().trim().min(1).max(500).optional(),
+  reviewNote: z.string().trim().min(1).max(500).optional(),
+  data: z.unknown().optional(),
+  result: z.unknown().optional(),
+  response: z.unknown().optional(),
+  job: z.unknown().optional(),
+  task: z.unknown().optional(),
+  item: z.unknown().optional(),
+  record: z.unknown().optional(),
+  callbacks: z.unknown().optional(),
+  events: z.unknown().optional(),
+  jobs: z.unknown().optional(),
+  tasks: z.unknown().optional(),
+  items: z.unknown().optional(),
+  results: z.unknown().optional(),
+  output: z.unknown().optional(),
+  outputs: z.unknown().optional(),
+  files: z.unknown().optional(),
+  media: z.unknown().optional(),
+  assets: z.unknown().optional(),
+  payload: z.unknown().optional(),
+}).refine(
+  data => hasGearsCallbackIdentifier(data),
+  { message: 'GEARS callback requires gears_job_id/job_id, source_unit_id/external_id/shot_id, or idempotency_key' },
+);
+
 const SeedanceShotProductionStatusSchema = z.enum([
   'not_started',
   'prompt_exported',

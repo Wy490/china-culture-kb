@@ -17,6 +17,8 @@ import {
   getProjectSeedanceProviderQueueOverview,
   getProjectSeedanceProviderRetryPlan,
   getProjectProductionBoard,
+  importProjectGearsCallback,
+  importProjectGearsCallbacks,
   importProjectSeedanceAssetBatch,
   importProjectSeedanceProviderCallback,
   importProjectSeedanceShotCallbacks,
@@ -31,8 +33,10 @@ import {
   reuseProjectSeedanceAsset,
   retainRecentProjects,
   selectProjectSeedanceShotVersion,
+  submitProjectGearsJobs,
   submitProjectSeedanceProviderRetryPlan,
   submitProjectSeedanceShotsToProvider,
+  syncProjectGearsJobStatuses,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
   updateProjectSeedanceShotStatuses,
@@ -67,6 +71,9 @@ const ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD = process.env.SEEDANCE_PROVIDE
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET = process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_SECRET;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER = process.env.SEEDANCE_PROVIDER_POLL_SIGNATURE_HEADER;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER = process.env.SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER;
+const ORIGINAL_GEARS_API_BASE_URL = process.env.GEARS_API_BASE_URL;
+const ORIGINAL_GEARS_API_TOKEN = process.env.GEARS_API_TOKEN;
+const ORIGINAL_GEARS_CALLBACK_BASE_URL = process.env.GEARS_CALLBACK_BASE_URL;
 
 async function exists(path: string): Promise<boolean> {
   try {
@@ -319,6 +326,21 @@ afterEach(async () => {
     delete process.env.SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER;
   } else {
     process.env.SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER = ORIGINAL_SEEDANCE_PROVIDER_POLL_TIMESTAMP_HEADER;
+  }
+  if (ORIGINAL_GEARS_API_BASE_URL === undefined) {
+    delete process.env.GEARS_API_BASE_URL;
+  } else {
+    process.env.GEARS_API_BASE_URL = ORIGINAL_GEARS_API_BASE_URL;
+  }
+  if (ORIGINAL_GEARS_API_TOKEN === undefined) {
+    delete process.env.GEARS_API_TOKEN;
+  } else {
+    process.env.GEARS_API_TOKEN = ORIGINAL_GEARS_API_TOKEN;
+  }
+  if (ORIGINAL_GEARS_CALLBACK_BASE_URL === undefined) {
+    delete process.env.GEARS_CALLBACK_BASE_URL;
+  } else {
+    process.env.GEARS_CALLBACK_BASE_URL = ORIGINAL_GEARS_CALLBACK_BASE_URL;
   }
   vi.unstubAllGlobals();
   for (const dir of TEMP_DIRS.splice(0)) {
@@ -933,6 +955,783 @@ describe('project-service', () => {
       item.shot_id === 'shot-1'
     )).toMatchObject({
       status: 'processing',
+    });
+  });
+
+  it('submits GEARS jobs locally and applies callbacks to the project ledgers', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1'],
+      note: 'GEARS local submit smoke',
+    });
+
+    expect(submitRes.ok).toBe(true);
+    expect(submitRes.data).toMatchObject({
+      submitted_count: 1,
+      skipped_count: 0,
+      failed_count: 0,
+      provider_adapter: {
+        status: 'mocked',
+        accepted_count: 1,
+      },
+    });
+    const job = submitRes.data?.submitted_jobs[0];
+    expect(job).toMatchObject({
+      job_type: 'seedance_video',
+      source_unit_id: 'shot-1',
+      idempotency_key: 'seedance_video:shot-1',
+      status: 'submitted',
+      source_project_id: enriched.project_id,
+      source_story_id: story.storyId,
+    });
+    expect(submitRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-1')).toMatchObject({
+      status: 'submitted',
+      provider: 'gears',
+      provider_job_id: job?.gears_job_id,
+    });
+
+    const gearsCallbackPayload = {
+      data: {
+        task: {
+          task_id: job!.gears_job_id,
+          external_id: 'shot-1',
+          jobType: 'seedance_video',
+          taskStatus: 'completed',
+          output: {
+            files: [{
+              mediaUrl: 'https://gears.example/videos/shot-1.mp4',
+              mediaType: 'video',
+              mimeType: 'video/mp4',
+            }],
+          },
+          eventId: 'gears-event-001',
+          message: 'GEARS completed',
+          progressPercent: '100%',
+          eventTime: '2026-06-20T10:00:00.000Z',
+          completedAt: '2026-06-20T10:01:00.000Z',
+          qualityScore: 96,
+          reviewNote: 'GEARS 回片可用',
+        },
+      },
+    };
+    const callbackRes = await importProjectGearsCallback(enriched.project_id!, gearsCallbackPayload);
+
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      gears_job_id: job?.gears_job_id,
+      source_unit_id: 'shot-1',
+      status: 'ready',
+    });
+    expect(callbackRes.data?.gears_job_ledger?.items.find(item => item.source_unit_id === 'shot-1')).toMatchObject({
+      status: 'ready',
+      progress_percent: 100,
+      completed_at: '2026-06-20T10:01:00.000Z',
+      artifact_urls: ['https://gears.example/videos/shot-1.mp4'],
+      callback_events: [expect.objectContaining({
+        event_id: 'gears-event-001',
+        provider_event_at: '2026-06-20T10:00:00.000Z',
+        status: 'ready',
+      })],
+    });
+    expect(callbackRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-1')).toMatchObject({
+      status: 'ready',
+      provider: 'gears',
+      provider_job_id: job?.gears_job_id,
+      video_url: 'https://gears.example/videos/shot-1.mp4',
+      selected_version_id: 'seedance-shot-shot-1-v2',
+    });
+
+    const duplicateCallbackRes = await importProjectGearsCallback(enriched.project_id!, gearsCallbackPayload);
+    expect(duplicateCallbackRes.ok).toBe(true);
+    expect(duplicateCallbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 1,
+    });
+    const duplicateGearsItem = duplicateCallbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.source_unit_id === 'shot-1'
+    );
+    expect(duplicateGearsItem?.callback_events?.filter(event => event.event_id === 'gears-event-001')).toHaveLength(1);
+    expect(duplicateCallbackRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )?.versions.filter(version => version.video_url === 'https://gears.example/videos/shot-1.mp4')).toHaveLength(1);
+
+    const staleCallbackRes = await importProjectGearsCallback(enriched.project_id!, {
+      jobId: job!.gears_job_id,
+      sourceUnitId: 'shot-1',
+      jobType: 'seedance_video',
+      taskStatus: 'PROCESSING',
+      progress: 0.5,
+      eventId: 'gears-event-stale-processing',
+      message: 'late GEARS processing webhook',
+    });
+    expect(staleCallbackRes.ok).toBe(true);
+    expect(staleCallbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      status: 'ready',
+    });
+    const staleGearsItem = staleCallbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.source_unit_id === 'shot-1'
+    );
+    expect(staleGearsItem).toMatchObject({
+      status: 'ready',
+      progress_percent: 100,
+      artifact_urls: ['https://gears.example/videos/shot-1.mp4'],
+    });
+    expect(staleGearsItem?.callback_events?.find(event =>
+      event.event_id === 'gears-event-stale-processing'
+    )).toMatchObject({
+      status: 'processing',
+      applied_status: 'ready',
+      status_regression_ignored: true,
+      progress_percent: 50,
+    });
+    expect(staleCallbackRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'ready',
+      video_url: 'https://gears.example/videos/shot-1.mp4',
+    });
+    expect(staleCallbackRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )?.versions.filter(version => version.video_url === 'https://gears.example/videos/shot-1.mp4')).toHaveLength(1);
+
+    const terminalConflictRes = await importProjectGearsCallback(enriched.project_id!, {
+      jobId: job!.gears_job_id,
+      sourceUnitId: 'shot-1',
+      jobType: 'seedance_video',
+      taskStatus: 'FAILED',
+      eventId: 'gears-event-terminal-failed-after-ready',
+      failureReason: 'GEARS later marked artifact invalid',
+      errorCode: 'ARTIFACT_INVALID',
+      completedAt: '2026-06-20T10:02:00.000Z',
+    });
+    expect(terminalConflictRes.ok).toBe(true);
+    expect(terminalConflictRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      status: 'failed',
+    });
+    const terminalConflictItem = terminalConflictRes.data?.gears_job_ledger?.items.find(item =>
+      item.source_unit_id === 'shot-1'
+    );
+    expect(terminalConflictItem).toMatchObject({
+      status: 'failed',
+      completed_at: '2026-06-20T10:02:00.000Z',
+      artifact_urls: ['https://gears.example/videos/shot-1.mp4'],
+      error_code: 'ARTIFACT_INVALID',
+      failure_reason: 'GEARS later marked artifact invalid',
+    });
+    expect(terminalConflictItem?.callback_events?.find(event =>
+      event.event_id === 'gears-event-terminal-failed-after-ready'
+    )).toMatchObject({
+      previous_status: 'ready',
+      status: 'failed',
+      applied_status: 'failed',
+      terminal_status_changed: true,
+    });
+    expect(terminalConflictRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'failed',
+      video_url: 'https://gears.example/videos/shot-1.mp4',
+      failure_reason: 'GEARS later marked artifact invalid',
+    });
+
+    const canceledCallbackRes = await importProjectGearsCallback(enriched.project_id!, {
+      jobId: job!.gears_job_id,
+      sourceUnitId: 'shot-1',
+      jobType: 'seedance_video',
+      taskStatus: 'CANCELED',
+      eventId: 'gears-event-canceled-with-reason',
+      failureReason: 'GEARS operator canceled the task',
+      errorCode: 'MANUAL_CANCEL',
+    });
+    expect(canceledCallbackRes.ok).toBe(true);
+    expect(canceledCallbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      status: 'canceled',
+    });
+    const canceledGearsItem = canceledCallbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.source_unit_id === 'shot-1'
+    );
+    expect(canceledGearsItem).toMatchObject({
+      status: 'canceled',
+      error_code: 'MANUAL_CANCEL',
+      failure_reason: 'GEARS operator canceled the task',
+      failure_category: 'unknown',
+    });
+    expect(canceledGearsItem?.callback_events?.find(event =>
+      event.event_id === 'gears-event-canceled-with-reason'
+    )).toMatchObject({
+      previous_status: 'failed',
+      status: 'canceled',
+      applied_status: 'canceled',
+      terminal_status_changed: true,
+    });
+    expect(canceledCallbackRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )).toMatchObject({
+      status: 'failed',
+      failure_reason: 'GEARS operator canceled the task',
+      provider_error_code: 'MANUAL_CANCEL',
+    });
+  });
+
+  it('imports batched project GEARS callbacks into the project ledgers', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1', 'shot-2'],
+      note: 'GEARS batch callback setup',
+    });
+    expect(submitRes.ok).toBe(true);
+    const jobs = submitRes.data!.submitted_jobs;
+
+    const callbackRes = await importProjectGearsCallbacks(enriched.project_id!, {
+      callbacks: [
+        ...jobs.map((job, index) => ({
+          jobId: job.gears_job_id,
+          sourceUnitId: job.source_unit_id,
+          jobType: 'seedance_video' as const,
+          taskStatus: 'COMPLETED',
+          outputUrl: `https://gears.example/videos/batch-shot-${index + 1}.mp4`,
+        })),
+        {
+          jobType: 'seedance_video',
+          taskStatus: 'COMPLETED',
+          outputUrl: 'https://gears.example/videos/missing-id.mp4',
+        },
+      ],
+    });
+
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data).toMatchObject({
+      received_count: 3,
+      updated_count: 2,
+      failed_count: 1,
+      duplicate_count: 0,
+      failures: [{
+        index: 2,
+        path: 'callbacks[2]',
+        message: expect.stringContaining('requires a known gears_job_id, source_unit_id, or idempotency_key'),
+      }],
+    });
+    expect(callbackRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-1')).toMatchObject({
+      status: 'ready',
+      provider_job_id: jobs[0].gears_job_id,
+      video_url: 'https://gears.example/videos/batch-shot-1.mp4',
+    });
+    expect(callbackRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-2')).toMatchObject({
+      status: 'ready',
+      provider_job_id: jobs[1].gears_job_id,
+      video_url: 'https://gears.example/videos/batch-shot-2.mp4',
+    });
+  });
+
+  it('matches project GEARS callbacks by source id aliases when platform job id changes', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1'],
+      note: 'GEARS source id alias submit smoke',
+    });
+    expect(submitRes.ok).toBe(true);
+    const originalJob = submitRes.data!.submitted_jobs[0];
+
+    const callbackRes = await importProjectGearsCallback(enriched.project_id!, {
+      jobId: 'gears-platform-remapped-job-001',
+      customId: 'shot-1',
+      jobType: 'seedance_video',
+      taskStatus: 'COMPLETED',
+      videoUrl: 'https://gears.example/videos/custom-id-shot-1.mp4',
+      eventId: 'gears-custom-id-event-001',
+    });
+
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      source_unit_id: 'shot-1',
+      gears_job_id: 'gears-platform-remapped-job-001',
+      status: 'ready',
+    });
+    expect(callbackRes.data?.gears_job_ledger?.items.find(item => item.source_unit_id === 'shot-1')).toMatchObject({
+      status: 'ready',
+      gears_job_id: 'gears-platform-remapped-job-001',
+      artifact_urls: ['https://gears.example/videos/custom-id-shot-1.mp4'],
+      callback_events: [expect.objectContaining({
+        event_id: 'gears-custom-id-event-001',
+        status: 'ready',
+      })],
+    });
+    expect(callbackRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-1')).toMatchObject({
+      status: 'ready',
+      provider: 'gears',
+      provider_job_id: 'gears-platform-remapped-job-001',
+      video_url: 'https://gears.example/videos/custom-id-shot-1.mp4',
+    });
+    expect(originalJob.gears_job_id).not.toBe('gears-platform-remapped-job-001');
+  });
+
+  it('deduplicates project GEARS callbacks by submit idempotency key', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1'],
+      note: 'GEARS idempotency callback submit smoke',
+    });
+    expect(submitRes.ok).toBe(true);
+    const job = submitRes.data!.submitted_jobs[0];
+
+    const processingPayload = {
+      jobType: 'seedance_video' as const,
+      taskStatus: 'PROCESSING',
+      progress: 0.5,
+      idempotencyKey: 'seedance_video:shot-1',
+      message: 'GEARS worker accepted shot-1',
+    };
+    const processingRes = await importProjectGearsCallback(enriched.project_id!, processingPayload);
+    expect(processingRes.ok).toBe(true);
+    expect(processingRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      source_unit_id: 'shot-1',
+      status: 'processing',
+    });
+    expect(processingRes.data?.gears_job_ledger?.items.find(item => item.source_unit_id === 'shot-1')).toMatchObject({
+      gears_job_id: job.gears_job_id,
+      idempotency_key: 'seedance_video:shot-1',
+      callback_events: [expect.objectContaining({
+        event_id: 'seedance_video:shot-1',
+        event_id_source: 'idempotency_key',
+        status: 'processing',
+        progress_percent: 50,
+      })],
+    });
+
+    const callbackPayload = {
+      jobType: 'seedance_video' as const,
+      taskStatus: 'COMPLETED',
+      outputUrl: 'https://gears.example/videos/idempotent-shot-1.mp4',
+      idempotencyKey: 'seedance_video:shot-1',
+      message: 'GEARS worker completed shot-1',
+    };
+    const callbackRes = await importProjectGearsCallback(enriched.project_id!, callbackPayload);
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      source_unit_id: 'shot-1',
+      status: 'ready',
+    });
+    expect(callbackRes.data?.gears_job_ledger?.items.find(item => item.source_unit_id === 'shot-1')).toMatchObject({
+      gears_job_id: job.gears_job_id,
+      idempotency_key: 'seedance_video:shot-1',
+      callback_events: [expect.objectContaining({
+        event_id: 'seedance_video:shot-1',
+        event_id_source: 'idempotency_key',
+        status: 'processing',
+      }), expect.objectContaining({
+        event_id: 'seedance_video:shot-1',
+        event_id_source: 'idempotency_key',
+        status: 'ready',
+      })],
+    });
+
+    const duplicateRes = await importProjectGearsCallback(enriched.project_id!, callbackPayload);
+    expect(duplicateRes.ok).toBe(true);
+    expect(duplicateRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 1,
+    });
+    const duplicateItem = duplicateRes.data?.gears_job_ledger?.items.find(item =>
+      item.source_unit_id === 'shot-1'
+    );
+    expect(duplicateItem?.callback_events?.filter(event =>
+      event.event_id === 'seedance_video:shot-1'
+    )).toHaveLength(2);
+    expect(duplicateRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === 'shot-1'
+    )?.versions.filter(version =>
+      version.video_url === 'https://gears.example/videos/idempotent-shot-1.mp4'
+    )).toHaveLength(1);
+  });
+
+  it('submits project GEARS jobs through the HTTP execution contract', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'gears-token';
+    process.env.GEARS_CALLBACK_BASE_URL = 'https://story.example.test/public/';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(String(_url)).toBe('https://gears.example.test/api-root/gears/jobs');
+      expect(init?.method).toBe('POST');
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer gears-token');
+      const body = JSON.parse(String(init?.body)) as {
+        schema_version?: string;
+        source_project_id?: string;
+        source_story_id?: string;
+        job_type?: string;
+        callback_path?: string;
+        callback_url?: string;
+        callback_secret_hint?: string;
+        payload?: {
+          units?: Array<{
+            source_unit_id?: string;
+            external_id?: string;
+            externalId?: string;
+            custom_id?: string;
+            customId?: string;
+            idempotency_key?: string;
+            callback_url?: string;
+            seedance_prompt?: string;
+            metadata?: Record<string, unknown>;
+          }>;
+        };
+      };
+      expect(body).toMatchObject({
+        schema_version: 'gears-execution-submit/v1',
+        source_project_id: enriched.project_id,
+        source_story_id: story.storyId,
+        job_type: 'seedance_video',
+        callback_path: `/api/projects/${enriched.project_id}/gears-callback`,
+        callback_url: `https://story.example.test/public/api/projects/${enriched.project_id}/gears-callback`,
+        callback_secret_hint: 'GEARS_CALLBACK_SECRET',
+      });
+      expect(body.payload?.units).toHaveLength(1);
+      expect(body.payload?.units?.[0]).toMatchObject({
+        source_unit_id: 'shot-1',
+        external_id: 'shot-1',
+        externalId: 'shot-1',
+        custom_id: 'shot-1',
+        customId: 'shot-1',
+        idempotency_key: 'seedance_video:shot-1',
+        callback_url: `https://story.example.test/public/api/projects/${enriched.project_id}/gears-callback`,
+        seedance_prompt: expect.stringContaining('0-3秒'),
+        metadata: expect.objectContaining({
+          source_project_id: enriched.project_id,
+          source_story_id: story.storyId,
+          job_type: 'seedance_video',
+          source_unit_id: 'shot-1',
+          local_gears_job_id: 'local-gears-seedance_video-shot-1-1',
+        }),
+      });
+      return new Response(JSON.stringify({
+        gears_job_id: 'gears-real-job-001',
+        status: 'queued',
+        accepted_units: [{ source_unit_id: 'shot-1' }],
+        rejected_units: [],
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1'],
+      use_gears_api: true,
+      note: 'GEARS HTTP submit smoke',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(submitRes.ok).toBe(true);
+    expect(submitRes.data).toMatchObject({
+      submitted_count: 1,
+      failed_count: 0,
+      provider_adapter: {
+        endpoint_configured: true,
+        status: 'submitted',
+        requested_count: 1,
+        accepted_count: 1,
+      },
+      submitted_jobs: [{
+        source_unit_id: 'shot-1',
+        gears_job_id: 'gears-real-job-001',
+        status: 'submitted',
+      }],
+    });
+    expect(submitRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-1')).toMatchObject({
+      provider: 'gears',
+      provider_job_id: 'gears-real-job-001',
+      status: 'submitted',
+    });
+  });
+
+  it('syncs project GEARS job status through the HTTP status contract', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'gears-token';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1', 'shot-2'],
+      note: 'GEARS sync setup',
+    });
+    expect(submitRes.ok).toBe(true);
+    expect(submitRes.data!.submitted_jobs).toHaveLength(2);
+    const readyJob = submitRes.data!.submitted_jobs.find(item => item.source_unit_id === 'shot-1')!;
+    const failedJob = submitRes.data!.submitted_jobs.find(item => item.source_unit_id === 'shot-2')!;
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const url = String(_url);
+      expect(init?.method).toBe('GET');
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer gears-token');
+      if (url === `https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(failedJob.gears_job_id)}`) {
+        return new Response('temporary GEARS outage', { status: 503 });
+      }
+      expect(url).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(readyJob.gears_job_id)}`);
+      return new Response(JSON.stringify({
+        data: {
+          job: {
+            task_id: readyJob.gears_job_id,
+            external_id: 'shot-1',
+            job_type: 'seedance_video',
+            job_status: 'succeeded',
+            progress: 0.82,
+            output: {
+              files: [{
+                mediaUrl: 'https://gears.example.test/media/shot-1.mp4',
+                mediaType: 'video',
+                mimeType: 'video/mp4',
+              }],
+            },
+            message: 'GEARS status sync ready',
+          },
+        },
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const syncRes = await syncProjectGearsJobStatuses(enriched.project_id!, {
+      job_type: 'seedance_video',
+      note: 'GEARS sync smoke',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(syncRes.ok).toBe(true);
+    expect(syncRes.data).toMatchObject({
+      pollable_count: 2,
+      synced_count: 1,
+      failed_count: 1,
+      duplicate_count: 0,
+      provider_adapter: {
+        endpoint_configured: true,
+        requested_count: 2,
+        returned_count: 1,
+        failed_count: 1,
+      },
+      synced_jobs: [{
+        source_unit_id: 'shot-1',
+        gears_job_id: readyJob.gears_job_id,
+        status: 'ready',
+        progress_percent: 82,
+        artifact_urls: ['https://gears.example.test/media/shot-1.mp4'],
+      }],
+    });
+    expect(syncRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-1')).toMatchObject({
+      provider: 'gears',
+      provider_job_id: readyJob.gears_job_id,
+      status: 'ready',
+      video_url: 'https://gears.example.test/media/shot-1.mp4',
+    });
+    expect(syncRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-2')).toMatchObject({
+      provider: 'gears',
+      provider_job_id: failedJob.gears_job_id,
+      status: 'submitted',
+    });
+    expect(syncRes.data?.gears_job_ledger?.items.find(item =>
+      item.gears_job_id === failedJob.gears_job_id
+    )).toMatchObject({
+      status: 'submitted',
+      last_poll_at: expect.any(String),
+      last_poll_error: expect.stringContaining('HTTP 503'),
+      last_poll_failure_category: 'provider_server_error',
+      last_poll_error_code: 'HTTP_503',
+    });
+    expect(syncRes.data?.failures[0]).toMatchObject({
+      source_unit_id: 'shot-2',
+      gears_job_id: failedJob.gears_job_id,
+    });
+    expect(syncRes.data?.failures[0]?.message).toContain('HTTP 503');
+
+    const duplicateSyncRes = await syncProjectGearsJobStatuses(enriched.project_id!, {
+      job_type: 'seedance_video',
+      include_completed: true,
+      note: 'GEARS sync smoke',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(duplicateSyncRes.ok).toBe(true);
+    expect(duplicateSyncRes.data).toMatchObject({
+      pollable_count: 2,
+      synced_count: 1,
+      failed_count: 1,
+      duplicate_count: 1,
+      failures: [{
+        source_unit_id: 'shot-2',
+        gears_job_id: failedJob.gears_job_id,
+      }],
+    });
+  });
+
+  it('normalizes failed project GEARS status responses into the shot ledger', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'gears-token';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1'],
+      note: 'GEARS failed sync setup',
+    });
+    expect(submitRes.ok).toBe(true);
+    const job = submitRes.data!.submitted_jobs[0]!;
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(String(_url)).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(job.gears_job_id)}`);
+      expect(init?.method).toBe('GET');
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer gears-token');
+      return new Response(JSON.stringify({
+        taskId: job.gears_job_id,
+        sourceUnitId: 'shot-1',
+        jobType: 'seedance_video',
+        taskStatus: 'FAILED',
+        errorCode: 'NO_CREDIT',
+        failureReason: 'GEARS provider balance is insufficient',
+        message: 'GEARS failed with provider quota issue',
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const syncRes = await syncProjectGearsJobStatuses(enriched.project_id!, {
+      job_type: 'seedance_video',
+      note: 'GEARS failed status sync smoke',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(syncRes.ok).toBe(true);
+    expect(syncRes.data).toMatchObject({
+      pollable_count: 1,
+      synced_count: 1,
+      failed_count: 0,
+      synced_jobs: [{
+        source_unit_id: 'shot-1',
+        gears_job_id: job.gears_job_id,
+        status: 'failed',
+        failure_category: 'provider_quota',
+        error_code: 'NO_CREDIT',
+        failure_reason: 'GEARS provider balance is insufficient',
+      }],
+    });
+    expect(syncRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-1')).toMatchObject({
+      provider: 'gears',
+      provider_job_id: job.gears_job_id,
+      status: 'failed',
+      failure_reason: 'GEARS provider balance is insufficient',
+      failure_category: 'provider_quota',
+      provider_error_code: 'NO_CREDIT',
+    });
+  });
+
+  it('derives project GEARS failure category from platform status aliases', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'gears-token';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1'],
+      note: 'GEARS status alias sync setup',
+    });
+    expect(submitRes.ok).toBe(true);
+    const job = submitRes.data!.submitted_jobs[0]!;
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request) => {
+      expect(String(_url)).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(job.gears_job_id)}`);
+      return new Response(JSON.stringify({
+        taskId: job.gears_job_id,
+        sourceUnitId: 'shot-1',
+        jobType: 'seedance_video',
+        taskStatus: 'TIMED_OUT',
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const syncRes = await syncProjectGearsJobStatuses(enriched.project_id!, {
+      job_type: 'seedance_video',
+      note: 'GEARS status alias sync smoke',
+    });
+
+    expect(syncRes.ok).toBe(true);
+    expect(syncRes.data?.synced_jobs[0]).toMatchObject({
+      source_unit_id: 'shot-1',
+      gears_job_id: job.gears_job_id,
+      status: 'failed',
+      failure_category: 'provider_timeout',
+      failure_reason: 'TIMED_OUT',
+    });
+    expect(syncRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-1')).toMatchObject({
+      provider: 'gears',
+      provider_job_id: job.gears_job_id,
+      status: 'failed',
+      failure_reason: 'TIMED_OUT',
+      failure_category: 'provider_timeout',
     });
   });
 

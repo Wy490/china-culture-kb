@@ -14,6 +14,10 @@ import type {
 } from '@shared/types.js';
 import { listModelProfiles } from '../services/model-catalog.js';
 import { getNarrativePatternCatalog } from '../services/narrative-pattern-library.js';
+import {
+  getGearsExecutionConfigInfo,
+  getGearsExecutionContractInfo,
+} from '../services/gears-execution-service.js';
 
 export const systemRouter = Router();
 
@@ -78,6 +82,22 @@ systemRouter.get('/models', (_req, res) => {
 
 systemRouter.get('/narrative-patterns', (_req, res) => {
   res.json(success(getNarrativePatternCatalog()));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-config — safe GEARS v2 execution config
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-config', (_req, res) => {
+  res.json(success(getGearsExecutionConfigInfo()));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-contract — GEARS v2 job/callback contract
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-contract', (_req, res) => {
+  res.json(success(getGearsExecutionContractInfo()));
 });
 
 // ---------------------------------------------------------------------------

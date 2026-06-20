@@ -4,8 +4,14 @@ import type {
   StoryGenerateRequest,
   StoryGenerateResult,
   StoryListItem,
+  GearsJobCallbackRequest,
+  GearsJobStatusSyncRequest,
+  GearsJobSubmitRequest,
   GearsSegmentsResponse,
   GearsDeliveryPackage,
+  AiComicSeriesGearsJobCallbackResult,
+  AiComicSeriesGearsJobStatusSyncResult,
+  AiComicSeriesGearsJobSubmitResult,
   SeedancePromptPackage,
   VideoType,
   StoryOutlineAnalyzeRequest,
@@ -215,6 +221,36 @@ export function submitAiComicSeriesSeedanceRetryExecutionPlan(
 ) {
   return apiPost<AiComicSeriesSeedanceRetrySubmitResult>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-retry/submit`,
+    req,
+  )
+}
+
+export function submitAiComicSeriesGearsJobs(
+  seriesProjectId: string,
+  req: GearsJobSubmitRequest = {},
+) {
+  return apiPost<AiComicSeriesGearsJobSubmitResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/gears-jobs/submit`,
+    req,
+  )
+}
+
+export function syncAiComicSeriesGearsJobs(
+  seriesProjectId: string,
+  req: GearsJobStatusSyncRequest = {},
+) {
+  return apiPost<AiComicSeriesGearsJobStatusSyncResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/gears-jobs/sync`,
+    req,
+  )
+}
+
+export function importAiComicSeriesGearsCallback(
+  seriesProjectId: string,
+  req: GearsJobCallbackRequest,
+) {
+  return apiPost<AiComicSeriesGearsJobCallbackResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/gears-callback`,
     req,
   )
 }

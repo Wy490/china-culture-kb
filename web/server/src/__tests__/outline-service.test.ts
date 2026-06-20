@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
@@ -42,7 +42,11 @@ import {
   resolveAiComicSeriesSeedanceReview,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
+  importAiComicSeriesGearsCallback,
+  importAiComicSeriesGearsCallbacks,
+  submitAiComicSeriesGearsJobs,
   submitAiComicSeriesSeedanceRetryExecutionPlan,
+  syncAiComicSeriesGearsJobStatuses,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
@@ -51,6 +55,8 @@ import {
 
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
 const ORIGINAL_WEB_GENERATED_ROOT = process.env.WEB_GENERATED_ROOT;
+const ORIGINAL_GEARS_API_BASE_URL = process.env.GEARS_API_BASE_URL;
+const ORIGINAL_GEARS_API_TOKEN = process.env.GEARS_API_TOKEN;
 let testWorkspaceRoot = '';
 
 function outlineKbRoot(): string {
@@ -79,6 +85,20 @@ beforeAll(async () => {
 
 beforeEach(() => {
   useOutlineTestRoots();
+});
+
+afterEach(() => {
+  if (ORIGINAL_GEARS_API_BASE_URL === undefined) {
+    delete process.env.GEARS_API_BASE_URL;
+  } else {
+    process.env.GEARS_API_BASE_URL = ORIGINAL_GEARS_API_BASE_URL;
+  }
+  if (ORIGINAL_GEARS_API_TOKEN === undefined) {
+    delete process.env.GEARS_API_TOKEN;
+  } else {
+    process.env.GEARS_API_TOKEN = ORIGINAL_GEARS_API_TOKEN;
+  }
+  vi.unstubAllGlobals();
 });
 
 afterAll(async () => {
@@ -421,6 +441,1151 @@ describe('outline-service', () => {
     expect(exportRes.data?.markdown).toContain('线索闭环');
     expect(exportRes.data?.markdown).toContain('记忆冲突');
     expect(exportRes.data?.markdown).toContain('第1集：问题出现');
+  });
+
+  it('submits AI comic series GEARS jobs and normalizes callbacks into the production ledgers', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: saveRes.data!.project.series_project_id,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+    const refreshSaveRes = await saveAiComicSeriesProject({
+      series_project_id: saveRes.data!.project.series_project_id,
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: episodeRes.data!.storyId,
+      },
+    });
+    expect(refreshSaveRes.ok).toBe(true);
+
+    const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(saveRes.data!.project.series_project_id);
+    expect(seedanceExportRes.ok).toBe(true);
+    const sourceItem = seedanceExportRes.data!.seedance_production!.items[0]!;
+
+    const gearsSubmitRes = await submitAiComicSeriesGearsJobs(saveRes.data!.project.series_project_id, {
+      source_unit_id: sourceItem.production_id,
+      note: '系列服务测试提交 GEARS',
+    });
+    expect(gearsSubmitRes.ok).toBe(true);
+    expect(gearsSubmitRes.data?.schema_version).toBe('ai-comic-series-gears-job-submit-result/v1');
+    expect(gearsSubmitRes.data?.submitted_count).toBe(1);
+    expect(gearsSubmitRes.data?.provider_adapter?.status).toBe('mocked');
+    const submittedJob = gearsSubmitRes.data!.submitted_jobs[0]!;
+    expect(submittedJob).toMatchObject({
+      job_type: 'seedance_video',
+      source_unit_id: sourceItem.production_id,
+      idempotency_key: `seedance_video:${sourceItem.production_id}`,
+      status: 'submitted',
+    });
+    expect(gearsSubmitRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )).toMatchObject({
+      status: 'submitted',
+      provider_job_id: submittedJob.gears_job_id,
+    });
+
+    const gearsCallbackPayload = {
+      data: {
+        job: {
+          jobId: submittedJob.gears_job_id,
+          sourceUnitId: sourceItem.production_id,
+          jobType: 'seedance_video',
+          job_status: 'COMPLETED',
+          outputs: [{
+            downloadUrl: 'https://example.com/gears/series-shot-001.mp4',
+            type: 'video',
+            contentType: 'video/mp4',
+          }],
+          eventId: 'series-gears-event-001',
+          message: 'GEARS v2 render complete',
+          progress: 1,
+          timestamp: 1781953200000,
+          completedAt: '2026-06-20T11:01:00.000Z',
+        },
+      },
+    };
+    const callbackRes = await importAiComicSeriesGearsCallback(saveRes.data!.project.series_project_id, gearsCallbackPayload);
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data?.schema_version).toBe('ai-comic-series-gears-job-callback-result/v1');
+    expect(callbackRes.data?.received_count).toBe(1);
+    expect(callbackRes.data?.updated_count).toBe(1);
+    expect(callbackRes.data?.duplicate_count).toBe(0);
+    expect(callbackRes.data?.status).toBe('ready');
+    expect(callbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.gears_job_id === submittedJob.gears_job_id
+    )).toMatchObject({
+      status: 'ready',
+      progress_percent: 100,
+      completed_at: '2026-06-20T11:01:00.000Z',
+      artifact_urls: ['https://example.com/gears/series-shot-001.mp4'],
+    });
+    expect(callbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.gears_job_id === submittedJob.gears_job_id
+    )?.callback_events?.find(event => event.event_id === 'series-gears-event-001')).toMatchObject({
+      provider_event_at: '2026-06-20T11:00:00.000Z',
+      status: 'ready',
+    });
+    expect(callbackRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: submittedJob.gears_job_id,
+      video_url: 'https://example.com/gears/series-shot-001.mp4',
+    });
+
+    const duplicateCallbackRes = await importAiComicSeriesGearsCallback(
+      saveRes.data!.project.series_project_id,
+      gearsCallbackPayload,
+    );
+    expect(duplicateCallbackRes.ok).toBe(true);
+    expect(duplicateCallbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 1,
+    });
+    const duplicateGearsItem = duplicateCallbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.gears_job_id === submittedJob.gears_job_id
+    );
+    expect(duplicateGearsItem?.callback_events?.filter(event => event.event_id === 'series-gears-event-001'))
+      .toHaveLength(1);
+    expect(duplicateCallbackRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )?.versions.filter(version => version.video_url === 'https://example.com/gears/series-shot-001.mp4')).toHaveLength(1);
+
+    const idempotencyOnlyCallbackRes = await importAiComicSeriesGearsCallback(
+      saveRes.data!.project.series_project_id,
+      {
+        jobType: 'seedance_video',
+        taskStatus: 'PROCESSING',
+        progress: 0.75,
+        idempotencyKey: `seedance_video:${sourceItem.production_id}`,
+        message: 'late GEARS processing webhook by idempotency key',
+      },
+    );
+    expect(idempotencyOnlyCallbackRes.ok).toBe(true);
+    expect(idempotencyOnlyCallbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      status: 'ready',
+      source_unit_id: sourceItem.production_id,
+    });
+    const idempotencyOnlyItem = idempotencyOnlyCallbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.source_unit_id === sourceItem.production_id
+    );
+    expect(idempotencyOnlyItem).toMatchObject({
+      idempotency_key: `seedance_video:${sourceItem.production_id}`,
+      status: 'ready',
+      artifact_urls: ['https://example.com/gears/series-shot-001.mp4'],
+    });
+    expect(idempotencyOnlyItem?.callback_events?.find(event =>
+      event.event_id === `seedance_video:${sourceItem.production_id}`
+    )).toMatchObject({
+      event_id_source: 'idempotency_key',
+      status: 'processing',
+      applied_status: 'ready',
+      status_regression_ignored: true,
+      progress_percent: 75,
+    });
+
+    const staleCallbackRes = await importAiComicSeriesGearsCallback(
+      saveRes.data!.project.series_project_id,
+      {
+        jobId: submittedJob.gears_job_id,
+        sourceUnitId: sourceItem.production_id,
+        jobType: 'seedance_video',
+        taskStatus: 'PROCESSING',
+        progressPercent: 35,
+        eventId: 'series-gears-event-stale-processing',
+        message: 'late series GEARS processing webhook',
+      },
+    );
+    expect(staleCallbackRes.ok).toBe(true);
+    expect(staleCallbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      status: 'ready',
+    });
+    const staleGearsItem = staleCallbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.gears_job_id === submittedJob.gears_job_id
+    );
+    expect(staleGearsItem).toMatchObject({
+      status: 'ready',
+      progress_percent: 100,
+      artifact_urls: ['https://example.com/gears/series-shot-001.mp4'],
+    });
+    expect(staleGearsItem?.callback_events?.find(event =>
+      event.event_id === 'series-gears-event-stale-processing'
+    )).toMatchObject({
+      status: 'processing',
+      applied_status: 'ready',
+      status_regression_ignored: true,
+      progress_percent: 35,
+    });
+    expect(staleCallbackRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )).toMatchObject({
+      status: 'ready',
+      video_url: 'https://example.com/gears/series-shot-001.mp4',
+    });
+    expect(staleCallbackRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )?.versions.filter(version => version.video_url === 'https://example.com/gears/series-shot-001.mp4')).toHaveLength(1);
+
+    const terminalConflictRes = await importAiComicSeriesGearsCallback(
+      saveRes.data!.project.series_project_id,
+      {
+        jobId: submittedJob.gears_job_id,
+        sourceUnitId: sourceItem.production_id,
+        jobType: 'seedance_video',
+        taskStatus: 'FAILED',
+        eventId: 'series-gears-event-terminal-failed-after-ready',
+        failureReason: 'GEARS later rejected the rendered clip',
+        errorCode: 'ARTIFACT_REJECTED',
+        completedAt: '2026-06-20T11:02:00.000Z',
+      },
+    );
+    expect(terminalConflictRes.ok).toBe(true);
+    expect(terminalConflictRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      status: 'failed',
+    });
+    const terminalConflictItem = terminalConflictRes.data?.gears_job_ledger?.items.find(item =>
+      item.gears_job_id === submittedJob.gears_job_id
+    );
+    expect(terminalConflictItem).toMatchObject({
+      status: 'failed',
+      completed_at: '2026-06-20T11:02:00.000Z',
+      artifact_urls: ['https://example.com/gears/series-shot-001.mp4'],
+      error_code: 'ARTIFACT_REJECTED',
+      failure_reason: 'GEARS later rejected the rendered clip',
+    });
+    expect(terminalConflictItem?.callback_events?.find(event =>
+      event.event_id === 'series-gears-event-terminal-failed-after-ready'
+    )).toMatchObject({
+      previous_status: 'ready',
+      status: 'failed',
+      applied_status: 'failed',
+      terminal_status_changed: true,
+    });
+    expect(terminalConflictRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )).toMatchObject({
+      status: 'failed',
+      video_url: 'https://example.com/gears/series-shot-001.mp4',
+      failure_reason: 'GEARS later rejected the rendered clip',
+    });
+
+    const canceledCallbackRes = await importAiComicSeriesGearsCallback(
+      saveRes.data!.project.series_project_id,
+      {
+        jobId: submittedJob.gears_job_id,
+        sourceUnitId: sourceItem.production_id,
+        jobType: 'seedance_video',
+        taskStatus: 'CANCELED',
+        eventId: 'series-gears-event-canceled-with-reason',
+        failureReason: 'GEARS operator canceled the series render',
+        errorCode: 'MANUAL_CANCEL',
+      },
+    );
+    expect(canceledCallbackRes.ok).toBe(true);
+    expect(canceledCallbackRes.data).toMatchObject({
+      received_count: 1,
+      updated_count: 1,
+      failed_count: 0,
+      duplicate_count: 0,
+      status: 'canceled',
+    });
+    const canceledGearsItem = canceledCallbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.gears_job_id === submittedJob.gears_job_id
+    );
+    expect(canceledGearsItem).toMatchObject({
+      status: 'canceled',
+      error_code: 'MANUAL_CANCEL',
+      failure_reason: 'GEARS operator canceled the series render',
+      failure_category: 'unknown',
+    });
+    expect(canceledGearsItem?.callback_events?.find(event =>
+      event.event_id === 'series-gears-event-canceled-with-reason'
+    )).toMatchObject({
+      previous_status: 'failed',
+      status: 'canceled',
+      applied_status: 'canceled',
+      terminal_status_changed: true,
+    });
+    expect(canceledCallbackRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )).toMatchObject({
+      status: 'failed',
+      video_url: 'https://example.com/gears/series-shot-001.mp4',
+      failure_reason: 'GEARS operator canceled the series render',
+    });
+  });
+
+  it('imports batched AI comic series GEARS callbacks into production ledgers', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: saveRes.data!.project.series_project_id,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+    const refreshSaveRes = await saveAiComicSeriesProject({
+      series_project_id: saveRes.data!.project.series_project_id,
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: episodeRes.data!.storyId,
+      },
+    });
+    expect(refreshSaveRes.ok).toBe(true);
+
+    const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(saveRes.data!.project.series_project_id);
+    expect(seedanceExportRes.ok).toBe(true);
+    const sourceItems = seedanceExportRes.data!.seedance_production!.items.slice(0, 2);
+    expect(sourceItems).toHaveLength(2);
+
+    const submitRes = await submitAiComicSeriesGearsJobs(saveRes.data!.project.series_project_id, {
+      source_unit_ids: sourceItems.map(item => item.production_id),
+      note: '系列 GEARS 批量回调测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+    const jobs = submitRes.data!.submitted_jobs;
+
+    const callbackRes = await importAiComicSeriesGearsCallbacks(saveRes.data!.project.series_project_id, {
+      data: {
+        tasks: [
+          ...jobs.map((job, index) => ({
+            jobId: job.gears_job_id,
+            sourceUnitId: job.source_unit_id,
+            jobType: 'seedance_video' as const,
+            taskStatus: 'COMPLETED',
+            outputUrl: `https://example.com/gears/series-batch-shot-${index + 1}.mp4`,
+          })),
+          {
+            jobType: 'seedance_video',
+            taskStatus: 'COMPLETED',
+            outputUrl: 'https://example.com/gears/series-missing-id.mp4',
+          },
+        ],
+      },
+    });
+
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data).toMatchObject({
+      schema_version: 'ai-comic-series-gears-job-callback-result/v1',
+      received_count: 3,
+      updated_count: 2,
+      failed_count: 1,
+      duplicate_count: 0,
+      failures: [{
+        index: 2,
+        path: 'data.tasks[2]',
+        message: expect.stringContaining('requires a known gears_job_id, source_unit_id, or idempotency_key'),
+      }],
+    });
+    expect(callbackRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItems[0]!.production_id
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: jobs[0]!.gears_job_id,
+      video_url: 'https://example.com/gears/series-batch-shot-1.mp4',
+    });
+    expect(callbackRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItems[1]!.production_id
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: jobs[1]!.gears_job_id,
+      video_url: 'https://example.com/gears/series-batch-shot-2.mp4',
+    });
+  });
+
+  it('submits AI comic series retry candidates to GEARS with retry context payload', async () => {
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'series-gears-token';
+
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+    const seriesProjectId = saveRes.data!.project.series_project_id;
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: seriesProjectId,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+    const refreshSaveRes = await saveAiComicSeriesProject({
+      series_project_id: seriesProjectId,
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: episodeRes.data!.storyId,
+      },
+    });
+    expect(refreshSaveRes.ok).toBe(true);
+
+    const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(seriesProjectId);
+    expect(seedanceExportRes.ok).toBe(true);
+    const sourceItem = seedanceExportRes.data!.seedance_production!.items[0]!;
+    const failedUpdateRes = await updateAiComicSeriesSeedanceProductionStatus(seriesProjectId, {
+      episode_no: sourceItem.episode_no,
+      shot_id: sourceItem.shot_id,
+      status: 'failed',
+      provider_job_id: 'old-gears-job-001',
+      video_url: 'https://gears.example.test/old/shot-1.mp4',
+      failure_reason: 'GEARS worker returned moderation warning',
+      increment_retry: true,
+      note: 'prepare GEARS retry submit payload smoke',
+    });
+    expect(failedUpdateRes.ok).toBe(true);
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(String(_url)).toBe('https://gears.example.test/api-root/gears/jobs');
+      expect(init?.method).toBe('POST');
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer series-gears-token');
+      const body = JSON.parse(String(init?.body)) as {
+        schema_version?: string;
+        series_project_id?: string;
+        job_type?: string;
+        payload?: {
+          units?: Array<{
+            schema_version?: string;
+            source_unit_id?: string;
+            production_id?: string;
+            status?: string;
+            retry_count?: number;
+            retry_reason?: string;
+            failure_reason?: string;
+            previous_provider_job_id?: string;
+            last_video_url?: string;
+            source_retry_execution_plan_exported_at?: string;
+            source_retry_package_exported_at?: string;
+            request_payload?: Record<string, unknown>;
+            metadata?: Record<string, unknown>;
+          }>;
+        };
+      };
+      expect(body).toMatchObject({
+        schema_version: 'gears-execution-submit/v1',
+        series_project_id: seriesProjectId,
+        job_type: 'seedance_video',
+      });
+      expect(body.payload?.units).toHaveLength(1);
+      const unit = body.payload?.units?.[0];
+      expect(unit).toMatchObject({
+        schema_version: 'gears-series-seedance-video-retry-payload/v1',
+        source_unit_id: sourceItem.production_id,
+        production_id: sourceItem.production_id,
+        status: 'failed',
+        retry_count: 1,
+        retry_reason: 'production_status',
+        failure_reason: 'GEARS worker returned moderation warning',
+        previous_provider_job_id: 'old-gears-job-001',
+        last_video_url: 'https://gears.example.test/old/shot-1.mp4',
+        request_payload: {
+          retry_batch_id: 'batch-001',
+        },
+        metadata: expect.objectContaining({
+          series_project_id: seriesProjectId,
+          job_type: 'seedance_video',
+          source_unit_id: sourceItem.production_id,
+        }),
+      });
+      expect(unit?.source_retry_execution_plan_exported_at).toEqual(expect.any(String));
+      expect(unit?.source_retry_package_exported_at).toEqual(expect.any(String));
+      return new Response(JSON.stringify({
+        jobs: [{
+          source_unit_id: sourceItem.production_id,
+          gears_job_id: 'gears-retry-real-job-001',
+          status: 'queued',
+        }],
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const submitRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'seedance_video',
+      source_unit_id: sourceItem.production_id,
+      use_gears_api: true,
+      payload: {
+        retry_batch_id: 'batch-001',
+      },
+      note: '系列 GEARS retry payload smoke',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(submitRes.ok).toBe(true);
+    expect(submitRes.data).toMatchObject({
+      job_type: 'seedance_video',
+      job_type_label: '视频返修/重试',
+      submit_intent: expect.stringContaining('重试执行计划'),
+      submitted_count: 1,
+      failed_count: 0,
+      provider_adapter: {
+        endpoint_configured: true,
+        status: 'submitted',
+        requested_count: 1,
+        accepted_count: 1,
+      },
+      submitted_jobs: [{
+        source_unit_id: sourceItem.production_id,
+        gears_job_id: 'gears-retry-real-job-001',
+      }],
+    });
+    expect(submitRes.data?.markdown).toContain('submit_intent: 从 AI 漫剧 Seedance 重试执行计划提交 GEARS v2 视频返修/重试任务');
+    expect(submitRes.data?.markdown).toContain('## GEARS Adapter');
+    expect(submitRes.data?.markdown).toContain('- accepted_count: 1');
+    expect(submitRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )).toMatchObject({
+      status: 'submitted',
+      provider_job_id: 'gears-retry-real-job-001',
+      retry_count: 2,
+    });
+  });
+
+  it('syncs AI comic series GEARS job status through the HTTP status contract', async () => {
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'series-gears-token';
+
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: saveRes.data!.project.series_project_id,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+    const refreshSaveRes = await saveAiComicSeriesProject({
+      series_project_id: saveRes.data!.project.series_project_id,
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: episodeRes.data!.storyId,
+      },
+    });
+    expect(refreshSaveRes.ok).toBe(true);
+
+    const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(saveRes.data!.project.series_project_id);
+    expect(seedanceExportRes.ok).toBe(true);
+    const sourceItems = seedanceExportRes.data!.seedance_production!.items.slice(0, 2);
+    expect(sourceItems).toHaveLength(2);
+    const [readySourceItem, failedSourceItem] = sourceItems;
+
+    const submitRes = await submitAiComicSeriesGearsJobs(saveRes.data!.project.series_project_id, {
+      source_unit_ids: sourceItems.map(item => item.production_id),
+      note: '系列 GEARS 同步测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+    expect(submitRes.data!.submitted_jobs).toHaveLength(2);
+    const readyJob = submitRes.data!.submitted_jobs.find(item => item.source_unit_id === readySourceItem.production_id)!;
+    const failedJob = submitRes.data!.submitted_jobs.find(item => item.source_unit_id === failedSourceItem.production_id)!;
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const url = String(_url);
+      expect(init?.method).toBe('GET');
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer series-gears-token');
+      if (url === `https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(failedJob.gears_job_id)}`) {
+        return new Response('temporary GEARS outage', { status: 503 });
+      }
+      expect(url).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(readyJob.gears_job_id)}`);
+      return new Response(JSON.stringify({
+        data: {
+          task: {
+            id: readyJob.gears_job_id,
+            externalId: readySourceItem.production_id,
+            jobType: 'seedance_video',
+            task_state: 'done',
+            progressPercent: '87.5',
+            outputs: [{
+              downloadUrl: 'https://gears.example.test/media/series-shot-001.mp4',
+              type: 'video',
+              contentType: 'video/mp4',
+            }],
+            message: 'GEARS series status sync ready',
+          },
+        },
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const syncRes = await syncAiComicSeriesGearsJobStatuses(saveRes.data!.project.series_project_id, {
+      job_type: 'seedance_video',
+      note: 'GEARS series sync smoke',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(syncRes.ok).toBe(true);
+    expect(syncRes.data).toMatchObject({
+      schema_version: 'ai-comic-series-gears-job-sync-result/v1',
+      pollable_count: 2,
+      synced_count: 1,
+      failed_count: 1,
+      duplicate_count: 0,
+      provider_adapter: {
+        endpoint_configured: true,
+        requested_count: 2,
+        returned_count: 1,
+        failed_count: 1,
+      },
+      synced_jobs: [{
+        source_unit_id: readySourceItem.production_id,
+        gears_job_id: readyJob.gears_job_id,
+        status: 'ready',
+        progress_percent: 87.5,
+        artifact_urls: ['https://gears.example.test/media/series-shot-001.mp4'],
+      }],
+    });
+    expect(syncRes.data?.seedance_production?.items.find(item =>
+      item.production_id === readySourceItem.production_id
+    )).toMatchObject({
+      status: 'ready',
+      provider_job_id: readyJob.gears_job_id,
+      video_url: 'https://gears.example.test/media/series-shot-001.mp4',
+    });
+    expect(syncRes.data?.seedance_production?.items.find(item =>
+      item.production_id === failedSourceItem.production_id
+    )).toMatchObject({
+      status: 'submitted',
+      provider_job_id: failedJob.gears_job_id,
+    });
+    expect(syncRes.data?.gears_job_ledger?.items.find(item =>
+      item.gears_job_id === failedJob.gears_job_id
+    )).toMatchObject({
+      status: 'submitted',
+      last_poll_at: expect.any(String),
+      last_poll_error: expect.stringContaining('HTTP 503'),
+      last_poll_failure_category: 'provider_server_error',
+      last_poll_error_code: 'HTTP_503',
+    });
+    expect(syncRes.data?.failures[0]).toMatchObject({
+      source_unit_id: failedSourceItem.production_id,
+      gears_job_id: failedJob.gears_job_id,
+    });
+    expect(syncRes.data?.failures[0]?.message).toContain('HTTP 503');
+    expect(syncRes.data?.markdown).toContain('GEARS job sync');
+
+    const duplicateSyncRes = await syncAiComicSeriesGearsJobStatuses(saveRes.data!.project.series_project_id, {
+      job_type: 'seedance_video',
+      include_completed: true,
+      note: 'GEARS series sync smoke',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(duplicateSyncRes.ok).toBe(true);
+    expect(duplicateSyncRes.data).toMatchObject({
+      schema_version: 'ai-comic-series-gears-job-sync-result/v1',
+      pollable_count: 2,
+      synced_count: 1,
+      failed_count: 1,
+      duplicate_count: 1,
+      failures: [{
+        source_unit_id: failedSourceItem.production_id,
+        gears_job_id: failedJob.gears_job_id,
+      }],
+    });
+    expect(duplicateSyncRes.data?.markdown).toContain('duplicate_count: 1');
+  });
+
+  it('normalizes failed AI comic series GEARS status responses into production ledgers', async () => {
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'series-gears-token';
+
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: saveRes.data!.project.series_project_id,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+    const refreshSaveRes = await saveAiComicSeriesProject({
+      series_project_id: saveRes.data!.project.series_project_id,
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: episodeRes.data!.storyId,
+      },
+    });
+    expect(refreshSaveRes.ok).toBe(true);
+
+    const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(saveRes.data!.project.series_project_id);
+    expect(seedanceExportRes.ok).toBe(true);
+    const sourceItem = seedanceExportRes.data!.seedance_production!.items[0]!;
+
+    const submitRes = await submitAiComicSeriesGearsJobs(saveRes.data!.project.series_project_id, {
+      source_unit_id: sourceItem.production_id,
+      note: '系列 GEARS 失败状态同步测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+    const job = submitRes.data!.submitted_jobs[0]!;
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(String(_url)).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(job.gears_job_id)}`);
+      expect(init?.method).toBe('GET');
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer series-gears-token');
+      return new Response(JSON.stringify({
+        jobId: job.gears_job_id,
+        sourceUnitId: sourceItem.production_id,
+        jobType: 'seedance_video',
+        status: 'FAILED',
+        errorCode: 'RISK_CONTROL',
+        failureReason: 'GEARS content policy rejected the video job',
+        message: 'GEARS failed with moderation issue',
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const syncRes = await syncAiComicSeriesGearsJobStatuses(saveRes.data!.project.series_project_id, {
+      job_type: 'seedance_video',
+      note: 'GEARS series failed status sync smoke',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(syncRes.ok).toBe(true);
+    expect(syncRes.data).toMatchObject({
+      schema_version: 'ai-comic-series-gears-job-sync-result/v1',
+      pollable_count: 1,
+      synced_count: 1,
+      failed_count: 0,
+      synced_jobs: [{
+        source_unit_id: sourceItem.production_id,
+        gears_job_id: job.gears_job_id,
+        status: 'failed',
+        failure_category: 'content_policy',
+        error_code: 'RISK_CONTROL',
+        failure_reason: 'GEARS content policy rejected the video job',
+      }],
+    });
+    expect(syncRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )).toMatchObject({
+      status: 'failed',
+      provider_job_id: job.gears_job_id,
+      failure_reason: 'GEARS content policy rejected the video job',
+    });
+    expect(syncRes.data?.markdown).toContain('GEARS job sync');
+  });
+
+  it('derives AI comic series GEARS failure category from platform status aliases', async () => {
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'series-gears-token';
+
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: saveRes.data!.project.series_project_id,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+    const refreshSaveRes = await saveAiComicSeriesProject({
+      series_project_id: saveRes.data!.project.series_project_id,
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: episodeRes.data!.storyId,
+      },
+    });
+    expect(refreshSaveRes.ok).toBe(true);
+
+    const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(saveRes.data!.project.series_project_id);
+    expect(seedanceExportRes.ok).toBe(true);
+    const sourceItem = seedanceExportRes.data!.seedance_production!.items[0]!;
+
+    const submitRes = await submitAiComicSeriesGearsJobs(saveRes.data!.project.series_project_id, {
+      source_unit_id: sourceItem.production_id,
+      note: '系列 GEARS 状态别名同步测试提交',
+    });
+    expect(submitRes.ok).toBe(true);
+    const job = submitRes.data!.submitted_jobs[0]!;
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request) => {
+      expect(String(_url)).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(job.gears_job_id)}`);
+      return new Response(JSON.stringify({
+        jobId: job.gears_job_id,
+        sourceUnitId: sourceItem.production_id,
+        jobType: 'seedance_video',
+        status: 'POLICY_BLOCKED',
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const syncRes = await syncAiComicSeriesGearsJobStatuses(saveRes.data!.project.series_project_id, {
+      job_type: 'seedance_video',
+      note: 'GEARS series status alias sync smoke',
+    });
+
+    expect(syncRes.ok).toBe(true);
+    expect(syncRes.data?.synced_jobs[0]).toMatchObject({
+      source_unit_id: sourceItem.production_id,
+      gears_job_id: job.gears_job_id,
+      status: 'rejected',
+      failure_category: 'content_policy',
+      failure_reason: 'POLICY_BLOCKED',
+    });
+    expect(syncRes.data?.seedance_production?.items.find(item =>
+      item.production_id === sourceItem.production_id
+    )).toMatchObject({
+      status: 'failed',
+      provider_job_id: job.gears_job_id,
+      failure_reason: 'POLICY_BLOCKED',
+    });
+  });
+
+  it('submits AI comic series post-production GEARS jobs from production contracts', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+    const seriesProjectId = saveRes.data!.project.series_project_id;
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: seriesProjectId,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+    const refreshSaveRes = await saveAiComicSeriesProject({
+      series_project_id: seriesProjectId,
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: episodeRes.data!.storyId,
+      },
+    });
+    expect(refreshSaveRes.ok).toBe(true);
+
+    const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(seriesProjectId);
+    expect(seedanceExportRes.ok).toBe(true);
+    const sourceItem = seedanceExportRes.data!.seedance_production!.items[0]!;
+    const readyRes = await updateAiComicSeriesSeedanceProductionStatus(seriesProjectId, {
+      episode_no: sourceItem.episode_no,
+      shot_id: sourceItem.shot_id,
+      status: 'ready',
+      provider_job_id: 'seedance-ready-for-gears-post',
+      video_url: 'https://example.com/seedance/ready-for-post.mp4',
+      note: '准备 GEARS 后期任务合同',
+    });
+    expect(readyRes.ok).toBe(true);
+
+    const cutRes = await assembleAiComicSeriesSeedanceCut(seriesProjectId, { dry_run: true });
+    expect(cutRes.ok).toBe(true);
+    const titlePlanRes = await exportAiComicSeriesSeedanceTitleCardPlanPackage(seriesProjectId);
+    expect(titlePlanRes.ok).toBe(true);
+    const firstCard = titlePlanRes.data!.cards[0]!;
+
+    const subtitleRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'subtitle_render',
+      source_unit_id: 'subtitle:series',
+      note: '提交 GEARS 字幕渲染任务',
+    });
+    expect(subtitleRes.ok).toBe(true);
+    expect(subtitleRes.data).toMatchObject({
+      submitted_count: 1,
+      failed_count: 0,
+      submitted_jobs: [{
+        job_type: 'subtitle_render',
+        source_unit_id: 'subtitle:series',
+        status: 'submitted',
+      }],
+    });
+    expect(subtitleRes.data?.submitted_jobs[0].payload_summary).toContain('cues');
+
+    const audioRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'audio_mix',
+      source_unit_id: 'audio_mix:series',
+      note: '提交 GEARS 混音任务',
+    });
+    expect(audioRes.ok).toBe(true);
+    expect(audioRes.data?.submitted_jobs[0]).toMatchObject({
+      job_type: 'audio_mix',
+      source_unit_id: 'audio_mix:series',
+      status: 'submitted',
+    });
+    expect(audioRes.data?.submitted_jobs[0].payload_summary).toContain('cues');
+
+    const titleRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'title_card_render',
+      source_unit_id: firstCard.card_id,
+      note: '提交 GEARS 片头片尾任务',
+    });
+    expect(titleRes.ok).toBe(true);
+    expect(titleRes.data?.submitted_jobs[0]).toMatchObject({
+      job_type: 'title_card_render',
+      source_unit_id: `title_card:${firstCard.card_id}`,
+      status: 'submitted',
+    });
+    expect(titleRes.data?.submitted_jobs[0].payload_summary).toContain(firstCard.output_path);
+
+    const finalRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'final_assemble',
+      note: '提交 GEARS 最终装配任务',
+    });
+    expect(finalRes.ok).toBe(true);
+    expect(finalRes.data?.submitted_jobs[0]).toMatchObject({
+      job_type: 'final_assemble',
+      source_unit_id: 'final_assemble:series',
+      status: 'submitted',
+    });
+    expect(finalRes.data?.submitted_jobs[0].payload_summary).toContain('missing');
+
+    const ledgerItems = finalRes.data?.gears_job_ledger?.items ?? [];
+    expect(ledgerItems.some(item => item.job_type === 'subtitle_render')).toBe(true);
+    expect(ledgerItems.some(item => item.job_type === 'audio_mix')).toBe(true);
+    expect(ledgerItems.some(item => item.job_type === 'title_card_render')).toBe(true);
+    expect(ledgerItems.some(item => item.job_type === 'final_assemble')).toBe(true);
+
+    const subtitleJob = ledgerItems.find(item => item.job_type === 'subtitle_render')!;
+    const subtitleCallbackRes = await importAiComicSeriesGearsCallback(seriesProjectId, {
+      jobId: subtitleJob.gears_job_id,
+      jobType: 'subtitle_render',
+      status: 'COMPLETED',
+      subtitleUrl: 'https://gears.example.test/subtitles/full-series.srt',
+      message: 'GEARS subtitle render ready',
+    });
+    expect(subtitleCallbackRes.ok).toBe(true);
+    expect(subtitleCallbackRes.data?.seedance_subtitle_render).toMatchObject({
+      status: 'ready',
+      srt_path: 'https://gears.example.test/subtitles/full-series.srt',
+      srt_filename: 'full-series.srt',
+    });
+
+    const audioJob = ledgerItems.find(item => item.job_type === 'audio_mix')!;
+    const audioCallbackRes = await importAiComicSeriesGearsCallback(seriesProjectId, {
+      jobId: audioJob.gears_job_id,
+      jobType: 'audio_mix',
+      status: 'COMPLETED',
+      audioUrl: 'https://gears.example.test/audio/full-series-mix.mp4',
+      message: 'GEARS audio mix ready',
+    });
+    expect(audioCallbackRes.ok).toBe(true);
+    expect(audioCallbackRes.data?.seedance_audio_mix).toMatchObject({
+      status: 'ready',
+      output_path: 'https://gears.example.test/audio/full-series-mix.mp4',
+      output_filename: 'full-series-mix.mp4',
+    });
+
+    const titleJob = ledgerItems.find(item => item.job_type === 'title_card_render')!;
+    const titleCallbackRes = await importAiComicSeriesGearsCallback(seriesProjectId, {
+      jobId: titleJob.gears_job_id,
+      jobType: 'title_card_render',
+      status: 'COMPLETED',
+      artifactUrl: 'https://gears.example.test/title-cards/opening.mp4',
+      message: 'GEARS title card ready',
+    });
+    expect(titleCallbackRes.ok).toBe(true);
+    expect(titleCallbackRes.data?.seedance_title_card_render).toMatchObject({
+      status: 'ready',
+      output_paths: ['https://gears.example.test/title-cards/opening.mp4'],
+      rendered_count: 1,
+    });
+
+    const finalJob = ledgerItems.find(item => item.job_type === 'final_assemble')!;
+    const finalCallbackRes = await importAiComicSeriesGearsCallback(seriesProjectId, {
+      jobId: finalJob.gears_job_id,
+      jobType: 'final_assemble',
+      status: 'COMPLETED',
+      videoUrl: 'https://gears.example.test/final/lianxi-final.mp4',
+      manifestUrl: 'https://gears.example.test/final/lianxi-delivery-manifest',
+      message: 'GEARS final assemble ready',
+    });
+    expect(finalCallbackRes.ok).toBe(true);
+    expect(finalCallbackRes.data?.seedance_final_delivery).toMatchObject({
+      status: 'ready',
+      output_path: 'https://gears.example.test/final/lianxi-final.mp4',
+      manifest_path: 'https://gears.example.test/final/lianxi-delivery-manifest',
+      output_filename: 'lianxi-final.mp4',
+    });
+
+    const detailRes = await getAiComicSeriesProject(seriesProjectId);
+    expect(detailRes.ok).toBe(true);
+    expect(detailRes.data?.seedance_subtitle_render).toMatchObject({
+      status: 'ready',
+      srt_path: 'https://gears.example.test/subtitles/full-series.srt',
+      srt_filename: 'full-series.srt',
+    });
+    expect(detailRes.data?.seedance_audio_mix).toMatchObject({
+      status: 'ready',
+      output_path: 'https://gears.example.test/audio/full-series-mix.mp4',
+      output_filename: 'full-series-mix.mp4',
+    });
+    expect(detailRes.data?.seedance_title_card_render).toMatchObject({
+      status: 'ready',
+      output_paths: ['https://gears.example.test/title-cards/opening.mp4'],
+      rendered_count: 1,
+    });
+    expect(detailRes.data?.seedance_final_delivery).toMatchObject({
+      status: 'ready',
+      output_path: 'https://gears.example.test/final/lianxi-final.mp4',
+      manifest_path: 'https://gears.example.test/final/lianxi-delivery-manifest',
+      output_filename: 'lianxi-final.mp4',
+    });
+
+    const postSyncRes = await syncAiComicSeriesGearsJobStatuses(seriesProjectId, {
+      job_type: 'subtitle_render',
+      note: '后期账本回显同步',
+    });
+    expect(postSyncRes.ok).toBe(true);
+    expect(postSyncRes.data?.pollable_count).toBe(0);
+    expect(postSyncRes.data?.seedance_subtitle_render).toMatchObject({
+      status: 'ready',
+      srt_path: 'https://gears.example.test/subtitles/full-series.srt',
+    });
+    expect(postSyncRes.data?.seedance_audio_mix).toMatchObject({
+      status: 'ready',
+      output_path: 'https://gears.example.test/audio/full-series-mix.mp4',
+    });
+    expect(postSyncRes.data?.seedance_title_card_render).toMatchObject({
+      status: 'ready',
+      output_paths: ['https://gears.example.test/title-cards/opening.mp4'],
+    });
+    expect(postSyncRes.data?.seedance_final_delivery).toMatchObject({
+      status: 'ready',
+      output_path: 'https://gears.example.test/final/lianxi-final.mp4',
+    });
+  });
+
+  it('submits AI comic series visual GEARS jobs from generated episode deliveries', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+    const seriesProjectId = saveRes.data!.project.series_project_id;
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: seriesProjectId,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+    const refreshSaveRes = await saveAiComicSeriesProject({
+      series_project_id: seriesProjectId,
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: episodeRes.data!.storyId,
+      },
+    });
+    expect(refreshSaveRes.ok).toBe(true);
+
+    const storyboardRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'storyboard_image',
+      note: '提交 GEARS 分镜图任务',
+    });
+    expect(storyboardRes.ok).toBe(true);
+    expect(storyboardRes.data?.submitted_count).toBeGreaterThan(0);
+    expect(storyboardRes.data?.submitted_jobs[0]).toMatchObject({
+      job_type: 'storyboard_image',
+      status: 'submitted',
+    });
+    expect(storyboardRes.data?.submitted_jobs[0].source_unit_id).toContain('storyboard');
+    expect(storyboardRes.data?.submitted_jobs[0].payload_summary).toContain(episodeRes.data!.title);
+
+    const characterRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'character_image',
+      note: '提交 GEARS 人物图任务',
+    });
+    expect(characterRes.ok).toBe(true);
+    expect(characterRes.data?.submitted_count).toBeGreaterThan(0);
+    expect(characterRes.data?.submitted_jobs[0]).toMatchObject({
+      job_type: 'character_image',
+      status: 'submitted',
+    });
+    expect(characterRes.data?.submitted_jobs[0].source_unit_id).toContain('character');
+
+    const sceneRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'scene_image',
+      note: '提交 GEARS 场景图任务',
+    });
+    expect(sceneRes.ok).toBe(true);
+    expect(sceneRes.data?.submitted_count).toBeGreaterThan(0);
+    expect(sceneRes.data?.submitted_jobs[0]).toMatchObject({
+      job_type: 'scene_image',
+      status: 'submitted',
+    });
+    expect(sceneRes.data?.submitted_jobs[0].source_unit_id).toContain('scene');
+
+    const ledgerItems = sceneRes.data?.gears_job_ledger?.items ?? [];
+    expect(ledgerItems.some(item => item.job_type === 'storyboard_image')).toBe(true);
+    expect(ledgerItems.some(item => item.job_type === 'character_image')).toBe(true);
+    expect(ledgerItems.some(item => item.job_type === 'scene_image')).toBe(true);
   });
 
   it('reports unbound episode foreshadowing in the AI comic series quality audit', async () => {

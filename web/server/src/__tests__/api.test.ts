@@ -436,6 +436,197 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/gears-execution-config', () => {
+    it('returns safe GEARS execution config without leaking secrets', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_API_BASE_URL,
+        apiToken: process.env.GEARS_API_TOKEN,
+        callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+        callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+      };
+      try {
+        process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+        process.env.GEARS_API_TOKEN = 'gears-secret-token';
+        process.env.GEARS_CALLBACK_SECRET = 'gears-callback-secret';
+        process.env.GEARS_CALLBACK_BASE_URL = 'https://story.example.test/public';
+
+        const res = await request.get('/api/system/gears-execution-config');
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          provider: 'gears',
+          api_base_url_configured: true,
+          api_token_configured: true,
+          callback_secret_configured: true,
+          callback_base_configured: true,
+          submit_endpoint_path: '/gears/jobs',
+          job_status_endpoint_path: '/gears/jobs/{gears_job_id}',
+          project_callback_path_template: '/api/projects/:projectId/gears-callback',
+          series_callback_path_template: '/api/story-outline/ai-comic-series-projects/:seriesProjectId/gears-callback',
+          ready_for_submit: true,
+          missing_submit_requirements: [],
+        });
+        expect(res.body.data.supported_job_types).toEqual(expect.arrayContaining([
+          'storyboard_image',
+          'seedance_video',
+          'final_assemble',
+        ]));
+        expect(JSON.stringify(res.body.data)).not.toContain('gears-secret-token');
+        expect(JSON.stringify(res.body.data)).not.toContain('gears-callback-secret');
+        expect(JSON.stringify(res.body.data)).not.toContain('gears.example.test');
+        expect(JSON.stringify(res.body.data)).not.toContain('story.example.test');
+      } finally {
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.apiToken === undefined) delete process.env.GEARS_API_TOKEN;
+        else process.env.GEARS_API_TOKEN = previous.apiToken;
+        if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+        if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+      }
+    });
+  });
+
+  describe('GET /api/system/gears-execution-contract', () => {
+    it('returns GEARS submit and callback contract metadata', async () => {
+      const res = await request.get('/api/system/gears-execution-contract');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        provider: 'gears',
+        schema_version: 'gears-execution-contract/v1',
+        env: {
+          api_base_url: 'GEARS_API_BASE_URL',
+          api_token: 'GEARS_API_TOKEN',
+          callback_secret: 'GEARS_CALLBACK_SECRET',
+          callback_base_url: 'GEARS_CALLBACK_BASE_URL',
+        },
+        submit: {
+          method: 'POST',
+          path: '/gears/jobs',
+        },
+        poll: {
+          method: 'GET',
+          path: '/gears/jobs/{gears_job_id}',
+        },
+        callback: {
+          project_path: '/api/projects/:projectId/gears-callback',
+          series_path: '/api/story-outline/ai-comic-series-projects/:seriesProjectId/gears-callback',
+          auth_env: 'GEARS_CALLBACK_SECRET',
+          auth_optional_when_unset: true,
+        },
+      });
+      expect(res.body.data.callback.auth_headers).toEqual(expect.arrayContaining([
+        'Authorization: Bearer <GEARS_CALLBACK_SECRET>',
+        'X-GEARS-Callback-Secret: <GEARS_CALLBACK_SECRET>',
+      ]));
+      expect(res.body.data.submit.request_fields).toEqual(expect.arrayContaining([
+        'payload.units[].schema_version',
+        'payload.units[].source_unit_id',
+        'payload.units[].external_id',
+        'payload.units[].custom_id',
+        'payload.units[].idempotency_key',
+        'payload.units[].callback_url',
+        'payload.units[].metadata',
+        'payload.units[].retry_count',
+        'payload.units[].retry_reason',
+        'payload.units[].previous_provider_job_id',
+        'payload.units[].last_video_url',
+        'payload.units[].review_issues',
+      ]));
+      expect(res.body.data.submit.request_example).toMatchObject({
+        series_project_id: '20260618-ai-comic-series-demo',
+        job_type: 'seedance_video',
+        payload: {
+          units: [
+            expect.objectContaining({
+              schema_version: 'gears-series-seedance-video-retry-payload/v1',
+              retry_count: 1,
+              retry_reason: 'review_required',
+              previous_provider_job_id: 'old-gears-job-001',
+              last_video_url: 'https://media.example.test/old-shot-001.mp4',
+              idempotency_key: 'seedance_video:episode:1:shot:001',
+            }),
+          ],
+        },
+      });
+      expect(res.body.data.callback.accepted_status_fields).toEqual(expect.arrayContaining([
+        'taskStatus',
+        'job_status',
+        'failed aliases: failed | error | timed_out | timeout | expired | deadline_exceeded | quota_exceeded | no_credit | provider_error',
+        'rejected aliases: rejected | blocked | policy_blocked | moderation_failed | content_policy | safety_blocked | risk_control | invalid_prompt | invalid_payload | validation_failed',
+      ]));
+      expect(res.body.data.callback.accepted_envelope_shapes).toEqual(expect.arrayContaining([
+        '{ callbacks: [{ ...callback fields }] }',
+        '{ events: [{ ...callback fields }] }',
+        '{ data: { task: { task_id, taskStatus, output: { files[] } } } }',
+        '{ data: { job: { jobId, job_status, outputs[] } } }',
+      ]));
+      expect(res.body.data.callback.request_fields).toEqual(expect.arrayContaining([
+        'external_id | externalId',
+        'custom_id | customId',
+        'production_id | productionId',
+        'idempotency_key | idempotencyKey',
+      ]));
+      expect(res.body.data.callback.accepted_artifact_fields).toEqual(expect.arrayContaining([
+        'output.files[].mediaUrl',
+        'outputs[].downloadUrl',
+        'manifest_url | manifestUrl',
+        'subtitle_url | subtitleUrl | srt_url | srtUrl | vtt_url | vttUrl',
+        'audio_url | audioUrl',
+      ]));
+      expect(res.body.data.callback.idempotency_fields).toEqual(expect.arrayContaining([
+        'event_id | eventId | callback_id | callbackId',
+        'idempotency_key | idempotencyKey (job match key; lifecycle callbacks with changed status/progress/message are preserved)',
+      ]));
+      expect(res.body.data.callback.accepted_time_fields).toEqual(expect.arrayContaining([
+        'eventTime',
+        'timestamp',
+        'completedAt',
+      ]));
+      expect(res.body.data.callback.response_fields).toEqual(expect.arrayContaining([
+        'failures[].path',
+        'gears_job_ledger.items[].idempotency_key',
+        'gears_job_ledger.items[].last_poll_error',
+        'gears_job_ledger.items[].last_poll_failure_category',
+        'gears_job_ledger.items[].completed_at',
+        'gears_job_ledger.items[].callback_events[].event_id_source',
+        'gears_job_ledger.items[].callback_events[].provider_event_at',
+        'gears_job_ledger.items[].callback_events[].previous_status',
+        'gears_job_ledger.items[].callback_events[].applied_status',
+        'gears_job_ledger.items[].callback_events[].status_regression_ignored',
+        'gears_job_ledger.items[].callback_events[].terminal_status_changed',
+      ]));
+      expect(res.body.data.poll.accepted_response_shapes).toEqual(expect.arrayContaining([
+        '{ data: { job: { job_status, output: { files[] } } } }',
+        '{ data: { task: { task_state, outputs[] } } }',
+      ]));
+      expect(res.body.data.poll.accepted_artifact_fields).toEqual(expect.arrayContaining([
+        'output.files[].mediaUrl',
+        'outputs[].downloadUrl',
+        'manifest_url | manifestUrl',
+        'subtitle_url | subtitleUrl | srt_url | srtUrl | vtt_url | vttUrl',
+        'audio_url | audioUrl',
+      ]));
+      expect(res.body.data.callback.request_examples).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          externalId: 'shot-1',
+          idempotencyKey: 'seedance_video:shot-1',
+        }),
+        expect.objectContaining({
+          jobType: 'final_assemble',
+          artifacts: expect.arrayContaining([
+            expect.objectContaining({ kind: 'video' }),
+            expect.objectContaining({ kind: 'manifest' }),
+          ]),
+        }),
+      ]));
+      expect(res.body.data.supported_job_types).toContain('audio_mix');
+      expect(JSON.stringify(res.body.data)).toContain('Legacy SEEDANCE_PROVIDER_* endpoints remain compatibility-only.');
+    });
+  });
+
   describe('GET /api/system/seedance-provider-config', () => {
     it('returns safe provider adapter config status without secrets', async () => {
       const previous = {
@@ -1872,6 +2063,282 @@ describe('Projects API', () => {
 });
 
 describe('GEARS Callback API', () => {
+  it('requires GEARS callback secret for single-story project callbacks when configured', async () => {
+    const previousCallbackSecret = process.env.GEARS_CALLBACK_SECRET;
+    process.env.GEARS_CALLBACK_SECRET = 'test-gears-secret';
+    try {
+      const res = await request
+        .post('/api/projects/20260617-story-apspv--ai_comic_drama/gears-callback')
+        .send({
+          jobId: 'gears-single-secret-job-001',
+          sourceUnitId: 'shot-1',
+          jobType: 'seedance_video',
+          status: 'COMPLETED',
+          outputUrl: 'https://gears.example/videos/single-secret.mp4',
+        });
+      expect(res.status).toBe(401);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    } finally {
+      if (previousCallbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+      else process.env.GEARS_CALLBACK_SECRET = previousCallbackSecret;
+    }
+  });
+
+  it('accepts bearer GEARS callback secret before looking up the single-story project', async () => {
+    const previousCallbackSecret = process.env.GEARS_CALLBACK_SECRET;
+    process.env.GEARS_CALLBACK_SECRET = 'test-gears-secret';
+    try {
+      const res = await request
+        .post('/api/projects/20260617-story-apspv--ai_comic_drama/gears-callback')
+        .set('Authorization', 'Bearer test-gears-secret')
+        .send({
+          jobId: 'gears-single-secret-job-001',
+          sourceUnitId: 'shot-1',
+          jobType: 'seedance_video',
+          status: 'COMPLETED',
+          outputUrl: 'https://gears.example/videos/single-secret.mp4',
+        });
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'STORY_NOT_FOUND');
+    } finally {
+      if (previousCallbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+      else process.env.GEARS_CALLBACK_SECRET = previousCallbackSecret;
+    }
+  });
+
+  it('requires GEARS callback secret for AI comic series callbacks when configured', async () => {
+    const previousCallbackSecret = process.env.GEARS_CALLBACK_SECRET;
+    process.env.GEARS_CALLBACK_SECRET = 'test-gears-secret';
+    try {
+      const res = await request
+        .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/gears-callback')
+        .send({
+          jobId: 'gears-series-secret-job-001',
+          sourceUnitId: 'series-shot-1',
+          jobType: 'seedance_video',
+          status: 'COMPLETED',
+          outputUrl: 'https://gears.example/videos/series-secret.mp4',
+        });
+      expect(res.status).toBe(401);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    } finally {
+      if (previousCallbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+      else process.env.GEARS_CALLBACK_SECRET = previousCallbackSecret;
+    }
+  });
+
+  it('accepts X-GEARS callback secret before looking up the AI comic series project', async () => {
+    const previousCallbackSecret = process.env.GEARS_CALLBACK_SECRET;
+    process.env.GEARS_CALLBACK_SECRET = 'test-gears-secret';
+    try {
+      const res = await request
+        .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/gears-callback')
+        .set('X-GEARS-Callback-Secret', 'test-gears-secret')
+        .send({
+          jobId: 'gears-series-secret-job-001',
+          sourceUnitId: 'series-shot-1',
+          jobType: 'seedance_video',
+          status: 'COMPLETED',
+          outputUrl: 'https://gears.example/videos/series-secret.mp4',
+        });
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'STORY_NOT_FOUND');
+    } finally {
+      if (previousCallbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+      else process.env.GEARS_CALLBACK_SECRET = previousCallbackSecret;
+    }
+  });
+
+  it('accepts multi-artifact GEARS callback payloads for single-story projects before lookup', async () => {
+    const res = await request
+      .post('/api/projects/20260617-story-apspv--ai_comic_drama/gears-callback')
+      .send({
+        taskId: 'gears-single-artifact-job-001',
+        sourceUnitId: 'shot-1',
+        jobType: 'final_assemble',
+        taskStatus: 'COMPLETED',
+        artifacts: [
+          {
+            kind: 'video',
+            role: 'final_video',
+            url: 'https://gears.example/final/single-final.mp4',
+            mime_type: 'video/mp4',
+          },
+          {
+            kind: 'manifest',
+            role: 'manifest',
+            url: 'https://gears.example/final/single-final.manifest.json',
+            mime_type: 'application/json',
+          },
+        ],
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('accepts direct GEARS artifact URL aliases before lookup', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/gears-callback')
+      .send({
+        taskId: 'gears-series-alias-job-001',
+        sourceUnitId: 'final_assemble:series',
+        jobType: 'final_assemble',
+        taskStatus: 'COMPLETED',
+        videoUrl: 'https://gears.example/final/series-final.mp4',
+        manifestUrl: 'https://gears.example/final/series-manifest',
+        subtitleUrl: 'https://gears.example/subtitles/series.srt',
+        audioUrl: 'https://gears.example/audio/series-mix.mp4',
+        thumbnailUrl: 'https://gears.example/posters/series.jpg',
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('accepts GEARS callback source id aliases before lookup', async () => {
+    const res = await request
+      .post('/api/projects/20260617-story-apspv--ai_comic_drama/gears-callback')
+      .send({
+        externalId: 'shot-1',
+        custom_id: 'story-agent-shot-1',
+        productionId: 'shot-1',
+        jobType: 'seedance_video',
+        taskStatus: 'COMPLETED',
+        outputUrl: 'https://gears.example/videos/source-id-alias.mp4',
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('accepts GEARS callback idempotency key before lookup', async () => {
+    const res = await request
+      .post('/api/projects/20260617-story-apspv--ai_comic_drama/gears-callback')
+      .send({
+        idempotencyKey: 'seedance_video:shot-1',
+        jobType: 'seedance_video',
+        taskStatus: 'COMPLETED',
+        outputUrl: 'https://gears.example/videos/idempotency-key-only.mp4',
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('accepts nested GEARS callback envelopes for single-story projects before lookup', async () => {
+    const res = await request
+      .post('/api/projects/20260617-story-apspv--ai_comic_drama/gears-callback')
+      .send({
+        data: {
+          task: {
+            task_id: 'gears-single-envelope-job-001',
+            external_id: 'shot-1',
+            jobType: 'seedance_video',
+            taskStatus: 'COMPLETED',
+            output: {
+              files: [{
+                mediaUrl: 'https://gears.example/videos/single-envelope.mp4',
+                mediaType: 'video',
+              }],
+            },
+            eventTime: '2026-06-20T10:00:00.000Z',
+            completedAt: '2026-06-20T10:01:00.000Z',
+          },
+        },
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('accepts batched GEARS callback envelopes for single-story projects before lookup', async () => {
+    const res = await request
+      .post('/api/projects/20260617-story-apspv--ai_comic_drama/gears-callback')
+      .send({
+        callbacks: [{
+          jobId: 'gears-single-batch-job-001',
+          sourceUnitId: 'shot-1',
+          jobType: 'seedance_video',
+          taskStatus: 'COMPLETED',
+          outputUrl: 'https://gears.example/videos/single-batch-1.mp4',
+        }, {
+          jobId: 'gears-single-batch-job-002',
+          sourceUnitId: 'shot-2',
+          jobType: 'seedance_video',
+          taskStatus: 'COMPLETED',
+          outputUrl: 'https://gears.example/videos/single-batch-2.mp4',
+        }],
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('accepts multi-artifact GEARS callback payloads for AI comic series before lookup', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/gears-callback')
+      .send({
+        taskId: 'gears-series-artifact-job-001',
+        sourceUnitId: 'final_assemble:series',
+        jobType: 'final_assemble',
+        taskStatus: 'COMPLETED',
+        artifacts: [
+          {
+            kind: 'video',
+            role: 'final_video',
+            url: 'https://gears.example/final/series-final.mp4',
+            mime_type: 'video/mp4',
+          },
+          {
+            kind: 'manifest',
+            role: 'manifest',
+            url: 'https://gears.example/final/series-final.manifest.json',
+            mime_type: 'application/json',
+          },
+        ],
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('accepts batched GEARS callback envelopes for AI comic series before lookup', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/gears-callback')
+      .send({
+        events: [{
+          jobId: 'gears-series-batch-job-001',
+          sourceUnitId: 'series-shot-1',
+          jobType: 'seedance_video',
+          taskStatus: 'COMPLETED',
+          outputUrl: 'https://gears.example/videos/series-batch-1.mp4',
+        }, {
+          jobId: 'gears-series-batch-job-002',
+          sourceUnitId: 'series-shot-2',
+          jobType: 'seedance_video',
+          taskStatus: 'COMPLETED',
+          outputUrl: 'https://gears.example/videos/series-batch-2.mp4',
+        }],
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
+  it('accepts nested GEARS callback envelopes for AI comic series before lookup', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/gears-callback')
+      .send({
+        data: {
+          job: {
+            jobId: 'gears-series-envelope-job-001',
+            sourceUnitId: 'series-shot-1',
+            jobType: 'seedance_video',
+            job_status: 'COMPLETED',
+            outputs: [{
+              downloadUrl: 'https://gears.example/videos/series-envelope.mp4',
+              type: 'video',
+            }],
+          },
+        },
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
+
   describe('POST /api/gears-callback/video-ready', () => {
     it('validates ready callbacks require a video URL', async () => {
       const res = await request.post('/api/gears-callback/video-ready').send({

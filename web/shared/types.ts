@@ -793,6 +793,7 @@ export interface StoryProjectMeta extends StoryProjectListItem {
   seedance_asset_library?: SeedanceAssetLibrary;
   seedance_shot_ledger?: SeedanceShotLedger;
   seedance_provider_queue?: SeedanceShotProviderQueue;
+  gears_job_ledger?: GearsJobLedger;
 }
 
 export interface StoryProjectVersionSnapshot {
@@ -994,6 +995,369 @@ export interface GearsDeliveryPackage {
   units: GearsDeliveryUnit[];
   markdown: string;
   validation_notes: string[];
+}
+
+export type GearsExecutionJobType =
+  | 'storyboard_image'
+  | 'character_image'
+  | 'scene_image'
+  | 'seedance_video'
+  | 'subtitle_render'
+  | 'audio_mix'
+  | 'title_card_render'
+  | 'final_assemble';
+
+export type GearsExecutionJobStatus =
+  | 'submitted'
+  | 'queued'
+  | 'processing'
+  | 'ready'
+  | 'failed'
+  | 'canceled'
+  | 'rejected';
+
+export type GearsExecutionFailureCategory =
+  | 'asset_missing'
+  | 'payload_invalid'
+  | 'content_policy'
+  | 'provider_timeout'
+  | 'provider_quota'
+  | 'provider_auth'
+  | 'provider_rate_limit'
+  | 'provider_server_error'
+  | 'network_error'
+  | 'unknown';
+
+export interface GearsExecutionArtifact {
+  artifact_id?: string;
+  kind?: string;
+  url: string;
+  role?: string;
+  mime_type?: string;
+  source_unit_id?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GearsJobLedgerEvent {
+  event_id?: string;
+  event_id_source?: 'event' | 'callback' | 'idempotency_key';
+  received_at: string;
+  provider_event_at?: string;
+  previous_status?: GearsExecutionJobStatus;
+  status: GearsExecutionJobStatus;
+  applied_status?: GearsExecutionJobStatus;
+  status_regression_ignored?: boolean;
+  terminal_status_changed?: boolean;
+  progress_percent?: number;
+  message?: string;
+}
+
+export interface GearsJobLedgerItem {
+  ledger_id: string;
+  gears_job_id: string;
+  job_type: GearsExecutionJobType;
+  source_unit_id: string;
+  source_unit_label?: string;
+  source_scene_id?: number;
+  source_project_id?: string;
+  source_story_id?: string;
+  series_project_id?: string;
+  idempotency_key?: string;
+  status: GearsExecutionJobStatus;
+  progress_percent?: number;
+  artifact_urls: string[];
+  artifacts?: GearsExecutionArtifact[];
+  failure_category?: GearsExecutionFailureCategory;
+  error_code?: string;
+  failure_reason?: string;
+  last_poll_at?: string;
+  last_poll_error?: string;
+  last_poll_failure_category?: GearsExecutionFailureCategory;
+  last_poll_error_code?: string;
+  submitted_at: string;
+  updated_at: string;
+  completed_at?: string;
+  payload_summary?: string;
+  callback_events?: GearsJobLedgerEvent[];
+}
+
+export interface GearsJobLedger {
+  schema_version: 'gears-job-ledger/v1';
+  updated_at?: string;
+  items: GearsJobLedgerItem[];
+}
+
+export interface GearsJobSubmitRequest {
+  job_type?: GearsExecutionJobType;
+  source_unit_ids?: string[];
+  source_unit_id?: string;
+  use_gears_api?: boolean;
+  overwrite_existing?: boolean;
+  payload?: Record<string, unknown>;
+  callback_url?: string;
+  note?: string;
+}
+
+export interface GearsJobSubmitFailure {
+  index: number;
+  path?: string;
+  source_unit_id?: string;
+  gears_job_id?: string;
+  message: string;
+}
+
+export interface GearsJobSubmitAdapterSummary {
+  endpoint_configured: boolean;
+  requested_count: number;
+  accepted_count: number;
+  rejected_count: number;
+  status: 'mocked' | 'submitted';
+}
+
+export interface GearsJobStatusSyncRequest {
+  job_type?: GearsExecutionJobType;
+  source_unit_ids?: string[];
+  source_unit_id?: string;
+  include_completed?: boolean;
+  limit?: number;
+  note?: string;
+}
+
+export interface GearsJobStatusSyncAdapterSummary {
+  endpoint_configured: boolean;
+  requested_count: number;
+  returned_count: number;
+  failed_count: number;
+  status: 'submitted';
+}
+
+export interface GearsJobSubmitResult {
+  project: StoryProjectMeta;
+  gears_job_ledger?: GearsJobLedger;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  provider_adapter?: GearsJobSubmitAdapterSummary;
+  submitted_count: number;
+  skipped_count: number;
+  failed_count: number;
+  submitted_jobs: GearsJobLedgerItem[];
+  failures: GearsJobSubmitFailure[];
+}
+
+export interface GearsJobStatusSyncResult {
+  project: StoryProjectMeta;
+  gears_job_ledger?: GearsJobLedger;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  provider_adapter?: GearsJobStatusSyncAdapterSummary;
+  pollable_count: number;
+  synced_count: number;
+  failed_count: number;
+  duplicate_count: number;
+  skipped_count: number;
+  synced_jobs: GearsJobLedgerItem[];
+  failures: GearsJobSubmitFailure[];
+}
+
+export interface GearsJobCallbackRequest {
+  gears_job_id?: string;
+  gearsJobId?: string;
+  job_id?: string;
+  jobId?: string;
+  task_id?: string;
+  taskId?: string;
+  id?: string;
+  job_type?: GearsExecutionJobType;
+  jobType?: GearsExecutionJobType;
+  source_project_id?: string;
+  sourceProjectId?: string;
+  source_story_id?: string;
+  sourceStoryId?: string;
+  series_project_id?: string;
+  seriesProjectId?: string;
+  source_unit_id?: string;
+  sourceUnitId?: string;
+  external_id?: string;
+  externalId?: string;
+  custom_id?: string;
+  customId?: string;
+  shot_id?: string;
+  shotId?: string;
+  production_id?: string;
+  productionId?: string;
+  status?: string;
+  task_status?: string;
+  taskStatus?: string;
+  state?: string;
+  phase?: string;
+  progress?: number | string;
+  progress_percent?: number | string;
+  progressPercent?: number | string;
+  percent?: number | string;
+  percentage?: number | string;
+  progress_ratio?: number | string;
+  progressRatio?: number | string;
+  provider_event_at?: string | number;
+  providerEventAt?: string | number;
+  event_time?: string | number;
+  eventTime?: string | number;
+  event_at?: string | number;
+  eventAt?: string | number;
+  timestamp?: string | number;
+  created_at?: string | number;
+  createdAt?: string | number;
+  updated_at?: string | number;
+  updatedAt?: string | number;
+  completed_at?: string | number;
+  completedAt?: string | number;
+  finished_at?: string | number;
+  finishedAt?: string | number;
+  artifacts?: GearsExecutionArtifact[];
+  artifact_urls?: string[];
+  artifactUrls?: string[];
+  artifact_url?: string;
+  artifactUrl?: string;
+  video_url?: string;
+  videoUrl?: string;
+  output_url?: string;
+  outputUrl?: string;
+  file_url?: string;
+  fileUrl?: string;
+  manifest_url?: string;
+  manifestUrl?: string;
+  subtitle_url?: string;
+  subtitleUrl?: string;
+  srt_url?: string;
+  srtUrl?: string;
+  vtt_url?: string;
+  vttUrl?: string;
+  audio_url?: string;
+  audioUrl?: string;
+  image_url?: string;
+  imageUrl?: string;
+  thumbnail_url?: string;
+  thumbnailUrl?: string;
+  poster_url?: string;
+  posterUrl?: string;
+  url?: string;
+  failure_category?: GearsExecutionFailureCategory;
+  failureCategory?: GearsExecutionFailureCategory;
+  failure_reason?: string;
+  failureReason?: string;
+  error_code?: string | number;
+  errorCode?: string | number;
+  provider_error_code?: string | number;
+  providerErrorCode?: string | number;
+  code?: string | number;
+  error?: string;
+  message?: string;
+  note?: string;
+  event_id?: string;
+  eventId?: string;
+  callback_id?: string;
+  callbackId?: string;
+  idempotency_key?: string;
+  idempotencyKey?: string;
+  quality_score?: number;
+  qualityScore?: number;
+  review_note?: string;
+  reviewNote?: string;
+  data?: unknown;
+  result?: unknown;
+  response?: unknown;
+  job?: unknown;
+  task?: unknown;
+  item?: unknown;
+  record?: unknown;
+  callbacks?: unknown;
+  events?: unknown;
+  jobs?: unknown;
+  tasks?: unknown;
+  items?: unknown;
+  results?: unknown;
+  output?: unknown;
+  outputs?: unknown;
+  files?: unknown;
+  media?: unknown;
+  assets?: unknown;
+  payload?: unknown;
+}
+
+export interface GearsJobCallbackResult {
+  project: StoryProjectMeta;
+  gears_job_ledger?: GearsJobLedger;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  received_count: number;
+  updated_count: number;
+  failed_count: number;
+  duplicate_count: number;
+  failures: GearsJobSubmitFailure[];
+  gears_job_id?: string;
+  source_unit_id?: string;
+  status?: GearsExecutionJobStatus;
+}
+
+export interface GearsExecutionConfigInfo {
+  provider: 'gears';
+  api_base_url_configured: boolean;
+  api_token_configured: boolean;
+  callback_secret_configured: boolean;
+  callback_base_configured: boolean;
+  callback_base_envs: string[];
+  submit_endpoint_path: string;
+  job_status_endpoint_path: string;
+  project_callback_path_template: string;
+  series_callback_path_template: string;
+  supported_job_types: GearsExecutionJobType[];
+  legacy_seedance_provider_envs: string[];
+  ready_for_submit: boolean;
+  missing_submit_requirements: string[];
+  configuration_warnings: string[];
+  next_actions: string[];
+  generated_at: string;
+}
+
+export interface GearsExecutionContractInfo {
+  provider: 'gears';
+  schema_version: 'gears-execution-contract/v1';
+  env: {
+    api_base_url: 'GEARS_API_BASE_URL';
+    api_token: 'GEARS_API_TOKEN';
+    callback_secret: 'GEARS_CALLBACK_SECRET';
+    callback_base_url: 'GEARS_CALLBACK_BASE_URL';
+  };
+  supported_job_types: GearsExecutionJobType[];
+  submit: {
+    method: 'POST';
+    path: '/gears/jobs';
+    request_fields: string[];
+    accepted_response_shapes: string[];
+    request_example: Record<string, unknown>;
+    response_example: Record<string, unknown>;
+  };
+  poll: {
+    method: 'GET';
+    path: '/gears/jobs/{gears_job_id}';
+    response_fields: string[];
+    accepted_response_shapes: string[];
+    accepted_artifact_fields: string[];
+    accepted_progress_fields: string[];
+  };
+  callback: {
+    project_path: '/api/projects/:projectId/gears-callback';
+    series_path: '/api/story-outline/ai-comic-series-projects/:seriesProjectId/gears-callback';
+    auth_env: 'GEARS_CALLBACK_SECRET';
+    auth_headers: string[];
+    auth_optional_when_unset: boolean;
+    accepted_envelope_shapes: string[];
+    request_fields: string[];
+    accepted_status_fields: string[];
+    accepted_artifact_fields: string[];
+    accepted_progress_fields: string[];
+    accepted_time_fields: string[];
+    idempotency_fields: string[];
+    response_fields: string[];
+    request_examples: Record<string, unknown>[];
+  };
+  notes: string[];
 }
 
 export type SeedanceAssetModality = 'image' | 'video' | 'audio';
@@ -3048,6 +3412,66 @@ export interface AiComicSeriesSeedanceRetrySubmitResult {
   markdown: string;
 }
 
+export interface AiComicSeriesGearsJobSubmitResult {
+  schema_version: 'ai-comic-series-gears-job-submit-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  job_type: GearsExecutionJobType;
+  job_type_label: string;
+  submit_intent: string;
+  submitted_at: string;
+  gears_job_ledger?: GearsJobLedger;
+  seedance_production?: AiComicSeedanceProductionLedger;
+  provider_adapter?: GearsJobSubmitAdapterSummary;
+  submitted_count: number;
+  skipped_count: number;
+  failed_count: number;
+  submitted_jobs: GearsJobLedgerItem[];
+  failures: GearsJobSubmitFailure[];
+  markdown: string;
+}
+
+export interface AiComicSeriesGearsJobStatusSyncResult {
+  schema_version: 'ai-comic-series-gears-job-sync-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  gears_job_ledger?: GearsJobLedger;
+  seedance_production?: AiComicSeedanceProductionLedger;
+  seedance_subtitle_render?: AiComicSeedanceSubtitleRenderLedger;
+  seedance_audio_mix?: AiComicSeedanceAudioMixLedger;
+  seedance_title_card_render?: AiComicSeedanceTitleCardRenderLedger;
+  seedance_final_delivery?: AiComicSeedanceFinalDeliveryLedger;
+  provider_adapter?: GearsJobStatusSyncAdapterSummary;
+  pollable_count: number;
+  synced_count: number;
+  failed_count: number;
+  duplicate_count: number;
+  skipped_count: number;
+  synced_jobs: GearsJobLedgerItem[];
+  failures: GearsJobSubmitFailure[];
+  markdown: string;
+}
+
+export interface AiComicSeriesGearsJobCallbackResult {
+  schema_version: 'ai-comic-series-gears-job-callback-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  gears_job_ledger?: GearsJobLedger;
+  seedance_production?: AiComicSeedanceProductionLedger;
+  seedance_subtitle_render?: AiComicSeedanceSubtitleRenderLedger;
+  seedance_audio_mix?: AiComicSeedanceAudioMixLedger;
+  seedance_title_card_render?: AiComicSeedanceTitleCardRenderLedger;
+  seedance_final_delivery?: AiComicSeedanceFinalDeliveryLedger;
+  received_count: number;
+  updated_count: number;
+  failed_count: number;
+  duplicate_count: number;
+  failures: GearsJobSubmitFailure[];
+  gears_job_id?: string;
+  source_unit_id?: string;
+  status?: GearsExecutionJobStatus;
+}
+
 export type AiComicSeedanceRecoverableProductionStatus = Extract<
   AiComicSeedanceProductionStatus,
   'submitted' | 'processing'
@@ -4224,6 +4648,7 @@ export interface AiComicSeriesProjectDetail {
   seedance_title_card_render?: AiComicSeedanceTitleCardRenderLedger;
   seedance_final_delivery?: AiComicSeedanceFinalDeliveryLedger;
   seedance_review_ledger?: AiComicSeedanceReviewLedger;
+  gears_job_ledger?: GearsJobLedger;
 }
 
 export interface AiComicSeriesBibleCharacterRow {

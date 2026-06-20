@@ -1,6 +1,8 @@
 import { apiGet } from './client'
 import type {
   AIModelProfile,
+  GearsExecutionConfigInfo,
+  GearsExecutionContractInfo,
   NarrativePatternCatalog,
   ProvinceInfo,
   SeedanceProviderAdapterContractInfo,
@@ -26,6 +28,14 @@ export function getModelProfiles() {
 
 export function getNarrativePatternCatalog() {
   return apiGet<NarrativePatternCatalog>('/system/narrative-patterns')
+}
+
+export function getGearsExecutionConfig() {
+  return apiGet<GearsExecutionConfigInfo>('/system/gears-execution-config')
+}
+
+export function getGearsExecutionContract() {
+  return apiGet<GearsExecutionContractInfo>('/system/gears-execution-contract')
 }
 
 export function getSeedanceProviderAdapterConfig() {

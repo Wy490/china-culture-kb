@@ -664,7 +664,63 @@
               <strong>{{ seedanceCutAssembly ? seedanceCutAssemblyStatusLabel(seedanceCutAssembly.status) : '未开始' }}</strong>
               <span>剪辑装配</span>
             </article>
+            <article>
+              <strong>{{ gearsJobStats.total }}</strong>
+              <span>GEARS jobs</span>
+            </article>
+            <article>
+              <strong>{{ gearsJobStats.active }}</strong>
+              <span>GEARS 活跃</span>
+            </article>
+            <article>
+              <strong>{{ gearsJobStats.ready }}</strong>
+              <span>GEARS 完成</span>
+            </article>
           </div>
+          <div class="series-studio__episode-audit-list">
+            <span :class="['series-studio__episode-audit', gearsExecutionConfig?.ready_for_submit ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--unknown']">
+              GEARS API {{ loadingGearsExecutionConfig ? '读取中' : gearsExecutionConfig?.ready_for_submit ? '已配置' : '未配置' }}
+            </span>
+            <span :class="['series-studio__episode-audit', gearsExecutionConfig?.callback_secret_configured ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--unknown']">
+              GEARS callback {{ gearsExecutionConfig?.callback_secret_configured ? '已保护' : '未配置密钥' }}
+            </span>
+            <span v-if="latestGearsJob" class="series-studio__episode-audit series-studio__episode-audit--unknown">
+              最新 {{ gearsJobTypeLabel(latestGearsJob.job_type) }} · {{ gearsJobStatusLabel(latestGearsJob.status) }}
+            </span>
+            <span v-if="latestGearsJob?.progress_percent !== undefined" class="series-studio__episode-audit series-studio__episode-audit--unknown">
+              GEARS 进度 {{ gearsJobProgressLabel(latestGearsJob) }}
+            </span>
+            <span v-if="latestGearsJob?.last_poll_error" class="series-studio__episode-audit series-studio__episode-audit--needs_attention">
+              GEARS 轮询失败 {{ gearsJobPollFailureLabel(latestGearsJob) }}
+            </span>
+          </div>
+          <details v-if="gearsJobStats.total" class="series-studio__seedance-ops">
+            <summary class="series-studio__seedance-ops-summary">GEARS 回调</summary>
+            <div class="series-studio__seedance-ops-body">
+              <textarea
+                v-model="gearsCallbackImportText"
+                class="series-studio__textarea"
+                rows="4"
+                placeholder="GEARS callback JSON"
+              />
+              <div class="series-studio__memory-actions">
+                <button
+                  class="series-studio__ghost-button"
+                  :disabled="!latestGearsJob"
+                  @click="fillLatestGearsCallbackSample"
+                >
+                  填入 GEARS 示例
+                </button>
+                <button
+                  class="series-studio__ghost-button"
+                  :disabled="importingGearsCallbacks"
+                  @click="importSeriesGearsCallbacks"
+                >
+                  {{ importingGearsCallbacks ? '导入中...' : '导入 GEARS 回调' }}
+                </button>
+              </div>
+            </div>
+          </details>
           <details class="series-studio__seedance-ops">
             <summary class="series-studio__seedance-ops-summary">生产操作</summary>
             <div class="series-studio__seedance-ops-body">
@@ -703,14 +759,14 @@
                   :disabled="assemblingSeedanceCut || seedanceProductionStats.ready === 0"
                   @click="assembleSeedanceCut('copy')"
                 >
-                  {{ assemblingSeedanceCut ? '装配中...' : '装配剪辑成片' }}
+                  {{ assemblingSeedanceCut ? '规划中...' : '剪辑装配计划' }}
                 </button>
                 <button
                   class="series-studio__ghost-button"
                   :disabled="assemblingSeedanceCut || seedanceProductionStats.ready === 0"
                   @click="assembleSeedanceCut('transcode')"
                 >
-                  转码装配
+                  转码装配计划
                 </button>
                 <button
                   class="series-studio__ghost-button"
@@ -719,12 +775,43 @@
                 >
                   {{ loadingSeedanceVersionComparison ? '加载中...' : showSeedanceVersionComparison ? '收起版本对比' : '查看版本对比' }}
                 </button>
+                <select
+                  v-model="selectedGearsJobType"
+                  class="series-studio__select series-studio__select--compact"
+                  aria-label="GEARS 任务类型"
+                >
+                  <option v-for="type in gearsSubmitJobTypes" :key="type" :value="type">
+                    {{ gearsJobTypeLabel(type) }}
+                  </option>
+                </select>
                 <button
                   class="series-studio__ghost-button"
+                  :disabled="submittingGearsJobs || submittingGearsApiJobs || submittingSeedanceRetry || batchUpdatingSeedance"
+                  @click="submitSeriesGearsJobs(false)"
+                >
+                  {{ submittingGearsJobs ? '提交中...' : selectedGearsSubmitButtonLabel }}
+                </button>
+                <button
+                  class="series-studio__ghost-button"
+                  :disabled="submittingGearsJobs || submittingGearsApiJobs || !gearsExecutionConfig?.ready_for_submit"
+                  @click="submitSeriesGearsJobs(true)"
+                >
+                  {{ submittingGearsApiJobs ? '提交中...' : selectedGearsApiSubmitButtonLabel }}
+                </button>
+                <button
+                  class="series-studio__ghost-button"
+                  :disabled="syncingGearsJobs || !gearsJobStats.active || !gearsExecutionConfig?.ready_for_submit"
+                  @click="syncSeriesGearsJobs"
+                >
+                  {{ syncingGearsJobs ? '同步中...' : '同步 GEARS 状态' }}
+                </button>
+                <button
+                  class="series-studio__ghost-button"
+                  title="兼容旧 Seedance provider 账本；新生产主路径使用 GEARS 提交。"
                   :disabled="submittingSeedanceRetry || batchUpdatingSeedance"
                   @click="submitSeedanceRetryExecutionPlan"
                 >
-                  {{ submittingSeedanceRetry ? '提交中...' : '提交重试计划' }}
+                  {{ submittingSeedanceRetry ? '提交中...' : '旧 Seedance 重试提交' }}
                 </button>
                 <button
                   class="series-studio__ghost-button"
@@ -752,7 +839,7 @@
                   :disabled="renderingSeedanceSubtitles || !seedanceCutAssembly?.output_path"
                   @click="renderSeedanceSubtitles('burn_in')"
                 >
-                  烧录字幕成片
+                  字幕烧录计划
                 </button>
                 <button
                   class="series-studio__ghost-button"
@@ -1803,6 +1890,7 @@ import {
   aiComicSeriesPlan,
   getAiComicSeriesProject,
   getAiComicSeriesSeedanceProductionDashboard,
+  importAiComicSeriesGearsCallback,
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
   recoverAiComicSeriesSeedanceProviderTimeouts,
@@ -1812,13 +1900,15 @@ import {
   resolveAiComicSeriesSeedanceReview,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
+  submitAiComicSeriesGearsJobs,
   submitAiComicSeriesSeedanceRetryExecutionPlan,
+  syncAiComicSeriesGearsJobs,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '@/api/stories'
-import { getNarrativePatternCatalog } from '@/api/system'
+import { getGearsExecutionConfig, getNarrativePatternCatalog } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
 import type {
   AiComicContinuityLedger,
@@ -1855,6 +1945,12 @@ import type {
   AiComicSeedanceVersionComparisonShot,
   AiComicSeriesSeedanceDashboard,
   AiComicSeriesSeedanceVersionComparisonPackage,
+  GearsExecutionConfigInfo,
+  GearsExecutionJobType,
+  GearsJobCallbackRequest,
+  GearsJobLedger,
+  GearsJobLedgerItem,
+  GearsJobSubmitFailure,
   NarrativePattern,
   NarrativePatternCatalog,
   NarrativePatternId,
@@ -1908,6 +2004,9 @@ const seedanceAudioMix = ref<AiComicSeedanceAudioMixLedger | null>(null)
 const seedanceTitleCardRender = ref<AiComicSeedanceTitleCardRenderLedger | null>(null)
 const seedanceFinalDelivery = ref<AiComicSeedanceFinalDeliveryLedger | null>(null)
 const seedanceReviewLedger = ref<AiComicSeedanceReviewLedger | null>(null)
+const gearsJobLedger = ref<GearsJobLedger | null>(null)
+const gearsExecutionConfig = ref<GearsExecutionConfigInfo | null>(null)
+const loadingGearsExecutionConfig = ref(false)
 const seedanceDashboard = ref<AiComicSeriesSeedanceDashboard | null>(null)
 const loadingSeedanceDashboard = ref(false)
 const seedanceVersionComparison = ref<AiComicSeriesSeedanceVersionComparisonPackage | null>(null)
@@ -1916,6 +2015,22 @@ const loadingSeedanceVersionComparison = ref(false)
 const updatingSeedanceProductionId = ref('')
 const batchUpdatingSeedance = ref(false)
 const submittingSeedanceRetry = ref(false)
+const submittingGearsJobs = ref(false)
+const submittingGearsApiJobs = ref(false)
+const syncingGearsJobs = ref(false)
+const gearsSubmitJobTypes: GearsExecutionJobType[] = [
+  'seedance_video',
+  'storyboard_image',
+  'character_image',
+  'scene_image',
+  'subtitle_render',
+  'audio_mix',
+  'title_card_render',
+  'final_assemble',
+]
+const selectedGearsJobType = ref<GearsExecutionJobType>('seedance_video')
+const gearsCallbackImportText = ref('')
+const importingGearsCallbacks = ref(false)
 const recoveringSeedanceTimeouts = ref(false)
 const capturingSeedanceThumbnails = ref(false)
 const assemblingSeedanceCut = ref(false)
@@ -2050,6 +2165,43 @@ const seedanceProductionItems = computed(() =>
   [...(seedanceProduction.value?.items ?? [])]
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .slice(0, 12)
+)
+const gearsJobItems = computed<GearsJobLedgerItem[]>(() =>
+  [...(gearsJobLedger.value?.items ?? [])]
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+)
+const gearsJobStats = computed(() => {
+  const stats = {
+    total: 0,
+    active: 0,
+    ready: 0,
+    failed: 0,
+    seedance_video: 0,
+  }
+  for (const item of gearsJobItems.value) {
+    stats.total += 1
+    if (item.job_type === 'seedance_video') stats.seedance_video += 1
+    if (item.status === 'ready') {
+      stats.ready += 1
+    } else if (['failed', 'rejected', 'canceled'].includes(item.status)) {
+      stats.failed += 1
+    } else {
+      stats.active += 1
+    }
+  }
+  return stats
+})
+const latestGearsJob = computed(() => gearsJobItems.value[0] ?? null)
+const selectedGearsJobTypeLabel = computed(() => gearsJobTypeLabel(selectedGearsJobType.value))
+const selectedGearsSubmitButtonLabel = computed(() =>
+  selectedGearsJobType.value === 'seedance_video'
+    ? '提交 GEARS 视频返修/重试'
+    : `提交 GEARS ${selectedGearsJobTypeLabel.value}`
+)
+const selectedGearsApiSubmitButtonLabel = computed(() =>
+  selectedGearsJobType.value === 'seedance_video'
+    ? '提交 GEARS 视频返修/重试 API'
+    : `提交 GEARS ${selectedGearsJobTypeLabel.value} API`
 )
 const seedanceReadyVersionCount = computed(() =>
   (seedanceProduction.value?.items ?? []).reduce((count, item) =>
@@ -2212,6 +2364,7 @@ function timelineStatusLabel(
 }
 
 onMounted(async () => {
+  await loadGearsExecutionConfig()
   const patternRes = await getNarrativePatternCatalog()
   if (patternRes.ok && patternRes.data) {
     narrativePatternCatalog.value = patternRes.data
@@ -2225,6 +2378,18 @@ onMounted(async () => {
     await previewRequestedEpisode(episodeNo)
   }
 })
+
+async function loadGearsExecutionConfig() {
+  if (loadingGearsExecutionConfig.value) return
+  loadingGearsExecutionConfig.value = true
+  const res = await getGearsExecutionConfig()
+  if (res.ok && res.data) {
+    gearsExecutionConfig.value = res.data
+  } else {
+    gearsExecutionConfig.value = null
+  }
+  loadingGearsExecutionConfig.value = false
+}
 
 async function loadSeriesProject(id: string) {
   planning.value = true
@@ -2249,6 +2414,7 @@ async function loadSeriesProject(id: string) {
     seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
     seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
     seedanceReviewLedger.value = res.data.seedance_review_ledger ?? null
+    gearsJobLedger.value = res.data.gears_job_ledger ?? null
     seedanceDashboard.value = null
     seedanceVersionComparison.value = null
     showSeedanceVersionComparison.value = false
@@ -2261,6 +2427,7 @@ async function loadSeriesProject(id: string) {
     affectedEpisodeNos.value = []
   } else {
     seedanceDashboard.value = null
+    gearsJobLedger.value = null
     errorMessage.value = res.error?.message ?? '加载系列规划失败'
   }
   planning.value = false
@@ -2307,6 +2474,7 @@ async function handlePlan() {
   seedanceTitleCardRender.value = null
   seedanceFinalDelivery.value = null
   seedanceReviewLedger.value = null
+  gearsJobLedger.value = null
   seedanceVersionComparison.value = null
   showSeedanceVersionComparison.value = false
 
@@ -2757,6 +2925,7 @@ async function saveCurrentProject(options: {
     seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
     seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
     seedanceReviewLedger.value = res.data.seedance_review_ledger ?? null
+    gearsJobLedger.value = res.data.gears_job_ledger ?? null
     saveStatus.value = 'saved'
     lastSavedAt.value = res.data.project.updated_at
     saveMessage.value = options.message
@@ -2803,6 +2972,7 @@ async function handleRebuildLedger() {
     seedanceAudioMix.value = res.data.seedance_audio_mix ?? null
     seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
     seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
+    gearsJobLedger.value = res.data.gears_job_ledger ?? null
     applyPlan(res.data.plan)
     saveStatus.value = 'saved'
     saveErrorMessage.value = ''
@@ -3504,7 +3674,7 @@ async function assembleSeedanceCut(mode: 'copy' | 'transcode') {
   assemblingSeedanceCut.value = true
   errorMessage.value = ''
   const res = await assembleAiComicSeriesSeedanceCut(seriesProjectId.value, {
-    dry_run: false,
+    dry_run: true,
     overwrite: false,
     assembly_mode: mode,
     output_profile: mode === 'transcode' ? 'mp4_h264_1080p' : 'source_copy',
@@ -3512,7 +3682,7 @@ async function assembleSeedanceCut(mode: 'copy' | 'transcode') {
   if (res.ok && res.data) {
     seedanceCutAssembly.value = res.data.seedance_cut_assembly
     lastSavedAt.value = res.data.project.updated_at
-    saveMessage.value = `${mode === 'transcode' ? '转码装配' : '剪辑装配'}${res.data.status === 'assembled' ? '完成' : seedanceCutAssemblyStatusLabel(res.data.seedance_cut_assembly.status)} · ${res.data.source_shot_count} 个镜头`
+    saveMessage.value = `${mode === 'transcode' ? '转码装配计划' : '剪辑装配计划'}已生成 · ${res.data.source_shot_count} 个镜头`
     await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '装配 Seedance 剪辑成片失败'
@@ -3525,15 +3695,15 @@ async function renderSeedanceSubtitles(mode: 'sidecar' | 'burn_in') {
   renderingSeedanceSubtitles.value = true
   errorMessage.value = ''
   const res = await renderAiComicSeriesSeedanceSubtitles(seriesProjectId.value, {
-    dry_run: false,
+    dry_run: mode === 'burn_in',
     overwrite: false,
     mode,
   })
   if (res.ok && res.data) {
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render
     lastSavedAt.value = res.data.project.updated_at
-    const action = mode === 'burn_in' ? '字幕烧录' : '字幕文件生成'
-    saveMessage.value = `${action}${res.data.status === 'rendered' ? '完成' : seedanceSubtitleRenderStatusLabel(res.data.seedance_subtitle_render.status)} · ${res.data.cue_count} 条 cue`
+    const action = mode === 'burn_in' ? '字幕烧录计划' : '字幕文件生成'
+    saveMessage.value = `${action}${mode === 'burn_in' ? '已生成' : res.data.status === 'rendered' ? '完成' : seedanceSubtitleRenderStatusLabel(res.data.seedance_subtitle_render.status)} · ${res.data.cue_count} 条 cue`
     await loadSeedanceDashboard()
   } else {
     errorMessage.value = res.error?.message ?? '处理 Seedance 字幕失败'
@@ -3679,6 +3849,165 @@ async function submitSeedanceRetryExecutionPlan() {
     errorMessage.value = res.error?.message ?? '提交 Seedance 重试计划失败'
   }
   submittingSeedanceRetry.value = false
+}
+
+async function submitSeriesGearsJobs(useGearsApi = false) {
+  if (!seriesProjectId.value || submittingGearsJobs.value || submittingGearsApiJobs.value) return
+  const jobType = selectedGearsJobType.value
+  const jobTypeLabel = gearsJobTypeLabel(jobType)
+  const submitLabel = gearsJobTypeSubmitLabel(jobType)
+  if (useGearsApi) {
+    submittingGearsApiJobs.value = true
+  } else {
+    submittingGearsJobs.value = true
+  }
+  errorMessage.value = ''
+  const res = await submitAiComicSeriesGearsJobs(seriesProjectId.value, {
+    job_type: jobType,
+    use_gears_api: useGearsApi,
+    note: useGearsApi
+      ? `前端提交系列 GEARS v2 ${submitLabel}执行任务`
+      : `前端记录系列 GEARS v2 ${submitLabel}本地执行账本`,
+  })
+  if (res.ok && res.data) {
+    seedanceProduction.value = res.data.seedance_production ?? seedanceProduction.value
+    gearsJobLedger.value = res.data.gears_job_ledger ?? gearsJobLedger.value
+    lastSavedAt.value = res.data.project.updated_at
+    const adapterText = res.data.provider_adapter
+      ? ` · GEARS 接收 ${res.data.provider_adapter.accepted_count}`
+      : ''
+    saveMessage.value = `GEARS ${jobTypeLabel}已提交 · ${res.data.submitted_count} 个任务 · 跳过 ${res.data.skipped_count} · 失败 ${res.data.failed_count}${adapterText}`
+    if (res.data.failures.length) {
+      errorMessage.value = res.data.failures.map(item => {
+        return `${gearsFailureTargetLabel(item)} ${item.message}`
+      }).join('；')
+    }
+    await loadSeedanceDashboard()
+  } else {
+    errorMessage.value = res.error?.message ?? '提交 GEARS 任务失败'
+  }
+  if (useGearsApi) {
+    submittingGearsApiJobs.value = false
+  } else {
+    submittingGearsJobs.value = false
+  }
+}
+
+async function syncSeriesGearsJobs() {
+  if (!seriesProjectId.value || syncingGearsJobs.value) return
+  syncingGearsJobs.value = true
+  errorMessage.value = ''
+  const res = await syncAiComicSeriesGearsJobs(seriesProjectId.value, {
+    note: '前端同步系列 GEARS v2 全部任务状态',
+  })
+  if (res.ok && res.data) {
+    seedanceProduction.value = res.data.seedance_production ?? seedanceProduction.value
+    seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? seedanceSubtitleRender.value
+    seedanceAudioMix.value = res.data.seedance_audio_mix ?? seedanceAudioMix.value
+    seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? seedanceTitleCardRender.value
+    seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? seedanceFinalDelivery.value
+    gearsJobLedger.value = res.data.gears_job_ledger ?? gearsJobLedger.value
+    lastSavedAt.value = res.data.project.updated_at
+    const duplicateText = res.data.duplicate_count ? ` · 重复 ${res.data.duplicate_count}` : ''
+    saveMessage.value = `GEARS 状态已同步 · 轮询 ${res.data.pollable_count} · 更新 ${res.data.synced_count} · 失败 ${res.data.failed_count}${duplicateText}`
+    if (res.data.failures.length) {
+      errorMessage.value = res.data.failures.map(item => {
+        return `${gearsFailureTargetLabel(item)} ${item.message}`
+      }).join('；')
+    }
+    await loadSeedanceDashboard()
+  } else {
+    errorMessage.value = res.error?.message ?? '同步 GEARS 状态失败'
+  }
+  syncingGearsJobs.value = false
+}
+
+function normalizeGearsCallbackImportPayloads(): GearsJobCallbackRequest[] | null {
+  const raw = gearsCallbackImportText.value.trim()
+  if (!raw) {
+    errorMessage.value = '请粘贴 GEARS 回调 JSON'
+    return null
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    errorMessage.value = 'GEARS 回调 JSON 解析失败'
+    return null
+  }
+  const record = isRecord(parsed) ? parsed : null
+  const callbacks = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(record?.callbacks)
+      ? record.callbacks
+      : Array.isArray(record?.results)
+        ? record.results
+        : Array.isArray(record?.updates)
+          ? record.updates
+          : Array.isArray(record?.jobs)
+            ? record.jobs
+            : Array.isArray(record?.tasks)
+              ? record.tasks
+              : parsed
+                ? [parsed]
+                : []
+  if (!callbacks.length) {
+    errorMessage.value = 'GEARS 回调 JSON 中没有可导入记录'
+    return null
+  }
+  return callbacks.filter(isRecord) as GearsJobCallbackRequest[]
+}
+
+function fillLatestGearsCallbackSample() {
+  if (!latestGearsJob.value) return
+  gearsCallbackImportText.value = JSON.stringify({
+    jobId: latestGearsJob.value.gears_job_id,
+    sourceUnitId: latestGearsJob.value.source_unit_id,
+    jobType: latestGearsJob.value.job_type,
+    status: 'COMPLETED',
+    videoUrl: 'https://example.com/gears/series-output.mp4',
+    message: 'GEARS v2 artifact ready',
+  }, null, 2)
+}
+
+async function importSeriesGearsCallbacks() {
+  if (!seriesProjectId.value || importingGearsCallbacks.value) return
+  const callbacks = normalizeGearsCallbackImportPayloads()
+  if (!callbacks) return
+  importingGearsCallbacks.value = true
+  errorMessage.value = ''
+  let updatedCount = 0
+  let failedCount = 0
+  const failureMessages: string[] = []
+  for (const [index, callback] of callbacks.entries()) {
+    const res = await importAiComicSeriesGearsCallback(seriesProjectId.value, callback)
+    if (res.ok && res.data) {
+      updatedCount += res.data.updated_count
+      failedCount += res.data.failed_count
+      seedanceProduction.value = res.data.seedance_production ?? seedanceProduction.value
+      seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? seedanceSubtitleRender.value
+      seedanceAudioMix.value = res.data.seedance_audio_mix ?? seedanceAudioMix.value
+      seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? seedanceTitleCardRender.value
+      seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? seedanceFinalDelivery.value
+      gearsJobLedger.value = res.data.gears_job_ledger ?? gearsJobLedger.value
+      lastSavedAt.value = res.data.project.updated_at
+      if (res.data.failures.length) {
+        failureMessages.push(...res.data.failures.map(item => {
+          return `${gearsFailureTargetLabel(item)} ${item.message}`
+        }))
+      }
+    } else {
+      failedCount += 1
+      failureMessages.push(`#${index + 1} ${res.error?.message ?? '导入失败'}`)
+    }
+  }
+  gearsCallbackImportText.value = ''
+  saveMessage.value = `GEARS 回调已导入 · 更新 ${updatedCount} · 失败 ${failedCount}`
+  if (failureMessages.length) {
+    errorMessage.value = failureMessages.join('；')
+  }
+  await loadSeedanceDashboard()
+  importingGearsCallbacks.value = false
 }
 
 async function recoverSeedanceProviderTimeouts() {
@@ -4111,6 +4440,54 @@ function seedanceProductionStatusLabel(status: AiComicSeedanceProductionStatus):
     skipped: '跳过',
   }
   return map[status]
+}
+
+function gearsJobStatusLabel(status: GearsJobLedgerItem['status']): string {
+  const map: Record<GearsJobLedgerItem['status'], string> = {
+    queued: '排队中',
+    submitted: '已提交',
+    processing: '处理中',
+    ready: '已完成',
+    failed: '失败',
+    rejected: '已拒绝',
+    canceled: '已取消',
+  }
+  return map[status]
+}
+
+function gearsJobProgressLabel(item: GearsJobLedgerItem): string {
+  return `${Math.round((item.progress_percent ?? 0) * 100) / 100}%`
+}
+
+function gearsJobPollFailureLabel(item: GearsJobLedgerItem): string {
+  return [item.last_poll_failure_category, item.last_poll_error_code].filter(Boolean).join(' / ')
+}
+
+function gearsFailureTargetLabel(item: GearsJobSubmitFailure): string {
+  return [
+    item.path,
+    item.source_unit_id ?? `#${item.index + 1}`,
+    item.gears_job_id,
+  ].filter(Boolean).join(' / ')
+}
+
+function gearsJobTypeLabel(type: GearsJobLedgerItem['job_type']): string {
+  const map: Record<GearsJobLedgerItem['job_type'], string> = {
+    storyboard_image: '故事板图',
+    character_image: '人物图',
+    scene_image: '场景图',
+    seedance_video: '视频返修/重试',
+    subtitle_render: '字幕渲染',
+    audio_mix: '混音',
+    title_card_render: '片头片尾',
+    final_assemble: '最终装配',
+  }
+  return map[type]
+}
+
+function gearsJobTypeSubmitLabel(type: GearsJobLedgerItem['job_type']): string {
+  if (type === 'seedance_video') return '视频返修/重试'
+  return gearsJobTypeLabel(type)
 }
 
 function seedanceThumbnailStatusLabel(status: string): string {

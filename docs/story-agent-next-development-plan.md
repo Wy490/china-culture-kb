@@ -4,17 +4,78 @@
 > 分支：`codex-ai-comic-series-longform`
 > 用途：给新对话快速接续 Story Agent、Production Board、GEARS / Seedance 交付链开发。
 
+## 0. 2026-06-19 边界重定
+
+新增权威计划：`docs/gears-execution-integration-plan.md`。
+
+本项目重新定位为**内容与生产指挥层**，不再继续扩展真实图片、视频和后期执行器。图片、视频、字幕烧录、混音、片头片尾和最终装配等实际媒体产出统一交给 `Wy490/gears-v2`。
+
+当前项目继续负责：
+
+- 文化知识、故事、分镜、`gears_segments`、GEARS delivery 和 Seedance prompt。
+- Production Board、素材 slot、Shot Ledger、GEARS Job Ledger、质量报告、审片返修和 dashboard。
+- 向 GEARS 提交 job，接收 GEARS callback，并把 artifact / failure / review 状态写回项目。
+
+暂停继续推进：
+
+- 真实 Seedance / 外部视频平台 SDK 深接。
+- 真实图片生成、字幕 burn-in、混音、片头片尾渲染和 final assemble。
+- 独立媒体存储、转码、CDN 和 artifact 管理。
+
 ## 1. 当前进度
 
 | 模块 | 当前判断 | 说明 |
 |---|---:|---|
 | Story Agent MVP | 约 75% | 生成、质量报告、项目版本、质量修复、前端查看已经跑通。 |
-| Production Board / GEARS / Seedance | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成。 |
+| Production Board / Delivery Contract | 约 96% | 生产板、监督、修复、导出、素材库、Shot Ledger、回传、重试、provider 队列元数据、超时恢复、外部回传 schema、轮询入口、失败分类、provider 错误码传递、通用 submit/poll adapter、平台式响应兼容、platform payload 映射、HMAC 签名、provider 队列状态总览、人工重试策略和重试执行自动化首版已完成；后续改为 GEARS job 合同。 |
+| GEARS Execution Integration | 约 83% | 已建立 `GEARS_API` 配置/合同、统一 GEARS Job Ledger、单故事/系列 submit、callback 归一化、job status sync、系列图片/后期 job payload、后期 artifact 回写、响应层账本回显、系列工作台多 job 类型提交、status sync 部分成功合同、平台失败状态归一化、callback API 鉴权、多 artifact 回传合同、worker 对接示例、嵌套 status poll、嵌套 callback envelope、批量 callback envelope、批量坏项 failure 可见性、callback 幂等写回、callback/status sync 可观测重复计数、failure job 定位字段、progress 归一化写回、poll 失败诊断写回、乱序 callback 终态保护与审计字段、平台时间戳归一化、批量坏项 path 定位、终态冲突审计、`canceled` 终态失败上下文、平台状态别名失败归一化、artifact URL 别名归一化、source id 别名合同化、submit unit 幂等对账字段、submit/callback 幂等 key 贯通、仅凭幂等键回调匹配、幂等键生命周期审计、系列重试 payload 上下文、submit 意图字段和 Markdown 对账摘要；还缺 GEARS v2 真实端到端联调、更多失败类型扩展和大项目压测。 |
 | MCP Story Agent 闭环 | 约 75-80% | 项目读取、蓝图、质量校验、GEARS/Seedance 只读交付、repair dry-run、受控版本写入、安全 auto_apply 首版已完成。 |
-| AI 漫剧系列生产链 | 约 78% | 系列规划、生产账本、回片、剪辑包、缩略图、精修计划、SRT 字幕包、字幕 worker、音频计划、混音 dry-run、混音真实 runner hardening、片头片尾计划/render dry-run、final delivery dry-run、final manifest、审片返修 ledger、审片驱动重试包/strict final guard、重试执行计划、本地重试提交、retry submit adapter、系列 provider 超时恢复、外部剪辑平台包和生产总览 dashboard 首版已有；下一步是真实片头片尾渲染和真实最终装配。 |
-| 可商用制作中台 | 约 50% | 主链路可用；还缺 UX 降噪、真实外部 provider、平台专用错误码映射扩展、真实混音执行/最终成片、审片返修联动深化和稳定压测。 |
+| AI 漫剧系列指挥层 | 约 82% | 系列规划、生产账本、回片、剪辑包、缩略图计划、精修计划、SRT/音频/片头片尾/final manifest 合同、审片返修 ledger、重试执行计划、外部剪辑平台包、生产总览 dashboard、GEARS 后期账本回显和图片/视频/后期 job 提交入口首版已有；系列视频重试主路径已明确迁到 GEARS submit。真实媒体执行迁出到 GEARS。 |
+| 可商用制作中台 | 约 55% | 指挥层可用；还缺 GEARS execution integration、UX 降噪、审片返修联动深化和大系列稳定压测。 |
 
 ## 2. 本轮完成内容
+
+### 2026-06-20 GEARS P0 Execution Integration
+
+- 新增 GEARS execution config / contract：`GET /api/system/gears-execution-config` 和 `GET /api/system/gears-execution-contract` 只返回安全配置状态与合同元数据。
+- 新增统一 GEARS Job Ledger 类型、schema 和服务层，支持单故事项目与 AI 漫剧系列项目记录 job、artifact、失败分类、错误码与 callback events。
+- 新增单故事与系列 GEARS submit：本地 mock ledger 和 `use_gears_api=true` HTTP 提交共用同一合同。
+- 新增单故事与系列 GEARS callback 归一化：兼容平台式 `jobId/taskId/status/outputUrl/artifacts` 字段，写回 GEARS Job Ledger 与 Shot Ledger / 系列生产账本。
+- 新增 GEARS job status sync：按 ledger 轮询 `GET /gears/jobs/{gears_job_id}`，再复用 callback 归一化写回账本。
+- 前端项目详情页和 AI 漫剧系列工作台已接入“提交 GEARS / 提交 GEARS API / 同步 GEARS 状态 / 导入 GEARS 回调”；系列工作台可选择提交视频、分镜图、人物图、场景图、字幕、混音、片头片尾和最终装配 job。
+- 系列后期 GEARS job payload 映射已接入：`subtitle_render`、`audio_mix`、`title_card_render`、`final_assemble` 不再走泛化占位 payload，而是复用字幕包、音频计划、片头片尾计划和最终装配依赖合同。
+- 系列图片 GEARS job payload 映射已接入：`storyboard_image`、`character_image`、`scene_image` 复用分集 GEARS delivery、人物资产和场景资产，并用 episode 维度隔离 source id。
+- 系列后期 GEARS artifact callback 已接入专项账本写回：字幕、混音、片头片尾和最终交付任务 ready 后会同步更新对应 `seedance_*` ledger。
+- 系列 GEARS callback / status sync 响应已统一带回后期专项账本；AI 漫剧系列工作台在导入回调或同步状态后会直接刷新字幕、混音、片头片尾和最终交付状态，且同步按钮改为同步全部活跃 GEARS job。
+- 单故事项目与 AI 漫剧系列的 GEARS status sync 已补部分成功测试：同一批 job 中部分 GEARS status HTTP 失败时，成功 job 仍写回 ledger / 生产账本，失败项进入结构化 `failures`。
+- 单故事项目与 AI 漫剧系列的 GEARS status sync 已补平台失败状态测试：GEARS 正常返回 `FAILED` / `errorCode` / `failureReason` 时，会写回 GEARS Job Ledger 与对应生产账本，并保留失败分类、错误码和失败原因。
+- 单故事项目与 AI 漫剧系列的 GEARS callback API 已补路由层鉴权与多产物 payload 测试：配置 `GEARS_CALLBACK_SECRET` 时要求 `Authorization: Bearer` 或 `X-GEARS-Callback-Secret`，并接受 `final_assemble` 视频 + manifest 等多 artifact 回传合同。
+- `GET /api/system/gears-execution-contract` 已补 callback 鉴权元数据、平台状态字段别名和 callback request examples，外部 GEARS worker 可直接对照 `auth_env`、`auth_headers`、`accepted_status_fields` 与 `final_assemble` 多 artifact 示例实现回传 smoke。
+- GEARS status polling 已补嵌套平台响应兼容：支持从 `data.job`、`data.task`、`result`、`payload` 等容器中匹配 job，并从 `output.files`、`outputs`、`media`、`assets` 等容器抽取 artifact；poll 合同同步暴露 accepted response shapes 和 artifact fields。
+- GEARS callback API / service 已补嵌套 envelope 兼容：`data.task.output.files[]`、`data.job.outputs[]` 等真实 worker 回传形态可通过 schema 校验，并归一化写回单故事 Shot Ledger / 系列生产账本；callback 合同同步暴露 accepted envelope shapes 和嵌套 artifact fields。
+- GEARS callback API / service 已补批量 envelope 兼容：`callbacks[]`、`events[]`、`data.tasks[]` 等批量 webhook 会逐条复用单条归一化与账本写回，单故事和 AI 漫剧系列均可一次接收多条 GEARS 回传；callback 合同同步标注批量 shapes。
+- GEARS 批量 callback 已补坏项可见性：批量 webhook 中缺少 `gears_job_id` / `source_unit_id` 的 item 不再被静默跳过，会进入结构化 `failures`，便于真实 worker 对接时定位坏 payload。
+- GEARS callback 写回已补幂等事件合并：重复 `event_id` / `callback_id` 或无 id 但状态与消息相同的回调不会重复追加 callback event，也不会重复生成 Seedance 视频版本；callback 合同同步暴露 idempotency fields。
+- GEARS callback 响应已补可观测幂等计数：单条和批量 webhook 都返回 `received_count`、`updated_count`、`failed_count`、`duplicate_count`，真实 worker 可区分“已处理成功”和“重复送达”。
+- GEARS status sync 响应已补重复计数：轮询已完成或重复状态时会汇总 callback 写回的 `duplicate_count`，单故事项目和 AI 漫剧系列路径均已覆盖。
+- GEARS failure 响应已补 job 定位字段：status poll、callback match 和 sync import 失败项会尽量返回 `gears_job_id`，前端错误摘要也会显示 source unit / job id，便于真实 worker 对账。
+- GEARS progress 已补合同与账本写回：callback / status sync 支持 `progress`、`progress_percent`、`progressPercent`、`percent`、`percentage`、`progress_ratio` 等字段，统一归一化为 `progress_percent` 并在单故事与系列工作台最新 job 摘要中回显。
+- GEARS status poll 失败诊断已写回 Job Ledger：HTTP/网络轮询失败会记录 `last_poll_at`、`last_poll_error`、`last_poll_failure_category`、`last_poll_error_code`，但不把执行状态误改为 failed；下一次成功 callback/status sync 会清掉临时诊断。
+- GEARS 乱序 callback 已补终态保护与审计字段：job 进入 `ready` / `failed` / `rejected` / `canceled` 后，晚到的 `processing` / `submitted` 等非终态事件不会把账本倒退，事件仍保留在 `callback_events`，并标注 `applied_status` 与 `status_regression_ignored`。
+- GEARS callback 已补平台时间戳归一化：支持 `eventTime`、`timestamp`、`completedAt` 等字段，统一写入 `callback_events[].provider_event_at` 和 job `completed_at`，便于真实 worker 对账、乱序排查和重放审计。
+- GEARS 批量 callback 失败项已补 payload path：`callbacks[]`、`events[]`、`data.tasks[]` 等批量 envelope 中的坏项会返回 `failures[].path`，例如 `callbacks[2]` / `data.tasks[2]`，便于外部 worker 快速定位坏 payload。
+- GEARS callback 已补终态冲突审计：`ready` / `failed` / `rejected` / `canceled` 之间发生后到回调覆盖时，事件会记录 `previous_status`、`applied_status` 和 `terminal_status_changed`，便于真实 worker 重放与人工对账。
+- GEARS callback 已补 `canceled` 终态失败上下文：GEARS 主动取消 / 人工取消 / 平台取消的回调会保留 `failure_reason`、`error_code` 和 `failure_category`，并同步写入单故事 Shot Ledger / 系列生产账本。
+- GEARS status/callback 已补平台状态别名失败归一化：`TIMED_OUT`、`POLICY_BLOCKED`、`NO_CREDIT`、`INVALID_PAYLOAD` 等状态字段本身可触发终态和失败分类，不再必须依赖额外 `failureReason`。
+- GEARS artifact URL 已补生产平台别名归一化：callback/status sync 支持 `manifestUrl`、`subtitleUrl`、`srtUrl`、`vttUrl`、`audioUrl`、`imageUrl`、`thumbnailUrl`、`posterUrl` 等字段，并为 manifest / subtitle / audio / image 等 artifact 推断 `kind` / `role`，`final_assemble` 可不依赖 `artifacts[]` 或 URL 后缀写回 manifest。
+- GEARS source id 已补平台别名正式合同：callback schema / contract 支持 `externalId`、`customId`、`productionId` 等字段作为 `source_unit_id` 映射，真实 worker 即使使用平台外部 ID 或重映射 job id，也可回写到单故事 GEARS Job Ledger / Shot Ledger。
+- GEARS submit unit 已补 worker 对账字段：HTTP 提交给 GEARS 的每个 unit 会带 `external_id` / `custom_id` / `idempotency_key` / `callback_url` / `metadata`，便于 GEARS v2 worker 幂等建单、按外部 ID 回传并保留 Story Agent 项目/故事/镜头来源。
+- GEARS callback 幂等已接入 submit idempotency key：worker 可回传 `idempotencyKey` / `idempotency_key` 作为 callback event id，重复回调会进入 `duplicate_count`，不重复追加 `callback_events` 或生成镜头版本。
+- GEARS Job Ledger 已持久化 submit idempotency key，并支持 worker 仅凭 `idempotencyKey` / `idempotency_key` 回调匹配单故事与 AI 漫剧系列 job；旧 ledger normalize 时会按 `job_type:source_unit_id` 补齐默认幂等键。
+- GEARS idempotency-key 生命周期回调审计已加固：`idempotencyKey` 作为 job 匹配 / 幂等锚点时，不会吞掉状态、进度或消息变化；只有相同状态、进度和消息的重复 payload 才计入 `duplicate_count`，`callback_events` 会标注 `event_id_source`。
+- GEARS 系列重试 payload 已补生产上下文：`seedance_video` retry unit 会带 `retry_count`、`retry_reason`、旧 provider job、旧视频 URL、失败原因、审片意见、执行计划时间戳和 request payload，便于 GEARS v2 worker 区分首次生成、失败重试和审片返修。
+- GEARS 系列 submit 响应已补 `job_type`、`job_type_label`、`submit_intent` 和更完整 Markdown 对账摘要；GEARS execution contract 示例已切换到系列 `seedance_video` 返修/重试 payload，系列工作台按钮文案也改为“GEARS 视频返修/重试”，旧 Seedance 重试入口标为兼容路径。
+- 验证已通过：server lint/build、client lint/build、`project-service.test.ts`、`outline-service.test.ts`、`api.test.ts`。
 
 ### MCP / Agent 工具
 
@@ -214,33 +275,26 @@ git diff --stat
 
 ## 5. 下一阶段优先级
 
-### P0：Seedance provider 平台专用 adapter
+### P0：GEARS Execution Adapter
 
-目标：
+首轮已完成：
 
-- 外部 provider 回传 schema 已完成首版。
-- provider 轮询入口已完成首版，可返回待查询 job / queue，也可应用 provider status snapshots。
-- provider 失败分类、错误码传递和通用错误码别名映射已完成首版，且已补平台常见错误码别名。
-- 通用 submit/poll adapter 已完成首版，可通过 `SEEDANCE_PROVIDER_SUBMIT_ENDPOINT` / `SEEDANCE_PROVIDER_POLL_ENDPOINT` 连接外部 worker，并已兼容 `data.tasks/taskId/taskStatus/outputUrl` 等平台式响应。
-- adapter 已支持 `story_agent` / `platform` 两种 payload mode；platform mode 可把镜头提交映射为平台常见 `prompt/duration/external_id/callback_url/metadata`，把查询映射为 `task_id/task_ids`，并支持 HMAC 签名和字段 env 改名。
-- submit adapter 已能同时给外部 worker 提供项目级相对 path 与可选绝对 callback/poll URL；若 worker 不在同主机或同反向代理内，先配置 `SEEDANCE_PROVIDER_CALLBACK_BASE_URL`。
-- adapter 已支持 batch 与单任务 request mode，可先用 `per_shot` / `per_target` 对接平台单任务 HTTP，再逐步补官方字段映射。
-- poll adapter 已支持 `SEEDANCE_PROVIDER_POLL_HTTP_METHOD=GET` 与 endpoint URL 模板字段（如 `{provider_job_id}` / `{shot_id}` / `{provider_queue_id}`），可直接对接平台单任务查询 URL。
-- 队列状态总览已完成首版，可直接读取 provider/queue 健康度、超时和失败注意项。
-- 人工重试策略已完成只读首版，可直接输出可重提/需先处理的候选镜头清单。
-- 重试执行自动化已完成首版，可把可重提候选一键重新提交到 provider 队列。
-- 下一步支持具体 Seedance / 外部 provider 的平台 SDK/HTTP SDK 封装、官方错误码扩展和真实凭证 smoke。
-- 将真实回传结果接入现有超时恢复、失败分类和重试包链路。
+- 新增 `GEARS_API_BASE_URL`、`GEARS_API_TOKEN`、`GEARS_CALLBACK_SECRET` 配置合同。
+- 新增 `GET /api/system/gears-execution-config` 与 `GET /api/system/gears-execution-contract`。
+- 新增 GEARS Job Ledger，统一记录图片、视频、字幕、混音、片头片尾和 final assemble job。
+- 新增提交 GEARS job 的服务层 adapter，复用现有 Seedance prompt、GEARS delivery、retry execution plan 和素材 slot。
+- 扩展 GEARS callback：支持 artifact URL、状态、失败分类、错误码、质量分、review note。
+- 新增 GEARS status sync：从 ledger 轮询 `GET /gears/jobs/{gears_job_id}`，复用 callback 归一化写回账本。
+- 旧 `SEEDANCE_PROVIDER_*` 保留为兼容层，新开发优先走 `GEARS_*`。
 
-建议先做最小切片：
+下一步最小切片：
 
 ```text
-SeedanceProviderAdapter
-  -> run real credential submit smoke with platform payload/signature
-  -> run real credential query/callback smoke
-  -> map remaining official platform error codes
-  -> feed poll-provider provider_results
-  -> tests
+GEARS v2 real endpoint smoke
+  -> submit seedance_video job
+  -> poll status / receive callback
+  -> verify Shot Ledger / series production ledger
+  -> extend payload mapping for non-video job types
 ```
 
 ### P0：MCP 更深模型修复链路
@@ -260,17 +314,21 @@ SeedanceProviderAdapter
 - 筛选区增加更明显重置入口。
 - 项目工作台默认只保留高频主路径，高级制作动作放折叠区。
 
-### P1：AI 漫剧真实执行增强与 final manifest
+### P1：AI 漫剧后期合同迁移到 GEARS
 
-下一块建议做：
+原计划中的真实 ffmpeg 片头片尾、真实 final assemble、真实混音媒体烟测暂停在当前仓库继续深挖，改为迁移到 GEARS execution job：
 
 ```text
-seedance-title-cards/render real ffmpeg and visual template regression
-  -> seedance-final/assemble real ffmpeg and precise title-card timeline
+title_card_render job
+  -> final_assemble job
+  -> audio_mix job
+  -> GEARS callback writes ledger / dashboard
 ```
+
+当前仓库继续保留计划包、dry-run、manifest、依赖检查和审片返修，不做真实媒体产出。
 
 ## 6. 新对话开场指令
 
 ```text
-请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/story-agent-next-development-plan.md，再阅读 docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。优先确认工作区状态，然后继续 P0：Seedance provider 平台 SDK/HTTP submit/query 实现、MCP 更深模型修复链路、故事管理 UX 降噪；AI 漫剧后期下一块做片头片尾真实 ffmpeg / 视觉模板回归、真实最终装配或真实 provider 轮询 smoke。默认界面保持简单，只保留高频主路径。
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/gears-execution-integration-plan.md、docs/story-agent-next-development-plan.md、docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short --branch 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。新的方向是：china-culture-kb 只做内容与生产指挥层，图片/视频/后期实产全部交给 GEARS v2。优先实现 P0：GEARS execution config/contract、GEARS job ledger、提交 GEARS job、GEARS callback 归一化；暂停继续做真实 Seedance SDK、真实 ffmpeg 片头片尾、真实 final assemble。默认界面保持简单，只保留高频主路径。
 ```

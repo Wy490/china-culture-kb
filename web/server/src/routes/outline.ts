@@ -32,6 +32,9 @@ import {
   AiComicSeriesProjectIdParamSchema,
   AiComicSeriesProjectSaveRequestSchema,
   AiComicSeriesPlanRequestSchema,
+  GearsJobCallbackRequestSchema,
+  GearsJobStatusSyncRequestSchema,
+  GearsJobSubmitRequestSchema,
   StoryOutlineAnalyzeRequestSchema,
 } from '@shared/schemas.js';
 import { analyzeOutline } from '../services/outline-service.js';
@@ -65,6 +68,7 @@ import {
   generateAiComicSeriesPlan,
   getAiComicSeriesProject,
   getAiComicSeriesSeedanceProductionDashboard,
+  importAiComicSeriesGearsCallbacks,
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
   recoverAiComicSeriesSeedanceProviderTimeouts,
@@ -74,7 +78,9 @@ import {
   resolveAiComicSeriesSeedanceReview,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
+  submitAiComicSeriesGearsJobs,
   submitAiComicSeriesSeedanceRetryExecutionPlan,
+  syncAiComicSeriesGearsJobStatuses,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
@@ -304,6 +310,71 @@ outlineRouter.post(
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await submitAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId, req.body);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/gears-jobs/submit — submit retry shots to GEARS
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/gears-jobs/submit',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(GearsJobSubmitRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await submitAiComicSeriesGearsJobs(seriesProjectId, req.body);
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.VALIDATION_ERROR
+            ? 400
+            : result.error?.code === ErrorCodes.INTERNAL_ERROR
+              ? 502
+              : 404,
+      ).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/gears-jobs/sync — poll GEARS status and write ledgers
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/gears-jobs/sync',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(GearsJobStatusSyncRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await syncAiComicSeriesGearsJobStatuses(seriesProjectId, req.body);
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.VALIDATION_ERROR
+            ? 400
+            : result.error?.code === ErrorCodes.INTERNAL_ERROR
+              ? 502
+              : 404,
+      ).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/gears-callback — accept GEARS job callbacks
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/gears-callback',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateGearsCallbackSecret,
+  validateBody(GearsJobCallbackRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await importAiComicSeriesGearsCallbacks(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.VALIDATION_ERROR ? 400 : 404).json(result);
     } catch (err) {
       next(err);
     }
@@ -654,8 +725,33 @@ function validateSeedanceCallbackSecret(req: Request, res: Response, next: NextF
   ));
 }
 
+function validateGearsCallbackSecret(req: Request, res: Response, next: NextFunction): void {
+  const expectedSecret = process.env.GEARS_CALLBACK_SECRET?.trim();
+  if (!expectedSecret) {
+    next();
+    return;
+  }
+  const providedSecret = gearsCallbackSecretFromRequest(req);
+  if (providedSecret && safeEqualText(providedSecret, expectedSecret)) {
+    next();
+    return;
+  }
+  res.status(401).json(fail(
+    ErrorCodes.VALIDATION_ERROR,
+    'GEARS callback secret is missing or invalid',
+  ));
+}
+
 function seedanceCallbackSecretFromRequest(req: Request): string | undefined {
   const explicit = req.header('x-seedance-callback-secret')?.trim();
+  if (explicit) return explicit;
+  const authorization = req.header('authorization')?.trim();
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim();
+}
+
+function gearsCallbackSecretFromRequest(req: Request): string | undefined {
+  const explicit = req.header('x-gears-callback-secret')?.trim();
   if (explicit) return explicit;
   const authorization = req.header('authorization')?.trim();
   const match = authorization?.match(/^Bearer\s+(.+)$/i);

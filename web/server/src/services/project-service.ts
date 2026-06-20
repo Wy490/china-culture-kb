@@ -22,6 +22,16 @@ import type {
   StoryProjectBatchDeleteResult,
   StoryProjectDeleteResult,
   StoryProjectRetainRecentResult,
+  GearsExecutionJobType,
+  GearsJobCallbackRequest,
+  GearsJobCallbackResult,
+  GearsJobLedger,
+  GearsJobLedgerItem,
+  GearsJobStatusSyncRequest,
+  GearsJobStatusSyncResult,
+  GearsJobSubmitFailure,
+  GearsJobSubmitRequest,
+  GearsJobSubmitResult,
   ProjectSupplementTaskListItem,
   SeedanceAssetBatchImportRequest,
   SeedanceAssetBatchImportResult,
@@ -107,6 +117,25 @@ import {
   syncSeedanceShotLedgerWithShots,
 } from './production-board-service.js';
 import { repairStoryWithProductionBoard } from './production-board-repair-service.js';
+import {
+  buildGearsLedgerItem,
+  buildLocalGearsJobId,
+  gearsProjectCallbackPath,
+  gearsProjectCallbackUrl,
+  gearsJobStatusIsTerminal,
+  gearsCallbackEventIsDuplicate,
+  gearsCallbackBatchPath,
+  extractGearsJobCallbackRequests,
+  markGearsLedgerPollFailures,
+  mergeGearsCallbackEvents,
+  mergeGearsLedgerItems,
+  normalizeGearsJobCallback,
+  normalizeGearsJobLedger,
+  pollGearsExecutionJobStatuses,
+  resolveGearsLedgerStatusAfterCallback,
+  submitGearsExecutionJobs,
+  type GearsExecutionSubmitUnit,
+} from './gears-execution-service.js';
 
 const ALL_VIDEO_TYPES: VideoType[] = [
   'character_story', 'historical_drama', 'legend_story',
@@ -2493,6 +2522,10 @@ async function persistProjectVersion(
     gears_video_status: updatedStory.gears_video?.status,
     gears_video_url: updatedStory.gears_video?.video_url,
     gears_video_thumbnail_url: updatedStory.gears_video?.thumbnail_url,
+    seedance_asset_library: project.seedance_asset_library,
+    seedance_shot_ledger: project.seedance_shot_ledger,
+    seedance_provider_queue: project.seedance_provider_queue,
+    gears_job_ledger: project.gears_job_ledger,
   };
 
   await writeJsonFile(projectVersionPath(project.project_id, versionId), snapshot);
@@ -4159,6 +4192,707 @@ export async function submitProjectSeedanceProviderRetryPlan(
     failed_count: submitRes.data.failed_count,
     submitted_shots: submitRes.data.submitted_shots,
     failures: submitRes.data.failures,
+  });
+}
+
+function gearsSeedanceStatus(status: GearsJobLedgerItem['status']): SeedanceShotProductionStatus {
+  if (status === 'ready') return 'ready';
+  if (status === 'failed' || status === 'rejected' || status === 'canceled') return 'failed';
+  if (status === 'processing') return 'processing';
+  return 'submitted';
+}
+
+function gearsFailureToSeedanceCategory(
+  category: GearsJobLedgerItem['failure_category'],
+): SeedanceProviderFailureCategory | undefined {
+  if (!category) return undefined;
+  if (category === 'payload_invalid') return 'prompt_invalid';
+  return category;
+}
+
+function projectGearsExistingJob(
+  ledger: GearsJobLedger | undefined,
+  jobType: GearsExecutionJobType,
+  sourceUnitId: string,
+): GearsJobLedgerItem | undefined {
+  return normalizeGearsJobLedger(ledger).items.find(item =>
+    item.job_type === jobType && item.source_unit_id === sourceUnitId
+  );
+}
+
+function projectGearsJobIsActive(item: GearsJobLedgerItem | undefined): boolean {
+  if (!item) return false;
+  return !['failed', 'rejected', 'canceled'].includes(item.status);
+}
+
+function compactPayloadSummary(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().slice(0, 160);
+}
+
+function buildProjectGearsUnits(input: {
+  projectId: string;
+  story: StoryGenerateResult;
+  board: StoryProductionBoard;
+  jobType: GearsExecutionJobType;
+  request: GearsJobSubmitRequest;
+}): {
+  units: GearsExecutionSubmitUnit[];
+  skippedCount: number;
+  failures: GearsJobSubmitFailure[];
+} {
+  const requestedIds = new Set([
+    ...(input.request.source_unit_ids ?? []),
+    ...(input.request.source_unit_id ? [input.request.source_unit_id] : []),
+  ].filter(Boolean));
+  const shouldInclude = (sourceUnitId: string) => !requestedIds.size || requestedIds.has(sourceUnitId);
+  const failures: GearsJobSubmitFailure[] = [];
+  const units: GearsExecutionSubmitUnit[] = [];
+  let skippedCount = 0;
+  const addUnit = (unit: Omit<GearsExecutionSubmitUnit, 'local_gears_job_id'>) => {
+    if (!shouldInclude(unit.source_unit_id)) return;
+    const local_gears_job_id = buildLocalGearsJobId(input.jobType, unit.source_unit_id, units.length);
+    units.push({ ...unit, local_gears_job_id });
+  };
+
+  if (input.jobType === 'seedance_video') {
+    input.board.shot_units.forEach(shot => addUnit({
+      source_unit_id: shot.shot_id,
+      source_unit_label: `Scene ${shot.source_scene_id} Seedance shot`,
+      source_scene_id: shot.source_scene_id,
+      payload_summary: compactPayloadSummary(`${shot.location} ${shot.script_text}`),
+      payload: {
+        shot_id: shot.shot_id,
+        source_scene_id: shot.source_scene_id,
+        duration_sec: shot.seedance_duration_sec,
+        characters: shot.characters,
+        location: shot.location,
+        script_text: shot.script_text,
+        visual_prompt: shot.visual_prompt,
+        camera_suggestion: shot.camera_suggestion,
+        continuity_notes: shot.continuity_notes,
+        cultural_boundary: shot.cultural_boundary,
+        seedance_prompt: shot.seedance_prompt,
+        asset_slots: shot.seedance_asset_slots,
+        material_validation: shot.seedance_material_validation,
+        negative_constraints: shot.negative_constraints,
+      },
+    }));
+  } else if (input.jobType === 'storyboard_image') {
+    const delivery = ensureGearsDeliveryPackage(input.story);
+    delivery.units.forEach(unit => addUnit({
+      source_unit_id: unit.unit_id,
+      source_unit_label: unit.scene_name,
+      source_scene_id: unit.source_scene_id,
+      payload_summary: compactPayloadSummary(`${unit.scene_name} ${unit.script_text}`),
+      payload: {
+        unit,
+        character_assets: delivery.character_assets.filter(character => unit.character_names.includes(character.name)),
+        scene_assets: delivery.scene_assets,
+      },
+    }));
+  } else if (input.jobType === 'character_image') {
+    const delivery = ensureGearsDeliveryPackage(input.story);
+    delivery.character_assets.forEach(character => addUnit({
+      source_unit_id: `character:${character.name}`,
+      source_unit_label: character.name,
+      payload_summary: compactPayloadSummary(`${character.name} ${character.appearance_features} ${character.clothing}`),
+      payload: { character },
+    }));
+  } else if (input.jobType === 'scene_image') {
+    const delivery = ensureGearsDeliveryPackage(input.story);
+    delivery.scene_assets.forEach(scene => addUnit({
+      source_unit_id: `scene:${scene.name}`,
+      source_unit_label: scene.name,
+      payload_summary: compactPayloadSummary(`${scene.name} ${scene.description}`),
+      payload: { scene },
+    }));
+  } else {
+    const sourceUnitIds = requestedIds.size ? [...requestedIds] : [`${input.projectId}:${input.jobType}`];
+    sourceUnitIds.forEach(sourceUnitId => addUnit({
+      source_unit_id: sourceUnitId,
+      source_unit_label: input.jobType,
+      payload_summary: input.request.note ?? input.jobType,
+      payload: input.request.payload ?? {},
+    }));
+  }
+
+  if (requestedIds.size) {
+    const availableIds = new Set(units.map(unit => unit.source_unit_id));
+    [...requestedIds].forEach((sourceUnitId, index) => {
+      if (availableIds.has(sourceUnitId)) return;
+      failures.push({
+        index,
+        source_unit_id: sourceUnitId,
+        message: `GEARS source unit "${sourceUnitId}" not found for job_type "${input.jobType}"`,
+      });
+    });
+  }
+
+  return { units, skippedCount, failures };
+}
+
+function filterProjectGearsSubmitUnits(input: {
+  ledger?: GearsJobLedger;
+  jobType: GearsExecutionJobType;
+  units: GearsExecutionSubmitUnit[];
+  overwriteExisting: boolean;
+}): { units: GearsExecutionSubmitUnit[]; skippedCount: number } {
+  let skippedCount = 0;
+  const units = input.units.filter(unit => {
+    const existing = projectGearsExistingJob(input.ledger, input.jobType, unit.source_unit_id);
+    if (!projectGearsJobIsActive(existing) || input.overwriteExisting) return true;
+    skippedCount += 1;
+    return false;
+  });
+  return { units, skippedCount };
+}
+
+function applyGearsJobsToSeedanceLedger(input: {
+  project: StoryProjectMeta;
+  board: StoryProductionBoard;
+  acceptedItems: GearsJobLedgerItem[];
+  updatedAt: string;
+  note?: string;
+}): StoryProjectMeta['seedance_shot_ledger'] {
+  const currentLedger = syncSeedanceShotLedgerWithShots({
+    ledger: input.project.seedance_shot_ledger,
+    shotUnits: input.board.shot_units,
+    generatedAt: input.board.generated_at,
+  });
+  const acceptedByShotId = new Map(input.acceptedItems
+    .filter(item => item.job_type === 'seedance_video')
+    .map(item => [item.source_unit_id, item]));
+  if (!acceptedByShotId.size) return input.project.seedance_shot_ledger;
+  const shotById = new Map(input.board.shot_units.map(shot => [shot.shot_id, shot]));
+  const items = currentLedger.items.map(item => {
+    const gearsJob = acceptedByShotId.get(item.shot_id);
+    const shot = shotById.get(item.shot_id);
+    if (!gearsJob || !shot) return item;
+    const status = gearsSeedanceStatus(gearsJob.status);
+    const videoUrl = gearsJob.artifact_urls[0] ?? item.video_url;
+    const request: SeedanceShotStatusUpdateRequest = {
+      shot_id: item.shot_id,
+      status,
+      provider: 'gears',
+      provider_job_id: gearsJob.gears_job_id,
+      video_url: status === 'ready' ? videoUrl : undefined,
+      failure_reason: gearsJob.failure_reason,
+      failure_category: gearsFailureToSeedanceCategory(gearsJob.failure_category),
+      provider_error_code: gearsJob.error_code,
+      note: input.note ?? `GEARS job ${gearsJob.status}: ${gearsJob.gears_job_id}`,
+    };
+    const versions = appendSeedanceShotVideoVersion({
+      existing: item,
+      request,
+      updatedAt: input.updatedAt,
+    });
+    return {
+      ...item,
+      source_scene_id: shot.source_scene_id,
+      status,
+      submitted_at: status === 'submitted' || status === 'processing'
+        ? item.submitted_at ?? input.updatedAt
+        : item.submitted_at,
+      completed_at: status === 'ready' || status === 'failed' ? input.updatedAt : item.completed_at,
+      updated_at: input.updatedAt,
+      provider: 'gears',
+      provider_job_id: gearsJob.gears_job_id,
+      video_url: status === 'ready' ? videoUrl : item.video_url,
+      failure_reason: status === 'failed' ? gearsJob.failure_reason : undefined,
+      failure_category: status === 'failed' ? gearsFailureToSeedanceCategory(gearsJob.failure_category) : undefined,
+      provider_error_code: status === 'failed' ? gearsJob.error_code : undefined,
+      notes: uniqueSeedanceNotes([
+        ...item.notes,
+        input.note ?? `GEARS job ${gearsJob.status}: ${gearsJob.gears_job_id}`,
+      ]),
+      versions,
+      selected_version_id: selectedSeedanceShotVersionId(versions, item.selected_version_id),
+    };
+  });
+  return {
+    schema_version: 'seedance-shot-ledger/v1',
+    updated_at: input.updatedAt,
+    items,
+  };
+}
+
+export async function submitProjectGearsJobs(
+  projectId: string,
+  request: GearsJobSubmitRequest = {},
+): Promise<ApiResponse<GearsJobSubmitResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const jobType = request.job_type ?? 'seedance_video';
+  const submittedAt = new Date().toISOString();
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const built = buildProjectGearsUnits({
+    projectId,
+    story: current_story,
+    board,
+    jobType,
+    request,
+  });
+  const filtered = filterProjectGearsSubmitUnits({
+    ledger: project.gears_job_ledger,
+    jobType,
+    units: built.units,
+    overwriteExisting: Boolean(request.overwrite_existing),
+  });
+  const failures = [...built.failures];
+  if (!filtered.units.length) {
+    return success({
+      project,
+      gears_job_ledger: normalizeGearsJobLedger(project.gears_job_ledger),
+      seedance_shot_ledger: project.seedance_shot_ledger,
+      provider_adapter: {
+        endpoint_configured: false,
+        requested_count: 0,
+        accepted_count: 0,
+        rejected_count: 0,
+        status: request.use_gears_api ? 'submitted' : 'mocked',
+      },
+      submitted_count: 0,
+      skipped_count: built.skippedCount + filtered.skippedCount,
+      failed_count: failures.length,
+      submitted_jobs: [],
+      failures,
+    });
+  }
+
+  const adapterRes = await submitGearsExecutionJobs({
+    sourceProjectId: project.project_id,
+    sourceStoryId: current_story.storyId,
+    title: current_story.title,
+    jobType,
+    callbackPath: gearsProjectCallbackPath(project.project_id),
+    callbackUrl: request.callback_url ?? gearsProjectCallbackUrl(project.project_id),
+    note: request.note,
+    useGearsApi: Boolean(request.use_gears_api),
+    payload: request.payload,
+    units: filtered.units,
+  });
+  if (!adapterRes.ok || !adapterRes.data) {
+    return fail(
+      adapterRes.error?.code === ErrorCodes.VALIDATION_ERROR
+        ? ErrorCodes.VALIDATION_ERROR
+        : ErrorCodes.INTERNAL_ERROR,
+      adapterRes.error?.message ?? 'GEARS submit failed',
+      adapterRes.error?.details,
+    );
+  }
+
+  failures.push(...adapterRes.data.failures);
+  const unitById = new Map(filtered.units.map(unit => [unit.source_unit_id, unit]));
+  const submittedJobs = adapterRes.data.accepted
+    .map(accepted => {
+      const unit = unitById.get(accepted.source_unit_id);
+      if (!unit) return undefined;
+      return buildGearsLedgerItem({
+        sourceProjectId: project.project_id,
+        sourceStoryId: current_story.storyId,
+        jobType,
+        unit,
+        accepted,
+        submittedAt,
+        note: request.note,
+      });
+    })
+    .filter((item): item is GearsJobLedgerItem => Boolean(item));
+  const gearsJobLedger = mergeGearsLedgerItems({
+    existing: project.gears_job_ledger,
+    items: submittedJobs,
+    updatedAt: submittedAt,
+  });
+  const seedanceShotLedger = jobType === 'seedance_video'
+    ? applyGearsJobsToSeedanceLedger({
+        project,
+        board,
+        acceptedItems: submittedJobs,
+        updatedAt: submittedAt,
+        note: request.note,
+      })
+    : project.seedance_shot_ledger;
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: submittedJobs.length ? submittedAt : project.updated_at,
+    gears_job_ledger: gearsJobLedger,
+    seedance_shot_ledger: seedanceShotLedger,
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  return success({
+    project: updatedProject,
+    gears_job_ledger: updatedProject.gears_job_ledger,
+    seedance_shot_ledger: updatedProject.seedance_shot_ledger,
+    provider_adapter: adapterRes.data.summary,
+    submitted_count: submittedJobs.length,
+    skipped_count: built.skippedCount + filtered.skippedCount,
+    failed_count: failures.length,
+    submitted_jobs: submittedJobs,
+    failures,
+  });
+}
+
+function findGearsLedgerMatch(input: {
+  ledger: GearsJobLedger;
+  callback: ReturnType<typeof normalizeGearsJobCallback>;
+}): GearsJobLedgerItem | string {
+  const byJobId = input.callback.gears_job_id
+    ? input.ledger.items.find(item => item.gears_job_id === input.callback.gears_job_id)
+    : undefined;
+  if (byJobId) return byJobId;
+  const idempotencyKey = input.callback.idempotency_key;
+  if (idempotencyKey) {
+    const matches = input.ledger.items.filter(item =>
+      item.idempotency_key === idempotencyKey
+      && (!input.callback.job_type || item.job_type === input.callback.job_type)
+    );
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) {
+      return `GEARS callback idempotency_key "${idempotencyKey}" matched multiple jobs; include job_type or gears_job_id`;
+    }
+  }
+  const sourceUnitId = input.callback.source_unit_id;
+  if (!sourceUnitId) {
+    return input.callback.gears_job_id
+      ? `GEARS job "${input.callback.gears_job_id}" was not found in project ledger`
+      : idempotencyKey
+        ? `GEARS idempotency_key "${idempotencyKey}" was not found in project ledger`
+        : 'GEARS callback requires a known gears_job_id, source_unit_id, or idempotency_key';
+  }
+  const matches = input.ledger.items.filter(item =>
+    item.source_unit_id === sourceUnitId
+    && (!input.callback.job_type || item.job_type === input.callback.job_type)
+  );
+  if (matches.length === 1) return matches[0];
+  if (matches.length > 1) {
+    return `GEARS callback source_unit_id "${sourceUnitId}" matched multiple jobs; include job_type or gears_job_id`;
+  }
+  return `GEARS source_unit_id "${sourceUnitId}" was not found in project ledger`;
+}
+
+function projectGearsSyncItems(input: {
+  ledger: GearsJobLedger;
+  request: GearsJobStatusSyncRequest;
+}): {
+  items: GearsJobLedgerItem[];
+  skippedCount: number;
+} {
+  const requestedIds = new Set([
+    ...(input.request.source_unit_ids ?? []),
+    ...(input.request.source_unit_id ? [input.request.source_unit_id] : []),
+  ].filter(Boolean));
+  const limit = input.request.limit ?? 50;
+  const matched = input.ledger.items.filter(item => {
+    if (input.request.job_type && item.job_type !== input.request.job_type) return false;
+    if (requestedIds.size && !requestedIds.has(item.source_unit_id) && !requestedIds.has(item.gears_job_id)) {
+      return false;
+    }
+    if (!input.request.include_completed && gearsJobStatusIsTerminal(item.status)) return false;
+    return true;
+  });
+  return {
+    items: matched.slice(0, limit),
+    skippedCount: Math.max(0, matched.length - limit),
+  };
+}
+
+function updateGearsLedgerItemFromCallback(input: {
+  item: GearsJobLedgerItem;
+  callback: ReturnType<typeof normalizeGearsJobCallback>;
+  receivedAt: string;
+}): GearsJobLedgerItem {
+  const status = resolveGearsLedgerStatusAfterCallback({
+    currentStatus: input.item.status,
+    callbackStatus: input.callback.status,
+  });
+  const ignoredNonTerminalAfterTerminal = status !== input.callback.status;
+  const terminalStatusChanged = gearsJobStatusIsTerminal(input.item.status)
+    && gearsJobStatusIsTerminal(input.callback.status)
+    && input.item.status !== input.callback.status
+    && status === input.callback.status;
+  const artifacts = ignoredNonTerminalAfterTerminal
+    ? input.item.artifacts
+    : input.callback.artifacts ?? input.item.artifacts;
+  const artifactUrls = !ignoredNonTerminalAfterTerminal && input.callback.artifact_urls.length
+    ? input.callback.artifact_urls
+    : input.item.artifact_urls;
+  const completed = gearsJobStatusIsTerminal(status);
+  const progressPercent = ignoredNonTerminalAfterTerminal
+    ? input.item.progress_percent
+    : input.callback.progress_percent ?? (status === 'ready' ? 100 : input.item.progress_percent);
+  const completedAt = completed
+    ? (input.item.status === status && input.item.completed_at
+      ? input.item.completed_at
+      : input.callback.completed_at ?? input.callback.provider_event_at ?? input.receivedAt)
+    : input.item.completed_at;
+  return {
+    ...input.item,
+    gears_job_id: input.callback.gears_job_id ?? input.item.gears_job_id,
+    job_type: input.callback.job_type ?? input.item.job_type,
+    source_project_id: input.callback.source_project_id ?? input.item.source_project_id,
+    source_story_id: input.callback.source_story_id ?? input.item.source_story_id,
+    series_project_id: input.callback.series_project_id ?? input.item.series_project_id,
+    status,
+    progress_percent: progressPercent,
+    artifact_urls: artifactUrls,
+    artifacts,
+    failure_category: ignoredNonTerminalAfterTerminal ? input.item.failure_category : input.callback.failure_category,
+    error_code: ignoredNonTerminalAfterTerminal ? input.item.error_code : input.callback.error_code,
+    failure_reason: ignoredNonTerminalAfterTerminal ? input.item.failure_reason : input.callback.failure_reason,
+    last_poll_at: undefined,
+    last_poll_error: undefined,
+    last_poll_failure_category: undefined,
+    last_poll_error_code: undefined,
+    updated_at: input.receivedAt,
+    completed_at: completedAt,
+    callback_events: mergeGearsCallbackEvents({
+      existing: input.item.callback_events,
+      callback: input.callback,
+      receivedAt: input.receivedAt,
+      previousStatus: input.item.status,
+      appliedStatus: status,
+      statusRegressionIgnored: ignoredNonTerminalAfterTerminal,
+      terminalStatusChanged,
+    }),
+  };
+}
+
+export async function importProjectGearsCallback(
+  projectId: string,
+  request: GearsJobCallbackRequest,
+): Promise<ApiResponse<GearsJobCallbackResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+  const { project, current_story } = detail.data;
+  const ledger = normalizeGearsJobLedger(project.gears_job_ledger);
+  const callback = normalizeGearsJobCallback(request);
+  const match = findGearsLedgerMatch({ ledger, callback });
+  if (typeof match === 'string') {
+    return success({
+      project,
+      gears_job_ledger: ledger,
+      seedance_shot_ledger: project.seedance_shot_ledger,
+      received_count: 1,
+      updated_count: 0,
+      failed_count: 1,
+      duplicate_count: 0,
+      failures: [{
+        index: 0,
+        path: gearsCallbackBatchPath(request),
+        source_unit_id: callback.source_unit_id,
+        gears_job_id: callback.gears_job_id,
+        message: match,
+      }],
+      gears_job_id: callback.gears_job_id,
+      source_unit_id: callback.source_unit_id,
+      status: callback.status,
+    });
+  }
+
+  const receivedAt = new Date().toISOString();
+  const duplicateCount = gearsCallbackEventIsDuplicate({
+    existing: match.callback_events,
+    callback,
+  }) ? 1 : 0;
+  const updatedItem = updateGearsLedgerItemFromCallback({
+    item: match,
+    callback,
+    receivedAt,
+  });
+  const gearsJobLedger: GearsJobLedger = {
+    schema_version: 'gears-job-ledger/v1',
+    updated_at: receivedAt,
+    items: ledger.items.map(item =>
+      item.ledger_id === match.ledger_id ? updatedItem : item
+    ),
+  };
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const seedanceShotLedger = updatedItem.job_type === 'seedance_video'
+    ? applyGearsJobsToSeedanceLedger({
+        project,
+        board,
+        acceptedItems: [updatedItem],
+        updatedAt: receivedAt,
+        note: callback.note ?? callback.message ?? `GEARS callback: ${updatedItem.status}`,
+      })
+    : project.seedance_shot_ledger;
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: receivedAt,
+    gears_job_ledger: gearsJobLedger,
+    seedance_shot_ledger: seedanceShotLedger,
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  return success({
+    project: updatedProject,
+    gears_job_ledger: gearsJobLedger,
+    seedance_shot_ledger: seedanceShotLedger,
+    received_count: 1,
+    updated_count: 1,
+    failed_count: 0,
+    duplicate_count: duplicateCount,
+    failures: [],
+    gears_job_id: updatedItem.gears_job_id,
+    source_unit_id: updatedItem.source_unit_id,
+    status: updatedItem.status,
+  });
+}
+
+export async function importProjectGearsCallbacks(
+  projectId: string,
+  request: GearsJobCallbackRequest,
+): Promise<ApiResponse<GearsJobCallbackResult>> {
+  const callbacks = extractGearsJobCallbackRequests(request);
+  if (callbacks.length <= 1) return importProjectGearsCallback(projectId, callbacks[0] ?? request);
+
+  let latest: GearsJobCallbackResult | undefined;
+  const failures: GearsJobSubmitFailure[] = [];
+  let receivedCount = 0;
+  let updatedCount = 0;
+  let failedCount = 0;
+  let duplicateCount = 0;
+  for (const [index, callback] of callbacks.entries()) {
+    const result = await importProjectGearsCallback(projectId, callback);
+    if (!result.ok || !result.data) return result;
+    latest = result.data;
+    receivedCount += result.data.received_count;
+    updatedCount += result.data.updated_count;
+    failedCount += result.data.failed_count;
+    duplicateCount += result.data.duplicate_count;
+    failures.push(...result.data.failures.map(failure => ({
+      ...failure,
+      index,
+      path: failure.path ?? gearsCallbackBatchPath(callback),
+    })));
+  }
+  if (!latest) return importProjectGearsCallback(projectId, request);
+  return success({
+    ...latest,
+    received_count: receivedCount,
+    updated_count: updatedCount,
+    failed_count: failedCount,
+    duplicate_count: duplicateCount,
+    failures,
+  });
+}
+
+export async function syncProjectGearsJobStatuses(
+  projectId: string,
+  request: GearsJobStatusSyncRequest = {},
+): Promise<ApiResponse<GearsJobStatusSyncResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+  const { project } = detail.data;
+  const ledger = normalizeGearsJobLedger(project.gears_job_ledger);
+  const selection = projectGearsSyncItems({ ledger, request });
+  if (!selection.items.length) {
+    return success({
+      project,
+      gears_job_ledger: ledger,
+      seedance_shot_ledger: project.seedance_shot_ledger,
+      pollable_count: 0,
+      synced_count: 0,
+      failed_count: 0,
+      duplicate_count: 0,
+      skipped_count: selection.skippedCount,
+      synced_jobs: [],
+      failures: [],
+    });
+  }
+
+  const pollRes = await pollGearsExecutionJobStatuses({
+    items: selection.items,
+    note: request.note ?? 'GEARS status sync',
+  });
+  if (!pollRes.ok || !pollRes.data) {
+    return fail(
+      pollRes.error?.code === ErrorCodes.VALIDATION_ERROR
+        ? ErrorCodes.VALIDATION_ERROR
+        : ErrorCodes.INTERNAL_ERROR,
+      pollRes.error?.message ?? 'GEARS status sync failed',
+      pollRes.error?.details,
+    );
+  }
+
+  const failures = [...pollRes.data.failures];
+  let currentProject = project;
+  let currentLedger = ledger;
+  let currentSeedanceLedger = project.seedance_shot_ledger;
+  const syncedJobs: GearsJobLedgerItem[] = [];
+  let duplicateCount = 0;
+  for (const [index, polled] of pollRes.data.callbacks.entries()) {
+    const importRes = await importProjectGearsCallback(projectId, polled.callback);
+    if (!importRes.ok || !importRes.data) {
+      failures.push({
+        index,
+        source_unit_id: polled.item.source_unit_id,
+        gears_job_id: polled.item.gears_job_id,
+        message: importRes.error?.message ?? 'GEARS status callback import failed',
+      });
+      continue;
+    }
+    currentProject = importRes.data.project;
+    currentLedger = normalizeGearsJobLedger(importRes.data.gears_job_ledger);
+    currentSeedanceLedger = importRes.data.seedance_shot_ledger;
+    const synced = currentLedger.items.find(item =>
+      item.gears_job_id === polled.item.gears_job_id
+      || item.source_unit_id === polled.item.source_unit_id
+    );
+    if (synced) syncedJobs.push(synced);
+    failures.push(...importRes.data.failures);
+    duplicateCount += importRes.data.duplicate_count;
+  }
+
+  if (pollRes.data.failures.length) {
+    const updatedAt = new Date().toISOString();
+    currentLedger = markGearsLedgerPollFailures({
+      ledger: currentLedger,
+      failures: pollRes.data.failures,
+      updatedAt,
+    });
+    currentProject = {
+      ...currentProject,
+      updated_at: updatedAt,
+      gears_job_ledger: currentLedger,
+    };
+    await writeJsonFile(projectMetaPath(projectId), currentProject);
+  }
+
+  return success({
+    project: currentProject,
+    gears_job_ledger: currentLedger,
+    seedance_shot_ledger: currentSeedanceLedger,
+    provider_adapter: pollRes.data.summary,
+    pollable_count: selection.items.length,
+    synced_count: syncedJobs.length,
+    failed_count: failures.length,
+    duplicate_count: duplicateCount,
+    skipped_count: selection.skippedCount,
+    synced_jobs: syncedJobs,
+    failures,
   });
 }
 

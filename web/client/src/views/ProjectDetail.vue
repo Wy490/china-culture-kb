@@ -150,6 +150,43 @@
             <span>跳过 {{ seedanceShotStats.skipped }}</span>
           </div>
           <div class="project-detail-page__seedance-provider-config">
+            <span v-if="loadingGearsExecutionConfig">GEARS 配置读取中</span>
+            <span v-else-if="gearsExecutionConfigError">GEARS 配置读取失败</span>
+            <template v-else-if="gearsExecutionConfig">
+              <span :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionConfig.ready_for_submit }">
+                GEARS API {{ gearsExecutionConfig.ready_for_submit ? '已配置' : '未配置' }}
+              </span>
+              <span :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionConfig.callback_secret_configured }">
+                callback secret {{ gearsExecutionConfig.callback_secret_configured ? '已配置' : '未配置' }}
+              </span>
+              <span :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionConfig.callback_base_configured }">
+                callback base {{ gearsExecutionConfig.callback_base_configured ? '已配置' : '未配置' }}
+              </span>
+              <span
+                v-for="item in gearsExecutionConfig.missing_submit_requirements"
+                :key="`gears-${item}`"
+              >
+                缺 {{ item }}
+              </span>
+            </template>
+          </div>
+          <div class="project-detail-page__seedance-provider-config">
+            <span>GEARS jobs {{ gearsJobStats.total }}</span>
+            <span>活跃 {{ gearsJobStats.active }}</span>
+            <span>完成 {{ gearsJobStats.ready }}</span>
+            <span>失败 {{ gearsJobStats.failed }}</span>
+            <span>视频 {{ gearsJobStats.seedance_video }}</span>
+            <span v-if="latestGearsJob">
+              最新 {{ gearsJobTypeLabel(latestGearsJob.job_type) }} · {{ gearsJobStatusLabel(latestGearsJob.status) }}
+            </span>
+            <span v-if="latestGearsJob?.progress_percent !== undefined">
+              进度 {{ gearsJobProgressLabel(latestGearsJob) }}
+            </span>
+            <span v-if="latestGearsJob?.last_poll_error">
+              最近轮询失败 {{ gearsJobPollFailureLabel(latestGearsJob) }}
+            </span>
+          </div>
+          <div class="project-detail-page__seedance-provider-config">
             <span v-if="loadingSeedanceProviderAdapterConfig">adapter 配置读取中</span>
             <span v-else-if="seedanceProviderAdapterConfigError">
               adapter 配置读取失败
@@ -289,7 +326,30 @@
               rows="5"
               placeholder="JSON callbacks"
             />
+            <textarea
+              v-if="gearsJobStats.total"
+              v-model="gearsCallbackImportText"
+              class="project-detail-page__seedance-callback-input"
+              rows="4"
+              placeholder="GEARS callback JSON"
+            />
             <div class="project-detail-page__seedance-ledger-action-row">
+              <button
+                v-if="gearsJobStats.total"
+                class="project-detail-page__repair-task-btn"
+                :disabled="!latestGearsJob"
+                @click="fillLatestGearsCallbackSample"
+              >
+                填入 GEARS 示例
+              </button>
+              <button
+                v-if="gearsJobStats.total"
+                class="project-detail-page__repair-task-btn"
+                :disabled="importingGearsCallbacks"
+                @click="importGearsCallbacks"
+              >
+                {{ importingGearsCallbacks ? '导入中…' : '导入 GEARS 回调' }}
+              </button>
               <button
                 class="project-detail-page__repair-task-btn"
                 :disabled="importingSeedanceCallbacks"
@@ -306,17 +366,38 @@
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
+                :disabled="submittingGearsJobs || submittingGearsApiJobs || submittingSeedanceProvider || submittingSeedanceProviderAdapter"
+                @click="submitGearsJobs(false)"
+              >
+                {{ submittingGearsJobs ? '提交中…' : '提交 GEARS' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="submittingGearsJobs || submittingGearsApiJobs || !gearsExecutionConfig?.ready_for_submit"
+                @click="submitGearsJobs(true)"
+              >
+                {{ submittingGearsApiJobs ? '提交中…' : '提交 GEARS API' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="syncingGearsJobs || !gearsJobStats.active || !gearsExecutionConfig?.ready_for_submit"
+                @click="syncGearsJobs"
+              >
+                {{ syncingGearsJobs ? '同步中…' : '同步 GEARS 状态' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
                 :disabled="submittingSeedanceProvider || submittingSeedanceProviderAdapter"
                 @click="submitSeedanceProviderJobs(false)"
               >
-                {{ submittingSeedanceProvider ? '提交中…' : '提交到 Seedance' }}
+                {{ submittingSeedanceProvider ? '提交中…' : '兼容提交 Seedance' }}
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
                 :disabled="submittingSeedanceProvider || submittingSeedanceProviderAdapter || !seedanceProviderAdapterConfig?.ready_for_submit_adapter"
                 @click="submitSeedanceProviderJobs(true)"
               >
-                {{ submittingSeedanceProviderAdapter ? '提交中…' : '提交 adapter' }}
+                {{ submittingSeedanceProviderAdapter ? '提交中…' : '兼容提交 adapter' }}
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
@@ -984,6 +1065,7 @@ import {
   getProjectSeedanceProviderRetryPlan,
   getProject,
   getProjectProductionBoard,
+  importProjectGearsCallback,
   importProjectSeedanceAssetBatch,
   importProjectSeedanceShotCallbacks,
   pollProjectSeedanceProviderQueue,
@@ -994,20 +1076,26 @@ import {
   regenerateProjectScene,
   reuseProjectSeedanceAsset,
   selectProjectSeedanceShotVersion,
+  submitProjectGearsJobs,
   submitProjectSeedanceProviderRetryPlan,
   submitProjectSeedanceShotsToProvider,
+  syncProjectGearsJobs,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
   updateProjectSeedanceShotStatuses,
   updateProjectSupplementTask,
   uploadProjectSeedanceAssetFile,
 } from '@/api/projects'
-import { getModelProfiles, getSeedanceProviderAdapterConfig } from '@/api/system'
+import { getGearsExecutionConfig, getModelProfiles, getSeedanceProviderAdapterConfig } from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
 import GearsWebhookStatus from '@/components/GearsWebhookStatus.vue'
 import GearsVideoStatus from '@/components/GearsVideoStatus.vue'
 import type {
   AIModelProfile,
+  GearsJobCallbackRequest,
+  GearsExecutionConfigInfo,
+  GearsJobLedgerItem,
+  GearsJobSubmitFailure,
   KnowledgeSupplementTaskStatus,
   SeedanceProviderAdapterConfigInfo,
   SeedanceAssetBatchImportRequest,
@@ -1081,11 +1169,19 @@ const seedanceShotVideoInputs = ref<Record<string, string>>({})
 const updatingSeedanceShotId = ref('')
 const seedanceCallbackImportText = ref('')
 const importingSeedanceCallbacks = ref(false)
+const gearsCallbackImportText = ref('')
+const importingGearsCallbacks = ref(false)
 const exportingSeedanceRetryPackage = ref(false)
 const batchingSeedanceShots = ref(false)
 const autoSelectingSeedanceShots = ref(false)
 const submittingSeedanceProvider = ref(false)
 const submittingSeedanceProviderAdapter = ref(false)
+const submittingGearsJobs = ref(false)
+const submittingGearsApiJobs = ref(false)
+const syncingGearsJobs = ref(false)
+const loadingGearsExecutionConfig = ref(false)
+const gearsExecutionConfig = ref<GearsExecutionConfigInfo | null>(null)
+const gearsExecutionConfigError = ref('')
 const pollingSeedanceProvider = ref(false)
 const recoveringSeedanceProvider = ref(false)
 const loadingSeedanceProviderAdapterConfig = ref(false)
@@ -1285,6 +1381,35 @@ const seedanceShotStats = computed(() => {
   }
   return stats
 })
+
+const gearsJobItems = computed<GearsJobLedgerItem[]>(() => {
+  return [...(detail.value?.project.gears_job_ledger?.items ?? [])]
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+})
+
+const gearsJobStats = computed(() => {
+  const stats = {
+    total: 0,
+    active: 0,
+    ready: 0,
+    failed: 0,
+    seedance_video: 0,
+  }
+  for (const item of gearsJobItems.value) {
+    stats.total += 1
+    if (item.job_type === 'seedance_video') stats.seedance_video += 1
+    if (item.status === 'ready') {
+      stats.ready += 1
+    } else if (['failed', 'rejected', 'canceled'].includes(item.status)) {
+      stats.failed += 1
+    } else {
+      stats.active += 1
+    }
+  }
+  return stats
+})
+
+const latestGearsJob = computed(() => gearsJobItems.value[0] ?? null)
 
 const latestSeedanceProviderQueueBatch = computed(() => {
   const queue = detail.value?.project.seedance_provider_queue
@@ -1488,6 +1613,49 @@ function seedanceShotStatusLabel(status: SeedanceShotProductionStatus): string {
   return map[status]
 }
 
+function gearsJobStatusLabel(status: GearsJobLedgerItem['status']): string {
+  const map: Record<GearsJobLedgerItem['status'], string> = {
+    queued: '排队中',
+    submitted: '已提交',
+    processing: '处理中',
+    ready: '已完成',
+    failed: '失败',
+    rejected: '已拒绝',
+    canceled: '已取消',
+  }
+  return map[status]
+}
+
+function gearsJobProgressLabel(item: GearsJobLedgerItem): string {
+  return `${Math.round((item.progress_percent ?? 0) * 100) / 100}%`
+}
+
+function gearsJobPollFailureLabel(item: GearsJobLedgerItem): string {
+  return [item.last_poll_failure_category, item.last_poll_error_code].filter(Boolean).join(' / ')
+}
+
+function gearsFailureTargetLabel(item: GearsJobSubmitFailure): string {
+  return [
+    item.path,
+    item.source_unit_id ?? `#${item.index + 1}`,
+    item.gears_job_id,
+  ].filter(Boolean).join(' / ')
+}
+
+function gearsJobTypeLabel(type: GearsJobLedgerItem['job_type']): string {
+  const map: Record<GearsJobLedgerItem['job_type'], string> = {
+    storyboard_image: '故事板图',
+    character_image: '人物图',
+    scene_image: '场景图',
+    seedance_video: '视频镜头',
+    subtitle_render: '字幕渲染',
+    audio_mix: '混音',
+    title_card_render: '片头片尾',
+    final_assemble: '最终装配',
+  }
+  return map[type]
+}
+
 function seedanceFailureCategoryLabel(category?: string): string {
   const map: Record<string, string> = {
     asset_missing: '素材缺失',
@@ -1645,6 +1813,20 @@ async function loadSeedanceProviderAdapterConfig() {
     seedanceProviderAdapterConfigError.value = res.error?.message ?? '读取 Seedance provider adapter 配置失败'
   }
   loadingSeedanceProviderAdapterConfig.value = false
+}
+
+async function loadGearsExecutionConfig() {
+  if (loadingGearsExecutionConfig.value) return
+  loadingGearsExecutionConfig.value = true
+  gearsExecutionConfigError.value = ''
+  const res = await getGearsExecutionConfig()
+  if (res.ok && res.data) {
+    gearsExecutionConfig.value = res.data
+  } else {
+    gearsExecutionConfig.value = null
+    gearsExecutionConfigError.value = res.error?.message ?? '读取 GEARS 执行配置失败'
+  }
+  loadingGearsExecutionConfig.value = false
 }
 
 async function loadSeedanceProviderRetryPlan(showMessage = false) {
@@ -1842,6 +2024,96 @@ async function markSeedanceShot(shot: StoryProductionBoardShotUnit, status: Seed
   updatingSeedanceShotId.value = ''
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
+
+function normalizeGearsCallbackImportPayloads(): GearsJobCallbackRequest[] | null {
+  const raw = gearsCallbackImportText.value.trim()
+  if (!raw) {
+    error.value = '请粘贴 GEARS 回调 JSON'
+    return null
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    error.value = 'GEARS 回调 JSON 解析失败'
+    return null
+  }
+  const record = isRecord(parsed) ? parsed : null
+  const callbacks = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(record?.callbacks)
+      ? record.callbacks
+      : Array.isArray(record?.results)
+        ? record.results
+        : Array.isArray(record?.updates)
+          ? record.updates
+          : Array.isArray(record?.jobs)
+            ? record.jobs
+            : Array.isArray(record?.tasks)
+              ? record.tasks
+              : parsed
+                ? [parsed]
+                : []
+  if (!callbacks.length) {
+    error.value = 'GEARS 回调 JSON 中没有可导入记录'
+    return null
+  }
+  return callbacks.filter(isRecord) as GearsJobCallbackRequest[]
+}
+
+function fillLatestGearsCallbackSample() {
+  if (!latestGearsJob.value) return
+  gearsCallbackImportText.value = JSON.stringify({
+    jobId: latestGearsJob.value.gears_job_id,
+    sourceUnitId: latestGearsJob.value.source_unit_id,
+    jobType: latestGearsJob.value.job_type,
+    status: 'COMPLETED',
+    videoUrl: 'https://example.com/gears/output.mp4',
+    message: 'GEARS v2 artifact ready',
+  }, null, 2)
+}
+
+async function importGearsCallbacks() {
+  if (!detail.value || importingGearsCallbacks.value) return
+  const callbacks = normalizeGearsCallbackImportPayloads()
+  if (!callbacks) return
+  importingGearsCallbacks.value = true
+  error.value = ''
+  successMessage.value = ''
+  let updatedCount = 0
+  let failedCount = 0
+  const failureMessages: string[] = []
+  for (const [index, callback] of callbacks.entries()) {
+    const res = await importProjectGearsCallback(detail.value.project.project_id, callback)
+    if (res.ok && res.data) {
+      updatedCount += res.data.updated_count
+      failedCount += res.data.failed_count
+      detail.value = {
+        ...detail.value,
+        project: res.data.project,
+      }
+      if (res.data.failures.length) {
+        failureMessages.push(...res.data.failures.map(item => {
+          return `${gearsFailureTargetLabel(item)} ${item.message}`
+        }))
+      }
+    } else {
+      failedCount += 1
+      failureMessages.push(`#${index + 1} ${res.error?.message ?? '导入失败'}`)
+    }
+  }
+  gearsCallbackImportText.value = ''
+  await loadProductionBoard()
+  successMessage.value = `GEARS 回调已导入：更新 ${updatedCount} 条，失败 ${failedCount} 条`
+  if (failureMessages.length) {
+    error.value = failureMessages.join('；')
+  }
+  importingGearsCallbacks.value = false
+}
+
 function normalizeSeedanceCallbackImportPayload(): SeedanceShotCallbackImportRequest | null {
   const raw = seedanceCallbackImportText.value.trim()
   if (!raw) {
@@ -1973,6 +2245,73 @@ async function submitSeedanceProviderJobs(useProviderAdapter = false) {
   } else {
     submittingSeedanceProvider.value = false
   }
+}
+
+async function submitGearsJobs(useGearsApi = false) {
+  if (!detail.value || submittingGearsJobs.value || submittingGearsApiJobs.value) return
+  if (useGearsApi) {
+    submittingGearsApiJobs.value = true
+  } else {
+    submittingGearsJobs.value = true
+  }
+  error.value = ''
+  successMessage.value = ''
+  const res = await submitProjectGearsJobs(detail.value.project.project_id, {
+    job_type: 'seedance_video',
+    use_gears_api: useGearsApi,
+    note: useGearsApi
+      ? '前端提交 GEARS v2 执行任务'
+      : '前端记录 GEARS v2 本地执行账本',
+  })
+  if (res.ok && res.data) {
+    detail.value = {
+      ...detail.value,
+      project: res.data.project,
+    }
+    await loadProductionBoard()
+    const adapterText = res.data.provider_adapter
+      ? `，GEARS 接收 ${res.data.provider_adapter.accepted_count} 条`
+      : ''
+    successMessage.value = `GEARS 提交完成：提交 ${res.data.submitted_count} 条，跳过 ${res.data.skipped_count} 条，失败 ${res.data.failed_count} 条${adapterText}`
+    if (res.data.failures.length) {
+      error.value = res.data.failures.map(item => `${gearsFailureTargetLabel(item)} ${item.message}`).join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? '提交 GEARS 任务失败'
+  }
+  if (useGearsApi) {
+    submittingGearsApiJobs.value = false
+  } else {
+    submittingGearsJobs.value = false
+  }
+}
+
+async function syncGearsJobs() {
+  if (!detail.value || syncingGearsJobs.value) return
+  syncingGearsJobs.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await syncProjectGearsJobs(detail.value.project.project_id, {
+    job_type: 'seedance_video',
+    note: '前端同步 GEARS v2 任务状态',
+  })
+  if (res.ok && res.data) {
+    detail.value = {
+      ...detail.value,
+      project: res.data.project,
+    }
+    await loadProductionBoard()
+    const duplicateText = res.data.duplicate_count ? `，重复 ${res.data.duplicate_count} 条` : ''
+    successMessage.value = `GEARS 状态同步完成：轮询 ${res.data.pollable_count} 条，更新 ${res.data.synced_count} 条，失败 ${res.data.failed_count} 条${duplicateText}`
+    if (res.data.failures.length) {
+      error.value = res.data.failures.map(item => {
+        return `${gearsFailureTargetLabel(item)} ${item.message}`
+      }).join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? '同步 GEARS 状态失败'
+  }
+  syncingGearsJobs.value = false
 }
 
 async function pollSeedanceProviderJobs() {
@@ -2488,6 +2827,7 @@ async function deleteCurrentProject() {
 }
 
 onMounted(() => {
+  loadGearsExecutionConfig()
   loadSeedanceProviderAdapterConfig()
 
   getModelProfiles().then((res) => {

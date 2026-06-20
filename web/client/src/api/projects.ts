@@ -1,6 +1,12 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPostForm } from './client'
 import type {
   KnowledgeSupplementTaskUpdateRequest,
+  GearsJobCallbackRequest,
+  GearsJobCallbackResult,
+  GearsJobStatusSyncRequest,
+  GearsJobStatusSyncResult,
+  GearsJobSubmitRequest,
+  GearsJobSubmitResult,
   StoryProjectBatchDeleteResult,
   ProjectSupplementTaskListItem,
   StoryProjectDeleteResult,
@@ -140,6 +146,18 @@ export function autoSelectProjectSeedanceShotVersions(projectId: string, body: S
 
 export function submitProjectSeedanceShotsToProvider(projectId: string, body: SeedanceShotProviderSubmitRequest = {}) {
   return apiPost<SeedanceShotProviderSubmitResult>(`/projects/${projectId}/production-board/seedance-shots/submit-provider`, body)
+}
+
+export function submitProjectGearsJobs(projectId: string, body: GearsJobSubmitRequest = {}) {
+  return apiPost<GearsJobSubmitResult>(`/projects/${projectId}/production-board/gears-jobs/submit`, body)
+}
+
+export function syncProjectGearsJobs(projectId: string, body: GearsJobStatusSyncRequest = {}) {
+  return apiPost<GearsJobStatusSyncResult>(`/projects/${projectId}/production-board/gears-jobs/sync`, body)
+}
+
+export function importProjectGearsCallback(projectId: string, body: GearsJobCallbackRequest) {
+  return apiPost<GearsJobCallbackResult>(`/projects/${projectId}/gears-callback`, body)
 }
 
 export function recoverProjectSeedanceProviderQueue(projectId: string, body: SeedanceShotProviderRecoveryRequest = {}) {

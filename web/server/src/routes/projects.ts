@@ -5,6 +5,9 @@ import { validateBody, validateParams } from '../middleware/validate.js';
 import { fail, ErrorCodes } from '@shared/types.js';
 import {
   KnowledgeSupplementTaskUpdateRequestSchema,
+  GearsJobCallbackRequestSchema,
+  GearsJobStatusSyncRequestSchema,
+  GearsJobSubmitRequestSchema,
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
   ProjectRetainRecentRequestSchema,
@@ -41,6 +44,7 @@ import {
   getProjectProductionBoard,
   listProjectSeedanceGlobalAssetLibrary,
   importProjectSeedanceAssetBatch,
+  importProjectGearsCallbacks,
   importProjectSeedanceProviderCallback,
   importProjectSeedanceShotCallbacks,
   listProjectSupplementTasks,
@@ -54,8 +58,10 @@ import {
   reuseProjectSeedanceAsset,
   retainRecentProjects,
   selectProjectSeedanceShotVersion,
+  submitProjectGearsJobs,
   submitProjectSeedanceProviderRetryPlan,
   submitProjectSeedanceShotsToProvider,
+  syncProjectGearsJobStatuses,
   uploadProjectSeedanceAssetFile,
   updateProjectSeedanceAssetLibrary,
   updateProjectSeedanceShotStatus,
@@ -102,6 +108,31 @@ function validateSeedanceProviderCallbackSecret(req: Request, res: Response, nex
   res.status(401).json(fail(
     ErrorCodes.VALIDATION_ERROR,
     'Seedance provider callback secret is missing or invalid',
+  ));
+}
+
+function gearsCallbackSecretFromRequest(req: Request): string | undefined {
+  const explicit = req.header('x-gears-callback-secret')?.trim();
+  if (explicit) return explicit;
+  const authorization = req.header('authorization')?.trim();
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim();
+}
+
+function validateGearsCallbackSecret(req: Request, res: Response, next: NextFunction): void {
+  const expectedSecret = process.env.GEARS_CALLBACK_SECRET?.trim();
+  if (!expectedSecret) {
+    next();
+    return;
+  }
+  const providedSecret = gearsCallbackSecretFromRequest(req);
+  if (providedSecret && safeEqualText(providedSecret, expectedSecret)) {
+    next();
+    return;
+  }
+  res.status(401).json(fail(
+    ErrorCodes.VALIDATION_ERROR,
+    'GEARS callback secret is missing or invalid',
   ));
 }
 
@@ -364,6 +395,68 @@ projectsRouter.post(
         },
       });
       res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/gears-jobs/submit',
+  validateParams(ProjectIdParamSchema),
+  validateBody(GearsJobSubmitRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await submitProjectGearsJobs(projectId, req.body);
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.VALIDATION_ERROR
+            ? 400
+            : result.error?.code === ErrorCodes.INTERNAL_ERROR
+              ? 502
+              : 404,
+      ).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/gears-jobs/sync',
+  validateParams(ProjectIdParamSchema),
+  validateBody(GearsJobStatusSyncRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await syncProjectGearsJobStatuses(projectId, req.body);
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.VALIDATION_ERROR
+            ? 400
+            : result.error?.code === ErrorCodes.INTERNAL_ERROR
+              ? 502
+              : 404,
+      ).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/gears-callback',
+  validateParams(ProjectIdParamSchema),
+  validateGearsCallbackSecret,
+  validateBody(GearsJobCallbackRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await importProjectGearsCallbacks(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.VALIDATION_ERROR ? 400 : 404).json(result);
     } catch (err) {
       next(err);
     }

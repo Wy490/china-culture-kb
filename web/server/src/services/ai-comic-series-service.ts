@@ -97,6 +97,9 @@ import type {
   AiComicSeriesSeedanceRetryPackage,
   AiComicSeriesSeedanceRetryExecutionPlan,
   AiComicSeriesSeedanceRetrySubmitResult,
+  AiComicSeriesGearsJobCallbackResult,
+  AiComicSeriesGearsJobStatusSyncResult,
+  AiComicSeriesGearsJobSubmitResult,
   AiComicSeriesSeedanceProviderRecoveryResult,
   AiComicSeriesSeedanceAssetReportPackage,
   AiComicSeriesSeedanceEditAssetPackage,
@@ -160,6 +163,13 @@ import type {
   AiComicPlotThread,
   ApiResponse,
   ErrorCode,
+  GearsExecutionJobType,
+  GearsJobCallbackRequest,
+  GearsJobLedger,
+  GearsJobLedgerItem,
+  GearsJobStatusSyncRequest,
+  GearsJobSubmitRequest,
+  GearsJobSubmitFailure,
   KnowledgeNeed,
   KnowledgePack,
   NarrativePatternId,
@@ -178,6 +188,26 @@ import {
   getNarrativePatternsForVideoType,
 } from './narrative-pattern-library.js';
 import { buildSeedancePromptPackage } from './seedance-prompt-service.js';
+import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
+import {
+  buildGearsLedgerItem,
+  buildLocalGearsJobId,
+  gearsSeriesCallbackPath,
+  gearsSeriesCallbackUrl,
+  gearsJobStatusIsTerminal,
+  gearsCallbackEventIsDuplicate,
+  gearsCallbackBatchPath,
+  extractGearsJobCallbackRequests,
+  markGearsLedgerPollFailures,
+  mergeGearsCallbackEvents,
+  mergeGearsLedgerItems,
+  normalizeGearsJobCallback,
+  normalizeGearsJobLedger,
+  pollGearsExecutionJobStatuses,
+  resolveGearsLedgerStatusAfterCallback,
+  submitGearsExecutionJobs,
+  type GearsExecutionSubmitUnit,
+} from './gears-execution-service.js';
 
 const PACING_LABELS: Record<AiComicPacingProfile, string> = {
   fast_hook: '强钩子快节奏',
@@ -2401,6 +2431,7 @@ export async function saveAiComicSeriesProject(
     seedance_title_card_render: cloneSeedanceTitleCardRenderLedger(existing?.seedance_title_card_render),
     seedance_final_delivery: cloneSeedanceFinalDeliveryLedger(existing?.seedance_final_delivery),
     seedance_review_ledger: cloneSeedanceReviewLedger(existing?.seedance_review_ledger),
+    gears_job_ledger: normalizeGearsJobLedger(existing?.gears_job_ledger),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -2548,6 +2579,7 @@ export async function copyAiComicSeriesProject(
     seedance_title_card_render: cloneSeedanceTitleCardRenderLedger(existing.seedance_title_card_render),
     seedance_final_delivery: cloneSeedanceFinalDeliveryLedger(existing.seedance_final_delivery),
     seedance_review_ledger: cloneSeedanceReviewLedger(existing.seedance_review_ledger),
+    gears_job_ledger: normalizeGearsJobLedger(existing.gears_job_ledger),
   };
   detail.series_quality_audit = buildAiComicSeriesQualityAudit({
     plan: detail.plan,
@@ -3586,6 +3618,1227 @@ export async function submitAiComicSeriesSeedanceRetryExecutionPlan(
     ...result,
     markdown: buildAiComicSeriesSeedanceRetrySubmitMarkdown(result),
   });
+}
+
+function aiComicGearsSeedanceStatus(status: GearsJobLedgerItem['status']): AiComicSeedanceProductionStatus {
+  if (status === 'ready') return 'ready';
+  if (status === 'failed' || status === 'rejected' || status === 'canceled') return 'failed';
+  if (status === 'processing') return 'processing';
+  return 'submitted';
+}
+
+function aiComicSeriesGearsPostProductionLedgers(detail: AiComicSeriesProjectDetail): Pick<
+  AiComicSeriesGearsJobCallbackResult,
+  'seedance_subtitle_render' | 'seedance_audio_mix' | 'seedance_title_card_render' | 'seedance_final_delivery'
+> {
+  return {
+    seedance_subtitle_render: detail.seedance_subtitle_render,
+    seedance_audio_mix: detail.seedance_audio_mix,
+    seedance_title_card_render: detail.seedance_title_card_render,
+    seedance_final_delivery: detail.seedance_final_delivery,
+  };
+}
+
+function aiComicGearsExistingJob(
+  ledger: GearsJobLedger | undefined,
+  jobType: GearsExecutionJobType,
+  sourceUnitId: string,
+): GearsJobLedgerItem | undefined {
+  return normalizeGearsJobLedger(ledger).items.find(item =>
+    item.job_type === jobType && item.source_unit_id === sourceUnitId
+  );
+}
+
+function aiComicGearsJobIsActive(item: GearsJobLedgerItem | undefined): boolean {
+  if (!item) return false;
+  return !['failed', 'rejected', 'canceled'].includes(item.status);
+}
+
+function aiComicSeriesGearsJobTypeLabel(jobType: GearsExecutionJobType): string {
+  const labels: Record<GearsExecutionJobType, string> = {
+    storyboard_image: '故事板图',
+    character_image: '人物图',
+    scene_image: '场景图',
+    seedance_video: '视频返修/重试',
+    subtitle_render: '字幕渲染',
+    audio_mix: '混音',
+    title_card_render: '片头片尾',
+    final_assemble: '最终装配',
+  };
+  return labels[jobType];
+}
+
+function aiComicSeriesGearsSubmitIntent(jobType: GearsExecutionJobType): string {
+  const intents: Record<GearsExecutionJobType, string> = {
+    storyboard_image: '从分集 GEARS delivery 提交 GEARS v2 故事板图片任务',
+    character_image: '从分集 GEARS delivery 人物资产提交 GEARS v2 人物图片任务',
+    scene_image: '从分集 GEARS delivery 场景资产提交 GEARS v2 场景图片任务',
+    seedance_video: '从 AI 漫剧 Seedance 重试执行计划提交 GEARS v2 视频返修/重试任务',
+    subtitle_render: '从字幕包提交 GEARS v2 字幕渲染任务',
+    audio_mix: '从音频计划提交 GEARS v2 混音任务',
+    title_card_render: '从片头片尾计划提交 GEARS v2 片头片尾渲染任务',
+    final_assemble: '从最终交付依赖合同提交 GEARS v2 最终装配任务',
+  };
+  return intents[jobType];
+}
+
+function aiComicSeriesGearsFailureLabel(failure: GearsJobSubmitFailure): string {
+  return [
+    failure.path,
+    failure.source_unit_id ?? `#${failure.index + 1}`,
+    failure.gears_job_id,
+  ].filter(Boolean).join(' / ');
+}
+
+function buildAiComicSeriesGearsSubmitMarkdown(input: Omit<AiComicSeriesGearsJobSubmitResult, 'markdown'>): string {
+  return [
+    `# ${input.series_title} - GEARS job submit`,
+    '',
+    `- job_type: ${input.job_type}`,
+    `- job_type_label: ${input.job_type_label}`,
+    `- submit_intent: ${input.submit_intent}`,
+    `- submitted_at: ${input.submitted_at}`,
+    `- submitted_count: ${input.submitted_count}`,
+    `- skipped_count: ${input.skipped_count}`,
+    `- failed_count: ${input.failed_count}`,
+    '',
+    ...(input.provider_adapter ? [
+      '## GEARS Adapter',
+      '',
+      `- status: ${input.provider_adapter.status}`,
+      `- endpoint_configured: ${input.provider_adapter.endpoint_configured}`,
+      `- requested_count: ${input.provider_adapter.requested_count}`,
+      `- accepted_count: ${input.provider_adapter.accepted_count}`,
+      `- rejected_count: ${input.provider_adapter.rejected_count}`,
+      '',
+    ] : []),
+    '## Submitted Jobs',
+    '',
+    ...(input.submitted_jobs.length
+      ? input.submitted_jobs.map(job =>
+        `- ${job.source_unit_id}: ${job.job_type} / ${job.status} / ${job.gears_job_id}`
+      )
+      : ['- none']),
+    ...(input.failures.length ? [
+      '',
+      '## Failures',
+      '',
+      ...input.failures.map(failure =>
+        `- ${aiComicSeriesGearsFailureLabel(failure)}: ${failure.message}`
+      ),
+    ] : []),
+  ].join('\n');
+}
+
+function buildAiComicSeriesGearsSyncMarkdown(input: Omit<AiComicSeriesGearsJobStatusSyncResult, 'markdown'>): string {
+  return [
+    `# ${input.series_title} - GEARS job sync`,
+    '',
+    `- pollable_count: ${input.pollable_count}`,
+    `- synced_count: ${input.synced_count}`,
+    `- failed_count: ${input.failed_count}`,
+    `- duplicate_count: ${input.duplicate_count}`,
+    `- skipped_count: ${input.skipped_count}`,
+    '',
+    ...input.synced_jobs.map(job =>
+      `- ${job.source_unit_id}: ${job.job_type} / ${job.status} / ${job.gears_job_id}`
+    ),
+  ].join('\n');
+}
+
+function aiComicSeriesGearsSyncItems(input: {
+  ledger: GearsJobLedger;
+  request: GearsJobStatusSyncRequest;
+}): {
+  items: GearsJobLedgerItem[];
+  skippedCount: number;
+} {
+  const requestedIds = new Set([
+    ...(input.request.source_unit_ids ?? []),
+    ...(input.request.source_unit_id ? [input.request.source_unit_id] : []),
+  ].filter(Boolean));
+  const limit = input.request.limit ?? 50;
+  const matched = input.ledger.items.filter(item => {
+    if (input.request.job_type && item.job_type !== input.request.job_type) return false;
+    if (requestedIds.size && !requestedIds.has(item.source_unit_id) && !requestedIds.has(item.gears_job_id)) {
+      return false;
+    }
+    if (!input.request.include_completed && gearsJobStatusIsTerminal(item.status)) return false;
+    return true;
+  });
+  return {
+    items: matched.slice(0, limit),
+    skippedCount: Math.max(0, matched.length - limit),
+  };
+}
+
+type AiComicSeriesGearsUnitBuildResult = {
+  units: GearsExecutionSubmitUnit[];
+  skippedCount: number;
+  failures: GearsJobSubmitFailure[];
+  candidatesByProductionId: Map<string, AiComicSeedanceRetryExecutionCandidate>;
+};
+
+async function aiComicSeriesGeneratedStoryDeliveries(
+  detail: AiComicSeriesProjectDetail,
+): Promise<Array<{
+  episode: AiComicEpisodePlan;
+  story: StoryGenerateResult;
+  delivery: ReturnType<typeof ensureGearsDeliveryPackage>;
+}>> {
+  const entries: Array<{
+    episode: AiComicEpisodePlan;
+    story: StoryGenerateResult;
+    delivery: ReturnType<typeof ensureGearsDeliveryPackage>;
+  }> = [];
+  for (const episode of [...detail.plan.episodes].sort((a, b) => a.episode_no - b.episode_no)) {
+    const storyId = detail.generated_episode_story_ids[String(episode.episode_no)];
+    if (!storyId) continue;
+    const storyRes = await getStory(storyId);
+    if (!storyRes.ok || !storyRes.data) continue;
+    entries.push({
+      episode,
+      story: storyRes.data,
+      delivery: ensureGearsDeliveryPackage(storyRes.data),
+    });
+  }
+  return entries;
+}
+
+function aiComicSeriesGearsUnitsFromRetryPlan(input: {
+  executionPlan: AiComicSeriesSeedanceRetryExecutionPlan;
+  jobType: GearsExecutionJobType;
+  request: GearsJobSubmitRequest;
+}): AiComicSeriesGearsUnitBuildResult {
+  const requestedIds = new Set([
+    ...(input.request.source_unit_ids ?? []),
+    ...(input.request.source_unit_id ? [input.request.source_unit_id] : []),
+  ].filter(Boolean));
+  const candidates = input.executionPlan.episodes
+    .flatMap(episode => episode.candidates)
+    .filter(candidate => candidate.can_submit);
+  const candidatesByProductionId = new Map(candidates.map(candidate => [candidate.production_id, candidate]));
+  const failures: GearsJobSubmitFailure[] = [];
+  if (input.jobType !== 'seedance_video') {
+    const sourceUnitIds = requestedIds.size
+      ? [...requestedIds]
+      : [`${input.executionPlan.project.series_project_id}:${input.jobType}`];
+    return {
+      units: sourceUnitIds.map((sourceUnitId, index) => ({
+        source_unit_id: sourceUnitId,
+        source_unit_label: input.jobType,
+        payload: input.request.payload ?? {},
+        payload_summary: input.request.note ?? input.jobType,
+        local_gears_job_id: buildLocalGearsJobId(input.jobType, sourceUnitId, index),
+      })),
+      skippedCount: 0,
+      failures,
+      candidatesByProductionId,
+    };
+  }
+
+  const selectedCandidates = candidates.filter(candidate =>
+    !requestedIds.size
+    || requestedIds.has(candidate.production_id)
+    || requestedIds.has(candidate.shot_id)
+  );
+  if (requestedIds.size) {
+    [...requestedIds].forEach((sourceUnitId, index) => {
+      const found = selectedCandidates.some(candidate =>
+        candidate.production_id === sourceUnitId || candidate.shot_id === sourceUnitId
+      );
+      if (found) return;
+      failures.push({
+        index,
+        source_unit_id: sourceUnitId,
+        message: `GEARS series source unit "${sourceUnitId}" was not found in retry execution plan`,
+      });
+    });
+  }
+  return {
+    units: selectedCandidates.map((candidate, index) => ({
+      source_unit_id: candidate.production_id,
+      source_unit_label: `E${candidate.episode_no} ${candidate.shot_id}`,
+      source_scene_id: candidate.source_scene_id,
+      payload_summary: `${candidate.episode_title} ${candidate.shot_id}`,
+      payload: {
+        schema_version: 'gears-series-seedance-video-retry-payload/v1',
+        series_project_id: input.executionPlan.project.series_project_id,
+        series_title: input.executionPlan.series_title,
+        source_retry_execution_plan_exported_at: input.executionPlan.exported_at,
+        source_retry_package_exported_at: input.executionPlan.source_retry_package_exported_at,
+        production_id: candidate.production_id,
+        episode_no: candidate.episode_no,
+        episode_title: candidate.episode_title,
+        story_id: candidate.story_id,
+        shot_id: candidate.shot_id,
+        source_scene_id: candidate.source_scene_id,
+        status: candidate.status,
+        retry_count: candidate.retry_count,
+        retry_reason: candidate.retry_reason,
+        priority: candidate.priority,
+        suggested_action: candidate.suggested_action,
+        failure_reason: candidate.failure_reason,
+        previous_provider_job_id: candidate.provider_job_id,
+        last_video_url: candidate.last_video_url,
+        review_issues: candidate.review_issues,
+        duration_sec: candidate.prompt.duration_sec,
+        characters: candidate.prompt.characters,
+        location: candidate.prompt.location,
+        script_text: candidate.prompt.script_text,
+        visual_prompt: candidate.prompt.visual_prompt,
+        camera_suggestion: candidate.prompt.camera_suggestion,
+        continuity_notes: candidate.prompt.continuity_notes,
+        negative_constraints: candidate.prompt.negative_constraints,
+        asset_slots: candidate.prompt.asset_slots,
+        material_validation: candidate.prompt.material_validation,
+        seedance_prompt: candidate.prompt.seedance_prompt,
+        request_payload: input.request.payload ?? {},
+      },
+      local_gears_job_id: buildLocalGearsJobId(input.jobType, candidate.production_id, index),
+    })),
+    skippedCount: 0,
+    failures,
+    candidatesByProductionId,
+  };
+}
+
+async function aiComicSeriesGearsUnitsFromPostProduction(input: {
+  detail: AiComicSeriesProjectDetail;
+  jobType: GearsExecutionJobType;
+  request: GearsJobSubmitRequest;
+}): Promise<ApiResponse<AiComicSeriesGearsUnitBuildResult>> {
+  const requestedIds = new Set([
+    ...(input.request.source_unit_ids ?? []),
+    ...(input.request.source_unit_id ? [input.request.source_unit_id] : []),
+  ].filter(Boolean));
+  const failures: GearsJobSubmitFailure[] = [];
+  const units: GearsExecutionSubmitUnit[] = [];
+  const availableIds = new Set<string>();
+  const addUnit = (
+    unit: Omit<GearsExecutionSubmitUnit, 'local_gears_job_id'>,
+    aliases: string[] = [],
+  ): void => {
+    const ids = [unit.source_unit_id, ...aliases].filter(Boolean);
+    ids.forEach(id => availableIds.add(id));
+    if (requestedIds.size && !ids.some(id => requestedIds.has(id))) return;
+    units.push({
+      ...unit,
+      local_gears_job_id: buildLocalGearsJobId(input.jobType, unit.source_unit_id, units.length),
+    });
+  };
+  const seriesProjectId = input.detail.project.series_project_id;
+  const requestPayload = input.request.payload ?? {};
+
+  if (input.jobType === 'storyboard_image') {
+    const entries = await aiComicSeriesGeneratedStoryDeliveries(input.detail);
+    entries.forEach(({ episode, story, delivery }) => {
+      delivery.units.forEach(unit => addUnit({
+        source_unit_id: `episode:${episode.episode_no}:storyboard:${unit.unit_id}`,
+        source_unit_label: `E${episode.episode_no} ${unit.scene_name}`,
+        source_scene_id: unit.source_scene_id,
+        payload_summary: summarizeText(`${story.title} ${unit.scene_name} ${unit.script_text}`, 160),
+        payload: {
+          schema_version: 'gears-series-storyboard-image-payload/v1',
+          episode_no: episode.episode_no,
+          episode_title: episode.title,
+          story_id: story.storyId,
+          unit,
+          character_assets: delivery.character_assets.filter(character => unit.character_names.includes(character.name)),
+          scene_assets: delivery.scene_assets,
+          validation_notes: delivery.validation_notes,
+          request_payload: requestPayload,
+        },
+      }, [
+        unit.unit_id,
+        `${episode.episode_no}:${unit.unit_id}`,
+        `storyboard:${unit.unit_id}`,
+      ]));
+    });
+    if (!entries.length && !requestedIds.size) {
+      failures.push({ index: 0, message: 'No generated episode stories found for GEARS storyboard image jobs' });
+    }
+  } else if (input.jobType === 'character_image') {
+    const entries = await aiComicSeriesGeneratedStoryDeliveries(input.detail);
+    entries.forEach(({ episode, story, delivery }) => {
+      delivery.character_assets.forEach(character => addUnit({
+        source_unit_id: `episode:${episode.episode_no}:character:${character.name}`,
+        source_unit_label: `E${episode.episode_no} ${character.name}`,
+        payload_summary: summarizeText(`${character.name} ${character.appearance_features} ${character.clothing}`, 160),
+        payload: {
+          schema_version: 'gears-series-character-image-payload/v1',
+          episode_no: episode.episode_no,
+          episode_title: episode.title,
+          story_id: story.storyId,
+          story_title: story.title,
+          character,
+          character_gender_summary: delivery.character_gender_summary,
+          request_payload: requestPayload,
+        },
+      }, [
+        character.name,
+        `character:${character.name}`,
+        `${episode.episode_no}:${character.name}`,
+      ]));
+    });
+    if (!entries.length && !requestedIds.size) {
+      failures.push({ index: 0, message: 'No generated episode stories found for GEARS character image jobs' });
+    }
+  } else if (input.jobType === 'scene_image') {
+    const entries = await aiComicSeriesGeneratedStoryDeliveries(input.detail);
+    entries.forEach(({ episode, story, delivery }) => {
+      delivery.scene_assets.forEach(scene => addUnit({
+        source_unit_id: `episode:${episode.episode_no}:scene:${scene.name}`,
+        source_unit_label: `E${episode.episode_no} ${scene.name}`,
+        payload_summary: summarizeText(`${scene.name} ${scene.description}`, 160),
+        payload: {
+          schema_version: 'gears-series-scene-image-payload/v1',
+          episode_no: episode.episode_no,
+          episode_title: episode.title,
+          story_id: story.storyId,
+          story_title: story.title,
+          scene,
+          related_delivery_units: delivery.units.filter(unit => unit.scene_name === scene.name),
+          request_payload: requestPayload,
+        },
+      }, [
+        scene.name,
+        `scene:${scene.name}`,
+        `${episode.episode_no}:${scene.name}`,
+      ]));
+    });
+    if (!entries.length && !requestedIds.size) {
+      failures.push({ index: 0, message: 'No generated episode stories found for GEARS scene image jobs' });
+    }
+  } else if (input.jobType === 'subtitle_render') {
+    const packageRes = await exportAiComicSeriesSeedanceSubtitlePackage(seriesProjectId);
+    if (!packageRes.ok || !packageRes.data) {
+      return fail(
+        normalizeErrorCode(packageRes.error?.code),
+        packageRes.error?.message ?? 'Export Seedance subtitle package failed',
+        packageRes.error?.details,
+      );
+    }
+    const pkg = packageRes.data;
+    addUnit({
+      source_unit_id: 'subtitle:series',
+      source_unit_label: '全系列字幕渲染',
+      payload_summary: `${pkg.cue_count} cues / ${pkg.srt_path}`,
+      payload: {
+        schema_version: 'gears-subtitle-render-payload/v1',
+        subtitle_package: {
+          ...pkg,
+          markdown: undefined,
+        },
+        render_intent: {
+          mode: 'sidecar',
+          output_path: pkg.srt_path,
+          source_cut_output_path: input.detail.seedance_cut_assembly?.output_path,
+        },
+        request_payload: requestPayload,
+      },
+    }, ['subtitle_render', pkg.srt_path]);
+  } else if (input.jobType === 'audio_mix') {
+    const packageRes = await exportAiComicSeriesSeedanceAudioPlanPackage(seriesProjectId);
+    if (!packageRes.ok || !packageRes.data) {
+      return fail(
+        normalizeErrorCode(packageRes.error?.code),
+        packageRes.error?.message ?? 'Export Seedance audio plan failed',
+        packageRes.error?.details,
+      );
+    }
+    const pkg = packageRes.data;
+    addUnit({
+      source_unit_id: 'audio_mix:series',
+      source_unit_label: '全系列混音',
+      payload_summary: `${pkg.total_audio_cue_count} cues / missing ${pkg.missing_audio_count}`,
+      payload: {
+        schema_version: 'gears-audio-mix-payload/v1',
+        audio_plan: {
+          ...pkg,
+          markdown: undefined,
+        },
+        mix_intent: {
+          audio_profile: input.detail.seedance_audio_mix?.audio_profile ?? 'balanced_dialogue',
+          input_video_path: input.detail.seedance_cut_assembly?.output_path,
+          include_original_audio: input.detail.seedance_audio_mix?.include_original_audio ?? true,
+          original_audio_volume_db: input.detail.seedance_audio_mix?.original_audio_volume_db ?? -8,
+        },
+        request_payload: requestPayload,
+      },
+    }, ['audio_mix', pkg.audio_root]);
+  } else if (input.jobType === 'title_card_render') {
+    const packageRes = await exportAiComicSeriesSeedanceTitleCardPlanPackage(seriesProjectId);
+    if (!packageRes.ok || !packageRes.data) {
+      return fail(
+        normalizeErrorCode(packageRes.error?.code),
+        packageRes.error?.message ?? 'Export Seedance title card plan failed',
+        packageRes.error?.details,
+      );
+    }
+    const pkg = packageRes.data;
+    pkg.cards.forEach(card => addUnit({
+      source_unit_id: `title_card:${card.card_id}`,
+      source_unit_label: `${card.placement}${card.episode_no ? ` E${card.episode_no}` : ''}`,
+      payload_summary: `${card.card_id} / ${card.output_path}`,
+      payload: {
+        schema_version: 'gears-title-card-render-payload/v1',
+        title_card_root: pkg.title_card_root,
+        output_profile: input.detail.seedance_title_card_render?.output_profile ?? 'mp4_h264_1080p',
+        card,
+        request_payload: requestPayload,
+      },
+    }, [
+      card.card_id,
+      card.output_path,
+      `${card.placement}${card.episode_no ? `:e${card.episode_no}` : ''}`,
+    ]));
+  } else if (input.jobType === 'final_assemble') {
+    const outputProfile: AiComicSeedanceFinalDeliveryOutputProfile =
+      input.detail.seedance_final_delivery?.output_profile ?? 'mp4_h264_1080p';
+    const outputFilename = input.detail.seedance_final_delivery?.output_filename
+      ?? seedanceFinalDeliveryFilename(seriesProjectId);
+    const outputPath = input.detail.seedance_final_delivery?.output_path
+      ?? `delivery/${seriesProjectId}/${outputFilename}`;
+    const manifestPath = input.detail.seedance_final_delivery?.manifest_path
+      ?? `delivery/${seriesProjectId}/${seedanceFinalDeliveryManifestFilename(outputFilename)}`;
+    const concatListPath = `delivery/${seriesProjectId}/${outputFilename.replace(/\.mp4$/i, '.concat.txt')}`;
+    const dependencyStatus = resolveSeedanceFinalDependencyStatus(input.detail, {
+      dryRun: true,
+      includeSubtitles: true,
+      includeAudioMix: true,
+      includeTitleCards: true,
+    });
+    const concatInputs = [
+      ...dependencyStatus.title_card_paths,
+      dependencyStatus.source_cut_path,
+    ].filter((item): item is string => Boolean(item));
+    const useConcat = concatInputs.length > 1;
+    const ffmpegCommand = dependencyStatus.source_cut_path
+      ? buildFfmpegFinalDeliveryCommand(
+        process.env.FFMPEG_PATH?.trim() || 'ffmpeg',
+        useConcat ? concatListPath : dependencyStatus.source_cut_path,
+        outputPath,
+        outputProfile,
+        useConcat,
+      )
+      : '';
+    addUnit({
+      source_unit_id: 'final_assemble:series',
+      source_unit_label: '全系列最终装配',
+      payload_summary: `${outputFilename} / missing ${dependencyStatus.missing_dependencies.length}`,
+      payload: {
+        schema_version: 'gears-final-assemble-payload/v1',
+        output_profile: outputProfile,
+        output_path: outputPath,
+        output_filename: outputFilename,
+        manifest_path: manifestPath,
+        concat_list_path: useConcat ? concatListPath : undefined,
+        ffmpeg_command_hint: ffmpegCommand,
+        dependency_status: dependencyStatus,
+        request_payload: requestPayload,
+      },
+    }, ['final_assemble', outputPath, manifestPath]);
+  } else {
+    const sourceUnitIds = requestedIds.size ? [...requestedIds] : [`${seriesProjectId}:${input.jobType}`];
+    sourceUnitIds.forEach(sourceUnitId => addUnit({
+      source_unit_id: sourceUnitId,
+      source_unit_label: input.jobType,
+      payload: requestPayload,
+      payload_summary: input.request.note ?? input.jobType,
+    }));
+  }
+
+  if (requestedIds.size) {
+    [...requestedIds].forEach((sourceUnitId, index) => {
+      if (availableIds.has(sourceUnitId)) return;
+      failures.push({
+        index,
+        source_unit_id: sourceUnitId,
+        message: `GEARS series source unit "${sourceUnitId}" was not found for job_type "${input.jobType}"`,
+      });
+    });
+  }
+
+  return success({
+    units,
+    skippedCount: 0,
+    failures,
+    candidatesByProductionId: new Map<string, AiComicSeedanceRetryExecutionCandidate>(),
+  });
+}
+
+export async function submitAiComicSeriesGearsJobs(
+  seriesProjectId: string,
+  request: GearsJobSubmitRequest = {},
+): Promise<ApiResponse<AiComicSeriesGearsJobSubmitResult>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const jobType = request.job_type ?? 'seedance_video';
+  const submittedAt = new Date().toISOString();
+  let built: AiComicSeriesGearsUnitBuildResult;
+  if (jobType === 'seedance_video') {
+    const executionPlanRes = await exportAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId);
+    if (!executionPlanRes.ok || !executionPlanRes.data) {
+      return fail(
+        normalizeErrorCode(executionPlanRes.error?.code),
+        executionPlanRes.error?.message ?? 'Export Seedance retry execution plan failed',
+        executionPlanRes.error?.details,
+      );
+    }
+    built = aiComicSeriesGearsUnitsFromRetryPlan({ executionPlan: executionPlanRes.data, jobType, request });
+  } else {
+    const builtRes = await aiComicSeriesGearsUnitsFromPostProduction({ detail: existing, jobType, request });
+    if (!builtRes.ok || !builtRes.data) {
+      return fail(
+        normalizeErrorCode(builtRes.error?.code),
+        builtRes.error?.message ?? 'Build GEARS post-production units failed',
+        builtRes.error?.details,
+      );
+    }
+    built = builtRes.data;
+  }
+  let skippedCount = built.skippedCount;
+  const units = built.units.filter(unit => {
+    const existingJob = aiComicGearsExistingJob(existing.gears_job_ledger, jobType, unit.source_unit_id);
+    if (!aiComicGearsJobIsActive(existingJob) || request.overwrite_existing) return true;
+    skippedCount += 1;
+    return false;
+  });
+  const failures = [...built.failures];
+  if (!units.length) {
+    const result: Omit<AiComicSeriesGearsJobSubmitResult, 'markdown'> = {
+      schema_version: 'ai-comic-series-gears-job-submit-result/v1',
+      project: existing.project,
+      series_title: existing.plan.series_title,
+      job_type: jobType,
+      job_type_label: aiComicSeriesGearsJobTypeLabel(jobType),
+      submit_intent: aiComicSeriesGearsSubmitIntent(jobType),
+      submitted_at: submittedAt,
+      gears_job_ledger: normalizeGearsJobLedger(existing.gears_job_ledger),
+      seedance_production: existing.seedance_production,
+      provider_adapter: {
+        endpoint_configured: false,
+        requested_count: 0,
+        accepted_count: 0,
+        rejected_count: failures.length,
+        status: request.use_gears_api ? 'submitted' : 'mocked',
+      },
+      submitted_count: 0,
+      skipped_count: skippedCount,
+      failed_count: failures.length,
+      submitted_jobs: [],
+      failures,
+    };
+    return success({ ...result, markdown: buildAiComicSeriesGearsSubmitMarkdown(result) });
+  }
+
+  const adapterRes = await submitGearsExecutionJobs({
+    seriesProjectId,
+    title: existing.plan.series_title,
+    jobType,
+    callbackPath: gearsSeriesCallbackPath(seriesProjectId),
+    callbackUrl: request.callback_url ?? gearsSeriesCallbackUrl(seriesProjectId),
+    note: request.note,
+    useGearsApi: Boolean(request.use_gears_api),
+    payload: request.payload,
+    units,
+  });
+  if (!adapterRes.ok || !adapterRes.data) {
+    return fail(
+      adapterRes.error?.code === ErrorCodes.VALIDATION_ERROR
+        ? ErrorCodes.VALIDATION_ERROR
+        : ErrorCodes.INTERNAL_ERROR,
+      adapterRes.error?.message ?? 'GEARS submit failed',
+      adapterRes.error?.details,
+    );
+  }
+  failures.push(...adapterRes.data.failures);
+
+  const unitById = new Map(units.map(unit => [unit.source_unit_id, unit]));
+  const submittedJobs = adapterRes.data.accepted
+    .map(accepted => {
+      const unit = unitById.get(accepted.source_unit_id);
+      if (!unit) return undefined;
+      return buildGearsLedgerItem({
+        seriesProjectId,
+        sourceStoryId: built.candidatesByProductionId.get(unit.source_unit_id)?.story_id,
+        jobType,
+        unit,
+        accepted,
+        submittedAt,
+        note: request.note,
+      });
+    })
+    .filter((item): item is GearsJobLedgerItem => Boolean(item));
+
+  let updatedDetail = existing;
+  if (jobType === 'seedance_video' && submittedJobs.length) {
+    const acceptedByProductionId = new Map(submittedJobs.map(item => [item.source_unit_id, item]));
+    const updateRes = await updateAiComicSeriesSeedanceProductionStatuses(seriesProjectId, {
+      updates: [...acceptedByProductionId.values()]
+        .map(item => built.candidatesByProductionId.get(item.source_unit_id))
+        .filter((candidate): candidate is AiComicSeedanceRetryExecutionCandidate => Boolean(candidate))
+        .map(candidate => {
+          const item = acceptedByProductionId.get(candidate.production_id)!;
+          return {
+            episode_no: candidate.episode_no,
+            shot_id: candidate.shot_id,
+            status: aiComicGearsSeedanceStatus(item.status),
+            provider_job_id: item.gears_job_id,
+            video_url: item.status === 'ready' ? item.artifact_urls[0] : undefined,
+            failure_reason: item.failure_reason,
+            note: request.note ?? `GEARS job ${item.status}: ${item.gears_job_id}`,
+            increment_retry: candidate.status !== 'not_started' && candidate.status !== 'prompt_exported',
+          };
+        }),
+    });
+    if (!updateRes.ok || !updateRes.data) {
+      return fail(
+        normalizeErrorCode(updateRes.error?.code),
+        updateRes.error?.message ?? 'Update series Seedance production ledger failed',
+        updateRes.error?.details,
+      );
+    }
+    updatedDetail = updateRes.data;
+  }
+
+  const gearsJobLedger = mergeGearsLedgerItems({
+    existing: updatedDetail.gears_job_ledger,
+    items: submittedJobs,
+    updatedAt: submittedAt,
+  });
+  updatedDetail = {
+    ...updatedDetail,
+    project: {
+      ...updatedDetail.project,
+      updated_at: submittedAt,
+    },
+    gears_job_ledger: gearsJobLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  const result: Omit<AiComicSeriesGearsJobSubmitResult, 'markdown'> = {
+    schema_version: 'ai-comic-series-gears-job-submit-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    job_type: jobType,
+    job_type_label: aiComicSeriesGearsJobTypeLabel(jobType),
+    submit_intent: aiComicSeriesGearsSubmitIntent(jobType),
+    submitted_at: submittedAt,
+    gears_job_ledger: gearsJobLedger,
+    seedance_production: updatedDetail.seedance_production,
+    provider_adapter: adapterRes.data.summary,
+    submitted_count: submittedJobs.length,
+    skipped_count: skippedCount,
+    failed_count: failures.length,
+    submitted_jobs: submittedJobs,
+    failures,
+  };
+  return success({ ...result, markdown: buildAiComicSeriesGearsSubmitMarkdown(result) });
+}
+
+function findAiComicSeriesGearsLedgerMatch(input: {
+  ledger: GearsJobLedger;
+  callback: ReturnType<typeof normalizeGearsJobCallback>;
+}): GearsJobLedgerItem | string {
+  const byJobId = input.callback.gears_job_id
+    ? input.ledger.items.find(item => item.gears_job_id === input.callback.gears_job_id)
+    : undefined;
+  if (byJobId) return byJobId;
+  const idempotencyKey = input.callback.idempotency_key;
+  if (idempotencyKey) {
+    const matches = input.ledger.items.filter(item =>
+      item.idempotency_key === idempotencyKey
+      && (!input.callback.job_type || item.job_type === input.callback.job_type)
+    );
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) {
+      return `GEARS callback idempotency_key "${idempotencyKey}" matched multiple jobs; include job_type or gears_job_id`;
+    }
+  }
+  const sourceUnitId = input.callback.source_unit_id;
+  if (!sourceUnitId) {
+    return input.callback.gears_job_id
+      ? `GEARS job "${input.callback.gears_job_id}" was not found in series ledger`
+      : idempotencyKey
+        ? `GEARS idempotency_key "${idempotencyKey}" was not found in series ledger`
+        : 'GEARS callback requires a known gears_job_id, source_unit_id, or idempotency_key';
+  }
+  const matches = input.ledger.items.filter(item =>
+    item.source_unit_id === sourceUnitId
+    && (!input.callback.job_type || item.job_type === input.callback.job_type)
+  );
+  if (matches.length === 1) return matches[0];
+  if (matches.length > 1) {
+    return `GEARS callback source_unit_id "${sourceUnitId}" matched multiple jobs; include job_type or gears_job_id`;
+  }
+  return `GEARS source_unit_id "${sourceUnitId}" was not found in series ledger`;
+}
+
+function updateAiComicGearsLedgerItemFromCallback(input: {
+  item: GearsJobLedgerItem;
+  callback: ReturnType<typeof normalizeGearsJobCallback>;
+  receivedAt: string;
+}): GearsJobLedgerItem {
+  const status = resolveGearsLedgerStatusAfterCallback({
+    currentStatus: input.item.status,
+    callbackStatus: input.callback.status,
+  });
+  const ignoredNonTerminalAfterTerminal = status !== input.callback.status;
+  const terminalStatusChanged = gearsJobStatusIsTerminal(input.item.status)
+    && gearsJobStatusIsTerminal(input.callback.status)
+    && input.item.status !== input.callback.status
+    && status === input.callback.status;
+  const completed = gearsJobStatusIsTerminal(status);
+  const progressPercent = ignoredNonTerminalAfterTerminal
+    ? input.item.progress_percent
+    : input.callback.progress_percent ?? (status === 'ready' ? 100 : input.item.progress_percent);
+  const completedAt = completed
+    ? (input.item.status === status && input.item.completed_at
+      ? input.item.completed_at
+      : input.callback.completed_at ?? input.callback.provider_event_at ?? input.receivedAt)
+    : input.item.completed_at;
+  return {
+    ...input.item,
+    gears_job_id: input.callback.gears_job_id ?? input.item.gears_job_id,
+    job_type: input.callback.job_type ?? input.item.job_type,
+    series_project_id: input.callback.series_project_id ?? input.item.series_project_id,
+    source_story_id: input.callback.source_story_id ?? input.item.source_story_id,
+    status,
+    progress_percent: progressPercent,
+    artifact_urls: !ignoredNonTerminalAfterTerminal && input.callback.artifact_urls.length
+      ? input.callback.artifact_urls
+      : input.item.artifact_urls,
+    artifacts: ignoredNonTerminalAfterTerminal ? input.item.artifacts : input.callback.artifacts ?? input.item.artifacts,
+    failure_category: ignoredNonTerminalAfterTerminal ? input.item.failure_category : input.callback.failure_category,
+    error_code: ignoredNonTerminalAfterTerminal ? input.item.error_code : input.callback.error_code,
+    failure_reason: ignoredNonTerminalAfterTerminal ? input.item.failure_reason : input.callback.failure_reason,
+    last_poll_at: undefined,
+    last_poll_error: undefined,
+    last_poll_failure_category: undefined,
+    last_poll_error_code: undefined,
+    updated_at: input.receivedAt,
+    completed_at: completedAt,
+    callback_events: mergeGearsCallbackEvents({
+      existing: input.item.callback_events,
+      callback: input.callback,
+      receivedAt: input.receivedAt,
+      previousStatus: input.item.status,
+      appliedStatus: status,
+      statusRegressionIgnored: ignoredNonTerminalAfterTerminal,
+      terminalStatusChanged,
+    }),
+  };
+}
+
+function gearsArtifactUrlFor(
+  item: GearsJobLedgerItem,
+  matchers: string[],
+): string | undefined {
+  const normalizedMatchers = matchers.map(value => value.toLowerCase());
+  const matched = item.artifacts?.find(artifact => {
+    const haystack = [
+      artifact.kind,
+      artifact.role,
+      artifact.mime_type,
+      artifact.url,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return normalizedMatchers.some(matcher => haystack.includes(matcher));
+  });
+  return matched?.url ?? item.artifact_urls[0];
+}
+
+function filenameFromArtifactUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  const clean = url.split(/[?#]/)[0] ?? url;
+  const filename = clean.split('/').filter(Boolean).pop();
+  return filename || undefined;
+}
+
+function gearsCallbackIsFailedStatus(status: GearsJobLedgerItem['status']): boolean {
+  return status === 'failed' || status === 'rejected' || status === 'canceled';
+}
+
+function applyAiComicSeriesGearsPostProductionCallback(input: {
+  detail: AiComicSeriesProjectDetail;
+  item: GearsJobLedgerItem;
+  receivedAt: string;
+}): AiComicSeriesProjectDetail {
+  const status = input.item.status;
+  const failed = gearsCallbackIsFailedStatus(status);
+  const ready = status === 'ready';
+  const artifactUrl = input.item.artifact_urls[0];
+  const failureReason = input.item.failure_reason;
+  const detailBase: AiComicSeriesProjectDetail = {
+    ...input.detail,
+    project: {
+      ...input.detail.project,
+      updated_at: input.receivedAt,
+    },
+  };
+
+  if (input.item.job_type === 'subtitle_render') {
+    const existing = normalizeSeedanceSubtitleRenderLedger(input.detail.seedance_subtitle_render);
+    const outputPath = gearsArtifactUrlFor(input.item, ['subtitle', 'srt', 'vtt', 'burn_in', 'video']);
+    return {
+      ...detailBase,
+      seedance_subtitle_render: {
+        schema_version: 'ai-comic-seedance-subtitle-render-ledger/v1',
+        updated_at: input.receivedAt,
+        status: ready ? 'ready' : failed ? 'failed' : status === 'processing' ? 'rendering' : 'planned',
+        mode: existing?.mode ?? (outputPath?.match(/\.(mp4|mov|m4v)$/i) ? 'burn_in' : 'sidecar'),
+        episode_no: existing?.episode_no,
+        srt_path: outputPath?.match(/\.(srt|vtt)$/i) ? outputPath : existing?.srt_path,
+        srt_filename: filenameFromArtifactUrl(outputPath?.match(/\.(srt|vtt)$/i) ? outputPath : existing?.srt_path),
+        output_path: outputPath?.match(/\.(mp4|mov|m4v)$/i) ? outputPath : existing?.output_path,
+        output_filename: filenameFromArtifactUrl(outputPath?.match(/\.(mp4|mov|m4v)$/i) ? outputPath : existing?.output_path),
+        ffmpeg_command: existing?.ffmpeg_command,
+        rendered_at: ready ? input.receivedAt : existing?.rendered_at,
+        failure_reason: failed ? failureReason ?? `GEARS ${status}` : undefined,
+        dry_run: false,
+        cue_count: existing?.cue_count ?? 0,
+        source_cut_output_path: existing?.source_cut_output_path ?? input.detail.seedance_cut_assembly?.output_path,
+      },
+    };
+  }
+
+  if (input.item.job_type === 'audio_mix') {
+    const existing = normalizeSeedanceAudioMixLedger(input.detail.seedance_audio_mix);
+    const outputPath = gearsArtifactUrlFor(input.item, ['audio_mix', 'mixed', 'video', 'mp4']);
+    return {
+      ...detailBase,
+      seedance_audio_mix: {
+        schema_version: 'ai-comic-seedance-audio-mix-ledger/v1',
+        updated_at: input.receivedAt,
+        status: ready ? 'ready' : failed ? 'failed' : status === 'processing' ? 'mixing' : 'planned',
+        episode_no: existing?.episode_no,
+        output_path: ready ? outputPath ?? existing?.output_path : existing?.output_path,
+        output_filename: filenameFromArtifactUrl(ready ? outputPath ?? existing?.output_path : existing?.output_path),
+        input_video_path: existing?.input_video_path ?? input.detail.seedance_cut_assembly?.output_path,
+        ffmpeg_command: existing?.ffmpeg_command,
+        mixed_at: ready ? input.receivedAt : existing?.mixed_at,
+        failure_reason: failed ? failureReason ?? `GEARS ${status}` : undefined,
+        dry_run: false,
+        audio_profile: existing?.audio_profile ?? 'balanced_dialogue',
+        include_original_audio: existing?.include_original_audio,
+        original_audio_volume_db: existing?.original_audio_volume_db,
+        source_audio_count: existing?.source_audio_count ?? 0,
+        missing_audio_count: existing?.missing_audio_count ?? 0,
+      },
+    };
+  }
+
+  if (input.item.job_type === 'title_card_render') {
+    const existing = normalizeSeedanceTitleCardRenderLedger(input.detail.seedance_title_card_render);
+    const outputPaths = ready && input.item.artifact_urls.length
+      ? [...new Set([...(existing?.output_paths ?? []), ...input.item.artifact_urls])]
+      : [...(existing?.output_paths ?? [])];
+    return {
+      ...detailBase,
+      seedance_title_card_render: {
+        schema_version: 'ai-comic-seedance-title-card-render-ledger/v1',
+        updated_at: input.receivedAt,
+        status: ready ? 'ready' : failed ? 'failed' : status === 'processing' ? 'rendering' : 'planned',
+        output_profile: existing?.output_profile ?? 'mp4_h264_1080p',
+        card_count: Math.max(existing?.card_count ?? 0, outputPaths.length),
+        rendered_count: ready ? outputPaths.length : existing?.rendered_count ?? 0,
+        output_paths: outputPaths,
+        ffmpeg_commands: [...(existing?.ffmpeg_commands ?? [])],
+        rendered_at: ready ? input.receivedAt : existing?.rendered_at,
+        failure_reason: failed ? failureReason ?? `GEARS ${status}` : undefined,
+        dry_run: false,
+        font_path: existing?.font_path,
+      },
+    };
+  }
+
+  if (input.item.job_type === 'final_assemble') {
+    const existing = normalizeSeedanceFinalDeliveryLedger(input.detail.seedance_final_delivery);
+    const outputPath = gearsArtifactUrlFor(input.item, ['final_video', 'final', 'video', 'mp4']);
+    const manifestPath = gearsArtifactUrlFor(input.item, ['manifest', 'json']);
+    const dependencyStatus = existing?.dependency_status ?? resolveSeedanceFinalDependencyStatus(input.detail, {
+      dryRun: true,
+      includeSubtitles: true,
+      includeAudioMix: true,
+      includeTitleCards: true,
+    });
+    return {
+      ...detailBase,
+      seedance_final_delivery: {
+        schema_version: 'ai-comic-seedance-final-delivery-ledger/v1',
+        updated_at: input.receivedAt,
+        status: ready ? 'ready' : failed ? 'failed' : status === 'processing' ? 'assembling' : 'planned',
+        output_path: ready ? outputPath ?? existing?.output_path : existing?.output_path,
+        output_filename: filenameFromArtifactUrl(ready ? outputPath ?? existing?.output_path : existing?.output_path),
+        manifest_path: ready ? manifestPath ?? existing?.manifest_path : existing?.manifest_path,
+        ffmpeg_command: existing?.ffmpeg_command,
+        source_cut_path: dependencyStatus.source_cut_path,
+        subtitle_path: dependencyStatus.subtitle_path,
+        audio_mix_path: dependencyStatus.audio_mix_path,
+        title_card_paths: [...dependencyStatus.title_card_paths],
+        delivered_at: ready ? input.receivedAt : existing?.delivered_at,
+        failure_reason: failed ? failureReason ?? `GEARS ${status}` : undefined,
+        dry_run: false,
+        output_profile: existing?.output_profile ?? 'mp4_h264_1080p',
+        dependency_status: dependencyStatus,
+      },
+    };
+  }
+
+  return input.detail;
+}
+
+export async function importAiComicSeriesGearsCallback(
+  seriesProjectId: string,
+  request: GearsJobCallbackRequest,
+): Promise<ApiResponse<AiComicSeriesGearsJobCallbackResult>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const ledger = normalizeGearsJobLedger(existing.gears_job_ledger);
+  const callback = normalizeGearsJobCallback(request);
+  const match = findAiComicSeriesGearsLedgerMatch({ ledger, callback });
+  if (typeof match === 'string') {
+    return success({
+      schema_version: 'ai-comic-series-gears-job-callback-result/v1',
+      project: existing.project,
+      series_title: existing.plan.series_title,
+      gears_job_ledger: ledger,
+      seedance_production: existing.seedance_production,
+      ...aiComicSeriesGearsPostProductionLedgers(existing),
+      received_count: 1,
+      updated_count: 0,
+      failed_count: 1,
+      duplicate_count: 0,
+      failures: [{
+        index: 0,
+        path: gearsCallbackBatchPath(request),
+        source_unit_id: callback.source_unit_id,
+        gears_job_id: callback.gears_job_id,
+        message: match,
+      }],
+      gears_job_id: callback.gears_job_id,
+      source_unit_id: callback.source_unit_id,
+      status: callback.status,
+    });
+  }
+
+  const receivedAt = new Date().toISOString();
+  const duplicateCount = gearsCallbackEventIsDuplicate({
+    existing: match.callback_events,
+    callback,
+  }) ? 1 : 0;
+  const updatedItem = updateAiComicGearsLedgerItemFromCallback({ item: match, callback, receivedAt });
+  let updatedDetail = existing;
+  if (updatedItem.job_type === 'seedance_video') {
+    const productionItem = normalizeSeedanceProductionLedger(existing.seedance_production)
+      .items.find(item => item.production_id === updatedItem.source_unit_id || item.provider_job_id === updatedItem.gears_job_id);
+    if (productionItem) {
+      const updateRes = await updateAiComicSeriesSeedanceProductionStatus(seriesProjectId, {
+        episode_no: productionItem.episode_no,
+        shot_id: productionItem.shot_id,
+        status: aiComicGearsSeedanceStatus(updatedItem.status),
+        provider_job_id: updatedItem.gears_job_id,
+        video_url: updatedItem.status === 'ready' ? updatedItem.artifact_urls[0] : undefined,
+        failure_reason: updatedItem.failure_reason,
+        note: callback.note ?? callback.message ?? `GEARS callback: ${updatedItem.status}`,
+      });
+      if (!updateRes.ok || !updateRes.data) {
+        return fail(
+          normalizeErrorCode(updateRes.error?.code),
+          updateRes.error?.message ?? 'Update series Seedance production ledger failed',
+          updateRes.error?.details,
+        );
+      }
+      updatedDetail = updateRes.data;
+    }
+  } else {
+    updatedDetail = applyAiComicSeriesGearsPostProductionCallback({
+      detail: updatedDetail,
+      item: updatedItem,
+      receivedAt,
+    });
+  }
+  const nextLedger: GearsJobLedger = {
+    schema_version: 'gears-job-ledger/v1',
+    updated_at: receivedAt,
+    items: ledger.items.map(item => item.ledger_id === match.ledger_id ? updatedItem : item),
+  };
+  updatedDetail = {
+    ...updatedDetail,
+    project: {
+      ...updatedDetail.project,
+      updated_at: receivedAt,
+    },
+    gears_job_ledger: nextLedger,
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  return success({
+    schema_version: 'ai-comic-series-gears-job-callback-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    gears_job_ledger: nextLedger,
+    seedance_production: updatedDetail.seedance_production,
+    ...aiComicSeriesGearsPostProductionLedgers(updatedDetail),
+    received_count: 1,
+    updated_count: 1,
+    failed_count: 0,
+    duplicate_count: duplicateCount,
+    failures: [],
+    gears_job_id: updatedItem.gears_job_id,
+    source_unit_id: updatedItem.source_unit_id,
+    status: updatedItem.status,
+  });
+}
+
+export async function importAiComicSeriesGearsCallbacks(
+  seriesProjectId: string,
+  request: GearsJobCallbackRequest,
+): Promise<ApiResponse<AiComicSeriesGearsJobCallbackResult>> {
+  const callbacks = extractGearsJobCallbackRequests(request);
+  if (callbacks.length <= 1) return importAiComicSeriesGearsCallback(seriesProjectId, callbacks[0] ?? request);
+
+  let latest: AiComicSeriesGearsJobCallbackResult | undefined;
+  const failures: GearsJobSubmitFailure[] = [];
+  let receivedCount = 0;
+  let updatedCount = 0;
+  let failedCount = 0;
+  let duplicateCount = 0;
+  for (const [index, callback] of callbacks.entries()) {
+    const result = await importAiComicSeriesGearsCallback(seriesProjectId, callback);
+    if (!result.ok || !result.data) return result;
+    latest = result.data;
+    receivedCount += result.data.received_count;
+    updatedCount += result.data.updated_count;
+    failedCount += result.data.failed_count;
+    duplicateCount += result.data.duplicate_count;
+    failures.push(...result.data.failures.map(failure => ({
+      ...failure,
+      index,
+      path: failure.path ?? gearsCallbackBatchPath(callback),
+    })));
+  }
+  if (!latest) return importAiComicSeriesGearsCallback(seriesProjectId, request);
+  return success({
+    ...latest,
+    received_count: receivedCount,
+    updated_count: updatedCount,
+    failed_count: failedCount,
+    duplicate_count: duplicateCount,
+    failures,
+  });
+}
+
+export async function syncAiComicSeriesGearsJobStatuses(
+  seriesProjectId: string,
+  request: GearsJobStatusSyncRequest = {},
+): Promise<ApiResponse<AiComicSeriesGearsJobStatusSyncResult>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const ledger = normalizeGearsJobLedger(existing.gears_job_ledger);
+  const selection = aiComicSeriesGearsSyncItems({ ledger, request });
+  if (!selection.items.length) {
+    const result: Omit<AiComicSeriesGearsJobStatusSyncResult, 'markdown'> = {
+      schema_version: 'ai-comic-series-gears-job-sync-result/v1',
+      project: existing.project,
+      series_title: existing.plan.series_title,
+      gears_job_ledger: ledger,
+      seedance_production: existing.seedance_production,
+      ...aiComicSeriesGearsPostProductionLedgers(existing),
+      pollable_count: 0,
+      synced_count: 0,
+      failed_count: 0,
+      duplicate_count: 0,
+      skipped_count: selection.skippedCount,
+      synced_jobs: [],
+      failures: [],
+    };
+    return success({ ...result, markdown: buildAiComicSeriesGearsSyncMarkdown(result) });
+  }
+
+  const pollRes = await pollGearsExecutionJobStatuses({
+    items: selection.items,
+    note: request.note ?? 'GEARS series status sync',
+  });
+  if (!pollRes.ok || !pollRes.data) {
+    return fail(
+      pollRes.error?.code === ErrorCodes.VALIDATION_ERROR
+        ? ErrorCodes.VALIDATION_ERROR
+        : ErrorCodes.INTERNAL_ERROR,
+      pollRes.error?.message ?? 'GEARS series status sync failed',
+      pollRes.error?.details,
+    );
+  }
+
+  const failures = [...pollRes.data.failures];
+  let currentDetail = existing;
+  let currentLedger = ledger;
+  const syncedJobs: GearsJobLedgerItem[] = [];
+  let duplicateCount = 0;
+  for (const [index, polled] of pollRes.data.callbacks.entries()) {
+    const importRes = await importAiComicSeriesGearsCallback(seriesProjectId, polled.callback);
+    if (!importRes.ok || !importRes.data) {
+      failures.push({
+        index,
+        source_unit_id: polled.item.source_unit_id,
+        gears_job_id: polled.item.gears_job_id,
+        message: importRes.error?.message ?? 'GEARS series status callback import failed',
+      });
+      continue;
+    }
+    const refreshed = await readSeriesProject(seriesProjectId);
+    if (refreshed) currentDetail = refreshed;
+    currentLedger = normalizeGearsJobLedger(importRes.data.gears_job_ledger);
+    const synced = currentLedger.items.find(item =>
+      item.gears_job_id === polled.item.gears_job_id
+      || item.source_unit_id === polled.item.source_unit_id
+    );
+    if (synced) syncedJobs.push(synced);
+    failures.push(...importRes.data.failures);
+    duplicateCount += importRes.data.duplicate_count;
+  }
+
+  if (pollRes.data.failures.length) {
+    const updatedAt = new Date().toISOString();
+    currentLedger = markGearsLedgerPollFailures({
+      ledger: currentLedger,
+      failures: pollRes.data.failures,
+      updatedAt,
+    });
+    currentDetail = {
+      ...currentDetail,
+      project: {
+        ...currentDetail.project,
+        updated_at: updatedAt,
+      },
+      gears_job_ledger: currentLedger,
+    };
+    await writeJsonFile(seriesProjectPath(seriesProjectId), currentDetail);
+  }
+
+  const result: Omit<AiComicSeriesGearsJobStatusSyncResult, 'markdown'> = {
+    schema_version: 'ai-comic-series-gears-job-sync-result/v1',
+    project: currentDetail.project,
+    series_title: currentDetail.plan.series_title,
+    gears_job_ledger: currentLedger,
+    seedance_production: currentDetail.seedance_production,
+    ...aiComicSeriesGearsPostProductionLedgers(currentDetail),
+    provider_adapter: pollRes.data.summary,
+    pollable_count: selection.items.length,
+    synced_count: syncedJobs.length,
+    failed_count: failures.length,
+    duplicate_count: duplicateCount,
+    skipped_count: selection.skippedCount,
+    synced_jobs: syncedJobs,
+    failures,
+  };
+  return success({ ...result, markdown: buildAiComicSeriesGearsSyncMarkdown(result) });
 }
 
 export async function exportAiComicSeriesSeedanceVersionComparisonPackage(
@@ -5971,6 +7224,7 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
     seedance_title_card_render: cloneSeedanceTitleCardRenderLedger(detail.seedance_title_card_render),
     seedance_final_delivery: cloneSeedanceFinalDeliveryLedger(detail.seedance_final_delivery),
     seedance_review_ledger: cloneSeedanceReviewLedger(detail.seedance_review_ledger),
+    gears_job_ledger: normalizeGearsJobLedger(detail.gears_job_ledger),
     series_quality_audit: detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
       plan: detail.plan,
       generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},

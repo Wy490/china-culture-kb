@@ -3,6 +3,29 @@
 > 日期：2026-06-19
 > 范围：从 Seedance 镜头回片到字幕、音频、片头片尾、最终成片和外部剪辑平台交付。
 
+## 0. 2026-06-19 边界修订
+
+本计划的执行边界已调整。`china-culture-kb` 不再继续承担真实媒体执行器职责；图片、视频、字幕烧录、混音、片头片尾和最终成片装配等实际产出统一迁移到 `Wy490/gears-v2`。
+
+本计划在当前仓库中的保留范围：
+
+- 后期计划包。
+- dry-run / manifest / 依赖检查。
+- 生产账本。
+- dashboard 状态。
+- 审片返修与重试计划。
+- GEARS job 提交和 GEARS callback 写回。
+
+迁出到 GEARS 的范围：
+
+- 真实 ffmpeg 字幕烧录。
+- 真实音频混音。
+- 真实片头片尾渲染。
+- 真实 final assemble。
+- 视频生成、artifact 存储、媒体转码和可下载产物管理。
+
+后续开发优先参考 `docs/gears-execution-integration-plan.md`，将本计划中的 worker 执行点改造成 GEARS job，而不是继续在当前仓库做真实 runner。
+
 ## 1. 当前基线
 
 当前系统已经具备从长篇 AI 漫剧规划到 Seedance 镜头生产闭环的基础能力。
@@ -28,31 +51,32 @@
 
 当前能力边界：
 
-- 已能把 Seedance 回片组织为可剪辑资产，并自动抽缩略图、装配初版成片。
-- 已能生成后期精修计划，执行 SRT 字幕文件输出与可选字幕烧录，导出音频计划、导入音频素材、生成混音 dry-run 命令和混音账本，并完成混音真实 runner 输入/输出 hardening、分集时间轴归一和原声保留开关；已生成片头片尾计划、片头片尾 render dry-run、final delivery dry-run、final manifest、外部剪辑平台包和生产总览 dashboard；真实片头片尾渲染和最终交付真实装配仍待增强。
+- 已能把 Seedance 回片组织为可剪辑资产，并生成缩略图、剪辑包和初版装配合同。
+- 已能生成后期精修计划、SRT 字幕文件、音频计划、片头片尾计划、final delivery dry-run、final manifest、外部剪辑平台包和生产总览 dashboard。
+- 已经有若干本地 runner / fake runner / hardening 经验，但新方向下这些真实执行能力不再继续在当前仓库扩展；后续统一转为 GEARS job。
 - 外部剪辑平台已有通用 JSON / CSV / SRT / asset manifest 首版，平台专用 FCPXML / Premiere XML / 剪映草稿格式仍待适配。
 - 审片返修闭环首版已完成：可记录审片意见、标记解决、导出返修包，并在 dashboard 中形成 blocker / next action。
 
 ## 2. 总体目标
 
-目标是把 Story Agent 的 Seedance 后期链路推进到“可持续生产长篇 AI 漫剧成片”的程度。
+目标是把 Story Agent 的 Seedance 后期链路推进到“可持续指挥长篇 AI 漫剧成片生产”的程度。
 
 最终系统应支持：
 
-- 从 ready 镜头自动生成剪辑、字幕、音频、片头片尾和最终成片。
-- 每一步都有结构化计划包、worker、输出文件和生产账本。
+- 从 ready 镜头生成剪辑、字幕、音频、片头片尾和最终成片的 GEARS job。
+- 每一步都有结构化计划包、GEARS job、artifact 回调和生产账本。
 - 前端能显示生产总览、阻塞项和下一步操作。
 - 外部剪辑平台可以导入同一套资产、时间线、字幕和音频计划。
 - 审片意见可以回流到镜头重做、版本重选、字幕修订、混音修订和最终重装配。
 
 ## 3. 架构原则
 
-- 所有后期能力都应遵循“计划包 -> worker -> 账本 -> 前端状态”的模式。
+- 所有后期能力都应遵循“计划包 -> GEARS job -> callback -> 账本 -> 前端状态”的模式。
 - 计划包只描述结构和意图，不直接修改项目状态。
-- worker 执行或 dry-run 后必须写入对应账本。
-- ffmpeg 命令必须可复现，并保存到结果和账本中。
-- 真实执行必须支持 `dry_run`、`overwrite` 和明确的失败原因。
-- 输出文件应保存在系列项目目录下，避免生成无法追踪的孤立资产。
+- dry-run 后必须写入对应账本；真实执行由 GEARS 写回 artifact。
+- ffmpeg 命令在当前仓库只作为计划 hint；真实命令与媒体文件由 GEARS 侧管理。
+- 真实执行必须由 GEARS 支持明确失败原因，并通过 callback 回写。
+- 当前仓库不直接管理最终媒体文件，只保存 GEARS artifact URL / ID。
 - 前端只展示和触发生产状态，不把复杂生产逻辑写在 UI 中。
 - 大系列场景需要考虑 30 集以上、300-600 个镜头的性能。
 
@@ -65,16 +89,17 @@ Seedance prompts
   -> 选择剪辑版 / 自动择优
   -> cut package
   -> thumbnail plan
-  -> thumbnail worker
-  -> cut assembly worker
+  -> GEARS thumbnail / storyboard artifact job
+  -> GEARS cut_assembly job
   -> finishing plan
   -> subtitle package
-  -> subtitle render worker
+  -> GEARS subtitle_render job
   -> audio plan
-  -> audio mix worker
+  -> GEARS audio_mix job
   -> title card plan
-  -> title card render worker
-  -> final delivery assembly
+  -> GEARS title_card_render job
+  -> GEARS final_assemble job
+  -> GEARS artifact callback
   -> dashboard
   -> review and repair loop
 ```
@@ -255,7 +280,7 @@ Seedance prompts
 
 调用 ffmpeg 将背景音乐、环境声、音效与视频合成为带音频的成片。
 
-当前状态：dry-run / mock runner、真实素材路径校验、分集时间轴归一、原声保留开关和 runner 输出校验首版已完成；后续继续做真实 ffmpeg 媒体烟测和更细 ducking 策略。
+当前状态：dry-run / mock runner、真实素材路径校验、分集时间轴归一、原声保留开关和 runner 输出校验首版已完成；后续迁移为 GEARS `audio_mix` job，并在 GEARS 侧补真实媒体烟测和更细 ducking 策略。
 
 ### 后端任务
 
@@ -282,7 +307,7 @@ Seedance prompts
 - 真实执行已校验源视频存在、音频素材为项目内本地路径且文件存在；远程 URL 或协议路径会写入明确失败原因。
 - 分集混音会将该集 audio cues 从全系列时间轴归零，系列底乐可复用于单集，缺失音频数按分集范围统计。
 - `include_original_audio=true` 时会把源视频原声作为一条可控音量输入加入 `amix`；runner 成功返回后会校验输出文件是否真实产生。
-- 当前首版优先保证计划可审查、命令可复现和真实 runner 输入/输出安全；后续继续补真实 ffmpeg 媒体烟测和更细 ducking 策略。
+- 当前首版优先保证计划可审查、命令可复现和 runner 输入/输出安全；后续真实 ffmpeg 媒体烟测和更细 ducking 策略迁到 GEARS 侧补。
 
 ### 前端任务
 
@@ -304,7 +329,7 @@ Seedance prompts
 实现状态：
 
 - 已覆盖混音 dry-run 命令、分集混音时间归一、原声保留、远程音频素材真实执行失败、runner 未产出失败、本地音频 fake runner 成功、音频输入路径安全校验、混音请求 validation 和缺失项目响应。
-- 待补：真实 ffmpeg 成功/失败媒体烟测和更细 ducking 策略测试。
+- 迁出：真实 ffmpeg 成功/失败媒体烟测和更细 ducking 策略测试应在 GEARS 侧补。
 
 ### 验收标准
 
@@ -363,7 +388,7 @@ Seedance prompts
 实现状态：
 
 - 已覆盖 title card plan、render dry-run、ffmpeg command hint、runner 未产出文件失败、fake runner 成功和 API validation。
-- 待补：真实 ffmpeg 成功/失败专项、字体缺失 API 专项和视觉模板回归。
+- 迁出：真实 ffmpeg 成功/失败专项和视觉模板回归应在 GEARS 侧补；当前仓库只保留字体配置提示、计划包和 callback 账本。
 
 ### 验收标准
 
@@ -442,7 +467,7 @@ Seedance prompts
 实现状态：
 
 - 已覆盖 strict 缺片头片尾依赖、final delivery dry-run、runner 未产出文件失败、fake runner 成功、ffmpeg concat 命令、manifest 写盘和 API validation。
-- 待补：真实 ffmpeg 成功/失败专项、精确 title card 时间线和 strict/tolerant 更多组合。
+- 迁出：真实 ffmpeg 成功/失败专项和精确 title card 时间线应在 GEARS 侧补；当前仓库只保留 strict/tolerant 依赖检查、计划包和 callback 账本。
 
 ### 验收标准
 
@@ -560,7 +585,7 @@ Seedance prompts
 
 ## 13. 阶段九：审片与返修闭环
 
-当前状态：review ledger、返修包导出、dashboard blocker、工作台轻量录入、审片驱动重试包、重试执行计划、本地重试提交、retry submit adapter、系列 provider 超时恢复、strict final guard 和 final reassemble 执行闭环首版已完成；后续继续深化版本对比面板标注和真实执行增强。
+当前状态：review ledger、返修包导出、dashboard blocker、工作台轻量录入、审片驱动重试包、重试执行计划、本地重试提交、retry submit adapter、系列 provider 超时恢复、strict final guard 和 final reassemble 执行闭环首版已完成；后续继续深化版本对比面板标注和 GEARS 执行联动。
 
 ### 目标
 
@@ -667,28 +692,30 @@ Seedance prompts
 
 推荐按以下顺序继续：
 
-1. `seedance-title-cards/render` 真实 ffmpeg / 视觉模板回归
-2. `seedance-final/assemble` 真实 ffmpeg 专项和精确片头片尾时间线
-3. `seedance-audio/mix` 真实 ffmpeg 媒体烟测和 ducking 细化
-4. 30 集压测和性能优化
+1. GEARS execution config / contract。
+2. GEARS job ledger。
+3. 将 `seedance-title-cards/render`、`seedance-final/assemble`、`seedance-audio/mix` 的真实执行入口改造成 GEARS job。
+4. GEARS callback 写回 title card、final delivery、audio mix artifact。
+5. 30 集压测和性能优化。
 
 ## 16. 下一步最小可交付切片
 
 下一步建议优先实现：
 
 ```text
-seedance-title-cards/render real ffmpeg and visual template regression
-  -> seedance-final/assemble real ffmpeg and precise title-card timeline
-  -> seedance-audio/mix real media smoke and ducking refinement
+GEARS execution config / contract
+  -> GEARS job ledger
+  -> title_card_render / final_assemble / audio_mix job submit
+  -> GEARS callback artifact write-back
 ```
 
 原因：
 
 - 直接承接当前已完成的剪辑装配、字幕 worker、音频计划 / 混音 dry-run、片头片尾 dry-run、final delivery dry-run、外部剪辑平台包和生产总览 dashboard。
-- 不依赖第三方平台。
-- 可先用 mock runner 和真实路径校验把 dry-run 账本推进到 ready 账本，再逐步补真实视觉模板。
-- ffmpeg 依赖和 worker 模式已经在缩略图、剪辑装配、字幕烧录和混音 dry-run 中跑通。
-- 能把系统从“可审查最终交付依赖和成片装配命令”推进到“可交给外部剪辑平台或真实 worker 执行”。
+- 不继续在当前仓库复制 GEARS 的媒体执行能力。
+- 可先用 mock GEARS adapter 把 dry-run 账本推进到 submitted / ready / failed 账本，再接真实 GEARS API。
+- ffmpeg 依赖、视觉模板和 artifact 存储应在 GEARS 侧统一治理。
+- 能把系统从“可审查最终交付依赖和成片装配命令”推进到“可提交 GEARS 实产任务并接回 artifact”。
 
 该切片完成后，系统后期链路将达到：
 
@@ -698,11 +725,12 @@ ready 镜头
   -> 缩略图
   -> 精修计划
   -> SRT 字幕文件
-  -> 字幕烧录成片
+  -> GEARS 字幕渲染 job
   -> 音频计划
-  -> 混音 dry-run / 音频账本
-  -> 片头片尾计划 / render dry-run
-  -> final delivery dry-run / 依赖账本
+  -> GEARS 混音 job
+  -> 片头片尾计划 / GEARS render job
+  -> final delivery dry-run / GEARS final assemble job
+  -> artifact callback / 依赖账本
 ```
 
-这会为后续真实片头片尾渲染、最终成片装配、真实混音媒体烟测和外部剪辑平台包打下稳定基础。
+这会为后续真实片头片尾渲染、最终成片装配、真实混音媒体烟测和外部剪辑平台包在 GEARS 侧统一执行打下稳定基础。
