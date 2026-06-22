@@ -1,11 +1,12 @@
 // web/server/src/services/ai-comic-series-service.ts — AI comic series planning
 
 import { execFile } from 'node:child_process';
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { dirname, resolve } from 'node:path';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { ErrorCodes, success, fail } from '@shared/types.js';
+import { ErrorCodes, GEARS_CALLBACK_BATCH_ITEM_LIMIT, success, fail } from '@shared/types.js';
 import type {
   AiComicContinuityLedger,
   AiComicContinuityLedgerEpisode,
@@ -100,6 +101,7 @@ import type {
   AiComicSeriesGearsJobCallbackResult,
   AiComicSeriesGearsJobStatusSyncResult,
   AiComicSeriesGearsJobSubmitResult,
+  AiComicSeriesProductionReadinessReport,
   AiComicSeriesSeedanceProviderRecoveryResult,
   AiComicSeriesSeedanceAssetReportPackage,
   AiComicSeriesSeedanceEditAssetPackage,
@@ -163,6 +165,7 @@ import type {
   AiComicPlotThread,
   ApiResponse,
   ErrorCode,
+  GearsExecutionJobStatus,
   GearsExecutionJobType,
   GearsJobCallbackRequest,
   GearsJobLedger,
@@ -173,6 +176,14 @@ import type {
   KnowledgeNeed,
   KnowledgePack,
   NarrativePatternId,
+  ProductionReadinessGearsSummary,
+  ProductionReadinessAutomationRunLedger,
+  ProductionReadinessAutomationRunRequest,
+  ProductionReadinessAutomationRunResult,
+  ProductionReadinessIssue,
+  ProductionReadinessLane,
+  ProductionReadinessNextAction,
+  ProductionReadinessStatus,
   SeedanceProviderSubmitRequestMode,
   SeedancePromptShotUnit,
   SeedanceShotProviderSubmitAdapterSummary,
@@ -183,6 +194,7 @@ import type {
 } from '@shared/types.js';
 import { analyzeOutline, multiMatchEntries } from './outline-service.js';
 import { generateAndStoreStory, getStory } from './story-service.js';
+import { buildProductionReadinessAutomationPlan } from './production-readiness-automation.js';
 import {
   getNarrativePatternRequirementLines,
   getNarrativePatternsForVideoType,
@@ -192,6 +204,7 @@ import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import {
   buildGearsLedgerItem,
   buildLocalGearsJobId,
+  buildRejectedGearsLedgerItem,
   gearsSeriesCallbackPath,
   gearsSeriesCallbackUrl,
   gearsJobStatusIsTerminal,
@@ -215,6 +228,16 @@ const PACING_LABELS: Record<AiComicPacingProfile, string> = {
   slow_burn: '慢热铺陈',
   mystery_cliffhanger: '悬念钩子',
 };
+
+const GEARS_EXECUTION_JOB_STATUSES: GearsExecutionJobStatus[] = [
+  'submitted',
+  'queued',
+  'processing',
+  'ready',
+  'failed',
+  'canceled',
+  'rejected',
+];
 
 const PHASE_TEMPLATES = [
   { id: 'phase-1', purpose: '建立主角目标、世界规则和核心问题', turning_point: '主角被迫做出第一次选择' },
@@ -2501,10 +2524,17 @@ export async function rebuildAiComicSeriesContinuityLedger(
 export async function listAiComicSeriesProjects(
   options: { includeArchived?: boolean } = {},
 ): Promise<ApiResponse<AiComicSeriesProjectMeta[]>> {
-  let projectIds: string[];
-  try {
-    projectIds = await readdir(seriesProjectsRoot());
-  } catch {
+  const projectIds = new Set<string>();
+  for (const rootPath of seriesProjectsRoots()) {
+    try {
+      for (const projectId of await readdir(rootPath)) {
+        projectIds.add(projectId);
+      }
+    } catch {
+      continue;
+    }
+  }
+  if (!projectIds.size) {
     return success([]);
   }
 
@@ -3148,7 +3178,8 @@ export async function exportAiComicSeriesSeedanceCutPackage(
 
   const ledger = normalizeSeedanceProductionLedger(detail.seedance_production);
   const exportedAt = new Date().toISOString();
-  const episodeMap = new Map(detail.plan.episodes.map(episode => [episode.episode_no, episode]));
+  const planEpisodes = Array.isArray(detail.plan?.episodes) ? detail.plan.episodes : [];
+  const episodeMap = new Map(planEpisodes.map(episode => [episode.episode_no, episode]));
   const readyItems = ledger.items.filter(item => item.status === 'ready' && Boolean(item.video_url));
   const missingShots = ledger.items
     .filter(item => !(item.status === 'ready' && item.video_url))
@@ -4274,16 +4305,33 @@ export async function submitAiComicSeriesGearsJobs(
       });
     })
     .filter((item): item is GearsJobLedgerItem => Boolean(item));
+  const rejectedJobs = adapterRes.data.failures
+    .map(failure => {
+      if (!failure.source_unit_id) return undefined;
+      const unit = unitById.get(failure.source_unit_id);
+      if (!unit) return undefined;
+      return buildRejectedGearsLedgerItem({
+        seriesProjectId,
+        sourceStoryId: built.candidatesByProductionId.get(unit.source_unit_id)?.story_id,
+        jobType,
+        unit,
+        failure,
+        submittedAt,
+        note: request.note,
+      });
+    })
+    .filter((item): item is GearsJobLedgerItem => Boolean(item));
+  const ledgerJobs = [...submittedJobs, ...rejectedJobs];
 
   let updatedDetail = existing;
-  if (jobType === 'seedance_video' && submittedJobs.length) {
-    const acceptedByProductionId = new Map(submittedJobs.map(item => [item.source_unit_id, item]));
+  if (jobType === 'seedance_video' && ledgerJobs.length) {
+    const jobsByProductionId = new Map(ledgerJobs.map(item => [item.source_unit_id, item]));
     const updateRes = await updateAiComicSeriesSeedanceProductionStatuses(seriesProjectId, {
-      updates: [...acceptedByProductionId.values()]
+      updates: [...jobsByProductionId.values()]
         .map(item => built.candidatesByProductionId.get(item.source_unit_id))
         .filter((candidate): candidate is AiComicSeedanceRetryExecutionCandidate => Boolean(candidate))
         .map(candidate => {
-          const item = acceptedByProductionId.get(candidate.production_id)!;
+          const item = jobsByProductionId.get(candidate.production_id)!;
           return {
             episode_no: candidate.episode_no,
             shot_id: candidate.shot_id,
@@ -4291,6 +4339,8 @@ export async function submitAiComicSeriesGearsJobs(
             provider_job_id: item.gears_job_id,
             video_url: item.status === 'ready' ? item.artifact_urls[0] : undefined,
             failure_reason: item.failure_reason,
+            failure_category: item.status === 'failed' || item.status === 'rejected' ? item.failure_category : undefined,
+            provider_error_code: item.status === 'failed' || item.status === 'rejected' ? item.error_code : undefined,
             note: request.note ?? `GEARS job ${item.status}: ${item.gears_job_id}`,
             increment_retry: candidate.status !== 'not_started' && candidate.status !== 'prompt_exported',
           };
@@ -4308,7 +4358,7 @@ export async function submitAiComicSeriesGearsJobs(
 
   const gearsJobLedger = mergeGearsLedgerItems({
     existing: updatedDetail.gears_job_ledger,
-    items: submittedJobs,
+    items: ledgerJobs,
     updatedAt: submittedAt,
   });
   updatedDetail = {
@@ -4700,6 +4750,12 @@ export async function importAiComicSeriesGearsCallbacks(
   request: GearsJobCallbackRequest,
 ): Promise<ApiResponse<AiComicSeriesGearsJobCallbackResult>> {
   const callbacks = extractGearsJobCallbackRequests(request);
+  if (callbacks.length > GEARS_CALLBACK_BATCH_ITEM_LIMIT) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `GEARS callback batch item count must be <= ${GEARS_CALLBACK_BATCH_ITEM_LIMIT}`,
+    );
+  }
   if (callbacks.length <= 1) return importAiComicSeriesGearsCallback(seriesProjectId, callbacks[0] ?? request);
 
   let latest: AiComicSeriesGearsJobCallbackResult | undefined;
@@ -6357,6 +6413,764 @@ export async function getAiComicSeriesSeedanceProductionDashboard(
   });
 }
 
+export async function getAiComicSeriesProductionReadiness(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesProductionReadinessReport>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const dashboardRes = await getAiComicSeriesSeedanceProductionDashboard(seriesProjectId);
+  if (!dashboardRes.ok || !dashboardRes.data) {
+    return fail(
+      normalizeErrorCode(dashboardRes.error?.code),
+      dashboardRes.error?.message ?? 'Build series production dashboard failed',
+    );
+  }
+
+  const dashboard = dashboardRes.data;
+  const audit = detail.series_quality_audit;
+  const gearsSummary = summarizeAiComicProductionReadinessGears(detail.gears_job_ledger);
+  const issues: ProductionReadinessIssue[] = [];
+  const nextActions: ProductionReadinessNextAction[] = [];
+  const generatedEpisodeCount = Object.keys(detail.generated_episode_story_ids ?? {}).length;
+
+  const addIssue = (issue: ProductionReadinessIssue) => issues.push(issue);
+  const addAction = (action: ProductionReadinessNextAction) => {
+    if (nextActions.some(item => item.action_key === action.action_key)) return;
+    nextActions.push(action);
+  };
+
+  if (!audit?.passed) {
+    addIssue({
+      issue_id: 'series-quality-needs-attention',
+      severity: (audit?.score ?? 0) < 70 ? 'blocking' : 'warning',
+      lane_key: 'series_quality',
+      label: `${audit?.issues.length ?? 1} 个系列质量问题`,
+      detail: audit?.issues[0] ?? '系列质量审计未通过。',
+      action_key: 'rebuild_ledger',
+      action_label: '重建/修复连续性账本',
+    });
+    addAction({
+      action_key: 'rebuild_ledger',
+      label: '修复系列质量审计',
+      detail: '先处理连续性、分集生成和长期线索问题，再推进批量生产。',
+      priority: 10,
+      lane_key: 'series_quality',
+    });
+  }
+
+  if (generatedEpisodeCount < detail.plan.episode_count) {
+    addIssue({
+      issue_id: 'episodes-not-complete',
+      severity: generatedEpisodeCount === 0 ? 'blocking' : 'warning',
+      lane_key: 'episode_generation',
+      label: `分集生成 ${generatedEpisodeCount}/${detail.plan.episode_count}`,
+      detail: '系列还没有完整分集故事，无法进入完整商业生产排期。',
+      action_key: 'generate_next_episode',
+      action_label: '生成下一集',
+    });
+    addAction({
+      action_key: 'generate_next_episode',
+      label: '继续生成分集',
+      detail: `还剩 ${Math.max(0, detail.plan.episode_count - generatedEpisodeCount)} 集未生成。`,
+      priority: 20,
+      lane_key: 'episode_generation',
+    });
+  }
+
+  for (const blocker of dashboard.blockers) {
+    addIssue({
+      issue_id: `seedance-dashboard-${blocker.blocker_id}`,
+      severity: blocker.severity === 'blocking' ? 'blocking' : 'warning',
+      lane_key: blocker.related_status_key === 'review_ledger' ? 'review_repair' : 'shot_production',
+      label: blocker.label,
+      detail: blocker.detail,
+      action_key: blocker.action_key,
+      action_label: blocker.action_label,
+    });
+  }
+  for (const action of dashboard.next_actions) {
+    addAction({
+      action_key: action.action_key,
+      label: action.label,
+      detail: action.detail,
+      priority: action.priority + 30,
+      lane_key: action.related_status_key === 'review_ledger' ? 'review_repair' : 'shot_production',
+      disabled_reason: action.disabled_reason,
+    });
+  }
+
+  if (gearsSummary.total === 0) {
+    addIssue({
+      issue_id: 'series-gears-ledger-empty',
+      severity: 'warning',
+      lane_key: 'gears_execution',
+      label: '系列尚未建立 GEARS job',
+      detail: '系列生产仍停留在计划/账本层，尚未形成 GEARS v2 执行任务。',
+      action_key: 'submit_gears_jobs',
+      action_label: '提交 GEARS',
+    });
+    addAction({
+      action_key: 'submit_gears_jobs',
+      label: '批量提交 GEARS job',
+      detail: '按当前 job type 将镜头、图片或后期任务提交给 GEARS v2。',
+      priority: 70,
+      lane_key: 'gears_execution',
+    });
+  } else {
+    if (gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled > 0) {
+      addIssue({
+        issue_id: 'series-gears-terminal-failures',
+        severity: 'blocking',
+        lane_key: 'gears_execution',
+        label: `${gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled} 个 GEARS job 失败`,
+        detail: '系列 GEARS 账本存在终态失败，需要重试或人工处理。',
+        action_key: 'submit_gears_jobs',
+        action_label: '重提 GEARS',
+      });
+    }
+    if (gearsSummary.missing_artifact > 0) {
+      addIssue({
+        issue_id: 'series-gears-ready-missing-artifact',
+        severity: 'blocking',
+        lane_key: 'gears_execution',
+        label: `${gearsSummary.missing_artifact} 个 ready job 缺 artifact`,
+        detail: 'GEARS 已返回 ready，但没有交付 URL，无法进入审片或最终装配。',
+        action_key: 'sync_gears_jobs',
+        action_label: '同步 GEARS',
+      });
+    }
+    if (gearsSummary.active > 0 || gearsSummary.poll_failure > 0) {
+      addAction({
+        action_key: 'sync_gears_jobs',
+        label: '同步系列 GEARS 状态',
+        detail: `${gearsSummary.active} 个 GEARS job 仍在活跃状态，${gearsSummary.poll_failure} 个最近轮询失败。`,
+        priority: 75,
+        lane_key: 'gears_execution',
+      });
+    }
+  }
+
+  const finalDeliveryItem = dashboard.status_items.find(item => item.key === 'final_delivery');
+  const editingPackageItem = dashboard.status_items.find(item => item.key === 'editing_platform_package');
+  const lanes: ProductionReadinessLane[] = [
+    {
+      key: 'series_quality',
+      label: 'MCP Story Agent 闭环',
+      status: audit?.passed ? 'ready' : (audit?.score ?? 0) < 70 ? 'blocked' : 'needs_action',
+      score: audit?.score ?? 0,
+      detail: audit?.passed ? '系列质量审计通过。' : '系列质量审计仍需修复。',
+      count_text: `episodes ${audit?.generated_episode_count ?? generatedEpisodeCount}/${audit?.total_episode_count ?? detail.plan.episode_count}`,
+      evidence: [
+        `issues ${audit?.issues.length ?? 0}`,
+        `attention ${audit?.episodes_need_attention.join(',') || 'none'}`,
+      ],
+      action_key: audit?.passed ? undefined : 'rebuild_ledger',
+      action_label: audit?.passed ? undefined : '修复质量审计',
+    },
+    {
+      key: 'episode_generation',
+      label: 'AI 漫剧系列指挥层',
+      status: generatedEpisodeCount === 0
+        ? 'blocked'
+        : generatedEpisodeCount >= detail.plan.episode_count
+          ? 'ready'
+          : 'needs_action',
+      score: detail.plan.episode_count > 0
+        ? Math.round((generatedEpisodeCount / detail.plan.episode_count) * 100)
+        : 0,
+      detail: `已生成 ${generatedEpisodeCount} / ${detail.plan.episode_count} 集。`,
+      count_text: `${generatedEpisodeCount}/${detail.plan.episode_count}`,
+      evidence: [
+        `series ${detail.project.series_project_id}`,
+        `updated ${detail.project.updated_at}`,
+      ],
+      action_key: generatedEpisodeCount >= detail.plan.episode_count ? undefined : 'generate_next_episode',
+      action_label: generatedEpisodeCount >= detail.plan.episode_count ? undefined : '生成分集',
+    },
+    {
+      key: 'shot_production',
+      label: 'Production Board / Shot Production',
+      status: dashboard.summary.failed_count > 0 || dashboard.summary.missing_shot_count > 0
+        ? dashboard.summary.ready_count === 0 ? 'blocked' : 'needs_action'
+        : dashboard.summary.total_shot_count > 0 && dashboard.summary.ready_count >= dashboard.summary.total_shot_count
+          ? 'ready'
+          : 'needs_action',
+      score: aiComicProductionReadinessShotScore(dashboard.summary.total_shot_count, dashboard.summary.ready_count, dashboard.summary.processing_count + dashboard.summary.submitted_count, dashboard.summary.failed_count),
+      detail: `ready ${dashboard.summary.ready_count}，active ${dashboard.summary.processing_count + dashboard.summary.submitted_count}，failed ${dashboard.summary.failed_count}。`,
+      count_text: `ready ${dashboard.summary.ready_count}/${dashboard.summary.total_shot_count}`,
+      evidence: [
+        `selected ${dashboard.summary.selected_version_count}`,
+        `missing ${dashboard.summary.missing_shot_count}`,
+      ],
+      action_key: dashboard.summary.failed_count > 0 ? 'export_retry_package' : dashboard.summary.ready_count < dashboard.summary.total_shot_count ? 'import_seedance_returns' : undefined,
+      action_label: dashboard.summary.failed_count > 0 ? '导出重试包' : dashboard.summary.ready_count < dashboard.summary.total_shot_count ? '导入回片' : undefined,
+    },
+    {
+      key: 'delivery_contract',
+      label: 'Delivery Contract',
+      status: aiComicReadinessFromDashboardStatus(finalDeliveryItem?.status ?? 'not_started'),
+      score: aiComicDashboardStatusScore(finalDeliveryItem?.status ?? 'not_started'),
+      detail: finalDeliveryItem?.status_text ?? '最终交付尚未启动。',
+      count_text: finalDeliveryItem?.count_text,
+      evidence: [
+        finalDeliveryItem?.output_path ? `output ${finalDeliveryItem.output_path}` : 'no final output',
+        editingPackageItem?.status_text ? `editing ${editingPackageItem.status_text}` : 'editing package unknown',
+      ],
+      action_key: finalDeliveryItem?.status === 'ready' ? undefined : 'assemble_final_delivery',
+      action_label: finalDeliveryItem?.status === 'ready' ? undefined : '刷新最终交付',
+    },
+    {
+      key: 'review_repair',
+      label: '审片返修',
+      status: dashboard.summary.open_review_count > 0
+        ? dashboard.summary.blocking_review_count > 0 || dashboard.summary.final_reassemble_required ? 'blocked' : 'needs_action'
+        : 'ready',
+      score: Math.max(0, Math.min(100, 100 - dashboard.summary.open_review_count * 8 - dashboard.summary.blocking_review_count * 15)),
+      detail: dashboard.summary.open_review_count > 0
+        ? `还有 ${dashboard.summary.open_review_count} 条审片意见待处理。`
+        : '审片返修账本无 open 项。',
+      count_text: `open ${dashboard.summary.open_review_count}`,
+      evidence: [
+        `blocking ${dashboard.summary.blocking_review_count}`,
+        `final_reassemble ${dashboard.summary.final_reassemble_required ? 'yes' : 'no'}`,
+      ],
+      action_key: dashboard.summary.open_review_count > 0 ? 'export_review_repair_package' : undefined,
+      action_label: dashboard.summary.open_review_count > 0 ? '导出返修包' : undefined,
+    },
+    {
+      key: 'gears_execution',
+      label: 'GEARS Execution',
+      status: aiComicProductionReadinessGearsStatus(gearsSummary),
+      score: aiComicProductionReadinessGearsScore(gearsSummary),
+      detail: gearsSummary.total > 0
+        ? `GEARS jobs ready ${gearsSummary.ready}，active ${gearsSummary.active}，failed ${gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled}。`
+        : '尚未提交系列 GEARS job。',
+      count_text: `jobs ${gearsSummary.total}`,
+      evidence: [
+        `missing_artifact ${gearsSummary.missing_artifact}`,
+        `poll_failure ${gearsSummary.poll_failure}`,
+      ],
+      action_key: gearsSummary.total === 0 || gearsSummary.active > 0 || gearsSummary.failed > 0 ? 'submit_gears_jobs' : undefined,
+      action_label: gearsSummary.total === 0 ? '提交 GEARS' : gearsSummary.active > 0 ? '同步 GEARS' : undefined,
+    },
+    {
+      key: 'commercial_ops',
+      label: '可商用制作中台',
+      status: dashboard.summary.blocker_count === 0 && gearsSummary.total > 0 ? 'ready' : 'needs_action',
+      score: Math.max(0, Math.min(100, 70 + (gearsSummary.total > 0 ? 20 : -20) - dashboard.summary.blocker_count * 8)),
+      detail: dashboard.summary.blocker_count === 0 && gearsSummary.total > 0
+        ? '系列生产状态可进入商业运营跟踪。'
+        : '商业制作中台仍缺 GEARS 任务或存在制作阻断。',
+      count_text: `blockers ${dashboard.summary.blocker_count} / gears ${gearsSummary.total}`,
+      evidence: [
+        `dashboard_actions ${dashboard.summary.next_action_count}`,
+        `project ${detail.project.series_project_id}`,
+      ],
+      action_key: gearsSummary.total === 0 ? 'submit_gears_jobs' : dashboard.summary.blocker_count > 0 ? 'export_retry_package' : undefined,
+      action_label: gearsSummary.total === 0 ? '提交 GEARS' : dashboard.summary.blocker_count > 0 ? '处理阻断' : undefined,
+    },
+  ];
+
+  const episodes = dashboard.episodes.map((episode) => {
+    const qualityReport = audit?.episode_reports.find(report => report.episode_no === episode.episode_no);
+    const qualityNeedsAttention = qualityReport ? qualityReport.status !== 'passed' : false;
+    const blockerCount = episode.blocker_count + (qualityNeedsAttention ? 1 : 0);
+    const status: ProductionReadinessStatus = blockerCount > 0 || episode.failed_shot_count > 0
+      ? 'blocked'
+      : episode.ready_shot_count >= episode.total_shot_count && !qualityNeedsAttention
+        ? 'ready'
+        : 'needs_action';
+    return {
+      episode_no: episode.episode_no,
+      episode_title: episode.episode_title,
+      story_id: episode.story_id,
+      status,
+      quality_score: qualityReport?.score,
+      issue_count: qualityReport?.issues.length,
+      total_shot_count: episode.total_shot_count,
+      ready_shot_count: episode.ready_shot_count,
+      failed_shot_count: episode.failed_shot_count,
+      blocker_count: blockerCount,
+    };
+  });
+
+  const sortedNextActions = nextActions.sort((a, b) => a.priority - b.priority);
+  const base: Omit<AiComicSeriesProductionReadinessReport, 'markdown'> = {
+    schema_version: 'ai-comic-series-production-readiness/v1',
+    scope: 'ai_comic_series',
+    project: detail.project,
+    series_title: detail.plan.series_title,
+    generated_at: new Date().toISOString(),
+    summary: buildAiComicProductionReadinessSummary(lanes, issues, sortedNextActions, {
+      qualityScore: audit?.score,
+      generatedEpisodeCount,
+      totalEpisodeCount: detail.plan.episode_count,
+      totalShotCount: dashboard.summary.total_shot_count,
+      readyShotCount: dashboard.summary.ready_count,
+      failedShotCount: dashboard.summary.failed_count,
+      openReviewCount: dashboard.summary.open_review_count,
+      gearsSummary,
+    }),
+    lanes,
+    issues,
+    next_actions: sortedNextActions,
+    automation_plan: buildProductionReadinessAutomationPlan({
+      scope: 'ai_comic_series',
+      projectId: detail.project.series_project_id,
+      actions: sortedNextActions,
+      issues,
+    }),
+    automation_ledger: detail.production_readiness_automation_ledger,
+    latest_automation_run: detail.production_readiness_automation_ledger?.latest_run,
+    episodes,
+  };
+
+  return success({
+    ...base,
+    markdown: buildAiComicSeriesProductionReadinessMarkdown(base),
+  });
+}
+
+export async function runAiComicSeriesProductionReadinessAutomation(
+  seriesProjectId: string,
+  request: ProductionReadinessAutomationRunRequest = {},
+): Promise<ApiResponse<ProductionReadinessAutomationRunResult<AiComicSeriesProductionReadinessReport>>> {
+  const dryRun = request.dry_run ?? true;
+  const maxSteps = request.max_steps ?? 6;
+  const stopOnError = request.stop_on_error ?? true;
+  const requestedActionKeys = request.action_keys?.length ? new Set(request.action_keys) : undefined;
+  const startedAt = new Date().toISOString();
+  const beforeRes = await getAiComicSeriesProductionReadiness(seriesProjectId);
+  if (!beforeRes.ok || !beforeRes.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      beforeRes.error?.message ?? `AI comic series project "${seriesProjectId}" not found`,
+      beforeRes.error?.details,
+    );
+  }
+
+  const steps: ProductionReadinessAutomationRunResult<AiComicSeriesProductionReadinessReport>['steps'] = [];
+  const completedActionKeys = new Set<string>();
+  let failed = false;
+
+  for (let iteration = 0; iteration < maxSteps; iteration += 1) {
+    const readinessRes = iteration === 0 ? beforeRes : await getAiComicSeriesProductionReadiness(seriesProjectId);
+    if (!readinessRes.ok || !readinessRes.data) break;
+    const step = readinessRes.data.automation_plan.steps.find(candidate => {
+      if (completedActionKeys.has(candidate.action_key)) return false;
+      if (requestedActionKeys && !requestedActionKeys.has(candidate.action_key)) return false;
+      return true;
+    });
+    if (!step) break;
+    completedActionKeys.add(step.action_key);
+
+    if (!step.can_auto_execute) {
+      steps.push({
+        step_id: step.step_id,
+        action_key: step.action_key,
+        label: step.label,
+        status: 'skipped',
+        runner: step.runner,
+        mode: step.mode,
+        can_auto_execute: step.can_auto_execute,
+        reason: step.status === 'blocked'
+          ? `blocked by ${step.blocked_by_issue_ids.join(', ') || 'readiness gate'}`
+          : step.mode === 'manual'
+            ? 'manual review required'
+            : 'external execution is not run inside china-culture-kb',
+        api_path: step.api?.path,
+      });
+      continue;
+    }
+
+    if (dryRun) {
+      steps.push({
+        step_id: step.step_id,
+        action_key: step.action_key,
+        label: step.label,
+        status: 'planned',
+        runner: step.runner,
+        mode: step.mode,
+        can_auto_execute: true,
+        reason: 'dry_run',
+        api_path: step.api?.path,
+      });
+      continue;
+    }
+
+    const execRes = await executeAiComicSeriesReadinessAutomationStep(seriesProjectId, step.action_key);
+    steps.push({
+      step_id: step.step_id,
+      action_key: step.action_key,
+      label: step.label,
+      status: execRes.ok ? 'executed' : 'failed',
+      runner: step.runner,
+      mode: step.mode,
+      can_auto_execute: true,
+      api_path: step.api?.path,
+      response_schema_version: aiComicProductionAutomationSchemaVersion(execRes.data),
+      error_message: execRes.error?.message,
+    });
+    if (!execRes.ok) {
+      failed = true;
+      if (stopOnError) break;
+    }
+  }
+
+  const afterRes = await getAiComicSeriesProductionReadiness(seriesProjectId);
+  if (!afterRes.ok || !afterRes.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      afterRes.error?.message ?? `AI comic series project "${seriesProjectId}" not found after automation run`,
+      afterRes.error?.details,
+    );
+  }
+  const completedAt = new Date().toISOString();
+  const runResult: ProductionReadinessAutomationRunResult<AiComicSeriesProductionReadinessReport> = {
+    schema_version: 'production-readiness-automation-run/v1',
+    scope: 'ai_comic_series',
+    project_id: seriesProjectId,
+    dry_run: dryRun,
+    started_at: startedAt,
+    completed_at: completedAt,
+    requested_action_keys: request.action_keys,
+    executed_step_count: steps.filter(step => step.status === 'executed').length,
+    planned_step_count: steps.filter(step => step.status === 'planned').length,
+    skipped_step_count: steps.filter(step => step.status === 'skipped').length,
+    failed_step_count: steps.filter(step => step.status === 'failed').length,
+    steps,
+    before_readiness: beforeRes.data,
+    after_readiness: afterRes.data,
+    notes: [
+      dryRun ? 'dry_run=true: no series project files were changed.' : 'Executed only Story Agent API steps marked can_auto_execute.',
+      'GEARS worker and manual review steps are never executed by this runner.',
+      'Final delivery automation runs dry-run contract/manifest mode only; real media assembly remains in GEARS v2.',
+      dryRun ? 'Automation run ledger was not persisted for dry_run.' : 'Automation run ledger was persisted on the AI comic series project.',
+      failed ? 'At least one step failed; inspect failed step error_message.' : 'Automation runner completed without failed internal steps.',
+    ],
+  };
+
+  if (!dryRun) {
+    await appendAiComicSeriesProductionReadinessAutomationRun(seriesProjectId, runResult);
+    const finalAfterRes = await getAiComicSeriesProductionReadiness(seriesProjectId);
+    if (finalAfterRes.ok && finalAfterRes.data) {
+      runResult.after_readiness = finalAfterRes.data;
+    }
+  }
+
+  return success(runResult);
+}
+
+const aiComicProductionReadinessAutomationLedgerLimit = 20;
+
+function buildAiComicProductionReadinessAutomationRunLedger(
+  existing: ProductionReadinessAutomationRunLedger | undefined,
+  run: ProductionReadinessAutomationRunResult<AiComicSeriesProductionReadinessReport>,
+): ProductionReadinessAutomationRunLedger {
+  const item = {
+    run_id: `production-readiness-run-${randomUUID()}`,
+    scope: run.scope,
+    project_id: run.project_id,
+    dry_run: run.dry_run,
+    started_at: run.started_at,
+    completed_at: run.completed_at,
+    requested_action_keys: run.requested_action_keys,
+    executed_step_count: run.executed_step_count,
+    planned_step_count: run.planned_step_count,
+    skipped_step_count: run.skipped_step_count,
+    failed_step_count: run.failed_step_count,
+    before_status: run.before_readiness.summary.status,
+    before_score: run.before_readiness.summary.score,
+    after_status: run.after_readiness.summary.status,
+    after_score: run.after_readiness.summary.score,
+    steps: run.steps,
+    notes: run.notes,
+  };
+  const previousItems = existing?.items ?? [];
+  const items = [
+    item,
+    ...previousItems.filter(previous => previous.run_id !== item.run_id),
+  ].slice(0, aiComicProductionReadinessAutomationLedgerLimit);
+  return {
+    schema_version: 'production-readiness-automation-run-ledger/v1',
+    updated_at: run.completed_at,
+    total_run_count: (existing?.total_run_count ?? previousItems.length) + 1,
+    persisted_run_count: items.length,
+    latest_run: item,
+    items,
+  };
+}
+
+async function appendAiComicSeriesProductionReadinessAutomationRun(
+  seriesProjectId: string,
+  run: ProductionReadinessAutomationRunResult<AiComicSeriesProductionReadinessReport>,
+): Promise<void> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) return;
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: {
+      ...detail.project,
+      updated_at: run.completed_at,
+    },
+    production_readiness_automation_ledger: buildAiComicProductionReadinessAutomationRunLedger(
+      detail.production_readiness_automation_ledger,
+      run,
+    ),
+  };
+  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+}
+
+async function executeAiComicSeriesReadinessAutomationStep(
+  seriesProjectId: string,
+  actionKey: string,
+): Promise<ApiResponse<unknown>> {
+  if (actionKey === 'rebuild_ledger') return rebuildAiComicSeriesContinuityLedger(seriesProjectId, {});
+  if (actionKey === 'generate_next_episode') {
+    const detail = await readSeriesProject(seriesProjectId);
+    if (!detail) return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+    const nextEpisode = detail.plan.episodes.find(episode =>
+      !detail.generated_episode_story_ids[episode.episode_no]
+    );
+    if (!nextEpisode) return fail(ErrorCodes.VALIDATION_ERROR, 'All episodes have already been generated');
+    return generateAiComicEpisodeFromPlan({
+      series_project_id: seriesProjectId,
+      series_plan: detail.plan,
+      episode_no: nextEpisode.episode_no,
+      output_gears_segments: true,
+      auto_audit_continuity: true,
+      auto_repair_episode: true,
+    });
+  }
+  if (actionKey === 'export_retry_package') return exportAiComicSeriesSeedanceRetryPackage(seriesProjectId);
+  if (actionKey === 'export_editing_platform_package') return exportAiComicSeriesSeedanceEditingPlatformPackage(seriesProjectId);
+  if (actionKey === 'assemble_final_delivery') {
+    return assembleAiComicSeriesSeedanceFinalDelivery(seriesProjectId, {
+      dry_run: true,
+      missing_dependency_mode: 'tolerant',
+      allow_open_final_reviews: true,
+    });
+  }
+  return fail(ErrorCodes.VALIDATION_ERROR, `Automation action "${actionKey}" is not executable for AI comic series`);
+}
+
+function aiComicProductionAutomationSchemaVersion(data: unknown): string | undefined {
+  return typeof data === 'object' && data !== null && 'schema_version' in data
+    ? String((data as { schema_version?: unknown }).schema_version)
+    : undefined;
+}
+
+function summarizeAiComicProductionReadinessGears(ledger?: GearsJobLedger): ProductionReadinessGearsSummary {
+  const normalized = normalizeGearsJobLedger(ledger);
+  const statusCounts = Object.fromEntries(
+    GEARS_EXECUTION_JOB_STATUSES.map(status => [status, 0]),
+  ) as Record<GearsExecutionJobStatus, number>;
+  let missingArtifact = 0;
+  let pollFailure = 0;
+  for (const item of normalized.items) {
+    statusCounts[item.status] += 1;
+    if (item.status === 'ready' && item.artifact_urls.length === 0 && (item.artifacts?.length ?? 0) === 0) {
+      missingArtifact += 1;
+    }
+    if (item.last_poll_error) {
+      pollFailure += 1;
+    }
+  }
+  return {
+    total: normalized.items.length,
+    active: statusCounts.submitted + statusCounts.queued + statusCounts.processing,
+    ready: statusCounts.ready,
+    failed: statusCounts.failed,
+    rejected: statusCounts.rejected,
+    canceled: statusCounts.canceled,
+    missing_artifact: missingArtifact,
+    poll_failure: pollFailure,
+    status_counts: statusCounts,
+  };
+}
+
+function aiComicProductionReadinessShotScore(
+  total: number,
+  ready: number,
+  active: number,
+  failed: number,
+): number {
+  if (total <= 0) return 20;
+  const readyScore = (ready / total) * 100;
+  const activeCredit = (active / total) * 45;
+  const failurePenalty = (failed / total) * 60;
+  return Math.max(0, Math.min(100, Math.round(readyScore + activeCredit - failurePenalty)));
+}
+
+function aiComicProductionReadinessGearsStatus(summary: ProductionReadinessGearsSummary): ProductionReadinessStatus {
+  if (summary.total === 0) return 'needs_action';
+  if (summary.failed + summary.rejected + summary.canceled + summary.missing_artifact > 0) return 'blocked';
+  if (summary.active > 0 || summary.poll_failure > 0 || summary.ready < summary.total) return 'needs_action';
+  return 'ready';
+}
+
+function aiComicProductionReadinessGearsScore(summary: ProductionReadinessGearsSummary): number {
+  if (summary.total === 0) return 45;
+  const readyScore = (summary.ready / summary.total) * 100;
+  const activeCredit = (summary.active / summary.total) * 50;
+  const failurePenalty = ((summary.failed + summary.rejected + summary.canceled) / summary.total) * 70;
+  const artifactPenalty = (summary.missing_artifact / summary.total) * 80;
+  const pollPenalty = (summary.poll_failure / summary.total) * 20;
+  return Math.max(0, Math.min(100, Math.round(readyScore + activeCredit - failurePenalty - artifactPenalty - pollPenalty)));
+}
+
+function aiComicReadinessFromDashboardStatus(
+  status: AiComicSeedanceDashboardItemStatus,
+): ProductionReadinessStatus {
+  if (status === 'ready' || status === 'skipped') return 'ready';
+  if (status === 'failed' || status === 'blocked') return 'blocked';
+  return 'needs_action';
+}
+
+function aiComicDashboardStatusScore(status: AiComicSeedanceDashboardItemStatus): number {
+  if (status === 'ready') return 100;
+  if (status === 'skipped') return 85;
+  if (status === 'in_progress' || status === 'planned') return 65;
+  if (status === 'needs_action') return 55;
+  if (status === 'failed' || status === 'blocked') return 25;
+  return 35;
+}
+
+function buildAiComicProductionReadinessSummary(
+  lanes: ProductionReadinessLane[],
+  issues: ProductionReadinessIssue[],
+  nextActions: ProductionReadinessNextAction[],
+  extras: {
+    qualityScore?: number;
+    generatedEpisodeCount?: number;
+    totalEpisodeCount?: number;
+    totalShotCount?: number;
+    readyShotCount?: number;
+    failedShotCount?: number;
+    openReviewCount?: number;
+    gearsSummary: ProductionReadinessGearsSummary;
+  },
+): AiComicSeriesProductionReadinessReport['summary'] {
+  const blockerCount = issues.filter(issue => issue.severity === 'blocking').length;
+  const warningCount = issues.filter(issue => issue.severity === 'warning').length;
+  const averageLaneScore = lanes.length
+    ? lanes.reduce((sum, lane) => sum + lane.score, 0) / lanes.length
+    : 0;
+  return {
+    status: aiComicProductionReadinessOverallStatus(lanes, blockerCount, warningCount),
+    score: Math.max(0, Math.min(100, Math.round(averageLaneScore - blockerCount * 6 - warningCount * 2))),
+    ready_lane_count: lanes.filter(lane => lane.status === 'ready').length,
+    total_lane_count: lanes.length,
+    blocker_count: blockerCount,
+    warning_count: warningCount,
+    next_action_count: nextActions.length,
+    quality_score: extras.qualityScore,
+    generated_episode_count: extras.generatedEpisodeCount,
+    total_episode_count: extras.totalEpisodeCount,
+    total_shot_count: extras.totalShotCount,
+    ready_shot_count: extras.readyShotCount,
+    failed_shot_count: extras.failedShotCount,
+    open_review_count: extras.openReviewCount,
+    gears_job_count: extras.gearsSummary.total,
+    active_gears_job_count: extras.gearsSummary.active,
+  };
+}
+
+function aiComicProductionReadinessOverallStatus(
+  lanes: ProductionReadinessLane[],
+  blockerCount: number,
+  warningCount: number,
+): ProductionReadinessStatus {
+  if (blockerCount > 0 || lanes.some(lane => lane.status === 'blocked')) return 'blocked';
+  if (warningCount > 0 || lanes.some(lane => lane.status === 'needs_action')) return 'needs_action';
+  return 'ready';
+}
+
+function buildAiComicSeriesProductionReadinessMarkdown(
+  report: Omit<AiComicSeriesProductionReadinessReport, 'markdown'>,
+): string {
+  return [
+    `# ${report.series_title} — 系列制作 readiness`,
+    '',
+    `> schema: ${report.schema_version}`,
+    `> seriesProjectId: ${report.project.series_project_id}`,
+    `> generatedAt: ${report.generated_at}`,
+    '',
+    '## Summary',
+    '',
+    `- 状态: ${aiComicProductionReadinessStatusText(report.summary.status)}`,
+    `- 分数: ${report.summary.score}/100`,
+    `- episodes: ${report.summary.generated_episode_count}/${report.summary.total_episode_count}`,
+    `- shots: ready ${report.summary.ready_shot_count}/${report.summary.total_shot_count}`,
+    `- GEARS jobs: ${report.summary.gears_job_count}`,
+    `- blockers: ${report.summary.blocker_count}`,
+    '',
+    '## Lanes',
+    '',
+    '| 模块 | 状态 | 分数 | 说明 |',
+    '|---|---:|---:|---|',
+    ...report.lanes.map(lane =>
+      `| ${lane.label} | ${aiComicProductionReadinessStatusText(lane.status)} | ${lane.score}/100 | ${lane.detail} |`,
+    ),
+    '',
+    '## Episodes',
+    '',
+    ...(report.episodes.length
+      ? report.episodes.map(episode =>
+        `- E${episode.episode_no} ${episode.episode_title}: ${aiComicProductionReadinessStatusText(episode.status)} · ready ${episode.ready_shot_count ?? 0}/${episode.total_shot_count ?? 0} · blockers ${episode.blocker_count}`,
+      )
+      : ['- 暂无分集生产记录。']),
+    '',
+    '## Issues',
+    '',
+    ...(report.issues.length
+      ? report.issues.map(issue =>
+        `- ${aiComicIssueSeverityText(issue.severity)} · ${issue.label}: ${issue.detail}`,
+      )
+      : ['- 暂无阻断项。']),
+    '',
+    '## Next Actions',
+    '',
+    ...(report.next_actions.length
+      ? report.next_actions.map(action => `- P${action.priority} · ${action.label}: ${action.detail}`)
+      : ['- 暂无下一步动作。']),
+    '',
+    '## Automation Plan',
+    '',
+    ...(report.automation_plan.steps.length
+      ? report.automation_plan.steps.map(step =>
+        `- ${step.step_id} · ${step.status} · ${step.runner}: ${step.label} -> ${step.expected_result}`,
+      )
+      : ['- 暂无自动化步骤。']),
+    '',
+    '## Latest Automation Run',
+    '',
+    ...(report.latest_automation_run
+      ? [
+        `- ${report.latest_automation_run.completed_at} · ${report.latest_automation_run.executed_step_count} executed · ${report.latest_automation_run.failed_step_count} failed · ${report.latest_automation_run.before_score}->${report.latest_automation_run.after_score}`,
+        ...report.latest_automation_run.steps.map(step =>
+          `  - ${step.status} · ${step.action_key}: ${step.label}`,
+        ),
+      ]
+      : ['- 暂无已持久化的自动化运行记录。']),
+  ].join('\n');
+}
+
+function aiComicProductionReadinessStatusText(status: ProductionReadinessStatus): string {
+  if (status === 'ready') return 'ready';
+  if (status === 'blocked') return 'blocked';
+  return 'needs_action';
+}
+
+function aiComicIssueSeverityText(severity: ProductionReadinessIssue['severity']): string {
+  if (severity === 'blocking') return '阻断';
+  if (severity === 'warning') return '提醒';
+  return '信息';
+}
+
 export async function captureAiComicSeriesSeedanceThumbnails(
   seriesProjectId: string,
   request: AiComicSeedanceThumbnailCaptureRequest = {},
@@ -6546,6 +7360,31 @@ async function recordGeneratedEpisodeStory(
   await writeJsonFile(seriesProjectPath(params.seriesProjectId), detail);
 }
 
+function getPlanEpisodes(plan: AiComicSeriesPlan): AiComicSeriesPlan['episodes'] {
+  const episodes = (plan as Partial<AiComicSeriesPlan>).episodes;
+  return Array.isArray(episodes) ? episodes : [];
+}
+
+function getPlanMainCharacters(plan: AiComicSeriesPlan): AiComicSeriesPlan['main_characters'] {
+  const characters = (plan as Partial<AiComicSeriesPlan>).main_characters;
+  return Array.isArray(characters) ? characters : [];
+}
+
+function getPlanPlotThreads(plan: AiComicSeriesPlan): AiComicSeriesPlan['plot_threads'] {
+  const threads = (plan as Partial<AiComicSeriesPlan>).plot_threads;
+  return Array.isArray(threads) ? threads : [];
+}
+
+function getPlanContinuityRules(plan: AiComicSeriesPlan): AiComicSeriesPlan['continuity_rules'] {
+  const rules = (plan as Partial<AiComicSeriesPlan>).continuity_rules;
+  return Array.isArray(rules) ? rules : [];
+}
+
+function getPlanProductionNotes(plan: AiComicSeriesPlan): AiComicSeriesPlan['production_notes'] {
+  const notes = (plan as Partial<AiComicSeriesPlan>).production_notes;
+  return Array.isArray(notes) ? notes : [];
+}
+
 function buildAiComicSeriesQualityAudit(params: {
   plan: AiComicSeriesPlan;
   generatedEpisodeStoryIds: Record<string, string>;
@@ -6554,7 +7393,8 @@ function buildAiComicSeriesQualityAudit(params: {
   latestStory?: StoryGenerateResult;
   latestEpisodeNo?: number;
 }): AiComicSeriesQualityAudit {
-  const planEpisodeNumbers = new Set(params.plan.episodes.map(episode => episode.episode_no));
+  const planEpisodes = getPlanEpisodes(params.plan);
+  const planEpisodeNumbers = new Set(planEpisodes.map(episode => episode.episode_no));
   const generatedEntries = Object.entries(params.generatedEpisodeStoryIds)
     .map(([episodeNo, storyId]) => ({ episodeNo: Number(episodeNo), storyId }))
     .filter(entry => Number.isInteger(entry.episodeNo));
@@ -6567,7 +7407,7 @@ function buildAiComicSeriesQualityAudit(params: {
   const latestQuality = params.latestStory?.ai_comic_episode_quality;
   const latestContinuity = params.latestStory?.continuity_audit;
 
-  const episodeReports: AiComicSeriesQualityEpisodeReport[] = params.plan.episodes.map(episode => {
+  const episodeReports: AiComicSeriesQualityEpisodeReport[] = planEpisodes.map(episode => {
     const storyId = params.generatedEpisodeStoryIds[String(episode.episode_no)];
     const ledgerRecord = ledgerRecordsByEpisode.get(episode.episode_no);
     const planChangedAfterGeneration = Boolean(storyId && ledgerRecord && hasEpisodePlanChangedAfterGeneration({
@@ -6631,7 +7471,7 @@ function buildAiComicSeriesQualityAudit(params: {
     };
   });
 
-  const allEpisodesGenerated = params.plan.episodes.every(episode =>
+  const allEpisodesGenerated = planEpisodes.every(episode =>
     generatedEpisodeNumbers.has(episode.episode_no),
   );
   const generatedEpisodesMissingLedger = generatedEntries.filter(entry => {
@@ -6739,16 +7579,18 @@ function buildAiComicThreadClosureReport(params: {
   ledger: AiComicContinuityLedger;
 }): AiComicThreadClosureReport {
   const ledgerRecordsByEpisode = new Map(params.ledger.episode_records.map(record => [record.episode_no, record]));
+  const planEpisodes = getPlanEpisodes(params.plan);
+  const planThreads = getPlanPlotThreads(params.plan);
   const lastGeneratedEpisodeNo = Math.max(
     params.ledger.last_generated_episode_no ?? 0,
     ...[...params.generatedEpisodeNumbers, 0],
   );
-  const items: AiComicThreadClosureItem[] = params.plan.plot_threads.map(thread => {
-    const openedInEpisodes = params.plan.episodes
+  const items: AiComicThreadClosureItem[] = planThreads.map(thread => {
+    const openedInEpisodes = planEpisodes
       .filter(episode => params.generatedEpisodeNumbers.has(episode.episode_no))
       .filter(episode => episodeMentionsThread(episode, ledgerRecordsByEpisode.get(episode.episode_no), thread, 'open'))
       .map(episode => episode.episode_no);
-    const paidOffInEpisodes = params.plan.episodes
+    const paidOffInEpisodes = planEpisodes
       .filter(episode => params.generatedEpisodeNumbers.has(episode.episode_no))
       .filter(episode => episodeMentionsThread(episode, ledgerRecordsByEpisode.get(episode.episode_no), thread, 'payoff'))
       .map(episode => episode.episode_no);
@@ -7006,8 +7848,8 @@ function episodeMentionsThread(
   mode: 'open' | 'payoff',
 ): boolean {
   const episodeTexts = mode === 'payoff'
-    ? [...episode.payoff, episode.thread_action ?? '']
-    : [...episode.foreshadowing, ...episode.new_information, episode.thread_action ?? ''];
+    ? [...(episode.payoff ?? []), episode.thread_action ?? '']
+    : [...(episode.foreshadowing ?? []), ...(episode.new_information ?? []), episode.thread_action ?? ''];
   const ledgerTexts = mode === 'payoff'
     ? ledgerRecord?.paid_off_threads ?? []
     : ledgerRecord?.opened_threads ?? [];
@@ -7022,10 +7864,11 @@ function buildOrphanThreadClosureItems(
   generatedEpisodeNumbers: Set<number>,
 ): AiComicThreadClosureItem[] {
   const items: AiComicThreadClosureItem[] = [];
-  for (const episode of plan.episodes) {
+  const planThreads = getPlanPlotThreads(plan);
+  for (const episode of getPlanEpisodes(plan)) {
     if (!generatedEpisodeNumbers.has(episode.episode_no)) continue;
-    for (const [index, text] of episode.foreshadowing.entries()) {
-      if (plan.plot_threads.some(thread => textReferencesThread(text, thread))) continue;
+    for (const [index, text] of (episode.foreshadowing ?? []).entries()) {
+      if (planThreads.some(thread => textReferencesThread(text, thread))) continue;
       const title = summarizeText(text, 22);
       items.push({
         thread_id: `orphan-${episode.episode_no}-${index + 1}`,
@@ -7050,9 +7893,9 @@ function buildDuplicateThreadClosureItems(
   generatedEpisodeNumbers: Set<number>,
 ): AiComicThreadClosureItem[] {
   const groups = new Map<string, Array<{ episode_no: number; text: string }>>();
-  for (const episode of plan.episodes) {
+  for (const episode of getPlanEpisodes(plan)) {
     if (!generatedEpisodeNumbers.has(episode.episode_no)) continue;
-    for (const text of episode.foreshadowing) {
+    for (const text of episode.foreshadowing ?? []) {
       const key = normalizeThreadText(text);
       if (key.length < 6) continue;
       groups.set(key, [...(groups.get(key) ?? []), { episode_no: episode.episode_no, text }]);
@@ -7180,12 +8023,42 @@ function generatedRoot(): string {
   return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
 }
 
+function repoWebGeneratedRoot(): string {
+  return resolve(import.meta.dirname, '..', '..', '..', '..', 'web', 'generated');
+}
+
+function uniquePaths(paths: string[]): string[] {
+  const seen = new Set<string>();
+  return paths.filter(item => {
+    if (seen.has(item)) return false;
+    seen.add(item);
+    return true;
+  });
+}
+
+function generatedRoots(): string[] {
+  if (process.env.WEB_GENERATED_ROOT) return [generatedRoot()];
+  return uniquePaths([
+    generatedRoot(),
+    repoWebGeneratedRoot(),
+  ]);
+}
+
 function seriesProjectsRoot(): string {
   return resolve(generatedRoot(), 'ai-comic-series-projects');
 }
 
+function seriesProjectsRoots(): string[] {
+  return generatedRoots().map(root => resolve(root, 'ai-comic-series-projects'));
+}
+
 function seriesProjectPath(seriesProjectId: string): string {
-  return resolve(seriesProjectsRoot(), seriesProjectId, 'project.json');
+  const primaryPath = resolve(seriesProjectsRoot(), seriesProjectId, 'project.json');
+  if (process.env.WEB_GENERATED_ROOT || existsSync(primaryPath)) return primaryPath;
+  return seriesProjectsRoots()
+    .map(root => resolve(root, seriesProjectId, 'project.json'))
+    .find(item => item !== primaryPath && existsSync(item))
+    ?? primaryPath;
 }
 
 async function pathExists(targetPath: string): Promise<boolean> {
@@ -7264,12 +8137,14 @@ function buildSeriesProjectMeta(params: {
 }
 
 function buildInitialContinuityLedger(plan: AiComicSeriesPlan): AiComicContinuityLedger {
+  const characters = getPlanMainCharacters(plan);
+  const plotThreads = getPlanPlotThreads(plan);
   return {
     schema_version: 'ai-comic-continuity-ledger/v1',
-    character_state_current: plan.main_characters.map(character =>
+    character_state_current: characters.map(character =>
       `${character.name}：${character.starting_state}`,
     ),
-    open_threads: plan.plot_threads
+    open_threads: plotThreads
       .filter(thread => thread.setup_episode === 1)
       .map(thread => `${thread.title}：${thread.description}`),
     paid_off_threads: [],
@@ -9333,7 +10208,8 @@ function buildSeedanceDashboardEpisodes(
   for (const item of ledger.items) {
     itemsByEpisode.set(item.episode_no, [...(itemsByEpisode.get(item.episode_no) ?? []), item]);
   }
-  return detail.plan.episodes
+  const planEpisodes = Array.isArray(detail.plan?.episodes) ? detail.plan.episodes : [];
+  return planEpisodes
     .filter(episode => Boolean(detail.generated_episode_story_ids[String(episode.episode_no)]) || itemsByEpisode.has(episode.episode_no))
     .map(episode => {
       const items = itemsByEpisode.get(episode.episode_no) ?? [];
@@ -11418,7 +12294,7 @@ function buildEpisodicKeywords(text: string): string[] {
 }
 
 function buildInitialProductionConstraints(plan: AiComicSeriesPlan): AiComicProductionConstraints {
-  const continuityRuleItems = plan.continuity_rules.map(rule => makeProductionConstraintItem({
+  const continuityRuleItems = getPlanContinuityRules(plan).map(rule => makeProductionConstraintItem({
     category: 'continuity',
     label: rule.label,
     description: rule.description,
@@ -11428,7 +12304,7 @@ function buildInitialProductionConstraints(plan: AiComicSeriesPlan): AiComicProd
     notes: ['系列连续性规则，后续单集分镜和视频提示词必须遵守。'],
     stableKey: rule.rule_id,
   }));
-  const productionNoteItems = plan.production_notes.map((note, index) => makeProductionConstraintItem({
+  const productionNoteItems = getPlanProductionNotes(plan).map((note, index) => makeProductionConstraintItem({
     category: /史实|文化|知识|来源|边界/.test(note) ? 'cultural_boundary' : 'asset',
     label: summarizeText(note, 24),
     description: note,
@@ -11677,13 +12553,15 @@ function cloneProductionConstraints(constraints: AiComicProductionConstraints): 
 }
 
 function buildInitialSeriesMemory(plan: AiComicSeriesPlan): AiComicSeriesMemory {
-  const characters = plan.main_characters.map(character => makeMemoryItem({
+  const planCharacters = getPlanMainCharacters(plan);
+  const planEpisodes = getPlanEpisodes(plan);
+  const characters = planCharacters.map(character => makeMemoryItem({
     category: 'character',
     label: character.name,
     status: character.starting_state,
     relatedEpisodeNos: uniqueNumbers([
       1,
-      ...character.turning_points.map(point => point.episode_no),
+      ...(character.turning_points ?? []).map(point => point.episode_no),
     ]),
     continuityNotes: [
       `定位：${character.role}`,
@@ -11694,22 +12572,22 @@ function buildInitialSeriesMemory(plan: AiComicSeriesPlan): AiComicSeriesMemory 
     firstEpisodeNo: 1,
   }));
 
-  const visualAssets = plan.main_characters.map(character => makeMemoryItem({
+  const visualAssets = planCharacters.map(character => makeMemoryItem({
     category: 'visual_asset',
     label: `${character.name}视觉识别`,
     status: character.visual_signature,
     relatedEpisodeNos: uniqueNumbers([
       1,
-      ...character.turning_points.map(point => point.episode_no),
+      ...(character.turning_points ?? []).map(point => point.episode_no),
     ]),
     continuityNotes: [`角色视觉资产需跨集保持：${character.visual_signature}`],
     visualAnchor: character.visual_signature,
     firstEpisodeNo: 1,
   }));
 
-  const locations = plan.episodes.map(episode => makeMemoryItem({
+  const locations = planEpisodes.map(episode => makeMemoryItem({
     category: 'location',
-    label: episode.knowledge_focus[0] || episode.story_phase,
+    label: (episode.knowledge_focus ?? [])[0] || episode.story_phase,
     status: episode.main_conflict,
     relatedEpisodeNos: [episode.episode_no],
     continuityNotes: [
@@ -11719,27 +12597,27 @@ function buildInitialSeriesMemory(plan: AiComicSeriesPlan): AiComicSeriesMemory 
     firstEpisodeNo: episode.episode_no,
   }));
 
-  const knowledgeBoundaries = unique(plan.episodes.flatMap(episode => episode.knowledge_focus))
+  const knowledgeBoundaries = unique(planEpisodes.flatMap(episode => episode.knowledge_focus ?? []))
     .filter(label => label.trim().length > 0)
     .map(label => makeMemoryItem({
       category: 'knowledge_boundary',
       label,
       status: '计划知识焦点',
-      relatedEpisodeNos: plan.episodes
-        .filter(episode => episode.knowledge_focus.includes(label))
+      relatedEpisodeNos: planEpisodes
+        .filter(episode => (episode.knowledge_focus ?? []).includes(label))
         .map(episode => episode.episode_no),
       continuityNotes: ['知识库内容作为文化、人物、地点或事件边界；未核实内容不得写成确证史实。'],
       knowledgeBoundary: '知识库不是资料仓库，生成时只作为事实边界和创作约束。',
     }));
 
-  const storyEvents = plan.episodes.map(episode => makeMemoryItem({
+  const storyEvents = planEpisodes.map(episode => makeMemoryItem({
     category: 'story_event',
     label: `第${episode.episode_no}集：${episode.title}`,
     status: episode.main_conflict,
     relatedEpisodeNos: [episode.episode_no],
     continuityNotes: [
-      `承接：${episode.continuity_from_previous.join('；') || '无'}`,
-      `后续状态：${episode.continuity_state_after.join('；') || '待生成确认'}`,
+      `承接：${(episode.continuity_from_previous ?? []).join('；') || '无'}`,
+      `后续状态：${(episode.continuity_state_after ?? []).join('；') || '待生成确认'}`,
     ],
     firstEpisodeNo: episode.episode_no,
   }));
@@ -11758,9 +12636,10 @@ function buildInitialSeriesMemory(plan: AiComicSeriesPlan): AiComicSeriesMemory 
 }
 
 function extractPropMemoryFromPlan(plan: AiComicSeriesPlan): AiComicSeriesMemoryItem[] {
-  const candidates = plan.episodes.flatMap(episode => [
-    ...episode.foreshadowing,
-    ...episode.payoff,
+  const planEpisodes = getPlanEpisodes(plan);
+  const candidates = planEpisodes.flatMap(episode => [
+    ...(episode.foreshadowing ?? []),
+    ...(episode.payoff ?? []),
   ]);
   return candidates
     .filter(text => /信物|玉|剑|书|卷|图|灯|碑|印|符|钥|帛|器|物|道具/.test(text))
@@ -11769,8 +12648,8 @@ function extractPropMemoryFromPlan(plan: AiComicSeriesPlan): AiComicSeriesMemory
       category: 'prop',
       label: summarizeText(text, 18),
       status: text,
-      relatedEpisodeNos: plan.episodes
-        .filter(episode => [...episode.foreshadowing, ...episode.payoff].includes(text))
+      relatedEpisodeNos: planEpisodes
+        .filter(episode => [...(episode.foreshadowing ?? []), ...(episode.payoff ?? [])].includes(text))
         .map(episode => episode.episode_no),
       continuityNotes: ['道具状态和归属在后续分镜中必须保持一致。'],
     }));

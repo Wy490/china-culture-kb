@@ -7,7 +7,7 @@
 //  - Story plan, generate, list, detail, gears-segments endpoints
 //  - Error handling (404, validation, internal)
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { resolve } from 'path';
 import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -23,7 +23,11 @@ import { projectsRouter } from '../routes/projects.js';
 import { gearsCallbackRouter } from '../routes/gears-callback.js';
 import { outlineRouter } from '../routes/outline.js';
 import { createProjectFromGeneratedStory } from '../services/project-service.js';
-import type { StoryGenerateResult } from '@shared/types.js';
+import {
+  GEARS_CALLBACK_BATCH_ITEM_LIMIT,
+  GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
+  type StoryGenerateResult,
+} from '@shared/types.js';
 
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
 const ORIGINAL_WEB_GENERATED_ROOT = process.env.WEB_GENERATED_ROOT;
@@ -436,6 +440,319 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/production-readiness-portfolio', () => {
+    it('returns cross-project production readiness priority queue', async () => {
+      const story: StoryGenerateResult = {
+        ...makeApiProductionRepairStory(),
+        storyId: '20260622-story-portfolio-api',
+        title: 'API 生产指挥总览测试故事',
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:20:00.000Z');
+      const planRes = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '周敦颐少年在濂溪读书，面对冤案和师友关系，一步步形成自己的选择。',
+        series_title: '濂溪生产总览测试',
+        episode_count: 2,
+        episode_duration_range_sec: { min: 60, max: 120 },
+      });
+      expect(planRes.status).toBe(200);
+      expectSuccess(planRes.body);
+      const saveRes = await request.post('/api/story-outline/ai-comic-series-projects').send({
+        plan: planRes.body.data,
+        generated_episode_story_ids: { 1: '20260611-story-portfolio' },
+      });
+      expect(saveRes.status).toBe(200);
+      expectSuccess(saveRes.body);
+
+      const res = await request.get('/api/system/production-readiness-portfolio?limit=10');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'production-readiness-portfolio/v1',
+        summary: {
+          total_target_count: expect.any(Number),
+          story_project_count: expect.any(Number),
+          ai_comic_series_count: expect.any(Number),
+          ready_automation_step_count: expect.any(Number),
+        },
+      });
+      expect(res.body.data.summary.total_target_count).toBeGreaterThanOrEqual(2);
+      expect(res.body.data.items.map((item: any) => item.project_id)).toEqual(expect.arrayContaining([
+        enriched.project_id,
+        saveRes.body.data.project.series_project_id,
+      ]));
+      expect(res.body.data.items[0]).toMatchObject({
+        scope: expect.stringMatching(/story_project|ai_comic_series/),
+        priority_score: expect.any(Number),
+        status: expect.stringMatching(/ready|needs_action|blocked/),
+      });
+      expect(res.body.data.action_buckets.length).toBeGreaterThan(0);
+      expect(res.body.data.markdown).toContain('Production Readiness Portfolio');
+
+      const runRes = await request
+        .post('/api/system/production-readiness-portfolio/run-automation')
+        .send({
+          dry_run: true,
+          max_targets: 2,
+          per_target_max_steps: 2,
+          project_ids: [
+            enriched.project_id,
+            saveRes.body.data.project.series_project_id,
+          ],
+          stop_on_error: false,
+        });
+      expect(runRes.status).toBe(200);
+      expectSuccess(runRes.body);
+      expect(runRes.body.data).toMatchObject({
+        schema_version: 'production-readiness-portfolio-run/v1',
+        dry_run: true,
+        selected_target_count: 2,
+        planned_target_count: 2,
+        failed_target_count: 0,
+      });
+      expect(runRes.body.data.targets.map((item: any) => item.project_id)).toEqual(expect.arrayContaining([
+        enriched.project_id,
+        saveRes.body.data.project.series_project_id,
+      ]));
+      expect(runRes.body.data.notes.join('\n')).toContain('GEARS worker');
+
+      const liveRunRes = await request
+        .post('/api/system/production-readiness-portfolio/run-automation')
+        .send({
+          dry_run: false,
+          max_targets: 1,
+          per_target_max_steps: 1,
+          project_ids: [enriched.project_id],
+          stop_on_error: false,
+        });
+      expect(liveRunRes.status).toBe(200);
+      expectSuccess(liveRunRes.body);
+      expect(liveRunRes.body.data).toMatchObject({
+        schema_version: 'production-readiness-portfolio-run/v1',
+        dry_run: false,
+        selected_target_count: 1,
+        portfolio_automation_ledger: {
+          schema_version: 'production-readiness-portfolio-run-ledger/v1',
+          total_run_count: 1,
+          persisted_run_count: 1,
+        },
+        latest_portfolio_automation_run: {
+          selected_target_count: 1,
+        },
+      });
+      expect(liveRunRes.body.data.latest_portfolio_automation_run.targets[0].project_id).toBe(enriched.project_id);
+
+      const afterRunRes = await request.get('/api/system/production-readiness-portfolio?limit=10');
+      expect(afterRunRes.status).toBe(200);
+      expectSuccess(afterRunRes.body);
+      expect(afterRunRes.body.data.summary.portfolio_automation_run_count).toBe(1);
+      expect(afterRunRes.body.data.latest_portfolio_automation_run.targets[0].project_id).toBe(enriched.project_id);
+      expect(afterRunRes.body.data.markdown).toContain('portfolio automation runs: 1');
+    });
+  });
+
+  describe('GET /api/system/story-agent-generated-health', () => {
+    it('distinguishes interrupted, planned and production-gap generated projects', async () => {
+      const generatedRoot = process.env.WEB_GENERATED_ROOT ?? resolve(testWorkspaceRoot, 'web', 'generated');
+      const interruptedStoryDir = resolve(generatedRoot, 'projects', 'health-interrupted-story');
+      const plannedSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-planned-series');
+      const gapSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-gap-series');
+      const storyFileDir = resolve(generatedRoot, 'stories', 'ai_comic_drama');
+      await mkdir(resolve(interruptedStoryDir, 'versions'), { recursive: true });
+      await mkdir(plannedSeriesDir, { recursive: true });
+      await mkdir(gapSeriesDir, { recursive: true });
+      await mkdir(storyFileDir, { recursive: true });
+      await writeFile(resolve(interruptedStoryDir, 'project.json'), JSON.stringify({
+        project_id: 'health-interrupted-story',
+        current_story_id: '20260622-story-health-missing',
+        current_version_id: 'v1',
+        title: 'Health Interrupted Story',
+        source_domain: 'china_culture',
+        status: 'draft',
+        created_at: '2026-06-22T01:00:00.000Z',
+        updated_at: '2026-06-22T01:01:00.000Z',
+        video_type: 'ai_comic_drama',
+        presentation_style: 'ai_comic',
+        version_count: 1,
+      }));
+      await writeFile(resolve(interruptedStoryDir, 'versions', 'v1.json'), JSON.stringify({
+        project_id: 'health-interrupted-story',
+        version_id: 'v1',
+        created_at: '2026-06-22T01:01:00.000Z',
+        change_type: 'initial_generation',
+        scene_ids_changed: [],
+      }));
+      await writeFile(resolve(storyFileDir, '20260622-story-health-series-1.json'), JSON.stringify({
+        ...makeApiStory(),
+        storyId: '20260622-story-health-series-1',
+        title: 'Health Series Episode 1',
+        project_id: undefined,
+        current_version_id: undefined,
+      }));
+      await writeFile(resolve(plannedSeriesDir, 'project.json'), JSON.stringify({
+        project: {
+          series_project_id: 'health-planned-series',
+          title: 'Health Planned Series',
+          episode_count: 3,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          logline: '计划中的系列。',
+          created_at: '2026-06-22T01:00:00.000Z',
+          updated_at: '2026-06-22T01:02:00.000Z',
+          generated_episode_count: 0,
+        },
+        plan: {
+          schema_version: 'ai-comic-series-plan/v1',
+          series_title: 'Health Planned Series',
+          episode_count: 3,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          generation_scope: 'series_plan',
+          premise: '计划中的系列。',
+          logline: '计划中的系列。',
+          core_theme: '项目健康',
+          main_characters: [],
+          plot_threads: [],
+          phases: [],
+          episodes: [],
+          continuity_rules: [],
+          recurring_motifs: [],
+          production_notes: [],
+        },
+        generated_episode_story_ids: {},
+      }));
+      await writeFile(resolve(gapSeriesDir, 'project.json'), JSON.stringify({
+        project: {
+          series_project_id: 'health-gap-series',
+          title: 'Health Gap Series',
+          episode_count: 2,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          logline: '已有分集但缺生产指挥合同。',
+          created_at: '2026-06-22T01:00:00.000Z',
+          updated_at: '2026-06-22T01:03:00.000Z',
+          generated_episode_count: 1,
+        },
+        plan: {
+          schema_version: 'ai-comic-series-plan/v1',
+          series_title: 'Health Gap Series',
+          episode_count: 2,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          generation_scope: 'series_plan',
+          premise: '已有分集但缺生产指挥合同。',
+          logline: '已有分集但缺生产指挥合同。',
+          core_theme: '项目健康',
+          main_characters: [],
+          plot_threads: [],
+          phases: [],
+          episodes: [],
+          continuity_rules: [],
+          recurring_motifs: [],
+          production_notes: [],
+        },
+        generated_episode_story_ids: {
+          '1': '20260622-story-health-series-1',
+        },
+      }));
+
+      const res = await request.get('/api/system/story-agent-generated-health?limit=200');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'story-agent-generated-health/v1',
+        summary: expect.objectContaining({
+          scanned_story_project_count: expect.any(Number),
+          scanned_series_project_count: expect.any(Number),
+          total_target_count: expect.any(Number),
+          interrupted_count: expect.any(Number),
+          planned_count: expect.any(Number),
+          production_gap_count: expect.any(Number),
+        }),
+      });
+      expect(res.body.data.summary.scanned_story_project_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.scanned_series_project_count).toBeGreaterThanOrEqual(2);
+      expect(res.body.data.items).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'story_project',
+          project_id: 'health-interrupted-story',
+          status: 'interrupted',
+          missing_contracts: expect.arrayContaining(['current_story']),
+        }),
+        expect.objectContaining({
+          scope: 'ai_comic_series_project',
+          project_id: 'health-planned-series',
+          status: 'planned',
+        }),
+        expect.objectContaining({
+          scope: 'ai_comic_series_project',
+          project_id: 'health-gap-series',
+          status: 'production_gap',
+          missing_contracts: expect.arrayContaining(['remaining_episodes', 'shot_production_ledger', 'series_delivery']),
+        }),
+      ]));
+      expect(res.body.data.markdown).toContain('# Story Agent Generated Health');
+      expect(res.body.data.markdown).toContain('health-interrupted-story');
+      await rm(interruptedStoryDir, { recursive: true, force: true });
+      await rm(plannedSeriesDir, { recursive: true, force: true });
+      await rm(gapSeriesDir, { recursive: true, force: true });
+      await rm(resolve(storyFileDir, '20260622-story-health-series-1.json'), { force: true });
+    });
+  });
+
+  describe('GET /api/system/story-agent-mvp-status', () => {
+    it('combines generated health and production readiness into MVP lanes', async () => {
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260623-story-mvp-status-api',
+        title: 'API Story Agent MVP 状态测试故事',
+        gears_segments_url: '/api/stories/20260623-story-mvp-status-api/gears-segments',
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-23T09:00:00.000Z');
+
+      const res = await request.get('/api/system/story-agent-mvp-status?generatedLimit=50&portfolioLimit=50');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'story-agent-mvp-status/v1',
+        status: expect.stringMatching(/ready|needs_action|blocked/),
+        score: expect.any(Number),
+        summary: expect.objectContaining({
+          generated_target_count: expect.any(Number),
+          readiness_target_count: expect.any(Number),
+          ready_automation_step_count: expect.any(Number),
+          external_or_manual_step_count: expect.any(Number),
+        }),
+        generated_health: {
+          schema_version: 'story-agent-generated-health/v1',
+        },
+        production_portfolio: {
+          schema_version: 'production-readiness-portfolio/v1',
+        },
+      });
+      expect(res.body.data.summary.generated_target_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
+        'generated_artifacts',
+        'story_quality',
+        'repair_loop',
+        'delivery_contract',
+        'production_command',
+      ]));
+      expect(res.body.data.priority_targets).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'story_project',
+          project_id: enriched.project_id,
+          priority_score: expect.any(Number),
+        }),
+      ]));
+      expect(res.body.data.notes.join('\n')).toContain('content and production command layer');
+      expect(res.body.data.markdown).toContain('# Story Agent MVP Status');
+      expect(res.body.data.markdown).toContain('Delivery contract');
+    });
+  });
+
   describe('GET /api/system/gears-execution-config', () => {
     it('returns safe GEARS execution config without leaking secrets', async () => {
       const previous = {
@@ -446,8 +763,8 @@ describe('System API', () => {
       };
       try {
         process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
-        process.env.GEARS_API_TOKEN = 'gears-secret-token';
-        process.env.GEARS_CALLBACK_SECRET = 'gears-callback-secret';
+        process.env.GEARS_API_TOKEN = 'private-api-token-123';
+        process.env.GEARS_CALLBACK_SECRET = 'private-callback-token-456';
         process.env.GEARS_CALLBACK_BASE_URL = 'https://story.example.test/public';
 
         const res = await request.get('/api/system/gears-execution-config');
@@ -463,6 +780,7 @@ describe('System API', () => {
           job_status_endpoint_path: '/gears/jobs/{gears_job_id}',
           project_callback_path_template: '/api/projects/:projectId/gears-callback',
           series_callback_path_template: '/api/story-outline/ai-comic-series-projects/:seriesProjectId/gears-callback',
+          callback_batch_item_limit: GEARS_CALLBACK_BATCH_ITEM_LIMIT,
           ready_for_submit: true,
           missing_submit_requirements: [],
         });
@@ -471,8 +789,8 @@ describe('System API', () => {
           'seedance_video',
           'final_assemble',
         ]));
-        expect(JSON.stringify(res.body.data)).not.toContain('gears-secret-token');
-        expect(JSON.stringify(res.body.data)).not.toContain('gears-callback-secret');
+        expect(JSON.stringify(res.body.data)).not.toContain('private-api-token-123');
+        expect(JSON.stringify(res.body.data)).not.toContain('private-callback-token-456');
         expect(JSON.stringify(res.body.data)).not.toContain('gears.example.test');
         expect(JSON.stringify(res.body.data)).not.toContain('story.example.test');
       } finally {
@@ -535,6 +853,11 @@ describe('System API', () => {
         'payload.units[].last_video_url',
         'payload.units[].review_issues',
       ]));
+      expect(res.body.data.submit.accepted_response_shapes).toEqual(expect.arrayContaining([
+        '{ data: { acceptedUnits: [...], rejectedUnits: [...] } }',
+        '{ data: { rejectedUnits: [...] } }',
+        '{ data: { task: { taskId, externalId, taskStatus } } }',
+      ]));
       expect(res.body.data.submit.request_example).toMatchObject({
         series_project_id: '20260618-ai-comic-series-demo',
         job_type: 'seedance_video',
@@ -554,8 +877,8 @@ describe('System API', () => {
       expect(res.body.data.callback.accepted_status_fields).toEqual(expect.arrayContaining([
         'taskStatus',
         'job_status',
-        'failed aliases: failed | error | timed_out | timeout | expired | deadline_exceeded | quota_exceeded | no_credit | provider_error',
-        'rejected aliases: rejected | blocked | policy_blocked | moderation_failed | content_policy | safety_blocked | risk_control | invalid_prompt | invalid_payload | validation_failed',
+        'failed aliases: failed | error | timed_out | timeout | expired | deadline_exceeded | quota_exceeded | no_credit | access_denied | token_expired | rate_limited | network_error | service_unavailable | provider_error | render_failed | artifact_upload_failed | callback_delivery_failed | output_missing | artifact_invalid | worker_unavailable',
+        'rejected aliases: rejected | blocked | policy_blocked | moderation_failed | content_policy | safety_blocked | risk_control | invalid_prompt | invalid_payload | validation_failed | asset_missing | unsupported_media | invalid_asset',
       ]));
       expect(res.body.data.callback.accepted_envelope_shapes).toEqual(expect.arrayContaining([
         '{ callbacks: [{ ...callback fields }] }',
@@ -580,6 +903,7 @@ describe('System API', () => {
         'event_id | eventId | callback_id | callbackId',
         'idempotency_key | idempotencyKey (job match key; lifecycle callbacks with changed status/progress/message are preserved)',
       ]));
+      expect(res.body.data.callback.max_batch_items).toBe(GEARS_CALLBACK_BATCH_ITEM_LIMIT);
       expect(res.body.data.callback.accepted_time_fields).toEqual(expect.arrayContaining([
         'eventTime',
         'timestamp',
@@ -601,6 +925,12 @@ describe('System API', () => {
       expect(res.body.data.poll.accepted_response_shapes).toEqual(expect.arrayContaining([
         '{ data: { job: { job_status, output: { files[] } } } }',
         '{ data: { task: { task_state, outputs[] } } }',
+      ]));
+      expect(res.body.data.poll.accepted_status_fields).toEqual(expect.arrayContaining([
+        'taskStatus',
+        'job_status',
+        'failed aliases: failed | error | timed_out | timeout | expired | deadline_exceeded | quota_exceeded | no_credit | access_denied | token_expired | rate_limited | network_error | service_unavailable | provider_error | render_failed | artifact_upload_failed | callback_delivery_failed | output_missing | artifact_invalid | worker_unavailable',
+        'rejected aliases: rejected | blocked | policy_blocked | moderation_failed | content_policy | safety_blocked | risk_control | invalid_prompt | invalid_payload | validation_failed | asset_missing | unsupported_media | invalid_asset',
       ]));
       expect(res.body.data.poll.accepted_artifact_fields).toEqual(expect.arrayContaining([
         'output.files[].mediaUrl',
@@ -624,6 +954,1853 @@ describe('System API', () => {
       ]));
       expect(res.body.data.supported_job_types).toContain('audio_mix');
       expect(JSON.stringify(res.body.data)).toContain('Legacy SEEDANCE_PROVIDER_* endpoints remain compatibility-only.');
+    });
+  });
+
+  describe('GET /api/system/gears-execution-readiness', () => {
+    it('returns GEARS readiness checks and local smoke results without leaking secrets', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_API_BASE_URL,
+        apiToken: process.env.GEARS_API_TOKEN,
+        callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+        callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+      };
+      try {
+        process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+        process.env.GEARS_API_TOKEN = 'private-api-token-123';
+        process.env.GEARS_CALLBACK_SECRET = 'private-callback-token-456';
+        process.env.GEARS_CALLBACK_BASE_URL = 'https://story.example.test/public';
+
+        const res = await request.get('/api/system/gears-execution-readiness');
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          provider: 'gears',
+          schema_version: 'gears-execution-readiness/v1',
+          status: 'ready',
+          local_smoke_passed_count: 5,
+          local_smoke_total_count: 5,
+          blocking_check_ids: [],
+          live_e2e: {
+            ready: true,
+            ready_step_count: 4,
+            total_step_count: 4,
+            blocked_by: [],
+          },
+        });
+        expect(res.body.data.score).toBe(100);
+        expect(res.body.data.checks).toEqual(expect.arrayContaining([
+          expect.objectContaining({ id: 'api_base_url', status: 'pass' }),
+          expect.objectContaining({ id: 'callback_secret', status: 'pass' }),
+          expect.objectContaining({ id: 'callback_limits', status: 'pass' }),
+        ]));
+        expect(res.body.data.smoke).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'submit_normalization',
+            status: 'pass',
+            details: expect.objectContaining({
+              accepted_count: 1,
+              rejected_count: 1,
+              rejected_error_code: 'INVALID_PAYLOAD',
+            }),
+          }),
+          expect.objectContaining({
+            id: 'ledger_writeback',
+            status: 'pass',
+            details: expect.objectContaining({
+              rejected_status: 'rejected',
+              rejected_failure_category: 'payload_invalid',
+            }),
+          }),
+          expect.objectContaining({
+            id: 'callback_normalization',
+            status: 'pass',
+          }),
+          expect.objectContaining({
+            id: 'status_alias_classification',
+            status: 'pass',
+          }),
+        ]));
+        expect(res.body.data.next_actions).toEqual(expect.arrayContaining([
+          '执行真实 GEARS v2 submit/status/callback 端到端 smoke。',
+        ]));
+        expect(JSON.stringify(res.body.data)).not.toContain('private-api-token-123');
+        expect(JSON.stringify(res.body.data)).not.toContain('private-callback-token-456');
+        expect(JSON.stringify(res.body.data)).not.toContain('gears.example.test/api-root');
+        expect(JSON.stringify(res.body.data)).not.toContain('story.example.test/public');
+      } finally {
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.apiToken === undefined) delete process.env.GEARS_API_TOKEN;
+        else process.env.GEARS_API_TOKEN = previous.apiToken;
+        if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+        if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+      }
+    });
+
+    it('marks GEARS readiness blocked when GEARS_API_BASE_URL is missing', async () => {
+      const previous = process.env.GEARS_API_BASE_URL;
+      try {
+        delete process.env.GEARS_API_BASE_URL;
+        const res = await request.get('/api/system/gears-execution-readiness');
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          status: 'blocked',
+          local_smoke_passed_count: 5,
+          local_smoke_total_count: 5,
+          blocking_check_ids: ['api_base_url'],
+          live_e2e: {
+            ready: false,
+            ready_step_count: 0,
+            total_step_count: 4,
+          },
+        });
+        expect(res.body.data.checks).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'api_base_url',
+            status: 'fail',
+          }),
+        ]));
+        expect(res.body.data.smoke).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'submit_normalization',
+            status: 'pass',
+          }),
+          expect.objectContaining({
+            id: 'pressure_boundaries',
+            status: 'pass',
+          }),
+        ]));
+        expect(res.body.data.live_e2e.blocked_by).toEqual(expect.arrayContaining([
+          'GEARS_API_BASE_URL',
+        ]));
+        expect(res.body.data.live_e2e.steps).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'submit_http',
+            status: 'blocked',
+            blocked_by: expect.arrayContaining(['GEARS_API_BASE_URL']),
+          }),
+        ]));
+      } finally {
+        if (previous === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous;
+      }
+    });
+  });
+
+  describe('GET /api/system/gears-execution-pressure-report', () => {
+    it('returns local GEARS pressure boundaries for large projects', async () => {
+      const res = await request.get('/api/system/gears-execution-pressure-report');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        provider: 'gears',
+        schema_version: 'gears-execution-pressure-report/v1',
+        status: 'pass',
+        callback_batch_item_limit: GEARS_CALLBACK_BATCH_ITEM_LIMIT,
+        callback_event_retention_limit: GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
+        batch_at_limit_count: GEARS_CALLBACK_BATCH_ITEM_LIMIT,
+        batch_over_limit_count: GEARS_CALLBACK_BATCH_ITEM_LIMIT + 1,
+        extracted_at_limit_count: GEARS_CALLBACK_BATCH_ITEM_LIMIT,
+        overflow_rejected: true,
+        retained_event_count: GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
+        dropped_event_count: 5,
+      });
+      expect(res.body.data.first_retained_event_id).toBe('gears-pressure-event-5');
+      expect(res.body.data.last_retained_event_id)
+        .toBe(`gears-pressure-event-${GEARS_CALLBACK_EVENT_RETENTION_LIMIT + 4}`);
+      expect(res.body.data.checks).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: 'callback_batch_at_limit',
+          status: 'pass',
+        }),
+        expect.objectContaining({
+          id: 'callback_batch_over_limit',
+          status: 'pass',
+        }),
+        expect.objectContaining({
+          id: 'callback_event_retention',
+          status: 'pass',
+        }),
+      ]));
+      expect(res.body.data.markdown).toContain('# GEARS v2 Pressure Report');
+    });
+  });
+
+  describe('GET /api/system/gears-execution-generated-project-pressure', () => {
+    it('scans generated story and series GEARS ledgers for pressure risks', async () => {
+      const generatedRoot = process.env.WEB_GENERATED_ROOT ?? resolve(testWorkspaceRoot, 'web', 'generated');
+      const storyProjectDir = resolve(generatedRoot, 'projects', 'pressure-story-project');
+      const seriesProjectDir = resolve(generatedRoot, 'ai-comic-series-projects', 'pressure-series-project');
+      const retainedEvents = Array.from({ length: GEARS_CALLBACK_EVENT_RETENTION_LIMIT }, (_, index) => ({
+        event_id: `pressure-series-event-${index}`,
+        received_at: `2026-06-21T04:00:${String(index).padStart(2, '0')}.000Z`,
+        status: 'processing',
+        progress_percent: index,
+      }));
+      await mkdir(storyProjectDir, { recursive: true });
+      await mkdir(seriesProjectDir, { recursive: true });
+      await writeFile(resolve(storyProjectDir, 'project.json'), JSON.stringify({
+        project_id: 'pressure-story-project',
+        current_story_id: '20260621-story-pressure',
+        current_version_id: 'v1',
+        title: 'Pressure Story Project',
+        source_domain: 'china_culture',
+        status: 'draft',
+        created_at: '2026-06-21T04:00:00.000Z',
+        updated_at: '2026-06-21T04:01:00.000Z',
+        video_type: 'ai_comic_drama',
+        presentation_style: 'ai_comic',
+        story_structure: 'single_event_drama',
+        version_count: 1,
+        gears_job_ledger: {
+          schema_version: 'gears-job-ledger/v1',
+          updated_at: '2026-06-21T04:01:00.000Z',
+          items: [{
+            ledger_id: 'gears-ledger-pressure-story-shot-1',
+            gears_job_id: 'gears-pressure-story-shot-1',
+            job_type: 'seedance_video',
+            source_unit_id: 'story-shot-1',
+            status: 'ready',
+            progress_percent: 100,
+            artifact_urls: ['https://media.example.test/story-shot-1.mp4'],
+            submitted_at: '2026-06-21T04:00:00.000Z',
+            updated_at: '2026-06-21T04:01:00.000Z',
+            completed_at: '2026-06-21T04:01:00.000Z',
+            callback_events: [{
+              event_id: 'pressure-story-event-1',
+              received_at: '2026-06-21T04:01:00.000Z',
+              status: 'ready',
+              progress_percent: 100,
+            }],
+          }],
+        },
+      }));
+      await writeFile(resolve(seriesProjectDir, 'project.json'), JSON.stringify({
+        project: {
+          series_project_id: 'pressure-series-project',
+          title: 'Pressure Series Project',
+          episode_count: 1,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          logline: '压力测试漫剧项目。',
+          created_at: '2026-06-21T04:00:00.000Z',
+          updated_at: '2026-06-21T04:03:00.000Z',
+          generated_episode_count: 0,
+        },
+        plan: {
+          schema_version: 'ai-comic-series-plan/v1',
+          series_title: 'Pressure Series Project',
+          episode_count: 1,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          generation_scope: 'series_plan',
+          premise: '测试 GEARS ledger 压力。',
+          logline: '压力测试漫剧项目。',
+          core_theme: '生产稳定性',
+          main_characters: [{
+            name: '测试主角',
+            role: 'protagonist',
+            starting_state: '准备联调',
+            desire: '确认生产链路稳定',
+            long_arc: '从未知风险走向可控交付',
+            turning_points: [{ episode_no: 1, change: '发现回调压力' }],
+            visual_signature: '蓝色工牌',
+          }],
+          plot_threads: [{
+            thread_id: 'thread-pressure',
+            title: '回调压力',
+            setup_episode: 1,
+            payoff_episode: 1,
+            description: '确认 GEARS 回调事件保留边界。',
+            continuity_notes: [],
+          }],
+          phases: [{
+            phase_id: 'phase-1',
+            episode_range: [1, 1],
+            purpose: '联调压力审计',
+            turning_point: '发现事件接近保留上限',
+          }],
+          episodes: [{
+            episode_no: 1,
+            title: '压力审计',
+            target_duration_sec: 90,
+            target_panel_count: 12,
+            story_phase: 'setup',
+            opening_hook: 'GEARS worker 返回高频进度。',
+            main_conflict: '回调事件可能被截断。',
+            midpoint_turn: '审计发现接近上限。',
+            key_characters: ['测试主角'],
+            continuity_from_previous: [],
+            new_information: ['回调事件保留上限为 20'],
+            foreshadowing: [],
+            payoff: ['生成审计建议'],
+            ending_hook: '是否进入真实 E2E？',
+            ending_hook_type: 'emotional_question',
+            character_state_change: '从未知转向可执行',
+            thread_action: '完成压力扫描',
+            knowledge_focus: ['GEARS ledger'],
+            continuity_state_after: ['进入真实 worker smoke 前检查'],
+          }],
+          continuity_rules: [],
+          recurring_motifs: [],
+          production_notes: [],
+        },
+        generated_episode_story_ids: {},
+        gears_job_ledger: {
+          schema_version: 'gears-job-ledger/v1',
+          updated_at: '2026-06-21T04:03:00.000Z',
+          items: [{
+            ledger_id: 'gears-ledger-pressure-series-shot-1',
+            gears_job_id: 'gears-pressure-series-shot-1',
+            job_type: 'seedance_video',
+            source_unit_id: 'series-shot-1',
+            status: 'processing',
+            progress_percent: 68,
+            artifact_urls: [],
+            failure_category: 'worker_unavailable',
+            submitted_at: '2026-06-21T04:00:00.000Z',
+            updated_at: '2026-06-21T04:03:00.000Z',
+            callback_events: retainedEvents,
+          }, {
+            ledger_id: 'gears-ledger-pressure-series-shot-2',
+            gears_job_id: 'gears-pressure-series-shot-2',
+            job_type: 'seedance_video',
+            source_unit_id: 'series-shot-2',
+            status: 'failed',
+            progress_percent: 0,
+            artifact_urls: [],
+            failure_category: 'render_failed',
+            failure_reason: 'render failed',
+            submitted_at: '2026-06-21T04:00:00.000Z',
+            updated_at: '2026-06-21T04:02:00.000Z',
+            completed_at: '2026-06-21T04:02:00.000Z',
+            callback_events: [],
+          }],
+        },
+      }));
+
+      const res = await request.get('/api/system/gears-execution-generated-project-pressure');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        provider: 'gears',
+        schema_version: 'gears-execution-generated-project-pressure/v1',
+        project_with_gears_ledger_count: expect.any(Number),
+        total_job_count: expect.any(Number),
+        max_job_callback_event_count: GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
+        callback_batch_item_limit: GEARS_CALLBACK_BATCH_ITEM_LIMIT,
+        callback_event_retention_limit: GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
+        pressure_status: 'blocked',
+      });
+      expect(res.body.data.project_with_gears_ledger_count).toBeGreaterThanOrEqual(2);
+      expect(res.body.data.total_job_count).toBeGreaterThanOrEqual(3);
+      expect(res.body.data.items).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          project_id: 'pressure-story-project',
+          project_kind: 'story_project',
+          job_count: 1,
+          artifact_count: 1,
+          risk_level: 'ok',
+        }),
+        expect.objectContaining({
+          project_id: 'pressure-series-project',
+          project_kind: 'ai_comic_series_project',
+          job_count: 2,
+          active_count: 1,
+          failed_count: 1,
+          max_callback_events_per_job: GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
+          risk_level: 'blocked',
+          failure_categories: expect.objectContaining({
+            render_failed: 1,
+            worker_unavailable: 1,
+          }),
+        }),
+      ]));
+      expect(res.body.data.markdown).toContain('# GEARS v2 Generated Project Pressure Audit');
+      expect(res.body.data.markdown).toContain('pressure-series-project');
+    });
+  });
+
+  describe('GET /api/system/gears-execution-acceptance-report', () => {
+    it('returns GEARS worker acceptance blockers and handoff artifacts', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_API_BASE_URL,
+        apiToken: process.env.GEARS_API_TOKEN,
+        callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+        callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+      };
+      try {
+        delete process.env.GEARS_API_BASE_URL;
+        delete process.env.GEARS_API_TOKEN;
+        delete process.env.GEARS_CALLBACK_SECRET;
+        delete process.env.GEARS_CALLBACK_BASE_URL;
+
+        const res = await request.get('/api/system/gears-execution-acceptance-report');
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          provider: 'gears',
+          schema_version: 'gears-execution-acceptance/v1',
+          status: 'blocked',
+          readiness_status: 'blocked',
+          live_e2e_ready: false,
+          pressure_status: 'pass',
+          generated_health_status: expect.stringMatching(/ready|attention|blocked/),
+          generated_health_ready_count: expect.any(Number),
+          generated_health_planned_count: expect.any(Number),
+          generated_health_production_gap_count: expect.any(Number),
+          generated_health_interrupted_count: expect.any(Number),
+          acceptance_total_count: expect.any(Number),
+          required_envs: expect.arrayContaining(['GEARS_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
+        });
+        expect(res.body.data.acceptance_passed_count).toBeLessThan(res.body.data.acceptance_total_count);
+        expect(res.body.data.blocking_check_ids).toEqual(expect.arrayContaining([
+          'gears_api_config',
+          'live_e2e_steps',
+        ]));
+        expect(res.body.data.handoff_artifacts).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'readiness',
+            method: 'GET',
+            path: '/api/system/gears-execution-readiness',
+          }),
+          expect.objectContaining({
+            id: 'live_smoke',
+            method: 'POST',
+            path: '/api/system/gears-execution-live-smoke-run',
+          }),
+        ]));
+        expect(res.body.data.markdown).toContain('# GEARS v2 Worker Acceptance Report');
+        expect(res.body.data.markdown).toContain('generated_health_status');
+        expect(res.body.data.markdown).toContain('GEARS_API_BASE_URL');
+      } finally {
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.apiToken === undefined) delete process.env.GEARS_API_TOKEN;
+        else process.env.GEARS_API_TOKEN = previous.apiToken;
+        if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+        if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+      }
+    });
+  });
+
+  describe('GET /api/system/gears-execution-worker-acceptance-kit', () => {
+    it('returns executable worker acceptance commands and payload files', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_API_BASE_URL,
+        apiToken: process.env.GEARS_API_TOKEN,
+        callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+        callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+      };
+      try {
+        delete process.env.GEARS_API_BASE_URL;
+        delete process.env.GEARS_API_TOKEN;
+        delete process.env.GEARS_CALLBACK_SECRET;
+        delete process.env.GEARS_CALLBACK_BASE_URL;
+
+        const generatedRoot = process.env.WEB_GENERATED_ROOT ?? resolve(testWorkspaceRoot, 'web', 'generated');
+        const seriesProjectId = '20260622-series-smokefx';
+        const seriesProjectDir = resolve(generatedRoot, 'ai-comic-series-projects', seriesProjectId);
+        await mkdir(seriesProjectDir, { recursive: true });
+        await writeFile(resolve(seriesProjectDir, 'project.json'), JSON.stringify({
+          project: {
+            series_project_id: seriesProjectId,
+            title: 'Smoke target fixture',
+            episode_count: 3,
+            generated_episode_count: 1,
+            created_at: '2026-06-22T00:00:00.000Z',
+            updated_at: '2026-06-22T00:00:00.000Z',
+          },
+          plan: {
+            episode_count: 3,
+          },
+          generated_episode_story_ids: {
+            1: '20260622-story-missing',
+          },
+          seedance_production: {
+            items: [{
+              production_id: 'seedance-e1-shot-1-smoke',
+              episode_no: 1,
+              shot_id: 'shot-1',
+              status: 'failed',
+            }],
+          },
+          seedance_review_ledger: {
+            items: [{
+              review_id: 'review-smoke-1',
+              status: 'open',
+              target_type: 'shot',
+              shot_id: 'shot-1',
+              repair_action: 'redo_shot',
+            }],
+          },
+          seedance_title_card_render: {
+            card_count: 2,
+            output_paths: [
+              'title-cards/smoke/opening.mp4',
+              'title-cards/smoke/ending.mp4',
+            ],
+          },
+        }, null, 2), 'utf-8');
+
+        const res = await request.get('/api/system/gears-execution-worker-acceptance-kit');
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          provider: 'gears',
+          schema_version: 'gears-execution-worker-acceptance-kit/v1',
+          acceptance_status: 'blocked',
+          local_smoke_passed_count: 5,
+          local_smoke_total_count: 5,
+          required_envs: expect.arrayContaining(['GEARS_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
+        });
+        expect(res.body.data.env_template).toContain('GEARS_API_BASE_URL');
+        expect(res.body.data.env_vars).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            name: 'STORY_AGENT_BASE_URL',
+            required: true,
+          }),
+          expect.objectContaining({
+            name: 'GEARS_CALLBACK_BASE_URL',
+            required: true,
+          }),
+          expect.objectContaining({
+            name: 'GEARS_SMOKE_STORY_ID',
+            required: false,
+          }),
+          expect.objectContaining({
+            name: 'GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE',
+            required: false,
+          }),
+          expect.objectContaining({
+            name: 'GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER',
+            required: false,
+            value_placeholder: '0',
+          }),
+          expect.objectContaining({
+            name: 'GEARS_ACCEPTANCE_LEDGER_SEED_JOB_TYPE',
+            required: false,
+            value_placeholder: 'seedance_video',
+          }),
+          expect.objectContaining({
+            name: 'GEARS_ACCEPTANCE_STRICT_AUDIT',
+            required: false,
+            value_placeholder: '1',
+          }),
+          expect.objectContaining({
+            name: 'GEARS_ACCEPTANCE_STATUS_POLL_ATTEMPTS',
+            required: false,
+            value_placeholder: '1',
+          }),
+          expect.objectContaining({
+            name: 'GEARS_ACCEPTANCE_STATUS_POLL_INTERVAL_SECONDS',
+            required: false,
+            value_placeholder: '5',
+          }),
+          expect.objectContaining({
+            name: 'GEARS_LARGE_PRESSURE_EPISODE_COUNT',
+            required: false,
+          }),
+        ]));
+        expect(res.body.data.smoke_targets).toMatchObject({
+          schema_version: 'gears-worker-acceptance-smoke-targets/v1',
+          recommended_env: expect.any(Object),
+          story_project_candidates: expect.any(Array),
+          series_project_candidates: expect.any(Array),
+          warning_count: expect.any(Number),
+          warnings: expect.any(Array),
+        });
+        if (res.body.data.smoke_targets.series_project_candidates.length) {
+          expect(res.body.data.smoke_targets.series_project_candidates[0]).toEqual(expect.objectContaining({
+            ledger_seed_ready: expect.any(Boolean),
+          }));
+        }
+        expect(res.body.data.smoke_targets.series_project).toEqual(expect.objectContaining({
+          id: seriesProjectId,
+          existing_generated_episode_story_id_count: 0,
+          seedance_video_retry_candidate_count: 0,
+          postproduction_seed_job_count: 2,
+          ledger_seed_ready: true,
+          recommended_ledger_seed_job_type: 'title_card_render',
+        }));
+        expect(res.body.data.smoke_targets.recommended_env).toEqual(expect.objectContaining({
+          GEARS_SMOKE_SERIES_PROJECT_ID: seriesProjectId,
+          GEARS_ACCEPTANCE_LEDGER_SEED_JOB_TYPE: 'title_card_render',
+        }));
+        expect(res.body.data.payloads.map((payload: any) => payload.filename)).toEqual(expect.arrayContaining([
+          'gears-submit-smoke.json',
+          'gears-project-callback-smoke.json',
+          'gears-series-callback-smoke.json',
+          'gears-live-smoke.json',
+          'gears-large-project-pressure-plan.json',
+        ]));
+        expect(res.body.data.commands.map((command: any) => command.id)).toEqual([
+          'write_env',
+          'read_acceptance_report',
+          'write_payload_files',
+          'generate_large_project_pressure_payload',
+          'submit_to_worker',
+          'poll_worker_status',
+          'audit_worker_response_shapes',
+          'seed_story_agent_ledgers_optional',
+          'post_project_callback',
+          'post_series_callback',
+          'run_story_agent_live_smoke',
+          'audit_story_agent_callback_responses',
+          'audit_story_agent_generated_health',
+          'audit_story_agent_mvp_status',
+          'submit_large_project_pressure_optional',
+          'audit_large_project_pressure_response',
+          'write_acceptance_verdict',
+          'write_acceptance_archive',
+          'verify_acceptance_integrity',
+          'read_worker_evidence_signoff',
+        ]);
+        expect(res.body.data.commands).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'submit_to_worker',
+            phase: 'worker_submit',
+            payload_id: 'submit_smoke',
+          }),
+          expect.objectContaining({
+            id: 'post_series_callback',
+            phase: 'story_agent_callback',
+            payload_id: 'series_callback',
+          }),
+          expect.objectContaining({
+            id: 'generate_large_project_pressure_payload',
+            phase: 'worker_pressure',
+            payload_id: 'large_project_pressure_plan',
+          }),
+          expect.objectContaining({
+            id: 'audit_worker_response_shapes',
+            phase: 'worker_poll',
+          }),
+          expect.objectContaining({
+            id: 'submit_large_project_pressure_optional',
+            phase: 'worker_pressure',
+            payload_id: 'large_project_pressure_plan',
+          }),
+          expect.objectContaining({
+            id: 'audit_large_project_pressure_response',
+            phase: 'worker_pressure',
+            payload_id: 'large_project_pressure_plan',
+          }),
+          expect.objectContaining({
+            id: 'audit_story_agent_callback_responses',
+            phase: 'story_agent_callback',
+          }),
+          expect.objectContaining({
+            id: 'audit_story_agent_mvp_status',
+            phase: 'story_agent_callback',
+          }),
+          expect.objectContaining({
+            id: 'write_acceptance_verdict',
+            phase: 'worker_pressure',
+          }),
+          expect.objectContaining({
+            id: 'write_acceptance_archive',
+            phase: 'worker_pressure',
+          }),
+          expect.objectContaining({
+            id: 'verify_acceptance_integrity',
+            phase: 'worker_pressure',
+          }),
+        ]));
+        expect(res.body.data.verification_checklist).toEqual(expect.arrayContaining([
+          'Duplicate callback replay increments duplicate_count without duplicate artifacts or versions.',
+          'GEARS worker response audit records observed status aliases, id fields, error codes, and failure categories.',
+          'story-agent-smoke-targets.json contains existing Story Agent project ids or explicit warnings before callback smoke.',
+          'Story Agent callback id preflight has warning_count=0 before callback smoke is trusted.',
+          'Story Agent callback response audit has no ok=false validation/auth blockers.',
+          'Story Agent MVP status audit has no status regression or blocker increase after worker smoke.',
+          'Large project pressure payload is generated for at least 30 episodes and is submitted only when explicitly enabled.',
+          'Large project response audit has no source_echo_gap after a real pressure submit.',
+          'Final worker acceptance verdict has acceptance_passed=true before a GEARS v2 run is signed off.',
+          'Final worker acceptance archive has signoff_ready=true and no missing required attachments before handoff.',
+          'Final worker acceptance integrity has integrity_passed=true and no checksum mismatches before handoff.',
+          'Final worker evidence signoff snapshot is saved as gears-worker-evidence-signoff.json/.md after archive integrity is evaluated.',
+        ]));
+        expect(res.body.data.shell_script_filename).toBe('run-gears-worker-acceptance.sh');
+        expect(res.body.data.shell_script).toContain('#!/usr/bin/env bash');
+        expect(res.body.data.shell_script).toContain('GEARS_EVIDENCE_DIR');
+        expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_AUTO_EXTRACT_JOB_ID');
+        expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE');
+        expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER');
+        expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_LEDGER_SEED_JOB_TYPE');
+        expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_STRICT_AUDIT');
+        expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_STATUS_POLL_ATTEMPTS');
+        expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_STATUS_POLL_INTERVAL_SECONDS');
+        expect(res.body.data.shell_script).toContain('GEARS_LARGE_PRESSURE_EPISODE_COUNT');
+        expect(res.body.data.shell_script).not.toContain('GEARS_AUTH_ARGS');
+        expect(res.body.data.shell_script).toContain('if is_placeholder "${GEARS_API_TOKEN:-}"; then');
+        expect(res.body.data.shell_script).toContain('-H "authorization: Bearer $GEARS_API_TOKEN"');
+        expect(res.body.data.shell_script).toContain('gears-required-env-missing.txt');
+        expect(res.body.data.shell_script).toContain('gears-submit-exit-code.txt');
+        expect(res.body.data.shell_script).toContain('gears-submit-http-status.txt');
+        expect(res.body.data.shell_script).toContain('gears-submit-failed.txt');
+        expect(res.body.data.shell_script).toContain('gears-submit-http-failed.txt');
+        expect(res.body.data.shell_script).toContain('write_manifest');
+        expect(res.body.data.shell_script).toContain('print_json_summary');
+        expect(res.body.data.shell_script).toContain('record_http_metadata');
+        expect(res.body.data.shell_script).toContain('is_success_http_status');
+        expect(res.body.data.shell_script).toContain('post_json_capture');
+        expect(res.body.data.shell_script).toContain('seed_story_agent_gears_ledgers');
+        expect(res.body.data.shell_script).toContain('write_story_agent_ledger_seed_body');
+        expect(res.body.data.shell_script).toContain('patch_callback_payload_from_story_agent_submit');
+        expect(res.body.data.shell_script).toContain('story-agent-project-gears-submit-seed.json');
+        expect(res.body.data.shell_script).toContain('story-agent-project-gears-submit-seed-response.json');
+        expect(res.body.data.shell_script).toContain('story-agent-project-ledger-seed-selected.json');
+        expect(res.body.data.shell_script).toContain('story-agent-series-gears-submit-seed.json');
+        expect(res.body.data.shell_script).toContain('story-agent-series-gears-submit-seed-response.json');
+        expect(res.body.data.shell_script).toContain('story-agent-series-ledger-seed-selected.json');
+        expect(res.body.data.shell_script).toContain('story-agent-smoke-targets.json');
+        expect(res.body.data.shell_script).toContain('story-agent-smoke-env-selected.json');
+        expect(res.body.data.shell_script).toContain('auto_fill_smoke_target_envs');
+        expect(res.body.data.shell_script).toContain('read_smoke_target_env GEARS_SMOKE_PROJECT_ID');
+        expect(res.body.data.shell_script).toContain('read_smoke_target_env GEARS_ACCEPTANCE_LEDGER_SEED_JOB_TYPE');
+        expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_LEDGER_SEED_JOB_TYPE: process.env.GEARS_ACCEPTANCE_LEDGER_SEED_JOB_TYPE');
+        expect(res.body.data.shell_script).toContain('Checking Story Agent smoke target candidates');
+        expect(res.body.data.shell_script).toContain('story-agent-callback-id-preflight.json');
+        expect(res.body.data.shell_script).toContain('story-agent-callback-id-preflight.md');
+        expect(res.body.data.shell_script).toContain('story-agent-callback-id-preflight/v1');
+        expect(res.body.data.shell_script).toContain('YYYYMMDD-story-{hash36}--{video_type}');
+        expect(res.body.data.shell_script).toContain('YYYYMMDD-series-{hash36}');
+        expect(res.body.data.shell_script).toContain('Checking Story Agent callback id formats');
+        expect(res.body.data.shell_script).toContain('warning_count');
+        expect(res.body.data.shell_script).toContain('curl -sS -o "$EVIDENCE_DIR/story-agent-acceptance-report.json"');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-worker-evidence-bundle.json" "Story Agent worker evidence bundle"');
+        expect(res.body.data.shell_script).toContain('story-agent-generated-health-before.json');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-generated-health-before.json" "Story Agent generated health audit"');
+        expect(res.body.data.shell_script).toContain('fetch_story_agent_generated_health_after()');
+        expect(res.body.data.shell_script).toContain('write_early_exit_audits()');
+        expect(res.body.data.shell_script).toContain('write_early_exit_audits "env-blocked exit"');
+        expect(res.body.data.shell_script).toContain('write_early_exit_audits "submit failure"');
+        expect(res.body.data.shell_script).toContain('write_early_exit_audits "non-2xx submit"');
+        expect(res.body.data.shell_script).toContain('story-agent-generated-health-after-fetch-failed.txt');
+        expect(res.body.data.shell_script).toContain('story-agent-generated-health-audit.json');
+        expect(res.body.data.shell_script).toContain('story-agent-generated-health-audit.md');
+        expect(res.body.data.shell_script).toContain('story-agent-generated-health-audit/v1');
+        expect(res.body.data.shell_script).toContain('Auditing Story Agent generated health before final verdict');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-generated-health-audit.json" "Story Agent generated health smoke audit"');
+        expect(res.body.data.shell_script).toContain('story-agent-mvp-status-before.json');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-mvp-status-before.json" "Story Agent MVP status before smoke"');
+        expect(res.body.data.shell_script).toContain('fetch_story_agent_mvp_status_after()');
+        expect(res.body.data.shell_script).toContain('story-agent-mvp-status-after-fetch-failed.txt');
+        expect(res.body.data.shell_script).toContain('story-agent-mvp-status-audit.json');
+        expect(res.body.data.shell_script).toContain('story-agent-mvp-status-audit.md');
+        expect(res.body.data.shell_script).toContain('story-agent-mvp-status-audit/v1');
+        expect(res.body.data.shell_script).toContain('Auditing Story Agent MVP status before final verdict');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-mvp-status-audit.json" "Story Agent MVP status smoke audit"');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-callback-id-preflight.json" "Story Agent callback id preflight"');
+        expect(res.body.data.shell_script).toContain('Trying to extract GEARS job ids from submit response');
+        expect(res.body.data.shell_script).toContain('Rendering smoke payload templates with env values');
+        expect(res.body.data.shell_script).toContain('Rendering callback payloads with GEARS job id');
+        expect(res.body.data.shell_script).toContain('envValue("GEARS_SMOKE_STORY_ID") || envValue("GEARS_SMOKE_PROJECT_ID")');
+        expect(res.body.data.shell_script).toContain('"<GEARS_CALLBACK_BASE_URL>", cleanBaseUrl("GEARS_CALLBACK_BASE_URL")');
+        expect(res.body.data.shell_script).toContain('"<gears_job_id>", envValue("GEARS_SMOKE_JOB_ID")');
+        expect(res.body.data.shell_script).toContain('gears-smoke-job-ids.txt');
+        expect(res.body.data.shell_script).toContain('gears-smoke-job-id.txt');
+        expect(res.body.data.shell_script).toContain('export GEARS_SMOKE_JOB_ID');
+        expect(res.body.data.shell_script).toContain('gears-smoke-job-id-missing.txt');
+        expect(res.body.data.shell_script).toContain('gears-status-response-$safe_job_id.json');
+        expect(res.body.data.shell_script).toContain('gears-status-response-$safe_job_id-attempt-$poll_attempt.json');
+        expect(res.body.data.shell_script).toContain('gears-status-response-$safe_job_id-attempt-$poll_attempt-http-failed.txt');
+        expect(res.body.data.shell_script).toContain('gears-status-response-$safe_job_id-attempt-$poll_attempt-failed.txt');
+        expect(res.body.data.shell_script).toContain('attempt $poll_attempt/$GEARS_ACCEPTANCE_STATUS_POLL_ATTEMPTS');
+        expect(res.body.data.shell_script).toContain('sleep "$GEARS_ACCEPTANCE_STATUS_POLL_INTERVAL_SECONDS"');
+        expect(res.body.data.shell_script).toContain('acceptedUnits');
+        expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_REPLAY_CALLBACKS');
+        expect(res.body.data.shell_script).toContain('/api/system/gears-execution-worker-evidence-bundle');
+        expect(res.body.data.shell_script).toContain('gears-submit-response.json');
+        expect(res.body.data.shell_script).toContain('gears-worker-response-audit.json');
+        expect(res.body.data.shell_script).toContain('gears-worker-response-audit.md');
+        expect(res.body.data.shell_script).toContain('gears-worker-response-audit/v1');
+        expect(res.body.data.shell_script).toContain('story-agent-callback-response-audit.json');
+        expect(res.body.data.shell_script).toContain('story-agent-callback-response-audit.md');
+        expect(res.body.data.shell_script).toContain('story-agent-callback-response-audit/v1');
+        expect(res.body.data.shell_script).toContain('Auditing Story Agent callback responses after $reason');
+        expect(res.body.data.shell_script).toContain('Auditing Story Agent callback responses');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-callback-response-audit.json" "Story Agent callback response audit"');
+        expect(res.body.data.shell_script).toContain('recommended_actions=');
+        expect(res.body.data.shell_script).toContain('validation_error_count');
+        expect(res.body.data.shell_script).toContain('auth_error_count');
+        expect(res.body.data.shell_script).toContain('not_found_count');
+        expect(res.body.data.shell_script).toContain('sample_not_found_files');
+        expect(res.body.data.shell_script).toContain('blocked_count');
+        expect(res.body.data.shell_script).toContain('sample_blocked_files');
+        expect(res.body.data.shell_script).toContain('ledger_match_missing_count');
+        expect(res.body.data.shell_script).toContain('sample_ledger_match_files');
+        expect(res.body.data.shell_script).toContain('Auditing GEARS worker response shapes');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/gears-worker-response-audit.json" "GEARS worker response audit"');
+        expect(res.body.data.shell_script).toContain('Refreshing GEARS worker response audit');
+        expect(res.body.data.shell_script).toContain('status_alias_counts');
+        expect(res.body.data.shell_script).toContain('function pathLooksLikeWorkerRecord(pathParts)');
+        expect(res.body.data.shell_script).toContain('function hasDirectArtifactField(obj, pathParts)');
+        expect(res.body.data.shell_script).toContain('function looksLikeWorkerRecord(obj, pathParts)');
+        expect(res.body.data.shell_script).toContain('const structuralPath = pathParts.slice(1)');
+        expect(res.body.data.shell_script).toContain('const lastToken = normalizeToken(namedPath[namedPath.length - 1])');
+        expect(res.body.data.shell_script).toContain('const hasRecordSignal = hasAnyField(obj, statusFields)');
+        expect(res.body.data.shell_script).toContain('const pathLikeRecord = pathLooksLikeWorkerRecord(pathParts)');
+        expect(res.body.data.shell_script).toContain('looksLikeWorkerRecord(value, pathParts)');
+        expect(res.body.data.shell_script).toContain('failedStatuses.has(errorCodeToken)');
+        expect(res.body.data.shell_script).toContain('rejectedStatuses.has(errorCodeToken)');
+        expect(res.body.data.shell_script).toContain('http_status');
+        expect(res.body.data.shell_script).toContain('curl_exit_code');
+        expect(res.body.data.shell_script).toContain('transport_error_count');
+        expect(res.body.data.shell_script).toContain('http_error_count');
+        expect(res.body.data.shell_script).toContain('failure_category_counts');
+        expect(res.body.data.shell_script).toContain('artifact_field_counts');
+        expect(res.body.data.shell_script).toContain('missing_ready_artifact_count');
+        expect(res.body.data.shell_script).toContain('ready_without_artifact');
+        expect(res.body.data.shell_script).toContain('recommended_actions');
+        expect(res.body.data.shell_script).toContain('Recommended Actions');
+        expect(res.body.data.shell_script).toContain('Sample Record Paths');
+        expect(res.body.data.shell_script).toContain('sample_record_paths');
+        expect(res.body.data.shell_script).toContain('sample_paths');
+        expect(res.body.data.shell_script).toContain('unknown_status');
+        expect(res.body.data.shell_script).toContain('record_count_zero');
+        expect(res.body.data.shell_script).toContain('missing_source_id_count');
+        expect(res.body.data.shell_script).toContain('story-agent-project-callback-replay-response.json');
+        expect(res.body.data.shell_script).toContain('story-agent-series-callback-replay-response.json');
+        expect(res.body.data.shell_script).toContain('post_json_capture "Story Agent project callback"');
+        expect(res.body.data.shell_script).toContain('post_json_capture "Story Agent live smoke"');
+        expect(res.body.data.shell_script).toContain('$base-http-status.txt');
+        expect(res.body.data.shell_script).toContain('$base-curl-exit-code.txt');
+        expect(res.body.data.shell_script).toContain('$label returned HTTP $http_status');
+        expect(res.body.data.shell_script).toContain('gears-large-project-submit-pressure.json');
+        expect(res.body.data.shell_script).toContain('gears-large-project-pressure-summary.json');
+        expect(res.body.data.shell_script).toContain('story-agent-generated-health-after.json');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-generated-health-after.json" "Post-run generated health audit"');
+        expect(res.body.data.shell_script).toContain('story_agent_generated_health_audit');
+        expect(res.body.data.shell_script).toContain('story_agent_mvp_status_audit');
+        expect(res.body.data.shell_script).toContain('generated_health_ready_regressed');
+        expect(res.body.data.shell_script).toContain('generated_health_interrupted_regressed');
+        expect(res.body.data.shell_script).toContain('missing_generated_health_after');
+        expect(res.body.data.shell_script).toContain('mvp_status_regressed');
+        expect(res.body.data.shell_script).toContain('mvp_blocker_count_increased');
+        expect(res.body.data.shell_script).toContain('missing_mvp_status_after');
+        expect(res.body.data.shell_script).toContain('gears-large-project-pressure-skip.txt');
+        expect(res.body.data.shell_script).toContain('gears-large-project-submit-http-status.txt');
+        expect(res.body.data.shell_script).toContain('gears-large-project-submit-http-failed.txt');
+        expect(res.body.data.shell_script).toContain('gears-large-project-response-audit.json');
+        expect(res.body.data.shell_script).toContain('gears-large-project-response-audit.md');
+        expect(res.body.data.shell_script).toContain('gears-large-project-response-audit/v1');
+        expect(res.body.data.shell_script).toContain('Auditing GEARS large project pressure response after $reason');
+        expect(res.body.data.shell_script).toContain('Auditing GEARS large project pressure response');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/gears-large-project-response-audit.json" "GEARS large project response audit"');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-verdict.json');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-verdict.md');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-verdict/v1');
+        expect(res.body.data.shell_script).toContain('Writing GEARS worker acceptance verdict');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/gears-worker-acceptance-verdict.json" "GEARS worker acceptance verdict"');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-archive.json');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-archive.md');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-archive/v1');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-checksums.json');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-checksums.md');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-checksum-manifest/v1');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-integrity.json');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-integrity.md');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-integrity/v1');
+        expect(res.body.data.shell_script).toContain('Writing GEARS worker acceptance archive');
+        expect(res.body.data.shell_script).toContain('Verifying GEARS worker acceptance evidence integrity');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/gears-worker-acceptance-archive.json" "GEARS worker acceptance archive"');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/gears-worker-acceptance-integrity.json" "GEARS worker acceptance integrity"');
+        expect(res.body.data.shell_script).toContain('write_worker_evidence_signoff_snapshot()');
+        expect(res.body.data.shell_script).toContain('Writing GEARS worker evidence signoff snapshot');
+        expect(res.body.data.shell_script).toContain('gears-worker-evidence-signoff.json');
+        expect(res.body.data.shell_script).toContain('gears-worker-evidence-signoff.md');
+        expect(res.body.data.shell_script).toContain('GEARS worker evidence signoff snapshot');
+        expect(res.body.data.shell_script).toContain('sha256');
+        expect(res.body.data.shell_script).toContain('checksum_manifest');
+        expect(res.body.data.shell_script).toContain('required_checksum_count');
+        expect(res.body.data.shell_script).toContain('"story-agent-generated-health-audit.json"');
+        expect(res.body.data.shell_script).toContain('"story-agent-generated-health-after.json"');
+        expect(res.body.data.shell_script).toContain('"story-agent-mvp-status-audit.json"');
+        expect(res.body.data.shell_script).toContain('"story-agent-mvp-status-after.json"');
+        expect(res.body.data.shell_script).toContain('integrity_passed');
+        expect(res.body.data.shell_script).toContain('mismatch_count');
+        expect(res.body.data.shell_script).toContain('sha256_mismatch_count');
+        expect(res.body.data.shell_script).toContain('missing_required_files');
+        expect(res.body.data.shell_script).toContain('missing_required_attachment_count');
+        expect(res.body.data.shell_script).toContain('signoff_ready');
+        expect(res.body.data.shell_script).toContain('acceptance_passed');
+        expect(res.body.data.shell_script).toContain('strict_exit_code');
+        expect(res.body.data.shell_script).toContain('GEARS worker acceptance strict audit failed');
+        expect(res.body.data.shell_script).toContain('GEARS worker acceptance archive strict audit failed');
+        expect(res.body.data.shell_script).toContain('GEARS worker acceptance integrity strict audit failed');
+        expect(res.body.data.shell_script).toContain('source_echo_gap');
+        expect(res.body.data.shell_script).toContain('missing_requested_source_count');
+        expect(res.body.data.shell_script).toContain('duplicate_source_id_count');
+        expect(res.body.data.shell_script).toContain('unexpected_source_count');
+        expect(res.body.data.shell_script).toContain('story-agent-worker-evidence-bundle-after.json');
+        expect(res.body.data.shell_script).toContain('story-agent-generated-pressure-after.json');
+        expect(res.body.data.shell_script).toContain('gears-worker-acceptance-evidence-manifest/v1');
+        expect(res.body.data.shell_script).toContain('GEARS worker evidence signoff URL');
+        expect(res.body.data.shell_script).toContain('/api/system/gears-execution-worker-evidence-signoff?evidence_dir=');
+        expect(res.body.data.shell_script).toContain('MCP signoff tool: kb_get_gears_worker_evidence_signoff');
+        expect(res.body.data.commands.find((command: any) => command.id === 'read_worker_evidence_signoff')).toEqual(expect.objectContaining({
+          phase: 'worker_pressure',
+          command: expect.stringContaining('/api/system/gears-execution-worker-evidence-signoff'),
+          expected_assertions: expect.arrayContaining([
+            expect.stringContaining('gears-execution-worker-evidence-signoff/v1'),
+            expect.stringContaining('gears-worker-evidence-signoff.json'),
+            expect.stringContaining('evidence_dir_source is input'),
+          ]),
+        }));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'audit_story_agent_mvp_status')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('story-agent-mvp-status-before.json'),
+          expect.stringContaining('MVP status regresses'),
+          expect.stringContaining('MVP score decreases'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'write_payload_files')?.command,
+        ).toContain('story-agent-callback-id-preflight.json');
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'write_payload_files')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('auto-filled from smoke_targets'),
+          expect.stringContaining('payload templates replace GEARS_SMOKE_PROJECT_ID'),
+          expect.stringContaining('story-agent-callback-id-preflight.json'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'write_env')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('story-agent-smoke-targets.json'),
+          expect.stringContaining('GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER=1'),
+          expect.stringContaining('GEARS_SMOKE_PROJECT_ID and GEARS_SMOKE_SERIES_PROJECT_ID match Story Agent route id formats'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'seed_story_agent_ledgers_optional')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('Story Agent submit APIs'),
+          expect.stringContaining('story-agent-project-ledger-seed-selected.json'),
+          expect.stringContaining('ledger_match_missing_count should drop to zero'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'generate_large_project_pressure_payload')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('Default pressure payload contains 30 episodes'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'audit_large_project_pressure_response')?.command,
+        ).toContain('gears-large-project-response-audit.json');
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'audit_large_project_pressure_response')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('request_unit_count'),
+          expect.stringContaining('source_echo_count equals request_unit_count'),
+          expect.stringContaining('missing_requested_source_count'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'write_acceptance_verdict')?.command,
+        ).toContain('gears-worker-acceptance-verdict.json');
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'write_acceptance_verdict')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('required envs'),
+          expect.stringContaining('acceptance_passed'),
+          expect.stringContaining('GEARS_ACCEPTANCE_STRICT_AUDIT=1'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'write_acceptance_archive')?.command,
+        ).toContain('gears-worker-acceptance-archive.json');
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'write_acceptance_archive')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('missing_required_files'),
+          expect.stringContaining('checksum_manifest'),
+          expect.stringContaining('gears-worker-acceptance-checksums.json'),
+          expect.stringContaining('sha256'),
+          expect.stringContaining('signoff_ready'),
+          expect.stringContaining('GEARS_ACCEPTANCE_STRICT_AUDIT=1'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'verify_acceptance_integrity')?.command,
+        ).toContain('gears-worker-acceptance-integrity.json');
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'verify_acceptance_integrity')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('sha256'),
+          expect.stringContaining('byte_length_mismatch'),
+          expect.stringContaining('integrity_passed'),
+          expect.stringContaining('GEARS_ACCEPTANCE_STRICT_AUDIT=1'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'audit_worker_response_shapes')?.command,
+        ).toContain('gears-worker-response-audit.json');
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'audit_worker_response_shapes')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('accepted_count, rejected_count, failed_count'),
+          expect.stringContaining('artifact URL'),
+          expect.stringContaining('transport_error_count and http_error_count'),
+          expect.stringContaining('error_code, and failure_category gaps'),
+          expect.stringContaining('recommended_actions'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'poll_worker_status')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('GEARS_ACCEPTANCE_STATUS_POLL_ATTEMPTS'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'audit_story_agent_callback_responses')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('ok_true_count'),
+          expect.stringContaining('transport_error_count, http_error_count, not_found_count, blocked_count, and ledger_match_missing_count'),
+          expect.stringContaining('recommended_actions'),
+        ]));
+        expect(res.body.data.markdown).toContain('# GEARS v2 Worker Acceptance Kit');
+        expect(res.body.data.markdown).toContain('series_ledger_seed_ready');
+        if (res.body.data.smoke_targets.series_project_candidates.length) {
+          expect(res.body.data.markdown).toContain('seed_job=');
+        }
+        expect(res.body.data.markdown).toContain('## Shell Script');
+        expect(res.body.data.markdown).toContain('## Commands');
+      } finally {
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.apiToken === undefined) delete process.env.GEARS_API_TOKEN;
+        else process.env.GEARS_API_TOKEN = previous.apiToken;
+        if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+        if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+      }
+    });
+  });
+
+  describe('GET /api/system/gears-execution-worker-evidence-bundle', () => {
+    it('returns a complete worker handoff evidence bundle', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_API_BASE_URL,
+        apiToken: process.env.GEARS_API_TOKEN,
+        callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+        callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+      };
+      try {
+        delete process.env.GEARS_API_BASE_URL;
+        delete process.env.GEARS_API_TOKEN;
+        delete process.env.GEARS_CALLBACK_SECRET;
+        delete process.env.GEARS_CALLBACK_BASE_URL;
+
+        const res = await request.get('/api/system/gears-execution-worker-evidence-bundle');
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          provider: 'gears',
+          schema_version: 'gears-execution-worker-evidence-bundle/v1',
+          status: 'blocked',
+          readiness_status: 'blocked',
+          command_count: 20,
+          payload_count: 5,
+          local_smoke_passed_count: 5,
+          local_smoke_total_count: 5,
+          generated_health_status: expect.stringMatching(/ready|attention|blocked/),
+          generated_health_ready_count: expect.any(Number),
+          generated_health_planned_count: expect.any(Number),
+          generated_health_production_gap_count: expect.any(Number),
+          generated_health_interrupted_count: expect.any(Number),
+          story_agent_mvp_status: expect.stringMatching(/ready|needs_action|blocked/),
+          story_agent_mvp_score: expect.any(Number),
+          required_envs: expect.arrayContaining(['GEARS_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
+        });
+        expect(res.body.data.documents.map((doc: any) => doc.id)).toEqual([
+          'acceptance_report',
+          'worker_acceptance_kit',
+          'smoke_handoff_package',
+          'pressure_report',
+          'generated_project_pressure_report',
+          'generated_health_report',
+          'story_agent_mvp_status_report',
+        ]);
+        expect(res.body.data.documents).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            filename: 'gears-worker-acceptance-kit.md',
+            source_endpoint: '/api/system/gears-execution-worker-acceptance-kit',
+            format: 'markdown',
+            content: expect.stringContaining('## Shell Script'),
+          }),
+          expect.objectContaining({
+            filename: 'gears-worker-acceptance-report.md',
+            source_endpoint: '/api/system/gears-execution-acceptance-report',
+            content_length: expect.any(Number),
+          }),
+          expect.objectContaining({
+            filename: 'story-agent-generated-health-report.md',
+            source_endpoint: '/api/system/story-agent-generated-health',
+            content: expect.stringContaining('# Story Agent Generated Health'),
+          }),
+          expect.objectContaining({
+            filename: 'story-agent-mvp-status-report.md',
+            source_endpoint: '/api/system/story-agent-mvp-status',
+            content: expect.stringContaining('# Story Agent MVP Status'),
+          }),
+        ]));
+        expect(res.body.data.operator_checklist).toEqual(expect.arrayContaining([
+          'Attach gears-worker-response-audit.json to summarize worker ids, source ids, statuses, error codes, and failure categories.',
+          'Attach gears-worker-acceptance-verdict.json and require acceptance_passed=true for sign-off.',
+          'Attach gears-worker-acceptance-archive.json/.md and require signoff_ready=true with no missing required attachments.',
+          'Attach gears-worker-acceptance-checksums.json/.md so GEARS v2 can verify evidence files by sha256.',
+          'Attach gears-worker-acceptance-integrity.json/.md and require integrity_passed=true before handoff.',
+          'Attach gears-worker-evidence-signoff.json/.md as the final post-archive signoff snapshot.',
+          'Attach story-agent-mvp-status-report.md to show Story Agent MVP lane status before GEARS worker sign-off.',
+          'Attach story-agent-mvp-status-audit.json/.md and require status=passed or warning with no failed_checks before sign-off.',
+          'Attach story-agent-generated-health-audit.json/.md and require status=passed before sign-off.',
+          'Run generated health audit before and after smoke to confirm the selected target is not planned-only or interrupted.',
+          'Replay callback payloads once to prove duplicate_count is reported and no duplicate artifacts are created.',
+        ]));
+        expect(res.body.data.markdown).toContain('# GEARS v2 Worker Evidence Bundle');
+        expect(res.body.data.markdown).toContain('## Embedded Document: Worker acceptance kit');
+        expect(res.body.data.markdown).toContain('audit_story_agent_callback_responses');
+        expect(res.body.data.markdown).toContain('gears-worker-acceptance-verdict.json');
+        expect(res.body.data.markdown).toContain('gears-worker-acceptance-archive.json');
+        expect(res.body.data.markdown).toContain('gears-worker-acceptance-checksums.json');
+        expect(res.body.data.markdown).toContain('gears-worker-acceptance-integrity.json');
+        expect(res.body.data.markdown).toContain('Story Agent generated health report');
+        expect(res.body.data.markdown).toContain('Story Agent MVP status report');
+        expect(res.body.data.markdown).toContain('audit_story_agent_mvp_status');
+      } finally {
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.apiToken === undefined) delete process.env.GEARS_API_TOKEN;
+        else process.env.GEARS_API_TOKEN = previous.apiToken;
+        if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+        if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+      }
+    });
+  });
+
+  describe('GET /api/system/gears-execution-worker-evidence-signoff', () => {
+    async function writeEvidenceJson(evidenceDir: string, filename: string, value: unknown) {
+      await writeFile(resolve(evidenceDir, filename), JSON.stringify(value, null, 2), 'utf-8');
+    }
+
+    async function writeReadyEvidence(evidenceDir: string) {
+      await mkdir(evidenceDir, { recursive: true });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
+        schema_version: 'gears-worker-acceptance-verdict/v1',
+        status: 'passed',
+        acceptance_passed: true,
+        pressure_submitted: true,
+        gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+        failed_gate_ids: [],
+        skipped_gate_ids: [],
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-archive.json', {
+        schema_version: 'gears-worker-acceptance-archive/v1',
+        status: 'signoff_ready',
+        signoff_ready: true,
+        totals: {
+          missing_required_attachment_count: 0,
+          required_attachment_count: 26,
+          required_checksum_count: 26,
+          evidence_file_count: 65,
+        },
+        required_attachments: [
+          'gears-worker-acceptance-verdict.json',
+          'story-agent-mvp-status-audit.json',
+        ],
+        missing_required_files: [],
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-integrity.json', {
+        schema_version: 'gears-worker-acceptance-integrity/v1',
+        status: 'passed',
+        integrity_passed: true,
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-response-audit.json', {
+        totals: {
+          record_count: 1,
+          transport_error_count: 0,
+          http_error_count: 0,
+          unknown_count: 0,
+          missing_worker_id_count: 0,
+          missing_source_id_count: 0,
+          missing_ready_artifact_count: 0,
+        },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-callback-response-audit.json', {
+        totals: {
+          transport_error_count: 0,
+          http_error_count: 0,
+          ledger_match_missing_count: 0,
+          failed_count: 0,
+        },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
+        schema_version: 'story-agent-generated-health-audit/v1',
+        status: 'passed',
+        before: { summary: { ready_count: 1 } },
+        after: { summary: { ready_count: 1 } },
+        deltas: { ready_count: 0, interrupted_count: 0, production_gap_count: 0 },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
+        schema_version: 'story-agent-mvp-status-audit/v1',
+        status: 'passed',
+        before: { status: 'ready', score: 95 },
+        after: { status: 'ready', score: 95 },
+        deltas: { score: 0, status_rank: 0, blocker_count: 0 },
+        failed_checks: [],
+        warning_checks: [],
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-large-project-response-audit.json', {
+        totals: {
+          pressure_submitted: true,
+          request_unit_count: 120,
+          response_record_count: 120,
+          accepted_count: 120,
+          rejected_count: 0,
+          failed_count: 0,
+          source_echo_count: 120,
+          missing_requested_source_count: 0,
+          duplicate_source_id_count: 0,
+          unexpected_source_count: 0,
+        },
+        recommended_actions: [],
+      });
+    }
+
+    it('blocks when no evidence directory is configured', async () => {
+      const previousEvidenceDir = process.env.GEARS_EVIDENCE_DIR;
+      const previousAutoDiscover = process.env.GEARS_EVIDENCE_AUTO_DISCOVER;
+      try {
+        delete process.env.GEARS_EVIDENCE_DIR;
+        process.env.GEARS_EVIDENCE_AUTO_DISCOVER = '0';
+
+        const res = await request.get('/api/system/gears-execution-worker-evidence-signoff');
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          provider: 'gears',
+          schema_version: 'gears-execution-worker-evidence-signoff/v1',
+          status: 'blocked',
+          evidence_dir_source: 'missing',
+          evidence_dir_allowed: false,
+          evidence_dir_error: 'missing_evidence_dir',
+          failed_gate_ids: ['evidence_dir'],
+          acceptance_passed: false,
+          signoff_ready: false,
+          integrity_passed: false,
+          health_audit_passed: false,
+          mvp_status_audit_passed: false,
+        });
+        expect(res.body.data.markdown).toContain('# GEARS Worker Evidence Signoff');
+        expect(res.body.data.markdown).toContain('missing_evidence_dir');
+      } finally {
+        if (previousEvidenceDir === undefined) delete process.env.GEARS_EVIDENCE_DIR;
+        else process.env.GEARS_EVIDENCE_DIR = previousEvidenceDir;
+        if (previousAutoDiscover === undefined) delete process.env.GEARS_EVIDENCE_AUTO_DISCOVER;
+        else process.env.GEARS_EVIDENCE_AUTO_DISCOVER = previousAutoDiscover;
+      }
+    });
+
+    it('auto-discovers the latest worker evidence directory when none is configured', async () => {
+      const previousEvidenceDir = process.env.GEARS_EVIDENCE_DIR;
+      const previousAutoDiscover = process.env.GEARS_EVIDENCE_AUTO_DISCOVER;
+      const previousAutoDiscoverRoots = process.env.GEARS_EVIDENCE_AUTO_DISCOVER_ROOTS;
+      try {
+        delete process.env.GEARS_EVIDENCE_DIR;
+        process.env.GEARS_EVIDENCE_AUTO_DISCOVER = '1';
+        const discoveryRoot = resolve(testWorkspaceRoot, 'gears-signoff-discovery');
+        process.env.GEARS_EVIDENCE_AUTO_DISCOVER_ROOTS = discoveryRoot;
+        const oldEvidenceDir = resolve(discoveryRoot, 'gears-worker-evidence-old');
+        const latestEvidenceDir = resolve(discoveryRoot, 'gears-worker-evidence-new');
+        await writeReadyEvidence(oldEvidenceDir);
+        await writeReadyEvidence(latestEvidenceDir);
+
+        const res = await request.get('/api/system/gears-execution-worker-evidence-signoff');
+
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          status: 'ready',
+          evidence_dir: latestEvidenceDir,
+          evidence_dir_source: 'latest',
+          evidence_dir_allowed: true,
+          gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+          large_project_source_echo_count: 120,
+        });
+        expect(res.body.data.markdown).toContain('evidence_dir_source: latest');
+      } finally {
+        if (previousEvidenceDir === undefined) delete process.env.GEARS_EVIDENCE_DIR;
+        else process.env.GEARS_EVIDENCE_DIR = previousEvidenceDir;
+        if (previousAutoDiscover === undefined) delete process.env.GEARS_EVIDENCE_AUTO_DISCOVER;
+        else process.env.GEARS_EVIDENCE_AUTO_DISCOVER = previousAutoDiscover;
+        if (previousAutoDiscoverRoots === undefined) delete process.env.GEARS_EVIDENCE_AUTO_DISCOVER_ROOTS;
+        else process.env.GEARS_EVIDENCE_AUTO_DISCOVER_ROOTS = previousAutoDiscoverRoots;
+      }
+    });
+
+    it('summarizes a complete evidence directory as ready for signoff', async () => {
+      const evidenceDir = await mkdtemp(resolve(tmpdir(), 'gears-signoff-'));
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
+        schema_version: 'gears-worker-acceptance-verdict/v1',
+        status: 'passed',
+        acceptance_passed: true,
+        pressure_submitted: true,
+        gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+        failed_gate_ids: [],
+        skipped_gate_ids: [],
+        gates: [
+          {
+            id: 'story_agent_generated_health_audit',
+            label: 'Story Agent generated health smoke audit',
+            status: 'passed',
+            summary: 'Generated health stayed stable.',
+          },
+          {
+            id: 'story_agent_mvp_status_audit',
+            label: 'Story Agent MVP status smoke audit',
+            status: 'passed',
+            summary: 'MVP status stayed stable.',
+          },
+        ],
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-archive.json', {
+        schema_version: 'gears-worker-acceptance-archive/v1',
+        status: 'signoff_ready',
+        signoff_ready: true,
+        totals: {
+          missing_required_attachment_count: 0,
+          required_attachment_count: 26,
+          required_checksum_count: 26,
+          evidence_file_count: 65,
+        },
+        required_attachments: [
+          'gears-worker-acceptance-verdict.json',
+          'story-agent-generated-health-audit.json',
+          'story-agent-mvp-status-audit.json',
+        ],
+        missing_required_files: [],
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-integrity.json', {
+        schema_version: 'gears-worker-acceptance-integrity/v1',
+        status: 'passed',
+        integrity_passed: true,
+        record_count: 65,
+        mismatch_count: 0,
+        missing_file_count: 0,
+        sha256_mismatch_count: 0,
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-response-audit.json', {
+        totals: {
+          record_count: 370,
+          transport_error_count: 0,
+          http_error_count: 0,
+          unknown_count: 0,
+          missing_worker_id_count: 0,
+          missing_source_id_count: 0,
+          missing_ready_artifact_count: 0,
+          failure_category_counts: {
+            render_failed: 1,
+          },
+        },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-callback-response-audit.json', {
+        totals: {
+          transport_error_count: 0,
+          http_error_count: 0,
+          ledger_match_missing_count: 0,
+          failed_count: 0,
+        },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
+        schema_version: 'story-agent-generated-health-audit/v1',
+        status: 'passed',
+        before: { summary: { ready_count: 1 } },
+        after: { summary: { ready_count: 1 } },
+        deltas: { ready_count: 0, interrupted_count: 0, production_gap_count: 0 },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
+        schema_version: 'story-agent-mvp-status-audit/v1',
+        status: 'passed',
+        before: { status: 'ready', score: 96 },
+        after: { status: 'ready', score: 96 },
+        deltas: { score: 0, status_rank: 0, blocker_count: 0 },
+        failed_checks: [],
+        warning_checks: [],
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-large-project-response-audit.json', {
+        totals: {
+          pressure_submitted: true,
+          request_unit_count: 120,
+          response_record_count: 120,
+          accepted_count: 120,
+          rejected_count: 0,
+          failed_count: 0,
+          source_echo_count: 120,
+          missing_requested_source_count: 0,
+          duplicate_source_id_count: 0,
+          unexpected_source_count: 0,
+        },
+        recommended_actions: [],
+      });
+
+      const res = await request.get(`/api/system/gears-execution-worker-evidence-signoff?evidence_dir=${encodeURIComponent(evidenceDir)}`);
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        provider: 'gears',
+        schema_version: 'gears-execution-worker-evidence-signoff/v1',
+        status: 'ready',
+        evidence_dir: evidenceDir,
+        evidence_dir_source: 'input',
+        evidence_dir_allowed: true,
+        acceptance_passed: true,
+        signoff_ready: true,
+        integrity_passed: true,
+        health_audit_passed: true,
+        mvp_status_audit_passed: true,
+        pressure_submitted: true,
+        gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+        failed_gate_ids: [],
+        skipped_gate_ids: [],
+        missing_required_attachment_count: 0,
+        required_attachment_count: 26,
+        required_checksum_count: 26,
+        evidence_file_count: 65,
+        worker_record_count: 370,
+        worker_transport_error_count: 0,
+        worker_http_error_count: 0,
+        callback_ledger_match_missing_count: 0,
+        callback_transport_error_count: 0,
+        callback_http_error_count: 0,
+        health_ready_count_before: 1,
+        health_ready_count_after: 1,
+        health_ready_count_delta: 0,
+        mvp_status_before: 'ready',
+        mvp_status_after: 'ready',
+        mvp_score_before: 96,
+        mvp_score_after: 96,
+        mvp_score_delta: 0,
+        large_project_request_unit_count: 120,
+        large_project_response_record_count: 120,
+        large_project_accepted_count: 120,
+        large_project_rejected_count: 0,
+        large_project_failed_count: 0,
+        large_project_source_echo_count: 120,
+        large_project_missing_requested_source_count: 0,
+        large_project_duplicate_source_id_count: 0,
+        large_project_unexpected_source_count: 0,
+        missing_required_files: [],
+      });
+      expect(res.body.data.worker_failure_category_counts).toEqual({ render_failed: 1 });
+      expect(res.body.data.required_files).toEqual(expect.arrayContaining([
+        'gears-worker-acceptance-verdict.json',
+        'story-agent-generated-health-audit.json',
+        'story-agent-mvp-status-audit.json',
+      ]));
+      expect(res.body.data.gates).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: 'story_agent_generated_health_audit',
+          status: 'passed',
+        }),
+        expect.objectContaining({
+          id: 'story_agent_mvp_status_audit',
+          status: 'passed',
+        }),
+      ]));
+      expect(res.body.data.recommended_actions).toEqual([]);
+      expect(res.body.data.markdown).toContain('# GEARS Worker Evidence Signoff');
+      expect(res.body.data.markdown).toContain('large_project_source_echo: 120/120');
+      expect(res.body.data.markdown).toContain('mvp_score_delta: 0');
+    });
+
+    it('deduplicates repeated recommended actions from evidence artifacts', async () => {
+      const evidenceDir = await mkdtemp(resolve(tmpdir(), 'gears-signoff-dedupe-'));
+      const repeatedAction = {
+        priority: 'P0',
+        owner: 'GEARS v2 ops',
+        evidence: 'transport_error_count',
+        action: 'Fix GEARS_API_BASE_URL reachability before contract validation.',
+      };
+      const uniqueAction = {
+        priority: 'P0',
+        owner: 'GEARS v2',
+        evidence: 'record_count_zero',
+        action: 'Return at least one worker result record.',
+      };
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
+        schema_version: 'gears-worker-acceptance-verdict/v1',
+        status: 'failed',
+        acceptance_passed: false,
+        pressure_submitted: false,
+        gate_counts: { passed: 5, failed: 3, skipped: 0, total: 8 },
+        failed_gate_ids: ['worker_response_audit'],
+        skipped_gate_ids: [],
+        gates: [{
+          id: 'worker_response_audit',
+          label: 'GEARS worker response audit',
+          status: 'failed',
+          summary: 'Worker was unreachable.',
+        }],
+        recommended_actions: [repeatedAction, repeatedAction, uniqueAction],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-archive.json', {
+        schema_version: 'gears-worker-acceptance-archive/v1',
+        status: 'blocked',
+        signoff_ready: false,
+        totals: {
+          missing_required_attachment_count: 0,
+          required_attachment_count: 26,
+          required_checksum_count: 26,
+          evidence_file_count: 37,
+        },
+        required_attachments: ['gears-worker-acceptance-verdict.json'],
+        missing_required_files: [],
+        recommended_actions: [repeatedAction],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-integrity.json', {
+        schema_version: 'gears-worker-acceptance-integrity/v1',
+        status: 'failed',
+        integrity_passed: false,
+        record_count: 33,
+        mismatch_count: 0,
+        missing_file_count: 0,
+        sha256_mismatch_count: 0,
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-worker-response-audit.json', {
+        totals: {
+          record_count: 0,
+          unknown_count: 0,
+          missing_worker_id_count: 0,
+          missing_source_id_count: 0,
+          missing_ready_artifact_count: 0,
+        },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-callback-response-audit.json', {
+        totals: {
+          ledger_match_missing_count: 0,
+          failed_count: 0,
+        },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
+        schema_version: 'story-agent-generated-health-audit/v1',
+        status: 'passed',
+        before: { summary: { ready_count: 1 } },
+        after: { summary: { ready_count: 1 } },
+        deltas: { ready_count: 0, interrupted_count: 0, production_gap_count: 0 },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
+        schema_version: 'story-agent-mvp-status-audit/v1',
+        status: 'passed',
+        before: { status: 'ready', score: 90 },
+        after: { status: 'ready', score: 90 },
+        deltas: { score: 0, status_rank: 0, blocker_count: 0 },
+        failed_checks: [],
+        warning_checks: [],
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'gears-large-project-response-audit.json', {
+        totals: {
+          pressure_submitted: false,
+          request_unit_count: 120,
+          source_echo_count: 0,
+          missing_requested_source_count: 120,
+        },
+        recommended_actions: [],
+      });
+
+      const res = await request.get(`/api/system/gears-execution-worker-evidence-signoff?evidence_dir=${encodeURIComponent(evidenceDir)}`);
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.status).toBe('attention');
+      expect(res.body.data.recommended_actions).toEqual(expect.arrayContaining([
+        expect.objectContaining(repeatedAction),
+        expect.objectContaining(uniqueAction),
+      ]));
+      expect(
+        res.body.data.recommended_actions.filter((item: any) => item.evidence === 'transport_error_count'),
+      ).toHaveLength(1);
+      expect(res.body.data.recommended_actions).toHaveLength(2);
+    });
+
+    it('rejects evidence directories outside allowed roots', async () => {
+      const res = await request.get('/api/system/gears-execution-worker-evidence-signoff?evidence_dir=/etc');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        status: 'blocked',
+        evidence_dir_allowed: false,
+        evidence_dir_error: 'evidence_dir_not_allowed',
+        failed_gate_ids: ['evidence_dir'],
+      });
+    });
+  });
+
+  describe('GET /api/system/gears-execution-smoke-package', () => {
+    it('returns a GEARS smoke handoff package without leaking configured secrets', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_API_BASE_URL,
+        apiToken: process.env.GEARS_API_TOKEN,
+        callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+        callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+      };
+      try {
+        process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+        process.env.GEARS_API_TOKEN = 'private-smoke-api-token-123';
+        process.env.GEARS_CALLBACK_SECRET = 'private-smoke-callback-token-456';
+        process.env.GEARS_CALLBACK_BASE_URL = 'https://story.example.test/public';
+
+        const res = await request.get('/api/system/gears-execution-smoke-package');
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          provider: 'gears',
+          schema_version: 'gears-execution-smoke-package/v1',
+          readiness_status: 'ready',
+          readiness_score: 100,
+          local_smoke_passed_count: 5,
+          local_smoke_total_count: 5,
+          live_ready_step_count: 4,
+          live_total_step_count: 4,
+          execution_order: ['submit_http', 'status_poll', 'project_callback', 'series_callback'],
+        });
+        expect(res.body.data.markdown).toContain('# GEARS v2 Story Agent Smoke Handoff');
+        expect(res.body.data.markdown).toContain('## Submit accepted/rejected GEARS units');
+        expect(res.body.data.markdown).toContain('Bearer <GEARS_API_TOKEN>');
+        expect(res.body.data.markdown).toContain('Bearer <GEARS_CALLBACK_SECRET>');
+        expect(res.body.data.steps).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'submit_http',
+            method: 'POST',
+            path: '/gears/jobs',
+            request_body: expect.objectContaining({
+              schema_version: 'gears-execution-submit/v1',
+              job_type: 'seedance_video',
+              payload: expect.objectContaining({
+                units: expect.arrayContaining([
+                  expect.objectContaining({
+                    source_unit_id: 'readiness-shot-1',
+                    idempotency_key: 'seedance_video:readiness-shot-1',
+                  }),
+                ]),
+              }),
+            }),
+            accepted_response_shapes: expect.arrayContaining([
+              '{ data: { acceptedUnits: [...], rejectedUnits: [...] } }',
+              '{ data: { rejectedUnits: [...] } }',
+            ]),
+          }),
+          expect.objectContaining({
+            id: 'status_poll',
+            method: 'GET',
+            path: '/gears/jobs/<gears_job_id>',
+          }),
+          expect.objectContaining({
+            id: 'project_callback',
+            method: 'POST',
+            path: '/api/projects/:projectId/gears-callback',
+          }),
+          expect.objectContaining({
+            id: 'series_callback',
+            method: 'POST',
+            path: '/api/story-outline/ai-comic-series-projects/:seriesProjectId/gears-callback',
+          }),
+        ]));
+        expect(JSON.stringify(res.body.data)).not.toContain('private-smoke-api-token-123');
+        expect(JSON.stringify(res.body.data)).not.toContain('private-smoke-callback-token-456');
+        expect(JSON.stringify(res.body.data)).not.toContain('gears.example.test/api-root');
+        expect(JSON.stringify(res.body.data)).not.toContain('story.example.test/public');
+      } finally {
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.apiToken === undefined) delete process.env.GEARS_API_TOKEN;
+        else process.env.GEARS_API_TOKEN = previous.apiToken;
+        if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+        if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+      }
+    });
+  });
+
+  describe('POST /api/system/gears-execution-live-smoke-run', () => {
+    it('returns a dry-run report when execute is not set', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_API_BASE_URL,
+        callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+        callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+      };
+      try {
+        delete process.env.GEARS_API_BASE_URL;
+        delete process.env.GEARS_CALLBACK_BASE_URL;
+        delete process.env.GEARS_CALLBACK_SECRET;
+
+        const res = await request.post('/api/system/gears-execution-live-smoke-run').send({});
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          provider: 'gears',
+          schema_version: 'gears-execution-live-smoke-run/v1',
+          status: 'dry_run',
+          execute: false,
+          poll_after_submit: false,
+          readiness_status: 'blocked',
+          submitted_job_ids: [],
+          accepted_count: 0,
+          rejected_count: 0,
+          failed_count: 0,
+        });
+        expect(res.body.data.blocked_by).toEqual(expect.arrayContaining([
+          'GEARS_API_BASE_URL',
+        ]));
+        expect(res.body.data.steps).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'submit_http',
+            status: 'blocked',
+          }),
+        ]));
+        expect(res.body.data.markdown).toContain('# GEARS v2 Live Smoke Run Report');
+      } finally {
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+        if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+      }
+    });
+
+    it('executes submit and poll live smoke through the GEARS adapter when ready', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_API_BASE_URL,
+        apiToken: process.env.GEARS_API_TOKEN,
+        callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+        callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+      };
+      try {
+        process.env.GEARS_API_BASE_URL = 'https://gears-live.example.test/api-root';
+        process.env.GEARS_API_TOKEN = 'private-live-smoke-api-token-123';
+        process.env.GEARS_CALLBACK_SECRET = 'private-live-smoke-callback-token-456';
+        process.env.GEARS_CALLBACK_BASE_URL = 'https://story-live.example.test/public';
+        const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+          const method = init?.method ?? 'GET';
+          if (method === 'POST') {
+            return new Response(JSON.stringify({
+              data: {
+                acceptedUnits: [{
+                  taskId: 'gears-live-smoke-accepted-001',
+                  externalId: 'readiness-shot-1',
+                  taskStatus: 'QUEUED',
+                  idempotencyKey: 'seedance_video:readiness-shot-1',
+                }],
+                rejectedUnits: [{
+                  taskId: 'gears-live-smoke-rejected-002',
+                  externalId: 'readiness-shot-2',
+                  taskStatus: 'VALIDATION_ERROR',
+                  errorCode: 'INVALID_PAYLOAD',
+                  message: 'smoke rejected unit',
+                }],
+              },
+            }));
+          }
+          expect(String(url)).toContain('/gears/jobs/gears-live-smoke-accepted-001');
+          return new Response(JSON.stringify({
+            data: {
+              job: {
+                taskId: 'gears-live-smoke-accepted-001',
+                externalId: 'readiness-shot-1',
+                taskStatus: 'COMPLETED',
+                progressPercent: 100,
+                output: {
+                  files: [{
+                    mediaUrl: 'https://gears.example.test/live-smoke.mp4',
+                    mediaType: 'video',
+                  }],
+                },
+              },
+            },
+          }));
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const res = await request
+          .post('/api/system/gears-execution-live-smoke-run')
+          .send({ execute: true, poll_after_submit: true, note: 'api live smoke' });
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          status: 'partial',
+          execute: true,
+          poll_after_submit: true,
+          readiness_status: 'ready',
+          submitted_job_ids: ['gears-live-smoke-accepted-001'],
+          accepted_count: 1,
+          rejected_count: 1,
+          failed_count: 0,
+        });
+        expect(res.body.data.steps).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'submit_http',
+            status: 'passed',
+            accepted_count: 1,
+            rejected_count: 1,
+          }),
+          expect.objectContaining({
+            id: 'status_poll',
+            status: 'passed',
+            returned_count: 1,
+            failed_count: 0,
+          }),
+          expect.objectContaining({
+            id: 'project_callback',
+            status: 'skipped',
+          }),
+        ]));
+        expect(res.body.data.markdown).toContain('gears-live-smoke-accepted-001');
+        expect(JSON.stringify(res.body.data)).not.toContain('private-live-smoke-api-token-123');
+        expect(JSON.stringify(res.body.data)).not.toContain('private-live-smoke-callback-token-456');
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.unstubAllGlobals();
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.apiToken === undefined) delete process.env.GEARS_API_TOKEN;
+        else process.env.GEARS_API_TOKEN = previous.apiToken;
+        if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+        if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+      }
+    });
+
+    it('validates live smoke request body', async () => {
+      const res = await request
+        .post('/api/system/gears-execution-live-smoke-run')
+        .send({ execute: 'yes' });
+      expect(res.status).toBe(400);
+      expect(res.body.ok).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
   });
 
@@ -1072,6 +3249,57 @@ describe('Projects API', () => {
       const detailRes = await request.get(`/api/projects/${enriched.project_id}`);
       expect(detailRes.status).toBe(404);
       expectFailure(detailRes.body, 'STORY_NOT_FOUND');
+    });
+  });
+
+  describe('GET /api/projects/:projectId/production-readiness', () => {
+    it('returns the single-story production readiness command report through the route', async () => {
+      const story = makeApiProductionRepairStory();
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:30:00.000Z');
+
+      const res = await request.get(`/api/projects/${enriched.project_id}/production-readiness`);
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'story-project-production-readiness/v1',
+        scope: 'story_project',
+        project: {
+          project_id: enriched.project_id,
+          current_story_id: story.storyId,
+        },
+      });
+      expect(res.body.data.summary).toMatchObject({
+        quality_score: 92,
+        gears_job_count: 0,
+      });
+      expect(res.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
+        'story_quality',
+        'production_board',
+        'delivery_contract',
+        'gears_execution',
+      ]));
+      expect(res.body.data.issues.map((issue: any) => issue.issue_id)).toContain('gears-ledger-empty');
+      expect(res.body.data.automation_plan).toMatchObject({
+        schema_version: 'production-readiness-automation-plan/v1',
+        external_step_count: expect.any(Number),
+      });
+      expect(res.body.data.automation_plan.steps.map((step: any) => step.action_key)).toContain('submit_gears_jobs');
+      expect(res.body.data.markdown).toContain('制作 readiness');
+      expect(res.body.data.markdown).toContain('Automation Plan');
+
+      const runRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-readiness/run-automation`)
+        .send({ dry_run: true, action_keys: ['export_production_board'] });
+      expect(runRes.status).toBe(200);
+      expectSuccess(runRes.body);
+      expect(runRes.body.data).toMatchObject({
+        schema_version: 'production-readiness-automation-run/v1',
+        scope: 'story_project',
+        dry_run: true,
+        planned_step_count: 1,
+        executed_step_count: 0,
+      });
     });
   });
 
@@ -2269,6 +4497,22 @@ describe('GEARS Callback API', () => {
     expectFailure(res.body, 'STORY_NOT_FOUND');
   });
 
+  it('rejects oversized GEARS callback batches before lookup', async () => {
+    const callbacks = Array.from({ length: GEARS_CALLBACK_BATCH_ITEM_LIMIT + 1 }, (_, index) => ({
+      jobId: `gears-oversized-batch-job-${index}`,
+      sourceUnitId: `shot-${index}`,
+      jobType: 'seedance_video',
+      taskStatus: 'COMPLETED',
+      outputUrl: `https://gears.example/videos/oversized-${index}.mp4`,
+    }));
+    const res = await request
+      .post('/api/projects/20260617-story-apspv--ai_comic_drama/gears-callback')
+      .send({ callbacks });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+    expect(res.body.error.message).toContain(`GEARS callback batch item count must be <= ${GEARS_CALLBACK_BATCH_ITEM_LIMIT}`);
+  });
+
   it('accepts multi-artifact GEARS callback payloads for AI comic series before lookup', async () => {
     const res = await request
       .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/gears-callback')
@@ -2741,7 +4985,7 @@ describe('Story Outline API', () => {
   });
 
   describe('AI comic series project persistence', () => {
-    it('saves and loads a series project', async () => {
+    it('saves, loads, and reports production readiness for a series project', async () => {
       const planRes = await request.post('/api/story-outline/ai-comic-series-plan').send({
         outline: '周敦颐少年在濂溪读书，面对冤案和师友关系，一步步形成自己的选择。',
         series_title: '濂溪漫剧',
@@ -2769,6 +5013,52 @@ describe('Story Outline API', () => {
       expect(getRes.body.data.plan.series_title).toBe('濂溪漫剧');
       expect(getRes.body.data.generated_episode_story_ids['1']).toBe('20260611-story-abc1');
       expect(getRes.body.data.continuity_ledger.character_state_current.length).toBeGreaterThan(0);
+
+      const readinessRes = await request.get(
+        `/api/story-outline/ai-comic-series-projects/${saveRes.body.data.project.series_project_id}/production-readiness`,
+      );
+      expect(readinessRes.status).toBe(200);
+      expectSuccess(readinessRes.body);
+      expect(readinessRes.body.data).toMatchObject({
+        schema_version: 'ai-comic-series-production-readiness/v1',
+        scope: 'ai_comic_series',
+        project: {
+          series_project_id: saveRes.body.data.project.series_project_id,
+        },
+        series_title: '濂溪漫剧',
+      });
+      expect(readinessRes.body.data.summary).toMatchObject({
+        total_episode_count: 3,
+        generated_episode_count: 1,
+        gears_job_count: 0,
+      });
+      expect(readinessRes.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
+        'series_quality',
+        'episode_generation',
+        'delivery_contract',
+        'gears_execution',
+      ]));
+      expect(readinessRes.body.data.next_actions.map((action: any) => action.action_key)).toContain('generate_next_episode');
+      expect(readinessRes.body.data.automation_plan).toMatchObject({
+        schema_version: 'production-readiness-automation-plan/v1',
+        ready_step_count: expect.any(Number),
+      });
+      expect(readinessRes.body.data.automation_plan.steps.map((step: any) => step.action_key)).toContain('generate_next_episode');
+      expect(readinessRes.body.data.markdown).toContain('系列制作 readiness');
+      expect(readinessRes.body.data.markdown).toContain('Automation Plan');
+
+      const runReadinessRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${saveRes.body.data.project.series_project_id}/production-readiness/run-automation`)
+        .send({ dry_run: true, action_keys: ['generate_next_episode'] });
+      expect(runReadinessRes.status).toBe(200);
+      expectSuccess(runReadinessRes.body);
+      expect(runReadinessRes.body.data).toMatchObject({
+        schema_version: 'production-readiness-automation-run/v1',
+        scope: 'ai_comic_series',
+        dry_run: true,
+        planned_step_count: 1,
+        executed_step_count: 0,
+      });
 
       const copyRes = await request
         .post(`/api/story-outline/ai-comic-series-projects/${saveRes.body.data.project.series_project_id}/copy`)

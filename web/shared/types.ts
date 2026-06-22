@@ -794,6 +794,7 @@ export interface StoryProjectMeta extends StoryProjectListItem {
   seedance_shot_ledger?: SeedanceShotLedger;
   seedance_provider_queue?: SeedanceShotProviderQueue;
   gears_job_ledger?: GearsJobLedger;
+  production_readiness_automation_ledger?: ProductionReadinessAutomationRunLedger;
 }
 
 export interface StoryProjectVersionSnapshot {
@@ -1007,6 +1008,9 @@ export type GearsExecutionJobType =
   | 'title_card_render'
   | 'final_assemble';
 
+export const GEARS_CALLBACK_EVENT_RETENTION_LIMIT = 20;
+export const GEARS_CALLBACK_BATCH_ITEM_LIMIT = 200;
+
 export type GearsExecutionJobStatus =
   | 'submitted'
   | 'queued'
@@ -1018,6 +1022,10 @@ export type GearsExecutionJobStatus =
 
 export type GearsExecutionFailureCategory =
   | 'asset_missing'
+  | 'artifact_invalid'
+  | 'artifact_upload_failed'
+  | 'callback_delivery_failed'
+  | 'output_missing'
   | 'payload_invalid'
   | 'content_policy'
   | 'provider_timeout'
@@ -1025,6 +1033,8 @@ export type GearsExecutionFailureCategory =
   | 'provider_auth'
   | 'provider_rate_limit'
   | 'provider_server_error'
+  | 'render_failed'
+  | 'worker_unavailable'
   | 'network_error'
   | 'unknown';
 
@@ -1087,6 +1097,506 @@ export interface GearsJobLedger {
   items: GearsJobLedgerItem[];
 }
 
+export type ProductionReadinessStatus = 'ready' | 'needs_action' | 'blocked';
+
+export type ProductionReadinessScope = 'story_project' | 'ai_comic_series';
+
+export type ProductionReadinessLaneKey =
+  | 'story_quality'
+  | 'series_quality'
+  | 'episode_generation'
+  | 'production_board'
+  | 'delivery_contract'
+  | 'shot_production'
+  | 'gears_execution'
+  | 'review_repair'
+  | 'commercial_ops';
+
+export type ProductionReadinessIssueSeverity = 'blocking' | 'warning' | 'info';
+
+export interface ProductionReadinessGearsSummary {
+  total: number;
+  active: number;
+  ready: number;
+  failed: number;
+  rejected: number;
+  canceled: number;
+  missing_artifact: number;
+  poll_failure: number;
+  status_counts: Record<GearsExecutionJobStatus, number>;
+}
+
+export interface ProductionReadinessSummary {
+  status: ProductionReadinessStatus;
+  score: number;
+  ready_lane_count: number;
+  total_lane_count: number;
+  blocker_count: number;
+  warning_count: number;
+  next_action_count: number;
+  quality_score?: number;
+  delivery_stage?: StoryProductionBoardDeliveryStage;
+  generated_episode_count?: number;
+  total_episode_count?: number;
+  total_shot_count?: number;
+  ready_shot_count?: number;
+  failed_shot_count?: number;
+  open_review_count?: number;
+  gears_job_count: number;
+  active_gears_job_count: number;
+}
+
+export interface ProductionReadinessLane {
+  key: ProductionReadinessLaneKey;
+  label: string;
+  status: ProductionReadinessStatus;
+  score: number;
+  detail: string;
+  count_text?: string;
+  evidence: string[];
+  action_key?: string;
+  action_label?: string;
+}
+
+export interface ProductionReadinessIssue {
+  issue_id: string;
+  severity: ProductionReadinessIssueSeverity;
+  lane_key: ProductionReadinessLaneKey;
+  label: string;
+  detail: string;
+  action_key?: string;
+  action_label?: string;
+}
+
+export interface ProductionReadinessNextAction {
+  action_key: string;
+  label: string;
+  detail: string;
+  priority: number;
+  lane_key?: ProductionReadinessLaneKey;
+  disabled_reason?: string;
+}
+
+export type ProductionReadinessAutomationRunner =
+  | 'story_agent_api'
+  | 'mcp_tool'
+  | 'gears_worker'
+  | 'operator_review';
+
+export type ProductionReadinessAutomationMode =
+  | 'read_only'
+  | 'writes_project'
+  | 'external_execution'
+  | 'manual';
+
+export type ProductionReadinessAutomationStepStatus = 'ready' | 'blocked' | 'manual';
+
+export interface ProductionReadinessAutomationStep {
+  step_id: string;
+  order: number;
+  action_key: string;
+  label: string;
+  detail: string;
+  runner: ProductionReadinessAutomationRunner;
+  mode: ProductionReadinessAutomationMode;
+  status: ProductionReadinessAutomationStepStatus;
+  can_auto_execute: boolean;
+  api?: {
+    method: 'GET' | 'POST';
+    path: string;
+  };
+  mcp_tool?: string;
+  payload_hint?: Record<string, unknown>;
+  prerequisites: string[];
+  blocked_by_issue_ids: string[];
+  expected_result: string;
+  safety_note: string;
+}
+
+export interface ProductionReadinessAutomationPlan {
+  schema_version: 'production-readiness-automation-plan/v1';
+  status: 'ready' | 'needs_operator' | 'blocked';
+  ready_step_count: number;
+  blocked_step_count: number;
+  manual_step_count: number;
+  external_step_count: number;
+  steps: ProductionReadinessAutomationStep[];
+  notes: string[];
+}
+
+export interface ProductionReadinessAutomationRunRequest {
+  dry_run?: boolean;
+  max_steps?: number;
+  action_keys?: string[];
+  stop_on_error?: boolean;
+}
+
+export interface ProductionReadinessAutomationRunStepResult {
+  step_id: string;
+  action_key: string;
+  label: string;
+  status: 'planned' | 'executed' | 'skipped' | 'failed';
+  runner: ProductionReadinessAutomationRunner;
+  mode: ProductionReadinessAutomationMode;
+  can_auto_execute: boolean;
+  reason?: string;
+  api_path?: string;
+  response_schema_version?: string;
+  error_message?: string;
+}
+
+export interface ProductionReadinessAutomationRunResult<TReport = unknown> {
+  schema_version: 'production-readiness-automation-run/v1';
+  scope: ProductionReadinessScope;
+  project_id: string;
+  dry_run: boolean;
+  started_at: string;
+  completed_at: string;
+  requested_action_keys?: string[];
+  executed_step_count: number;
+  planned_step_count: number;
+  skipped_step_count: number;
+  failed_step_count: number;
+  steps: ProductionReadinessAutomationRunStepResult[];
+  before_readiness: TReport;
+  after_readiness: TReport;
+  notes: string[];
+}
+
+export interface ProductionReadinessAutomationRunLedgerItem {
+  run_id: string;
+  scope: ProductionReadinessScope;
+  project_id: string;
+  dry_run: boolean;
+  started_at: string;
+  completed_at: string;
+  requested_action_keys?: string[];
+  executed_step_count: number;
+  planned_step_count: number;
+  skipped_step_count: number;
+  failed_step_count: number;
+  before_status: ProductionReadinessStatus;
+  before_score: number;
+  after_status: ProductionReadinessStatus;
+  after_score: number;
+  steps: ProductionReadinessAutomationRunStepResult[];
+  notes: string[];
+}
+
+export interface ProductionReadinessAutomationRunLedger {
+  schema_version: 'production-readiness-automation-run-ledger/v1';
+  updated_at: string;
+  total_run_count: number;
+  persisted_run_count: number;
+  latest_run?: ProductionReadinessAutomationRunLedgerItem;
+  items: ProductionReadinessAutomationRunLedgerItem[];
+}
+
+export interface ProductionReadinessEpisode {
+  episode_no: number;
+  episode_title: string;
+  story_id?: string;
+  status: ProductionReadinessStatus;
+  quality_score?: number;
+  issue_count?: number;
+  total_shot_count?: number;
+  ready_shot_count?: number;
+  failed_shot_count?: number;
+  blocker_count: number;
+}
+
+export interface StoryProjectProductionReadinessReport {
+  schema_version: 'story-project-production-readiness/v1';
+  scope: 'story_project';
+  project: StoryProjectMeta;
+  title: string;
+  generated_at: string;
+  summary: ProductionReadinessSummary;
+  lanes: ProductionReadinessLane[];
+  issues: ProductionReadinessIssue[];
+  next_actions: ProductionReadinessNextAction[];
+  automation_plan: ProductionReadinessAutomationPlan;
+  automation_ledger?: ProductionReadinessAutomationRunLedger;
+  latest_automation_run?: ProductionReadinessAutomationRunLedgerItem;
+  markdown: string;
+}
+
+export interface AiComicSeriesProductionReadinessReport {
+  schema_version: 'ai-comic-series-production-readiness/v1';
+  scope: 'ai_comic_series';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  generated_at: string;
+  summary: ProductionReadinessSummary;
+  lanes: ProductionReadinessLane[];
+  issues: ProductionReadinessIssue[];
+  next_actions: ProductionReadinessNextAction[];
+  automation_plan: ProductionReadinessAutomationPlan;
+  automation_ledger?: ProductionReadinessAutomationRunLedger;
+  latest_automation_run?: ProductionReadinessAutomationRunLedgerItem;
+  episodes: ProductionReadinessEpisode[];
+  markdown: string;
+}
+
+export interface ProductionReadinessPortfolioItem {
+  scope: ProductionReadinessScope;
+  project_id: string;
+  title: string;
+  updated_at?: string;
+  status: ProductionReadinessStatus;
+  score: number;
+  priority_score: number;
+  blocker_count: number;
+  warning_count: number;
+  next_action_count: number;
+  gears_job_count: number;
+  active_gears_job_count: number;
+  ready_automation_step_count: number;
+  blocked_automation_step_count: number;
+  manual_automation_step_count: number;
+  external_automation_step_count: number;
+  primary_action_key?: string;
+  primary_action_label?: string;
+  primary_issue_label?: string;
+  latest_automation_run?: ProductionReadinessAutomationRunLedgerItem;
+}
+
+export interface ProductionReadinessPortfolioActionBucket {
+  action_key: string;
+  label: string;
+  count: number;
+  blocked_count: number;
+  scopes: ProductionReadinessScope[];
+}
+
+export interface ProductionReadinessPortfolioReport {
+  schema_version: 'production-readiness-portfolio/v1';
+  generated_at: string;
+  summary: {
+    total_target_count: number;
+    story_project_count: number;
+    ai_comic_series_count: number;
+    ready_count: number;
+    needs_action_count: number;
+    blocked_count: number;
+    blocker_count: number;
+    warning_count: number;
+    ready_automation_step_count: number;
+    external_automation_step_count: number;
+    manual_automation_step_count: number;
+    latest_automation_run_count: number;
+    portfolio_automation_run_count: number;
+  };
+  items: ProductionReadinessPortfolioItem[];
+  action_buckets: ProductionReadinessPortfolioActionBucket[];
+  portfolio_automation_ledger?: ProductionReadinessPortfolioRunLedger;
+  latest_portfolio_automation_run?: ProductionReadinessPortfolioRunLedgerItem;
+  errors: Array<{
+    scope: ProductionReadinessScope;
+    project_id: string;
+    message: string;
+  }>;
+  notes: string[];
+  markdown: string;
+}
+
+export interface ProductionReadinessPortfolioRunRequest {
+  dry_run?: boolean;
+  include_archived_series?: boolean;
+  max_targets?: number;
+  per_target_max_steps?: number;
+  min_priority_score?: number;
+  scopes?: ProductionReadinessScope[];
+  project_ids?: string[];
+  action_keys?: string[];
+  stop_on_error?: boolean;
+}
+
+export interface ProductionReadinessPortfolioRunTargetResult {
+  scope: ProductionReadinessScope;
+  project_id: string;
+  title: string;
+  priority_score: number;
+  status: 'planned' | 'executed' | 'skipped' | 'failed';
+  reason?: string;
+  run_result?: ProductionReadinessAutomationRunResult<unknown>;
+  error_message?: string;
+}
+
+export interface ProductionReadinessPortfolioRunLedgerTarget {
+  scope: ProductionReadinessScope;
+  project_id: string;
+  title: string;
+  priority_score: number;
+  status: ProductionReadinessPortfolioRunTargetResult['status'];
+  executed_step_count: number;
+  planned_step_count: number;
+  skipped_step_count: number;
+  failed_step_count: number;
+  error_message?: string;
+}
+
+export interface ProductionReadinessPortfolioRunLedgerItem {
+  run_id: string;
+  dry_run: boolean;
+  started_at: string;
+  completed_at: string;
+  requested_scope_count: number;
+  requested_project_id_count: number;
+  requested_action_keys?: string[];
+  min_priority_score?: number;
+  selected_target_count: number;
+  executed_target_count: number;
+  planned_target_count: number;
+  skipped_target_count: number;
+  failed_target_count: number;
+  targets: ProductionReadinessPortfolioRunLedgerTarget[];
+  notes: string[];
+}
+
+export interface ProductionReadinessPortfolioRunLedger {
+  schema_version: 'production-readiness-portfolio-run-ledger/v1';
+  updated_at: string;
+  total_run_count: number;
+  persisted_run_count: number;
+  latest_run?: ProductionReadinessPortfolioRunLedgerItem;
+  items: ProductionReadinessPortfolioRunLedgerItem[];
+}
+
+export interface ProductionReadinessPortfolioRunResult {
+  schema_version: 'production-readiness-portfolio-run/v1';
+  dry_run: boolean;
+  started_at: string;
+  completed_at: string;
+  requested_scope_count: number;
+  requested_project_id_count: number;
+  selected_target_count: number;
+  executed_target_count: number;
+  planned_target_count: number;
+  skipped_target_count: number;
+  failed_target_count: number;
+  before_portfolio: ProductionReadinessPortfolioReport;
+  after_portfolio: ProductionReadinessPortfolioReport;
+  targets: ProductionReadinessPortfolioRunTargetResult[];
+  portfolio_automation_ledger?: ProductionReadinessPortfolioRunLedger;
+  latest_portfolio_automation_run?: ProductionReadinessPortfolioRunLedgerItem;
+  notes: string[];
+}
+
+export type StoryAgentGeneratedHealthStatus = 'ready' | 'planned' | 'production_gap' | 'interrupted';
+export type StoryAgentGeneratedHealthScope = 'story_project' | 'ai_comic_series_project';
+
+export interface StoryAgentGeneratedHealthItem {
+  scope: StoryAgentGeneratedHealthScope;
+  project_id: string;
+  title?: string;
+  status: StoryAgentGeneratedHealthStatus;
+  risk_score: number;
+  updated_at?: string;
+  issue_count: number;
+  missing_contracts: string[];
+  evidence: string[];
+  recommended_actions: string[];
+  current_story_id?: string;
+  current_version_id?: string;
+  version_count?: number;
+  scene_count?: number;
+  gears_segment_count?: number;
+  quality_score?: number;
+  episode_count?: number;
+  generated_episode_count?: number;
+  generated_episode_story_id_count?: number;
+  missing_episode_story_id_count?: number;
+  production_item_count?: number;
+  ready_production_item_count?: number;
+  cut_ready?: boolean;
+  subtitle_ready?: boolean;
+  thumbnail_ready_count?: number;
+  final_delivery_ready?: boolean;
+}
+
+export interface StoryAgentGeneratedHealthReport {
+  schema_version: 'story-agent-generated-health/v1';
+  generated_at: string;
+  summary: {
+    scanned_story_project_count: number;
+    scanned_series_project_count: number;
+    total_target_count: number;
+    ready_count: number;
+    planned_count: number;
+    production_gap_count: number;
+    interrupted_count: number;
+    missing_current_story_count: number;
+    missing_scene_breakdown_count: number;
+    missing_gears_segments_count: number;
+    missing_quality_count: number;
+    missing_episode_story_id_count: number;
+    series_missing_delivery_count: number;
+    series_missing_postproduction_count: number;
+  };
+  items: StoryAgentGeneratedHealthItem[];
+  notes: string[];
+  markdown: string;
+}
+
+export type StoryAgentMvpStatus = ProductionReadinessStatus;
+
+export type StoryAgentMvpLaneKey =
+  | 'generated_artifacts'
+  | 'story_quality'
+  | 'repair_loop'
+  | 'delivery_contract'
+  | 'production_command';
+
+export interface StoryAgentMvpLane {
+  key: StoryAgentMvpLaneKey;
+  label: string;
+  status: StoryAgentMvpStatus;
+  score: number;
+  detail: string;
+  evidence: string[];
+  next_action?: string;
+}
+
+export interface StoryAgentMvpPriorityTarget {
+  scope: ProductionReadinessScope | StoryAgentGeneratedHealthScope;
+  project_id: string;
+  title?: string;
+  status: StoryAgentMvpStatus | StoryAgentGeneratedHealthStatus;
+  priority_score: number;
+  primary_action?: string;
+  evidence: string[];
+}
+
+export interface StoryAgentMvpStatusReport {
+  schema_version: 'story-agent-mvp-status/v1';
+  generated_at: string;
+  status: StoryAgentMvpStatus;
+  score: number;
+  summary: {
+    generated_target_count: number;
+    generated_ready_count: number;
+    generated_planned_count: number;
+    generated_production_gap_count: number;
+    generated_interrupted_count: number;
+    readiness_target_count: number;
+    readiness_ready_count: number;
+    readiness_needs_action_count: number;
+    readiness_blocked_count: number;
+    ready_automation_step_count: number;
+    external_or_manual_step_count: number;
+    blocker_count: number;
+    warning_count: number;
+  };
+  lanes: StoryAgentMvpLane[];
+  priority_targets: StoryAgentMvpPriorityTarget[];
+  next_actions: string[];
+  notes: string[];
+  generated_health: StoryAgentGeneratedHealthReport;
+  production_portfolio: ProductionReadinessPortfolioReport;
+  markdown: string;
+}
+
 export interface GearsJobSubmitRequest {
   job_type?: GearsExecutionJobType;
   source_unit_ids?: string[];
@@ -1103,6 +1613,9 @@ export interface GearsJobSubmitFailure {
   path?: string;
   source_unit_id?: string;
   gears_job_id?: string;
+  idempotency_key?: string;
+  failure_category?: GearsExecutionFailureCategory;
+  error_code?: string;
   message: string;
 }
 
@@ -1307,6 +1820,8 @@ export interface GearsExecutionConfigInfo {
   project_callback_path_template: string;
   series_callback_path_template: string;
   supported_job_types: GearsExecutionJobType[];
+  callback_batch_item_limit: number;
+  callback_event_retention_limit: number;
   legacy_seedance_provider_envs: string[];
   ready_for_submit: boolean;
   missing_submit_requirements: string[];
@@ -1337,6 +1852,7 @@ export interface GearsExecutionContractInfo {
     method: 'GET';
     path: '/gears/jobs/{gears_job_id}';
     response_fields: string[];
+    accepted_status_fields: string[];
     accepted_response_shapes: string[];
     accepted_artifact_fields: string[];
     accepted_progress_fields: string[];
@@ -1354,10 +1870,479 @@ export interface GearsExecutionContractInfo {
     accepted_progress_fields: string[];
     accepted_time_fields: string[];
     idempotency_fields: string[];
+    max_batch_items: number;
     response_fields: string[];
     request_examples: Record<string, unknown>[];
   };
   notes: string[];
+}
+
+export type GearsExecutionReadinessCheckStatus = 'pass' | 'warn' | 'fail';
+
+export interface GearsExecutionReadinessCheck {
+  id: string;
+  label: string;
+  status: GearsExecutionReadinessCheckStatus;
+  message: string;
+  next_action?: string;
+}
+
+export interface GearsExecutionReadinessSmoke {
+  id: string;
+  label: string;
+  status: GearsExecutionReadinessCheckStatus;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface GearsExecutionLiveE2EStep {
+  id: string;
+  label: string;
+  status: 'ready' | 'blocked';
+  method: 'GET' | 'POST';
+  path: string;
+  blocked_by: string[];
+  expected_result: string;
+}
+
+export interface GearsExecutionLiveE2EPlan {
+  ready: boolean;
+  ready_step_count: number;
+  total_step_count: number;
+  blocked_by: string[];
+  steps: GearsExecutionLiveE2EStep[];
+}
+
+export interface GearsExecutionSmokePackageStep {
+  id: string;
+  label: string;
+  method: 'GET' | 'POST';
+  path: string;
+  headers: Record<string, string>;
+  request_body?: Record<string, unknown>;
+  accepted_response_shapes?: string[];
+  expected_story_agent_result: string[];
+}
+
+export interface GearsExecutionSmokePackage {
+  provider: 'gears';
+  schema_version: 'gears-execution-smoke-package/v1';
+  readiness_status: GearsExecutionReadinessReport['status'];
+  readiness_score: number;
+  local_smoke_passed_count: number;
+  local_smoke_total_count: number;
+  live_ready_step_count: number;
+  live_total_step_count: number;
+  prerequisites: string[];
+  execution_order: string[];
+  steps: GearsExecutionSmokePackageStep[];
+  markdown: string;
+  generated_at: string;
+}
+
+export interface GearsExecutionLiveSmokeRunRequest {
+  execute?: boolean;
+  poll_after_submit?: boolean;
+  note?: string;
+}
+
+export type GearsExecutionLiveSmokeRunStatus = 'dry_run' | 'blocked' | 'passed' | 'partial' | 'failed';
+export type GearsExecutionLiveSmokeRunStepStatus = 'blocked' | 'skipped' | 'passed' | 'failed';
+
+export interface GearsExecutionLiveSmokeRunStepResult {
+  id: string;
+  label: string;
+  method: 'GET' | 'POST';
+  path: string;
+  status: GearsExecutionLiveSmokeRunStepStatus;
+  started_at?: string;
+  completed_at?: string;
+  duration_ms?: number;
+  blocked_by?: string[];
+  message: string;
+  requested_count?: number;
+  accepted_count?: number;
+  rejected_count?: number;
+  returned_count?: number;
+  failed_count?: number;
+  submitted_job_ids?: string[];
+  failures?: GearsJobSubmitFailure[];
+}
+
+export interface GearsExecutionLiveSmokeRunReport {
+  provider: 'gears';
+  schema_version: 'gears-execution-live-smoke-run/v1';
+  status: GearsExecutionLiveSmokeRunStatus;
+  execute: boolean;
+  poll_after_submit: boolean;
+  readiness_status: GearsExecutionReadinessReport['status'];
+  readiness_score: number;
+  blocked_by: string[];
+  submitted_job_ids: string[];
+  accepted_count: number;
+  rejected_count: number;
+  failed_count: number;
+  steps: GearsExecutionLiveSmokeRunStepResult[];
+  markdown: string;
+  generated_at: string;
+}
+
+export interface GearsExecutionPressureCheck {
+  id: string;
+  label: string;
+  status: 'pass' | 'fail';
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface GearsExecutionPressureReport {
+  provider: 'gears';
+  schema_version: 'gears-execution-pressure-report/v1';
+  status: 'pass' | 'fail';
+  callback_batch_item_limit: number;
+  callback_event_retention_limit: number;
+  batch_at_limit_count: number;
+  batch_over_limit_count: number;
+  extracted_at_limit_count: number;
+  overflow_rejected: boolean;
+  retained_event_count: number;
+  dropped_event_count: number;
+  first_retained_event_id?: string;
+  last_retained_event_id?: string;
+  checks: GearsExecutionPressureCheck[];
+  markdown: string;
+  generated_at: string;
+}
+
+export type GearsExecutionGeneratedProjectPressureRisk = 'ok' | 'watch' | 'blocked';
+export type GearsExecutionGeneratedProjectKind = 'story_project' | 'ai_comic_series_project';
+
+export interface GearsExecutionGeneratedProjectPressureItem {
+  project_id: string;
+  project_kind: GearsExecutionGeneratedProjectKind;
+  title?: string;
+  job_count: number;
+  active_count: number;
+  terminal_count: number;
+  failed_count: number;
+  callback_event_count: number;
+  max_callback_events_per_job: number;
+  near_event_retention_limit_count: number;
+  artifact_count: number;
+  failure_categories: Partial<Record<GearsExecutionFailureCategory, number>>;
+  latest_updated_at?: string;
+  risk_level: GearsExecutionGeneratedProjectPressureRisk;
+  recommendations: string[];
+}
+
+export interface GearsExecutionGeneratedProjectPressureReport {
+  provider: 'gears';
+  schema_version: 'gears-execution-generated-project-pressure/v1';
+  scanned_story_project_count: number;
+  scanned_series_project_count: number;
+  project_with_gears_ledger_count: number;
+  total_job_count: number;
+  total_active_count: number;
+  total_terminal_count: number;
+  total_failed_count: number;
+  total_callback_event_count: number;
+  max_project_job_count: number;
+  max_job_callback_event_count: number;
+  callback_batch_item_limit: number;
+  callback_event_retention_limit: number;
+  pressure_status: GearsExecutionGeneratedProjectPressureRisk;
+  items: GearsExecutionGeneratedProjectPressureItem[];
+  recommendations: string[];
+  markdown: string;
+  generated_at: string;
+}
+
+export type GearsExecutionAcceptanceStatus = 'ready' | 'attention' | 'blocked';
+export type GearsExecutionAcceptanceCheckStatus = 'pass' | 'warn' | 'blocked';
+
+export interface GearsExecutionAcceptanceCheck {
+  id: string;
+  label: string;
+  status: GearsExecutionAcceptanceCheckStatus;
+  message: string;
+  evidence?: Record<string, unknown>;
+  next_action?: string;
+}
+
+export interface GearsExecutionAcceptanceArtifact {
+  id: string;
+  label: string;
+  method: 'GET' | 'POST';
+  path: string;
+  purpose: string;
+}
+
+export interface GearsExecutionAcceptanceReport {
+  provider: 'gears';
+  schema_version: 'gears-execution-acceptance/v1';
+  status: GearsExecutionAcceptanceStatus;
+  readiness_status: GearsExecutionReadinessReport['status'];
+  readiness_score: number;
+  local_smoke_passed_count: number;
+  local_smoke_total_count: number;
+  live_e2e_ready: boolean;
+  live_ready_step_count: number;
+  live_total_step_count: number;
+  pressure_status: GearsExecutionPressureReport['status'];
+  generated_project_pressure_status: GearsExecutionGeneratedProjectPressureRisk;
+  generated_project_with_ledger_count: number;
+  generated_project_total_job_count: number;
+  generated_health_status: GearsExecutionAcceptanceStatus;
+  generated_health_ready_count: number;
+  generated_health_planned_count: number;
+  generated_health_production_gap_count: number;
+  generated_health_interrupted_count: number;
+  acceptance_passed_count: number;
+  acceptance_total_count: number;
+  blocking_check_ids: string[];
+  warning_check_ids: string[];
+  required_envs: string[];
+  handoff_artifacts: GearsExecutionAcceptanceArtifact[];
+  checks: GearsExecutionAcceptanceCheck[];
+  recommended_next_actions: string[];
+  markdown: string;
+  generated_at: string;
+}
+
+export type GearsExecutionWorkerAcceptanceCommandPhase =
+  | 'preflight'
+  | 'worker_submit'
+  | 'worker_poll'
+  | 'worker_pressure'
+  | 'story_agent_callback'
+  | 'story_agent_live_smoke';
+
+export interface GearsExecutionWorkerAcceptanceEnvVar {
+  name: string;
+  required: boolean;
+  value_placeholder: string;
+  description: string;
+}
+
+export interface GearsExecutionWorkerAcceptancePayload {
+  id: string;
+  label: string;
+  filename: string;
+  content: Record<string, unknown>;
+}
+
+export interface GearsExecutionWorkerAcceptanceCommand {
+  id: string;
+  label: string;
+  phase: GearsExecutionWorkerAcceptanceCommandPhase;
+  command: string;
+  payload_id?: string;
+  expected_assertions: string[];
+}
+
+export interface GearsExecutionWorkerAcceptanceSmokeTarget {
+  id: string;
+  kind: 'story_project' | 'ai_comic_series_project';
+  title?: string;
+  updated_at?: string;
+  current_story_id?: string;
+  video_type?: VideoType;
+  episode_count?: number;
+  generated_episode_count?: number;
+  generated_episode_story_id_count?: number;
+  existing_generated_episode_story_id_count?: number;
+  seedance_production_item_count?: number;
+  seedance_video_retry_candidate_count?: number;
+  open_review_item_count?: number;
+  postproduction_seed_job_count?: number;
+  ledger_seed_ready?: boolean;
+  ledger_seed_score?: number;
+  recommended_ledger_seed_job_type?: GearsExecutionJobType;
+  ledger_seed_reason?: string;
+}
+
+export interface GearsExecutionWorkerAcceptanceSmokeTargets {
+  schema_version: 'gears-worker-acceptance-smoke-targets/v1';
+  story_project?: GearsExecutionWorkerAcceptanceSmokeTarget;
+  series_project?: GearsExecutionWorkerAcceptanceSmokeTarget;
+  story_project_candidates: GearsExecutionWorkerAcceptanceSmokeTarget[];
+  series_project_candidates: GearsExecutionWorkerAcceptanceSmokeTarget[];
+  recommended_env: Record<string, string>;
+  warning_count: number;
+  warnings: string[];
+}
+
+export interface GearsExecutionWorkerAcceptanceKit {
+  provider: 'gears';
+  schema_version: 'gears-execution-worker-acceptance-kit/v1';
+  acceptance_status: GearsExecutionAcceptanceStatus;
+  readiness_score: number;
+  local_smoke_passed_count: number;
+  local_smoke_total_count: number;
+  required_envs: string[];
+  env_vars: GearsExecutionWorkerAcceptanceEnvVar[];
+  env_template: string;
+  smoke_targets: GearsExecutionWorkerAcceptanceSmokeTargets;
+  payloads: GearsExecutionWorkerAcceptancePayload[];
+  commands: GearsExecutionWorkerAcceptanceCommand[];
+  shell_script_filename: string;
+  shell_script: string;
+  verification_checklist: string[];
+  markdown: string;
+  generated_at: string;
+}
+
+export type GearsExecutionWorkerEvidenceDocumentKind =
+  | 'acceptance_report'
+  | 'worker_acceptance_kit'
+  | 'smoke_handoff_package'
+  | 'pressure_report'
+  | 'generated_project_pressure_report'
+  | 'generated_health_report'
+  | 'story_agent_mvp_status_report';
+
+export interface GearsExecutionWorkerEvidenceDocument {
+  id: GearsExecutionWorkerEvidenceDocumentKind;
+  label: string;
+  filename: string;
+  source_endpoint: string;
+  format: 'markdown';
+  content: string;
+  content_length: number;
+  summary: string;
+}
+
+export interface GearsExecutionWorkerEvidenceBundle {
+  provider: 'gears';
+  schema_version: 'gears-execution-worker-evidence-bundle/v1';
+  status: GearsExecutionAcceptanceStatus;
+  readiness_status: GearsExecutionReadinessReport['status'];
+  readiness_score: number;
+  local_smoke_passed_count: number;
+  local_smoke_total_count: number;
+  live_e2e_ready: boolean;
+  live_ready_step_count: number;
+  live_total_step_count: number;
+  pressure_status: GearsExecutionPressureReport['status'];
+  generated_project_pressure_status: GearsExecutionGeneratedProjectPressureRisk;
+  generated_project_with_ledger_count: number;
+  generated_project_total_job_count: number;
+  generated_health_status: GearsExecutionAcceptanceStatus;
+  generated_health_ready_count: number;
+  generated_health_planned_count: number;
+  generated_health_production_gap_count: number;
+  generated_health_interrupted_count: number;
+  story_agent_mvp_status: StoryAgentMvpStatus;
+  story_agent_mvp_score: number;
+  acceptance_passed_count: number;
+  acceptance_total_count: number;
+  command_count: number;
+  payload_count: number;
+  required_envs: string[];
+  blocking_check_ids: string[];
+  warning_check_ids: string[];
+  documents: GearsExecutionWorkerEvidenceDocument[];
+  operator_checklist: string[];
+  recommended_next_actions: string[];
+  markdown: string;
+  generated_at: string;
+}
+
+export interface GearsExecutionWorkerEvidenceSignoffAction {
+  priority?: string;
+  owner?: string;
+  action: string;
+  evidence?: string;
+  gate_id?: string;
+  sample_files?: string[];
+  sample_paths?: string[];
+}
+
+export interface GearsExecutionWorkerEvidenceSignoffGate {
+  id: string;
+  label?: string;
+  status: string;
+  summary?: string;
+}
+
+export interface GearsExecutionWorkerEvidenceSignoffReport {
+  provider: 'gears';
+  schema_version: 'gears-execution-worker-evidence-signoff/v1';
+  status: GearsExecutionAcceptanceStatus;
+  evidence_dir?: string;
+  evidence_dir_source?: 'input' | 'env' | 'latest' | 'missing';
+  evidence_dir_allowed: boolean;
+  evidence_dir_error?: string;
+  acceptance_passed: boolean;
+  signoff_ready: boolean;
+  integrity_passed: boolean;
+  health_audit_passed: boolean;
+  mvp_status_audit_passed: boolean;
+  pressure_submitted: boolean;
+  gate_counts: {
+    passed: number;
+    failed: number;
+    skipped: number;
+    total: number;
+  };
+  failed_gate_ids: string[];
+  skipped_gate_ids: string[];
+  missing_required_attachment_count: number;
+  required_attachment_count: number;
+  required_checksum_count: number;
+  evidence_file_count: number;
+  worker_record_count: number;
+  worker_transport_error_count: number;
+  worker_http_error_count: number;
+  worker_unknown_count: number;
+  worker_missing_worker_id_count: number;
+  worker_missing_source_id_count: number;
+  worker_missing_ready_artifact_count: number;
+  worker_failure_category_counts: Record<string, number>;
+  callback_transport_error_count: number;
+  callback_http_error_count: number;
+  callback_ledger_match_missing_count: number;
+  callback_failed_count: number;
+  health_ready_count_before: number;
+  health_ready_count_after: number;
+  health_ready_count_delta: number;
+  health_interrupted_count_delta: number;
+  health_production_gap_count_delta: number;
+  mvp_status_before?: StoryAgentMvpStatus;
+  mvp_status_after?: StoryAgentMvpStatus;
+  mvp_score_before: number;
+  mvp_score_after: number;
+  mvp_score_delta: number;
+  large_project_request_unit_count: number;
+  large_project_response_record_count: number;
+  large_project_accepted_count: number;
+  large_project_rejected_count: number;
+  large_project_failed_count: number;
+  large_project_source_echo_count: number;
+  large_project_missing_requested_source_count: number;
+  large_project_duplicate_source_id_count: number;
+  large_project_unexpected_source_count: number;
+  required_files: string[];
+  missing_required_files: string[];
+  gates: GearsExecutionWorkerEvidenceSignoffGate[];
+  recommended_actions: GearsExecutionWorkerEvidenceSignoffAction[];
+  markdown: string;
+  generated_at: string;
+}
+
+export interface GearsExecutionReadinessReport {
+  provider: 'gears';
+  schema_version: 'gears-execution-readiness/v1';
+  status: 'ready' | 'attention' | 'blocked';
+  score: number;
+  local_smoke_passed_count: number;
+  local_smoke_total_count: number;
+  blocking_check_ids: string[];
+  live_e2e: GearsExecutionLiveE2EPlan;
+  checks: GearsExecutionReadinessCheck[];
+  smoke: GearsExecutionReadinessSmoke[];
+  next_actions: string[];
+  generated_at: string;
 }
 
 export type SeedanceAssetModality = 'image' | 'video' | 'audio';
@@ -4649,6 +5634,7 @@ export interface AiComicSeriesProjectDetail {
   seedance_final_delivery?: AiComicSeedanceFinalDeliveryLedger;
   seedance_review_ledger?: AiComicSeedanceReviewLedger;
   gears_job_ledger?: GearsJobLedger;
+  production_readiness_automation_ledger?: ProductionReadinessAutomationRunLedger;
 }
 
 export interface AiComicSeriesBibleCharacterRow {

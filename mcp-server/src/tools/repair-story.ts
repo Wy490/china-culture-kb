@@ -99,6 +99,43 @@ export interface RepairStoryResult {
   markdown?: string;
 }
 
+export interface GenerateStoryRepairPromptInput {
+  project_id?: string;
+  story_id?: string;
+  story_json?: string;
+  user_instruction?: string;
+  include_story_json?: boolean;
+  include_markdown?: boolean;
+  max_actions?: number;
+}
+
+export interface StoryRepairPromptResult {
+  schema_version: 'story-repair-prompt/v1';
+  source: SourceKind;
+  project_id?: string;
+  story_id?: string;
+  quality_snapshot: RepairStoryResult['quality_snapshot'];
+  repair_actions: RepairDryRunAction[];
+  target_scenes: RepairTargetScene[];
+  protected_fields: string[];
+  output_contract: {
+    format: 'json';
+    root_type: 'StoryGenerateResult';
+    required_top_level_fields: string[];
+    validation_tool: 'kb_validate_genre_story';
+    apply_tool: 'kb_repair_story';
+  };
+  recommended_workflow: Array<{
+    step: number;
+    tool: string;
+    purpose: string;
+    input_hint: Record<string, unknown>;
+  }>;
+  prompt: string;
+  original_story_json?: string;
+  markdown?: string;
+}
+
 const ALL_VIDEO_TYPES = [
   'character_story',
   'historical_drama',
@@ -671,6 +708,128 @@ function buildMarkdown(result: Omit<RepairStoryResult, 'markdown'>): string {
   return lines.join('\n');
 }
 
+const STORY_REPAIR_PROTECTED_FIELDS = [
+  'storyId',
+  'project_id',
+  'source_entry',
+  'video_type',
+  'presentation_style',
+  'story_structure',
+  'story_blueprint.evidence_boundaries',
+  'credibility_note',
+];
+
+const STORY_REPAIR_REQUIRED_FIELDS = [
+  'storyId',
+  'title',
+  'full_text',
+  'video_type',
+  'scene_breakdown',
+  'gears_segments',
+  'quality_report',
+];
+
+function repairPromptWorkflow(result: Omit<StoryRepairPromptResult, 'prompt' | 'markdown' | 'original_story_json'>): StoryRepairPromptResult['recommended_workflow'] {
+  return [
+    {
+      step: 1,
+      tool: 'kb_validate_genre_story',
+      purpose: '先校验模型产出的 repaired_story_json，不写文件。',
+      input_hint: { story_json: '<repaired_story_json>', include_repair_actions: true },
+    },
+    {
+      step: 2,
+      tool: 'kb_repair_story',
+      purpose: '校验通过或明显改善后，由工具安全写入新项目版本。',
+      input_hint: {
+        project_id: result.project_id ?? '<project_id>',
+        auto_apply: true,
+        repaired_story_json: '<repaired_story_json>',
+        user_instruction: '根据 story-repair-prompt/v1 修复',
+      },
+    },
+    {
+      step: 3,
+      tool: 'kb_get_project_context',
+      purpose: '写入后回读项目版本，确认旧版本未覆盖。',
+      input_hint: { project_id: result.project_id ?? '<project_id>', include_versions: true },
+    },
+  ];
+}
+
+function buildStoryRepairPromptText(params: {
+  story: StoryLike;
+  repair: RepairStoryResult;
+  userInstruction?: string;
+  includeStoryJson: boolean;
+}): string {
+  const actionJson = JSON.stringify(params.repair.repair_actions, null, 2);
+  const targetSceneJson = JSON.stringify(params.repair.target_scenes, null, 2);
+  const storyJson = params.includeStoryJson
+    ? JSON.stringify(params.story, null, 2)
+    : '<调用方已持有原始 StoryGenerateResult JSON，请基于原始 JSON 做最小必要修改>';
+  return [
+    '你是 china-culture-kb Story Agent 的修复写手。请根据修复动作产出一个完整的 repaired_story_json。',
+    '',
+    '硬性输出规则：',
+    '1. 只输出一个完整 JSON 对象，不要 Markdown、解释、代码围栏或额外文本。',
+    '2. JSON 根对象必须是完整 StoryGenerateResult；不要只输出 patch/diff。',
+    '3. 保留 storyId、project_id、source_entry、video_type、presentation_style、story_structure、credibility_note 和 story_blueprint.evidence_boundaries，除非修复动作明确要求调整。',
+    '4. 同步修复 full_text、scene_breakdown、gears_segments 和 quality_report，避免正文、分场和 GEARS 单元互相矛盾。',
+    '5. script_text 只写观众可听/可见的剧本内容；visual_prompt 只写可见画面元素；camera_suggestion 只写镜头语言；validation_notes 不得混入提示词字段。',
+    '6. 不新增未经来源支持的硬事实；戏剧化内容要放在 fictionalized_elements、cultural_note 或 credibility_note 的边界中。',
+    '7. 不写入 data/provinces，也不要声称已经保存文件；保存只能由后续 kb_repair_story(auto_apply=true) 完成。',
+    '',
+    '质量目标：',
+    `- video_type: ${params.repair.quality_snapshot.video_type}`,
+    `- story_structure: ${params.repair.quality_snapshot.story_structure ?? 'unknown'}`,
+    `- 当前 genre_score: ${params.repair.quality_snapshot.genre_score}`,
+    `- 当前 issue_count: ${params.repair.quality_snapshot.issue_count}`,
+    '',
+    ...(params.userInstruction?.trim()
+      ? ['调用方补充要求：', params.userInstruction.trim(), '']
+      : []),
+    '必须处理的 repair_actions JSON：',
+    actionJson,
+    '',
+    '目标场景聚合 target_scenes JSON：',
+    targetSceneJson,
+    '',
+    '原始 StoryGenerateResult JSON：',
+    storyJson,
+    '',
+    '请输出修复后的完整 StoryGenerateResult JSON。',
+  ].join('\n');
+}
+
+function buildStoryRepairPromptMarkdown(result: Omit<StoryRepairPromptResult, 'markdown'>): string {
+  const lines = [
+    '# Story Repair Prompt Package',
+    '',
+    `- schema: ${result.schema_version}`,
+    `- source: ${result.source}`,
+    `- project: ${result.project_id ?? '未关联'}`,
+    `- story: ${result.story_id ?? '未命名'}`,
+    `- score: ${result.quality_snapshot.genre_score}`,
+    `- issue_count: ${result.quality_snapshot.issue_count}`,
+    `- repair_actions: ${result.repair_actions.length}`,
+    `- target_scenes: ${result.target_scenes.map(scene => scene.scene_id).join(', ') || 'none'}`,
+    '',
+    '## Protected Fields',
+    '',
+    ...result.protected_fields.map(field => `- ${field}`),
+    '',
+    '## Workflow',
+    '',
+    ...result.recommended_workflow.map(step => `- ${step.step}. ${step.tool}: ${step.purpose}`),
+    '',
+    '## Prompt',
+    '',
+    result.prompt,
+  ];
+  return lines.join('\n');
+}
+
 function clampMaxActions(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 12;
   return Math.max(1, Math.min(50, Math.floor(value)));
@@ -711,5 +870,58 @@ export async function repairStory(input: RepairStoryInput): Promise<RepairStoryR
   return {
     ...result,
     markdown: buildMarkdown(result),
+  };
+}
+
+export async function generateStoryRepairPrompt(
+  input: GenerateStoryRepairPromptInput,
+): Promise<StoryRepairPromptResult | null> {
+  const resolved = await resolveStory(input);
+  if (!resolved) return null;
+  const repair = await repairStory({
+    project_id: input.project_id,
+    story_id: input.story_id,
+    story_json: input.story_json,
+    include_markdown: false,
+    max_actions: input.max_actions,
+    auto_apply: false,
+  });
+  if (!repair) return null;
+
+  const includeStoryJson = input.include_story_json !== false;
+  const base: Omit<StoryRepairPromptResult, 'prompt' | 'markdown' | 'original_story_json'> = {
+    schema_version: 'story-repair-prompt/v1',
+    source: repair.source,
+    project_id: repair.project_id,
+    story_id: repair.story_id,
+    quality_snapshot: repair.quality_snapshot,
+    repair_actions: repair.repair_actions,
+    target_scenes: repair.target_scenes,
+    protected_fields: STORY_REPAIR_PROTECTED_FIELDS,
+    output_contract: {
+      format: 'json',
+      root_type: 'StoryGenerateResult',
+      required_top_level_fields: STORY_REPAIR_REQUIRED_FIELDS,
+      validation_tool: 'kb_validate_genre_story',
+      apply_tool: 'kb_repair_story',
+    },
+    recommended_workflow: [],
+  };
+  const resultWithoutMarkdown: Omit<StoryRepairPromptResult, 'markdown'> = {
+    ...base,
+    recommended_workflow: repairPromptWorkflow(base),
+    prompt: buildStoryRepairPromptText({
+      story: resolved.story,
+      repair,
+      userInstruction: input.user_instruction,
+      includeStoryJson,
+    }),
+    original_story_json: includeStoryJson ? JSON.stringify(resolved.story, null, 2) : undefined,
+  };
+
+  if (input.include_markdown === false) return resultWithoutMarkdown;
+  return {
+    ...resultWithoutMarkdown,
+    markdown: buildStoryRepairPromptMarkdown(resultWithoutMarkdown),
   };
 }

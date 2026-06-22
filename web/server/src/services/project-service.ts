@@ -5,6 +5,7 @@ import {
   fail,
   success,
   ErrorCodes,
+  GEARS_CALLBACK_BATCH_ITEM_LIMIT,
   PRESENTATION_STYLE_CONFIG,
   STORY_STRUCTURE_CONFIG,
   VIDEO_TYPE_CONFIG,
@@ -97,8 +98,17 @@ import type {
   StoryRepairTrace,
   VideoType,
   GearsDeliveryPackage,
+  GearsExecutionJobStatus,
   GearsWebhookStatus,
   GearsVideoResult,
+  ProductionReadinessGearsSummary,
+  ProductionReadinessAutomationRunLedger,
+  ProductionReadinessAutomationRunRequest,
+  ProductionReadinessAutomationRunResult,
+  ProductionReadinessIssue,
+  ProductionReadinessLane,
+  ProductionReadinessNextAction,
+  ProductionReadinessStatus,
   StoryProductionBoard,
   StoryProductionBoardExportFile,
   StoryProductionBoardExportPackage,
@@ -106,6 +116,7 @@ import type {
   StoryProductionBoardRepairExportResult,
   StoryProductionBoardRepairRequest,
   StoryProductionBoardRepairResult,
+  StoryProjectProductionReadinessReport,
 } from '@shared/types.js';
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
@@ -116,10 +127,12 @@ import {
   seedanceShotProductionId,
   syncSeedanceShotLedgerWithShots,
 } from './production-board-service.js';
+import { buildProductionReadinessAutomationPlan } from './production-readiness-automation.js';
 import { repairStoryWithProductionBoard } from './production-board-repair-service.js';
 import {
   buildGearsLedgerItem,
   buildLocalGearsJobId,
+  buildRejectedGearsLedgerItem,
   gearsProjectCallbackPath,
   gearsProjectCallbackUrl,
   gearsJobStatusIsTerminal,
@@ -153,6 +166,16 @@ const SEEDANCE_SHOT_PRODUCTION_STATUSES: SeedanceShotProductionStatus[] = [
   'ready',
   'failed',
   'skipped',
+];
+
+const GEARS_EXECUTION_JOB_STATUSES: GearsExecutionJobStatus[] = [
+  'submitted',
+  'queued',
+  'processing',
+  'ready',
+  'failed',
+  'canceled',
+  'rejected',
 ];
 
 type StoredStoryFile = StoryGenerateResult & {
@@ -2526,6 +2549,7 @@ async function persistProjectVersion(
     seedance_shot_ledger: project.seedance_shot_ledger,
     seedance_provider_queue: project.seedance_provider_queue,
     gears_job_ledger: project.gears_job_ledger,
+    production_readiness_automation_ledger: project.production_readiness_automation_ledger,
   };
 
   await writeJsonFile(projectVersionPath(project.project_id, versionId), snapshot);
@@ -4207,6 +4231,16 @@ function gearsFailureToSeedanceCategory(
 ): SeedanceProviderFailureCategory | undefined {
   if (!category) return undefined;
   if (category === 'payload_invalid') return 'prompt_invalid';
+  if (category === 'artifact_invalid' || category === 'asset_missing') return 'asset_missing';
+  if (
+    category === 'artifact_upload_failed'
+    || category === 'callback_delivery_failed'
+    || category === 'output_missing'
+    || category === 'render_failed'
+    || category === 'worker_unavailable'
+  ) {
+    return 'provider_server_error';
+  }
   return category;
 }
 
@@ -4350,7 +4384,7 @@ function filterProjectGearsSubmitUnits(input: {
 function applyGearsJobsToSeedanceLedger(input: {
   project: StoryProjectMeta;
   board: StoryProductionBoard;
-  acceptedItems: GearsJobLedgerItem[];
+  jobItems: GearsJobLedgerItem[];
   updatedAt: string;
   note?: string;
 }): StoryProjectMeta['seedance_shot_ledger'] {
@@ -4359,13 +4393,13 @@ function applyGearsJobsToSeedanceLedger(input: {
     shotUnits: input.board.shot_units,
     generatedAt: input.board.generated_at,
   });
-  const acceptedByShotId = new Map(input.acceptedItems
+  const jobsByShotId = new Map(input.jobItems
     .filter(item => item.job_type === 'seedance_video')
     .map(item => [item.source_unit_id, item]));
-  if (!acceptedByShotId.size) return input.project.seedance_shot_ledger;
+  if (!jobsByShotId.size) return input.project.seedance_shot_ledger;
   const shotById = new Map(input.board.shot_units.map(shot => [shot.shot_id, shot]));
   const items = currentLedger.items.map(item => {
-    const gearsJob = acceptedByShotId.get(item.shot_id);
+    const gearsJob = jobsByShotId.get(item.shot_id);
     const shot = shotById.get(item.shot_id);
     if (!gearsJob || !shot) return item;
     const status = gearsSeedanceStatus(gearsJob.status);
@@ -4508,23 +4542,40 @@ export async function submitProjectGearsJobs(
       });
     })
     .filter((item): item is GearsJobLedgerItem => Boolean(item));
+  const rejectedJobs = adapterRes.data.failures
+    .map(failure => {
+      if (!failure.source_unit_id) return undefined;
+      const unit = unitById.get(failure.source_unit_id);
+      if (!unit) return undefined;
+      return buildRejectedGearsLedgerItem({
+        sourceProjectId: project.project_id,
+        sourceStoryId: current_story.storyId,
+        jobType,
+        unit,
+        failure,
+        submittedAt,
+        note: request.note,
+      });
+    })
+    .filter((item): item is GearsJobLedgerItem => Boolean(item));
+  const ledgerJobs = [...submittedJobs, ...rejectedJobs];
   const gearsJobLedger = mergeGearsLedgerItems({
     existing: project.gears_job_ledger,
-    items: submittedJobs,
+    items: ledgerJobs,
     updatedAt: submittedAt,
   });
   const seedanceShotLedger = jobType === 'seedance_video'
     ? applyGearsJobsToSeedanceLedger({
         project,
         board,
-        acceptedItems: submittedJobs,
+        jobItems: ledgerJobs,
         updatedAt: submittedAt,
         note: request.note,
       })
     : project.seedance_shot_ledger;
   const updatedProject: StoryProjectMeta = {
     ...project,
-    updated_at: submittedJobs.length ? submittedAt : project.updated_at,
+    updated_at: ledgerJobs.length ? submittedAt : project.updated_at,
     gears_job_ledger: gearsJobLedger,
     seedance_shot_ledger: seedanceShotLedger,
   };
@@ -4729,7 +4780,7 @@ export async function importProjectGearsCallback(
     ? applyGearsJobsToSeedanceLedger({
         project,
         board,
-        acceptedItems: [updatedItem],
+        jobItems: [updatedItem],
         updatedAt: receivedAt,
         note: callback.note ?? callback.message ?? `GEARS callback: ${updatedItem.status}`,
       })
@@ -4761,6 +4812,12 @@ export async function importProjectGearsCallbacks(
   request: GearsJobCallbackRequest,
 ): Promise<ApiResponse<GearsJobCallbackResult>> {
   const callbacks = extractGearsJobCallbackRequests(request);
+  if (callbacks.length > GEARS_CALLBACK_BATCH_ITEM_LIMIT) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `GEARS callback batch item count must be <= ${GEARS_CALLBACK_BATCH_ITEM_LIMIT}`,
+    );
+  }
   if (callbacks.length <= 1) return importProjectGearsCallback(projectId, callbacks[0] ?? request);
 
   let latest: GearsJobCallbackResult | undefined;
@@ -4987,6 +5044,814 @@ export async function getProjectProductionBoard(projectId: string): Promise<ApiR
     seedanceAssetLibrary: detail.data.project.seedance_asset_library,
     seedanceShotLedger: detail.data.project.seedance_shot_ledger,
   }));
+}
+
+export async function getProjectProductionReadiness(
+  projectId: string,
+): Promise<ApiResponse<StoryProjectProductionReadinessReport>> {
+  const detailRes = await getProject(projectId);
+  if (!detailRes.ok || !detailRes.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detailRes.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const detail = detailRes.data;
+  const board = buildStoryProductionBoard(detail.current_story, {
+    seedanceAssetLibrary: detail.project.seedance_asset_library,
+    seedanceShotLedger: detail.project.seedance_shot_ledger,
+  });
+  const quality = detail.current_story.quality_report;
+  const qualityScore = typeof quality?.genre_score === 'number'
+    ? quality.genre_score
+    : quality?.passed
+      ? 100
+      : 0;
+  const gearsSummary = summarizeProductionReadinessGears(detail.project.gears_job_ledger);
+  const shotStatusCounts = seedanceShotProductionStatusCounts(board.seedance_shot_ledger.items);
+  const activeShotCount = shotStatusCounts.submitted + shotStatusCounts.processing;
+  const shotCount = board.seedance_shot_ledger.items.length || board.shot_units.length;
+  const currentVersion = detail.versions.find(version => version.version_id === detail.project.current_version_id)
+    ?? detail.versions[0];
+  const issues: ProductionReadinessIssue[] = [];
+  const nextActions: ProductionReadinessNextAction[] = [];
+
+  const addIssue = (issue: ProductionReadinessIssue) => issues.push(issue);
+  const addAction = (action: ProductionReadinessNextAction) => {
+    if (nextActions.some(item => item.action_key === action.action_key)) return;
+    nextActions.push(action);
+  };
+
+  const qualityLaneStatus: ProductionReadinessStatus = quality?.passed
+    ? 'ready'
+    : quality
+      ? 'needs_action'
+      : 'blocked';
+  if (!quality) {
+    addIssue({
+      issue_id: 'quality-report-missing',
+      severity: 'blocking',
+      lane_key: 'story_quality',
+      label: '缺少质量报告',
+      detail: '当前故事没有可用于修复闭环的质量报告。',
+      action_key: 'repair_quality',
+      action_label: '运行质量修复',
+    });
+  } else if (!quality.passed || quality.issues.length > 0) {
+    addIssue({
+      issue_id: 'quality-report-needs-repair',
+      severity: 'warning',
+      lane_key: 'story_quality',
+      label: `${quality.issues.length || 1} 个质量问题`,
+      detail: quality.issues[0] ?? '质量报告未通过，需要先完成故事修复。',
+      action_key: 'repair_quality',
+      action_label: '运行质量修复',
+    });
+  }
+  if (qualityLaneStatus !== 'ready') {
+    addAction({
+      action_key: 'repair_quality',
+      label: '运行故事质量修复',
+      detail: '先修复类型片质量问题，再刷新 Production Board 和交付包。',
+      priority: 10,
+      lane_key: 'story_quality',
+    });
+  }
+
+  if (board.supervision_report.blockers > 0) {
+    addIssue({
+      issue_id: 'production-board-blockers',
+      severity: 'blocking',
+      lane_key: 'production_board',
+      label: `${board.supervision_report.blockers} 个生产阻断`,
+      detail: board.supervision_report.issues.find(item => item.severity === 'blocker')?.detail
+        ?? 'Production Board 存在阻断级问题。',
+      action_key: 'repair_production_board',
+      action_label: '生产修复',
+    });
+  } else if (board.supervision_report.warnings > 0) {
+    addIssue({
+      issue_id: 'production-board-warnings',
+      severity: 'warning',
+      lane_key: 'production_board',
+      label: `${board.supervision_report.warnings} 个生产提醒`,
+      detail: board.supervision_report.issues.find(item => item.severity === 'warn')?.detail
+        ?? 'Production Board 存在可修复提醒。',
+      action_key: 'repair_production_board',
+      action_label: '生产修复',
+    });
+  }
+  if (!board.supervision_report.passed || board.repair_plan.task_count > 0) {
+    addAction({
+      action_key: 'repair_production_board',
+      label: '执行 Production Board 修复',
+      detail: `修复 ${board.repair_plan.task_count} 个制作任务，并重新导出交付包。`,
+      priority: 20,
+      lane_key: 'production_board',
+    });
+  }
+
+  if (board.delivery_manifest.stage !== 'ready') {
+    addIssue({
+      issue_id: 'delivery-contract-not-ready',
+      severity: board.delivery_manifest.stage === 'blocked' ? 'blocking' : 'warning',
+      lane_key: 'delivery_contract',
+      label: board.delivery_manifest.stage_label,
+      detail: board.delivery_manifest.next_action,
+      action_key: 'export_production_board',
+      action_label: '导出交付包',
+    });
+    addAction({
+      action_key: 'export_production_board',
+      label: '导出 Production Board 交付包',
+      detail: '生成 JSON/Markdown/监督报告/修复计划/Seedance prompt/素材缺口等可交付文件。',
+      priority: 30,
+      lane_key: 'delivery_contract',
+    });
+  } else if (!currentVersion?.production_board_export) {
+    addAction({
+      action_key: 'export_production_board',
+      label: '落盘 Production Board 交付包',
+      detail: '当前版本可交付，但尚未记录最近一次交付包导出。',
+      priority: 35,
+      lane_key: 'delivery_contract',
+    });
+  }
+
+  if (shotCount === 0) {
+    addIssue({
+      issue_id: 'shot-ledger-empty',
+      severity: 'blocking',
+      lane_key: 'shot_production',
+      label: '缺少镜头生产账本',
+      detail: '没有可提交给 GEARS 的镜头单元。',
+      action_key: 'export_production_board',
+      action_label: '刷新 Production Board',
+    });
+  } else if (shotStatusCounts.failed > 0) {
+    addIssue({
+      issue_id: 'shot-production-failed',
+      severity: 'blocking',
+      lane_key: 'shot_production',
+      label: `${shotStatusCounts.failed} 个镜头失败`,
+      detail: '失败镜头需要重试、跳过或人工替换。',
+      action_key: 'export_retry_package',
+      action_label: '导出重试包',
+    });
+    addAction({
+      action_key: 'export_retry_package',
+      label: '导出失败镜头重试包',
+      detail: `${shotStatusCounts.failed} 个镜头失败，需要进入审片返修或 GEARS 重试。`,
+      priority: 45,
+      lane_key: 'shot_production',
+    });
+  } else if (activeShotCount > 0 || shotStatusCounts.prompt_exported > 0) {
+    addAction({
+      action_key: 'sync_gears_jobs',
+      label: '同步 GEARS 状态或导入回传',
+      detail: `${activeShotCount + shotStatusCounts.prompt_exported} 个镜头仍在生产链路中。`,
+      priority: 40,
+      lane_key: 'shot_production',
+    });
+  }
+
+  if (gearsSummary.total === 0) {
+    addIssue({
+      issue_id: 'gears-ledger-empty',
+      severity: 'warning',
+      lane_key: 'gears_execution',
+      label: '尚未建立 GEARS job',
+      detail: '当前交付包还没有提交到 GEARS Job Ledger。',
+      action_key: 'submit_gears_jobs',
+      action_label: '提交 GEARS',
+    });
+    addAction({
+      action_key: 'submit_gears_jobs',
+      label: '提交 GEARS 生产 job',
+      detail: '从 Production Board 镜头单元创建 GEARS job ledger，等待 GEARS v2 实产回调。',
+      priority: 50,
+      lane_key: 'gears_execution',
+    });
+  } else {
+    if (gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled > 0) {
+      addIssue({
+        issue_id: 'gears-terminal-failures',
+        severity: 'blocking',
+        lane_key: 'gears_execution',
+        label: `${gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled} 个 GEARS job 失败`,
+        detail: 'GEARS 返回 failed/rejected/canceled，需要按 failure_category 重试或人工处理。',
+        action_key: 'submit_gears_jobs',
+        action_label: '重提 GEARS',
+      });
+    }
+    if (gearsSummary.missing_artifact > 0) {
+      addIssue({
+        issue_id: 'gears-ready-missing-artifact',
+        severity: 'blocking',
+        lane_key: 'gears_execution',
+        label: `${gearsSummary.missing_artifact} 个 ready job 缺 artifact`,
+        detail: 'GEARS job 已 ready 但没有回传 artifact URL，无法进入审片/装配。',
+        action_key: 'sync_gears_jobs',
+        action_label: '同步 GEARS',
+      });
+    }
+    if (gearsSummary.poll_failure > 0) {
+      addIssue({
+        issue_id: 'gears-poll-failures',
+        severity: 'warning',
+        lane_key: 'gears_execution',
+        label: `${gearsSummary.poll_failure} 个 GEARS job 轮询失败`,
+        detail: '最近一次 status poll 失败，需要检查 GEARS endpoint 或鉴权。',
+        action_key: 'sync_gears_jobs',
+        action_label: '同步 GEARS',
+      });
+    }
+    if (gearsSummary.active > 0) {
+      addAction({
+        action_key: 'sync_gears_jobs',
+        label: '同步活跃 GEARS job',
+        detail: `${gearsSummary.active} 个 GEARS job 仍在 submitted/queued/processing。`,
+        priority: 55,
+        lane_key: 'gears_execution',
+      });
+    }
+  }
+
+  const lanes: ProductionReadinessLane[] = [
+    {
+      key: 'story_quality',
+      label: 'Story Agent MVP',
+      status: qualityLaneStatus,
+      score: qualityScore,
+      detail: quality?.passed ? '当前故事质量报告通过。' : '当前故事需要质量修复。',
+      count_text: quality ? `issues ${quality.issues.length}` : 'missing report',
+      evidence: [
+        `genre_score ${qualityScore}/100`,
+        `versions ${detail.project.version_count}`,
+      ],
+      action_key: qualityLaneStatus === 'ready' ? undefined : 'repair_quality',
+      action_label: qualityLaneStatus === 'ready' ? undefined : '质量修复',
+    },
+    {
+      key: 'production_board',
+      label: 'Production Board',
+      status: board.supervision_report.blockers > 0
+        ? 'blocked'
+        : board.supervision_report.passed
+          ? 'ready'
+          : 'needs_action',
+      score: board.supervision_report.score,
+      detail: board.supervision_report.passed
+        ? '生产监督通过。'
+        : '生产监督仍有问题需要修复。',
+      count_text: `blockers ${board.supervision_report.blockers} / warnings ${board.supervision_report.warnings}`,
+      evidence: [
+        `shot_units ${board.shot_units.length}`,
+        `repair_tasks ${board.repair_plan.task_count}`,
+      ],
+      action_key: board.supervision_report.passed ? undefined : 'repair_production_board',
+      action_label: board.supervision_report.passed ? undefined : '生产修复',
+    },
+    {
+      key: 'delivery_contract',
+      label: 'Delivery Contract',
+      status: board.delivery_manifest.stage === 'ready'
+        ? currentVersion?.production_board_export ? 'ready' : 'needs_action'
+        : board.delivery_manifest.stage === 'blocked' ? 'blocked' : 'needs_action',
+      score: productionReadinessDeliveryScore(board.delivery_manifest.stage, Boolean(currentVersion?.production_board_export)),
+      detail: currentVersion?.production_board_export
+        ? `最近交付包已落盘：${currentVersion.production_board_export.file_count} 个文件。`
+        : board.delivery_manifest.next_action,
+      count_text: `${board.delivery_manifest.ready_artifact_count}/${board.delivery_manifest.artifacts.length} artifacts`,
+      evidence: [
+        `stage ${board.delivery_manifest.stage}`,
+        currentVersion?.production_board_export ? `exported ${currentVersion.production_board_export.exported_at}` : 'not exported',
+      ],
+      action_key: currentVersion?.production_board_export ? undefined : 'export_production_board',
+      action_label: currentVersion?.production_board_export ? undefined : '导出交付包',
+    },
+    {
+      key: 'shot_production',
+      label: 'Shot Ledger',
+      status: productionReadinessShotStatus(shotCount, shotStatusCounts.failed, activeShotCount, shotStatusCounts.ready),
+      score: productionReadinessShotScore(shotCount, shotStatusCounts.ready, activeShotCount, shotStatusCounts.failed),
+      detail: shotCount > 0
+        ? `镜头账本 ready ${shotStatusCounts.ready}，active ${activeShotCount}，failed ${shotStatusCounts.failed}。`
+        : '尚未形成镜头账本。',
+      count_text: `ready ${shotStatusCounts.ready}/${shotCount}`,
+      evidence: [
+        `prompt_exported ${shotStatusCounts.prompt_exported}`,
+        `skipped ${shotStatusCounts.skipped}`,
+      ],
+      action_key: shotStatusCounts.failed > 0 ? 'export_retry_package' : activeShotCount > 0 ? 'sync_gears_jobs' : undefined,
+      action_label: shotStatusCounts.failed > 0 ? '导出重试包' : activeShotCount > 0 ? '同步状态' : undefined,
+    },
+    {
+      key: 'gears_execution',
+      label: 'GEARS Execution',
+      status: productionReadinessGearsStatus(gearsSummary),
+      score: productionReadinessGearsScore(gearsSummary),
+      detail: gearsSummary.total > 0
+        ? `GEARS jobs ready ${gearsSummary.ready}，active ${gearsSummary.active}，failed ${gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled}。`
+        : '尚未提交 GEARS job；等待从交付包建账本。',
+      count_text: `jobs ${gearsSummary.total}`,
+      evidence: [
+        `missing_artifact ${gearsSummary.missing_artifact}`,
+        `poll_failure ${gearsSummary.poll_failure}`,
+      ],
+      action_key: gearsSummary.total === 0 || gearsSummary.failed > 0 || gearsSummary.active > 0 ? 'submit_gears_jobs' : undefined,
+      action_label: gearsSummary.total === 0 ? '提交 GEARS' : gearsSummary.active > 0 ? '同步 GEARS' : undefined,
+    },
+    {
+      key: 'review_repair',
+      label: 'MCP / Repair Loop',
+      status: !quality || !quality.passed || board.repair_plan.task_count > 0
+        ? board.repair_plan.blocker_task_count > 0 ? 'blocked' : 'needs_action'
+        : 'ready',
+      score: Math.max(0, Math.min(100, 100 - board.repair_plan.task_count * 10 - (quality?.issues.length ?? 1) * 8)),
+      detail: board.repair_plan.task_count > 0
+        ? `还有 ${board.repair_plan.task_count} 个可执行修复任务。`
+        : '修复闭环当前无待办。',
+      count_text: `repair ${board.repair_plan.task_count}`,
+      evidence: [
+        `quality_issues ${quality?.issues.length ?? 0}`,
+        `blocker_tasks ${board.repair_plan.blocker_task_count}`,
+      ],
+      action_key: board.repair_plan.task_count > 0 ? 'repair_production_board' : undefined,
+      action_label: board.repair_plan.task_count > 0 ? '生产修复' : undefined,
+    },
+    {
+      key: 'commercial_ops',
+      label: 'Commercial Workbench',
+      status: currentVersion?.production_board_export && gearsSummary.total > 0 ? 'ready' : 'needs_action',
+      score: (currentVersion?.production_board_export ? 50 : 20) + (gearsSummary.total > 0 ? 50 : 20),
+      detail: currentVersion?.production_board_export && gearsSummary.total > 0
+        ? '交付包和 GEARS 账本都已具备，可进入制作运营跟踪。'
+        : '商业制作中台还缺交付包落盘或 GEARS job 账本。',
+      count_text: `export ${currentVersion?.production_board_export ? 1 : 0} / gears ${gearsSummary.total}`,
+      evidence: [
+        `project_status ${detail.project.status}`,
+        `version ${detail.project.current_version_id}`,
+      ],
+      action_key: !currentVersion?.production_board_export ? 'export_production_board' : gearsSummary.total === 0 ? 'submit_gears_jobs' : undefined,
+      action_label: !currentVersion?.production_board_export ? '导出交付包' : gearsSummary.total === 0 ? '提交 GEARS' : undefined,
+    },
+  ];
+
+  const sortedNextActions = nextActions.sort((a, b) => a.priority - b.priority);
+  const base: Omit<StoryProjectProductionReadinessReport, 'markdown'> = {
+    schema_version: 'story-project-production-readiness/v1',
+    scope: 'story_project',
+    project: detail.project,
+    title: detail.current_story.title,
+    generated_at: new Date().toISOString(),
+    summary: buildProductionReadinessSummary(lanes, issues, sortedNextActions, {
+      qualityScore,
+      deliveryStage: board.delivery_manifest.stage,
+      totalShotCount: shotCount,
+      readyShotCount: shotStatusCounts.ready,
+      failedShotCount: shotStatusCounts.failed,
+      gearsSummary,
+    }),
+    lanes,
+    issues,
+    next_actions: sortedNextActions,
+    automation_plan: buildProductionReadinessAutomationPlan({
+      scope: 'story_project',
+      projectId: detail.project.project_id,
+      actions: sortedNextActions,
+      issues,
+    }),
+    automation_ledger: detail.project.production_readiness_automation_ledger,
+    latest_automation_run: detail.project.production_readiness_automation_ledger?.latest_run,
+  };
+
+  return success({
+    ...base,
+    markdown: buildStoryProjectProductionReadinessMarkdown(base),
+  });
+}
+
+export async function runProjectProductionReadinessAutomation(
+  projectId: string,
+  request: ProductionReadinessAutomationRunRequest = {},
+): Promise<ApiResponse<ProductionReadinessAutomationRunResult<StoryProjectProductionReadinessReport>>> {
+  const dryRun = request.dry_run ?? true;
+  const maxSteps = request.max_steps ?? 6;
+  const stopOnError = request.stop_on_error ?? true;
+  const requestedActionKeys = request.action_keys?.length ? new Set(request.action_keys) : undefined;
+  const startedAt = new Date().toISOString();
+  const beforeRes = await getProjectProductionReadiness(projectId);
+  if (!beforeRes.ok || !beforeRes.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      beforeRes.error?.message ?? `Project "${projectId}" not found`,
+      beforeRes.error?.details,
+    );
+  }
+
+  const steps: ProductionReadinessAutomationRunResult<StoryProjectProductionReadinessReport>['steps'] = [];
+  const completedActionKeys = new Set<string>();
+  let failed = false;
+
+  for (let iteration = 0; iteration < maxSteps; iteration += 1) {
+    const readinessRes = iteration === 0 ? beforeRes : await getProjectProductionReadiness(projectId);
+    if (!readinessRes.ok || !readinessRes.data) break;
+    const step = readinessRes.data.automation_plan.steps.find(candidate => {
+      if (completedActionKeys.has(candidate.action_key)) return false;
+      if (requestedActionKeys && !requestedActionKeys.has(candidate.action_key)) return false;
+      return true;
+    });
+    if (!step) break;
+    completedActionKeys.add(step.action_key);
+
+    if (!step.can_auto_execute) {
+      steps.push({
+        step_id: step.step_id,
+        action_key: step.action_key,
+        label: step.label,
+        status: 'skipped',
+        runner: step.runner,
+        mode: step.mode,
+        can_auto_execute: step.can_auto_execute,
+        reason: step.status === 'blocked'
+          ? `blocked by ${step.blocked_by_issue_ids.join(', ') || 'readiness gate'}`
+          : step.mode === 'manual'
+            ? 'manual review required'
+            : 'external execution is not run inside china-culture-kb',
+        api_path: step.api?.path,
+      });
+      continue;
+    }
+
+    if (dryRun) {
+      steps.push({
+        step_id: step.step_id,
+        action_key: step.action_key,
+        label: step.label,
+        status: 'planned',
+        runner: step.runner,
+        mode: step.mode,
+        can_auto_execute: true,
+        reason: 'dry_run',
+        api_path: step.api?.path,
+      });
+      continue;
+    }
+
+    const execRes = await executeProjectReadinessAutomationStep(projectId, step.action_key);
+    steps.push({
+      step_id: step.step_id,
+      action_key: step.action_key,
+      label: step.label,
+      status: execRes.ok ? 'executed' : 'failed',
+      runner: step.runner,
+      mode: step.mode,
+      can_auto_execute: true,
+      api_path: step.api?.path,
+      response_schema_version: productionAutomationSchemaVersion(execRes.data),
+      error_message: execRes.error?.message,
+    });
+    if (!execRes.ok) {
+      failed = true;
+      if (stopOnError) break;
+    }
+  }
+
+  const afterRes = await getProjectProductionReadiness(projectId);
+  if (!afterRes.ok || !afterRes.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      afterRes.error?.message ?? `Project "${projectId}" not found after automation run`,
+      afterRes.error?.details,
+    );
+  }
+  const completedAt = new Date().toISOString();
+  const runResult: ProductionReadinessAutomationRunResult<StoryProjectProductionReadinessReport> = {
+    schema_version: 'production-readiness-automation-run/v1',
+    scope: 'story_project',
+    project_id: projectId,
+    dry_run: dryRun,
+    started_at: startedAt,
+    completed_at: completedAt,
+    requested_action_keys: request.action_keys,
+    executed_step_count: steps.filter(step => step.status === 'executed').length,
+    planned_step_count: steps.filter(step => step.status === 'planned').length,
+    skipped_step_count: steps.filter(step => step.status === 'skipped').length,
+    failed_step_count: steps.filter(step => step.status === 'failed').length,
+    steps,
+    before_readiness: beforeRes.data,
+    after_readiness: afterRes.data,
+    notes: [
+      dryRun ? 'dry_run=true: no project files were changed.' : 'Executed only Story Agent API steps marked can_auto_execute.',
+      'GEARS worker and manual review steps are never executed by this runner.',
+      dryRun ? 'Automation run ledger was not persisted for dry_run.' : 'Automation run ledger was persisted on the story project metadata.',
+      failed ? 'At least one step failed; inspect failed step error_message.' : 'Automation runner completed without failed internal steps.',
+    ],
+  };
+
+  if (!dryRun) {
+    await appendProjectProductionReadinessAutomationRun(projectId, runResult);
+    const finalAfterRes = await getProjectProductionReadiness(projectId);
+    if (finalAfterRes.ok && finalAfterRes.data) {
+      runResult.after_readiness = finalAfterRes.data;
+    }
+  }
+
+  return success(runResult);
+}
+
+const productionReadinessAutomationLedgerLimit = 20;
+
+function buildProductionReadinessAutomationRunLedger(
+  existing: ProductionReadinessAutomationRunLedger | undefined,
+  run: ProductionReadinessAutomationRunResult<StoryProjectProductionReadinessReport>,
+): ProductionReadinessAutomationRunLedger {
+  const item = {
+    run_id: `production-readiness-run-${randomUUID()}`,
+    scope: run.scope,
+    project_id: run.project_id,
+    dry_run: run.dry_run,
+    started_at: run.started_at,
+    completed_at: run.completed_at,
+    requested_action_keys: run.requested_action_keys,
+    executed_step_count: run.executed_step_count,
+    planned_step_count: run.planned_step_count,
+    skipped_step_count: run.skipped_step_count,
+    failed_step_count: run.failed_step_count,
+    before_status: run.before_readiness.summary.status,
+    before_score: run.before_readiness.summary.score,
+    after_status: run.after_readiness.summary.status,
+    after_score: run.after_readiness.summary.score,
+    steps: run.steps,
+    notes: run.notes,
+  };
+  const previousItems = existing?.items ?? [];
+  const items = [
+    item,
+    ...previousItems.filter(previous => previous.run_id !== item.run_id),
+  ].slice(0, productionReadinessAutomationLedgerLimit);
+  return {
+    schema_version: 'production-readiness-automation-run-ledger/v1',
+    updated_at: run.completed_at,
+    total_run_count: (existing?.total_run_count ?? previousItems.length) + 1,
+    persisted_run_count: items.length,
+    latest_run: item,
+    items,
+  };
+}
+
+async function appendProjectProductionReadinessAutomationRun(
+  projectId: string,
+  run: ProductionReadinessAutomationRunResult<StoryProjectProductionReadinessReport>,
+): Promise<void> {
+  const project = await readProjectMeta(projectId);
+  if (!project) return;
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: run.completed_at,
+    production_readiness_automation_ledger: buildProductionReadinessAutomationRunLedger(
+      project.production_readiness_automation_ledger,
+      run,
+    ),
+  };
+  await writeJsonFile(projectMetaPath(projectId), updatedProject);
+}
+
+async function executeProjectReadinessAutomationStep(
+  projectId: string,
+  actionKey: string,
+): Promise<ApiResponse<unknown>> {
+  if (actionKey === 'repair_quality') return repairProjectQuality(projectId, {});
+  if (actionKey === 'repair_production_board') return repairAndExportProjectProductionBoard(projectId, { apply_all: true });
+  if (actionKey === 'export_production_board') return exportProjectProductionBoard(projectId);
+  if (actionKey === 'export_retry_package') return exportProjectSeedanceRetryPackage(projectId);
+  return fail(ErrorCodes.VALIDATION_ERROR, `Automation action "${actionKey}" is not executable for story projects`);
+}
+
+function productionAutomationSchemaVersion(data: unknown): string | undefined {
+  return typeof data === 'object' && data !== null && 'schema_version' in data
+    ? String((data as { schema_version?: unknown }).schema_version)
+    : undefined;
+}
+
+function seedanceShotProductionStatusCounts(
+  items: SeedanceShotLedgerItem[],
+): Record<SeedanceShotProductionStatus, number> {
+  const counts = Object.fromEntries(
+    SEEDANCE_SHOT_PRODUCTION_STATUSES.map(status => [status, 0]),
+  ) as Record<SeedanceShotProductionStatus, number>;
+  for (const item of items) {
+    counts[item.status] += 1;
+  }
+  return counts;
+}
+
+function summarizeProductionReadinessGears(ledger?: GearsJobLedger): ProductionReadinessGearsSummary {
+  const normalized = normalizeGearsJobLedger(ledger);
+  const statusCounts = Object.fromEntries(
+    GEARS_EXECUTION_JOB_STATUSES.map(status => [status, 0]),
+  ) as Record<GearsExecutionJobStatus, number>;
+  let missingArtifact = 0;
+  let pollFailure = 0;
+  for (const item of normalized.items) {
+    statusCounts[item.status] += 1;
+    if (item.status === 'ready' && item.artifact_urls.length === 0 && (item.artifacts?.length ?? 0) === 0) {
+      missingArtifact += 1;
+    }
+    if (item.last_poll_error) {
+      pollFailure += 1;
+    }
+  }
+  return {
+    total: normalized.items.length,
+    active: statusCounts.submitted + statusCounts.queued + statusCounts.processing,
+    ready: statusCounts.ready,
+    failed: statusCounts.failed,
+    rejected: statusCounts.rejected,
+    canceled: statusCounts.canceled,
+    missing_artifact: missingArtifact,
+    poll_failure: pollFailure,
+    status_counts: statusCounts,
+  };
+}
+
+function productionReadinessDeliveryScore(
+  stage: StoryProductionBoard['delivery_manifest']['stage'],
+  exported: boolean,
+): number {
+  if (stage === 'ready') return exported ? 100 : 85;
+  if (stage === 'needs_repair') return 65;
+  return 30;
+}
+
+function productionReadinessShotStatus(
+  total: number,
+  failed: number,
+  active: number,
+  ready: number,
+): ProductionReadinessStatus {
+  if (total <= 0 || failed > 0) return 'blocked';
+  if (ready >= total) return 'ready';
+  if (active > 0 || ready > 0) return 'needs_action';
+  return 'needs_action';
+}
+
+function productionReadinessShotScore(
+  total: number,
+  ready: number,
+  active: number,
+  failed: number,
+): number {
+  if (total <= 0) return 20;
+  const readyScore = (ready / total) * 100;
+  const activeCredit = (active / total) * 45;
+  const failurePenalty = (failed / total) * 60;
+  return Math.max(0, Math.min(100, Math.round(readyScore + activeCredit - failurePenalty)));
+}
+
+function productionReadinessGearsStatus(summary: ProductionReadinessGearsSummary): ProductionReadinessStatus {
+  if (summary.total === 0) return 'needs_action';
+  if (summary.failed + summary.rejected + summary.canceled + summary.missing_artifact > 0) return 'blocked';
+  if (summary.active > 0 || summary.poll_failure > 0 || summary.ready < summary.total) return 'needs_action';
+  return 'ready';
+}
+
+function productionReadinessGearsScore(summary: ProductionReadinessGearsSummary): number {
+  if (summary.total === 0) return 45;
+  const readyScore = (summary.ready / summary.total) * 100;
+  const activeCredit = (summary.active / summary.total) * 50;
+  const failurePenalty = ((summary.failed + summary.rejected + summary.canceled) / summary.total) * 70;
+  const artifactPenalty = (summary.missing_artifact / summary.total) * 80;
+  const pollPenalty = (summary.poll_failure / summary.total) * 20;
+  return Math.max(0, Math.min(100, Math.round(readyScore + activeCredit - failurePenalty - artifactPenalty - pollPenalty)));
+}
+
+function buildProductionReadinessSummary(
+  lanes: ProductionReadinessLane[],
+  issues: ProductionReadinessIssue[],
+  nextActions: ProductionReadinessNextAction[],
+  extras: {
+    qualityScore?: number;
+    deliveryStage?: StoryProductionBoard['delivery_manifest']['stage'];
+    generatedEpisodeCount?: number;
+    totalEpisodeCount?: number;
+    totalShotCount?: number;
+    readyShotCount?: number;
+    failedShotCount?: number;
+    openReviewCount?: number;
+    gearsSummary: ProductionReadinessGearsSummary;
+  },
+): StoryProjectProductionReadinessReport['summary'] {
+  const blockerCount = issues.filter(issue => issue.severity === 'blocking').length;
+  const warningCount = issues.filter(issue => issue.severity === 'warning').length;
+  const averageLaneScore = lanes.length
+    ? lanes.reduce((sum, lane) => sum + lane.score, 0) / lanes.length
+    : 0;
+  return {
+    status: productionReadinessOverallStatus(lanes, blockerCount, warningCount),
+    score: Math.max(0, Math.min(100, Math.round(averageLaneScore - blockerCount * 6 - warningCount * 2))),
+    ready_lane_count: lanes.filter(lane => lane.status === 'ready').length,
+    total_lane_count: lanes.length,
+    blocker_count: blockerCount,
+    warning_count: warningCount,
+    next_action_count: nextActions.length,
+    quality_score: extras.qualityScore,
+    delivery_stage: extras.deliveryStage,
+    generated_episode_count: extras.generatedEpisodeCount,
+    total_episode_count: extras.totalEpisodeCount,
+    total_shot_count: extras.totalShotCount,
+    ready_shot_count: extras.readyShotCount,
+    failed_shot_count: extras.failedShotCount,
+    open_review_count: extras.openReviewCount,
+    gears_job_count: extras.gearsSummary.total,
+    active_gears_job_count: extras.gearsSummary.active,
+  };
+}
+
+function productionReadinessOverallStatus(
+  lanes: ProductionReadinessLane[],
+  blockerCount: number,
+  warningCount: number,
+): ProductionReadinessStatus {
+  if (blockerCount > 0 || lanes.some(lane => lane.status === 'blocked')) return 'blocked';
+  if (warningCount > 0 || lanes.some(lane => lane.status === 'needs_action')) return 'needs_action';
+  return 'ready';
+}
+
+function buildStoryProjectProductionReadinessMarkdown(
+  report: Omit<StoryProjectProductionReadinessReport, 'markdown'>,
+): string {
+  return [
+    `# ${report.title} — 制作 readiness`,
+    '',
+    `> schema: ${report.schema_version}`,
+    `> projectId: ${report.project.project_id}`,
+    `> generatedAt: ${report.generated_at}`,
+    '',
+    '## Summary',
+    '',
+    `- 状态: ${productionReadinessStatusText(report.summary.status)}`,
+    `- 分数: ${report.summary.score}/100`,
+    `- lanes: ${report.summary.ready_lane_count}/${report.summary.total_lane_count}`,
+    `- blockers: ${report.summary.blocker_count}`,
+    `- warnings: ${report.summary.warning_count}`,
+    `- next actions: ${report.summary.next_action_count}`,
+    '',
+    '## Lanes',
+    '',
+    '| 模块 | 状态 | 分数 | 说明 |',
+    '|---|---:|---:|---|',
+    ...report.lanes.map(lane =>
+      `| ${lane.label} | ${productionReadinessStatusText(lane.status)} | ${lane.score}/100 | ${lane.detail} |`,
+    ),
+    '',
+    '## Issues',
+    '',
+    ...(report.issues.length
+      ? report.issues.map(issue =>
+        `- ${issueSeverityText(issue.severity)} · ${issue.label}: ${issue.detail}`,
+      )
+      : ['- 暂无阻断项。']),
+    '',
+    '## Next Actions',
+    '',
+    ...(report.next_actions.length
+      ? report.next_actions.map(action => `- P${action.priority} · ${action.label}: ${action.detail}`)
+      : ['- 暂无下一步动作。']),
+    '',
+    '## Automation Plan',
+    '',
+    ...(report.automation_plan.steps.length
+      ? report.automation_plan.steps.map(step =>
+        `- ${step.step_id} · ${step.status} · ${step.runner}: ${step.label} -> ${step.expected_result}`,
+      )
+      : ['- 暂无自动化步骤。']),
+    '',
+    '## Latest Automation Run',
+    '',
+    ...(report.latest_automation_run
+      ? [
+        `- ${report.latest_automation_run.completed_at} · ${report.latest_automation_run.executed_step_count} executed · ${report.latest_automation_run.failed_step_count} failed · ${report.latest_automation_run.before_score}->${report.latest_automation_run.after_score}`,
+        ...report.latest_automation_run.steps.map(step =>
+          `  - ${step.status} · ${step.action_key}: ${step.label}`,
+        ),
+      ]
+      : ['- 暂无已持久化的自动化运行记录。']),
+  ].join('\n');
+}
+
+function productionReadinessStatusText(status: ProductionReadinessStatus): string {
+  if (status === 'ready') return 'ready';
+  if (status === 'blocked') return 'blocked';
+  return 'needs_action';
+}
+
+function issueSeverityText(severity: ProductionReadinessIssue['severity']): string {
+  if (severity === 'blocking') return '阻断';
+  if (severity === 'warning') return '提醒';
+  return '信息';
 }
 
 export async function exportProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoardExportPackage>> {

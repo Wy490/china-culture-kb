@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { getProjectContext } from '../src/tools/get-project-context.js';
-import { repairStory } from '../src/tools/repair-story.js';
+import { generateStoryRepairPrompt, repairStory } from '../src/tools/repair-story.js';
 
 const tmpDir = path.join(os.tmpdir(), 'kb-repair-story-test-' + Date.now());
 const dataRoot = path.join(tmpDir, 'data');
@@ -156,6 +156,55 @@ afterEach(() => {
 });
 
 describe('kb_repair_story', () => {
+  it('generates a model-ready repaired_story_json prompt package', async () => {
+    const versionsBefore = fs.readdirSync(versionsDir());
+    const result = await generateStoryRepairPrompt({
+      project_id: projectId,
+      user_instruction: '优先补强主角短对白和结尾钩子',
+      include_markdown: false,
+    });
+    const versionsAfter = fs.readdirSync(versionsDir());
+
+    expect(result).not.toBeNull();
+    expect(result!.schema_version).toBe('story-repair-prompt/v1');
+    expect(result!.source).toBe('project_id');
+    expect(result!.quality_snapshot.video_type).toBe('ai_comic_drama');
+    expect(result!.repair_actions.some(action => action.issue.includes('AI 漫剧缺少对白'))).toBe(true);
+    expect(result!.protected_fields).toContain('story_blueprint.evidence_boundaries');
+    expect(result!.output_contract).toMatchObject({
+      format: 'json',
+      root_type: 'StoryGenerateResult',
+      validation_tool: 'kb_validate_genre_story',
+      apply_tool: 'kb_repair_story',
+    });
+    expect(result!.recommended_workflow.map(step => step.tool)).toEqual([
+      'kb_validate_genre_story',
+      'kb_repair_story',
+      'kb_get_project_context',
+    ]);
+    expect(result!.prompt).toContain('只输出一个完整 JSON 对象');
+    expect(result!.prompt).toContain('优先补强主角短对白和结尾钩子');
+    expect(result!.prompt).toContain('"storyId"');
+    expect(result!.original_story_json).toContain('"storyId"');
+    expect(result!.markdown).toBeUndefined();
+    expect(versionsAfter).toEqual(versionsBefore);
+  });
+
+  it('can omit original story json from the repair prompt package', async () => {
+    const result = await generateStoryRepairPrompt({
+      project_id: projectId,
+      include_story_json: false,
+      include_markdown: true,
+      max_actions: 2,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.original_story_json).toBeUndefined();
+    expect(result!.repair_actions.length).toBeLessThanOrEqual(2);
+    expect(result!.prompt).toContain('调用方已持有原始 StoryGenerateResult JSON');
+    expect(result!.markdown).toContain('Story Repair Prompt Package');
+  });
+
   it('generates a read-only repair dry run from project_id', async () => {
     const versionsBefore = fs.readdirSync(versionsDir());
     const result = await repairStory({ project_id: projectId, include_markdown: false });

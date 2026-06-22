@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { GEARS_CALLBACK_BATCH_ITEM_LIMIT } from '@shared/types.js';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import {
   addAiComicSeriesSeedanceReview,
@@ -30,6 +31,7 @@ import {
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
+  getAiComicSeriesProductionReadiness,
   getAiComicSeriesProject,
   getAiComicSeriesSeedanceProductionDashboard,
   listAiComicSeriesProjects,
@@ -40,6 +42,7 @@ import {
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
   resolveAiComicSeriesSeedanceReview,
+  runAiComicSeriesProductionReadinessAutomation,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   importAiComicSeriesGearsCallback,
@@ -742,6 +745,102 @@ describe('outline-service', () => {
     });
   });
 
+  it('builds AI comic series production readiness across quality, episodes, dashboard, and GEARS', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志 readiness',
+      episode_count: 2,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+    const seriesProjectId = saveRes.data!.project.series_project_id;
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: seriesProjectId,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+
+    const refreshSaveRes = await saveAiComicSeriesProject({
+      series_project_id: seriesProjectId,
+      plan: planRes.data!,
+      generated_episode_story_ids: {
+        1: episodeRes.data!.storyId,
+      },
+    });
+    expect(refreshSaveRes.ok).toBe(true);
+
+    const seedanceExportRes = await exportAiComicSeriesSeedancePrompts(seriesProjectId);
+    expect(seedanceExportRes.ok).toBe(true);
+    const sourceItem = seedanceExportRes.data!.seedance_production!.items[0]!;
+
+    const submitRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      source_unit_id: sourceItem.production_id,
+      note: 'series readiness test submit',
+    });
+    expect(submitRes.ok).toBe(true);
+
+    const readiness = await getAiComicSeriesProductionReadiness(seriesProjectId);
+    const gearsLane = readiness.data?.lanes.find(lane => lane.key === 'gears_execution');
+
+    expect(readiness.ok).toBe(true);
+    expect(readiness.data?.schema_version).toBe('ai-comic-series-production-readiness/v1');
+    expect(readiness.data?.scope).toBe('ai_comic_series');
+    expect(readiness.data?.summary.generated_episode_count).toBe(1);
+    expect(readiness.data?.summary.total_episode_count).toBe(2);
+    expect(readiness.data?.summary.gears_job_count).toBe(1);
+    expect(readiness.data?.summary.active_gears_job_count).toBe(1);
+    expect(readiness.data?.issues.map(issue => issue.issue_id)).toContain('episodes-not-complete');
+    expect(readiness.data?.next_actions.map(action => action.action_key)).toContain('generate_next_episode');
+    expect(readiness.data?.automation_plan.schema_version).toBe('production-readiness-automation-plan/v1');
+    const generateStep = readiness.data?.automation_plan.steps.find(step => step.action_key === 'generate_next_episode');
+    expect(generateStep).toMatchObject({
+      runner: 'story_agent_api',
+      mode: 'writes_project',
+      can_auto_execute: true,
+      api: {
+        method: 'POST',
+        path: '/api/story-outline/ai-comic-episode',
+      },
+    });
+    const dryRun = await runAiComicSeriesProductionReadinessAutomation(seriesProjectId, {
+      dry_run: true,
+      action_keys: ['generate_next_episode'],
+    });
+    expect(dryRun.ok).toBe(true);
+    expect(dryRun.data?.planned_step_count).toBe(1);
+    expect(dryRun.data?.executed_step_count).toBe(0);
+    expect(dryRun.data?.after_readiness.summary.generated_episode_count).toBe(1);
+    const automationRun = await runAiComicSeriesProductionReadinessAutomation(seriesProjectId, {
+      dry_run: false,
+      action_keys: ['generate_next_episode'],
+    });
+    expect(automationRun.ok).toBe(true);
+    expect(automationRun.data?.executed_step_count).toBe(1);
+    expect(automationRun.data?.after_readiness.summary.generated_episode_count).toBe(2);
+    expect(automationRun.data?.after_readiness.latest_automation_run).toMatchObject({
+      scope: 'ai_comic_series',
+      project_id: seriesProjectId,
+      dry_run: false,
+      executed_step_count: 1,
+      failed_step_count: 0,
+    });
+    expect(automationRun.data?.after_readiness.automation_ledger?.total_run_count).toBe(1);
+    expect(automationRun.data?.after_readiness.markdown).toContain('Latest Automation Run');
+    expect(gearsLane?.status).toBe('needs_action');
+    expect(readiness.data?.episodes[0]).toMatchObject({
+      episode_no: 1,
+      total_shot_count: expect.any(Number),
+    });
+    expect(readiness.data?.markdown).toContain('系列制作 readiness');
+    expect(readiness.data?.markdown).toContain('Automation Plan');
+  });
+
   it('imports batched AI comic series GEARS callbacks into production ledgers', async () => {
     const planRes = await generateAiComicSeriesPlan({
       outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
@@ -828,6 +927,21 @@ describe('outline-service', () => {
       provider_job_id: jobs[1]!.gears_job_id,
       video_url: 'https://example.com/gears/series-batch-shot-2.mp4',
     });
+  });
+
+  it('rejects oversized AI comic series GEARS callback batches before project lookup', async () => {
+    const callbacks = Array.from({ length: GEARS_CALLBACK_BATCH_ITEM_LIMIT + 1 }, (_, index) => ({
+      jobId: `gears-series-too-many-${index}`,
+      sourceUnitId: `episode:1:shot:${index}`,
+      jobType: 'seedance_video' as const,
+      taskStatus: 'COMPLETED',
+    }));
+
+    const result = await importAiComicSeriesGearsCallbacks('20260616-series-missing', { callbacks });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe('VALIDATION_ERROR');
+    expect(result.error?.message).toContain(`GEARS callback batch item count must be <= ${GEARS_CALLBACK_BATCH_ITEM_LIMIT}`);
   });
 
   it('submits AI comic series retry candidates to GEARS with retry context payload', async () => {

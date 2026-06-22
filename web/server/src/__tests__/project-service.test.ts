@@ -3,7 +3,12 @@ import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { createHmac } from 'node:crypto';
-import type { StoryGenerateResult, StoryProjectMeta, StoryProjectVersionSnapshot } from '@shared/types.js';
+import {
+  GEARS_CALLBACK_BATCH_ITEM_LIMIT,
+  type StoryGenerateResult,
+  type StoryProjectMeta,
+  type StoryProjectVersionSnapshot,
+} from '@shared/types.js';
 import {
   autoSelectProjectSeedanceShotVersions,
   buildProjectId,
@@ -17,6 +22,7 @@ import {
   getProjectSeedanceProviderQueueOverview,
   getProjectSeedanceProviderRetryPlan,
   getProjectProductionBoard,
+  getProjectProductionReadiness,
   importProjectGearsCallback,
   importProjectGearsCallbacks,
   importProjectSeedanceAssetBatch,
@@ -32,6 +38,7 @@ import {
   repairProjectProductionBoard,
   reuseProjectSeedanceAsset,
   retainRecentProjects,
+  runProjectProductionReadinessAutomation,
   selectProjectSeedanceShotVersion,
   submitProjectGearsJobs,
   submitProjectSeedanceProviderRetryPlan,
@@ -958,6 +965,91 @@ describe('project-service', () => {
     });
   });
 
+  it('builds a project production readiness report across quality, board, and GEARS ledgers', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+
+    const initialReadiness = await getProjectProductionReadiness(enriched.project_id!);
+
+    expect(initialReadiness.ok).toBe(true);
+    expect(initialReadiness.data?.schema_version).toBe('story-project-production-readiness/v1');
+    expect(initialReadiness.data?.scope).toBe('story_project');
+    expect(initialReadiness.data?.summary.quality_score).toBe(92);
+    expect(initialReadiness.data?.summary.gears_job_count).toBe(0);
+    expect(initialReadiness.data?.lanes.map(lane => lane.key)).toContain('story_quality');
+    expect(initialReadiness.data?.lanes.map(lane => lane.key)).toContain('production_board');
+    expect(initialReadiness.data?.issues.map(issue => issue.issue_id)).toContain('gears-ledger-empty');
+    expect(initialReadiness.data?.next_actions.map(action => action.action_key)).toContain('submit_gears_jobs');
+    expect(initialReadiness.data?.automation_plan.schema_version).toBe('production-readiness-automation-plan/v1');
+    const submitStep = initialReadiness.data?.automation_plan.steps.find(step => step.action_key === 'submit_gears_jobs');
+    expect(submitStep).toMatchObject({
+      runner: 'gears_worker',
+      mode: 'external_execution',
+      can_auto_execute: false,
+      api: {
+        method: 'POST',
+        path: `/api/projects/${enriched.project_id}/production-board/gears-jobs/submit`,
+      },
+    });
+    expect(initialReadiness.data?.markdown).toContain('制作 readiness');
+    expect(initialReadiness.data?.markdown).toContain('Automation Plan');
+
+    const dryRun = await runProjectProductionReadinessAutomation(enriched.project_id!, {
+      dry_run: true,
+      action_keys: ['export_production_board'],
+    });
+    expect(dryRun.ok).toBe(true);
+    expect(dryRun.data?.planned_step_count).toBe(1);
+    expect(dryRun.data?.executed_step_count).toBe(0);
+
+    const automationRun = await runProjectProductionReadinessAutomation(enriched.project_id!, {
+      dry_run: false,
+      action_keys: ['export_production_board'],
+    });
+    expect(automationRun.ok).toBe(true);
+    expect(automationRun.data?.executed_step_count).toBe(1);
+    expect(automationRun.data?.steps[0]).toMatchObject({
+      action_key: 'export_production_board',
+      status: 'executed',
+    });
+    expect(automationRun.data?.after_readiness.project.current_version_id).toBe(enriched.current_version_id);
+    expect(automationRun.data?.after_readiness.latest_automation_run).toMatchObject({
+      scope: 'story_project',
+      project_id: enriched.project_id,
+      dry_run: false,
+      executed_step_count: 1,
+      failed_step_count: 0,
+    });
+    expect(automationRun.data?.after_readiness.automation_ledger?.total_run_count).toBe(1);
+    expect(automationRun.data?.after_readiness.markdown).toContain('Latest Automation Run');
+
+    const afterAutomationReadiness = await getProjectProductionReadiness(enriched.project_id!);
+    expect(afterAutomationReadiness.data?.latest_automation_run?.steps[0]).toMatchObject({
+      action_key: 'export_production_board',
+      status: 'executed',
+    });
+
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      note: 'readiness test submit',
+    });
+    expect(submitRes.ok).toBe(true);
+    expect(submitRes.data?.submitted_count).toBeGreaterThan(0);
+
+    const afterSubmit = await getProjectProductionReadiness(enriched.project_id!);
+    const gearsLane = afterSubmit.data?.lanes.find(lane => lane.key === 'gears_execution');
+
+    expect(afterSubmit.ok).toBe(true);
+    expect(afterSubmit.data?.summary.gears_job_count).toBeGreaterThan(0);
+    expect(afterSubmit.data?.summary.active_gears_job_count).toBeGreaterThan(0);
+    expect(gearsLane?.status).toBe('needs_action');
+    expect(afterSubmit.data?.markdown).toContain('GEARS Execution');
+  });
+
   it('submits GEARS jobs locally and applies callbacks to the project ledgers', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
@@ -1253,6 +1345,21 @@ describe('project-service', () => {
     });
   });
 
+  it('rejects oversized project GEARS callback batches before project lookup', async () => {
+    const callbacks = Array.from({ length: GEARS_CALLBACK_BATCH_ITEM_LIMIT + 1 }, (_, index) => ({
+      jobId: `gears-project-too-many-${index}`,
+      sourceUnitId: `shot-${index}`,
+      jobType: 'seedance_video' as const,
+      taskStatus: 'COMPLETED',
+    }));
+
+    const result = await importProjectGearsCallbacks('20260617-story-missing--ai_comic_drama', { callbacks });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe('VALIDATION_ERROR');
+    expect(result.error?.message).toContain(`GEARS callback batch item count must be <= ${GEARS_CALLBACK_BATCH_ITEM_LIMIT}`);
+  });
+
   it('matches project GEARS callbacks by source id aliases when platform job id changes', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
@@ -1499,6 +1606,75 @@ describe('project-service', () => {
       provider: 'gears',
       provider_job_id: 'gears-real-job-001',
       status: 'submitted',
+    });
+  });
+
+  it('writes rejected GEARS submit units into project ledgers', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'gears-token';
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      data: {
+        acceptedUnits: [{
+          taskId: 'gears-submit-accepted-shot-1',
+          externalId: 'shot-1',
+          taskStatus: 'QUEUED',
+          idempotencyKey: 'seedance_video:shot-1',
+        }],
+        rejectedUnits: [{
+          taskId: 'gears-submit-rejected-shot-2',
+          externalId: 'shot-2',
+          taskStatus: 'VALIDATION_ERROR',
+          idempotencyKey: 'seedance_video:shot-2',
+          errorCode: 'INVALID_PAYLOAD',
+          message: 'seedance_prompt is required',
+        }],
+      },
+    }))));
+
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1', 'shot-2'],
+      use_gears_api: true,
+      note: 'GEARS rejected submit smoke',
+    });
+
+    expect(submitRes.ok).toBe(true);
+    expect(submitRes.data).toMatchObject({
+      submitted_count: 1,
+      failed_count: 1,
+      provider_adapter: {
+        endpoint_configured: true,
+        requested_count: 2,
+        accepted_count: 1,
+        rejected_count: 1,
+      },
+    });
+    const gearsLedger = submitRes.data!.gears_job_ledger!;
+    expect(gearsLedger.items.find(item => item.source_unit_id === 'shot-1')).toMatchObject({
+      gears_job_id: 'gears-submit-accepted-shot-1',
+      status: 'submitted',
+    });
+    expect(gearsLedger.items.find(item => item.source_unit_id === 'shot-2')).toMatchObject({
+      gears_job_id: 'gears-submit-rejected-shot-2',
+      idempotency_key: 'seedance_video:shot-2',
+      status: 'rejected',
+      failure_category: 'payload_invalid',
+      error_code: 'INVALID_PAYLOAD',
+      failure_reason: 'seedance_prompt is required',
+    });
+    expect(submitRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-2')).toMatchObject({
+      provider: 'gears',
+      provider_job_id: 'gears-submit-rejected-shot-2',
+      status: 'failed',
+      failure_category: 'prompt_invalid',
+      provider_error_code: 'INVALID_PAYLOAD',
+      failure_reason: 'seedance_prompt is required',
     });
   });
 

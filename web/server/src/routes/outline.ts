@@ -35,6 +35,7 @@ import {
   GearsJobCallbackRequestSchema,
   GearsJobStatusSyncRequestSchema,
   GearsJobSubmitRequestSchema,
+  ProductionReadinessAutomationRunRequestSchema,
   StoryOutlineAnalyzeRequestSchema,
 } from '@shared/schemas.js';
 import { analyzeOutline } from '../services/outline-service.js';
@@ -66,6 +67,7 @@ import {
   previewAiComicEpisodeContext,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
+  getAiComicSeriesProductionReadiness,
   getAiComicSeriesProject,
   getAiComicSeriesSeedanceProductionDashboard,
   importAiComicSeriesGearsCallbacks,
@@ -76,6 +78,7 @@ import {
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
   resolveAiComicSeriesSeedanceReview,
+  runAiComicSeriesProductionReadinessAutomation,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   submitAiComicSeriesGearsJobs,
@@ -187,6 +190,37 @@ outlineRouter.get(
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await getAiComicSeriesProject(seriesProjectId);
       res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// GET /api/story-outline/ai-comic-series-projects/:seriesProjectId/production-readiness — production command readiness
+outlineRouter.get(
+  '/ai-comic-series-projects/:seriesProjectId/production-readiness',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await getAiComicSeriesProductionReadiness(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/production-readiness/run-automation — run safe Story Agent automation steps
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/production-readiness/run-automation',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(ProductionReadinessAutomationRunRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await runAiComicSeriesProductionReadinessAutomation(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);
     }

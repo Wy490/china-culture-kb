@@ -1,6 +1,7 @@
 // web/shared/schemas.ts — Zod validation schemas for Web API
 
 import { z } from 'zod';
+import { GEARS_CALLBACK_BATCH_ITEM_LIMIT } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Generation type (3 modes) — backward compat
@@ -450,6 +451,10 @@ const GearsExecutionJobTypeSchema = z.enum([
 
 const GearsExecutionFailureCategorySchema = z.enum([
   'asset_missing',
+  'artifact_invalid',
+  'artifact_upload_failed',
+  'callback_delivery_failed',
+  'output_missing',
   'payload_invalid',
   'content_policy',
   'provider_timeout',
@@ -457,6 +462,8 @@ const GearsExecutionFailureCategorySchema = z.enum([
   'provider_auth',
   'provider_rate_limit',
   'provider_server_error',
+  'render_failed',
+  'worker_unavailable',
   'network_error',
   'unknown',
 ]);
@@ -506,8 +513,46 @@ export const GearsJobStatusSyncRequestSchema = z.object({
   note: z.string().trim().min(1).max(500).optional(),
 });
 
+export const GearsExecutionLiveSmokeRunRequestSchema = z.object({
+  execute: z.boolean().optional().default(false),
+  poll_after_submit: z.boolean().optional().default(false),
+  note: z.string().trim().min(1).max(500).optional(),
+}).strict();
+
 function isGearsCallbackObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const GEARS_CALLBACK_BATCH_ARRAY_KEYS = [
+  'callbacks',
+  'events',
+  'jobs',
+  'tasks',
+  'items',
+  'results',
+];
+const GEARS_CALLBACK_BATCH_CONTAINER_KEYS = [
+  'data',
+  'result',
+  'response',
+  'payload',
+  'job',
+  'task',
+  'item',
+  'record',
+];
+
+function countGearsCallbackBatchItems(value: unknown, depth = 0): number {
+  if (depth > 5 || !isGearsCallbackObject(value)) return 0;
+  let count = 0;
+  for (const key of GEARS_CALLBACK_BATCH_ARRAY_KEYS) {
+    const arrayValue = value[key];
+    if (Array.isArray(arrayValue)) count += arrayValue.length;
+  }
+  for (const key of GEARS_CALLBACK_BATCH_CONTAINER_KEYS) {
+    count += countGearsCallbackBatchItems(value[key], depth + 1);
+  }
+  return count;
 }
 
 function hasGearsCallbackIdentifier(value: unknown, depth = 0): boolean {
@@ -682,6 +727,9 @@ export const GearsJobCallbackRequestSchema = z.object({
 }).refine(
   data => hasGearsCallbackIdentifier(data),
   { message: 'GEARS callback requires gears_job_id/job_id, source_unit_id/external_id/shot_id, or idempotency_key' },
+).refine(
+  data => countGearsCallbackBatchItems(data) <= GEARS_CALLBACK_BATCH_ITEM_LIMIT,
+  { message: `GEARS callback batch item count must be <= ${GEARS_CALLBACK_BATCH_ITEM_LIMIT}` },
 );
 
 const SeedanceShotProductionStatusSchema = z.enum([
@@ -953,6 +1001,25 @@ export const StoryProductionBoardRepairRequestSchema = z.object({
   scene_ids: z.array(z.number().int().min(1)).max(50).optional(),
   priorities: z.array(z.enum(['P0', 'P1', 'P2'])).max(3).optional(),
   apply_all: z.boolean().optional().default(false),
+});
+
+export const ProductionReadinessAutomationRunRequestSchema = z.object({
+  dry_run: z.boolean().optional().default(true),
+  max_steps: z.number().int().min(1).max(12).optional().default(6),
+  action_keys: z.array(z.string().trim().min(1).max(120)).max(12).optional(),
+  stop_on_error: z.boolean().optional().default(true),
+});
+
+export const ProductionReadinessPortfolioRunRequestSchema = z.object({
+  dry_run: z.boolean().optional().default(true),
+  include_archived_series: z.boolean().optional().default(false),
+  max_targets: z.number().int().min(1).max(20).optional().default(5),
+  per_target_max_steps: z.number().int().min(1).max(12).optional().default(4),
+  min_priority_score: z.number().int().min(0).max(300).optional(),
+  scopes: z.array(z.enum(['story_project', 'ai_comic_series'])).max(2).optional(),
+  project_ids: z.array(z.string().trim().min(1).max(160)).max(50).optional(),
+  action_keys: z.array(z.string().trim().min(1).max(120)).max(12).optional(),
+  stop_on_error: z.boolean().optional().default(true),
 });
 
 export const GearsDeliveryUpdateRequestSchema = z.object({

@@ -20,8 +20,15 @@ import { generateStoryBlueprint } from './tools/generate-story-blueprint.js';
 import { validateGenreStory } from './tools/validate-genre-story.js';
 import { generateGearsDelivery } from './tools/generate-gears-delivery.js';
 import { generateSeedancePrompt } from './tools/generate-seedance-prompt.js';
-import { repairStory } from './tools/repair-story.js';
+import { generateStoryRepairPrompt, repairStory } from './tools/repair-story.js';
 import { updateProjectVersion } from './tools/update-project-version.js';
+import { getProductionReadiness } from './tools/get-production-readiness.js';
+import { getProductionReadinessPortfolio } from './tools/get-production-readiness-portfolio.js';
+import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
+import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
+import { getGearsWorkerEvidenceSignoff } from './tools/get-gears-worker-evidence-signoff.js';
+import { runProductionReadinessAutomation } from './tools/run-production-readiness-automation.js';
+import { runProductionReadinessPortfolioAutomationBridge } from './tools/run-production-readiness-portfolio-automation.js';
 import { CultureEntry, SourceType, ScriptType } from './types.js';
 
 const server = new McpServer({
@@ -432,6 +439,161 @@ server.tool(
   }
 );
 
+// kb_get_production_readiness — read production command readiness for project or series
+server.tool(
+  'kb_get_production_readiness',
+  '读取单故事项目或 AI 漫剧系列项目的生产 readiness 指挥报告。只读，汇总质量、交付、GEARS 账本、审片返修和下一步动作。',
+  {
+    project_id: z.string().optional().describe('故事项目 ID，例如 20260614-story-5xim--ai_comic_drama'),
+    series_project_id: z.string().optional().describe('AI 漫剧系列项目 ID，例如 20260619-series-r0v5zyag'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await getProductionReadiness(input);
+    if (!result) {
+      return { content: [{ type: 'text', text: '未找到项目或系列项目' }] };
+    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_production_readiness_portfolio — read cross-project production command portfolio
+server.tool(
+  'kb_get_production_readiness_portfolio',
+  '读取本地 Story Agent 单故事项目与 AI 漫剧系列项目的 production readiness 组合总览。只读，按阻断、分数、自动化步骤和下一步动作生成优先队列。',
+  {
+    limit: z.number().int().positive().max(100).optional().describe('最多返回多少个优先目标，默认 30'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await getProductionReadinessPortfolio(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_story_agent_generated_health — read generated Story Agent artifact health
+server.tool(
+  'kb_get_story_agent_generated_health',
+  '读取本地 Story Agent generated 项目健康体检。只读扫描故事项目、AI 漫剧系列、generated stories 和 versions，区分 ready/planned/production_gap/interrupted。',
+  {
+    limit: z.number().int().positive().max(100).optional().describe('最多返回多少个高风险目标，默认 30'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await getStoryAgentGeneratedHealth(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_story_agent_mvp_status — read Story Agent MVP command status
+server.tool(
+  'kb_get_story_agent_mvp_status',
+  '读取本地 Story Agent MVP 状态总控。只读组合 generated health 与 production readiness portfolio，输出生成物、质量、修复、交付合同和生产指挥 lane。',
+  {
+    generated_limit: z.number().int().positive().max(100).optional().describe('generated health 最多返回多少个目标，默认 100'),
+    portfolio_limit: z.number().int().positive().max(100).optional().describe('production readiness portfolio 最多返回多少个目标，默认 100'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await getStoryAgentMvpStatus(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_gears_worker_evidence_signoff — read GEARS worker acceptance evidence
+server.tool(
+  'kb_get_gears_worker_evidence_signoff',
+  '读取 GEARS worker acceptance evidence 目录并生成签收摘要。只读，不执行 GEARS worker、Seedance SDK、ffmpeg 或最终媒体合成。',
+  {
+    evidence_dir: z.string().optional().describe('证据目录；不传时读取 GEARS_EVIDENCE_DIR。允许 /private/tmp、/tmp、TMPDIR 或仓库内路径。'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await getGearsWorkerEvidenceSignoff(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_run_production_readiness_portfolio_automation — bridge MCP to the safe Web/API portfolio runner
+server.tool(
+  'kb_run_production_readiness_portfolio_automation',
+  '通过 Story Agent Web/API 按 production readiness portfolio 优先队列批量运行安全自动化步骤。只触发 can_auto_execute=true 的指挥层步骤，不执行 GEARS worker、Seedance SDK、ffmpeg 或最终媒体合成。',
+  {
+    dry_run: z.boolean().optional().describe('是否只演练自动化步骤，默认 true'),
+    include_archived_series: z.boolean().optional().describe('是否包含已归档系列，默认 false'),
+    max_targets: z.number().int().positive().max(20).optional().describe('最多处理多少个高优先目标，默认 5'),
+    per_target_max_steps: z.number().int().positive().max(12).optional().describe('每个目标最多执行/演练多少个安全步骤，默认 4'),
+    min_priority_score: z.number().int().min(0).max(300).optional().describe('只处理 priority_score 不低于该值的目标'),
+    scopes: z.array(z.enum(['story_project', 'ai_comic_series'])).optional().describe('限定目标范围'),
+    project_ids: z.array(z.string()).optional().describe('限定项目 ID 或系列项目 ID 列表'),
+    action_keys: z.array(z.string()).optional().describe('限定每个目标要执行的 action_key 列表'),
+    stop_on_error: z.boolean().optional().describe('遇到失败目标是否停止，默认 true'),
+    story_agent_base_url: z.string().optional().describe('Story Agent Web/API 根地址；不传时读取 STORY_AGENT_BASE_URL'),
+    timeout_ms: z.number().int().positive().max(120000).optional().describe('请求 Story Agent API 的超时时间，默认 30000ms'),
+    include_portfolio_fallback: z.boolean().optional().describe('Web/API 不可用时是否返回本地 portfolio fallback，默认 true'),
+  },
+  async (input) => {
+    const result = await runProductionReadinessPortfolioAutomationBridge(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_run_production_readiness_automation — bridge MCP to the safe Story Agent Web/API automation runner
+server.tool(
+  'kb_run_production_readiness_automation',
+  '通过 Story Agent Web/API 安全执行单故事或 AI 漫剧系列项目的 production readiness 自动化步骤。只会触发 can_auto_execute=true 的指挥层步骤，不执行 GEARS worker、Seedance SDK、ffmpeg 或最终媒体合成。',
+  {
+    project_id: z.string().optional().describe('故事项目 ID，例如 20260614-story-5xim--ai_comic_drama'),
+    series_project_id: z.string().optional().describe('AI 漫剧系列项目 ID，例如 20260619-series-r0v5zyag'),
+    dry_run: z.boolean().optional().describe('是否只演练自动化步骤，默认 true'),
+    max_steps: z.number().int().positive().max(20).optional().describe('最多执行/演练多少个步骤，默认 6'),
+    action_keys: z.array(z.string()).optional().describe('限定要执行的 action_key 列表；不传则按 readiness runner 排序执行安全步骤'),
+    stop_on_error: z.boolean().optional().describe('遇到失败是否停止，默认 true'),
+    story_agent_base_url: z.string().optional().describe('Story Agent Web/API 根地址；不传时读取 STORY_AGENT_BASE_URL'),
+    timeout_ms: z.number().int().positive().max(120000).optional().describe('请求 Story Agent API 的超时时间，默认 30000ms'),
+    include_readiness_fallback: z.boolean().optional().describe('Web/API 不可用时是否返回本地 readiness fallback，默认 true'),
+  },
+  async (input) => {
+    const result = await runProductionReadinessAutomation(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
 // kb_generate_story_blueprint — build genre-aware StoryBlueprint from a knowledge-base entry
 server.tool(
   'kb_generate_story_blueprint',
@@ -483,6 +645,33 @@ server.tool(
     const result = await validateGenreStory(input);
     if (!result) {
       return { content: [{ type: 'text', text: '未找到可校验的故事或项目' }] };
+    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_generate_story_repair_prompt — generate model prompt package for repaired_story_json
+server.tool(
+  'kb_generate_story_repair_prompt',
+  '生成用于模型产出 repaired_story_json 的只读修复提示包。不会写文件；后续应先校验，再交给 kb_repair_story(auto_apply=true) 安全写入新版本。',
+  {
+    project_id: z.string().optional().describe('故事项目 ID，优先读取当前版本'),
+    story_id: z.string().optional().describe('故事 ID，读取 web/generated/stories 下的故事 JSON'),
+    story_json: z.string().optional().describe('直接传入 StoryGenerateResult JSON 字符串'),
+    user_instruction: z.string().optional().describe('补充修复要求，会写入提示包但不直接执行'),
+    include_story_json: z.boolean().optional().describe('是否在提示包中包含完整原始故事 JSON，默认 true'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+    max_actions: z.number().int().min(1).max(50).optional().describe('最多纳入多少条修复动作，默认 12'),
+  },
+  async (input) => {
+    const result = await generateStoryRepairPrompt(input);
+    if (!result) {
+      return { content: [{ type: 'text', text: '未找到可生成修复提示包的故事或项目' }] };
     }
     return {
       content: [{

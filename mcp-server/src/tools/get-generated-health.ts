@@ -1,0 +1,391 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { getKbRoot } from '../lib/provinces.js';
+
+type HealthStatus = 'ready' | 'planned' | 'production_gap' | 'interrupted';
+type HealthScope = 'story_project' | 'ai_comic_series_project';
+type JsonRecord = Record<string, unknown>;
+
+export interface GetStoryAgentGeneratedHealthInput {
+  limit?: number;
+  include_markdown?: boolean;
+}
+
+export interface StoryAgentGeneratedHealthItem {
+  scope: HealthScope;
+  project_id: string;
+  title?: string;
+  status: HealthStatus;
+  risk_score: number;
+  updated_at?: string;
+  issue_count: number;
+  missing_contracts: string[];
+  evidence: string[];
+  recommended_actions: string[];
+  current_story_id?: string;
+  current_version_id?: string;
+  version_count?: number;
+  scene_count?: number;
+  gears_segment_count?: number;
+  quality_score?: number;
+  episode_count?: number;
+  generated_episode_count?: number;
+  generated_episode_story_id_count?: number;
+  missing_episode_story_id_count?: number;
+  production_item_count?: number;
+  ready_production_item_count?: number;
+  cut_ready?: boolean;
+  subtitle_ready?: boolean;
+  thumbnail_ready_count?: number;
+  final_delivery_ready?: boolean;
+}
+
+export interface StoryAgentGeneratedHealthReport {
+  schema_version: 'mcp-story-agent-generated-health/v1';
+  generated_at: string;
+  summary: {
+    scanned_story_project_count: number;
+    scanned_series_project_count: number;
+    total_target_count: number;
+    ready_count: number;
+    planned_count: number;
+    production_gap_count: number;
+    interrupted_count: number;
+    missing_current_story_count: number;
+    missing_scene_breakdown_count: number;
+    missing_gears_segments_count: number;
+    missing_quality_count: number;
+    missing_episode_story_id_count: number;
+    series_missing_delivery_count: number;
+    series_missing_postproduction_count: number;
+  };
+  items: StoryAgentGeneratedHealthItem[];
+  notes: string[];
+  markdown?: string;
+}
+
+function generatedRoot(): string {
+  return process.env.WEB_GENERATED_ROOT || path.resolve(getKbRoot(), '..', 'web', 'generated');
+}
+
+function asRecord(value: unknown): JsonRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as JsonRecord : {};
+}
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+async function readJson(filePath: string): Promise<JsonRecord | undefined> {
+  try {
+    const parsed = JSON.parse(await fs.readFile(filePath, 'utf-8')) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function listProjectRecords(folder: string): Promise<Array<{ dir: string; id: string; record: JsonRecord }>> {
+  try {
+    const root = path.resolve(generatedRoot(), folder);
+    const entries = await fs.readdir(root, { withFileTypes: true });
+    const records: Array<{ dir: string; id: string; record: JsonRecord }> = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const dir = path.resolve(root, entry.name);
+      const record = await readJson(path.resolve(dir, 'project.json'));
+      if (!record) continue;
+      records.push({ dir, id: entry.name, record });
+    }
+    return records;
+  } catch {
+    return [];
+  }
+}
+
+async function listStoryIds(): Promise<Set<string>> {
+  const ids = new Set<string>();
+  try {
+    const root = path.resolve(generatedRoot(), 'stories');
+    const entries = await fs.readdir(root, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith('.json')) {
+        ids.add(entry.name.replace(/\.json$/, ''));
+        continue;
+      }
+      if (!entry.isDirectory()) continue;
+      const files = await fs.readdir(path.resolve(root, entry.name), { withFileTypes: true });
+      for (const file of files) {
+        if (file.isFile() && file.name.endsWith('.json')) ids.add(file.name.replace(/\.json$/, ''));
+      }
+    }
+  } catch {
+    // no stories directory yet
+  }
+  return ids;
+}
+
+async function readVersions(projectDir: string): Promise<JsonRecord[]> {
+  try {
+    const versionsDir = path.resolve(projectDir, 'versions');
+    const files = await fs.readdir(versionsDir, { withFileTypes: true });
+    const records: JsonRecord[] = [];
+    for (const file of files) {
+      if (!file.isFile() || !file.name.endsWith('.json')) continue;
+      const record = await readJson(path.resolve(versionsDir, file.name));
+      if (record) records.push(record);
+    }
+    return records;
+  } catch {
+    return [];
+  }
+}
+
+function riskScore(status: HealthStatus, issueCount: number): number {
+  if (status === 'interrupted') return Math.min(100, 88 + issueCount * 3);
+  if (status === 'production_gap') return Math.min(87, 55 + issueCount * 5);
+  if (status === 'planned') return Math.min(45, 18 + issueCount * 4);
+  return Math.max(0, 8 - issueCount);
+}
+
+function statusRank(status: HealthStatus): number {
+  if (status === 'interrupted') return 0;
+  if (status === 'production_gap') return 1;
+  if (status === 'planned') return 2;
+  return 3;
+}
+
+function qualityScore(report: JsonRecord): number | undefined {
+  return asNumber(
+    report.genre_score
+      ?? report.score
+      ?? asRecord(report.gears_readiness_report).readiness_score
+      ?? asRecord(report.outline_coverage_report).coverage_score,
+  );
+}
+
+async function storyHealth(input: { dir: string; id: string; record: JsonRecord }): Promise<StoryAgentGeneratedHealthItem> {
+  const versions = await readVersions(input.dir);
+  const currentVersionId = asString(input.record.current_version_id);
+  const currentStoryId = asString(input.record.current_story_id ?? input.record.story_id);
+  const currentVersion = versions.find(version => asString(version.version_id) === currentVersionId);
+  const story = asRecord(currentVersion?.story);
+  const quality = isRecord(currentVersion?.quality_report) ? asRecord(currentVersion?.quality_report) : asRecord(story.quality_report);
+  const sceneCount = asArray(story.scene_breakdown).length;
+  const gearsSegmentCount = asArray(story.gears_segments).length;
+  const missing = new Set<string>();
+  if (!currentVersionId || !currentVersion) missing.add('current_version');
+  if (!currentStoryId || !Object.keys(story).length) missing.add('current_story');
+  if (Object.keys(story).length && sceneCount === 0) missing.add('scene_breakdown');
+  if (Object.keys(story).length && gearsSegmentCount === 0) missing.add('gears_segments');
+  if (Object.keys(story).length && !Object.keys(quality).length) missing.add('quality_report');
+  if (Object.keys(story).length && !isRecord(story.gears_delivery) && !isRecord(currentVersion?.production_board_export)) {
+    missing.add('delivery_contract');
+  }
+  const status: HealthStatus = missing.has('current_version') || missing.has('current_story')
+    ? 'interrupted'
+    : missing.size > 0
+      ? 'production_gap'
+      : 'ready';
+  return {
+    scope: 'story_project',
+    project_id: asString(input.record.project_id ?? input.record.story_project_id) ?? input.id,
+    title: asString(input.record.title ?? story.title),
+    status,
+    risk_score: riskScore(status, missing.size),
+    updated_at: asString(input.record.updated_at ?? input.record.created_at),
+    issue_count: missing.size,
+    missing_contracts: [...missing],
+    evidence: [
+      `versions=${versions.length}`,
+      currentVersionId ? `current_version_id=${currentVersionId}` : 'current_version_id=missing',
+      currentStoryId ? `current_story_id=${currentStoryId}` : 'current_story_id=missing',
+      Object.keys(story).length ? `scenes=${sceneCount}, gears_segments=${gearsSegmentCount}` : 'story=missing',
+    ],
+    recommended_actions: status === 'interrupted'
+      ? ['修复 current_version/current_story 引用，或重建当前版本快照。']
+      : ['补齐 Story Agent 质量、GEARS delivery 或 Production Board 合同。'],
+    current_story_id: currentStoryId,
+    current_version_id: currentVersionId,
+    version_count: asNumber(input.record.version_count) ?? versions.length,
+    scene_count: Object.keys(story).length ? sceneCount : undefined,
+    gears_segment_count: Object.keys(story).length ? gearsSegmentCount : undefined,
+    quality_score: qualityScore(quality),
+  };
+}
+
+function generatedStoryIds(record: JsonRecord): string[] {
+  if (Array.isArray(record.generated_episode_story_ids)) {
+    return record.generated_episode_story_ids.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()));
+  }
+  const ids = asRecord(record.generated_episode_story_ids);
+  return Object.values(ids).filter((item): item is string => typeof item === 'string' && Boolean(item.trim()));
+}
+
+function ledgerUsable(record: JsonRecord): boolean {
+  const status = asString(record.status);
+  return status === 'ready' || status === 'planned';
+}
+
+function hasOutput(record: JsonRecord, fields: string[]): boolean {
+  return fields.some(field => Boolean(asString(record[field])));
+}
+
+function seriesHealth(input: { id: string; record: JsonRecord }, availableStoryIds: Set<string>): StoryAgentGeneratedHealthItem {
+  const project = Object.keys(asRecord(input.record.project)).length ? asRecord(input.record.project) : input.record;
+  const plan = asRecord(input.record.plan);
+  const storyIds = generatedStoryIds(input.record);
+  const episodeCount = asNumber(project.episode_count ?? plan.episode_count) ?? asArray(plan.episodes).length;
+  const generatedEpisodeCount = asNumber(project.generated_episode_count) ?? storyIds.length;
+  const missingEpisodeStoryIdCount = storyIds.filter(id => !availableStoryIds.has(id)).length;
+  const productionItems = asArray(asRecord(input.record.seedance_production).items).filter(isRecord);
+  const readyProductionItems = productionItems.filter(item => asString(item.status) === 'ready' && Boolean(asString(item.video_url)));
+  const thumbnailReadyCount = productionItems.filter(item => asString(asRecord(item.thumbnail).status) === 'ready').length;
+  const cut = asRecord(input.record.seedance_cut_assembly);
+  const subtitle = asRecord(input.record.seedance_subtitle_render);
+  const finalDelivery = asRecord(input.record.seedance_final_delivery);
+  const cutReady = ledgerUsable(cut) && hasOutput(cut, ['output_path', 'concat_list_path']);
+  const subtitleReady = ledgerUsable(subtitle) && hasOutput(subtitle, ['output_path', 'srt_path']);
+  const finalDeliveryReady = ledgerUsable(finalDelivery) && hasOutput(finalDelivery, ['output_path', 'manifest_path']);
+  const missing = new Set<string>();
+  if (missingEpisodeStoryIdCount > 0) missing.add('generated_episode_story_refs');
+  if (generatedEpisodeCount > 0 && generatedEpisodeCount < episodeCount) missing.add('remaining_episodes');
+  if (generatedEpisodeCount > 0 && productionItems.length === 0) missing.add('shot_production_ledger');
+  if (productionItems.length > 0 && readyProductionItems.length === 0) missing.add('shot_returns');
+  if (readyProductionItems.length > 0 && thumbnailReadyCount < readyProductionItems.length) missing.add('thumbnails');
+  if (readyProductionItems.length > 0 && !cutReady) missing.add('cut_assembly');
+  if (cutReady && !subtitleReady) missing.add('subtitles');
+  if (cutReady && !finalDeliveryReady) missing.add('final_delivery');
+  if (generatedEpisodeCount > 0 && !isRecord(input.record.gears_job_ledger) && productionItems.length === 0) missing.add('series_delivery');
+  const status: HealthStatus = generatedEpisodeCount === 0 && storyIds.length === 0
+    ? 'planned'
+    : missingEpisodeStoryIdCount > 0
+      ? 'interrupted'
+      : missing.size > 0
+        ? 'production_gap'
+        : 'ready';
+  return {
+    scope: 'ai_comic_series_project',
+    project_id: asString(project.series_project_id ?? input.record.series_project_id) ?? input.id,
+    title: asString(project.title ?? plan.series_title),
+    status,
+    risk_score: riskScore(status, missing.size),
+    updated_at: asString(project.updated_at ?? input.record.updated_at),
+    issue_count: missing.size,
+    missing_contracts: [...missing],
+    evidence: [
+      `episodes=${generatedEpisodeCount}/${episodeCount}`,
+      `generated_episode_story_ids=${storyIds.length}`,
+      `production_items=${productionItems.length}`,
+      `cut_ready=${cutReady}, subtitle_ready=${subtitleReady}, final_delivery_ready=${finalDeliveryReady}`,
+    ],
+    recommended_actions: status === 'planned'
+      ? ['生成第一集分集故事，再导出 GEARS delivery 与系列生产指挥包。']
+      : ['补齐系列 GEARS delivery、镜头生产账本或后期生产指令包。'],
+    episode_count: episodeCount,
+    generated_episode_count: generatedEpisodeCount,
+    generated_episode_story_id_count: storyIds.length,
+    missing_episode_story_id_count: missingEpisodeStoryIdCount,
+    production_item_count: productionItems.length,
+    ready_production_item_count: readyProductionItems.length,
+    cut_ready: cutReady,
+    subtitle_ready: subtitleReady,
+    thumbnail_ready_count: thumbnailReadyCount,
+    final_delivery_ready: finalDeliveryReady,
+  };
+}
+
+function count(items: StoryAgentGeneratedHealthItem[], status: HealthStatus): number {
+  return items.filter(item => item.status === status).length;
+}
+
+function countMissing(items: StoryAgentGeneratedHealthItem[], contract: string, scope?: HealthScope): number {
+  return items.filter(item => (!scope || item.scope === scope) && item.missing_contracts.includes(contract)).length;
+}
+
+function buildMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'>): string {
+  return [
+    '# MCP Story Agent Generated Health',
+    '',
+    `> generatedAt: ${report.generated_at}`,
+    '',
+    '## Summary',
+    '',
+    `- total targets: ${report.summary.total_target_count}`,
+    `- ready: ${report.summary.ready_count}`,
+    `- planned: ${report.summary.planned_count}`,
+    `- production_gap: ${report.summary.production_gap_count}`,
+    `- interrupted: ${report.summary.interrupted_count}`,
+    '',
+    '## Priority Items',
+    '',
+    ...(report.items.length
+      ? report.items.map(item => `- P${item.risk_score} · ${item.scope} · ${item.status} · ${item.project_id} · ${item.missing_contracts.join(', ') || 'none'}`)
+      : ['- none']),
+    '',
+    '## Notes',
+    '',
+    ...report.notes.map(note => `- ${note}`),
+  ].join('\n');
+}
+
+export async function getStoryAgentGeneratedHealth(
+  input: GetStoryAgentGeneratedHealthInput = {},
+): Promise<StoryAgentGeneratedHealthReport> {
+  const limit = Number.isFinite(input.limit) ? Math.max(1, Math.min(Math.floor(input.limit ?? 30), 100)) : 30;
+  const [storyRecords, seriesRecords, storyIds] = await Promise.all([
+    listProjectRecords('projects'),
+    listProjectRecords('ai-comic-series-projects'),
+    listStoryIds(),
+  ]);
+  const storyItems = await Promise.all(storyRecords.map(storyHealth));
+  const seriesItems = seriesRecords.map(record => seriesHealth(record, storyIds));
+  const allItems = [...storyItems, ...seriesItems].sort((a, b) => (
+    statusRank(a.status) - statusRank(b.status)
+    || b.risk_score - a.risk_score
+    || (b.updated_at ?? '').localeCompare(a.updated_at ?? '')
+  ));
+  const items = allItems.slice(0, limit);
+  const base: Omit<StoryAgentGeneratedHealthReport, 'markdown'> = {
+    schema_version: 'mcp-story-agent-generated-health/v1',
+    generated_at: new Date().toISOString(),
+    summary: {
+      scanned_story_project_count: storyRecords.length,
+      scanned_series_project_count: seriesRecords.length,
+      total_target_count: allItems.length,
+      ready_count: count(allItems, 'ready'),
+      planned_count: count(allItems, 'planned'),
+      production_gap_count: count(allItems, 'production_gap'),
+      interrupted_count: count(allItems, 'interrupted'),
+      missing_current_story_count: countMissing(allItems, 'current_story', 'story_project'),
+      missing_scene_breakdown_count: countMissing(allItems, 'scene_breakdown', 'story_project'),
+      missing_gears_segments_count: countMissing(allItems, 'gears_segments', 'story_project'),
+      missing_quality_count: countMissing(allItems, 'quality_report', 'story_project'),
+      missing_episode_story_id_count: seriesItems.reduce((sum, item) => sum + (item.missing_episode_story_id_count ?? 0), 0),
+      series_missing_delivery_count: countMissing(allItems, 'series_delivery', 'ai_comic_series_project')
+        + countMissing(allItems, 'shot_production_ledger', 'ai_comic_series_project'),
+      series_missing_postproduction_count: ['cut_assembly', 'subtitles', 'thumbnails', 'final_delivery']
+        .reduce((sum, contract) => sum + countMissing(allItems, contract, 'ai_comic_series_project'), 0),
+    },
+    items,
+    notes: [
+      'MCP generated health is read-only and built from local web/generated files.',
+      'Use this before GEARS v2 smoke to avoid selecting planned-only or interrupted generated targets.',
+      'china-culture-kb remains the content and production command layer; media execution stays in GEARS v2.',
+    ],
+  };
+  return input.include_markdown === false ? base : { ...base, markdown: buildMarkdown(base) };
+}

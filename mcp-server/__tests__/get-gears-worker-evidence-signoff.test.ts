@@ -1,0 +1,214 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { getGearsWorkerEvidenceSignoff } from '../src/tools/get-gears-worker-evidence-signoff.js';
+
+const tmpRoot = path.join(os.tmpdir(), 'kb-gears-signoff-test-' + Date.now());
+const dataRoot = path.join(tmpRoot, 'data');
+const previousKbRoot = process.env.KB_ROOT;
+const previousEvidenceDir = process.env.GEARS_EVIDENCE_DIR;
+const previousAutoDiscover = process.env.GEARS_EVIDENCE_AUTO_DISCOVER;
+const previousAutoDiscoverRoots = process.env.GEARS_EVIDENCE_AUTO_DISCOVER_ROOTS;
+
+function writeEvidenceJson(evidenceDir: string, filename: string, value: unknown): void {
+  fs.writeFileSync(path.join(evidenceDir, filename), JSON.stringify(value, null, 2));
+}
+
+function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[] = []): void {
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
+    schema_version: 'gears-worker-acceptance-verdict/v1',
+    status: 'passed',
+    acceptance_passed: true,
+    pressure_submitted: true,
+    gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+    failed_gate_ids: [],
+    skipped_gate_ids: [],
+    recommended_actions: recommendedActions,
+  });
+  writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-archive.json', {
+    schema_version: 'gears-worker-acceptance-archive/v1',
+    status: 'signoff_ready',
+    signoff_ready: true,
+    totals: {
+      missing_required_attachment_count: 0,
+      required_attachment_count: 26,
+      required_checksum_count: 26,
+      evidence_file_count: 70,
+    },
+    required_attachments: [
+      'gears-worker-acceptance-verdict.json',
+      'story-agent-generated-health-audit.json',
+      'story-agent-mvp-status-audit.json',
+    ],
+    missing_required_files: [],
+    recommended_actions: recommendedActions,
+  });
+  writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-integrity.json', {
+    schema_version: 'gears-worker-acceptance-integrity/v1',
+    status: 'passed',
+    integrity_passed: true,
+    record_count: 70,
+    mismatch_count: 0,
+    missing_file_count: 0,
+    sha256_mismatch_count: 0,
+    recommended_actions: [],
+  });
+  writeEvidenceJson(evidenceDir, 'gears-worker-response-audit.json', {
+    totals: {
+      record_count: 370,
+      transport_error_count: 0,
+      http_error_count: 0,
+      unknown_count: 0,
+      missing_worker_id_count: 0,
+      missing_source_id_count: 0,
+      missing_ready_artifact_count: 0,
+      failure_category_counts: {
+        render_failed: 2,
+      },
+    },
+    recommended_actions: [],
+  });
+  writeEvidenceJson(evidenceDir, 'story-agent-callback-response-audit.json', {
+    totals: {
+      transport_error_count: 0,
+      http_error_count: 0,
+      ledger_match_missing_count: 0,
+      failed_count: 0,
+    },
+    recommended_actions: [],
+  });
+  writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
+    schema_version: 'story-agent-generated-health-audit/v1',
+    status: 'passed',
+    before: { summary: { ready_count: 1 } },
+    after: { summary: { ready_count: 1 } },
+    deltas: { ready_count: 0, interrupted_count: 0, production_gap_count: 0 },
+    recommended_actions: [],
+  });
+  writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
+    schema_version: 'story-agent-mvp-status-audit/v1',
+    status: 'passed',
+    before: { status: 'ready', score: 96 },
+    after: { status: 'ready', score: 96 },
+    deltas: { score: 0, status_rank: 0, blocker_count: 0 },
+    failed_checks: [],
+    warning_checks: [],
+    recommended_actions: [],
+  });
+  writeEvidenceJson(evidenceDir, 'gears-large-project-response-audit.json', {
+    totals: {
+      pressure_submitted: true,
+      request_unit_count: 120,
+      response_record_count: 120,
+      accepted_count: 120,
+      rejected_count: 0,
+      failed_count: 0,
+      source_echo_count: 120,
+      missing_requested_source_count: 0,
+      duplicate_source_id_count: 0,
+      unexpected_source_count: 0,
+    },
+    recommended_actions: [],
+  });
+}
+
+beforeEach(() => {
+  process.env.KB_ROOT = dataRoot;
+  fs.mkdirSync(path.join(dataRoot, 'provinces'), { recursive: true });
+});
+
+afterEach(() => {
+  if (previousKbRoot === undefined) delete process.env.KB_ROOT;
+  else process.env.KB_ROOT = previousKbRoot;
+  if (previousEvidenceDir === undefined) delete process.env.GEARS_EVIDENCE_DIR;
+  else process.env.GEARS_EVIDENCE_DIR = previousEvidenceDir;
+  if (previousAutoDiscover === undefined) delete process.env.GEARS_EVIDENCE_AUTO_DISCOVER;
+  else process.env.GEARS_EVIDENCE_AUTO_DISCOVER = previousAutoDiscover;
+  if (previousAutoDiscoverRoots === undefined) delete process.env.GEARS_EVIDENCE_AUTO_DISCOVER_ROOTS;
+  else process.env.GEARS_EVIDENCE_AUTO_DISCOVER_ROOTS = previousAutoDiscoverRoots;
+  fs.rmSync(tmpRoot, { recursive: true, force: true });
+});
+
+describe('kb_get_gears_worker_evidence_signoff', () => {
+  it('blocks when evidence_dir is missing', async () => {
+    delete process.env.GEARS_EVIDENCE_DIR;
+    process.env.GEARS_EVIDENCE_AUTO_DISCOVER = '0';
+
+    const result = await getGearsWorkerEvidenceSignoff({ include_markdown: false });
+
+    expect(result.schema_version).toBe('mcp-gears-worker-evidence-signoff/v1');
+    expect(result.status).toBe('blocked');
+    expect(result.evidence_dir_allowed).toBe(false);
+    expect(result.evidence_dir_error).toBe('missing_evidence_dir');
+    expect(result.failed_gate_ids).toEqual(['evidence_dir']);
+  });
+
+  it('auto-discovers the latest worker evidence directory when no input or env dir is set', async () => {
+    delete process.env.GEARS_EVIDENCE_DIR;
+    process.env.GEARS_EVIDENCE_AUTO_DISCOVER = '1';
+    process.env.GEARS_EVIDENCE_AUTO_DISCOVER_ROOTS = tmpRoot;
+    const oldEvidenceDir = path.join(tmpRoot, 'gears-worker-evidence-old');
+    const latestEvidenceDir = path.join(tmpRoot, 'gears-worker-evidence-new');
+    writeCompleteEvidence(oldEvidenceDir);
+    writeCompleteEvidence(latestEvidenceDir);
+
+    const result = await getGearsWorkerEvidenceSignoff({ include_markdown: false });
+
+    expect(result.status).toBe('ready');
+    expect(result.evidence_dir).toBe(latestEvidenceDir);
+    expect(result.evidence_dir_source).toBe('latest');
+    expect(result.evidence_dir_allowed).toBe(true);
+  });
+
+  it('summarizes a complete evidence directory as ready', async () => {
+    const evidenceDir = path.join(tmpRoot, 'gears-evidence-ready');
+    writeCompleteEvidence(evidenceDir);
+
+    const result = await getGearsWorkerEvidenceSignoff({ evidence_dir: evidenceDir });
+
+    expect(result.status).toBe('ready');
+    expect(result.evidence_dir_source).toBe('input');
+    expect(result.acceptance_passed).toBe(true);
+    expect(result.signoff_ready).toBe(true);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.health_audit_passed).toBe(true);
+    expect(result.mvp_status_audit_passed).toBe(true);
+    expect(result.pressure_submitted).toBe(true);
+    expect(result.worker_record_count).toBe(370);
+    expect(result.worker_failure_category_counts).toEqual({ render_failed: 2 });
+    expect(result.large_project_request_unit_count).toBe(120);
+    expect(result.large_project_response_record_count).toBe(120);
+    expect(result.large_project_source_echo_count).toBe(120);
+    expect(result.mvp_status_before).toBe('ready');
+    expect(result.mvp_status_after).toBe('ready');
+    expect(result.mvp_score_delta).toBe(0);
+    expect(result.missing_required_files).toEqual([]);
+    expect(result.markdown).toContain('large_project_source_echo: 120/120');
+    expect(result.markdown).toContain('mvp_score_delta: 0');
+  });
+
+  it('deduplicates repeated recommended actions', async () => {
+    const evidenceDir = path.join(tmpRoot, 'gears-evidence-dedupe');
+    const action = {
+      priority: 'P0',
+      owner: 'GEARS v2 ops',
+      evidence: 'transport_error_count',
+      action: 'Fix GEARS worker reachability.',
+    };
+    writeCompleteEvidence(evidenceDir, [action, action]);
+
+    const result = await getGearsWorkerEvidenceSignoff({ evidence_dir: evidenceDir, include_markdown: false });
+
+    expect(result.recommended_actions).toEqual([expect.objectContaining(action)]);
+  });
+
+  it('rejects evidence directories outside allowed roots', async () => {
+    const result = await getGearsWorkerEvidenceSignoff({ evidence_dir: '/etc', include_markdown: false });
+
+    expect(result.status).toBe('blocked');
+    expect(result.evidence_dir_allowed).toBe(false);
+    expect(result.evidence_dir_error).toBe('evidence_dir_not_allowed');
+  });
+});

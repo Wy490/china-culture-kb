@@ -3,6 +3,11 @@
 import { Router } from 'express';
 import { mcpReadAllProvinceFiles, mcpParseEntries } from '../services/mcp-proxy.js';
 import { success } from '@shared/types.js';
+import {
+  GearsExecutionLiveSmokeRunRequestSchema,
+  ProductionReadinessPortfolioRunRequestSchema,
+} from '@shared/schemas.js';
+import { validateBody } from '../middleware/validate.js';
 import type {
   AIModelProfile,
   ProvinceInfo,
@@ -15,9 +20,24 @@ import type {
 import { listModelProfiles } from '../services/model-catalog.js';
 import { getNarrativePatternCatalog } from '../services/narrative-pattern-library.js';
 import {
+  getGearsExecutionAcceptanceReport,
   getGearsExecutionConfigInfo,
   getGearsExecutionContractInfo,
+  getGearsExecutionGeneratedProjectPressureReport,
+  getGearsExecutionPressureReport,
+  getGearsExecutionReadinessReport,
+  getGearsExecutionSmokePackage,
+  getGearsExecutionWorkerAcceptanceKit,
+  getGearsExecutionWorkerEvidenceBundle,
+  getGearsExecutionWorkerEvidenceSignoffReport,
+  runGearsExecutionLiveSmoke,
 } from '../services/gears-execution-service.js';
+import {
+  getProductionReadinessPortfolio,
+  runProductionReadinessPortfolioAutomation,
+} from '../services/production-readiness-portfolio-service.js';
+import { getStoryAgentGeneratedHealth } from '../services/generated-health-service.js';
+import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
 
 export const systemRouter = Router();
 
@@ -85,6 +105,72 @@ systemRouter.get('/narrative-patterns', (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/system/production-readiness-portfolio — cross-project production command queue
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/production-readiness-portfolio', async (req, res, next) => {
+  try {
+    const includeArchivedSeries = req.query.includeArchivedSeries === 'true' || req.query.includeArchivedSeries === '1';
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+    res.json(success(await getProductionReadinessPortfolio({ includeArchivedSeries, limit })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/system/production-readiness-portfolio/run-automation — run safe portfolio queue automation
+// ---------------------------------------------------------------------------
+
+systemRouter.post(
+  '/production-readiness-portfolio/run-automation',
+  validateBody(ProductionReadinessPortfolioRunRequestSchema),
+  async (req, res, next) => {
+    try {
+      res.json(success(await runProductionReadinessPortfolioAutomation(req.body)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/system/story-agent-generated-health — read-only generated artifact health audit
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/story-agent-generated-health', async (req, res, next) => {
+  try {
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+    res.json(success(await getStoryAgentGeneratedHealth({ limit })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/story-agent-mvp-status — Story Agent MVP command status
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/story-agent-mvp-status', async (req, res, next) => {
+  try {
+    const generatedLimit = typeof req.query.generatedLimit === 'string'
+      ? Number(req.query.generatedLimit)
+      : typeof req.query.generated_limit === 'string'
+        ? Number(req.query.generated_limit)
+        : undefined;
+    const portfolioLimit = typeof req.query.portfolioLimit === 'string'
+      ? Number(req.query.portfolioLimit)
+      : typeof req.query.portfolio_limit === 'string'
+        ? Number(req.query.portfolio_limit)
+        : undefined;
+    const includeArchivedSeries = req.query.includeArchivedSeries === 'true' || req.query.includeArchivedSeries === '1';
+    res.json(success(await getStoryAgentMvpStatus({ generatedLimit, portfolioLimit, includeArchivedSeries })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // GET /api/system/gears-execution-config — safe GEARS v2 execution config
 // ---------------------------------------------------------------------------
 
@@ -99,6 +185,107 @@ systemRouter.get('/gears-execution-config', (_req, res) => {
 systemRouter.get('/gears-execution-contract', (_req, res) => {
   res.json(success(getGearsExecutionContractInfo()));
 });
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-readiness — local GEARS contract readiness
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-readiness', (_req, res) => {
+  res.json(success(getGearsExecutionReadinessReport()));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-smoke-package — handoff package for GEARS v2
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-smoke-package', (_req, res) => {
+  res.json(success(getGearsExecutionSmokePackage()));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-pressure-report — local GEARS boundary pressure
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-pressure-report', (_req, res) => {
+  res.json(success(getGearsExecutionPressureReport()));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-generated-project-pressure — generated ledger pressure audit
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-generated-project-pressure', async (_req, res, next) => {
+  try {
+    res.json(success(await getGearsExecutionGeneratedProjectPressureReport()));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-acceptance-report — GEARS v2 worker acceptance
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-acceptance-report', async (_req, res, next) => {
+  try {
+    res.json(success(await getGearsExecutionAcceptanceReport()));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-worker-acceptance-kit — executable GEARS worker runbook
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-worker-acceptance-kit', async (_req, res, next) => {
+  try {
+    res.json(success(await getGearsExecutionWorkerAcceptanceKit()));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-worker-evidence-bundle — GEARS worker evidence pack
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-worker-evidence-bundle', async (_req, res, next) => {
+  try {
+    res.json(success(await getGearsExecutionWorkerEvidenceBundle()));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-execution-worker-evidence-signoff — read worker smoke evidence
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-execution-worker-evidence-signoff', async (req, res, next) => {
+  try {
+    const evidenceDir = typeof req.query.evidence_dir === 'string' ? req.query.evidence_dir : undefined;
+    res.json(success(await getGearsExecutionWorkerEvidenceSignoffReport({ evidence_dir: evidenceDir })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/system/gears-execution-live-smoke-run — dry-run or execute GEARS v2 smoke
+// ---------------------------------------------------------------------------
+
+systemRouter.post(
+  '/gears-execution-live-smoke-run',
+  validateBody(GearsExecutionLiveSmokeRunRequestSchema),
+  async (req, res, next) => {
+    try {
+      res.json(success(await runGearsExecutionLiveSmoke(req.body)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // GET /api/system/seedance-provider-config — safe adapter config status

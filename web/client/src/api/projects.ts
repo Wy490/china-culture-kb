@@ -13,6 +13,9 @@ import type {
   StoryProjectDetail,
   StoryProjectExportPackage,
   StoryProjectListItem,
+  ProductionReadinessAutomationRunRequest,
+  ProductionReadinessAutomationRunResult,
+  StoryProjectProductionReadinessReport,
   StoryProjectRetainRecentResult,
   SeedanceAssetBatchImportRequest,
   SeedanceAssetBatchImportResult,
@@ -78,6 +81,20 @@ export function exportProjectCurrentVersion(projectId: string) {
 
 export function getProjectProductionBoard(projectId: string) {
   return apiGet<StoryProductionBoard>(`/projects/${projectId}/production-board`)
+}
+
+export function getProjectProductionReadiness(projectId: string) {
+  return apiGet<StoryProjectProductionReadinessReport>(`/projects/${projectId}/production-readiness`)
+}
+
+export function runProjectProductionReadinessAutomation(
+  projectId: string,
+  body: ProductionReadinessAutomationRunRequest = { dry_run: false },
+) {
+  return apiPost<ProductionReadinessAutomationRunResult<StoryProjectProductionReadinessReport>>(
+    `/projects/${projectId}/production-readiness/run-automation`,
+    body,
+  )
 }
 
 export function exportProjectProductionBoard(projectId: string) {

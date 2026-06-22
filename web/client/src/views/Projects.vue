@@ -65,6 +65,200 @@
       </details>
     </section>
 
+    <section v-if="storyAgentMvpStatus" class="projects-page__portfolio projects-page__mvp-status">
+      <div class="projects-page__portfolio-head">
+        <div>
+          <h2>Story Agent MVP 状态</h2>
+          <p>
+            {{ productionStatusLabel(storyAgentMvpStatus.status) }}
+            · {{ storyAgentMvpStatus.score }}/100
+            · generated {{ storyAgentMvpStatus.summary.generated_ready_count }}/{{ storyAgentMvpStatus.summary.generated_target_count }}
+            · readiness {{ storyAgentMvpStatus.summary.readiness_ready_count }}/{{ storyAgentMvpStatus.summary.readiness_target_count }}
+          </p>
+        </div>
+        <div class="projects-page__portfolio-head-actions">
+          <button class="projects-page__muted-btn" :disabled="!storyAgentMvpStatus.markdown" @click="exportStoryAgentMvpStatusMarkdown">
+            导出 MD
+          </button>
+          <button class="projects-page__muted-btn" @click="exportStoryAgentMvpStatusJson">
+            导出 JSON
+          </button>
+          <button class="projects-page__muted-btn" :disabled="loadingMvpStatus" @click="loadStoryAgentMvpStatus">
+            {{ loadingMvpStatus ? '刷新中…' : '刷新状态' }}
+          </button>
+        </div>
+      </div>
+      <div class="projects-page__portfolio-metrics">
+        <span>planned {{ storyAgentMvpStatus.summary.generated_planned_count }}</span>
+        <span>production gap {{ storyAgentMvpStatus.summary.generated_production_gap_count }}</span>
+        <span>interrupted {{ storyAgentMvpStatus.summary.generated_interrupted_count }}</span>
+        <span>阻断目标 {{ storyAgentMvpStatus.summary.readiness_blocked_count }}</span>
+        <span>安全自动化 {{ storyAgentMvpStatus.summary.ready_automation_step_count }}</span>
+        <span>GEARS/人工 {{ storyAgentMvpStatus.summary.external_or_manual_step_count }}</span>
+      </div>
+      <div class="projects-page__mvp-lanes">
+        <article
+          v-for="lane in storyAgentMvpStatus.lanes"
+          :key="lane.key"
+          class="projects-page__mvp-lane"
+        >
+          <div class="projects-page__mvp-lane-head">
+            <span :class="['projects-page__readiness-badge', `projects-page__readiness-badge--${lane.status}`]">
+              {{ productionStatusLabel(lane.status) }}
+            </span>
+            <strong>{{ lane.score }}/100</strong>
+          </div>
+          <h3>{{ storyAgentMvpLaneLabel(lane.key) }}</h3>
+          <p>{{ lane.detail }}</p>
+          <small v-if="lane.next_action">{{ lane.next_action }}</small>
+        </article>
+      </div>
+      <div class="projects-page__mvp-columns">
+        <div v-if="storyAgentMvpStatus.next_actions.length" class="projects-page__mvp-column">
+          <h3>下一步</h3>
+          <ol>
+            <li v-for="action in storyAgentMvpStatus.next_actions.slice(0, 5)" :key="action">
+              {{ action }}
+            </li>
+          </ol>
+        </div>
+        <div v-if="storyAgentMvpStatus.priority_targets.length" class="projects-page__mvp-column">
+          <h3>优先目标</h3>
+          <ol>
+            <li
+              v-for="target in storyAgentMvpStatus.priority_targets.slice(0, 5)"
+              :key="`${target.scope}:${target.project_id}:${target.priority_score}`"
+            >
+              <RouterLink :to="storyAgentMvpTargetLink(target)">
+                P{{ target.priority_score }} · {{ target.title || target.project_id }}
+              </RouterLink>
+              <span>{{ target.primary_action || target.status }}</span>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="productionPortfolio" class="projects-page__portfolio">
+      <div class="projects-page__portfolio-head">
+        <div>
+          <h2>生产指挥总览</h2>
+          <p>
+            {{ productionPortfolio.summary.total_target_count }} 个目标
+            · blocked {{ productionPortfolio.summary.blocked_count }}
+            · needs action {{ productionPortfolio.summary.needs_action_count }}
+            · ready automation {{ productionPortfolio.summary.ready_automation_step_count }}
+          </p>
+        </div>
+        <div class="projects-page__portfolio-head-actions">
+          <button
+            class="projects-page__muted-btn"
+            :disabled="runningPortfolioAutomation || loadingPortfolio"
+            @click="runPortfolioAutomation"
+          >
+            {{ runningPortfolioAutomation ? '自动化中…' : '运行队列安全自动化' }}
+          </button>
+          <button class="projects-page__muted-btn" :disabled="loadingPortfolio" @click="loadProductionPortfolio">
+            {{ loadingPortfolio ? '刷新中…' : '刷新总览' }}
+          </button>
+        </div>
+      </div>
+      <div class="projects-page__portfolio-metrics">
+        <span>故事 {{ productionPortfolio.summary.story_project_count }}</span>
+        <span>系列 {{ productionPortfolio.summary.ai_comic_series_count }}</span>
+        <span>阻断项 {{ productionPortfolio.summary.blocker_count }}</span>
+        <span>GEARS/人工外部步骤 {{ productionPortfolio.summary.external_automation_step_count + productionPortfolio.summary.manual_automation_step_count }}</span>
+        <span>已有自动化记录 {{ productionPortfolio.summary.latest_automation_run_count }}</span>
+        <span>队列运行 {{ productionPortfolio.summary.portfolio_automation_run_count }}</span>
+        <span v-if="productionPortfolio.latest_portfolio_automation_run">
+          最近队列 {{ formatDate(productionPortfolio.latest_portfolio_automation_run.completed_at) }}
+          · 执行 {{ productionPortfolio.latest_portfolio_automation_run.executed_target_count }}
+          · 失败 {{ productionPortfolio.latest_portfolio_automation_run.failed_target_count }}
+        </span>
+      </div>
+      <div class="projects-page__portfolio-grid">
+        <article
+          v-for="item in productionPortfolio.items.slice(0, 5)"
+          :key="`${item.scope}:${item.project_id}`"
+          class="projects-page__portfolio-item"
+        >
+          <div class="projects-page__portfolio-item-head">
+            <span :class="['projects-page__readiness-badge', `projects-page__readiness-badge--${item.status}`]">
+              {{ productionStatusLabel(item.status) }}
+            </span>
+            <strong>P{{ item.priority_score }}</strong>
+          </div>
+          <RouterLink class="projects-page__portfolio-title" :to="portfolioItemLink(item)">
+            {{ item.title }}
+          </RouterLink>
+          <p>{{ item.scope === 'story_project' ? '故事项目' : '漫剧系列' }} · {{ item.score }}/100</p>
+          <p v-if="item.primary_issue_label">阻断：{{ item.primary_issue_label }}</p>
+          <p v-if="item.primary_action_label">下一步：{{ item.primary_action_label }}</p>
+          <small v-if="item.latest_automation_run">
+            最近自动化 {{ formatDate(item.latest_automation_run.completed_at) }} · executed {{ item.latest_automation_run.executed_step_count }}
+          </small>
+        </article>
+      </div>
+      <div v-if="productionPortfolio.action_buckets.length" class="projects-page__portfolio-actions">
+        <span
+          v-for="bucket in productionPortfolio.action_buckets.slice(0, 6)"
+          :key="bucket.action_key"
+        >
+          {{ bucket.label }} · {{ bucket.count }}
+        </span>
+      </div>
+    </section>
+
+    <section v-if="generatedHealth" class="projects-page__portfolio projects-page__generated-health">
+      <div class="projects-page__portfolio-head">
+        <div>
+          <h2>生成项目体检</h2>
+          <p>
+            {{ generatedHealth.summary.total_target_count }} 个目标
+            · interrupted {{ generatedHealth.summary.interrupted_count }}
+            · production gap {{ generatedHealth.summary.production_gap_count }}
+            · planned {{ generatedHealth.summary.planned_count }}
+          </p>
+        </div>
+        <div class="projects-page__portfolio-head-actions">
+          <button class="projects-page__muted-btn" :disabled="loadingGeneratedHealth" @click="loadGeneratedHealth">
+            {{ loadingGeneratedHealth ? '刷新中…' : '刷新体检' }}
+          </button>
+        </div>
+      </div>
+      <div class="projects-page__portfolio-metrics">
+        <span>故事 {{ generatedHealth.summary.scanned_story_project_count }}</span>
+        <span>系列 {{ generatedHealth.summary.scanned_series_project_count }}</span>
+        <span>缺当前故事 {{ generatedHealth.summary.missing_current_story_count }}</span>
+        <span>缺分镜 {{ generatedHealth.summary.missing_scene_breakdown_count }}</span>
+        <span>缺 GEARS 段 {{ generatedHealth.summary.missing_gears_segments_count }}</span>
+        <span>缺分集引用 {{ generatedHealth.summary.missing_episode_story_id_count }}</span>
+        <span>系列缺交付 {{ generatedHealth.summary.series_missing_delivery_count }}</span>
+        <span>系列缺后期指令 {{ generatedHealth.summary.series_missing_postproduction_count }}</span>
+      </div>
+      <div class="projects-page__portfolio-grid">
+        <article
+          v-for="item in generatedHealth.items.slice(0, 6)"
+          :key="`${item.scope}:${item.project_id}`"
+          class="projects-page__portfolio-item"
+        >
+          <div class="projects-page__portfolio-item-head">
+            <span :class="['projects-page__readiness-badge', `projects-page__readiness-badge--${item.status}`]">
+              {{ generatedHealthStatusLabel(item.status) }}
+            </span>
+            <strong>P{{ item.risk_score }}</strong>
+          </div>
+          <RouterLink class="projects-page__portfolio-title" :to="generatedHealthItemLink(item)">
+            {{ item.title || item.project_id }}
+          </RouterLink>
+          <p>{{ item.scope === 'story_project' ? '故事项目' : '漫剧系列' }} · {{ item.project_id }}</p>
+          <p v-if="item.missing_contracts.length">缺口：{{ item.missing_contracts.slice(0, 3).join(' / ') }}</p>
+          <p v-if="item.recommended_actions[0]">下一步：{{ item.recommended_actions[0] }}</p>
+          <small v-if="item.updated_at">更新 {{ formatDate(item.updated_at) }}</small>
+        </article>
+      </div>
+    </section>
+
     <section
       v-if="showStoryProjects && projects.length > 0"
       class="projects-page__bulkbar"
@@ -378,6 +572,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { deleteProject, deleteProjects, listProjects, retainRecentProjects } from '@/api/projects'
+import { getProductionReadinessPortfolio, getStoryAgentGeneratedHealth, getStoryAgentMvpStatus, runProductionReadinessPortfolioAutomation } from '@/api/system'
 import {
   archiveAiComicSeriesProject,
   assembleAiComicSeriesSeedanceCut,
@@ -396,6 +591,13 @@ import type {
   AiComicPacingProfile,
   AiComicSeriesProjectMeta,
   GearsVideoStatus,
+  ProductionReadinessPortfolioItem,
+  ProductionReadinessPortfolioReport,
+  ProductionReadinessStatus,
+  StoryAgentGeneratedHealthItem,
+  StoryAgentGeneratedHealthReport,
+  StoryAgentGeneratedHealthStatus,
+  StoryAgentMvpStatusReport,
   StoryProjectDeleteResult,
   StoryProjectListItem,
   StoryProjectStatus,
@@ -405,7 +607,14 @@ const RETAIN_RECENT_COUNT = 10
 
 const projects = ref<StoryProjectListItem[]>([])
 const seriesProjects = ref<AiComicSeriesProjectMeta[]>([])
+const storyAgentMvpStatus = ref<StoryAgentMvpStatusReport | null>(null)
+const productionPortfolio = ref<ProductionReadinessPortfolioReport | null>(null)
+const generatedHealth = ref<StoryAgentGeneratedHealthReport | null>(null)
 const loading = ref(false)
+const loadingMvpStatus = ref(false)
+const loadingPortfolio = ref(false)
+const loadingGeneratedHealth = ref(false)
+const runningPortfolioAutomation = ref(false)
 const error = ref('')
 const projectMessage = ref('')
 const searchQuery = ref('')
@@ -551,6 +760,30 @@ function gearsVideoStatusLabel(status: GearsVideoStatus): string {
   return map[status]
 }
 
+function productionStatusLabel(status: ProductionReadinessStatus): string {
+  if (status === 'ready') return '可生产'
+  if (status === 'blocked') return '阻断'
+  return '待处理'
+}
+
+function generatedHealthStatusLabel(status: StoryAgentGeneratedHealthStatus): string {
+  if (status === 'ready') return '完整'
+  if (status === 'planned') return '计划'
+  if (status === 'interrupted') return '中断'
+  return '缺生产合同'
+}
+
+function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number]['key']): string {
+  const map: Record<StoryAgentMvpStatusReport['lanes'][number]['key'], string> = {
+    generated_artifacts: '生成物',
+    story_quality: '故事质量',
+    repair_loop: '修复闭环',
+    delivery_contract: 'GEARS 交付合同',
+    production_command: '生产指挥',
+  }
+  return map[key]
+}
+
 function formatDate(iso: string): string {
   if (!iso) return '未记录'
   const d = new Date(iso)
@@ -569,6 +802,30 @@ function seriesProjectLink(seriesProjectId: string) {
   return {
     path: '/ai-comic-series/new',
     query: { seriesProjectId },
+  }
+}
+
+function portfolioItemLink(item: ProductionReadinessPortfolioItem) {
+  if (item.scope === 'story_project') return `/projects/${item.project_id}`
+  return {
+    path: '/ai-comic-series/new',
+    query: { seriesProjectId: item.project_id },
+  }
+}
+
+function generatedHealthItemLink(item: StoryAgentGeneratedHealthItem) {
+  if (item.scope === 'story_project') return `/projects/${item.project_id}`
+  return {
+    path: '/ai-comic-series/new',
+    query: { seriesProjectId: item.project_id },
+  }
+}
+
+function storyAgentMvpTargetLink(target: StoryAgentMvpStatusReport['priority_targets'][number]) {
+  if (target.scope === 'story_project') return `/projects/${target.project_id}`
+  return {
+    path: '/ai-comic-series/new',
+    query: { seriesProjectId: target.project_id },
   }
 }
 
@@ -820,6 +1077,24 @@ function downloadText(filename: string, text: string, type: string) {
   URL.revokeObjectURL(url)
 }
 
+function exportStoryAgentMvpStatusMarkdown() {
+  if (!storyAgentMvpStatus.value?.markdown) return
+  downloadText(
+    'story-agent-mvp-status.md',
+    storyAgentMvpStatus.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+}
+
+function exportStoryAgentMvpStatusJson() {
+  if (!storyAgentMvpStatus.value) return
+  downloadText(
+    'story-agent-mvp-status.json',
+    JSON.stringify(storyAgentMvpStatus.value, null, 2),
+    'application/json;charset=utf-8',
+  )
+}
+
 function toggleSelectFiltered() {
   const filteredIds = filteredProjects.value.map(project => project.project_id)
   if (allFilteredSelected.value) {
@@ -909,15 +1184,78 @@ async function loadProjects() {
   loading.value = true
   error.value = ''
   projectMessage.value = ''
-  const [storyRes, seriesRes] = await Promise.all([
+  const [storyRes, seriesRes, mvpStatusRes, portfolioRes, generatedHealthRes] = await Promise.all([
     listProjects(),
     listAiComicSeriesProjects(showArchivedSeries.value),
+    getStoryAgentMvpStatus({ includeArchivedSeries: showArchivedSeries.value, generatedLimit: 12, portfolioLimit: 12 }),
+    getProductionReadinessPortfolio({ includeArchivedSeries: showArchivedSeries.value, limit: 12 }),
+    getStoryAgentGeneratedHealth({ limit: 12 }),
   ])
   if (storyRes.ok && storyRes.data) projects.value = storyRes.data
   if (seriesRes.ok && seriesRes.data) seriesProjects.value = seriesRes.data
+  if (mvpStatusRes.ok && mvpStatusRes.data) storyAgentMvpStatus.value = mvpStatusRes.data
+  if (portfolioRes.ok && portfolioRes.data) productionPortfolio.value = portfolioRes.data
+  if (generatedHealthRes.ok && generatedHealthRes.data) generatedHealth.value = generatedHealthRes.data
   if (!storyRes.ok) error.value = storyRes.error?.message ?? '加载故事项目失败'
   if (!seriesRes.ok) error.value = seriesRes.error?.message ?? '加载漫剧系列失败'
+  if (!mvpStatusRes.ok) error.value = mvpStatusRes.error?.message ?? '加载 Story Agent MVP 状态失败'
+  if (!portfolioRes.ok) error.value = portfolioRes.error?.message ?? '加载生产指挥总览失败'
+  if (!generatedHealthRes.ok) error.value = generatedHealthRes.error?.message ?? '加载生成项目体检失败'
   loading.value = false
+}
+
+async function loadStoryAgentMvpStatus() {
+  loadingMvpStatus.value = true
+  const res = await getStoryAgentMvpStatus({ includeArchivedSeries: showArchivedSeries.value, generatedLimit: 12, portfolioLimit: 12 })
+  if (res.ok && res.data) {
+    storyAgentMvpStatus.value = res.data
+  } else {
+    error.value = res.error?.message ?? '刷新 Story Agent MVP 状态失败'
+  }
+  loadingMvpStatus.value = false
+}
+
+async function loadProductionPortfolio() {
+  loadingPortfolio.value = true
+  const res = await getProductionReadinessPortfolio({ includeArchivedSeries: showArchivedSeries.value, limit: 12 })
+  if (res.ok && res.data) {
+    productionPortfolio.value = res.data
+  } else {
+    error.value = res.error?.message ?? '刷新生产指挥总览失败'
+  }
+  loadingPortfolio.value = false
+}
+
+async function loadGeneratedHealth() {
+  loadingGeneratedHealth.value = true
+  const res = await getStoryAgentGeneratedHealth({ limit: 12 })
+  if (res.ok && res.data) {
+    generatedHealth.value = res.data
+  } else {
+    error.value = res.error?.message ?? '刷新生成项目体检失败'
+  }
+  loadingGeneratedHealth.value = false
+}
+
+async function runPortfolioAutomation() {
+  runningPortfolioAutomation.value = true
+  error.value = ''
+  projectMessage.value = ''
+  const res = await runProductionReadinessPortfolioAutomation({
+    dry_run: false,
+    include_archived_series: showArchivedSeries.value,
+    max_targets: 5,
+    per_target_max_steps: 4,
+    stop_on_error: false,
+  })
+  if (res.ok && res.data) {
+    await loadProjects()
+    productionPortfolio.value = res.data.after_portfolio
+    projectMessage.value = `队列自动化完成：执行 ${res.data.executed_target_count} 个，跳过 ${res.data.skipped_target_count} 个，失败 ${res.data.failed_target_count} 个`
+  } else {
+    error.value = res.error?.message ?? '运行队列安全自动化失败'
+  }
+  runningPortfolioAutomation.value = false
 }
 
 onMounted(async () => {
@@ -980,6 +1318,246 @@ onMounted(async () => {
   gap: 12px;
   align-items: center;
   margin-bottom: 20px;
+}
+
+.projects-page__portfolio {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fbfcfd;
+}
+
+.projects-page__portfolio-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.projects-page__portfolio-head-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.projects-page__portfolio-head h2 {
+  margin: 0 0 4px 0;
+  color: #22313f;
+  font-size: 17px;
+}
+
+.projects-page__portfolio-head p {
+  margin: 0;
+  color: #66727f;
+  font-size: 13px;
+}
+
+.projects-page__portfolio-metrics,
+.projects-page__portfolio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.projects-page__portfolio-metrics span,
+.projects-page__portfolio-actions span {
+  padding: 5px 8px;
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  background: #fff;
+  color: #33475b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.projects-page__mvp-lanes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.projects-page__mvp-lane {
+  min-height: 142px;
+  padding: 10px 10px 10px 12px;
+  border-left: 4px solid #9cc8e6;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.projects-page__mvp-lane-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.projects-page__mvp-lane-head strong {
+  color: #33475b;
+  font-size: 12px;
+}
+
+.projects-page__mvp-lane h3,
+.projects-page__mvp-column h3 {
+  margin: 0 0 6px 0;
+  color: #22313f;
+  font-size: 14px;
+}
+
+.projects-page__mvp-lane p,
+.projects-page__mvp-lane small {
+  color: #52616f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.projects-page__mvp-lane p {
+  margin: 0 0 6px 0;
+}
+
+.projects-page__mvp-lane small {
+  display: block;
+}
+
+.projects-page__mvp-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.projects-page__mvp-column {
+  padding-top: 10px;
+  border-top: 1px solid #d7dee5;
+}
+
+.projects-page__mvp-column ol {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.projects-page__mvp-column li {
+  color: #52616f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.projects-page__mvp-column a {
+  color: #22313f;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.projects-page__mvp-column a:hover {
+  color: #2980b9;
+}
+
+.projects-page__mvp-column span {
+  display: block;
+  margin-top: 2px;
+  color: #66727f;
+}
+
+.projects-page__portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.projects-page__portfolio-item {
+  min-height: 156px;
+  padding: 11px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.projects-page__portfolio-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.projects-page__portfolio-item-head strong {
+  color: #33475b;
+  font-size: 13px;
+}
+
+.projects-page__portfolio-title {
+  display: block;
+  margin-bottom: 7px;
+  color: #22313f;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.projects-page__portfolio-title:hover {
+  color: #2980b9;
+}
+
+.projects-page__portfolio-item p {
+  margin: 4px 0;
+  color: #52616f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.projects-page__portfolio-item small {
+  display: block;
+  margin-top: 7px;
+  color: #66727f;
+  font-size: 11px;
+}
+
+.projects-page__readiness-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.projects-page__readiness-badge--ready {
+  background: #eaf7ef;
+  color: #1e7e45;
+}
+
+.projects-page__readiness-badge--needs_action {
+  background: #fff7e6;
+  color: #9a6700;
+}
+
+.projects-page__readiness-badge--blocked {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.projects-page__readiness-badge--planned {
+  background: #eef2f6;
+  color: #425466;
+}
+
+.projects-page__readiness-badge--production_gap {
+  background: #fff7e6;
+  color: #9a6700;
+}
+
+.projects-page__readiness-badge--interrupted {
+  background: #fdecec;
+  color: #b42318;
 }
 
 .projects-page__bulkbar {

@@ -10,6 +10,7 @@ import {
   GearsJobSubmitRequestSchema,
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
+  ProductionReadinessAutomationRunRequestSchema,
   ProjectRetainRecentRequestSchema,
   SeedanceAssetBatchImportRequestSchema,
   SeedanceAssetLibraryUpdateRequestSchema,
@@ -41,6 +42,7 @@ import {
   getProject,
   getProjectSeedanceProviderQueueOverview,
   getProjectSeedanceProviderRetryPlan,
+  getProjectProductionReadiness,
   getProjectProductionBoard,
   listProjectSeedanceGlobalAssetLibrary,
   importProjectSeedanceAssetBatch,
@@ -55,6 +57,7 @@ import {
   repairProjectQuality,
   repairProjectProductionBoard,
   regenerateProjectScene,
+  runProjectProductionReadinessAutomation,
   reuseProjectSeedanceAsset,
   retainRecentProjects,
   selectProjectSeedanceShotVersion,
@@ -283,6 +286,31 @@ projectsRouter.get('/:projectId/production-board', validateParams(ProjectIdParam
     next(err);
   }
 });
+
+projectsRouter.get('/:projectId/production-readiness', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  try {
+    const { projectId } = req.params as { projectId: string };
+    const result = await getProjectProductionReadiness(projectId);
+    res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.post(
+  '/:projectId/production-readiness/run-automation',
+  validateParams(ProjectIdParamSchema),
+  validateBody(ProductionReadinessAutomationRunRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await runProjectProductionReadinessAutomation(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 projectsRouter.post('/:projectId/production-board/export', validateParams(ProjectIdParamSchema), async (req, res, next) => {
   try {

@@ -9,6 +9,8 @@ import type {
   GearsJobSubmitRequest,
   GearsSegmentsResponse,
   GearsDeliveryPackage,
+  ProductionReadinessAutomationRunRequest,
+  ProductionReadinessAutomationRunResult,
   AiComicSeriesGearsJobCallbackResult,
   AiComicSeriesGearsJobStatusSyncResult,
   AiComicSeriesGearsJobSubmitResult,
@@ -21,6 +23,7 @@ import type {
   AiComicEpisodeGenerateRequest,
   AiComicSeriesBibleExportPackage,
   AiComicSeriesLedgerRebuildRequest,
+  AiComicSeriesProductionReadinessReport,
   AiComicSeriesProjectArchiveRequest,
   AiComicSeriesProjectCopyRequest,
   AiComicSeriesProjectDeleteResult,
@@ -139,6 +142,22 @@ export function listAiComicSeriesProjects(includeArchived = false) {
 
 export function getAiComicSeriesProject(seriesProjectId: string) {
   return apiGet<AiComicSeriesProjectDetail>(`/story-outline/ai-comic-series-projects/${seriesProjectId}`)
+}
+
+export function getAiComicSeriesProductionReadiness(seriesProjectId: string) {
+  return apiGet<AiComicSeriesProductionReadinessReport>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/production-readiness`,
+  )
+}
+
+export function runAiComicSeriesProductionReadinessAutomation(
+  seriesProjectId: string,
+  req: ProductionReadinessAutomationRunRequest = { dry_run: false },
+) {
+  return apiPost<ProductionReadinessAutomationRunResult<AiComicSeriesProductionReadinessReport>>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/production-readiness/run-automation`,
+    req,
+  )
 }
 
 export function saveAiComicSeriesProject(req: AiComicSeriesProjectSaveRequest) {

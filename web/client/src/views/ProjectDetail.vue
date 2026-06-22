@@ -61,6 +61,82 @@
         </div>
       </section>
 
+      <section v-if="productionReadiness" class="project-detail-page__readiness">
+        <div class="project-detail-page__readiness-head">
+          <div>
+            <h2 class="project-detail-page__section-title">制作 readiness</h2>
+            <p>
+              {{ productionReadinessStatusLabel(productionReadiness.summary.status) }}
+              · {{ productionReadiness.summary.score }}/100
+              · lanes {{ productionReadiness.summary.ready_lane_count }}/{{ productionReadiness.summary.total_lane_count }}
+              · blockers {{ productionReadiness.summary.blocker_count }}
+              · GEARS {{ productionReadiness.summary.gears_job_count }}
+            </p>
+          </div>
+          <div class="project-detail-page__readiness-actions">
+            <button class="project-detail-page__action-btn" :disabled="loadingProductionReadiness" @click="loadProjectProductionReadiness(true)">
+              {{ loadingProductionReadiness ? '刷新中…' : '刷新' }}
+            </button>
+            <button
+              class="project-detail-page__action-btn"
+              :disabled="runningProductionAutomation || loadingProductionReadiness"
+              @click="runProductionReadinessAutomation"
+            >
+              {{ runningProductionAutomation ? '自动化中…' : '运行安全自动化' }}
+            </button>
+          </div>
+        </div>
+        <div class="project-detail-page__readiness-lanes">
+          <span
+            v-for="lane in productionReadiness.lanes"
+            :key="lane.key"
+            :class="['project-detail-page__readiness-chip', `project-detail-page__readiness-chip--${lane.status}`]"
+          >
+            {{ lane.label }} · {{ productionReadinessStatusLabel(lane.status) }} · {{ lane.score }}
+          </span>
+        </div>
+        <div v-if="productionReadiness.issues.length" class="project-detail-page__readiness-list">
+          <strong>阻断与提醒</strong>
+          <p v-for="issue in productionReadiness.issues.slice(0, 3)" :key="issue.issue_id">
+            {{ productionReadinessSeverityLabel(issue.severity) }} · {{ issue.label }}：{{ issue.detail }}
+          </p>
+        </div>
+        <div v-if="productionReadiness.next_actions.length" class="project-detail-page__readiness-list">
+          <strong>下一步</strong>
+          <p v-for="action in productionReadiness.next_actions.slice(0, 3)" :key="action.action_key">
+            {{ action.label }}：{{ action.detail }}
+          </p>
+        </div>
+        <div v-if="productionReadiness.automation_plan.steps.length" class="project-detail-page__readiness-list">
+          <strong>
+            自动化步骤
+            · ready {{ productionReadiness.automation_plan.ready_step_count }}
+            · blocked {{ productionReadiness.automation_plan.blocked_step_count }}
+            · manual {{ productionReadiness.automation_plan.manual_step_count }}
+          </strong>
+          <p v-for="step in productionReadiness.automation_plan.steps.slice(0, 4)" :key="step.step_id">
+            {{ productionReadinessAutomationStatusLabel(step.status) }}
+            · {{ productionReadinessAutomationRunnerLabel(step.runner) }}
+            · {{ step.label }}
+            <template v-if="step.api"> · {{ step.api.method }} {{ step.api.path }}</template>
+          </p>
+        </div>
+        <div v-if="productionReadiness.latest_automation_run" class="project-detail-page__readiness-list">
+          <strong>
+            最近自动化
+            · {{ formatDate(productionReadiness.latest_automation_run.completed_at) }}
+            · executed {{ productionReadiness.latest_automation_run.executed_step_count }}
+            · failed {{ productionReadiness.latest_automation_run.failed_step_count }}
+            · score {{ productionReadiness.latest_automation_run.before_score }}→{{ productionReadiness.latest_automation_run.after_score }}
+          </strong>
+          <p v-for="step in productionReadiness.latest_automation_run.steps.slice(0, 4)" :key="step.step_id">
+            {{ productionReadinessRunStepStatusLabel(step.status) }}
+            · {{ step.action_key }}
+            · {{ step.label }}
+          </p>
+        </div>
+      </section>
+
       <GearsWebhookStatus :status="detail.current_story.gears_webhook" />
       <GearsVideoStatus :video="detail.current_story.gears_video" />
 
@@ -153,6 +229,57 @@
             <span v-if="loadingGearsExecutionConfig">GEARS 配置读取中</span>
             <span v-else-if="gearsExecutionConfigError">GEARS 配置读取失败</span>
             <template v-else-if="gearsExecutionConfig">
+              <span
+                v-if="gearsExecutionReadiness"
+                :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionReadiness.status === 'ready' }"
+              >
+                readiness {{ gearsExecutionReadiness.status }} · {{ gearsExecutionReadiness.score }}
+              </span>
+              <span v-if="gearsExecutionReadiness">
+                smoke {{ gearsExecutionReadiness.local_smoke_passed_count }}/{{ gearsExecutionReadiness.local_smoke_total_count }}
+              </span>
+              <span
+                v-if="gearsExecutionReadiness"
+                :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionReadiness.live_e2e.ready }"
+              >
+                live {{ gearsExecutionReadiness.live_e2e.ready_step_count }}/{{ gearsExecutionReadiness.live_e2e.total_step_count }}
+              </span>
+              <span v-if="gearsExecutionSmokePackage">
+                package {{ gearsExecutionSmokePackage.steps.length }} steps
+              </span>
+              <span
+                v-if="gearsExecutionPressureReport"
+                :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionPressureReport.status === 'pass' }"
+              >
+                pressure {{ gearsExecutionPressureReport.status }} · {{ gearsExecutionPressureReport.retained_event_count }}/{{ gearsExecutionPressureReport.callback_event_retention_limit }}
+              </span>
+              <span
+                v-if="gearsExecutionGeneratedProjectPressureReport"
+                :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionGeneratedProjectPressureReport.pressure_status === 'ok' }"
+              >
+                generated pressure {{ gearsExecutionGeneratedProjectPressureReport.pressure_status }} · jobs {{ gearsExecutionGeneratedProjectPressureReport.total_job_count }}
+              </span>
+              <span
+                v-if="gearsExecutionAcceptanceReport"
+                :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionAcceptanceReport.status === 'ready' }"
+              >
+                acceptance {{ gearsExecutionAcceptanceReport.status }} · {{ gearsExecutionAcceptanceReport.acceptance_passed_count }}/{{ gearsExecutionAcceptanceReport.acceptance_total_count }}
+              </span>
+              <span v-if="gearsExecutionWorkerAcceptanceKit">
+                worker kit {{ gearsExecutionWorkerAcceptanceKit.commands.length }} commands
+              </span>
+              <span v-if="gearsExecutionWorkerAcceptanceKit?.smoke_targets.story_project">
+                smoke story {{ gearsExecutionWorkerAcceptanceKit.smoke_targets.story_project.id }}
+              </span>
+              <span v-if="gearsExecutionWorkerAcceptanceKit?.smoke_targets.series_project">
+                smoke series {{ gearsExecutionWorkerAcceptanceKit.smoke_targets.series_project.id }}
+              </span>
+              <span v-else-if="gearsExecutionWorkerAcceptanceKit?.smoke_targets.warning_count">
+                smoke target 缺 {{ gearsExecutionWorkerAcceptanceKit.smoke_targets.warning_count }}
+              </span>
+              <span v-if="gearsExecutionWorkerEvidenceBundle">
+                evidence {{ gearsExecutionWorkerEvidenceBundle.documents.length }} docs
+              </span>
               <span :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionConfig.ready_for_submit }">
                 GEARS API {{ gearsExecutionConfig.ready_for_submit ? '已配置' : '未配置' }}
               </span>
@@ -162,6 +289,18 @@
               <span :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionConfig.callback_base_configured }">
                 callback base {{ gearsExecutionConfig.callback_base_configured ? '已配置' : '未配置' }}
               </span>
+              <span>
+                callback 批量上限 {{ gearsExecutionConfig.callback_batch_item_limit }}
+              </span>
+              <span>
+                事件保留 {{ gearsExecutionConfig.callback_event_retention_limit }}
+              </span>
+              <span
+                v-for="item in gearsExecutionReadiness?.checks.filter(check => check.status === 'fail').slice(0, 2)"
+                :key="`gears-readiness-${item.id}`"
+              >
+                readiness 缺 {{ item.label }}
+              </span>
               <span
                 v-for="item in gearsExecutionConfig.missing_submit_requirements"
                 :key="`gears-${item}`"
@@ -169,6 +308,146 @@
                 缺 {{ item }}
               </span>
             </template>
+          </div>
+          <div
+            v-if="gearsExecutionSmokePackage"
+            class="project-detail-page__seedance-provider-config project-detail-page__gears-package-actions"
+          >
+            <button class="project-detail-page__seedance-provider-action" @click="exportGearsSmokePackageMarkdown">
+              导出 GEARS 联调包 MD
+            </button>
+            <button class="project-detail-page__seedance-provider-action" @click="exportGearsSmokePackageJson">
+              导出 GEARS 联调包 JSON
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionPressureReport"
+              @click="exportGearsPressureReportMarkdown"
+            >
+              导出 pressure 报告
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionGeneratedProjectPressureReport"
+              @click="exportGearsGeneratedProjectPressureReportMarkdown"
+            >
+              导出 generated pressure
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionAcceptanceReport"
+              @click="exportGearsAcceptanceReportMarkdown"
+            >
+              导出 acceptance 报告
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionWorkerAcceptanceKit"
+              @click="exportGearsWorkerAcceptanceKitMarkdown"
+            >
+              导出 worker kit MD
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionWorkerAcceptanceKit"
+              @click="exportGearsWorkerAcceptanceKitJson"
+            >
+              导出 worker kit JSON
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionWorkerAcceptanceKit"
+              @click="exportGearsWorkerAcceptanceKitShellScript"
+            >
+              导出 worker script
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionWorkerEvidenceBundle"
+              @click="exportGearsWorkerEvidenceBundleMarkdown"
+            >
+              导出 evidence MD
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionWorkerEvidenceBundle"
+              @click="exportGearsWorkerEvidenceBundleJson"
+            >
+              导出 evidence JSON
+            </button>
+            <input
+              v-model="gearsExecutionWorkerEvidenceSignoffDir"
+              class="project-detail-page__gears-evidence-input"
+              placeholder="/private/tmp/gears-worker-evidence-..."
+              aria-label="GEARS worker evidence directory"
+            />
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="loadingGearsExecutionWorkerEvidenceSignoff"
+              @click="loadGearsWorkerEvidenceSignoff"
+            >
+              {{ loadingGearsExecutionWorkerEvidenceSignoff ? '读取中...' : '读取 signoff' }}
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionWorkerEvidenceSignoff"
+              @click="exportGearsWorkerEvidenceSignoffMarkdown"
+            >
+              导出 signoff MD
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="!gearsExecutionWorkerEvidenceSignoff"
+              @click="exportGearsWorkerEvidenceSignoffJson"
+            >
+              导出 signoff JSON
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="runningGearsLiveSmoke"
+              @click="runGearsLiveSmokeDryRun"
+            >
+              {{ runningGearsLiveSmoke ? '生成中...' : '生成 live smoke 报告' }}
+            </button>
+            <button
+              class="project-detail-page__seedance-provider-action"
+              :disabled="runningGearsLiveSmoke || !gearsExecutionReadiness?.live_e2e.ready"
+              @click="runGearsLiveSmokeExecute"
+            >
+              执行 live smoke
+            </button>
+            <span v-if="gearsExecutionLiveSmokeReport">
+              live smoke {{ gearsExecutionLiveSmokeReport.status }}
+            </span>
+          </div>
+          <div
+            v-if="gearsExecutionWorkerEvidenceSignoff || gearsExecutionWorkerEvidenceSignoffError"
+            class="project-detail-page__seedance-provider-config"
+          >
+            <span
+              v-if="gearsExecutionWorkerEvidenceSignoff"
+              :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionWorkerEvidenceSignoff.status === 'ready' }"
+            >
+              signoff {{ gearsExecutionWorkerEvidenceSignoff.status }} · gates {{ gearsExecutionWorkerEvidenceSignoff.gate_counts.passed }}/{{ gearsExecutionWorkerEvidenceSignoff.gate_counts.total }}
+            </span>
+            <span v-if="gearsExecutionWorkerEvidenceSignoff">
+              missing attach {{ gearsExecutionWorkerEvidenceSignoff.missing_required_attachment_count }}/{{ gearsExecutionWorkerEvidenceSignoff.required_attachment_count }}
+            </span>
+            <span v-if="gearsExecutionWorkerEvidenceSignoff">
+              worker {{ gearsExecutionWorkerEvidenceSignoff.worker_record_count }} · errors {{ gearsExecutionWorkerEvidenceSignoff.worker_transport_error_count }}/{{ gearsExecutionWorkerEvidenceSignoff.worker_http_error_count }}
+            </span>
+            <span v-if="gearsExecutionWorkerEvidenceSignoff">
+              callback errors {{ gearsExecutionWorkerEvidenceSignoff.callback_transport_error_count }}/{{ gearsExecutionWorkerEvidenceSignoff.callback_http_error_count }}
+            </span>
+            <span v-if="gearsExecutionWorkerEvidenceSignoff">
+              pressure echo {{ gearsExecutionWorkerEvidenceSignoff.large_project_source_echo_count }}/{{ gearsExecutionWorkerEvidenceSignoff.large_project_request_unit_count }}
+            </span>
+            <span v-if="gearsExecutionWorkerEvidenceSignoff">
+              actions {{ gearsExecutionWorkerEvidenceSignoff.recommended_actions.length }}
+            </span>
+            <span v-if="gearsExecutionWorkerEvidenceSignoffError">
+              signoff 失败 {{ gearsExecutionWorkerEvidenceSignoffError }}
+            </span>
           </div>
           <div class="project-detail-page__seedance-provider-config">
             <span>GEARS jobs {{ gearsJobStats.total }}</span>
@@ -1065,6 +1344,7 @@ import {
   getProjectSeedanceProviderRetryPlan,
   getProject,
   getProjectProductionBoard,
+  getProjectProductionReadiness,
   importProjectGearsCallback,
   importProjectSeedanceAssetBatch,
   importProjectSeedanceShotCallbacks,
@@ -1075,6 +1355,7 @@ import {
   repairProjectProductionBoard,
   regenerateProjectScene,
   reuseProjectSeedanceAsset,
+  runProjectProductionReadinessAutomation,
   selectProjectSeedanceShotVersion,
   submitProjectGearsJobs,
   submitProjectSeedanceProviderRetryPlan,
@@ -1086,14 +1367,36 @@ import {
   updateProjectSupplementTask,
   uploadProjectSeedanceAssetFile,
 } from '@/api/projects'
-import { getGearsExecutionConfig, getModelProfiles, getSeedanceProviderAdapterConfig } from '@/api/system'
+import {
+  getGearsExecutionAcceptanceReport,
+  getGearsExecutionConfig,
+  getGearsExecutionGeneratedProjectPressureReport,
+  getGearsExecutionPressureReport,
+  getGearsExecutionReadiness,
+  getGearsExecutionSmokePackage,
+  getGearsExecutionWorkerAcceptanceKit,
+  getGearsExecutionWorkerEvidenceBundle,
+  getGearsExecutionWorkerEvidenceSignoff,
+  getModelProfiles,
+  getSeedanceProviderAdapterConfig,
+  runGearsExecutionLiveSmoke,
+} from '@/api/system'
 import StoryResult from '@/components/StoryResult.vue'
 import GearsWebhookStatus from '@/components/GearsWebhookStatus.vue'
 import GearsVideoStatus from '@/components/GearsVideoStatus.vue'
 import type {
   AIModelProfile,
   GearsJobCallbackRequest,
+  GearsExecutionAcceptanceReport,
   GearsExecutionConfigInfo,
+  GearsExecutionGeneratedProjectPressureReport,
+  GearsExecutionLiveSmokeRunReport,
+  GearsExecutionPressureReport,
+  GearsExecutionReadinessReport,
+  GearsExecutionSmokePackage,
+  GearsExecutionWorkerAcceptanceKit,
+  GearsExecutionWorkerEvidenceBundle,
+  GearsExecutionWorkerEvidenceSignoffReport,
   GearsJobLedgerItem,
   GearsJobSubmitFailure,
   KnowledgeSupplementTaskStatus,
@@ -1110,6 +1413,7 @@ import type {
   SeedanceShotProductionStatus,
   SeedanceShotVideoVersion,
   StoryProjectDetail,
+  StoryProjectProductionReadinessReport,
   StoryProjectStatus,
   StoryProjectVersionChangeType,
   StoryProjectVersionSummary,
@@ -1151,6 +1455,9 @@ const productionBoardExport = ref<StoryProductionBoardExportPackage | null>(null
 const productionRepairResult = ref<StoryProductionBoardRepairResult | null>(null)
 const productionRepairTrace = ref<StoryProductionBoardRepairTrace | null>(null)
 const loadingProductionBoard = ref(false)
+const productionReadiness = ref<StoryProjectProductionReadinessReport | null>(null)
+const loadingProductionReadiness = ref(false)
+const runningProductionAutomation = ref(false)
 const exportingProductionBoard = ref(false)
 const repairingProductionBoard = ref(false)
 const repairingAndExportingProductionBoard = ref(false)
@@ -1181,7 +1488,20 @@ const submittingGearsApiJobs = ref(false)
 const syncingGearsJobs = ref(false)
 const loadingGearsExecutionConfig = ref(false)
 const gearsExecutionConfig = ref<GearsExecutionConfigInfo | null>(null)
+const gearsExecutionReadiness = ref<GearsExecutionReadinessReport | null>(null)
+const gearsExecutionSmokePackage = ref<GearsExecutionSmokePackage | null>(null)
+const gearsExecutionLiveSmokeReport = ref<GearsExecutionLiveSmokeRunReport | null>(null)
+const gearsExecutionPressureReport = ref<GearsExecutionPressureReport | null>(null)
+const gearsExecutionGeneratedProjectPressureReport = ref<GearsExecutionGeneratedProjectPressureReport | null>(null)
+const gearsExecutionAcceptanceReport = ref<GearsExecutionAcceptanceReport | null>(null)
+const gearsExecutionWorkerAcceptanceKit = ref<GearsExecutionWorkerAcceptanceKit | null>(null)
+const gearsExecutionWorkerEvidenceBundle = ref<GearsExecutionWorkerEvidenceBundle | null>(null)
+const gearsExecutionWorkerEvidenceSignoff = ref<GearsExecutionWorkerEvidenceSignoffReport | null>(null)
+const gearsExecutionWorkerEvidenceSignoffDir = ref('')
+const gearsExecutionWorkerEvidenceSignoffError = ref('')
 const gearsExecutionConfigError = ref('')
+const runningGearsLiveSmoke = ref(false)
+const loadingGearsExecutionWorkerEvidenceSignoff = ref(false)
 const pollingSeedanceProvider = ref(false)
 const recoveringSeedanceProvider = ref(false)
 const loadingSeedanceProviderAdapterConfig = ref(false)
@@ -1446,6 +1766,38 @@ function statusLabel(status: StoryProjectStatus): string {
   return map[status]
 }
 
+function productionReadinessStatusLabel(status: StoryProjectProductionReadinessReport['summary']['status']): string {
+  if (status === 'ready') return '可生产'
+  if (status === 'blocked') return '阻断'
+  return '待处理'
+}
+
+function productionReadinessSeverityLabel(severity: StoryProjectProductionReadinessReport['issues'][number]['severity']): string {
+  if (severity === 'blocking') return '阻断'
+  if (severity === 'warning') return '提醒'
+  return '信息'
+}
+
+function productionReadinessAutomationStatusLabel(status: StoryProjectProductionReadinessReport['automation_plan']['steps'][number]['status']): string {
+  if (status === 'ready') return '可执行'
+  if (status === 'blocked') return '被阻断'
+  return '需人工'
+}
+
+function productionReadinessAutomationRunnerLabel(runner: StoryProjectProductionReadinessReport['automation_plan']['steps'][number]['runner']): string {
+  if (runner === 'gears_worker') return 'GEARS'
+  if (runner === 'operator_review') return '人工复核'
+  if (runner === 'mcp_tool') return 'MCP'
+  return 'Story Agent API'
+}
+
+function productionReadinessRunStepStatusLabel(status: NonNullable<StoryProjectProductionReadinessReport['latest_automation_run']>['steps'][number]['status']): string {
+  if (status === 'executed') return '已执行'
+  if (status === 'planned') return '已演练'
+  if (status === 'skipped') return '已跳过'
+  return '失败'
+}
+
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
     character_story: '人物故事',
@@ -1639,6 +1991,9 @@ function gearsFailureTargetLabel(item: GearsJobSubmitFailure): string {
     item.path,
     item.source_unit_id ?? `#${item.index + 1}`,
     item.gears_job_id,
+    item.failure_category,
+    item.error_code,
+    item.idempotency_key,
   ].filter(Boolean).join(' / ')
 }
 
@@ -1731,10 +2086,57 @@ async function loadProject(projectId: string) {
     if (!selectedModelProfileId.value && res.data.current_story.model_profile_id) {
       selectedModelProfileId.value = res.data.current_story.model_profile_id
     }
+    await loadProjectProductionReadiness()
   } else {
     error.value = res.error?.message ?? '加载故事项目失败'
+    productionReadiness.value = null
   }
   loading.value = false
+}
+
+async function loadProjectProductionReadiness(showMessage = false) {
+  if (!detail.value || loadingProductionReadiness.value) return
+  loadingProductionReadiness.value = true
+  if (showMessage) {
+    error.value = ''
+    successMessage.value = ''
+  }
+  const res = await getProjectProductionReadiness(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    productionReadiness.value = res.data
+    if (showMessage) {
+      successMessage.value = `制作 readiness 已刷新：${res.data.summary.status} · ${res.data.summary.score}/100`
+    }
+  } else {
+    productionReadiness.value = null
+    if (showMessage) {
+      error.value = res.error?.message ?? '刷新制作 readiness 失败'
+    }
+  }
+  loadingProductionReadiness.value = false
+}
+
+async function runProductionReadinessAutomation() {
+  if (!detail.value || runningProductionAutomation.value) return
+  runningProductionAutomation.value = true
+  error.value = ''
+  successMessage.value = ''
+  const projectId = detail.value.project.project_id
+  const res = await runProjectProductionReadinessAutomation(projectId, {
+    dry_run: false,
+    max_steps: 6,
+    stop_on_error: true,
+  })
+  if (res.ok && res.data) {
+    const message = `安全自动化完成：执行 ${res.data.executed_step_count} 步，跳过 ${res.data.skipped_step_count} 步`
+    await loadProject(projectId)
+    await loadProductionBoard()
+    await loadProjectProductionReadiness()
+    successMessage.value = message
+  } else {
+    error.value = res.error?.message ?? '运行制作自动化失败'
+  }
+  runningProductionAutomation.value = false
 }
 
 async function loadSeedanceGlobalAssets(showMessage = false) {
@@ -1770,6 +2172,7 @@ async function loadProductionBoard() {
     await loadSeedanceGlobalAssets()
     await loadSeedanceProviderOverview()
     await loadSeedanceProviderRetryPlan()
+    await loadProjectProductionReadiness()
     successMessage.value = `Production Board 已生成：${res.data.shot_units.length} 个镜头单元`
   } else {
     error.value = res.error?.message ?? '生成 Production Board 失败'
@@ -1825,6 +2228,48 @@ async function loadGearsExecutionConfig() {
   } else {
     gearsExecutionConfig.value = null
     gearsExecutionConfigError.value = res.error?.message ?? '读取 GEARS 执行配置失败'
+  }
+  const readinessRes = await getGearsExecutionReadiness()
+  if (readinessRes.ok && readinessRes.data) {
+    gearsExecutionReadiness.value = readinessRes.data
+  } else {
+    gearsExecutionReadiness.value = null
+  }
+  const smokePackageRes = await getGearsExecutionSmokePackage()
+  if (smokePackageRes.ok && smokePackageRes.data) {
+    gearsExecutionSmokePackage.value = smokePackageRes.data
+  } else {
+    gearsExecutionSmokePackage.value = null
+  }
+  const pressureReportRes = await getGearsExecutionPressureReport()
+  if (pressureReportRes.ok && pressureReportRes.data) {
+    gearsExecutionPressureReport.value = pressureReportRes.data
+  } else {
+    gearsExecutionPressureReport.value = null
+  }
+  const generatedProjectPressureRes = await getGearsExecutionGeneratedProjectPressureReport()
+  if (generatedProjectPressureRes.ok && generatedProjectPressureRes.data) {
+    gearsExecutionGeneratedProjectPressureReport.value = generatedProjectPressureRes.data
+  } else {
+    gearsExecutionGeneratedProjectPressureReport.value = null
+  }
+  const acceptanceReportRes = await getGearsExecutionAcceptanceReport()
+  if (acceptanceReportRes.ok && acceptanceReportRes.data) {
+    gearsExecutionAcceptanceReport.value = acceptanceReportRes.data
+  } else {
+    gearsExecutionAcceptanceReport.value = null
+  }
+  const workerAcceptanceKitRes = await getGearsExecutionWorkerAcceptanceKit()
+  if (workerAcceptanceKitRes.ok && workerAcceptanceKitRes.data) {
+    gearsExecutionWorkerAcceptanceKit.value = workerAcceptanceKitRes.data
+  } else {
+    gearsExecutionWorkerAcceptanceKit.value = null
+  }
+  const workerEvidenceBundleRes = await getGearsExecutionWorkerEvidenceBundle()
+  if (workerEvidenceBundleRes.ok && workerEvidenceBundleRes.data) {
+    gearsExecutionWorkerEvidenceBundle.value = workerEvidenceBundleRes.data
+  } else {
+    gearsExecutionWorkerEvidenceBundle.value = null
   }
   loadingGearsExecutionConfig.value = false
 }
@@ -2464,6 +2909,188 @@ async function exportSeedanceProviderRetryPlanMarkdown() {
   successMessage.value = `Seedance provider 重试策略已导出 · ${seedanceProviderRetryPlan.value.candidate_count} 个候选`
 }
 
+function exportGearsSmokePackageMarkdown() {
+  if (!detail.value || !gearsExecutionSmokePackage.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-smoke-handoff.md`,
+    gearsExecutionSmokePackage.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = `GEARS 联调包 Markdown 已导出 · ${gearsExecutionSmokePackage.value.steps.length} 步`
+}
+
+function exportGearsSmokePackageJson() {
+  if (!detail.value || !gearsExecutionSmokePackage.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-smoke-handoff.json`,
+    JSON.stringify(gearsExecutionSmokePackage.value, null, 2),
+    'application/json;charset=utf-8',
+  )
+  successMessage.value = `GEARS 联调包 JSON 已导出 · ${gearsExecutionSmokePackage.value.steps.length} 步`
+}
+
+function exportGearsPressureReportMarkdown() {
+  if (!detail.value || !gearsExecutionPressureReport.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-pressure-report.md`,
+    gearsExecutionPressureReport.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = `GEARS pressure 报告已导出 · ${gearsExecutionPressureReport.value.status}`
+}
+
+function exportGearsGeneratedProjectPressureReportMarkdown() {
+  if (!detail.value || !gearsExecutionGeneratedProjectPressureReport.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-generated-project-pressure.md`,
+    gearsExecutionGeneratedProjectPressureReport.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = `GEARS generated pressure 已导出 · ${gearsExecutionGeneratedProjectPressureReport.value.pressure_status}`
+}
+
+function exportGearsAcceptanceReportMarkdown() {
+  if (!detail.value || !gearsExecutionAcceptanceReport.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-worker-acceptance.md`,
+    gearsExecutionAcceptanceReport.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = `GEARS acceptance 报告已导出 · ${gearsExecutionAcceptanceReport.value.status}`
+}
+
+function exportGearsWorkerAcceptanceKitMarkdown() {
+  if (!detail.value || !gearsExecutionWorkerAcceptanceKit.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-worker-acceptance-kit.md`,
+    gearsExecutionWorkerAcceptanceKit.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = `GEARS worker kit Markdown 已导出 · ${gearsExecutionWorkerAcceptanceKit.value.commands.length} 条命令`
+}
+
+function exportGearsWorkerAcceptanceKitJson() {
+  if (!detail.value || !gearsExecutionWorkerAcceptanceKit.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-worker-acceptance-kit.json`,
+    JSON.stringify(gearsExecutionWorkerAcceptanceKit.value, null, 2),
+    'application/json;charset=utf-8',
+  )
+  successMessage.value = `GEARS worker kit JSON 已导出 · ${gearsExecutionWorkerAcceptanceKit.value.payloads.length} 个 payload`
+}
+
+function exportGearsWorkerAcceptanceKitShellScript() {
+  if (!detail.value || !gearsExecutionWorkerAcceptanceKit.value) return
+  downloadText(
+    `${detail.value.project.project_id}-${gearsExecutionWorkerAcceptanceKit.value.shell_script_filename}`,
+    gearsExecutionWorkerAcceptanceKit.value.shell_script,
+    'text/x-shellscript;charset=utf-8',
+  )
+  successMessage.value = `GEARS worker shell script 已导出 · ${gearsExecutionWorkerAcceptanceKit.value.shell_script_filename}`
+}
+
+function exportGearsWorkerEvidenceBundleMarkdown() {
+  if (!detail.value || !gearsExecutionWorkerEvidenceBundle.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-worker-evidence-bundle.md`,
+    gearsExecutionWorkerEvidenceBundle.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = `GEARS evidence bundle Markdown 已导出 · ${gearsExecutionWorkerEvidenceBundle.value.documents.length} 份文档`
+}
+
+function exportGearsWorkerEvidenceBundleJson() {
+  if (!detail.value || !gearsExecutionWorkerEvidenceBundle.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-worker-evidence-bundle.json`,
+    JSON.stringify(gearsExecutionWorkerEvidenceBundle.value, null, 2),
+    'application/json;charset=utf-8',
+  )
+  successMessage.value = `GEARS evidence bundle JSON 已导出 · ${gearsExecutionWorkerEvidenceBundle.value.command_count} 条命令`
+}
+
+async function loadGearsWorkerEvidenceSignoff() {
+  if (loadingGearsExecutionWorkerEvidenceSignoff.value) return
+  loadingGearsExecutionWorkerEvidenceSignoff.value = true
+  gearsExecutionWorkerEvidenceSignoffError.value = ''
+  error.value = ''
+  successMessage.value = ''
+  const evidenceDir = gearsExecutionWorkerEvidenceSignoffDir.value.trim()
+  const res = await getGearsExecutionWorkerEvidenceSignoff({
+    evidenceDir: evidenceDir || undefined,
+  })
+  if (res.ok && res.data) {
+    gearsExecutionWorkerEvidenceSignoff.value = res.data
+    if (!evidenceDir && res.data.evidence_dir) {
+      gearsExecutionWorkerEvidenceSignoffDir.value = res.data.evidence_dir
+    }
+    successMessage.value = `GEARS worker evidence signoff 已读取 · ${res.data.status} · gates ${res.data.gate_counts.passed}/${res.data.gate_counts.total}`
+  } else {
+    gearsExecutionWorkerEvidenceSignoff.value = null
+    gearsExecutionWorkerEvidenceSignoffError.value = res.error?.message ?? '读取 GEARS worker evidence signoff 失败'
+    error.value = gearsExecutionWorkerEvidenceSignoffError.value
+  }
+  loadingGearsExecutionWorkerEvidenceSignoff.value = false
+}
+
+function exportGearsWorkerEvidenceSignoffMarkdown() {
+  if (!detail.value || !gearsExecutionWorkerEvidenceSignoff.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-worker-evidence-signoff.md`,
+    gearsExecutionWorkerEvidenceSignoff.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = `GEARS worker evidence signoff Markdown 已导出 · ${gearsExecutionWorkerEvidenceSignoff.value.status}`
+}
+
+function exportGearsWorkerEvidenceSignoffJson() {
+  if (!detail.value || !gearsExecutionWorkerEvidenceSignoff.value) return
+  downloadText(
+    `${detail.value.project.project_id}-gears-worker-evidence-signoff.json`,
+    JSON.stringify(gearsExecutionWorkerEvidenceSignoff.value, null, 2),
+    'application/json;charset=utf-8',
+  )
+  successMessage.value = `GEARS worker evidence signoff JSON 已导出 · actions ${gearsExecutionWorkerEvidenceSignoff.value.recommended_actions.length}`
+}
+
+async function runGearsLiveSmoke(execute: boolean) {
+  if (!detail.value || runningGearsLiveSmoke.value) return
+  if (execute) {
+    const confirmed = window.confirm('确定向 GEARS v2 提交 live smoke 任务吗？')
+    if (!confirmed) return
+  }
+  runningGearsLiveSmoke.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await runGearsExecutionLiveSmoke({
+    execute,
+    poll_after_submit: execute,
+    note: `项目页 GEARS live smoke：${detail.value.project.project_id}`,
+  })
+  if (res.ok && res.data) {
+    gearsExecutionLiveSmokeReport.value = res.data
+    downloadText(
+      `${detail.value.project.project_id}-gears-live-smoke-${execute ? 'execute' : 'dry-run'}.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    successMessage.value = execute
+      ? `GEARS live smoke 已执行 · ${res.data.status} · accepted ${res.data.accepted_count} · failed ${res.data.failed_count}`
+      : `GEARS live smoke dry-run 报告已生成 · ${res.data.status}`
+  } else {
+    error.value = res.error?.message ?? 'GEARS live smoke 执行失败'
+  }
+  runningGearsLiveSmoke.value = false
+}
+
+function runGearsLiveSmokeDryRun() {
+  void runGearsLiveSmoke(false)
+}
+
+function runGearsLiveSmokeExecute() {
+  void runGearsLiveSmoke(true)
+}
+
 async function submitSeedanceProviderRetryPlan() {
   if (!detail.value || submittingSeedanceProviderRetryPlan.value) return
   if (!seedanceProviderRetryPlan.value?.resubmittable_count) {
@@ -2663,6 +3290,7 @@ async function saveProductionBoardPackage() {
         updated_at: res.data.exported_at,
       },
     }
+    await loadProjectProductionReadiness()
     successMessage.value = `Production Board 交付包已落盘：${res.data.files.length} 个文件`
   } else {
     error.value = res.error?.message ?? 'Production Board 交付包落盘失败'
@@ -2685,6 +3313,7 @@ async function submitProductionBoardRepair(applyAll: boolean) {
     productionBoardExport.value = null
     productionRepairResult.value = res.data
     productionRepairTrace.value = res.data.trace
+    await loadProjectProductionReadiness()
     successMessage.value = res.data.trace.applied
       ? `生产修复已生成新版本：${res.data.trace.applied_task_ids.length} 个任务`
       : `生产修复未产生变化：${res.data.trace.reason}`
@@ -2709,6 +3338,7 @@ async function submitProductionBoardRepairAndExport() {
     productionBoardExport.value = res.data.export_package
     productionRepairResult.value = res.data.repair
     productionRepairTrace.value = res.data.repair.trace
+    await loadProjectProductionReadiness()
     successMessage.value = res.data.repair.trace.applied
       ? `生产修复已生成新版本并落盘：${res.data.export_package.files.length} 个文件`
       : `生产修复未产生变化，已落盘当前交付包：${res.data.export_package.files.length} 个文件`
@@ -2971,6 +3601,88 @@ watch(selectedModelProfileId, (value) => {
 
 .project-detail-page__summary-card {
   padding: 14px 16px;
+}
+
+.project-detail-page__readiness {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.project-detail-page__readiness-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.project-detail-page__readiness-head p {
+  margin: 5px 0 0;
+  color: #647380;
+}
+
+.project-detail-page__readiness-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.project-detail-page__readiness-lanes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.project-detail-page__readiness-chip {
+  max-width: 260px;
+  padding: 4px 8px;
+  border: 1px solid #cfd9e2;
+  border-radius: 4px;
+  background: #f8fafb;
+  color: #425766;
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.project-detail-page__readiness-chip--ready {
+  border-color: #b8d8c5;
+  background: #f3fbf6;
+  color: #247142;
+}
+
+.project-detail-page__readiness-chip--needs_action {
+  border-color: #ead5a6;
+  background: #fff8e5;
+  color: #8a5a00;
+}
+
+.project-detail-page__readiness-chip--blocked {
+  border-color: #f0c4bd;
+  background: #fff4f2;
+  color: #b13b2e;
+}
+
+.project-detail-page__readiness-list {
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #edf1f4;
+}
+
+.project-detail-page__readiness-list strong,
+.project-detail-page__readiness-list p {
+  margin: 0;
+}
+
+.project-detail-page__readiness-list p {
+  color: #536573;
+  overflow-wrap: anywhere;
 }
 
 .project-detail-page__quality-tools {
@@ -3337,6 +4049,43 @@ watch(selectedModelProfileId, (value) => {
   border-color: #b8d8c5 !important;
   background: #f3fbf6 !important;
   color: #247142 !important;
+}
+
+.project-detail-page__gears-package-actions {
+  align-items: center;
+}
+
+.project-detail-page__seedance-provider-action {
+  min-height: 26px;
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
+  background: #fff;
+  color: #425766;
+  cursor: pointer;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__seedance-provider-action:hover {
+  background: #f5f8fa;
+}
+
+.project-detail-page__seedance-provider-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.project-detail-page__gears-evidence-input {
+  min-height: 26px;
+  width: min(320px, 100%);
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
+  background: #fff;
+  color: #24313b;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .project-detail-page__seedance-provider-overview {

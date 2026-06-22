@@ -43,14 +43,47 @@ GEARS v2 = 图片、视频、字幕、混音、片头片尾、最终装配等实
 
 | 模块 | 进度判断 | 说明 |
 |---|---:|---|
-| Story Agent MVP | 约 75% | 生成、质量报告、修复、项目版本、前端查看已跑通。 |
-| Production Board / Delivery Contract | 约 96% | Board、监督、批量修复、导出、Seedance 素材 slot、素材缺口报告、Shot Ledger、回传、重试、provider 队列、失败分类、adapter 合同和 dashboard 已完成首版；后续统一迁移到 GEARS job 合同。 |
-| GEARS Execution Integration | 约 83% | `GEARS_API` 配置/合同、GEARS Job Ledger、单故事/系列 submit、callback 归一化、job status sync、系列图片/后期 payload、后期 artifact 回写、响应层账本回显、系列工作台多 job 类型提交、status sync 部分成功合同、平台失败状态归一化、callback API 鉴权、多 artifact 回传合同、worker 对接示例、嵌套 status poll、嵌套 callback envelope、批量 callback envelope、批量坏项 failure 可见性、callback 幂等写回、callback/status sync 可观测重复计数、failure job 定位字段、progress 归一化写回、poll 失败诊断写回、乱序 callback 终态保护与审计字段、平台时间戳归一化、批量坏项 path 定位、终态冲突审计、`canceled` 终态失败上下文、平台状态别名失败归一化、artifact URL 别名归一化、source id 别名合同化、submit unit 幂等对账字段、submit/callback 幂等 key 贯通、仅凭幂等键回调匹配、幂等键生命周期审计、系列重试 payload 上下文、submit 意图字段和 Markdown 对账摘要首轮已跑通；还缺 GEARS v2 真实端到端联调、更多失败类型扩展和大项目压测。 |
-| AI 漫剧系列指挥层 | 约 82% | 系列规划、Seedance 生产账本、回片、剪辑包、缩略图计划、精修计划、SRT/音频/片头片尾/final manifest 合同、审片返修 ledger、重试执行计划、外部剪辑平台包、生产总览 dashboard、GEARS 后期账本回显和图片/视频/后期 job 提交入口首版已具备；系列视频重试主路径已明确迁到 GEARS submit，真实媒体执行迁出到 GEARS。 |
-| 可商用制作中台 | 约 55% | 指挥层可用；还缺 GEARS 实产集成、UX 降噪、审片返修联动深化和稳定压测。 |
-| MCP Story Agent 闭环 | 约 75-80% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story`、`kb_generate_gears_delivery`、`kb_generate_seedance_prompt`、`kb_repair_story(auto_apply=false/true)`、`kb_update_project_version` 已完成；真实项目 auto_apply smoke 已通过，后续剩更深模型修复链路和前端质量反馈增强。 |
+| Story Agent MVP | 约 95% | 生成、质量报告、修复、项目版本、前端查看已跑通；MCP 修复链路新增 `kb_generate_story_repair_prompt`，可把 repair actions 变成模型可直接产出 `repaired_story_json` 的提示包；production readiness automation 已从“展示 runbook”推进到“一键运行安全 Story Agent API 步骤”，真实执行会写入最近 20 次自动化运行账本，跨项目 portfolio 已能按优先队列批量触发安全 Story Agent 步骤并新增队列级运行审计；生成项目健康审计已能区分 planned / interrupted / production_gap / ready，新增 MVP 状态总控把生成物、故事质量、修复闭环、交付合同和生产指挥压成一个只读状态报告。 |
+| Production Board / Delivery Contract | 约 99% | Board、监督、批量修复、导出、Seedance 素材 slot、素材缺口报告、Shot Ledger、回传、重试、provider/GEARS 兼容账本、失败分类、adapter 合同和 dashboard 已基本齐；readiness 已能显式暴露交付未落盘、镜头失败、GEARS 风险和对应 API 步骤。 |
+| GEARS Execution Integration | 约 99%（Story Agent 侧合同） | GEARS config/contract、Job Ledger、submit/callback/status sync、worker acceptance kit、证据包、generated health 前后体检、checksum/integrity 和 30 集压力 payload 首轮已跑通；99% 只代表本仓库对接合同接近收口，不代表实产完成，剩余被可达 GEARS v2 worker 的真实端到端验收阻断。 |
+| AI 漫剧系列指挥层 | 约 99% | 系列规划、Seedance/GEARS 生产账本、回片、剪辑包、缩略图计划、精修计划、SRT/音频/片头片尾/final manifest 合同、审片返修 ledger、重试执行计划、外部剪辑平台包、生产总览 dashboard 和多 job type 提交入口已具备；系列 readiness 已进入 Web/API/UI/MCP 跨项目 portfolio，支持队列级安全自动化、系列级运行账本和 portfolio 运行审计。真实媒体执行迁出到 GEARS。 |
+| 可商用制作中台 | 约 99% | 从 dashboard/导出面推进为单故事 + 系列 + portfolio 三层 production readiness 中台：统一评分、lane、阻断、next actions、GEARS 风险、automation runbook、安全自动化执行入口、MCP bridge、运行审计账本、跨项目优先队列、批量安全 runner、队列级运行审计、模型修复提示包和生成项目健康审计；Web/API/UI 可读取 readiness/health 并把诊断转为可调度、可复盘步骤。仍缺真实 worker 产物验收、UX 降噪和真实大系列压力数据。 |
+| MCP Story Agent 闭环 | 约 99% | `kb_get_project_context`、`kb_generate_story_blueprint`、`kb_validate_genre_story`、`kb_generate_gears_delivery`、`kb_generate_seedance_prompt`、`kb_get_story_agent_generated_health`、`kb_get_story_agent_mvp_status`、`kb_get_production_readiness`、`kb_get_production_readiness_portfolio`、`kb_run_production_readiness_automation`、`kb_run_production_readiness_portfolio_automation`、`kb_generate_story_repair_prompt`、`kb_repair_story(auto_apply=false/true)`、`kb_update_project_version` 已完成；MCP 与 Web readiness/health/MVP status API 都能输出 generated health、`automation_plan`、最新自动化运行账本、跨项目优先队列、portfolio 运行账本、MVP lane 和模型修复提示包，并可桥接批量安全自动化。 |
 
 当前主线已经不是“能不能生成故事”，而是“生成后能不能低复杂度管理、修复、交付、提交 GEARS、接回实产结果并完成审片返修”。
+
+2026-06-22 进度更新：
+
+- 新增单故事与 AI 漫剧系列 production readiness 共享合同、后端聚合服务、API endpoint 和前端面板。
+- 单故事 readiness 覆盖 Story Agent 质量、Production Board 监督、交付包落盘、Shot Ledger、GEARS Job Ledger、审片返修和商业运营缺口。
+- 系列 readiness 覆盖系列质量审计、分集生成进度、Seedance/GEARS 生产 dashboard、后期交付状态、审片返修和分集 readiness。
+- 新增 service 与 route 级测试，验证 readiness schema、lane、issue、next action 与 Markdown handoff。
+- GEARS 实产仍不进入本仓库；真实图片、视频、字幕、混音、片头片尾和最终装配继续由 GEARS v2 worker 执行。
+- 新增 MCP 工具 `kb_get_production_readiness`，支持 `project_id` / `series_project_id`，只读返回生产 readiness JSON/Markdown；本轮已补 `automation_plan`，把 next actions 映射到 MCP tool、Story Agent API、GEARS worker 或 operator review，并给出 payload hint、阻断 issue 与安全说明。单元测试覆盖单故事与系列路径，`mcp-server npm run build` 通过。
+- Web/API readiness 共享合同新增 `ProductionReadinessAutomationPlan`；单故事和系列 readiness route 会返回自动化步骤，项目详情页与 AI 漫剧系列工作台会显示 ready/blocked/manual、runner、API path 和 GEARS 外部执行边界。
+- 新增安全自动化执行入口：`POST /api/projects/:projectId/production-readiness/run-automation` 与 `POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/production-readiness/run-automation`。runner 只执行 `can_auto_execute=true` 的 Story Agent API 步骤，自动跳过 GEARS worker 和人工审片步骤；前端两个工作台新增“运行安全自动化”按钮。
+- 新增 MCP 执行 bridge：`kb_run_production_readiness_automation` 通过 `STORY_AGENT_BASE_URL` 或显式 `story_agent_base_url` 调用 Web/API runner，默认 dry-run，支持限定 `action_keys` / `max_steps` / `stop_on_error`；当 Web 不可达时返回结构化 blocked 诊断和本地 readiness fallback。MCP 不直接执行 GEARS worker、Seedance SDK、ffmpeg 或最终媒体合成。
+- 新增自动化运行审计账本：单故事项目与 AI 漫剧系列项目在真实执行 `run-automation` 后，会持久化 `production_readiness_automation_ledger`（最近 20 次、含分数变化、步骤、失败数和 notes）；readiness API、前端面板、Markdown handoff 与 MCP `kb_get_production_readiness` 均回显 `latest_automation_run`。dry-run 继续不写项目文件。
+- 新增跨项目生产指挥总览：`GET /api/system/production-readiness-portfolio` 聚合全部单故事项目与 AI 漫剧系列 readiness，按阻断、分数、自动化步骤和 next action 生成 priority queue / action buckets；项目工作台顶部新增“生产指挥总览”。MCP 新增只读 `kb_get_production_readiness_portfolio`，可直接从本地 `web/generated` 扫描项目并输出同类优先队列。
+- 新增 portfolio 批量安全自动化：`POST /api/system/production-readiness-portfolio/run-automation` 会按 priority queue 选择目标，逐个调用已有单故事/系列 `run-automation` runner；默认 dry-run，前端“运行队列安全自动化”按钮可执行前 5 个高优先目标。MCP 新增 `kb_run_production_readiness_portfolio_automation` bridge，仍只委托 Web/API 执行安全 Story Agent 步骤，不执行 GEARS worker、Seedance SDK、ffmpeg 或最终媒体合成。
+- 新增 portfolio 运行审计账本：真实队列 run 会写入 `web/generated/system/production-readiness-portfolio-automation-ledger.json`，记录最近 20 次批量调度、目标执行/跳过/失败计数和 notes；`GET /api/system/production-readiness-portfolio`、项目工作台和 MCP 本地 portfolio 均会回显 latest portfolio run。dry-run 继续不落盘。
+- 新增 MCP 模型修复提示包：`kb_generate_story_repair_prompt` 复用 `kb_repair_story(auto_apply=false)` 的质量快照、修复动作和目标场景，输出只读 prompt、保护字段、完整 JSON 输出合同和 `kb_validate_genre_story -> kb_repair_story(auto_apply=true) -> kb_get_project_context` 推荐工作流；工具不写项目文件。
+- 新增生成项目健康审计：`GET /api/system/story-agent-generated-health` 与项目工作台“生成项目体检”卡片，只读扫描 generated story project、AI 漫剧系列 project、generated stories 和 versions，按 `ready / planned / production_gap / interrupted` 分类，显式统计缺当前故事、分镜、GEARS 段、质量报告、分集引用、系列交付和后期指令缺口；API integration test 已覆盖 interrupted story、planned series 和 production-gap series。
+- 新增 MCP generated health bridge：`kb_get_story_agent_generated_health` 输出 `mcp-story-agent-generated-health/v1`，无需 Web dev server 即可本地只读扫描 generated health；单元测试覆盖 ready story、interrupted series 和 planned series，`mcp-server npm run build` 通过。
+- 新增 GEARS acceptance generated health bridge：`gears-execution-acceptance-report` 会输出 `story_agent_generated_health` 检查与 `generated_health_*` 统计；导出的 `run-gears-worker-acceptance.sh` 会在真实 worker submit 前后保存 generated health JSON，并生成 `story-agent-generated-health-audit.json/.md` 进入最终 verdict gate；worker evidence bundle 新增 `story-agent-generated-health-report.md`，真实 GEARS smoke 的证据链会同时覆盖目标健康、worker 响应和大项目 pressure。
+- 2026-06-23 evidence bundle MVP status 追加：worker evidence bundle 新增 `story-agent-mvp-status-report.md`，并在 summary 输出 `story_agent_mvp_status` / `story_agent_mvp_score`；当前 bundle documents 为 7 份，签收包可同时证明 Story Agent MVP lane 状态和 GEARS worker 合同证据。
+- 2026-06-23 worker acceptance MVP audit 追加：`run-gears-worker-acceptance.sh` 会在 GEARS worker smoke 前后保存 `story-agent-mvp-status-before.json` / `story-agent-mvp-status-after.json`，生成 `story-agent-mvp-status-audit.json/.md`；最终 verdict 新增 `story_agent_mvp_status_audit` gate，signoff API 与 MCP signoff 工具输出 `mvp_status_audit_passed`、MVP before/after status 和 score delta。当前 worker acceptance kit 为 20 条 commands / 5 个 payloads，最终 verdict 为 8 个 gate，archive 必交附件为 26 个。
+- 2026-06-23 post-archive signoff snapshot 追加：`run-gears-worker-acceptance.sh` 在 archive / checksum / integrity 之后自动读取 `GET /api/system/gears-execution-worker-evidence-signoff?evidence_dir=...`，把 `gears-worker-evidence-signoff.json` 与 `gears-worker-evidence-signoff.md` 写入 evidence 目录；正常完成和缺 env / submit failure / 非 2xx / 严格审计失败出口都会落盘签收快照。
+- 已用导出的脚本跑 v13 本地 fake GEARS worker health smoke，证据目录 `/private/tmp/gears-worker-evidence-generated-health-v13`：generated health 前后审计写出成功，worker evidence bundle documents=6，大项目 pressure 120/120 source echo，worker response audit 无缺 id/source/artifact；本次未启用 ledger seed，callback gate 的 `ledger_match_missing_count=4` 属预期诊断，不代表真实 GEARS v2 已签收。
+- 已用导出的脚本跑 v14 本地 fake GEARS worker health gate smoke，证据目录 `/private/tmp/gears-worker-evidence-generated-health-v14`：acceptance kit commands=18，verdict gates=7，新增 `story_agent_generated_health_audit` gate `passed`，health before/after delta 全 0，大项目 pressure 120/120 source echo，archive 必交附件 22 个且不缺；未启用 ledger seed 时唯一失败仍是 `story_agent_callback_audit`。
+- 新增 GEARS worker evidence signoff API：`GET /api/system/gears-execution-worker-evidence-signoff?evidence_dir=...`，真实 worker acceptance script 跑完后可直接让 Story Agent 读取证据目录，汇总 verdict、archive、integrity、worker/callback audit、generated health audit、MVP status audit 和 large-project pressure audit。报告 schema 为 `gears-execution-worker-evidence-signoff/v1`，可输出 ready / attention / blocked、8 gate 统计、必交附件、health/MVP delta、pressure source echo 和 recommended actions。
+- 新增 GEARS worker evidence signoff v16/v17 加固：acceptance 脚本早退路径现在也会写完整审计证据，signoff API 额外输出 worker transport/http error、failure category counts、callback transport/http error、大项目 response/accepted/rejected/failed/duplicate/unexpected source 统计，并去重 recommended actions。MCP 新增 `kb_get_gears_worker_evidence_signoff`，可不启动 Web dev server 直接读取本地 evidence 目录，输出 `mcp-gears-worker-evidence-signoff/v1`。
+- 2026-06-23 前端追加：单故事项目详情页与 AI 漫剧系列工作台的 GEARS 操作区新增 worker evidence signoff 读取入口，可输入 `/private/tmp/...` evidence 目录并调用 `GET /api/system/gears-execution-worker-evidence-signoff`；页面会显示 signoff 状态、gate 通过数、缺附件数、worker/callback transport-http error、大项目 pressure source echo 和 recommended action 数，并支持导出 signoff Markdown / JSON。该入口只读证据目录，不执行 GEARS worker、Seedance SDK、ffmpeg 或最终媒体合成。
+- 2026-06-23 signoff latest 追加：Web API 与 MCP `kb_get_gears_worker_evidence_signoff` 在未传 `evidence_dir` 且未设置 `GEARS_EVIDENCE_DIR` 时，会自动发现允许目录下最近的 `gears-worker-evidence*` 证据目录；返回新增 `evidence_dir_source=input/env/latest/missing`。可用 `GEARS_EVIDENCE_AUTO_DISCOVER=0` 关闭，或用 `GEARS_EVIDENCE_AUTO_DISCOVER_ROOTS` 限定扫描根。该能力只定位证据，不执行 GEARS worker。
+- 2026-06-23 acceptance kit 签收闭环追加：`run-gears-worker-acceptance.sh` 现在在正常结束、缺 env 早退、submit transport failure、submit 非 2xx 和严格审计失败前都会打印明确的 Web signoff URL、latest signoff URL 与 MCP `kb_get_gears_worker_evidence_signoff` 调用提示；worker acceptance kit 命令列表新增 `read_worker_evidence_signoff`，evidence bundle checklist/next actions 也要求附加 signoff Markdown / JSON。
+- 2026-06-23 Story Agent MVP status 追加：新增 `GET /api/system/story-agent-mvp-status`，输出 `story-agent-mvp-status/v1`。它只读组合 `story-agent-generated-health` 与 `production-readiness-portfolio`，返回五条 lane（生成物、故事质量、修复闭环、交付合同、生产指挥）、priority targets、next actions、源报告和 Markdown；前端 API client 新增 `getStoryAgentMvpStatus()`。这一步把 Story Agent MVP 主线重新聚焦到内容/生产指挥总控，不做媒体实产。
+- 2026-06-23 MCP MVP status 追加：新增 `kb_get_story_agent_mvp_status`，输出 `mcp-story-agent-mvp-status/v1`，在无 Web server 时也能本地读取同类五条 lane、priority targets、next actions 和可选 Markdown；测试覆盖本地临时项目与 compact markdown-off 读取。
+- 2026-06-23 项目工作台 MVP 总控追加：项目工作台顶部已显示 Story Agent MVP 状态卡，支持刷新、Markdown/JSON 导出，并把五条 lane、优先目标和下一步动作放到 production portfolio / generated health 明细之前。
 
 2026-06-20 进度更新：
 
@@ -81,15 +114,77 @@ GEARS v2 = 图片、视频、字幕、混音、片头片尾、最终装配等实
 - GEARS callback 已补终态冲突审计：`ready` / `failed` / `rejected` / `canceled` 之间发生后到回调覆盖时，事件会记录 `previous_status`、`applied_status` 和 `terminal_status_changed`，便于真实 worker 重放与人工对账。
 - GEARS callback 已补 `canceled` 终态失败上下文：GEARS 主动取消 / 人工取消 / 平台取消的回调会保留 `failure_reason`、`error_code` 和 `failure_category`，并同步写入单故事 Shot Ledger / 系列生产账本。
 - GEARS status/callback 已补平台状态别名失败归一化：`TIMED_OUT`、`POLICY_BLOCKED`、`NO_CREDIT`、`INVALID_PAYLOAD` 等状态字段本身可触发终态和失败分类，不再必须依赖额外 `failureReason`。
+- GEARS status/callback 状态别名继续扩展：`ACCESS_DENIED`、`TOKEN_EXPIRED`、`RATE_LIMITED`、`NETWORK_ERROR`、`SERVICE_UNAVAILABLE`、`ASSET_MISSING`、`UNSUPPORTED_MEDIA`、`VALIDATION_ERROR` 等只出现在 status 字段里的平台结果可直接归一化为终态和失败分类。
 - GEARS artifact URL 已补生产平台别名归一化：callback/status sync 支持 `manifestUrl`、`subtitleUrl`、`srtUrl`、`vttUrl`、`audioUrl`、`imageUrl`、`thumbnailUrl`、`posterUrl` 等字段，并为 manifest / subtitle / audio / image 等 artifact 推断 `kind` / `role`，`final_assemble` 可不依赖 `artifacts[]` 或 URL 后缀写回 manifest。
 - GEARS source id 已补平台别名正式合同：callback schema / contract 支持 `externalId`、`customId`、`productionId` 等字段作为 `source_unit_id` 映射，真实 worker 即使使用平台外部 ID 或重映射 job id，也可回写到单故事 GEARS Job Ledger / Shot Ledger。
 - GEARS submit unit 已补 worker 对账字段：HTTP 提交给 GEARS 的每个 unit 会带 `external_id` / `custom_id` / `idempotency_key` / `callback_url` / `metadata`，便于 GEARS v2 worker 幂等建单、按外部 ID 回传并保留 Story Agent 项目/故事/镜头来源。
+- GEARS submit 响应已补真实 worker 嵌套形态兼容：`data.acceptedUnits[]`、`data.task` 等平台式响应会归一化为 GEARS Job Ledger，execution contract 同步公开这些 accepted response shapes。
+- GEARS submit 部分拒绝已结构化：`data.rejectedUnits[]` 可与 acceptedUnits 混合返回，也可单独返回；服务层会保留 `gears_job_id`、`idempotency_key`、`error_code`、`failure_category` 和 message，避免真实 worker 的批量拒绝被误判为整批合同失败。
+- GEARS submit 拒绝项已进入生产账本：真实 worker 返回的 rejectedUnits 会生成 `status: rejected` 的 GEARS Job Ledger item，并同步写入单故事 Seedance Shot Ledger / 系列生产账本；前端失败摘要会显示分类、错误码和幂等键。
+- GEARS readiness / 本地合同冒烟已落地：新增 `GET /api/system/gears-execution-readiness`，汇总配置、callback 安全、批量边界、status/callback 别名对齐，并运行 accepted/rejected submit、rejected ledger、嵌套 callback、状态别名、压力边界五类本地 smoke；单故事项目页与 AI 漫剧系列工作台直接显示 readiness 状态与分数。
+- GEARS live E2E 联调计划已进入 readiness 报告：readiness API 返回 submit、status poll、project callback、series callback 四个真实联调步骤的 ready/blocked 状态、blocked_by 和 expected_result；前端同步显示本地 smoke 通过数和 live E2E ready 步骤数。
+- GEARS smoke handoff package 已落地并可导出：`GET /api/system/gears-execution-smoke-package` 输出可交给 GEARS v2 worker 的 submit/status/project callback/series callback 四步联调包，包含 headers 占位符、request body、accepted response shapes、Story Agent 预期写回结果和 Markdown handoff；单故事项目页与 AI 漫剧系列工作台可直接导出 JSON / Markdown。
+- GEARS live smoke run 已落地：新增 `POST /api/system/gears-execution-live-smoke-run`，默认 dry-run 生成 Markdown 报告；`execute=true` 且 readiness ready 时会复用真实 GEARS submit adapter 提交 smoke units，`poll_after_submit=true` 时继续轮询 accepted job，单故事项目页与 AI 漫剧系列工作台可直接生成/执行 live smoke 报告。
+- GEARS pressure report 已落地：新增 `GET /api/system/gears-execution-pressure-report`，本地验证 200 条 callback envelope 可解析、201 条会被 schema 拒绝、单 job 仅保留最新 20 条 callback_events；前端同步显示 pressure 状态并可导出 Markdown。
+- GEARS worker 失败类型已扩展到真实执行节点：`render_failed`、`artifact_upload_failed`、`callback_delivery_failed`、`output_missing`、`artifact_invalid`、`worker_unavailable` 可从 status / errorCode / failureReason 归一化写入 GEARS Job Ledger。
+- GEARS generated project pressure audit 已落地：`GET /api/system/gears-execution-generated-project-pressure` 扫描单故事与 AI 漫剧系列 generated project 的 `gears_job_ledger`，汇总 job、回调事件、artifact、失败分类和风险等级，并生成 Markdown。
+- 单故事项目页与 AI 漫剧系列工作台已显示 generated pressure 状态，并支持导出 generated project pressure Markdown。
+- GEARS worker acceptance report 已落地：`GET /api/system/gears-execution-acceptance-report` 聚合 readiness、本地 smoke、live E2E 阻断项、pressure、generated pressure 和 handoff artifacts；单故事项目页与 AI 漫剧系列工作台已显示 acceptance 状态，并支持导出 worker acceptance Markdown。
+- GEARS worker acceptance kit 已落地：`GET /api/system/gears-execution-worker-acceptance-kit` 生成外部 GEARS v2 worker 可直接执行的 env template、payload 文件、curl 命令、断言清单和 Markdown runbook；单故事项目页与 AI 漫剧系列工作台已显示 worker kit 命令数，并支持导出 Markdown / JSON。
+- GEARS worker acceptance shell script 已落地：worker kit 同时生成 `run-gears-worker-acceptance.sh`，脚本会写 payload、抓取 acceptance/evidence 预检、调用 GEARS submit/status、回打单故事/系列 callback、运行 live smoke，并把响应落到 evidence 目录；前端可直接导出 `.sh`。
+- GEARS worker acceptance shell script 已改为“完整证据落盘、stdout 简报”：acceptance/evidence/generated pressure JSON 保存到 evidence 目录，终端只打印 ok/status/commands/payloads/documents 等摘要，避免真实联调日志被大 JSON 淹没。
+- GEARS worker acceptance shell script 已补批量 submit job id 自动提取：默认从 `gears_job_id`、`jobId`、`taskId`、`data.task`、`acceptedUnits[]`、`jobs[]`、`tasks[]` 等真实 worker 响应形态中提取全部 job id 并写入 `gears-smoke-job-ids.txt`，随后逐个轮询 status。
+- GEARS worker acceptance shell script 已补可配置多轮 status poll：`GEARS_ACCEPTANCE_STATUS_POLL_ATTEMPTS` 默认 `1`，`GEARS_ACCEPTANCE_STATUS_POLL_INTERVAL_SECONDS` 默认 `5`；多轮时保存每次 `gears-status-response-<job>-attempt-<n>.json`，并保留最新 `gears-status-response-<job>.json` 供 audit 兼容。
+- GEARS worker acceptance shell script 已补 replay/post-audit 证据：默认重放单故事与系列 callback，保存 replay response；跑后拉取 evidence bundle 和 generated pressure，并写入 manifest，方便证明 `duplicate_count` 和跑后 ledger 风险。
+- GEARS worker acceptance shell script 已补 Story Agent callback response audit：生成 `story-agent-callback-response-audit.json` 与 `story-agent-callback-response-audit.md`，统计 callback/live-smoke 响应里的 `ok=false`、validation/auth/not-found/live-smoke blocked 错误、received/updated/failed/duplicate 计数和推荐修复动作。
+- GEARS worker acceptance shell script 已补 Story Agent callback id preflight：生成 `story-agent-callback-id-preflight.json` 与 `.md`，在 callback POST 前检查 `GEARS_SMOKE_PROJECT_ID` / `GEARS_SMOKE_SERIES_PROJECT_ID` 是否符合 Story Agent 路由格式，避免占位 id validation error 被误判为 GEARS worker 回调合同问题。
+- GEARS worker acceptance shell script 已补 worker response audit：生成 `gears-worker-response-audit.json` 与 `gears-worker-response-audit.md`，记录真实 worker 响应里的 accepted/rejected/failed 计数、状态别名、job/source/idempotency 字段、artifact URL 字段、ready 缺 artifact、error code、failure category、合同缺口和 `recommended_actions`，可把真实 worker 响应转成 P0/P1 合同修复动作。
+- `recommended_actions` 已带 `sample_paths`，audit totals 已带 `sample_record_paths`，可定位缺 worker id、缺 source/idempotency、缺失败上下文、ready 无 artifact 和未知状态的代表性 JSON path。
+- GEARS worker acceptance shell script 已补 transport / HTTP sidecar 证据：submit、status poll 和可选大项目 pressure submit 会保存 `*-http-status.txt` 与 `*-curl-exit-code.txt`；worker response audit 汇总 `transport_error_count` / `http_error_count`，并把非 2xx 与 curl 失败拆成独立 recommended actions。
+- Story Agent callback/live-smoke 也已补 transport / HTTP sidecar 证据：project callback、series callback、callback replay 和 live smoke 会保存 `*-http-status.txt` 与 `*-curl-exit-code.txt`；`story-agent-callback-response-audit` 汇总 `transport_error_count` / `http_error_count` / `not_found_count` / `blocked_count` / `ledger_match_missing_count`，可区分 route/auth/project missing、live smoke env blocked、项目存在但 GEARS Job Ledger 未匹配与 callback payload 合同问题。
+- worker response audit 已用 error_code / failure_category 参与 failed/rejected 判定：例如 `SERVICE_UNAVAILABLE` 会进入 failed，而不是 unknown，方便真实 worker 失败类型对齐。
+- worker response audit 已覆盖 `no_worker_response_files` 与 `record_count_zero` 两类前置失败：缺 env 时提示先跑 worker smoke，不可达 endpoint 留下空响应文件时提示补真实 submit/status 结果或 transport failure body。
+- acceptance shell stdout 已补 audit 摘要：callback id preflight、worker response audit 和 Story Agent callback response audit 都会打印 totals / recommended actions 一行摘要，详细证据仍写入 JSON/Markdown 文件。
+- GEARS worker acceptance shell script 已补真实执行可用性：提交前按 env 渲染 smoke payload，提取 job id 后回填 callback payload；`GEARS_API_TOKEN` 可选；submit 失败会写 `gears-submit-exit-code.txt`、`gears-submit-failed.txt` 和 manifest。
+- GEARS worker acceptance shell script 已补缺 env evidence：缺 `GEARS_API_BASE_URL` / callback env 时也会先输出 payload、acceptance report、worker evidence bundle、manifest 和缺失 env 清单。
+- GEARS worker acceptance kit 已补 smoke target 自动发现：导出包新增 `smoke_targets`，脚本会写 `story-agent-smoke-targets.json` / `story-agent-smoke-env-selected.json`；当 `GEARS_SMOKE_PROJECT_ID`、`GEARS_SMOKE_STORY_ID`、`GEARS_SMOKE_SERIES_PROJECT_ID` 留空或仍是占位符时，会从 `web/generated` 自动选择现有单故事项目和 AI 漫剧系列项目，减少 callback smoke 的 404 误判。
+- Story Agent callback response audit 已补 `ledger_match_missing_count`：当 callback 成功到达真实项目但 `source_unit_id` / `gears_job_id` 不在项目 GEARS Job Ledger 中时，会给出“先走 Story Agent submit 建账本，或对齐回调 source/job id”的 P0 动作，避免误判为路由或鉴权问题。
+- GEARS worker acceptance script 已补可选 Story Agent ledger seed：设置 `GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER=1` 时会通过 Story Agent submit API 预建单故事/系列 GEARS Job Ledger，并把 callback smoke payload 改写为 submit 返回的 `source_unit_id` / `gears_job_id` / `job_type`，用于真实验证 callback 写回账本。
+- GEARS submit response 兼容已补顶层 `status` envelope：`data.acceptedUnits[].taskId/externalId/idempotencyKey` 形态可正确进入 Story Agent submit adapter 并建 GEARS Job Ledger，避免把响应 envelope 本身误判为缺 `source_unit_id` 的 job。
+- GEARS worker acceptance kit 已补 30 集级大项目压测入口：默认生成 `gears-large-project-submit-pressure.json`（30 集 × 每集 4 镜，共 120 units）和 summary，并按 200 units 上限封顶；只有设置 `GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE=1` 才提交。
+- GEARS worker evidence bundle 已落地：`GET /api/system/gears-execution-worker-evidence-bundle` 一键聚合 acceptance report、worker kit、smoke handoff、pressure report、generated pressure report、generated health report 和 Story Agent MVP status report；单故事项目页与 AI 漫剧系列工作台已显示 evidence 文档数，并支持导出 Markdown / JSON。
 - GEARS callback 幂等已接入 submit idempotency key：worker 可回传 `idempotencyKey` / `idempotency_key` 作为 callback event id，重复回调会进入 `duplicate_count`，不重复追加 `callback_events` 或生成镜头版本。
 - GEARS Job Ledger 已持久化 submit idempotency key，并支持 worker 仅凭 `idempotencyKey` / `idempotency_key` 回调匹配单故事与 AI 漫剧系列 job；旧 ledger normalize 时会按 `job_type:source_unit_id` 补齐默认幂等键。
 - GEARS idempotency-key 生命周期回调审计已加固：`idempotencyKey` 作为 job 匹配 / 幂等锚点时，不会吞掉状态、进度或消息变化；只有相同状态、进度和消息的重复 payload 才计入 `duplicate_count`，`callback_events` 会标注 `event_id_source`。
+- GEARS 大项目账本边界已显性化：单个 job 只保留最新 20 条 `callback_events`，批量 callback envelope 单次最多接收 200 条 item，超过时在路由/服务层返回校验错误，避免大系列误投导致账本和写回循环失控。
+- GEARS 大项目边界已进入配置与前端可观测面：`GET /api/system/gears-execution-config` 返回 callback 批量上限和事件保留上限，单故事项目页与 AI 漫剧系列工作台会直接显示这些 GEARS 边界。
+- GEARS poll/status 合同已与 callback 合同对齐：`GET /api/system/gears-execution-contract` 在 `poll.accepted_status_fields` 和 `callback.accepted_status_fields` 中公开同一套平台状态别名，便于 GEARS v2 同步实现 status 查询和 webhook 回调。
 - GEARS 系列重试 payload 已补生产上下文：`seedance_video` retry unit 会带 `retry_count`、`retry_reason`、旧 provider job、旧视频 URL、失败原因、审片意见、执行计划时间戳和 request payload，便于 GEARS v2 worker 区分首次生成、失败重试和审片返修。
+- GEARS submit response 兼容已补深层 worker envelope：支持 `response.payload.result.tasks[]` / `rejectedJobs[]`，并把 `PROMPT_TOO_LONG`、`schema_invalid` 等 payload 类错误优先归入 `payload_invalid`。
 - GEARS 系列 submit 响应已补 `job_type`、`job_type_label`、`submit_intent` 和更完整 Markdown 对账摘要；GEARS execution contract 示例已切换到系列 `seedance_video` 返修/重试 payload，系列工作台按钮文案也改为“GEARS 视频返修/重试”，旧 Seedance 重试入口标为兼容路径。
-- 已验证：server lint/build、client lint/build、`project-service.test.ts`、`outline-service.test.ts`、`api.test.ts`。
+- 已执行导出的 `run-gears-worker-acceptance.sh` 前置 smoke：Story Agent 预检和 evidence bundle 拉取通过；本机没有 GEARS v2 worker endpoint，submit 阶段以 curl 7 失败并保存证据。新版脚本验证了缺 env evidence（`/private/tmp/gears-worker-evidence-missing-env`）和不可达 worker submit evidence（`/private/tmp/gears-worker-evidence-submit-failure-v2`），并确认 30 集级压力 payload 生成 120 units。真实端到端仍需配置可达 `GEARS_API_BASE_URL`、`GEARS_CALLBACK_BASE_URL` 和 `GEARS_CALLBACK_SECRET`。
+- 已用本地 fake GEARS worker 验证多轮 status poll：submit 返回 `fake-gears-job-1`，第 1 次 status 为 `PROCESSING`、第 2 次为 `COMPLETED`；脚本写出 attempt 文件和 latest 文件，audit 扫描 attempt 文件、跳过 latest 副本，`ready_without_artifact=0/1` 且识别 artifact URL。
+- 已用本地 fake GEARS worker 验证 Story Agent callback response audit：占位 project/series id 会导致单故事与系列 callback 返回 `ok=false` / `VALIDATION_ERROR`，audit 统计 `ok_false_count=2`、`validation_error_count=2`，并给出 `validation_error_count` 推荐动作，提示换成真实 Story Agent project id。
+- 已用导出的 `run-gears-worker-acceptance.sh` 验证缺 env 路径的新 id preflight：`/private/tmp/gears-worker-evidence-id-preflight` 写出 `story-agent-callback-id-preflight.json/.md`，`warning_count=2`，stdout 打印 `recommended_actions=1`；worker audit 同步输出 `no_worker_response_files` 推荐动作。
+- 已用本地 fake GEARS worker 验证 HTTP 503 submit 证据：脚本写出 `gears-submit-response-http-status.txt=503` 与 `gears-submit-response-curl-exit-code.txt=0`，worker audit 统计 `http_error_count=1`、`failed_count=2`、`unknown_count=0`，并给出 `http_error_count` recommended action。
+- 已用本地 fake GEARS worker 验证 Story Agent callback HTTP sidecar：worker submit/status 均 200，但使用不存在的合法格式 project/series id 回调，脚本完整退出 0，callback audit 统计 `http_error_count=4`、`not_found_count=4`、`blocked_count=1`、`ok_false_count=4`，sample transport files 指向四个 404 response，并把修复动作归到 smoke env 项目 ID / live smoke server env。
+- 已用本地 fake GEARS worker 验证 smoke target 自动补齐：未配置 smoke project env 时自动选择 `20260621-story-5xhl--character_story` / `20260621-story-5xhl` / `20260619-series-r0v5zyag`，证据目录 `/private/tmp/gears-worker-evidence-auto-target-v3`；`not_found_count=0`、`blocked_count=0`、`http_error_count=0`、`transport_error_count=0`，剩余 `ledger_match_missing_count=4` 指向“需先 Story Agent submit 建账本或启用 `GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER=1`”。
+- 已用本地 fake GEARS worker 验证可选 ledger seed：`/private/tmp/gears-worker-evidence-ledger-seed-v3` 中单故事 seed 成功，`story-agent-project-ledger-seed-selected.json` 为 `patched=true`，callback 回写 `shot-1` ready；系列 seed 为 `patched=false/no_submitted_job`，所以 callback audit 仍有 `ledger_match_missing_count=2`，下一步应换有 `seedance_video` retry candidates 的系列或设置其它 `GEARS_ACCEPTANCE_LEDGER_SEED_JOB_TYPE` 继续验证。
+- 已修正 worker acceptance smoke target 选择：自动扫描默认 generated 根与仓库 `web/generated`，并把 series seed readiness 绑定到真实可提交候选；当 `seedance_video` 因缺真实 story/retry candidates 不可提交时，会自动推荐可提交的 GEARS 后期 job。本轮推荐 `GEARS_ACCEPTANCE_LEDGER_SEED_JOB_TYPE=title_card_render`。
+- 已用新版导出的 `run-gears-worker-acceptance.sh` 复测 ledger seed 完整闭环：证据目录 `/private/tmp/gears-worker-evidence-ledger-seed-v5`；自动选择 `20260619-series-3f89ec1y`，单故事与系列 seed selected 均 `patched=true`，series 使用 `source_unit_id=title_card:card-series-opening` / `gears_job_id=fake-gears-job-11`；callback audit 达到 `updated_count=4`、`duplicate_count=2`、`failed_count=0`、`ledger_match_missing_count=0`、`recommended_actions=[]`。真实 GEARS v2 endpoint 仍未配置，真实端到端和真实大项目提交压测继续等待可达 endpoint。
+- 已修正 worker response audit 的记录识别误报：顶层 submit/status envelope 仅有 `status` 时不再当作 worker record，`outputs[].url` 等 artifact 子项也不再被误判为缺 job/source id 的记录；只有明确 job/unit/task/result 路径或对象自身含 job/source/artifact/status 信号时才计入审计。
+- 已用新版导出的 `run-gears-worker-acceptance.sh` 跑 v7 fake GEARS smoke：证据目录 `/private/tmp/gears-worker-evidence-ledger-seed-v7`；worker audit 达到 `unknown_count=0`、`missing_worker_id_count=0`、`missing_source_id_count=0`、`missing_ready_artifact_count=0`、`recommended_actions=[]`；Story Agent callback audit 达到 `updated_count=4`、`failed_count=0`、`duplicate_count=3`、`ledger_match_missing_count=0`、`recommended_actions=[]`。真实 GEARS v2 endpoint 仍未配置，真实端到端和真实大项目提交压测继续等待可达 endpoint。
+- 已补大项目压力响应专用审计：acceptance shell 现在生成 `gears-large-project-response-audit.json/.md`，对 `gears-large-project-submit-pressure.json` 与 worker response 逐 source 对账，专门定位 source echo 缺口、重复 source、意外 source、HTTP/curl 错误和大批量状态别名问题。
+- 已用新版导出的 `run-gears-worker-acceptance.sh` 跑 v8 大项目压力 smoke：证据目录 `/private/tmp/gears-worker-evidence-ledger-seed-v8-pressure`；30 集 × 4 镜共 120 units 全量 accepted，large-project response audit 达到 `request_unit_count=120`、`response_record_count=120`、`accepted_count=120`、`source_echo_count=120`、`missing_requested_source_count=0`、`duplicate_source_id_count=0`、`unexpected_source_count=0`、`recommended_actions=[]`；worker audit 总计 `record_count=370` 且无 missing id/source/unknown，callback audit `ledger_match_missing_count=0`。真实 GEARS v2 endpoint 仍未配置。
+- 已补最终 GEARS worker acceptance verdict：脚本会生成 `gears-worker-acceptance-verdict.json/.md`，统一判定 required env、callback id preflight、worker response audit、Story Agent callback audit、大项目 pressure audit 与 manifest；真实 worker smoke 跑完后以 `acceptance_passed=true` 作为签收条件，默认 `GEARS_ACCEPTANCE_STRICT_AUDIT=1` 会在 verdict 失败时非零退出。
+- 已用新版导出的 `run-gears-worker-acceptance.sh` 跑 v9 verdict smoke：证据目录 `/private/tmp/gears-worker-evidence-verdict-v9`；最终 verdict `status=passed`、`acceptance_passed=true`、`failed_gate_ids=[]`、`recommended_actions=0`，大项目 120/120 source echo，worker/callback audit 均无阻断。真实 GEARS v2 endpoint 仍未配置。
+- 已补最终 GEARS worker acceptance archive：脚本会生成 `gears-worker-acceptance-archive.json/.md`，以必交证据文件、缺失附件、byte length 和 `sha256` 生成 handoff 清单；严格模式会要求 archive `signoff_ready=true`。
+- 已用新版导出的 `run-gears-worker-acceptance.sh` 跑 v10 archive smoke：证据目录 `/private/tmp/gears-worker-evidence-archive-v10`；worker kit 为 16 条 commands / 5 个 payloads；最终 archive `status=signoff_ready`、`signoff_ready=true`、18 个必交附件全齐、证据文件 66 个、`recommended_actions=0`；verdict 6 个 gate 全过，大项目 120/120 source echo，worker/callback audit 均无阻断。真实 GEARS v2 endpoint 仍未配置。
+- 已补最终 GEARS worker acceptance checksum manifest：脚本会生成 `gears-worker-acceptance-checksums.json/.md`，用于 GEARS v2 或 CI 按 `sha256` 核验证据文件；archive 生成前会清理旧 archive/checksum 输出。
+- 已用新版导出的 `run-gears-worker-acceptance.sh` 跑 v11 checksum smoke：证据目录 `/private/tmp/gears-worker-evidence-checksums-v11`；checksum manifest `algorithm=sha256`、`file_count=66`、`required_file_count=18`、`record_count=66`；archive `signoff_ready=true`、`required_checksum_count=18`，verdict/pressure/worker/callback audit 均无阻断。真实 GEARS v2 endpoint 仍未配置。
+- 已补最终 GEARS worker acceptance integrity 复核：脚本会生成 `gears-worker-acceptance-integrity.json/.md`，重新计算证据文件 `sha256` 和 byte length，并检查必交附件 checksum record；严格模式会要求 `integrity_passed=true`。
+- 已用新版导出的 `run-gears-worker-acceptance.sh` 跑 v12 integrity smoke：证据目录 `/private/tmp/gears-worker-evidence-integrity-v12`；worker kit 为 17 条 commands / 5 个 payloads；integrity `status=passed`、`integrity_passed=true`、`required_checksum_records=18/18`、`mismatch_count=0`、`sha256_mismatch_count=0`；verdict/pressure/worker/callback audit 均无阻断。真实 GEARS v2 endpoint 仍未配置。
+- 已验证：server lint/build、client lint/build、`project-service.test.ts`、`outline-service.test.ts`、`gears-execution-service.test.ts`、`api.test.ts`。
 
 ## 3. 已完成能力
 
@@ -102,13 +197,14 @@ GEARS v2 = 图片、视频、字幕、混音、片头片尾、最终装配等实
   - `china-culture-story-agent`
   - `china-culture-screenwriting`
   - `gears-seedance-delivery`
-- MCP 已有 21 个工具。
+- MCP 已有 22 个工具。
 - Story Agent 相关 MCP 已完成：
   - `kb_get_project_context`
   - `kb_generate_story_blueprint`
   - `kb_validate_genre_story`
   - `kb_generate_gears_delivery`
   - `kb_generate_seedance_prompt`
+  - `kb_get_production_readiness`
   - `kb_repair_story(auto_apply=false)`
   - `kb_update_project_version`
   - `kb_repair_story(auto_apply=true，需 repaired_story_json)`
@@ -495,8 +591,8 @@ MCP 计划的下一步是把已验证的修复闭环接入更深模型修复链�
 
 推荐顺序：
 
-1. 更深模型修复链路：根据 repair_actions 产出 `repaired_story_json`。
-2. 前端质量反馈增强：质量 drilldown、真实浏览器视觉回归。
+1. 前端质量反馈增强：暴露 `kb_generate_story_repair_prompt` 类似的修复提示包入口、质量 drilldown、真实浏览器视觉回归。
+2. 更深模型修复链路：批量选择 P0/P1 repair actions，生成 `repaired_story_json` 后做质量对比。
 3. GEARS execution contract 与 callback 接入。
 
 `kb_generate_gears_delivery` 已完成首版：
@@ -532,6 +628,13 @@ MCP 计划的下一步是把已验证的修复闭环接入更深模型修复链�
 - 会先对 `repaired_story_json` 运行 `kb_validate_genre_story`，再通过 `kb_update_project_version` 写入 `quality_repair` 新版本。
 - 返回 `after_quality_snapshot`、`update_result` 和风险说明；旧版本不覆盖。
 - 缺少 `repaired_story_json` 时只返回 dry-run 和阻断说明。
+
+`kb_generate_story_repair_prompt` 已完成首版：
+
+- 能从 `project_id`、`story_id`、`story_json` 读取。
+- 复用 `kb_repair_story(auto_apply=false)` 的 repair actions 和 target scenes，生成模型可直接使用的完整 JSON 修复提示包。
+- 提示包包含保护字段、StoryGenerateResult 输出合同、可选原始故事 JSON、调用方补充要求和推荐工作流。
+- 不写文件；后续仍由 `kb_validate_genre_story` 校验，再由 `kb_repair_story(auto_apply=true)` 写入新版本。
 
 `kb_update_project_version` 已完成首版：
 
@@ -649,8 +752,10 @@ ready 镜头
 下一步最小可交付切片建议转向 GEARS v2 真实联调：
 
 ```text
-GEARS v2 submit/status callback smoke
+GEARS v2 worker acceptance shell script submit/status/callback smoke
+  -> 导出 env / payload / curl runbook
   -> 多 job type payload 映射
+  -> 30 集级 worker pressure payload / optional submit
   -> dashboard / Shot Ledger 降噪
   -> retry submit 迁移为 GEARS retry job
 ```
@@ -693,7 +798,7 @@ GEARS 首轮集成之后再做：
 如果只继续一个最小任务，建议做：
 
 ```text
-GEARS v2 submit/status/callback 真实 endpoint smoke
+导出 GEARS worker acceptance kit，并按 runbook 执行真实 submit/status/callback smoke
 ```
 
 理由：
@@ -707,6 +812,6 @@ GEARS v2 submit/status/callback 真实 endpoint smoke
 
 1. 收尾并提交当前改动。
 2. StoryStudio / Projects 继续降噪。
-3. GEARS v2 真实 endpoint smoke 与多 job type payload 映射。
+3. 用 worker acceptance kit 跑 GEARS v2 真实 endpoint smoke 与多 job type payload 映射。
 4. MCP 更深模型修复链路。
 5. dashboard / Shot Ledger 降噪，再推进 GEARS 侧视频和后期 job。
