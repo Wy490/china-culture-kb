@@ -320,7 +320,7 @@ describe('story-regenerate-service', () => {
       intent: 'tighten_conflict',
     });
 
-    expect(updated.scene_breakdown[1].plot).toContain('已完成资料补录');
+    expect(updated.scene_breakdown[1].plot).toContain('已完成素材补充');
     expect(updated.scene_breakdown[1].plot).toContain('南安军衙主管');
     expect(updated.scene_breakdown[1].plot).not.toContain('待补说明不应进入局部重写');
   });

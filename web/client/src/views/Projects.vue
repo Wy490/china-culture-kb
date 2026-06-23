@@ -3,7 +3,7 @@
     <header class="projects-page__header">
       <div>
         <h1 class="projects-page__title">项目工作台</h1>
-        <p class="projects-page__desc">管理故事草稿和 AI 漫剧系列，查看来源条目、状态和最近更新时间。</p>
+        <p class="projects-page__desc">管理影视前期项目、AI 漫剧系列、素材 gate 和最近更新时间。</p>
       </div>
       <div class="projects-page__header-actions">
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建漫剧系列</RouterLink>
@@ -42,9 +42,26 @@
             <option value="ready">已就绪</option>
             <option value="failed">未完成</option>
           </select>
+          <select v-model="creationUseCaseFilter" class="projects-page__select">
+            <option value="">全部创作用途</option>
+            <option value="original_ai_comic">原创开发</option>
+            <option value="adapted_ai_comic">资料改编</option>
+            <option value="institutional_promo">机构影像</option>
+            <option value="documentary_short">纪录短片</option>
+            <option value="brand_commercial">品牌商业</option>
+            <option value="education_training">教育培训</option>
+            <option value="public_service">公益宣传</option>
+          </select>
+          <select v-model="materialGateFilter" class="projects-page__select">
+            <option value="">全部素材 gate</option>
+            <option value="ready">素材可用</option>
+            <option value="risk">可生成但需核验</option>
+            <option value="blocked">素材阻断</option>
+            <option value="unknown">未标注</option>
+          </select>
           <label class="projects-page__toggle">
             <input v-model="supplementFilter" type="checkbox" />
-            <span>仅看待补资料</span>
+            <span>仅看待补素材</span>
           </label>
           <label class="projects-page__toggle">
             <input v-model="qualityFilter" type="checkbox" />
@@ -579,7 +596,7 @@
                 </th>
                 <th>故事</th>
                 <th>类型 / 状态</th>
-                <th>质量</th>
+                <th>质量 / 素材</th>
                 <th>更新时间</th>
                 <th class="projects-page__actions-col">操作</th>
               </tr>
@@ -605,18 +622,23 @@
                   <RouterLink class="projects-page__story-title" :to="`/projects/${project.project_id}`">
                     {{ project.title }}
                   </RouterLink>
-                  <p class="projects-page__story-subtitle">来源：{{ project.source_entry }}</p>
+                  <p class="projects-page__story-subtitle">素材：{{ project.source_entry }}</p>
                   <p v-if="project.logline" class="projects-page__story-logline">{{ project.logline }}</p>
                 </td>
                 <td>
                   <div class="projects-page__cell-stack">
                     <span class="projects-page__status-badge" :data-status="project.status">{{ statusLabel(project.status) }}</span>
                     <span class="projects-page__video-type">{{ typeLabel(project.video_type) }}</span>
+                    <span class="projects-page__contract-chip">{{ creationUseCaseLabel(project.creation_use_case) }}</span>
+                    <span class="projects-page__contract-chip projects-page__contract-chip--truth">{{ truthModeLabel(project.truth_mode) }}</span>
                     <span>{{ project.scene_count }} 场景</span>
                   </div>
                 </td>
                 <td>
                   <div class="projects-page__cell-stack">
+                    <span :class="['projects-page__material-gate', `projects-page__material-gate--${materialGateStatus(project)}`]">
+                      {{ materialGateLabel(materialGateStatus(project), project.material_sufficiency?.score) }}
+                    </span>
                     <span
                       v-if="typeof project.genre_score === 'number'"
                       :class="['projects-page__meta-quality', project.quality_passed ? 'projects-page__meta-quality--pass' : 'projects-page__meta-quality--warn']"
@@ -628,7 +650,7 @@
                       质量问题 {{ project.quality_issue_count }}
                     </span>
                     <span v-if="(project.open_supplement_task_count ?? 0) > 0" class="projects-page__meta-warning">
-                      待补资料 {{ project.open_supplement_task_count }}
+                      待补素材 {{ project.open_supplement_task_count }}
                     </span>
                     <span v-if="project.gears_video_status" :class="['projects-page__meta-video', `projects-page__meta-video--${project.gears_video_status}`]">
                       {{ gearsVideoStatusLabel(project.gears_video_status) }}
@@ -695,9 +717,13 @@ import type {
   StoryProjectDeleteResult,
   StoryProjectListItem,
   StoryProjectStatus,
+  CreationUseCase,
+  TruthMode,
 } from '@shared/types'
 
 const RETAIN_RECENT_COUNT = 10
+
+type MaterialGateStatus = 'ready' | 'risk' | 'blocked' | 'unknown'
 
 const projects = ref<StoryProjectListItem[]>([])
 const seriesProjects = ref<AiComicSeriesProjectMeta[]>([])
@@ -719,6 +745,8 @@ const searchQuery = ref('')
 const projectKindFilter = ref('story')
 const statusFilter = ref('')
 const videoStatusFilter = ref('')
+const creationUseCaseFilter = ref<CreationUseCase | ''>('')
+const materialGateFilter = ref<MaterialGateStatus | ''>('')
 const supplementFilter = ref(false)
 const qualityFilter = ref(false)
 const showArchivedSeries = ref(false)
@@ -748,12 +776,16 @@ const filteredProjects = computed(() => {
     const matchesVideoStatus = !videoStatusFilter.value
       || (videoStatusFilter.value === 'none' && !project.gears_video_status)
       || project.gears_video_status === videoStatusFilter.value
+    const matchesCreationUseCase = !creationUseCaseFilter.value
+      || project.creation_use_case === creationUseCaseFilter.value
+    const matchesMaterialGate = !materialGateFilter.value
+      || materialGateStatus(project) === materialGateFilter.value
     const matchesSupplement = !supplementFilter.value || (project.open_supplement_task_count ?? 0) > 0
     const matchesQuality = !qualityFilter.value || project.quality_passed === false || (project.quality_issue_count ?? 0) > 0
     const matchesQuery = !query
       || project.title.toLowerCase().includes(query)
       || project.source_entry.toLowerCase().includes(query)
-    return matchesStatus && matchesVideoStatus && matchesSupplement && matchesQuality && matchesQuery
+    return matchesStatus && matchesVideoStatus && matchesCreationUseCase && matchesMaterialGate && matchesSupplement && matchesQuality && matchesQuery
   })
 })
 
@@ -802,6 +834,8 @@ const activeFilterCount = computed(() => {
   return [
     statusFilter.value,
     videoStatusFilter.value,
+    creationUseCaseFilter.value,
+    materialGateFilter.value,
     supplementFilter.value,
     qualityFilter.value,
     showArchivedSeries.value,
@@ -847,6 +881,51 @@ function typeLabel(type: string): string {
     landscape_mood: '山水意境',
   }
   return map[type] ?? type
+}
+
+function creationUseCaseLabel(useCase?: CreationUseCase): string {
+  if (!useCase) return '未标注用途'
+  const map: Record<CreationUseCase, string> = {
+    original_ai_comic: '原创开发',
+    adapted_ai_comic: '资料改编',
+    institutional_promo: '机构影像',
+    documentary_short: '纪录短片',
+    brand_commercial: '品牌商业',
+    education_training: '教育培训',
+    public_service: '公益宣传',
+  }
+  return map[useCase] ?? useCase
+}
+
+function truthModeLabel(mode?: TruthMode): string {
+  if (!mode) return '未标注真实度'
+  const map: Record<TruthMode, string> = {
+    fictional_original: '原创虚构',
+    inspired_by_material: '素材启发',
+    source_adaptation: '原作改编',
+    factual_reconstruction: '事实重构',
+    institutional_verified: '机构审定',
+  }
+  return map[mode] ?? mode
+}
+
+function materialGateStatus(project: StoryProjectListItem): MaterialGateStatus {
+  const report = project.material_sufficiency
+  if (!report) return 'unknown'
+  if (report.blocked) return 'blocked'
+  if (report.needs_verification || report.generation_posture === 'draft_needs_verification') return 'risk'
+  if (report.can_generate_with_risks && !report.can_generate) return 'risk'
+  if (report.can_generate && report.score >= 70) return 'ready'
+  if (report.can_generate || report.can_generate_with_risks) return 'risk'
+  return 'unknown'
+}
+
+function materialGateLabel(status: MaterialGateStatus, score?: number): string {
+  const suffix = typeof score === 'number' ? ` ${score}` : ''
+  if (status === 'ready') return `素材可用${suffix}`
+  if (status === 'risk') return `需核验${suffix}`
+  if (status === 'blocked') return `素材阻断${suffix}`
+  return '未标注素材'
 }
 
 function gearsVideoStatusLabel(status: GearsVideoStatus): string {
@@ -1280,6 +1359,8 @@ function clearHiddenSelection() {
 function resetFilters() {
   statusFilter.value = ''
   videoStatusFilter.value = ''
+  creationUseCaseFilter.value = ''
+  materialGateFilter.value = ''
   supplementFilter.value = false
   qualityFilter.value = false
   if (showArchivedSeries.value) {
@@ -2292,7 +2373,9 @@ onMounted(async () => {
 }
 
 .projects-page__status-badge,
-.projects-page__video-type {
+.projects-page__video-type,
+.projects-page__contract-chip,
+.projects-page__material-gate {
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
@@ -2319,6 +2402,40 @@ onMounted(async () => {
 .projects-page__video-type {
   background: #f7f3eb;
   color: #8d5b10;
+}
+
+.projects-page__contract-chip {
+  background: #eef6ff;
+  color: #2b6f9e;
+}
+
+.projects-page__contract-chip--truth {
+  background: #f3f6f8;
+  color: #52616f;
+}
+
+.projects-page__material-gate {
+  font-weight: 700;
+}
+
+.projects-page__material-gate--ready {
+  background: #eaf7ef;
+  color: #1f7a44;
+}
+
+.projects-page__material-gate--risk {
+  background: #fff7e8;
+  color: #9a6100;
+}
+
+.projects-page__material-gate--blocked {
+  background: #fdecea;
+  color: #b13b2e;
+}
+
+.projects-page__material-gate--unknown {
+  background: #eef3f7;
+  color: #667887;
 }
 
 .projects-page__card-title {

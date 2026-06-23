@@ -93,8 +93,24 @@ import type {
   SeedanceShotVersionSelectRequest,
   KnowledgeSupplementTaskUpdateRequest,
   KnowledgeSupplementTaskStatus,
+  ProjectSupplementTaskListFilters,
+  ProjectMaterialPackAddMaterialRequest,
+  QualityRepairAction,
+  MaterialPack,
+  MaterialPackEntry,
+  MaterialPurpose,
+  MaterialSufficiencyReport,
+  CreationUseCase,
+  TruthMode,
+  StoryStructureType,
   StorySceneRegenerateRequest,
   StoryQualityRepairRequest,
+  StoryQualityRepairPromptRequest,
+  StoryQualityRepairPromptResult,
+  StoryQualityRepairApplyRequest,
+  StoryQualityRepairChangeSummary,
+  StoryQualityRepairApplyResult,
+  StoryQualityReport,
   StoryRepairTrace,
   VideoType,
   GearsDeliveryPackage,
@@ -118,10 +134,19 @@ import type {
   StoryProductionBoardRepairResult,
   StoryProjectProductionReadinessReport,
 } from '@shared/types.js';
+import {
+  buildCreationContract,
+  buildMaterialSufficiencyReport,
+  knowledgePackFromMaterialPack,
+  materialPackFromKnowledgePack,
+} from './creation-contract-service.js';
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import { enrichStoryQualityReport } from './quality-workflow-service.js';
 import { repairStoryWithQualityWorkflow } from './quality-repair-service.js';
+import { validateDramaticStory } from './dramatic-story.js';
+import { validateMemoryMosaicStory } from './memory-mosaic-service.js';
+import { validateGenreStoryQuality } from './genre-quality-service.js';
 import {
   buildStoryProductionBoard,
   seedanceShotProductionId,
@@ -353,11 +378,15 @@ function buildProjectMeta(
     video_type: story.video_type,
     presentation_style: story.presentation_style,
     story_structure: story.story_structure,
+    creation_use_case: story.creation_use_case,
+    truth_mode: story.truth_mode,
+    material_sufficiency: story.material_sufficiency,
     status: inferProjectStatus(story, versionCount),
     created_at: createdAt,
     updated_at: createdAt,
     current_version_id: currentVersionId,
     version_count: versionCount,
+    creation_contract: story.creation_contract,
     scene_count: story.scene_breakdown?.length ?? 0,
     has_gears_segments: (story.gears_segments?.length ?? 0) > 0,
     credibility_note: story.credibility_note,
@@ -2540,6 +2569,10 @@ async function persistProjectVersion(
     generation_source: updatedStory.generation_source,
     generation_mode: updatedStory.generation_mode ?? 'local_only',
     generation_used_fallback: updatedStory.generation_used_fallback ?? false,
+    creation_use_case: updatedStory.creation_use_case ?? project.creation_use_case,
+    truth_mode: updatedStory.truth_mode ?? project.truth_mode,
+    material_sufficiency: updatedStory.material_sufficiency ?? project.material_sufficiency,
+    creation_contract: updatedStory.creation_contract ?? project.creation_contract,
     ...qualitySummary(updatedStory),
     open_supplement_task_count: countOpenSupplementTasks(updatedStory),
     gears_video_status: updatedStory.gears_video?.status,
@@ -2598,7 +2631,7 @@ export async function listProjects(): Promise<ApiResponse<StoryProjectListItem[]
   for (const projectId of projectIds) {
     const meta = await readProjectMeta(projectId);
     if (!meta) continue;
-    projects.push(meta);
+    projects.push(await hydrateProjectMetaForCurrentStory(meta));
   }
 
   projects.sort((a, b) => {
@@ -2622,7 +2655,7 @@ async function readAllProjectMetas(): Promise<StoryProjectMeta[]> {
   const projects: StoryProjectMeta[] = [];
   for (const projectId of projectIds) {
     const meta = await readProjectMeta(projectId);
-    if (meta) projects.push(meta);
+    if (meta) projects.push(await hydrateProjectMetaForCurrentStory(meta));
   }
   return projects;
 }
@@ -2639,9 +2672,10 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" has no version snapshots`);
   }
 
+  const currentStory = normalizeStoryGenerationFields(currentVersion.story);
   return success({
-    project,
-    current_story: normalizeStoryGenerationFields(currentVersion.story),
+    project: hydrateProjectMetaForStory(project, currentStory),
+    current_story: currentStory,
     versions: versions.map(toVersionSummary),
   });
 }
@@ -6403,8 +6437,11 @@ function buildProjectExportMarkdown(pkg: Omit<StoryProjectExportPackage, 'markdo
 }
 
 export async function listProjectSupplementTasks(
-  status?: KnowledgeSupplementTaskStatus,
+  filtersOrStatus: ProjectSupplementTaskListFilters | KnowledgeSupplementTaskStatus = {},
 ): Promise<ApiResponse<ProjectSupplementTaskListItem[]>> {
+  const filters: ProjectSupplementTaskListFilters = typeof filtersOrStatus === 'string'
+    ? { status: filtersOrStatus }
+    : filtersOrStatus;
   const projectsResult = await listProjects();
   if (!projectsResult.ok || !projectsResult.data) {
     return fail(
@@ -6418,7 +6455,10 @@ export async function listProjectSupplementTasks(
     const detailResult = await getProject(project.project_id);
     if (!detailResult.ok || !detailResult.data) continue;
     for (const task of detailResult.data.current_story.supplement_tasks ?? []) {
-      if (status && task.status !== status) continue;
+      if (filters.status && task.status !== filters.status) continue;
+      if (filters.stage && task.stage !== filters.stage) continue;
+      if (filters.blocking_level && task.blocking_level !== filters.blocking_level) continue;
+      if (filters.source && task.source !== filters.source) continue;
       items.push({
         project_id: project.project_id,
         current_story_id: project.current_story_id,
@@ -6433,11 +6473,29 @@ export async function listProjectSupplementTasks(
 
   items.sort((a, b) => {
     if (a.task.status !== b.task.status) return a.task.status === 'open' ? -1 : 1;
+    const blockingDelta = supplementBlockingPriority(a.task.blocking_level) - supplementBlockingPriority(b.task.blocking_level);
+    if (blockingDelta !== 0) return blockingDelta;
+    const stageDelta = supplementStagePriority(a.task.stage) - supplementStagePriority(b.task.stage);
+    if (stageDelta !== 0) return stageDelta;
     const aTime = a.task.updated_at ?? a.task.resolved_at ?? a.updated_at;
     const bTime = b.task.updated_at ?? b.task.resolved_at ?? b.updated_at;
     return bTime.localeCompare(aTime);
   });
   return success(items);
+}
+
+function supplementBlockingPriority(level: ProjectSupplementTaskListItem['task']['blocking_level']): number {
+  if (level === 'blocking') return 0;
+  if (level === 'risk') return 1;
+  if (level === 'optional') return 2;
+  return 3;
+}
+
+function supplementStagePriority(stage: ProjectSupplementTaskListItem['task']['stage']): number {
+  if (stage === 'script_ready') return 0;
+  if (stage === 'minimum_viable_story') return 1;
+  if (stage === 'production_ready') return 2;
+  return 3;
 }
 
 export async function deleteProject(projectId: string): Promise<ApiResponse<StoryProjectDeleteResult>> {
@@ -6541,6 +6599,15 @@ function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenera
     generation_mode: story.generation_mode ?? 'local_only',
     generation_used_fallback: story.generation_used_fallback ?? false,
   };
+  if (
+    !normalized.material_pack
+    || !normalized.creation_use_case
+    || !normalized.truth_mode
+    || !normalized.material_sufficiency
+    || !normalized.creation_contract
+  ) {
+    Object.assign(normalized, refreshStoryMaterialContract(normalized, materialPackForStory(normalized)));
+  }
   normalized.gears_delivery = ensureGearsDeliveryPackage(normalized);
   if (normalized.quality_report) {
     normalized.quality_report = enrichStoryQualityReport({
@@ -6550,6 +6617,27 @@ function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenera
     });
   }
   return normalized;
+}
+
+async function hydrateProjectMetaForCurrentStory(project: StoryProjectMeta): Promise<StoryProjectMeta> {
+  if (project.creation_use_case && project.truth_mode && project.material_sufficiency && project.creation_contract) {
+    return project;
+  }
+  const versions = await readVersionSnapshots(project.project_id);
+  const currentVersion = versions.find(version => version.version_id === project.current_version_id) ?? versions[0];
+  if (!currentVersion) return project;
+  return hydrateProjectMetaForStory(project, normalizeStoryGenerationFields(currentVersion.story));
+}
+
+function hydrateProjectMetaForStory(project: StoryProjectMeta, story: StoryGenerateResult): StoryProjectMeta {
+  return {
+    ...project,
+    story_structure: project.story_structure ?? story.story_structure,
+    creation_use_case: project.creation_use_case ?? story.creation_use_case,
+    truth_mode: project.truth_mode ?? story.truth_mode,
+    material_sufficiency: project.material_sufficiency ?? story.material_sufficiency,
+    creation_contract: project.creation_contract ?? story.creation_contract,
+  };
 }
 
 async function updateSourceStory(
@@ -6617,6 +6705,815 @@ export async function repairProjectQuality(
   );
 
   return getProject(projectId);
+}
+
+const QUALITY_REPAIR_PROMPT_PROTECTED_FIELDS = [
+  'storyId',
+  'project_id',
+  'source_entry',
+  'video_type',
+  'presentation_style',
+  'story_structure',
+  'story_blueprint.evidence_boundaries',
+  'creation_contract',
+  'material_sufficiency',
+  'material_pack',
+  'credibility_note',
+];
+
+const QUALITY_REPAIR_PROMPT_REQUIRED_FIELDS = [
+  'storyId',
+  'title',
+  'logline',
+  'theme',
+  'full_text',
+  'video_type',
+  'presentation_style',
+  'scene_breakdown',
+  'gears_segments',
+  'quality_report',
+  'creation_contract',
+  'material_sufficiency',
+  'material_pack',
+];
+
+function clampQualityRepairPromptMaxActions(value: number | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 12;
+  return Math.max(1, Math.min(50, Math.floor(value)));
+}
+
+function fallbackQualityRepairActions(story: StoryGenerateResult, maxActions: number): QualityRepairAction[] {
+  const quality = story.quality_report;
+  const source = [
+    ...(quality?.repair_actions ?? []),
+    ...(quality?.issues ?? []),
+  ].map(item => item.trim()).filter(Boolean);
+  return [...new Set(source)]
+    .slice(0, maxActions)
+    .map((item, index) => ({
+      action_id: `repair-prompt-${String(index + 1).padStart(3, '0')}`,
+      label: item.length > 40 ? `${item.slice(0, 40)}...` : item,
+      target_report: 'combined',
+      severity: index < 2 ? 'high' : 'medium',
+      scene_ids: story.scene_breakdown.slice(0, 3).map(scene => scene.scene_id),
+      prompt: item,
+      expected_effect: '重新校验后相关质量问题减少，且不突破创作合同和素材边界。',
+    }));
+}
+
+function selectQualityRepairPromptActions(
+  story: StoryGenerateResult,
+  request: StoryQualityRepairPromptRequest,
+): QualityRepairAction[] {
+  const selected = selectRequestedRepairActions(story.quality_report?.repair_action_items ?? [], request)
+    ?.slice(0, clampQualityRepairPromptMaxActions(request.max_actions)) ?? [];
+  if (selected.length > 0) return selected;
+  return fallbackQualityRepairActions(story, clampQualityRepairPromptMaxActions(request.max_actions));
+}
+
+function qualityRepairPromptTargetSceneIds(actions: QualityRepairAction[], story: StoryGenerateResult): number[] {
+  const ids = actions.flatMap(action => action.scene_ids);
+  const unique = [...new Set(ids.filter(sceneId => Number.isFinite(sceneId)))].sort((a, b) => a - b);
+  return unique.length > 0 ? unique : story.scene_breakdown.slice(0, 3).map(scene => scene.scene_id);
+}
+
+function buildQualityRepairPromptText(input: {
+  story: StoryGenerateResult;
+  actions: QualityRepairAction[];
+  targetSceneIds: number[];
+  request: StoryQualityRepairPromptRequest;
+}): string {
+  const { story, actions, targetSceneIds, request } = input;
+  const quality = story.quality_report;
+  const targetScenes = story.scene_breakdown
+    .filter(scene => targetSceneIds.includes(scene.scene_id))
+    .map(scene => ({
+      scene_id: scene.scene_id,
+      title: scene.title,
+      dramatic_function: scene.dramatic_function,
+      plot: scene.plot,
+      key_action: scene.key_action,
+      conflict: scene.conflict,
+      dialogue_or_narration: scene.dialogue_or_narration,
+    }));
+  return [
+    '你是 china-culture-kb Story Agent 的故事修复写手。请输出一个完整 repaired_story_json。',
+    '',
+    '硬性输出规则：',
+    '1. 只输出一个 JSON 对象，不要 Markdown、解释、代码围栏或额外文本。',
+    '2. JSON 根对象必须是完整 StoryGenerateResult；不要只输出 patch/diff。',
+    '3. 保留 storyId、project_id、source_entry、video_type、presentation_style、story_structure、story_blueprint.evidence_boundaries、creation_contract、material_sufficiency、material_pack 和 credibility_note，除非修复动作明确要求调整。',
+    '4. 同步修复 full_text、scene_breakdown、gears_segments 和 quality_report，避免正文、分场和 GEARS 单元互相矛盾。',
+    '5. script_text 只写观众可听/可见的剧本内容；visual_prompt 只写可见画面元素；camera_suggestion 只写镜头语言；validation_notes 不得混入提示词字段。',
+    '6. 不新增未经来源支持的硬事实；戏剧化内容要放在 fictionalized_elements、cultural_note 或 credibility_note 的边界中。',
+    '7. 不写入 data/provinces，也不要声称已经保存文件；保存只能由 Story Agent 项目版本接口完成。',
+    '',
+    '创作合同边界：',
+    JSON.stringify({
+      creation_contract: story.creation_contract,
+      material_sufficiency: story.material_sufficiency,
+      material_pack_summary: story.material_pack
+        ? {
+            primary_count: story.material_pack.primary_materials.length,
+            supporting_count: story.material_pack.supporting_materials.length,
+            reference_count: story.material_pack.reference_materials.length,
+            missing_needs: story.material_pack.missing_needs.map(item => item.label),
+            verified_facts: story.material_pack.verified_facts.slice(0, 8),
+            uncertain_claims: story.material_pack.uncertain_claims.slice(0, 8),
+          }
+        : undefined,
+    }, null, 2),
+    '',
+    '质量快照：',
+    JSON.stringify({
+      video_type: story.video_type,
+      story_structure: story.story_structure,
+      passed: quality?.passed ?? false,
+      genre_score: quality?.genre_score,
+      issues: quality?.issues ?? [],
+      missing_required_elements: quality?.missing_required_elements ?? [],
+      weak_beats: quality?.weak_beats ?? [],
+      forbidden_patterns_found: quality?.forbidden_patterns_found ?? [],
+    }, null, 2),
+    '',
+    ...(request.user_instruction?.trim()
+      ? ['调用方补充要求：', request.user_instruction.trim(), '']
+      : []),
+    '必须处理的修复动作：',
+    JSON.stringify(actions, null, 2),
+    '',
+    '重点场景：',
+    JSON.stringify(targetScenes, null, 2),
+    '',
+    '原始 StoryGenerateResult：',
+    request.include_story_json === true
+      ? JSON.stringify(story, null, 2)
+      : '<当前 Web 请求未内嵌完整原始故事 JSON；请基于项目当前版本 JSON 做最小必要修改>',
+    '',
+    '请输出修复后的完整 StoryGenerateResult JSON。',
+  ].join('\n');
+}
+
+function buildQualityRepairPromptMarkdown(result: Omit<StoryQualityRepairPromptResult, 'markdown'>): string {
+  return [
+    '# Story Quality Repair Prompt',
+    '',
+    `- schema: ${result.schema_version}`,
+    `- project: ${result.project_id}`,
+    `- story: ${result.story_id}`,
+    `- title: ${result.title}`,
+    `- score: ${result.quality_snapshot.genre_score ?? 'n/a'}`,
+    `- issue_count: ${result.quality_snapshot.issue_count}`,
+    `- repair_actions: ${result.repair_actions.length}`,
+    `- target_scenes: ${result.target_scene_ids.join(', ') || 'none'}`,
+    '',
+    '## Protected Fields',
+    '',
+    ...result.protected_fields.map(field => `- ${field}`),
+    '',
+    '## Prompt',
+    '',
+    result.prompt,
+  ].join('\n');
+}
+
+export async function generateProjectQualityRepairPrompt(
+  projectId: string,
+  request: StoryQualityRepairPromptRequest,
+): Promise<ApiResponse<StoryQualityRepairPromptResult>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detailResult.error?.message ?? `Project "${projectId}" not found`,
+      detailResult.error?.details,
+    );
+  }
+
+  const { project, current_story } = detailResult.data;
+  if (!current_story.quality_report) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Project "${projectId}" current story has no quality report`);
+  }
+
+  const actions = selectQualityRepairPromptActions(current_story, request);
+  const targetSceneIds = qualityRepairPromptTargetSceneIds(actions, current_story);
+  const prompt = buildQualityRepairPromptText({
+    story: current_story,
+    actions,
+    targetSceneIds,
+    request,
+  });
+  const result: Omit<StoryQualityRepairPromptResult, 'markdown'> = {
+    schema_version: 'story-quality-repair-prompt/v1',
+    project_id: project.project_id,
+    story_id: current_story.storyId,
+    title: current_story.title,
+    generated_at: new Date().toISOString(),
+    quality_snapshot: {
+      video_type: current_story.video_type,
+      story_structure: current_story.story_structure,
+      passed: current_story.quality_report.passed,
+      genre_score: current_story.quality_report.genre_score,
+      issue_count: current_story.quality_report.issues.length,
+    },
+    repair_actions: actions,
+    source_issues: current_story.quality_report.issues,
+    target_scene_ids: targetSceneIds,
+    protected_fields: QUALITY_REPAIR_PROMPT_PROTECTED_FIELDS,
+    output_contract: {
+      format: 'json',
+      root_type: 'StoryGenerateResult',
+      required_top_level_fields: QUALITY_REPAIR_PROMPT_REQUIRED_FIELDS,
+      validation_hint: '先用 Story Agent 质量校验或 MCP kb_validate_genre_story 校验 repaired_story_json。',
+      apply_hint: '确认改善后，再通过项目质量修复/版本写入接口新增版本；不要覆盖旧版本。',
+    },
+    creation_contract: current_story.creation_contract,
+    material_sufficiency: current_story.material_sufficiency,
+    prompt,
+    original_story_json: request.include_story_json ? JSON.stringify(current_story, null, 2) : undefined,
+  };
+
+  return success(request.include_markdown === false
+    ? result
+    : {
+        ...result,
+        markdown: buildQualityRepairPromptMarkdown(result),
+    });
+}
+
+function stripJsonCodeFence(value: string): string {
+  const trimmed = value.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return (fenced?.[1] ?? trimmed).trim();
+}
+
+function unwrapRepairedStoryJson(parsed: unknown): unknown {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return parsed;
+  if (!('repaired_story_json' in parsed)) return parsed;
+  const wrapped = parsed as { repaired_story_json?: unknown };
+  if (typeof wrapped.repaired_story_json === 'string') {
+    return JSON.parse(stripJsonCodeFence(wrapped.repaired_story_json)) as unknown;
+  }
+  return wrapped.repaired_story_json;
+}
+
+function parseRepairedStoryJson(value: string): StoryGenerateResult {
+  const parsed = unwrapRepairedStoryJson(JSON.parse(stripJsonCodeFence(value)) as unknown);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('repaired_story_json must be a JSON object');
+  }
+  const story = parsed as Partial<StoryGenerateResult>;
+  if (typeof story.title !== 'string' || typeof story.full_text !== 'string') {
+    throw new Error('repaired_story_json must include title and full_text');
+  }
+  if (!Array.isArray(story.scene_breakdown) || story.scene_breakdown.length === 0) {
+    throw new Error('repaired_story_json must include a non-empty scene_breakdown');
+  }
+  return parsed as StoryGenerateResult;
+}
+
+function sameSceneIdSet(left: StoryGenerateResult['scene_breakdown'], right: StoryGenerateResult['scene_breakdown']): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((scene, index) => scene.scene_id === right[index]?.scene_id);
+}
+
+function changedSceneIds(before: StoryGenerateResult, after: StoryGenerateResult): number[] {
+  return after.scene_breakdown
+    .filter((scene, index) => JSON.stringify(scene) !== JSON.stringify(before.scene_breakdown[index]))
+    .map(scene => scene.scene_id);
+}
+
+function qualitySnapshotForApply(report: StoryQualityReport | undefined): StoryQualityRepairApplyResult['before_quality'] {
+  return {
+    passed: report?.passed ?? false,
+    genre_score: report?.genre_score,
+    issue_count: report?.issues.length ?? 0,
+  };
+}
+
+function qualityImproved(before: StoryQualityRepairApplyResult['before_quality'], after: StoryQualityRepairApplyResult['after_quality']): boolean {
+  if (after.passed && !before.passed) return true;
+  if ((after.issue_count ?? 0) < (before.issue_count ?? 0)) return true;
+  return (after.genre_score ?? 0) > (before.genre_score ?? 0);
+}
+
+const QUALITY_REPAIR_TOP_LEVEL_DIFF_FIELDS = [
+  'title',
+  'logline',
+  'theme',
+  'full_text',
+  'scene_breakdown',
+  'gears_segments',
+  'quality_report',
+] as const satisfies readonly (keyof StoryGenerateResult)[];
+
+const QUALITY_REPAIR_SCENE_DIFF_FIELDS = [
+  'title',
+  'duration_sec',
+  'location',
+  'time_of_day',
+  'dramatic_function',
+  'plot',
+  'key_action',
+  'characters',
+  'visual_prompt',
+  'camera_suggestion',
+  'cultural_note',
+  'conflict',
+  'dialogue_or_narration',
+  'factual_basis',
+  'fictionalized_elements',
+] as const satisfies readonly (keyof StoryGenerateResult['scene_breakdown'][number])[];
+
+const QUALITY_REPAIR_PROTECTED_SUMMARY_FIELDS = [
+  'storyId',
+  'project_id',
+  'source_entry',
+  'video_type',
+  'presentation_style',
+  'story_structure',
+  'knowledge_pack',
+  'material_pack',
+  'creation_contract',
+  'material_sufficiency',
+] as const satisfies readonly (keyof StoryGenerateResult)[];
+
+function sameJsonValue(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function changedObjectFields<T extends object, K extends keyof T>(
+  before: T,
+  after: T,
+  fields: readonly K[],
+): string[] {
+  return fields
+    .filter(field => !sameJsonValue(before[field], after[field]))
+    .map(field => String(field));
+}
+
+function sceneRepairPreview(scene: StoryGenerateResult['scene_breakdown'][number] | undefined): string {
+  if (!scene) return '';
+  return compactPayloadSummary([
+    scene.title,
+    scene.plot,
+    scene.conflict,
+    scene.dialogue_or_narration,
+  ].filter(Boolean).join(' / '));
+}
+
+function hasOwnField<T extends object, K extends PropertyKey>(value: T, field: K): value is T & Record<K, unknown> {
+  return Object.prototype.hasOwnProperty.call(value, field);
+}
+
+function ignoredProtectedFieldChanges(before: StoryGenerateResult, attempted: StoryGenerateResult | undefined): string[] {
+  if (!attempted || typeof attempted !== 'object') return [];
+  const ignored = QUALITY_REPAIR_PROTECTED_SUMMARY_FIELDS
+    .filter(field => hasOwnField(attempted, field) && !sameJsonValue(before[field], attempted[field]))
+    .map(field => String(field));
+  if (
+    attempted.story_blueprint?.evidence_boundaries
+    && before.story_blueprint?.evidence_boundaries
+    && !sameJsonValue(before.story_blueprint.evidence_boundaries, attempted.story_blueprint.evidence_boundaries)
+  ) {
+    ignored.push('story_blueprint.evidence_boundaries');
+  }
+  return ignored;
+}
+
+function issueCompareKey(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function compactIssueList(items: string[], limit = 12): string[] {
+  return items
+    .map(item => compactPayloadSummary(item))
+    .filter(Boolean)
+    .filter((item, index, arr) => arr.indexOf(item) === index)
+    .slice(0, limit);
+}
+
+function buildQualityIssueDelta(before: StoryGenerateResult, after: StoryGenerateResult): StoryQualityRepairChangeSummary['quality_issue_delta'] {
+  const beforeIssues = before.quality_report?.issues ?? [];
+  const afterIssues = after.quality_report?.issues ?? [];
+  const beforeKeys = new Set(beforeIssues.map(issueCompareKey));
+  const afterKeys = new Set(afterIssues.map(issueCompareKey));
+  return {
+    resolved_issues: compactIssueList(beforeIssues.filter(issue => !afterKeys.has(issueCompareKey(issue)))),
+    new_issues: compactIssueList(afterIssues.filter(issue => !beforeKeys.has(issueCompareKey(issue)))),
+    remaining_issues: compactIssueList(afterIssues.filter(issue => beforeKeys.has(issueCompareKey(issue)))),
+  };
+}
+
+function buildQualityRepairChangeSummary(input: {
+  before: StoryGenerateResult;
+  attempted?: StoryGenerateResult;
+  after: StoryGenerateResult;
+  beforeQuality: StoryQualityRepairApplyResult['before_quality'];
+  afterQuality: StoryQualityRepairApplyResult['after_quality'];
+}): StoryQualityRepairChangeSummary {
+  const { before, attempted, after, beforeQuality, afterQuality } = input;
+  const changedTopLevelFields = changedObjectFields(before, after, QUALITY_REPAIR_TOP_LEVEL_DIFF_FIELDS);
+  const sceneChanges = after.scene_breakdown.reduce<StoryQualityRepairChangeSummary['scene_changes']>((items, scene, index) => {
+    const beforeScene = before.scene_breakdown[index];
+    if (!beforeScene) return items;
+    const changedFields = changedObjectFields(beforeScene, scene, QUALITY_REPAIR_SCENE_DIFF_FIELDS);
+    if (changedFields.length === 0) return items;
+    items.push({
+      scene_id: scene.scene_id,
+      title: scene.title || beforeScene.title,
+      changed_fields: changedFields,
+      before_preview: sceneRepairPreview(beforeScene),
+      after_preview: sceneRepairPreview(scene),
+    });
+    return items;
+  }, []);
+  const beforeSegments = before.gears_segments ?? [];
+  const changedGearsSegmentIds = (after.gears_segments ?? [])
+    .filter((segment, index) => !sameJsonValue(segment, beforeSegments[index]))
+    .map(segment => segment.segment_id);
+  const protectedFieldsPreserved = QUALITY_REPAIR_PROTECTED_SUMMARY_FIELDS
+    .filter(field => sameJsonValue(before[field], after[field]))
+    .map(field => String(field));
+  const ignoredProtectedChanges = ignoredProtectedFieldChanges(before, attempted);
+  const genreScoreDelta = typeof beforeQuality.genre_score === 'number' && typeof afterQuality.genre_score === 'number'
+    ? afterQuality.genre_score - beforeQuality.genre_score
+    : undefined;
+  const issueCountDelta = afterQuality.issue_count - beforeQuality.issue_count;
+  const qualityIssueDelta = buildQualityIssueDelta(before, after);
+  const hasContentChanges = changedTopLevelFields.some(field => field !== 'quality_report')
+    || sceneChanges.length > 0
+    || changedGearsSegmentIds.length > 0;
+  const summaryLines = [
+    `实质内容变化：${hasContentChanges ? '有' : '无'}`,
+    changedTopLevelFields.length > 0
+      ? `顶层字段变更：${changedTopLevelFields.join('、')}`
+      : '未检测到顶层故事字段变更。',
+    sceneChanges.length > 0
+      ? `场景变更：${sceneChanges.map(scene => `${scene.scene_id}(${scene.changed_fields.join('/')})`).join('、')}`
+      : '未检测到场景字段变更。',
+    changedGearsSegmentIds.length > 0
+      ? `GEARS 段变更：${changedGearsSegmentIds.join('、')}`
+      : '未检测到 GEARS 段变更。',
+    typeof genreScoreDelta === 'number'
+      ? `类型分变化：${genreScoreDelta >= 0 ? '+' : ''}${genreScoreDelta}`
+      : '类型分变化：n/a',
+    `问题数变化：${issueCountDelta >= 0 ? '+' : ''}${issueCountDelta}`,
+    `问题差异：解决 ${qualityIssueDelta.resolved_issues.length}，新增 ${qualityIssueDelta.new_issues.length}，仍存在 ${qualityIssueDelta.remaining_issues.length}`,
+    ignoredProtectedChanges.length > 0
+      ? `已忽略保护字段改动：${ignoredProtectedChanges.join('、')}`
+      : '未检测到保护字段被模型改动。',
+  ];
+
+  return {
+    has_content_changes: hasContentChanges,
+    changed_top_level_fields: changedTopLevelFields,
+    scene_changes: sceneChanges,
+    changed_gears_segment_ids: changedGearsSegmentIds,
+    protected_fields_preserved: protectedFieldsPreserved,
+    ignored_protected_field_changes: ignoredProtectedChanges,
+    quality_issue_delta: qualityIssueDelta,
+    quality_delta: {
+      passed_changed: beforeQuality.passed !== afterQuality.passed,
+      genre_score_delta: genreScoreDelta,
+      issue_count_delta: issueCountDelta,
+    },
+    summary_lines: summaryLines,
+  };
+}
+
+function buildQualityRepairOperatorHints(input: {
+  applied: boolean;
+  canApply: boolean;
+  rejectedReason?: string;
+  changeSummary: StoryQualityRepairChangeSummary;
+  beforeQuality: StoryQualityRepairApplyResult['before_quality'];
+  afterQuality: StoryQualityRepairApplyResult['after_quality'];
+}): string[] {
+  const hints: string[] = [];
+  if (input.applied) {
+    hints.push('已写入 quality_repair 新版本；如需继续调整，请基于最新版本重新生成修复提示包。');
+  } else if (input.canApply) {
+    hints.push('校验通过，可在确认字段/场景差异后执行“安全写入新版本”。');
+  } else {
+    hints.push(input.rejectedReason ?? '未达到默认写入门槛；请让模型继续减少问题、提升类型分或说明为何需要 allow_no_improvement。');
+  }
+  if (
+    input.changeSummary.changed_top_level_fields.length === 0
+    && input.changeSummary.scene_changes.length === 0
+    && input.changeSummary.changed_gears_segment_ids.length === 0
+  ) {
+    hints.push('未检测到实质内容差异；不建议写入新版本。');
+  }
+  if (input.changeSummary.scene_changes.length > 0 && input.changeSummary.changed_gears_segment_ids.length === 0) {
+    hints.push('场景已有改动但 GEARS 段未同步变化；写入后请复核分镜/交付字段是否仍与场景一致。');
+  }
+  if (input.changeSummary.ignored_protected_field_changes.length > 0) {
+    hints.push(`模型尝试修改保护字段，已忽略：${input.changeSummary.ignored_protected_field_changes.join('、')}。`);
+  }
+  if (input.changeSummary.quality_issue_delta.resolved_issues.length > 0) {
+    hints.push(`已解决 ${input.changeSummary.quality_issue_delta.resolved_issues.length} 个旧问题；请确认改动没有突破创作合同。`);
+  }
+  if (input.changeSummary.quality_issue_delta.new_issues.length > 0) {
+    hints.push(`重校验新增 ${input.changeSummary.quality_issue_delta.new_issues.length} 个诊断；写入前请优先查看新增问题。`);
+  }
+  if (input.changeSummary.quality_delta.issue_count_delta > 0) {
+    hints.push('重校验后问题数量增加；可能是质量检查发现了更细的风险，写入前请阅读新增问题。');
+  }
+  if (!input.afterQuality.passed) {
+    hints.push('修复后质量仍未通过；建议继续让模型针对剩余 repair actions 迭代。');
+  }
+  return [...new Set(hints)];
+}
+
+function buildQualityRepairValidationMarkdown(input: {
+  projectId: string;
+  storyId: string;
+  applied: boolean;
+  canApply: boolean;
+  rejectedReason?: string;
+  beforeQuality: StoryQualityRepairApplyResult['before_quality'];
+  afterQuality: StoryQualityRepairApplyResult['after_quality'];
+  changeSummary: StoryQualityRepairChangeSummary;
+  operatorHints: string[];
+}): string {
+  return [
+    '# Story Quality Repair Validation',
+    '',
+    `- project: ${input.projectId}`,
+    `- story: ${input.storyId}`,
+    `- applied: ${input.applied}`,
+    `- can_apply: ${input.canApply}`,
+    `- before_score: ${input.beforeQuality.genre_score ?? 'n/a'}`,
+    `- after_score: ${input.afterQuality.genre_score ?? 'n/a'}`,
+    `- before_issue_count: ${input.beforeQuality.issue_count}`,
+    `- after_issue_count: ${input.afterQuality.issue_count}`,
+    ...(input.rejectedReason ? [`- rejected_reason: ${input.rejectedReason}`] : []),
+    '',
+    '## Operator Hints',
+    '',
+    ...input.operatorHints.map(item => `- ${item}`),
+    '',
+    '## Change Summary',
+    '',
+    ...input.changeSummary.summary_lines.map(item => `- ${item}`),
+    '',
+    '## Quality Issues',
+    '',
+    `- resolved: ${input.changeSummary.quality_issue_delta.resolved_issues.length}`,
+    ...input.changeSummary.quality_issue_delta.resolved_issues.map(item => `  - ${item}`),
+    `- new: ${input.changeSummary.quality_issue_delta.new_issues.length}`,
+    ...input.changeSummary.quality_issue_delta.new_issues.map(item => `  - ${item}`),
+    `- remaining: ${input.changeSummary.quality_issue_delta.remaining_issues.length}`,
+    ...input.changeSummary.quality_issue_delta.remaining_issues.map(item => `  - ${item}`),
+    '',
+    '## Scene Changes',
+    '',
+    ...(input.changeSummary.scene_changes.length > 0
+      ? input.changeSummary.scene_changes.flatMap(scene => [
+          `### Scene ${scene.scene_id}${scene.title ? ` - ${scene.title}` : ''}`,
+          '',
+          `- fields: ${scene.changed_fields.join(', ')}`,
+          `- before: ${scene.before_preview}`,
+          `- after: ${scene.after_preview}`,
+          '',
+        ])
+      : ['- none', '']),
+    '## Protected Fields',
+    '',
+    `- preserved: ${input.changeSummary.protected_fields_preserved.join(', ') || 'none'}`,
+    `- ignored_changes: ${input.changeSummary.ignored_protected_field_changes.join(', ') || 'none'}`,
+  ].join('\n');
+}
+
+function buildQualityRepairApplyResponse(input: Omit<
+  StoryQualityRepairApplyResult,
+  'schema_version' | 'operator_hints' | 'validation_summary_markdown'
+>): StoryQualityRepairApplyResult {
+  const operatorHints = buildQualityRepairOperatorHints({
+    applied: input.applied,
+    canApply: input.can_apply,
+    rejectedReason: input.rejected_reason,
+    changeSummary: input.change_summary,
+    beforeQuality: input.before_quality,
+    afterQuality: input.after_quality,
+  });
+  return {
+    schema_version: 'story-quality-repair-apply/v1',
+    ...input,
+    operator_hints: operatorHints,
+    validation_summary_markdown: buildQualityRepairValidationMarkdown({
+      projectId: input.project_id,
+      storyId: input.story_id,
+      applied: input.applied,
+      canApply: input.can_apply,
+      rejectedReason: input.rejected_reason,
+      beforeQuality: input.before_quality,
+      afterQuality: input.after_quality,
+      changeSummary: input.change_summary,
+      operatorHints,
+    }),
+  };
+}
+
+function normalizeRepairedStoryCandidate(
+  current: StoryGenerateResult,
+  repaired: StoryGenerateResult,
+  projectId: string,
+): StoryGenerateResult {
+  const storyBlueprint = repaired.story_blueprint
+    ? {
+        ...repaired.story_blueprint,
+        evidence_boundaries: current.story_blueprint?.evidence_boundaries ?? repaired.story_blueprint.evidence_boundaries,
+      }
+    : current.story_blueprint;
+  return {
+    ...current,
+    ...repaired,
+    storyId: current.storyId,
+    project_id: projectId,
+    current_version_id: current.current_version_id,
+    source_entry: current.source_entry,
+    video_type: current.video_type,
+    presentation_style: current.presentation_style,
+    story_structure: current.story_structure,
+    story_blueprint: storyBlueprint,
+    knowledge_pack: current.knowledge_pack,
+    material_pack: current.material_pack,
+    creation_use_case: current.creation_use_case,
+    truth_mode: current.truth_mode,
+    client_type: current.client_type,
+    target_audience: current.target_audience,
+    communication_goal: current.communication_goal,
+    creation_contract: current.creation_contract,
+    material_sufficiency: current.material_sufficiency,
+    credibility_note: current.credibility_note,
+    generation_source: current.generation_source,
+    generation_mode: current.generation_mode,
+    generation_used_fallback: current.generation_used_fallback,
+  };
+}
+
+function revalidateRepairedStory(story: StoryGenerateResult): StoryGenerateResult {
+  const normalized = normalizeStoryGenerationFields(story);
+  const baseQualityReport = normalized.story_structure === 'memory_mosaic_biography'
+    ? validateMemoryMosaicStory({
+        full_text: normalized.full_text,
+        scene_breakdown: normalized.scene_breakdown,
+        memory_seed: normalized.memory_mosaic_seed,
+      })
+    : validateDramaticStory({
+        full_text: normalized.full_text,
+        scene_breakdown: normalized.scene_breakdown,
+        title: normalized.title,
+        selectedEvent: normalized.story_blueprint?.central_event ?? normalized.title,
+      });
+  const narrativePatternIds = normalized.creation_contract?.narrative_pattern_ids ?? [];
+  let qualityReport: StoryQualityReport = validateGenreStoryQuality({
+    story: normalized,
+    baseReport: baseQualityReport,
+    blueprint: normalized.story_blueprint,
+    narrativePatternIds,
+  });
+  normalized.gears_delivery = ensureGearsDeliveryPackage(normalized);
+  qualityReport = enrichStoryQualityReport({
+    story: normalized,
+    qualityReport,
+    narrativePatternIds,
+    gearsDelivery: normalized.gears_delivery,
+  });
+  normalized.quality_report = {
+    ...qualityReport,
+    truth_mode: normalized.truth_mode,
+    material_sufficiency_report: normalized.material_sufficiency,
+  };
+  return normalized;
+}
+
+export async function applyProjectQualityRepairJson(
+  projectId: string,
+  request: StoryQualityRepairApplyRequest,
+): Promise<ApiResponse<StoryQualityRepairApplyResult>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detailResult.error?.message ?? `Project "${projectId}" not found`,
+      detailResult.error?.details,
+    );
+  }
+
+  const { project, current_story } = detailResult.data;
+  let parsed: StoryGenerateResult;
+  try {
+    parsed = parseRepairedStoryJson(request.repaired_story_json);
+  } catch (error) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      error instanceof Error ? error.message : 'repaired_story_json is not valid JSON',
+    );
+  }
+
+  if (parsed.storyId && parsed.storyId !== current_story.storyId) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'repaired_story_json storyId does not match current project story');
+  }
+  if (parsed.video_type && parsed.video_type !== current_story.video_type) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'repaired_story_json video_type does not match current project story');
+  }
+  if (!sameSceneIdSet(current_story.scene_breakdown, parsed.scene_breakdown)) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'repaired_story_json must keep the same scene_id order and count');
+  }
+
+  const candidate = revalidateRepairedStory(normalizeRepairedStoryCandidate(current_story, parsed, project.project_id));
+  const beforeQuality = qualitySnapshotForApply(current_story.quality_report as StoryQualityReport | undefined);
+  const afterQuality = qualitySnapshotForApply(candidate.quality_report as StoryQualityReport | undefined);
+  const sceneIdsChanged = changedSceneIds(current_story, candidate);
+  const changeSummary = buildQualityRepairChangeSummary({
+    before: current_story,
+    attempted: parsed,
+    after: candidate,
+    beforeQuality,
+    afterQuality,
+  });
+  const qualityGatePassed = request.allow_no_improvement === true || qualityImproved(beforeQuality, afterQuality);
+  const canApply = changeSummary.has_content_changes && qualityGatePassed;
+  const rejectedReason = !changeSummary.has_content_changes
+    ? '修复 JSON 未产生实质内容变化，不建议写入。'
+    : '修复 JSON 未改善质量分或问题数量，默认不建议写入。';
+  const trace: StoryRepairTrace = {
+    trace_id: `${current_story.storyId}--quality-repair-json-${Date.now()}`,
+    attempted: true,
+    applied: false,
+    reason: canApply
+      ? 'quality_repair_json_validated'
+      : changeSummary.has_content_changes
+        ? 'quality_repair_json_not_improved'
+        : 'quality_repair_json_no_content_changes',
+    before_genre_score: beforeQuality.genre_score,
+    after_genre_score: afterQuality.genre_score,
+    actions: [request.user_instruction?.trim() || 'apply repaired_story_json from Web quality prompt'],
+  };
+  if (!request.apply) {
+    return success(buildQualityRepairApplyResponse({
+      project_id: project.project_id,
+      story_id: current_story.storyId,
+      applied: false,
+      can_apply: canApply,
+      rejected_reason: canApply ? undefined : rejectedReason,
+      changed_scene_ids: sceneIdsChanged,
+      before_quality: beforeQuality,
+      after_quality: afterQuality,
+      change_summary: changeSummary,
+      repair_trace: trace,
+    }));
+  }
+
+  if (!canApply) {
+    return success(buildQualityRepairApplyResponse({
+      project_id: project.project_id,
+      story_id: current_story.storyId,
+      applied: false,
+      can_apply: false,
+      rejected_reason: !changeSummary.has_content_changes
+        ? '修复 JSON 未产生实质内容变化，未写入新版本。'
+        : '修复 JSON 未改善质量分或问题数量，未写入新版本。',
+      changed_scene_ids: sceneIdsChanged,
+      before_quality: beforeQuality,
+      after_quality: afterQuality,
+      change_summary: changeSummary,
+      repair_trace: trace,
+    }));
+  }
+
+  const appliedTrace: StoryRepairTrace = {
+    ...trace,
+    applied: true,
+    reason: 'quality_repair_json_applied',
+  };
+  const storyToPersist: StoryGenerateResult = {
+    ...candidate,
+    repair_trace: [...(candidate.repair_trace ?? []), appliedTrace],
+  };
+  await persistProjectVersion(
+    project,
+    storyToPersist,
+    'quality_repair',
+    sceneIdsChanged.length > 0 ? sceneIdsChanged : current_story.scene_breakdown.map(scene => scene.scene_id),
+    request.user_instruction?.trim() || '应用模型修复 JSON',
+  );
+  const nextDetail = await getProject(projectId);
+  return success(buildQualityRepairApplyResponse({
+    project_id: project.project_id,
+    story_id: current_story.storyId,
+    applied: true,
+    can_apply: true,
+    changed_scene_ids: sceneIdsChanged,
+    before_quality: beforeQuality,
+    after_quality: afterQuality,
+    change_summary: changeSummary,
+    repair_trace: appliedTrace,
+    detail: nextDetail.ok && nextDetail.data ? nextDetail.data : undefined,
+  }));
 }
 
 export async function repairProjectProductionBoard(
@@ -6767,20 +7664,30 @@ export async function updateProjectSupplementTask(
       supplement_note: supplementNote || task.supplement_note,
     };
   });
+  const materialRefresh = applySupplementTaskMaterialUpdate(
+    current_story,
+    updatedTasks[taskIndex],
+    request.supplement_note?.trim(),
+    updatedAt,
+  );
   const updatedStory: StoryGenerateResult = {
     ...current_story,
     supplement_tasks: updatedTasks,
+    ...materialRefresh,
   };
   const updatedMeta: StoryProjectMeta = {
     ...project,
     updated_at: updatedAt,
     open_supplement_task_count: countOpenSupplementTasks(updatedStory),
+    material_sufficiency: updatedStory.material_sufficiency ?? project.material_sufficiency,
+    creation_contract: updatedStory.creation_contract ?? project.creation_contract,
   };
   const currentPath = projectVersionPath(projectId, project.current_version_id);
 
   const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
   await writeJsonFile(currentPath, {
     ...snapshot,
+    quality_report: updatedStory.quality_report ?? snapshot.quality_report,
     story: updatedStory,
   });
   await writeJsonFile(projectMetaPath(projectId), updatedMeta);
@@ -6788,11 +7695,337 @@ export async function updateProjectSupplementTask(
   await updateSourceStory(updatedStory, raw => ({
     ...raw,
     supplement_tasks: updatedTasks,
+    ...materialRefresh,
     project_id: updatedStory.project_id,
     current_version_id: updatedStory.current_version_id,
   }));
 
   return getProject(projectId);
+}
+
+export async function addProjectMaterialPackMaterial(
+  projectId: string,
+  request: ProjectMaterialPackAddMaterialRequest,
+): Promise<ApiResponse<StoryProjectDetail>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return detailResult;
+  }
+
+  const { project, current_story } = detailResult.data;
+  const updatedAt = new Date().toISOString();
+  const materialPack = buildMaterialPackWithManualMaterial(current_story, request, updatedAt);
+  const materialRefresh = refreshStoryMaterialContract(current_story, materialPack);
+  const updatedStory: StoryGenerateResult = {
+    ...current_story,
+    ...materialRefresh,
+  };
+  const updatedMeta: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    open_supplement_task_count: countOpenSupplementTasks(updatedStory),
+    material_sufficiency: updatedStory.material_sufficiency ?? project.material_sufficiency,
+    creation_contract: updatedStory.creation_contract ?? project.creation_contract,
+  };
+  const currentPath = projectVersionPath(projectId, project.current_version_id);
+  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
+
+  await writeJsonFile(currentPath, {
+    ...snapshot,
+    quality_report: updatedStory.quality_report ?? snapshot.quality_report,
+    story: updatedStory,
+  });
+  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+
+  await updateSourceStory(updatedStory, raw => ({
+    ...raw,
+    ...materialRefresh,
+    project_id: updatedStory.project_id,
+    current_version_id: updatedStory.current_version_id,
+  }));
+
+  return getProject(projectId);
+}
+
+function applySupplementTaskMaterialUpdate(
+  story: StoryGenerateResult,
+  task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
+  supplementNote: string | undefined,
+  updatedAt: string,
+): Partial<StoryGenerateResult> {
+  if (task.status !== 'resolved' || !supplementNote) return {};
+  const materialPack = buildMaterialPackWithSupplement(story, task, supplementNote, updatedAt);
+  return refreshStoryMaterialContract(story, materialPack);
+}
+
+function refreshStoryMaterialContract(
+  story: StoryGenerateResult,
+  materialPack: MaterialPack,
+): Partial<StoryGenerateResult> {
+  const creationUseCase = story.creation_use_case
+    ?? story.creation_contract?.creation_use_case
+    ?? inferCreationUseCaseFromStory(story);
+  const truthMode = story.truth_mode
+    ?? story.creation_contract?.truth_mode
+    ?? inferTruthModeFromStory(story, creationUseCase);
+  const materialSufficiency = buildMaterialSufficiencyReport({
+    materialPack,
+    creationUseCase,
+    truthMode,
+  });
+  const storyStructure = story.story_structure
+    ?? story.creation_contract?.story_structure
+    ?? inferStoryStructureFromStory(story);
+  const knowledgePack = knowledgePackFromMaterialPack(materialPack) ?? story.knowledge_pack;
+  const creationContract = buildCreationContract({
+    request: {
+      entry_name: story.source_entry,
+      creation_use_case: creationUseCase,
+      truth_mode: truthMode,
+      client_type: story.client_type,
+      target_audience: story.target_audience,
+      communication_goal: story.communication_goal,
+      material_pack: materialPack,
+      knowledge_pack: knowledgePack,
+      story_structure: storyStructure,
+    },
+    materialSufficiency,
+    creationUseCase,
+    truthMode,
+    videoType: story.video_type,
+    presentationStyle: story.presentation_style,
+    storyStructure,
+    narrativePatternIds: story.creation_contract?.narrative_pattern_ids ?? [],
+  });
+  return {
+    material_pack: materialPack,
+    knowledge_pack: knowledgePack,
+    creation_use_case: creationUseCase,
+    truth_mode: truthMode,
+    material_sufficiency: materialSufficiency,
+    creation_contract: creationContract,
+    quality_report: story.quality_report
+      ? {
+        ...story.quality_report,
+        truth_mode: truthMode,
+        material_sufficiency_report: materialSufficiency,
+      }
+      : story.quality_report,
+  };
+}
+
+function buildMaterialPackWithManualMaterial(
+  story: StoryGenerateResult,
+  request: ProjectMaterialPackAddMaterialRequest,
+  updatedAt: string,
+): MaterialPack {
+  const base = materialPackForStory(story);
+  const target = request.target ?? 'supporting_materials';
+  const title = request.title.trim();
+  const summary = request.summary.trim();
+  const materialId = nextMaterialId(base, `manual-${safeMaterialIdPart(title)}`);
+  const confidence = request.confidence ?? (request.mark_as_verified_fact ? 0.78 : 0.66);
+  const entry: MaterialPackEntry = {
+    material_id: materialId,
+    title,
+    summary,
+    source_type: request.source_type ?? 'manual_note',
+    purpose: uniqueMaterialPurposes(request.purpose),
+    confidence,
+    role_in_story: request.role_in_story?.trim() || undefined,
+    provenance: request.provenance?.trim() || `项目素材包手动新增于 ${updatedAt}`,
+    linked_entry_name: request.linked_entry_name?.trim() || story.source_entry,
+    tags: uniqueStrings([
+      ...(request.tags ?? []),
+      targetMaterialPackLabel(target),
+      'manual_material',
+    ]),
+  };
+  const missingNeedId = request.remove_missing_need_id?.trim();
+  const factLine = `${title}：${summary}`;
+  return {
+    ...base,
+    [target]: [
+      ...base[target].filter(item => item.material_id !== materialId),
+      entry,
+    ],
+    verified_facts: request.mark_as_verified_fact
+      ? uniqueStrings([...base.verified_facts, factLine])
+      : base.verified_facts,
+    uncertain_claims: missingNeedId
+      ? base.uncertain_claims.filter(claim => !claim.includes(missingNeedId) && !claim.includes(title))
+      : base.uncertain_claims,
+    creative_space: uniqueStrings([
+      ...base.creative_space,
+      `新增项目素材「${title}」已纳入${targetMaterialPackLabel(target)}，后续蓝图与剧本可按用途标签调用。`,
+    ]),
+    missing_needs: missingNeedId
+      ? base.missing_needs.filter(need => need.need_id !== missingNeedId && !need.need_id.includes(missingNeedId))
+      : base.missing_needs,
+    overall_confidence: Math.min(1, Math.max(base.overall_confidence, confidence)),
+  };
+}
+
+function buildMaterialPackWithSupplement(
+  story: StoryGenerateResult,
+  task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
+  supplementNote: string,
+  updatedAt: string,
+): MaterialPack {
+  const base = materialPackForStory(story);
+  const materialId = `supplement-${safeMaterialIdPart(task.need_id || task.task_id)}`;
+  const entry: MaterialPackEntry = {
+    material_id: materialId,
+    title: task.label,
+    summary: supplementNote,
+    source_type: 'manual_note',
+    purpose: materialPurposesForSupplementTask(task),
+    confidence: task.blocking_level === 'optional' ? 0.65 : 0.75,
+    role_in_story: task.description,
+    provenance: `素材补充任务 ${task.task_id} resolved at ${updatedAt}`,
+    linked_entry_name: story.source_entry,
+    tags: ([
+      task.stage,
+      task.blocking_level,
+      task.source,
+      task.category,
+    ].filter(Boolean) as string[]),
+  };
+  const supporting = [
+    ...base.supporting_materials.filter(item => item.material_id !== materialId),
+    entry,
+  ];
+  const missingNeeds = base.missing_needs.filter(need => !supplementTaskMatchesNeed(task, need));
+  const uncertainClaims = base.uncertain_claims.filter(claim => !claim.includes(task.label) && !claim.includes(task.need_id));
+  const factLine = `${task.label}：${supplementNote}`;
+  return {
+    ...base,
+    supporting_materials: supporting,
+    missing_needs: missingNeeds,
+    verified_facts: uniqueStrings([
+      ...base.verified_facts,
+      factLine,
+    ]),
+    uncertain_claims: uncertainClaims,
+    creative_space: uniqueStrings([
+      ...base.creative_space,
+      `补充素材「${task.label}」可用于${task.affects?.join('、') || '故事和剧本'}，仍需按真实度模式标注来源边界。`,
+    ]),
+    overall_confidence: Math.min(1, Math.max(base.overall_confidence, (base.overall_confidence + 0.1))),
+  };
+}
+
+function materialPackForStory(story: StoryGenerateResult): MaterialPack {
+  return story.material_pack
+    ?? (story.knowledge_pack ? materialPackFromKnowledgePack(story.knowledge_pack, {
+      original_user_query: story.original_user_query,
+      client_type: story.client_type,
+    }) : emptyMaterialPack(story));
+}
+
+function emptyMaterialPack(story: StoryGenerateResult): MaterialPack {
+  return {
+    schema_version: 'material-pack/v1',
+    primary_materials: [],
+    supporting_materials: [],
+    reference_materials: [],
+    visual_assets: [],
+    verified_facts: story.credibility_note ? [story.credibility_note] : [],
+    uncertain_claims: [],
+    creative_space: ['由项目补充任务逐步沉淀素材，不把未核实补充直接写成确定事实。'],
+    missing_needs: [],
+    overall_confidence: 0.55,
+    token_budget_summary: {
+      strategy: '补充任务写回 material_pack.supporting_materials，后续生成优先读取结构化素材。',
+    },
+  };
+}
+
+function materialPurposesForSupplementTask(
+  task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
+): MaterialPurpose[] {
+  const purposes = new Set<MaterialPurpose>();
+  const signal = `${task.need_id} ${task.label} ${task.description}`;
+  if (task.category === 'supporting_character' || task.category === 'person_experience' || /人物|主角|配角|角色|见证人/.test(signal)) purposes.add('character_source');
+  if (task.category === 'regional_context' || /地域|地方|区域|地点|场景/.test(signal)) purposes.add('regional_context');
+  if (task.category === 'cultural_background' || /文化|习俗|背景/.test(signal)) purposes.add('cultural_background');
+  if (task.category === 'event_process' || /事件|过程|事实|史实|数据/.test(signal)) purposes.add('fact_basis');
+  if (task.category === 'architecture_detail' || /建筑|古迹|空间|画面|视觉/.test(signal)) {
+    purposes.add('visual_asset');
+    purposes.add('regional_context');
+  }
+  for (const affect of task.affects ?? []) {
+    if (/asset|visual|production|prompt|handoff|画面|视觉/.test(affect)) purposes.add('visual_asset');
+    if (/credibility|quality|fact|script|full_text|blueprint/.test(affect)) purposes.add('fact_basis');
+  }
+  if (task.stage === 'production_ready') purposes.add('visual_asset');
+  if (task.source === 'material_sufficiency_missing_item') purposes.add('creative_boundary');
+  if (purposes.size === 0) purposes.add('fact_basis');
+  return [...purposes];
+}
+
+function uniqueMaterialPurposes(purposes: MaterialPurpose[]): MaterialPurpose[] {
+  const unique = [...new Set(purposes)];
+  return unique.length > 0 ? unique : ['fact_basis'];
+}
+
+function nextMaterialId(materialPack: MaterialPack, baseId: string): string {
+  const existingIds = new Set([
+    ...materialPack.primary_materials,
+    ...materialPack.supporting_materials,
+    ...materialPack.reference_materials,
+  ].map(material => material.material_id));
+  if (!existingIds.has(baseId)) return baseId;
+  let index = 2;
+  while (existingIds.has(`${baseId}-${index}`)) {
+    index += 1;
+  }
+  return `${baseId}-${index}`;
+}
+
+function targetMaterialPackLabel(target: ProjectMaterialPackAddMaterialRequest['target']): string {
+  if (target === 'primary_materials') return '主素材';
+  if (target === 'reference_materials') return '参考素材';
+  return '支撑素材';
+}
+
+function supplementTaskMatchesNeed(
+  task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
+  need: { need_id: string; label: string },
+): boolean {
+  return task.need_id === need.need_id
+    || task.need_id.includes(need.need_id)
+    || task.label === need.label;
+}
+
+function safeMaterialIdPart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'item';
+}
+
+function uniqueStrings(items: string[]): string[] {
+  return items.filter((item, index, array) => item.trim() && array.indexOf(item) === index);
+}
+
+function inferCreationUseCaseFromStory(story: StoryGenerateResult): CreationUseCase {
+  if (story.video_type === 'ai_comic_drama') return 'original_ai_comic';
+  if (story.video_type === 'documentary_short') return 'documentary_short';
+  if (story.video_type === 'education_training') return 'education_training';
+  if (story.video_type === 'city_brand_promo' || story.video_type === 'social_short') return 'brand_commercial';
+  return 'institutional_promo';
+}
+
+function inferTruthModeFromStory(story: StoryGenerateResult, creationUseCase: CreationUseCase): TruthMode {
+  if (creationUseCase === 'original_ai_comic') return 'fictional_original';
+  if (creationUseCase === 'documentary_short' || story.video_type === 'documentary_short') return 'factual_reconstruction';
+  if (['institutional_promo', 'education_training', 'public_service'].includes(creationUseCase)) return 'institutional_verified';
+  return 'inspired_by_material';
+}
+
+function inferStoryStructureFromStory(story: StoryGenerateResult): StoryStructureType {
+  if (story.video_type === 'documentary_short') return 'case_reconstruction';
+  if (story.video_type === 'heritage_promo') return 'object_clue_journey';
+  if (story.video_type === 'explainer_video' || story.video_type === 'lecture_video') return 'lecture_argument';
+  return 'single_event_drama';
 }
 
 export async function updateProjectCurrentGearsDelivery(

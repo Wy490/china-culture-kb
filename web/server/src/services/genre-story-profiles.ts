@@ -2,8 +2,11 @@
 // Central profile registry for genre-aware text generation.
 
 import type {
+  CreationUseCase,
+  NarrativePatternId,
   PresentationStyle,
   StoryStructureType,
+  TruthMode,
   VideoType,
 } from '@shared/types.js';
 
@@ -39,7 +42,20 @@ export interface GenreDramaticStructure {
   scene_templates: GenreSceneTemplate[];
 }
 
-export interface GenreStoryProfile {
+export interface GenreStoryMatrixFields {
+  compatible_use_cases: CreationUseCase[];
+  compatible_truth_modes: TruthMode[];
+  default_truth_mode: TruthMode;
+  recommended_narrative_patterns: NarrativePatternId[];
+  allowed_narrative_patterns: NarrativePatternId[];
+  forbidden_narrative_patterns: NarrativePatternId[];
+  material_requirements: string[];
+  truth_rules: string[];
+  institutional_rules: string[];
+  adaptation_rules: string[];
+}
+
+export interface GenreStoryProfile extends GenreStoryMatrixFields {
   video_type: VideoType;
   label: string;
   narrative_promise: string;
@@ -67,7 +83,29 @@ export interface GenreSampleGuidance {
   quality_signals: string[];
 }
 
-const PROFILES: Record<VideoType, GenreStoryProfile> = {
+export interface GenreStoryMatrixResolution {
+  video_type: VideoType;
+  creation_use_case: CreationUseCase;
+  truth_mode: TruthMode;
+  default_truth_mode: TruthMode;
+  compatible_use_case: boolean;
+  compatible_truth_mode: boolean;
+  recommended_narrative_patterns: NarrativePatternId[];
+  allowed_narrative_patterns: NarrativePatternId[];
+  forbidden_narrative_patterns: NarrativePatternId[];
+  rejected_narrative_pattern_ids: NarrativePatternId[];
+  resolved_narrative_pattern_ids: NarrativePatternId[];
+  material_requirements: string[];
+  truth_rules: string[];
+  institutional_rules: string[];
+  adaptation_rules: string[];
+  requirement_lines: string[];
+  warnings: string[];
+}
+
+type GenreStoryProfileBase = Omit<GenreStoryProfile, keyof GenreStoryMatrixFields>;
+
+const PROFILES: Record<VideoType, GenreStoryProfileBase> = {
   character_story: {
     video_type: 'character_story',
     label: '人物故事',
@@ -642,10 +680,302 @@ const SAMPLE_GUIDANCE: Record<VideoType, GenreSampleGuidance> = {
   },
 };
 
-export const GENRE_STORY_PROFILES = PROFILES;
+const DRAMATIC_PATTERNS: NarrativePatternId[] = [
+  'mortal_growth',
+  'historical_causal_story',
+  'hero_choice',
+  'mystery_reveal',
+  'ensemble_threads',
+  'object_clue_journey',
+  'character_arc_adaptation',
+  'theme_preserving_adaptation',
+  'worldbuilding_grounding',
+];
+
+const ADAPTATION_PATTERNS: NarrativePatternId[] = [
+  'novel_scene_compression',
+  'character_arc_adaptation',
+  'serial_hook_adaptation',
+  'cinematic_setpiece_adaptation',
+  'theme_preserving_adaptation',
+  'source_fidelity_adaptation',
+  'chapter_slice_adaptation',
+  'dialogue_scene_adaptation',
+  'worldbuilding_grounding',
+];
+
+const PROMO_PATTERNS: NarrativePatternId[] = [
+  'object_clue_journey',
+  'craft_mastery',
+  'ritual_process',
+  'brand_symbol',
+  'city_day_journey',
+  'social_hook_contrast',
+  'space_walkthrough',
+  'poetic_landscape',
+];
+
+const DOCUMENTARY_PATTERNS: NarrativePatternId[] = [
+  'documentary_investigation',
+  'historical_causal_story',
+  'object_clue_journey',
+  'mystery_reveal',
+  'space_walkthrough',
+  'lecture_case_argument',
+];
+
+const EDUCATION_PATTERNS: NarrativePatternId[] = [
+  'knowledge_gap_explainer',
+  'lecture_case_argument',
+  'training_loop',
+  'historical_causal_story',
+  'object_clue_journey',
+  'children_fable',
+];
+
+const AI_COMIC_PATTERNS: NarrativePatternId[] = [
+  'platform_short_drama_hook',
+  'mortal_growth',
+  'infinite_mission',
+  'hero_choice',
+  'mystery_reveal',
+  'ensemble_threads',
+  'character_arc_adaptation',
+  'serial_hook_adaptation',
+  'dialogue_scene_adaptation',
+  'cinematic_setpiece_adaptation',
+  'worldbuilding_grounding',
+  'wuxia_chivalric_epic',
+  'wuxia_lone_blade_mystery',
+  'wuxia_sect_growth',
+  'wuxia_revenge_journey',
+  'wuxia_court_jianghu',
+  'wuxia_romance_honor',
+];
+
+const SPACE_PATTERNS: NarrativePatternId[] = [
+  'space_walkthrough',
+  'object_clue_journey',
+  'poetic_landscape',
+  'city_day_journey',
+  'brand_symbol',
+  'documentary_investigation',
+];
+
+const STRICT_FACT_FORBIDDEN_PATTERNS: NarrativePatternId[] = [
+  'platform_short_drama_hook',
+  'infinite_mission',
+  'wuxia_chivalric_epic',
+  'wuxia_lone_blade_mystery',
+  'wuxia_sect_growth',
+  'wuxia_revenge_journey',
+  'wuxia_court_jianghu',
+  'wuxia_romance_honor',
+];
+
+function matrix(
+  fields: Omit<GenreStoryMatrixFields, 'allowed_narrative_patterns' | 'forbidden_narrative_patterns'> &
+    Partial<Pick<GenreStoryMatrixFields, 'allowed_narrative_patterns' | 'forbidden_narrative_patterns'>>,
+): GenreStoryMatrixFields {
+  return {
+    ...fields,
+    allowed_narrative_patterns: fields.allowed_narrative_patterns ?? [],
+    forbidden_narrative_patterns: fields.forbidden_narrative_patterns ?? [],
+  };
+}
+
+const GENRE_MATRIX_DEFAULTS: Record<VideoType, GenreStoryMatrixFields> = {
+  character_story: matrix({
+    compatible_use_cases: ['original_ai_comic', 'adapted_ai_comic', 'documentary_short', 'institutional_promo', 'education_training', 'public_service'],
+    compatible_truth_modes: ['inspired_by_material', 'factual_reconstruction', 'source_adaptation', 'institutional_verified', 'fictional_original'],
+    default_truth_mode: 'inspired_by_material',
+    recommended_narrative_patterns: ['mortal_growth', 'hero_choice', 'character_arc_adaptation'],
+    allowed_narrative_patterns: uniquePatternIds([...DRAMATIC_PATTERNS, ...ADAPTATION_PATTERNS, ...DOCUMENTARY_PATTERNS]),
+    material_requirements: ['主角原型或条目事实', '中心事件或关键选择压力', '可视化的地点、随身物或行动线索'],
+    truth_rules: ['真实人物事迹需要保留可考边界，合理补写的动作和对白不得伪装成史料原文。'],
+    institutional_rules: ['机构或公益项目中，荣誉、头衔、数据和评价必须来自已确认素材。'],
+    adaptation_rules: ['改编已有文本时，优先保留主角目标、人物关系、关键选择和主题落点。'],
+  }),
+  historical_drama: matrix({
+    compatible_use_cases: ['adapted_ai_comic', 'documentary_short', 'institutional_promo', 'education_training', 'public_service'],
+    compatible_truth_modes: ['factual_reconstruction', 'inspired_by_material', 'source_adaptation', 'institutional_verified'],
+    default_truth_mode: 'factual_reconstruction',
+    recommended_narrative_patterns: ['historical_causal_story', 'hero_choice', 'mystery_reveal'],
+    allowed_narrative_patterns: uniquePatternIds([...DRAMATIC_PATTERNS, ...DOCUMENTARY_PATTERNS, ...ADAPTATION_PATTERNS]),
+    forbidden_narrative_patterns: ['infinite_mission'],
+    material_requirements: ['时代和事件锚点', '人物身份与制度压力', '可标注边界的再现空间'],
+    truth_rules: ['历史剧情可以影视化补足场面，但事件因果、人物身份和时代边界必须可解释。'],
+    institutional_rules: ['机构项目中避免把传说、逸闻或艺术处理写成确证历史。'],
+    adaptation_rules: ['历史改编需要保留原作主线，同时补足服饰、称谓、器物和时代边界。'],
+  }),
+  legend_story: matrix({
+    compatible_use_cases: ['original_ai_comic', 'adapted_ai_comic', 'brand_commercial', 'education_training', 'public_service'],
+    compatible_truth_modes: ['fictional_original', 'inspired_by_material', 'source_adaptation'],
+    default_truth_mode: 'inspired_by_material',
+    recommended_narrative_patterns: ['folk_legend_trial', 'object_clue_journey', 'children_fable'],
+    allowed_narrative_patterns: ['folk_legend_trial', 'object_clue_journey', 'children_fable', 'mystery_reveal', 'poetic_landscape', 'theme_preserving_adaptation', 'worldbuilding_grounding'],
+    forbidden_narrative_patterns: ['documentary_investigation', 'source_fidelity_adaptation'],
+    material_requirements: ['传说版本或民间说法来源', '核心神异意象', '现实地名、习俗或物件承接'],
+    truth_rules: ['传说、神异和民间说法不得写成确定史实，需要用“相传/民间说法”等边界表达。'],
+    institutional_rules: ['机构项目中应把传说作为文化资源或地方记忆，不作为政绩、事实证据或历史定论。'],
+    adaptation_rules: ['改编传说时保留核心禁忌、考验、象征意象和流传理由。'],
+  }),
+  culture_promo: matrix({
+    compatible_use_cases: ['institutional_promo', 'brand_commercial', 'documentary_short', 'education_training', 'public_service'],
+    compatible_truth_modes: ['institutional_verified', 'inspired_by_material', 'factual_reconstruction'],
+    default_truth_mode: 'inspired_by_material',
+    recommended_narrative_patterns: ['brand_symbol', 'object_clue_journey', 'social_hook_contrast'],
+    allowed_narrative_patterns: uniquePatternIds([...PROMO_PATTERNS, ...DOCUMENTARY_PATTERNS, ...EDUCATION_PATTERNS]),
+    forbidden_narrative_patterns: ['infinite_mission'],
+    material_requirements: ['主视觉符号', '文化主张或传播关键词', '当代连接和受众场景'],
+    truth_rules: ['文化表达可以凝练和诗化，但来源事实、地域归属和文化身份不得混淆。'],
+    institutional_rules: ['甲方口径、机构名称、活动成果和政策表达必须以素材包确认为准。'],
+    adaptation_rules: ['从原作改编宣传片时，只提炼可传播主题和视觉符号，不替换原作核心关系。'],
+  }),
+  heritage_promo: matrix({
+    compatible_use_cases: ['institutional_promo', 'brand_commercial', 'documentary_short', 'education_training', 'public_service'],
+    compatible_truth_modes: ['institutional_verified', 'factual_reconstruction', 'inspired_by_material'],
+    default_truth_mode: 'factual_reconstruction',
+    recommended_narrative_patterns: ['craft_mastery', 'ritual_process', 'object_clue_journey'],
+    allowed_narrative_patterns: uniquePatternIds([...PROMO_PATTERNS, ...DOCUMENTARY_PATTERNS, ...EDUCATION_PATTERNS]),
+    forbidden_narrative_patterns: ['platform_short_drama_hook', 'infinite_mission'],
+    material_requirements: ['工艺步骤或仪式流程', '材料、工具、手部动作', '传承人/实践者与传承现状'],
+    truth_rules: ['工艺步骤、传承谱系和非遗称谓必须清楚区分已确认事实与创作性描述。'],
+    institutional_rules: ['非遗级别、代表性传承人、机构资质和获奖信息必须来自已确认素材。'],
+    adaptation_rules: ['改编时保留技艺流程和传承关系，剧情化人物只能服务流程理解。'],
+  }),
+  city_brand_promo: matrix({
+    compatible_use_cases: ['institutional_promo', 'brand_commercial', 'documentary_short', 'education_training', 'public_service'],
+    compatible_truth_modes: ['institutional_verified', 'inspired_by_material', 'factual_reconstruction'],
+    default_truth_mode: 'inspired_by_material',
+    recommended_narrative_patterns: ['city_day_journey', 'brand_symbol', 'space_walkthrough'],
+    allowed_narrative_patterns: uniquePatternIds([...PROMO_PATTERNS, ...SPACE_PATTERNS, ...DOCUMENTARY_PATTERNS]),
+    forbidden_narrative_patterns: ['infinite_mission'],
+    material_requirements: ['城市地标或空间路线', '地方文化识别点', '品牌主张和目标受众'],
+    truth_rules: ['城市故事可以用一日路线或象征串联，但地名、历史归属和现实业态不能错置。'],
+    institutional_rules: ['城市品牌口号、重点产业、活动名称和公共数据必须按甲方素材执行。'],
+    adaptation_rules: ['若从原作改编城市宣传内容，原作事件只能作为城市气质的入口，不能强行改地点。'],
+  }),
+  scene_short: matrix({
+    compatible_use_cases: ['institutional_promo', 'brand_commercial', 'documentary_short', 'education_training', 'public_service', 'original_ai_comic'],
+    compatible_truth_modes: ['inspired_by_material', 'factual_reconstruction', 'institutional_verified', 'fictional_original'],
+    default_truth_mode: 'inspired_by_material',
+    recommended_narrative_patterns: ['space_walkthrough', 'object_clue_journey', 'poetic_landscape'],
+    allowed_narrative_patterns: uniquePatternIds([...SPACE_PATTERNS, ...PROMO_PATTERNS, ...DOCUMENTARY_PATTERNS]),
+    material_requirements: ['空间身份', '观看路线或移动顺序', '空间中的时间层、物件或人物痕迹'],
+    truth_rules: ['空间气氛可以诗化，但真实地点、功能和历史层需要与素材一致。'],
+    institutional_rules: ['展陈、景区、城市空间项目中，开放状态、展项名称和空间功能不得臆造。'],
+    adaptation_rules: ['改编成场景短片时，把原作关系压缩为空间中的物件、声音和行动痕迹。'],
+  }),
+  landscape_mood: matrix({
+    compatible_use_cases: ['institutional_promo', 'brand_commercial', 'documentary_short', 'public_service'],
+    compatible_truth_modes: ['inspired_by_material', 'factual_reconstruction', 'institutional_verified'],
+    default_truth_mode: 'inspired_by_material',
+    recommended_narrative_patterns: ['poetic_landscape', 'space_walkthrough', 'object_clue_journey'],
+    allowed_narrative_patterns: uniquePatternIds([...SPACE_PATTERNS, 'ritual_process']),
+    forbidden_narrative_patterns: ['platform_short_drama_hook', 'infinite_mission', 'training_loop'],
+    material_requirements: ['山水/季节/天气意象', '地点或地域气质', '低密度旁白和留白目标'],
+    truth_rules: ['诗性表达不得替代基本地点事实；自然、人文和季节信息必须避免硬凑。'],
+    institutional_rules: ['文旅项目中避免承诺式、功效式或未经核实的资源表述。'],
+    adaptation_rules: ['改编时保留原作情绪和意象，不强行加入复杂剧情冲突。'],
+  }),
+  documentary_short: matrix({
+    compatible_use_cases: ['documentary_short', 'institutional_promo', 'education_training', 'public_service'],
+    compatible_truth_modes: ['factual_reconstruction', 'institutional_verified', 'inspired_by_material'],
+    default_truth_mode: 'factual_reconstruction',
+    recommended_narrative_patterns: ['documentary_investigation', 'object_clue_journey', 'historical_causal_story'],
+    allowed_narrative_patterns: uniquePatternIds([...DOCUMENTARY_PATTERNS, ...EDUCATION_PATTERNS, 'city_day_journey']),
+    forbidden_narrative_patterns: STRICT_FACT_FORBIDDEN_PATTERNS,
+    material_requirements: ['现实现场或实物', '来源提示或可核验事实', '再现内容边界'],
+    truth_rules: ['纪录片口径中，再现、推测、传说和未核实说法必须显式标边界。'],
+    institutional_rules: ['机构纪录短片中的身份、成果、口号和数据必须使用已核验素材。'],
+    adaptation_rules: ['改编已有素材时，原作可作为访问线索或叙述素材，不得改写成未经证实的事实。'],
+  }),
+  explainer_video: matrix({
+    compatible_use_cases: ['education_training', 'institutional_promo', 'documentary_short', 'public_service'],
+    compatible_truth_modes: ['factual_reconstruction', 'institutional_verified', 'inspired_by_material'],
+    default_truth_mode: 'factual_reconstruction',
+    recommended_narrative_patterns: ['knowledge_gap_explainer', 'lecture_case_argument', 'object_clue_journey'],
+    allowed_narrative_patterns: uniquePatternIds([...EDUCATION_PATTERNS, ...DOCUMENTARY_PATTERNS, ...PROMO_PATTERNS]),
+    forbidden_narrative_patterns: ['platform_short_drama_hook', 'infinite_mission'],
+    material_requirements: ['核心问题', '知识层级或步骤', '可视化例子、图示或类比'],
+    truth_rules: ['讲解内容必须区分事实、解释、类比和观点，不能把类比写成史实。'],
+    institutional_rules: ['课程、科普或政务讲解中的定义、政策和数据必须按确认素材执行。'],
+    adaptation_rules: ['改编文本为讲解视频时，保留原作论点，把情节转成案例或问题。'],
+  }),
+  lecture_video: matrix({
+    compatible_use_cases: ['institutional_promo', 'education_training', 'public_service', 'documentary_short'],
+    compatible_truth_modes: ['institutional_verified', 'factual_reconstruction', 'inspired_by_material'],
+    default_truth_mode: 'institutional_verified',
+    recommended_narrative_patterns: ['lecture_case_argument', 'historical_causal_story', 'hero_choice'],
+    allowed_narrative_patterns: uniquePatternIds([...EDUCATION_PATTERNS, ...DOCUMENTARY_PATTERNS, ...DRAMATIC_PATTERNS]),
+    forbidden_narrative_patterns: ['infinite_mission'],
+    material_requirements: ['中心观点', '事实案例或人物选择', '现实连接与行动号召'],
+    truth_rules: ['宣讲片可以有立场，但观点必须由案例和事实支撑，不得替代事实核验。'],
+    institutional_rules: ['价值表述、政策口径、机构立场和行动号召必须与甲方确认口径一致。'],
+    adaptation_rules: ['改编时把原作冲突转成论据链条，保留核心主题而非照搬情节密度。'],
+  }),
+  education_training: matrix({
+    compatible_use_cases: ['education_training', 'institutional_promo', 'public_service'],
+    compatible_truth_modes: ['institutional_verified', 'factual_reconstruction'],
+    default_truth_mode: 'institutional_verified',
+    recommended_narrative_patterns: ['training_loop', 'knowledge_gap_explainer', 'lecture_case_argument'],
+    allowed_narrative_patterns: EDUCATION_PATTERNS,
+    forbidden_narrative_patterns: ['platform_short_drama_hook', 'infinite_mission', 'wuxia_chivalric_epic', 'wuxia_revenge_journey'],
+    material_requirements: ['学习目标', '分层知识大纲', '练习、示范或复盘机制'],
+    truth_rules: ['培训内容必须以可核验知识、步骤或制度口径为准，不用剧情爽点替代学习路径。'],
+    institutional_rules: ['机构培训中的制度流程、岗位职责、考核项和安全要求必须准确。'],
+    adaptation_rules: ['改编原作时只抽取可教学的案例、选择和复盘点，不保留无关支线。'],
+  }),
+  children_story: matrix({
+    compatible_use_cases: ['original_ai_comic', 'adapted_ai_comic', 'education_training', 'public_service'],
+    compatible_truth_modes: ['fictional_original', 'inspired_by_material', 'source_adaptation'],
+    default_truth_mode: 'inspired_by_material',
+    recommended_narrative_patterns: ['children_fable', 'folk_legend_trial', 'object_clue_journey'],
+    allowed_narrative_patterns: ['children_fable', 'folk_legend_trial', 'object_clue_journey', 'mortal_growth', 'hero_choice', 'poetic_landscape', 'theme_preserving_adaptation'],
+    forbidden_narrative_patterns: ['power_strategy', 'wuxia_revenge_journey', 'documentary_investigation'],
+    material_requirements: ['儿童可理解的主人公目标', '单一清楚的问题', '正向价值和安全情绪'],
+    truth_rules: ['面向儿童的改写可以寓言化，但不得把复杂或存疑史实包装成简单定论。'],
+    institutional_rules: ['公益或教育项目中，价值表达要通过行动呈现，避免成人化口号。'],
+    adaptation_rules: ['改编给儿童时，保留原作温度和主题，简化冲突、称谓和典故。'],
+  }),
+  social_short: matrix({
+    compatible_use_cases: ['institutional_promo', 'brand_commercial', 'documentary_short', 'education_training', 'public_service', 'original_ai_comic'],
+    compatible_truth_modes: ['inspired_by_material', 'institutional_verified', 'factual_reconstruction', 'fictional_original'],
+    default_truth_mode: 'inspired_by_material',
+    recommended_narrative_patterns: ['social_hook_contrast', 'brand_symbol', 'mystery_reveal'],
+    allowed_narrative_patterns: uniquePatternIds([...PROMO_PATTERNS, ...DOCUMENTARY_PATTERNS, ...EDUCATION_PATTERNS, ...DRAMATIC_PATTERNS, 'platform_short_drama_hook']),
+    material_requirements: ['前三秒钩子', '单一传播记忆点', '字幕化短句和可视化素材'],
+    truth_rules: ['短视频可以强钩子，但不能用标题党扭曲事实、地域、人物身份或机构口径。'],
+    institutional_rules: ['机构短视频中不得夸大成果、制造未经核实的对比或伪造群众反应。'],
+    adaptation_rules: ['改编时优先抽取最强冲突或反差点，保留原作基本因果。'],
+  }),
+  ai_comic_drama: matrix({
+    compatible_use_cases: ['original_ai_comic', 'adapted_ai_comic', 'brand_commercial', 'public_service'],
+    compatible_truth_modes: ['fictional_original', 'source_adaptation', 'inspired_by_material'],
+    default_truth_mode: 'fictional_original',
+    recommended_narrative_patterns: ['platform_short_drama_hook', 'mortal_growth', 'character_arc_adaptation'],
+    allowed_narrative_patterns: uniquePatternIds([...AI_COMIC_PATTERNS, ...ADAPTATION_PATTERNS]),
+    forbidden_narrative_patterns: ['documentary_investigation', 'training_loop', 'lecture_case_argument'],
+    material_requirements: ['主角困境和目标', '对白/表情/分镜动作', '结尾追看钩子或反转'],
+    truth_rules: ['AI 漫剧可强戏剧化，但若来自真实人物或机构素材，不能伪造可核验事实和发言。'],
+    institutional_rules: ['公益或品牌漫剧中，品牌/机构只能作为确认素材中的角色、场景或价值背景。'],
+    adaptation_rules: ['改编原作时必须保留主角关系、关键冲突和情绪底色，压缩为可分镜场面。'],
+  }),
+};
+
+export const GENRE_STORY_PROFILES = Object.fromEntries(
+  Object.entries(PROFILES).map(([videoType, profile]) => [
+    videoType,
+    {
+      ...profile,
+      ...GENRE_MATRIX_DEFAULTS[videoType as VideoType],
+    },
+  ]),
+) as Record<VideoType, GenreStoryProfile>;
 
 export function getGenreStoryProfile(videoType: VideoType): GenreStoryProfile {
-  return PROFILES[videoType] ?? PROFILES.character_story;
+  return GENRE_STORY_PROFILES[videoType] ?? GENRE_STORY_PROFILES.character_story;
 }
 
 export function getGenreDramaticStructure(videoType: VideoType): GenreDramaticStructure {
@@ -667,4 +997,80 @@ export function getGenreReturnJsonFields(videoType: VideoType): string[] {
     'credibility_note',
     ...getGenreStoryProfile(videoType).required_fields,
   ];
+}
+
+export function resolveGenreStoryMatrix(input: {
+  videoType: VideoType;
+  creationUseCase: CreationUseCase;
+  truthMode?: TruthMode;
+  storyStructure?: StoryStructureType;
+  narrativePatternIds?: NarrativePatternId[];
+}): GenreStoryMatrixResolution {
+  const profile = getGenreStoryProfile(input.videoType);
+  const truthMode = input.truthMode ?? profile.default_truth_mode;
+  const requestedPatterns = uniquePatternIds(input.narrativePatternIds ?? []);
+  const recommendedPatterns = profile.recommended_narrative_patterns;
+  const allowedPatternSet = new Set(profile.allowed_narrative_patterns);
+  const forbiddenPatternSet = new Set(profile.forbidden_narrative_patterns);
+  const rejectedPatterns = requestedPatterns.filter(patternId =>
+    forbiddenPatternSet.has(patternId) || (allowedPatternSet.size > 0 && !allowedPatternSet.has(patternId)),
+  );
+  const candidatePatterns = uniquePatternIds([
+    ...requestedPatterns,
+    ...recommendedPatterns,
+  ]);
+  const resolvedPatterns = candidatePatterns
+    .filter(patternId => !forbiddenPatternSet.has(patternId))
+    .filter(patternId => allowedPatternSet.size === 0 || allowedPatternSet.has(patternId))
+    .slice(0, 6);
+  const compatibleUseCase = profile.compatible_use_cases.includes(input.creationUseCase);
+  const compatibleTruthMode = profile.compatible_truth_modes.includes(truthMode);
+  const warnings = [
+    compatibleUseCase ? '' : `创作用途 ${input.creationUseCase} 不是 ${profile.label} 的优先用途，需人工确认定位。`,
+    compatibleTruthMode ? '' : `真实度模式 ${truthMode} 与 ${profile.label} 常规边界不匹配，需提高免责声明和核验要求。`,
+    rejectedPatterns.length ? `已过滤不适合该类型/真实度边界的叙事流派：${rejectedPatterns.join('、')}` : '',
+  ].filter(Boolean);
+
+  return {
+    video_type: input.videoType,
+    creation_use_case: input.creationUseCase,
+    truth_mode: truthMode,
+    default_truth_mode: profile.default_truth_mode,
+    compatible_use_case: compatibleUseCase,
+    compatible_truth_mode: compatibleTruthMode,
+    recommended_narrative_patterns: recommendedPatterns,
+    allowed_narrative_patterns: profile.allowed_narrative_patterns,
+    forbidden_narrative_patterns: profile.forbidden_narrative_patterns,
+    rejected_narrative_pattern_ids: rejectedPatterns,
+    resolved_narrative_pattern_ids: resolvedPatterns,
+    material_requirements: profile.material_requirements,
+    truth_rules: profile.truth_rules,
+    institutional_rules: profile.institutional_rules,
+    adaptation_rules: profile.adaptation_rules,
+    requirement_lines: buildGenreMatrixRequirementLines(profile, input.creationUseCase, truthMode, input.storyStructure, resolvedPatterns),
+    warnings,
+  };
+}
+
+function buildGenreMatrixRequirementLines(
+  profile: GenreStoryProfile,
+  creationUseCase: CreationUseCase,
+  truthMode: TruthMode,
+  storyStructure: StoryStructureType | undefined,
+  narrativePatternIds: NarrativePatternId[],
+): string[] {
+  return [
+    `类型矩阵创作用途：${creationUseCase}`,
+    `类型矩阵真实模式：${truthMode}`,
+    storyStructure ? `类型矩阵叙事结构：${storyStructure}` : '',
+    narrativePatternIds.length ? `类型矩阵叙事流派：${narrativePatternIds.join('、')}` : '',
+    ...profile.material_requirements.map(item => `类型矩阵素材要求：${item}`),
+    ...profile.truth_rules.map(item => `类型矩阵真实边界：${item}`),
+    ...profile.institutional_rules.map(item => `类型矩阵机构规则：${item}`),
+    ...profile.adaptation_rules.map(item => `类型矩阵改编规则：${item}`),
+  ].filter(Boolean);
+}
+
+function uniquePatternIds(patternIds: NarrativePatternId[]): NarrativePatternId[] {
+  return Array.from(new Set(patternIds));
 }

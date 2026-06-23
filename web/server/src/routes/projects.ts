@@ -3,11 +3,17 @@ import { Router } from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { validateBody, validateParams } from '../middleware/validate.js';
 import { fail, ErrorCodes } from '@shared/types.js';
+import type {
+  KnowledgeSupplementTaskSource,
+  MaterialBlockingLevel,
+  MaterialSufficiencyStage,
+} from '@shared/types.js';
 import {
   KnowledgeSupplementTaskUpdateRequestSchema,
   GearsJobCallbackRequestSchema,
   GearsJobStatusSyncRequestSchema,
   GearsJobSubmitRequestSchema,
+  ProjectMaterialPackAddMaterialRequestSchema,
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
   ProductionReadinessAutomationRunRequestSchema,
@@ -28,6 +34,8 @@ import {
   SeedanceShotStatusUpdateRequestSchema,
   SeedanceShotVersionSelectRequestSchema,
   StoryProductionBoardRepairRequestSchema,
+  StoryQualityRepairApplyRequestSchema,
+  StoryQualityRepairPromptRequestSchema,
   StoryQualityRepairRequestSchema,
   StorySceneRegenerateRequestSchema,
   SupplementTaskIdParamSchema,
@@ -35,6 +43,7 @@ import {
 import {
   deleteProject,
   deleteProjects,
+  addProjectMaterialPackMaterial,
   autoSelectProjectSeedanceShotVersions,
   exportProjectCurrentVersion,
   exportProjectProductionBoard,
@@ -44,6 +53,8 @@ import {
   getProjectSeedanceProviderRetryPlan,
   getProjectProductionReadiness,
   getProjectProductionBoard,
+  applyProjectQualityRepairJson,
+  generateProjectQualityRepairPrompt,
   listProjectSeedanceGlobalAssetLibrary,
   importProjectSeedanceAssetBatch,
   importProjectGearsCallbacks,
@@ -75,6 +86,9 @@ import {
 export const projectsRouter = Router();
 
 const SEEDANCE_ASSET_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
+const SUPPLEMENT_TASK_STAGES: MaterialSufficiencyStage[] = ['minimum_viable_story', 'script_ready', 'production_ready'];
+const SUPPLEMENT_TASK_BLOCKING_LEVELS: MaterialBlockingLevel[] = ['blocking', 'risk', 'optional'];
+const SUPPLEMENT_TASK_SOURCES: KnowledgeSupplementTaskSource[] = ['knowledge_pack_missing_need', 'material_sufficiency_missing_item'];
 
 type MultipartFile = {
   field_name: string;
@@ -95,6 +109,10 @@ function safeEqualText(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function queryEnum<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
+  return typeof value === 'string' && allowed.includes(value as T) ? value as T : undefined;
 }
 
 function validateSeedanceProviderCallbackSecret(req: Request, res: Response, next: NextFunction): void {
@@ -222,7 +240,15 @@ projectsRouter.get('/supplement-tasks', async (req, res, next) => {
     const status = req.query.status === 'open' || req.query.status === 'resolved'
       ? req.query.status
       : undefined;
-    const result = await listProjectSupplementTasks(status);
+    const stage = queryEnum(req.query.stage, SUPPLEMENT_TASK_STAGES);
+    const blockingLevel = queryEnum(req.query.blocking_level, SUPPLEMENT_TASK_BLOCKING_LEVELS);
+    const source = queryEnum(req.query.source, SUPPLEMENT_TASK_SOURCES);
+    const result = await listProjectSupplementTasks({
+      status,
+      stage,
+      blocking_level: blockingLevel,
+      source,
+    });
     res.json(result);
   } catch (err) {
     next(err);
@@ -770,6 +796,36 @@ projectsRouter.post(
   },
 );
 
+projectsRouter.post(
+  '/:projectId/repair-quality/prompt',
+  validateParams(ProjectIdParamSchema),
+  validateBody(StoryQualityRepairPromptRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await generateProjectQualityRepairPrompt(projectId, req.body);
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/repair-quality/apply',
+  validateParams(ProjectIdParamSchema),
+  validateBody(StoryQualityRepairApplyRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await applyProjectQualityRepairJson(projectId, req.body);
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 projectsRouter.patch(
   '/:projectId/supplement-tasks/:taskId',
   validateParams(SupplementTaskIdParamSchema),
@@ -778,6 +834,21 @@ projectsRouter.patch(
     try {
       const { projectId, taskId } = req.params as { projectId: string; taskId: string };
       const result = await updateProjectSupplementTask(projectId, taskId, req.body);
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/material-pack/materials',
+  validateParams(ProjectIdParamSchema),
+  validateBody(ProjectMaterialPackAddMaterialRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await addProjectMaterialPackMaterial(projectId, req.body);
       res.status(result.ok ? 200 : 400).json(result);
     } catch (err) {
       next(err);

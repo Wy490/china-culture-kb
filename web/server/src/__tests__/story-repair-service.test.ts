@@ -20,6 +20,29 @@ function makeQualityReport(score: number, passed = false): StoryQualityReport {
 }
 
 function makeStory(): StoryGenerateResult {
+  const materialSufficiency = {
+    schema_version: 'material-sufficiency/v1' as const,
+    stage: 'script_ready' as const,
+    active_stage: 'minimum_viable_story' as const,
+    score: 64,
+    can_generate: true,
+    can_generate_with_risks: true,
+    blocked: false,
+    needs_verification: true,
+    generation_posture: 'draft_needs_verification' as const,
+    next_stage: 'script_ready' as const,
+    missing_items: [{
+      item_id: 'institution-position',
+      label: '机构审定口径',
+      reason: '宣传片需要确认机构口径和禁用表述。',
+      blocking_level: 'risk' as const,
+      affects: ['script', 'truth_boundary'],
+      recommended_question: '请补充机构可公开使用的审定口径。',
+    }],
+    optional_items: [],
+    token_risk: 'low' as const,
+    recommended_next_questions: ['是否已有机构审定文案？'],
+  };
   return {
     storyId: 'story-1',
     title: '缺少工艺流程的非遗片',
@@ -48,6 +71,26 @@ function makeStory(): StoryGenerateResult {
     gears_segments_url: '/api/stories/story-1/gears-segments',
     cultural_constraints: [],
     credibility_note: '测试',
+    story_structure: 'object_clue_journey',
+    material_sufficiency: materialSufficiency,
+    creation_contract: {
+      schema_version: 'creation-contract/v1',
+      creation_use_case: 'institutional_promo',
+      truth_mode: 'institutional_verified',
+      client_type: '文旅机构',
+      target_audience: '研学团队',
+      communication_goal: '稳妥呈现非遗传承价值',
+      video_type: 'heritage_promo',
+      presentation_style: 'documentary',
+      story_structure: 'object_clue_journey',
+      narrative_pattern_ids: [],
+      allowed_fiction: ['允许镜头调度和转场设计'],
+      must_verify: ['传承人姓名、荣誉和机构数据'],
+      forbidden_moves: ['不得虚构非遗传承人获奖数据'],
+      required_disclaimers: ['未核实信息以创作性表达标注'],
+      material_sufficiency: materialSufficiency,
+      delivery_expectation: ['可进入剧本草案，不进入生产实产'],
+    },
   };
 }
 
@@ -140,6 +183,13 @@ describe('story-repair-service', () => {
     expect(pkg.user_prompt).toContain('类型质量问题');
     expect(pkg.user_prompt).toContain('类型字段缺失：craft_or_ritual_process');
     expect(pkg.user_prompt).toContain('工艺全程');
+    expect(pkg.user_prompt).toContain('创作合同与素材边界');
+    expect(pkg.user_prompt).toContain('真实度模式：institutional_verified');
+    expect(pkg.user_prompt).toContain('禁止表达：不得虚构非遗传承人获奖数据');
+    expect(pkg.user_prompt).toContain('素材目标阶段：script_ready');
+    expect(pkg.user_prompt).toContain('待核验边界');
     expect(pkg.output_contract.return_json_fields).toContain('craft_or_ritual_process');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('institutional_verified');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('素材 Gate');
   });
 });

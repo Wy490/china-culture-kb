@@ -187,6 +187,135 @@ export interface VerifyResult {
 
 export type ScriptType = '纪录片' | '短剧' | '动画' | '文化解说';
 
+export type VideoType =
+  | 'character_story'
+  | 'historical_drama'
+  | 'legend_story'
+  | 'culture_promo'
+  | 'heritage_promo'
+  | 'city_brand_promo'
+  | 'scene_short'
+  | 'landscape_mood'
+  | 'documentary_short'
+  | 'explainer_video'
+  | 'lecture_video'
+  | 'education_training'
+  | 'children_story'
+  | 'social_short'
+  | 'ai_comic_drama';
+
+export type PresentationStyle =
+  | 'cinematic'
+  | 'documentary'
+  | 'host_narration'
+  | 'voiceover_montage'
+  | 'vertical_drama'
+  | 'ai_comic'
+  | 'animation_2d'
+  | 'ink_style'
+  | 'children_animation'
+  | 'museum_exhibit'
+  | 'social_media_fastcut';
+
+export type StoryStructureType =
+  | 'single_event_drama'
+  | 'three_act_drama'
+  | 'case_reconstruction'
+  | 'memory_mosaic_biography'
+  | 'object_clue_journey'
+  | 'craft_process'
+  | 'spatial_walkthrough'
+  | 'problem_solution_explainer';
+
+export type CreationUseCase =
+  | 'original_ai_comic'
+  | 'adapted_ai_comic'
+  | 'institutional_promo'
+  | 'documentary_short'
+  | 'brand_commercial'
+  | 'education_training'
+  | 'public_service';
+
+export type TruthMode =
+  | 'fictional_original'
+  | 'inspired_by_material'
+  | 'source_adaptation'
+  | 'factual_reconstruction'
+  | 'institutional_verified';
+
+export type MaterialSufficiencyStage =
+  | 'minimum_viable_story'
+  | 'script_ready'
+  | 'production_ready';
+
+export type MaterialBlockingLevel = 'blocking' | 'risk' | 'optional';
+export type MaterialTokenRisk = 'low' | 'medium' | 'high';
+export type MaterialSufficiencyStageStatus = 'ready' | 'needs_input' | 'blocked';
+export type MaterialGenerationPosture =
+  | 'ready'
+  | 'draft_needs_verification'
+  | 'script_ready_production_pending'
+  | 'blocked_until_input';
+
+export interface MaterialSufficiencyMissingItem {
+  item_id: string;
+  label: string;
+  reason: string;
+  blocking_level: MaterialBlockingLevel;
+  affects: string[];
+  recommended_question: string;
+}
+
+export interface MaterialSufficiencyStageReport {
+  stage: MaterialSufficiencyStage;
+  status: MaterialSufficiencyStageStatus;
+  score: number;
+  can_proceed: boolean;
+  required_items: string[];
+  available_outputs: string[];
+  missing_items: MaterialSufficiencyMissingItem[];
+  optional_items: MaterialSufficiencyMissingItem[];
+  notes: string[];
+}
+
+export interface MaterialSufficiencyReport {
+  schema_version: 'material-sufficiency/v1';
+  stage: MaterialSufficiencyStage;
+  active_stage?: MaterialSufficiencyStage;
+  score: number;
+  can_generate: boolean;
+  can_generate_with_risks: boolean;
+  blocked: boolean;
+  needs_verification?: boolean;
+  generation_posture?: MaterialGenerationPosture;
+  next_stage?: MaterialSufficiencyStage;
+  downgrade_reason?: string;
+  stage_reports?: MaterialSufficiencyStageReport[];
+  missing_items: MaterialSufficiencyMissingItem[];
+  optional_items: MaterialSufficiencyMissingItem[];
+  token_risk: MaterialTokenRisk;
+  recommended_next_questions: string[];
+}
+
+export interface CreationContract {
+  schema_version: 'creation-contract/v1';
+  creation_use_case: CreationUseCase;
+  truth_mode: TruthMode;
+  client_type?: string;
+  target_audience?: string;
+  communication_goal?: string;
+  video_type: VideoType;
+  presentation_style: PresentationStyle;
+  story_structure: StoryStructureType;
+  narrative_pattern_ids: string[];
+  allowed_fiction: string[];
+  must_verify: string[];
+  forbidden_moves: string[];
+  required_disclaimers: string[];
+  material_sufficiency: MaterialSufficiencyReport;
+  delivery_expectation: string[];
+}
+
 export interface FullEntryDetail extends SearchResult {
   story: string;
   culturalSignificance: string;
@@ -219,6 +348,8 @@ export interface GenerateStoryResult {
   scriptType: ScriptType;
   entryNames: string[];
   storyText: string;
+  creation_contract?: CreationContract;
+  material_sufficiency?: MaterialSufficiencyReport;
 }
 
 export interface GenerateScriptResult {
@@ -228,6 +359,8 @@ export interface GenerateScriptResult {
   entriesUsed: string[];
   sceneCount: number;
   targetDuration: string;
+  creation_contract?: CreationContract;
+  material_sufficiency?: MaterialSufficiencyReport;
 }
 
 export interface QueryIndexResult {

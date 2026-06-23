@@ -3,6 +3,12 @@ import { buildStoryGenerationPromptPackage } from '../services/story-generation-
 import { buildStoryBlueprint } from '../services/story-blueprint-service.js';
 import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
 import type { EntryDetail, KnowledgePack, StoryGenerateRequest, VideoType } from '@shared/types.js';
+import {
+  buildCreationContract,
+  buildMaterialSufficiencyReport,
+  materialPackFromKnowledgePack,
+} from '../services/creation-contract-service.js';
+import { resolveGenreStoryMatrix } from '../services/genre-story-profiles.js';
 
 function makeEntry(): EntryDetail {
   return {
@@ -169,6 +175,95 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('老奶奶（配角；identity_role；single_scene；老年；女）');
     expect(pkg.user_prompt).toContain('村民（群演；group_role；single_scene；不适用）');
     expect(pkg.user_prompt).toContain('无名角色用稳定身份名');
+  });
+
+  it('includes creation contract, material pack, and material sufficiency in the prompt package', () => {
+    const entry = makeEntry();
+    const request: StoryGenerateRequest = {
+      entry_name: '周敦颐——理学开山鼻祖',
+      video_type: 'culture_promo',
+      creation_use_case: 'institutional_promo',
+      truth_mode: 'institutional_verified',
+      client_type: '政府机构',
+      target_audience: '青少年研学群体',
+      communication_goal: '用周敦颐廉洁精神做一支稳妥的文化宣传短片',
+      original_user_query: '请做一支机构宣传片，不要虚构人物发言。',
+    };
+    const materialPack = {
+      ...materialPackFromKnowledgePack(makeKnowledgePack(), request),
+      brand_or_institution_profile: { client_type: '政府机构' },
+      verified_facts: ['周敦颐为北宋理学重要人物。'],
+    };
+    const materialSufficiency = buildMaterialSufficiencyReport({
+      materialPack,
+      creationUseCase: 'institutional_promo',
+      truthMode: 'institutional_verified',
+    });
+    const creationContract = buildCreationContract({
+      request,
+      materialSufficiency,
+      creationUseCase: 'institutional_promo',
+      truthMode: 'institutional_verified',
+      videoType: 'culture_promo',
+      presentationStyle: 'voiceover_montage',
+      storyStructure: 'object_clue_journey',
+      narrativePatternIds: [],
+    });
+    const genreMatrix = resolveGenreStoryMatrix({
+      videoType: 'culture_promo',
+      creationUseCase: 'institutional_promo',
+      truthMode: 'institutional_verified',
+      storyStructure: 'object_clue_journey',
+      narrativePatternIds: [],
+    });
+    const storyBlueprint = buildStoryBlueprint({
+      entry,
+      videoType: 'culture_promo',
+      presentationStyle: 'voiceover_montage',
+      storyStructure: 'object_clue_journey',
+      targetDuration: '1分钟',
+      centralEvent: '廉洁精神',
+      knowledgePack: makeKnowledgePack(),
+      creationContract,
+      materialSufficiency,
+      genreMatrix,
+    });
+
+    const pkg = buildStoryGenerationPromptPackage({
+      entry,
+      request,
+      videoType: 'culture_promo',
+      presentationStyle: 'voiceover_montage',
+      storyStructure: 'object_clue_journey',
+      targetDuration: '1分钟',
+      tone: '',
+      knowledgePack: makeKnowledgePack(),
+      materialPack,
+      materialSufficiency,
+      creationContract,
+      genreMatrix,
+      storyBlueprint,
+    });
+
+    expect(pkg.creation_contract?.truth_mode).toBe('institutional_verified');
+    expect(pkg.material_pack?.primary_materials[0].purpose).toContain('fact_basis');
+    expect(pkg.material_sufficiency?.stage).toBe('script_ready');
+    expect(pkg.context.client_type).toBe('政府机构');
+    expect(pkg.system_prompt).toContain('真实度模式：institutional_verified');
+    expect(pkg.user_prompt).toContain('=== 项目素材包 ===');
+    expect(pkg.user_prompt).toContain('素材包使用规则');
+    expect(pkg.user_prompt).toContain('=== 素材充分度 ===');
+    expect(pkg.user_prompt).toContain('三阶段素材 gate');
+    expect(pkg.user_prompt).toContain('production_ready：needs_input');
+    expect(pkg.user_prompt).toContain('生成姿态：script_ready_production_pending');
+    expect(pkg.user_prompt).toContain('=== 类型片画像矩阵 ===');
+    expect(pkg.user_prompt).toContain('推荐叙事流派：brand_symbol、object_clue_journey、social_hook_contrast');
+    expect(pkg.user_prompt).toContain('禁止表达：未核实数据、虚构机构成果');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('执行真实度模式：institutional_verified');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('素材生成姿态：script_ready_production_pending');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('类型矩阵机构规则');
+    expect(storyBlueprint.type_specific_requirements.join('\n')).toContain('真实度模式：institutional_verified');
+    expect(storyBlueprint.type_specific_requirements.join('\n')).toContain('类型矩阵素材要求：主视觉符号');
   });
 
   it('adds a concrete creative protocol for each video type', () => {

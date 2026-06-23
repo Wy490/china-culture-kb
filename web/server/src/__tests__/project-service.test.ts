@@ -10,6 +10,7 @@ import {
   type StoryProjectVersionSnapshot,
 } from '@shared/types.js';
 import {
+  addProjectMaterialPackMaterial,
   autoSelectProjectSeedanceShotVersions,
   buildProjectId,
   createProjectFromGeneratedStory,
@@ -392,6 +393,102 @@ describe('project-service', () => {
     const snapshot = JSON.parse(await readFile(versionPath, 'utf-8')) as StoryProjectVersionSnapshot;
     expect(snapshot.quality_report?.genre_score).toBe(92);
     expect(snapshot.quality_report?.passed).toBe(true);
+  });
+
+  it('hydrates creation fields for legacy project metadata at read time', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const projectDir = resolve(root, 'web', 'generated', 'projects', enriched.project_id!);
+    const rawMetaBefore = JSON.parse(await readFile(resolve(projectDir, 'project.json'), 'utf-8')) as StoryProjectMeta;
+    expect(rawMetaBefore.creation_use_case).toBeUndefined();
+    expect(rawMetaBefore.material_sufficiency).toBeUndefined();
+
+    const listRes = await listProjects();
+    expect(listRes.ok).toBe(true);
+    const listed = listRes.data?.find(project => project.project_id === enriched.project_id);
+    expect(listed?.creation_use_case).toBe('institutional_promo');
+    expect(listed?.truth_mode).toBe('institutional_verified');
+    expect(listed?.material_sufficiency?.schema_version).toBe('material-sufficiency/v1');
+
+    const detail = await getProject(enriched.project_id!);
+    expect(detail.ok).toBe(true);
+    expect(detail.data?.project.creation_contract?.schema_version).toBe('creation-contract/v1');
+    expect(detail.data?.current_story.material_pack?.schema_version).toBe('material-pack/v1');
+    expect(detail.data?.current_story.creation_contract?.truth_mode).toBe('institutional_verified');
+
+    const rawMetaAfter = JSON.parse(await readFile(resolve(projectDir, 'project.json'), 'utf-8')) as StoryProjectMeta;
+    expect(rawMetaAfter.creation_use_case).toBeUndefined();
+  });
+
+  it('persists creation contract and material sufficiency in project metadata and version snapshots', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const materialSufficiency = {
+      schema_version: 'material-sufficiency/v1' as const,
+      stage: 'script_ready' as const,
+      score: 86,
+      can_generate: true,
+      can_generate_with_risks: false,
+      blocked: false,
+      missing_items: [],
+      optional_items: [],
+      token_risk: 'low' as const,
+      recommended_next_questions: [],
+    };
+    const creationContract = {
+      schema_version: 'creation-contract/v1' as const,
+      creation_use_case: 'institutional_promo' as const,
+      truth_mode: 'institutional_verified' as const,
+      client_type: '政府机构',
+      target_audience: '青少年研学群体',
+      communication_goal: '稳妥表达廉洁文化',
+      video_type: 'character_story' as const,
+      presentation_style: 'cinematic' as const,
+      story_structure: 'single_event_drama' as const,
+      narrative_pattern_ids: [],
+      allowed_fiction: ['只允许镜头调度和非事实性视觉转场。'],
+      must_verify: ['机构口径、数据和人物发言。'],
+      forbidden_moves: ['虚构人物发言。'],
+      required_disclaimers: ['必要时标注示意画面。'],
+      material_sufficiency: materialSufficiency,
+      delivery_expectation: ['前期剧本与生产指挥材料。'],
+    };
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      creation_use_case: 'institutional_promo',
+      truth_mode: 'institutional_verified',
+      client_type: '政府机构',
+      target_audience: '青少年研学群体',
+      communication_goal: '稳妥表达廉洁文化',
+      material_sufficiency: materialSufficiency,
+      creation_contract: creationContract,
+      quality_report: {
+        ...makeStory().quality_report!,
+        truth_mode: 'institutional_verified',
+        material_sufficiency_report: materialSufficiency,
+      },
+    };
+
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:10:00.000Z');
+    const projectDir = resolve(root, 'web', 'generated', 'projects', enriched.project_id!);
+    const meta = JSON.parse(await readFile(resolve(projectDir, 'project.json'), 'utf-8')) as StoryProjectMeta;
+    const snapshot = JSON.parse(
+      await readFile(resolve(projectDir, 'versions', `${enriched.current_version_id}.json`), 'utf-8'),
+    ) as StoryProjectVersionSnapshot;
+
+    expect(meta.creation_use_case).toBe('institutional_promo');
+    expect(meta.truth_mode).toBe('institutional_verified');
+    expect(meta.material_sufficiency?.score).toBe(86);
+    expect(meta.creation_contract?.client_type).toBe('政府机构');
+    expect(snapshot.story.creation_contract?.truth_mode).toBe('institutional_verified');
+    expect(snapshot.story.material_sufficiency?.stage).toBe('script_ready');
+    expect(snapshot.quality_report?.truth_mode).toBe('institutional_verified');
   });
 
   it('skips unreadable project metadata when listing projects', async () => {
@@ -3471,6 +3568,10 @@ describe('project-service', () => {
           need_id: 'supporting_characters',
           label: '配角人物',
           description: '补充「配角人物」相关资料',
+          stage: 'script_ready',
+          blocking_level: 'blocking',
+          affects: ['full_text', 'quality_report'],
+          recommended_question: '请补充配角人物关系。',
           status: 'open',
           source: 'knowledge_pack_missing_need',
           created_at: '2026-06-09T10:00:00.000Z',
@@ -3480,8 +3581,12 @@ describe('project-service', () => {
           need_id: 'regional_context',
           label: '地域背景',
           description: '补充「地域背景」相关资料',
+          stage: 'production_ready',
+          blocking_level: 'optional',
+          affects: ['asset_handoff'],
+          recommended_question: '请补充地域视觉规范。',
           status: 'resolved',
-          source: 'knowledge_pack_missing_need',
+          source: 'material_sufficiency_missing_item',
           created_at: '2026-06-09T10:00:00.000Z',
           resolved_at: '2026-06-09T11:00:00.000Z',
           supplement_note: '已补充地域背景。',
@@ -3492,13 +3597,20 @@ describe('project-service', () => {
 
     const allTasks = await listProjectSupplementTasks();
     const openTasks = await listProjectSupplementTasks('open');
+    const scriptReadyTasks = await listProjectSupplementTasks({ stage: 'script_ready' });
+    const blockingTasks = await listProjectSupplementTasks({ blocking_level: 'blocking' });
+    const materialGateTasks = await listProjectSupplementTasks({ source: 'material_sufficiency_missing_item' });
 
     expect(allTasks.ok).toBe(true);
     expect(allTasks.data).toHaveLength(2);
+    expect(allTasks.data?.[0].task.blocking_level).toBe('blocking');
     expect(openTasks.ok).toBe(true);
     expect(openTasks.data).toHaveLength(1);
     expect(openTasks.data?.[0].project_title).toBe(story.title);
     expect(openTasks.data?.[0].task.status).toBe('open');
+    expect(scriptReadyTasks.data?.map(item => item.task.need_id)).toEqual(['supporting_characters']);
+    expect(blockingTasks.data?.map(item => item.task.need_id)).toEqual(['supporting_characters']);
+    expect(materialGateTasks.data?.map(item => item.task.need_id)).toEqual(['regional_context']);
   });
 
   it('updates supplement task status on the current project and source story file', async () => {
@@ -3540,10 +3652,91 @@ describe('project-service', () => {
     expect(updated.data?.current_story.supplement_tasks?.[0].status).toBe('resolved');
     expect(updated.data?.current_story.supplement_tasks?.[0].resolved_at).toBeTruthy();
     expect(updated.data?.current_story.supplement_tasks?.[0].supplement_note).toContain('南安军衙主管');
+    expect(updated.data?.current_story.material_pack?.supporting_materials.some(material => (
+      material.material_id === 'supplement-supporting_characters'
+      && material.summary.includes('南安军衙主管')
+      && material.purpose.includes('character_source')
+    ))).toBe(true);
+    expect(updated.data?.current_story.material_sufficiency?.schema_version).toBe('material-sufficiency/v1');
+    expect(updated.data?.current_story.creation_contract?.material_sufficiency.score).toBe(updated.data?.current_story.material_sufficiency?.score);
+    expect(updated.data?.project.material_sufficiency?.score).toBe(updated.data?.current_story.material_sufficiency?.score);
 
     const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
     expect(rawSource.supplement_tasks?.[0].status).toBe('resolved');
     expect(rawSource.supplement_tasks?.[0].supplement_note).toContain('疑案文书');
+    expect(rawSource.material_pack?.supporting_materials.some(material => material.summary.includes('疑案文书'))).toBe(true);
+    expect(rawSource.material_sufficiency?.schema_version).toBe('material-sufficiency/v1');
+  });
+
+  it('adds manual project material and refreshes creation contract fields', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      material_pack: {
+        schema_version: 'material-pack/v1',
+        primary_materials: [],
+        supporting_materials: [],
+        reference_materials: [],
+        visual_assets: [],
+        verified_facts: [],
+        uncertain_claims: ['地域背景待补'],
+        creative_space: [],
+        missing_needs: [{
+          need_id: 'regional_context',
+          label: '地域背景',
+          message: '需要补充南安军衙的地域语境',
+        }],
+        overall_confidence: 0.45,
+      },
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+    const storyPath = resolve(storyDir, `${story.storyId}.json`);
+    await mkdir(storyDir, { recursive: true });
+    await writeFile(storyPath, JSON.stringify({
+      ...story,
+      project_id: enriched.project_id,
+      current_version_id: enriched.current_version_id,
+      _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
+    }, null, 2), 'utf-8');
+
+    const updated = await addProjectMaterialPackMaterial(enriched.project_id!, {
+      target: 'primary_materials',
+      title: '南安军衙主管',
+      summary: '主管负责催促签署疑案文书，是权势压力的具体来源。',
+      source_type: 'manual_note',
+      purpose: ['character_source', 'fact_basis'],
+      confidence: 0.82,
+      tags: ['南安军衙', '疑案文书'],
+      mark_as_verified_fact: true,
+      remove_missing_need_id: 'regional_context',
+    });
+
+    expect(updated.ok).toBe(true);
+    expect(updated.data?.current_story.material_pack?.primary_materials).toContainEqual(expect.objectContaining({
+      title: '南安军衙主管',
+      source_type: 'manual_note',
+      purpose: ['character_source', 'fact_basis'],
+      confidence: 0.82,
+    }));
+    expect(updated.data?.current_story.material_pack?.missing_needs).toEqual([]);
+    expect(updated.data?.current_story.material_pack?.verified_facts.some(fact => fact.includes('疑案文书'))).toBe(true);
+    expect(updated.data?.current_story.knowledge_pack?.primary_entries.some(entry => entry.summary.includes('权势压力'))).toBe(true);
+    expect(updated.data?.current_story.material_sufficiency?.schema_version).toBe('material-sufficiency/v1');
+    expect(updated.data?.current_story.creation_contract?.material_sufficiency.score).toBe(updated.data?.current_story.material_sufficiency?.score);
+    expect(updated.data?.project.material_sufficiency?.score).toBe(updated.data?.current_story.material_sufficiency?.score);
+
+    const snapshotPath = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'versions', `${enriched.current_version_id}.json`);
+    const snapshot = JSON.parse(await readFile(snapshotPath, 'utf-8')) as StoryProjectVersionSnapshot;
+    expect(snapshot.story.material_pack?.primary_materials.some(material => material.title === '南安军衙主管')).toBe(true);
+    expect(snapshot.story.creation_contract?.material_sufficiency.score).toBe(snapshot.story.material_sufficiency?.score);
+
+    const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(rawSource.material_pack?.primary_materials.some(material => material.summary.includes('权势压力'))).toBe(true);
+    expect(rawSource.material_sufficiency?.schema_version).toBe('material-sufficiency/v1');
   });
 
   it('builds a GEARS delivery package when reading old project snapshots', async () => {

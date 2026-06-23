@@ -4,17 +4,30 @@ import { CultureEntry, ScriptType, GenerateScriptResult } from '../types.js';
 import { readAllProvinceFiles, parseEntries } from '../lib/markdown.js';
 import { formatScript, deriveTitle, SCENE_TEMPLATES, DEFAULT_DURATIONS } from '../lib/scripts.js';
 import { getKbRoot } from '../lib/provinces.js';
+import { buildStoryCreationContract, renderCreationContractMarkdown } from './story-creation-contract.js';
 
 interface GenerateScriptInput {
   entry_names: string;
   script_type: string;
   target_duration?: string;
   title?: string;
+  creation_use_case?: string;
+  truth_mode?: string;
+  client_type?: string;
+  target_audience?: string;
+  communication_goal?: string;
 }
 
 function getScriptsRoot(): string {
   const kbRoot = getKbRoot();
   return path.resolve(kbRoot, '..', 'scripts');
+}
+
+function injectCreationContractSection(scriptMarkdown: string, contractLines: string[]): string {
+  const marker = '\n## 角色列表';
+  const section = `\n${contractLines.join('\n')}\n`;
+  if (!scriptMarkdown.includes(marker)) return `${scriptMarkdown}\n${section}`;
+  return scriptMarkdown.replace(marker, `${section}${marker}`);
 }
 
 export async function generateScript(input: GenerateScriptInput): Promise<GenerateScriptResult> {
@@ -55,7 +68,22 @@ export async function generateScript(input: GenerateScriptInput): Promise<Genera
     throw new Error(`未找到匹配的条目：${entryNames.join('、')}`);
   }
 
-  const scriptMarkdown = formatScript(foundEntries, scriptType, title, targetDuration, date);
+  const creationContract = buildStoryCreationContract({
+    script_type: scriptType,
+    entry_names: entryNames,
+    output_mode: 'script_skeleton',
+    target_duration: targetDuration,
+    title,
+    creation_use_case: input.creation_use_case,
+    truth_mode: input.truth_mode,
+    client_type: input.client_type,
+    target_audience: input.target_audience,
+    communication_goal: input.communication_goal,
+  });
+  const scriptMarkdown = injectCreationContractSection(
+    formatScript(foundEntries, scriptType, title, targetDuration, date),
+    renderCreationContractMarkdown(creationContract),
+  );
 
   const scriptsRoot = getScriptsRoot();
   const typeDir = path.join(scriptsRoot, scriptType);
@@ -70,5 +98,7 @@ export async function generateScript(input: GenerateScriptInput): Promise<Genera
     entriesUsed: foundEntries.map(e => e.name),
     sceneCount: SCENE_TEMPLATES[scriptType]?.length ?? 5,
     targetDuration: targetDuration || DEFAULT_DURATIONS[scriptType],
+    creation_contract: creationContract,
+    material_sufficiency: creationContract.material_sufficiency,
   };
 }

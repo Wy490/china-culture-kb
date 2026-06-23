@@ -612,6 +612,12 @@ export interface StoryGenerateRequest {
   // New fields for outline-driven multi-knowledge matching
   outline?: string;
   knowledge_pack?: KnowledgePack;
+  material_pack?: MaterialPack;
+  creation_use_case?: CreationUseCase;
+  truth_mode?: TruthMode;
+  client_type?: string;
+  target_audience?: string;
+  communication_goal?: string;
   character_hints?: StoryDetectedCharacter[];
   // New fields for story structure and creative reference (Phase 5)
   story_structure?: StoryStructureType;
@@ -748,6 +754,9 @@ export interface StoryProjectListItem {
   video_type: VideoType;
   presentation_style: PresentationStyle;
   story_structure?: StoryStructureType;
+  creation_use_case?: CreationUseCase;
+  truth_mode?: TruthMode;
+  material_sufficiency?: MaterialSufficiencyReport;
   status: StoryProjectStatus;
   updated_at: string;
   scene_count: number;
@@ -790,6 +799,7 @@ export interface StoryProjectMeta extends StoryProjectListItem {
   created_at: string;
   current_version_id: string;
   version_count: number;
+  creation_contract?: CreationContract;
   seedance_asset_library?: SeedanceAssetLibrary;
   seedance_shot_ledger?: SeedanceShotLedger;
   seedance_provider_queue?: SeedanceShotProviderQueue;
@@ -862,6 +872,33 @@ export interface ProjectSupplementTaskListItem {
   video_type: VideoType;
   updated_at: string;
   task: KnowledgeSupplementTask;
+}
+
+export interface ProjectSupplementTaskListFilters {
+  status?: KnowledgeSupplementTaskStatus;
+  stage?: MaterialSufficiencyStage;
+  blocking_level?: MaterialBlockingLevel;
+  source?: KnowledgeSupplementTaskSource;
+}
+
+export type ProjectMaterialPackTarget =
+  | 'primary_materials'
+  | 'supporting_materials'
+  | 'reference_materials';
+
+export interface ProjectMaterialPackAddMaterialRequest {
+  target?: ProjectMaterialPackTarget;
+  title: string;
+  summary: string;
+  source_type?: MaterialSourceType;
+  purpose: MaterialPurpose[];
+  confidence?: number;
+  role_in_story?: string;
+  provenance?: string;
+  linked_entry_name?: string;
+  tags?: string[];
+  mark_as_verified_fact?: boolean;
+  remove_missing_need_id?: string;
 }
 
 export interface StoryProjectDeleteResult {
@@ -5282,8 +5319,181 @@ export interface KnowledgePack {
   overall_confidence: number;
 }
 
+export type CreationUseCase =
+  | 'original_ai_comic'
+  | 'adapted_ai_comic'
+  | 'institutional_promo'
+  | 'documentary_short'
+  | 'brand_commercial'
+  | 'education_training'
+  | 'public_service';
+
+export type TruthMode =
+  | 'fictional_original'
+  | 'inspired_by_material'
+  | 'source_adaptation'
+  | 'factual_reconstruction'
+  | 'institutional_verified';
+
+export type MaterialSourceType =
+  | 'knowledge_entry'
+  | 'user_outline'
+  | 'user_source_text'
+  | 'brand_profile'
+  | 'institution_profile'
+  | 'visual_asset'
+  | 'reference_style'
+  | 'manual_note';
+
+export type MaterialPurpose =
+  | 'fact_basis'
+  | 'character_source'
+  | 'visual_asset'
+  | 'era_context'
+  | 'regional_context'
+  | 'cultural_background'
+  | 'brand_info'
+  | 'institutional_position'
+  | 'source_work'
+  | 'reference_style'
+  | 'creative_boundary';
+
+export interface MaterialPackEntry {
+  material_id: string;
+  title: string;
+  summary: string;
+  source_type: MaterialSourceType;
+  purpose: MaterialPurpose[];
+  confidence?: number;
+  role_in_story?: string;
+  provenance?: string;
+  linked_entry_name?: string;
+  tags?: string[];
+}
+
+export interface MaterialVisualAsset {
+  asset_id: string;
+  label: string;
+  kind: 'character' | 'scene' | 'prop' | 'document' | 'brand' | 'other';
+  description: string;
+  source_material_id?: string;
+  file_url?: string;
+}
+
+export interface MaterialBrandOrInstitutionProfile {
+  name?: string;
+  client_type?: string;
+  voice?: string;
+  verified_claims?: string[];
+  forbidden_claims?: string[];
+}
+
+export interface MaterialSourceWorkProfile {
+  title?: string;
+  author?: string;
+  rights_note?: string;
+  adaptation_boundary?: string;
+  core_characters?: string[];
+  must_keep?: string[];
+}
+
+export interface MaterialPack {
+  schema_version: 'material-pack/v1';
+  primary_materials: MaterialPackEntry[];
+  supporting_materials: MaterialPackEntry[];
+  reference_materials: MaterialPackEntry[];
+  brand_or_institution_profile?: MaterialBrandOrInstitutionProfile;
+  source_work_profile?: MaterialSourceWorkProfile;
+  visual_assets: MaterialVisualAsset[];
+  verified_facts: string[];
+  uncertain_claims: string[];
+  creative_space: string[];
+  missing_needs: KnowledgePackMissing[];
+  overall_confidence: number;
+  token_budget_summary?: {
+    estimated_input_tokens?: number;
+    strategy?: string;
+    notes?: string[];
+  };
+}
+
+export type MaterialSufficiencyStage =
+  | 'minimum_viable_story'
+  | 'script_ready'
+  | 'production_ready';
+
+export type MaterialBlockingLevel = 'blocking' | 'risk' | 'optional';
+export type MaterialTokenRisk = 'low' | 'medium' | 'high';
+export type MaterialSufficiencyStageStatus = 'ready' | 'needs_input' | 'blocked';
+export type MaterialGenerationPosture =
+  | 'ready'
+  | 'draft_needs_verification'
+  | 'script_ready_production_pending'
+  | 'blocked_until_input';
+
+export interface MaterialSufficiencyMissingItem {
+  item_id: string;
+  label: string;
+  reason: string;
+  blocking_level: MaterialBlockingLevel;
+  affects: string[];
+  recommended_question: string;
+}
+
+export interface MaterialSufficiencyStageReport {
+  stage: MaterialSufficiencyStage;
+  status: MaterialSufficiencyStageStatus;
+  score: number;
+  can_proceed: boolean;
+  required_items: string[];
+  available_outputs: string[];
+  missing_items: MaterialSufficiencyMissingItem[];
+  optional_items: MaterialSufficiencyMissingItem[];
+  notes: string[];
+}
+
+export interface MaterialSufficiencyReport {
+  schema_version: 'material-sufficiency/v1';
+  stage: MaterialSufficiencyStage;
+  active_stage?: MaterialSufficiencyStage;
+  score: number;
+  can_generate: boolean;
+  can_generate_with_risks: boolean;
+  blocked: boolean;
+  needs_verification?: boolean;
+  generation_posture?: MaterialGenerationPosture;
+  next_stage?: MaterialSufficiencyStage;
+  downgrade_reason?: string;
+  stage_reports?: MaterialSufficiencyStageReport[];
+  missing_items: MaterialSufficiencyMissingItem[];
+  optional_items: MaterialSufficiencyMissingItem[];
+  token_risk: MaterialTokenRisk;
+  recommended_next_questions: string[];
+}
+
+export interface CreationContract {
+  schema_version: 'creation-contract/v1';
+  creation_use_case: CreationUseCase;
+  truth_mode: TruthMode;
+  client_type?: string;
+  target_audience?: string;
+  communication_goal?: string;
+  video_type: VideoType;
+  presentation_style: PresentationStyle;
+  story_structure: StoryStructureType;
+  narrative_pattern_ids: NarrativePatternId[];
+  allowed_fiction: string[];
+  must_verify: string[];
+  forbidden_moves: string[];
+  required_disclaimers: string[];
+  material_sufficiency: MaterialSufficiencyReport;
+  delivery_expectation: string[];
+}
+
 export type KnowledgeSupplementTaskStatus = 'open' | 'resolved';
-export type KnowledgeSupplementTaskSource = 'knowledge_pack_missing_need';
+export type KnowledgeSupplementTaskSource =
+  | 'knowledge_pack_missing_need'
+  | 'material_sufficiency_missing_item';
 export type KnowledgeSupplementTaskCategory =
   | 'person_experience'
   | 'architecture_detail'
@@ -5299,6 +5509,10 @@ export interface KnowledgeSupplementTask {
   label: string;
   description: string;
   category?: KnowledgeSupplementTaskCategory;
+  stage?: MaterialSufficiencyStage;
+  blocking_level?: MaterialBlockingLevel;
+  affects?: string[];
+  recommended_question?: string;
   recommended_fields?: string[];
   intake_prompt?: string;
   status: KnowledgeSupplementTaskStatus;
@@ -6009,6 +6223,8 @@ export interface StoryQualityReport {
   issues: string[];
   video_type?: VideoType;
   story_structure?: StoryStructureType;
+  truth_mode?: TruthMode;
+  material_sufficiency_report?: MaterialSufficiencyReport;
   genre_score?: number;
   missing_required_elements?: string[];
   weak_beats?: string[];
@@ -6129,6 +6345,104 @@ export interface StoryQualityRepairRequest {
   repair_action_id?: string;
 }
 
+export interface StoryQualityRepairPromptRequest extends StoryQualityRepairRequest {
+  user_instruction?: string;
+  include_story_json?: boolean;
+  include_markdown?: boolean;
+  max_actions?: number;
+}
+
+export interface StoryQualityRepairPromptResult {
+  schema_version: 'story-quality-repair-prompt/v1';
+  project_id: string;
+  story_id: string;
+  title: string;
+  generated_at: string;
+  quality_snapshot: {
+    video_type: VideoType;
+    story_structure?: StoryStructureType;
+    passed: boolean;
+    genre_score?: number;
+    issue_count: number;
+  };
+  repair_actions: QualityRepairAction[];
+  source_issues: string[];
+  target_scene_ids: number[];
+  protected_fields: string[];
+  output_contract: {
+    format: 'json';
+    root_type: 'StoryGenerateResult';
+    required_top_level_fields: string[];
+    validation_hint: string;
+    apply_hint: string;
+  };
+  creation_contract?: CreationContract;
+  material_sufficiency?: MaterialSufficiencyReport;
+  prompt: string;
+  original_story_json?: string;
+  markdown?: string;
+}
+
+export interface StoryQualityRepairApplyRequest {
+  repaired_story_json: string;
+  user_instruction?: string;
+  apply?: boolean;
+  allow_no_improvement?: boolean;
+}
+
+export interface StoryQualityRepairSceneChange {
+  scene_id: number;
+  title?: string;
+  changed_fields: string[];
+  before_preview: string;
+  after_preview: string;
+}
+
+export interface StoryQualityRepairChangeSummary {
+  has_content_changes: boolean;
+  changed_top_level_fields: string[];
+  scene_changes: StoryQualityRepairSceneChange[];
+  changed_gears_segment_ids: number[];
+  protected_fields_preserved: string[];
+  ignored_protected_field_changes: string[];
+  quality_issue_delta: {
+    resolved_issues: string[];
+    new_issues: string[];
+    remaining_issues: string[];
+  };
+  quality_delta: {
+    passed_changed: boolean;
+    genre_score_delta?: number;
+    issue_count_delta: number;
+  };
+  summary_lines: string[];
+}
+
+export interface StoryQualityRepairApplyResult {
+  schema_version: 'story-quality-repair-apply/v1';
+  project_id: string;
+  story_id: string;
+  applied: boolean;
+  can_apply: boolean;
+  rejected_reason?: string;
+  changed_scene_ids: number[];
+  before_quality: {
+    passed: boolean;
+    genre_score?: number;
+    issue_count: number;
+  };
+  after_quality: {
+    passed: boolean;
+    genre_score?: number;
+    issue_count: number;
+  };
+  change_summary: StoryQualityRepairChangeSummary;
+  operator_hints: string[];
+  validation_summary_markdown: string;
+  repair_trace: StoryRepairTrace;
+  detail?: StoryProjectDetail;
+}
+
 export type EvidenceBoundaryType = 'verified' | 'uncertain' | 'creative_treatment';
 
 export interface EvidenceBoundary {
@@ -6174,6 +6488,8 @@ export interface StoryBlueprint {
   character_arcs: StoryCharacterArcPlan[];
   evidence_boundaries: EvidenceBoundary[];
   type_specific_requirements: string[];
+  creation_contract?: CreationContract;
+  material_sufficiency?: MaterialSufficiencyReport;
 }
 
 export interface GenreQualityReport extends StoryQualityReport {
@@ -6236,6 +6552,14 @@ export interface StoryGenerateResult {
   credibility_note: string;
   // New fields for multi-knowledge matching
   knowledge_pack?: KnowledgePack;
+  material_pack?: MaterialPack;
+  creation_use_case?: CreationUseCase;
+  truth_mode?: TruthMode;
+  client_type?: string;
+  target_audience?: string;
+  communication_goal?: string;
+  creation_contract?: CreationContract;
+  material_sufficiency?: MaterialSufficiencyReport;
   adaptation_analysis?: StoryAdaptationAnalysis;
   supplement_tasks?: KnowledgeSupplementTask[];
   quality_report?: StoryQualityReport | GenreQualityReport;

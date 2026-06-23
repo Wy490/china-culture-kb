@@ -1207,6 +1207,152 @@
         >
           {{ repairingQuality ? '正在修复…' : '一键修复' }}
         </button>
+        <button
+          class="project-detail-page__action-btn"
+          :disabled="generatingQualityRepairPrompt || !currentQuality.issues.length"
+          @click="generateQualityRepairPrompt()"
+        >
+          {{ generatingQualityRepairPrompt ? '生成中…' : '生成修复提示包' }}
+        </button>
+        <div v-if="qualityRepairPromptResult" class="project-detail-page__quality-prompt">
+          <div class="project-detail-page__quality-prompt-head">
+            <div>
+              <strong>模型修复提示包</strong>
+              <span>
+                {{ qualityRepairPromptResult.repair_actions.length }} 个动作 · 场景
+                {{ qualityRepairPromptResult.target_scene_ids.join('、') || '未定位' }}
+              </span>
+            </div>
+            <button class="project-detail-page__repair-task-btn" type="button" @click="copyQualityRepairPrompt">
+              复制提示词
+            </button>
+          </div>
+          <textarea
+            class="project-detail-page__quality-prompt-text"
+            :value="qualityRepairPromptResult.prompt"
+            readonly
+          />
+          <div class="project-detail-page__quality-apply">
+            <label>
+              修复 JSON
+              <textarea
+                v-model="qualityRepairJson"
+                class="project-detail-page__quality-prompt-text"
+                placeholder="粘贴模型输出的完整 repaired_story_json"
+              />
+            </label>
+            <div class="project-detail-page__quality-apply-actions">
+              <button
+                class="project-detail-page__repair-task-btn"
+                type="button"
+                :disabled="applyingQualityRepairJson || !qualityRepairJson.trim()"
+                @click="submitQualityRepairJson(false)"
+              >
+                {{ applyingQualityRepairJson ? '校验中…' : '校验修复 JSON' }}
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn project-detail-page__repair-task-btn--active"
+                type="button"
+                :disabled="applyingQualityRepairJson || !qualityRepairJson.trim()"
+                @click="submitQualityRepairJson(true)"
+              >
+                安全写入新版本
+              </button>
+              <button
+                v-if="qualityRepairApplyResult"
+                class="project-detail-page__repair-task-btn"
+                type="button"
+                @click="copyQualityRepairValidationSummary"
+              >
+                复制校验摘要
+              </button>
+            </div>
+            <div v-if="qualityRepairApplyResult" class="project-detail-page__quality-apply-result">
+              <strong>{{ qualityRepairApplyResult.applied ? '已写入新版本' : qualityRepairApplyResult.can_apply ? '校验通过，可写入' : '未通过写入门槛' }}</strong>
+              <span>
+                分数 {{ qualityRepairApplyResult.before_quality.genre_score ?? 'n/a' }}
+                →
+                {{ qualityRepairApplyResult.after_quality.genre_score ?? 'n/a' }}
+                · 问题 {{ qualityRepairApplyResult.before_quality.issue_count }}
+                →
+                {{ qualityRepairApplyResult.after_quality.issue_count }}
+              </span>
+              <div class="project-detail-page__quality-change-summary">
+                <div
+                  v-if="qualityRepairApplyResult.operator_hints.length"
+                  class="project-detail-page__quality-operator-hints"
+                >
+                  <strong>操作提示</strong>
+                  <ul>
+                    <li v-for="hint in qualityRepairApplyResult.operator_hints" :key="hint">{{ hint }}</li>
+                  </ul>
+                </div>
+                <ul>
+                  <li
+                    v-for="line in qualityRepairApplyResult.change_summary.summary_lines"
+                    :key="line"
+                  >
+                    {{ line }}
+                  </li>
+                </ul>
+                <div class="project-detail-page__quality-issue-delta">
+                  <div
+                    v-if="qualityRepairApplyResult.change_summary.quality_issue_delta.resolved_issues.length"
+                    class="project-detail-page__quality-issue-delta-group"
+                  >
+                    <strong>已解决</strong>
+                    <small
+                      v-for="issue in qualityRepairApplyResult.change_summary.quality_issue_delta.resolved_issues"
+                      :key="`resolved-${issue}`"
+                    >
+                      {{ issue }}
+                    </small>
+                  </div>
+                  <div
+                    v-if="qualityRepairApplyResult.change_summary.quality_issue_delta.new_issues.length"
+                    class="project-detail-page__quality-issue-delta-group"
+                  >
+                    <strong>新增诊断</strong>
+                    <small
+                      v-for="issue in qualityRepairApplyResult.change_summary.quality_issue_delta.new_issues"
+                      :key="`new-${issue}`"
+                    >
+                      {{ issue }}
+                    </small>
+                  </div>
+                  <div
+                    v-if="qualityRepairApplyResult.change_summary.quality_issue_delta.remaining_issues.length"
+                    class="project-detail-page__quality-issue-delta-group"
+                  >
+                    <strong>仍存在</strong>
+                    <small
+                      v-for="issue in qualityRepairApplyResult.change_summary.quality_issue_delta.remaining_issues"
+                      :key="`remaining-${issue}`"
+                    >
+                      {{ issue }}
+                    </small>
+                  </div>
+                </div>
+                <div
+                  v-for="scene in qualityRepairApplyResult.change_summary.scene_changes"
+                  :key="scene.scene_id"
+                  class="project-detail-page__quality-scene-change"
+                >
+                  <strong>场景 {{ scene.scene_id }}{{ scene.title ? ` · ${scene.title}` : '' }}</strong>
+                  <span>{{ scene.changed_fields.join('、') }}</span>
+                  <small>{{ scene.before_preview }} → {{ scene.after_preview }}</small>
+                </div>
+                <small v-if="qualityRepairApplyResult.change_summary.protected_fields_preserved.length">
+                  保留字段：{{ qualityRepairApplyResult.change_summary.protected_fields_preserved.join('、') }}
+                </small>
+                <small v-if="qualityRepairApplyResult.change_summary.ignored_protected_field_changes.length">
+                  已忽略模型改动：{{ qualityRepairApplyResult.change_summary.ignored_protected_field_changes.join('、') }}
+                </small>
+              </div>
+              <small v-if="qualityRepairApplyResult.rejected_reason">{{ qualityRepairApplyResult.rejected_reason }}</small>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="project-detail-page__editor">
@@ -1329,6 +1475,109 @@
         </div>
       </section>
 
+      <section class="project-detail-page__material-console">
+        <div class="project-detail-page__material-header">
+          <h2 class="project-detail-page__section-title">项目素材包</h2>
+          <div class="project-detail-page__material-stats" aria-label="项目素材包统计">
+            <span>主 {{ materialPackSummary.primary }}</span>
+            <span>支撑 {{ materialPackSummary.supporting }}</span>
+            <span>参考 {{ materialPackSummary.reference }}</span>
+            <span>待补 {{ materialPackSummary.missing }}</span>
+          </div>
+        </div>
+
+        <form class="project-detail-page__material-form" @submit.prevent="submitMaterialPackMaterial">
+          <div class="project-detail-page__material-grid">
+            <label class="project-detail-page__material-field">
+              <span>素材位置</span>
+              <select v-model="materialForm.target" class="project-detail-page__select">
+                <option v-for="option in MATERIAL_TARGET_OPTIONS" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+            <label class="project-detail-page__material-field">
+              <span>来源类型</span>
+              <select v-model="materialForm.source_type" class="project-detail-page__select">
+                <option v-for="option in MATERIAL_SOURCE_OPTIONS" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+            <label class="project-detail-page__material-field">
+              <span>可信度</span>
+              <input
+                v-model.number="materialForm.confidence"
+                class="project-detail-page__input"
+                type="number"
+                min="0"
+                max="1"
+                step="0.05"
+              >
+            </label>
+          </div>
+
+          <label class="project-detail-page__material-field">
+            <span>标题</span>
+            <input v-model="materialForm.title" class="project-detail-page__input" type="text" maxlength="120">
+          </label>
+          <label class="project-detail-page__material-field">
+            <span>摘要</span>
+            <textarea v-model="materialForm.summary" class="project-detail-page__textarea" maxlength="1200" />
+          </label>
+
+          <div class="project-detail-page__material-purpose-group">
+            <span>用途标签</span>
+            <label
+              v-for="option in MATERIAL_PURPOSE_OPTIONS"
+              :key="option.value"
+              class="project-detail-page__material-purpose"
+            >
+              <input v-model="materialForm.purpose" type="checkbox" :value="option.value">
+              <span>{{ option.label }}</span>
+            </label>
+          </div>
+
+          <div class="project-detail-page__material-grid">
+            <label class="project-detail-page__material-field">
+              <span>故事作用</span>
+              <input v-model="materialForm.role_in_story" class="project-detail-page__input" type="text" maxlength="240">
+            </label>
+            <label class="project-detail-page__material-field">
+              <span>来源说明</span>
+              <input v-model="materialForm.provenance" class="project-detail-page__input" type="text" maxlength="240">
+            </label>
+            <label class="project-detail-page__material-field">
+              <span>补齐项</span>
+              <select v-model="materialForm.remove_missing_need_id" class="project-detail-page__select">
+                <option value="">不关联</option>
+                <option v-for="need in materialMissingNeeds" :key="need.need_id" :value="need.need_id">
+                  {{ need.label }}
+                </option>
+              </select>
+            </label>
+          </div>
+
+          <label class="project-detail-page__material-field">
+            <span>标签</span>
+            <input v-model="materialForm.tags" class="project-detail-page__input" type="text">
+          </label>
+          <label class="project-detail-page__material-check">
+            <input v-model="materialForm.mark_as_verified_fact" type="checkbox">
+            <span>写入已核实事实</span>
+          </label>
+          <div class="project-detail-page__editor-actions">
+            <button
+              class="project-detail-page__action-btn project-detail-page__action-btn--primary"
+              type="submit"
+              :disabled="addingMaterial"
+            >
+              {{ addingMaterial ? '正在新增…' : '新增素材' }}
+            </button>
+          </div>
+        </form>
+      </section>
+
       <StoryResult
         :result="detail.current_story"
         :editable-project="true"
@@ -1349,10 +1598,13 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   deleteProject,
+  addProjectMaterialPackMaterial,
+  applyProjectQualityRepairJson,
   autoSelectProjectSeedanceShotVersions,
   exportProjectCurrentVersion,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
+  generateProjectQualityRepairPrompt,
   getProjectSeedanceGlobalAssetLibrary,
   getProjectSeedanceProviderQueueOverview,
   getProjectSeedanceProviderRetryPlan,
@@ -1414,6 +1666,9 @@ import type {
   GearsJobLedgerItem,
   GearsJobSubmitFailure,
   KnowledgeSupplementTaskStatus,
+  MaterialPurpose,
+  MaterialSourceType,
+  ProjectMaterialPackTarget,
   SeedanceProviderAdapterConfigInfo,
   SeedanceAssetBatchImportRequest,
   SeedanceAssetBindingItem,
@@ -1431,6 +1686,8 @@ import type {
   StoryProjectStatus,
   StoryProjectVersionChangeType,
   StoryProjectVersionSummary,
+  StoryQualityRepairApplyResult,
+  StoryQualityRepairPromptResult,
   StoryProductionBoard,
   StoryProductionBoardExportPackage,
   StoryProductionBoardRepairResult,
@@ -1450,6 +1707,34 @@ type ProductionRepairHistoryItem = StoryProjectVersionSummary & {
   production_board_repair_trace: StoryProductionBoardRepairTrace
 }
 
+const MATERIAL_TARGET_OPTIONS: Array<{ value: ProjectMaterialPackTarget; label: string }> = [
+  { value: 'supporting_materials', label: '支撑素材' },
+  { value: 'primary_materials', label: '主素材' },
+  { value: 'reference_materials', label: '参考素材' },
+]
+
+const MATERIAL_SOURCE_OPTIONS: Array<{ value: MaterialSourceType; label: string }> = [
+  { value: 'manual_note', label: '人工备注' },
+  { value: 'knowledge_entry', label: '知识条目' },
+  { value: 'user_outline', label: '用户大纲' },
+  { value: 'user_source_text', label: '原始文本' },
+  { value: 'brand_profile', label: '品牌资料' },
+  { value: 'institution_profile', label: '机构资料' },
+  { value: 'visual_asset', label: '视觉资料' },
+  { value: 'reference_style', label: '风格参考' },
+]
+
+const MATERIAL_PURPOSE_OPTIONS: Array<{ value: MaterialPurpose; label: string }> = [
+  { value: 'fact_basis', label: '事实依据' },
+  { value: 'character_source', label: '人物来源' },
+  { value: 'visual_asset', label: '视觉资产' },
+  { value: 'regional_context', label: '地域语境' },
+  { value: 'cultural_background', label: '文化背景' },
+  { value: 'institutional_position', label: '机构立场' },
+  { value: 'source_work', label: '改编原作' },
+  { value: 'creative_boundary', label: '创作边界' },
+]
+
 const detail = ref<StoryProjectDetail | null>(null)
 const loading = ref(false)
 const error = ref('')
@@ -1460,10 +1745,29 @@ const selectedIntent = ref<'tighten_conflict' | 'rewrite_narration' | 'shift_emo
 const userNote = ref('')
 const submitting = ref(false)
 const repairingQuality = ref(false)
+const generatingQualityRepairPrompt = ref(false)
+const applyingQualityRepairJson = ref(false)
 const deleting = ref(false)
 const updatingSupplementTaskId = ref('')
 const successMessage = ref('')
 const showQualityScenesOnly = ref(false)
+const qualityRepairPromptResult = ref<StoryQualityRepairPromptResult | null>(null)
+const qualityRepairJson = ref('')
+const qualityRepairApplyResult = ref<StoryQualityRepairApplyResult | null>(null)
+const addingMaterial = ref(false)
+const materialForm = ref({
+  target: 'supporting_materials' as ProjectMaterialPackTarget,
+  title: '',
+  summary: '',
+  source_type: 'manual_note' as MaterialSourceType,
+  purpose: ['fact_basis'] as MaterialPurpose[],
+  confidence: 0.7,
+  role_in_story: '',
+  provenance: '',
+  tags: '',
+  mark_as_verified_fact: false,
+  remove_missing_need_id: '',
+})
 const productionBoard = ref<StoryProductionBoard | null>(null)
 const productionBoardExport = ref<StoryProductionBoardExportPackage | null>(null)
 const productionRepairResult = ref<StoryProductionBoardRepairResult | null>(null)
@@ -1533,6 +1837,22 @@ const selectedModelProfile = computed(() => {
 })
 
 const currentQuality = computed(() => detail.value?.current_story.quality_report ?? null)
+
+const materialPackSummary = computed(() => {
+  const pack = detail.value?.current_story.material_pack
+  return {
+    primary: pack?.primary_materials.length ?? 0,
+    supporting: pack?.supporting_materials.length ?? 0,
+    reference: pack?.reference_materials.length ?? 0,
+    missing: pack?.missing_needs.length ?? detail.value?.current_story.knowledge_pack?.missing_needs.length ?? 0,
+  }
+})
+
+const materialMissingNeeds = computed(() => {
+  return detail.value?.current_story.material_pack?.missing_needs
+    ?? detail.value?.current_story.knowledge_pack?.missing_needs
+    ?? []
+})
 
 type QualityFeedbackGroup = {
   key: string
@@ -2101,6 +2421,9 @@ async function loadProject(projectId: string) {
     productionBoardExport.value = null
     productionRepairResult.value = null
     productionRepairTrace.value = null
+    qualityRepairPromptResult.value = null
+    qualityRepairJson.value = ''
+    qualityRepairApplyResult.value = null
     seedanceProviderOverview.value = null
     seedanceProviderRetryPlan.value = null
     seedanceGlobalAssets.value = []
@@ -3176,6 +3499,7 @@ async function submitSceneRewrite() {
     productionBoardExport.value = null
     productionRepairResult.value = null
     productionRepairTrace.value = null
+    qualityRepairPromptResult.value = null
     const quality = res.data.current_story.quality_report
     const qualityTail = quality
       ? `，已重新复核：${quality.passed ? '通过' : '需调整'}${typeof quality.genre_score === 'number' ? `，类型分 ${quality.genre_score}` : ''}`
@@ -3193,6 +3517,9 @@ async function submitQualityRepair(action?: QualityRepairAction) {
   repairingQuality.value = true
   error.value = ''
   successMessage.value = ''
+  qualityRepairPromptResult.value = null
+  qualityRepairJson.value = ''
+  qualityRepairApplyResult.value = null
   const res = await repairProjectQuality(detail.value.project.project_id, {
     model_profile_id: selectedModelProfileId.value || undefined,
     genre_strictness: 'balanced',
@@ -3218,6 +3545,80 @@ async function submitQualityRepair(action?: QualityRepairAction) {
   repairingQuality.value = false
 }
 
+async function generateQualityRepairPrompt(action?: QualityRepairAction) {
+  if (!detail.value) return
+  generatingQualityRepairPrompt.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await generateProjectQualityRepairPrompt(detail.value.project.project_id, {
+    genre_strictness: 'balanced',
+    target_report: action?.target_report,
+    repair_action_id: action?.action_id,
+    include_story_json: false,
+    include_markdown: true,
+  })
+  if (res.ok && res.data) {
+    qualityRepairPromptResult.value = res.data
+    qualityRepairApplyResult.value = null
+    successMessage.value = `已生成修复提示包：${res.data.repair_actions.length} 个动作`
+  } else {
+    error.value = res.error?.message ?? '生成修复提示包失败'
+  }
+  generatingQualityRepairPrompt.value = false
+}
+
+async function submitQualityRepairJson(apply: boolean) {
+  if (!detail.value || !qualityRepairJson.value.trim()) return
+  applyingQualityRepairJson.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await applyProjectQualityRepairJson(detail.value.project.project_id, {
+    repaired_story_json: qualityRepairJson.value,
+    apply,
+    user_instruction: apply ? 'Web 质量面板应用模型修复 JSON' : 'Web 质量面板校验模型修复 JSON',
+  })
+  if (res.ok && res.data) {
+    qualityRepairApplyResult.value = res.data
+    if (res.data.applied && res.data.detail) {
+      detail.value = res.data.detail
+      productionBoard.value = null
+      productionBoardExport.value = null
+      productionRepairResult.value = null
+      productionRepairTrace.value = null
+      qualityRepairPromptResult.value = null
+      qualityRepairJson.value = ''
+      successMessage.value = `修复 JSON 已写入新版本，类型分 ${res.data.after_quality.genre_score ?? 'n/a'}`
+    } else {
+      successMessage.value = res.data.can_apply
+        ? `修复 JSON 校验通过，类型分 ${res.data.after_quality.genre_score ?? 'n/a'}`
+        : `修复 JSON 未达到写入门槛，类型分 ${res.data.after_quality.genre_score ?? 'n/a'}`
+    }
+  } else {
+    error.value = res.error?.message ?? '修复 JSON 校验失败'
+  }
+  applyingQualityRepairJson.value = false
+}
+
+async function copyQualityRepairPrompt() {
+  if (!qualityRepairPromptResult.value) return
+  try {
+    await navigator.clipboard.writeText(qualityRepairPromptResult.value.prompt)
+    successMessage.value = '修复提示词已复制'
+  } catch {
+    error.value = '复制失败，请手动选中提示词内容'
+  }
+}
+
+async function copyQualityRepairValidationSummary() {
+  if (!qualityRepairApplyResult.value) return
+  try {
+    await navigator.clipboard.writeText(qualityRepairApplyResult.value.validation_summary_markdown)
+    successMessage.value = '修复校验摘要已复制'
+  } catch {
+    error.value = '复制失败，请手动选中校验摘要'
+  }
+}
+
 async function handleSupplementTaskUpdate(taskId: string, status: KnowledgeSupplementTaskStatus, supplementNote?: string) {
   if (!detail.value) return
   updatingSupplementTaskId.value = taskId
@@ -3227,11 +3628,60 @@ async function handleSupplementTaskUpdate(taskId: string, status: KnowledgeSuppl
   const res = await updateProjectSupplementTask(detail.value.project.project_id, taskId, body)
   if (res.ok && res.data) {
     detail.value = res.data
-    successMessage.value = status === 'resolved' ? '资料补充任务已标记完成' : '资料补充任务已重新打开'
+    successMessage.value = status === 'resolved' ? '素材补充任务已标记完成' : '素材补充任务已重新打开'
   } else {
-    error.value = res.error?.message ?? '更新资料补充任务失败'
+    error.value = res.error?.message ?? '更新素材补充任务失败'
   }
   updatingSupplementTaskId.value = ''
+}
+
+async function submitMaterialPackMaterial() {
+  if (!detail.value || addingMaterial.value) return
+  const title = materialForm.value.title.trim()
+  const summary = materialForm.value.summary.trim()
+  if (!title || !summary) {
+    error.value = '请填写素材标题和摘要'
+    return
+  }
+  addingMaterial.value = true
+  error.value = ''
+  successMessage.value = ''
+  const confidence = Number(materialForm.value.confidence)
+  const res = await addProjectMaterialPackMaterial(detail.value.project.project_id, {
+    target: materialForm.value.target,
+    title,
+    summary,
+    source_type: materialForm.value.source_type,
+    purpose: materialForm.value.purpose.length > 0 ? materialForm.value.purpose : ['fact_basis'],
+    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : undefined,
+    role_in_story: materialForm.value.role_in_story.trim() || undefined,
+    provenance: materialForm.value.provenance.trim() || undefined,
+    tags: parseMaterialTags(materialForm.value.tags),
+    mark_as_verified_fact: materialForm.value.mark_as_verified_fact,
+    remove_missing_need_id: materialForm.value.remove_missing_need_id || undefined,
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data
+    successMessage.value = `项目素材已新增：${title}`
+    materialForm.value.title = ''
+    materialForm.value.summary = ''
+    materialForm.value.role_in_story = ''
+    materialForm.value.provenance = ''
+    materialForm.value.tags = ''
+    materialForm.value.mark_as_verified_fact = false
+    materialForm.value.remove_missing_need_id = ''
+  } else {
+    error.value = res.error?.message ?? '新增项目素材失败'
+  }
+  addingMaterial.value = false
+}
+
+function parseMaterialTags(value: string): string[] | undefined {
+  const tags = [...new Set(value
+    .split(/[,\n，、]+/)
+    .map(item => item.trim())
+    .filter(Boolean))]
+  return tags.length > 0 ? tags : undefined
 }
 
 async function exportCurrentStoryJson() {
@@ -3615,6 +4065,7 @@ watch(selectedModelProfileId, (value) => {
 
 .project-detail-page__summary-card,
 .project-detail-page__editor,
+.project-detail-page__material-console,
 .project-detail-page__versions {
   border: 1px solid #d9e2ea;
   border-radius: 8px;
@@ -3709,6 +4160,7 @@ watch(selectedModelProfileId, (value) => {
 
 .project-detail-page__quality-tools {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
@@ -4713,6 +5165,7 @@ watch(selectedModelProfileId, (value) => {
 }
 
 .project-detail-page__quality-main {
+  flex: 1 1 520px;
   min-width: 0;
 }
 
@@ -4876,6 +5329,170 @@ watch(selectedModelProfileId, (value) => {
   line-height: 1.35;
 }
 
+.project-detail-page__quality-prompt {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin-top: 12px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+  padding: 10px;
+}
+
+.project-detail-page__quality-prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.project-detail-page__quality-prompt-head strong {
+  display: block;
+  color: #22313f;
+  font-size: 13px;
+}
+
+.project-detail-page__quality-prompt-head span {
+  display: block;
+  margin-top: 2px;
+  color: #647380;
+  font-size: 12px;
+}
+
+.project-detail-page__quality-prompt-text {
+  width: 100%;
+  min-height: 220px;
+  max-height: 420px;
+  resize: vertical;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #f8fafb;
+  color: #263747;
+  padding: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.project-detail-page__quality-apply {
+  margin-top: 12px;
+}
+
+.project-detail-page__quality-apply label {
+  display: grid;
+  gap: 6px;
+  color: #2f4358;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__quality-apply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.project-detail-page__quality-apply-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 8px;
+  color: #536573;
+  font-size: 12px;
+}
+
+.project-detail-page__quality-apply-result strong {
+  color: #22313f;
+}
+
+.project-detail-page__quality-apply-result small {
+  flex-basis: 100%;
+  color: #9a6300;
+}
+
+.project-detail-page__quality-change-summary {
+  flex-basis: 100%;
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid #e3e8ed;
+  padding-top: 8px;
+}
+
+.project-detail-page__quality-change-summary ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.project-detail-page__quality-operator-hints {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #d7e5f0;
+  border-radius: 6px;
+  background: #f4f9fc;
+  padding: 8px;
+  color: #2f4f67;
+}
+
+.project-detail-page__quality-operator-hints strong {
+  color: #22313f;
+}
+
+.project-detail-page__quality-issue-delta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.project-detail-page__quality-issue-delta-group {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e1e7ec;
+  border-radius: 6px;
+  background: #fff;
+  padding: 8px;
+}
+
+.project-detail-page__quality-issue-delta-group strong {
+  color: #263747;
+}
+
+.project-detail-page__quality-issue-delta-group small {
+  color: #6a7884;
+  overflow-wrap: anywhere;
+}
+
+.project-detail-page__quality-scene-change {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e1e7ec;
+  border-radius: 6px;
+  background: #fff;
+  padding: 8px;
+}
+
+.project-detail-page__quality-scene-change strong {
+  color: #263747;
+}
+
+.project-detail-page__quality-scene-change span {
+  color: #536573;
+  font-weight: 700;
+}
+
+.project-detail-page__quality-scene-change small {
+  color: #6a7884;
+  overflow-wrap: anywhere;
+}
+
 .project-detail-page__summary-label {
   display: block;
   margin-bottom: 6px;
@@ -4884,9 +5501,82 @@ watch(selectedModelProfileId, (value) => {
 }
 
 .project-detail-page__editor,
+.project-detail-page__material-console,
 .project-detail-page__versions {
   padding: 16px;
   margin-bottom: 18px;
+}
+
+.project-detail-page__material-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.project-detail-page__material-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  color: #536675;
+  font-size: 13px;
+}
+
+.project-detail-page__material-stats span {
+  padding: 5px 8px;
+  border: 1px solid #d9e2ea;
+  border-radius: 6px;
+  background: #f7fafc;
+}
+
+.project-detail-page__material-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.project-detail-page__material-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.project-detail-page__material-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #536675;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.project-detail-page__material-purpose-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: #536675;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.project-detail-page__material-purpose,
+.project-detail-page__material-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #2f4358;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.project-detail-page__material-purpose {
+  padding: 6px 8px;
+  border: 1px solid #d9e2ea;
+  border-radius: 6px;
+  background: #fff;
 }
 
 .project-detail-page__editor-header {
@@ -4939,6 +5629,7 @@ watch(selectedModelProfileId, (value) => {
   font-weight: 600;
 }
 
+.project-detail-page__input,
 .project-detail-page__select,
 .project-detail-page__textarea {
   border: 1px solid #d7dee5;
@@ -4946,6 +5637,7 @@ watch(selectedModelProfileId, (value) => {
   font-size: 14px;
 }
 
+.project-detail-page__input,
 .project-detail-page__select {
   padding: 10px 12px;
 }
@@ -5123,6 +5815,7 @@ watch(selectedModelProfileId, (value) => {
   }
 
   .project-detail-page__report-strip,
+  .project-detail-page__material-grid,
   .project-detail-page__quality-feedback,
   .project-detail-page__repair-actions,
   .project-detail-page__production-repair-diff,

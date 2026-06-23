@@ -3,6 +3,29 @@ import type { StoryGenerateResult } from '@shared/types.js';
 import { buildSceneRegenerationPromptPackage } from '../services/scene-regeneration-prompt.js';
 
 function makeStory(): StoryGenerateResult {
+  const materialSufficiency = {
+    schema_version: 'material-sufficiency/v1' as const,
+    stage: 'script_ready' as const,
+    active_stage: 'minimum_viable_story' as const,
+    score: 68,
+    can_generate: true,
+    can_generate_with_risks: true,
+    blocked: false,
+    needs_verification: true,
+    generation_posture: 'draft_needs_verification' as const,
+    next_stage: 'script_ready' as const,
+    missing_items: [{
+      item_id: 'case-file-basis',
+      label: '疑案案卷事实依据',
+      reason: '堂前冲突需要确认案件性质和文书细节。',
+      blocking_level: 'risk' as const,
+      affects: ['scene_rewrite', 'truth_boundary'],
+      recommended_question: '请补充疑案案卷的可用事实依据。',
+    }],
+    optional_items: [],
+    token_risk: 'low' as const,
+    recommended_next_questions: ['是否有机构审定的案卷表述？'],
+  };
   return {
     storyId: '20260609-story-rg1',
     project_id: '20260609-story-rg1--character_story',
@@ -54,6 +77,30 @@ function makeStory(): StoryGenerateResult {
     cultural_constraints: ['基于知识库条目'],
     credibility_note: '基本可靠',
     story_structure: 'single_event_drama',
+    creation_use_case: 'institutional_promo',
+    truth_mode: 'institutional_verified',
+    client_type: '文旅机构',
+    target_audience: '研学团队',
+    communication_goal: '稳妥表达廉洁文化',
+    material_sufficiency: materialSufficiency,
+    creation_contract: {
+      schema_version: 'creation-contract/v1',
+      creation_use_case: 'institutional_promo',
+      truth_mode: 'institutional_verified',
+      client_type: '文旅机构',
+      target_audience: '研学团队',
+      communication_goal: '稳妥表达廉洁文化',
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      story_structure: 'single_event_drama',
+      narrative_pattern_ids: [],
+      allowed_fiction: ['允许镜头调度和非事实性转场'],
+      must_verify: ['疑案案卷性质和机构审定口径'],
+      forbidden_moves: ['不得虚构周敦颐具体判词原文'],
+      required_disclaimers: ['案卷细节需标注影视化处理'],
+      material_sufficiency: materialSufficiency,
+      delivery_expectation: ['只进入剧本修订，不进入实产'],
+    },
     story_blueprint: {
       schema_version: 'story-blueprint/v1',
       entry_name: '周敦颐——理学开山鼻祖',
@@ -125,11 +172,29 @@ describe('buildSceneRegenerationPromptPackage', () => {
       category: 'supporting_character',
       supplement_note: '上官可设定为南安军衙主管，负责催促签署疑案文书。',
     });
-    expect(pkg.user_prompt).toContain('已完成资料补录');
+    expect(pkg.user_prompt).toContain('已完成素材补充');
     expect(pkg.user_prompt).toContain('南安军衙主管');
     expect(pkg.user_prompt).not.toContain('这条待补说明不应进入重写提示');
     expect(pkg.story_blueprint_context?.target_beat?.function_label).toBe('冲突升级');
     expect(pkg.user_prompt).toContain('类型故事蓝图');
     expect(pkg.user_prompt).toContain('强化拒签带来的代价');
+    expect(pkg.context.creation_use_case).toBe('institutional_promo');
+    expect(pkg.context.truth_mode).toBe('institutional_verified');
+    expect(pkg.creation_contract_context).toMatchObject({
+      creation_use_case: 'institutional_promo',
+      truth_mode: 'institutional_verified',
+      client_type: '文旅机构',
+    });
+    expect(pkg.material_sufficiency_context).toMatchObject({
+      stage: 'script_ready',
+      active_stage: 'minimum_viable_story',
+      needs_verification: true,
+      generation_posture: 'draft_needs_verification',
+    });
+    expect(pkg.user_prompt).toContain('创作合同与素材 Gate');
+    expect(pkg.user_prompt).toContain('不得虚构周敦颐具体判词原文');
+    expect(pkg.user_prompt).toContain('疑案案卷事实依据');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('institutional_verified');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('素材 Gate');
   });
 });

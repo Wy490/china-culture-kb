@@ -26,6 +26,7 @@ import { createProjectFromGeneratedStory } from '../services/project-service.js'
 import {
   GEARS_CALLBACK_BATCH_ITEM_LIMIT,
   GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
+  type StoryProjectMeta,
   type StoryGenerateResult,
 } from '@shared/types.js';
 
@@ -3522,6 +3523,65 @@ describe('Projects API', () => {
         expect(first).toHaveProperty('video_type');
       }
     });
+
+    it('hydrates creation contract fields for legacy project metadata through list and detail routes', async () => {
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260617-story-aplg1',
+        title: 'API 旧项目素材契约兼容测试',
+        gears_segments_url: '/api/stories/20260617-story-aplg1/gears-segments',
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:45:00.000Z');
+      const projectDir = resolve(
+        testWorkspaceRoot,
+        'web',
+        'generated',
+        'projects',
+        enriched.project_id!,
+      );
+      const projectPath = resolve(projectDir, 'project.json');
+      const rawMetaBefore = JSON.parse(await readFile(projectPath, 'utf-8')) as StoryProjectMeta;
+      expect(rawMetaBefore.creation_use_case).toBeUndefined();
+      expect(rawMetaBefore.material_sufficiency).toBeUndefined();
+
+      const listRes = await request.get('/api/projects');
+      expect(listRes.status).toBe(200);
+      expectSuccess(listRes.body);
+      const listed = listRes.body.data.find((project: StoryProjectMeta) => project.project_id === enriched.project_id);
+      expect(listed).toMatchObject({
+        project_id: enriched.project_id,
+        creation_use_case: 'institutional_promo',
+        truth_mode: 'institutional_verified',
+      });
+      expect(listed.material_sufficiency).toMatchObject({
+        schema_version: 'material-sufficiency/v1',
+        active_stage: expect.any(String),
+      });
+      expect(listed.creation_contract).toMatchObject({
+        schema_version: 'creation-contract/v1',
+        creation_use_case: 'institutional_promo',
+        truth_mode: 'institutional_verified',
+      });
+
+      const detailRes = await request.get(`/api/projects/${enriched.project_id}`);
+      expect(detailRes.status).toBe(200);
+      expectSuccess(detailRes.body);
+      expect(detailRes.body.data.project.creation_contract).toMatchObject({
+        schema_version: 'creation-contract/v1',
+        creation_use_case: 'institutional_promo',
+        truth_mode: 'institutional_verified',
+      });
+      expect(detailRes.body.data.current_story.material_pack).toMatchObject({
+        schema_version: 'material-pack/v1',
+      });
+      expect(detailRes.body.data.current_story.creation_contract.material_sufficiency.score).toBe(
+        detailRes.body.data.current_story.material_sufficiency.score,
+      );
+
+      const rawMetaAfter = JSON.parse(await readFile(projectPath, 'utf-8')) as StoryProjectMeta;
+      expect(rawMetaAfter.creation_use_case).toBeUndefined();
+      expect(rawMetaAfter.material_sufficiency).toBeUndefined();
+    });
   });
 
   describe('PATCH /api/projects/:projectId/supplement-tasks/:taskId', () => {
@@ -3534,9 +3594,222 @@ describe('Projects API', () => {
     });
   });
 
+  describe('POST /api/projects/:projectId/material-pack/materials', () => {
+    it('validates material title', async () => {
+      const res = await request
+        .post('/api/projects/20260609-story-abc1--character_story/material-pack/materials')
+        .send({
+          summary: '缺标题的素材',
+          purpose: ['fact_basis'],
+        });
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+
+    it('adds manual material to the current project', async () => {
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260617-story-mat1',
+        title: 'API 素材写入测试',
+        gears_segments_url: '/api/stories/20260617-story-mat1/gears-segments',
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:40:00.000Z');
+
+      const res = await request
+        .post(`/api/projects/${enriched.project_id}/material-pack/materials`)
+        .send({
+          target: 'supporting_materials',
+          title: '案卷文书',
+          summary: '案卷文书用于强化疑案压力和堂前冲突。',
+          source_type: 'manual_note',
+          purpose: ['fact_basis', 'visual_asset'],
+          mark_as_verified_fact: true,
+        });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.current_story.material_pack.supporting_materials).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          title: '案卷文书',
+          source_type: 'manual_note',
+          purpose: ['fact_basis', 'visual_asset'],
+        }),
+      ]));
+      expect(res.body.data.current_story.material_pack.verified_facts.join('\n')).toContain('案卷文书');
+      expect(res.body.data.current_story.creation_contract.material_sufficiency.score).toBe(
+        res.body.data.current_story.material_sufficiency.score,
+      );
+    });
+  });
+
+  describe('POST /api/projects/:projectId/repair-quality/prompt', () => {
+    it('generates a read-only quality repair prompt package with creation boundaries', async () => {
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260617-story-rp1',
+        title: 'API 修复提示包测试',
+        gears_segments_url: '/api/stories/20260617-story-rp1/gears-segments',
+        quality_report: {
+          ...makeApiStory().quality_report!,
+          passed: false,
+          genre_score: 64,
+          issues: ['AI 漫剧缺少对白或强旁白推进'],
+          repair_actions: ['补 1-2 句短对白，让冲突直接推进'],
+          repair_action_items: [{
+            action_id: 'repair-dialogue',
+            label: '补对白',
+            target_report: 'combined',
+            severity: 'high',
+            scene_ids: [2],
+            prompt: '为第二场补 1-2 句短对白。',
+            expected_effect: '对白问题消失',
+          }],
+        },
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:50:00.000Z');
+
+      const res = await request
+        .post(`/api/projects/${enriched.project_id}/repair-quality/prompt`)
+        .send({
+          repair_action_id: 'repair-dialogue',
+          include_story_json: false,
+          user_instruction: '保持机构审定口径。',
+        });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'story-quality-repair-prompt/v1',
+        project_id: enriched.project_id,
+        story_id: story.storyId,
+        title: 'API 修复提示包测试',
+      });
+      expect(res.body.data.repair_actions.length).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.target_scene_ids).toContain(2);
+      expect(res.body.data.prompt).toContain('完整 StoryGenerateResult');
+      expect(res.body.data.prompt).toContain('创作合同边界');
+      expect(res.body.data.prompt).toContain('material_sufficiency');
+      expect(res.body.data.prompt).toContain('保持机构审定口径');
+      expect(res.body.data.prompt).toContain('<当前 Web 请求未内嵌完整原始故事 JSON');
+      expect(res.body.data.original_story_json).toBeUndefined();
+    });
+
+    it('validates and safely applies a repaired story json as a new version', async () => {
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260617-story-ra1',
+        title: 'API 修复 JSON 写入测试',
+        gears_segments_url: '/api/stories/20260617-story-ra1/gears-segments',
+        quality_report: {
+          ...makeApiStory().quality_report!,
+          passed: false,
+          genre_score: 42,
+          issues: ['缺少明确冲突'],
+          repair_actions: ['强化第二场冲突'],
+        },
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:55:00.000Z');
+      const repaired: StoryGenerateResult = {
+        ...story,
+        title: 'API 修复 JSON 写入测试',
+        full_text: '第一场原文。\n\n第二场原文。上官逼迫签字，周敦颐当场拒绝，冲突更明确。',
+        scene_breakdown: story.scene_breakdown.map(scene => scene.scene_id === 2
+          ? {
+              ...scene,
+              plot: '上官逼他签字，周敦颐当场拒绝，堂前气氛骤然紧绷。',
+              conflict: '权势逼迫与良知拒签正面对撞',
+              dialogue_or_narration: '上官：签了，此事便了。周敦颐：此案有疑，我不能签。',
+            }
+          : scene),
+      };
+
+      const dryRun = await request
+        .post(`/api/projects/${enriched.project_id}/repair-quality/apply`)
+        .send({
+          repaired_story_json: [
+            '```json',
+            JSON.stringify({ repaired_story_json: { ...repaired, project_id: 'tampered-project-id' } }),
+            '```',
+          ].join('\n'),
+          apply: false,
+          allow_no_improvement: true,
+        });
+
+      expect(dryRun.status).toBe(200);
+      expectSuccess(dryRun.body);
+      expect(dryRun.body.data.applied).toBe(false);
+      expect(dryRun.body.data.can_apply).toBe(true);
+      expect(dryRun.body.data.changed_scene_ids).toContain(2);
+      expect(dryRun.body.data.change_summary.changed_top_level_fields).toEqual(expect.arrayContaining([
+        'full_text',
+        'scene_breakdown',
+      ]));
+      expect(dryRun.body.data.change_summary.scene_changes).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          scene_id: 2,
+          changed_fields: expect.arrayContaining(['plot', 'conflict', 'dialogue_or_narration']),
+        }),
+      ]));
+      expect(typeof dryRun.body.data.change_summary.quality_delta.issue_count_delta).toBe('number');
+      expect(Array.isArray(dryRun.body.data.change_summary.quality_issue_delta.resolved_issues)).toBe(true);
+      expect(Array.isArray(dryRun.body.data.change_summary.quality_issue_delta.new_issues)).toBe(true);
+      expect(Array.isArray(dryRun.body.data.change_summary.quality_issue_delta.remaining_issues)).toBe(true);
+      expect(dryRun.body.data.change_summary.ignored_protected_field_changes).toContain('project_id');
+      expect(dryRun.body.data.operator_hints.join('\n')).toContain('校验通过');
+      expect(dryRun.body.data.validation_summary_markdown).toContain('# Story Quality Repair Validation');
+      expect(dryRun.body.data.validation_summary_markdown).toContain('## Quality Issues');
+      expect(dryRun.body.data.validation_summary_markdown).toContain('ignored_changes: project_id');
+
+      const noOpApply = await request
+        .post(`/api/projects/${enriched.project_id}/repair-quality/apply`)
+        .send({
+          repaired_story_json: JSON.stringify(story),
+          apply: true,
+          allow_no_improvement: true,
+        });
+
+      expect(noOpApply.status).toBe(200);
+      expectSuccess(noOpApply.body);
+      expect(noOpApply.body.data.applied).toBe(false);
+      expect(noOpApply.body.data.can_apply).toBe(false);
+      expect(noOpApply.body.data.change_summary.has_content_changes).toBe(false);
+      expect(noOpApply.body.data.rejected_reason).toContain('未产生实质内容变化');
+
+      const applyRes = await request
+        .post(`/api/projects/${enriched.project_id}/repair-quality/apply`)
+        .send({
+          repaired_story_json: JSON.stringify(repaired),
+          apply: true,
+          allow_no_improvement: true,
+        });
+
+      expect(applyRes.status).toBe(200);
+      expectSuccess(applyRes.body);
+      expect(applyRes.body.data.applied).toBe(true);
+      expect(applyRes.body.data.change_summary.summary_lines.join('\n')).toContain('场景变更');
+      expect(applyRes.body.data.detail.current_story.scene_breakdown[1].dialogue_or_narration).toContain('我不能签');
+      expect(applyRes.body.data.detail.versions.length).toBeGreaterThanOrEqual(2);
+      expect(applyRes.body.data.detail.versions[0].change_type).toBe('quality_repair');
+    });
+  });
+
   describe('GET /api/projects/supplement-tasks', () => {
     it('returns unified envelope with supplement task list', async () => {
       const res = await request.get('/api/projects/supplement-tasks');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(Array.isArray(res.body.data)).toBe(true);
+    });
+
+    it('accepts staged supplement task filters', async () => {
+      const res = await request
+        .get('/api/projects/supplement-tasks')
+        .query({
+          status: 'open',
+          stage: 'script_ready',
+          blocking_level: 'blocking',
+          source: 'material_sufficiency_missing_item',
+        });
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
@@ -5714,6 +5987,28 @@ describe('Stories API', () => {
       expectFailure(res.body, 'VALIDATION_ERROR');
     });
 
+    it('generates original AI comic from outline-only material', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        outline: '一个年轻修复师回到古城，发现祖父留下的旧戏台图纸，决定用一场原创漫剧唤回街坊对非遗戏曲的记忆。',
+        original_user_query: '原创非遗守护短剧',
+        video_type: 'ai_comic_drama',
+        creation_use_case: 'original_ai_comic',
+        truth_mode: 'fictional_original',
+        target_video_duration: '1分钟',
+        output_gears_segments: true,
+      });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      const story = res.body.data;
+      expect(story.source_entry).toContain('用户原创故事种子');
+      expect(story.creation_use_case).toBe('original_ai_comic');
+      expect(story.truth_mode).toBe('fictional_original');
+      expect(story.creation_contract.creation_use_case).toBe('original_ai_comic');
+      expect(story.material_pack.schema_version).toBe('material-pack/v1');
+      expect(story.adaptation_analysis).toBeUndefined();
+    });
+
     it('returns 404 for nonexistent entry', async () => {
       const res = await request.post('/api/stories/generate').send({
         entry_name: '不存在条目XXX',
@@ -5800,17 +6095,24 @@ describe('Stories API', () => {
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       const story = res.body.data;
-      expect(story.supplement_tasks).toHaveLength(1);
-      expect(story.supplement_tasks[0]).toMatchObject({
+      const supportingCharacterTask = story.supplement_tasks.find((task: { need_id: string }) => task.need_id === 'supporting_characters');
+      expect(supportingCharacterTask).toBeTruthy();
+      expect(supportingCharacterTask!).toMatchObject({
         need_id: 'supporting_characters',
         label: '配角人物',
         category: 'supporting_character',
+        stage: 'script_ready',
+        blocking_level: 'risk',
+        affects: expect.arrayContaining(['quality_report']),
         status: 'open',
         source: 'knowledge_pack_missing_need',
       });
-      expect(story.supplement_tasks[0].recommended_fields).toContain('与主角关系');
-      expect(story.supplement_tasks[0].intake_prompt).toContain('人物关系');
-      expect(story.supplement_tasks[0].task_id).toContain(story.storyId);
+      expect(supportingCharacterTask!.recommended_fields).toContain('与主角关系');
+      expect(supportingCharacterTask!.intake_prompt).toContain('人物关系');
+      expect(supportingCharacterTask!.task_id).toContain(story.storyId);
+      expect(story.supplement_tasks.some((task: { source: string; stage?: string }) => (
+        task.source === 'material_sufficiency_missing_item' && task.stage === 'production_ready'
+      ))).toBe(true);
     });
 
     it('returns story with video_type when video_type provided', async () => {
@@ -5946,6 +6248,53 @@ describe('Stories API', () => {
       const res = await request.get('/api/stories/20260101-story-abc/gears-segments');
       expect(res.status).toBe(404);
       expectFailure(res.body, 'GEARS_SEGMENTS_NOT_FOUND');
+    });
+
+    it('prefers the editable project current version over a stale immutable story snapshot', async () => {
+      const storyId = '20260623-story-cur1';
+      const staleStory: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId,
+        title: '旧快照故事',
+        gears_segments_url: `/api/stories/${storyId}/gears-segments`,
+        scene_breakdown: makeApiStory().scene_breakdown.map(scene => scene.scene_id === 1
+          ? { ...scene, plot: '旧快照剧情', key_action: '旧快照动作' }
+          : scene),
+        gears_segments: [{
+          ...makeApiStory().gears_segments[0],
+          script_text: '旧快照分段',
+        }],
+      };
+      const currentStory: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId,
+        title: '当前项目版本故事',
+        gears_segments_url: `/api/stories/${storyId}/gears-segments`,
+        scene_breakdown: makeApiStory().scene_breakdown.map(scene => scene.scene_id === 1
+          ? { ...scene, plot: '当前项目版本剧情', key_action: '当前项目版本动作' }
+          : scene),
+        gears_segments: [{
+          ...makeApiStory().gears_segments[0],
+          script_text: '当前项目版本分段',
+        }],
+      };
+      const storyDir = resolve(testWorkspaceRoot, 'web', 'generated', 'stories', 'character_story');
+      await mkdir(storyDir, { recursive: true });
+      await writeFile(resolve(storyDir, `${storyId}.json`), JSON.stringify(staleStory, null, 2), 'utf-8');
+      await createProjectFromGeneratedStory(currentStory, '2026-06-23T10:30:00.000Z');
+
+      const segmentsRes = await request.get(`/api/stories/${storyId}/gears-segments`);
+      expect(segmentsRes.status).toBe(200);
+      expectSuccess(segmentsRes.body);
+      expect(segmentsRes.body.data.title).toBe('当前项目版本故事');
+      expect(segmentsRes.body.data.segments[0].script_text).toBe('当前项目版本分段');
+
+      const deliveryRes = await request.get(`/api/stories/${storyId}/gears-delivery`);
+      expect(deliveryRes.status).toBe(200);
+      expectSuccess(deliveryRes.body);
+      expect(deliveryRes.body.data.title).toBe('当前项目版本故事');
+      expect(deliveryRes.body.data.units.map((unit: any) => unit.script_text).join('\n')).toContain('当前项目版本剧情');
+      expect(deliveryRes.body.data.units.map((unit: any) => unit.script_text).join('\n')).not.toContain('旧快照剧情');
     });
   });
 

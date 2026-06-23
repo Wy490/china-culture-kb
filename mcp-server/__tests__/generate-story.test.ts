@@ -53,6 +53,11 @@ describe('kb_generate_story', () => {
       story_text: storyText,
       entry_names: '屈原投江汨罗——端午节起源',
       script_type: '短剧',
+      creation_use_case: 'institutional_promo',
+      truth_mode: 'institutional_verified',
+      client_type: '政府机构',
+      target_audience: '青少年研学群体',
+      communication_goal: '稳妥表达端午文化的纪念意义',
     });
 
     expect(result.filePath).toContain('scripts');
@@ -62,10 +67,26 @@ describe('kb_generate_story', () => {
     expect(result.storyText).toContain('## 故事核心');
     expect(result.storyText).toContain('## 可信度边界');
     expect(result.storyText).toContain('A级《史记》交叉佐证');
+    expect(result.creation_contract?.schema_version).toBe('creation-contract/v1');
+    expect(result.creation_contract?.creation_use_case).toBe('institutional_promo');
+    expect(result.creation_contract?.truth_mode).toBe('institutional_verified');
+    expect(result.creation_contract?.client_type).toBe('政府机构');
+    expect(result.material_sufficiency?.schema_version).toBe('material-sufficiency/v1');
+    expect(result.material_sufficiency?.stage).toBe('script_ready');
+    expect(result.material_sufficiency?.active_stage).toBe('script_ready');
+    expect(result.material_sufficiency?.generation_posture).toBe('script_ready_production_pending');
+    expect(result.material_sufficiency?.stage_reports?.map(report => report.stage)).toEqual([
+      'minimum_viable_story',
+      'script_ready',
+      'production_ready',
+    ]);
 
     // Verify file was written
     const fileContent = fs.readFileSync(result.filePath, 'utf-8');
     expect(fileContent).toContain('屈原投江——悲壮化为纪念');
     expect(fileContent).toContain('短剧');
+    expect(fileContent).toContain('## 创作合同');
+    expect(fileContent).toContain('**真实度模式**：institutional_verified');
+    expect(fileContent).toContain('**生成姿态**：script_ready_production_pending');
   });
 });

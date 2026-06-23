@@ -2,8 +2,8 @@
   <div class="supplement-page">
     <header class="supplement-page__header">
       <div>
-        <h1 class="supplement-page__title">补录任务</h1>
-        <p class="supplement-page__desc">集中查看故事项目中的资料补录任务，优先处理仍待补的项目。</p>
+        <h1 class="supplement-page__title">素材补充任务</h1>
+        <p class="supplement-page__desc">按创作阶段、阻断等级和项目来源集中处理 Story Agent 的素材缺口。</p>
       </div>
       <RouterLink class="supplement-page__back" to="/projects">返回项目列表</RouterLink>
     </header>
@@ -18,6 +18,23 @@
         <option value="">全部任务</option>
         <option value="open">待补</option>
         <option value="resolved">已完成</option>
+      </select>
+      <select v-model="stageFilter" class="supplement-page__select">
+        <option value="">全部阶段</option>
+        <option value="minimum_viable_story">最小故事</option>
+        <option value="script_ready">剧本就绪</option>
+        <option value="production_ready">生产就绪</option>
+      </select>
+      <select v-model="blockingFilter" class="supplement-page__select">
+        <option value="">全部等级</option>
+        <option value="blocking">当前阻断</option>
+        <option value="risk">需核验</option>
+        <option value="optional">生产前补充</option>
+      </select>
+      <select v-model="sourceFilter" class="supplement-page__select">
+        <option value="">全部来源</option>
+        <option value="knowledge_pack_missing_need">旧知识包缺口</option>
+        <option value="material_sufficiency_missing_item">素材 Gate 缺口</option>
       </select>
     </section>
 
@@ -34,9 +51,17 @@
         <span>已完成</span>
         <strong>{{ resolvedCount }}</strong>
       </div>
+      <div>
+        <span>当前阻断</span>
+        <strong>{{ blockingOpenCount }}</strong>
+      </div>
+      <div>
+        <span>生产前补充</span>
+        <strong>{{ productionReadyOpenCount }}</strong>
+      </div>
     </section>
 
-    <div v-if="loading" class="supplement-page__state">正在加载补录任务…</div>
+    <div v-if="loading" class="supplement-page__state">正在加载素材补充任务…</div>
     <div v-else-if="error" class="supplement-page__error">{{ error }}</div>
 
     <section v-else class="supplement-page__list">
@@ -46,6 +71,11 @@
             <span :class="['supplement-page__status', item.task.status === 'open' ? 'supplement-page__status--open' : 'supplement-page__status--resolved']">
               {{ item.task.status === 'open' ? '待补' : '已完成' }}
             </span>
+            <span v-if="item.task.stage" class="supplement-page__stage">{{ stageLabel(item.task.stage) }}</span>
+            <span v-if="item.task.blocking_level" :class="['supplement-page__blocking', `supplement-page__blocking--${item.task.blocking_level}`]">
+              {{ blockingLabel(item.task.blocking_level) }}
+            </span>
+            <span class="supplement-page__source">{{ sourceLabel(item.task.source) }}</span>
             <span v-if="item.task.category" class="supplement-page__category">{{ categoryLabel(item.task.category) }}</span>
           </div>
           <h2>{{ item.task.label }}</h2>
@@ -56,11 +86,15 @@
           <div v-if="item.task.recommended_fields?.length" class="supplement-page__fields">
             <span v-for="field in item.task.recommended_fields" :key="field">{{ field }}</span>
           </div>
+          <div v-if="item.task.affects?.length" class="supplement-page__fields supplement-page__fields--affects">
+            <span v-for="affect in item.task.affects" :key="affect">影响：{{ affect }}</span>
+          </div>
+          <p v-if="item.task.intake_prompt" class="supplement-page__prompt">{{ item.task.intake_prompt }}</p>
           <div v-if="item.task.status === 'open'" class="supplement-page__editor">
             <textarea
               class="supplement-page__textarea"
               :value="drafts[item.task.task_id] ?? item.task.supplement_note ?? ''"
-              placeholder="记录本次补录的事实、来源、可用于故事或画面的细节。"
+              placeholder="记录本次补充的事实、来源、可用于故事、剧本或画面的细节。"
               @input="updateDraft(item.task.task_id, $event)"
             />
             <button
@@ -88,7 +122,7 @@
         </aside>
       </article>
 
-      <div v-if="filteredTasks.length === 0" class="supplement-page__state">没有匹配的补录任务。</div>
+      <div v-if="filteredTasks.length === 0" class="supplement-page__state">没有匹配的素材补充任务。</div>
     </section>
   </div>
 </template>
@@ -98,7 +132,10 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { listSupplementTasks, updateProjectSupplementTask } from '@/api/projects'
 import type {
   KnowledgeSupplementTaskCategory,
+  KnowledgeSupplementTaskSource,
   KnowledgeSupplementTaskStatus,
+  MaterialBlockingLevel,
+  MaterialSufficiencyStage,
   ProjectSupplementTaskListItem,
   VideoType,
 } from '@shared/types'
@@ -108,6 +145,9 @@ const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
 const statusFilter = ref('')
+const stageFilter = ref('')
+const blockingFilter = ref('')
+const sourceFilter = ref('')
 const updatingTaskId = ref('')
 const drafts = reactive<Record<string, string>>({})
 
@@ -115,20 +155,30 @@ const filteredTasks = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   return tasks.value.filter(item => {
     const matchesStatus = !statusFilter.value || item.task.status === statusFilter.value
+    const matchesStage = !stageFilter.value || item.task.stage === stageFilter.value
+    const matchesBlocking = !blockingFilter.value || item.task.blocking_level === blockingFilter.value
+    const matchesSource = !sourceFilter.value || item.task.source === sourceFilter.value
     const text = [
       item.project_title,
       item.source_entry,
       item.task.label,
       item.task.description,
       item.task.supplement_note ?? '',
+      item.task.intake_prompt ?? '',
+      item.task.stage ? stageLabel(item.task.stage) : '',
+      item.task.blocking_level ? blockingLabel(item.task.blocking_level) : '',
+      sourceLabel(item.task.source),
+      ...(item.task.affects ?? []),
       ...(item.task.recommended_fields ?? []),
     ].join(' ').toLowerCase()
-    return matchesStatus && (!query || text.includes(query))
+    return matchesStatus && matchesStage && matchesBlocking && matchesSource && (!query || text.includes(query))
   })
 })
 
 const openCount = computed(() => tasks.value.filter(item => item.task.status === 'open').length)
 const resolvedCount = computed(() => tasks.value.filter(item => item.task.status === 'resolved').length)
+const blockingOpenCount = computed(() => tasks.value.filter(item => item.task.status === 'open' && item.task.blocking_level === 'blocking').length)
+const productionReadyOpenCount = computed(() => tasks.value.filter(item => item.task.status === 'open' && item.task.stage === 'production_ready').length)
 
 function categoryLabel(category: KnowledgeSupplementTaskCategory): string {
   const map: Record<KnowledgeSupplementTaskCategory, string> = {
@@ -141,6 +191,32 @@ function categoryLabel(category: KnowledgeSupplementTaskCategory): string {
     general: '通用资料',
   }
   return map[category]
+}
+
+function stageLabel(stage: MaterialSufficiencyStage): string {
+  const map: Record<MaterialSufficiencyStage, string> = {
+    minimum_viable_story: '最小故事',
+    script_ready: '剧本就绪',
+    production_ready: '生产就绪',
+  }
+  return map[stage]
+}
+
+function blockingLabel(level: MaterialBlockingLevel): string {
+  const map: Record<MaterialBlockingLevel, string> = {
+    blocking: '当前阻断',
+    risk: '需核验',
+    optional: '生产前补充',
+  }
+  return map[level]
+}
+
+function sourceLabel(source: KnowledgeSupplementTaskSource): string {
+  const map: Record<KnowledgeSupplementTaskSource, string> = {
+    knowledge_pack_missing_need: '旧知识包缺口',
+    material_sufficiency_missing_item: '素材 Gate 缺口',
+  }
+  return map[source]
 }
 
 function typeLabel(type: VideoType): string {
@@ -181,7 +257,7 @@ async function loadTasks() {
   if (res.ok && res.data) {
     tasks.value = res.data
   } else {
-    error.value = res.error?.message ?? '加载补录任务失败'
+    error.value = res.error?.message ?? '加载素材补充任务失败'
   }
   loading.value = false
 }
@@ -196,7 +272,7 @@ async function updateTask(item: ProjectSupplementTaskListItem, status: Knowledge
     delete drafts[item.task.task_id]
     await loadTasks()
   } else {
-    error.value = res.error?.message ?? '更新补录任务失败'
+    error.value = res.error?.message ?? '更新素材补充任务失败'
   }
   updatingTaskId.value = ''
 }
@@ -248,6 +324,7 @@ onMounted(async () => {
 
 .supplement-page__toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -261,12 +338,16 @@ onMounted(async () => {
 }
 
 .supplement-page__search {
-  flex: 1;
+  flex: 1 1 260px;
+}
+
+.supplement-page__select {
+  min-width: 150px;
 }
 
 .supplement-page__summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -313,6 +394,9 @@ onMounted(async () => {
 }
 
 .supplement-page__status,
+.supplement-page__stage,
+.supplement-page__blocking,
+.supplement-page__source,
 .supplement-page__category,
 .supplement-page__fields span {
   padding: 3px 7px;
@@ -336,6 +420,31 @@ onMounted(async () => {
   color: #465767;
 }
 
+.supplement-page__stage {
+  background: #e9f2ff;
+  color: #24527a;
+}
+
+.supplement-page__source {
+  background: #f4efff;
+  color: #5a3b7a;
+}
+
+.supplement-page__blocking--blocking {
+  background: #fdecea;
+  color: #a93226;
+}
+
+.supplement-page__blocking--risk {
+  background: #fff4d6;
+  color: #9a6500;
+}
+
+.supplement-page__blocking--optional {
+  background: #edf7ee;
+  color: #2e7d32;
+}
+
 .supplement-page__task h2 {
   margin: 8px 0 6px;
   color: #22313f;
@@ -352,6 +461,14 @@ onMounted(async () => {
   padding: 8px 10px;
   border-radius: 6px;
   background: #fffaf0;
+}
+
+.supplement-page__prompt {
+  padding: 8px 10px;
+  border-left: 3px solid #7aa6d8;
+  background: #f6f9fc;
+  color: #34495e !important;
+  font-size: 13px;
 }
 
 .supplement-page__editor {

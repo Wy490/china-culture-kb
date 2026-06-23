@@ -8,7 +8,9 @@ import type {
   GearsJobSubmitRequest,
   GearsJobSubmitResult,
   StoryProjectBatchDeleteResult,
+  ProjectMaterialPackAddMaterialRequest,
   ProjectSupplementTaskListItem,
+  ProjectSupplementTaskListFilters,
   StoryProjectDeleteResult,
   StoryProjectDetail,
   StoryProjectExportPackage,
@@ -52,6 +54,10 @@ import type {
   StoryProductionBoardRepairRequest,
   StoryProductionBoardRepairResult,
   StorySceneRegenerateRequest,
+  StoryQualityRepairApplyRequest,
+  StoryQualityRepairApplyResult,
+  StoryQualityRepairPromptRequest,
+  StoryQualityRepairPromptResult,
   StoryQualityRepairRequest,
 } from '@shared/types'
 
@@ -59,8 +65,11 @@ export function listProjects() {
   return apiGet<StoryProjectListItem[]>('/projects')
 }
 
-export function listSupplementTasks(status?: 'open' | 'resolved') {
-  return apiGet<ProjectSupplementTaskListItem[]>('/projects/supplement-tasks', status ? { status } : undefined)
+export function listSupplementTasks(filters: ProjectSupplementTaskListFilters = {}) {
+  const query = Object.fromEntries(
+    Object.entries(filters).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0),
+  )
+  return apiGet<ProjectSupplementTaskListItem[]>('/projects/supplement-tasks', query)
 }
 
 export function getProject(projectId: string) {
@@ -73,6 +82,20 @@ export function regenerateProjectScene(projectId: string, body: StorySceneRegene
 
 export function repairProjectQuality(projectId: string, body: StoryQualityRepairRequest = {}) {
   return apiPost<StoryProjectDetail>(`/projects/${projectId}/repair-quality`, body)
+}
+
+export function generateProjectQualityRepairPrompt(
+  projectId: string,
+  body: StoryQualityRepairPromptRequest = {},
+) {
+  return apiPost<StoryQualityRepairPromptResult>(`/projects/${projectId}/repair-quality/prompt`, body)
+}
+
+export function applyProjectQualityRepairJson(
+  projectId: string,
+  body: StoryQualityRepairApplyRequest,
+) {
+  return apiPost<StoryQualityRepairApplyResult>(`/projects/${projectId}/repair-quality/apply`, body)
 }
 
 export function exportProjectCurrentVersion(projectId: string) {
@@ -207,4 +230,8 @@ export function retainRecentProjects(keepRecent: number) {
 
 export function updateProjectSupplementTask(projectId: string, taskId: string, body: KnowledgeSupplementTaskUpdateRequest) {
   return apiPatch<StoryProjectDetail>(`/projects/${projectId}/supplement-tasks/${encodeURIComponent(taskId)}`, body)
+}
+
+export function addProjectMaterialPackMaterial(projectId: string, body: ProjectMaterialPackAddMaterialRequest) {
+  return apiPost<StoryProjectDetail>(`/projects/${projectId}/material-pack/materials`, body)
 }

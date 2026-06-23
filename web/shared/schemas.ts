@@ -166,6 +166,198 @@ export const KnowledgeAssetSplitSchema = z.object({
   scene_props: z.array(z.string()),
 });
 
+export const CreationUseCaseSchema = z.enum([
+  'original_ai_comic',
+  'adapted_ai_comic',
+  'institutional_promo',
+  'documentary_short',
+  'brand_commercial',
+  'education_training',
+  'public_service',
+]);
+
+export const TruthModeSchema = z.enum([
+  'fictional_original',
+  'inspired_by_material',
+  'source_adaptation',
+  'factual_reconstruction',
+  'institutional_verified',
+]);
+
+export const KnowledgePackEntrySchema = z.object({
+  entry_name: z.string(),
+  province: z.string(),
+  region: z.string(),
+  type: z.string(),
+  summary: z.string(),
+  score: z.number(),
+  role_in_story: z.string(),
+  match_reason: z.string(),
+  keywords: z.array(z.string()),
+  knowledge_domain: KnowledgeDomainSchema.optional(),
+  entry_role: KnowledgeEntryRoleSchema.optional(),
+  era: z.string().optional(),
+  asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
+  asset_split: KnowledgeAssetSplitSchema.optional(),
+});
+
+export const KnowledgePackMissingSchema = z.object({
+  need_id: z.string(),
+  label: z.string(),
+  message: z.string(),
+});
+
+export const KnowledgePackSchema = z.object({
+  primary_entries: z.array(KnowledgePackEntrySchema),
+  supporting_entries: z.array(KnowledgePackEntrySchema),
+  missing_needs: z.array(KnowledgePackMissingSchema),
+  overall_confidence: z.number(),
+});
+
+export const MaterialPurposeSchema = z.enum([
+  'fact_basis',
+  'character_source',
+  'visual_asset',
+  'era_context',
+  'regional_context',
+  'cultural_background',
+  'brand_info',
+  'institutional_position',
+  'source_work',
+  'reference_style',
+  'creative_boundary',
+]);
+
+export const MaterialSourceTypeSchema = z.enum([
+  'knowledge_entry',
+  'user_outline',
+  'user_source_text',
+  'brand_profile',
+  'institution_profile',
+  'visual_asset',
+  'reference_style',
+  'manual_note',
+]);
+
+export const MaterialPackEntrySchema = z.object({
+  material_id: z.string().min(1),
+  title: z.string().min(1),
+  summary: z.string(),
+  source_type: MaterialSourceTypeSchema,
+  purpose: z.array(MaterialPurposeSchema).min(1),
+  confidence: z.number().optional(),
+  role_in_story: z.string().optional(),
+  provenance: z.string().optional(),
+  linked_entry_name: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+export const MaterialSufficiencyMissingItemSchema = z.object({
+  item_id: z.string(),
+  label: z.string(),
+  reason: z.string(),
+  blocking_level: z.enum(['blocking', 'risk', 'optional']),
+  affects: z.array(z.string()),
+  recommended_question: z.string(),
+});
+
+export const MaterialSufficiencyStageReportSchema = z.object({
+  stage: z.enum(['minimum_viable_story', 'script_ready', 'production_ready']),
+  status: z.enum(['ready', 'needs_input', 'blocked']),
+  score: z.number().min(0).max(100),
+  can_proceed: z.boolean(),
+  required_items: z.array(z.string()),
+  available_outputs: z.array(z.string()),
+  missing_items: z.array(MaterialSufficiencyMissingItemSchema),
+  optional_items: z.array(MaterialSufficiencyMissingItemSchema),
+  notes: z.array(z.string()),
+});
+
+export const MaterialSufficiencyReportSchema = z.object({
+  schema_version: z.literal('material-sufficiency/v1'),
+  stage: z.enum(['minimum_viable_story', 'script_ready', 'production_ready']),
+  active_stage: z.enum(['minimum_viable_story', 'script_ready', 'production_ready']).optional(),
+  score: z.number().min(0).max(100),
+  can_generate: z.boolean(),
+  can_generate_with_risks: z.boolean(),
+  blocked: z.boolean(),
+  needs_verification: z.boolean().optional(),
+  generation_posture: z.enum([
+    'ready',
+    'draft_needs_verification',
+    'script_ready_production_pending',
+    'blocked_until_input',
+  ]).optional(),
+  next_stage: z.enum(['minimum_viable_story', 'script_ready', 'production_ready']).optional(),
+  downgrade_reason: z.string().optional(),
+  stage_reports: z.array(MaterialSufficiencyStageReportSchema).optional(),
+  missing_items: z.array(MaterialSufficiencyMissingItemSchema),
+  optional_items: z.array(MaterialSufficiencyMissingItemSchema),
+  token_risk: z.enum(['low', 'medium', 'high']),
+  recommended_next_questions: z.array(z.string()),
+});
+
+export const MaterialPackSchema = z.object({
+  schema_version: z.literal('material-pack/v1'),
+  primary_materials: z.array(MaterialPackEntrySchema),
+  supporting_materials: z.array(MaterialPackEntrySchema),
+  reference_materials: z.array(MaterialPackEntrySchema),
+  brand_or_institution_profile: z.object({
+    name: z.string().optional(),
+    client_type: z.string().optional(),
+    voice: z.string().optional(),
+    verified_claims: z.array(z.string()).optional(),
+    forbidden_claims: z.array(z.string()).optional(),
+  }).optional(),
+  source_work_profile: z.object({
+    title: z.string().optional(),
+    author: z.string().optional(),
+    rights_note: z.string().optional(),
+    adaptation_boundary: z.string().optional(),
+    core_characters: z.array(z.string()).optional(),
+    must_keep: z.array(z.string()).optional(),
+  }).optional(),
+  visual_assets: z.array(z.object({
+    asset_id: z.string(),
+    label: z.string(),
+    kind: z.enum(['character', 'scene', 'prop', 'document', 'brand', 'other']),
+    description: z.string(),
+    source_material_id: z.string().optional(),
+    file_url: z.string().optional(),
+  })),
+  verified_facts: z.array(z.string()),
+  uncertain_claims: z.array(z.string()),
+  creative_space: z.array(z.string()),
+  missing_needs: z.array(KnowledgePackMissingSchema),
+  overall_confidence: z.number(),
+  token_budget_summary: z.object({
+    estimated_input_tokens: z.number().optional(),
+    strategy: z.string().optional(),
+    notes: z.array(z.string()).optional(),
+  }).optional(),
+});
+
+export const ProjectMaterialPackTargetSchema = z.enum([
+  'primary_materials',
+  'supporting_materials',
+  'reference_materials',
+]);
+
+export const ProjectMaterialPackAddMaterialRequestSchema = z.object({
+  target: ProjectMaterialPackTargetSchema.optional().default('supporting_materials'),
+  title: z.string().trim().min(1).max(120),
+  summary: z.string().trim().min(1).max(1200),
+  source_type: MaterialSourceTypeSchema.optional().default('manual_note'),
+  purpose: z.array(MaterialPurposeSchema).min(1).max(6),
+  confidence: z.number().min(0).max(1).optional(),
+  role_in_story: z.string().trim().min(1).max(240).optional(),
+  provenance: z.string().trim().min(1).max(240).optional(),
+  linked_entry_name: z.string().trim().min(1).max(120).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
+  mark_as_verified_fact: z.boolean().optional().default(false),
+  remove_missing_need_id: z.string().trim().min(1).max(120).optional(),
+});
+
 // ---------------------------------------------------------------------------
 // Duration & panel count
 // ---------------------------------------------------------------------------
@@ -218,46 +410,13 @@ export const StoryGenerateRequestSchema = z.object({
   // New fields for outline-driven multi-knowledge matching
   outline: z.string().optional(),
   character_hints: z.array(StoryDetectedCharacterSchema).optional(),
-  knowledge_pack: z.object({
-    primary_entries: z.array(z.object({
-      entry_name: z.string(),
-      province: z.string(),
-      region: z.string(),
-      type: z.string(),
-      summary: z.string(),
-      score: z.number(),
-      role_in_story: z.string(),
-      match_reason: z.string(),
-      keywords: z.array(z.string()),
-      knowledge_domain: KnowledgeDomainSchema.optional(),
-      entry_role: KnowledgeEntryRoleSchema.optional(),
-      era: z.string().optional(),
-      asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
-      asset_split: KnowledgeAssetSplitSchema.optional(),
-    })),
-    supporting_entries: z.array(z.object({
-      entry_name: z.string(),
-      province: z.string(),
-      region: z.string(),
-      type: z.string(),
-      summary: z.string(),
-      score: z.number(),
-      role_in_story: z.string(),
-      match_reason: z.string(),
-      keywords: z.array(z.string()),
-      knowledge_domain: KnowledgeDomainSchema.optional(),
-      entry_role: KnowledgeEntryRoleSchema.optional(),
-      era: z.string().optional(),
-      asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
-      asset_split: KnowledgeAssetSplitSchema.optional(),
-    })),
-    missing_needs: z.array(z.object({
-      need_id: z.string(),
-      label: z.string(),
-      message: z.string(),
-    })),
-    overall_confidence: z.number(),
-  }).optional(),
+  knowledge_pack: KnowledgePackSchema.optional(),
+  material_pack: MaterialPackSchema.optional(),
+  creation_use_case: CreationUseCaseSchema.optional(),
+  truth_mode: TruthModeSchema.optional(),
+  client_type: z.string().trim().min(1).max(80).optional(),
+  target_audience: z.string().trim().min(1).max(120).optional(),
+  communication_goal: z.string().trim().min(1).max(240).optional(),
   // New fields for story structure and creative reference (Phase 5)
   story_structure: StoryStructureTypeSchema.optional(),
   creative_reference_ids: z.array(z.string()).optional(),
@@ -271,11 +430,23 @@ export const StoryGenerateRequestSchema = z.object({
   localized_target_region: z.string().trim().min(1).max(40).optional(),
   localization_mode: LocalizationModeSchema.optional().default('allow_related_influence'),
 }).refine(
-  (data) => data.entry_name || data.knowledge_pack || data.outline,
-  { message: 'At least one of entry_name, knowledge_pack, or outline must be provided', path: ['entry_name'] },
+  (data) => data.entry_name || data.knowledge_pack || data.material_pack || data.outline,
+  { message: 'At least one of entry_name, knowledge_pack, material_pack, or outline must be provided', path: ['entry_name'] },
 ).refine(
   (data) => data.generation_type || data.video_type,
   { message: 'Either generation_type or video_type must be provided', path: ['video_type'] },
+).refine(
+  (data) => {
+    if (!data.truth_mode || !data.video_type) return true;
+    if (data.truth_mode === 'fictional_original') {
+      return !['documentary_short', 'education_training', 'lecture_video', 'explainer_video'].includes(data.video_type);
+    }
+    if (data.truth_mode === 'institutional_verified') {
+      return !['legend_story', 'children_story'].includes(data.video_type);
+    }
+    return true;
+  },
+  { message: 'truth_mode is not compatible with the selected video_type', path: ['truth_mode'] },
 ).refine(
   // memory_mosaic_biography only compatible with certain video_types
   (data) => {
@@ -977,6 +1148,20 @@ export const StoryQualityRepairRequestSchema = z.object({
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
   target_report: z.enum(['outline', 'pattern', 'gears', 'audience', 'combined']).optional(),
   repair_action_id: z.string().trim().min(1).max(80).optional(),
+});
+
+export const StoryQualityRepairPromptRequestSchema = StoryQualityRepairRequestSchema.extend({
+  user_instruction: z.string().trim().max(800).optional(),
+  include_story_json: z.boolean().optional().default(false),
+  include_markdown: z.boolean().optional().default(true),
+  max_actions: z.number().int().min(1).max(50).optional().default(12),
+});
+
+export const StoryQualityRepairApplyRequestSchema = z.object({
+  repaired_story_json: z.string().trim().min(2).max(2_000_000),
+  user_instruction: z.string().trim().max(800).optional(),
+  apply: z.boolean().optional().default(false),
+  allow_no_improvement: z.boolean().optional().default(false),
 });
 
 export const StoryProductionBoardRepairRequestSchema = z.object({

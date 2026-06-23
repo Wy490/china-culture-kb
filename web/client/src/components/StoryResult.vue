@@ -14,6 +14,83 @@
       <GearsVideoStatus v-if="showGearsVideoStatus" :video="result.gears_video" />
     </header>
 
+    <section v-if="result.creation_contract || result.material_sufficiency" class="story-result__section">
+      <h3 class="story-result__section-title">创作合同与素材 gate</h3>
+      <div class="story-result__contract">
+        <div v-if="result.creation_contract" class="story-result__contract-summary">
+          <article>
+            <span>创作用途</span>
+            <strong>{{ creationUseCaseLabel(result.creation_contract.creation_use_case) }}</strong>
+          </article>
+          <article>
+            <span>真实模式</span>
+            <strong>{{ truthModeLabel(result.creation_contract.truth_mode) }}</strong>
+          </article>
+          <article v-if="result.creation_contract.client_type">
+            <span>客户/机构</span>
+            <strong>{{ result.creation_contract.client_type }}</strong>
+          </article>
+          <article v-if="result.creation_contract.target_audience">
+            <span>目标受众</span>
+            <strong>{{ result.creation_contract.target_audience }}</strong>
+          </article>
+        </div>
+        <p v-if="result.creation_contract?.communication_goal" class="story-result__contract-goal">
+          {{ result.creation_contract.communication_goal }}
+        </p>
+        <div v-if="result.material_sufficiency" class="story-result__sufficiency">
+          <div class="story-result__sufficiency-head">
+            <article>
+              <span>目标阶段</span>
+              <strong>{{ sufficiencyStageLabel(result.material_sufficiency.stage) }}</strong>
+            </article>
+            <article>
+              <span>可推进到</span>
+              <strong>{{ result.material_sufficiency.active_stage ? sufficiencyStageLabel(result.material_sufficiency.active_stage) : '未记录' }}</strong>
+            </article>
+            <article>
+              <span>素材评分</span>
+              <strong>{{ result.material_sufficiency.score }}/100</strong>
+            </article>
+            <article>
+              <span>生成姿态</span>
+              <strong>{{ generationPostureLabel(result.material_sufficiency.generation_posture) }}</strong>
+            </article>
+          </div>
+          <p v-if="result.material_sufficiency.needs_verification" class="story-result__sufficiency-note">
+            当前素材允许先生成草案，但事实、数据、机构口径或原作边界需要继续核验。
+          </p>
+          <div v-if="result.material_sufficiency.stage_reports?.length" class="story-result__stage-grid">
+            <article
+              v-for="stage in result.material_sufficiency.stage_reports"
+              :key="stage.stage"
+              class="story-result__stage-card"
+              :class="`story-result__stage-card--${stage.status}`"
+            >
+              <div class="story-result__stage-card-head">
+                <strong>{{ sufficiencyStageLabel(stage.stage) }}</strong>
+                <span>{{ stageStatusLabel(stage.status) }} · {{ stage.score }}/100</span>
+              </div>
+              <p>{{ stage.available_outputs.length ? stage.available_outputs.join('、') : '需补素材后推进' }}</p>
+              <ul v-if="stage.missing_items.length">
+                <li v-for="item in stage.missing_items.slice(0, 3)" :key="item.item_id">
+                  {{ item.label }}：{{ item.reason }}
+                </li>
+              </ul>
+            </article>
+          </div>
+          <div v-if="result.material_sufficiency.recommended_next_questions.length" class="story-result__field-list">
+            <strong>建议补充</strong>
+            <ul>
+              <li v-for="question in result.material_sufficiency.recommended_next_questions.slice(0, 5)" :key="question">
+                {{ question }}
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Full text -->
     <section class="story-result__section">
       <h3 class="story-result__section-title">完整故事文本</h3>
@@ -25,7 +102,55 @@
       </div>
     </section>
 
-    <!-- Knowledge source (new) -->
+    <section v-if="result.material_pack" class="story-result__section">
+      <h3 class="story-result__section-title">项目素材包</h3>
+      <div class="story-result__material-summary">
+        <article>
+          <span>主素材</span>
+          <strong>{{ result.material_pack.primary_materials.length }}</strong>
+        </article>
+        <article>
+          <span>支撑素材</span>
+          <strong>{{ result.material_pack.supporting_materials.length }}</strong>
+        </article>
+        <article>
+          <span>参考素材</span>
+          <strong>{{ result.material_pack.reference_materials.length }}</strong>
+        </article>
+        <article>
+          <span>缺口</span>
+          <strong>{{ result.material_pack.missing_needs.length }}</strong>
+        </article>
+      </div>
+      <div
+        v-for="group in materialGroups"
+        :key="group.key"
+        class="story-result__source-group"
+      >
+        <h4 v-if="group.items.length > 0" class="story-result__source-label">{{ group.label }}</h4>
+        <div v-for="material in group.items" :key="material.material_id" class="story-result__material-item">
+          <strong>{{ material.title }}</strong>
+          <p>{{ material.summary }}</p>
+          <div class="story-result__tag-row">
+            <span class="story-result__source-tag">{{ materialSourceTypeLabel(material.source_type) }}</span>
+            <span v-for="purpose in material.purpose" :key="purpose" class="story-result__source-tag">
+              {{ materialPurposeLabel(purpose) }}
+            </span>
+            <span v-if="typeof material.confidence === 'number'" class="story-result__source-score">
+              {{ (material.confidence * 100).toFixed(0) }}%
+            </span>
+          </div>
+        </div>
+      </div>
+      <div v-if="result.material_pack.verified_facts.length > 0" class="story-result__field-list">
+        <strong>已确认事实/素材说明</strong>
+        <ul>
+          <li v-for="fact in result.material_pack.verified_facts.slice(0, 6)" :key="fact">{{ fact }}</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Knowledge source (compatibility) -->
     <section v-if="result.knowledge_pack" class="story-result__section">
       <h3 class="story-result__section-title">知识来源</h3>
       <div v-if="result.knowledge_pack.primary_entries.length > 0" class="story-result__source-group">
@@ -102,12 +227,17 @@
     </section>
 
     <section v-if="result.supplement_tasks && result.supplement_tasks.length > 0" class="story-result__section">
-      <h3 class="story-result__section-title">资料补充任务</h3>
+      <h3 class="story-result__section-title">素材补充任务</h3>
       <div class="story-result__supplement-list">
         <div v-for="task in result.supplement_tasks" :key="task.task_id" class="story-result__supplement-task">
           <span class="story-result__supplement-status">{{ task.status === 'open' ? '待补' : '已完成' }}</span>
           <div>
             <strong>{{ task.label }}</strong>
+            <div v-if="task.stage || task.blocking_level || task.affects?.length" class="story-result__supplement-meta">
+              <span v-if="task.stage">{{ sufficiencyStageLabel(task.stage) }}</span>
+              <span v-if="task.blocking_level">{{ supplementBlockingLabel(task.blocking_level) }}</span>
+              <span v-if="task.affects?.length">影响：{{ task.affects.join('、') }}</span>
+            </div>
             <div v-if="task.category || task.recommended_fields?.length" class="story-result__supplement-meta">
               <span v-if="task.category">{{ supplementCategoryLabel(task.category) }}</span>
               <span v-if="task.recommended_fields?.length">建议字段：{{ task.recommended_fields.join('、') }}</span>
@@ -515,6 +645,14 @@ import type {
   GearsSegment,
   KnowledgeDomain,
   KnowledgeAssetUsage,
+  CreationUseCase,
+  TruthMode,
+  MaterialSufficiencyStage,
+  MaterialSufficiencyStageStatus,
+  MaterialGenerationPosture,
+  MaterialBlockingLevel,
+  MaterialPurpose,
+  MaterialSourceType,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import GearsActions from './GearsActions.vue'
@@ -577,12 +715,102 @@ const ASSET_USAGE_LABELS: Record<KnowledgeAssetUsage, string> = {
   source_grounding: '来源依据',
 }
 
+const CREATION_USE_CASE_LABELS: Record<CreationUseCase, string> = {
+  original_ai_comic: '原创 AI 漫剧',
+  adapted_ai_comic: '原作/资料改编',
+  institutional_promo: '机构宣传片',
+  documentary_short: '纪录短片',
+  brand_commercial: '品牌商业片',
+  education_training: '教育/培训片',
+  public_service: '公益宣传片',
+}
+
+const TRUTH_MODE_LABELS: Record<TruthMode, string> = {
+  fictional_original: '原创虚构',
+  inspired_by_material: '素材启发',
+  source_adaptation: '原作改编',
+  factual_reconstruction: '事实重构',
+  institutional_verified: '机构审定',
+}
+
+const SUFFICIENCY_STAGE_LABELS: Record<MaterialSufficiencyStage, string> = {
+  minimum_viable_story: '最小可行故事',
+  script_ready: '剧本可用',
+  production_ready: '生产可用',
+}
+
+const STAGE_STATUS_LABELS: Record<MaterialSufficiencyStageStatus, string> = {
+  ready: '已就绪',
+  needs_input: '需补充',
+  blocked: '阻断',
+}
+
+const GENERATION_POSTURE_LABELS: Record<MaterialGenerationPosture, string> = {
+  ready: '可进入生产',
+  draft_needs_verification: '草案待核验',
+  script_ready_production_pending: '剧本可写，生产待补',
+  blocked_until_input: '补材后再生成',
+}
+
+const MATERIAL_SOURCE_TYPE_LABELS: Record<MaterialSourceType, string> = {
+  knowledge_entry: '知识条目',
+  user_outline: '用户大纲',
+  user_source_text: '用户原文',
+  brand_profile: '品牌资料',
+  institution_profile: '机构资料',
+  visual_asset: '视觉资产',
+  reference_style: '参考风格',
+  manual_note: '人工补充',
+}
+
+const MATERIAL_PURPOSE_LABELS: Record<MaterialPurpose, string> = {
+  fact_basis: '事实依据',
+  character_source: '角色来源',
+  visual_asset: '视觉资产',
+  era_context: '时代背景',
+  regional_context: '地域语境',
+  cultural_background: '文化背景',
+  brand_info: '品牌信息',
+  institutional_position: '机构口径',
+  source_work: '原作材料',
+  reference_style: '参考风格',
+  creative_boundary: '创作边界',
+}
+
 function knowledgeDomainLabel(domain: KnowledgeDomain) {
   return KNOWLEDGE_DOMAIN_LABELS[domain] ?? domain
 }
 
 function assetUsageLabel(usage: KnowledgeAssetUsage) {
   return ASSET_USAGE_LABELS[usage] ?? usage
+}
+
+function materialSourceTypeLabel(sourceType: MaterialSourceType) {
+  return MATERIAL_SOURCE_TYPE_LABELS[sourceType] ?? sourceType
+}
+
+function materialPurposeLabel(purpose: MaterialPurpose) {
+  return MATERIAL_PURPOSE_LABELS[purpose] ?? purpose
+}
+
+function creationUseCaseLabel(useCase: CreationUseCase) {
+  return CREATION_USE_CASE_LABELS[useCase] ?? useCase
+}
+
+function truthModeLabel(truthMode: TruthMode) {
+  return TRUTH_MODE_LABELS[truthMode] ?? truthMode
+}
+
+function sufficiencyStageLabel(stage: MaterialSufficiencyStage) {
+  return SUFFICIENCY_STAGE_LABELS[stage] ?? stage
+}
+
+function stageStatusLabel(status: MaterialSufficiencyStageStatus) {
+  return STAGE_STATUS_LABELS[status] ?? status
+}
+
+function generationPostureLabel(posture?: MaterialGenerationPosture) {
+  return posture ? GENERATION_POSTURE_LABELS[posture] ?? posture : '未记录'
 }
 
 const videoTypeLabel = computed(() => {
@@ -650,6 +878,16 @@ const displayedScenes = computed(() => {
   return scenes.filter(scene => ids.has(scene.scene_id))
 })
 
+const materialGroups = computed(() => {
+  const pack = props.result?.material_pack
+  if (!pack) return []
+  return [
+    { key: 'primary', label: '主素材', items: pack.primary_materials },
+    { key: 'supporting', label: '支撑素材', items: pack.supporting_materials },
+    { key: 'reference', label: '参考素材', items: pack.reference_materials },
+  ].filter(group => group.items.length > 0)
+})
+
 const qualityBeatIssues = computed(() => {
   const report = props.result?.quality_report
   const beats = props.result?.story_blueprint?.genre_beats ?? []
@@ -708,6 +946,15 @@ function supplementCategoryLabel(category?: KnowledgeSupplementTaskCategory): st
   return category ? map[category] : '通用资料'
 }
 
+function supplementBlockingLabel(level: MaterialBlockingLevel): string {
+  const map: Record<MaterialBlockingLevel, string> = {
+    blocking: '当前阻断',
+    risk: '需核验',
+    optional: '生产前补充',
+  }
+  return map[level]
+}
+
 function updateSupplementDraft(taskId: string, event: Event) {
   supplementDrafts[taskId] = (event.target as HTMLTextAreaElement).value
 }
@@ -752,6 +999,96 @@ function showCopyMessage(msg: string) {
 .story-result__model-neutral { color: #7f8c8d; }
 .story-result__section { margin-bottom: 24px; }
 .story-result__section-title { margin: 0 0 10px 0; font-size: 18px; color: #2c3e50; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
+
+.story-result__contract {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #f8fafb;
+}
+.story-result__contract-summary,
+.story-result__sufficiency-head {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+.story-result__contract-summary article,
+.story-result__sufficiency-head article {
+  padding: 8px 10px;
+  border: 1px solid #e2e7eb;
+  border-radius: 6px;
+  background: #fff;
+}
+.story-result__contract-summary span,
+.story-result__sufficiency-head span {
+  display: block;
+  margin-bottom: 3px;
+  color: #6b7884;
+  font-size: 12px;
+}
+.story-result__contract-summary strong,
+.story-result__sufficiency-head strong {
+  color: #2c3e50;
+  font-size: 14px;
+}
+.story-result__contract-goal,
+.story-result__sufficiency-note {
+  margin: 0;
+  color: #34495e;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.story-result__sufficiency {
+  display: grid;
+  gap: 10px;
+}
+.story-result__stage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+.story-result__stage-card {
+  padding: 10px;
+  border: 1px solid #d7dde2;
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: #fff;
+}
+.story-result__stage-card--ready { border-left-color: #27ae60; }
+.story-result__stage-card--needs_input { border-left-color: #f39c12; }
+.story-result__stage-card--blocked { border-left-color: #c0392b; }
+.story-result__stage-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.story-result__stage-card-head strong {
+  color: #2c3e50;
+  font-size: 14px;
+}
+.story-result__stage-card-head span {
+  color: #6b7884;
+  font-size: 12px;
+}
+.story-result__stage-card p {
+  margin: 8px 0 0;
+  color: #34495e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.story-result__stage-card ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+.story-result__stage-card li {
+  margin-bottom: 4px;
+  color: #6b4b16;
+  font-size: 13px;
+  line-height: 1.45;
+}
 
 /* Full text */
 .story-result__full-text p { margin: 0 0 12px 0; font-size: 15px; line-height: 1.7; color: #34495e; }
@@ -870,6 +1207,42 @@ function showCopyMessage(msg: string) {
 .story-result__source-label--primary { color: #27ae60; }
 .story-result__source-label--supporting { color: #2980b9; }
 .story-result__source-label--missing { color: #f39c12; }
+.story-result__material-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.story-result__material-summary article {
+  padding: 8px 10px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #f8fafb;
+}
+.story-result__material-summary span {
+  display: block;
+  color: #6b7884;
+  font-size: 12px;
+}
+.story-result__material-summary strong {
+  display: block;
+  margin-top: 3px;
+  color: #2c3e50;
+  font-size: 18px;
+}
+.story-result__material-item {
+  padding: 8px 10px;
+  border: 1px solid #e2e8ee;
+  border-radius: 6px;
+  background: #fff;
+  margin-bottom: 6px;
+}
+.story-result__material-item p {
+  margin: 4px 0 6px;
+  color: #465767;
+  font-size: 13px;
+  line-height: 1.45;
+}
 .story-result__source-item {
   display: flex;
   gap: 8px;

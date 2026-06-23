@@ -2,9 +2,11 @@
 // Builds the genre-aware intermediate plan used before and after story generation.
 
 import type {
+  CreationContract,
   EntryDetail,
   EvidenceBoundary,
   KnowledgePack,
+  MaterialSufficiencyReport,
   PresentationStyle,
   StoryBlueprint,
   StoryCharacterArcPlan,
@@ -15,6 +17,7 @@ import type {
   VideoType,
   NarrativePatternId,
 } from '@shared/types.js';
+import type { GenreStoryMatrixResolution } from './genre-story-profiles.js';
 import { getGenreStoryProfile } from './genre-story-profiles.js';
 import {
   getNarrativePatternQualitySignals,
@@ -42,6 +45,9 @@ export function buildStoryBlueprint(input: {
   knowledgePack?: KnowledgePack;
   scenes?: StoryScene[];
   narrativePatternIds?: NarrativePatternId[];
+  creationContract?: CreationContract;
+  materialSufficiency?: MaterialSufficiencyReport;
+  genreMatrix?: GenreStoryMatrixResolution;
 }): StoryBlueprint {
   const profile = getGenreStoryProfile(input.videoType);
   const protagonist = input.entry.name.split('——')[0].trim();
@@ -80,9 +86,21 @@ export function buildStoryBlueprint(input: {
       ...profile.must_include,
       ...profile.scene_rules,
       ...profile.gears_rules,
+      ...(input.genreMatrix?.requirement_lines ?? []),
+      ...(input.genreMatrix?.warnings ?? []).map(item => `类型矩阵警告：${item}`),
       ...getNarrativePatternRequirementLines(input.videoType, input.narrativePatternIds ?? []),
       ...getNarrativePatternQualitySignals(input.videoType, input.narrativePatternIds ?? []).map(signal => `流派质量信号：${signal}`),
+      ...(input.creationContract
+        ? [
+            `创作场景：${input.creationContract.creation_use_case}`,
+            `真实度模式：${input.creationContract.truth_mode}`,
+            ...input.creationContract.must_verify.map(item => `必须核实：${item}`),
+            ...input.creationContract.forbidden_moves.map(item => `禁止表达：${item}`),
+          ]
+        : []),
     ],
+    creation_contract: input.creationContract,
+    material_sufficiency: input.materialSufficiency,
   };
 }
 

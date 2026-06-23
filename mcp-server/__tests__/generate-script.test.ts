@@ -115,16 +115,30 @@ describe('kb_generate_script', () => {
     const result = await generateScript({
       entry_names: '白蛇传',
       script_type: '纪录片',
+      creation_use_case: 'documentary_short',
+      truth_mode: 'factual_reconstruction',
+      client_type: '文旅部门',
+      target_audience: '城市文化短片观众',
+      communication_goal: '用审慎口径讲清西湖传说的文化记忆',
     });
     expect(result.entriesUsed).toContain('白蛇传');
     expect(result.scriptType).toBe('纪录片');
     expect(result.sceneCount).toBe(5);
+    expect(result.creation_contract?.creation_use_case).toBe('documentary_short');
+    expect(result.creation_contract?.truth_mode).toBe('factual_reconstruction');
+    expect(result.material_sufficiency?.stage).toBe('minimum_viable_story');
+    expect(result.material_sufficiency?.active_stage).toBe('minimum_viable_story');
+    expect(result.material_sufficiency?.stage_reports?.find(report => report.stage === 'script_ready')?.status).toBe('blocked');
+    expect(result.material_sufficiency?.recommended_next_questions.join('\n')).toContain('完整故事正文');
 
     // Verify file was written
     const scriptPath = path.join(tmpDir, '..', 'scripts', '纪录片', '白蛇传.md');
     expect(fs.existsSync(scriptPath)).toBe(true);
     const content = fs.readFileSync(scriptPath, 'utf-8');
     expect(content).toContain('# 白蛇传');
+    expect(content).toContain('## 创作合同');
+    expect(content).toContain('**真实度模式**：factual_reconstruction');
+    expect(content).toContain('**当前可安全推进阶段**：minimum_viable_story');
     expect(content).toContain('← 白蛇传');
   });
 

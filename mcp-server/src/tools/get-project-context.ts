@@ -3,6 +3,52 @@ import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
 
 type StoryProjectChangeType = 'initial_generation' | 'scene_regeneration' | 'quality_repair';
+type CreationUseCase =
+  | 'original_ai_comic'
+  | 'adapted_ai_comic'
+  | 'institutional_promo'
+  | 'documentary_short'
+  | 'brand_commercial'
+  | 'education_training'
+  | 'public_service';
+type TruthMode =
+  | 'fictional_original'
+  | 'inspired_by_material'
+  | 'source_adaptation'
+  | 'factual_reconstruction'
+  | 'institutional_verified';
+
+interface MaterialSufficiencyReport {
+  schema_version: 'material-sufficiency/v1';
+  stage: 'minimum_viable_story' | 'script_ready' | 'production_ready';
+  score: number;
+  can_generate: boolean;
+  can_generate_with_risks: boolean;
+  blocked: boolean;
+  missing_items: unknown[];
+  optional_items: unknown[];
+  token_risk: 'low' | 'medium' | 'high';
+  recommended_next_questions: string[];
+}
+
+interface CreationContract {
+  schema_version: 'creation-contract/v1';
+  creation_use_case: CreationUseCase;
+  truth_mode: TruthMode;
+  client_type?: string;
+  target_audience?: string;
+  communication_goal?: string;
+  video_type: string;
+  presentation_style: string;
+  story_structure: string;
+  narrative_pattern_ids: string[];
+  allowed_fiction: string[];
+  must_verify: string[];
+  forbidden_moves: string[];
+  required_disclaimers: string[];
+  material_sufficiency: MaterialSufficiencyReport;
+  delivery_expectation: string[];
+}
 
 interface StoryProjectMeta {
   project_id: string;
@@ -13,6 +59,10 @@ interface StoryProjectMeta {
   video_type: string;
   presentation_style: string;
   story_structure?: string;
+  creation_use_case?: CreationUseCase;
+  truth_mode?: TruthMode;
+  material_sufficiency?: MaterialSufficiencyReport;
+  creation_contract?: CreationContract;
   status: string;
   created_at: string;
   updated_at: string;

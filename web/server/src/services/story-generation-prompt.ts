@@ -3,6 +3,7 @@
 // Mirrors scene-regeneration-prompt.ts design but for the full-generation pipeline.
 
 import type {
+  CreationContract,
   EntryDetail,
   StoryGenerateRequest,
   StoryStructureType,
@@ -10,6 +11,9 @@ import type {
   PresentationStyle,
   SupportedDuration,
   KnowledgePack,
+  MaterialPack,
+  MaterialPackEntry,
+  MaterialSufficiencyReport,
   KnowledgeAssetUsage,
   KnowledgeAssetSplit,
   KnowledgeDomain,
@@ -23,6 +27,7 @@ import type {
   StoryAdaptationAnalysis,
   WitnessMemory,
 } from '@shared/types.js';
+import type { GenreStoryMatrixResolution } from './genre-story-profiles.js';
 import {
   VIDEO_TYPE_CONFIG,
   PRESENTATION_STYLE_CONFIG,
@@ -62,6 +67,11 @@ export interface StoryGenerationPromptPackage {
     source_material_mode?: StoryGenerationPromptSourceMode;
     localized_target_region?: string;
     localization_mode?: LocalizationMode;
+    creation_use_case?: CreationContract['creation_use_case'];
+    truth_mode?: CreationContract['truth_mode'];
+    client_type?: string;
+    target_audience?: string;
+    communication_goal?: string;
   };
   entry_summary: string;
   entry_story: string;
@@ -71,6 +81,10 @@ export interface StoryGenerationPromptPackage {
     primary_entries: PromptKnowledgeEntry[];
     supporting_entries: PromptKnowledgeEntry[];
   };
+  material_pack?: MaterialPack;
+  material_sufficiency?: MaterialSufficiencyReport;
+  creation_contract?: CreationContract;
+  genre_matrix?: GenreStoryMatrixResolution;
   character_hints?: StoryDetectedCharacter[];
   adaptation_analysis?: StoryAdaptationAnalysis;
   memory_mosaic_context?: {
@@ -162,6 +176,8 @@ function buildSystemPrompt(
   isMemoryMosaic: boolean,
   narrativePatternIds: NarrativePatternId[] = [],
   sourceMaterialMode: StoryGenerationPromptSourceMode = 'generate_from_knowledge',
+  creationContract?: CreationContract,
+  genreMatrix?: GenreStoryMatrixResolution,
 ): string {
   const vtMeta = VIDEO_TYPE_CONFIG[videoType];
   const psMeta = PRESENTATION_STYLE_CONFIG[presentationStyle];
@@ -187,6 +203,27 @@ function buildSystemPrompt(
     `叙事流派机制：${narrativePatternLines.join('；')}`,
     `避免：${profile.avoid.join('；')}`,
   ];
+
+  if (creationContract) {
+    lines.push(
+      `创作场景：${creationContract.creation_use_case}`,
+      `真实度模式：${creationContract.truth_mode}`,
+      `允许虚构：${creationContract.allowed_fiction.join('；')}`,
+      `必须核实：${creationContract.must_verify.join('；')}`,
+      `禁止表达：${creationContract.forbidden_moves.join('；')}`,
+      `必要声明：${creationContract.required_disclaimers.join('；')}`,
+    );
+  }
+
+  if (genreMatrix) {
+    lines.push(
+      `类型矩阵用途匹配：${genreMatrix.compatible_use_case ? '匹配' : '需确认'}`,
+      `类型矩阵真实边界匹配：${genreMatrix.compatible_truth_mode ? '匹配' : '需确认'}`,
+      `类型矩阵推荐流派：${genreMatrix.recommended_narrative_patterns.join('、')}`,
+      `类型矩阵素材要求：${genreMatrix.material_requirements.join('；')}`,
+      `类型矩阵真实规则：${genreMatrix.truth_rules.join('；')}`,
+    );
+  }
 
   if (isMemoryMosaic) {
     lines.push(
@@ -237,6 +274,49 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
   }
   if (pkg.context.original_user_query) {
     lines.push(`${pkg.context.source_material_mode === 'adapt_user_novel' ? '用户原作/改编素材' : '用户原始诉求'}：${pkg.context.original_user_query}`);
+  }
+  if (pkg.creation_contract) {
+    lines.push(
+      `创作场景：${pkg.creation_contract.creation_use_case}`,
+      `真实度模式：${pkg.creation_contract.truth_mode}`,
+      pkg.creation_contract.client_type ? `客户/机构类型：${pkg.creation_contract.client_type}` : '',
+      pkg.creation_contract.target_audience ? `目标受众：${pkg.creation_contract.target_audience}` : '',
+      pkg.creation_contract.communication_goal ? `传播目标：${pkg.creation_contract.communication_goal}` : '',
+    );
+    lines.push('创作合同规则：');
+    for (const item of pkg.creation_contract.allowed_fiction) lines.push(`- 允许虚构：${item}`);
+    for (const item of pkg.creation_contract.must_verify) lines.push(`- 必须核实：${item}`);
+    for (const item of pkg.creation_contract.forbidden_moves) lines.push(`- 禁止表达：${item}`);
+    for (const item of pkg.creation_contract.required_disclaimers) lines.push(`- 必要声明：${item}`);
+  }
+  if (pkg.genre_matrix) {
+    lines.push('', '=== 类型片画像矩阵 ===');
+    lines.push(`用途匹配：${pkg.genre_matrix.compatible_use_case ? '是' : '否'}`);
+    lines.push(`真实度匹配：${pkg.genre_matrix.compatible_truth_mode ? '是' : '否'}`);
+    lines.push(`默认真实模式：${pkg.genre_matrix.default_truth_mode}`);
+    lines.push(`执行真实模式：${pkg.genre_matrix.truth_mode}`);
+    lines.push(`推荐叙事流派：${pkg.genre_matrix.recommended_narrative_patterns.join('、')}`);
+    lines.push(`执行叙事流派：${pkg.genre_matrix.resolved_narrative_pattern_ids.join('、')}`);
+    if (pkg.genre_matrix.material_requirements.length) {
+      lines.push('素材要求：');
+      for (const item of pkg.genre_matrix.material_requirements) lines.push(`- ${item}`);
+    }
+    if (pkg.genre_matrix.truth_rules.length) {
+      lines.push('真实边界：');
+      for (const item of pkg.genre_matrix.truth_rules) lines.push(`- ${item}`);
+    }
+    if (pkg.genre_matrix.institutional_rules.length) {
+      lines.push('机构/品牌规则：');
+      for (const item of pkg.genre_matrix.institutional_rules) lines.push(`- ${item}`);
+    }
+    if (pkg.genre_matrix.adaptation_rules.length) {
+      lines.push('改编规则：');
+      for (const item of pkg.genre_matrix.adaptation_rules) lines.push(`- ${item}`);
+    }
+    if (pkg.genre_matrix.warnings.length) {
+      lines.push('矩阵警告：');
+      for (const item of pkg.genre_matrix.warnings) lines.push(`- ${item}`);
+    }
   }
   if (pkg.context.source_material_mode === 'adapt_user_novel') {
     lines.push(
@@ -296,6 +376,65 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
       '知识包使用规则：朝代设定包用于服饰、器物、称谓和时代边界；志异母题包用于叙事结构和可信度提示；GEARS资产包用于人物/场景/道具边界。不要把设定包内容写成主条目的史实。',
       '知识决策规则：每个关键人物、场景、道具和情节转折都要能说明来自主条目、设定包、资产包、可信创作补足或明确虚构，不允许用“资料里有一些说法”替代判断。',
     );
+  }
+
+  if (pkg.material_pack) {
+    lines.push('', '=== 项目素材包 ===');
+    lines.push(`素材置信度：${pkg.material_pack.overall_confidence}`);
+    if (pkg.material_pack.primary_materials.length) {
+      lines.push('主素材：');
+      for (const material of pkg.material_pack.primary_materials) lines.push(`- ${formatMaterialForPrompt(material)}`);
+    }
+    if (pkg.material_pack.supporting_materials.length) {
+      lines.push('支撑素材：');
+      for (const material of pkg.material_pack.supporting_materials) lines.push(`- ${formatMaterialForPrompt(material)}`);
+    }
+    if (pkg.material_pack.reference_materials.length) {
+      lines.push('参考素材：');
+      for (const material of pkg.material_pack.reference_materials) lines.push(`- ${formatMaterialForPrompt(material)}`);
+    }
+    if (pkg.material_pack.verified_facts.length) {
+      lines.push('已确认事实：');
+      for (const fact of pkg.material_pack.verified_facts.slice(0, 8)) lines.push(`- ${fact}`);
+    }
+    if (pkg.material_pack.uncertain_claims.length) {
+      lines.push('不确定/待核实信息：');
+      for (const claim of pkg.material_pack.uncertain_claims.slice(0, 8)) lines.push(`- ${claim}`);
+    }
+    if (pkg.material_pack.creative_space.length) {
+      lines.push('创作空间：');
+      for (const item of pkg.material_pack.creative_space.slice(0, 8)) lines.push(`- ${item}`);
+    }
+    lines.push('素材包使用规则：主素材决定事实锚点；支撑素材只提供语境、画面、时代、品牌或风格，不得自动变成剧情事实。');
+  }
+
+  if (pkg.material_sufficiency) {
+    lines.push('', '=== 素材充分度 ===');
+    lines.push(`阶段：${pkg.material_sufficiency.stage}`);
+    if (pkg.material_sufficiency.active_stage) lines.push(`当前可安全推进阶段：${pkg.material_sufficiency.active_stage}`);
+    lines.push(`评分：${pkg.material_sufficiency.score}`);
+    lines.push(`可生成：${pkg.material_sufficiency.can_generate ? '是' : '否'}`);
+    lines.push(`阻断：${pkg.material_sufficiency.blocked ? '是' : '否'}`);
+    if (pkg.material_sufficiency.generation_posture) lines.push(`生成姿态：${pkg.material_sufficiency.generation_posture}`);
+    if (pkg.material_sufficiency.needs_verification) lines.push('生成口径：可先生成草案，但必须带待核验边界。');
+    if (pkg.material_sufficiency.missing_items.length) {
+      lines.push('当前缺口：');
+      for (const item of pkg.material_sufficiency.missing_items) {
+        lines.push(`- ${item.label}（${item.blocking_level}）：${item.reason}`);
+      }
+    }
+    if (pkg.material_sufficiency.stage_reports?.length) {
+      lines.push('三阶段素材 gate：');
+      for (const report of pkg.material_sufficiency.stage_reports) {
+        lines.push(`- ${report.stage}：${report.status}，评分 ${report.score}，可产出 ${report.available_outputs.join('、') || '暂无'}`);
+        for (const item of report.missing_items.slice(0, 3)) {
+          lines.push(`  - 缺口：${item.label}（${item.blocking_level}）：${item.reason}`);
+        }
+      }
+    }
+    if (pkg.material_sufficiency.recommended_next_questions.length) {
+      lines.push(`建议追问：${pkg.material_sufficiency.recommended_next_questions.join('；')}`);
+    }
   }
 
   if (pkg.character_hints?.length) {
@@ -420,6 +559,17 @@ function formatKnowledgeEntryForPrompt(entry: PromptKnowledgeEntry): string {
   return `${entry.entry_name}（${tags}）: ${entry.summary}${assetSplitText ? `；资产拆分：${assetSplitText}` : ''}`;
 }
 
+function formatMaterialForPrompt(entry: MaterialPackEntry): string {
+  const tags = [
+    `来源：${entry.source_type}`,
+    `用途：${entry.purpose.join('、')}`,
+    entry.role_in_story ? `角色：${entry.role_in_story}` : '',
+    typeof entry.confidence === 'number' ? `置信度：${entry.confidence}` : '',
+    entry.linked_entry_name ? `关联条目：${entry.linked_entry_name}` : '',
+  ].filter(Boolean).join('；');
+  return `${entry.title}（${tags}）：${entry.summary}`;
+}
+
 function formatAssetSplitForPrompt(assetSplit: KnowledgeAssetSplit | undefined): string {
   if (!assetSplit) return '';
   return [
@@ -444,9 +594,13 @@ export function buildStoryGenerationPromptPackage(input: {
   tone: string;
   selectedEvent?: string;
   knowledgePack?: KnowledgePack;
+  materialPack?: MaterialPack;
+  materialSufficiency?: MaterialSufficiencyReport;
+  creationContract?: CreationContract;
   memoryMosaicSeed?: MemoryMosaicStorySeed;
   storyBlueprint?: StoryBlueprint;
   adaptationAnalysis?: StoryAdaptationAnalysis;
+  genreMatrix?: GenreStoryMatrixResolution;
 }): StoryGenerationPromptPackage {
   const isMemoryMosaic = input.storyStructure === 'memory_mosaic_biography';
 
@@ -470,6 +624,11 @@ export function buildStoryGenerationPromptPackage(input: {
       source_material_mode: input.request.source_material_mode ?? 'generate_from_knowledge',
       localized_target_region: input.request.localized_target_region,
       localization_mode: input.request.localization_mode ?? 'allow_related_influence',
+      creation_use_case: input.creationContract?.creation_use_case ?? input.request.creation_use_case,
+      truth_mode: input.creationContract?.truth_mode ?? input.request.truth_mode,
+      client_type: input.request.client_type,
+      target_audience: input.request.target_audience,
+      communication_goal: input.request.communication_goal,
     },
     entry_summary: input.entry.summary,
     entry_story: input.entry.story,
@@ -499,6 +658,10 @@ export function buildStoryGenerationPromptPackage(input: {
           })),
         }
       : undefined,
+    material_pack: input.materialPack,
+    material_sufficiency: input.materialSufficiency,
+    creation_contract: input.creationContract,
+    genre_matrix: input.genreMatrix,
     character_hints: input.request.character_hints,
     adaptation_analysis: input.adaptationAnalysis,
     memory_mosaic_context: input.memoryMosaicSeed
@@ -521,6 +684,20 @@ export function buildStoryGenerationPromptPackage(input: {
         '保持当前成片类型的叙事质感',
         '场次数量和时长匹配',
         '故事有冲突、选择和情绪变化',
+        ...(input.creationContract
+          ? [
+              `执行创作场景：${input.creationContract.creation_use_case}`,
+              `执行真实度模式：${input.creationContract.truth_mode}`,
+              ...input.creationContract.allowed_fiction.map(item => `允许虚构边界：${item}`),
+              ...input.creationContract.must_verify.map(item => `必须核实：${item}`),
+              ...input.creationContract.forbidden_moves.map(item => `禁止表达：${item}`),
+            ]
+          : []),
+        ...(input.materialSufficiency?.missing_items ?? []).map(item => `素材缺口处理：${item.label}——${item.reason}`),
+        ...(input.materialSufficiency?.generation_posture ? [`素材生成姿态：${input.materialSufficiency.generation_posture}`] : []),
+        ...(input.materialSufficiency?.needs_verification ? ['素材不足时只能生成带待核验边界的草案，不得使用确定口吻。'] : []),
+        ...(input.genreMatrix?.requirement_lines ?? []),
+        ...(input.genreMatrix?.warnings ?? []).map(item => `类型矩阵警告：${item}`),
         ...getGenreStoryProfile(input.videoType).must_include,
         ...getGenreSampleGuidance(input.videoType).quality_signals,
         ...getNarrativePatternRequirementLines(input.videoType, input.request.narrative_pattern_ids ?? []),
@@ -555,6 +732,8 @@ export function buildStoryGenerationPromptPackage(input: {
       isMemoryMosaic,
       input.request.narrative_pattern_ids ?? [],
       input.request.source_material_mode ?? 'generate_from_knowledge',
+      input.creationContract,
+      input.genreMatrix,
     ),
     user_prompt: buildUserPrompt(base),
   };

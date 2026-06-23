@@ -43,6 +43,29 @@ type StoryStructureType =
 
 type SupportedDuration = '30秒' | '1分钟' | '3分钟' | '5分钟' | '8分钟' | '10分钟' | '15分钟' | '20分钟';
 type EvidenceBoundaryType = 'verified' | 'uncertain' | 'creative_treatment';
+type CreationUseCase =
+  | 'original_ai_comic'
+  | 'adapted_ai_comic'
+  | 'institutional_promo'
+  | 'documentary_short'
+  | 'brand_commercial'
+  | 'education_training'
+  | 'public_service';
+type TruthMode =
+  | 'fictional_original'
+  | 'inspired_by_material'
+  | 'source_adaptation'
+  | 'factual_reconstruction'
+  | 'institutional_verified';
+type MaterialSufficiencyStage = 'minimum_viable_story' | 'script_ready' | 'production_ready';
+type MaterialBlockingLevel = 'blocking' | 'risk' | 'optional';
+type MaterialTokenRisk = 'low' | 'medium' | 'high';
+type MaterialSufficiencyStageStatus = 'ready' | 'needs_input' | 'blocked';
+type MaterialGenerationPosture =
+  | 'ready'
+  | 'draft_needs_verification'
+  | 'script_ready_production_pending'
+  | 'blocked_until_input';
 
 interface GenreProfileLite {
   video_type: VideoType;
@@ -82,6 +105,65 @@ interface StoryCharacterArcPlan {
   ending_state: string;
 }
 
+interface MaterialSufficiencyMissingItem {
+  item_id: string;
+  label: string;
+  reason: string;
+  blocking_level: MaterialBlockingLevel;
+  affects: string[];
+  recommended_question: string;
+}
+
+interface MaterialSufficiencyStageReport {
+  stage: MaterialSufficiencyStage;
+  status: MaterialSufficiencyStageStatus;
+  score: number;
+  can_proceed: boolean;
+  required_items: string[];
+  available_outputs: string[];
+  missing_items: MaterialSufficiencyMissingItem[];
+  optional_items: MaterialSufficiencyMissingItem[];
+  notes: string[];
+}
+
+interface MaterialSufficiencyReport {
+  schema_version: 'material-sufficiency/v1';
+  stage: MaterialSufficiencyStage;
+  active_stage?: MaterialSufficiencyStage;
+  score: number;
+  can_generate: boolean;
+  can_generate_with_risks: boolean;
+  blocked: boolean;
+  needs_verification?: boolean;
+  generation_posture?: MaterialGenerationPosture;
+  next_stage?: MaterialSufficiencyStage;
+  downgrade_reason?: string;
+  stage_reports?: MaterialSufficiencyStageReport[];
+  missing_items: MaterialSufficiencyMissingItem[];
+  optional_items: MaterialSufficiencyMissingItem[];
+  token_risk: MaterialTokenRisk;
+  recommended_next_questions: string[];
+}
+
+interface CreationContract {
+  schema_version: 'creation-contract/v1';
+  creation_use_case: CreationUseCase;
+  truth_mode: TruthMode;
+  client_type?: string;
+  target_audience?: string;
+  communication_goal?: string;
+  video_type: VideoType;
+  presentation_style: PresentationStyle;
+  story_structure: StoryStructureType;
+  narrative_pattern_ids: string[];
+  allowed_fiction: string[];
+  must_verify: string[];
+  forbidden_moves: string[];
+  required_disclaimers: string[];
+  material_sufficiency: MaterialSufficiencyReport;
+  delivery_expectation: string[];
+}
+
 export interface GenerateStoryBlueprintInput {
   entry_name: string;
   video_type?: VideoType;
@@ -91,6 +173,11 @@ export interface GenerateStoryBlueprintInput {
   central_event?: string;
   user_outline?: string;
   region_hint?: string;
+  creation_use_case?: CreationUseCase;
+  truth_mode?: TruthMode;
+  client_type?: string;
+  target_audience?: string;
+  communication_goal?: string;
 }
 
 export interface GenerateStoryBlueprintResult {
@@ -109,6 +196,8 @@ export interface GenerateStoryBlueprintResult {
     character_arcs: StoryCharacterArcPlan[];
     evidence_boundaries: EvidenceBoundary[];
     type_specific_requirements: string[];
+    creation_contract: CreationContract;
+    material_sufficiency: MaterialSufficiencyReport;
   };
   profile_summary: Pick<GenreProfileLite, 'video_type' | 'label' | 'narrative_promise' | 'must_include' | 'scene_rules' | 'gears_rules'>;
   source_entry: FullEntryDetail;
@@ -313,6 +402,345 @@ function resolveVideoType(entry: FullEntryDetail, videoType?: VideoType): VideoT
   return videoType ?? ENTRY_TYPE_TO_VIDEO_TYPE[entry.type] ?? 'character_story';
 }
 
+function resolveCreationUseCase(input: GenerateStoryBlueprintInput, videoType: VideoType): CreationUseCase {
+  if (input.creation_use_case) return input.creation_use_case;
+  if (videoType === 'ai_comic_drama') return 'original_ai_comic';
+  if (videoType === 'documentary_short') return 'documentary_short';
+  if (videoType === 'education_training') return 'education_training';
+  if (videoType === 'city_brand_promo' || videoType === 'social_short') return 'brand_commercial';
+  if (videoType === 'lecture_video' || videoType === 'explainer_video') return 'institutional_promo';
+  return 'institutional_promo';
+}
+
+function resolveTruthMode(input: GenerateStoryBlueprintInput, useCase: CreationUseCase, videoType: VideoType): TruthMode {
+  if (input.truth_mode) return input.truth_mode;
+  if (useCase === 'adapted_ai_comic') return 'source_adaptation';
+  if (useCase === 'original_ai_comic') return 'fictional_original';
+  if (useCase === 'documentary_short' || videoType === 'documentary_short') return 'factual_reconstruction';
+  if (['institutional_promo', 'education_training', 'public_service'].includes(useCase)) return 'institutional_verified';
+  return 'inspired_by_material';
+}
+
+function missingItem(
+  item_id: string,
+  label: string,
+  reason: string,
+  blocking_level: MaterialBlockingLevel,
+  affects: string[],
+  recommended_question: string,
+): MaterialSufficiencyMissingItem {
+  return { item_id, label, reason, blocking_level, affects, recommended_question };
+}
+
+const SUFFICIENCY_STAGE_ORDER: MaterialSufficiencyStage[] = [
+  'minimum_viable_story',
+  'script_ready',
+  'production_ready',
+];
+
+const STAGE_OUTPUTS: Record<MaterialSufficiencyStage, string[]> = {
+  minimum_viable_story: ['故事方向', 'logline', '类型蓝图', '粗场景'],
+  script_ready: ['完整剧本', '对白/旁白', '场景拆分', '质量报告'],
+  production_ready: ['分镜资产说明', '角色/场景/道具约束', '交付包 readiness', '生产指挥清单'],
+};
+
+const STAGE_REQUIRED_ITEMS: Record<MaterialSufficiencyStage, string[]> = {
+  minimum_viable_story: ['主题或主体', '主角/对象', '基本目标或传播目的'],
+  script_ready: ['关键事实', '人物/机构/原作边界', '真实度口径'],
+  production_ready: ['视觉资产', '地点/服饰/品牌规范', '禁用项和交付边界'],
+};
+
+function requiredStageForGeneration(creationUseCase: CreationUseCase, truthMode: TruthMode): MaterialSufficiencyStage {
+  if (['institutional_verified', 'factual_reconstruction', 'source_adaptation'].includes(truthMode)) return 'script_ready';
+  if (['institutional_promo', 'education_training', 'public_service', 'documentary_short'].includes(creationUseCase)) return 'script_ready';
+  return 'minimum_viable_story';
+}
+
+function stageIndex(stage: MaterialSufficiencyStage): number {
+  return SUFFICIENCY_STAGE_ORDER.indexOf(stage);
+}
+
+function nextStage(stage: MaterialSufficiencyStage): MaterialSufficiencyStage | undefined {
+  return SUFFICIENCY_STAGE_ORDER[stageIndex(stage) + 1];
+}
+
+function uniqueMissingItems(items: MaterialSufficiencyMissingItem[]): MaterialSufficiencyMissingItem[] {
+  const seen = new Set<string>();
+  return items.filter(item => {
+    if (seen.has(item.item_id)) return false;
+    seen.add(item.item_id);
+    return true;
+  });
+}
+
+function buildStageReport(input: {
+  stage: MaterialSufficiencyStage;
+  baseScore: number;
+  missingItems: MaterialSufficiencyMissingItem[];
+  optionalItems?: MaterialSufficiencyMissingItem[];
+  notes?: string[];
+}): MaterialSufficiencyStageReport {
+  const missingItems = uniqueMissingItems(input.missingItems);
+  const optionalItems = uniqueMissingItems(input.optionalItems ?? []);
+  const blockingCount = missingItems.filter(item => item.blocking_level === 'blocking').length;
+  const riskCount = missingItems.filter(item => item.blocking_level === 'risk').length;
+  const score = Math.max(0, Math.min(100, input.baseScore - blockingCount * 35 - riskCount * 15 - Math.min(optionalItems.length, 3) * 4));
+  const status: MaterialSufficiencyStageStatus = blockingCount > 0 ? 'blocked' : riskCount > 0 ? 'needs_input' : 'ready';
+  return {
+    stage: input.stage,
+    status,
+    score,
+    can_proceed: blockingCount === 0,
+    required_items: STAGE_REQUIRED_ITEMS[input.stage],
+    available_outputs: blockingCount === 0 ? STAGE_OUTPUTS[input.stage] : [],
+    missing_items: missingItems,
+    optional_items: optionalItems,
+    notes: input.notes ?? [],
+  };
+}
+
+function buildMaterialSufficiencyReport(
+  entry: FullEntryDetail,
+  input: GenerateStoryBlueprintInput,
+  creationUseCase: CreationUseCase,
+  truthMode: TruthMode,
+): MaterialSufficiencyReport {
+  const requiredStage = requiredStageForGeneration(creationUseCase, truthMode);
+  const minimumMissing: MaterialSufficiencyMissingItem[] = [];
+  const minimumOptional: MaterialSufficiencyMissingItem[] = [];
+  const scriptMissing: MaterialSufficiencyMissingItem[] = [];
+  const productionMissing: MaterialSufficiencyMissingItem[] = [];
+  const hasOutline = Boolean(input.user_outline?.trim());
+  const hasClientContext = Boolean(input.client_type?.trim() || input.communication_goal?.trim() || input.target_audience?.trim());
+  const baseScore = entry.credibility === '可靠' ? 92 : entry.credibility === '基本可靠' ? 84 : 74;
+
+  if (!entry.summary?.trim() && !entry.story?.trim() && !hasOutline) {
+    minimumMissing.push(missingItem(
+      'minimum_story_anchor',
+      '主题/主体/基本目标',
+      '最小可行故事至少需要来源条目摘要、故事梗概或用户大纲作为主体和方向。',
+      'blocking',
+      ['story_blueprint', 'logline'],
+      '本片围绕谁/什么对象展开？最基本的目标或主题是什么？',
+    ));
+  }
+
+  if (truthMode === 'source_adaptation' && !input.user_outline?.trim()) {
+    scriptMissing.push(missingItem(
+      'source_work_profile',
+      '原作/改编素材边界',
+      '改编蓝图需要原作主线、人物关系和保留项。',
+      'blocking',
+      ['story_blueprint', 'adaptation_fidelity'],
+      '请补充原作主线、核心人物、必须保留的情节和授权/改编边界。',
+    ));
+  }
+  if (truthMode === 'institutional_verified' && !input.client_type?.trim()) {
+    scriptMissing.push(missingItem(
+      'institution_profile',
+      '机构/品牌审定口径',
+      '机构审定模式需要客户身份、表达口径和禁用表述。',
+      'blocking',
+      ['creation_contract', 'quality_report'],
+      '本片代表哪个机构/品牌发声？有哪些必须使用或禁止使用的表述？',
+    ));
+  }
+  if (['institutional_verified', 'factual_reconstruction'].includes(truthMode) && entry.unverifiedPoints.length > 0) {
+    scriptMissing.push(missingItem(
+      'unverified_points',
+      '待核实事实',
+      '条目存在待核实点，高真实度模式不能把这些内容写成确定事实。',
+      truthMode === 'institutional_verified' ? 'blocking' : 'risk',
+      ['evidence_boundaries', 'full_text'],
+      '请确认待核实点哪些可以写成事实，哪些只能写成传说/推测/影视化处理。',
+    ));
+  }
+  if (!hasClientContext && ['institutional_promo', 'brand_commercial', 'public_service'].includes(creationUseCase)) {
+    productionMissing.push(missingItem(
+      'client_context',
+      '客户/受众/传播目标',
+      '进入生产指挥前需要明确客户、受众和传播目标，避免分镜资产偏离用途。',
+      'risk',
+      ['production_ready', 'review'],
+      '本片的客户/机构、目标受众和传播目标分别是什么？',
+    ));
+  }
+  productionMissing.push(missingItem(
+    'visual_assets',
+    '视觉资产',
+    '生产前仍需角色、场景、道具、品牌规范等视觉资产。',
+    'risk',
+    ['production_ready', 'asset_handoff'],
+    '是否已有角色、场景、道具或品牌视觉规范可作为参考？',
+  ));
+
+  if (truthMode === 'fictional_original' && !hasOutline) {
+    minimumOptional.push(missingItem(
+      'worldbuilding_anchor',
+      '原创设定锚点',
+      '原创蓝图可以先生成，但补充世界观、主角欲望和对手压力会更稳定。',
+      'optional',
+      ['story_blueprint', 'characters'],
+      '这个原创故事的世界观、主角欲望、对手压力和视觉风格是什么？',
+    ));
+  }
+
+  const stageReports = [
+    buildStageReport({
+      stage: 'minimum_viable_story',
+      baseScore,
+      missingItems: minimumMissing,
+      optionalItems: minimumOptional,
+      notes: ['最小阶段允许先形成方向、logline、蓝图和粗场景。'],
+    }),
+    buildStageReport({
+      stage: 'script_ready',
+      baseScore,
+      missingItems: scriptMissing,
+      notes: ['剧本阶段要求关键事实、原作/机构边界和真实度口径足够清楚。'],
+    }),
+    buildStageReport({
+      stage: 'production_ready',
+      baseScore,
+      missingItems: productionMissing,
+      notes: ['生产阶段聚焦视觉资产、地点服饰、品牌规范、禁用项和交付边界。'],
+    }),
+  ];
+  const targetReport = stageReports.find(report => report.stage === requiredStage) ?? stageReports[0];
+  const minimumReport = stageReports[0];
+  const scriptReport = stageReports[1];
+  const productionReport = stageReports[2];
+  const activeStage = productionReport.status === 'ready'
+    ? 'production_ready'
+    : scriptReport.status === 'ready'
+      ? 'script_ready'
+      : minimumReport.status === 'ready'
+        ? 'minimum_viable_story'
+        : requiredStage;
+  const blocked = !targetReport.can_proceed || !minimumReport.can_proceed;
+  const targetRiskCount = targetReport.missing_items.filter(item => item.blocking_level === 'risk').length;
+  const needsVerification = !blocked && targetRiskCount > 0;
+  const topMissing = uniqueMissingItems([
+    ...minimumReport.missing_items,
+    ...targetReport.missing_items,
+  ]);
+  const topOptional = uniqueMissingItems([
+    ...minimumReport.optional_items,
+    ...targetReport.optional_items,
+    ...stageReports
+      .filter(report => stageIndex(report.stage) > stageIndex(requiredStage))
+      .flatMap(report => [
+        ...report.missing_items.map(item => ({ ...item, blocking_level: 'optional' as const })),
+        ...report.optional_items,
+      ]),
+  ]);
+  const tokenRisk: MaterialTokenRisk = input.user_outline && input.user_outline.length > 3000 ? 'medium' : 'low';
+  const generationPosture: MaterialGenerationPosture = blocked
+    ? 'blocked_until_input'
+    : needsVerification || targetReport.status === 'needs_input'
+      ? 'draft_needs_verification'
+      : productionReport.status !== 'ready'
+        ? 'script_ready_production_pending'
+        : 'ready';
+
+  return {
+    schema_version: 'material-sufficiency/v1',
+    stage: requiredStage,
+    active_stage: activeStage,
+    score: targetReport.score,
+    can_generate: !blocked,
+    can_generate_with_risks: !blocked && (needsVerification || topOptional.length > 0 || tokenRisk !== 'low'),
+    blocked,
+    needs_verification: needsVerification,
+    generation_posture: generationPosture,
+    next_stage: blocked ? requiredStage : stageReports.find(report => !report.can_proceed)?.stage ?? nextStage(activeStage),
+    downgrade_reason: blocked
+      ? targetReport.missing_items.find(item => item.blocking_level === 'blocking')?.reason
+      : needsVerification
+        ? targetReport.missing_items.find(item => item.blocking_level === 'risk')?.reason
+        : undefined,
+    stage_reports: stageReports,
+    missing_items: topMissing,
+    optional_items: topOptional,
+    token_risk: tokenRisk,
+    recommended_next_questions: uniqueMissingItems([...topMissing, ...topOptional]).map(item => item.recommended_question),
+  };
+}
+
+function truthModeRules(truthMode: TruthMode): Pick<CreationContract, 'allowed_fiction' | 'must_verify' | 'forbidden_moves' | 'required_disclaimers'> {
+  if (truthMode === 'fictional_original') {
+    return {
+      allowed_fiction: ['可原创人物、事件、冲突和世界观。'],
+      must_verify: ['不得冒充真实历史、真实机构或真实人物事实。'],
+      forbidden_moves: ['把原创设定写成已发生史实。'],
+      required_disclaimers: ['必要时标注为原创虚构或架空创作。'],
+    };
+  }
+  if (truthMode === 'source_adaptation') {
+    return {
+      allowed_fiction: ['可压缩、合并、重排场景以适配成片节奏。'],
+      must_verify: ['原作主线、核心人物关系、授权与改编边界。'],
+      forbidden_moves: ['偏离原作主线或用知识库条目替换原作情节。'],
+      required_disclaimers: ['标明改编来源与影视化处理边界。'],
+    };
+  }
+  if (truthMode === 'factual_reconstruction') {
+    return {
+      allowed_fiction: ['可做场景调度、镜头动作和必要的影视化补足。'],
+      must_verify: ['关键事实、时间、地点、数据、人物身份和结论。'],
+      forbidden_moves: ['虚构关键事实、虚构结论、虚构真实人物确定发言。'],
+      required_disclaimers: ['标明事实依据、再现内容和推测边界。'],
+    };
+  }
+  if (truthMode === 'institutional_verified') {
+    return {
+      allowed_fiction: ['仅允许表达方式、镜头调度和非事实性视觉转场的创作处理。'],
+      must_verify: ['机构口径、数据、称谓、政策表述、品牌规范和人物发言。'],
+      forbidden_moves: ['未核实数据、虚构机构成果、虚构人物发言、过度戏剧化冲突。'],
+      required_disclaimers: ['必要时标明素材待审、口径待核或示意画面。'],
+    };
+  }
+  return {
+    allowed_fiction: ['可基于素材做戏剧化创作和视觉化补足。'],
+    must_verify: ['核心事实、人物身份、地点、时代与机构相关表述。'],
+    forbidden_moves: ['把象征、联想或支撑素材写成确定事实。'],
+    required_disclaimers: ['必要时区分素材启发、合理想象和已确认事实。'],
+  };
+}
+
+function buildCreationContract(input: {
+  request: GenerateStoryBlueprintInput;
+  creationUseCase: CreationUseCase;
+  truthMode: TruthMode;
+  materialSufficiency: MaterialSufficiencyReport;
+  videoType: VideoType;
+  presentationStyle: PresentationStyle;
+  storyStructure: StoryStructureType;
+}): CreationContract {
+  const rules = truthModeRules(input.truthMode);
+  return {
+    schema_version: 'creation-contract/v1',
+    creation_use_case: input.creationUseCase,
+    truth_mode: input.truthMode,
+    client_type: input.request.client_type,
+    target_audience: input.request.target_audience,
+    communication_goal: input.request.communication_goal,
+    video_type: input.videoType,
+    presentation_style: input.presentationStyle,
+    story_structure: input.storyStructure,
+    narrative_pattern_ids: [],
+    ...rules,
+    material_sufficiency: input.materialSufficiency,
+    delivery_expectation: [
+      `素材当前目标阶段：${input.materialSufficiency.stage}`,
+      input.materialSufficiency.active_stage ? `素材可安全推进到：${input.materialSufficiency.active_stage}` : '',
+      input.materialSufficiency.generation_posture ? `生成姿态：${input.materialSufficiency.generation_posture}` : '',
+      '输出可进入剧本、场景拆分、分镜和资产说明的前期创作合同。',
+      '本项目只准备内容与生产指挥材料，不执行图片、视频或后期实产。',
+    ].filter(Boolean),
+  };
+}
+
 function protagonistFromEntry(entry: FullEntryDetail): string {
   return entry.name.split('——')[0].trim();
 }
@@ -412,6 +840,18 @@ export async function generateStoryBlueprint(input: GenerateStoryBlueprintInput)
   const targetDuration = input.target_duration ?? '3分钟';
   const presentationStyle = input.presentation_style ?? profile.default_presentation_style;
   const storyStructure = input.story_structure ?? profile.default_story_structure;
+  const creationUseCase = resolveCreationUseCase(input, videoType);
+  const truthMode = resolveTruthMode(input, creationUseCase, videoType);
+  const materialSufficiency = buildMaterialSufficiencyReport(entry, input, creationUseCase, truthMode);
+  const creationContract = buildCreationContract({
+    request: input,
+    creationUseCase,
+    truthMode,
+    materialSufficiency,
+    videoType,
+    presentationStyle,
+    storyStructure,
+  });
   const protagonist = protagonistFromEntry(entry);
   const evidenceBoundaries = buildEvidenceBoundaries(entry, input.central_event, input.user_outline);
 
@@ -434,7 +874,17 @@ export async function generateStoryBlueprint(input: GenerateStoryBlueprintInput)
         ...profile.must_include,
         ...profile.scene_rules,
         ...profile.gears_rules,
+        `创作场景：${creationContract.creation_use_case}`,
+        `真实度模式：${creationContract.truth_mode}`,
+        `素材目标阶段：${materialSufficiency.stage}`,
+        ...(materialSufficiency.active_stage ? [`素材可安全推进到：${materialSufficiency.active_stage}`] : []),
+        ...(materialSufficiency.generation_posture ? [`素材生成姿态：${materialSufficiency.generation_posture}`] : []),
+        ...(materialSufficiency.stage_reports ?? []).map(report => `素材阶段 gate：${report.stage}=${report.status}(${report.score}/100)`),
+        ...creationContract.must_verify.map(item => `必须核实：${item}`),
+        ...creationContract.forbidden_moves.map(item => `禁止表达：${item}`),
       ],
+      creation_contract: creationContract,
+      material_sufficiency: materialSufficiency,
     },
     profile_summary: {
       video_type: profile.video_type,

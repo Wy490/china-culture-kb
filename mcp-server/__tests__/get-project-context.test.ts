@@ -8,6 +8,35 @@ const tmpDir = path.join(os.tmpdir(), 'kb-project-context-test-' + Date.now());
 const dataRoot = path.join(tmpDir, 'data');
 const projectId = '20260615-story-test--ai_comic_drama';
 
+const materialSufficiency = {
+  schema_version: 'material-sufficiency/v1',
+  stage: 'script_ready',
+  score: 88,
+  can_generate: true,
+  can_generate_with_risks: false,
+  blocked: false,
+  missing_items: [],
+  optional_items: [],
+  token_risk: 'low',
+  recommended_next_questions: [],
+};
+
+const creationContract = {
+  schema_version: 'creation-contract/v1',
+  creation_use_case: 'original_ai_comic',
+  truth_mode: 'fictional_original',
+  video_type: 'ai_comic_drama',
+  presentation_style: 'ai_comic',
+  story_structure: 'single_event_drama',
+  narrative_pattern_ids: [],
+  allowed_fiction: ['可原创人物、事件、冲突和世界观。'],
+  must_verify: ['不得冒充真实历史、真实机构或真实人物事实。'],
+  forbidden_moves: ['把原创设定写成已发生史实。'],
+  required_disclaimers: ['必要时标注为原创虚构或架空创作。'],
+  material_sufficiency: materialSufficiency,
+  delivery_expectation: ['前期剧本与生产指挥材料。'],
+};
+
 beforeEach(() => {
   process.env.KB_ROOT = dataRoot;
   fs.mkdirSync(path.join(dataRoot, 'provinces'), { recursive: true });
@@ -24,6 +53,10 @@ beforeEach(() => {
     video_type: 'ai_comic_drama',
     presentation_style: 'ai_comic',
     story_structure: 'single_event_drama',
+    creation_use_case: 'original_ai_comic',
+    truth_mode: 'fictional_original',
+    material_sufficiency: materialSufficiency,
+    creation_contract: creationContract,
     status: 'draft',
     created_at: '2026-06-15T01:00:00.000Z',
     updated_at: '2026-06-15T01:00:00.000Z',
@@ -53,6 +86,10 @@ beforeEach(() => {
       storyId: '20260615-story-test',
       title: '测试故事',
       full_text: '这是一个测试故事。',
+      creation_use_case: 'original_ai_comic',
+      truth_mode: 'fictional_original',
+      material_sufficiency: materialSufficiency,
+      creation_contract: creationContract,
       scene_breakdown: [{ scene_id: 1, title: '开场' }],
       gears_segments: [{ segment_id: 1, script_text: '开场文本' }],
     },
@@ -72,6 +109,9 @@ describe('kb_get_project_context', () => {
 
     expect(result).not.toBeNull();
     expect(result!.project.project_id).toBe(projectId);
+    expect(result!.project.creation_contract?.truth_mode).toBe('fictional_original');
+    expect(result!.project.material_sufficiency?.score).toBe(88);
+    expect(result!.current_story.creation_contract).toEqual(expect.objectContaining({ creation_use_case: 'original_ai_comic' }));
     expect(result!.current_story.title).toBe('测试故事');
     expect(result!.versions).toHaveLength(1);
     expect(result!.versions[0].quality_passed).toBe(true);

@@ -209,6 +209,11 @@ server.tool(
     script_type: z.string().describe('脚本类型：纪录片/短剧/动画/文化解说'),
     target_duration: z.string().optional().describe('目标时长，如"30分钟"'),
     title: z.string().optional().describe('脚本标题'),
+    creation_use_case: z.string().optional().describe('创作场景，例如 original_ai_comic/adapted_ai_comic/institutional_promo/documentary_short'),
+    truth_mode: z.string().optional().describe('真实度模式，例如 fictional_original/source_adaptation/factual_reconstruction/institutional_verified'),
+    client_type: z.string().optional().describe('客户或机构类型，例如 政府机构/协会/品牌方'),
+    target_audience: z.string().optional().describe('目标受众'),
+    communication_goal: z.string().optional().describe('传播或创作目标'),
   },
   async (input) => {
     const result = await generateScript({
@@ -216,6 +221,11 @@ server.tool(
       script_type: input.script_type as ScriptType,
       target_duration: input.target_duration,
       title: input.title,
+      creation_use_case: input.creation_use_case,
+      truth_mode: input.truth_mode,
+      client_type: input.client_type,
+      target_audience: input.target_audience,
+      communication_goal: input.communication_goal,
     });
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   }
@@ -408,6 +418,11 @@ server.tool(
     story_text: z.string().describe('Claude Code生成的完整故事文本（自然语言叙述，包含8个故事元素）'),
     entry_names: z.string().describe('来源条目名称，逗号分隔'),
     script_type: z.string().describe('脚本类型：纪录片|短剧|动画|文化解说'),
+    creation_use_case: z.string().optional().describe('创作场景，例如 original_ai_comic/adapted_ai_comic/institutional_promo/documentary_short'),
+    truth_mode: z.string().optional().describe('真实度模式，例如 fictional_original/source_adaptation/factual_reconstruction/institutional_verified'),
+    client_type: z.string().optional().describe('客户或机构类型，例如 政府机构/协会/品牌方'),
+    target_audience: z.string().optional().describe('目标受众'),
+    communication_goal: z.string().optional().describe('传播或创作目标'),
   },
   async (input) => {
     const result = await generateStory(input);
@@ -659,6 +674,11 @@ server.tool(
     central_event: z.string().optional().describe('中心事件或本集核心事件'),
     user_outline: z.string().optional().describe('用户大纲或创作方向，只作为创作边界'),
     region_hint: z.string().optional().describe('地方化目标，例如 长沙/岳麓'),
+    creation_use_case: z.string().optional().describe('创作场景，例如 original_ai_comic/adapted_ai_comic/institutional_promo/documentary_short'),
+    truth_mode: z.string().optional().describe('真实度模式，例如 fictional_original/source_adaptation/factual_reconstruction/institutional_verified'),
+    client_type: z.string().optional().describe('客户或机构类型，例如 政府机构/协会/品牌方'),
+    target_audience: z.string().optional().describe('目标受众'),
+    communication_goal: z.string().optional().describe('传播或创作目标'),
   },
   async (input) => {
     const result = await generateStoryBlueprint({
@@ -670,6 +690,11 @@ server.tool(
       central_event: input.central_event,
       user_outline: input.user_outline,
       region_hint: input.region_hint,
+      creation_use_case: input.creation_use_case as Parameters<typeof generateStoryBlueprint>[0]['creation_use_case'],
+      truth_mode: input.truth_mode as Parameters<typeof generateStoryBlueprint>[0]['truth_mode'],
+      client_type: input.client_type,
+      target_audience: input.target_audience,
+      communication_goal: input.communication_goal,
     });
     if (!result) {
       return { content: [{ type: 'text', text: `未找到条目：${input.entry_name}` }] };

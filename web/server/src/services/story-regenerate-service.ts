@@ -64,7 +64,7 @@ function deriveSupplementTail(story: StoryGenerateResult): string {
     ?.filter(task => task.status === 'resolved' && task.supplement_note?.trim())
     .map(task => `${task.label}：${task.supplement_note!.trim()}`)
     .slice(0, 4) ?? [];
-  return notes.length > 0 ? `已完成资料补录：${notes.join('；')}。` : '';
+  return notes.length > 0 ? `已完成素材补充：${notes.join('；')}。` : '';
 }
 
 function deriveTension(scene: StoryScene): string {

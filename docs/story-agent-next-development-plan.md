@@ -22,6 +22,91 @@
 - 真实图片生成、字幕 burn-in、混音、片头片尾渲染和 final assemble。
 - 独立媒体存储、转码、CDN 和 artifact 管理。
 
+## 0.1 2026-06-23 产品重定位：从知识库到 AI 影视创作台
+
+新增承接计划：`docs/story-agent-creative-platform-reposition-plan.md`。
+
+本项目下一阶段不再以“补全知识库后生成故事”为核心心智，而是调整为**AI 影视前期创作、剧本生产与项目素材指挥系统**。面向用户扩展为：
+
+- AI 漫剧公司：原创故事、系列设定、分集剧本、角色/场景资产说明、故事版交付。
+- 改编团队：小说、资料、历史人物和地方故事改编为 AI 漫剧、短片或宣传片剧本。
+- 企业、政府、协会和机构：宣传片、纪录短片、解说片、培训片、公益片、品牌片等类型片。
+
+新的开发主线：
+
+```text
+项目素材 / 用户意图
+  -> 创作合同 creation_contract
+  -> 类型片蓝图 StoryBlueprint
+  -> 故事 / 剧本 / 场景
+  -> 分镜与资产说明
+  -> 质量、真实度、交付 readiness
+  -> 项目版本与生产指挥
+```
+
+P0 调整：
+
+- 新增 `creation_use_case`、`truth_mode`、`creation_contract`、`material_pack`、`material_sufficiency`。
+- 将 `KnowledgePack` 逐步升级为 `MaterialPack`，保留旧字段兼容。
+- 把 `video_type` 与 `narrative_pattern_ids` 做成矩阵，集中写入 `genre-story-profiles.ts`。
+- 把素材补充改成三阶段：`minimum_viable_story`、`script_ready`、`production_ready`。
+- 前端文案逐步从“知识库 / 知识包 / 补录”改成“素材库 / 项目素材包 / 素材补充”。
+
+下一轮若继续本项目产品化，应继续沿该计划推进 Story Agent 创作台能力，而不是追加知识库补录或 GEARS 媒体实产能力。
+
+2026-06-23 Phase 1 首轮已推进：
+
+- Web 共享类型/schema 已新增 `CreationUseCase`、`TruthMode`、`CreationContract`、`MaterialPack`、`MaterialSufficiencyReport`。
+- `StoryGenerateRequest/Result`、`StoryBlueprint`、prompt package、质量报告和项目版本存储已接入 `creation_contract`、`material_pack`、`material_sufficiency`，并保留旧 `knowledge_pack` 兼容映射。
+- MCP `kb_generate_story_blueprint` 已返回 `creation_contract` 与 `material_sufficiency`；`kb_get_project_context` 可读回项目 meta/current story 中的新合同字段。
+
+2026-06-23 Phase 2 首个工程切片已推进：
+
+- `genre-story-profiles.ts` 已扩展类型片画像矩阵，包含 `compatible_use_cases`、`compatible_truth_modes`、默认真实模式、推荐/允许/禁用叙事流派、素材要求、真实边界、机构规则和改编规则。
+- 新增 `resolveGenreStoryMatrix()`，Story Agent 会按 `video_type + creation_use_case + truth_mode + story_structure` 补足/过滤 `narrative_pattern_ids`，并把矩阵警告写入内部上下文。
+- `StoryBlueprint` 与 `StoryGenerationPromptPackage` 已消费矩阵结果，prompt 会显式输出“类型片画像矩阵”，模型不再只按 `video_type` 写，而是按业务用途和真实度边界写。
+
+2026-06-23 Phase 3 首个工程切片已推进：
+
+- `MaterialSufficiencyReport` 保持旧字段兼容，同时新增 `active_stage`、`generation_posture`、`needs_verification`、`next_stage` 和 `stage_reports[]`。
+- `buildMaterialSufficiencyReport()` 已按 `minimum_viable_story`、`script_ready`、`production_ready` 三阶段输出 gate：每阶段有状态、评分、可产出内容、必备项、缺口和追问。
+- prompt package 已输出“三阶段素材 gate”，并在 `output_contract.should_respect` 中加入素材生成姿态；机构/事实类素材不足时会降级为待核验草案或阻断。
+
+2026-06-23 前端创作台首个切片已推进：
+
+- `StoryStudio.vue` 已新增“创作合同”面板，可选 `creation_use_case`、`truth_mode`，并填写客户/机构类型、目标受众、传播目标；字段会随词条、大纲/主题、小说改编三条生成分支提交。
+- `StoryResult.vue` 已展示 `creation_contract` 与 `material_sufficiency`，包含创作用途、真实模式、客户/受众、素材目标阶段、可推进阶段、生成姿态和三阶段素材 gate。项目详情页复用该组件，因此也能读回项目版本中的新合同字段。
+
+2026-06-23 素材补充任务阶段化首个切片已推进：
+
+- `supplement_tasks` 兼容旧 `knowledge_pack.missing_needs`，并新增可选 `stage`、`blocking_level`、`affects`、`recommended_question` 与 `material_sufficiency_missing_item` 来源。
+- `story-service.ts` 会把 `MaterialSufficiencyReport.missing_items/optional_items` 合并成阶段化素材补充任务：旧知识缺口会吸收对应阶段 gate，新增 production-ready 缺口会作为“生产前补充”任务出现。
+- `StoryResult.vue` 的补充任务区已改为“素材补充任务”，显示最小故事/剧本/生产阶段、阻断等级和影响范围；旧项目没有新字段时仍按旧任务展示。
+
+2026-06-24 素材补充任务工作台已阶段化：
+
+- `GET /api/projects/supplement-tasks` 已支持 `status`、`stage`、`blocking_level`、`source` 查询参数，后端排序会优先显示待补、当前阻断、剧本阶段任务。
+- `SupplementTasks.vue` 已从“补录任务”升级为“素材补充任务”工作台，支持状态、阶段、阻断等级、来源筛选，并展示任务阶段、Gate 来源、影响范围和 intake prompt。
+- 顶部导航入口已从“补录任务”改为“素材补充”，继续弱化旧知识库心智。
+
+2026-06-24 素材补充写回与 sufficiency 重算已推进：
+
+- `updateProjectSupplementTask()` 在任务标记 resolved 且带 `supplement_note` 时，会把补充说明写入 `material_pack.supporting_materials`，并从对应 `missing_needs` 中移除缺口。
+- 写回后会重新运行 `buildMaterialSufficiencyReport()` 和 `buildCreationContract()`，同步更新当前 story、项目 meta、版本 snapshot、源 story 文件与质量报告中的 `material_sufficiency_report`。
+- `StoryResult.vue` 新增“项目素材包”展示，显示主素材、支撑素材、参考素材、缺口数量、人工补充素材、用途标签和确认事实。
+
+2026-06-23 MCP blueprint 三阶段 sufficiency 已对齐：
+
+- `kb_generate_story_blueprint` 的本地轻量 `MaterialSufficiencyReport` 已新增 `active_stage`、`generation_posture`、`needs_verification`、`next_stage` 和 `stage_reports[]`。
+- MCP 蓝图会把 `minimum_viable_story / script_ready / production_ready` 三阶段 gate 写入 `material_sufficiency`，并把素材目标阶段、生成姿态和阶段 gate 汇总写入 `type_specific_requirements`。
+
+2026-06-23 MCP 生成入口创作合同已对齐：
+
+- `kb_generate_story` 与 `kb_generate_script` 的 tool schema 已新增 `creation_use_case`、`truth_mode`、`client_type`、`target_audience`、`communication_goal`。
+- MCP 新增轻量 `story-creation-contract` builder，会把旧 `script_type` 映射到 `video_type / presentation_style / story_structure`，并生成 `creation_contract`、三阶段 `material_sufficiency`、真实度边界和交付边界。
+- 完整故事写入会把“创作合同 / 素材 Gate / 三阶段素材报告”落入 Markdown；脚本骨架会明确停在 `minimum_viable_story`，并把完整正文、对白、视觉资产等作为下一阶段素材需求。
+- 当前仍未实现 GEARS 图片/视频/后期实产；下一步优先做素材补充任务 UI 的阶段化，或把 MCP 蓝图/生成入口的轻量合同 builder 进一步抽成统一共享实现。
+
 ## 1. 当前进度
 
 | 模块 | 当前判断 | 说明 |
@@ -407,17 +492,57 @@ GEARS v2 worker acceptance shell script real endpoint smoke
   -> extend payload mapping for non-video job types
 ```
 
+### P0：Story Agent 创作平台重定位
+
+参考：`docs/story-agent-creative-platform-reposition-plan.md`。
+
+下一步最小切片：
+
+```text
+shared types/schema
+  -> CreationUseCase / TruthMode / CreationContract
+  -> MaterialPack / MaterialSufficiencyReport
+  -> StoryGenerateRequest/Result 兼容新字段
+  -> StoryBlueprint 写入 creation_contract
+  -> prompt package 接收真实度与创作场景
+  -> project/version 保存新合同
+```
+
+实现原则：
+
+- 不一次性删除 `knowledge_pack` 和 `kb_*`，先做兼容映射。
+- 不把真实度规则散落在前端 label 或 prompt 文本里，优先进入 `genre-story-profiles.ts`、`story-blueprint-service.ts` 和质量服务。
+- 原创漫剧、改编故事、机构影像应走同一条 Story Agent 生成链，但由 `truth_mode + creation_use_case + video_type` 决定约束强度。
+
+2026-06-24 继续推进：
+
+- 项目素材包已新增手动写入入口：`ProjectMaterialPackAddMaterialRequest` / `ProjectMaterialPackTarget` 进入 shared types/schema，后端新增 `POST /api/projects/:projectId/material-pack/materials`。
+- `project-service` 新增 `addProjectMaterialPackMaterial`，会把人工素材写入 `primary_materials` / `supporting_materials` / `reference_materials`，可标记 verified fact、关联补齐 missing need，并复用统一 helper 重算 `material_sufficiency`、`creation_contract` 和旧 `knowledge_pack` 兼容包。
+- 项目详情页增加“项目素材包”表单和素材计数，可从当前项目直接补充标题、摘要、来源、用途、可信度、故事作用和补齐项；提交成功后读回最新项目版本。
+- 新增服务/API 测试覆盖手动素材写入、版本快照/source story 回写、HTTP schema 校验和 creation contract 刷新；同时保持不触发 GEARS 图片/视频/后期实产。
+- StoryStudio 生成入口已从旧“词条/主题/大纲/小说模式”上移为三条创作路径：`原创开发`、`资料改编`、`机构影像`；路径会自动带出 `creation_use_case`、`truth_mode`、默认成片类型和生成优先级，仍保留素材输入方式与高级生成设置。
+- `generateAndStoreStory` 支持 `creation_use_case=original_ai_comic` / `truth_mode=fictional_original` 的 outline-only 原创生成，不再要求先匹配素材包；该路径会构造用户原创故事种子 entry、生成 MaterialPack/CreationContract，但不会误生成 `adaptation_analysis`。
+- `api.test.ts` 新增原创 AI 漫剧 outline-only 用例，覆盖无 `entry_name`、无 `knowledge_pack`、无 `material_pack` 的生成链路。
+- StoryStudio 的创作路径与素材输入方式已联动：切到原作改编会同步 `source_material_mode=adapt_user_novel`，切到素材检索会回到机构影像合同，同一路径内切主题/大纲不会重置用户已选成片类型。
+- Projects 工作台故事列表新增创作用途、真实模式和素材 gate chip，并支持按 `creation_use_case` 与素材 gate（可用 / 需核验 / 阻断 / 未标注）筛选。
+- 旧项目兼容改为读时补齐：`listProjects()` / `getProject()` 会从当前版本 story 推断并返回 `creation_use_case`、`truth_mode`、`material_sufficiency`、`creation_contract` 和 `material_pack`，但不批量改写历史 `project.json`。
+- `GET /api/projects` 与 `GET /api/projects/:projectId` 已新增 legacy hydration 集成测试，确认旧 `project.json` 不带新字段时，API 仍会返回创作合同、素材 gate 和当前故事的 `MaterialPack`。
+- 单场景重写 prompt 已继承 `creation_contract` 与 `material_sufficiency`：`scene-regeneration/v1` 会带创作用途、真实度、客户/受众/传播目标、禁止表达、待核验项、素材 Gate 和当前可推进阶段；本地 fallback 也统一改为“素材补充”口径。
+
 ### P0：MCP 更深模型修复链路
 
 首轮已完成：
 
 - `kb_generate_story_repair_prompt` 可根据 `project_id`、`story_id` 或 `story_json` 生成模型修复提示包。
 - 提示包包含 repair actions、目标场景、保护字段、完整 StoryGenerateResult JSON 输出合同、可选原始故事 JSON 和后续校验/写入工作流。
-- 生成后仍必须先用 `kb_validate_genre_story` 校验，再调用 `kb_repair_story(auto_apply=true)` 安全写入，保持“模型生成内容”和“工具写入版本”分离。
+- 故事自动修复提示包现在会继承 `creation_contract` 与 `material_sufficiency`：修复 prompt 明确创作用途、真实度、禁止表达、待核验项、素材 Gate 和当前可推进阶段，避免质量修复突破素材/真实边界。
+- Web 质量面板已新增只读修复提示包入口：`POST /api/projects/:projectId/repair-quality/prompt` 会生成 `story-quality-repair-prompt/v1`，项目详情页可生成并复制模型修复提示词，默认不内嵌完整 story JSON、不写项目文件。
+- Web 质量面板已补安全写入入口：`POST /api/projects/:projectId/repair-quality/apply` 支持先 dry-run 校验 `repaired_story_json`，可容错读取纯 JSON、Markdown 代码围栏和 `{ repaired_story_json: ... }` 包装对象；通过 storyId/video_type/scene_id 顺序保护、质量重评估和改善门槛后，才以 `quality_repair` 新版本写入。
+- 返回结果新增 `change_summary`，会列出是否有实质内容变化、顶层字段、逐场景字段、GEARS 段、保护字段、被忽略的保护字段改动、质量差值和问题差异（已解决 / 新增诊断 / 仍存在）；同时返回 `operator_hints` 与 `validation_summary_markdown`，便于操作员复制留档。项目详情页可粘贴模型输出的完整 StoryGenerateResult JSON，先“校验 JSON”，确认字段/场景差异、质量分和问题数变化后再“写入新版本”；失败或未改善默认不覆盖当前版本，完全无内容变化即使 `allow_no_improvement=true` 也不会写入空版本。
 
 下一步：
 
-- 在 Web 前端质量面板暴露“生成修复提示包 / 复制给模型 / 校验修复 JSON”的轻量入口。
+- 继续做 Web 质量面板的 UX 降噪：例如展示字段差异摘要、支持从提示包返回结果自动填充 JSON、并把修复结果与素材 Gate/真实边界的失败原因做更清楚的 operator hint。
 - 结合真实项目批量选取 P0/P1 repair actions，做多版本修复质量对比。
 
 ### P0-P1：故事管理 UX 降噪
@@ -446,4 +571,10 @@ title_card_render job
 
 ```text
 请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。先阅读 docs/gears-execution-integration-plan.md、docs/story-agent-next-development-plan.md、docs/story-agent-next-conversation-handoff.md 和其中列出的计划文档/技能。当前分支是 codex-ai-comic-series-longform。先执行 git status --short --branch 和 git diff --stat，不要覆盖用户改动，尤其不要回滚 data/provinces/湖南.md。新的方向是：china-culture-kb 只做内容与生产指挥层，图片/视频/后期实产全部交给 GEARS v2。优先实现 P0：GEARS execution config/contract、GEARS job ledger、提交 GEARS job、GEARS callback 归一化；暂停继续做真实 Seedance SDK、真实 ffmpeg 片头片尾、真实 final assemble。默认界面保持简单，只保留高频主路径。
+```
+
+如果新任务是产品重定位或故事生成链路改造，使用下面这段：
+
+```text
+请继续 /Users/wuyu/Desktop/china-culture-kb 的 Story Agent 开发。本次任务只针对本项目，不实现 GEARS 图片/视频/后期实产。先阅读 docs/story-agent-creative-platform-reposition-plan.md、docs/story-agent-next-development-plan.md、docs/story-agent-next-conversation-handoff.md 和 .codex/skills/china-culture-story-agent/SKILL.md。当前新方向是：把项目从“知识库驱动的故事生成器”升级为“AI 影视前期创作、剧本生产与项目素材指挥系统”。优先做 Phase 1：新增 CreationUseCase、TruthMode、CreationContract、MaterialPack、MaterialSufficiencyReport，并兼容旧 knowledge_pack；然后把 creation_contract 接入 StoryBlueprint、StoryGenerateRequest/Result、prompt package 和项目版本存储。开始前先执行 git status --short --branch 和 git diff --stat，不要覆盖用户已有改动。
 ```

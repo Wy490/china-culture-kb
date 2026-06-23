@@ -2,41 +2,56 @@
   <div class="story-studio">
     <!-- Left panel: controls -->
     <aside class="story-studio__left">
-      <h2 class="story-studio__page-title">视频方案工坊</h2>
+      <h2 class="story-studio__page-title">影视创作工坊</h2>
+
+      <section class="story-studio__creation-paths" aria-label="创作路径">
+        <button
+          v-for="path in creationPathOptions"
+          :key="path.id"
+          class="story-studio__creation-path"
+          :class="{ 'story-studio__creation-path--active': creationPath === path.id }"
+          type="button"
+          @click="switchCreationPath(path.id)"
+        >
+          <span>{{ path.label }}</span>
+          <small>{{ path.summary }}</small>
+        </button>
+      </section>
 
       <!-- Input mode tabs -->
+      <label class="story-studio__label">素材输入方式</label>
       <div class="story-studio__mode-tabs">
         <button
           class="story-studio__mode-tab"
           :class="{ 'story-studio__mode-tab--active': inputMode === 'entry' }"
           @click="switchMode('entry')"
-        >词条模式</button>
+        >素材检索</button>
         <button
           class="story-studio__mode-tab"
           :class="{ 'story-studio__mode-tab--active': inputMode === 'theme' }"
           @click="switchMode('theme')"
-        >主题模式</button>
+        >主题种子</button>
         <button
           class="story-studio__mode-tab"
           :class="{ 'story-studio__mode-tab--active': inputMode === 'outline' }"
           @click="switchMode('outline')"
-        >故事大纲模式</button>
+        >故事大纲</button>
         <button
           class="story-studio__mode-tab"
           :class="{ 'story-studio__mode-tab--active': inputMode === 'novel' }"
           @click="switchMode('novel')"
-        >小说改编模式</button>
+        >原作改编</button>
       </div>
 
       <!-- ===== ENTRY MODE ===== -->
       <div v-if="inputMode === 'entry'" class="story-studio__field">
-        <label class="story-studio__label" for="entry-search">创作主题 / 词条搜索</label>
+        <label class="story-studio__label" for="entry-search">创作主题 / 素材搜索</label>
         <div class="story-studio__search-row">
           <input
             id="entry-search"
             v-model="entrySearchQuery"
             class="story-studio__input"
-            placeholder="输入创作主题或词条关键词，如 周敦颐拒签冤案故事、湖南非遗宣传片"
+            placeholder="输入创作主题或素材关键词，如 周敦颐拒签冤案故事、湖南非遗宣传片"
             @input="handleEntrySearchDebounced"
           />
           <button class="btn btn--search" @click="handleAutoMatch" :disabled="!entrySearchQuery.trim() || matching">
@@ -60,8 +75,8 @@
         <div v-if="matchResult && !selectedEntry" class="story-studio__search-results">
           <p class="story-studio__search-hint">
             {{ matchResult.matches.length > 0
-              ? `为"${matchResult.query}"找到 ${matchResult.matches.length} 个相关词条：`
-              : matchResult.fallback_message || '未找到相关词条' }}
+              ? `为"${matchResult.query}"找到 ${matchResult.matches.length} 个相关素材：`
+              : matchResult.fallback_message || '未找到相关素材' }}
           </p>
           <div
             v-for="m in matchResult.matches"
@@ -80,13 +95,13 @@
               class="btn btn--select-entry"
               :class="{ 'btn--select-entry--best': m.usable_for_story }"
             >
-              {{ m.usable_for_story ? '✅ 选择此词条（推荐）' : '⭕ 选择此词条' }}
+              {{ m.usable_for_story ? '选择此素材（推荐）' : '选择此素材' }}
             </button>
           </div>
         </div>
 
         <div v-if="!selectedEntry && !matchResult && !matching" class="story-studio__entry-hint">
-          <p>输入创作主题或词条关键词，点击"自动匹配"找到知识库中最相关的词条。</p>
+          <p>输入创作主题或素材关键词，点击“自动匹配”找到素材库中最相关的条目。</p>
         </div>
       </div>
 
@@ -120,7 +135,7 @@
             ? '粘贴你已有小说、章节片段或完整故事。系统会保留原作主线，做视频化改编、分镜拆解和 GEARS 供稿，不会另写一篇新小说。'
             : inputMode === 'outline'
             ? '输入故事大纲，如：我想写一个毛泽东少年时期到革命觉醒的故事，重点表现湖南乡土、求学、新民学会、农民运动、理想形成。'
-            : '输入创作主题，如：周敦颐南安拒签冤案故事'"
+            : '输入原创主题，如：一个少年在古城修复旧戏台时发现家族旧约，由此卷入守护非遗的选择'"
         />
 
         <div class="story-studio__outline-actions">
@@ -137,14 +152,14 @@
             @click="handleMultiMatch"
             :disabled="matchingMulti || !outlineAnalysis"
           >
-            {{ matchingMulti ? '匹配中…' : '匹配知识内容' }}
+            {{ matchingMulti ? '匹配中…' : '匹配项目素材' }}
           </button>
         </div>
       </div>
 
       <!-- ===== OUTLINE ANALYSIS RESULTS ===== -->
       <div v-if="outlineAnalysis" class="story-studio__analysis">
-        <h4 class="story-studio__analysis-title">大纲分析结果</h4>
+        <h4 class="story-studio__analysis-title">素材分析结果</h4>
         <div class="story-studio__analysis-items">
           <p v-if="outlineAnalysis.story_intent.main_character">
             <strong>主人公：</strong>{{ outlineAnalysis.story_intent.main_character }}
@@ -174,7 +189,7 @@
             </div>
           </div>
           <div v-if="outlineAnalysis.knowledge_needs.length > 0" class="story-studio__knowledge-needs">
-            <strong>知识需求：</strong>
+            <strong>素材需求：</strong>
             <ul>
               <li v-for="need in outlineAnalysis.knowledge_needs" :key="need.need_id">
                 {{ need.label }}（{{ need.keywords.join('、') }}）{{ need.required ? '✅ 必需' : '⭕ 可选' }}
@@ -184,13 +199,13 @@
         </div>
       </div>
 
-      <!-- ===== KNOWLEDGE PACK DISPLAY ===== -->
+      <!-- ===== MATERIAL PACK DISPLAY ===== -->
       <div v-if="knowledgePack" class="story-studio__knowledge-pack">
-        <h4 class="story-studio__kp-title">知识组合包</h4>
+        <h4 class="story-studio__kp-title">项目素材包</h4>
 
         <!-- Primary entries -->
         <div v-if="knowledgePack.primary_entries.length > 0" class="story-studio__kp-section">
-          <h5 class="story-studio__kp-section-title story-studio__kp-section-title--primary">主依据条目</h5>
+          <h5 class="story-studio__kp-section-title story-studio__kp-section-title--primary">主依据素材</h5>
           <div
             v-for="entry in knowledgePack.primary_entries"
             :key="entry.entry_name"
@@ -220,7 +235,7 @@
 
         <!-- Supporting entries -->
         <div v-if="knowledgePack.supporting_entries.length > 0" class="story-studio__kp-section">
-          <h5 class="story-studio__kp-section-title story-studio__kp-section-title--supporting">辅助条目</h5>
+          <h5 class="story-studio__kp-section-title story-studio__kp-section-title--supporting">辅助素材</h5>
           <div
             v-for="entry in knowledgePack.supporting_entries"
             :key="entry.entry_name"
@@ -249,7 +264,7 @@
 
         <!-- Missing needs -->
         <div v-if="knowledgePack.missing_needs.length > 0" class="story-studio__kp-section">
-          <h5 class="story-studio__kp-section-title story-studio__kp-section-title--missing">缺失资料</h5>
+          <h5 class="story-studio__kp-section-title story-studio__kp-section-title--missing">待补素材</h5>
           <div v-for="missing in knowledgePack.missing_needs" :key="missing.need_id" class="story-studio__kp-missing">
             <p>⚠️ {{ missing.label }}：{{ missing.message }}</p>
           </div>
@@ -283,6 +298,41 @@
       />
 
       <div v-if="planError" class="story-studio__error">{{ planError }}</div>
+
+      <section class="story-studio__field story-studio__contract-panel">
+        <label class="story-studio__label">创作合同</label>
+        <p class="story-studio__field-hint">用于决定允许虚构、事实核验、机构口径和素材 gate；不选择时由系统按成片类型自动判断。</p>
+        <div class="story-studio__contract-grid">
+          <select v-model="selectedCreationUseCase" class="story-studio__select">
+            <option value="">自动判断创作用途</option>
+            <option v-for="item in creationUseCaseOptions" :key="item.id" :value="item.id">
+              {{ item.label }}
+            </option>
+          </select>
+          <select v-model="selectedTruthMode" class="story-studio__select">
+            <option value="">自动判断真实模式</option>
+            <option v-for="item in truthModeOptions" :key="item.id" :value="item.id">
+              {{ item.label }}
+            </option>
+          </select>
+          <input
+            v-model="clientType"
+            class="story-studio__input"
+            placeholder="客户/机构类型，如 政府机构、品牌方"
+          />
+          <input
+            v-model="targetAudience"
+            class="story-studio__input"
+            placeholder="目标受众，如 青少年研学、城市游客"
+          />
+        </div>
+        <textarea
+          v-model="communicationGoal"
+          class="story-studio__textarea story-studio__textarea--compact"
+          rows="2"
+          placeholder="传播目标 / 改编目标，如 稳妥表达廉洁文化、保留原作主线并转成 AI 漫剧分镜"
+        />
+      </section>
 
       <!-- Video type selector (grouped) — always visible -->
       <section class="story-studio__field">
@@ -425,7 +475,7 @@
           <select id="story-priority" v-model="storyPriority" class="story-studio__select">
             <option value="balanced">剧情与资料均衡</option>
             <option value="plot_first">优先剧情完整</option>
-            <option value="knowledge_first">优先资料完整</option>
+            <option value="knowledge_first">优先素材完整</option>
           </select>
           <label class="story-studio__checkbox-row">
             <input v-model="autoRepair" type="checkbox" />
@@ -444,7 +494,7 @@
       </button>
 
       <div v-if="!canGenerate && selectedVideoType && !hasAnyEntrySource" class="story-studio__generate-hint">
-        {{ inputMode === 'entry' ? '请先从知识库搜索结果中选择一个词条。' : '请先分析大纲并匹配知识内容，至少选择1个主依据条目。' }}
+        {{ generateRequirementHint }}
       </div>
 
       <div v-if="generateError" class="story-studio__error">{{ generateError }}</div>
@@ -476,7 +526,7 @@
 
       <div v-else class="story-studio__empty">
         <div class="story-studio__empty-copy">
-          <p>选择词条、输入大纲，然后生成剧情方案。</p>
+          <p>选择创作路径、输入素材，然后生成剧情方案。</p>
           <p class="story-studio__hint">结果将在此处展示。</p>
         </div>
 
@@ -559,8 +609,11 @@ import type {
   StoryDetectedCharacterKind,
   GenreStrictness,
   StoryGenerationPriority,
+  SourceMaterialMode,
   LocalizationMode,
   StoryProjectListItem,
+  CreationUseCase,
+  TruthMode,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
 import StoryPlan from '@/components/StoryPlan.vue'
@@ -607,6 +660,38 @@ const CHARACTER_KIND_LABELS: Record<StoryDetectedCharacterKind, string> = {
   supernatural_role: '志异异类',
 }
 
+const CREATION_USE_CASE_OPTIONS: Array<{ id: CreationUseCase; label: string }> = [
+  { id: 'original_ai_comic', label: '原创 AI 漫剧' },
+  { id: 'adapted_ai_comic', label: '原作/资料改编' },
+  { id: 'institutional_promo', label: '机构宣传片' },
+  { id: 'documentary_short', label: '纪录短片' },
+  { id: 'brand_commercial', label: '品牌商业片' },
+  { id: 'education_training', label: '教育/培训片' },
+  { id: 'public_service', label: '公益宣传片' },
+]
+
+const TRUTH_MODE_OPTIONS: Array<{ id: TruthMode; label: string }> = [
+  { id: 'fictional_original', label: '原创虚构' },
+  { id: 'inspired_by_material', label: '素材启发' },
+  { id: 'source_adaptation', label: '原作改编' },
+  { id: 'factual_reconstruction', label: '事实重构' },
+  { id: 'institutional_verified', label: '机构审定' },
+]
+
+type InputMode = 'entry' | 'theme' | 'outline' | 'novel'
+type CreationPath = 'original' | 'adaptation' | 'institutional'
+
+type CreationPathOption = {
+  id: CreationPath
+  label: string
+  summary: string
+  inputMode: InputMode
+  creationUseCase: CreationUseCase
+  truthMode: TruthMode
+  videoType: VideoType
+  storyPriority: StoryGenerationPriority
+}
+
 const COMMON_VIDEO_TYPE_IDS: VideoType[] = [
   'ai_comic_drama',
   'character_story',
@@ -628,11 +713,51 @@ function characterKindLabel(kind: StoryDetectedCharacterKind) {
 }
 
 // --- Input mode ---
-type InputMode = 'entry' | 'theme' | 'outline' | 'novel'
-const inputMode = ref<InputMode>('entry')
+const CREATION_PATH_OPTIONS: CreationPathOption[] = [
+  {
+    id: 'original',
+    label: '原创开发',
+    summary: '角色、世界观、短剧冲突',
+    inputMode: 'theme',
+    creationUseCase: 'original_ai_comic',
+    truthMode: 'fictional_original',
+    videoType: 'ai_comic_drama',
+    storyPriority: 'plot_first',
+  },
+  {
+    id: 'adaptation',
+    label: '资料改编',
+    summary: '小说、章节、口述素材',
+    inputMode: 'novel',
+    creationUseCase: 'adapted_ai_comic',
+    truthMode: 'source_adaptation',
+    videoType: 'ai_comic_drama',
+    storyPriority: 'balanced',
+  },
+  {
+    id: 'institutional',
+    label: '机构影像',
+    summary: '文旅、公益、教育表达',
+    inputMode: 'entry',
+    creationUseCase: 'institutional_promo',
+    truthMode: 'institutional_verified',
+    videoType: 'culture_promo',
+    storyPriority: 'knowledge_first',
+  },
+]
 
-function switchMode(mode: InputMode) {
+const creationPath = ref<CreationPath>('original')
+const inputMode = ref<InputMode>('theme')
+const creationPathOptions = CREATION_PATH_OPTIONS
+
+function switchMode(mode: InputMode, options: { syncPath?: boolean } = {}) {
   inputMode.value = mode
+  if (options.syncPath !== false) {
+    const inferredPath = inferCreationPathFromInputMode(mode)
+    if (inferredPath !== creationPath.value) {
+      applyCreationPathDefaults(inferredPath)
+    }
+  }
   // Clear state on mode switch
   if (mode === 'entry') {
     outlineText.value = ''
@@ -648,6 +773,30 @@ function switchMode(mode: InputMode) {
   }
   generateResult.value = null
   generateError.value = ''
+}
+
+function switchCreationPath(path: CreationPath) {
+  if (creationPath.value === path) return
+  const option = applyCreationPathDefaults(path)
+  if (!option) return
+  switchMode(option.inputMode, { syncPath: false })
+}
+
+function applyCreationPathDefaults(path: CreationPath): CreationPathOption | undefined {
+  const option = CREATION_PATH_OPTIONS.find(item => item.id === path)
+  if (!option) return undefined
+  creationPath.value = option.id
+  selectedCreationUseCase.value = option.creationUseCase
+  selectedTruthMode.value = option.truthMode
+  storyPriority.value = option.storyPriority
+  handleSelectVideoType(option.videoType)
+  return option
+}
+
+function inferCreationPathFromInputMode(mode: InputMode): CreationPath {
+  if (mode === 'entry') return 'institutional'
+  if (mode === 'novel') return 'adaptation'
+  return 'original'
 }
 
 // --- Entry mode state ---
@@ -673,8 +822,8 @@ const selectedSupportingEntries = ref<string[]>([])
 
 // --- Common state ---
 const selectedType = ref<GenerationType | null>(null)
-const selectedVideoType = ref<VideoType | null>(null)
-const selectedPresentationStyle = ref<PresentationStyle | null>(null)
+const selectedVideoType = ref<VideoType | null>('ai_comic_drama')
+const selectedPresentationStyle = ref<PresentationStyle | null>(VIDEO_TYPE_CONFIG.ai_comic_drama.default_presentation_style)
 const modelProfiles = ref<AIModelProfile[]>([])
 const narrativePatternCatalog = ref<NarrativePatternCatalog | null>(null)
 const selectedNarrativePatternIds = ref<NarrativePatternId[]>([])
@@ -683,9 +832,14 @@ const selectedEvent = ref<string | null>(null)
 const targetDuration = ref<SupportedDuration>('3分钟')
 const tone = ref('')
 const genreStrictness = ref<GenreStrictness>('balanced')
-const storyPriority = ref<StoryGenerationPriority>('balanced')
+const storyPriority = ref<StoryGenerationPriority>('plot_first')
 const localizedTargetRegion = ref('')
 const localizationMode = ref<LocalizationMode>('allow_related_influence')
+const selectedCreationUseCase = ref<CreationUseCase | ''>('original_ai_comic')
+const selectedTruthMode = ref<TruthMode | ''>('fictional_original')
+const clientType = ref('')
+const targetAudience = ref('')
+const communicationGoal = ref('')
 const autoRepair = ref(false)
 const planning = ref(false)
 const generating = ref(false)
@@ -699,9 +853,16 @@ const recentStoryProjectsError = ref('')
 const recentStoryProjectsMessage = ref('')
 const deletingRecentProjectId = ref('')
 
+const canUseOutlineOnly = computed(() => {
+  return creationPath.value === 'original'
+    && (inputMode.value === 'theme' || inputMode.value === 'outline')
+    && outlineText.value.trim().length > 0
+})
+
 const hasAnyEntrySource = computed(() => {
   if (inputMode.value === 'entry') return !!selectedEntry.value
   if (inputMode.value === 'novel') return !!outlineText.value.trim()
+  if (canUseOutlineOnly.value) return true
   return selectedPrimaryEntries.value.length > 0
 })
 
@@ -712,7 +873,17 @@ const canGenerate = computed(() => {
   if (inputMode.value === 'novel') {
     return outlineText.value.trim().length > 0 && (selectedVideoType.value || selectedType.value)
   }
+  if (canUseOutlineOnly.value) {
+    return Boolean(selectedVideoType.value || selectedType.value)
+  }
   return selectedPrimaryEntries.value.length > 0 && (selectedVideoType.value || selectedType.value)
+})
+
+const generateRequirementHint = computed(() => {
+  if (inputMode.value === 'entry') return '请先从素材库搜索结果中选择一个条目。'
+  if (creationPath.value === 'original') return '请先输入原创主题或故事大纲。'
+  if (inputMode.value === 'novel') return '请先粘贴原作或改编素材。'
+  return '请先分析大纲并匹配项目素材，至少选择 1 个主依据素材。'
 })
 
 function groupVideoTypes(types: VideoTypeMeta[]) {
@@ -757,6 +928,24 @@ const availableNarrativePatterns = computed<NarrativePattern[]>(() => {
 })
 
 const recentStoryPreview = computed(() => recentStoryProjects.value.slice(0, 5))
+const creationUseCaseOptions = CREATION_USE_CASE_OPTIONS
+const truthModeOptions = TRUTH_MODE_OPTIONS
+
+function creationContractRequestFields() {
+  return {
+    creation_use_case: selectedCreationUseCase.value || undefined,
+    truth_mode: selectedTruthMode.value || undefined,
+    client_type: clientType.value.trim() || undefined,
+    target_audience: targetAudience.value.trim() || undefined,
+    communication_goal: communicationGoal.value.trim() || undefined,
+  }
+}
+
+function sourceMaterialModeForRequest(): SourceMaterialMode | undefined {
+  return selectedCreationUseCase.value === 'adapted_ai_comic'
+    ? 'adapt_user_novel'
+    : undefined
+}
 
 function styleAxisValueLabel(value: 'low' | 'medium' | 'high') {
   if (value === 'high') return '高'
@@ -938,7 +1127,7 @@ async function handleMultiMatch() {
     // Auto-select all supporting entries
     selectedSupportingEntries.value = res.data.matched_knowledge_pack.supporting_entries.map(e => e.entry_name)
   } else {
-    planError.value = res.error?.message ?? '知识匹配失败'
+    planError.value = res.error?.message ?? '素材匹配失败'
   }
   matchingMulti.value = false
 }
@@ -969,6 +1158,7 @@ onMounted(async () => {
 
   const entry = route.query.entry as string | undefined
   if (entry) {
+    applyCreationPathDefaults('institutional')
     inputMode.value = 'entry'
     entrySearchQuery.value = entry
     const res = await searchEntries({ keywords: entry })
@@ -976,7 +1166,7 @@ onMounted(async () => {
       const exactMatch = res.data.find(e => e.name === entry)
       if (exactMatch) selectedEntry.value = exactMatch
       else if (res.data.length > 0) selectedEntry.value = res.data[0]
-      else planError.value = '知识库中没有找到该词条'
+      else planError.value = '素材库中没有找到该条目'
     }
   }
 
@@ -1006,7 +1196,7 @@ watch(selectedVideoType, () => {
 // --- Handlers ---
 async function handlePlan() {
   if (!selectedEntry.value) {
-    planError.value = '请先从知识库搜索结果中选择一个词条。'
+    planError.value = '请先从素材库搜索结果中选择一个条目。'
     return
   }
   planning.value = true
@@ -1027,7 +1217,7 @@ async function handlePlan() {
     targetDuration.value = res.data.recommended_duration
   } else {
     planError.value = res.error?.code === 'ENTRY_NOT_FOUND'
-      ? '知识库中没有找到该词条'
+      ? '素材库中没有找到该条目'
       : res.error?.message ?? '预览推荐失败'
   }
   planning.value = false
@@ -1077,16 +1267,18 @@ async function handleGenerate() {
       genre_strictness: genreStrictness.value,
       story_priority: storyPriority.value,
       auto_repair: autoRepair.value,
+      source_material_mode: sourceMaterialModeForRequest(),
       narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
       localized_target_region: localizedTargetRegion.value.trim() || undefined,
       localization_mode: localizationMode.value,
+      ...creationContractRequestFields(),
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
       void loadRecentStoryProjects()
     } else {
       generateError.value = res.error?.code === 'ENTRY_NOT_FOUND'
-        ? '知识库中没有找到该词条'
+        ? '素材库中没有找到该条目'
         : res.error?.message ?? '剧情方案生成失败'
     }
   } else if (inputMode.value === 'novel') {
@@ -1116,18 +1308,49 @@ async function handleGenerate() {
       genre_strictness: genreStrictness.value,
       story_priority: storyPriority.value,
       auto_repair: autoRepair.value,
-      source_material_mode: 'adapt_user_novel',
+      source_material_mode: sourceMaterialModeForRequest() ?? 'adapt_user_novel',
       localized_target_region: localizedTargetRegion.value.trim() || undefined,
       localization_mode: localizationMode.value,
       narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0
         ? selectedNarrativePatternIds.value
         : ['source_fidelity_adaptation', 'chapter_slice_adaptation', 'novel_scene_compression', 'character_arc_adaptation'],
+      ...creationContractRequestFields(),
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
       void loadRecentStoryProjects()
     } else {
       generateError.value = res.error?.message ?? '小说改编方案生成失败'
+    }
+  } else if (
+    (inputMode.value === 'theme' || inputMode.value === 'outline')
+    && canUseOutlineOnly.value
+    && (!knowledgePack.value || selectedPrimaryEntries.value.length === 0)
+  ) {
+    const res = await storyGenerate({
+      original_user_query: outlineText.value || undefined,
+      generation_type: generationTypeToSend as GenerationType,
+      video_type: videoTypeToSend as VideoType,
+      model_profile_id: selectedModelProfileId.value || undefined,
+      target_video_duration: targetDuration.value,
+      tone: tone.value || undefined,
+      presentation_style: presentationStyleToSend as PresentationStyle,
+      output_gears_segments: true,
+      outline: outlineText.value,
+      genre_strictness: genreStrictness.value,
+      story_priority: storyPriority.value,
+      auto_repair: autoRepair.value,
+      source_material_mode: sourceMaterialModeForRequest(),
+      narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
+      localized_target_region: localizedTargetRegion.value.trim() || undefined,
+      localization_mode: localizationMode.value,
+      ...creationContractRequestFields(),
+    })
+    if (res.ok && res.data) {
+      generateResult.value = res.data
+      void loadRecentStoryProjects()
+    } else {
+      generateError.value = res.error?.message ?? '原创方案生成失败'
     }
   } else if ((inputMode.value === 'theme' || inputMode.value === 'outline') && knowledgePack.value) {
     // Outline/theme mode: multi-entry generation with knowledge pack
@@ -1159,9 +1382,11 @@ async function handleGenerate() {
       genre_strictness: genreStrictness.value,
       story_priority: storyPriority.value,
       auto_repair: autoRepair.value,
+      source_material_mode: sourceMaterialModeForRequest(),
       narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
       localized_target_region: localizedTargetRegion.value.trim() || undefined,
       localization_mode: localizationMode.value,
+      ...creationContractRequestFields(),
     })
     if (res.ok && res.data) {
       generateResult.value = res.data
@@ -1202,6 +1427,47 @@ async function handleGenerate() {
   color: #2c3e50;
 }
 
+.story-studio__creation-paths {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.story-studio__creation-path {
+  display: grid;
+  gap: 4px;
+  min-height: 70px;
+  padding: 10px 12px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #fff;
+  color: #2f4358;
+  text-align: left;
+  cursor: pointer;
+}
+
+.story-studio__creation-path span {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.story-studio__creation-path small {
+  color: #667887;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.story-studio__creation-path--active {
+  border-color: #2980b9;
+  background: #eef6ff;
+  color: #21618c;
+}
+
+.story-studio__creation-path--active small {
+  color: #3d6f94;
+}
+
 /* Mode tabs */
 .story-studio__mode-tabs {
   display: flex;
@@ -1237,6 +1503,10 @@ async function handleGenerate() {
   resize: vertical;
 }
 .story-studio__textarea:focus { border-color: #3498db; outline: none; }
+.story-studio__textarea--compact {
+  margin-top: 8px;
+  min-height: 72px;
+}
 
 /* Outline actions */
 .story-studio__outline-actions {
@@ -1502,6 +1772,17 @@ async function handleGenerate() {
 }
 .story-studio__advanced .story-studio__label:not(:first-child) {
   margin-top: 10px;
+}
+.story-studio__contract-panel {
+  padding: 10px 12px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #f8fafb;
+}
+.story-studio__contract-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 .story-studio__checkbox-row {
   display: flex;
@@ -1934,6 +2215,10 @@ async function handleGenerate() {
   }
   .story-studio__mode-tabs {
     flex-wrap: wrap;
+  }
+  .story-studio__creation-paths,
+  .story-studio__contract-grid {
+    grid-template-columns: 1fr;
   }
   .story-studio__vt-cards {
     grid-template-columns: 1fr;
