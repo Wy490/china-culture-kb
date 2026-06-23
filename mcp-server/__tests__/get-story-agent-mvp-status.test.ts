@@ -94,6 +94,18 @@ describe('kb_get_story_agent_mvp_status', () => {
       'delivery_contract',
       'production_command',
     ]));
+    expect(result.progress).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'content_command_layer',
+        percent: 99,
+        status: expect.stringMatching(/ready|needs_action|blocked/),
+      }),
+      expect.objectContaining({
+        key: 'gears_end_to_end_acceptance',
+        percent: 95,
+        blocker: expect.any(String),
+      }),
+    ]));
     expect(result.priority_targets).toEqual(expect.arrayContaining([
       expect.objectContaining({
         scope: 'story_project',
@@ -102,7 +114,9 @@ describe('kb_get_story_agent_mvp_status', () => {
       }),
     ]));
     expect(result.notes.join('\n')).toContain('content and production command layer');
+    expect(result.notes.join('\n')).toContain('remaining 5%');
     expect(result.markdown).toContain('MCP Story Agent MVP Status');
+    expect(result.markdown).toContain('Progress Split');
   });
 
   it('can omit markdown for compact agent reads', async () => {

@@ -268,6 +268,20 @@
             </li>
           </ul>
         </article>
+
+        <article v-if="result.quality_report.audience_text_report" class="story-result__report-card">
+          <span>Audience Text</span>
+          <strong>{{ result.quality_report.audience_text_report.clean ? 100 : Math.max(0, 100 - result.quality_report.audience_text_report.issue_count * 12) }}/100</strong>
+          <p>{{ result.quality_report.audience_text_report.preview }}</p>
+          <ul v-if="result.quality_report.audience_text_report.issue_items.length > 0">
+            <li
+              v-for="item in result.quality_report.audience_text_report.issue_items.slice(0, 4)"
+              :key="item.issue_id"
+            >
+              {{ item.label }}：{{ item.matched_terms.join('、') }}
+            </li>
+          </ul>
+        </article>
       </div>
 
       <div v-if="result.quality_report.repair_action_items?.length" class="story-result__quality-actions">

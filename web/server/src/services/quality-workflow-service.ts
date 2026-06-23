@@ -1,6 +1,8 @@
 import type {
   GearsDeliveryPackage,
   GearsSegment,
+  AudienceTextField,
+  AudienceTextReport,
   NarrativePatternId,
   OutlineCoverageNode,
   OutlineCoverageReport,
@@ -26,7 +28,8 @@ export function enrichStoryQualityReport(input: {
     narrativePatternIds: input.narrativePatternIds ?? [],
   });
   const gearsReport = buildGearsReadinessReport(input.story, input.gearsDelivery);
-  const repairActionItems = buildRepairActionItems(outlineReport, patternReport, gearsReport);
+  const audienceReport = buildAudienceTextReport(input.story);
+  const repairActionItems = buildRepairActionItems(outlineReport, patternReport, gearsReport, audienceReport);
   const mergedRepairActions = [
     ...(input.qualityReport.repair_actions ?? []),
     ...repairActionItems.map(item => item.prompt),
@@ -35,7 +38,8 @@ export function enrichStoryQualityReport(input: {
   const passed = input.qualityReport.passed
     && outlineReport.coverage_score >= 70
     && patternReport.pattern_score >= 70
-    && gearsReport.readiness_score >= 70;
+    && gearsReport.readiness_score >= 70
+    && audienceReport.clean;
 
   return {
     ...input.qualityReport,
@@ -44,8 +48,9 @@ export function enrichStoryQualityReport(input: {
     outline_coverage_report: outlineReport,
     pattern_quality_report: patternReport,
     gears_readiness_report: gearsReport,
+    audience_text_report: audienceReport,
     repair_action_items: repairActionItems,
-    repair_preview: buildCombinedPreview(outlineReport.preview, patternReport.preview, gearsReport.preview),
+    repair_preview: buildCombinedPreview(outlineReport.preview, patternReport.preview, gearsReport.preview, audienceReport.preview),
   };
 }
 
@@ -299,6 +304,7 @@ function buildRepairActionItems(
   outlineReport: OutlineCoverageReport,
   patternReport: PatternQualityReport,
   gearsReport: ReturnType<typeof buildGearsReadinessReport>,
+  audienceReport: AudienceTextReport,
 ): QualityRepairAction[] {
   const actions: QualityRepairAction[] = [];
   if (outlineReport.coverage_score < 90) {
@@ -342,6 +348,17 @@ function buildRepairActionItems(
       expected_effect: gearsReport.preview,
     });
   }
+  if (!audienceReport.clean) {
+    actions.push({
+      action_id: 'repair-audience-text',
+      label: '清理观众稿检测词',
+      target_report: 'audience',
+      severity: audienceReport.issue_count >= 4 ? 'high' : 'medium',
+      scene_ids: audienceReport.issue_items.flatMap(issue => issue.scene_id ? [issue.scene_id] : []).filter(uniqueNumber),
+      prompt: audienceReport.repair_prompt,
+      expected_effect: audienceReport.preview,
+    });
+  }
   if (actions.length > 1) {
     actions.push({
       action_id: 'repair-combined-workflow',
@@ -350,10 +367,116 @@ function buildRepairActionItems(
       severity: actions.some(action => action.severity === 'high') ? 'high' : 'medium',
       scene_ids: actions.flatMap(action => action.scene_ids).filter(uniqueNumber),
       prompt: actions.map(action => `【${action.label}】\n${action.prompt}`).join('\n\n'),
-      expected_effect: buildCombinedPreview(outlineReport.preview, patternReport.preview, gearsReport.preview),
+      expected_effect: buildCombinedPreview(outlineReport.preview, patternReport.preview, gearsReport.preview, audienceReport.preview),
     });
   }
   return actions;
+}
+
+function buildAudienceTextReport(story: StoryGenerateResult): AudienceTextReport {
+  const fields: Array<{
+    field: AudienceTextField;
+    label: string;
+    text: string;
+    scene_id?: number;
+    segment_id?: number;
+  }> = [
+    { field: 'full_text', label: '正文', text: story.full_text },
+    { field: 'theme', label: '主题', text: story.theme },
+    { field: 'logline', label: '一句话梗概', text: story.logline },
+    ...story.scene_breakdown.flatMap(scene => [
+      { field: 'scene_plot' as const, label: `场景 ${scene.scene_id} 剧情`, text: scene.plot, scene_id: scene.scene_id },
+      {
+        field: 'scene_dialogue_or_narration' as const,
+        label: `场景 ${scene.scene_id} 对白/旁白`,
+        text: scene.dialogue_or_narration ?? '',
+        scene_id: scene.scene_id,
+      },
+    ]),
+    ...story.gears_segments.flatMap(segment => [
+      {
+        field: 'gears_script_text' as const,
+        label: `GEARS 段落 ${segment.segment_id} script_text`,
+        text: segment.script_text,
+        scene_id: segment.source_scene_id,
+        segment_id: segment.segment_id,
+      },
+      {
+        field: 'gears_segment_prompt_hint' as const,
+        label: `GEARS 段落 ${segment.segment_id} segment_prompt_hint`,
+        text: segment.segment_prompt_hint ?? '',
+        scene_id: segment.source_scene_id,
+        segment_id: segment.segment_id,
+      },
+    ]),
+  ];
+  const issues = fields.flatMap((field, index) => {
+    const matchedTerms = audienceTextPollutionTerms().filter(term => field.text.includes(term));
+    if (matchedTerms.length === 0) return [];
+    return [{
+      issue_id: `audience-text-${index + 1}`,
+      field: field.field,
+      label: field.label,
+      scene_id: field.scene_id,
+      segment_id: field.segment_id,
+      matched_terms: matchedTerms,
+      excerpt: excerptAroundTerm(field.text, matchedTerms[0]),
+      repair_hint: `${field.label}去掉「${matchedTerms.join('、')}」等检测词，用可见动作、对白、后果或自然旁白承载同一信息。`,
+    }];
+  });
+  const pollutedTerms = issues
+    .flatMap(issue => issue.matched_terms)
+    .filter((term, index, arr) => arr.indexOf(term) === index);
+
+  return {
+    schema_version: 'audience-text/v1',
+    clean: issues.length === 0,
+    issue_count: issues.length,
+    issue_items: issues.slice(0, 12),
+    polluted_terms: pollutedTerms,
+    repair_prompt: issues.length > 0
+      ? [
+          '清理观众会直接读到的正文、场景文本和 GEARS 脚本文本。',
+          '不要删除目标、阻力、选择后果、因果推进或史实说明；把检测词改写成剧情动作、对白、可见代价和自然创作边界说明。',
+          ...issues.map(issue => `- ${issue.repair_hint} 示例片段：${issue.excerpt}`),
+        ].join('\n')
+      : '观众字段未发现内部质量标签；保持自然表达即可。',
+    preview: issues.length > 0
+      ? `清理 ${issues.length} 个观众字段检测词痕迹：${pollutedTerms.slice(0, 6).join('、')}。`
+      : '观众字段未发现检测词痕迹。',
+  };
+}
+
+function audienceTextPollutionTerms(): string[] {
+  return [
+    '主角目标',
+    '目标明确',
+    '选择有代价',
+    '因果链',
+    '行动具体',
+    '人物不是年表',
+    '史实边界',
+    '质量信号',
+    '生成优先级',
+    '类型匹配',
+    '建议调整',
+    '资料显示',
+    '核心画面是',
+    '为什么必须面对',
+    '流派质量',
+    '必须有主角目标',
+    '必须有阻力',
+    '必须有选择和代价',
+  ];
+}
+
+function excerptAroundTerm(text: string, term: string): string {
+  const cleanText = text.replace(/\s+/g, ' ').trim();
+  const index = cleanText.indexOf(term);
+  if (index < 0) return shortText(cleanText, 80);
+  const start = Math.max(0, index - 24);
+  const end = Math.min(cleanText.length, index + term.length + 36);
+  return `${start > 0 ? '...' : ''}${cleanText.slice(start, end)}${end < cleanText.length ? '...' : ''}`;
 }
 
 function extractOutlineNodes(story: StoryGenerateResult): string[] {
@@ -410,9 +533,30 @@ function extractMeaningfulTokens(text: string): string[] {
 }
 
 function hasSignalText(text: string, signal: string): boolean {
+  if (hasSemanticSignalEvidence(text, signal)) return true;
+
   const tokens = extractMeaningfulTokens(signal);
   if (tokens.length === 0) return text.includes(signal);
   return tokens.some(token => text.includes(token));
+}
+
+function hasSemanticSignalEvidence(text: string, signal: string): boolean {
+  const compactText = text.replace(/\s+/g, '');
+  const checks: Array<[RegExp, RegExp[]]> = [
+    [/目标明确|人物目标清楚|必须有主角目标/, [/所求/, /要弄清/, /为了/, /求学不是/, /志向/, /书袋内侧写下/]],
+    [/阻力具体|必须有阻力|制度压力可见/, [/官场规则/, /制度压力/, /名声/, /人情/, /催客/, /浊浪/, /路远/, /书卷会湿/, /行程.{0,6}误/]],
+    [/两难成立/, [/若[^。；]+；若/, /一边[^。；]+一边/, /赶路.{0,12}帮人/, /安稳.{0,12}远行/]],
+    [/选择有代价|必须有选择和代价/, [/错过渡船/, /书卷会湿/, /行程.{0,6}误/, /泥痕/, /误一程/, /付出/, /书页.{0,6}皱/]],
+    [/行动具体/, [/系紧/, /停下脚步/, /蹲下/, /扶起/, /挽起/, /踩进/, /捞起/, /裹书/, /写下/, /长揖/, /背起/, /收起/]],
+    [/精神落点来自选择|结尾有人物变化/, [/守良知/, /正义/, /廉洁/, /出淤泥而不染/, /更清楚的心/, /泥痕/, /继续上路/, /守.{0,4}心/]],
+    [/因果链清楚|事件因果清楚/, [/因为/, /于是/, /导致/, /若[^。；]+；若/, /才/, /看见.{0,12}生出/, /生出.{0,12}承担/, /愿意承担.{0,12}才/, /忽然发现/]],
+    [/人物不是年表|不得写成年表式介绍/, [/(少年周敦颐|周敦颐).*(背起|停下脚步|蹲下|挽起|踩进|写下)/]],
+    [/史实边界明确/, [/影视化创作/, /确证/, /不是《爱莲说》/, /不把.{0,20}写成/, /仍要说清/, /只作.{0,8}伏笔/]],
+  ];
+
+  return checks.some(([pattern, evidence]) =>
+    pattern.test(signal) && evidence.some(item => item.test(compactText)),
+  );
 }
 
 function suggestedSceneIdsForSignal(story: StoryGenerateResult, signal: string): number[] {

@@ -71,7 +71,9 @@
           <h2>Story Agent MVP 状态</h2>
           <p>
             {{ productionStatusLabel(storyAgentMvpStatus.status) }}
-            · {{ storyAgentMvpStatus.score }}/100
+            · 健康分 {{ storyAgentMvpStatus.score }}/100
+            · 指挥层 {{ storyAgentMvpProgressPercent('content_command_layer') }}%
+            · GEARS 验收 {{ storyAgentMvpProgressPercent('gears_end_to_end_acceptance') }}%
             · generated {{ storyAgentMvpStatus.summary.generated_ready_count }}/{{ storyAgentMvpStatus.summary.generated_target_count }}
             · readiness {{ storyAgentMvpStatus.summary.readiness_ready_count }}/{{ storyAgentMvpStatus.summary.readiness_target_count }}
           </p>
@@ -95,6 +97,23 @@
         <span>阻断目标 {{ storyAgentMvpStatus.summary.readiness_blocked_count }}</span>
         <span>安全自动化 {{ storyAgentMvpStatus.summary.ready_automation_step_count }}</span>
         <span>GEARS/人工 {{ storyAgentMvpStatus.summary.external_or_manual_step_count }}</span>
+      </div>
+      <div class="projects-page__mvp-progress">
+        <article
+          v-for="slice in storyAgentMvpStatus.progress"
+          :key="slice.key"
+          :class="['projects-page__mvp-progress-card', `projects-page__mvp-progress-card--${slice.key}`]"
+        >
+          <div class="projects-page__mvp-progress-head">
+            <span :class="['projects-page__readiness-badge', `projects-page__readiness-badge--${slice.status}`]">
+              {{ productionStatusLabel(slice.status) }}
+            </span>
+            <strong>{{ slice.percent }}%</strong>
+          </div>
+          <h3>{{ storyAgentMvpProgressLabel(slice.key) }}</h3>
+          <p>{{ slice.detail }}</p>
+          <small v-if="slice.blocker">阻断：{{ slice.blocker }}</small>
+        </article>
       </div>
       <div class="projects-page__mvp-lanes">
         <article
@@ -784,6 +803,18 @@ function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number][
   return map[key]
 }
 
+function storyAgentMvpProgressLabel(key: StoryAgentMvpStatusReport['progress'][number]['key']): string {
+  const map: Record<StoryAgentMvpStatusReport['progress'][number]['key'], string> = {
+    content_command_layer: '内容/生产指挥层',
+    gears_end_to_end_acceptance: 'GEARS 真实验收',
+  }
+  return map[key]
+}
+
+function storyAgentMvpProgressPercent(key: StoryAgentMvpStatusReport['progress'][number]['key']): number {
+  return storyAgentMvpStatus.value?.progress.find(slice => slice.key === key)?.percent ?? storyAgentMvpStatus.value?.score ?? 0
+}
+
 function formatDate(iso: string): string {
   if (!iso) return '未记录'
   const d = new Date(iso)
@@ -1379,6 +1410,62 @@ onMounted(async () => {
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.projects-page__mvp-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.projects-page__mvp-progress-card {
+  min-height: 132px;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid #d7dee5;
+  border-left: 4px solid #6fb3d2;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.projects-page__mvp-progress-card--gears_end_to_end_acceptance {
+  border-left-color: #f0b34f;
+}
+
+.projects-page__mvp-progress-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.projects-page__mvp-progress-head strong {
+  color: #22313f;
+  font-size: 17px;
+}
+
+.projects-page__mvp-progress-card h3 {
+  margin: 0 0 6px 0;
+  color: #22313f;
+  font-size: 14px;
+}
+
+.projects-page__mvp-progress-card p,
+.projects-page__mvp-progress-card small {
+  color: #52616f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.projects-page__mvp-progress-card p {
+  margin: 0 0 6px 0;
+}
+
+.projects-page__mvp-progress-card small {
+  display: block;
+  color: #8a5b00;
+  font-weight: 700;
 }
 
 .projects-page__mvp-lane {

@@ -975,7 +975,7 @@ export const StorySceneRegenerateRequestSchema = z.object({
 export const StoryQualityRepairRequestSchema = z.object({
   model_profile_id: z.string().optional(),
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
-  target_report: z.enum(['outline', 'pattern', 'gears', 'combined']).optional(),
+  target_report: z.enum(['outline', 'pattern', 'gears', 'audience', 'combined']).optional(),
   repair_action_id: z.string().trim().min(1).max(80).optional(),
 });
 

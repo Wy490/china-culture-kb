@@ -473,6 +473,25 @@ describe('gears-delivery-service', () => {
     expect(pkg.markdown).toContain('- 随身/标志性物件: 书');
   });
 
+  it('keeps Song clothing for Zhou Dunyi stories localized to Changsha', () => {
+    const story = makeKnowledgeBackedStory();
+    story.title = '周敦颐橘子洲问莲';
+    story.logline = '北宋少年周敦颐从道州赴汴京求学，途经长沙橘子洲。';
+    story.full_text = '北宋少年周敦颐从道州赴汴京投奔舅父，途经长沙，在橘子洲头与垂钓老者偶遇。';
+    story.scene_breakdown[0] = {
+      ...story.scene_breakdown[0],
+      title: '橘子洲问莲',
+      location: '长沙橘子洲头',
+      plot: '北宋少年周敦颐从道州赴汴京求学，途经长沙橘子洲，在湘江渡口停步问莲。',
+      visual_prompt: '长沙橘子洲头，湘江水面，北宋少年读书人，书卷，莲叶',
+    };
+
+    const pkg = buildGearsDeliveryPackage(story);
+
+    expect(pkg.character_assets[0].clothing).toContain('北宋士人');
+    expect(pkg.character_assets[0].clothing).not.toContain('清末民初');
+  });
+
   it('keeps modern revolutionary youth assets out of Song clothing and cleans polluted prompts', () => {
     const pkg = buildGearsDeliveryPackage(makePollutedMaoStory());
 

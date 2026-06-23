@@ -1548,6 +1548,10 @@ export type StoryAgentMvpLaneKey =
   | 'delivery_contract'
   | 'production_command';
 
+export type StoryAgentMvpProgressKey =
+  | 'content_command_layer'
+  | 'gears_end_to_end_acceptance';
+
 export interface StoryAgentMvpLane {
   key: StoryAgentMvpLaneKey;
   label: string;
@@ -1565,6 +1569,16 @@ export interface StoryAgentMvpPriorityTarget {
   status: StoryAgentMvpStatus | StoryAgentGeneratedHealthStatus;
   priority_score: number;
   primary_action?: string;
+  evidence: string[];
+}
+
+export interface StoryAgentMvpProgressSlice {
+  key: StoryAgentMvpProgressKey;
+  label: string;
+  status: StoryAgentMvpStatus;
+  percent: number;
+  detail: string;
+  blocker?: string;
   evidence: string[];
 }
 
@@ -1589,6 +1603,7 @@ export interface StoryAgentMvpStatusReport {
     warning_count: number;
   };
   lanes: StoryAgentMvpLane[];
+  progress: StoryAgentMvpProgressSlice[];
   priority_targets: StoryAgentMvpPriorityTarget[];
   next_actions: string[];
   notes: string[];
@@ -2172,6 +2187,18 @@ export interface GearsExecutionWorkerAcceptanceSmokeTargets {
   warnings: string[];
 }
 
+export interface GearsExecutionWorkerRealEndpointReadiness {
+  status: 'ready' | 'needs_env' | 'needs_smoke_target';
+  ready_to_run_acceptance: boolean;
+  missing_envs: string[];
+  configured_envs: string[];
+  smoke_target_ready: boolean;
+  story_project_id?: string;
+  series_project_id?: string;
+  recommended_command: string;
+  next_actions: string[];
+}
+
 export interface GearsExecutionWorkerAcceptanceKit {
   provider: 'gears';
   schema_version: 'gears-execution-worker-acceptance-kit/v1';
@@ -2183,6 +2210,7 @@ export interface GearsExecutionWorkerAcceptanceKit {
   env_vars: GearsExecutionWorkerAcceptanceEnvVar[];
   env_template: string;
   smoke_targets: GearsExecutionWorkerAcceptanceSmokeTargets;
+  real_endpoint_readiness: GearsExecutionWorkerRealEndpointReadiness;
   payloads: GearsExecutionWorkerAcceptancePayload[];
   commands: GearsExecutionWorkerAcceptanceCommand[];
   shell_script_filename: string;
@@ -5864,6 +5892,7 @@ export interface StoryQualityReport {
   outline_coverage_report?: OutlineCoverageReport;
   pattern_quality_report?: PatternQualityReport;
   gears_readiness_report?: GearsReadinessReport;
+  audience_text_report?: AudienceTextReport;
   repair_action_items?: QualityRepairAction[];
   repair_preview?: string;
 }
@@ -5928,10 +5957,40 @@ export interface GearsReadinessReport {
   preview: string;
 }
 
+export type AudienceTextField =
+  | 'full_text'
+  | 'theme'
+  | 'logline'
+  | 'scene_plot'
+  | 'scene_dialogue_or_narration'
+  | 'gears_script_text'
+  | 'gears_segment_prompt_hint';
+
+export interface AudienceTextIssue {
+  issue_id: string;
+  field: AudienceTextField;
+  label: string;
+  scene_id?: number;
+  segment_id?: number;
+  matched_terms: string[];
+  excerpt: string;
+  repair_hint: string;
+}
+
+export interface AudienceTextReport {
+  schema_version: 'audience-text/v1';
+  clean: boolean;
+  issue_count: number;
+  issue_items: AudienceTextIssue[];
+  polluted_terms: string[];
+  repair_prompt: string;
+  preview: string;
+}
+
 export interface QualityRepairAction {
   action_id: string;
   label: string;
-  target_report: 'outline' | 'pattern' | 'gears' | 'combined';
+  target_report: 'outline' | 'pattern' | 'gears' | 'audience' | 'combined';
   severity: 'low' | 'medium' | 'high';
   scene_ids: number[];
   prompt: string;

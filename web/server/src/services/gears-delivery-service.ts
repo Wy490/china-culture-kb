@@ -239,11 +239,11 @@ function inferAgeRange(text: string): GearsAgeRange {
 }
 
 function inferClothing(text: string): string {
-  if (/(毛泽东|韶山|湘潭|长沙|第一师范|东山|辛亥|五四|新文化|马克思|革命|近代|民国|清末|191\d|192\d)/.test(text)) {
-    return '清末民初至五四前后中国青年固定服装：朴素学生长衫或短褂布鞋，发式按近代青年处理，所有单元保持一致。';
-  }
   if (['周敦颐', '濂溪', '理学', '太极图说', '爱莲说', '宋', '北宋'].some(word => text.includes(word))) {
     return '北宋士人或少年读书人固定服装：素色交领长衫或圆领袍，布履，头发束起，所有单元保持一致。';
+  }
+  if (/(毛泽东|韶山|湘潭|第一师范|东山|辛亥|五四|新文化|马克思|革命|近代|民国|清末|191\d|192\d)/.test(text)) {
+    return '清末民初至五四前后中国青年固定服装：朴素学生长衫或短褂布鞋，发式按近代青年处理，所有单元保持一致。';
   }
   if (text.includes('唐') || text.includes('宋') || text.includes('明') || text.includes('清') || text.includes('古代')) {
     return '符合对应历史时期与身份的固定服装，所有单元保持一致。';

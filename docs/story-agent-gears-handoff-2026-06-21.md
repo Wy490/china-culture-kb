@@ -182,7 +182,7 @@ git diff --stat
 
 | 模块 | 进度 | 说明 |
 |---|---:|---|
-| Story Agent MVP | 约 95% | 生成、质量报告、修复、项目版本、前端查看已跑通；MCP 修复链路新增 `kb_generate_story_repair_prompt`，可把 repair actions 变成模型可直接产出 `repaired_story_json` 的提示包；production readiness automation 已从“展示 runbook”推进到“一键运行安全 Story Agent API 步骤”，真实执行会写入最近 20 次自动化运行账本，跨项目 portfolio 已能按优先队列批量触发安全 Story Agent 步骤并新增队列级运行审计；generated health audit 已能区分 planned / interrupted / production_gap / ready，`story-agent-mvp-status/v1` 已把生成物、故事质量、修复闭环、GEARS 交付合同和生产指挥聚合成统一状态报告。 |
+| Story Agent MVP | 指挥层约 99%；GEARS 真实验收约 95% | 生成、质量报告、修复、项目版本、前端查看已跑通；MCP 修复链路新增 `kb_generate_story_repair_prompt`，可把 repair actions 变成模型可直接产出 `repaired_story_json` 的提示包；production readiness automation 已从“展示 runbook”推进到“一键运行安全 Story Agent API 步骤”，真实执行会写入最近 20 次自动化运行账本，跨项目 portfolio 已能按优先队列批量触发安全 Story Agent 步骤并新增队列级运行审计；generated health audit 已能区分 planned / interrupted / production_gap / ready，`story-agent-mvp-status/v1` 已把生成物、故事质量、修复闭环、GEARS 交付合同和生产指挥聚合成统一状态报告。95% 是真实 GEARS v2 worker endpoint、大项目 pressure 和 evidence signoff 尚未签收的口径，不是 Story Agent 内容/生产指挥层停滞。 |
 | Production Board / Delivery Contract | 约 99% | 交付包、素材 slot、Shot Ledger、回传、重试、dashboard 已基本齐；readiness 现在显式暴露交付未落盘、镜头失败、GEARS 缺账本风险和对应 API 步骤。 |
 | GEARS Execution Integration | 约 99%（Story Agent 侧合同） | config/contract、ledger、submit、callback/status sync、系列 payload、幂等、审计字段、失败类型扩展、worker acceptance kit、证据包、generated health 前置/后置审计、checksum/integrity、Story Agent ledger seed 和 30 集压力 payload 已跑通；仍缺可达 GEARS v2 endpoint 上的真实端到端执行验收和真实大项目 worker 提交压测。 |
 | AI 漫剧系列指挥层 | 约 99% | 系列规划、账本、审片返修、重试、dashboard、GEARS 后期账本回显和多 job type 提交入口可用；系列 readiness 已进入 Web/API/UI/MCP 跨项目 portfolio，支持队列级安全自动化、系列级运行账本和 portfolio 运行审计。 |
@@ -240,6 +240,16 @@ git diff --stat
 2026-06-23 worker acceptance MVP audit 追加：`run-gears-worker-acceptance.sh` 会在 GEARS worker smoke 前后保存 `story-agent-mvp-status-before.json` / `story-agent-mvp-status-after.json`，生成 `story-agent-mvp-status-audit.json/.md`，并把 `story_agent_mvp_status_audit` 加入最终 verdict。当前 acceptance kit 为 20 条 commands，最终 verdict 为 8 个 gate，archive 必交附件为 26 个；signoff API 与 MCP signoff 工具会输出 `mvp_status_audit_passed`、MVP before/after status 和 score delta。
 
 2026-06-23 post-archive signoff snapshot 追加：`run-gears-worker-acceptance.sh` 在正常完成、缺 env、GEARS submit transport failure、submit 非 2xx 和严格审计失败前都会自动调用 `GET /api/system/gears-execution-worker-evidence-signoff?evidence_dir=...`，把 `gears-worker-evidence-signoff.json` 与 `gears-worker-evidence-signoff.md` 写入 evidence 目录。该快照发生在 archive / checksum / integrity 之后，不纳入 checksum manifest，避免签收报告递归校验自身。
+
+2026-06-23 MVP 进度口径拆分追加：Web `story-agent-mvp-status/v1` 与 MCP `mcp-story-agent-mvp-status/v1` 新增 `progress[]`，固定拆出 `content_command_layer=99%` 和 `gears_end_to_end_acceptance=95%`。项目工作台 MVP 总控同步显示“内容/生产指挥层”和“GEARS 真实验收”，用于回答“为什么还是 95%”：剩余 5% 仅指可达 GEARS v2 endpoint 的真实 submit/status/callback smoke、大项目 worker pressure 和 evidence signoff。
+
+2026-06-23 周敦颐单故事自然交付修复追加：`20260621-story-5xhl--character_story` 已新增 `20260621-story-5xhl--character_story-v10`，当前项目标题《周敦颐橘洲问莲》，`quality_passed=true`、`genre_score=100`、`quality_issue_count=0`、大纲覆盖 100、pattern score 100、GEARS readiness 100、`audience_text_report.clean=true`。v10 重新承接用户大纲“道州赴汴京、长沙橘子洲、垂钓老者、莲之品格”，并生成 5 个 scenes / 5 个 gears_segments / 15 个 GEARS delivery units，`validation_notes=0`；观众字段已扫描清除“主角目标/目标明确/选择有代价/因果链/行动具体/人物不是年表/史实边界”等检测词痕迹。该修复只更新 generated project 版本和项目元数据，不进入 `data/provinces/*.md`，不扩展真实 Seedance SDK、ffmpeg 或 final assemble。
+
+2026-06-23 audience text gate 追加：Story Agent 质量富化报告新增 `audience_text_report`（`audience-text/v1`），专门扫描观众字段和 GEARS 脚本文本中的内部质量标签；发现污染时生成 `repair-audience-text`，前端项目详情页 / StoryResult 可显示 Audience Text 卡片。该能力只做内容质量与交付指挥，不执行 GEARS 媒体实产。
+
+2026-06-23 GEARS delivery / quality gate 修复追加：`gears-delivery-service` 已修正“长沙”误触发清末民初服饰的问题，周敦颐/北宋语境优先输出北宋士人服装；`narrative-pattern-library` 已修正“行动具体”等单项紧凑信号的最小命中数，避免 Story Agent quality gate 出现不可满足假阴性。新增回归测试并通过 server 全量测试。
+
+2026-06-23 worker acceptance endpoint readiness 追加：`gears-execution-worker-acceptance-kit/v1` 新增 `real_endpoint_readiness`，签收脚本导出前即可看到 `needs_env / needs_smoke_target / ready`、缺失 env、smoke target 是否齐备、推荐命令和 next actions；单故事项目页与 AI 漫剧系列工作台同步显示 real endpoint 状态，真实 GEARS v2 endpoint 未配置时不会误判为可签收。
 
 ## 下一步建议
 

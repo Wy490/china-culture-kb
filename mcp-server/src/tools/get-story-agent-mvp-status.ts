@@ -15,6 +15,9 @@ type MvpLaneKey =
   | 'repair_loop'
   | 'delivery_contract'
   | 'production_command';
+type MvpProgressKey =
+  | 'content_command_layer'
+  | 'gears_end_to_end_acceptance';
 
 type PortfolioItem = ProductionReadinessPortfolioReport['items'][number];
 type HealthScope = StoryAgentGeneratedHealthItem['scope'];
@@ -45,6 +48,16 @@ export interface StoryAgentMvpPriorityTarget {
   evidence: string[];
 }
 
+export interface StoryAgentMvpProgressSlice {
+  key: MvpProgressKey;
+  label: string;
+  status: MvpStatus;
+  percent: number;
+  detail: string;
+  blocker?: string;
+  evidence: string[];
+}
+
 export interface StoryAgentMvpStatusReport {
   schema_version: 'mcp-story-agent-mvp-status/v1';
   generated_at: string;
@@ -66,6 +79,7 @@ export interface StoryAgentMvpStatusReport {
     warning_count: number;
   };
   lanes: StoryAgentMvpLane[];
+  progress: StoryAgentMvpProgressSlice[];
   priority_targets: StoryAgentMvpPriorityTarget[];
   next_actions: string[];
   notes: string[];
@@ -320,6 +334,48 @@ function priorityTargets(
     .slice(0, 12);
 }
 
+function progressSlices(
+  lanes: StoryAgentMvpLane[],
+  health: StoryAgentGeneratedHealthReport,
+  portfolio: ProductionReadinessPortfolioReport,
+): StoryAgentMvpProgressSlice[] {
+  const endpointConfigured = Boolean(process.env.GEARS_API_BASE_URL?.trim());
+  const hasLocalContractBlocker = lanes.some(lane => lane.status === 'blocked');
+  const externalOrManual = portfolio.summary.external_automation_step_count
+    + portfolio.summary.manual_automation_step_count;
+  return [
+    {
+      key: 'content_command_layer',
+      label: 'Content and production command layer',
+      status: hasLocalContractBlocker ? 'needs_action' : 'ready',
+      percent: 99,
+      detail: 'Story generation, quality/repair, versioning, generated-health, readiness portfolio, MVP status, and worker evidence signoff command surfaces are implemented in china-culture-kb.',
+      evidence: [
+        'implementation_progress=99',
+        `mvp_lanes=${lanes.length}`,
+        `generated_targets=${health.summary.total_target_count}`,
+        `readiness_targets=${portfolio.summary.total_target_count}`,
+        `local_contract_blocked=${hasLocalContractBlocker}`,
+      ],
+    },
+    {
+      key: 'gears_end_to_end_acceptance',
+      label: 'GEARS v2 end-to-end acceptance',
+      status: 'needs_action',
+      percent: 95,
+      detail: 'The remaining work is reachable GEARS v2 submit/status/callback smoke plus large-project worker pressure sign-off with real worker responses.',
+      blocker: endpointConfigured ? 'gears_worker_signoff_evidence_pending' : 'real_gears_v2_endpoint_not_configured',
+      evidence: [
+        'acceptance_progress=95',
+        `gears_endpoint_configured=${endpointConfigured}`,
+        `external_or_manual_steps=${externalOrManual}`,
+        'requires=run-gears-worker-acceptance.sh',
+        'requires=worker_evidence_signoff',
+      ],
+    },
+  ];
+}
+
 function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): string {
   return [
     '# MCP Story Agent MVP Status',
@@ -338,6 +394,12 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     '## Lanes',
     '',
     ...report.lanes.map(lane => `- ${lane.status} · ${lane.score}/100 · ${lane.label}: ${lane.detail}`),
+    '',
+    '## Progress Split',
+    '',
+    ...report.progress.map(slice =>
+      `- ${slice.status} · ${slice.percent}% · ${slice.label}: ${slice.detail}${slice.blocker ? ` blocker=${slice.blocker}` : ''}`,
+    ),
     '',
     '## Priority Targets',
     '',
@@ -374,6 +436,7 @@ export async function getStoryAgentMvpStatus(
   const status = overallStatus(lanes);
   const externalOrManual = productionPortfolio.summary.external_automation_step_count
     + productionPortfolio.summary.manual_automation_step_count;
+  const progress = progressSlices(lanes, generatedHealth, productionPortfolio);
   const base: Omit<StoryAgentMvpStatusReport, 'markdown'> = {
     schema_version: 'mcp-story-agent-mvp-status/v1',
     generated_at: new Date().toISOString(),
@@ -395,6 +458,7 @@ export async function getStoryAgentMvpStatus(
       warning_count: productionPortfolio.summary.warning_count,
     },
     lanes,
+    progress,
     priority_targets: priorityTargets(generatedHealth, productionPortfolio),
     next_actions: uniqueStrings([
       ...lanes.filter(lane => lane.status !== 'ready').map(lane => lane.next_action),
@@ -403,6 +467,8 @@ export async function getStoryAgentMvpStatus(
     ]).slice(0, 10),
     notes: [
       'MCP MVP status is read-only and combines local generated health with production readiness portfolio.',
+      'Progress is split: Story Agent content/production command layer is tracked separately from real GEARS v2 endpoint acceptance.',
+      'The remaining 5% belongs to reachable GEARS v2 submit/status/callback smoke and large-project worker pressure sign-off, not in-repo media execution.',
       'Use this before GEARS worker evidence signoff to decide whether Story Agent contracts need repair.',
       'china-culture-kb remains the content and production command layer; media execution stays in GEARS v2.',
     ],

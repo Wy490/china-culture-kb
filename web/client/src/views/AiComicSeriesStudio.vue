@@ -821,6 +821,24 @@
             <span v-if="gearsExecutionWorkerAcceptanceKit" class="series-studio__episode-audit series-studio__episode-audit--unknown">
               worker kit {{ gearsExecutionWorkerAcceptanceKit.commands.length }} commands
             </span>
+            <span
+              v-if="gearsExecutionWorkerAcceptanceKit"
+              :class="['series-studio__episode-audit', gearsExecutionWorkerAcceptanceKit.real_endpoint_readiness.ready_to_run_acceptance ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']"
+            >
+              real endpoint {{ gearsExecutionWorkerAcceptanceKit.real_endpoint_readiness.status }}
+            </span>
+            <span
+              v-if="gearsExecutionWorkerAcceptanceKit?.real_endpoint_readiness.missing_envs.length"
+              class="series-studio__episode-audit series-studio__episode-audit--needs_attention"
+            >
+              endpoint env 缺 {{ gearsExecutionWorkerAcceptanceKit.real_endpoint_readiness.missing_envs.length }}
+            </span>
+            <span
+              v-if="gearsExecutionWorkerAcceptanceKit && !gearsExecutionWorkerAcceptanceKit.real_endpoint_readiness.smoke_target_ready"
+              class="series-studio__episode-audit series-studio__episode-audit--needs_attention"
+            >
+              smoke target 未齐
+            </span>
             <span v-if="gearsExecutionWorkerAcceptanceKit?.smoke_targets.story_project" class="series-studio__episode-audit series-studio__episode-audit--unknown">
               smoke story {{ gearsExecutionWorkerAcceptanceKit.smoke_targets.story_project.id }}
             </span>

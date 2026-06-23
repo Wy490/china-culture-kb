@@ -164,4 +164,46 @@ describe('narrative-pattern-library', () => {
     expect(diagnostics.some(item => item.pattern_id === 'platform_short_drama_hook' && item.signal === '前3秒有局' && item.status === 'satisfied')).toBe(true);
     expect(diagnostics.some(item => item.status !== 'satisfied' && item.repair_hint.includes('补强'))).toBe(true);
   });
+
+  it('satisfies compact single-term signals when the term is present', () => {
+    const story: StoryGenerateResult = {
+      storyId: '20260623-story-hero-choice',
+      title: '雨中选择',
+      generation_type: 'character_story',
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      source_entry: '测试',
+      logline: '少年在雨中做出行动具体的选择。',
+      theme: '选择与代价',
+      full_text: '目标明确，两难成立。少年转身入雨，行动具体，并承担错过渡船的代价。',
+      scene_breakdown: [
+        {
+          scene_id: 1,
+          title: '雨中转身',
+          duration_sec: 20,
+          location: '渡口',
+          time_of_day: '傍晚',
+          dramatic_function: '关键行动',
+          plot: '少年在渡口面对两难，选择转身入雨帮助别人。',
+          key_action: '少年转身入雨',
+          characters: ['少年'],
+          visual_prompt: '渡口，雨水，少年，书袋',
+          camera_suggestion: '中景跟拍',
+          cultural_note: '测试',
+          conflict: '赶路目标与当下助人冲突',
+        },
+      ],
+      gears_segments: [],
+      gears_segments_url: '/api/stories/20260623-story-hero-choice/gears-segments',
+      cultural_constraints: [],
+      credibility_note: '测试',
+    };
+
+    const diagnostics = getNarrativePatternDiagnostics({
+      story,
+      videoType: 'character_story',
+    });
+
+    expect(diagnostics.some(item => item.pattern_id === 'hero_choice' && item.signal === '行动具体' && item.status === 'satisfied')).toBe(true);
+  });
 });

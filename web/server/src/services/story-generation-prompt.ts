@@ -371,6 +371,7 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
   lines.push(`画面：${sampleGuidance.visual_moves.join('；')}`);
   lines.push(`文案：${sampleGuidance.script_moves.join('；')}`);
   lines.push(`质量信号：${sampleGuidance.quality_signals.join('；')}`);
+  lines.push('质量信号只作为内部检查清单；不得把“主角目标/目标明确/选择有代价/因果链/行动具体/人物不是年表/史实边界/质量信号/生成优先级”等检测词原样写入 full_text、scene_breakdown 或 GEARS script_text。');
 
   lines.push('', '=== 叙事流派库 ===');
   lines.push(
@@ -389,6 +390,7 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
     'full_text 必须是完整叙事文本（不是摘要），长度与目标时长匹配。',
     'scene_breakdown 场次数量应与目标时长匹配（1分钟约2-4场，3分钟约3-6场，5分钟约5-7场）。',
     'scene_breakdown 每场 plot 要能直接支撑分镜：至少包含地点、人物动作、冲突/发现、情绪变化或一句关键旁白，不能只写问题句或资料短语。',
+    'plot、dialogue_or_narration 和 script_text 必须像观众会听到/读到的故事文本，用动作、对白和后果承载质量要求，不要出现内部质量标签或检测词。',
     'visual_prompt 只能写可生成画面的空间、时代、人物、道具、光线、构图和氛围，不能混入剧情分析、质量标签、章节标题或资料摘要。',
     'characters 只列真实出场人物/群体，不要把事件名、章节名、地点名、主题词当人物。',
   );

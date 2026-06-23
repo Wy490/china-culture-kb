@@ -44,6 +44,14 @@ GEARS v2
 - dry-run / manifest：用于审查合同、依赖和命令意图。
 - ledger / callback：记录 GEARS 或外部执行器返回的状态与产物。
 
+2026-06-23 状态口径补充：Story Agent MVP 进度已拆为两层，`content_command_layer=99%` 代表当前仓库的内容生成、质量修复、版本、readiness、MVP status 和 evidence signoff 指挥面；`gears_end_to_end_acceptance=95%` 代表真实 GEARS v2 endpoint 的 submit/status/callback smoke、大项目 worker pressure 和 evidence signoff 尚待可达 endpoint 签收。不要因为 95% 继续在 `china-culture-kb` 扩展真实 Seedance SDK、ffmpeg 或 final assemble。
+
+2026-06-23 单故事质量与 GEARS 交付修复补充：`20260621-story-5xhl--character_story` 已通过受控版本机制新增 v10《周敦颐橘洲问莲》，项目元数据为 `quality_passed=true`、`genre_score=100`、`quality_issue_count=0`，质量报告大纲覆盖 100、pattern score 100、GEARS readiness 100、`audience_text_report.clean=true`；GEARS delivery 15 units、`validation_notes=0`。v10 已把观众字段中的“主角目标/目标明确/选择有代价/因果链/行动具体/人物不是年表/史实边界”等检测词替换为自然剧情动作与片尾创作边界说明。同时修正 GEARS delivery 服饰推断，避免“长沙”让北宋周敦颐故事误出清末民初服装；修正 narrative pattern 单项信号 minHits，并让质量门识别自然叙事证据，避免检测词进入观众稿。
+
+2026-06-23 audience text gate 补充：`StoryQualityReport` 新增 `audience_text_report`，扫描 `full_text`、场景剧情/旁白、GEARS `script_text` 和 `segment_prompt_hint` 中的内部检测词；污染会转为 `repair-audience-text` 质量修复动作，并在前端显示 Audience Text 卡片。当前 v10 样本已落盘 `clean=true`。该 gate 仍属于内容与生产指挥层，不扩展真实 Seedance SDK、ffmpeg 或 final assemble。
+
+2026-06-23 worker acceptance 补充：acceptance kit 已输出 `real_endpoint_readiness`，用于在导出/运行 `run-gears-worker-acceptance.sh` 前确认真实 GEARS endpoint env 与 smoke targets 是否齐备；该字段只做签收前置判定，不执行媒体实产。
+
 ## 3. 保留在当前项目的能力
 
 继续在当前项目推进：

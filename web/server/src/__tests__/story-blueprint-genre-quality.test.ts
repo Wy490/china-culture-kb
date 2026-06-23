@@ -154,6 +154,76 @@ describe('story blueprint and genre quality', () => {
     expect(report.repair_actions).toContain('对齐样片信号：人物目标清楚');
   });
 
+  it('recognizes narrative evidence without forcing quality labels into audience text', () => {
+    const story = {
+      ...makeStory(),
+      logline: '少年周敦颐在橘子洲雨中回身相助，把求学志向落在泥水里。',
+      theme: '守心不是避开浊流，而是在浊流中仍愿伸手。',
+      full_text: [
+        '少年周敦颐把此行所求写在书袋内侧：读书不是求一张功名纸，而是要弄清人怎样立身。',
+        '橘子洲头风雨逼近，官场规则、名声、人情和催客的船夫一起压到眼前。',
+        '他若立刻登船，今晚便能赶到驿路；若回身帮人，书卷会湿，行程也会误。',
+        '他挽起衣摆踩进泥水，捞起孩童的书篮，把自己的干布包递过去。',
+        '这里仍要说清：橘洲问莲是影视化创作，不是《爱莲说》的确证成因。',
+      ].join('\n\n'),
+      scene_breakdown: [
+        {
+          scene_id: 1,
+          title: '橘洲雨起',
+          duration_sec: 30,
+          location: '长沙橘子洲头',
+          time_of_day: '傍晚',
+          dramatic_function: '钩子开场',
+          plot: '少年周敦颐把此行所求写在书袋内侧，抬头看见渡口风雨压近。',
+          key_action: '背起书袋',
+          characters: ['周敦颐'],
+          visual_prompt: '长沙橘子洲头，北宋少年，书袋，江风',
+          camera_suggestion: '中景推近',
+          cultural_note: '影视化创作',
+          conflict: '远行求学与当下风雨阻隔',
+        },
+        {
+          scene_id: 2,
+          title: '泥水回身',
+          duration_sec: 30,
+          location: '橘子洲渡口',
+          time_of_day: '雨中',
+          dramatic_function: '关键行动',
+          plot: '船夫催客上船，孩童的书篮滑进泥水；周敦颐若回身帮人，书卷会湿，行程也会误。',
+          key_action: '挽起衣摆踩进泥水捞起书篮',
+          characters: ['周敦颐', '孩童', '船夫'],
+          visual_prompt: '雨中渡口，泥水，书篮，北宋少年',
+          camera_suggestion: '手持跟拍',
+          cultural_note: '用行动表现守心',
+          conflict: '赶路与助人相冲突',
+        },
+        {
+          scene_id: 3,
+          title: '夜渡守心',
+          duration_sec: 30,
+          location: '湘江夜渡',
+          time_of_day: '夜晚',
+          dramatic_function: '高潮',
+          plot: '他在船头写下求学先求其心，鞋边泥痕还在，人却带着更清楚的心继续上路。',
+          key_action: '写下旅札后向岸边长揖',
+          characters: ['周敦颐'],
+          visual_prompt: '湘江夜渡，船头灯火，书卷，泥痕布履',
+          camera_suggestion: '远景拉开',
+          cultural_note: '这里仍要说清：橘洲问莲是影视化创作，不是《爱莲说》的确证成因。',
+          conflict: '错过行程之后确认守心',
+        },
+      ],
+    } as StoryGenerateResult;
+
+    const report = validateGenreStoryQuality({
+      story,
+      baseReport: makeBaseReport(),
+    });
+
+    expect(report.genre_score).toBeGreaterThanOrEqual(90);
+    expect(report.issues.filter(issue => issue.includes('流派质量信号偏弱'))).toEqual([]);
+  });
+
   it('flags adaptation drift when user novel characters disappear', () => {
     const source = '少年阿青在书院门口等雨停，师友误会他偷走旧书。阿青决定留下来查清真相。夜里，阿青举着油灯穿过藏书楼。';
     const story = {

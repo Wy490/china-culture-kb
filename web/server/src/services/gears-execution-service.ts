@@ -43,6 +43,7 @@ import type {
   GearsExecutionWorkerAcceptanceEnvVar,
   GearsExecutionWorkerAcceptanceKit,
   GearsExecutionWorkerAcceptancePayload,
+  GearsExecutionWorkerRealEndpointReadiness,
   GearsExecutionWorkerAcceptanceSmokeTarget,
   GearsExecutionWorkerAcceptanceSmokeTargets,
   GearsExecutionWorkerEvidenceBundle,
@@ -1874,6 +1875,8 @@ function renderGearsExecutionWorkerAcceptanceKitMarkdown(
     `- acceptance_status: ${kit.acceptance_status}`,
     `- readiness_score: ${kit.readiness_score}`,
     `- local_smoke: ${kit.local_smoke_passed_count}/${kit.local_smoke_total_count}`,
+    `- real_endpoint_status: ${kit.real_endpoint_readiness.status}`,
+    `- ready_to_run_acceptance: ${kit.real_endpoint_readiness.ready_to_run_acceptance ? 'yes' : 'no'}`,
     '',
     '## Smoke Targets',
     '',
@@ -1886,6 +1889,21 @@ function renderGearsExecutionWorkerAcceptanceKitMarkdown(
     `- series_ledger_seed_reason: ${kit.smoke_targets.series_project?.ledger_seed_reason ?? 'none'}`,
     `- warning_count: ${kit.smoke_targets.warning_count}`,
     ...(kit.smoke_targets.warnings.length ? kit.smoke_targets.warnings.map(item => `- warning: ${item}`) : []),
+    '',
+    '## Real Endpoint Readiness',
+    '',
+    `- status: ${kit.real_endpoint_readiness.status}`,
+    `- ready_to_run_acceptance: ${kit.real_endpoint_readiness.ready_to_run_acceptance ? 'yes' : 'no'}`,
+    `- missing_envs: ${kit.real_endpoint_readiness.missing_envs.join(', ') || 'none'}`,
+    `- configured_envs: ${kit.real_endpoint_readiness.configured_envs.join(', ') || 'none'}`,
+    `- smoke_target_ready: ${kit.real_endpoint_readiness.smoke_target_ready ? 'yes' : 'no'}`,
+    `- story_project_id: ${kit.real_endpoint_readiness.story_project_id ?? 'none'}`,
+    `- series_project_id: ${kit.real_endpoint_readiness.series_project_id ?? 'none'}`,
+    `- recommended_command: ${kit.real_endpoint_readiness.recommended_command}`,
+    '',
+    '### Real Endpoint Next Actions',
+    '',
+    ...kit.real_endpoint_readiness.next_actions.map(item => `- ${item}`),
     '',
     '### Story Project Candidates',
     '',
@@ -1956,6 +1974,42 @@ function renderGearsExecutionWorkerAcceptanceKitMarkdown(
   );
 
   return `${lines.join('\n').trim()}\n`;
+}
+
+function getWorkerRealEndpointReadiness(
+  smokeTargets: GearsExecutionWorkerAcceptanceSmokeTargets,
+): GearsExecutionWorkerRealEndpointReadiness {
+  const requiredEnvNames = [
+    'GEARS_API_BASE_URL',
+    'GEARS_CALLBACK_SECRET',
+    'GEARS_CALLBACK_BASE_URL',
+  ];
+  const configuredEnvNames = requiredEnvNames.filter(envFlag);
+  const missingEnvNames = requiredEnvNames.filter(name => !envFlag(name));
+  const smokeTargetReady = Boolean(smokeTargets.story_project && smokeTargets.series_project);
+  const status: GearsExecutionWorkerRealEndpointReadiness['status'] = missingEnvNames.length > 0
+    ? 'needs_env'
+    : smokeTargetReady
+      ? 'ready'
+      : 'needs_smoke_target';
+  return {
+    status,
+    ready_to_run_acceptance: status === 'ready',
+    missing_envs: missingEnvNames,
+    configured_envs: configuredEnvNames,
+    smoke_target_ready: smokeTargetReady,
+    ...(smokeTargets.story_project ? { story_project_id: smokeTargets.story_project.id } : {}),
+    ...(smokeTargets.series_project ? { series_project_id: smokeTargets.series_project.id } : {}),
+    recommended_command: 'GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER=1 GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE=1 bash run-gears-worker-acceptance.sh',
+    next_actions: [
+      ...missingEnvNames.map(name => `Configure ${name} before running real GEARS v2 worker acceptance.`),
+      ...(!smokeTargets.story_project ? ['Prepare or select a Story Agent story project smoke target.'] : []),
+      ...(!smokeTargets.series_project ? ['Prepare or select an AI comic series smoke target.'] : []),
+      ...(status === 'ready'
+        ? ['Export run-gears-worker-acceptance.sh and run it with ledger seed plus large pressure enabled.']
+        : ['Do not treat the GEARS v2 end-to-end acceptance slice as signed off until a real evidence directory passes signoff.']),
+    ],
+  };
 }
 
 function acceptanceKitPayload(
@@ -5025,6 +5079,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
   const envTemplate = envVars
     .map(item => `export ${item.name}="${item.value_placeholder}"${item.required ? '' : ' # optional'}`)
     .join('\n');
+  const realEndpointReadiness = getWorkerRealEndpointReadiness(smokeTargets);
   const submitPayload = payloads.find(payload => payload.id === 'submit_smoke');
   const projectPayload = payloads.find(payload => payload.id === 'project_callback');
   const seriesPayload = payloads.find(payload => payload.id === 'series_callback');
@@ -5294,6 +5349,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
     env_vars: envVars,
     env_template: envTemplate,
     smoke_targets: smokeTargets,
+    real_endpoint_readiness: realEndpointReadiness,
     payloads,
     commands,
     shell_script_filename: 'run-gears-worker-acceptance.sh',

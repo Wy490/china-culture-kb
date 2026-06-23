@@ -6,6 +6,7 @@ import type {
   StoryAgentGeneratedHealthScope,
   StoryAgentMvpLane,
   StoryAgentMvpPriorityTarget,
+  StoryAgentMvpProgressSlice,
   StoryAgentMvpStatus,
   StoryAgentMvpStatusReport,
 } from '@shared/types.js';
@@ -305,6 +306,48 @@ function nextActions(
   ]).slice(0, 10);
 }
 
+function progressSlices(
+  lanes: StoryAgentMvpLane[],
+  health: StoryAgentGeneratedHealthReport,
+  portfolio: ProductionReadinessPortfolioReport,
+): StoryAgentMvpProgressSlice[] {
+  const endpointConfigured = Boolean(process.env.GEARS_API_BASE_URL?.trim());
+  const hasLocalContractBlocker = lanes.some(lane => lane.status === 'blocked');
+  const externalOrManual = portfolio.summary.external_automation_step_count
+    + portfolio.summary.manual_automation_step_count;
+  return [
+    {
+      key: 'content_command_layer',
+      label: 'Content and production command layer',
+      status: hasLocalContractBlocker ? 'needs_action' : 'ready',
+      percent: 99,
+      detail: 'Story generation, quality/repair, versioning, generated-health, readiness portfolio, MVP status, and worker evidence signoff command surfaces are implemented in china-culture-kb.',
+      evidence: [
+        'implementation_progress=99',
+        `mvp_lanes=${lanes.length}`,
+        `generated_targets=${health.summary.total_target_count}`,
+        `readiness_targets=${portfolio.summary.total_target_count}`,
+        `local_contract_blocked=${hasLocalContractBlocker}`,
+      ],
+    },
+    {
+      key: 'gears_end_to_end_acceptance',
+      label: 'GEARS v2 end-to-end acceptance',
+      status: 'needs_action',
+      percent: 95,
+      detail: 'The remaining work is reachable GEARS v2 submit/status/callback smoke plus large-project worker pressure sign-off with real worker responses.',
+      blocker: endpointConfigured ? 'gears_worker_signoff_evidence_pending' : 'real_gears_v2_endpoint_not_configured',
+      evidence: [
+        'acceptance_progress=95',
+        `gears_endpoint_configured=${endpointConfigured}`,
+        `external_or_manual_steps=${externalOrManual}`,
+        'requires=run-gears-worker-acceptance.sh',
+        'requires=worker_evidence_signoff',
+      ],
+    },
+  ];
+}
+
 function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): string {
   return [
     '# Story Agent MVP Status',
@@ -331,6 +374,12 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     '',
     ...report.lanes.map(lane =>
       `- ${lane.status} · ${lane.score}/100 · ${lane.label}: ${lane.detail}`,
+    ),
+    '',
+    '## Progress Split',
+    '',
+    ...report.progress.map(slice =>
+      `- ${slice.status} · ${slice.percent}% · ${slice.label}: ${slice.detail}${slice.blocker ? ` blocker=${slice.blocker}` : ''}`,
     ),
     '',
     '## Priority Targets',
@@ -371,6 +420,7 @@ export async function getStoryAgentMvpStatus(
   const status = overallStatus(lanes);
   const targets = priorityTargets(generatedHealth, productionPortfolio);
   const actions = nextActions(lanes, generatedHealth, productionPortfolio);
+  const progress = progressSlices(lanes, generatedHealth, productionPortfolio);
   const externalOrManual = productionPortfolio.summary.external_automation_step_count
     + productionPortfolio.summary.manual_automation_step_count;
   const base: Omit<StoryAgentMvpStatusReport, 'markdown'> = {
@@ -394,10 +444,13 @@ export async function getStoryAgentMvpStatus(
       warning_count: productionPortfolio.summary.warning_count,
     },
     lanes,
+    progress,
     priority_targets: targets,
     next_actions: actions,
     notes: [
       'Read-only MVP status: combines generated artifact health with production readiness portfolio state.',
+      'Progress is split: Story Agent content/production command layer is tracked separately from real GEARS v2 endpoint acceptance.',
+      'The remaining 5% belongs to reachable GEARS v2 submit/status/callback smoke and large-project worker pressure sign-off, not in-repo media execution.',
       'china-culture-kb remains the content and production command layer; image, video, subtitle and final assembly execution stay in GEARS v2.',
       'Use this report to decide whether to repair Story Agent contracts, run safe readiness automation, or proceed to GEARS worker evidence sign-off.',
     ],

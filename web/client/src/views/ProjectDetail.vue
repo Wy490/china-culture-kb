@@ -268,6 +268,20 @@
               <span v-if="gearsExecutionWorkerAcceptanceKit">
                 worker kit {{ gearsExecutionWorkerAcceptanceKit.commands.length }} commands
               </span>
+              <span
+                v-if="gearsExecutionWorkerAcceptanceKit"
+                :class="{ 'project-detail-page__seedance-provider-chip--ready': gearsExecutionWorkerAcceptanceKit.real_endpoint_readiness.ready_to_run_acceptance }"
+              >
+                real endpoint {{ gearsExecutionWorkerAcceptanceKit.real_endpoint_readiness.status }}
+              </span>
+              <span v-if="gearsExecutionWorkerAcceptanceKit?.real_endpoint_readiness.missing_envs.length">
+                endpoint env 缺 {{ gearsExecutionWorkerAcceptanceKit.real_endpoint_readiness.missing_envs.length }}
+              </span>
+              <span
+                v-if="gearsExecutionWorkerAcceptanceKit && !gearsExecutionWorkerAcceptanceKit.real_endpoint_readiness.smoke_target_ready"
+              >
+                smoke target 未齐
+              </span>
               <span v-if="gearsExecutionWorkerAcceptanceKit?.smoke_targets.story_project">
                 smoke story {{ gearsExecutionWorkerAcceptanceKit.smoke_targets.story_project.id }}
               </span>
@@ -1552,6 +1566,14 @@ const qualityReportCards = computed(() => {
       label: 'GEARS Readiness',
       score: quality.gears_readiness_report.readiness_score,
       preview: quality.gears_readiness_report.preview,
+    })
+  }
+  if (quality.audience_text_report) {
+    cards.push({
+      key: 'audience',
+      label: 'Audience Text',
+      score: quality.audience_text_report.clean ? 100 : Math.max(0, 100 - quality.audience_text_report.issue_count * 12),
+      preview: quality.audience_text_report.preview,
     })
   }
   return cards

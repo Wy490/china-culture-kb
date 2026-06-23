@@ -740,6 +740,18 @@ describe('System API', () => {
         'delivery_contract',
         'production_command',
       ]));
+      expect(res.body.data.progress).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          key: 'content_command_layer',
+          percent: 99,
+          status: expect.stringMatching(/ready|needs_action|blocked/),
+        }),
+        expect.objectContaining({
+          key: 'gears_end_to_end_acceptance',
+          percent: 95,
+          blocker: expect.any(String),
+        }),
+      ]));
       expect(res.body.data.priority_targets).toEqual(expect.arrayContaining([
         expect.objectContaining({
           scope: 'story_project',
@@ -748,7 +760,9 @@ describe('System API', () => {
         }),
       ]));
       expect(res.body.data.notes.join('\n')).toContain('content and production command layer');
+      expect(res.body.data.notes.join('\n')).toContain('remaining 5%');
       expect(res.body.data.markdown).toContain('# Story Agent MVP Status');
+      expect(res.body.data.markdown).toContain('Progress Split');
       expect(res.body.data.markdown).toContain('Delivery contract');
     });
   });
@@ -1459,8 +1473,20 @@ describe('System API', () => {
           local_smoke_passed_count: 5,
           local_smoke_total_count: 5,
           required_envs: expect.arrayContaining(['GEARS_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
+          real_endpoint_readiness: expect.objectContaining({
+            status: 'needs_env',
+            ready_to_run_acceptance: false,
+            missing_envs: expect.arrayContaining([
+              'GEARS_API_BASE_URL',
+              'GEARS_CALLBACK_SECRET',
+              'GEARS_CALLBACK_BASE_URL',
+            ]),
+            smoke_target_ready: expect.any(Boolean),
+            recommended_command: expect.stringContaining('run-gears-worker-acceptance.sh'),
+          }),
         });
         expect(res.body.data.env_template).toContain('GEARS_API_BASE_URL');
+        expect(res.body.data.real_endpoint_readiness.next_actions.join('\n')).toContain('GEARS_API_BASE_URL');
         expect(res.body.data.env_vars).toEqual(expect.arrayContaining([
           expect.objectContaining({
             name: 'STORY_AGENT_BASE_URL',
@@ -1628,6 +1654,8 @@ describe('System API', () => {
           'Final worker evidence signoff snapshot is saved as gears-worker-evidence-signoff.json/.md after archive integrity is evaluated.',
         ]));
         expect(res.body.data.shell_script_filename).toBe('run-gears-worker-acceptance.sh');
+        expect(res.body.data.markdown).toContain('Real Endpoint Readiness');
+        expect(res.body.data.markdown).toContain('real_endpoint_status: needs_env');
         expect(res.body.data.shell_script).toContain('#!/usr/bin/env bash');
         expect(res.body.data.shell_script).toContain('GEARS_EVIDENCE_DIR');
         expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_AUTO_EXTRACT_JOB_ID');

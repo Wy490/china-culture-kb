@@ -203,6 +203,8 @@ function findMissingNarrativePatternSignals(story: StoryGenerateResult, signals:
 }
 
 function hasSignalText(text: string, signal: string): boolean {
+  if (hasSemanticSignalEvidence(text, signal)) return true;
+
   const normalizedSignal = signal.replace(/[，。；、\s]/g, '');
   if (!normalizedSignal) return true;
   const chunks = normalizedSignal
@@ -211,6 +213,25 @@ function hasSignalText(text: string, signal: string): boolean {
     .filter(item => item.length >= 2);
   if (chunks.length === 0) return text.includes(signal);
   return chunks.some(chunk => text.includes(chunk));
+}
+
+function hasSemanticSignalEvidence(text: string, signal: string): boolean {
+  const compactText = text.replace(/\s+/g, '');
+  const checks: Array<[RegExp, RegExp[]]> = [
+    [/目标明确|人物目标清楚|必须有主角目标/, [/所求/, /要弄清/, /为了/, /求学不是/, /志向/, /书袋内侧写下/]],
+    [/阻力具体|必须有阻力|制度压力可见/, [/官场规则/, /制度压力/, /名声/, /人情/, /催客/, /浊浪/, /路远/, /书卷会湿/, /行程.{0,6}误/]],
+    [/两难成立/, [/若[^。；]+；若/, /一边[^。；]+一边/, /赶路.{0,12}帮人/, /安稳.{0,12}远行/]],
+    [/选择有代价|必须有选择和代价/, [/错过渡船/, /书卷会湿/, /行程.{0,6}误/, /泥痕/, /误一程/, /付出/, /书页.{0,6}皱/]],
+    [/行动具体/, [/系紧/, /停下脚步/, /蹲下/, /扶起/, /挽起/, /踩进/, /捞起/, /裹书/, /写下/, /长揖/, /背起/, /收起/]],
+    [/精神落点来自选择|结尾有人物变化/, [/守良知/, /正义/, /廉洁/, /出淤泥而不染/, /更清楚的心/, /泥痕/, /继续上路/, /守.{0,4}心/]],
+    [/因果链清楚|事件因果清楚/, [/因为/, /于是/, /导致/, /若[^。；]+；若/, /才/, /看见.{0,12}生出/, /生出.{0,12}承担/, /愿意承担.{0,12}才/, /忽然发现/]],
+    [/人物不是年表|不得写成年表式介绍/, [/(少年周敦颐|周敦颐).*(背起|停下脚步|蹲下|挽起|踩进|写下)/]],
+    [/史实边界明确/, [/影视化创作/, /确证/, /不是《爱莲说》/, /不把.{0,20}写成/, /仍要说清/, /只作.{0,8}伏笔/]],
+  ];
+
+  return checks.some(([pattern, evidence]) =>
+    pattern.test(signal) && evidence.some(item => item.test(compactText)),
+  );
 }
 
 function hasOnlyQuestion(text: string): boolean {

@@ -213,6 +213,8 @@ describe('story-generation-prompt', () => {
       expect(pkg.system_prompt).toContain('样片参考类型');
       expect(pkg.user_prompt).toContain('=== 样片化类型规则 ===');
       expect(pkg.user_prompt).toContain('质量信号');
+      expect(pkg.user_prompt).toContain('质量信号只作为内部检查清单');
+      expect(pkg.user_prompt).toContain('不要出现内部质量标签或检测词');
       expect(pkg.system_prompt).toContain(item.expectedSystem);
       expect(pkg.output_contract.should_respect.length).toBeGreaterThan(8);
       for (const field of item.expectedFields) {
