@@ -157,8 +157,8 @@ git diff --stat
 - 已补最终 GEARS worker acceptance integrity 复核：acceptance shell 现在生成 `gears-worker-acceptance-integrity.json/.md`，重新计算 checksum manifest 中每个证据文件的 `sha256` 与 byte length，检查必交附件是否都有 checksum record；默认严格模式会同时要求 verdict `acceptance_passed=true`、archive `signoff_ready=true` 和 integrity `integrity_passed=true`。
 - 已用新版导出的 `run-gears-worker-acceptance.sh` 跑 v12 integrity smoke：证据目录 `/private/tmp/gears-worker-evidence-integrity-v12`；`gears-worker-acceptance-integrity.json` 为 `status=passed`、`integrity_passed=true`、`archive_signoff_ready=true`、`required_checksum_records=18/18`、`mismatch_count=0`、`missing_file_count=0`、`sha256_mismatch_count=0`、`recommended_actions=[]`；verdict 6 个 gate 全过，大项目 pressure 120/120 source echo，worker/callback audit 均无阻断。真实 GEARS v2 endpoint 仍未配置。
 - 已补 Story Agent generated health audit：`GET /api/system/story-agent-generated-health` 只读扫描 generated projects / series projects / stories / versions，按 `ready / planned / production_gap / interrupted` 标注生成资产健康状态，帮助在跑真实 GEARS v2 smoke 前区分“只是计划中”和“项目引用断裂/合同缺失”。项目工作台新增“生成项目体检”卡片；不新增真实 Seedance SDK、ffmpeg 或媒体实产。
-- 已补 Story Agent MVP status：`GET /api/system/story-agent-mvp-status` 只读聚合 generated health 与 production readiness portfolio，输出 `story-agent-mvp-status/v1`、五条 MVP lane、priority targets、next actions、源报告和 Markdown；用于判断 Story Agent 主线是否可进入 GEARS worker evidence signoff，或还需先修复生成物、质量报告、GEARS 交付合同和生产指挥队列。
-- 项目工作台已接入 Story Agent MVP 状态卡：展示总分、generated/readiness 比例、五条 lane、优先目标和下一步动作，并支持刷新与 Markdown/JSON 导出。
+- 已补 Story Agent MVP status：`GET /api/system/story-agent-mvp-status` 只读聚合 generated health、generated governance 与 production readiness portfolio，输出 `story-agent-mvp-status/v1`、六条 MVP lane、priority targets、next actions、源报告和 Markdown；用于判断 Story Agent 主线是否可进入 GEARS worker evidence signoff，或还需先修复生成物、质量报告、GEARS 交付合同和生产指挥队列。
+- 项目工作台已接入 Story Agent MVP 状态卡：展示总分、治理/generated/readiness 比例、六条 lane、优先目标和下一步动作，并支持刷新与 Markdown/JSON 导出。
 - 最新验证已通过：
   - `cd web/server && npm test -- src/__tests__/api.test.ts -t "story-agent-mvp-status"`
   - `cd web/server && npm run lint`
@@ -182,11 +182,12 @@ git diff --stat
 
 | 模块 | 进度 | 说明 |
 |---|---:|---|
-| Story Agent MVP | 指挥层约 99%；GEARS 真实验收约 95% | 生成、质量报告、修复、项目版本、前端查看已跑通；MCP 修复链路新增 `kb_generate_story_repair_prompt`，可把 repair actions 变成模型可直接产出 `repaired_story_json` 的提示包；production readiness automation 已从“展示 runbook”推进到“一键运行安全 Story Agent API 步骤”，真实执行会写入最近 20 次自动化运行账本，跨项目 portfolio 已能按优先队列批量触发安全 Story Agent 步骤并新增队列级运行审计；generated health audit 已能区分 planned / interrupted / production_gap / ready，`story-agent-mvp-status/v1` 已把生成物、故事质量、修复闭环、GEARS 交付合同和生产指挥聚合成统一状态报告。95% 是真实 GEARS v2 worker endpoint、大项目 pressure 和 evidence signoff 尚未签收的口径，不是 Story Agent 内容/生产指挥层停滞。 |
-| Production Board / Delivery Contract | 约 99% | 交付包、素材 slot、Shot Ledger、回传、重试、dashboard 已基本齐；readiness 现在显式暴露交付未落盘、镜头失败、GEARS 缺账本风险和对应 API 步骤。 |
+| Story Agent MVP | 内容/生产指挥层 100%；GEARS 真实验收约 95% | 生成、质量报告、修复、项目版本、前端查看已跑通；MCP 修复链路新增 `kb_generate_story_repair_prompt`，可把 repair actions 变成模型可直接产出 `repaired_story_json` 的提示包；production readiness automation 已从“展示 runbook”推进到“一键运行安全 Story Agent API 步骤”，真实执行会写入最近 20 次自动化运行账本，跨项目 portfolio 已能按优先队列批量触发安全 Story Agent 步骤并新增队列级运行审计；generated health/governance audit 已能区分 planned / interrupted / production_gap / ready 并输出治理 manifest，`story-agent-mvp-status/v1` 已把生成物、Generated 治理、MCP Story Agent 闭环、故事质量、修复闭环、GEARS 交付合同和生产指挥聚合成统一状态报告，并在 `progress[]` 显示 `generated_governance=100%`、`mcp_story_agent_loop=100%`、`content_command_layer=100%` 与 `production_delivery_contract=100%`。95% 是真实 GEARS v2 worker endpoint、大项目 pressure 和 evidence signoff 尚未签收的口径；generated/readiness 待治理项仍由 lanes / priority targets 表示，不是 Story Agent 内容/生产指挥层停滞。 |
+| Generated 治理模块 | 100% | `story-agent-generated-health/v1`、`story-agent-generated-governance-plan/v1`、`story-agent-generated-governance-run/v1`、MCP governance tools、项目工作台卡片、导出、dry-run manifest、`project_ids` 精确筛选和 no-write safety gate 已完成。100% 是治理命令面完成，不代表历史 generated 存量已被自动改写。 |
+| Production Board / Delivery Contract | 100% | 命令/合同面已收口：交付包、素材 slot、Production Board export、Shot Ledger、GEARS Job Ledger、回传、重试、dashboard、readiness/portfolio automation、审片返修包、重试计划和 evidence signoff 均已进入统一状态；历史 generated 缺导出仍由 `delivery_contract` lane 和 Generated 治理计划跟踪。 |
 | GEARS Execution Integration | 约 99%（Story Agent 侧合同） | config/contract、ledger、submit、callback/status sync、系列 payload、幂等、审计字段、失败类型扩展、worker acceptance kit、证据包、generated health 前置/后置审计、checksum/integrity、Story Agent ledger seed 和 30 集压力 payload 已跑通；仍缺可达 GEARS v2 endpoint 上的真实端到端执行验收和真实大项目 worker 提交压测。 |
 | AI 漫剧系列指挥层 | 约 99% | 系列规划、账本、审片返修、重试、dashboard、GEARS 后期账本回显和多 job type 提交入口可用；系列 readiness 已进入 Web/API/UI/MCP 跨项目 portfolio，支持队列级安全自动化、系列级运行账本和 portfolio 运行审计。 |
-| MCP Story Agent 闭环 | 约 99% | 只读生成包、质量校验、repair dry-run、修复提示包、受控写入已有；`kb_generate_story_repair_prompt` 可生成模型修复提示、保护字段、完整 JSON 输出合同和验证/写入工作流；`kb_get_story_agent_generated_health` 可读取本地 generated health，`kb_get_story_agent_mvp_status` 可读取本地 MVP 总控 lane，`kb_get_production_readiness_portfolio` 可读取跨项目优先队列和 portfolio 运行账本，`kb_run_production_readiness_portfolio_automation` 可桥接 Web portfolio runner 批量触发安全自动化并回传队列级审计结果。 |
+| MCP Story Agent 闭环 | 100% | 20 个 Story Agent MCP 工具已覆盖知识库上下文、蓝图、脚本/故事入口、项目上下文、质量校验、GEARS/Seedance 只读交付、repair prompt、受控版本写入、generated health/governance、production readiness、portfolio automation、MVP status 和 GEARS evidence signoff；`story-agent-mvp-status/v1` 与 MCP `mcp-story-agent-mvp-status/v1` 输出 `mcp_story_agent_loop=100%`。 |
 | 可商用制作中台 | 约 99% | 已从分散 dashboard 推进到单故事/系列/portfolio 三层 readiness 中台，并开放 MCP 与 Web/API/UI 自动化 runbook、安全执行入口、MCP bridge、运行审计账本、跨项目优先队列、批量安全 runner、队列级运行审计、模型修复提示包和生成项目健康审计；实产闭环仍依赖 GEARS v2 真实 worker 对接。 |
 
 2026-06-22 更新：新增 `GET /api/projects/:projectId/production-readiness` 与 `GET /api/story-outline/ai-comic-series-projects/:seriesProjectId/production-readiness`，以及项目详情页和 AI 漫剧系列工作台的 readiness 面板。新增测试覆盖 service 与 route 层。GEARS 真实执行仍不进入当前仓库。
@@ -229,9 +230,9 @@ git diff --stat
 
 2026-06-23 acceptance kit 签收闭环追加：worker acceptance kit 新增 `read_worker_evidence_signoff` 命令；导出的 `run-gears-worker-acceptance.sh` 会在正常完成、缺 env、submit transport failure、submit 非 2xx 和严格审计失败前打印 Web signoff URL、latest signoff URL 与 MCP signoff 工具调用提示。evidence bundle checklist/next actions 同步要求附加 signoff Markdown / JSON，便于真实 GEARS v2 smoke 后立刻形成签收/修复判定。
 
-2026-06-23 Story Agent MVP status 追加：新增 `GET /api/system/story-agent-mvp-status` 与前端 API client `getStoryAgentMvpStatus()`。报告只读组合 generated health 和 production readiness portfolio，返回五条 lane、priority targets、next actions、源报告和 Markdown；它是 Story Agent MVP 主线的总控状态，不执行 GEARS worker、Seedance SDK、ffmpeg 或最终媒体合成。
+2026-06-23 Story Agent MVP status 追加：新增 `GET /api/system/story-agent-mvp-status` 与前端 API client `getStoryAgentMvpStatus()`。报告只读组合 generated health、generated governance 和 production readiness portfolio，返回六条 lane、priority targets、next actions、源报告和 Markdown；它是 Story Agent MVP 主线的总控状态，不执行 GEARS worker、Seedance SDK、ffmpeg 或最终媒体合成。
 
-2026-06-23 MCP MVP status 追加：新增 `kb_get_story_agent_mvp_status`，输出 `mcp-story-agent-mvp-status/v1`，本地只读组合 generated health 与 production readiness portfolio；无 Web dev server 时也可以查看同类五条 MVP lane、priority targets、next actions 和可选 Markdown。
+2026-06-23 MCP MVP status 追加：新增 `kb_get_story_agent_mvp_status`，输出 `mcp-story-agent-mvp-status/v1`，本地只读组合 generated health、generated governance 与 production readiness portfolio；无 Web dev server 时也可以查看同类六条 MVP lane、priority targets、next actions 和可选 Markdown。
 
 2026-06-23 项目工作台 MVP 总控追加：`Projects.vue` 已在生产指挥总览和生成项目体检之前显示 Story Agent MVP 状态卡，支持刷新、Markdown/JSON 导出，并把 priority targets 直接链接到故事项目或 AI 漫剧系列工作台。
 
@@ -241,7 +242,7 @@ git diff --stat
 
 2026-06-23 post-archive signoff snapshot 追加：`run-gears-worker-acceptance.sh` 在正常完成、缺 env、GEARS submit transport failure、submit 非 2xx 和严格审计失败前都会自动调用 `GET /api/system/gears-execution-worker-evidence-signoff?evidence_dir=...`，把 `gears-worker-evidence-signoff.json` 与 `gears-worker-evidence-signoff.md` 写入 evidence 目录。该快照发生在 archive / checksum / integrity 之后，不纳入 checksum manifest，避免签收报告递归校验自身。
 
-2026-06-23 MVP 进度口径拆分追加：Web `story-agent-mvp-status/v1` 与 MCP `mcp-story-agent-mvp-status/v1` 新增 `progress[]`，固定拆出 `content_command_layer=99%` 和 `gears_end_to_end_acceptance=95%`。项目工作台 MVP 总控同步显示“内容/生产指挥层”和“GEARS 真实验收”，用于回答“为什么还是 95%”：剩余 5% 仅指可达 GEARS v2 endpoint 的真实 submit/status/callback smoke、大项目 worker pressure 和 evidence signoff。
+2026-06-23 MVP 进度口径拆分追加：Web `story-agent-mvp-status/v1` 与 MCP `mcp-story-agent-mvp-status/v1` 新增 `progress[]`，固定拆出 `generated_governance=100%`、`mcp_story_agent_loop=100%`、`content_command_layer=100%`、`production_delivery_contract=100%` 和 `gears_end_to_end_acceptance=95%`。项目工作台 MVP 总控同步显示“Generated 治理”“MCP Story Agent”“内容/生产指挥层”“生产板/交付合同”和“GEARS 真实验收”，用于回答“为什么还是 95%”：剩余 5% 仅指可达 GEARS v2 endpoint 的真实 submit/status/callback smoke、大项目 worker pressure 和 evidence signoff。
 
 2026-06-23 周敦颐单故事自然交付修复追加：`20260621-story-5xhl--character_story` 已新增 `20260621-story-5xhl--character_story-v10`，当前项目标题《周敦颐橘洲问莲》，`quality_passed=true`、`genre_score=100`、`quality_issue_count=0`、大纲覆盖 100、pattern score 100、GEARS readiness 100、`audience_text_report.clean=true`。v10 重新承接用户大纲“道州赴汴京、长沙橘子洲、垂钓老者、莲之品格”，并生成 5 个 scenes / 5 个 gears_segments / 15 个 GEARS delivery units，`validation_notes=0`；观众字段已扫描清除“主角目标/目标明确/选择有代价/因果链/行动具体/人物不是年表/史实边界”等检测词痕迹。该修复只更新 generated project 版本和项目元数据，不进入 `data/provinces/*.md`，不扩展真实 Seedance SDK、ffmpeg 或 final assemble。
 
@@ -256,6 +257,14 @@ git diff --stat
 2026-06-23 generated governance plan 追加：新增 Web `GET /api/system/story-agent-generated-governance-plan`、MCP `kb_get_story_agent_generated_governance_plan` 和项目工作台“Generated 治理计划”卡片，按 relink、archive/rebuild、首集生成、合同修复、故事引用修复和 ready signoff 候选分桶。当前真实计划为 99 个 relink、827 个 archive/rebuild、4 个单故事 ref 修复、1 个 ready signoff 候选；该计划只读，不移动、不删除、不批量修改 generated 文件。
 
 2026-06-23 generated governance dry-run 追加：新增 Web `POST /api/system/story-agent-generated-governance-plan/run` 与 MCP `kb_run_story_agent_generated_governance`，输出只读 manifest，包括 action key、目标、planned operation、expected file changes 与 operator review，并支持 `project_ids` 精确筛选。项目工作台可生成并导出 dry-run 清单；`dry_run=false` 当前会返回 blocked，不执行写入。
+
+2026-06-23 Generated 治理 100% 追加：Web/MCP MVP status 新增 `generated_governance` lane 与 progress slice，`generated_governance=100%` 在项目工作台显示为“治理 100%”，并将 `generated_governance_plan` 随 MVP status 一起返回。MCP governance runner 已对齐 Web runner，按完整 generated health target groups 支持 `project_ids` 精确筛选；该模块继续保持 no-write，真实清理仍需人工按 manifest 执行。
+
+2026-06-23 MCP Story Agent 闭环 100% 追加：Web/MCP MVP status 新增 `mcp_story_agent_loop` progress slice，summary 新增 `mcp_story_agent_tool_count=20` 和 `mcp_story_agent_loop_percent=100`，项目工作台显示“MCP 100%”。证据明确 `safe_write=kb_update_project_version`，repair apply 必须提供 `repaired_story_json`，媒体执行仍归 GEARS v2。
+
+2026-06-23 内容/生产指挥层 100% 追加：Web/MCP MVP status 将 `content_command_layer` progress slice 收口为 `percent=100`、`status=ready`，summary 新增 `content_command_layer_percent=100`；evidence 保留 `local_target_health_tracked_by=lanes` 与 `real_media_execution=gears_v2`，避免把历史 generated/readiness 待治理项误解成已经自动修完。
+
+2026-06-23 Production Board / Delivery Contract 100% 追加：Web/MCP MVP status 新增 `production_delivery_contract` progress slice，summary 新增 `production_delivery_contract_percent=100` 和 `production_delivery_contract_surface_count=12`；evidence 覆盖 GEARS delivery package、Production Board export、Seedance prompt package、scene/segment contracts、Shot/GEARS ledgers、readiness/portfolio automation、review/retry plan 与 worker evidence signoff，并明确历史 generated 缺交付继续由 `delivery_contract` lane 治理。
 
 ## 下一步建议
 

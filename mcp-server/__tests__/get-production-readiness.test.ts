@@ -14,6 +14,7 @@ const tmpDir = path.join(os.tmpdir(), 'kb-production-readiness-test-' + Date.now
 const dataRoot = path.join(tmpDir, 'data');
 const projectId = '20260622-story-ready--ai_comic_drama';
 const seriesProjectId = '20260622-series-ready';
+const secondaryRelinkSeriesId = '20260622-series-relink-secondary';
 
 beforeEach(() => {
   process.env.KB_ROOT = dataRoot;
@@ -239,6 +240,40 @@ beforeEach(() => {
         notes: ['persisted'],
       },
       items: [],
+    },
+  }, null, 2));
+
+  const secondaryRelinkRoot = path.join(tmpDir, 'web', 'generated', 'ai-comic-series-projects', secondaryRelinkSeriesId);
+  fs.mkdirSync(secondaryRelinkRoot, { recursive: true });
+  fs.writeFileSync(path.join(secondaryRelinkRoot, 'project.json'), JSON.stringify({
+    project: {
+      series_project_id: secondaryRelinkSeriesId,
+      title: '第二个重连候选',
+      status: 'draft',
+      created_at: '2026-06-22T01:30:00.000Z',
+      updated_at: '2026-06-22T01:30:00.000Z',
+      episode_count: 1,
+      generated_episode_count: 1,
+    },
+    plan: {
+      series_title: '第二个重连候选',
+      episode_count: 1,
+      episodes: [
+        { episode_no: 1, title: '第一集' },
+      ],
+    },
+    generated_episode_story_ids: {
+      1: 'missing-secondary-story',
+    },
+    gears_job_ledger: {
+      schema_version: 'gears-job-ledger/v1',
+      items: [{
+        gears_job_id: 'gears-secondary-1',
+        job_type: 'seedance_video',
+        source_unit_id: 'episode-1:shot-1',
+        status: 'ready',
+        artifact_urls: ['https://example.com/secondary.mp4'],
+      }],
     },
   }, null, 2));
 
@@ -520,6 +555,21 @@ describe('kb_get_production_readiness', () => {
       }),
     ]));
     expect(result.markdown).toContain('MCP Story Agent Generated Governance Run');
+
+    const targetedBeyondFirstSample = await runStoryAgentGeneratedGovernance({
+      dry_run: true,
+      action_keys: ['restore_or_relink_series_story_refs'],
+      project_ids: [secondaryRelinkSeriesId],
+      max_targets: 1,
+    });
+    expect(targetedBeyondFirstSample.status).toBe('needs_action');
+    expect(targetedBeyondFirstSample.manifest.items).toEqual([
+      expect.objectContaining({
+        action_key: 'restore_or_relink_series_story_refs',
+        project_id: secondaryRelinkSeriesId,
+        status: 'planned',
+      }),
+    ]);
 
     const blocked = await runStoryAgentGeneratedGovernance({
       dry_run: false,

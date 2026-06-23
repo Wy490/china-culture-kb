@@ -555,7 +555,7 @@ server.tool(
 // kb_get_story_agent_mvp_status — read Story Agent MVP command status
 server.tool(
   'kb_get_story_agent_mvp_status',
-  '读取本地 Story Agent MVP 状态总控。只读组合 generated health 与 production readiness portfolio，输出生成物、质量、修复、交付合同和生产指挥 lane。',
+  '读取本地 Story Agent MVP 状态总控。只读组合 generated health、generated governance 与 production readiness portfolio，输出生成物、Generated 治理、质量、修复、交付合同和生产指挥 lane。',
   {
     generated_limit: z.number().int().positive().max(100).optional().describe('generated health 最多返回多少个目标，默认 100'),
     portfolio_limit: z.number().int().positive().max(100).optional().describe('production readiness portfolio 最多返回多少个目标，默认 100'),

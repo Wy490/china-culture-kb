@@ -72,7 +72,10 @@
           <p>
             {{ productionStatusLabel(storyAgentMvpStatus.status) }}
             · 健康分 {{ storyAgentMvpStatus.score }}/100
+            · 治理 {{ storyAgentMvpProgressPercent('generated_governance') }}%
+            · MCP {{ storyAgentMvpProgressPercent('mcp_story_agent_loop') }}%
             · 指挥层 {{ storyAgentMvpProgressPercent('content_command_layer') }}%
+            · 交付 {{ storyAgentMvpProgressPercent('production_delivery_contract') }}%
             · GEARS 验收 {{ storyAgentMvpProgressPercent('gears_end_to_end_acceptance') }}%
             · generated {{ storyAgentMvpStatus.summary.generated_ready_count }}/{{ storyAgentMvpStatus.summary.generated_target_count }}
             · readiness {{ storyAgentMvpStatus.summary.readiness_ready_count }}/{{ storyAgentMvpStatus.summary.readiness_target_count }}
@@ -883,6 +886,7 @@ function generatedGovernanceActionLabel(key: StoryAgentGeneratedGovernanceAction
 function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number]['key']): string {
   const map: Record<StoryAgentMvpStatusReport['lanes'][number]['key'], string> = {
     generated_artifacts: '生成物',
+    generated_governance: 'Generated 治理',
     story_quality: '故事质量',
     repair_loop: '修复闭环',
     delivery_contract: 'GEARS 交付合同',
@@ -893,7 +897,10 @@ function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number][
 
 function storyAgentMvpProgressLabel(key: StoryAgentMvpStatusReport['progress'][number]['key']): string {
   const map: Record<StoryAgentMvpStatusReport['progress'][number]['key'], string> = {
+    generated_governance: 'Generated 治理',
+    mcp_story_agent_loop: 'MCP Story Agent',
     content_command_layer: '内容/生产指挥层',
+    production_delivery_contract: '生产板/交付合同',
     gears_end_to_end_acceptance: 'GEARS 真实验收',
   }
   return map[key]
@@ -1588,6 +1595,18 @@ onMounted(async () => {
 
 .projects-page__mvp-progress-card--gears_end_to_end_acceptance {
   border-left-color: #f0b34f;
+}
+
+.projects-page__mvp-progress-card--generated_governance {
+  border-left-color: #43a782;
+}
+
+.projects-page__mvp-progress-card--mcp_story_agent_loop {
+  border-left-color: #5f7ed8;
+}
+
+.projects-page__mvp-progress-card--production_delivery_contract {
+  border-left-color: #b56bb7;
 }
 
 .projects-page__mvp-progress-head {

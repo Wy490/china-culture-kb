@@ -369,12 +369,30 @@ export async function runStoryAgentGeneratedGovernance(
   const requestedActionKeys = input.action_keys?.length ? input.action_keys : DEFAULT_RUN_ACTIONS;
   const requestedProjectIds = input.project_ids?.length ? new Set(input.project_ids) : undefined;
   const plan = await getStoryAgentGeneratedGovernancePlan({ limit: maxTargets, include_markdown: false });
-  const selectedActions = plan.actions.filter(action => requestedActionKeys.includes(action.action_key));
+  const health = await getStoryAgentGeneratedHealth({ limit: 100, include_markdown: false });
+  const seriesItems = health.items.filter(item => item.scope === 'ai_comic_series_project');
+  const storyItems = health.items.filter(item => item.scope === 'story_project');
+  const targetGroups: Record<GovernanceActionKey, GovernanceTarget[]> = {
+    restore_or_relink_series_story_refs: seriesItems.filter(item => item.relink_candidate).map(toTarget),
+    archive_or_rebuild_series_fixtures: seriesItems
+      .filter(item => item.status === 'interrupted' && !item.relink_candidate)
+      .map(toTarget),
+    generate_first_series_episode: seriesItems.filter(item => item.status === 'planned').map(toTarget),
+    repair_series_command_contracts: seriesItems.filter(item => item.status === 'production_gap').map(toTarget),
+    repair_story_project_refs: storyItems.filter(item => item.status === 'interrupted').map(toTarget),
+    promote_ready_targets_for_gears_signoff: health.items.filter(item => item.status === 'ready').map(toTarget),
+  };
+  const selectedActions = requestedActionKeys
+    .map(actionKey => ({
+      action_key: actionKey,
+      targets: targetGroups[actionKey] ?? [],
+    }))
+    .filter(action => action.targets.length > 0);
   const items: GovernanceRunTarget[] = [];
   for (const action of selectedActions) {
     const targets = requestedProjectIds
-      ? action.sample_targets.filter(target => requestedProjectIds.has(target.project_id))
-      : action.sample_targets;
+      ? action.targets.filter(target => requestedProjectIds.has(target.project_id))
+      : action.targets;
     for (const target of targets) {
       if (items.length >= maxTargets) break;
       items.push({
@@ -406,8 +424,8 @@ export async function runStoryAgentGeneratedGovernance(
     blocked_target_count: items.filter(item => item.status === 'blocked').length,
     skipped_target_count: Math.max(0, selectedActions.reduce((sum, action) => {
       const targets = requestedProjectIds
-        ? action.sample_targets.filter(target => requestedProjectIds.has(target.project_id))
-        : action.sample_targets;
+        ? action.targets.filter(target => requestedProjectIds.has(target.project_id))
+        : action.targets;
       return sum + targets.length;
     }, 0) - items.length),
     requested_action_keys: requestedActionKeys,

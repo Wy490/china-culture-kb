@@ -1655,13 +1655,17 @@ export type StoryAgentMvpStatus = ProductionReadinessStatus;
 
 export type StoryAgentMvpLaneKey =
   | 'generated_artifacts'
+  | 'generated_governance'
   | 'story_quality'
   | 'repair_loop'
   | 'delivery_contract'
   | 'production_command';
 
 export type StoryAgentMvpProgressKey =
+  | 'generated_governance'
+  | 'mcp_story_agent_loop'
   | 'content_command_layer'
+  | 'production_delivery_contract'
   | 'gears_end_to_end_acceptance';
 
 export interface StoryAgentMvpLane {
@@ -1713,6 +1717,14 @@ export interface StoryAgentMvpStatusReport {
     external_or_manual_step_count: number;
     blocker_count: number;
     warning_count: number;
+    generated_governance_action_count: number;
+    generated_governance_p0_p1_action_count: number;
+    generated_governance_ready_signoff_candidate_count: number;
+    mcp_story_agent_tool_count: number;
+    mcp_story_agent_loop_percent: number;
+    content_command_layer_percent: number;
+    production_delivery_contract_percent: number;
+    production_delivery_contract_surface_count: number;
   };
   lanes: StoryAgentMvpLane[];
   progress: StoryAgentMvpProgressSlice[];
@@ -1720,6 +1732,7 @@ export interface StoryAgentMvpStatusReport {
   next_actions: string[];
   notes: string[];
   generated_health: StoryAgentGeneratedHealthReport;
+  generated_governance_plan: StoryAgentGeneratedGovernancePlan;
   production_portfolio: ProductionReadinessPortfolioReport;
   markdown: string;
 }

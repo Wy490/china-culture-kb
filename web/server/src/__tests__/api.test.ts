@@ -960,9 +960,20 @@ describe('System API', () => {
           readiness_target_count: expect.any(Number),
           ready_automation_step_count: expect.any(Number),
           external_or_manual_step_count: expect.any(Number),
+          generated_governance_action_count: expect.any(Number),
+          generated_governance_p0_p1_action_count: expect.any(Number),
+          generated_governance_ready_signoff_candidate_count: expect.any(Number),
+          mcp_story_agent_tool_count: expect.any(Number),
+          mcp_story_agent_loop_percent: 100,
+          content_command_layer_percent: 100,
+          production_delivery_contract_percent: 100,
+          production_delivery_contract_surface_count: 12,
         }),
         generated_health: {
           schema_version: 'story-agent-generated-health/v1',
+        },
+        generated_governance_plan: {
+          schema_version: 'story-agent-generated-governance-plan/v1',
         },
         production_portfolio: {
           schema_version: 'production-readiness-portfolio/v1',
@@ -972,6 +983,7 @@ describe('System API', () => {
       expect(res.body.data.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
         'generated_artifacts',
+        'generated_governance',
         'story_quality',
         'repair_loop',
         'delivery_contract',
@@ -979,14 +991,55 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress).toEqual(expect.arrayContaining([
         expect.objectContaining({
+          key: 'generated_governance',
+          percent: 100,
+          status: 'ready',
+        }),
+        expect.objectContaining({
+          key: 'mcp_story_agent_loop',
+          percent: 100,
+          status: 'ready',
+        }),
+        expect.objectContaining({
           key: 'content_command_layer',
-          percent: 99,
-          status: expect.stringMatching(/ready|needs_action|blocked/),
+          percent: 100,
+          status: 'ready',
+        }),
+        expect.objectContaining({
+          key: 'production_delivery_contract',
+          percent: 100,
+          status: 'ready',
         }),
         expect.objectContaining({
           key: 'gears_end_to_end_acceptance',
           percent: 95,
           blocker: expect.any(String),
+        }),
+      ]));
+      expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
+        'implementation_progress=100',
+        expect.stringContaining('tool_count=20'),
+        expect.stringContaining('kb_generate_story_repair_prompt'),
+        'media_execution=gears_v2',
+      ]));
+      expect(res.body.data.progress.find((slice: any) => slice.key === 'content_command_layer')?.evidence).toEqual(expect.arrayContaining([
+        'implementation_progress=100',
+        'local_target_health_tracked_by=lanes',
+        'real_media_execution=gears_v2',
+      ]));
+      expect(res.body.data.progress.find((slice: any) => slice.key === 'production_delivery_contract')?.evidence).toEqual(expect.arrayContaining([
+        'implementation_progress=100',
+        'surface_count=12',
+        expect.stringContaining('production_board_export'),
+        expect.stringContaining('worker_evidence_signoff'),
+        'local_target_health_tracked_by=delivery_contract_lane',
+        'real_media_execution=gears_v2',
+      ]));
+      expect(res.body.data.lanes).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          key: 'generated_governance',
+          score: 100,
+          status: 'ready',
         }),
       ]));
       expect(res.body.data.priority_targets).toEqual(expect.arrayContaining([
@@ -996,10 +1049,15 @@ describe('System API', () => {
           priority_score: expect.any(Number),
         }),
       ]));
+      expect(res.body.data.notes.join('\n')).toContain('Generated governance command surface is complete at 100%');
+      expect(res.body.data.notes.join('\n')).toContain('MCP Story Agent loop is complete at 100%');
+      expect(res.body.data.notes.join('\n')).toContain('Content and production command layer is complete at 100%');
+      expect(res.body.data.notes.join('\n')).toContain('Production Board / Delivery Contract command surface is complete at 100%');
       expect(res.body.data.notes.join('\n')).toContain('content and production command layer');
       expect(res.body.data.notes.join('\n')).toContain('remaining 5%');
       expect(res.body.data.markdown).toContain('# Story Agent MVP Status');
       expect(res.body.data.markdown).toContain('Progress Split');
+      expect(res.body.data.markdown).toContain('production delivery contract: 100%');
       expect(res.body.data.markdown).toContain('Delivery contract');
     });
   });
