@@ -1022,6 +1022,21 @@ export const ProductionReadinessPortfolioRunRequestSchema = z.object({
   stop_on_error: z.boolean().optional().default(true),
 });
 
+export const StoryAgentGeneratedGovernanceActionKeySchema = z.enum([
+  'restore_or_relink_series_story_refs',
+  'archive_or_rebuild_series_fixtures',
+  'generate_first_series_episode',
+  'repair_series_command_contracts',
+  'repair_story_project_refs',
+  'promote_ready_targets_for_gears_signoff',
+]);
+
+export const StoryAgentGeneratedGovernanceRunRequestSchema = z.object({
+  dry_run: z.boolean().optional().default(true),
+  action_keys: z.array(StoryAgentGeneratedGovernanceActionKeySchema).max(6).optional(),
+  max_targets: z.number().int().min(1).max(100).optional().default(20),
+});
+
 export const GearsDeliveryUpdateRequestSchema = z.object({
   markdown: z.string().min(1, 'markdown cannot be empty').max(120000, 'markdown is too long'),
 });

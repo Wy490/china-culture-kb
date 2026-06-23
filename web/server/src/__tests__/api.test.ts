@@ -881,6 +881,51 @@ describe('System API', () => {
       expect(governanceRes.body.data.markdown).toContain('restore_or_relink_series_story_refs');
       expect(governanceRes.body.data.notes.join('\n')).toContain('Read-only governance plan');
 
+      const governanceRunRes = await request
+        .post('/api/system/story-agent-generated-governance-plan/run')
+        .send({
+          dry_run: true,
+          action_keys: ['restore_or_relink_series_story_refs'],
+          max_targets: 1,
+        });
+      expect(governanceRunRes.status).toBe(200);
+      expectSuccess(governanceRunRes.body);
+      expect(governanceRunRes.body.data).toMatchObject({
+        schema_version: 'story-agent-generated-governance-run/v1',
+        dry_run: true,
+        status: 'needs_action',
+        selected_action_count: 1,
+        selected_target_count: 1,
+        planned_target_count: 1,
+        blocked_target_count: 0,
+        manifest: {
+          schema_version: 'story-agent-generated-governance-run-manifest/v1',
+          dry_run: true,
+          items: [expect.objectContaining({
+            action_key: 'restore_or_relink_series_story_refs',
+            project_id: expect.any(String),
+            status: 'planned',
+            expected_file_changes: expect.arrayContaining([
+              expect.stringContaining('web/generated/ai-comic-series-projects/'),
+            ]),
+          })],
+        },
+      });
+      expect(governanceRunRes.body.data.markdown).toContain('Story Agent Generated Governance Run');
+
+      const blockedRunRes = await request
+        .post('/api/system/story-agent-generated-governance-plan/run')
+        .send({
+          dry_run: false,
+          action_keys: ['restore_or_relink_series_story_refs'],
+          max_targets: 1,
+        });
+      expect(blockedRunRes.status).toBe(200);
+      expectSuccess(blockedRunRes.body);
+      expect(blockedRunRes.body.data.status).toBe('blocked');
+      expect(blockedRunRes.body.data.blocked_target_count).toBe(1);
+      expect(blockedRunRes.body.data.notes.join('\n')).toContain('intentionally blocked');
+
       await rm(interruptedStoryDir, { recursive: true, force: true });
       await rm(plannedSeriesDir, { recursive: true, force: true });
       await rm(gapSeriesDir, { recursive: true, force: true });

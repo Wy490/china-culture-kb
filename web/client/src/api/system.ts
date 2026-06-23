@@ -21,6 +21,8 @@ import type {
   SeedanceProviderAdapterContractInfo,
   SeedanceProviderAdapterConfigInfo,
   StoryAgentGeneratedGovernancePlan,
+  StoryAgentGeneratedGovernanceRunRequest,
+  StoryAgentGeneratedGovernanceRunResult,
   StoryAgentGeneratedHealthReport,
   StoryAgentMvpStatusReport,
   TypeInfo,
@@ -70,6 +72,10 @@ export function getStoryAgentGeneratedGovernancePlan(options: { limit?: number }
   if (typeof options.limit === 'number') params.set('limit', String(options.limit))
   const suffix = params.toString() ? `?${params.toString()}` : ''
   return apiGet<StoryAgentGeneratedGovernancePlan>(`/system/story-agent-generated-governance-plan${suffix}`)
+}
+
+export function runStoryAgentGeneratedGovernance(req: StoryAgentGeneratedGovernanceRunRequest = { dry_run: true }) {
+  return apiPost<StoryAgentGeneratedGovernanceRunResult>('/system/story-agent-generated-governance-plan/run', req)
 }
 
 export function getStoryAgentMvpStatus(options: {

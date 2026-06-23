@@ -1,6 +1,10 @@
 import type {
   StoryAgentGeneratedGovernanceAction,
+  StoryAgentGeneratedGovernanceActionKey,
   StoryAgentGeneratedGovernancePlan,
+  StoryAgentGeneratedGovernanceRunRequest,
+  StoryAgentGeneratedGovernanceRunResult,
+  StoryAgentGeneratedGovernanceRunTarget,
   StoryAgentGeneratedGovernanceTarget,
   StoryAgentGeneratedHealthItem,
 } from '@shared/types.js';
@@ -10,7 +14,18 @@ interface GeneratedGovernanceOptions {
   limit?: number;
 }
 
+const DEFAULT_RUN_ACTIONS: StoryAgentGeneratedGovernanceActionKey[] = [
+  'restore_or_relink_series_story_refs',
+  'archive_or_rebuild_series_fixtures',
+  'repair_story_project_refs',
+];
+
 function boundedSampleLimit(limit: number | undefined): number {
+  if (!Number.isFinite(limit)) return 20;
+  return Math.max(1, Math.min(Math.floor(limit ?? 20), 100));
+}
+
+function boundedRunTargetLimit(limit: number | undefined): number {
   if (!Number.isFinite(limit)) return 20;
   return Math.max(1, Math.min(Math.floor(limit ?? 20), 100));
 }
@@ -82,6 +97,94 @@ function renderMarkdown(plan: Omit<StoryAgentGeneratedGovernancePlan, 'markdown'
     '## Notes',
     '',
     ...plan.notes.map(note => `- ${note}`),
+  ].join('\n').trim() + '\n';
+}
+
+function operationForAction(actionKey: StoryAgentGeneratedGovernanceActionKey, target: StoryAgentGeneratedGovernanceTarget): string {
+  switch (actionKey) {
+    case 'restore_or_relink_series_story_refs':
+      return `Restore missing generated story JSON for ${target.project_id}, or update generated_episode_story_ids to existing story IDs.`;
+    case 'archive_or_rebuild_series_fixtures':
+      return `Mark ${target.project_id} outside the GEARS signoff portfolio or rebuild it with current Story Agent contracts.`;
+    case 'generate_first_series_episode':
+      return `Generate the first episode story for ${target.project_id}, then rerun generated health and production readiness.`;
+    case 'repair_series_command_contracts':
+      return `Regenerate missing Story Agent command contracts for ${target.project_id}; media execution remains in GEARS v2.`;
+    case 'repair_story_project_refs':
+      return `Restore current story/version references for ${target.project_id}, or create a new project version from an existing generated story.`;
+    case 'promote_ready_targets_for_gears_signoff':
+      return `Use ${target.project_id} as a GEARS worker acceptance smoke candidate after endpoint env is configured.`;
+  }
+}
+
+function expectedFileChanges(actionKey: StoryAgentGeneratedGovernanceActionKey, target: StoryAgentGeneratedGovernanceTarget): string[] {
+  switch (actionKey) {
+    case 'restore_or_relink_series_story_refs':
+      return [
+        `web/generated/ai-comic-series-projects/${target.project_id}/project.json`,
+        'web/generated/stories/**/<missing-story-id>.json',
+      ];
+    case 'archive_or_rebuild_series_fixtures':
+      return [
+        `web/generated/ai-comic-series-projects/${target.project_id}/project.json`,
+      ];
+    case 'generate_first_series_episode':
+      return [
+        `web/generated/ai-comic-series-projects/${target.project_id}/project.json`,
+        'web/generated/stories/ai_comic_drama/<new-story-id>.json',
+      ];
+    case 'repair_series_command_contracts':
+      return [
+        `web/generated/ai-comic-series-projects/${target.project_id}/project.json`,
+      ];
+    case 'repair_story_project_refs':
+      return [
+        `web/generated/projects/${target.project_id}/project.json`,
+        `web/generated/projects/${target.project_id}/versions/<version-id>.json`,
+      ];
+    case 'promote_ready_targets_for_gears_signoff':
+      return [];
+  }
+}
+
+function requiresOperatorReview(actionKey: StoryAgentGeneratedGovernanceActionKey): boolean {
+  return actionKey === 'restore_or_relink_series_story_refs'
+    || actionKey === 'archive_or_rebuild_series_fixtures'
+    || actionKey === 'promote_ready_targets_for_gears_signoff';
+}
+
+function renderRunMarkdown(result: Omit<StoryAgentGeneratedGovernanceRunResult, 'markdown'>): string {
+  return [
+    '# Story Agent Generated Governance Run',
+    '',
+    `> schema_version: ${result.schema_version}`,
+    `> generated_at: ${result.generated_at}`,
+    `> status: ${result.status}`,
+    `> dry_run: ${result.dry_run}`,
+    '',
+    '## Summary',
+    '',
+    `- selected_action_count: ${result.selected_action_count}`,
+    `- selected_target_count: ${result.selected_target_count}`,
+    `- planned_target_count: ${result.planned_target_count}`,
+    `- blocked_target_count: ${result.blocked_target_count}`,
+    `- skipped_target_count: ${result.skipped_target_count}`,
+    `- manifest_id: ${result.manifest.manifest_id}`,
+    '',
+    '## Manifest',
+    '',
+    ...(result.manifest.items.length
+      ? result.manifest.items.slice(0, 50).map(item => [
+        `- ${item.status} · ${item.action_key} · ${item.project_id}`,
+        `  - operation: ${item.planned_operation}`,
+        `  - expected_files: ${item.expected_file_changes.join(', ') || 'none'}`,
+        item.reason ? `  - reason: ${item.reason}` : '',
+      ].filter(Boolean).join('\n'))
+      : ['- none']),
+    '',
+    '## Notes',
+    '',
+    ...result.notes.map(note => `- ${note}`),
   ].join('\n').trim() + '\n';
 }
 
@@ -191,5 +294,79 @@ export async function getStoryAgentGeneratedGovernancePlan(
   return {
     ...plan,
     markdown: renderMarkdown(plan),
+  };
+}
+
+export async function runStoryAgentGeneratedGovernance(
+  request: StoryAgentGeneratedGovernanceRunRequest = {},
+): Promise<StoryAgentGeneratedGovernanceRunResult> {
+  const maxTargets = boundedRunTargetLimit(request.max_targets);
+  const requestedActionKeys = request.action_keys?.length ? request.action_keys : DEFAULT_RUN_ACTIONS;
+  const dryRun = request.dry_run ?? true;
+  const plan = await getStoryAgentGeneratedGovernancePlan({ limit: maxTargets });
+  const selectedActions = plan.actions.filter(action => requestedActionKeys.includes(action.action_key));
+  const manifestItems: StoryAgentGeneratedGovernanceRunTarget[] = [];
+
+  for (const action of selectedActions) {
+    for (const target of action.sample_targets) {
+      if (manifestItems.length >= maxTargets) break;
+      manifestItems.push({
+        action_key: action.action_key,
+        scope: target.scope,
+        project_id: target.project_id,
+        title: target.title,
+        status: dryRun ? 'planned' : 'blocked',
+        planned_operation: operationForAction(action.action_key, target),
+        expected_file_changes: expectedFileChanges(action.action_key, target),
+        requires_operator_review: requiresOperatorReview(action.action_key),
+        evidence: target.evidence,
+        reason: dryRun
+          ? 'dry_run=true: manifest only, no generated files are changed.'
+          : 'dry_run=false is blocked in this version; review the manifest before enabling controlled writes.',
+      });
+    }
+    if (manifestItems.length >= maxTargets) break;
+  }
+
+  const plannedTargetCount = manifestItems.filter(item => item.status === 'planned').length;
+  const blockedTargetCount = manifestItems.filter(item => item.status === 'blocked').length;
+  const skippedTargetCount = selectedActions.reduce((sum, action) => sum + Math.max(0, action.target_count - action.sample_targets.length), 0);
+  const generatedAt = new Date().toISOString();
+  const result: Omit<StoryAgentGeneratedGovernanceRunResult, 'markdown'> = {
+    schema_version: 'story-agent-generated-governance-run/v1',
+    generated_at: generatedAt,
+    status: !dryRun
+      ? 'blocked'
+      : manifestItems.length > 0
+        ? 'needs_action'
+        : 'ready',
+    dry_run: dryRun,
+    selected_action_count: selectedActions.length,
+    selected_target_count: manifestItems.length,
+    planned_target_count: plannedTargetCount,
+    blocked_target_count: blockedTargetCount,
+    skipped_target_count: skippedTargetCount,
+    requested_action_keys: requestedActionKeys,
+    manifest: {
+      schema_version: 'story-agent-generated-governance-run-manifest/v1',
+      manifest_id: `generated-governance-${generatedAt.replace(/[:.]/g, '-')}`,
+      generated_at: generatedAt,
+      dry_run: dryRun,
+      items: manifestItems,
+    },
+    before_plan_summary: plan.summary,
+    notes: [
+      'This run is a governance manifest surface; no generated files are modified.',
+      dryRun
+        ? 'dry_run=true: review the manifest and expected file changes before any controlled write workflow.'
+        : 'dry_run=false was requested but is intentionally blocked until an explicit controlled write workflow is implemented.',
+      'Do not use archive/rebuild candidates as GEARS signoff evidence until they are relinked, regenerated, or explicitly excluded.',
+      'Media execution remains in GEARS v2; this manifest only concerns Story Agent generated artifacts and command contracts.',
+    ],
+  };
+
+  return {
+    ...result,
+    markdown: renderRunMarkdown(result),
   };
 }

@@ -56,6 +56,8 @@ GEARS v2
 
 2026-06-23 generated governance plan 补充：新增 `story-agent-generated-governance-plan/v1` Web API、MCP `kb_get_story_agent_generated_governance_plan` 和项目工作台只读卡片，按 relink、archive/rebuild、planned-first-episode、contract repair、story ref repair、ready signoff 分桶 generated 目标。该计划只给治理顺序与样本清单，不自动移动、删除或改写 generated 文件；真实 GEARS endpoint 签收前应先用它排除 generated 历史样本噪声。
 
+2026-06-23 generated governance dry-run 补充：新增 `story-agent-generated-governance-run/v1` manifest，Web 与 MCP 都可生成只读 dry-run 清单，列出预期文件变化和人工复核要求；`dry_run=false` 在当前版本会返回 blocked。该能力用于真实 GEARS signoff 前审阅 generated relink/archive 范围，不做媒体执行，也不直接修改 generated 历史样本。
+
 ## 3. 保留在当前项目的能力
 
 继续在当前项目推进：
@@ -270,6 +272,7 @@ P0 已完成首轮可运行闭环：
 - 已补 Story Agent generated health audit：`GET /api/system/story-agent-generated-health` 只读扫描 generated story project、AI 漫剧系列 project、generated stories 和 versions，输出 `story-agent-generated-health/v1`，按 `ready / planned / production_gap / interrupted` 区分生成资产状态；项目工作台新增“生成项目体检”卡片。该能力只做 GEARS smoke 前置诊断，不执行图片、视频、字幕或最终装配。
 - generated health 已补系列治理 scoped summary：`series_ready_count` / `series_planned_only_count` / `series_production_gap_count` / `series_interrupted_count` / `series_governance_attention_count` / `series_missing_story_ref_project_count` / `series_contract_evidence_count` / `series_relink_candidate_count` 会把 AI 漫剧历史样本、断链项目和已有合同证据的 relink 候选从真实 GEARS signoff 目标中显式分离，帮助判断应先归档样本、补交付合同、修 episode refs，还是继续跑 worker acceptance。
 - generated governance plan 已补只读分桶：`restore_or_relink_series_story_refs`、`archive_or_rebuild_series_fixtures`、`generate_first_series_episode`、`repair_series_command_contracts`、`repair_story_project_refs`、`promote_ready_targets_for_gears_signoff`。当前真实计划为 99 个 relink、827 个 archive/rebuild、4 个单故事 ref 修复、1 个 ready signoff 候选。
+- generated governance dry-run 已补 manifest：Web `POST /api/system/story-agent-generated-governance-plan/run` 与 MCP `kb_run_story_agent_generated_governance` 输出预期操作、目标和 expected file changes；当前不允许非 dry-run 写入。
 - 已把 generated health 接入 GEARS worker acceptance / evidence 链：acceptance report 新增 `story_agent_generated_health` 检查和 `generated_health_*` 统计；worker script 会在真实 GEARS submit 前后落盘 health audit，并生成 `story-agent-generated-health-audit.json/.md` 进入最终 verdict gate；evidence bundle 新增 `story-agent-generated-health-report.md`，用于把 smoke target 的 planned/interrupted/production_gap 风险并入签收证据。
 - 验证已通过：server lint、server build、client lint、client build、`project-service.test.ts`、`outline-service.test.ts`、`gears-execution-service.test.ts`、`api.test.ts`。
 

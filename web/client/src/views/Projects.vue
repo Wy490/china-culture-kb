@@ -247,6 +247,9 @@
           <button class="projects-page__muted-btn" @click="exportGeneratedGovernanceJson">
             导出 JSON
           </button>
+          <button class="projects-page__muted-btn" :disabled="runningGeneratedGovernance" @click="runGeneratedGovernanceDryRun">
+            {{ runningGeneratedGovernance ? '生成中…' : '生成 dry-run 清单' }}
+          </button>
           <button class="projects-page__muted-btn" :disabled="loadingGeneratedGovernance" @click="loadGeneratedGovernancePlan">
             {{ loadingGeneratedGovernance ? '刷新中…' : '刷新计划' }}
           </button>
@@ -259,6 +262,18 @@
         <span>planned {{ generatedGovernancePlan.summary.series_planned_only_count }}</span>
         <span>补合同 {{ generatedGovernancePlan.summary.series_contract_repair_candidate_count }}</span>
         <span>ready {{ generatedGovernancePlan.summary.ready_target_count }}</span>
+      </div>
+      <div v-if="generatedGovernanceRun" class="projects-page__portfolio-actions">
+        <span>manifest {{ generatedGovernanceRun.manifest.manifest_id }}</span>
+        <span>planned {{ generatedGovernanceRun.planned_target_count }}</span>
+        <span>blocked {{ generatedGovernanceRun.blocked_target_count }}</span>
+        <span>skipped {{ generatedGovernanceRun.skipped_target_count }}</span>
+        <button class="projects-page__muted-btn" :disabled="!generatedGovernanceRun.markdown" @click="exportGeneratedGovernanceRunMarkdown">
+          导出清单 MD
+        </button>
+        <button class="projects-page__muted-btn" @click="exportGeneratedGovernanceRunJson">
+          导出清单 JSON
+        </button>
       </div>
       <div class="projects-page__portfolio-grid">
         <article
@@ -645,7 +660,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { deleteProject, deleteProjects, listProjects, retainRecentProjects } from '@/api/projects'
-import { getProductionReadinessPortfolio, getStoryAgentGeneratedGovernancePlan, getStoryAgentGeneratedHealth, getStoryAgentMvpStatus, runProductionReadinessPortfolioAutomation } from '@/api/system'
+import { getProductionReadinessPortfolio, getStoryAgentGeneratedGovernancePlan, getStoryAgentGeneratedHealth, getStoryAgentMvpStatus, runProductionReadinessPortfolioAutomation, runStoryAgentGeneratedGovernance } from '@/api/system'
 import {
   archiveAiComicSeriesProject,
   assembleAiComicSeriesSeedanceCut,
@@ -669,6 +684,7 @@ import type {
   ProductionReadinessStatus,
   StoryAgentGeneratedGovernanceActionKey,
   StoryAgentGeneratedGovernancePlan,
+  StoryAgentGeneratedGovernanceRunResult,
   StoryAgentGeneratedHealthItem,
   StoryAgentGeneratedHealthReport,
   StoryAgentGeneratedHealthStatus,
@@ -685,11 +701,13 @@ const seriesProjects = ref<AiComicSeriesProjectMeta[]>([])
 const storyAgentMvpStatus = ref<StoryAgentMvpStatusReport | null>(null)
 const productionPortfolio = ref<ProductionReadinessPortfolioReport | null>(null)
 const generatedGovernancePlan = ref<StoryAgentGeneratedGovernancePlan | null>(null)
+const generatedGovernanceRun = ref<StoryAgentGeneratedGovernanceRunResult | null>(null)
 const generatedHealth = ref<StoryAgentGeneratedHealthReport | null>(null)
 const loading = ref(false)
 const loadingMvpStatus = ref(false)
 const loadingPortfolio = ref(false)
 const loadingGeneratedGovernance = ref(false)
+const runningGeneratedGovernance = ref(false)
 const loadingGeneratedHealth = ref(false)
 const runningPortfolioAutomation = ref(false)
 const error = ref('')
@@ -1214,6 +1232,24 @@ function exportGeneratedGovernanceJson() {
   )
 }
 
+function exportGeneratedGovernanceRunMarkdown() {
+  if (!generatedGovernanceRun.value?.markdown) return
+  downloadText(
+    'story-agent-generated-governance-run.md',
+    generatedGovernanceRun.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+}
+
+function exportGeneratedGovernanceRunJson() {
+  if (!generatedGovernanceRun.value) return
+  downloadText(
+    'story-agent-generated-governance-run.json',
+    JSON.stringify(generatedGovernanceRun.value, null, 2),
+    'application/json;charset=utf-8',
+  )
+}
+
 function toggleSelectFiltered() {
   const filteredIds = filteredProjects.value.map(project => project.project_id)
   if (allFilteredSelected.value) {
@@ -1357,6 +1393,26 @@ async function loadGeneratedGovernancePlan() {
     error.value = res.error?.message ?? '刷新 generated 治理计划失败'
   }
   loadingGeneratedGovernance.value = false
+}
+
+async function runGeneratedGovernanceDryRun() {
+  runningGeneratedGovernance.value = true
+  const res = await runStoryAgentGeneratedGovernance({
+    dry_run: true,
+    max_targets: 20,
+    action_keys: [
+      'restore_or_relink_series_story_refs',
+      'archive_or_rebuild_series_fixtures',
+      'repair_story_project_refs',
+    ],
+  })
+  if (res.ok && res.data) {
+    generatedGovernanceRun.value = res.data
+    projectMessage.value = `Generated dry-run 清单已生成：planned ${res.data.planned_target_count}，blocked ${res.data.blocked_target_count}`
+  } else {
+    error.value = res.error?.message ?? '生成 generated dry-run 清单失败'
+  }
+  runningGeneratedGovernance.value = false
 }
 
 async function loadGeneratedHealth() {

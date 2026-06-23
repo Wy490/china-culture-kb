@@ -4,7 +4,10 @@ import path from 'node:path';
 import os from 'node:os';
 import { getProductionReadiness } from '../src/tools/get-production-readiness.js';
 import { getProductionReadinessPortfolio } from '../src/tools/get-production-readiness-portfolio.js';
-import { getStoryAgentGeneratedGovernancePlan } from '../src/tools/get-generated-governance-plan.js';
+import {
+  getStoryAgentGeneratedGovernancePlan,
+  runStoryAgentGeneratedGovernance,
+} from '../src/tools/get-generated-governance-plan.js';
 import { getStoryAgentGeneratedHealth } from '../src/tools/get-generated-health.js';
 
 const tmpDir = path.join(os.tmpdir(), 'kb-production-readiness-test-' + Date.now());
@@ -491,5 +494,39 @@ describe('kb_get_production_readiness', () => {
     ]));
     expect(result.markdown).toContain('MCP Story Agent Generated Governance Plan');
     expect(result.notes.join('\n')).toContain('read-only');
+  });
+
+  it('returns a generated governance dry-run manifest', async () => {
+    const result = await runStoryAgentGeneratedGovernance({
+      dry_run: true,
+      action_keys: ['restore_or_relink_series_story_refs'],
+      max_targets: 1,
+    });
+
+    expect(result.schema_version).toBe('mcp-story-agent-generated-governance-run/v1');
+    expect(result.dry_run).toBe(true);
+    expect(result.status).toBe('needs_action');
+    expect(result.planned_target_count).toBe(1);
+    expect(result.blocked_target_count).toBe(0);
+    expect(result.manifest.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action_key: 'restore_or_relink_series_story_refs',
+        project_id: seriesProjectId,
+        status: 'planned',
+        expected_file_changes: expect.arrayContaining([
+          `web/generated/ai-comic-series-projects/${seriesProjectId}/project.json`,
+        ]),
+      }),
+    ]));
+    expect(result.markdown).toContain('MCP Story Agent Generated Governance Run');
+
+    const blocked = await runStoryAgentGeneratedGovernance({
+      dry_run: false,
+      action_keys: ['restore_or_relink_series_story_refs'],
+      max_targets: 1,
+    });
+    expect(blocked.status).toBe('blocked');
+    expect(blocked.blocked_target_count).toBe(1);
+    expect(blocked.notes.join('\n')).toContain('intentionally blocked');
   });
 });

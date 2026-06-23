@@ -255,6 +255,8 @@ git diff --stat
 
 2026-06-23 generated governance plan 追加：新增 Web `GET /api/system/story-agent-generated-governance-plan`、MCP `kb_get_story_agent_generated_governance_plan` 和项目工作台“Generated 治理计划”卡片，按 relink、archive/rebuild、首集生成、合同修复、故事引用修复和 ready signoff 候选分桶。当前真实计划为 99 个 relink、827 个 archive/rebuild、4 个单故事 ref 修复、1 个 ready signoff 候选；该计划只读，不移动、不删除、不批量修改 generated 文件。
 
+2026-06-23 generated governance dry-run 追加：新增 Web `POST /api/system/story-agent-generated-governance-plan/run` 与 MCP `kb_run_story_agent_generated_governance`，输出只读 manifest，包括 action key、目标、planned operation、expected file changes 与 operator review。项目工作台可生成并导出 dry-run 清单；`dry_run=false` 当前会返回 blocked，不执行写入。
+
 ## 下一步建议
 
 优先级从高到低：

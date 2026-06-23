@@ -1604,6 +1604,52 @@ export interface StoryAgentGeneratedGovernancePlan {
   markdown: string;
 }
 
+export interface StoryAgentGeneratedGovernanceRunRequest {
+  dry_run?: boolean;
+  action_keys?: StoryAgentGeneratedGovernanceActionKey[];
+  max_targets?: number;
+}
+
+export type StoryAgentGeneratedGovernanceRunTargetStatus = 'planned' | 'blocked' | 'skipped';
+
+export interface StoryAgentGeneratedGovernanceRunTarget {
+  action_key: StoryAgentGeneratedGovernanceActionKey;
+  scope: StoryAgentGeneratedHealthScope;
+  project_id: string;
+  title?: string;
+  status: StoryAgentGeneratedGovernanceRunTargetStatus;
+  planned_operation: string;
+  expected_file_changes: string[];
+  requires_operator_review: boolean;
+  evidence: string[];
+  reason?: string;
+}
+
+export interface StoryAgentGeneratedGovernanceRunManifest {
+  schema_version: 'story-agent-generated-governance-run-manifest/v1';
+  manifest_id: string;
+  generated_at: string;
+  dry_run: boolean;
+  items: StoryAgentGeneratedGovernanceRunTarget[];
+}
+
+export interface StoryAgentGeneratedGovernanceRunResult {
+  schema_version: 'story-agent-generated-governance-run/v1';
+  generated_at: string;
+  status: ProductionReadinessStatus;
+  dry_run: boolean;
+  selected_action_count: number;
+  selected_target_count: number;
+  planned_target_count: number;
+  blocked_target_count: number;
+  skipped_target_count: number;
+  requested_action_keys: StoryAgentGeneratedGovernanceActionKey[];
+  manifest: StoryAgentGeneratedGovernanceRunManifest;
+  before_plan_summary: StoryAgentGeneratedGovernancePlan['summary'];
+  notes: string[];
+  markdown: string;
+}
+
 export type StoryAgentMvpStatus = ProductionReadinessStatus;
 
 export type StoryAgentMvpLaneKey =

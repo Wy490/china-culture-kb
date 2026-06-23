@@ -6,6 +6,7 @@ import { success } from '@shared/types.js';
 import {
   GearsExecutionLiveSmokeRunRequestSchema,
   ProductionReadinessPortfolioRunRequestSchema,
+  StoryAgentGeneratedGovernanceRunRequestSchema,
 } from '@shared/schemas.js';
 import { validateBody } from '../middleware/validate.js';
 import type {
@@ -36,7 +37,10 @@ import {
   getProductionReadinessPortfolio,
   runProductionReadinessPortfolioAutomation,
 } from '../services/production-readiness-portfolio-service.js';
-import { getStoryAgentGeneratedGovernancePlan } from '../services/generated-governance-service.js';
+import {
+  getStoryAgentGeneratedGovernancePlan,
+  runStoryAgentGeneratedGovernance,
+} from '../services/generated-governance-service.js';
 import { getStoryAgentGeneratedHealth } from '../services/generated-health-service.js';
 import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
 
@@ -160,6 +164,22 @@ systemRouter.get('/story-agent-generated-governance-plan', async (req, res, next
     next(err);
   }
 });
+
+// ---------------------------------------------------------------------------
+// POST /api/system/story-agent-generated-governance-plan/run — dry-run manifest
+// ---------------------------------------------------------------------------
+
+systemRouter.post(
+  '/story-agent-generated-governance-plan/run',
+  validateBody(StoryAgentGeneratedGovernanceRunRequestSchema),
+  async (req, res, next) => {
+    try {
+      res.json(success(await runStoryAgentGeneratedGovernance(req.body)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // GET /api/system/story-agent-mvp-status — Story Agent MVP command status

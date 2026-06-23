@@ -24,7 +24,10 @@ import { generateStoryRepairPrompt, repairStory } from './tools/repair-story.js'
 import { updateProjectVersion } from './tools/update-project-version.js';
 import { getProductionReadiness } from './tools/get-production-readiness.js';
 import { getProductionReadinessPortfolio } from './tools/get-production-readiness-portfolio.js';
-import { getStoryAgentGeneratedGovernancePlan } from './tools/get-generated-governance-plan.js';
+import {
+  getStoryAgentGeneratedGovernancePlan,
+  runStoryAgentGeneratedGovernance,
+} from './tools/get-generated-governance-plan.js';
 import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
 import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
 import { getGearsWorkerEvidenceSignoff } from './tools/get-gears-worker-evidence-signoff.js';
@@ -511,6 +514,34 @@ server.tool(
   },
   async (input) => {
     const result = await getStoryAgentGeneratedGovernancePlan(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_run_story_agent_generated_governance — build dry-run generated governance manifest
+server.tool(
+  'kb_run_story_agent_generated_governance',
+  '生成 Story Agent generated 治理 dry-run manifest。只读输出预期操作和文件变化；dry_run=false 会被阻断，不修改 generated 文件。',
+  {
+    dry_run: z.boolean().optional().describe('默认 true；false 会返回 blocked，不执行写入'),
+    action_keys: z.array(z.enum([
+      'restore_or_relink_series_story_refs',
+      'archive_or_rebuild_series_fixtures',
+      'generate_first_series_episode',
+      'repair_series_command_contracts',
+      'repair_story_project_refs',
+      'promote_ready_targets_for_gears_signoff',
+    ])).max(6).optional().describe('限定要生成 manifest 的动作分桶'),
+    max_targets: z.number().int().positive().max(100).optional().describe('最多返回多少个 manifest 目标，默认 20'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await runStoryAgentGeneratedGovernance(input);
     return {
       content: [{
         type: 'text',
