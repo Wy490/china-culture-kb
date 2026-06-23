@@ -1034,6 +1034,7 @@ export const StoryAgentGeneratedGovernanceActionKeySchema = z.enum([
 export const StoryAgentGeneratedGovernanceRunRequestSchema = z.object({
   dry_run: z.boolean().optional().default(true),
   action_keys: z.array(StoryAgentGeneratedGovernanceActionKeySchema).max(6).optional(),
+  project_ids: z.array(z.string().trim().min(1).max(160)).max(100).optional(),
   max_targets: z.number().int().min(1).max(100).optional().default(20),
 });
 

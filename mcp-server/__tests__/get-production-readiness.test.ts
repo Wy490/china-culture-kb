@@ -500,6 +500,7 @@ describe('kb_get_production_readiness', () => {
     const result = await runStoryAgentGeneratedGovernance({
       dry_run: true,
       action_keys: ['restore_or_relink_series_story_refs'],
+      project_ids: [seriesProjectId],
       max_targets: 1,
     });
 
@@ -523,6 +524,7 @@ describe('kb_get_production_readiness', () => {
     const blocked = await runStoryAgentGeneratedGovernance({
       dry_run: false,
       action_keys: ['restore_or_relink_series_story_refs'],
+      project_ids: [seriesProjectId],
       max_targets: 1,
     });
     expect(blocked.status).toBe('blocked');

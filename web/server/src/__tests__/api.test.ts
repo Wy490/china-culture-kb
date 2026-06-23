@@ -886,6 +886,7 @@ describe('System API', () => {
         .send({
           dry_run: true,
           action_keys: ['restore_or_relink_series_story_refs'],
+          project_ids: ['health-relink-series'],
           max_targets: 1,
         });
       expect(governanceRunRes.status).toBe(200);
@@ -903,10 +904,10 @@ describe('System API', () => {
           dry_run: true,
           items: [expect.objectContaining({
             action_key: 'restore_or_relink_series_story_refs',
-            project_id: expect.any(String),
+            project_id: 'health-relink-series',
             status: 'planned',
             expected_file_changes: expect.arrayContaining([
-              expect.stringContaining('web/generated/ai-comic-series-projects/'),
+              'web/generated/ai-comic-series-projects/health-relink-series/project.json',
             ]),
           })],
         },
@@ -918,6 +919,7 @@ describe('System API', () => {
         .send({
           dry_run: false,
           action_keys: ['restore_or_relink_series_story_refs'],
+          project_ids: ['health-relink-series'],
           max_targets: 1,
         });
       expect(blockedRunRes.status).toBe(200);

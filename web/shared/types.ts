@@ -1607,6 +1607,7 @@ export interface StoryAgentGeneratedGovernancePlan {
 export interface StoryAgentGeneratedGovernanceRunRequest {
   dry_run?: boolean;
   action_keys?: StoryAgentGeneratedGovernanceActionKey[];
+  project_ids?: string[];
   max_targets?: number;
 }
 

@@ -537,6 +537,7 @@ server.tool(
       'repair_story_project_refs',
       'promote_ready_targets_for_gears_signoff',
     ])).max(6).optional().describe('限定要生成 manifest 的动作分桶'),
+    project_ids: z.array(z.string().min(1).max(160)).max(100).optional().describe('限定项目 ID 或系列项目 ID 列表'),
     max_targets: z.number().int().positive().max(100).optional().describe('最多返回多少个 manifest 目标，默认 20'),
     include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
   },

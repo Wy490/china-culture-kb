@@ -12,6 +12,7 @@ export interface GetStoryAgentGeneratedGovernancePlanInput {
 export interface RunStoryAgentGeneratedGovernanceInput {
   dry_run?: boolean;
   action_keys?: GovernanceActionKey[];
+  project_ids?: string[];
   max_targets?: number;
   include_markdown?: boolean;
 }
@@ -366,11 +367,15 @@ export async function runStoryAgentGeneratedGovernance(
     : 20;
   const dryRun = input.dry_run ?? true;
   const requestedActionKeys = input.action_keys?.length ? input.action_keys : DEFAULT_RUN_ACTIONS;
+  const requestedProjectIds = input.project_ids?.length ? new Set(input.project_ids) : undefined;
   const plan = await getStoryAgentGeneratedGovernancePlan({ limit: maxTargets, include_markdown: false });
   const selectedActions = plan.actions.filter(action => requestedActionKeys.includes(action.action_key));
   const items: GovernanceRunTarget[] = [];
   for (const action of selectedActions) {
-    for (const target of action.sample_targets) {
+    const targets = requestedProjectIds
+      ? action.sample_targets.filter(target => requestedProjectIds.has(target.project_id))
+      : action.sample_targets;
+    for (const target of targets) {
       if (items.length >= maxTargets) break;
       items.push({
         action_key: action.action_key,
@@ -399,7 +404,12 @@ export async function runStoryAgentGeneratedGovernance(
     selected_target_count: items.length,
     planned_target_count: items.filter(item => item.status === 'planned').length,
     blocked_target_count: items.filter(item => item.status === 'blocked').length,
-    skipped_target_count: selectedActions.reduce((sum, action) => sum + Math.max(0, action.target_count - action.sample_targets.length), 0),
+    skipped_target_count: Math.max(0, selectedActions.reduce((sum, action) => {
+      const targets = requestedProjectIds
+        ? action.sample_targets.filter(target => requestedProjectIds.has(target.project_id))
+        : action.sample_targets;
+      return sum + targets.length;
+    }, 0) - items.length),
     requested_action_keys: requestedActionKeys,
     manifest: {
       schema_version: 'mcp-story-agent-generated-governance-run-manifest/v1',

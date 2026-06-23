@@ -302,14 +302,35 @@ export async function runStoryAgentGeneratedGovernance(
 ): Promise<StoryAgentGeneratedGovernanceRunResult> {
   const maxTargets = boundedRunTargetLimit(request.max_targets);
   const requestedActionKeys = request.action_keys?.length ? request.action_keys : DEFAULT_RUN_ACTIONS;
+  const requestedProjectIds = request.project_ids?.length ? new Set(request.project_ids) : undefined;
   const dryRun = request.dry_run ?? true;
   const plan = await getStoryAgentGeneratedGovernancePlan({ limit: maxTargets });
-  const selectedActions = plan.actions.filter(action => requestedActionKeys.includes(action.action_key));
+  const health = await getStoryAgentGeneratedHealth();
+  const seriesItems = health.items.filter(item => item.scope === 'ai_comic_series_project');
+  const storyItems = health.items.filter(item => item.scope === 'story_project');
+  const targetGroups: Record<StoryAgentGeneratedGovernanceActionKey, StoryAgentGeneratedHealthItem[]> = {
+    restore_or_relink_series_story_refs: seriesItems.filter(item => item.relink_candidate),
+    archive_or_rebuild_series_fixtures: seriesItems.filter(item => item.status === 'interrupted' && !item.relink_candidate),
+    generate_first_series_episode: seriesItems.filter(item => item.status === 'planned'),
+    repair_series_command_contracts: seriesItems.filter(item => item.status === 'production_gap'),
+    repair_story_project_refs: storyItems.filter(item => item.status === 'interrupted'),
+    promote_ready_targets_for_gears_signoff: health.items.filter(item => item.status === 'ready'),
+  };
+  const selectedActions = requestedActionKeys
+    .map(actionKey => ({
+      action_key: actionKey,
+      targets: targetGroups[actionKey] ?? [],
+    }))
+    .filter(action => action.targets.length > 0);
   const manifestItems: StoryAgentGeneratedGovernanceRunTarget[] = [];
 
   for (const action of selectedActions) {
-    for (const target of action.sample_targets) {
+    const targets = requestedProjectIds
+      ? action.targets.filter(target => requestedProjectIds.has(target.project_id))
+      : action.targets;
+    for (const item of targets) {
       if (manifestItems.length >= maxTargets) break;
+      const target = toTarget(item);
       manifestItems.push({
         action_key: action.action_key,
         scope: target.scope,
@@ -330,7 +351,13 @@ export async function runStoryAgentGeneratedGovernance(
 
   const plannedTargetCount = manifestItems.filter(item => item.status === 'planned').length;
   const blockedTargetCount = manifestItems.filter(item => item.status === 'blocked').length;
-  const skippedTargetCount = selectedActions.reduce((sum, action) => sum + Math.max(0, action.target_count - action.sample_targets.length), 0);
+  const selectedActionTargetCount = selectedActions.reduce((sum, action) => {
+    const targets = requestedProjectIds
+      ? action.targets.filter(target => requestedProjectIds.has(target.project_id))
+      : action.targets;
+    return sum + targets.length;
+  }, 0);
+  const skippedTargetCount = Math.max(0, selectedActionTargetCount - manifestItems.length);
   const generatedAt = new Date().toISOString();
   const result: Omit<StoryAgentGeneratedGovernanceRunResult, 'markdown'> = {
     schema_version: 'story-agent-generated-governance-run/v1',
