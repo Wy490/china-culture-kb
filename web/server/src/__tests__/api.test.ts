@@ -668,10 +668,17 @@ describe('System API', () => {
           interrupted_count: expect.any(Number),
           planned_count: expect.any(Number),
           production_gap_count: expect.any(Number),
+          series_planned_only_count: expect.any(Number),
+          series_production_gap_count: expect.any(Number),
+          series_interrupted_count: expect.any(Number),
+          series_governance_attention_count: expect.any(Number),
         }),
       });
       expect(res.body.data.summary.scanned_story_project_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.scanned_series_project_count).toBeGreaterThanOrEqual(2);
+      expect(res.body.data.summary.series_planned_only_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_production_gap_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_governance_attention_count).toBeGreaterThanOrEqual(2);
       expect(res.body.data.items).toEqual(expect.arrayContaining([
         expect.objectContaining({
           scope: 'story_project',
@@ -692,7 +699,9 @@ describe('System API', () => {
         }),
       ]));
       expect(res.body.data.markdown).toContain('# Story Agent Generated Health');
+      expect(res.body.data.markdown).toContain('series_governance_attention');
       expect(res.body.data.markdown).toContain('health-interrupted-story');
+      expect(res.body.data.notes.join('\n')).toContain('Series governance');
       await rm(interruptedStoryDir, { recursive: true, force: true });
       await rm(plannedSeriesDir, { recursive: true, force: true });
       await rm(gapSeriesDir, { recursive: true, force: true });

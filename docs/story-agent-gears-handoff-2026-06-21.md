@@ -251,6 +251,8 @@ git diff --stat
 
 2026-06-23 worker acceptance endpoint readiness 追加：`gears-execution-worker-acceptance-kit/v1` 新增 `real_endpoint_readiness`，签收脚本导出前即可看到 `needs_env / needs_smoke_target / ready`、缺失 env、smoke target 是否齐备、推荐命令和 next actions；单故事项目页与 AI 漫剧系列工作台同步显示 real endpoint 状态，真实 GEARS v2 endpoint 未配置时不会误判为可签收。
 
+2026-06-23 generated health 系列治理追加：`story-agent-generated-health/v1` summary 新增 `series_ready_count`、`series_planned_only_count`、`series_production_gap_count`、`series_interrupted_count` 和 `series_governance_attention_count`，Markdown/notes 输出 `series_governance_attention` 与 Series governance 提醒。真实 GEARS endpoint signoff 前先用该指标隔离 AI 漫剧历史样本、planned-only 和缺合同项目，避免把生成资产治理问题误判为 worker 合同失败。
+
 ## 下一步建议
 
 优先级从高到低：

@@ -436,6 +436,11 @@ function renderMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'
     `- missing_episode_story_refs: ${report.summary.missing_episode_story_id_count}`,
     `- series_missing_delivery: ${report.summary.series_missing_delivery_count}`,
     `- series_missing_postproduction: ${report.summary.series_missing_postproduction_count}`,
+    `- series_ready: ${report.summary.series_ready_count ?? 0}`,
+    `- series_planned_only: ${report.summary.series_planned_only_count ?? 0}`,
+    `- series_production_gap: ${report.summary.series_production_gap_count ?? 0}`,
+    `- series_interrupted: ${report.summary.series_interrupted_count ?? 0}`,
+    `- series_governance_attention: ${report.summary.series_governance_attention_count ?? 0}`,
     '',
     '## Priority Items',
     '',
@@ -456,6 +461,14 @@ function renderMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'
 
 function countByStatus(items: StoryAgentGeneratedHealthItem[], status: StoryAgentGeneratedHealthStatus): number {
   return items.filter(item => item.status === status).length;
+}
+
+function countByStatusAndScope(
+  items: StoryAgentGeneratedHealthItem[],
+  status: StoryAgentGeneratedHealthStatus,
+  scope: StoryAgentGeneratedHealthScope,
+): number {
+  return items.filter(item => item.scope === scope && item.status === status).length;
 }
 
 function countMissing(items: StoryAgentGeneratedHealthItem[], contract: string, scope?: StoryAgentGeneratedHealthScope): number {
@@ -483,6 +496,11 @@ export async function getStoryAgentGeneratedHealth(
   });
   const limit = boundedLimit(options.limit);
   const reportItems = limit ? allItems.slice(0, limit) : allItems;
+  const seriesReadyCount = countByStatusAndScope(allItems, 'ready', 'ai_comic_series_project');
+  const seriesPlannedOnlyCount = countByStatusAndScope(allItems, 'planned', 'ai_comic_series_project');
+  const seriesProductionGapCount = countByStatusAndScope(allItems, 'production_gap', 'ai_comic_series_project');
+  const seriesInterruptedCount = countByStatusAndScope(allItems, 'interrupted', 'ai_comic_series_project');
+  const seriesGovernanceAttentionCount = seriesPlannedOnlyCount + seriesProductionGapCount + seriesInterruptedCount;
   const report: Omit<StoryAgentGeneratedHealthReport, 'markdown'> = {
     schema_version: 'story-agent-generated-health/v1',
     generated_at: new Date().toISOString(),
@@ -503,11 +521,19 @@ export async function getStoryAgentGeneratedHealth(
         + countMissing(allItems, 'shot_production_ledger', 'ai_comic_series_project'),
       series_missing_postproduction_count: ['cut_assembly', 'subtitles', 'thumbnails', 'final_delivery']
         .reduce((sum, contract) => sum + countMissing(allItems, contract, 'ai_comic_series_project'), 0),
+      series_ready_count: seriesReadyCount,
+      series_planned_only_count: seriesPlannedOnlyCount,
+      series_production_gap_count: seriesProductionGapCount,
+      series_interrupted_count: seriesInterruptedCount,
+      series_governance_attention_count: seriesGovernanceAttentionCount,
     },
     items: reportItems,
     notes: [
       'Read-only audit: scans web/generated project.json, versions/*.json and generated stories without creating or repairing artifacts.',
       'china-culture-kb remains the content and production command layer; image/video/subtitle/final assembly execution stays in GEARS v2.',
+      seriesGovernanceAttentionCount > 0
+        ? `Series governance: ${seriesGovernanceAttentionCount} AI comic series targets are planned-only, production-gap, or interrupted; archive fixtures or repair contracts before using portfolio readiness for GEARS sign-off.`
+        : 'Series governance: all scanned AI comic series targets are command-layer ready.',
       limit && reportItems.length < allItems.length ? `items limited to ${reportItems.length} of ${allItems.length}; summary covers all scanned targets.` : '',
     ].filter(Boolean),
   };

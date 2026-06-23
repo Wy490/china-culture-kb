@@ -1533,6 +1533,11 @@ export interface StoryAgentGeneratedHealthReport {
     missing_episode_story_id_count: number;
     series_missing_delivery_count: number;
     series_missing_postproduction_count: number;
+    series_ready_count?: number;
+    series_planned_only_count?: number;
+    series_production_gap_count?: number;
+    series_interrupted_count?: number;
+    series_governance_attention_count?: number;
   };
   items: StoryAgentGeneratedHealthItem[];
   notes: string[];
