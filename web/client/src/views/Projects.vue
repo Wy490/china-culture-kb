@@ -228,6 +228,60 @@
       </div>
     </section>
 
+    <section v-if="generatedGovernancePlan" class="projects-page__portfolio projects-page__generated-governance">
+      <div class="projects-page__portfolio-head">
+        <div>
+          <h2>Generated 治理计划</h2>
+          <p>
+            {{ productionStatusLabel(generatedGovernancePlan.status) }}
+            · relink {{ generatedGovernancePlan.summary.series_relink_candidate_count }}
+            · archive/rebuild {{ generatedGovernancePlan.summary.series_archive_or_rebuild_candidate_count }}
+            · story refs {{ generatedGovernancePlan.summary.story_ref_repair_candidate_count }}
+            · GEARS 候选 {{ generatedGovernancePlan.summary.ready_gears_signoff_candidate_count }}
+          </p>
+        </div>
+        <div class="projects-page__portfolio-head-actions">
+          <button class="projects-page__muted-btn" :disabled="!generatedGovernancePlan.markdown" @click="exportGeneratedGovernanceMarkdown">
+            导出 MD
+          </button>
+          <button class="projects-page__muted-btn" @click="exportGeneratedGovernanceJson">
+            导出 JSON
+          </button>
+          <button class="projects-page__muted-btn" :disabled="loadingGeneratedGovernance" @click="loadGeneratedGovernancePlan">
+            {{ loadingGeneratedGovernance ? '刷新中…' : '刷新计划' }}
+          </button>
+        </div>
+      </div>
+      <div class="projects-page__portfolio-metrics">
+        <span>总目标 {{ generatedGovernancePlan.summary.source_total_target_count }}</span>
+        <span>系列治理 {{ generatedGovernancePlan.summary.series_governance_attention_count }}</span>
+        <span>缺分集引用项目 {{ generatedGovernancePlan.summary.series_missing_story_ref_project_count }}</span>
+        <span>planned {{ generatedGovernancePlan.summary.series_planned_only_count }}</span>
+        <span>补合同 {{ generatedGovernancePlan.summary.series_contract_repair_candidate_count }}</span>
+        <span>ready {{ generatedGovernancePlan.summary.ready_target_count }}</span>
+      </div>
+      <div class="projects-page__portfolio-grid">
+        <article
+          v-for="action in generatedGovernancePlan.actions.slice(0, 6)"
+          :key="action.action_key"
+          class="projects-page__portfolio-item"
+        >
+          <div class="projects-page__portfolio-item-head">
+            <span class="projects-page__readiness-badge projects-page__readiness-badge--needs_action">
+              {{ action.priority }}
+            </span>
+            <strong>{{ action.target_count }}</strong>
+          </div>
+          <h3 class="projects-page__portfolio-title">{{ generatedGovernanceActionLabel(action.action_key) }}</h3>
+          <p>{{ action.runner }} · auto {{ action.can_auto_apply ? 'yes' : 'no' }}</p>
+          <p>{{ action.next_step }}</p>
+          <small v-if="action.sample_targets.length">
+            样本 {{ action.sample_targets.slice(0, 2).map(target => target.project_id).join(' / ') }}
+          </small>
+        </article>
+      </div>
+    </section>
+
     <section v-if="generatedHealth" class="projects-page__portfolio projects-page__generated-health">
       <div class="projects-page__portfolio-head">
         <div>
@@ -591,7 +645,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { deleteProject, deleteProjects, listProjects, retainRecentProjects } from '@/api/projects'
-import { getProductionReadinessPortfolio, getStoryAgentGeneratedHealth, getStoryAgentMvpStatus, runProductionReadinessPortfolioAutomation } from '@/api/system'
+import { getProductionReadinessPortfolio, getStoryAgentGeneratedGovernancePlan, getStoryAgentGeneratedHealth, getStoryAgentMvpStatus, runProductionReadinessPortfolioAutomation } from '@/api/system'
 import {
   archiveAiComicSeriesProject,
   assembleAiComicSeriesSeedanceCut,
@@ -613,6 +667,8 @@ import type {
   ProductionReadinessPortfolioItem,
   ProductionReadinessPortfolioReport,
   ProductionReadinessStatus,
+  StoryAgentGeneratedGovernanceActionKey,
+  StoryAgentGeneratedGovernancePlan,
   StoryAgentGeneratedHealthItem,
   StoryAgentGeneratedHealthReport,
   StoryAgentGeneratedHealthStatus,
@@ -628,10 +684,12 @@ const projects = ref<StoryProjectListItem[]>([])
 const seriesProjects = ref<AiComicSeriesProjectMeta[]>([])
 const storyAgentMvpStatus = ref<StoryAgentMvpStatusReport | null>(null)
 const productionPortfolio = ref<ProductionReadinessPortfolioReport | null>(null)
+const generatedGovernancePlan = ref<StoryAgentGeneratedGovernancePlan | null>(null)
 const generatedHealth = ref<StoryAgentGeneratedHealthReport | null>(null)
 const loading = ref(false)
 const loadingMvpStatus = ref(false)
 const loadingPortfolio = ref(false)
+const loadingGeneratedGovernance = ref(false)
 const loadingGeneratedHealth = ref(false)
 const runningPortfolioAutomation = ref(false)
 const error = ref('')
@@ -790,6 +848,18 @@ function generatedHealthStatusLabel(status: StoryAgentGeneratedHealthStatus): st
   if (status === 'planned') return '计划'
   if (status === 'interrupted') return '中断'
   return '缺生产合同'
+}
+
+function generatedGovernanceActionLabel(key: StoryAgentGeneratedGovernanceActionKey): string {
+  const map: Record<StoryAgentGeneratedGovernanceActionKey, string> = {
+    restore_or_relink_series_story_refs: '恢复/重连分集故事',
+    archive_or_rebuild_series_fixtures: '归档或重建历史样本',
+    generate_first_series_episode: '生成首集',
+    repair_series_command_contracts: '补系列指挥合同',
+    repair_story_project_refs: '修故事项目引用',
+    promote_ready_targets_for_gears_signoff: '进入 GEARS 签收候选',
+  }
+  return map[key]
 }
 
 function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number]['key']): string {
@@ -1126,6 +1196,24 @@ function exportStoryAgentMvpStatusJson() {
   )
 }
 
+function exportGeneratedGovernanceMarkdown() {
+  if (!generatedGovernancePlan.value?.markdown) return
+  downloadText(
+    'story-agent-generated-governance-plan.md',
+    generatedGovernancePlan.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+}
+
+function exportGeneratedGovernanceJson() {
+  if (!generatedGovernancePlan.value) return
+  downloadText(
+    'story-agent-generated-governance-plan.json',
+    JSON.stringify(generatedGovernancePlan.value, null, 2),
+    'application/json;charset=utf-8',
+  )
+}
+
 function toggleSelectFiltered() {
   const filteredIds = filteredProjects.value.map(project => project.project_id)
   if (allFilteredSelected.value) {
@@ -1215,22 +1303,25 @@ async function loadProjects() {
   loading.value = true
   error.value = ''
   projectMessage.value = ''
-  const [storyRes, seriesRes, mvpStatusRes, portfolioRes, generatedHealthRes] = await Promise.all([
+  const [storyRes, seriesRes, mvpStatusRes, portfolioRes, generatedGovernanceRes, generatedHealthRes] = await Promise.all([
     listProjects(),
     listAiComicSeriesProjects(showArchivedSeries.value),
     getStoryAgentMvpStatus({ includeArchivedSeries: showArchivedSeries.value, generatedLimit: 12, portfolioLimit: 12 }),
     getProductionReadinessPortfolio({ includeArchivedSeries: showArchivedSeries.value, limit: 12 }),
+    getStoryAgentGeneratedGovernancePlan({ limit: 12 }),
     getStoryAgentGeneratedHealth({ limit: 12 }),
   ])
   if (storyRes.ok && storyRes.data) projects.value = storyRes.data
   if (seriesRes.ok && seriesRes.data) seriesProjects.value = seriesRes.data
   if (mvpStatusRes.ok && mvpStatusRes.data) storyAgentMvpStatus.value = mvpStatusRes.data
   if (portfolioRes.ok && portfolioRes.data) productionPortfolio.value = portfolioRes.data
+  if (generatedGovernanceRes.ok && generatedGovernanceRes.data) generatedGovernancePlan.value = generatedGovernanceRes.data
   if (generatedHealthRes.ok && generatedHealthRes.data) generatedHealth.value = generatedHealthRes.data
   if (!storyRes.ok) error.value = storyRes.error?.message ?? '加载故事项目失败'
   if (!seriesRes.ok) error.value = seriesRes.error?.message ?? '加载漫剧系列失败'
   if (!mvpStatusRes.ok) error.value = mvpStatusRes.error?.message ?? '加载 Story Agent MVP 状态失败'
   if (!portfolioRes.ok) error.value = portfolioRes.error?.message ?? '加载生产指挥总览失败'
+  if (!generatedGovernanceRes.ok) error.value = generatedGovernanceRes.error?.message ?? '加载 generated 治理计划失败'
   if (!generatedHealthRes.ok) error.value = generatedHealthRes.error?.message ?? '加载生成项目体检失败'
   loading.value = false
 }
@@ -1255,6 +1346,17 @@ async function loadProductionPortfolio() {
     error.value = res.error?.message ?? '刷新生产指挥总览失败'
   }
   loadingPortfolio.value = false
+}
+
+async function loadGeneratedGovernancePlan() {
+  loadingGeneratedGovernance.value = true
+  const res = await getStoryAgentGeneratedGovernancePlan({ limit: 12 })
+  if (res.ok && res.data) {
+    generatedGovernancePlan.value = res.data
+  } else {
+    error.value = res.error?.message ?? '刷新 generated 治理计划失败'
+  }
+  loadingGeneratedGovernance.value = false
 }
 
 async function loadGeneratedHealth() {

@@ -34,6 +34,8 @@ export interface StoryAgentGeneratedHealthItem {
   missing_episode_story_id_count?: number;
   production_item_count?: number;
   ready_production_item_count?: number;
+  contract_evidence_count?: number;
+  relink_candidate?: boolean;
   cut_ready?: boolean;
   subtitle_ready?: boolean;
   thumbnail_ready_count?: number;
@@ -58,6 +60,14 @@ export interface StoryAgentGeneratedHealthReport {
     missing_episode_story_id_count: number;
     series_missing_delivery_count: number;
     series_missing_postproduction_count: number;
+    series_ready_count?: number;
+    series_planned_only_count?: number;
+    series_production_gap_count?: number;
+    series_interrupted_count?: number;
+    series_governance_attention_count?: number;
+    series_missing_story_ref_project_count?: number;
+    series_contract_evidence_count?: number;
+    series_relink_candidate_count?: number;
   };
   items: StoryAgentGeneratedHealthItem[];
   notes: string[];
@@ -257,9 +267,19 @@ function seriesHealth(input: { id: string; record: JsonRecord }, availableStoryI
   const cut = asRecord(input.record.seedance_cut_assembly);
   const subtitle = asRecord(input.record.seedance_subtitle_render);
   const finalDelivery = asRecord(input.record.seedance_final_delivery);
+  const hasGearsJobLedger = isRecord(input.record.gears_job_ledger);
   const cutReady = ledgerUsable(cut) && hasOutput(cut, ['output_path', 'concat_list_path']);
   const subtitleReady = ledgerUsable(subtitle) && hasOutput(subtitle, ['output_path', 'srt_path']);
   const finalDeliveryReady = ledgerUsable(finalDelivery) && hasOutput(finalDelivery, ['output_path', 'manifest_path']);
+  const contractEvidence = [
+    productionItems.length > 0 ? 'seedance_production' : '',
+    hasGearsJobLedger ? 'gears_job_ledger' : '',
+    thumbnailReadyCount > 0 ? 'thumbnails' : '',
+    cutReady ? 'cut_assembly' : '',
+    subtitleReady ? 'subtitle_render' : '',
+    finalDeliveryReady ? 'final_delivery' : '',
+  ].filter(Boolean);
+  const relinkCandidate = missingEpisodeStoryIdCount > 0 && contractEvidence.length > 0;
   const missing = new Set<string>();
   if (missingEpisodeStoryIdCount > 0) missing.add('generated_episode_story_refs');
   if (generatedEpisodeCount > 0 && generatedEpisodeCount < episodeCount) missing.add('remaining_episodes');
@@ -269,7 +289,7 @@ function seriesHealth(input: { id: string; record: JsonRecord }, availableStoryI
   if (readyProductionItems.length > 0 && !cutReady) missing.add('cut_assembly');
   if (cutReady && !subtitleReady) missing.add('subtitles');
   if (cutReady && !finalDeliveryReady) missing.add('final_delivery');
-  if (generatedEpisodeCount > 0 && !isRecord(input.record.gears_job_ledger) && productionItems.length === 0) missing.add('series_delivery');
+  if (generatedEpisodeCount > 0 && !hasGearsJobLedger && productionItems.length === 0) missing.add('series_delivery');
   const status: HealthStatus = generatedEpisodeCount === 0 && storyIds.length === 0
     ? 'planned'
     : missingEpisodeStoryIdCount > 0
@@ -290,6 +310,7 @@ function seriesHealth(input: { id: string; record: JsonRecord }, availableStoryI
       `episodes=${generatedEpisodeCount}/${episodeCount}`,
       `generated_episode_story_ids=${storyIds.length}`,
       `production_items=${productionItems.length}`,
+      `contract_evidence=${contractEvidence.join(',') || 'none'}`,
       `cut_ready=${cutReady}, subtitle_ready=${subtitleReady}, final_delivery_ready=${finalDeliveryReady}`,
     ],
     recommended_actions: status === 'planned'
@@ -301,6 +322,8 @@ function seriesHealth(input: { id: string; record: JsonRecord }, availableStoryI
     missing_episode_story_id_count: missingEpisodeStoryIdCount,
     production_item_count: productionItems.length,
     ready_production_item_count: readyProductionItems.length,
+    contract_evidence_count: contractEvidence.length,
+    relink_candidate: relinkCandidate,
     cut_ready: cutReady,
     subtitle_ready: subtitleReady,
     thumbnail_ready_count: thumbnailReadyCount,
@@ -329,6 +352,10 @@ function buildMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'>
     `- planned: ${report.summary.planned_count}`,
     `- production_gap: ${report.summary.production_gap_count}`,
     `- interrupted: ${report.summary.interrupted_count}`,
+    `- series_governance_attention: ${report.summary.series_governance_attention_count ?? 0}`,
+    `- series_missing_story_ref_projects: ${report.summary.series_missing_story_ref_project_count ?? 0}`,
+    `- series_contract_evidence: ${report.summary.series_contract_evidence_count ?? 0}`,
+    `- series_relink_candidates: ${report.summary.series_relink_candidate_count ?? 0}`,
     '',
     '## Priority Items',
     '',
@@ -353,6 +380,14 @@ export async function getStoryAgentGeneratedHealth(
   ]);
   const storyItems = await Promise.all(storyRecords.map(storyHealth));
   const seriesItems = seriesRecords.map(record => seriesHealth(record, storyIds));
+  const countSeriesStatus = (status: HealthStatus) => seriesItems.filter(item => item.status === status).length;
+  const seriesPlannedOnlyCount = countSeriesStatus('planned');
+  const seriesProductionGapCount = countSeriesStatus('production_gap');
+  const seriesInterruptedCount = countSeriesStatus('interrupted');
+  const seriesGovernanceAttentionCount = seriesPlannedOnlyCount + seriesProductionGapCount + seriesInterruptedCount;
+  const seriesMissingStoryRefProjectCount = seriesItems.filter(item => (item.missing_episode_story_id_count ?? 0) > 0).length;
+  const seriesContractEvidenceCount = seriesItems.filter(item => (item.contract_evidence_count ?? 0) > 0).length;
+  const seriesRelinkCandidateCount = seriesItems.filter(item => item.relink_candidate).length;
   const allItems = [...storyItems, ...seriesItems].sort((a, b) => (
     statusRank(a.status) - statusRank(b.status)
     || b.risk_score - a.risk_score
@@ -379,13 +414,27 @@ export async function getStoryAgentGeneratedHealth(
         + countMissing(allItems, 'shot_production_ledger', 'ai_comic_series_project'),
       series_missing_postproduction_count: ['cut_assembly', 'subtitles', 'thumbnails', 'final_delivery']
         .reduce((sum, contract) => sum + countMissing(allItems, contract, 'ai_comic_series_project'), 0),
+      series_ready_count: countSeriesStatus('ready'),
+      series_planned_only_count: seriesPlannedOnlyCount,
+      series_production_gap_count: seriesProductionGapCount,
+      series_interrupted_count: seriesInterruptedCount,
+      series_governance_attention_count: seriesGovernanceAttentionCount,
+      series_missing_story_ref_project_count: seriesMissingStoryRefProjectCount,
+      series_contract_evidence_count: seriesContractEvidenceCount,
+      series_relink_candidate_count: seriesRelinkCandidateCount,
     },
     items,
     notes: [
       'MCP generated health is read-only and built from local web/generated files.',
       'Use this before GEARS v2 smoke to avoid selecting planned-only or interrupted generated targets.',
+      seriesGovernanceAttentionCount > 0
+        ? `Series governance: ${seriesGovernanceAttentionCount} AI comic series targets are planned-only, production-gap, or interrupted; archive fixtures or repair contracts before using portfolio readiness for GEARS sign-off.`
+        : 'Series governance: all scanned AI comic series targets are command-layer ready.',
+      seriesRelinkCandidateCount > 0
+        ? `Series relink candidates: ${seriesRelinkCandidateCount} interrupted series already have production or postproduction contract evidence; restore missing episode story JSON or update refs before judging GEARS readiness.`
+        : '',
       'china-culture-kb remains the content and production command layer; media execution stays in GEARS v2.',
-    ],
+    ].filter(Boolean),
   };
   return input.include_markdown === false ? base : { ...base, markdown: buildMarkdown(base) };
 }

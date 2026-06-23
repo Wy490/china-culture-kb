@@ -20,6 +20,7 @@ import type {
   ProvinceInfo,
   SeedanceProviderAdapterContractInfo,
   SeedanceProviderAdapterConfigInfo,
+  StoryAgentGeneratedGovernancePlan,
   StoryAgentGeneratedHealthReport,
   StoryAgentMvpStatusReport,
   TypeInfo,
@@ -62,6 +63,13 @@ export function getStoryAgentGeneratedHealth(options: { limit?: number } = {}) {
   if (typeof options.limit === 'number') params.set('limit', String(options.limit))
   const suffix = params.toString() ? `?${params.toString()}` : ''
   return apiGet<StoryAgentGeneratedHealthReport>(`/system/story-agent-generated-health${suffix}`)
+}
+
+export function getStoryAgentGeneratedGovernancePlan(options: { limit?: number } = {}) {
+  const params = new URLSearchParams()
+  if (typeof options.limit === 'number') params.set('limit', String(options.limit))
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return apiGet<StoryAgentGeneratedGovernancePlan>(`/system/story-agent-generated-governance-plan${suffix}`)
 }
 
 export function getStoryAgentMvpStatus(options: {

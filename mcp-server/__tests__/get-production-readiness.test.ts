@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { getProductionReadiness } from '../src/tools/get-production-readiness.js';
 import { getProductionReadinessPortfolio } from '../src/tools/get-production-readiness-portfolio.js';
+import { getStoryAgentGeneratedGovernancePlan } from '../src/tools/get-generated-governance-plan.js';
 import { getStoryAgentGeneratedHealth } from '../src/tools/get-generated-health.js';
 
 const tmpDir = path.join(os.tmpdir(), 'kb-production-readiness-test-' + Date.now());
@@ -433,6 +434,10 @@ describe('kb_get_production_readiness', () => {
     expect(result.summary.ready_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.planned_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.interrupted_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_governance_attention_count).toBeGreaterThanOrEqual(2);
+    expect(result.summary.series_missing_story_ref_project_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_contract_evidence_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_relink_candidate_count).toBeGreaterThanOrEqual(1);
     expect(result.items).toEqual(expect.arrayContaining([
       expect.objectContaining({
         scope: 'story_project',
@@ -444,6 +449,8 @@ describe('kb_get_production_readiness', () => {
         project_id: seriesProjectId,
         status: 'interrupted',
         missing_contracts: expect.arrayContaining(['generated_episode_story_refs']),
+        contract_evidence_count: expect.any(Number),
+        relink_candidate: true,
       }),
       expect.objectContaining({
         scope: 'ai_comic_series_project',
@@ -452,5 +459,37 @@ describe('kb_get_production_readiness', () => {
       }),
     ]));
     expect(result.markdown).toContain('MCP Story Agent Generated Health');
+    expect(result.markdown).toContain('series_relink_candidates');
+    expect(result.notes.join('\n')).toContain('Series relink candidates');
+  });
+
+  it('returns a read-only generated governance plan', async () => {
+    const result = await getStoryAgentGeneratedGovernancePlan({ limit: 5 });
+
+    expect(result.schema_version).toBe('mcp-story-agent-generated-governance-plan/v1');
+    expect(result.status).toMatch(/ready|needs_action|blocked/);
+    expect(result.summary.source_total_target_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_relink_candidate_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_planned_only_count).toBeGreaterThanOrEqual(0);
+    expect(result.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action_key: 'restore_or_relink_series_story_refs',
+        can_auto_apply: false,
+        runner: 'operator',
+      }),
+      expect.objectContaining({
+        action_key: 'promote_ready_targets_for_gears_signoff',
+        can_auto_apply: false,
+        runner: 'gears_worker',
+      }),
+    ]));
+    expect(result.actions.find(action => action.action_key === 'restore_or_relink_series_story_refs')?.sample_targets).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        project_id: seriesProjectId,
+        relink_candidate: true,
+      }),
+    ]));
+    expect(result.markdown).toContain('MCP Story Agent Generated Governance Plan');
+    expect(result.notes.join('\n')).toContain('read-only');
   });
 });

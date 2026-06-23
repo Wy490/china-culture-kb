@@ -36,6 +36,7 @@ import {
   getProductionReadinessPortfolio,
   runProductionReadinessPortfolioAutomation,
 } from '../services/production-readiness-portfolio-service.js';
+import { getStoryAgentGeneratedGovernancePlan } from '../services/generated-governance-service.js';
 import { getStoryAgentGeneratedHealth } from '../services/generated-health-service.js';
 import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
 
@@ -142,6 +143,19 @@ systemRouter.get('/story-agent-generated-health', async (req, res, next) => {
   try {
     const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
     res.json(success(await getStoryAgentGeneratedHealth({ limit })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/story-agent-generated-governance-plan — read-only generated cleanup plan
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/story-agent-generated-governance-plan', async (req, res, next) => {
+  try {
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+    res.json(success(await getStoryAgentGeneratedGovernancePlan({ limit })));
   } catch (err) {
     next(err);
   }

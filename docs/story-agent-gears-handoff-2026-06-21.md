@@ -253,6 +253,8 @@ git diff --stat
 
 2026-06-23 generated health 系列治理追加：`story-agent-generated-health/v1` summary 新增 `series_ready_count`、`series_planned_only_count`、`series_production_gap_count`、`series_interrupted_count`、`series_governance_attention_count`、`series_missing_story_ref_project_count`、`series_contract_evidence_count` 和 `series_relink_candidate_count`，Markdown/notes 输出 `series_governance_attention` 与 `series_relink_candidates` 提醒。真实扫描显示 926 个 AI 漫剧系列都缺 generated episode story refs，其中 99 个已有生产/后期合同证据，优先 relink；其余历史样本先归档 fixture 或补齐 Story Agent 合同，避免把生成资产治理问题误判为 worker 合同失败。
 
+2026-06-23 generated governance plan 追加：新增 Web `GET /api/system/story-agent-generated-governance-plan`、MCP `kb_get_story_agent_generated_governance_plan` 和项目工作台“Generated 治理计划”卡片，按 relink、archive/rebuild、首集生成、合同修复、故事引用修复和 ready signoff 候选分桶。当前真实计划为 99 个 relink、827 个 archive/rebuild、4 个单故事 ref 修复、1 个 ready signoff 候选；该计划只读，不移动、不删除、不批量修改 generated 文件。
+
 ## 下一步建议
 
 优先级从高到低：

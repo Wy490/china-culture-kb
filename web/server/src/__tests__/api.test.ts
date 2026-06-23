@@ -558,11 +558,13 @@ describe('System API', () => {
       const plannedSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-planned-series');
       const gapSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-gap-series');
       const relinkSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-relink-series');
+      const archiveSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-archive-series');
       const storyFileDir = resolve(generatedRoot, 'stories', 'ai_comic_drama');
       await mkdir(resolve(interruptedStoryDir, 'versions'), { recursive: true });
       await mkdir(plannedSeriesDir, { recursive: true });
       await mkdir(gapSeriesDir, { recursive: true });
       await mkdir(relinkSeriesDir, { recursive: true });
+      await mkdir(archiveSeriesDir, { recursive: true });
       await mkdir(storyFileDir, { recursive: true });
       await writeFile(resolve(interruptedStoryDir, 'project.json'), JSON.stringify({
         project_id: 'health-interrupted-story',
@@ -721,6 +723,40 @@ describe('System API', () => {
           }],
         },
       }));
+      await writeFile(resolve(archiveSeriesDir, 'project.json'), JSON.stringify({
+        project: {
+          series_project_id: 'health-archive-series',
+          title: 'Health Archive Series',
+          episode_count: 3,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          logline: '历史样本，分集引用断链且没有生产合同证据。',
+          created_at: '2026-06-22T01:00:00.000Z',
+          updated_at: '2026-06-22T01:05:00.000Z',
+          generated_episode_count: 1,
+        },
+        plan: {
+          schema_version: 'ai-comic-series-plan/v1',
+          series_title: 'Health Archive Series',
+          episode_count: 3,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          generation_scope: 'series_plan',
+          premise: '历史样本，分集引用断链且没有生产合同证据。',
+          logline: '历史样本，分集引用断链且没有生产合同证据。',
+          core_theme: '项目健康',
+          main_characters: [],
+          plot_threads: [],
+          phases: [],
+          episodes: [],
+          continuity_rules: [],
+          recurring_motifs: [],
+          production_notes: [],
+        },
+        generated_episode_story_ids: {
+          '1': '20260622-story-health-series-archive-missing',
+        },
+      }));
 
       const res = await request.get('/api/system/story-agent-generated-health?limit=200');
       expect(res.status).toBe(200);
@@ -784,10 +820,72 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('health-interrupted-story');
       expect(res.body.data.notes.join('\n')).toContain('Series governance');
       expect(res.body.data.notes.join('\n')).toContain('Series relink candidates');
+
+      const governanceRes = await request.get('/api/system/story-agent-generated-governance-plan?limit=2');
+      expect(governanceRes.status).toBe(200);
+      expectSuccess(governanceRes.body);
+      expect(governanceRes.body.data).toMatchObject({
+        schema_version: 'story-agent-generated-governance-plan/v1',
+        status: expect.stringMatching(/ready|needs_action|blocked/),
+        summary: expect.objectContaining({
+          source_total_target_count: expect.any(Number),
+          series_relink_candidate_count: expect.any(Number),
+          series_archive_or_rebuild_candidate_count: expect.any(Number),
+          series_planned_only_count: expect.any(Number),
+          series_contract_repair_candidate_count: expect.any(Number),
+          story_ref_repair_candidate_count: expect.any(Number),
+          ready_gears_signoff_candidate_count: expect.any(Number),
+        }),
+        source_health_summary: expect.objectContaining({
+          total_target_count: expect.any(Number),
+        }),
+      });
+      expect(governanceRes.body.data.summary.series_relink_candidate_count).toBeGreaterThanOrEqual(1);
+      expect(governanceRes.body.data.summary.series_archive_or_rebuild_candidate_count).toBeGreaterThanOrEqual(1);
+      expect(governanceRes.body.data.summary.series_planned_only_count).toBeGreaterThanOrEqual(1);
+      expect(governanceRes.body.data.summary.series_contract_repair_candidate_count).toBeGreaterThanOrEqual(1);
+      expect(governanceRes.body.data.summary.story_ref_repair_candidate_count).toBeGreaterThanOrEqual(1);
+      expect(governanceRes.body.data.actions).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          action_key: 'restore_or_relink_series_story_refs',
+          can_auto_apply: false,
+          runner: 'operator',
+          sample_targets: expect.arrayContaining([
+            expect.objectContaining({
+              project_id: 'health-relink-series',
+              relink_candidate: true,
+            }),
+          ]),
+        }),
+        expect.objectContaining({
+          action_key: 'archive_or_rebuild_series_fixtures',
+          can_auto_apply: false,
+        }),
+        expect.objectContaining({
+          action_key: 'generate_first_series_episode',
+          runner: 'story_agent_api',
+          can_auto_apply: false,
+        }),
+        expect.objectContaining({
+          action_key: 'repair_series_command_contracts',
+          runner: 'story_agent_api',
+          can_auto_apply: false,
+        }),
+        expect.objectContaining({
+          action_key: 'repair_story_project_refs',
+          runner: 'story_agent_api',
+          can_auto_apply: false,
+        }),
+      ]));
+      expect(governanceRes.body.data.markdown).toContain('Story Agent Generated Governance Plan');
+      expect(governanceRes.body.data.markdown).toContain('restore_or_relink_series_story_refs');
+      expect(governanceRes.body.data.notes.join('\n')).toContain('Read-only governance plan');
+
       await rm(interruptedStoryDir, { recursive: true, force: true });
       await rm(plannedSeriesDir, { recursive: true, force: true });
       await rm(gapSeriesDir, { recursive: true, force: true });
       await rm(relinkSeriesDir, { recursive: true, force: true });
+      await rm(archiveSeriesDir, { recursive: true, force: true });
       await rm(resolve(storyFileDir, '20260622-story-health-series-1.json'), { force: true });
     });
   });

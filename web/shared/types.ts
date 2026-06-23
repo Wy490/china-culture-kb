@@ -1549,6 +1549,61 @@ export interface StoryAgentGeneratedHealthReport {
   markdown: string;
 }
 
+export type StoryAgentGeneratedGovernanceActionKey =
+  | 'restore_or_relink_series_story_refs'
+  | 'archive_or_rebuild_series_fixtures'
+  | 'generate_first_series_episode'
+  | 'repair_series_command_contracts'
+  | 'repair_story_project_refs'
+  | 'promote_ready_targets_for_gears_signoff';
+
+export interface StoryAgentGeneratedGovernanceTarget {
+  scope: StoryAgentGeneratedHealthScope;
+  project_id: string;
+  title?: string;
+  status: StoryAgentGeneratedHealthStatus;
+  risk_score: number;
+  missing_contracts: string[];
+  missing_episode_story_id_count?: number;
+  contract_evidence_count?: number;
+  relink_candidate?: boolean;
+  evidence: string[];
+}
+
+export interface StoryAgentGeneratedGovernanceAction {
+  action_key: StoryAgentGeneratedGovernanceActionKey;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  label: string;
+  target_count: number;
+  sample_targets: StoryAgentGeneratedGovernanceTarget[];
+  can_auto_apply: boolean;
+  runner: 'operator' | 'story_agent_api' | 'gears_worker';
+  detail: string;
+  next_step: string;
+}
+
+export interface StoryAgentGeneratedGovernancePlan {
+  schema_version: 'story-agent-generated-governance-plan/v1';
+  generated_at: string;
+  status: ProductionReadinessStatus;
+  summary: {
+    source_total_target_count: number;
+    ready_target_count: number;
+    series_governance_attention_count: number;
+    series_missing_story_ref_project_count: number;
+    series_relink_candidate_count: number;
+    series_archive_or_rebuild_candidate_count: number;
+    series_planned_only_count: number;
+    series_contract_repair_candidate_count: number;
+    story_ref_repair_candidate_count: number;
+    ready_gears_signoff_candidate_count: number;
+  };
+  actions: StoryAgentGeneratedGovernanceAction[];
+  notes: string[];
+  source_health_summary: StoryAgentGeneratedHealthReport['summary'];
+  markdown: string;
+}
+
 export type StoryAgentMvpStatus = ProductionReadinessStatus;
 
 export type StoryAgentMvpLaneKey =

@@ -24,6 +24,7 @@ import { generateStoryRepairPrompt, repairStory } from './tools/repair-story.js'
 import { updateProjectVersion } from './tools/update-project-version.js';
 import { getProductionReadiness } from './tools/get-production-readiness.js';
 import { getProductionReadinessPortfolio } from './tools/get-production-readiness-portfolio.js';
+import { getStoryAgentGeneratedGovernancePlan } from './tools/get-generated-governance-plan.js';
 import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
 import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
 import { getGearsWorkerEvidenceSignoff } from './tools/get-gears-worker-evidence-signoff.js';
@@ -491,6 +492,25 @@ server.tool(
   },
   async (input) => {
     const result = await getStoryAgentGeneratedHealth(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_story_agent_generated_governance_plan — read generated cleanup/relink plan
+server.tool(
+  'kb_get_story_agent_generated_governance_plan',
+  '读取本地 Story Agent generated 治理计划。只读分桶 relink、archive/rebuild、补合同、单故事引用修复和 GEARS signoff 候选，不修改 generated 文件。',
+  {
+    limit: z.number().int().positive().max(100).optional().describe('每类动作最多返回多少个样本目标，默认 20'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await getStoryAgentGeneratedGovernancePlan(input);
     return {
       content: [{
         type: 'text',
