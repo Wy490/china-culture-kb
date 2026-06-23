@@ -557,10 +557,12 @@ describe('System API', () => {
       const interruptedStoryDir = resolve(generatedRoot, 'projects', 'health-interrupted-story');
       const plannedSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-planned-series');
       const gapSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-gap-series');
+      const relinkSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-relink-series');
       const storyFileDir = resolve(generatedRoot, 'stories', 'ai_comic_drama');
       await mkdir(resolve(interruptedStoryDir, 'versions'), { recursive: true });
       await mkdir(plannedSeriesDir, { recursive: true });
       await mkdir(gapSeriesDir, { recursive: true });
+      await mkdir(relinkSeriesDir, { recursive: true });
       await mkdir(storyFileDir, { recursive: true });
       await writeFile(resolve(interruptedStoryDir, 'project.json'), JSON.stringify({
         project_id: 'health-interrupted-story',
@@ -655,6 +657,70 @@ describe('System API', () => {
           '1': '20260622-story-health-series-1',
         },
       }));
+      await writeFile(resolve(relinkSeriesDir, 'project.json'), JSON.stringify({
+        project: {
+          series_project_id: 'health-relink-series',
+          title: 'Health Relink Series',
+          episode_count: 1,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          logline: '已有生产指挥合同但分集引用断链。',
+          created_at: '2026-06-22T01:00:00.000Z',
+          updated_at: '2026-06-22T01:04:00.000Z',
+          generated_episode_count: 1,
+        },
+        plan: {
+          schema_version: 'ai-comic-series-plan/v1',
+          series_title: 'Health Relink Series',
+          episode_count: 1,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          generation_scope: 'full_planning',
+          premise: '已有生产指挥合同但分集引用断链。',
+          logline: '已有生产指挥合同但分集引用断链。',
+          core_theme: '项目健康',
+          main_characters: [],
+          plot_threads: [],
+          phases: [],
+          episodes: [],
+          continuity_rules: [],
+          recurring_motifs: [],
+          production_notes: [],
+        },
+        generated_episode_story_ids: {
+          '1': '20260622-story-health-series-missing',
+        },
+        seedance_production: {
+          items: [{
+            shot_id: 'shot-1',
+            status: 'ready',
+            video_url: '/generated/relink/shot-1.mp4',
+            thumbnail: {
+              status: 'ready',
+              output_path: '/generated/relink/thumb-1.jpg',
+            },
+          }],
+        },
+        seedance_cut_assembly: {
+          status: 'ready',
+          output_path: '/generated/relink/cut.concat.txt',
+        },
+        seedance_subtitle_render: {
+          status: 'ready',
+          srt_path: '/generated/relink/subtitles.srt',
+        },
+        seedance_final_delivery: {
+          status: 'ready',
+          manifest_path: '/generated/relink/final.manifest.json',
+        },
+        gears_job_ledger: {
+          jobs: [{
+            gears_job_id: 'gears-health-relink-job',
+            source_unit_id: 'shot-1',
+            status: 'ready',
+          }],
+        },
+      }));
 
       const res = await request.get('/api/system/story-agent-generated-health?limit=200');
       expect(res.status).toBe(200);
@@ -672,6 +738,9 @@ describe('System API', () => {
           series_production_gap_count: expect.any(Number),
           series_interrupted_count: expect.any(Number),
           series_governance_attention_count: expect.any(Number),
+          series_missing_story_ref_project_count: expect.any(Number),
+          series_contract_evidence_count: expect.any(Number),
+          series_relink_candidate_count: expect.any(Number),
         }),
       });
       expect(res.body.data.summary.scanned_story_project_count).toBeGreaterThanOrEqual(1);
@@ -679,6 +748,9 @@ describe('System API', () => {
       expect(res.body.data.summary.series_planned_only_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_production_gap_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_governance_attention_count).toBeGreaterThanOrEqual(2);
+      expect(res.body.data.summary.series_missing_story_ref_project_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_contract_evidence_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_relink_candidate_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.items).toEqual(expect.arrayContaining([
         expect.objectContaining({
           scope: 'story_project',
@@ -697,14 +769,25 @@ describe('System API', () => {
           status: 'production_gap',
           missing_contracts: expect.arrayContaining(['remaining_episodes', 'shot_production_ledger', 'series_delivery']),
         }),
+        expect.objectContaining({
+          scope: 'ai_comic_series_project',
+          project_id: 'health-relink-series',
+          status: 'interrupted',
+          missing_contracts: expect.arrayContaining(['generated_episode_story_refs']),
+          contract_evidence_count: expect.any(Number),
+          relink_candidate: true,
+        }),
       ]));
       expect(res.body.data.markdown).toContain('# Story Agent Generated Health');
       expect(res.body.data.markdown).toContain('series_governance_attention');
+      expect(res.body.data.markdown).toContain('series_relink_candidates');
       expect(res.body.data.markdown).toContain('health-interrupted-story');
       expect(res.body.data.notes.join('\n')).toContain('Series governance');
+      expect(res.body.data.notes.join('\n')).toContain('Series relink candidates');
       await rm(interruptedStoryDir, { recursive: true, force: true });
       await rm(plannedSeriesDir, { recursive: true, force: true });
       await rm(gapSeriesDir, { recursive: true, force: true });
+      await rm(relinkSeriesDir, { recursive: true, force: true });
       await rm(resolve(storyFileDir, '20260622-story-health-series-1.json'), { force: true });
     });
   });

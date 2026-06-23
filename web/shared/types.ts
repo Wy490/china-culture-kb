@@ -1509,6 +1509,8 @@ export interface StoryAgentGeneratedHealthItem {
   missing_episode_story_id_count?: number;
   production_item_count?: number;
   ready_production_item_count?: number;
+  contract_evidence_count?: number;
+  relink_candidate?: boolean;
   cut_ready?: boolean;
   subtitle_ready?: boolean;
   thumbnail_ready_count?: number;
@@ -1538,6 +1540,9 @@ export interface StoryAgentGeneratedHealthReport {
     series_production_gap_count?: number;
     series_interrupted_count?: number;
     series_governance_attention_count?: number;
+    series_missing_story_ref_project_count?: number;
+    series_contract_evidence_count?: number;
+    series_relink_candidate_count?: number;
   };
   items: StoryAgentGeneratedHealthItem[];
   notes: string[];

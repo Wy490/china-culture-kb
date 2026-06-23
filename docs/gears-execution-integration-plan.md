@@ -52,7 +52,7 @@ GEARS v2
 
 2026-06-23 worker acceptance 补充：acceptance kit 已输出 `real_endpoint_readiness`，用于在导出/运行 `run-gears-worker-acceptance.sh` 前确认真实 GEARS endpoint env 与 smoke targets 是否齐备；该字段只做签收前置判定，不执行媒体实产。
 
-2026-06-23 generated health 系列治理补充：`story-agent-generated-health/v1` summary 已新增 `series_ready_count`、`series_planned_only_count`、`series_production_gap_count`、`series_interrupted_count` 和 `series_governance_attention_count`，Markdown/notes 输出 `series_governance_attention` 与 Series governance 提醒。真实 GEARS endpoint 签收前要先用该指标隔离 planned-only、production-gap、interrupted 的 AI 漫剧历史样本，先归档 fixture 或补齐 Story Agent 合同，避免把本仓库生成资产治理问题误判成 GEARS v2 worker 响应问题。
+2026-06-23 generated health 系列治理补充：`story-agent-generated-health/v1` summary 已新增 `series_ready_count`、`series_planned_only_count`、`series_production_gap_count`、`series_interrupted_count`、`series_governance_attention_count`、`series_missing_story_ref_project_count`、`series_contract_evidence_count` 和 `series_relink_candidate_count`，Markdown/notes 输出 `series_governance_attention` 与 `series_relink_candidates` 提醒。真实扫描显示 926 个 AI 漫剧系列都缺 generated episode story refs，其中 99 个已有生产/后期合同证据，优先应 restore missing story JSON 或更新 refs；其余历史样本先归档 fixture 或补齐 Story Agent 合同，避免把本仓库生成资产治理问题误判成 GEARS v2 worker 响应问题。
 
 ## 3. 保留在当前项目的能力
 
@@ -266,7 +266,7 @@ P0 已完成首轮可运行闭环：
 - 已补 GEARS worker acceptance integrity 复核：acceptance shell 现在生成 `gears-worker-acceptance-integrity.json/.md`，会重新计算 checksum manifest 中每个证据文件的 `sha256` 与 byte length，检查必交附件是否都有 checksum record，并以 `integrity_passed=true` 作为严格签收第三道门禁。
 - 已用新版导出的 `run-gears-worker-acceptance.sh` 跑 v12 integrity smoke：证据目录 `/private/tmp/gears-worker-evidence-integrity-v12`；worker kit 导出为 17 条 commands / 5 个 payloads；integrity `status=passed`、`integrity_passed=true`、`required_checksum_records=18/18`、`mismatch_count=0`、`missing_file_count=0`、`sha256_mismatch_count=0`；verdict、archive、checksum manifest、大项目 pressure、worker audit、callback audit 均无阻断。真实 GEARS v2 endpoint 仍未配置。
 - 已补 Story Agent generated health audit：`GET /api/system/story-agent-generated-health` 只读扫描 generated story project、AI 漫剧系列 project、generated stories 和 versions，输出 `story-agent-generated-health/v1`，按 `ready / planned / production_gap / interrupted` 区分生成资产状态；项目工作台新增“生成项目体检”卡片。该能力只做 GEARS smoke 前置诊断，不执行图片、视频、字幕或最终装配。
-- generated health 已补系列治理 scoped summary：`series_ready_count` / `series_planned_only_count` / `series_production_gap_count` / `series_interrupted_count` / `series_governance_attention_count` 会把 AI 漫剧历史样本和缺合同项目从真实 GEARS signoff 目标中显式分离，帮助判断应先归档样本、补交付合同，还是继续跑 worker acceptance。
+- generated health 已补系列治理 scoped summary：`series_ready_count` / `series_planned_only_count` / `series_production_gap_count` / `series_interrupted_count` / `series_governance_attention_count` / `series_missing_story_ref_project_count` / `series_contract_evidence_count` / `series_relink_candidate_count` 会把 AI 漫剧历史样本、断链项目和已有合同证据的 relink 候选从真实 GEARS signoff 目标中显式分离，帮助判断应先归档样本、补交付合同、修 episode refs，还是继续跑 worker acceptance。
 - 已把 generated health 接入 GEARS worker acceptance / evidence 链：acceptance report 新增 `story_agent_generated_health` 检查和 `generated_health_*` 统计；worker script 会在真实 GEARS submit 前后落盘 health audit，并生成 `story-agent-generated-health-audit.json/.md` 进入最终 verdict gate；evidence bundle 新增 `story-agent-generated-health-report.md`，用于把 smoke target 的 planned/interrupted/production_gap 风险并入签收证据。
 - 验证已通过：server lint、server build、client lint、client build、`project-service.test.ts`、`outline-service.test.ts`、`gears-execution-service.test.ts`、`api.test.ts`。
 
