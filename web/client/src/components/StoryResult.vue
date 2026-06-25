@@ -248,11 +248,11 @@
               v-if="editableProject && task.status === 'open'"
               class="story-result__supplement-textarea"
               :value="supplementDrafts[task.task_id] ?? task.supplement_note ?? ''"
-              placeholder="记录本次补录的事实、来源、可用于故事或画面的细节。"
+              placeholder="记录本次补充的事实、来源、可用于故事、剧本或画面的细节。"
               @input="updateSupplementDraft(task.task_id, $event)"
             />
             <p v-else-if="task.supplement_note" class="story-result__supplement-note">
-              <strong>补录说明：</strong>{{ task.supplement_note }}
+              <strong>素材补充说明：</strong>{{ task.supplement_note }}
             </p>
           </div>
           <button
@@ -753,7 +753,7 @@ const GENERATION_POSTURE_LABELS: Record<MaterialGenerationPosture, string> = {
 }
 
 const MATERIAL_SOURCE_TYPE_LABELS: Record<MaterialSourceType, string> = {
-  knowledge_entry: '知识条目',
+  knowledge_entry: '来源条目',
   user_outline: '用户大纲',
   user_source_text: '用户原文',
   brand_profile: '品牌资料',

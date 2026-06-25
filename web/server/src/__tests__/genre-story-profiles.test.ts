@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { VideoType } from '@shared/types.js';
+import type { EntryDetail, VideoType } from '@shared/types.js';
 import {
   GENRE_STORY_PROFILES,
   getGenreDramaticStructure,
   getGenreReturnJsonFields,
   getGenreStoryProfile,
+  recommendNarrativePatternsForEntry,
   resolveGenreStoryMatrix,
 } from '../services/genre-story-profiles.js';
 
@@ -25,6 +26,25 @@ const ALL_VIDEO_TYPES: VideoType[] = [
   'social_short',
   'ai_comic_drama',
 ];
+
+function makeEntry(overrides: Partial<EntryDetail> = {}): EntryDetail {
+  return {
+    name: '周敦颐——理学开山鼻祖',
+    province: '湖南',
+    region: '永州',
+    type: '历史人物',
+    summary: '北宋思想家周敦颐，以莲喻君子人格。',
+    story: '少年读书，入仕后面对官场压力，仍坚持清正选择。',
+    culturalSignificance: '体现湖湘文化中的人格修养与君子精神。',
+    relatedLocations: [{ name: '道州濂溪畔', description: '周敦颐成长与讲学相关地点' }],
+    keywords: ['历史人物', '思想家', '成长', '抉择'],
+    sources: ['地方志'],
+    credibility: 'medium',
+    unverifiedPoints: [],
+    era: '北宋',
+    ...overrides,
+  };
+}
 
 describe('genre-story-profiles', () => {
   it('defines one complete profile for every video type', () => {
@@ -135,5 +155,53 @@ describe('genre-story-profiles', () => {
     expect(matrix.material_requirements.join('\n')).toContain('学习目标');
     expect(matrix.institutional_rules.join('\n')).toContain('制度流程');
     expect(matrix.adaptation_rules.join('\n')).toContain('可教学的案例');
+  });
+
+  it('recommends narrative patterns from entry subject signals', () => {
+    const recommendations = recommendNarrativePatternsForEntry({
+      entry: makeEntry(),
+      videoTypes: ['ai_comic_drama'],
+    });
+
+    expect(recommendations.map(item => item.pattern_id)).toEqual(expect.arrayContaining([
+      'mortal_growth',
+      'character_arc_adaptation',
+    ]));
+    expect(recommendations[0]).toEqual(expect.objectContaining({
+      video_type: 'ai_comic_drama',
+      priority: 1,
+      confidence: expect.any(Number),
+      match_signals: expect.arrayContaining(['历史人物']),
+    }));
+  });
+
+  it('lets explicit user query subgenre signals outrank generic entry type signals', () => {
+    const recommendations = recommendNarrativePatternsForEntry({
+      entry: makeEntry(),
+      videoTypes: ['ai_comic_drama'],
+      originalUserQuery: '想做成武侠短剧改编，要有江湖门派和连载钩子',
+    });
+
+    expect(recommendations.map(item => item.pattern_id)).toEqual(expect.arrayContaining([
+      'wuxia_chivalric_epic',
+      'wuxia_revenge_journey',
+    ]));
+    expect(recommendations[0].match_signals).toEqual(expect.arrayContaining(['武侠', '江湖']));
+  });
+
+  it('keeps source-adaptation recommendations query driven to avoid generic material false positives', () => {
+    const recommendations = recommendNarrativePatternsForEntry({
+      entry: makeEntry({
+        story: '该来源条目整理了地方资料、口述信息和文本线索。',
+        keywords: ['历史人物', '资料', '来源条目'],
+      }),
+      videoTypes: ['ai_comic_drama'],
+    });
+
+    expect(recommendations.map(item => item.pattern_id)).not.toContain('source_fidelity_adaptation');
+    expect(recommendations.map(item => item.pattern_id)).toEqual(expect.arrayContaining([
+      'mortal_growth',
+      'character_arc_adaptation',
+    ]));
   });
 });

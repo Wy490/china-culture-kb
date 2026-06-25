@@ -86,7 +86,7 @@ function makeKnowledgePack(): KnowledgePack {
       summary: '洞穴、书院、衙署是场景资产；案卷、油灯等是场景道具/陈设。',
       score: 0.88,
       role_in_story: 'asset_pack',
-      match_reason: '自动注入知识包',
+      match_reason: '自动注入素材包',
       keywords: ['GEARS', '场景资产', '道具'],
       knowledge_domain: 'gears_asset',
       entry_role: 'asset_pack',
@@ -127,10 +127,10 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('资产拆分：人物=周敦颐：主角');
     expect(pkg.user_prompt).toContain('场景=洞穴：场景资产、书院：场景资产');
     expect(pkg.knowledge_context?.primary_entries[0].asset_split?.character_props[0]).toContain('手稿');
-    expect(pkg.system_prompt).toContain('结构化知识库，不是资料仓库');
-    expect(pkg.user_prompt).toContain('知识库不是资料仓库');
-    expect(pkg.user_prompt).toContain('先读取知识域、条目角色、时代、用途、资产拆分、可信度和风险提示');
-    expect(pkg.output_contract.should_respect).toContain('按结构化知识库做创作决策，不把知识包当资料仓库堆砌');
+    expect(pkg.system_prompt).toContain('结构化项目素材库，不是资料仓库');
+    expect(pkg.user_prompt).toContain('项目素材库不是资料仓库');
+    expect(pkg.user_prompt).toContain('先读取素材域、条目角色、时代、用途、资产拆分、可信度和风险提示');
+    expect(pkg.output_contract.should_respect).toContain('按结构化项目素材库做创作决策，不把素材包当资料仓库堆砌');
     expect(pkg.user_prompt).toContain('不要把设定包内容写成主条目的史实');
   });
 

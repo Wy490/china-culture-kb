@@ -157,7 +157,7 @@ export async function matchEntries(params: MatchParams): Promise<ApiResponse<Ent
   // Step 6: Fallback message
   let fallbackMessage: string | null = null;
   if (matches.length === 0) {
-    fallbackMessage = '知识库中暂未找到高度相关词条，请更换关键词或先补充知识库条目。';
+    fallbackMessage = '素材库中暂未找到高度相关来源条目，请更换关键词或先补充项目素材。';
   } else if (!bestMatch) {
     fallbackMessage = '找到部分相关词条，但匹配度较低，建议确认是否适合创作。';
   }

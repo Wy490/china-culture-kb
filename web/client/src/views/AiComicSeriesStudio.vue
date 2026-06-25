@@ -1,7 +1,7 @@
 <template>
   <div class="series-studio">
     <aside class="series-studio__panel">
-      <h2 class="series-studio__title">漫剧系列规划</h2>
+      <h2 class="series-studio__title">系列漫剧规划</h2>
 
       <section class="series-studio__field">
         <label class="series-studio__label" for="series-title">系列名</label>
@@ -72,14 +72,30 @@
       </section>
 
       <section v-if="availableNarrativePatterns.length > 0" class="series-studio__field">
-        <span class="series-studio__label">叙事流派强化</span>
-        <p class="series-studio__field-hint">AI 漫剧默认使用这些流派机制；勾选后会在系列规划和单集生成中加强。</p>
+        <span class="series-studio__label">推荐流派</span>
+        <p class="series-studio__field-hint">系列规划会按题材、大纲和素材自动勾选推荐流派；你也可以在生成单集前手动微调。</p>
+        <div v-if="recommendedNarrativePatterns.length" class="series-studio__pattern-recommendations">
+          <article
+            v-for="item in recommendedNarrativePatterns"
+            :key="item.pattern_id"
+            class="series-studio__pattern-recommendation"
+          >
+            <strong>{{ narrativePatternLabel(item.pattern_id) }}</strong>
+            <span>{{ item.reason }}</span>
+            <small v-if="item.match_signals.length">
+              匹配信号：{{ item.match_signals.join('、') }}
+            </small>
+          </article>
+        </div>
         <div class="series-studio__pattern-list">
           <label
             v-for="pattern in availableNarrativePatterns"
             :key="pattern.pattern_id"
             class="series-studio__pattern-card"
-            :class="{ 'series-studio__pattern-card--selected': selectedNarrativePatternIds.includes(pattern.pattern_id) }"
+            :class="{
+              'series-studio__pattern-card--selected': selectedNarrativePatternIds.includes(pattern.pattern_id),
+              'series-studio__pattern-card--recommended': isRecommendedNarrativePattern(pattern.pattern_id),
+            }"
           >
             <input
               v-model="selectedNarrativePatternIds"
@@ -87,7 +103,10 @@
               :value="pattern.pattern_id"
             />
             <span>
-              <strong>{{ pattern.label }}</strong>
+              <strong>
+                {{ pattern.label }}
+                <em v-if="isRecommendedNarrativePattern(pattern.pattern_id)">推荐</em>
+              </strong>
               <small>{{ pattern.user_facing_summary || pattern.narrative_engine }}</small>
               <small v-if="pattern.subgenre_tags?.length" class="series-studio__pattern-tags">
                 <em v-for="tag in pattern.subgenre_tags.slice(0, 4)" :key="tag">{{ tag }}</em>
@@ -1783,7 +1802,7 @@
                     class="series-studio__episode-link"
                     :to="episodeProjectPath(episode.episode_no)"
                   >
-                    打开故事项目
+                    打开创作项目
                   </RouterLink>
                 </div>
               </header>
@@ -1792,7 +1811,7 @@
                   v-if="episodeStoryId(episode.episode_no)"
                   class="series-studio__message series-studio__message--warning series-studio__episode-edit-warning"
                 >
-                  本集已生成分镜。保存卡片修改后，建议重新生成本集分镜，让故事项目与最新分集规划一致。
+                  本集已生成分镜。保存卡片修改后，建议重新生成本集分镜，让创作项目与最新分集规划一致。
                 </p>
                 <label>
                   <span>主冲突</span>
@@ -2298,6 +2317,7 @@ import type {
   NarrativePattern,
   NarrativePatternCatalog,
   NarrativePatternId,
+  RecommendedNarrativePattern,
   StoryGenerateResult,
 } from '@shared/types'
 
@@ -2667,6 +2687,14 @@ const availableNarrativePatterns = computed<NarrativePattern[]>(() => {
     .map(patternId => narrativePatternCatalog.value?.patterns.find(pattern => pattern.pattern_id === patternId))
     .filter((pattern): pattern is NarrativePattern => Boolean(pattern))
 })
+const recommendedNarrativePatterns = computed<RecommendedNarrativePattern[]>(() => {
+  return [...(plan.value?.recommended_narrative_patterns ?? [])]
+    .filter(item => item.video_type === 'ai_comic_drama')
+    .sort((a, b) => a.priority - b.priority || b.confidence - a.confidence)
+})
+const recommendedNarrativePatternIdSet = computed(() =>
+  new Set(recommendedNarrativePatterns.value.map(item => item.pattern_id))
+)
 const activeNarrativePatternLabels = computed(() => {
   const selected = new Set(selectedNarrativePatternIds.value)
   return availableNarrativePatterns.value
@@ -2708,6 +2736,14 @@ function styleAxisValueLabel(value: 'low' | 'medium' | 'high') {
   if (value === 'high') return '高'
   if (value === 'low') return '低'
   return '中'
+}
+
+function narrativePatternLabel(patternId: NarrativePatternId): string {
+  return narrativePatternCatalog.value?.patterns.find(pattern => pattern.pattern_id === patternId)?.label ?? patternId
+}
+
+function isRecommendedNarrativePattern(patternId: NarrativePatternId): boolean {
+  return recommendedNarrativePatternIdSet.value.has(patternId)
 }
 
 function timelineStatusLabel(
@@ -3336,7 +3372,15 @@ function applyPlan(nextPlan: AiComicSeriesPlan) {
   durationMin.value = nextPlan.episode_duration_range_sec.min
   durationMax.value = nextPlan.episode_duration_range_sec.max
   pacingProfile.value = nextPlan.pacing_profile
-  selectedNarrativePatternIds.value = [...(nextPlan.narrative_pattern_ids ?? [])]
+  selectedNarrativePatternIds.value = [
+    ...(nextPlan.narrative_pattern_ids
+      ?? nextPlan.recommended_narrative_patterns
+        ?.filter(item => item.video_type === 'ai_comic_drama')
+        .sort((a, b) => a.priority - b.priority || b.confidence - a.confidence)
+        .map(item => item.pattern_id)
+        .slice(0, 3)
+      ?? []),
+  ]
 }
 
 async function saveCurrentProject(options: {
@@ -5364,6 +5408,34 @@ function episodeProjectPath(episodeNo: number): string {
   gap: 8px;
 }
 
+.series-studio__pattern-recommendations {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.series-studio__pattern-recommendation {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #cfe6d8;
+  border-left: 4px solid #27ae60;
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: #f7fbf8;
+}
+
+.series-studio__pattern-recommendation strong {
+  color: #1f6f43;
+  font-size: 13px;
+}
+
+.series-studio__pattern-recommendation span,
+.series-studio__pattern-recommendation small {
+  color: #526575;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .series-studio__pattern-card {
   display: flex;
   gap: 8px;
@@ -5380,6 +5452,10 @@ function episodeProjectPath(episodeNo: number): string {
   background: #f5eef8;
 }
 
+.series-studio__pattern-card--recommended {
+  border-color: #9fd6b6;
+}
+
 .series-studio__pattern-card input {
   margin-top: 2px;
 }
@@ -5390,8 +5466,22 @@ function episodeProjectPath(episodeNo: number): string {
 }
 
 .series-studio__pattern-card strong {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
   color: #263746;
   font-size: 13px;
+}
+
+.series-studio__pattern-card strong em {
+  font-style: normal;
+  border: 1px solid #bfe4cd;
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: #f0faf4;
+  color: #1f7a48;
+  font-size: 11px;
 }
 
 .series-studio__pattern-card small {

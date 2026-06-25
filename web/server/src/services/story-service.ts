@@ -86,7 +86,7 @@ import { buildStoryGenerationPromptPackage } from './story-generation-prompt.js'
 import { generateStoryWithAdapter } from './story-generation-model.js';
 import type { StoryGenerationModelOutput } from './story-generation-prompt.js';
 import { buildStoryBlueprint, attachBlueprintScenes } from './story-blueprint-service.js';
-import { resolveGenreStoryMatrix } from './genre-story-profiles.js';
+import { recommendNarrativePatternsForEntry, resolveGenreStoryMatrix } from './genre-story-profiles.js';
 import { validateGenreStoryQuality } from './genre-quality-service.js';
 import { buildStoryRepairPromptPackage, shouldAttemptStoryRepair } from './story-repair-service.js';
 import { buildGearsDeliveryPackage, ensureGearsDeliveryPackage } from './gears-delivery-service.js';
@@ -358,7 +358,7 @@ function buildSingleEntryKnowledgePack(
     summary,
     score: 1,
     role_in_story: 'primary_entry',
-    match_reason: '用户指定词条，自动注入全文知识包',
+    match_reason: '用户指定来源条目，自动注入全文项目素材包',
     keywords: entry.keywords,
     knowledge_domain: entry.knowledge_domain,
     entry_role: entry.entry_role,
@@ -565,48 +565,48 @@ function buildSupplementTaskGuidance(missing: { need_id: string; label: string; 
     return {
       category: 'supporting_character',
       recommendedFields: ['人物姓名或身份', '与主角关系', '在事件中的作用', '可用对白/行动线索'],
-      intakePrompt: `补录${missing.label}时，优先写清人物关系和他们推动冲突的具体行动。`,
+      intakePrompt: `补充${missing.label}时，优先写清人物关系和他们推动冲突的具体行动。`,
     };
   }
   if (missing.need_id === 'main_character' || /人物|主角|生平|经历/.test(text)) {
     return {
       category: 'person_experience',
       recommendedFields: ['人物身份与时代背景', '关键经历时间线', '核心选择或冲突', '与故事主线的关系'],
-      intakePrompt: `补录${missing.label}时，优先写清人物经历、关键选择和可验证来源。`,
+      intakePrompt: `补充${missing.label}时，优先写清人物经历、关键选择和可验证来源。`,
     };
   }
   if (/建筑|古迹|祠|庙|寺|楼|桥|塔|院|空间|场景|地点/.test(text)) {
     return {
       category: 'architecture_detail',
       recommendedFields: ['建筑或地点名称', '空间结构与方位', '材质/构件/纹样', '历史用途与现场可拍细节'],
-      intakePrompt: `补录${missing.label}时，优先写清建筑细节、空间关系和可视化特征。`,
+      intakePrompt: `补充${missing.label}时，优先写清建筑细节、空间关系和可视化特征。`,
     };
   }
   if (missing.need_id === 'historical_events' || /事件|过程|冲突|案件|战役|变故|始末/.test(text)) {
     return {
       category: 'event_process',
       recommendedFields: ['事件起因', '关键参与者', '发展过程', '结果影响与争议点'],
-      intakePrompt: `补录${missing.label}时，优先写清事件过程、因果链和史实边界。`,
+      intakePrompt: `补充${missing.label}时，优先写清事件过程、因果链和史实边界。`,
     };
   }
   if (missing.need_id === 'regional_context' || /地域|地方|城市|省|县|乡|村/.test(text)) {
     return {
       category: 'regional_context',
       recommendedFields: ['地理位置', '时代背景', '地方风俗', '与故事主题的关系'],
-      intakePrompt: `补录${missing.label}时，优先写清地方背景和它如何影响人物选择。`,
+      intakePrompt: `补充${missing.label}时，优先写清地方背景和它如何影响人物选择。`,
     };
   }
   if (missing.need_id === 'cultural_background' || /文化|民俗|宗教|礼制|工艺|仪式|非遗/.test(text)) {
     return {
       category: 'cultural_background',
       recommendedFields: ['文化概念', '实践流程', '象征意义', '当代传承或禁忌'],
-      intakePrompt: `补录${missing.label}时，优先写清文化背景、流程和不可虚构的边界。`,
+      intakePrompt: `补充${missing.label}时，优先写清文化背景、流程和不可虚构的边界。`,
     };
   }
   return {
     category: 'general',
     recommendedFields: ['资料主题', '关键事实', '来源依据', '可用于画面的细节'],
-    intakePrompt: `补录${missing.label}时，优先写清事实、来源和可转化为故事/画面的细节。`,
+    intakePrompt: `补充${missing.label}时，优先写清事实、来源和可转化为故事/画面的细节。`,
   };
 }
 
@@ -713,7 +713,7 @@ function buildSceneBreakdown(
     );
     const culturalNote = relatedNotes.length > 0
       ? relatedNotes[0]
-      : '本场景基于知识库条目，具体细节请核实来源';
+      : '本场景基于来源条目，具体细节请核实来源';
 
     return {
       scene_id: idx + 1,
@@ -1077,6 +1077,11 @@ export async function planStory(entryName: string, originalUserQuery?: string): 
       priority: index + 1,
     };
   });
+  const recommendedNarrativePatterns = recommendNarrativePatternsForEntry({
+    entry,
+    videoTypes: routedVideoTypes,
+    originalUserQuery,
+  });
 
   return success({
     entry_name: entryName,
@@ -1086,6 +1091,7 @@ export async function planStory(entryName: string, originalUserQuery?: string): 
     recommended_video_types: recommendedVideoTypes,
     recommended_presentation_styles: recommendedPresentationStyles,
     recommended_story_structures: recommendedStoryStructures,
+    recommended_narrative_patterns: recommendedNarrativePatterns,
     recommended_supplement_needs: recommendedSupplementNeeds,
     available_events: availableEvents,
     recommended_duration: recommendedDuration,
@@ -1531,6 +1537,7 @@ export async function generateAndStoreStory(
   const toneWithPriority = [tone, storyPriorityInstruction(request.story_priority)]
     .filter((item): item is string => Boolean(item))
     .join('\n');
+  const localTone = tone ?? '';
 
   // Resolve video_type and generation_type
   const videoType = resolveVideoType(request);
@@ -1674,7 +1681,7 @@ export async function generateAndStoreStory(
       videoType,
       presentationStyle,
       targetDuration,
-      tone: toneWithPriority,
+      tone: localTone,
       memorySeed: seed,
       knowledgePack: knowledgePackToUse,
       originalUserQuery: original_user_query ?? outline,
@@ -1699,7 +1706,7 @@ export async function generateAndStoreStory(
       videoType,
       presentationStyle,
       targetDuration,
-      tone: toneWithPriority,
+      tone: localTone,
       knowledgePack: knowledgePackToUse,
       originalUserQuery: original_user_query ?? outline,
     });

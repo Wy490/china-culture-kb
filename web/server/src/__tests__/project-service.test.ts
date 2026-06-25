@@ -92,6 +92,9 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+const DELIVERY_PROMPT_INTERNAL_PATTERN =
+  /(质量信号|主角目标|目标明确|行动具体|因果链|史实边界|质量报告|来源说明|内部字段名|来源条目|来源显示|史实依据|影视化创作|知识库|用户大纲|生成优先级|资料显示|摘要|核心画面是|为什么必须面对|具体细节请核实来源|不可写成|确证史实|确证史源|创作边界|治理痕迹|分析|应该|注意|TODO|待补)/;
+
 function expectProviderSignature(input: {
   init?: RequestInit;
   method: 'POST' | 'GET';
@@ -1145,6 +1148,84 @@ describe('project-service', () => {
     expect(afterSubmit.data?.summary.active_gears_job_count).toBeGreaterThan(0);
     expect(gearsLane?.status).toBe('needs_action');
     expect(afterSubmit.data?.markdown).toContain('GEARS Execution');
+  });
+
+  it('keeps internal labels out of GEARS payload summaries and project ledgers', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const baseStory = makeStory();
+    const story: StoryGenerateResult = {
+      ...baseStory,
+      scene_breakdown: baseStory.scene_breakdown.map(scene => scene.scene_id === 1
+        ? {
+            ...scene,
+            location: '南安军衙，来源显示：知识库；生成优先级：高',
+            dialogue_or_narration: '旁白：这一笔落下，就是一条命。史实依据：知识库条目；质量信号：目标明确',
+          }
+        : scene),
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1'],
+      note: 'GEARS local submit smoke',
+    });
+
+    expect(submitRes.ok).toBe(true);
+    const submittedSummary = submitRes.data?.submitted_jobs[0]?.payload_summary ?? '';
+    expect(submittedSummary).toContain('南安军衙');
+    expect(submittedSummary).toContain('第一场分段');
+    expect(submittedSummary).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+
+    const detail = await getProject(enriched.project_id!);
+    const ledgerSummary = detail.data?.project.gears_job_ledger?.items.find(item =>
+      item.job_type === 'seedance_video' && item.source_unit_id === 'shot-1'
+    )?.payload_summary ?? '';
+    expect(ledgerSummary).toBe(submittedSummary);
+    expect(ledgerSummary).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+  });
+
+  it('cleans legacy GEARS payload summaries when exporting the production board', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const projectPath = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'project.json');
+    const project = JSON.parse(await readFile(projectPath, 'utf-8')) as StoryProjectMeta;
+    const dirtySummary = '南安军衙，生成优先级：剧情推进与资料完整保持均衡，关键知识点必须进入可观看的场景行动。第一场分段';
+    project.gears_job_ledger = {
+      schema_version: 'gears-job-ledger/v1',
+      updated_at: '2026-06-09T10:01:00.000Z',
+      items: [{
+        ledger_id: 'legacy-ledger-shot-1',
+        gears_job_id: 'legacy-gears-job-shot-1',
+        job_type: 'seedance_video',
+        source_unit_id: 'shot-1',
+        source_project_id: enriched.project_id,
+        source_story_id: story.storyId,
+        idempotency_key: 'seedance_video:shot-1',
+        status: 'submitted',
+        artifact_urls: [],
+        submitted_at: '2026-06-09T10:01:00.000Z',
+        updated_at: '2026-06-09T10:01:00.000Z',
+        payload_summary: dirtySummary,
+      }],
+    };
+    await writeFile(projectPath, JSON.stringify(project, null, 2), 'utf-8');
+
+    const exportRes = await exportProjectProductionBoard(enriched.project_id!);
+    expect(exportRes.ok).toBe(true);
+
+    const updatedProject = JSON.parse(await readFile(projectPath, 'utf-8')) as StoryProjectMeta;
+    const summary = updatedProject.gears_job_ledger?.items[0]?.payload_summary ?? '';
+    expect(summary).toContain('南安军衙');
+    expect(summary).toContain('第一场分段');
+    expect(summary).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(summary).not.toContain('关键知识点必须进入可观看的场景行动');
   });
 
   it('submits GEARS jobs locally and applies callbacks to the project ledgers', async () => {
@@ -3156,6 +3237,19 @@ describe('project-service', () => {
     expect(seedanceAssetReport.schema_version).toBe('seedance-asset-report/v1');
     expect(seedanceAssetReport.assets[0].status).toBe('missing_file');
     expect(seedanceAssetReport.markdown).toContain('Seedance 素材缺口报告');
+    expect(seedanceAssetReport.markdown).toContain('## 上传清单');
+    expect(seedanceAssetReport.upload_required_count).toBeGreaterThan(0);
+    expect(seedanceAssetReport.upload_checklist.length).toBe(seedanceAssetReport.upload_required_count);
+    expect(seedanceAssetReport.upload_checklist[0]).toMatchObject({
+      needs_upload: true,
+      suggested_filename: expect.any(String),
+      checklist_note: expect.any(String),
+    });
+    expect(seedanceAssetReport.upload_checklist[0].acceptance_criteria.length).toBeGreaterThan(0);
+    if (manifest.delivery_manifest.stage === 'ready') {
+      expect(manifest.delivery_manifest.next_action).toContain('上传/绑定');
+      expect(manifest.delivery_manifest.next_action).toContain(String(seedanceAssetReport.upload_required_count));
+    }
     const seedanceShotLedger = JSON.parse(await readFile(resolve(exportDir, 'seedance-shot-ledger.json'), 'utf-8'));
     expect(seedanceShotLedger.schema_version).toBe('seedance-shot-ledger/v1');
     expect(seedanceShotLedger.items[0].status).toBe('prompt_exported');
@@ -3168,6 +3262,122 @@ describe('project-service', () => {
       file_count: 11,
       delivery_stage: exportRes.data?.board.delivery_manifest.stage,
     });
+  });
+
+  it('keeps internal quality labels out of production board delivery prompts', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const baseStory = makeStory();
+    const story: StoryGenerateResult = {
+      ...baseStory,
+      quality_report: {
+        ...baseStory.quality_report!,
+        issues: [
+          '补强「人物高光选择」质量信号：目标明确',
+          '必须有主角目标',
+          '对齐历史因果讲述：因果链清楚',
+          '史实边界明确',
+        ],
+      },
+      scene_breakdown: baseStory.scene_breakdown.map(scene => scene.scene_id === 1
+        ? {
+            ...scene,
+            visual_prompt: '质量信号：目标明确；来源显示：知识库；烛火、案卷、未签的判词',
+            camera_suggestion: '注意：近景切入',
+            cultural_note: '来源显示：基于知识库条目，具体细节请核实来源。',
+            factual_basis: '史实边界明确：周敦颐拒签冤案来自知识库。',
+            fictionalized_elements: ['影视化创作：雨夜停笔动作'],
+          }
+        : scene),
+      gears_segments: baseStory.gears_segments.map(segment => segment.source_scene_id === 1
+        ? {
+            ...segment,
+            script_text: '质量信号：行动具体；片尾说清创作边界。保留案卷、烛火和停笔动作。',
+            segment_prompt_hint: '补强质量信号：行动具体；保留案卷、烛火和停笔动作。',
+            cultural_constraints: ['来源条目：周敦颐——理学开山鼻祖', '史实依据：拒签冤案'],
+          }
+        : segment),
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const exportRes = await exportProjectProductionBoard(enriched.project_id!);
+
+    expect(exportRes.ok).toBe(true);
+    const detail = await getProject(enriched.project_id!);
+    const storedQualityText = detail.data?.current_story.quality_report?.issues.join('\n') ?? '';
+    expect(storedQualityText).toMatch(/质量信号|主角目标|因果链|史实边界/);
+
+    const exportDir = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'production-board');
+    const boardJson = JSON.parse(await readFile(resolve(exportDir, 'production-board.json'), 'utf-8'));
+    const boardMarkdown = await readFile(resolve(exportDir, 'production-board.md'), 'utf-8');
+    const seedanceJson = JSON.parse(await readFile(resolve(exportDir, 'seedance-prompts.json'), 'utf-8'));
+    const seedanceMarkdown = await readFile(resolve(exportDir, 'seedance-prompts.md'), 'utf-8');
+    const boardDeliveryText = boardJson.shot_units.flatMap((unit: {
+      script_text: string;
+      visual_prompt: string;
+      camera_suggestion: string;
+      production_prompt: string;
+      seedance_prompt: string;
+      cultural_boundary: string;
+      continuity_notes: string[];
+    }) => [
+      unit.script_text,
+      unit.visual_prompt,
+      unit.camera_suggestion,
+      unit.production_prompt,
+      unit.seedance_prompt,
+      unit.cultural_boundary,
+      ...(unit.continuity_notes ?? []),
+    ]).join('\n');
+    const boardBoundaryText = [
+      ...(boardJson.continuity_constraints ?? []),
+      ...boardJson.shot_units.map((unit: { cultural_boundary: string }) => unit.cultural_boundary),
+    ].join('\n');
+    const boardAssetText = [
+      ...boardJson.character_assets.flatMap((asset: {
+        appearance_features: string;
+        clothing: string;
+        carried_props?: string;
+        signature_objects?: string;
+        background_oneliner?: string;
+      }) => [
+        asset.appearance_features,
+        asset.clothing,
+        asset.carried_props ?? '',
+        asset.signature_objects ?? '',
+        asset.background_oneliner ?? '',
+      ]),
+      ...boardJson.location_assets.flatMap((asset: {
+        description: string;
+        environment_props?: string;
+      }) => [
+        asset.description,
+        asset.environment_props ?? '',
+      ]),
+      ...boardJson.costume_assets.map((asset: { clothing: string; continuity_note: string }) =>
+        `${asset.clothing}\n${asset.continuity_note}`
+      ),
+      ...boardJson.prop_assets.map((asset: { usage_note: string }) => asset.usage_note),
+    ].join('\n');
+    const seedancePromptText = seedanceJson.shot_units
+      .map((unit: { prompt: string }) => unit.prompt)
+      .join('\n');
+    const seedancePreviewText = boardJson.seedance_asset_report.shots
+      .map((shot: { prompt_preview: string }) => shot.prompt_preview)
+      .join('\n');
+
+    expect(boardDeliveryText).toContain('烛火');
+    expect(boardDeliveryText).toContain('案卷');
+    expect(boardDeliveryText).toContain('0-3秒');
+    expect(boardDeliveryText).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(boardBoundaryText).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(boardAssetText).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(boardJson.markdown).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(boardMarkdown).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(seedancePromptText).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(seedancePreviewText).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(seedanceMarkdown).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
   });
 
   it('repairs production board issues and exports the repaired package in one step', async () => {

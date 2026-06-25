@@ -40,7 +40,7 @@ AI 影视前期创作、剧本生产与项目素材指挥系统
 - `material_pack`：把 `knowledge_pack` 升级为项目素材包，并保留旧字段兼容。
 - `material_sufficiency`：把素材补充拆成 minimum viable story、script ready、production ready 三个阶段。
 
-新对话如果要改 Story Agent 生成链路，继续沿 `docs/story-agent-creative-platform-reposition-plan.md` 推进 Story Studio / AI 影像创作台能力，而不是追加知识库补录或 GEARS 媒体实产。
+新对话如果要改 Story Agent 生成链路，继续沿 `docs/story-agent-creative-platform-reposition-plan.md` 推进 Story Studio / AI影视工作台能力，而不是追加知识库补录或 GEARS 媒体实产。
 
 2026-06-23 更新：Phase 1 合同层首轮已落地。Web 后端已新增并接入 `creation_contract`、`material_pack`、`material_sufficiency`，旧 `knowledge_pack` 请求保持兼容；StoryBlueprint、prompt package、StoryGenerateResult、质量报告、项目 meta/version snapshot 均会保存新字段。MCP `kb_generate_story_blueprint` 已能只读返回 `creation_contract` / `material_sufficiency`，`kb_get_project_context` 可读回项目上下文中的新合同字段。
 

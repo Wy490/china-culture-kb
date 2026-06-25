@@ -519,7 +519,7 @@ function generateSceneContent(
   const keyAction = buildKeyAction(template, protagonist, centralEvent);
 
   // Build visual prompt
-  const visualPrompt = buildVisualPrompt(template, location, timeOfDay, centralEvent, protagonist, entry, tone);
+  const visualPrompt = buildVisualPrompt(template, location, timeOfDay, centralEvent, protagonist, entry);
 
   // Build camera suggestion
   const cameraSuggestion = CAMERA_BY_FUNCTION[template.function_label] ?? '中景固定镜头';
@@ -1346,20 +1346,19 @@ function buildKeyAction(template: SceneTemplate, protagonist: string, centralEve
   return actionMap[template.function_label] ?? `${protagonist}${centralEvent}`;
 }
 
-function buildVisualPrompt(template: SceneTemplate, location: string, timeOfDay: string, centralEvent: string, protagonist: string, entry: EntryDetail, tone: string): string {
-  const toneModifier = tone ? `，${tone}氛围` : '';
+function buildVisualPrompt(template: SceneTemplate, location: string, timeOfDay: string, centralEvent: string, protagonist: string, entry: EntryDetail): string {
   const keywords = entry.keywords.slice(0, 3).join('、');
 
   const visualMap: Record<string, string> = {
-    '钩子开场': `${location}，${timeOfDay}。烛火/文书/案卷/判词——核心画面是${centralEvent}的紧张开场${toneModifier}`,
-    '主角处境': `${location}，${protagonist}面对案卷/文书。中景展示人物与处境${toneModifier}`,
-    '冲突升级': `近景切换——${protagonist}的表情变化+案卷细节+对方施压${toneModifier}`,
-    '关键行动': `${protagonist}做出行动——翻案卷/拒签字/拿起文书。动作细节凸显${toneModifier}`,
-    '高潮': `特写——${protagonist}说出核心台词/做出核心动作。情绪最高点${toneModifier}`,
-    '结尾': `远景拉远——${location}全景，${keywords}构成精神象征${toneModifier}`,
+    '钩子开场': `${location}，${timeOfDay}，木案、烛火、文书、案卷、判词，${protagonist}停笔特写，竖屏近景构图`,
+    '主角处境': `${location}，${timeOfDay}，${protagonist}面对案卷和文书，中景展示人物、木案与门外压力`,
+    '冲突升级': `${location}，${timeOfDay}，案卷细节、施压者身影、${protagonist}表情变化，近景交替构图`,
+    '关键行动': `${location}，${timeOfDay}，${protagonist}翻开案卷、放下签笔、按住文书，动作特写`,
+    '高潮': `${location}，${timeOfDay}，${protagonist}正面抬头，案卷和烛火在前景，情绪特写`,
+    '结尾': `${location}，${timeOfDay}，远景拉开，${keywords}与书卷、案卷、晨光形成收束构图`,
   };
 
-  return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${keywords}${toneModifier}`;
+  return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${keywords}，人物、道具、光线、空间层次清晰`;
 }
 
 function determineSceneCharacters(template: SceneTemplate, characterNames: string[], protagonist: string): string[] {

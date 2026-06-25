@@ -75,7 +75,54 @@ function baseScenes() {
   ];
 }
 
+function baseMaterialSufficiency() {
+  return {
+    schema_version: 'material-sufficiency/v1' as const,
+    stage: 'script_ready' as const,
+    active_stage: 'minimum_viable_story' as const,
+    score: 63,
+    can_generate: true,
+    can_generate_with_risks: true,
+    blocked: false,
+    needs_verification: true,
+    generation_posture: 'draft_needs_verification' as const,
+    missing_items: [{
+      item_id: 'verified_dialogue_boundary',
+      label: '对白真实性边界',
+      reason: '人物发言只能作为影视化补足，不能写成史实引语',
+      blocking_level: 'risk' as const,
+      affects: ['truth_report', 'dialogue'],
+      recommended_question: '是否有可公开引用的人物原话或机构审定表述？',
+    }],
+    optional_items: [],
+    token_risk: 'low' as const,
+    recommended_next_questions: ['是否有可公开引用的人物原话或机构审定表述？'],
+  };
+}
+
+function baseCreationContract(materialSufficiency = baseMaterialSufficiency()) {
+  return {
+    schema_version: 'creation-contract/v1' as const,
+    creation_use_case: 'institutional_promo' as const,
+    truth_mode: 'institutional_verified' as const,
+    client_type: '文化机构',
+    target_audience: '公众观众',
+    communication_goal: '稳妥呈现人物选择与机构价值表达',
+    video_type: 'ai_comic_drama' as const,
+    presentation_style: 'ai_comic' as const,
+    story_structure: 'single_event_drama' as const,
+    narrative_pattern_ids: ['hero_choice'],
+    allowed_fiction: ['可做镜头调度与场景压缩'],
+    must_verify: ['人物原话', '机构审定口径'],
+    forbidden_moves: ['虚构机构发言', '把待核验材料写成确定事实'],
+    required_disclaimers: [],
+    material_sufficiency: materialSufficiency,
+    delivery_expectation: ['输出可审校剧本草案'],
+  };
+}
+
 function baseStory(overrides: Record<string, unknown> = {}) {
+  const materialSufficiency = baseMaterialSufficiency();
   return {
     storyId,
     project_id: projectId,
@@ -92,6 +139,8 @@ function baseStory(overrides: Record<string, unknown> = {}) {
     cultural_constraints: [],
     credibility_note: '测试可信度说明',
     story_structure: 'single_event_drama',
+    material_sufficiency: materialSufficiency,
+    creation_contract: baseCreationContract(materialSufficiency),
     story_blueprint: {
       schema_version: 'story-blueprint/v1',
       central_event: '雨夜拒签',
@@ -171,6 +220,12 @@ describe('kb_repair_story', () => {
     expect(result!.quality_snapshot.video_type).toBe('ai_comic_drama');
     expect(result!.repair_actions.some(action => action.issue.includes('AI 漫剧缺少对白'))).toBe(true);
     expect(result!.protected_fields).toContain('story_blueprint.evidence_boundaries');
+    expect(result!.protected_fields).toContain('creation_contract');
+    expect(result!.boundary_notes.join('\n')).toContain('创作合同边界');
+    expect(result!.boundary_notes.join('\n')).toContain('机构审定');
+    expect(result!.boundary_notes.join('\n')).toContain('素材 Gate');
+    expect(result!.creation_contract?.truth_mode).toBe('institutional_verified');
+    expect(result!.material_sufficiency?.score).toBe(63);
     expect(result!.output_contract).toMatchObject({
       format: 'json',
       root_type: 'StoryGenerateResult',
@@ -183,6 +238,8 @@ describe('kb_repair_story', () => {
       'kb_get_project_context',
     ]);
     expect(result!.prompt).toContain('只输出一个完整 JSON 对象');
+    expect(result!.prompt).toContain('创作合同与素材 Gate 边界');
+    expect(result!.prompt).toContain('禁止表达边界');
     expect(result!.prompt).toContain('优先补强主角短对白和结尾钩子');
     expect(result!.prompt).toContain('"storyId"');
     expect(result!.original_story_json).toContain('"storyId"');
@@ -203,6 +260,8 @@ describe('kb_repair_story', () => {
     expect(result!.repair_actions.length).toBeLessThanOrEqual(2);
     expect(result!.prompt).toContain('调用方已持有原始 StoryGenerateResult JSON');
     expect(result!.markdown).toContain('Story Repair Prompt Package');
+    expect(result!.markdown).toContain('创作合同与素材 Gate 边界');
+    expect(result!.markdown).toContain('素材 Gate');
   });
 
   it('generates a read-only repair dry run from project_id', async () => {
@@ -220,6 +279,8 @@ describe('kb_repair_story', () => {
     expect(result!.target_scenes.length).toBeGreaterThan(0);
     expect(result!.repair_actions[0].acceptance_check).toContain('kb_validate_genre_story');
     expect(result!.risk_notes[0]).toContain('dry-run');
+    expect(result!.boundary_notes.join('\n')).toContain('创作合同边界');
+    expect(result!.risk_notes.join('\n')).toContain('素材 Gate');
     expect(versionsAfter).toEqual(versionsBefore);
     expect(result!.markdown).toBeUndefined();
   });

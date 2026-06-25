@@ -33,7 +33,7 @@
       </select>
       <select v-model="sourceFilter" class="supplement-page__select">
         <option value="">全部来源</option>
-        <option value="knowledge_pack_missing_need">旧知识包缺口</option>
+        <option value="knowledge_pack_missing_need">旧项目素材包缺口</option>
         <option value="material_sufficiency_missing_item">素材 Gate 缺口</option>
       </select>
     </section>
@@ -81,7 +81,7 @@
           <h2>{{ item.task.label }}</h2>
           <p>{{ item.task.description }}</p>
           <p v-if="item.task.supplement_note" class="supplement-page__note">
-            <strong>补录说明：</strong>{{ item.task.supplement_note }}
+            <strong>素材补充说明：</strong>{{ item.task.supplement_note }}
           </p>
           <div v-if="item.task.recommended_fields?.length" class="supplement-page__fields">
             <span v-for="field in item.task.recommended_fields" :key="field">{{ field }}</span>
@@ -213,7 +213,7 @@ function blockingLabel(level: MaterialBlockingLevel): string {
 
 function sourceLabel(source: KnowledgeSupplementTaskSource): string {
   const map: Record<KnowledgeSupplementTaskSource, string> = {
-    knowledge_pack_missing_need: '旧知识包缺口',
+    knowledge_pack_missing_need: '旧项目素材包缺口',
     material_sufficiency_missing_item: '素材 Gate 缺口',
   }
   return map[source]

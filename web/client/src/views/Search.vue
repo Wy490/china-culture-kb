@@ -1,13 +1,13 @@
 <template>
   <div class="search-page">
-    <h1 class="search-page__title">搜索知识库</h1>
+    <h1 class="search-page__title">搜索项目素材库</h1>
 
     <!-- Search form -->
     <form class="search-page__form" @submit.prevent="handleSearch">
       <input
         v-model="keywords"
         class="search-page__input"
-        placeholder="输入词条名称、关键词、地区…"
+        placeholder="输入素材名称、关键词、地区…"
       />
       <select v-model="typeFilter" class="search-page__select">
         <option value="">全部类型</option>
@@ -42,7 +42,7 @@
 
     <!-- No results -->
     <div v-if="searched && results.length === 0" class="search-page__empty">
-      <p>未找到匹配条目，请尝试不同关键词。</p>
+      <p>未找到匹配素材，请尝试不同关键词。</p>
     </div>
 
     <!-- Loading -->

@@ -1,10 +1,13 @@
 import type {
+  GearsCharacterAsset,
   GearsDeliveryPackage,
+  GearsSceneAsset,
   GearsSegment,
   SeedanceAssetBindingItem,
   SeedanceAssetLibrary,
   SeedanceAssetLibraryItem,
   SeedanceAssetReportPackage,
+  SeedanceAssetUploadChecklistItem,
   SeedanceShotLedger,
   SeedanceShotLedgerItem,
   StoryGenerateResult,
@@ -27,16 +30,19 @@ import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import { buildSeedancePromptPackage } from './seedance-prompt-service.js';
 
 const DEFAULT_NEGATIVE_CONSTRAINTS = [
-  '不要把来源、质量报告、内部分析或 TODO 写入画面提示',
-  '不要混用明显错误朝代服饰、现代物件或不可见抽象概念',
-  '不要让同一角色在相邻镜头中服装、年龄、发型突变',
+  '只呈现可见的人物、空间、道具、光线、动作和情绪',
+  '不要出现现代无关物件、占位文本和不可见抽象概念',
+  '保持时代服饰、人物外观、年龄状态和连续道具一致',
 ];
+
+const DELIVERY_PROMPT_INTERNAL_PATTERN =
+  /(质量信号|主角目标|目标明确|行动具体|因果链|史实边界|质量报告|来源说明|内部字段名|来源条目|来源显示|史实依据|影视化创作|知识库|用户大纲|生成优先级|资料显示|摘要|核心画面是|为什么必须面对|具体细节请核实来源|不可写成|确证史实|确证史源|创作边界|治理痕迹|分析|应该|注意|TODO|待补)/;
 
 export function buildStoryProductionBoard(
   story: StoryGenerateResult,
   options: { seedanceAssetLibrary?: SeedanceAssetLibrary; seedanceShotLedger?: SeedanceShotLedger } = {},
 ): StoryProductionBoard {
-  const delivery = ensureGearsDeliveryPackage(story);
+  const delivery = sanitizeDeliveryForProductionBoard(ensureGearsDeliveryPackage(story));
   const seedancePackage = buildSeedancePromptPackage(story);
   const seedanceBySceneId = new Map(seedancePackage.shot_units.map(unit => [unit.source_scene_id, unit]));
   const shotUnits = buildShotUnits(story, delivery, seedanceBySceneId);
@@ -101,7 +107,7 @@ function buildShotUnits(
     const segment = story.gears_segments.find(item => item.source_scene_id === scene.scene_id);
     const unit = delivery.units.find(item => item.source_scene_id === scene.scene_id);
     const seedanceUnit = seedanceBySceneId.get(scene.scene_id);
-    const scriptText = segment?.script_text || scene.dialogue_or_narration || scene.key_action || scene.plot;
+    const scriptText = cleanDeliveryScriptText(segment?.script_text || scene.dialogue_or_narration || scene.key_action || scene.plot);
     const originalVisualPrompt = scene.visual_prompt;
     const visualPrompt = cleanPrompt(originalVisualPrompt);
     const cameraSuggestion = cleanPrompt(scene.camera_suggestion);
@@ -110,22 +116,41 @@ function buildShotUnits(
       scene.factual_basis,
       ...(scene.fictionalized_elements?.map(item => `戏剧化补足：${item}`) ?? []),
       ...(segment?.cultural_constraints ?? []),
-    ].filter((note): note is string => Boolean(note));
+    ]
+      .map(note => cleanProductionBoundaryNote(note ?? ''))
+      .filter((note): note is string => Boolean(note));
+    const seedancePrompt = cleanSeedancePrompt(seedanceUnit?.seedance_prompt ?? buildFallbackSeedancePrompt({
+      durationSec: Math.max(4, Math.min(15, Math.round(scene.duration_sec || 8))),
+      location: scene.location,
+      characters: scene.characters ?? [],
+      scriptText,
+      visualPrompt,
+      cameraSuggestion,
+    }));
     const seedanceAssetSlots = seedanceUnit?.asset_slots ?? [];
     const seedanceMaterialValidation = seedanceUnit?.material_validation ?? fallbackSeedanceMaterialValidation({
       durationSec: seedanceUnit?.duration_sec ?? Math.max(4, Math.min(15, Math.round(scene.duration_sec || 8))),
       characters: scene.characters ?? [],
       location: scene.location,
     });
+    const productionPrompt = buildProductionPrompt({
+      location: scene.location,
+      characters: scene.characters ?? [],
+      visualPrompt,
+      cameraSuggestion,
+      segmentPromptHint: segment?.segment_prompt_hint ? cleanPrompt(segment.segment_prompt_hint) : undefined,
+    });
     const qaFlags = [
       ...shotQaFlags({
-      scriptText,
-      visualPrompt,
-      originalVisualPrompt,
-      cameraSuggestion,
-      characters: scene.characters ?? [],
-      location: scene.location,
-      segment,
+        scriptText,
+        visualPrompt,
+        originalVisualPrompt,
+        cameraSuggestion,
+        productionPrompt,
+        seedancePrompt,
+        characters: scene.characters ?? [],
+        location: scene.location,
+        segment,
       }),
       ...seedanceMaterialValidation.warnings.map(warning => `Seedance 素材校验：${warning}`),
     ];
@@ -140,21 +165,8 @@ function buildShotUnits(
       script_text: scriptText,
       visual_prompt: visualPrompt,
       camera_suggestion: cameraSuggestion,
-      production_prompt: buildProductionPrompt({
-        location: scene.location,
-        characters: scene.characters ?? [],
-        visualPrompt,
-        cameraSuggestion,
-        segmentPromptHint: segment?.segment_prompt_hint,
-      }),
-      seedance_prompt: seedanceUnit?.seedance_prompt ?? buildFallbackSeedancePrompt({
-        durationSec: Math.max(4, Math.min(15, Math.round(scene.duration_sec || 8))),
-        location: scene.location,
-        characters: scene.characters ?? [],
-        scriptText,
-        visualPrompt,
-        cameraSuggestion,
-      }),
+      production_prompt: productionPrompt,
+      seedance_prompt: seedancePrompt,
       seedance_duration_sec: seedanceUnit?.duration_sec ?? Math.max(4, Math.min(15, Math.round(scene.duration_sec || 8))),
       seedance_validation_notes: seedanceUnit
         ? seedanceMaterialValidation.warnings
@@ -162,23 +174,64 @@ function buildShotUnits(
       seedance_asset_slots: seedanceAssetSlots,
       seedance_material_validation: seedanceMaterialValidation,
       continuity_notes: continuityNotes,
-      cultural_boundary: scene.factual_basis
-        ? `事实依据：${scene.factual_basis}`
-        : scene.cultural_note || '按知识库可信边界处理，戏剧化补足不可写成确证史实。',
+      cultural_boundary: buildShotCulturalBoundary(scene),
       negative_constraints: DEFAULT_NEGATIVE_CONSTRAINTS,
       qa_flags: qaFlags,
     };
   });
 }
 
+function sanitizeDeliveryForProductionBoard(delivery: GearsDeliveryPackage): GearsDeliveryPackage {
+  return {
+    ...delivery,
+    character_assets: delivery.character_assets.map(cleanCharacterAsset),
+    scene_assets: delivery.scene_assets.map(cleanSceneAsset),
+    validation_notes: delivery.validation_notes.map(cleanProductionBoundaryNote).filter(Boolean),
+  };
+}
+
+function cleanCharacterAsset(asset: GearsCharacterAsset): GearsCharacterAsset {
+  return {
+    ...asset,
+    appearance_features: cleanProductionAssetDescription(asset.appearance_features) || cleanProductionBoundaryNote(asset.appearance_features),
+    clothing: cleanProductionBoundaryNote(asset.clothing),
+    carried_props: asset.carried_props ? cleanProductionBoundaryNote(asset.carried_props) : asset.carried_props,
+    signature_objects: asset.signature_objects ? cleanProductionBoundaryNote(asset.signature_objects) : asset.signature_objects,
+    background_oneliner: asset.background_oneliner
+      ? cleanProductionAssetDescription(asset.background_oneliner) || cleanProductionBoundaryNote(asset.background_oneliner)
+      : asset.background_oneliner,
+  };
+}
+
+function cleanSceneAsset(asset: GearsSceneAsset): GearsSceneAsset {
+  return {
+    ...asset,
+    description: cleanProductionAssetDescription(asset.description) || cleanProductionBoundaryNote(cleanDeliveryScriptText(asset.description)),
+    environment_props: asset.environment_props ? cleanProductionAssetDescription(asset.environment_props) || cleanProductionBoundaryNote(asset.environment_props) : asset.environment_props,
+  };
+}
+
+function cleanProductionAssetDescription(value: string): string {
+  const cleaned = cleanProductionBoundaryNote(cleanDeliveryScriptText(value));
+  const parts = cleaned
+    .split(/[；;]/)
+    .map(part => part.trim())
+    .filter(part =>
+      part
+      && !/^(事实锚点|创作处理|来源材料|素材包|用户素材|思想文化影响|地方化关系)[:：]?/.test(part)
+      && !/(基于|来自|可作为|进行场景化|进行象征化|创作场景|创作处理|来源材料|用户素材|素材包|文化阐释|相关地点|地方化关系|思想文化影响|片尾说清|不把|不可写成|确定事实|确定来源|需由供稿侧补充)/.test(part)
+    );
+  return uniqueStrings(parts).join('；').trim();
+}
+
 function buildDirectorPlan(story: StoryGenerateResult): StoryProductionBoardDirectorPlan[] {
   return story.scene_breakdown.map((scene, index) => ({
     scene_id: scene.scene_id,
-    dramatic_purpose: scene.dramatic_function || scene.conflict || '推进本场戏剧目标',
+    dramatic_purpose: cleanProductionBoundaryNote(scene.dramatic_function || scene.conflict || '推进本场戏剧目标'),
     emotion_turn: scene.conflict
-      ? `${scene.conflict} -> ${scene.key_action}`
-      : scene.key_action,
-    camera_logic: scene.camera_suggestion || '用稳定镜头建立空间，再以中近景承接人物动作。',
+      ? cleanDeliveryScriptText(`${scene.conflict} -> ${scene.key_action}`)
+      : cleanDeliveryScriptText(scene.key_action),
+    camera_logic: cleanPrompt(scene.camera_suggestion) || '用稳定镜头建立空间，再以中近景承接人物动作。',
     transition_hint: index === story.scene_breakdown.length - 1
       ? '收束到主题余味或下一集钩子。'
       : `承接到场景 ${story.scene_breakdown[index + 1]?.scene_id}：${story.scene_breakdown[index + 1]?.title}`,
@@ -218,7 +271,9 @@ function buildContinuityConstraints(
     ...delivery.character_assets.map(asset => `${asset.name}: ${asset.appearance_features}；服装：${asset.clothing}`),
     ...delivery.scene_assets.map(asset => `${asset.name}: ${asset.description}`),
     ...(story.cultural_constraints ?? []),
-  ].filter(Boolean);
+  ]
+    .map(cleanProductionBoundaryNote)
+    .filter(Boolean);
 }
 
 function buildQaReport(
@@ -235,7 +290,7 @@ function buildQaReport(
   const missingAssetRefs = [...missingShotAnchors, ...missingSeedanceSlots];
   const promptPollutionFlags = shotUnits.flatMap(unit =>
     unit.qa_flags
-      .filter(flag => flag.includes('提示词杂质'))
+      .filter(flag => flag.includes('提示待清理'))
       .map(flag => `${unit.shot_id}: ${flag}`),
   );
   const continuityRisks = shotUnits.flatMap(unit =>
@@ -338,6 +393,7 @@ function buildSeedanceAssetReport(input: {
     upload_required_count: assetList.filter(asset => asset.needs_upload).length,
     shot_binding_count: shots.length,
     unbound_shot_count: shots.filter(shot => shot.missing_asset_ids.length > 0).length,
+    upload_checklist: buildSeedanceAssetUploadChecklist(assetList),
     assets: assetList,
     shots,
   };
@@ -345,6 +401,85 @@ function buildSeedanceAssetReport(input: {
     ...basePackage,
     markdown: renderSeedanceAssetReportMarkdown(basePackage),
   };
+}
+
+function buildSeedanceAssetUploadChecklist(
+  assets: SeedanceAssetBindingItem[],
+): SeedanceAssetUploadChecklistItem[] {
+  return assets
+    .filter(asset => asset.needs_upload || asset.status !== 'bound')
+    .map(asset => ({
+      asset_id: asset.asset_id,
+      reference_slot: asset.reference_slot,
+      label: asset.label,
+      kind: asset.kind,
+      modality: asset.modality,
+      role: asset.role,
+      status: asset.status,
+      needs_upload: asset.needs_upload,
+      affected_shot_ids: asset.source_shot_ids,
+      affected_scene_ids: asset.source_scene_ids,
+      suggested_filename: seedanceSuggestedAssetFilename(asset),
+      checklist_note: seedanceAssetChecklistNote(asset),
+      acceptance_criteria: seedanceAssetAcceptanceCriteria(asset),
+    }));
+}
+
+function seedanceSuggestedAssetFilename(asset: SeedanceAssetBindingItem): string {
+  const slot = (asset.reference_slot ?? 'asset').replace(/^@/, '').replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, '-');
+  const label = asset.label.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '');
+  const ext = asset.modality === 'audio' ? 'mp3' : asset.modality === 'video' ? 'mp4' : 'png';
+  return `${slot}-${seedanceAssetKindLabel(asset.kind)}-${label || asset.asset_id}.${ext}`;
+}
+
+function seedanceAssetChecklistNote(asset: SeedanceAssetBindingItem): string {
+  if (asset.status === 'missing_reference_slot') {
+    return '先分配平台引用槽位，再绑定对应素材文件。';
+  }
+  if (asset.modality === 'image') {
+    if (asset.kind === 'character') return '准备稳定人物形象参考，保持服饰、发型、年龄状态和随身物件一致。';
+    if (asset.kind === 'location') return '准备场景氛围参考，突出空间结构、时代环境、主要道具、光线和色调。';
+    return '准备道具外观参考，突出形状、材质、尺寸感和跨镜头一致性。';
+  }
+  if (asset.modality === 'video') return '准备运镜或动作节奏参考，只作为节奏和镜头运动参考。';
+  return '准备音乐或环境声参考，只作为情绪、节奏和声场参考。';
+}
+
+function seedanceAssetAcceptanceCriteria(asset: SeedanceAssetBindingItem): string[] {
+  const common = [
+    `${asset.reference_slot ?? '引用槽位'} 已能在 Seedance prompt 中被稳定引用`,
+    `覆盖镜头：${asset.source_shot_ids.join('、') || '未记录'}`,
+  ];
+  if (asset.kind === 'character') {
+    return [
+      ...common,
+      '人物外观、服饰、发型和年龄状态与 Production Board 角色资产一致',
+      '不使用可识别真人脸照片作为参考',
+    ];
+  }
+  if (asset.kind === 'location') {
+    return [
+      ...common,
+      '场景空间、时代氛围、主要陈设和光线与镜头提示一致',
+      '不混入无关现代物件或跨时代环境',
+    ];
+  }
+  if (asset.kind === 'prop') {
+    return [
+      ...common,
+      '道具外观、材质和尺寸感清楚，能在相关镜头中复用',
+    ];
+  }
+  if (asset.kind === 'camera') {
+    return [
+      ...common,
+      '只参考镜头运动、节奏和动作衔接，不替代人物或场景素材',
+    ];
+  }
+  return [
+    ...common,
+    '只参考音乐、音效或环境声情绪，不替代对白和画面内容',
+  ];
 }
 
 export function syncSeedanceShotLedgerWithShots(input: {
@@ -519,6 +654,14 @@ function renderSeedanceAssetReportMarkdown(pkg: Omit<SeedanceAssetReportPackage,
     `- 缺引用槽位: ${pkg.missing_reference_slot_count}`,
     `- 受影响镜头: ${pkg.unbound_shot_count}/${pkg.shot_binding_count}`,
     '',
+    '## 上传清单',
+    ...(pkg.upload_checklist.length ? pkg.upload_checklist.map(item => [
+      `- ${item.reference_slot ?? '未分配槽位'} · ${seedanceAssetKindLabel(item.kind)}「${item.label}」 · ${item.suggested_filename}`,
+      `  - 状态: ${seedanceAssetBindingStatusLabel(item.status)}；影响镜头: ${item.affected_shot_ids.join('、') || '无'}`,
+      `  - 准备说明: ${item.checklist_note}`,
+      `  - 验收: ${item.acceptance_criteria.join('；')}`,
+    ]).flat() : ['- 无需上传']),
+    '',
     '## 素材状态',
     ...(pkg.assets.length ? pkg.assets.map(asset => [
       `- [${seedanceAssetBindingStatusLabel(asset.status)}] ${asset.reference_slot ?? '未分配槽位'} · ${seedanceAssetKindLabel(asset.kind)}「${asset.label}」`,
@@ -549,6 +692,8 @@ function shotQaFlags(input: {
   visualPrompt: string;
   originalVisualPrompt?: string;
   cameraSuggestion: string;
+  productionPrompt: string;
+  seedancePrompt: string;
   characters: string[];
   location: string;
   segment?: GearsSegment;
@@ -560,7 +705,13 @@ function shotQaFlags(input: {
   if (input.characters.length === 0) flags.push('缺少角色资产引用');
   if (!input.location.trim()) flags.push('缺少场景资产引用');
   if (hasPromptPollution(`${input.originalVisualPrompt ?? ''} ${input.visualPrompt}`)) {
-    flags.push('提示词杂质：visual_prompt 含内部说明或待补信息');
+    flags.push('画面提示待清理：画面提示含不可见制作说明');
+  }
+  if (hasPromptPollution(input.productionPrompt)) {
+    flags.push('生产提示待清理：生产提示含不可见制作说明');
+  }
+  if (hasPromptPollution(input.seedancePrompt)) {
+    flags.push('Seedance 提示待清理：视频提示含不可见制作说明');
   }
   if (!input.segment?.segment_prompt_hint) flags.push('连续性风险：缺少 segment_prompt_hint');
   return flags;
@@ -623,14 +774,15 @@ function buildSupervisionReport(
     if (
       hasPromptPollution(unit.visual_prompt)
       || hasPromptPollution(unit.production_prompt)
-      || unit.qa_flags.some(flag => flag.includes('提示词杂质'))
+      || hasPromptPollution(unit.seedance_prompt)
+      || unit.qa_flags.some(flag => flag.includes('提示待清理'))
     ) {
       issues.push(supervisionIssue({
         category: 'prompt',
         severity: 'warn',
         unit,
-        title: '提示词含内部说明',
-        detail: '画面或生产提示中混入质量、分析、来源、TODO 等不可见信息。',
+        title: '画面提示需精简',
+        detail: '画面、生产或 Seedance 提示中混入不可见的制作说明。',
         fix_hint: '只保留可见的人物、空间、道具、光线、构图、动作和情绪表现。',
       }));
     }
@@ -843,7 +995,7 @@ function buildDeliveryManifest(
   return {
     stage,
     stage_label: deliveryStageLabel(stage),
-    next_action: deliveryNextAction(stage, repairPlan, supervisionReport),
+    next_action: deliveryNextAction(stage, repairPlan, supervisionReport, seedanceAssetReport),
     blockers: uniqueStrings(blockers),
     ready_artifact_count: artifacts.filter(artifact => artifact.status === 'ready').length,
     artifacts,
@@ -860,8 +1012,14 @@ function deliveryNextAction(
   stage: StoryProductionBoardDeliveryStage,
   repairPlan: StoryProductionBoardRepairPlan,
   supervisionReport: StoryProductionBoardSupervisionReport,
+  seedanceAssetReport: SeedanceAssetReportPackage,
 ): string {
-  if (stage === 'ready') return '可以导出 Board Markdown/JSON，并按镜头提交 Seedance 提示词。';
+  if (stage === 'ready') {
+    if (seedanceAssetReport.upload_required_count > 0 || seedanceAssetReport.missing_reference_slot_count > 0) {
+      return `Story Agent 交付包可用；提交 Seedance 前请先按素材缺口报告上传/绑定 ${seedanceAssetReport.upload_required_count} 个参考素材文件。`;
+    }
+    return '可以导出 Board Markdown/JSON，并按镜头提交 Seedance 提示词。';
+  }
   const firstP0 = repairPlan.tasks.find(task => task.priority === 'P0');
   if (firstP0) return `先处理 P0：${firstP0.title}。`;
   const firstIssue = supervisionReport.issues.find(issue => issue.severity === 'warn');
@@ -927,10 +1085,10 @@ function repairActionSpec(
       acceptance_criteria: ['每个镜头角色都能匹配角色资产', '每个镜头地点都能匹配场景资产', '资产名在镜头和资产表中一致'],
     },
     clean_prompt: {
-      title: '清理画面提示词杂质',
-      instruction: `${scope}重写 visual_prompt 和 production_prompt，只保留可见的人物、空间、道具、光线、构图、动作、情绪和时代信息；删除质量、分析、来源、待补、生成优先级等内部说明。`,
+      title: '精简画面提示词',
+      instruction: `${scope}重写画面提示和生产提示，只保留可见的人物、空间、道具、光线、构图、动作、情绪和时代信息；删除不可见的制作说明。`,
       expected_output: '可直接给画面或视频模型使用的干净提示词。',
-      acceptance_criteria: ['提示词不含内部分析和质量报告词', '提示词具备主体、动作、环境和光线', '保留必要文化边界但不写成来源说明'],
+      acceptance_criteria: ['提示词只保留可见内容', '提示词具备主体、动作、环境和光线', '保留必要文化边界但不写成说明文字'],
     },
     strengthen_filmability: {
       title: '强化镜头可拍性',
@@ -975,7 +1133,8 @@ function supervisionIssue(input: {
 }
 
 function hasPromptPollution(value: string): boolean {
-  return /(质量|分析|应该|注意|来源显示|来源条目|TODO|待补|知识库缺失|生成优先级|具体细节请核实来源|不可写成已验证史实)/.test(value);
+  return DELIVERY_PROMPT_INTERNAL_PATTERN.test(value)
+    || /(?:质量|分析|应该|注意|来源显示|来源条目|TODO|待补|知识库缺失|生成优先级|具体细节请核实来源|不可写成已验证史实)/.test(value);
 }
 
 function isFilmable(unit: StoryProductionBoardShotUnit): boolean {
@@ -1106,10 +1265,113 @@ function cleanPrompt(value: string): string {
     .replace(/来源显示[:：][^。；\n]*(?:。|；|\n)?/g, '')
     .replace(/来源条目[:：][^。；\n]*(?:。|；|\n)?/g, '')
     .replace(/(?:质量信号|建议调整|类型匹配|资料显示|摘要|核心画面是|为什么必须面对)[:：]?/g, '')
+    .replace(/(?:主角目标|目标明确|行动具体|因果链|史实边界|来源说明|内部字段名|史实依据|影视化创作|知识库|用户大纲|创作边界|确证史实|确证史源|治理痕迹)[:：]?/g, '')
     .replace(/(?:质量|分析|应该|注意|TODO|待补|知识库缺失)[:：]?/g, '')
     .replace(/具体细节请核实来源/g, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
+}
+
+function cleanProductionBoundaryNote(value: string): string {
+  return value
+    .replace(/\r\n/g, '\n')
+    .replace(/知识库/g, '来源材料')
+    .replace(/知识条目/g, '来源材料')
+    .replace(/知识包/g, '素材包')
+    .replace(/用户大纲/g, '用户素材')
+    .replace(/史实依据[:：]?/g, '事实锚点：')
+    .replace(/事实依据[:：]?/g, '事实锚点：')
+    .replace(/影视化创作[:：]?/g, '创作处理：')
+    .replace(/戏剧化补足[:：]?/g, '创作处理：')
+    .replace(/确证史实/g, '确定事实')
+    .replace(/确证史源/g, '确定来源')
+    .replace(/来源显示[:：][^。；\n]*(?:[。；])?/g, '')
+    .replace(/来源条目[:：][^。；\n]*(?:[。；])?/g, '')
+    .replace(/来源条目/g, '来源材料')
+    .replace(/(?:质量信号|主角目标|目标明确|行动具体|因果链|史实边界|质量报告|来源说明|内部字段名|生成优先级|资料显示|摘要|核心画面是|为什么必须面对|具体细节请核实来源|创作边界|治理痕迹|分析|应该|注意|TODO|待补)[:：]?/g, '')
+    .replace(/：\s*；/g, '：')
+    .replace(/；{2,}/g, '；')
+    .replace(/，{2,}/g, '，')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^[，,；;：:\s]+|[，,；;：:\s]+$/g, '')
+    .trim();
+}
+
+function cleanDeliveryScriptText(value: string): string {
+  return value
+    .replace(/\r\n/g, '\n')
+    .replace(/知识库/g, '来源材料')
+    .replace(/知识包/g, '素材包')
+    .replace(/用户大纲/g, '用户素材')
+    .replace(/史实依据[:：]?/g, '事实锚点：')
+    .replace(/影视化创作[:：]?/g, '创作处理：')
+    .replace(/来源显示[:：][^。；\n]*(?:[。；])?/g, '')
+    .replace(/来源条目[:：][^。；\n]*(?:[。；])?/g, '')
+    .replace(/(?:质量信号|主角目标|目标明确|行动具体|因果链|史实边界|质量报告|来源说明|内部字段名|生成优先级|资料显示|核心画面是|为什么必须面对|具体细节请核实来源|不可写成|确证史实|确证史源|创作边界|治理痕迹|TODO|待补)[:：]?/g, '')
+    .replace(/，\s*([。；])/g, '$1')
+    .replace(/；{2,}/g, '；')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function stripProductionBoundaryPrefix(value: string): string {
+  return value.replace(/^(事实锚点|创作处理)[:：]\s*/g, '').trim();
+}
+
+function buildShotCulturalBoundary(scene: StoryGenerateResult['scene_breakdown'][number]): string {
+  const fact = cleanProductionBoundaryNote(scene.factual_basis ?? '');
+  if (fact) return `事实锚点：${stripProductionBoundaryPrefix(fact)}`;
+  const note = cleanProductionBoundaryNote(scene.cultural_note ?? '');
+  if (note) return note;
+  return '按来源材料可信边界处理，创作补足不可写成确定事实。';
+}
+
+function cleanSeedancePrompt(value: string): string {
+  return value
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(cleanSeedancePromptLine)
+    .filter(Boolean)
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function cleanSeedancePromptLine(value: string): string {
+  const line = value.trim();
+  if (!line) return '';
+
+  if (/^连续性[:：]/.test(line) && DELIVERY_PROMPT_INTERNAL_PATTERN.test(line)) {
+    return '';
+  }
+
+  if (/^禁止[:：]/.test(line)) {
+    const constraints = line
+      .replace(/^禁止[:：]\s*/, '')
+      .replace(/[。.]$/, '')
+      .split(/[；;]/)
+      .map(item => cleanPrompt(item))
+      .filter(item => item && !DELIVERY_PROMPT_INTERNAL_PATTERN.test(item));
+    return constraints.length ? `禁止：${uniqueStrings(constraints).join('；')}。` : '';
+  }
+
+  return stripDeliveryPromptInternalClauses(line)
+    .replace(/^(分析|注意|质量|来源显示|来源条目|史实依据|影视化创作|创作边界)[:：]\s*/g, '')
+    .replace(/(?:质量信号|主角目标|目标明确|行动具体|因果链|史实边界)[:：]?/g, '')
+    .replace(/(?:来源说明|内部字段名|来源显示|来源条目|史实依据|影视化创作|知识库|用户大纲|生成优先级|资料显示|摘要|核心画面是|为什么必须面对|具体细节请核实来源|不可写成|确证史实|确证史源|创作边界|治理痕迹|分析|应该|注意|TODO|待补)[:：]?/g, '')
+    .replace(/[，,]\s*([。；])/g, '$1')
+    .replace(/；{2,}/g, '；')
+    .replace(/，{2,}/g, '，')
+    .replace(/：\s*；/g, '：')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function stripDeliveryPromptInternalClauses(value: string): string {
+  return value
+    .replace(/(?:^|[，,；;。])\s*(?:史实依据|影视化创作|来源条目|来源显示|来源说明|创作边界|质量信号|建议调整|类型匹配|资料显示|摘要|生成优先级)[:：][^。；\n]*(?:[。；])?/g, '；')
+    .replace(/[，,]\s*[^，,。；\n]*(?:知识库|来源条目|史实依据|影视化创作|用户大纲|创作桥段|确证史源|确证史实|文化\/史实边界|史实边界|创作边界)[^。；\n]*(?=[。；])/g, '')
+    .replace(/[，,]\s*片尾[^。；\n]*(?:创作边界|确证|伏笔)[^。；\n]*(?=[。；])/g, '');
 }
 
 function renderProductionBoardMarkdown(pkg: Omit<StoryProductionBoard, 'markdown'>): string {

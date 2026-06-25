@@ -3,12 +3,15 @@
 
 import type {
   CreationUseCase,
+  EntryDetail,
   NarrativePatternId,
   PresentationStyle,
+  RecommendedNarrativePattern,
   StoryStructureType,
   TruthMode,
   VideoType,
 } from '@shared/types.js';
+import { NARRATIVE_PATTERN_LIBRARY, NARRATIVE_PATTERN_VIDEO_TYPE_MAP } from './narrative-pattern-library.js';
 
 export type GenreOutputField =
   | 'characters'
@@ -104,6 +107,52 @@ export interface GenreStoryMatrixResolution {
 }
 
 type GenreStoryProfileBase = Omit<GenreStoryProfile, keyof GenreStoryMatrixFields>;
+
+type NarrativePatternSubjectRule = {
+  family: string;
+  patterns: NarrativePatternId[];
+  signals: string[];
+  reason: string;
+  confidence: number;
+};
+
+const AI_COMIC_NARRATIVE_SUBJECT_RULES: NarrativePatternSubjectRule[] = [
+  {
+    family: 'source-adaptation',
+    patterns: ['source_fidelity_adaptation', 'chapter_slice_adaptation', 'character_arc_adaptation'],
+    signals: ['改编', '原作', '小说', '章节', '文本', '剧本', '口述', '资料改编'],
+    reason: '素材呈现原作或资料改编倾向，优先保留主线、章节切片和人物弧光。',
+    confidence: 0.92,
+  },
+  {
+    family: 'wuxia',
+    patterns: ['wuxia_chivalric_epic', 'wuxia_revenge_journey', 'wuxia_court_jianghu'],
+    signals: ['武侠', '江湖', '侠客', '剑客', '剑法', '刀客', '门派', '武林', '镖局', '复仇', '掌门'],
+    reason: '素材有武侠或江湖信号，优先使用江湖规则、恩怨选择和门派/朝堂压力。',
+    confidence: 0.9,
+  },
+  {
+    family: 'mystery',
+    patterns: ['mystery_reveal', 'wuxia_lone_blade_mystery', 'serial_hook_adaptation'],
+    signals: ['悬疑', '谜案', '追查', '探案', '真凶', '失踪', '诡案', '疑云'],
+    reason: '素材有追查或谜团信号，适合用线索递进、反转揭示和集尾悬念驱动。',
+    confidence: 0.86,
+  },
+  {
+    family: 'serial-hook',
+    patterns: ['platform_short_drama_hook', 'serial_hook_adaptation', 'cinematic_setpiece_adaptation'],
+    signals: ['短剧', '竖屏', '连载', '反转', '钩子', '爽点', '追更', '爆款'],
+    reason: '创作目标偏短剧连载，优先强化前三秒钩子、场面化冲突和追更问题。',
+    confidence: 0.84,
+  },
+  {
+    family: 'historical-character',
+    patterns: ['mortal_growth', 'character_arc_adaptation', 'platform_short_drama_hook'],
+    signals: ['历史人物', '人物', '名臣', '诗人', '将军', '思想家', '成长', '抉择', '仕途', '功业'],
+    reason: '素材是人物或历史人物线索，优先把人物所求、关键选择和时代因果变成可分镜冲突。',
+    confidence: 0.82,
+  },
+];
 
 const PROFILES: Record<VideoType, GenreStoryProfileBase> = {
   character_story: {
@@ -1052,6 +1101,71 @@ export function resolveGenreStoryMatrix(input: {
   };
 }
 
+export function recommendNarrativePatternsForEntry(input: {
+  entry: EntryDetail;
+  videoTypes: VideoType[];
+  originalUserQuery?: string;
+}): RecommendedNarrativePattern[] {
+  return input.videoTypes.flatMap(videoType =>
+    recommendNarrativePatternsForVideoType({
+      entry: input.entry,
+      videoType,
+      originalUserQuery: input.originalUserQuery,
+    })
+  );
+}
+
+export function recommendNarrativePatternsForVideoType(input: {
+  entry: EntryDetail;
+  videoType: VideoType;
+  originalUserQuery?: string;
+}): RecommendedNarrativePattern[] {
+  const profile = getGenreStoryProfile(input.videoType);
+  const allowedCatalogPatterns = new Set(NARRATIVE_PATTERN_VIDEO_TYPE_MAP[input.videoType] ?? []);
+  const baseSignals = narrativeRecommendationSignalText(input.entry, input.originalUserQuery);
+  const querySignals = (input.originalUserQuery ?? '').toLowerCase();
+  const matchedRules = input.videoType === 'ai_comic_drama'
+    ? AI_COMIC_NARRATIVE_SUBJECT_RULES.filter(rule =>
+        narrativeRuleMatches(rule, baseSignals, querySignals, input.entry)
+      )
+      .sort((a, b) =>
+        countMatchedNarrativeSignals(b, baseSignals, querySignals, input.entry)
+        - countMatchedNarrativeSignals(a, baseSignals, querySignals, input.entry)
+        || b.confidence - a.confidence
+      )
+    : [];
+  const patternInputs = matchedRules.length > 0
+    ? uniquePatternIds(matchedRules.flatMap(rule => rule.patterns))
+    : profile.recommended_narrative_patterns;
+  const filteredPatternIds = patternInputs
+    .filter(patternId => allowedCatalogPatterns.size === 0 || allowedCatalogPatterns.has(patternId))
+    .filter(patternId => Boolean(NARRATIVE_PATTERN_LIBRARY[patternId]))
+    .slice(0, 3);
+  const activeRuleByPattern = new Map<NarrativePatternId, NarrativePatternSubjectRule>();
+  for (const rule of matchedRules) {
+    for (const patternId of rule.patterns) {
+      if (!activeRuleByPattern.has(patternId)) activeRuleByPattern.set(patternId, rule);
+    }
+  }
+
+  return filteredPatternIds.map((patternId, index) => {
+    const rule = activeRuleByPattern.get(patternId);
+    const pattern = NARRATIVE_PATTERN_LIBRARY[patternId];
+    return {
+      video_type: input.videoType,
+      pattern_id: patternId,
+      reason: rule
+        ? `${rule.reason} 推荐「${pattern.label}」。`
+        : `${profile.label}常用「${pattern.label}」来组织${input.entry.type}素材，适合作为默认叙事强化。`,
+      priority: index + 1,
+      confidence: rule?.confidence ?? 0.68,
+      match_signals: rule
+        ? matchedNarrativeSignals(rule, baseSignals, querySignals).slice(0, 5)
+        : [input.entry.type, profile.label],
+    };
+  });
+}
+
 function buildGenreMatrixRequirementLines(
   profile: GenreStoryProfile,
   creationUseCase: CreationUseCase,
@@ -1073,4 +1187,53 @@ function buildGenreMatrixRequirementLines(
 
 function uniquePatternIds(patternIds: NarrativePatternId[]): NarrativePatternId[] {
   return Array.from(new Set(patternIds));
+}
+
+function narrativeRuleMatches(
+  rule: NarrativePatternSubjectRule,
+  signalText: string,
+  querySignalText: string,
+  entry: EntryDetail,
+): boolean {
+  return matchedNarrativeSignals(rule, signalText, querySignalText).length > 0
+    || (rule.family === 'historical-character' && entry.type === '历史人物');
+}
+
+function countMatchedNarrativeSignals(
+  rule: NarrativePatternSubjectRule,
+  signalText: string,
+  querySignalText: string,
+  entry: EntryDetail,
+): number {
+  const signalCount = matchedNarrativeSignals(rule, signalText, querySignalText).length;
+  const querySignalCount = rule.signals.filter(signal => querySignalText.includes(signal.toLowerCase())).length;
+  return signalCount
+    + querySignalCount * 3
+    + (rule.family === 'historical-character' && entry.type === '历史人物' ? 1 : 0);
+}
+
+function matchedNarrativeSignals(
+  rule: NarrativePatternSubjectRule,
+  signalText: string,
+  querySignalText: string,
+): string[] {
+  const source = rule.family === 'source-adaptation' ? querySignalText : signalText;
+  return rule.signals.filter(signal => source.includes(signal.toLowerCase()));
+}
+
+function narrativeRecommendationSignalText(entry: EntryDetail, originalUserQuery?: string): string {
+  return [
+    entry.name,
+    entry.type,
+    entry.summary,
+    entry.story,
+    entry.culturalSignificance,
+    entry.era,
+    ...(entry.keywords ?? []),
+    ...(entry.relatedLocations ?? []).map(location => `${location.name} ${location.description}`),
+    originalUserQuery ?? '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+    .toLowerCase();
 }

@@ -384,14 +384,30 @@
         <summary class="story-studio__advanced-summary">生成设置</summary>
 
         <section v-if="selectedVideoType && availableNarrativePatterns.length > 0" class="story-studio__field">
-          <label class="story-studio__label">叙事流派强化</label>
-          <p class="story-studio__field-hint">默认会使用该成片类型的流派机制；勾选后会在生成中加强对应叙事引擎。</p>
+          <label class="story-studio__label">推荐流派</label>
+          <p class="story-studio__field-hint">系统会根据题材、素材和当前成片类型自动勾选推荐流派；你也可以手动微调。</p>
+          <div v-if="recommendedNarrativePatternsForSelectedVideoType.length" class="story-studio__pattern-recommendations">
+            <article
+              v-for="item in recommendedNarrativePatternsForSelectedVideoType"
+              :key="item.pattern_id"
+              class="story-studio__pattern-recommendation"
+            >
+              <strong>{{ narrativePatternLabel(item.pattern_id) }}</strong>
+              <span>{{ item.reason }}</span>
+              <small v-if="item.match_signals.length">
+                匹配信号：{{ item.match_signals.join('、') }}
+              </small>
+            </article>
+          </div>
           <div class="story-studio__pattern-list">
             <label
               v-for="pattern in availableNarrativePatterns"
               :key="pattern.pattern_id"
               class="story-studio__pattern-card"
-              :class="{ 'story-studio__pattern-card--selected': selectedNarrativePatternIds.includes(pattern.pattern_id) }"
+              :class="{
+                'story-studio__pattern-card--selected': selectedNarrativePatternIds.includes(pattern.pattern_id),
+                'story-studio__pattern-card--recommended': isRecommendedNarrativePattern(pattern.pattern_id),
+              }"
             >
               <input
                 v-model="selectedNarrativePatternIds"
@@ -399,7 +415,10 @@
                 :value="pattern.pattern_id"
               />
               <span class="story-studio__pattern-main">
-                <strong>{{ pattern.label }}</strong>
+                <strong>
+                  {{ pattern.label }}
+                  <em v-if="isRecommendedNarrativePattern(pattern.pattern_id)">推荐</em>
+                </strong>
                 <span>{{ pattern.user_facing_summary || pattern.narrative_engine }}</span>
                 <span v-if="pattern.subgenre_tags?.length" class="story-studio__pattern-tags">
                   <em v-for="tag in pattern.subgenre_tags.slice(0, 4)" :key="tag">{{ tag }}</em>
@@ -589,6 +608,7 @@ import type {
   EntryMatchResult,
   EntryMatchItem,
   StoryPlanResult,
+  RecommendedNarrativePattern,
   StoryGenerateResult,
   GenerationType,
   VideoType,
@@ -927,6 +947,17 @@ const availableNarrativePatterns = computed<NarrativePattern[]>(() => {
     .filter((pattern): pattern is NarrativePattern => Boolean(pattern))
 })
 
+const recommendedNarrativePatternsForSelectedVideoType = computed<RecommendedNarrativePattern[]>(() => {
+  if (!selectedVideoType.value) return []
+  return [...(planResult.value?.recommended_narrative_patterns ?? [])]
+    .filter(item => item.video_type === selectedVideoType.value)
+    .sort((a, b) => a.priority - b.priority || b.confidence - a.confidence)
+})
+
+const recommendedNarrativePatternIdSet = computed(() => {
+  return new Set(recommendedNarrativePatternsForSelectedVideoType.value.map(item => item.pattern_id))
+})
+
 const recentStoryPreview = computed(() => recentStoryProjects.value.slice(0, 5))
 const creationUseCaseOptions = CREATION_USE_CASE_OPTIONS
 const truthModeOptions = TRUTH_MODE_OPTIONS
@@ -951,6 +982,14 @@ function styleAxisValueLabel(value: 'low' | 'medium' | 'high') {
   if (value === 'high') return '高'
   if (value === 'low') return '低'
   return '中'
+}
+
+function narrativePatternLabel(patternId: NarrativePatternId): string {
+  return narrativePatternCatalog.value?.patterns.find(pattern => pattern.pattern_id === patternId)?.label ?? patternId
+}
+
+function isRecommendedNarrativePattern(patternId: NarrativePatternId): boolean {
+  return recommendedNarrativePatternIdSet.value.has(patternId)
 }
 
 function isRecommendedVideoType(vtId: VideoType): boolean {
@@ -1190,8 +1229,24 @@ watch(selectedModelProfileId, (value) => {
 })
 
 watch(selectedVideoType, () => {
-  selectedNarrativePatternIds.value = []
+  applyRecommendedNarrativePatterns(planResult.value)
 })
+
+function applyRecommendedNarrativePatterns(plan: StoryPlanResult | null) {
+  if (!selectedVideoType.value || !plan?.recommended_narrative_patterns?.length) {
+    selectedNarrativePatternIds.value = []
+    return
+  }
+  const availablePatternIds = new Set(
+    (narrativePatternCatalog.value?.video_type_map[selectedVideoType.value] ?? []),
+  )
+  selectedNarrativePatternIds.value = plan.recommended_narrative_patterns
+    .filter(item => item.video_type === selectedVideoType.value)
+    .sort((a, b) => a.priority - b.priority || b.confidence - a.confidence)
+    .map(item => item.pattern_id)
+    .filter(patternId => availablePatternIds.size === 0 || availablePatternIds.has(patternId))
+    .slice(0, 3)
+}
 
 // --- Handlers ---
 async function handlePlan() {
@@ -1214,6 +1269,7 @@ async function handlePlan() {
     if (!selectedPresentationStyle.value && res.data.recommended_presentation_styles.length > 0) {
       selectedPresentationStyle.value = res.data.recommended_presentation_styles[0].presentation_style
     }
+    applyRecommendedNarrativePatterns(res.data)
     targetDuration.value = res.data.recommended_duration
   } else {
     planError.value = res.error?.code === 'ENTRY_NOT_FOUND'
@@ -1566,6 +1622,34 @@ async function handleGenerate() {
   gap: 8px;
 }
 
+.story-studio__pattern-recommendations {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.story-studio__pattern-recommendation {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #cfe6d8;
+  border-left: 4px solid #27ae60;
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: #f7fbf8;
+}
+
+.story-studio__pattern-recommendation strong {
+  color: #1f6f43;
+  font-size: 13px;
+}
+
+.story-studio__pattern-recommendation span,
+.story-studio__pattern-recommendation small {
+  color: #526575;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .story-studio__pattern-card {
   display: flex;
   gap: 8px;
@@ -1582,6 +1666,10 @@ async function handleGenerate() {
   background: #f5eef8;
 }
 
+.story-studio__pattern-card--recommended {
+  border-color: #9fd6b6;
+}
+
 .story-studio__pattern-card input {
   margin-top: 2px;
 }
@@ -1593,8 +1681,22 @@ async function handleGenerate() {
 }
 
 .story-studio__pattern-main strong {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
   font-size: 13px;
   color: #2c3e50;
+}
+
+.story-studio__pattern-main strong em {
+  font-style: normal;
+  border: 1px solid #bfe4cd;
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: #f0faf4;
+  color: #1f7a48;
+  font-size: 11px;
 }
 
 .story-studio__pattern-main span {

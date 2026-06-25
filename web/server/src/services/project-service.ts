@@ -96,6 +96,7 @@ import type {
   ProjectSupplementTaskListFilters,
   ProjectMaterialPackAddMaterialRequest,
   QualityRepairAction,
+  CreationContract,
   MaterialPack,
   MaterialPackEntry,
   MaterialPurpose,
@@ -202,6 +203,9 @@ const GEARS_EXECUTION_JOB_STATUSES: GearsExecutionJobStatus[] = [
   'canceled',
   'rejected',
 ];
+
+const DELIVERY_PAYLOAD_SUMMARY_INTERNAL_PATTERN =
+  /(质量信号|主角目标|目标明确|行动具体|因果链|史实边界|质量报告|来源说明|内部字段名|来源条目|来源显示|史实依据|影视化创作|知识库|用户大纲|生成优先级|资料显示|摘要|核心画面是|为什么必须面对|具体细节请核实来源|不可写成|确证史实|确证史源|创作边界|治理痕迹|分析|应该|注意|TODO|待补)/;
 
 type StoredStoryFile = StoryGenerateResult & {
   _request_meta?: Record<string, unknown>;
@@ -4297,6 +4301,74 @@ function compactPayloadSummary(value: string): string {
   return value.replace(/\s+/g, ' ').trim().slice(0, 160);
 }
 
+function cleanDeliveryPayloadSummary(value: string): string {
+  return value
+    .replace(/\r\n/g, '\n')
+    .split(/[\n。；;]/)
+    .map(cleanDeliveryPayloadSummaryPart)
+    .filter(Boolean)
+    .join('；')
+    .replace(/；{2,}/g, '；')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function cleanDeliveryPayloadSummaryPart(value: string): string {
+  return value
+    .trim()
+    .replace(/^(视觉提示|画面提示|镜头建议|分析|注意)[:：]\s*/g, '')
+    .replace(/(?:^|[，,；;。]\s*)生成优先级[:：]\s*(?:高|中|低|normal|high|medium|low)\s*/gi, ' ')
+    .replace(/生成优先级[:：].*$/g, '')
+    .replace(/(?:^|[，,；;。]\s*)(?:来源显示|来源条目|来源说明|史实依据|影视化创作|创作边界|质量信号|建议调整|类型匹配|资料显示|摘要)[:：][^，,。；\n]*(?:[，,。；])?/g, ' ')
+    .replace(/本场景基于[^，,。；\n]*(?:，具体细节请核实来源)?/g, '')
+    .replace(/基于(?:知识库|用户大纲|资料|来源)[^，,。；\n]*/g, '')
+    .replace(/按(?:知识库|资料|来源)[^，,。；\n]*/g, '')
+    .replace(/(?:质量信号|主角目标|目标明确|行动具体|因果链|史实边界|质量报告|来源说明|内部字段名|来源条目|来源显示|史实依据|影视化创作|知识库|用户大纲|生成优先级|资料显示|摘要|核心画面是|为什么必须面对|具体细节请核实来源|不可写成|确证史实|确证史源|创作边界|治理痕迹|分析|应该|注意|TODO|待补)[:：]?/g, '')
+    .replace(/[，,]\s*([。；])/g, '$1')
+    .replace(/^[，,；;：:\s]+|[，,；;：:\s]+$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function compactDeliveryPayloadSummary(value: string): string {
+  const cleaned = cleanDeliveryPayloadSummary(value);
+  return compactPayloadSummary(
+    cleaned && !DELIVERY_PAYLOAD_SUMMARY_INTERNAL_PATTERN.test(cleaned)
+      ? cleaned
+      : value.replace(new RegExp(DELIVERY_PAYLOAD_SUMMARY_INTERNAL_PATTERN.source, 'g'), ''),
+  );
+}
+
+function sanitizeGearsJobLedgerPayloadSummaries(
+  ledger: GearsJobLedger | undefined,
+  updatedAt: string,
+): { ledger?: GearsJobLedger; changed: boolean } {
+  if (!ledger) return { ledger, changed: false };
+  let changed = false;
+  const items = normalizeGearsJobLedger(ledger).items.map(item => {
+    if (!item.payload_summary) return item;
+    const payloadSummary = compactDeliveryPayloadSummary(item.payload_summary);
+    if (payloadSummary === item.payload_summary) return item;
+    changed = true;
+    return {
+      ...item,
+      payload_summary: payloadSummary,
+      updated_at: updatedAt,
+    };
+  });
+  return {
+    ledger: changed
+      ? {
+          ...ledger,
+          schema_version: 'gears-job-ledger/v1',
+          updated_at: updatedAt,
+          items,
+        }
+      : ledger,
+    changed,
+  };
+}
+
 function buildProjectGearsUnits(input: {
   projectId: string;
   story: StoryGenerateResult;
@@ -4327,7 +4399,7 @@ function buildProjectGearsUnits(input: {
       source_unit_id: shot.shot_id,
       source_unit_label: `Scene ${shot.source_scene_id} Seedance shot`,
       source_scene_id: shot.source_scene_id,
-      payload_summary: compactPayloadSummary(`${shot.location} ${shot.script_text}`),
+      payload_summary: compactDeliveryPayloadSummary(`${shot.location} ${shot.script_text}`),
       payload: {
         shot_id: shot.shot_id,
         source_scene_id: shot.source_scene_id,
@@ -4351,7 +4423,7 @@ function buildProjectGearsUnits(input: {
       source_unit_id: unit.unit_id,
       source_unit_label: unit.scene_name,
       source_scene_id: unit.source_scene_id,
-      payload_summary: compactPayloadSummary(`${unit.scene_name} ${unit.script_text}`),
+      payload_summary: compactDeliveryPayloadSummary(`${unit.scene_name} ${unit.script_text}`),
       payload: {
         unit,
         character_assets: delivery.character_assets.filter(character => unit.character_names.includes(character.name)),
@@ -4363,7 +4435,7 @@ function buildProjectGearsUnits(input: {
     delivery.character_assets.forEach(character => addUnit({
       source_unit_id: `character:${character.name}`,
       source_unit_label: character.name,
-      payload_summary: compactPayloadSummary(`${character.name} ${character.appearance_features} ${character.clothing}`),
+      payload_summary: compactDeliveryPayloadSummary(`${character.name} ${character.appearance_features} ${character.clothing}`),
       payload: { character },
     }));
   } else if (input.jobType === 'scene_image') {
@@ -4371,7 +4443,7 @@ function buildProjectGearsUnits(input: {
     delivery.scene_assets.forEach(scene => addUnit({
       source_unit_id: `scene:${scene.name}`,
       source_unit_label: scene.name,
-      payload_summary: compactPayloadSummary(`${scene.name} ${scene.description}`),
+      payload_summary: compactDeliveryPayloadSummary(`${scene.name} ${scene.description}`),
       payload: { scene },
     }));
   } else {
@@ -4379,7 +4451,7 @@ function buildProjectGearsUnits(input: {
     sourceUnitIds.forEach(sourceUnitId => addUnit({
       source_unit_id: sourceUnitId,
       source_unit_label: input.jobType,
-      payload_summary: input.request.note ?? input.jobType,
+      payload_summary: compactDeliveryPayloadSummary(input.request.note ?? input.jobType),
       payload: input.request.payload ?? {},
     }));
   }
@@ -5903,6 +5975,7 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
     seedanceShotLedger: project.seedance_shot_ledger,
   });
   const exportedAt = new Date().toISOString();
+  const sanitizedGearsJobLedger = sanitizeGearsJobLedgerPayloadSummaries(project.gears_job_ledger, exportedAt);
   const exportDir = resolve(projectDir(project.project_id), 'production-board');
   await mkdir(exportDir, { recursive: true });
 
@@ -6029,6 +6102,7 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
     ...project,
     status: project.status === 'finalized' ? 'finalized' : 'exported',
     updated_at: exportedAt,
+    gears_job_ledger: sanitizedGearsJobLedger.ledger,
   };
   await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
   await updateProjectVersionProductionBoardExport(project.project_id, project.current_version_id, {
@@ -7105,6 +7179,56 @@ function buildQualityIssueDelta(before: StoryGenerateResult, after: StoryGenerat
   };
 }
 
+function creationUseCaseLabel(useCase: CreationUseCase): string {
+  const map: Record<CreationUseCase, string> = {
+    original_ai_comic: '原创 AI 漫剧',
+    adapted_ai_comic: '原作/资料改编',
+    institutional_promo: '机构宣传片',
+    documentary_short: '纪录短片',
+    brand_commercial: '品牌商业片',
+    education_training: '教育/培训片',
+    public_service: '公益宣传片',
+  };
+  return map[useCase] ?? useCase;
+}
+
+function truthModeLabel(truthMode: TruthMode): string {
+  const map: Record<TruthMode, string> = {
+    fictional_original: '原创虚构',
+    inspired_by_material: '素材启发',
+    source_adaptation: '原作改编',
+    factual_reconstruction: '事实重构',
+    institutional_verified: '机构审定',
+  };
+  return map[truthMode] ?? truthMode;
+}
+
+function materialSufficiencyStageLabel(stage: MaterialSufficiencyReport['stage']): string {
+  const map: Record<MaterialSufficiencyReport['stage'], string> = {
+    minimum_viable_story: '最小可行故事',
+    script_ready: '剧本可用',
+    production_ready: '生产可用',
+  };
+  return map[stage] ?? stage;
+}
+
+function materialGenerationPostureLabel(posture?: MaterialSufficiencyReport['generation_posture']): string {
+  if (!posture) return '未记录生成姿态';
+  const map: Record<NonNullable<MaterialSufficiencyReport['generation_posture']>, string> = {
+    ready: '可进入生产',
+    draft_needs_verification: '草案待核验',
+    script_ready_production_pending: '剧本可写，生产待补',
+    blocked_until_input: '补材后再生成',
+  };
+  return map[posture] ?? posture;
+}
+
+function compactBoundaryItems(items: string[], limit = 2): string {
+  const compacted = compactIssueList(items, limit);
+  if (compacted.length === 0) return '';
+  return `${compacted.join('；')}${items.length > limit ? ` 等 ${items.length} 项` : ''}`;
+}
+
 function buildQualityRepairChangeSummary(input: {
   before: StoryGenerateResult;
   attempted?: StoryGenerateResult;
@@ -7189,6 +7313,8 @@ function buildQualityRepairOperatorHints(input: {
   changeSummary: StoryQualityRepairChangeSummary;
   beforeQuality: StoryQualityRepairApplyResult['before_quality'];
   afterQuality: StoryQualityRepairApplyResult['after_quality'];
+  creationContract?: CreationContract;
+  materialSufficiency?: MaterialSufficiencyReport;
 }): string[] {
   const hints: string[] = [];
   if (input.applied) {
@@ -7223,6 +7349,30 @@ function buildQualityRepairOperatorHints(input: {
   if (!input.afterQuality.passed) {
     hints.push('修复后质量仍未通过；建议继续让模型针对剩余 repair actions 迭代。');
   }
+  if (input.creationContract) {
+    const contract = input.creationContract;
+    hints.push(`创作合同边界：${creationUseCaseLabel(contract.creation_use_case)} / ${truthModeLabel(contract.truth_mode)}；修复不得改写创作用途、真实度模式、客户目标或成片类型。`);
+    if (contract.must_verify.length > 0) {
+      hints.push(`真实度边界：仍有 ${contract.must_verify.length} 项待核验（${compactBoundaryItems(contract.must_verify)}）；修复不得把待核验内容写成确定事实。`);
+    }
+    if (contract.forbidden_moves.length > 0) {
+      hints.push(`禁止表达边界：${compactBoundaryItems(contract.forbidden_moves)}；写入前确认模型没有引入这些表达。`);
+    }
+  }
+  if (input.materialSufficiency) {
+    const material = input.materialSufficiency;
+    const stage = material.active_stage ?? material.stage;
+    hints.push(`素材 Gate：当前可推进到${materialSufficiencyStageLabel(stage)}，评分 ${material.score}/100，生成姿态为“${materialGenerationPostureLabel(material.generation_posture)}”。`);
+    if (material.blocked) {
+      hints.push('素材 Gate 当前阻断；质量修复只能整理现有内容，不应新增未提供的关键事实、机构数据或原作情节。');
+    } else if (material.needs_verification || material.can_generate_with_risks) {
+      hints.push('素材 Gate 标记为需核验；写入前请检查模型没有把草案、推测或影视化补足改成确定事实。');
+    }
+    const blockingMissing = material.missing_items.filter(item => item.blocking_level === 'blocking');
+    if (blockingMissing.length > 0) {
+      hints.push(`阻断素材缺口：${blockingMissing.slice(0, 2).map(item => item.label).join('、')}${blockingMissing.length > 2 ? ` 等 ${blockingMissing.length} 项` : ''}。`);
+    }
+  }
   return [...new Set(hints)];
 }
 
@@ -7236,7 +7386,31 @@ function buildQualityRepairValidationMarkdown(input: {
   afterQuality: StoryQualityRepairApplyResult['after_quality'];
   changeSummary: StoryQualityRepairChangeSummary;
   operatorHints: string[];
+  creationContract?: CreationContract;
+  materialSufficiency?: MaterialSufficiencyReport;
 }): string {
+  const contractBoundary = input.creationContract
+    ? [
+        `- use_case: ${input.creationContract.creation_use_case} (${creationUseCaseLabel(input.creationContract.creation_use_case)})`,
+        `- truth_mode: ${input.creationContract.truth_mode} (${truthModeLabel(input.creationContract.truth_mode)})`,
+        `- must_verify: ${input.creationContract.must_verify.length}`,
+        ...input.creationContract.must_verify.slice(0, 5).map(item => `  - ${item}`),
+        `- forbidden_moves: ${input.creationContract.forbidden_moves.length}`,
+        ...input.creationContract.forbidden_moves.slice(0, 5).map(item => `  - ${item}`),
+      ]
+    : ['- creation_contract: none'];
+  const materialBoundary = input.materialSufficiency
+    ? [
+        `- material_stage: ${input.materialSufficiency.stage}`,
+        `- active_stage: ${input.materialSufficiency.active_stage ?? 'none'}`,
+        `- material_score: ${input.materialSufficiency.score}`,
+        `- generation_posture: ${input.materialSufficiency.generation_posture ?? 'none'}`,
+        `- blocked: ${input.materialSufficiency.blocked}`,
+        `- needs_verification: ${input.materialSufficiency.needs_verification === true}`,
+        `- missing_items: ${input.materialSufficiency.missing_items.length}`,
+        ...input.materialSufficiency.missing_items.slice(0, 5).map(item => `  - ${item.label}: ${item.reason}`),
+      ]
+    : ['- material_sufficiency: none'];
   return [
     '# Story Quality Repair Validation',
     '',
@@ -7257,6 +7431,12 @@ function buildQualityRepairValidationMarkdown(input: {
     '## Change Summary',
     '',
     ...input.changeSummary.summary_lines.map(item => `- ${item}`),
+    '',
+    '## Contract And Material Boundaries',
+    '',
+    ...contractBoundary,
+    '',
+    ...materialBoundary,
     '',
     '## Quality Issues',
     '',
@@ -7289,29 +7469,41 @@ function buildQualityRepairValidationMarkdown(input: {
 function buildQualityRepairApplyResponse(input: Omit<
   StoryQualityRepairApplyResult,
   'schema_version' | 'operator_hints' | 'validation_summary_markdown'
->): StoryQualityRepairApplyResult {
+> & {
+  creationContract?: CreationContract;
+  materialSufficiency?: MaterialSufficiencyReport;
+}): StoryQualityRepairApplyResult {
+  const {
+    creationContract,
+    materialSufficiency,
+    ...resultInput
+  } = input;
   const operatorHints = buildQualityRepairOperatorHints({
-    applied: input.applied,
-    canApply: input.can_apply,
-    rejectedReason: input.rejected_reason,
-    changeSummary: input.change_summary,
-    beforeQuality: input.before_quality,
-    afterQuality: input.after_quality,
+    applied: resultInput.applied,
+    canApply: resultInput.can_apply,
+    rejectedReason: resultInput.rejected_reason,
+    changeSummary: resultInput.change_summary,
+    beforeQuality: resultInput.before_quality,
+    afterQuality: resultInput.after_quality,
+    creationContract,
+    materialSufficiency,
   });
   return {
     schema_version: 'story-quality-repair-apply/v1',
-    ...input,
+    ...resultInput,
     operator_hints: operatorHints,
     validation_summary_markdown: buildQualityRepairValidationMarkdown({
-      projectId: input.project_id,
-      storyId: input.story_id,
-      applied: input.applied,
-      canApply: input.can_apply,
-      rejectedReason: input.rejected_reason,
-      beforeQuality: input.before_quality,
-      afterQuality: input.after_quality,
-      changeSummary: input.change_summary,
+      projectId: resultInput.project_id,
+      storyId: resultInput.story_id,
+      applied: resultInput.applied,
+      canApply: resultInput.can_apply,
+      rejectedReason: resultInput.rejected_reason,
+      beforeQuality: resultInput.before_quality,
+      afterQuality: resultInput.after_quality,
+      changeSummary: resultInput.change_summary,
       operatorHints,
+      creationContract,
+      materialSufficiency,
     }),
   };
 }
@@ -7435,6 +7627,10 @@ export async function applyProjectQualityRepairJson(
     beforeQuality,
     afterQuality,
   });
+  const repairBoundaryContext = {
+    creationContract: current_story.creation_contract,
+    materialSufficiency: current_story.material_sufficiency ?? current_story.creation_contract?.material_sufficiency,
+  };
   const qualityGatePassed = request.allow_no_improvement === true || qualityImproved(beforeQuality, afterQuality);
   const canApply = changeSummary.has_content_changes && qualityGatePassed;
   const rejectedReason = !changeSummary.has_content_changes
@@ -7465,6 +7661,7 @@ export async function applyProjectQualityRepairJson(
       after_quality: afterQuality,
       change_summary: changeSummary,
       repair_trace: trace,
+      ...repairBoundaryContext,
     }));
   }
 
@@ -7482,6 +7679,7 @@ export async function applyProjectQualityRepairJson(
       after_quality: afterQuality,
       change_summary: changeSummary,
       repair_trace: trace,
+      ...repairBoundaryContext,
     }));
   }
 
@@ -7513,6 +7711,7 @@ export async function applyProjectQualityRepairJson(
     change_summary: changeSummary,
     repair_trace: appliedTrace,
     detail: nextDetail.ok && nextDetail.data ? nextDetail.data : undefined,
+    ...repairBoundaryContext,
   }));
 }
 

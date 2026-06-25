@@ -181,8 +181,8 @@ export const VIDEO_TYPE_CONFIG: Record<VideoType, VideoTypeMeta> = {
     default_duration: '1分钟', compatible_entry_types: ['神话传说', '民间故事', '宗教信仰'],
   },
   ai_comic_drama: {
-    id: 'ai_comic_drama', group: '剧情故事类', label: 'AI 漫剧',
-    description: '漫画风格分镜叙事，含对白和表情标注', default_presentation_style: 'ai_comic',
+    id: 'ai_comic_drama', group: '剧情故事类', label: 'AI 漫剧单片',
+    description: '一次性单片/单集漫画风格分镜叙事，含对白和表情标注', default_presentation_style: 'ai_comic',
     default_duration: '3分钟', compatible_entry_types: ['历史人物', '神话传说', '民间故事', '非遗', '传统工艺'],
   },
   children_story: {
@@ -554,6 +554,15 @@ export interface RecommendedStoryStructure {
   priority: number;
 }
 
+export interface RecommendedNarrativePattern {
+  video_type: VideoType;
+  pattern_id: NarrativePatternId;
+  reason: string;
+  priority: number;
+  confidence: number;
+  match_signals: string[];
+}
+
 export interface AvailableEvent {
   event: string;
   conflict_score: number;
@@ -570,6 +579,7 @@ export interface StoryPlanResult {
   recommended_video_types: RecommendedVideoType[];
   recommended_presentation_styles: RecommendedPresentationStyle[];
   recommended_story_structures?: RecommendedStoryStructure[];
+  recommended_narrative_patterns?: RecommendedNarrativePattern[];
   recommended_supplement_needs: KnowledgePackMissing[];
   available_events: AvailableEvent[];
   recommended_duration: SupportedDuration;
@@ -1757,6 +1767,8 @@ export interface StoryAgentMvpStatusReport {
     generated_governance_action_count: number;
     generated_governance_p0_p1_action_count: number;
     generated_governance_ready_signoff_candidate_count: number;
+    story_agent_command_surface_status: StoryAgentMvpStatus;
+    story_agent_command_surface_percent: number;
     mcp_story_agent_tool_count: number;
     mcp_story_agent_loop_percent: number;
     content_command_layer_percent: number;
@@ -3364,6 +3376,22 @@ export interface SeedanceShotAssetBinding {
   prompt_preview: string;
 }
 
+export interface SeedanceAssetUploadChecklistItem {
+  asset_id: string;
+  reference_slot?: string;
+  label: string;
+  kind: SeedanceAssetReferenceKind;
+  modality: SeedanceAssetModality;
+  role: SeedanceAssetSlotRole;
+  status: SeedanceAssetBindingStatus;
+  needs_upload: boolean;
+  affected_shot_ids: string[];
+  affected_scene_ids: number[];
+  suggested_filename: string;
+  checklist_note: string;
+  acceptance_criteria: string[];
+}
+
 export interface SeedanceAssetReportPackage {
   schema_version: 'seedance-asset-report/v1';
   project_id?: string;
@@ -3375,6 +3403,7 @@ export interface SeedanceAssetReportPackage {
   upload_required_count: number;
   shot_binding_count: number;
   unbound_shot_count: number;
+  upload_checklist: SeedanceAssetUploadChecklistItem[];
   assets: SeedanceAssetBindingItem[];
   shots: SeedanceShotAssetBinding[];
   markdown: string;
@@ -5665,6 +5694,7 @@ export interface AiComicSeriesPlan {
   pacing_profile: AiComicPacingProfile;
   generation_scope: AiComicGenerationScope;
   narrative_pattern_ids?: NarrativePatternId[];
+  recommended_narrative_patterns?: RecommendedNarrativePattern[];
   premise: string;
   logline: string;
   core_theme: string;

@@ -964,11 +964,13 @@ describe('System API', () => {
           generated_governance_action_count: expect.any(Number),
           generated_governance_p0_p1_action_count: expect.any(Number),
           generated_governance_ready_signoff_candidate_count: expect.any(Number),
+          story_agent_command_surface_status: 'ready',
+          story_agent_command_surface_percent: 100,
           mcp_story_agent_tool_count: expect.any(Number),
           mcp_story_agent_loop_percent: 100,
           content_command_layer_percent: 100,
           production_delivery_contract_percent: 100,
-          production_delivery_contract_surface_count: 12,
+          production_delivery_contract_surface_count: 13,
         }),
         generated_health: {
           schema_version: 'story-agent-generated-health/v1',
@@ -1030,8 +1032,9 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'production_delivery_contract')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        'surface_count=12',
+        'surface_count=13',
         expect.stringContaining('production_board_export'),
+        expect.stringContaining('seedance_asset_upload_checklist'),
         expect.stringContaining('worker_evidence_signoff'),
         'local_target_health_tracked_by=delivery_contract_lane',
         'real_media_execution=gears_v2',
@@ -1054,11 +1057,13 @@ describe('System API', () => {
       expect(res.body.data.notes.join('\n')).toContain('MCP Story Agent loop is complete at 100%');
       expect(res.body.data.notes.join('\n')).toContain('Content and production command layer is complete at 100%');
       expect(res.body.data.notes.join('\n')).toContain('Production Board / Delivery Contract command surface is complete at 100%');
+      expect(res.body.data.notes.join('\n')).toContain('Story Agent command surface is signed off at 100%');
       expect(res.body.data.notes.join('\n')).toContain('content and production command layer');
       expect(res.body.data.notes.join('\n')).toContain('remaining 5%');
       expect(res.body.data.markdown).toContain('# Story Agent MVP Status');
       expect(res.body.data.markdown).toContain('Progress Split');
       expect(res.body.data.markdown).toContain('production delivery contract: 100%');
+      expect(res.body.data.markdown).toContain('Story Agent command surface: ready · 100%');
       expect(res.body.data.markdown).toContain('Delivery contract');
     });
   });
@@ -3692,14 +3697,73 @@ describe('Projects API', () => {
       expect(res.body.data.prompt).toContain('保持机构审定口径');
       expect(res.body.data.prompt).toContain('<当前 Web 请求未内嵌完整原始故事 JSON');
       expect(res.body.data.original_story_json).toBeUndefined();
+
+      const withStoryJson = await request
+        .post(`/api/projects/${enriched.project_id}/repair-quality/prompt`)
+        .send({
+          repair_action_id: 'repair-dialogue',
+          include_story_json: true,
+          include_markdown: true,
+        });
+
+      expect(withStoryJson.status).toBe(200);
+      expectSuccess(withStoryJson.body);
+      expect(withStoryJson.body.data.original_story_json).toContain(story.storyId);
+      expect(withStoryJson.body.data.original_story_json).toContain('API 修复提示包测试');
+      expect(withStoryJson.body.data.prompt).not.toContain('<当前 Web 请求未内嵌完整原始故事 JSON');
+      expect(withStoryJson.body.data.markdown).toContain('# Story Quality Repair Prompt');
+      expect(withStoryJson.body.data.markdown).toContain(story.storyId);
     });
 
     it('validates and safely applies a repaired story json as a new version', async () => {
+      const materialSufficiency = {
+        schema_version: 'material-sufficiency/v1' as const,
+        stage: 'script_ready' as const,
+        active_stage: 'minimum_viable_story' as const,
+        score: 61,
+        can_generate: true,
+        can_generate_with_risks: true,
+        blocked: false,
+        needs_verification: true,
+        generation_posture: 'draft_needs_verification' as const,
+        missing_items: [{
+          item_id: 'institutional-data',
+          label: '机构审定数据',
+          reason: '机构片关键数据尚未核验',
+          blocking_level: 'blocking' as const,
+          affects: ['truth_report', 'institutional_safety_report'],
+          recommended_question: '请补充可公开引用的机构审定数据。',
+        }],
+        optional_items: [],
+        token_risk: 'low' as const,
+        recommended_next_questions: ['请补充可公开引用的机构审定数据。'],
+      };
       const story: StoryGenerateResult = {
         ...makeApiStory(),
         storyId: '20260617-story-ra1',
         title: 'API 修复 JSON 写入测试',
         gears_segments_url: '/api/stories/20260617-story-ra1/gears-segments',
+        creation_use_case: 'institutional_promo',
+        truth_mode: 'institutional_verified',
+        material_sufficiency: materialSufficiency,
+        creation_contract: {
+          schema_version: 'creation-contract/v1',
+          creation_use_case: 'institutional_promo',
+          truth_mode: 'institutional_verified',
+          client_type: '文化机构',
+          target_audience: '公众观众',
+          communication_goal: '稳妥呈现人物选择与机构价值表达',
+          video_type: 'character_story',
+          presentation_style: 'cinematic',
+          story_structure: 'single_event_drama',
+          narrative_pattern_ids: ['hero_choice'],
+          allowed_fiction: ['可做镜头调度与场景压缩'],
+          must_verify: ['机构审定数据', '可公开引用口径'],
+          forbidden_moves: ['虚构机构发言', '把待核验数据写成确定事实'],
+          required_disclaimers: [],
+          material_sufficiency: materialSufficiency,
+          delivery_expectation: ['输出可审校剧本草案'],
+        },
         quality_report: {
           ...makeApiStory().quality_report!,
           passed: false,
@@ -3755,8 +3819,18 @@ describe('Projects API', () => {
       expect(Array.isArray(dryRun.body.data.change_summary.quality_issue_delta.new_issues)).toBe(true);
       expect(Array.isArray(dryRun.body.data.change_summary.quality_issue_delta.remaining_issues)).toBe(true);
       expect(dryRun.body.data.change_summary.ignored_protected_field_changes).toContain('project_id');
-      expect(dryRun.body.data.operator_hints.join('\n')).toContain('校验通过');
+      const dryRunHints = dryRun.body.data.operator_hints.join('\n');
+      expect(dryRunHints).toContain('校验通过');
+      expect(dryRunHints).toContain('创作合同边界');
+      expect(dryRunHints).toContain('机构审定');
+      expect(dryRunHints).toContain('真实度边界');
+      expect(dryRunHints).toContain('禁止表达边界');
+      expect(dryRunHints).toContain('素材 Gate');
+      expect(dryRunHints).toContain('阻断素材缺口');
       expect(dryRun.body.data.validation_summary_markdown).toContain('# Story Quality Repair Validation');
+      expect(dryRun.body.data.validation_summary_markdown).toContain('## Contract And Material Boundaries');
+      expect(dryRun.body.data.validation_summary_markdown).toContain('truth_mode: institutional_verified');
+      expect(dryRun.body.data.validation_summary_markdown).toContain('missing_items:');
       expect(dryRun.body.data.validation_summary_markdown).toContain('## Quality Issues');
       expect(dryRun.body.data.validation_summary_markdown).toContain('ignored_changes: project_id');
 
@@ -5510,6 +5584,41 @@ describe('Story Outline API', () => {
       expect(res.body.data.episodes).toHaveLength(6);
       expect(res.body.data.episodes[0]).toHaveProperty('continuity_state_after');
       expect(res.body.data.episodes[1].continuity_from_previous[0]).toContain('第1集');
+      expect(res.body.data.recommended_narrative_patterns).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          video_type: 'ai_comic_drama',
+          pattern_id: expect.any(String),
+          reason: expect.any(String),
+          priority: expect.any(Number),
+          confidence: expect.any(Number),
+          match_signals: expect.any(Array),
+        }),
+      ]));
+      expect(res.body.data.narrative_pattern_ids).toEqual(expect.arrayContaining([
+        'mortal_growth',
+        'character_arc_adaptation',
+      ]));
+    });
+
+    it('uses outline subgenre signals when recommending series narrative patterns', async () => {
+      const res = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '武侠短剧改编：少年在江湖门派中追查谜案，靠复仇线和连载钩子推进。',
+        series_title: '江湖谜案',
+        episode_count: 6,
+        episode_duration_range_sec: { min: 60, max: 120 },
+        pacing_profile: 'fast_hook',
+      });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.recommended_narrative_patterns.map((item: any) => item.pattern_id)).toEqual(expect.arrayContaining([
+        'wuxia_chivalric_epic',
+        'wuxia_revenge_journey',
+      ]));
+      expect(res.body.data.narrative_pattern_ids).toEqual(expect.arrayContaining([
+        'wuxia_chivalric_epic',
+        'wuxia_revenge_journey',
+      ]));
     });
 
     it('validates episode_count', async () => {
@@ -5557,7 +5666,18 @@ describe('Story Outline API', () => {
       expectSuccess(res.body);
       expect(res.body.data.video_type).toBe('ai_comic_drama');
       expect(res.body.data.presentation_style).toBe('ai_comic');
-      expect(res.body.data.original_user_query).toContain('只生成第1集完整分镜');
+      expect(res.body.data.original_user_query).toContain('本集只写第1集');
+      expect(res.body.data.original_user_query).toContain('本集主冲突');
+      expect(res.body.data.original_user_query).not.toContain('连续性账本');
+      expect(res.body.data.original_user_query).not.toContain('叙事流派机制');
+      expect(res.body.data.credibility_note).not.toContain('叙事流派机制');
+      expect([
+        res.body.data.full_text,
+        ...res.body.data.scene_breakdown.flatMap((scene: { plot: string; visual_prompt: string }) => [
+          scene.plot,
+          scene.visual_prompt,
+        ]),
+      ].join('\n')).not.toMatch(/生成优先级|核心画面是|知识库使用规则/);
       expect(res.body.data.scene_breakdown.length).toBeGreaterThan(0);
     });
 
@@ -5951,11 +6071,13 @@ describe('Stories API', () => {
         expect(plan).toHaveProperty('recommended_types');
         expect(plan).toHaveProperty('recommended_video_types');
         expect(plan).toHaveProperty('recommended_presentation_styles');
+        expect(plan).toHaveProperty('recommended_narrative_patterns');
         expect(plan).toHaveProperty('available_events');
         expect(plan).toHaveProperty('recommended_duration');
         expect(plan).toHaveProperty('cultural_risks');
         expect(Array.isArray(plan.recommended_types)).toBe(true);
         expect(Array.isArray(plan.recommended_video_types)).toBe(true);
+        expect(Array.isArray(plan.recommended_narrative_patterns)).toBe(true);
         expect(Array.isArray(plan.available_events)).toBe(true);
         expect(Array.isArray(plan.cultural_risks)).toBe(true);
         // Video type structure check
@@ -5965,6 +6087,37 @@ describe('Stories API', () => {
           expect(firstVT).toHaveProperty('reason');
           expect(firstVT).toHaveProperty('priority');
         }
+        const aiComicPatterns = plan.recommended_narrative_patterns.filter((item: any) =>
+          item.video_type === 'ai_comic_drama'
+        );
+        expect(aiComicPatterns.map((item: any) => item.pattern_id)).toEqual(expect.arrayContaining([
+          'mortal_growth',
+          'character_arc_adaptation',
+        ]));
+        expect(aiComicPatterns[0]).toEqual(expect.objectContaining({
+          reason: expect.any(String),
+          priority: expect.any(Number),
+          confidence: expect.any(Number),
+          match_signals: expect.arrayContaining(['历史人物']),
+        }));
+      }
+    });
+
+    it('uses user query signals to recommend AI comic subgenre patterns', async () => {
+      const res = await request.post('/api/stories/plan').send({
+        entry_name: '周敦颐——理学开山鼻祖',
+        original_user_query: '想做成武侠短剧改编，要有江湖门派和连载钩子',
+      });
+
+      if (res.status === 200) {
+        expectSuccess(res.body);
+        const aiComicPatternIds = res.body.data.recommended_narrative_patterns
+          .filter((item: any) => item.video_type === 'ai_comic_drama')
+          .map((item: any) => item.pattern_id);
+        expect(aiComicPatternIds).toEqual(expect.arrayContaining([
+          'wuxia_chivalric_epic',
+          'wuxia_revenge_journey',
+        ]));
       }
     });
   });

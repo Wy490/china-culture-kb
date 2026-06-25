@@ -2,17 +2,17 @@
   <div class="home">
     <section class="home__hero">
       <div class="home__hero-copy">
-        <p class="home__hero-eyebrow">Story Agent 工作台</p>
-        <h1 class="home__hero-title">从知识库到故事项目的创作主控台</h1>
-        <p class="home__hero-desc">浏览知识库、生成初稿、管理故事项目，并逐步进入局部重写与导出流程。</p>
+        <p class="home__hero-eyebrow">Story Studio 工作台</p>
+        <h1 class="home__hero-title">AI 影视前期创作与项目素材指挥系统</h1>
+        <p class="home__hero-desc">组织创作素材、生成故事与剧本、管理项目版本，并逐步进入局部重写与交付准备流程。</p>
       </div>
     </section>
 
     <section class="home__workbench">
       <RouterLink class="home__workbench-card home__workbench-card--library" to="/knowledge">
-        <span class="home__workbench-kicker">知识库</span>
-        <h2>中国文化知识库</h2>
-        <p>省份、类型和主题条目从统一入口进入，首页不再铺开全部目录。</p>
+        <span class="home__workbench-kicker">素材库</span>
+        <h2>中国文化素材库</h2>
+        <p>省份、类型和主题素材从统一入口进入，为原创、改编和机构影像提供资料底座。</p>
         <div class="home__workbench-meta">
           <span>{{ provinces.length }} 个省份</span>
           <span>{{ totalEntries }} 条条目</span>
@@ -21,8 +21,8 @@
 
       <RouterLink class="home__workbench-card home__workbench-card--projects" to="/projects">
         <span class="home__workbench-kicker">项目</span>
-        <h2>故事项目</h2>
-        <p>查看最近生成结果，后续在这里承接局部修改、版本管理和导出。</p>
+        <h2>项目指挥</h2>
+        <p>查看最近生成结果，在这里承接局部修改、版本管理、素材补充和交付准备。</p>
         <div class="home__workbench-meta">
           <span>{{ projectCount }} 个项目</span>
           <span>{{ recentStories.length }} 个最近更新</span>
@@ -30,12 +30,12 @@
       </RouterLink>
 
       <RouterLink class="home__workbench-card home__workbench-card--studio" to="/story/new">
-        <span class="home__workbench-kicker">生成</span>
-        <h2>故事工坊</h2>
-        <p>从词条、主题或大纲出发生成故事方案，并为后续编辑保留结构化结果。</p>
+        <span class="home__workbench-kicker">创作</span>
+        <h2>Story Studio</h2>
+        <p>从素材条目、主题或大纲出发生成故事方案、剧本结构和可编辑项目版本。</p>
         <div class="home__workbench-meta">
           <span>支持多成片类型</span>
-          <span>输出 GEARS segments</span>
+          <span>输出分镜与资产说明</span>
         </div>
       </RouterLink>
     </section>
@@ -45,7 +45,7 @@
       <div class="home__stats-grid">
         <div class="home__stat-card">
           <span class="home__stat-number">{{ totalEntries }}</span>
-          <span class="home__stat-label">总条目数</span>
+          <span class="home__stat-label">素材条目</span>
         </div>
         <div class="home__stat-card">
           <span class="home__stat-number">{{ provinces.length }}</span>
@@ -53,15 +53,15 @@
         </div>
         <div class="home__stat-card">
           <span class="home__stat-number">{{ projectCount }}</span>
-          <span class="home__stat-label">故事项目</span>
+          <span class="home__stat-label">创作项目</span>
         </div>
       </div>
     </section>
 
     <section v-if="recentStories.length > 0" class="home__recent">
       <div class="home__section-header">
-        <h2 class="home__section-title">最近生成故事</h2>
-        <RouterLink class="home__section-link" to="/projects">查看全部故事</RouterLink>
+        <h2 class="home__section-title">最近创作项目</h2>
+        <RouterLink class="home__section-link" to="/projects">查看全部项目</RouterLink>
       </div>
       <div class="home__recent-list">
         <RouterLink
@@ -95,7 +95,7 @@
 
     <div v-if="loading" class="home__loading">
       <div class="home__spinner" />
-      <p>正在加载知识库数据…</p>
+      <p>正在加载素材库数据…</p>
     </div>
     <div v-else-if="provinceError" class="home__error">{{ provinceError }}</div>
   </div>

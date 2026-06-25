@@ -2,15 +2,15 @@
   <div class="knowledge-page">
     <header class="knowledge-page__header">
       <div>
-        <h1 class="knowledge-page__title">中国文化知识库</h1>
-        <p class="knowledge-page__desc">按省份浏览中国传统文化条目，查看人物、掌故、非遗、名胜与民俗资料。</p>
+        <h1 class="knowledge-page__title">中国文化素材库</h1>
+        <p class="knowledge-page__desc">按省份浏览中国传统文化素材，查看人物、掌故、非遗、名胜与民俗资料。</p>
       </div>
-      <RouterLink class="knowledge-page__search-link" to="/search">搜索条目</RouterLink>
+      <RouterLink class="knowledge-page__search-link" to="/search">搜索素材</RouterLink>
     </header>
 
     <div v-if="loadingProvinces" class="knowledge-page__loading">
       <div class="knowledge-page__spinner" />
-      <p>正在加载知识库…</p>
+      <p>正在加载素材库…</p>
     </div>
 
     <div v-else-if="provinceError" class="knowledge-page__error">{{ provinceError }}</div>
@@ -34,7 +34,7 @@
           <div class="knowledge-page__summary">
             <div class="knowledge-page__summary-item">
               <strong>{{ totalEntries }}</strong>
-              <span>总条目</span>
+              <span>素材条目</span>
             </div>
             <div class="knowledge-page__summary-item">
               <strong>{{ provinces.length }}</strong>
@@ -50,7 +50,7 @@
           <header class="knowledge-page__entries-header">
             <div>
               <h2 class="knowledge-page__section-title">{{ selectedProvince }}</h2>
-              <p class="knowledge-page__entry-count">共 {{ entries.length }} 条知识库条目</p>
+              <p class="knowledge-page__entry-count">共 {{ entries.length }} 条素材条目</p>
             </div>
           </header>
 
@@ -75,7 +75,7 @@
             </section>
 
             <div v-if="entries.length === 0" class="knowledge-page__empty">
-              <p>该省份暂无知识库条目。</p>
+              <p>该省份暂无素材条目。</p>
             </div>
           </template>
         </section>

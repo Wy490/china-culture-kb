@@ -1,15 +1,15 @@
 <template>
   <div id="app-root">
     <header class="app-header">
-      <h1 class="app-title">中国传统文化知识库</h1>
+      <h1 class="app-title">AI影视工作台</h1>
       <nav class="app-nav">
         <RouterLink to="/">首页</RouterLink>
-        <RouterLink to="/knowledge">知识库</RouterLink>
-        <RouterLink to="/projects">故事项目</RouterLink>
+        <RouterLink to="/knowledge">素材库</RouterLink>
+        <RouterLink to="/projects">项目指挥</RouterLink>
         <RouterLink to="/supplement-tasks">素材补充</RouterLink>
-        <RouterLink to="/search">搜索</RouterLink>
-        <RouterLink to="/story/new">故事生成</RouterLink>
-        <RouterLink to="/ai-comic-series/new">漫剧系列</RouterLink>
+        <RouterLink to="/search">素材搜索</RouterLink>
+        <RouterLink to="/story/new">单片创作</RouterLink>
+        <RouterLink to="/ai-comic-series/new">系列漫剧</RouterLink>
       </nav>
     </header>
     <main class="app-main">

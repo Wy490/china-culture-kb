@@ -316,7 +316,7 @@ async function copyGearsPullConfig() {
     '1. 拉取 delivery_url 获取人物资产、场景资产、剧本单元和供稿 Markdown。',
     '2. 拉取 segments_url 获取兼容旧流程的分段 JSON。',
     '3. 成片完成后向 video_callback_url 回传 storyId、status、video_url 和 thumbnail_url。',
-    '4. 优先使用已编辑保存的供稿 Markdown；若 validation_notes 非空，先完成资料补录。',
+    '4. 优先使用已编辑保存的供稿 Markdown；若 validation_notes 非空，先完成素材补充。',
   ].join('\n')
   try {
     await navigator.clipboard.writeText(config)

@@ -17,16 +17,16 @@
           class="btn btn--back"
           :to="`/projects/${story.project_id}`"
         >
-          进入故事项目
+          进入创作项目
         </RouterLink>
-        <RouterLink v-else class="btn btn--back" to="/projects">返回故事项目</RouterLink>
-        <RouterLink class="btn btn--back" to="/story/new">继续生成故事</RouterLink>
+        <RouterLink v-else class="btn btn--back" to="/projects">返回创作项目</RouterLink>
+        <RouterLink class="btn btn--back" to="/story/new">继续创作</RouterLink>
       </div>
     </div>
 
     <!-- No storyId -->
     <div v-if="!storyIdParam" class="story-detail-page__empty">
-      <p>请从故事工坊或首页进入故事详情。</p>
+      <p>请从单片创作或首页进入故事详情。</p>
     </div>
   </div>
 </template>

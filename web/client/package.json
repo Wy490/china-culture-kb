@@ -2,7 +2,7 @@
   "name": "china-culture-kb-client",
   "version": "0.1.0",
   "private": true,
-  "description": "中国传统文化知识库 — Vue3 前端",
+  "description": "AI影视工作台 — Vue3 前端",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -29,7 +29,7 @@
 
       <!-- Empty -->
       <div v-if="entries.length === 0" class="province-page__empty">
-        <p>该省份暂无知识库条目。</p>
+        <p>该省份暂无素材条目。</p>
       </div>
     </div>
   </div>

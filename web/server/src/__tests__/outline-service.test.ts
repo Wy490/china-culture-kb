@@ -343,12 +343,20 @@ describe('outline-service', () => {
     expect(res.ok).toBe(true);
     expect(res.data?.video_type).toBe('ai_comic_drama');
     expect(res.data?.presentation_style).toBe('ai_comic');
-    expect(res.data?.original_user_query).toContain('只生成第2集完整分镜');
-    expect(res.data?.original_user_query).toContain('本集蓝图');
-    expect(res.data?.original_user_query).toContain('系列主线骨架');
-    expect(res.data?.original_user_query).toContain('叙事流派机制');
-    expect(res.data?.original_user_query).toContain('无限流任务生存');
+    expect(res.data?.original_user_query).toContain('本集只写第2集');
+    expect(res.data?.original_user_query).toContain('本集主冲突');
+    expect(res.data?.original_user_query).toContain('成稿方向');
+    expect(res.data?.original_user_query).not.toContain('叙事流派机制');
+    expect(res.data?.original_user_query).not.toContain('连续性账本');
+    expect(res.data?.credibility_note).not.toContain('叙事流派机制');
     expect(res.data?.scene_breakdown.length).toBeGreaterThan(0);
+    expect(res.data?.scene_breakdown.some(scene => scene.conflict?.includes(planRes.data!.episodes[1].main_conflict)))
+      .toBe(true);
+    expect([
+      res.data?.full_text,
+      ...(res.data?.scene_breakdown ?? []).flatMap(scene => [scene.plot, scene.visual_prompt]),
+      ...(res.data?.gears_segments ?? []).map(segment => segment.script_text),
+    ].join('\n')).not.toMatch(/生成优先级|核心画面是|知识库使用规则/);
     expect(res.data?.dialogue?.length).toBeGreaterThan(0);
     expect(res.data?.ai_comic_episode_blueprint?.schema_version).toBe('ai-comic-episode-blueprint/v1');
     expect(res.data?.ai_comic_episode_blueprint?.episode_no).toBe(2);
@@ -3278,12 +3286,18 @@ describe('outline-service', () => {
       output_gears_segments: false,
     });
     expect(secondEpisodeRes.ok).toBe(true);
-    expect(secondEpisodeRes.data?.original_user_query).toContain('连续性账本');
-    expect(secondEpisodeRes.data?.original_user_query).toContain('系列记忆精准召回');
-    expect(secondEpisodeRes.data?.original_user_query).toContain('长期情景记忆模糊召回');
-    expect(secondEpisodeRes.data?.original_user_query).toContain('人工锁定');
-    expect(secondEpisodeRes.data?.original_user_query).toContain('账本未回收线索');
-    expect(secondEpisodeRes.data?.original_user_query).toContain('上一条生成记忆');
-    expect(secondEpisodeRes.data?.original_user_query).toContain(firstEpisodeRes.data!.storyId);
+    expect(secondEpisodeRes.data?.original_user_query).toContain('上一集已生成状态');
+    expect(secondEpisodeRes.data?.original_user_query).toContain('本集主冲突');
+    expect(secondEpisodeRes.data?.original_user_query).not.toContain('连续性账本');
+    expect(secondEpisodeRes.data?.original_user_query).not.toContain('系列记忆精准召回');
+    expect(secondEpisodeRes.data?.original_user_query).not.toContain('长期情景记忆模糊召回');
+    expect(secondEpisodeRes.data?.full_text).not.toEqual(firstEpisodeRes.data?.full_text);
+    expect(secondEpisodeRes.data?.scene_breakdown.some(scene => scene.conflict?.includes(planRes.data!.episodes[1].main_conflict)))
+      .toBe(true);
+    expect([
+      secondEpisodeRes.data?.full_text,
+      ...(secondEpisodeRes.data?.scene_breakdown ?? []).flatMap(scene => [scene.plot, scene.visual_prompt]),
+      ...(secondEpisodeRes.data?.gears_segments ?? []).map(segment => segment.script_text),
+    ].join('\n')).not.toMatch(/生成优先级|核心画面是|知识库使用规则/);
   });
 });

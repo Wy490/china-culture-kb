@@ -75,6 +75,15 @@ export const NarrativePatternIdSchema = z.enum([
   'wuxia_romance_honor',
 ]);
 
+const RecommendedNarrativePatternSchema = z.object({
+  video_type: VideoTypeSchema,
+  pattern_id: NarrativePatternIdSchema,
+  reason: z.string().min(1),
+  priority: z.number().int().min(1),
+  confidence: z.number().min(0).max(1),
+  match_signals: z.array(z.string()),
+});
+
 // ---------------------------------------------------------------------------
 // Presentation style (11 表现形式)
 // ---------------------------------------------------------------------------
@@ -1573,6 +1582,7 @@ const AiComicSeriesPlanSchema = z.object({
   pacing_profile: AiComicPacingProfileSchema,
   generation_scope: AiComicGenerationScopeSchema,
   narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
+  recommended_narrative_patterns: z.array(RecommendedNarrativePatternSchema).optional(),
   premise: z.string().min(1).max(12000),
   logline: z.string().min(1),
   core_theme: z.string().min(1),

@@ -4,6 +4,7 @@ import { getKbRoot } from '../lib/provinces.js';
 import { getProjectContext } from './get-project-context.js';
 import { updateProjectVersion, type UpdateProjectVersionResult } from './update-project-version.js';
 import { validateGenreStory, type ValidateGenreStoryResult } from './validate-genre-story.js';
+import type { CreationContract, MaterialSufficiencyReport } from '../types.js';
 
 type SourceKind = 'project_id' | 'story_id' | 'story_json';
 type RepairPriority = 'P0' | 'P1' | 'P2';
@@ -38,6 +39,8 @@ type StoryLike = Record<string, unknown> & {
   video_type?: string;
   story_structure?: string;
   scene_breakdown?: StorySceneLike[];
+  creation_contract?: CreationContract;
+  material_sufficiency?: MaterialSufficiencyReport;
 };
 
 export interface RepairStoryInput {
@@ -95,6 +98,7 @@ export interface RepairStoryResult {
   source_issues: string[];
   repair_actions: RepairDryRunAction[];
   target_scenes: RepairTargetScene[];
+  boundary_notes: string[];
   risk_notes: string[];
   markdown?: string;
 }
@@ -117,6 +121,9 @@ export interface StoryRepairPromptResult {
   quality_snapshot: RepairStoryResult['quality_snapshot'];
   repair_actions: RepairDryRunAction[];
   target_scenes: RepairTargetScene[];
+  boundary_notes: string[];
+  creation_contract?: CreationContract;
+  material_sufficiency?: MaterialSufficiencyReport;
   protected_fields: string[];
   output_contract: {
     format: 'json';
@@ -175,11 +182,16 @@ async function readJsonFile<T>(filePath: string): Promise<T> {
 async function resolveStoryFromProject(projectId: string): Promise<StoryLike | null> {
   const context = await getProjectContext({ project_id: projectId });
   if (!context) return null;
+  const currentStory = context.current_story as StoryLike;
   return {
-    ...context.current_story,
+    ...currentStory,
     project_id: context.project.project_id,
-    video_type: context.current_story.video_type as string ?? context.project.video_type,
-    story_structure: context.current_story.story_structure as string ?? context.project.story_structure,
+    video_type: currentStory.video_type as string ?? context.project.video_type,
+    story_structure: currentStory.story_structure as string ?? context.project.story_structure,
+    creation_contract: currentStory.creation_contract ?? context.project.creation_contract,
+    material_sufficiency: currentStory.material_sufficiency
+      ?? context.project.material_sufficiency
+      ?? context.project.creation_contract?.material_sufficiency,
   } as StoryLike;
 }
 
@@ -243,6 +255,85 @@ function uniqueStrings(values: string[]): string[] {
 
 function uniqueNumbers(values: number[]): number[] {
   return [...new Set(values.filter(value => Number.isFinite(value)))].sort((a, b) => a - b);
+}
+
+function creationUseCaseLabel(useCase: CreationContract['creation_use_case']): string {
+  const map: Record<CreationContract['creation_use_case'], string> = {
+    original_ai_comic: '原创 AI 漫剧',
+    adapted_ai_comic: '原作/资料改编',
+    institutional_promo: '机构宣传片',
+    documentary_short: '纪录短片',
+    brand_commercial: '品牌商业片',
+    education_training: '教育/培训片',
+    public_service: '公益宣传片',
+  };
+  return map[useCase] ?? useCase;
+}
+
+function truthModeLabel(truthMode: CreationContract['truth_mode']): string {
+  const map: Record<CreationContract['truth_mode'], string> = {
+    fictional_original: '原创虚构',
+    inspired_by_material: '素材启发',
+    source_adaptation: '原作改编',
+    factual_reconstruction: '事实重构',
+    institutional_verified: '机构审定',
+  };
+  return map[truthMode] ?? truthMode;
+}
+
+function materialStageLabel(stage: MaterialSufficiencyReport['stage']): string {
+  const map: Record<MaterialSufficiencyReport['stage'], string> = {
+    minimum_viable_story: '最小可行故事',
+    script_ready: '剧本可用',
+    production_ready: '生产可用',
+  };
+  return map[stage] ?? stage;
+}
+
+function materialPostureLabel(posture?: MaterialSufficiencyReport['generation_posture']): string {
+  if (!posture) return '未记录生成姿态';
+  const map: Record<NonNullable<MaterialSufficiencyReport['generation_posture']>, string> = {
+    ready: '可进入生产',
+    draft_needs_verification: '草案待核验',
+    script_ready_production_pending: '剧本可写，生产待补',
+    blocked_until_input: '补材后再生成',
+  };
+  return map[posture] ?? posture;
+}
+
+function compactBoundaryList(items: string[], limit = 3): string {
+  const values = uniqueStrings(items).slice(0, limit);
+  if (!values.length) return '';
+  return `${values.join('；')}${items.length > limit ? ` 等 ${items.length} 项` : ''}`;
+}
+
+function storyRepairBoundaryNotes(story: StoryLike): string[] {
+  const notes: string[] = [];
+  const contract = story.creation_contract;
+  const material = story.material_sufficiency ?? contract?.material_sufficiency;
+  if (contract) {
+    notes.push(`创作合同边界：${creationUseCaseLabel(contract.creation_use_case)} / ${truthModeLabel(contract.truth_mode)}；修复不得改写创作用途、真实度模式、客户目标或成片类型。`);
+    if (contract.must_verify.length) {
+      notes.push(`真实度边界：仍有 ${contract.must_verify.length} 项待核验（${compactBoundaryList(contract.must_verify)}）；不要把待核验内容写成确定事实。`);
+    }
+    if (contract.forbidden_moves.length) {
+      notes.push(`禁止表达边界：${compactBoundaryList(contract.forbidden_moves)}；写入前确认模型没有引入这些表达。`);
+    }
+  }
+  if (material) {
+    const activeStage = material.active_stage ?? material.stage;
+    notes.push(`素材 Gate：当前可推进到${materialStageLabel(activeStage)}，评分 ${material.score}/100，生成姿态为“${materialPostureLabel(material.generation_posture)}”。`);
+    if (material.blocked) {
+      notes.push('素材 Gate 当前阻断；修复只能整理现有内容，不应新增未提供的关键事实、机构数据或原作情节。');
+    } else if (material.needs_verification || material.can_generate_with_risks) {
+      notes.push('素材 Gate 标记为需核验；修复不得把草案、推测或影视化补足改成确定事实。');
+    }
+    const blockingMissing = material.missing_items.filter(item => item.blocking_level === 'blocking');
+    if (blockingMissing.length) {
+      notes.push(`阻断素材缺口：${blockingMissing.slice(0, 3).map(item => item.label).join('、')}${blockingMissing.length > 3 ? ` 等 ${blockingMissing.length} 项` : ''}。`);
+    }
+  }
+  return uniqueStrings(notes);
 }
 
 function scenes(story: StoryLike): StorySceneLike[] {
@@ -596,6 +687,7 @@ function buildRiskNotes(
   if (validation.passed) {
     notes.push('当前类型校验已通过，建议只做轻微增强，避免破坏已通过结构。');
   }
+  notes.push(...storyRepairBoundaryNotes(story));
   return notes;
 }
 
@@ -701,6 +793,13 @@ function buildMarkdown(result: Omit<RepairStoryResult, 'markdown'>): string {
     lines.push(`- issue 数：${result.after_quality_snapshot.issue_count}`);
   }
 
+  if (result.boundary_notes.length) {
+    lines.push('', '## 创作合同与素材 Gate 边界', '');
+    for (const note of result.boundary_notes) {
+      lines.push(`- ${note}`);
+    }
+  }
+
   lines.push('', '## 风险说明', '');
   for (const note of result.risk_notes) {
     lines.push(`- ${note}`);
@@ -716,6 +815,10 @@ const STORY_REPAIR_PROTECTED_FIELDS = [
   'presentation_style',
   'story_structure',
   'story_blueprint.evidence_boundaries',
+  'knowledge_pack',
+  'material_pack',
+  'creation_contract',
+  'material_sufficiency',
   'credibility_note',
 ];
 
@@ -765,6 +868,9 @@ function buildStoryRepairPromptText(params: {
 }): string {
   const actionJson = JSON.stringify(params.repair.repair_actions, null, 2);
   const targetSceneJson = JSON.stringify(params.repair.target_scenes, null, 2);
+  const boundaryLines = params.repair.boundary_notes.length
+    ? params.repair.boundary_notes.map(note => `- ${note}`)
+    : ['- 未记录创作合同或素材 Gate；仍需保留 story 中已有来源、类型和质量边界。'];
   const storyJson = params.includeStoryJson
     ? JSON.stringify(params.story, null, 2)
     : '<调用方已持有原始 StoryGenerateResult JSON，请基于原始 JSON 做最小必要修改>';
@@ -774,7 +880,7 @@ function buildStoryRepairPromptText(params: {
     '硬性输出规则：',
     '1. 只输出一个完整 JSON 对象，不要 Markdown、解释、代码围栏或额外文本。',
     '2. JSON 根对象必须是完整 StoryGenerateResult；不要只输出 patch/diff。',
-    '3. 保留 storyId、project_id、source_entry、video_type、presentation_style、story_structure、credibility_note 和 story_blueprint.evidence_boundaries，除非修复动作明确要求调整。',
+    '3. 保留 storyId、project_id、source_entry、video_type、presentation_style、story_structure、knowledge_pack、material_pack、creation_contract、material_sufficiency、credibility_note 和 story_blueprint.evidence_boundaries，除非修复动作明确要求调整。',
     '4. 同步修复 full_text、scene_breakdown、gears_segments 和 quality_report，避免正文、分场和 GEARS 单元互相矛盾。',
     '5. script_text 只写观众可听/可见的剧本内容；visual_prompt 只写可见画面元素；camera_suggestion 只写镜头语言；validation_notes 不得混入提示词字段。',
     '6. 不新增未经来源支持的硬事实；戏剧化内容要放在 fictionalized_elements、cultural_note 或 credibility_note 的边界中。',
@@ -785,6 +891,9 @@ function buildStoryRepairPromptText(params: {
     `- story_structure: ${params.repair.quality_snapshot.story_structure ?? 'unknown'}`,
     `- 当前 genre_score: ${params.repair.quality_snapshot.genre_score}`,
     `- 当前 issue_count: ${params.repair.quality_snapshot.issue_count}`,
+    '',
+    '创作合同与素材 Gate 边界：',
+    ...boundaryLines,
     '',
     ...(params.userInstruction?.trim()
       ? ['调用方补充要求：', params.userInstruction.trim(), '']
@@ -822,6 +931,12 @@ function buildStoryRepairPromptMarkdown(result: Omit<StoryRepairPromptResult, 'm
     '## Workflow',
     '',
     ...result.recommended_workflow.map(step => `- ${step.step}. ${step.tool}: ${step.purpose}`),
+    '',
+    '## 创作合同与素材 Gate 边界',
+    '',
+    ...(result.boundary_notes.length
+      ? result.boundary_notes.map(note => `- ${note}`)
+      : ['- 未记录创作合同或素材 Gate；仍需保留 story 中已有来源、类型和质量边界。']),
     '',
     '## Prompt',
     '',
@@ -863,6 +978,7 @@ export async function repairStory(input: RepairStoryInput): Promise<RepairStoryR
     source_issues: validation.issues,
     repair_actions: repairActions,
     target_scenes: aggregateTargetScenes(repairActions),
+    boundary_notes: storyRepairBoundaryNotes(resolved.story),
     risk_notes: buildRiskNotes(input, resolved.story, validation, applied, autoApply.notes),
   };
 
@@ -897,6 +1013,9 @@ export async function generateStoryRepairPrompt(
     quality_snapshot: repair.quality_snapshot,
     repair_actions: repair.repair_actions,
     target_scenes: repair.target_scenes,
+    boundary_notes: repair.boundary_notes,
+    creation_contract: resolved.story.creation_contract,
+    material_sufficiency: resolved.story.material_sufficiency ?? resolved.story.creation_contract?.material_sufficiency,
     protected_fields: STORY_REPAIR_PROTECTED_FIELDS,
     output_contract: {
       format: 'json',

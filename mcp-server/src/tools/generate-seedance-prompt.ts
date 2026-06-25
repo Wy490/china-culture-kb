@@ -150,6 +150,16 @@ interface SeedancePromptPackageLite {
   markdown?: string;
 }
 
+type SeedanceImageReferenceSeedLite = {
+  kind: 'character' | 'location' | 'prop';
+  label: string;
+  role: 'character_reference' | 'location_reference' | 'prop_reference';
+  description: string;
+  source_scene_ids: number[];
+  required: boolean;
+  priority: number;
+};
+
 export interface GenerateSeedancePromptInput {
   project_id?: string;
   story_id?: string;
@@ -206,6 +216,17 @@ const PROMPT_NOISE_WORDS = [
   '为什么必须面对',
   '生成优先级',
   '具体细节请核实来源',
+  '质量报告',
+  '来源说明',
+  '内部字段名',
+  '来源条目',
+  '史实依据',
+  '影视化创作',
+  '史实边界',
+  '知识库',
+  '用户大纲',
+  '确证史实',
+  '确证史源',
   '应该',
   '注意',
   'TODO',
@@ -314,6 +335,9 @@ function stripPromptNoise(value: string): string {
     .replace(/生成优先级[:：][^。；\n]*(?:。|；|\n)?/g, '')
     .replace(/本场景基于[^，。；\n]*(?:，具体细节请核实来源)?/g, '')
     .replace(/来源条目[:：][^。；\n]*(?:。|；|\n)?/g, '')
+    .replace(/来源显示[:：][^。；\n]*(?:。|；|\n)?/g, '')
+    .replace(/史实依据[:：][^。；\n]*(?:。|；|\n)?/g, '')
+    .replace(/影视化创作[:：][^。；\n]*(?:。|；|\n)?/g, '')
     .replace(/(?:质量|分析|建议)[:：][^。；\n]*/g, '');
   for (const word of PROMPT_NOISE_WORDS) {
     text = text.replaceAll(word, '');
@@ -325,7 +349,12 @@ function stripPromptNoise(value: string): string {
 }
 
 function cleanPrompt(value: string): string {
-  return stripPromptNoise(value) || '人物处于明确空间中，动作和表情清楚，光线自然。';
+  const cleaned = stripPromptNoise(value)
+    .replace(/^[:：,，；;\s]+/g, '')
+    .replace(/[，,]\s*[，,]+/g, '，')
+    .replace(/[，,]\s*$/g, '')
+    .trim();
+  return cleaned || '人物处于明确空间中，动作和表情清楚，光线自然。';
 }
 
 function cleanScript(value: string): string {
@@ -333,7 +362,8 @@ function cleanScript(value: string): string {
 }
 
 function hasPromptNoise(value: string): boolean {
-  return PROMPT_NOISE_WORDS.some(word => value.includes(word)) || /(?:质量|分析|建议)[:：]/.test(value);
+  return PROMPT_NOISE_WORDS.some(word => value.includes(word))
+    || /(?:质量|分析|建议|来源显示|来源条目|史实依据|影视化创作)[:：]/.test(value);
 }
 
 function includesAny(value: string, keywords: string[]): boolean {
@@ -390,13 +420,14 @@ function storyText(story: StoryLike): string {
   ]).join(' ');
 }
 
-function charactersForStory(story: StoryLike): Array<{ name: string; description: string; source_scene_ids: number[] }> {
-  const byName = new Map<string, { description: string; source_scene_ids: Set<number> }>();
+function charactersForStory(story: StoryLike): Array<{ name: string; description: string; role?: string; source_scene_ids: number[] }> {
+  const byName = new Map<string, { description: string; role?: string; source_scene_ids: Set<number> }>();
   for (const character of Array.isArray(story.characters) ? story.characters : []) {
     const name = asString(character?.name).trim();
     if (!name) continue;
     byName.set(name, {
       description: compactStrings([character?.description, character?.arc]).join('；') || `${name}形象参考`,
+      role: asString(character?.role),
       source_scene_ids: new Set<number>(),
     });
   }
@@ -413,11 +444,12 @@ function charactersForStory(story: StoryLike): Array<{ name: string; description
   return [...byName.entries()].map(([name, value]) => ({
     name,
     description: `${value.description}；服装：${inferClothing(`${name} ${value.description} ${context}`)}`,
+    role: value.role,
     source_scene_ids: [...value.source_scene_ids].sort((a, b) => a - b),
   }));
 }
 
-function locationsForStory(story: StoryLike): Array<{ label: string; description: string; source_scene_ids: number[] }> {
+function locationsForStory(story: StoryLike): Array<{ label: string; description: string; source_scene_ids: number[]; required: boolean; priority: number }> {
   const byName = new Map<string, { parts: string[]; source_scene_ids: Set<number> }>();
   for (const scene of scenes(story)) {
     const label = asString(scene.location || scene.title || `场景${scene.scene_id ?? byName.size + 1}`).trim();
@@ -430,6 +462,8 @@ function locationsForStory(story: StoryLike): Array<{ label: string; description
     label,
     description: cleanPrompt(value.parts.join('，')),
     source_scene_ids: [...value.source_scene_ids].filter(Boolean).sort((a, b) => a - b),
+    required: true,
+    priority: 25 + firstScenePriority([...value.source_scene_ids]),
   }));
 }
 
@@ -439,6 +473,8 @@ function propReferences(story: StoryLike): Array<{
   role: 'prop_reference';
   description: string;
   source_scene_ids: number[];
+  required: boolean;
+  priority: number;
 }> {
   const propMap = new Map<string, Set<number>>();
   for (const scene of scenes(story)) {
@@ -455,6 +491,8 @@ function propReferences(story: StoryLike): Array<{
     role: 'prop_reference',
     description: `${label}作为关键道具外观参考，需在相关镜头中保持造型、材质和位置连续。`,
     source_scene_ids: [...sceneIds].filter(Boolean).sort((a, b) => a - b),
+    required: false,
+    priority: 80 + firstScenePriority([...sceneIds]),
   }));
 }
 
@@ -524,23 +562,30 @@ function audioReferences(story: StoryLike): Array<{
 }
 
 function buildAssetReferences(story: StoryLike): SeedanceAssetReferenceLite[] {
-  const planned = [
-    ...charactersForStory(story).map(character => ({
+  const planned: SeedanceImageReferenceSeedLite[] = [
+    ...charactersForStory(story).map((character, index) => {
+      const required = isPrimaryCharacterRole(character.role) || index === 0 || character.source_scene_ids.length > 1;
+      return {
       kind: 'character' as const,
       label: character.name,
       role: 'character_reference' as const,
       description: character.description,
       source_scene_ids: character.source_scene_ids,
-    })),
+      required,
+      priority: required ? index === 0 || isPrimaryCharacterRole(character.role) ? 10 : 15 + firstScenePriority(character.source_scene_ids) : 60 + firstScenePriority(character.source_scene_ids),
+    };
+    }),
     ...locationsForStory(story).map(location => ({
       kind: 'location' as const,
       label: location.label,
       role: 'location_reference' as const,
       description: location.description,
       source_scene_ids: location.source_scene_ids,
+      required: location.required,
+      priority: location.priority,
     })),
     ...propReferences(story),
-  ];
+  ].sort((a, b) => a.priority - b.priority || firstScenePriority(a.source_scene_ids) - firstScenePriority(b.source_scene_ids) || a.label.localeCompare(b.label, 'zh-CN'));
   const imageReferences: SeedanceAssetReferenceLite[] = planned.slice(0, SEEDANCE_LIMITS.maxImageFiles).map((item, index) => ({
     asset_id: seedanceAssetId(item.kind, item.label),
     kind: item.kind,
@@ -551,7 +596,7 @@ function buildAssetReferences(story: StoryLike): SeedanceAssetReferenceLite[] {
     description: item.description,
     source_scene_ids: uniqueNumbers(item.source_scene_ids),
     source_shot_ids: uniqueNumbers(item.source_scene_ids).map(sceneId => `shot-${sceneId}`),
-    required: true,
+    required: item.required,
   }));
   const videoReferences: SeedanceAssetReferenceLite[] = cameraReferences(story).slice(0, SEEDANCE_LIMITS.maxVideoFiles).map((item, index) => ({
     asset_id: seedanceAssetId('camera', item.label),
@@ -578,6 +623,24 @@ function buildAssetReferences(story: StoryLike): SeedanceAssetReferenceLite[] {
     required: false,
   }));
   return [...imageReferences, ...videoReferences, ...soundReferences];
+}
+
+function isPrimaryCharacterRole(role: string | undefined): boolean {
+  return Boolean(role && /主角|protagonist|main/i.test(role));
+}
+
+function firstScenePriority(sceneIds: number[]): number {
+  return sceneIds.length ? Math.min(...sceneIds) : 99;
+}
+
+function normalizeLocationName(value: string): string {
+  return value.replace(/[，,。；;\s]/g, '').trim();
+}
+
+function locationMatches(value: string, location: string): boolean {
+  const a = normalizeLocationName(value);
+  const b = normalizeLocationName(location);
+  return Boolean(a && b && (a === b || a.includes(b) || b.includes(a)));
 }
 
 function formatAssetReferencePlanItem(reference: SeedanceAssetReferenceLite): string {
@@ -608,9 +671,7 @@ function buildShotAssetSlots(input: {
     .filter(reference => {
       if (reference.kind === 'character') return input.characters.includes(reference.label);
       if (reference.kind === 'location') {
-        return input.location === reference.label
-          || input.location.includes(reference.label)
-          || reference.label.includes(input.location)
+        return locationMatches(reference.label, input.location)
           || reference.source_scene_ids.includes(input.sourceSceneId);
       }
       if (reference.kind === 'prop') return reference.source_scene_ids.includes(input.sourceSceneId) || input.text.includes(reference.label);
@@ -660,6 +721,16 @@ function estimatePromptComplexity(text: string, slotCount: number): number {
 }
 
 function durationRiskForPrompt(durationSec: number, complexityScore: number): SeedanceDurationRisk {
+  if (durationSec >= 12) {
+    if (complexityScore >= 96) return 'overloaded';
+    if (complexityScore >= 82) return 'dense';
+    return 'ok';
+  }
+  if (durationSec >= 9) {
+    if (complexityScore >= 92) return 'overloaded';
+    if (complexityScore >= 78) return 'dense';
+    return 'ok';
+  }
   if (durationSec <= 5 && complexityScore >= 60) return 'overloaded';
   if (durationSec <= 8 && complexityScore >= 76) return 'overloaded';
   if (complexityScore >= 88) return 'overloaded';
@@ -707,12 +778,13 @@ function buildShotMaterialValidation(input: {
   const totalFileCount = imageCount + videoCount + audioCount;
   const promptComplexityScore = estimatePromptComplexity(input.text, input.assetSlots.length);
   const durationRisk = durationRiskForPrompt(input.durationSec, promptComplexityScore);
-  const requiredSlots = [
-    ...input.characters.map(character => `character:${character}`),
-    input.location.trim() ? `location:${input.location}` : '',
+  const hasCharacterAnchor = input.characters.length === 0 || input.assetSlots.some(slot => slot.kind === 'character');
+  const hasLocationAnchor = !input.location.trim()
+    || input.assetSlots.some(slot => slot.kind === 'location' && locationMatches(slot.label, input.location));
+  const missingRequiredSlots = [
+    hasCharacterAnchor ? '' : `character:${input.characters[0] ?? '主要人物'}`,
+    hasLocationAnchor ? '' : `location:${input.location}`,
   ].filter(Boolean);
-  const presentSlots = new Set(input.assetSlots.map(slot => `${slot.kind}:${slot.label}`));
-  const missingRequiredSlots = requiredSlots.filter(required => !presentSlots.has(required));
   const warnings = [
     totalFileCount > SEEDANCE_LIMITS.maxTotalFiles ? `素材总数 ${totalFileCount} 超过单条提示可控范围 ${SEEDANCE_LIMITS.maxTotalFiles}` : '',
     imageCount > SEEDANCE_LIMITS.maxImageFiles ? `图片素材 ${imageCount} 超过 Seedance 限制 ${SEEDANCE_LIMITS.maxImageFiles}` : '',
@@ -744,9 +816,24 @@ function buildShotMaterialValidation(input: {
 function buildNegativeConstraints(scene: StorySceneLike | undefined, visualPrompt: string, scriptText: string): string[] {
   return compactStrings([
     '不要出现现代无关物件',
-    '不要出现质量报告、来源说明或内部字段名',
-    hasPromptNoise(visualPrompt) || hasPromptNoise(scriptText) ? '清除分析性文字，只保留可见可听内容' : '',
-    scene?.cultural_note ? '不要改写文化/史实边界为确定史实' : '',
+    '只保留可见可听内容',
+    hasPromptNoise(visualPrompt) || hasPromptNoise(scriptText) ? '清除不可见说明，只保留动作、表情、道具和声音' : '',
+    scene?.cultural_note ? '文化对象、年代服饰和地点氛围保持一致' : '',
+  ]).filter((item, index, arr) => arr.indexOf(item) === index);
+}
+
+function buildPromptContinuityNotes(scene?: StorySceneLike): string[] {
+  if (!scene) return [];
+  return compactStrings([
+    scene.factual_basis || scene.cultural_note
+      ? '年代、地点、服饰和文化对象保持同一语境。'
+      : '',
+    scene.fictionalized_elements?.length
+      ? '新增人物或事件只通过可见动作、道具和空间关系服务本镜头。'
+      : '',
+    scene.source_entries?.length
+      ? '人物名称、地点名称和核心文化物件前后一致。'
+      : '',
   ]).filter((item, index, arr) => arr.indexOf(item) === index);
 }
 
@@ -796,19 +883,14 @@ function buildShotUnit(input: {
   const durationSec = clampDuration(asNumber(segment?.duration_sec, asNumber(input.scene.duration_sec, 8)));
   const characters = uniqueStrings(input.scene.characters ?? []);
   const location = asString(input.scene.location || input.scene.title || '未指定场景');
-  const scriptText = cleanScript(segment?.script_text || input.scene.dialogue_or_narration || input.scene.key_action || input.scene.plot || input.scene.title || '');
+  const scriptText = buildConciseSeedanceScript(input.scene, segment);
   const visualPrompt = cleanPrompt(compactStrings([
     input.scene.visual_prompt,
     location,
     characters.length > 0 ? `人物：${characters.join('、')}` : undefined,
-    input.scene.cultural_note,
   ]).join('，'));
   const cameraSuggestion = cleanPrompt(input.scene.camera_suggestion || '中景固定镜头，动作清楚');
-  const continuityNotes = compactStrings([
-    input.scene.factual_basis ? `史实依据：${input.scene.factual_basis}` : undefined,
-    input.scene.fictionalized_elements?.length ? `影视化创作：${input.scene.fictionalized_elements.join('；')}` : undefined,
-    input.scene.source_entries?.length ? `来源条目：${input.scene.source_entries.join('、')}` : undefined,
-  ]);
+  const continuityNotes = buildPromptContinuityNotes(input.scene);
   const assetSlots = buildShotAssetSlots({
     references: input.assetReferences,
     shotId: `shot-${sourceUnitId}`,
@@ -851,6 +933,39 @@ function buildShotUnit(input: {
       assetSlots,
     }),
   };
+}
+
+function buildConciseSeedanceScript(scene: StorySceneLike, segment?: GearsSegmentLike): string {
+  const actionText = cleanScript(compactStrings([
+    scene.key_action,
+    conciseDialogue(scene.dialogue_or_narration),
+  ]).join(' '));
+  return summarizeSeedanceText(actionText || cleanScript(segment?.script_text || scene.plot || scene.title || ''), 120);
+}
+
+function conciseDialogue(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return value
+    .split(/[。；;\n]/)
+    .map(item => item.trim())
+    .find(Boolean);
+}
+
+function summarizeSeedanceText(value: string, maxLength: number): string {
+  const text = value.replace(/\s+/g, ' ').trim();
+  if (text.length <= maxLength) return text;
+  const parts = text
+    .split(/[。；;]/)
+    .map(part => part.trim())
+    .filter(Boolean);
+  const summary: string[] = [];
+  for (const part of parts) {
+    const next = [...summary, part].join('。');
+    if (next.length > maxLength) break;
+    summary.push(part);
+  }
+  const compacted = summary.join('。').trim();
+  return compacted || `${text.slice(0, maxLength - 1).trim()}…`;
 }
 
 function validateShotUnit(unit: SeedancePromptShotUnitLite): string[] {

@@ -87,11 +87,13 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.generated_governance_action_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.generated_governance_ready_signoff_candidate_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.story_agent_command_surface_status).toBe('ready');
+    expect(result.summary.story_agent_command_surface_percent).toBe(100);
     expect(result.summary.mcp_story_agent_tool_count).toBe(20);
     expect(result.summary.mcp_story_agent_loop_percent).toBe(100);
     expect(result.summary.content_command_layer_percent).toBe(100);
     expect(result.summary.production_delivery_contract_percent).toBe(100);
-    expect(result.summary.production_delivery_contract_surface_count).toBe(12);
+    expect(result.summary.production_delivery_contract_surface_count).toBe(13);
     expect(result.generated_health.schema_version).toBe('mcp-story-agent-generated-health/v1');
     expect(result.generated_governance_plan.schema_version).toBe('mcp-story-agent-generated-governance-plan/v1');
     expect(result.production_portfolio.schema_version).toBe('mcp-production-readiness-portfolio/v1');
@@ -143,8 +145,9 @@ describe('kb_get_story_agent_mvp_status', () => {
     ]));
     expect(result.progress.find(slice => slice.key === 'production_delivery_contract')?.evidence).toEqual(expect.arrayContaining([
       'implementation_progress=100',
-      'surface_count=12',
+      'surface_count=13',
       expect.stringContaining('production_board_export'),
+      expect.stringContaining('seedance_asset_upload_checklist'),
       expect.stringContaining('worker_evidence_signoff'),
       'local_target_health_tracked_by=delivery_contract_lane',
       'real_media_execution=gears_v2',
@@ -167,11 +170,13 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.notes.join('\n')).toContain('MCP Story Agent loop is complete at 100%');
     expect(result.notes.join('\n')).toContain('Content and production command layer is complete at 100%');
     expect(result.notes.join('\n')).toContain('Production Board / Delivery Contract command surface is complete at 100%');
+    expect(result.notes.join('\n')).toContain('Story Agent command surface is signed off at 100%');
     expect(result.notes.join('\n')).toContain('content and production command layer');
     expect(result.notes.join('\n')).toContain('remaining 5%');
     expect(result.markdown).toContain('MCP Story Agent MVP Status');
     expect(result.markdown).toContain('Progress Split');
     expect(result.markdown).toContain('production delivery contract: 100%');
+    expect(result.markdown).toContain('Story Agent command surface: ready · 100%');
   });
 
   it('can omit markdown for compact agent reads', async () => {

@@ -1,7 +1,7 @@
 {
   "name": "china-culture-kb-mcp",
   "version": "0.1.0",
-  "description": "中国传统文化知识库 MCP Server",
+  "description": "AI影视工作台 MCP Server",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

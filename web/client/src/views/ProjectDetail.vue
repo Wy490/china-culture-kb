@@ -2,7 +2,7 @@
   <div class="project-detail-page">
     <div v-if="loading" class="project-detail-page__loading">
       <div class="project-detail-page__spinner" />
-      <p>正在加载故事项目…</p>
+      <p>正在加载创作项目…</p>
     </div>
 
     <div v-else-if="error" class="project-detail-page__error">{{ error }}</div>
@@ -10,7 +10,7 @@
     <div v-else-if="detail">
       <header class="project-detail-page__header">
         <div>
-          <p class="project-detail-page__eyebrow">故事项目</p>
+          <p class="project-detail-page__eyebrow">创作项目</p>
           <h1 class="project-detail-page__title">{{ detail.project.title }}</h1>
           <p class="project-detail-page__meta">
             来源：{{ detail.project.source_entry }} · {{ typeLabel(detail.project.video_type) }} · {{ statusLabel(detail.project.status) }}
@@ -38,7 +38,7 @@
             {{ deleting ? '删除中…' : '删除项目' }}
           </button>
           <RouterLink class="project-detail-page__action-btn" to="/projects">返回项目列表</RouterLink>
-          <RouterLink class="project-detail-page__action-btn" to="/story/new">继续生成</RouterLink>
+          <RouterLink class="project-detail-page__action-btn" to="/story/new">继续创作</RouterLink>
         </div>
       </header>
 
@@ -56,7 +56,7 @@
           <strong>{{ detail.project.version_count }}</strong>
         </div>
         <div class="project-detail-page__summary-card">
-          <span class="project-detail-page__summary-label">待补资料</span>
+          <span class="project-detail-page__summary-label">待补素材</span>
           <strong>{{ detail.project.open_supplement_task_count ?? 0 }}</strong>
         </div>
       </section>
@@ -783,6 +783,45 @@
                 </small>
               </div>
             </details>
+            <div
+              v-if="seedanceUploadChecklist.length"
+              class="project-detail-page__seedance-upload-checklist"
+            >
+              <div class="project-detail-page__seedance-upload-checklist-head">
+                <strong>上传清单</strong>
+                <span>{{ seedanceUploadChecklist.length }} 项待外部上传/绑定</span>
+                <button class="project-detail-page__repair-task-btn" @click="exportSeedanceUploadChecklistMarkdown">
+                  清单 MD
+                </button>
+                <button class="project-detail-page__repair-task-btn" @click="exportSeedanceUploadChecklistJson">
+                  清单 JSON
+                </button>
+              </div>
+              <article
+                v-for="item in seedanceUploadChecklistPreview"
+                :key="item.asset_id"
+                class="project-detail-page__seedance-upload-checklist-item"
+              >
+                <div>
+                  <span>{{ item.reference_slot ?? '未分配槽位' }} · {{ seedanceAssetKindLabel(item.kind) }}「{{ item.label }}」</span>
+                  <small>{{ item.suggested_filename }}</small>
+                </div>
+                <p>
+                  影响镜头 {{ item.affected_shot_ids.join('、') || '无' }}
+                  · 场景 {{ item.affected_scene_ids.join('、') || '无' }}
+                </p>
+                <small>{{ item.checklist_note }}</small>
+                <small v-if="item.acceptance_criteria.length">
+                  验收：{{ item.acceptance_criteria.slice(0, 2).join('；') }}
+                </small>
+              </article>
+              <small
+                v-if="seedanceUploadChecklistHiddenCount > 0"
+                class="project-detail-page__seedance-upload-checklist-more"
+              >
+                另有 {{ seedanceUploadChecklistHiddenCount }} 项已写入导出清单
+              </small>
+            </div>
           </div>
           <div class="project-detail-page__seedance-asset-items">
             <article
@@ -1214,6 +1253,10 @@
         >
           {{ generatingQualityRepairPrompt ? '生成中…' : '生成修复提示包' }}
         </button>
+        <label class="project-detail-page__quality-prompt-option">
+          <input v-model="qualityRepairPromptIncludeStoryJson" type="checkbox">
+          <span>内嵌完整 Story JSON</span>
+        </label>
         <div v-if="qualityRepairPromptResult" class="project-detail-page__quality-prompt">
           <div class="project-detail-page__quality-prompt-head">
             <div>
@@ -1221,11 +1264,48 @@
               <span>
                 {{ qualityRepairPromptResult.repair_actions.length }} 个动作 · 场景
                 {{ qualityRepairPromptResult.target_scene_ids.join('、') || '未定位' }}
+                <template v-if="qualityRepairPromptResult.original_story_json"> · 已内嵌 Story JSON</template>
               </span>
             </div>
-            <button class="project-detail-page__repair-task-btn" type="button" @click="copyQualityRepairPrompt">
-              复制提示词
-            </button>
+            <div class="project-detail-page__quality-prompt-actions">
+              <button class="project-detail-page__repair-task-btn" type="button" @click="copyQualityRepairPrompt">
+                复制提示词
+              </button>
+              <button
+                v-if="qualityRepairPromptResult.markdown"
+                class="project-detail-page__repair-task-btn"
+                type="button"
+                @click="copyQualityRepairPromptMarkdown"
+              >
+                复制提示包 Markdown
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                type="button"
+                @click="copyCurrentStoryJson"
+              >
+                复制当前 Story JSON
+              </button>
+              <button
+                v-if="qualityRepairPromptResult.original_story_json"
+                class="project-detail-page__repair-task-btn"
+                type="button"
+                @click="copyQualityRepairOriginalStoryJson"
+              >
+                复制内嵌 Story JSON
+              </button>
+            </div>
+          </div>
+          <div v-if="qualityRepairBoundaryCards.length" class="project-detail-page__quality-boundaries">
+            <article
+              v-for="card in qualityRepairBoundaryCards"
+              :key="card.key"
+              :class="['project-detail-page__quality-boundary-card', `project-detail-page__quality-boundary-card--${card.tone}`]"
+            >
+              <span>{{ card.label }}</span>
+              <strong>{{ card.value }}</strong>
+              <small>{{ card.note }}</small>
+            </article>
           </div>
           <textarea
             class="project-detail-page__quality-prompt-text"
@@ -1238,10 +1318,26 @@
               <textarea
                 v-model="qualityRepairJson"
                 class="project-detail-page__quality-prompt-text"
-                placeholder="粘贴模型输出的完整 repaired_story_json"
+                placeholder="粘贴模型输出的完整 repaired_story_json，也可粘贴 Markdown 代码围栏或 { repaired_story_json: ... } 包装对象。"
               />
             </label>
             <div class="project-detail-page__quality-apply-actions">
+              <button
+                class="project-detail-page__repair-task-btn"
+                type="button"
+                :disabled="applyingQualityRepairJson"
+                @click="pasteQualityRepairJsonFromClipboard(false)"
+              >
+                从剪贴板填入
+              </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                type="button"
+                :disabled="applyingQualityRepairJson"
+                @click="pasteQualityRepairJsonFromClipboard(true)"
+              >
+                填入并校验
+              </button>
               <button
                 class="project-detail-page__repair-task-btn"
                 type="button"
@@ -1266,6 +1362,14 @@
               >
                 复制校验摘要
               </button>
+              <button
+                class="project-detail-page__repair-task-btn"
+                type="button"
+                :disabled="applyingQualityRepairJson || (!qualityRepairJson && !qualityRepairApplyResult)"
+                @click="clearQualityRepairJson"
+              >
+                清空
+              </button>
             </div>
             <div v-if="qualityRepairApplyResult" class="project-detail-page__quality-apply-result">
               <strong>{{ qualityRepairApplyResult.applied ? '已写入新版本' : qualityRepairApplyResult.can_apply ? '校验通过，可写入' : '未通过写入门槛' }}</strong>
@@ -1278,6 +1382,17 @@
                 {{ qualityRepairApplyResult.after_quality.issue_count }}
               </span>
               <div class="project-detail-page__quality-change-summary">
+                <div class="project-detail-page__quality-overview">
+                  <article
+                    v-for="card in qualityRepairApplyOverviewCards"
+                    :key="card.key"
+                    :class="['project-detail-page__quality-overview-card', `project-detail-page__quality-overview-card--${card.tone}`]"
+                  >
+                    <span>{{ card.label }}</span>
+                    <strong>{{ card.value }}</strong>
+                    <small>{{ card.note }}</small>
+                  </article>
+                </div>
                 <div
                   v-if="qualityRepairApplyResult.operator_hints.length"
                   class="project-detail-page__quality-operator-hints"
@@ -1287,14 +1402,17 @@
                     <li v-for="hint in qualityRepairApplyResult.operator_hints" :key="hint">{{ hint }}</li>
                   </ul>
                 </div>
-                <ul>
-                  <li
-                    v-for="line in qualityRepairApplyResult.change_summary.summary_lines"
-                    :key="line"
-                  >
-                    {{ line }}
-                  </li>
-                </ul>
+                <details class="project-detail-page__quality-raw-summary">
+                  <summary>原始校验摘要</summary>
+                  <ul>
+                    <li
+                      v-for="line in qualityRepairApplyResult.change_summary.summary_lines"
+                      :key="line"
+                    >
+                      {{ line }}
+                    </li>
+                  </ul>
+                </details>
                 <div class="project-detail-page__quality-issue-delta">
                   <div
                     v-if="qualityRepairApplyResult.change_summary.quality_issue_delta.resolved_issues.length"
@@ -1339,14 +1457,14 @@
                   class="project-detail-page__quality-scene-change"
                 >
                   <strong>场景 {{ scene.scene_id }}{{ scene.title ? ` · ${scene.title}` : '' }}</strong>
-                  <span>{{ scene.changed_fields.join('、') }}</span>
+                  <span>{{ qualityRepairFieldList(scene.changed_fields, 8) }}</span>
                   <small>{{ scene.before_preview }} → {{ scene.after_preview }}</small>
                 </div>
                 <small v-if="qualityRepairApplyResult.change_summary.protected_fields_preserved.length">
-                  保留字段：{{ qualityRepairApplyResult.change_summary.protected_fields_preserved.join('、') }}
+                  保留字段：{{ qualityRepairFieldList(qualityRepairApplyResult.change_summary.protected_fields_preserved, 8) }}
                 </small>
                 <small v-if="qualityRepairApplyResult.change_summary.ignored_protected_field_changes.length">
-                  已忽略模型改动：{{ qualityRepairApplyResult.change_summary.ignored_protected_field_changes.join('、') }}
+                  已忽略模型改动：{{ qualityRepairFieldList(qualityRepairApplyResult.change_summary.ignored_protected_field_changes, 8) }}
                 </small>
               </div>
               <small v-if="qualityRepairApplyResult.rejected_reason">{{ qualityRepairApplyResult.rejected_reason }}</small>
@@ -1665,15 +1783,19 @@ import type {
   GearsExecutionWorkerEvidenceSignoffReport,
   GearsJobLedgerItem,
   GearsJobSubmitFailure,
+  CreationUseCase,
   KnowledgeSupplementTaskStatus,
+  MaterialGenerationPosture,
   MaterialPurpose,
   MaterialSourceType,
+  MaterialSufficiencyStage,
   ProjectMaterialPackTarget,
   SeedanceProviderAdapterConfigInfo,
   SeedanceAssetBatchImportRequest,
   SeedanceAssetBindingItem,
   SeedanceAssetHistoryEvent,
   SeedanceAssetLibraryItem,
+  SeedanceAssetUploadChecklistItem,
   SeedanceGlobalAssetLibraryItem,
   SeedanceShotCallbackImportRequest,
   SeedanceShotLedgerItem,
@@ -1688,6 +1810,7 @@ import type {
   StoryProjectVersionSummary,
   StoryQualityRepairApplyResult,
   StoryQualityRepairPromptResult,
+  TruthMode,
   StoryProductionBoard,
   StoryProductionBoardExportPackage,
   StoryProductionBoardRepairResult,
@@ -1715,7 +1838,7 @@ const MATERIAL_TARGET_OPTIONS: Array<{ value: ProjectMaterialPackTarget; label: 
 
 const MATERIAL_SOURCE_OPTIONS: Array<{ value: MaterialSourceType; label: string }> = [
   { value: 'manual_note', label: '人工备注' },
-  { value: 'knowledge_entry', label: '知识条目' },
+  { value: 'knowledge_entry', label: '来源条目' },
   { value: 'user_outline', label: '用户大纲' },
   { value: 'user_source_text', label: '原始文本' },
   { value: 'brand_profile', label: '品牌资料' },
@@ -1735,6 +1858,82 @@ const MATERIAL_PURPOSE_OPTIONS: Array<{ value: MaterialPurpose; label: string }>
   { value: 'creative_boundary', label: '创作边界' },
 ]
 
+type QualityRepairOverviewTone = 'pass' | 'warn' | 'danger' | 'neutral'
+
+interface QualityRepairOverviewCard {
+  key: string
+  label: string
+  value: string
+  note: string
+  tone: QualityRepairOverviewTone
+}
+
+const QUALITY_REPAIR_FIELD_LABELS: Record<string, string> = {
+  title: '标题',
+  logline: '一句话梗概',
+  theme: '主题',
+  full_text: '正文',
+  scene_breakdown: '场景拆分',
+  gears_segments: '分镜/交付段',
+  quality_report: '质量报告',
+  duration_sec: '时长',
+  location: '地点',
+  time_of_day: '时间',
+  dramatic_function: '戏剧功能',
+  plot: '剧情',
+  key_action: '关键动作',
+  characters: '角色',
+  visual_prompt: '视觉提示',
+  camera_suggestion: '镜头建议',
+  cultural_note: '文化说明',
+  conflict: '冲突',
+  dialogue_or_narration: '对白/旁白',
+  factual_basis: '事实依据',
+  fictionalized_elements: '影视化补足',
+  storyId: '故事 ID',
+  project_id: '项目 ID',
+  source_entry: '来源素材',
+  video_type: '成片类型',
+  presentation_style: '表现形式',
+  story_structure: '故事结构',
+  knowledge_pack: '旧素材兼容包',
+  material_pack: '项目素材包',
+  creation_contract: '创作合同',
+  material_sufficiency: '素材 Gate',
+  'story_blueprint.evidence_boundaries': '蓝图事实边界',
+}
+
+const CREATION_USE_CASE_LABELS: Record<CreationUseCase, string> = {
+  original_ai_comic: '原创 AI 漫剧',
+  adapted_ai_comic: '原作/资料改编',
+  institutional_promo: '机构宣传片',
+  documentary_short: '纪录短片',
+  brand_commercial: '品牌商业片',
+  education_training: '教育/培训片',
+  public_service: '公益宣传片',
+}
+
+const TRUTH_MODE_LABELS: Record<TruthMode, string> = {
+  fictional_original: '原创虚构',
+  inspired_by_material: '素材启发',
+  source_adaptation: '原作改编',
+  factual_reconstruction: '事实重构',
+  institutional_verified: '机构审定',
+}
+
+const SUFFICIENCY_STAGE_LABELS: Record<MaterialSufficiencyStage, string> = {
+  minimum_viable_story: '最小可行故事',
+  script_ready: '剧本可用',
+  production_ready: '生产可用',
+}
+
+const GENERATION_POSTURE_LABELS: Record<MaterialGenerationPosture, string> = {
+  ready: '可进入生产',
+  draft_needs_verification: '草案待核验',
+  script_ready_production_pending: '剧本可写，生产待补',
+  blocked_until_input: '补材后再生成',
+}
+
 const detail = ref<StoryProjectDetail | null>(null)
 const loading = ref(false)
 const error = ref('')
@@ -1752,6 +1951,7 @@ const updatingSupplementTaskId = ref('')
 const successMessage = ref('')
 const showQualityScenesOnly = ref(false)
 const qualityRepairPromptResult = ref<StoryQualityRepairPromptResult | null>(null)
+const qualityRepairPromptIncludeStoryJson = ref(false)
 const qualityRepairJson = ref('')
 const qualityRepairApplyResult = ref<StoryQualityRepairApplyResult | null>(null)
 const addingMaterial = ref(false)
@@ -1767,6 +1967,128 @@ const materialForm = ref({
   tags: '',
   mark_as_verified_fact: false,
   remove_missing_need_id: '',
+})
+
+const qualityRepairApplyOverviewCards = computed<QualityRepairOverviewCard[]>(() => {
+  const result = qualityRepairApplyResult.value
+  if (!result) return []
+
+  const summary = result.change_summary
+  const scoreDelta = summary.quality_delta.genre_score_delta
+  const issueDelta = summary.quality_delta.issue_count_delta
+  const changedTopFields = qualityRepairFieldList(summary.changed_top_level_fields, 4)
+  const ignoredProtectedFields = qualityRepairFieldList(summary.ignored_protected_field_changes, 4)
+  const changedGearsCount = summary.changed_gears_segment_ids.length
+  const resolvedCount = summary.quality_issue_delta.resolved_issues.length
+  const newIssueCount = summary.quality_issue_delta.new_issues.length
+  const remainingIssueCount = summary.quality_issue_delta.remaining_issues.length
+
+  return [
+    {
+      key: 'apply-status',
+      label: '写入状态',
+      value: result.applied ? '已写入' : result.can_apply ? '可写入' : '未通过',
+      note: result.rejected_reason ?? (result.applied ? '已生成 quality_repair 新版本' : result.can_apply ? '确认后可安全写入新版本' : '需要继续修复或重新生成'),
+      tone: result.applied || result.can_apply ? 'pass' : 'danger',
+    },
+    {
+      key: 'content-diff',
+      label: '内容差异',
+      value: summary.has_content_changes
+        ? `${summary.scene_changes.length} 场景 · ${changedGearsCount} 段`
+        : '无实质变化',
+      note: changedTopFields === '无'
+        ? '未检测到故事正文、场景或交付段变化'
+        : `顶层变更：${changedTopFields}`,
+      tone: summary.has_content_changes ? 'neutral' : 'warn',
+    },
+    {
+      key: 'quality-diff',
+      label: '质量变化',
+      value: typeof scoreDelta === 'number'
+        ? `类型分 ${signedNumber(scoreDelta)}`
+        : `问题 ${signedNumber(issueDelta)}`,
+      note: `问题数 ${result.before_quality.issue_count} → ${result.after_quality.issue_count}${typeof scoreDelta === 'number' ? `，分数 ${result.before_quality.genre_score ?? 'n/a'} → ${result.after_quality.genre_score ?? 'n/a'}` : ''}`,
+      tone: issueDelta <= 0 && (scoreDelta ?? 0) >= 0 ? 'pass' : 'warn',
+    },
+    {
+      key: 'issue-delta',
+      label: '诊断差异',
+      value: `解决 ${resolvedCount} · 新增 ${newIssueCount}`,
+      note: `仍存在 ${remainingIssueCount} 个诊断，写入前优先看新增与剩余项`,
+      tone: newIssueCount > 0 ? 'warn' : resolvedCount > 0 ? 'pass' : 'neutral',
+    },
+    {
+      key: 'protected-fields',
+      label: '保护字段',
+      value: summary.ignored_protected_field_changes.length > 0
+        ? `忽略 ${summary.ignored_protected_field_changes.length} 项`
+        : '未被改动',
+      note: summary.ignored_protected_field_changes.length > 0
+        ? ignoredProtectedFields
+        : `${summary.protected_fields_preserved.length} 个合同/素材字段保持不变`,
+      tone: summary.ignored_protected_field_changes.length > 0 ? 'warn' : 'pass',
+    },
+  ]
+})
+
+const qualityRepairBoundaryCards = computed<QualityRepairOverviewCard[]>(() => {
+  const contract = qualityRepairPromptResult.value?.creation_contract
+    ?? detail.value?.current_story.creation_contract
+  const material = qualityRepairPromptResult.value?.material_sufficiency
+    ?? detail.value?.current_story.material_sufficiency
+    ?? contract?.material_sufficiency
+  if (!contract && !material) return []
+
+  const cards: QualityRepairOverviewCard[] = []
+  if (contract) {
+    cards.push({
+      key: 'contract-use-case',
+      label: '创作用途',
+      value: creationUseCaseLabel(contract.creation_use_case),
+      note: contract.communication_goal || contract.target_audience || '修复需保持当前项目任务，不改写业务目标',
+      tone: 'neutral',
+    })
+    cards.push({
+      key: 'contract-truth',
+      label: '真实模式',
+      value: truthModeLabel(contract.truth_mode),
+      note: contract.must_verify.length > 0
+        ? `${contract.must_verify.length} 项仍需核验`
+        : '未记录额外待核验项',
+      tone: contract.must_verify.length > 0 ? 'warn' : 'pass',
+    })
+    cards.push({
+      key: 'contract-forbidden',
+      label: '禁止表达',
+      value: contract.forbidden_moves.length > 0
+        ? `${contract.forbidden_moves.length} 项`
+        : '未记录',
+      note: contract.forbidden_moves.length > 0
+        ? contract.forbidden_moves.slice(0, 2).join('；')
+        : '仍需遵守类型片画像和质量门',
+      tone: contract.forbidden_moves.length > 0 ? 'warn' : 'neutral',
+    })
+  }
+  if (material) {
+    cards.push({
+      key: 'material-stage',
+      label: '素材 Gate',
+      value: `${sufficiencyStageLabel(material.active_stage ?? material.stage)} · ${material.score}/100`,
+      note: generationPostureLabel(material.generation_posture),
+      tone: material.blocked ? 'danger' : material.needs_verification ? 'warn' : 'pass',
+    })
+    cards.push({
+      key: 'material-needs',
+      label: '补充缺口',
+      value: material.missing_items.length > 0
+        ? `${material.missing_items.length} 项`
+        : '无阻断',
+      note: material.recommended_next_questions[0] || material.downgrade_reason || '当前修复不应新增未核验事实',
+      tone: material.missing_items.some(item => item.blocking_level === 'blocking') ? 'danger' : material.needs_verification ? 'warn' : 'pass',
+    })
+  }
+  return cards
 })
 const productionBoard = ref<StoryProductionBoard | null>(null)
 const productionBoardExport = ref<StoryProductionBoardExportPackage | null>(null)
@@ -2083,6 +2405,16 @@ const seedanceAssetLibraryById = computed(() => {
   return new Map((detail.value?.project.seedance_asset_library?.items ?? []).map(item => [item.asset_id, item]))
 })
 
+const seedanceUploadChecklist = computed<SeedanceAssetUploadChecklistItem[]>(() => {
+  return productionBoard.value?.seedance_asset_report.upload_checklist ?? []
+})
+
+const seedanceUploadChecklistPreview = computed(() => seedanceUploadChecklist.value.slice(0, 4))
+
+const seedanceUploadChecklistHiddenCount = computed(() => {
+  return Math.max(0, seedanceUploadChecklist.value.length - seedanceUploadChecklistPreview.value.length)
+})
+
 function seedanceShotItem(shotId: string): SeedanceShotLedgerItem | null {
   return seedanceShotById.value.get(shotId) ?? null
 }
@@ -2106,6 +2438,37 @@ function statusLabel(status: StoryProjectStatus): string {
     finalized: '已定稿',
   }
   return map[status]
+}
+
+function signedNumber(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value}`
+}
+
+function qualityRepairFieldLabel(field: string): string {
+  return QUALITY_REPAIR_FIELD_LABELS[field] ?? field
+}
+
+function qualityRepairFieldList(fields: string[], limit = 6): string {
+  if (fields.length === 0) return '无'
+  const labels = fields.slice(0, limit).map(qualityRepairFieldLabel)
+  if (fields.length > limit) labels.push(`等 ${fields.length} 项`)
+  return labels.join('、')
+}
+
+function creationUseCaseLabel(useCase: CreationUseCase): string {
+  return CREATION_USE_CASE_LABELS[useCase] ?? useCase
+}
+
+function truthModeLabel(truthMode: TruthMode): string {
+  return TRUTH_MODE_LABELS[truthMode] ?? truthMode
+}
+
+function sufficiencyStageLabel(stage: MaterialSufficiencyStage): string {
+  return SUFFICIENCY_STAGE_LABELS[stage] ?? stage
+}
+
+function generationPostureLabel(posture?: MaterialGenerationPosture): string {
+  return posture ? GENERATION_POSTURE_LABELS[posture] ?? posture : '未记录生成姿态'
 }
 
 function productionReadinessStatusLabel(status: StoryProjectProductionReadinessReport['summary']['status']): string {
@@ -2219,6 +2582,17 @@ function seedanceAssetStatusLabel(status: string): string {
     missing_reference_slot: '缺槽位',
   }
   return map[status] ?? status
+}
+
+function seedanceAssetKindLabel(kind: string): string {
+  const map: Record<string, string> = {
+    character: '人物',
+    location: '场景',
+    prop: '道具',
+    camera: '运镜',
+    audio: '声音',
+  }
+  return map[kind] ?? kind
 }
 
 function seedanceAssetBindingValue(asset: SeedanceAssetBindingItem): string {
@@ -2433,7 +2807,7 @@ async function loadProject(projectId: string) {
     }
     await loadProjectProductionReadiness()
   } else {
-    error.value = res.error?.message ?? '加载故事项目失败'
+    error.value = res.error?.message ?? '加载创作项目失败'
     productionReadiness.value = null
   }
   loading.value = false
@@ -3554,7 +3928,7 @@ async function generateQualityRepairPrompt(action?: QualityRepairAction) {
     genre_strictness: 'balanced',
     target_report: action?.target_report,
     repair_action_id: action?.action_id,
-    include_story_json: false,
+    include_story_json: qualityRepairPromptIncludeStoryJson.value,
     include_markdown: true,
   })
   if (res.ok && res.data) {
@@ -3599,6 +3973,35 @@ async function submitQualityRepairJson(apply: boolean) {
   applyingQualityRepairJson.value = false
 }
 
+async function pasteQualityRepairJsonFromClipboard(validateAfterPaste: boolean) {
+  if (!navigator.clipboard?.readText) {
+    error.value = '当前浏览器不支持读取剪贴板，请手动粘贴模型输出'
+    return
+  }
+  try {
+    const text = await navigator.clipboard.readText()
+    if (!text.trim()) {
+      error.value = '剪贴板为空，请先复制模型输出'
+      return
+    }
+    qualityRepairJson.value = text
+    qualityRepairApplyResult.value = null
+    error.value = ''
+    successMessage.value = validateAfterPaste ? '已从剪贴板填入，正在校验…' : '已从剪贴板填入修复 JSON'
+    if (validateAfterPaste) {
+      await submitQualityRepairJson(false)
+    }
+  } catch {
+    error.value = '读取剪贴板失败，请手动粘贴模型输出'
+  }
+}
+
+function clearQualityRepairJson() {
+  qualityRepairJson.value = ''
+  qualityRepairApplyResult.value = null
+  successMessage.value = '已清空修复 JSON 输入'
+}
+
 async function copyQualityRepairPrompt() {
   if (!qualityRepairPromptResult.value) return
   try {
@@ -3606,6 +4009,36 @@ async function copyQualityRepairPrompt() {
     successMessage.value = '修复提示词已复制'
   } catch {
     error.value = '复制失败，请手动选中提示词内容'
+  }
+}
+
+async function copyQualityRepairPromptMarkdown() {
+  if (!qualityRepairPromptResult.value?.markdown) return
+  try {
+    await navigator.clipboard.writeText(qualityRepairPromptResult.value.markdown)
+    successMessage.value = '修复提示包 Markdown 已复制'
+  } catch {
+    error.value = '复制失败，请手动选中提示包 Markdown'
+  }
+}
+
+async function copyCurrentStoryJson() {
+  if (!detail.value) return
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(detail.value.current_story, null, 2))
+    successMessage.value = '当前 Story JSON 已复制'
+  } catch {
+    error.value = '复制失败，请手动选中当前 Story JSON'
+  }
+}
+
+async function copyQualityRepairOriginalStoryJson() {
+  if (!qualityRepairPromptResult.value?.original_story_json) return
+  try {
+    await navigator.clipboard.writeText(qualityRepairPromptResult.value.original_story_json)
+    successMessage.value = '内嵌 Story JSON 已复制'
+  } catch {
+    error.value = '复制失败，请手动选中内嵌 Story JSON'
   }
 }
 
@@ -3742,6 +4175,62 @@ async function exportProductionBoardMarkdown() {
     'text/markdown;charset=utf-8',
   )
   successMessage.value = 'Production Board Markdown 已导出到本地'
+}
+
+async function exportSeedanceUploadChecklistMarkdown() {
+  if (!productionBoard.value) await loadProductionBoard()
+  if (!productionBoard.value) return
+  downloadText(
+    `${productionBoard.value.project_id ?? productionBoard.value.storyId}-seedance-upload-checklist.md`,
+    renderSeedanceUploadChecklistMarkdown(productionBoard.value.seedance_asset_report.upload_checklist ?? []),
+    'text/markdown;charset=utf-8',
+  )
+  successMessage.value = 'Seedance 上传清单 Markdown 已导出到本地'
+}
+
+async function exportSeedanceUploadChecklistJson() {
+  if (!productionBoard.value) await loadProductionBoard()
+  if (!productionBoard.value) return
+  downloadText(
+    `${productionBoard.value.project_id ?? productionBoard.value.storyId}-seedance-upload-checklist.json`,
+    JSON.stringify({
+      project_id: productionBoard.value.project_id,
+      storyId: productionBoard.value.storyId,
+      title: productionBoard.value.title,
+      generated_at: productionBoard.value.generated_at,
+      upload_required_count: productionBoard.value.seedance_asset_report.upload_required_count,
+      upload_checklist: productionBoard.value.seedance_asset_report.upload_checklist ?? [],
+    }, null, 2),
+    'application/json;charset=utf-8',
+  )
+  successMessage.value = 'Seedance 上传清单 JSON 已导出到本地'
+}
+
+function renderSeedanceUploadChecklistMarkdown(items: SeedanceAssetUploadChecklistItem[]): string {
+  const title = productionBoard.value?.title ?? detail.value?.project.title ?? 'Seedance 上传清单'
+  const lines = [
+    `# ${title} Seedance 上传清单`,
+    '',
+    `- 项目 ID: ${productionBoard.value?.project_id ?? detail.value?.project.project_id ?? '未记录'}`,
+    `- 待上传/绑定: ${items.length}`,
+    '',
+    ...(
+      items.length
+        ? items.map(item => [
+          `## ${item.reference_slot ?? '未分配槽位'} · ${seedanceAssetKindLabel(item.kind)}「${item.label}」`,
+          '',
+          `- 建议文件名: ${item.suggested_filename}`,
+          `- 状态: ${seedanceAssetStatusLabel(item.status)}`,
+          `- 影响镜头: ${item.affected_shot_ids.join('、') || '无'}`,
+          `- 影响场景: ${item.affected_scene_ids.join('、') || '无'}`,
+          `- 准备说明: ${item.checklist_note}`,
+          `- 验收: ${item.acceptance_criteria.join('；') || '按 Production Board 检查'}`,
+          '',
+        ]).flat()
+        : ['- 无需上传', '']
+    ),
+  ]
+  return lines.join('\n')
 }
 
 async function saveProductionBoardPackage() {
@@ -3923,7 +4412,7 @@ async function deleteCurrentProject() {
   if (res.ok) {
     await router.push('/projects')
   } else {
-    error.value = res.error?.message ?? '删除故事项目失败'
+    error.value = res.error?.message ?? '删除创作项目失败'
   }
   deleting.value = false
 }
@@ -4350,6 +4839,63 @@ watch(selectedModelProfileId, (value) => {
   color: #526575;
   font-size: 11px;
   font-weight: 700;
+}
+
+.project-detail-page__seedance-upload-checklist {
+  display: grid;
+  width: min(620px, 100%);
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.project-detail-page__seedance-upload-checklist-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.project-detail-page__seedance-upload-checklist-head strong {
+  margin-right: 2px;
+}
+
+.project-detail-page__seedance-upload-checklist-head span,
+.project-detail-page__seedance-upload-checklist-more {
+  color: #526575;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__seedance-upload-checklist-item {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #dbe4ea;
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: #f8fafb;
+}
+
+.project-detail-page__seedance-upload-checklist-item div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+}
+
+.project-detail-page__seedance-upload-checklist-item span {
+  color: #22313f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__seedance-upload-checklist-item small,
+.project-detail-page__seedance-upload-checklist-item p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #526575;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .project-detail-page__seedance-asset-items {
@@ -5360,6 +5906,76 @@ watch(selectedModelProfileId, (value) => {
   font-size: 12px;
 }
 
+.project-detail-page__quality-prompt-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #536573;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__quality-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.project-detail-page__quality-boundaries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.project-detail-page__quality-boundary-card {
+  min-width: 0;
+  border: 1px solid #d7dee5;
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: #fbfcfd;
+  padding: 8px 9px;
+}
+
+.project-detail-page__quality-boundary-card--pass {
+  border-left-color: #27ae60;
+}
+
+.project-detail-page__quality-boundary-card--warn {
+  border-left-color: #d68910;
+}
+
+.project-detail-page__quality-boundary-card--danger {
+  border-left-color: #c0392b;
+}
+
+.project-detail-page__quality-boundary-card--neutral {
+  border-left-color: #2980b9;
+}
+
+.project-detail-page__quality-boundary-card span {
+  display: block;
+  color: #637380;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.project-detail-page__quality-boundary-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #22313f;
+  font-size: 14px;
+}
+
+.project-detail-page__quality-boundary-card small {
+  display: block;
+  margin-top: 4px;
+  color: #5d6d79;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .project-detail-page__quality-prompt-text {
   width: 100%;
   min-height: 220px;
@@ -5430,6 +6046,77 @@ watch(selectedModelProfileId, (value) => {
   gap: 4px;
   margin: 0;
   padding-left: 18px;
+}
+
+.project-detail-page__quality-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 8px;
+}
+
+.project-detail-page__quality-overview-card {
+  min-width: 0;
+  border: 1px solid #d7dee5;
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: #fff;
+  padding: 8px 9px;
+}
+
+.project-detail-page__quality-overview-card--pass {
+  border-left-color: #27ae60;
+}
+
+.project-detail-page__quality-overview-card--warn {
+  border-left-color: #d68910;
+}
+
+.project-detail-page__quality-overview-card--danger {
+  border-left-color: #c0392b;
+}
+
+.project-detail-page__quality-overview-card--neutral {
+  border-left-color: #2980b9;
+}
+
+.project-detail-page__quality-overview-card span {
+  display: block;
+  color: #637380;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.project-detail-page__quality-overview-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #22313f;
+  font-size: 15px;
+}
+
+.project-detail-page__quality-overview-card small {
+  display: block;
+  margin-top: 4px;
+  color: #5d6d79;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.project-detail-page__quality-raw-summary {
+  border: 1px solid #e1e7ed;
+  border-radius: 6px;
+  background: #fff;
+  padding: 8px;
+}
+
+.project-detail-page__quality-raw-summary summary {
+  cursor: pointer;
+  color: #2f4358;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__quality-raw-summary ul {
+  margin-top: 8px;
 }
 
 .project-detail-page__quality-operator-hints {

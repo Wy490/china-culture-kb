@@ -149,7 +149,7 @@ function buildEvidenceBoundaries(entry: EntryDetail, knowledgePack: KnowledgePac
     type: entry.credibility === '已核实' ? 'verified' : 'uncertain',
     source: entry.name,
     note: centralEvent
-      ? `中心事件「${centralEvent}」来自知识库条目，场景细节需保留可信度说明。`
+      ? `中心事件「${centralEvent}」来自来源条目，场景细节需保留可信度说明。`
       : '未指定中心事件，生成时需避免把概述写成确定细节。',
   }];
 
@@ -166,7 +166,7 @@ function buildEvidenceBoundaries(entry: EntryDetail, knowledgePack: KnowledgePac
   if (knowledgePack?.supporting_entries.length) {
     boundaries.push({
       boundary_id: 'supporting-pack',
-      label: '辅助知识包',
+      label: '辅助素材包',
       type: 'creative_treatment',
       source: knowledgePack.supporting_entries.map(item => item.entry_name).join('、'),
       note: '辅助条目用于时代、地域、画面和表达边界，不改写主条目事实。',

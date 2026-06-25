@@ -8,6 +8,8 @@ const tmpDir = path.join(os.tmpdir(), 'kb-seedance-prompt-test-' + Date.now());
 const dataRoot = path.join(tmpDir, 'data');
 const projectId = '20260617-story-seedance--ai_comic_drama';
 const storyId = '20260617-story-seedance';
+const DELIVERY_PROMPT_INTERNAL_PATTERN =
+  /(质量信号|质量报告|来源说明|内部字段名|来源条目|来源显示|史实依据|影视化创作|史实边界|知识库|用户大纲|生成优先级|资料显示|具体细节请核实来源|确证史实|确证史源|分析|应该|注意|TODO|待补|本场景基于)/;
 
 function baseStory() {
   return {
@@ -38,9 +40,11 @@ function baseStory() {
         characters: ['少年', '师兄'],
         visual_prompt: '质量信号：书院门外，雨水，灯笼，人物对峙',
         camera_suggestion: '运镜参考：参考视频素材的横移节奏，建立镜头后慢推到少年近景',
-        cultural_note: '体现士人良知边界。',
+        cultural_note: '本场景基于测试条目，具体细节请核实来源；生成优先级：剧情推进与资料完整保持均衡。',
         dialogue_or_narration: '师兄：天亮前，拿证据来。音乐参考：雨声下压，低鼓点推进紧张感。',
-        factual_basis: '测试事实边界。',
+        factual_basis: '史实依据：测试事实边界。',
+        fictionalized_elements: ['影视化创作：雨夜拦门动作'],
+        source_entries: ['测试条目'],
       },
       {
         scene_id: 2,
@@ -134,6 +138,10 @@ describe('kb_generate_seedance_prompt', () => {
     expect(result!.package.shot_units[0].seedance_prompt).toContain('@视频1 作为运镜和节奏参考');
     expect(result!.package.shot_units[0].seedance_prompt).toContain('@音频1 作为音乐或音效参考');
     expect(result!.package.shot_units[0].visual_prompt).not.toContain('质量信号');
+    expect(result!.package.shot_units[0].seedance_prompt).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(result!.package.shot_units[0].continuity_notes.join('\n')).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(result!.package.shot_units[0].negative_constraints.join('\n')).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+    expect(result!.package.asset_reference_plan.join('\n')).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
     expect(result!.package.markdown).toBeUndefined();
   });
 
@@ -145,6 +153,7 @@ describe('kb_generate_seedance_prompt', () => {
     expect(result!.validation_summary.shot_count).toBe(2);
     expect(result!.package.shot_units[0].seedance_prompt).toContain('0-3秒');
     expect(result!.package.shot_units[0].seedance_prompt).toContain('音效/音乐：');
+    expect(result!.package.markdown).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
   });
 
   it('can resolve a story by story_id', async () => {
@@ -153,6 +162,96 @@ describe('kb_generate_seedance_prompt', () => {
     expect(result!.source).toBe('story_id');
     expect(result!.story_id).toBe(storyId);
     expect(result!.validation_summary.asset_reference_count).toBeGreaterThan(0);
+  });
+
+  it('keeps per-scene location slots when image references hit the Seedance budget', async () => {
+    const story = {
+      ...baseStory(),
+      storyId: '20260625-story-location-budget',
+      title: '橘洲问莲',
+      characters: [
+        { name: '周敦颐', role: 'protagonist', description: '北宋少年读书人，随身书卷与布履' },
+        { name: '垂钓老者', role: 'mentor', description: '灰衣老者，竹竿与鱼篓' },
+        { name: '船夫', role: 'supporting', description: '撑篙催船的渡口船夫' },
+        { name: '家人', role: 'supporting', description: '清晨送别少年的人' },
+        { name: '渡口孩童', role: 'supporting', description: '雨中抱书篮的孩童' },
+      ],
+      scene_breakdown: [
+        {
+          scene_id: 1,
+          title: '道州启程',
+          duration_sec: 12,
+          location: '道州濂溪畔',
+          plot: '清晨水雾压在濂溪上，少年周敦颐背起书卷准备远行。',
+          key_action: '周敦颐系紧书袋，在溪边回望家门后踏上远行路。',
+          characters: ['周敦颐', '家人'],
+          visual_prompt: '北宋道州溪畔清晨，竹影，浅水，少年读书人，书袋，布履，远处村舍',
+          camera_suggestion: '低机位跟拍布履踏过湿石，随后推向少年背影',
+        },
+        {
+          scene_id: 2,
+          title: '橘洲初遇',
+          duration_sec: 12,
+          location: '长沙橘子洲头',
+          plot: '湘江水声里，垂钓老者问少年远行是为求官还是求学。',
+          key_action: '周敦颐停步，与垂钓老者隔着鱼篓对坐。',
+          characters: ['周敦颐', '垂钓老者'],
+          visual_prompt: '长沙橘子洲头午后，湘江水面，沙洲芦苇，旧木渡船，灰衣老者，竹鱼篓',
+          camera_suggestion: '横移建立洲头空间，再用正反打呈现对坐',
+        },
+        {
+          scene_id: 3,
+          title: '浊水问莲',
+          duration_sec: 12,
+          location: '橘子洲洲边浅水',
+          plot: '泥沙翻起，莲叶贴着浊浪摇晃。',
+          key_action: '周敦颐蹲下扶起莲叶，把沾泥的手掌摊在书页边。',
+          characters: ['周敦颐', '垂钓老者'],
+          visual_prompt: '黄昏湘江浅水，泥沙，莲叶，少年蹲身扶莲，老者持竹竿，金色逆光',
+          camera_suggestion: '莲叶特写切到手掌泥水，再缓推少年表情',
+        },
+        {
+          scene_id: 4,
+          title: '泥水选择',
+          duration_sec: 12,
+          location: '橘子洲渡口',
+          plot: '骤雨落下，孩童的书篮滑进泥水，船夫催客上船。',
+          key_action: '周敦颐错过渡船，踩进泥水捞起书篮。',
+          characters: ['周敦颐', '垂钓老者', '渡口孩童', '船夫'],
+          visual_prompt: '傍晚雨中渡口，旧木船，泥水，散落书页，少年挽衣入水，孩童抱篮',
+          camera_suggestion: '雨线中手持跟拍入水动作，特写泥水溅上布履',
+        },
+        {
+          scene_id: 5,
+          title: '湘江夜渡',
+          duration_sec: 12,
+          location: '湘江夜渡',
+          plot: '夜色降下，下一班渡船缓缓离岸。',
+          key_action: '周敦颐在船头写下自省之句，并向老者长揖告别。',
+          characters: ['周敦颐', '垂钓老者', '船夫'],
+          visual_prompt: '湘江夜渡，木船灯火，少年坐在船头写旅札，泥痕布履，远处莲叶剪影',
+          camera_suggestion: '从旅札字迹推到船头远景，最后拉远到湘江夜色',
+        },
+      ],
+      gears_segments: [],
+    };
+
+    const result = await generateSeedancePrompt({ story_json: JSON.stringify(story), include_markdown: false });
+    const pkg = result!.package;
+
+    expect(pkg.material_validation.image_count).toBeLessThanOrEqual(pkg.material_validation.max_image_files);
+    expect(pkg.validation_notes.join('\n')).not.toContain('缺少必需素材引用槽位');
+    expect(pkg.validation_notes.join('\n')).not.toContain('提示复杂度');
+    for (const unit of pkg.shot_units) {
+      expect(unit.asset_slots.some(slot =>
+        slot.kind === 'location' && (unit.location.includes(slot.label) || slot.label.includes(unit.location))
+      )).toBe(true);
+      expect(unit.material_validation.missing_required_slots).toEqual([]);
+      expect(unit.material_validation.duration_risk).toBe('ok');
+    }
+    expect(pkg.shot_units.find(unit => unit.location === '湘江夜渡')?.asset_slots.some(slot =>
+      slot.kind === 'location' && slot.label === '湘江夜渡'
+    )).toBe(true);
   });
 
   it('returns null for missing projects and rejects unsafe ids', async () => {
