@@ -8,7 +8,10 @@ const REQUIRED_FIELDS: (keyof CultureEntry)[] = [
   'keywords', 'sources', 'credibility', 'unverifiedPoints',
 ];
 
-export async function addRegionEntry(entry: CultureEntry): Promise<AddRegionEntryResult> {
+export async function addRegionEntry(
+  entry: CultureEntry,
+  options: { kbRoot?: string } = {},
+): Promise<AddRegionEntryResult> {
   for (const field of REQUIRED_FIELDS) {
     if (entry[field] === undefined || entry[field] === null || entry[field] === '') {
       throw new Error(`缺少必填字段：${field}`);
@@ -20,7 +23,7 @@ export async function addRegionEntry(entry: CultureEntry): Promise<AddRegionEntr
     throw new Error(`无效省份：${entry.province}`);
   }
 
-  const result = await writeEntryToRegionGroup(entry, provinceName);
+  const result = await writeEntryToRegionGroup(entry, provinceName, { kbRoot: options.kbRoot });
   return {
     province: provinceName,
     regionPrefix: result.regionPrefix,

@@ -129,8 +129,12 @@ export function parseEntries(content: string, province?: string): SearchResult[]
   return entries;
 }
 
-export async function writeEntryToProvince(entry: CultureEntry, province: string): Promise<string> {
-  const filePath = resolveProvinceFile(province);
+export async function writeEntryToProvince(
+  entry: CultureEntry,
+  province: string,
+  options: { kbRoot?: string } = {},
+): Promise<string> {
+  const filePath = resolveProvinceFile(province, options.kbRoot);
   const existing = await fs.readFile(filePath, 'utf-8');
   const entryMarkdown = formatEntry(entry);
 
@@ -161,14 +165,18 @@ export function extractRegionPrefix(region: string): string | null {
   return prefix;
 }
 
-export async function writeEntryToRegionGroup(entry: CultureEntry, province: string): Promise<{ filePath: string; regionPrefix: string | null; grouped: boolean }> {
-  const filePath = resolveProvinceFile(province);
+export async function writeEntryToRegionGroup(
+  entry: CultureEntry,
+  province: string,
+  options: { kbRoot?: string } = {},
+): Promise<{ filePath: string; regionPrefix: string | null; grouped: boolean }> {
+  const filePath = resolveProvinceFile(province, options.kbRoot);
   const existing = await fs.readFile(filePath, 'utf-8');
   const entryMarkdown = formatEntry(entry);
   const regionPrefix = extractRegionPrefix(entry.region);
 
   if (!regionPrefix) {
-    const newFilePath = await writeEntryToProvince(entry, province);
+    const newFilePath = await writeEntryToProvince(entry, province, options);
     return { filePath: newFilePath, regionPrefix: null, grouped: false };
   }
 

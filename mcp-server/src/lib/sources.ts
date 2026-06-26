@@ -3,8 +3,7 @@ import path from 'node:path';
 import { VideoSource, ArticleSource, OralSource } from '../types.js';
 import { getKbRoot } from './provinces.js';
 
-export function getSourcesRoot(): string {
-  const kbRoot = getKbRoot();
+export function getSourcesRoot(kbRoot = getKbRoot()): string {
   return path.resolve(kbRoot, '..', 'sources');
 }
 
@@ -15,9 +14,10 @@ function sanitizeFileName(name: string): string {
 export async function writeVideoSourceFile(
   source: VideoSource,
   contentSummary: string,
-  entryName: string
+  entryName: string,
+  kbRoot = getKbRoot()
 ): Promise<string> {
-  const dir = path.join(getSourcesRoot(), 'videos');
+  const dir = path.join(getSourcesRoot(kbRoot), 'videos');
   await fs.mkdir(dir, { recursive: true });
   const fileName = sanitizeFileName(source.bvId) + '.md';
   const filePath = path.join(dir, fileName);
@@ -47,9 +47,10 @@ export async function writeVideoSourceFile(
 export async function writeArticleSourceFile(
   source: { url: string; title: string; author: string; platform: string; publishDate: string },
   contentSummary: string,
-  entryName: string
+  entryName: string,
+  kbRoot = getKbRoot()
 ): Promise<string> {
-  const dir = path.join(getSourcesRoot(), 'articles');
+  const dir = path.join(getSourcesRoot(kbRoot), 'articles');
   await fs.mkdir(dir, { recursive: true });
   const fileName = sanitizeFileName(source.title) + '.md';
   const filePath = path.join(dir, fileName);
@@ -78,9 +79,10 @@ export async function writeArticleSourceFile(
 export async function writeBookSourceFile(
   source: { title: string; author: string },
   contentSummary: string,
-  entryName: string
+  entryName: string,
+  kbRoot = getKbRoot()
 ): Promise<string> {
-  const dir = path.join(getSourcesRoot(), 'books');
+  const dir = path.join(getSourcesRoot(kbRoot), 'books');
   await fs.mkdir(dir, { recursive: true });
   const fileName = sanitizeFileName(source.title) + '.md';
   const filePath = path.join(dir, fileName);
@@ -107,9 +109,10 @@ export async function writeBookSourceFile(
 export async function writeOralSourceFile(
   source: { narrator: string; narratorInfo: string; location: string; date: string; recorder: string },
   storyName: string,
-  entryName: string
+  entryName: string,
+  kbRoot = getKbRoot()
 ): Promise<string> {
-  const dir = path.join(getSourcesRoot(), 'oral');
+  const dir = path.join(getSourcesRoot(kbRoot), 'oral');
   await fs.mkdir(dir, { recursive: true });
   const fileName = sanitizeFileName(`${source.narrator}-${storyName}`) + '.md';
   const filePath = path.join(dir, fileName);

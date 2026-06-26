@@ -540,6 +540,63 @@ describe('outline-service', () => {
     expect(exportRes.data?.markdown).toContain('第1集：未签的案卷');
   });
 
+  it('normalizes legacy AI comic series episode titles when projects are saved and loaded', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志',
+      episode_count: 10,
+      episode_duration_range_sec: { min: 60, max: 120 },
+      narrative_pattern_ids: ['mortal_growth'],
+    });
+    expect(planRes.ok).toBe(true);
+
+    const legacyTitles = [
+      '第1集：问题出现',
+      '第2集：拒签的新变化',
+      '第3集：主角被迫做出第一次选择',
+      '第4集：拒签的新变化',
+      '第5集：拒签的新变化',
+      '第6集：主角发现表面目标背后还有更深层原因',
+      '第7集：拒签的新变化',
+      '第8集：长期线索汇合，主角失去原有依靠',
+      '第9集：拒签的新变化',
+      '第10集：最终选择',
+    ];
+    const legacyPlan = {
+      ...planRes.data!,
+      episodes: planRes.data!.episodes.map((episode, index) => ({
+        ...episode,
+        title: legacyTitles[index] ?? episode.title,
+      })),
+    };
+
+    const saveRes = await saveAiComicSeriesProject({ plan: legacyPlan });
+    expect(saveRes.ok).toBe(true);
+    const savedTitles = saveRes.data!.plan.episodes.map(episode => episode.title);
+    expect(savedTitles.join('\n')).toContain('第1集：未签的案卷');
+    expect(savedTitles.join('\n')).not.toMatch(/问题出现|最终选择|新变化|主角/);
+
+    const projectPath = resolve(
+      outlineGeneratedRoot(),
+      'ai-comic-series-projects',
+      saveRes.data!.project.series_project_id,
+      'project.json',
+    );
+    const diskDetail = JSON.parse(await readFile(projectPath, 'utf-8'));
+    await writeFile(projectPath, JSON.stringify({
+      ...diskDetail,
+      plan: legacyPlan,
+      series_quality_audit: undefined,
+    }, null, 2), 'utf-8');
+
+    const getRes = await getAiComicSeriesProject(saveRes.data!.project.series_project_id);
+    expect(getRes.ok).toBe(true);
+    const loadedTitles = getRes.data!.plan.episodes.map(episode => episode.title);
+    expect(loadedTitles).toEqual(savedTitles);
+    expect(loadedTitles.join('\n')).not.toMatch(/问题出现|最终选择|新变化|主角/);
+    expect(getRes.data?.series_quality_audit?.episode_reports).toHaveLength(10);
+  });
+
   it('submits AI comic series GEARS jobs and normalizes callbacks into the production ledgers', async () => {
     const planRes = await generateAiComicSeriesPlan({
       outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',

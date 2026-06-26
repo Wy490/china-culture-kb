@@ -2,6 +2,7 @@ import { CultureEntry, CollectResult } from '../types.js';
 import { addRegionEntry } from './add-region-entry.js';
 import { writeArticleSourceFile, writeBookSourceFile, writeOralSourceFile } from '../lib/sources.js';
 import { extractPlatform } from './fetch-article.js';
+import { getKbRoot } from '../lib/provinces.js';
 
 interface CollectInput {
   name: string;
@@ -44,6 +45,8 @@ function buildSourceLabel(input: CollectInput): string {
 }
 
 export async function collect(input: CollectInput): Promise<CollectResult> {
+  const kbRoot = getKbRoot();
+
   // Step 1: Build CultureEntry with source reference
   const entry: CultureEntry = {
     name: input.name,
@@ -62,7 +65,7 @@ export async function collect(input: CollectInput): Promise<CollectResult> {
   };
 
   // Step 2: Write entry to province file (with region grouping)
-  const entryResult = await addRegionEntry(entry);
+  const entryResult = await addRegionEntry(entry, { kbRoot });
 
   // Step 3: Write source record based on source_type
   let sourceFile: string;
@@ -79,7 +82,8 @@ export async function collect(input: CollectInput): Promise<CollectResult> {
             publishDate: input.source_publishDate || '未知',
           },
           input.summary,
-          input.name
+          input.name,
+          kbRoot
         );
         break;
       }
@@ -90,7 +94,8 @@ export async function collect(input: CollectInput): Promise<CollectResult> {
             author: input.source_author || '未知',
           },
           input.summary,
-          input.name
+          input.name,
+          kbRoot
         );
         break;
       }
@@ -104,7 +109,8 @@ export async function collect(input: CollectInput): Promise<CollectResult> {
             recorder: input.source_recorder || '',
           },
           input.name,
-          input.name
+          input.name,
+          kbRoot
         );
         break;
       }

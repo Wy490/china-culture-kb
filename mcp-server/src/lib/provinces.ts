@@ -35,8 +35,8 @@ const PROVINCE_SLUG_MAP: Record<string, string> = {
   aomen: '澳门', taiwan: '台湾',
 };
 
-export function resolveProvinceFile(province: string): string {
-  return path.join(getKbRoot(), 'provinces', `${province}.md`);
+export function resolveProvinceFile(province: string, kbRoot = getKbRoot()): string {
+  return path.join(kbRoot, 'provinces', `${province}.md`);
 }
 
 /** Normalize a province input (Chinese name, pinyin slug, or mixed) to the

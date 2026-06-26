@@ -3150,13 +3150,14 @@ export async function saveAiComicSeriesProject(
   const now = new Date().toISOString();
   const seriesProjectId = request.series_project_id ?? generateSeriesProjectId();
   const existing = request.series_project_id ? await readSeriesProject(seriesProjectId) : null;
+  const normalizedPlan = normalizeAiComicSeriesPlan(request.plan);
   const generatedEpisodeStoryIds = {
     ...(existing?.generated_episode_story_ids ?? {}),
     ...(request.generated_episode_story_ids ?? {}),
   };
   const continuityLedger = normalizeContinuityLedger(
     request.continuity_ledger ?? existing?.continuity_ledger,
-    request.plan,
+    normalizedPlan,
   );
   const memoryRecallPreferences = normalizeMemoryRecallPreferences(
     request.memory_recall_preferences ?? existing?.memory_recall_preferences,
@@ -3166,13 +3167,13 @@ export async function saveAiComicSeriesProject(
   const detail: AiComicSeriesProjectDetail = {
     project: buildSeriesProjectMeta({
       seriesProjectId,
-      plan: request.plan,
+      plan: normalizedPlan,
       createdAt: existing?.project.created_at ?? now,
       updatedAt: now,
       generatedEpisodeStoryIds,
       archivedAt: existing?.project.archived_at,
     }),
-    plan: request.plan,
+    plan: normalizedPlan,
     generated_episode_story_ids: generatedEpisodeStoryIds,
     continuity_ledger: continuityLedger,
     memory_recall_preferences: memoryRecallPreferences,
@@ -8096,6 +8097,42 @@ function getPlanEpisodes(plan: AiComicSeriesPlan): AiComicSeriesPlan['episodes']
   return Array.isArray(episodes) ? episodes : [];
 }
 
+function normalizeAiComicSeriesPlan(plan: AiComicSeriesPlan): AiComicSeriesPlan {
+  const episodes = getPlanEpisodes(plan);
+  if (episodes.length === 0) return plan;
+
+  const phases = Array.isArray(plan.phases) && plan.phases.length > 0
+    ? plan.phases
+    : buildPhases(plan.episode_count);
+  const focusPool = unique(episodes.flatMap(episode =>
+    Array.isArray(episode.knowledge_focus) ? episode.knowledge_focus : []
+  ));
+  let changed = false;
+  const normalizedEpisodes = episodes.map(episode => {
+    if (!aiComicEpisodeTitleNeedsNormalization(episode.title)) return episode;
+    changed = true;
+    const episodeFocus = Array.isArray(episode.knowledge_focus)
+      ? episode.knowledge_focus.find(item => item.trim().length > 0)
+      : undefined;
+    return {
+      ...episode,
+      title: buildEpisodeTitle(
+        episode.episode_no,
+        plan.episode_count,
+        findPhase(phases, episode.episode_no),
+        plan.core_theme,
+        episodeFocus ?? chooseKnowledgeFocus(focusPool, episode.episode_no),
+      ),
+    };
+  });
+
+  return changed ? { ...plan, episodes: normalizedEpisodes } : plan;
+}
+
+function aiComicEpisodeTitleNeedsNormalization(title: string): boolean {
+  return /问题出现|最终选择|新变化|主角|第\d+集：第\d+集/.test(title);
+}
+
 function getPlanMainCharacters(plan: AiComicSeriesPlan): AiComicSeriesPlan['main_characters'] {
   const characters = (plan as Partial<AiComicSeriesPlan>).main_characters;
   return Array.isArray(characters) ? characters : [];
@@ -8814,9 +8851,11 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
   const filePath = seriesProjectPath(seriesProjectId);
   if (!(await pathExists(filePath))) return null;
   const detail = await readJsonFile<StoredAiComicSeriesProject>(filePath);
-  const continuityLedger = normalizeContinuityLedger(detail.continuity_ledger, detail.plan);
+  const plan = normalizeAiComicSeriesPlan(detail.plan);
+  const continuityLedger = normalizeContinuityLedger(detail.continuity_ledger, plan);
   return {
     ...detail,
+    plan,
     continuity_ledger: continuityLedger,
     memory_recall_preferences: normalizeMemoryRecallPreferences(detail.memory_recall_preferences),
     seedance_production: normalizeSeedanceProductionLedger(detail.seedance_production),
@@ -8830,7 +8869,7 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
     seedance_review_ledger: cloneSeedanceReviewLedger(detail.seedance_review_ledger),
     gears_job_ledger: normalizeGearsJobLedger(detail.gears_job_ledger),
     series_quality_audit: detail.series_quality_audit ?? buildAiComicSeriesQualityAudit({
-      plan: detail.plan,
+      plan,
       generatedEpisodeStoryIds: detail.generated_episode_story_ids ?? {},
       ledger: continuityLedger,
     }),
