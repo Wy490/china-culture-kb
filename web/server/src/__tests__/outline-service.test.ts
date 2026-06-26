@@ -307,6 +307,7 @@ describe('outline-service', () => {
     expect(res.data?.series_spine?.length).toBeGreaterThan(0);
     expect(res.data?.episodes).toHaveLength(12);
     expect(res.data?.episodes.map(episode => episode.title).join('\n')).not.toContain('主角');
+    expect(res.data?.episodes.map(episode => episode.title).join('\n')).not.toMatch(/问题出现|最终选择|新变化/);
     expect(res.data?.episodes.every(episode =>
       episode.target_duration_sec >= 60 && episode.target_duration_sec <= 120
     )).toBe(true);
@@ -536,7 +537,7 @@ describe('outline-service', () => {
     expect(exportRes.data?.markdown).toContain('### 分集状态表');
     expect(exportRes.data?.markdown).toContain('线索闭环');
     expect(exportRes.data?.markdown).toContain('记忆冲突');
-    expect(exportRes.data?.markdown).toContain('第1集：问题出现');
+    expect(exportRes.data?.markdown).toContain('第1集：未签的案卷');
   });
 
   it('submits AI comic series GEARS jobs and normalizes callbacks into the production ledgers', async () => {

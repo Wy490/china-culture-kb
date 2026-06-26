@@ -15015,7 +15015,7 @@ function buildEpisodes(params: {
 
     episodes.push({
       episode_no: episodeNo,
-      title: buildEpisodeTitle(episodeNo, params.episodeCount, phase, params.coreTheme),
+      title: buildEpisodeTitle(episodeNo, params.episodeCount, phase, params.coreTheme, focus),
       target_duration_sec: duration,
       target_panel_count: Math.max(4, Math.min(60, Math.round(duration / 6))),
       story_phase: `${phase.phase_id}：${phase.purpose}`,
@@ -15085,13 +15085,40 @@ function chooseKeyCharacters(characters: AiComicSeriesCharacterArc[], episodeNo:
   return unique([lead, rotating].filter(Boolean) as string[]);
 }
 
-function buildEpisodeTitle(episodeNo: number, episodeCount: number, phase: AiComicSeriesPhase, coreTheme: string): string {
-  if (episodeNo === 1) return `第1集：问题出现`;
-  if (episodeNo === episodeCount) return `第${episodeNo}集：最终选择`;
+function buildEpisodeTitle(
+  episodeNo: number,
+  episodeCount: number,
+  phase: AiComicSeriesPhase,
+  coreTheme: string,
+  focus: string,
+): string {
+  if (episodeNo === 1) return `第1集：${openingEpisodeTitle(coreTheme, focus)}`;
+  if (episodeNo === episodeCount) return `第${episodeNo}集：${finalEpisodeTitle(coreTheme)}`;
   if (episodeNo === phase.episode_range[1]) {
     return `第${episodeNo}集：${episodeTitleFromPhaseTurn(phase.turning_point, coreTheme)}`;
   }
-  return `第${episodeNo}集：${summarizeText(coreTheme, 8)}的新变化`;
+  return `第${episodeNo}集：${middleEpisodeTitle(coreTheme, focus)}`;
+}
+
+function openingEpisodeTitle(coreTheme: string, focus: string): string {
+  if (/拒签|签/.test(coreTheme)) return '未签的案卷';
+  const subject = summarizeText(focus || coreTheme, 6);
+  return subject ? `${subject}入局` : '第一道疑问';
+}
+
+function finalEpisodeTitle(coreTheme: string): string {
+  if (/拒签|签/.test(coreTheme)) return '良知落笔';
+  const subject = summarizeText(coreTheme, 6);
+  return subject ? `${subject}的答案` : '最后的回答';
+}
+
+function middleEpisodeTitle(coreTheme: string, focus: string): string {
+  if (/拒签|签/.test(coreTheme)) {
+    const subject = summarizeText(focus, 6);
+    return subject ? `${subject}的证词` : '新证入卷';
+  }
+  const subject = summarizeText(focus || coreTheme, 6);
+  return subject ? `${subject}转向` : '证据转向';
 }
 
 function episodeTitleFromPhaseTurn(turningPoint: string, coreTheme: string): string {
