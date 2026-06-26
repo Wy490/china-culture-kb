@@ -7167,6 +7167,7 @@ export async function getAiComicSeriesProductionReadiness(
   const issues: ProductionReadinessIssue[] = [];
   const nextActions: ProductionReadinessNextAction[] = [];
   const generatedEpisodeCount = Object.keys(detail.generated_episode_story_ids ?? {}).length;
+  const episodesNeedRegeneration = aiComicEpisodesNeedingRegeneration(detail);
 
   const addIssue = (issue: ProductionReadinessIssue) => issues.push(issue);
   const addAction = (action: ProductionReadinessNextAction) => {
@@ -7190,6 +7191,26 @@ export async function getAiComicSeriesProductionReadiness(
       detail: '先处理连续性、分集生成和长期线索问题，再推进批量生产。',
       priority: 10,
       lane_key: 'series_quality',
+    });
+  }
+
+  if (episodesNeedRegeneration.length > 0) {
+    const first = episodesNeedRegeneration[0]!;
+    addIssue({
+      issue_id: 'episodes-need-regeneration',
+      severity: 'warning',
+      lane_key: 'episode_generation',
+      label: `${episodesNeedRegeneration.length} 集需要重新生成`,
+      detail: `第${first.episode_no}集「${first.title}」已有故事但质量或计划状态不可用，需要先替换后再继续生成后续集。`,
+      action_key: 'generate_next_episode',
+      action_label: '重生成问题分集',
+    });
+    addAction({
+      action_key: 'generate_next_episode',
+      label: '重生成最早问题分集',
+      detail: `优先替换第${first.episode_no}集「${first.title}」，再继续生成后续集。`,
+      priority: 15,
+      lane_key: 'episode_generation',
     });
   }
 
@@ -7305,22 +7326,32 @@ export async function getAiComicSeriesProductionReadiness(
     {
       key: 'episode_generation',
       label: 'AI 漫剧系列指挥层',
-      status: generatedEpisodeCount === 0
+      status: episodesNeedRegeneration.length > 0
+        ? 'needs_action'
+        : generatedEpisodeCount === 0
         ? 'blocked'
         : generatedEpisodeCount >= detail.plan.episode_count
           ? 'ready'
           : 'needs_action',
       score: detail.plan.episode_count > 0
-        ? Math.round((generatedEpisodeCount / detail.plan.episode_count) * 100)
+        ? Math.max(0, Math.round((generatedEpisodeCount / detail.plan.episode_count) * 100) - episodesNeedRegeneration.length * 10)
         : 0,
-      detail: `已生成 ${generatedEpisodeCount} / ${detail.plan.episode_count} 集。`,
+      detail: episodesNeedRegeneration.length > 0
+        ? `已生成 ${generatedEpisodeCount} / ${detail.plan.episode_count} 集，其中 ${episodesNeedRegeneration.length} 集需要重生成。`
+        : `已生成 ${generatedEpisodeCount} / ${detail.plan.episode_count} 集。`,
       count_text: `${generatedEpisodeCount}/${detail.plan.episode_count}`,
       evidence: [
         `series ${detail.project.series_project_id}`,
         `updated ${detail.project.updated_at}`,
       ],
-      action_key: generatedEpisodeCount >= detail.plan.episode_count ? undefined : 'generate_next_episode',
-      action_label: generatedEpisodeCount >= detail.plan.episode_count ? undefined : '生成分集',
+      action_key: generatedEpisodeCount >= detail.plan.episode_count && episodesNeedRegeneration.length === 0
+        ? undefined
+        : 'generate_next_episode',
+      action_label: episodesNeedRegeneration.length > 0
+        ? '重生成问题分集'
+        : generatedEpisodeCount >= detail.plan.episode_count
+          ? undefined
+          : '生成分集',
     },
     {
       key: 'shot_production',
@@ -7664,10 +7695,11 @@ async function executeAiComicSeriesReadinessAutomationStep(
   if (actionKey === 'generate_next_episode') {
     const detail = await readSeriesProject(seriesProjectId);
     if (!detail) return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
-    const nextEpisode = detail.plan.episodes.find(episode =>
-      !detail.generated_episode_story_ids[episode.episode_no]
-    );
-    if (!nextEpisode) return fail(ErrorCodes.VALIDATION_ERROR, 'All episodes have already been generated');
+    const nextEpisode = aiComicEpisodesNeedingRegeneration(detail)[0]
+      ?? detail.plan.episodes.find(episode =>
+        !detail.generated_episode_story_ids[episode.episode_no]
+      );
+    if (!nextEpisode) return fail(ErrorCodes.VALIDATION_ERROR, 'All episodes have already been generated and no generated episode needs regeneration');
     return generateAiComicEpisodeFromPlan({
       series_project_id: seriesProjectId,
       series_plan: detail.plan,
@@ -8339,6 +8371,30 @@ function buildAiComicSeriesQualityAudit(params: {
     thread_closure_report: threadClosureReport,
     memory_conflict_report: memoryConflictReport,
   };
+}
+
+function aiComicSeriesEpisodeReportNeedsRegeneration(report: AiComicSeriesQualityEpisodeReport): boolean {
+  return Boolean(report.story_id)
+    && (
+      report.needs_episode_regeneration === true
+      || report.status === 'needs_attention'
+      || report.status === 'unknown'
+    );
+}
+
+function aiComicEpisodesNeedingRegeneration(
+  detail: Pick<AiComicSeriesProjectDetail, 'plan' | 'series_quality_audit'>,
+): AiComicEpisodePlan[] {
+  const episodes = getPlanEpisodes(detail.plan);
+  const reports = detail.series_quality_audit?.episode_reports ?? [];
+  const episodeNos = new Set(
+    reports
+      .filter(aiComicSeriesEpisodeReportNeedsRegeneration)
+      .map(report => report.episode_no),
+  );
+  return episodes
+    .filter(episode => episodeNos.has(episode.episode_no))
+    .sort((a, b) => a.episode_no - b.episode_no);
 }
 
 function buildAiComicThreadClosureReport(params: {

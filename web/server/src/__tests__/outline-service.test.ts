@@ -992,6 +992,69 @@ describe('outline-service', () => {
     expect(readiness.data?.markdown).toContain('Automation Plan');
   });
 
+  it('regenerates the earliest invalid AI comic episode before continuing the series', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+      series_title: '濂溪少年志 regen',
+      episode_count: 2,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+    const seriesProjectId = saveRes.data!.project.series_project_id;
+
+    const episodeOne = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: seriesProjectId,
+      output_gears_segments: true,
+      auto_repair_episode: true,
+    });
+    expect(episodeOne.ok).toBe(true);
+    const originalEpisodeOneStoryId = episodeOne.data!.storyId;
+
+    const editedPlan = {
+      ...planRes.data!,
+      episodes: planRes.data!.episodes.map(episode =>
+        episode.episode_no === 1
+          ? { ...episode, ending_hook: `${episode.ending_hook}（新增证词必须先核）` }
+          : episode
+      ),
+    };
+    const editedSaveRes = await saveAiComicSeriesProject({
+      series_project_id: seriesProjectId,
+      plan: editedPlan,
+    });
+    expect(editedSaveRes.ok).toBe(true);
+    expect(editedSaveRes.data?.series_quality_audit?.episode_reports[0]).toMatchObject({
+      episode_no: 1,
+      status: 'needs_attention',
+      needs_episode_regeneration: true,
+    });
+
+    const readiness = await getAiComicSeriesProductionReadiness(seriesProjectId);
+    expect(readiness.ok).toBe(true);
+    expect(readiness.data?.issues.map(issue => issue.issue_id)).toContain('episodes-need-regeneration');
+    const generateStep = readiness.data?.automation_plan.steps.find(step => step.action_key === 'generate_next_episode');
+    expect(generateStep?.label).toBe('重生成最早问题分集');
+
+    const automationRun = await runAiComicSeriesProductionReadinessAutomation(seriesProjectId, {
+      dry_run: false,
+      action_keys: ['generate_next_episode'],
+    });
+    expect(automationRun.ok).toBe(true);
+    expect(automationRun.data?.executed_step_count).toBe(1);
+
+    const refreshed = await getAiComicSeriesProject(seriesProjectId);
+    expect(refreshed.ok).toBe(true);
+    expect(refreshed.data?.generated_episode_story_ids['1']).toBeTruthy();
+    expect(refreshed.data?.generated_episode_story_ids['1']).not.toBe(originalEpisodeOneStoryId);
+    expect(refreshed.data?.generated_episode_story_ids['2']).toBeUndefined();
+    expect(automationRun.data?.after_readiness.summary.generated_episode_count).toBe(1);
+  });
+
   it('imports batched AI comic series GEARS callbacks into production ledgers', async () => {
     const planRes = await generateAiComicSeriesPlan({
       outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
