@@ -306,6 +306,7 @@ describe('outline-service', () => {
     expect(res.data?.production_notes.join('\n')).toContain('无限流任务生存');
     expect(res.data?.series_spine?.length).toBeGreaterThan(0);
     expect(res.data?.episodes).toHaveLength(12);
+    expect(res.data?.episodes.map(episode => episode.title).join('\n')).not.toContain('主角');
     expect(res.data?.episodes.every(episode =>
       episode.target_duration_sec >= 60 && episode.target_duration_sec <= 120
     )).toBe(true);
@@ -345,6 +346,7 @@ describe('outline-service', () => {
     expect(res.data?.presentation_style).toBe('ai_comic');
     expect(res.data?.title).toMatch(/^第2集：/);
     expect(res.data?.title).not.toMatch(/^第2集：第2集：/);
+    expect(res.data?.title).not.toContain('主角');
     expect(res.data?.original_user_query).toContain('本集只写第2集');
     expect(res.data?.original_user_query).toContain('本集主冲突');
     expect(res.data?.original_user_query).toContain('成稿方向');
@@ -352,7 +354,8 @@ describe('outline-service', () => {
     expect(res.data?.original_user_query).not.toContain('连续性账本');
     expect(res.data?.credibility_note).not.toContain('叙事流派机制');
     expect(res.data?.scene_breakdown.length).toBeGreaterThan(0);
-    expect(res.data?.scene_breakdown.some(scene => scene.conflict?.includes(planRes.data!.episodes[1].main_conflict)))
+    const visibleMainConflict = planRes.data!.episodes[1].main_conflict.replace(/主角/g, '周敦颐');
+    expect(res.data?.scene_breakdown.some(scene => scene.conflict?.includes(visibleMainConflict)))
       .toBe(true);
     expect(res.data?.scene_breakdown.map(scene => scene.title)).toEqual([
       '廊下截证',
@@ -367,7 +370,7 @@ describe('outline-service', () => {
       res.data?.dialogue,
       res.data?.gears_segments,
     ])).not.toMatch(
-      /生成优先级|核心画面是|知识库使用规则|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集|对照角色|关键见证者/,
+      /生成优先级|核心画面是|知识库使用规则|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集|对照角色|关键见证者|主角/,
     );
     expect(res.data?.dialogue?.length).toBeGreaterThan(0);
     expect(res.data?.ai_comic_episode_blueprint?.schema_version).toBe('ai-comic-episode-blueprint/v1');
@@ -411,8 +414,10 @@ describe('outline-service', () => {
     expect(episodeTwo.ok).toBe(true);
     expect(episodeOne.data?.title).toMatch(/^第1集：/);
     expect(episodeOne.data?.title).not.toMatch(/^第1集：第1集：/);
+    expect(episodeOne.data?.title).not.toContain('主角');
     expect(episodeTwo.data?.title).toMatch(/^第2集：/);
     expect(episodeTwo.data?.title).not.toMatch(/^第2集：第2集：/);
+    expect(episodeTwo.data?.title).not.toContain('主角');
     expect(episodeOne.data?.full_text).not.toBe(episodeTwo.data?.full_text);
 
     const firstSceneTitles = episodeOne.data?.scene_breakdown.map(scene => scene.title) ?? [];
@@ -440,7 +445,7 @@ describe('outline-service', () => {
       episodeTwo.data?.gears_segments,
     ]);
     expect(audienceText).not.toMatch(
-      /生成优先级|核心画面是|知识库使用规则|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集|对照角色|关键见证者/,
+      /生成优先级|核心画面是|知识库使用规则|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集|对照角色|关键见证者|主角/,
     );
   });
 
@@ -3372,7 +3377,8 @@ describe('outline-service', () => {
     expect(secondEpisodeRes.data?.original_user_query).not.toContain('系列记忆精准召回');
     expect(secondEpisodeRes.data?.original_user_query).not.toContain('长期情景记忆模糊召回');
     expect(secondEpisodeRes.data?.full_text).not.toEqual(firstEpisodeRes.data?.full_text);
-    expect(secondEpisodeRes.data?.scene_breakdown.some(scene => scene.conflict?.includes(planRes.data!.episodes[1].main_conflict)))
+    const visibleSecondConflict = planRes.data!.episodes[1].main_conflict.replace(/主角/g, '周敦颐');
+    expect(secondEpisodeRes.data?.scene_breakdown.some(scene => scene.conflict?.includes(visibleSecondConflict)))
       .toBe(true);
     expect([
       secondEpisodeRes.data?.full_text,
