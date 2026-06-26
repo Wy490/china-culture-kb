@@ -3055,11 +3055,19 @@ function routeEpisodeNo(): number | null {
   return value
 }
 
+function routeFocus(): string {
+  return typeof route.query.focus === 'string' ? route.query.focus : ''
+}
+
 async function previewRequestedEpisode(episodeNo: number) {
   if (!plan.value?.episodes.some(episode => episode.episode_no === episodeNo)) return
   await handlePreviewEpisodeContext(episodeNo)
   if (!contextPreviewError.value) {
-    saveMessage.value = `已定位到第${episodeNo}集，可继续生成或先查看上下文预览。`
+    const shouldRegenerate = routeFocus() === 'regenerate'
+    const hasGeneratedStory = Boolean(episodeStoryId(episodeNo))
+    saveMessage.value = shouldRegenerate && hasGeneratedStory
+      ? `已定位到第${episodeNo}集。该集被项目列表标记为需重生成，请先点击“重新生成本集分镜”，再继续后续集。`
+      : `已定位到第${episodeNo}集，可继续生成或先查看上下文预览。`
   }
 }
 
