@@ -459,6 +459,7 @@
               <div class="projects-page__meta">
                 <span>{{ formatDate(series.updated_at) }}</span>
                 <span>{{ series.generated_episode_count }} / {{ series.episode_count }} 集已生成</span>
+                <span v-if="series.regeneration_episode_count">需重生成 {{ series.regeneration_episode_count }} 集</span>
                 <span>{{ series.episode_duration_range_sec.min }}-{{ series.episode_duration_range_sec.max }} 秒/集</span>
                 <span>{{ pacingProfileLabel(series.pacing_profile) }}</span>
               </div>
@@ -469,7 +470,7 @@
                   class="projects-page__muted-link"
                   :to="seriesContinueLink(series)"
                 >
-                  {{ nextSeriesEpisodeNo(series) ? `继续第 ${nextSeriesEpisodeNo(series)} 集` : '查看全集' }}
+                  {{ seriesPrimaryActionLabel(series) }}
                 </RouterLink>
                 <button
                   class="projects-page__muted-btn"
@@ -1039,7 +1040,29 @@ function nextSeriesEpisodeNo(project: AiComicSeriesProjectMeta): number | null {
   return project.generated_episode_count + 1
 }
 
+function nextSeriesRegenerationEpisodeNo(project: AiComicSeriesProjectMeta): number | null {
+  return project.next_regeneration_episode_no ?? null
+}
+
+function seriesPrimaryActionLabel(project: AiComicSeriesProjectMeta): string {
+  const regenerationEpisodeNo = nextSeriesRegenerationEpisodeNo(project)
+  if (regenerationEpisodeNo) return `重生成第 ${regenerationEpisodeNo} 集`
+  const nextEpisodeNo = nextSeriesEpisodeNo(project)
+  return nextEpisodeNo ? `继续第 ${nextEpisodeNo} 集` : '查看全集'
+}
+
 function seriesContinueLink(project: AiComicSeriesProjectMeta) {
+  const regenerationEpisodeNo = nextSeriesRegenerationEpisodeNo(project)
+  if (regenerationEpisodeNo) {
+    return {
+      path: '/ai-comic-series/new',
+      query: {
+        seriesProjectId: project.series_project_id,
+        episodeNo: String(regenerationEpisodeNo),
+        focus: 'regenerate',
+      },
+    }
+  }
   const nextEpisodeNo = nextSeriesEpisodeNo(project)
   return {
     path: '/ai-comic-series/new',

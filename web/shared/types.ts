@@ -5719,6 +5719,11 @@ export interface AiComicSeriesProjectMeta {
   updated_at: string;
   generated_episode_count: number;
   archived_at?: string;
+  quality_attention_episode_count?: number;
+  regeneration_episode_count?: number;
+  next_attention_episode_no?: number;
+  next_regeneration_episode_no?: number;
+  generated_episode_content_issue_count?: number;
 }
 
 export interface AiComicContinuityLedgerEpisode {

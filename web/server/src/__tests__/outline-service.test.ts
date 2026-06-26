@@ -1061,6 +1061,14 @@ describe('outline-service', () => {
       },
     }, null, 2), 'utf-8');
 
+    const listRes = await listAiComicSeriesProjects();
+    const listedProject = listRes.data?.find(project => project.series_project_id === seriesProjectId);
+    expect(listedProject).toMatchObject({
+      next_regeneration_episode_no: 1,
+      regeneration_episode_count: 1,
+      generated_episode_content_issue_count: 1,
+    });
+
     const readiness = await getAiComicSeriesProductionReadiness(seriesProjectId);
     expect(readiness.ok).toBe(true);
     expect(readiness.data?.issues.map(issue => issue.issue_id)).toContain('episodes-need-regeneration');

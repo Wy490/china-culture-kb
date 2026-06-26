@@ -3273,11 +3273,39 @@ export async function listAiComicSeriesProjects(
   const projects: AiComicSeriesProjectMeta[] = [];
   for (const projectId of projectIds) {
     const detail = await readSeriesProject(projectId);
-    if (detail && (options.includeArchived || !detail.project.archived_at)) projects.push(detail.project);
+    if (detail && (options.includeArchived || !detail.project.archived_at)) {
+      projects.push(await buildAiComicSeriesProjectListMeta(detail));
+    }
   }
 
   projects.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   return success(projects);
+}
+
+async function buildAiComicSeriesProjectListMeta(
+  detail: AiComicSeriesProjectDetail,
+): Promise<AiComicSeriesProjectMeta> {
+  const contentIssueMap = await buildAiComicGeneratedEpisodeContentIssueMap(detail);
+  const audit = detail.series_quality_audit;
+  const regenerationEpisodeNos = unique([
+    ...Array.from(contentIssueMap.keys()),
+    ...(audit?.episode_reports ?? [])
+      .filter(report => report.needs_episode_regeneration === true)
+      .map(report => report.episode_no),
+  ]).sort((a, b) => a - b);
+  const attentionEpisodeNos = unique([
+    ...(audit?.episodes_need_attention ?? []),
+    ...Array.from(contentIssueMap.keys()),
+  ]).sort((a, b) => a - b);
+
+  return {
+    ...detail.project,
+    quality_attention_episode_count: attentionEpisodeNos.length,
+    regeneration_episode_count: regenerationEpisodeNos.length,
+    next_attention_episode_no: attentionEpisodeNos[0],
+    next_regeneration_episode_no: regenerationEpisodeNos[0],
+    generated_episode_content_issue_count: contentIssueMap.size,
+  };
 }
 
 export async function copyAiComicSeriesProject(
@@ -8427,7 +8455,6 @@ function buildAiComicGeneratedStoryContentIssues(
   const text = [
     story.title,
     story.full_text,
-    story.credibility_note,
     JSON.stringify(story.dialogue ?? []),
     ...(story.scene_breakdown ?? []).flatMap(scene => [
       scene.title,
