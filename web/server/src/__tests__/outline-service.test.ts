@@ -343,6 +343,8 @@ describe('outline-service', () => {
     expect(res.ok).toBe(true);
     expect(res.data?.video_type).toBe('ai_comic_drama');
     expect(res.data?.presentation_style).toBe('ai_comic');
+    expect(res.data?.title).toMatch(/^第2集：/);
+    expect(res.data?.title).not.toMatch(/^第2集：第2集：/);
     expect(res.data?.original_user_query).toContain('本集只写第2集');
     expect(res.data?.original_user_query).toContain('本集主冲突');
     expect(res.data?.original_user_query).toContain('成稿方向');
@@ -352,16 +354,94 @@ describe('outline-service', () => {
     expect(res.data?.scene_breakdown.length).toBeGreaterThan(0);
     expect(res.data?.scene_breakdown.some(scene => scene.conflict?.includes(planRes.data!.episodes[1].main_conflict)))
       .toBe(true);
-    expect([
+    expect(res.data?.scene_breakdown.map(scene => scene.title)).toEqual([
+      '廊下截证',
+      '验印桌前',
+      '证词对质',
+      '旧录翻案',
+      '传唤入门',
+    ]);
+    expect(JSON.stringify([
       res.data?.full_text,
-      ...(res.data?.scene_breakdown ?? []).flatMap(scene => [scene.plot, scene.visual_prompt]),
-      ...(res.data?.gears_segments ?? []).map(segment => segment.script_text),
-    ].join('\n')).not.toMatch(/生成优先级|核心画面是|知识库使用规则/);
+      res.data?.scene_breakdown,
+      res.data?.dialogue,
+      res.data?.gears_segments,
+    ])).not.toMatch(
+      /生成优先级|核心画面是|知识库使用规则|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集|对照角色|关键见证者/,
+    );
     expect(res.data?.dialogue?.length).toBeGreaterThan(0);
     expect(res.data?.ai_comic_episode_blueprint?.schema_version).toBe('ai-comic-episode-blueprint/v1');
     expect(res.data?.ai_comic_episode_blueprint?.episode_no).toBe(2);
     expect(res.data?.ai_comic_episode_quality?.schema_version).toBe('ai-comic-episode-quality/v1');
     expect(res.data?.continuity_audit?.schema_version).toBe('ai-comic-continuity-audit/v1');
+  });
+
+  it('keeps adjacent AI comic episodes distinct and audience-facing after ledger generation', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，后来面对南安军拒签冤案，坚持良知。每集都要让案卷压力、少年见证和拒签选择继续升级。',
+      series_title: '濂溪少年志',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+      pacing_profile: 'fast_hook',
+      generation_scope: 'full_planning',
+      narrative_pattern_ids: ['mortal_growth'],
+    });
+
+    expect(planRes.ok).toBe(true);
+    const saved = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saved.ok).toBe(true);
+    const seriesProjectId = saved.data!.project.series_project_id;
+
+    const episodeOne = await generateAiComicEpisodeFromPlan({
+      series_project_id: seriesProjectId,
+      series_plan: planRes.data!,
+      episode_no: 1,
+      output_gears_segments: true,
+      auto_repair_episode: true,
+    });
+    const episodeTwo = await generateAiComicEpisodeFromPlan({
+      series_project_id: seriesProjectId,
+      series_plan: planRes.data!,
+      episode_no: 2,
+      output_gears_segments: true,
+      auto_repair_episode: true,
+    });
+
+    expect(episodeOne.ok).toBe(true);
+    expect(episodeTwo.ok).toBe(true);
+    expect(episodeOne.data?.title).toMatch(/^第1集：/);
+    expect(episodeOne.data?.title).not.toMatch(/^第1集：第1集：/);
+    expect(episodeTwo.data?.title).toMatch(/^第2集：/);
+    expect(episodeTwo.data?.title).not.toMatch(/^第2集：第2集：/);
+    expect(episodeOne.data?.full_text).not.toBe(episodeTwo.data?.full_text);
+
+    const firstSceneTitles = episodeOne.data?.scene_breakdown.map(scene => scene.title) ?? [];
+    const secondSceneTitles = episodeTwo.data?.scene_breakdown.map(scene => scene.title) ?? [];
+    expect(firstSceneTitles[0]).toBe('未签的案卷');
+    expect(secondSceneTitles).toEqual([
+      '廊下截证',
+      '验印桌前',
+      '证词对质',
+      '旧录翻案',
+      '传唤入门',
+    ]);
+    expect(firstSceneTitles.filter(title => secondSceneTitles.includes(title))).toHaveLength(0);
+    expect(episodeOne.data?.gears_segments?.length).toBeGreaterThan(0);
+    expect(episodeTwo.data?.gears_segments?.length).toBeGreaterThan(0);
+
+    const audienceText = JSON.stringify([
+      episodeOne.data?.full_text,
+      episodeOne.data?.scene_breakdown,
+      episodeOne.data?.dialogue,
+      episodeOne.data?.gears_segments,
+      episodeTwo.data?.full_text,
+      episodeTwo.data?.scene_breakdown,
+      episodeTwo.data?.dialogue,
+      episodeTwo.data?.gears_segments,
+    ]);
+    expect(audienceText).not.toMatch(
+      /生成优先级|核心画面是|知识库使用规则|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集|对照角色|关键见证者/,
+    );
   });
 
   it('saves and loads an AI comic series project', async () => {
