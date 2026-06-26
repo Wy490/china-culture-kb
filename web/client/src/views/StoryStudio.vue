@@ -681,8 +681,8 @@ const CHARACTER_KIND_LABELS: Record<StoryDetectedCharacterKind, string> = {
 }
 
 const CREATION_USE_CASE_OPTIONS: Array<{ id: CreationUseCase; label: string }> = [
-  { id: 'original_ai_comic', label: '原创 AI 漫剧' },
-  { id: 'adapted_ai_comic', label: '原作/资料改编' },
+  { id: 'original_ai_comic', label: '单片原创 AI 漫剧' },
+  { id: 'adapted_ai_comic', label: '单片资料改编' },
   { id: 'institutional_promo', label: '机构宣传片' },
   { id: 'documentary_short', label: '纪录短片' },
   { id: 'brand_commercial', label: '品牌商业片' },

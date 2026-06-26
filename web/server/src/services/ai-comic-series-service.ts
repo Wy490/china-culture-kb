@@ -722,7 +722,7 @@ function shouldRewriteAiComicEpisodeStory(story: StoryGenerateResult, episode: A
     ...(story.gears_segments ?? []).map(segment => segment.script_text),
   ].join('\n');
   if (story.generation_used_fallback || story.generation_mode !== 'external_model') return true;
-  if (/(生成优先级|核心画面是|知识库使用规则|连续性账本|叙事流派机制|目标场景功能)/.test(text)) return true;
+  if (/(生成优先级|核心画面是|知识库使用规则|连续性账本|叙事流派机制|目标场景功能|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集)/.test(text)) return true;
   if (/\*\*[^*]+?\*\*/.test(text)) return true;
   const paragraphs = story.full_text
     .split(/\n{2,}/)
@@ -751,8 +751,9 @@ function buildAiComicEpisodeAudienceStory(params: {
   const gearsSegments = params.outputGearsSegments ? buildAiComicEpisodeAudienceGearsSegments(scenes, params.story.source_entry) : [];
   const protagonist = scenes[0]?.characters[0] ?? params.episode.key_characters[0] ?? params.plan.main_characters[0]?.name ?? '主角';
   const fullText = scenes.map(scene => scene.plot).join('\n\n');
+  const episodeStoryTitle = formatAiComicEpisodeTitle(params.episode);
   const baseQualityReport = validateDramaticStory({
-    title: `第${params.episode.episode_no}集：${params.episode.title}`,
+    title: episodeStoryTitle,
     selectedEvent: params.episode.title,
     full_text: fullText,
     scene_breakdown: scenes,
@@ -772,7 +773,7 @@ function buildAiComicEpisodeAudienceStory(params: {
 
   return {
     ...params.story,
-    title: `第${params.episode.episode_no}集：${params.episode.title}`,
+    title: episodeStoryTitle,
     logline: `${protagonist}在《${params.plan.series_title}》第${params.episode.episode_no}集中面对“${params.episode.main_conflict}”，因${blueprint.midpoint_turn}改变判断，并把选择留给下一集继续承接。`,
     theme: params.plan.core_theme || '选择与良知',
     full_text: fullText,
@@ -798,6 +799,27 @@ function buildAiComicEpisodeAudienceStory(params: {
   };
 }
 
+function formatAiComicEpisodeTitle(episode: AiComicEpisodePlan): string {
+  const title = episode.title.trim();
+  const prefix = `第${episode.episode_no}集：`;
+  return title.startsWith(prefix) ? title : `${prefix}${title}`;
+}
+
+interface AiComicEpisodeSceneDraft {
+  title: string;
+  duration: number;
+  location: string;
+  time: string;
+  functionLabel: string;
+  plot: string;
+  keyAction: string;
+  conflict: string;
+  dialogue: string;
+  visual: string;
+  camera: string;
+  chars: string[];
+}
+
 function buildAiComicEpisodeAudienceScenes(
   plan: AiComicSeriesPlan,
   episode: AiComicEpisodePlan,
@@ -809,29 +831,25 @@ function buildAiComicEpisodeAudienceScenes(
     ...plan.main_characters.map(character => character.name),
   ].filter(Boolean));
   const protagonist = characters[0] ?? '主角';
-  const witness = characters.find(name => name !== protagonist && /见证|少年|同伴|关键/.test(name)) ?? characters[1] ?? '关键见证者';
-  const pressureRole = characters.find(name => name !== protagonist && name !== witness) ?? '对照角色';
+  const witness = naturalizeAiComicCharacterLabel(
+    characters.find(name => name !== protagonist && /见证|少年|同伴|关键/.test(name)) ?? characters[1],
+    '见证人',
+  );
+  const pressureRole = chooseAiComicPressureRole(characters, protagonist, witness);
   const locations = inferAiComicEpisodeLocations(plan, episode);
   const newInfo = episode.new_information[0] ?? episode.knowledge_focus[0] ?? '一条新的证词';
+  const visibleNewInfo = naturalizeAiComicNewInformationForScene(newInfo);
   const foreshadowing = episode.foreshadowing[0] ?? '案卷边角的旧墨痕';
+  const visibleForeshadowing = naturalizeAiComicForeshadowing(foreshadowing);
   const payoff = episode.payoff[0] ?? blueprint.thread_action;
-  const previousState = episode.continuity_from_previous[0]
-    ?? `上一集留下的问题仍压在${protagonist}心里。`;
+  const visiblePayoff = naturalizeAiComicPayoff(payoff);
+  const visibleMidpoint = naturalizeAiComicMidpointTurn(blueprint.midpoint_turn, plan.core_theme);
+  const previousState = naturalizeAiComicContinuityState(
+    episode.continuity_from_previous[0],
+    protagonist,
+  );
 
-  const sceneDrafts: Array<{
-    title: string;
-    duration: number;
-    location: string;
-    time: string;
-    functionLabel: string;
-    plot: string;
-    keyAction: string;
-    conflict: string;
-    dialogue: string;
-    visual: string;
-    camera: string;
-    chars: string[];
-  }> = [
+  const baseSceneDrafts: AiComicEpisodeSceneDraft[] = [
     {
       title: '未签的案卷',
       duration: 12,
@@ -852,7 +870,7 @@ function buildAiComicEpisodeAudienceScenes(
       location: locations.threshold,
       time: '夜',
       functionLabel: '人物登场',
-      plot: `${witness}说明${newInfo}，但话未说完，门外的差役已经催促文书归档。${protagonist}没有立刻相信任何一方，只让${witness}把看到的时间、地点和物件一一摆出来。`,
+      plot: `${witness}把${visibleNewInfo}摆到灯下，但话未说完，门外的差役已经催促文书归档。${protagonist}没有立刻相信任何一方，只让${witness}把看到的时间、地点和物件一一摆出来。`,
       keyAction: `${protagonist}追问细节，把新信息变成可核对的线索。`,
       conflict: `证词是否可信；${protagonist}必须在同情和证据之间保持清醒。`,
       dialogue: `${protagonist}：“你说新证，不说哭声；说你看见了什么。”\n${witness}：“我看见封泥未干，押印却在雨前。”`,
@@ -880,7 +898,7 @@ function buildAiComicEpisodeAudienceScenes(
       location: locations.archive,
       time: '拂晓前',
       functionLabel: '反转/觉醒',
-      plot: `${blueprint.midpoint_turn}。${protagonist}翻出旧录，发现${foreshadowing}与${witness}所说相互扣合；他意识到“拒签”不是逞强，而是先把疑点查到底。`,
+      plot: `${visibleMidpoint}。${protagonist}翻出旧录，发现${visibleForeshadowing}与${witness}所说相互扣合；他意识到“拒签”不是逞强，而是先把疑点查到底。`,
       keyAction: `${protagonist}把旧录与新证并排核对，改变原先判断。`,
       conflict: `原本可以用程序结案；新证迫使${protagonist}承担复查代价。`,
       dialogue: `${witness}：“先生信我了？”\n${protagonist}：“我信证据。也信这案子还没说完。”`,
@@ -894,8 +912,8 @@ function buildAiComicEpisodeAudienceScenes(
       location: locations.courtyard,
       time: '清晨',
       functionLabel: '高燃收束',
-      plot: `${protagonist}收起未签的文书，命人暂缓行刑并追查${payoff}。天光照进院中，${witness}终于松一口气，却在门边看见另一个被遮住姓名的案号；${blueprint.ending_hook}`,
-      keyAction: `${protagonist}承担拒签后果，并留下下一集必须回应的新问题。`,
+      plot: `${protagonist}收起未签的文书，命人暂缓行刑并追查${visiblePayoff}。他知道这一笔守住的不是面子，而是一条人命前的良知。天光照进院中，${witness}终于松一口气，却在门边看见另一个被遮住姓名的案号；${blueprint.ending_hook}`,
+      keyAction: `${protagonist}为良知承担拒签后果，并留下下一集必须回应的新问题。`,
       conflict: `守住良知暂时赢得时间，但更深的案卷被打开。`,
       dialogue: `${protagonist}：“不是每一次拒签都能救人，但每一次草签都可能害人。”\n${witness}：“那下一卷呢？”`,
       visual: `${locations.courtyard}，清晨，未签文书、封存案卷、院门晨光、人物背影，最后露出被遮住姓名的新案号`,
@@ -903,6 +921,21 @@ function buildAiComicEpisodeAudienceScenes(
       chars: [protagonist, witness],
     },
   ];
+  const sceneDrafts = episode.episode_no === 1
+    ? baseSceneDrafts
+    : buildAiComicFollowupEpisodeSceneDrafts({
+        episode,
+        blueprint,
+        protagonist,
+        witness,
+        pressureRole,
+        locations,
+        visibleNewInfo,
+        visibleForeshadowing,
+        visiblePayoff,
+        visibleMidpoint,
+        previousState,
+      });
 
   return sceneDrafts.map((draft, index) => ({
     scene_id: index + 1,
@@ -923,6 +956,182 @@ function buildAiComicEpisodeAudienceScenes(
     factual_basis: `人物与文化背景参考${sourceEntry}；本集案情和见证细节为系列创作。`,
     fictionalized_elements: ['案卷调度、对白、证物和分场节奏为影视化创作处理'],
   }));
+}
+
+function buildAiComicFollowupEpisodeSceneDrafts(input: {
+  episode: AiComicEpisodePlan;
+  blueprint: AiComicEpisodeBlueprint;
+  protagonist: string;
+  witness: string;
+  pressureRole: string;
+  locations: ReturnType<typeof inferAiComicEpisodeLocations>;
+  visibleNewInfo: string;
+  visibleForeshadowing: string;
+  visiblePayoff: string;
+  visibleMidpoint: string;
+  previousState: string;
+}): AiComicEpisodeSceneDraft[] {
+  const {
+    episode,
+    blueprint,
+    protagonist,
+    witness,
+    pressureRole,
+    locations,
+    visibleNewInfo,
+    visibleForeshadowing,
+    visiblePayoff,
+    visibleMidpoint,
+    previousState,
+  } = input;
+  return [
+    {
+      title: '廊下截证',
+      duration: 12,
+      location: locations.threshold,
+      time: '雨停前',
+      functionLabel: '钩子开场',
+      plot: `${previousState}${protagonist}刚走出案房，${witness}就在廊下拦住他，把${visibleNewInfo}按在湿木栏上。远处更鼓未停，催签的人已经沿廊而来。`,
+      keyAction: `${protagonist}没有回到案桌，而是把新证带到廊下当场核问。`,
+      conflict: `${episode.main_conflict}；新证不在案卷里，却可能改写案卷。`,
+      dialogue: `${witness}：“若进了案房，这话就说不完了。”\n${protagonist}：“那就在廊下说，先让证物开口。”`,
+      visual: `${locations.threshold}，雨停前，湿木栏、灯笼、带泥证物、催签差役远影，人物被廊柱分隔`,
+      camera: '横移穿过廊柱，先见证物再见追来的差役',
+      chars: [protagonist, witness],
+    },
+    {
+      title: '验印桌前',
+      duration: 18,
+      location: locations.archive,
+      time: '深夜',
+      functionLabel: '人物登场',
+      plot: `${protagonist}把新证移到验印桌前，命人取来旧封泥和押印底册。${pressureRole}提醒他越过常规会惹祸，${protagonist}只把灯挪近一寸，让印痕的缺口显出来。`,
+      keyAction: `${protagonist}把口供变成印痕、封泥和时间的复核。`,
+      conflict: `复核会拖慢结案；不复核就可能让错案盖棺。`,
+      dialogue: `${pressureRole}：“先生这是要把一卷案拖成三卷。”\n${protagonist}：“若一卷写错，三卷也嫌少。”`,
+      visual: `${locations.archive}，深夜，验印桌、旧封泥、押印底册、油灯近光，人物手指停在印痕缺口`,
+      camera: '俯拍证物排列，切到施压者与主角对视',
+      chars: [protagonist, pressureRole, witness],
+    },
+    {
+      title: '证词对质',
+      duration: 20,
+      location: locations.courtyard,
+      time: '夜尽',
+      functionLabel: '冲突爆发',
+      plot: `${witness}说出的时间与底册互相咬合，${pressureRole}却抓住一句含糊处逼问。${protagonist}没有替任何人辩解，只让两份证词并排重说，直到${visibleForeshadowing}露出破绽。`,
+      keyAction: `${protagonist}主持当场对质，让矛盾从情绪变成证据。`,
+      conflict: `见证者可能记错；施压者借一个错字逼主角放弃复核。`,
+      dialogue: `${witness}：“我记得雨声，不记得更鼓几下。”\n${protagonist}：“不怕记不全，怕有人要你闭口。”`,
+      visual: `${locations.courtyard}，夜尽，院中水痕、两份证词、对质人影，主角站在证词之间`,
+      camera: '快速切换两张证词，停在主角抬眼的瞬间',
+      chars: [protagonist, witness, pressureRole],
+    },
+    {
+      title: '旧录翻案',
+      duration: 20,
+      location: locations.archive,
+      time: '天将亮',
+      functionLabel: '反转/觉醒',
+      plot: `${visibleMidpoint}。${protagonist}在旧录角落发现同样的印痕缺口，才明白这不是一名少年求情，而是一套文书流程里藏着漏洞。`,
+      keyAction: `${protagonist}把本集新证与旧录并排，确认判断必须改向。`,
+      conflict: `复查不再只是救一案，而是触碰更深的文书链条。`,
+      dialogue: `${pressureRole}：“查到这里，已经不是本案了。”\n${protagonist}：“正因如此，才不能签。”`,
+      visual: `${locations.archive}，天将亮，旧录角落、印痕缺口、封泥碎屑、主角翻卷的手，窗外微光`,
+      camera: '从旧录角落推近到主角眼神，完成反转',
+      chars: [protagonist, pressureRole],
+    },
+    {
+      title: '传唤入门',
+      duration: 20,
+      location: locations.threshold,
+      time: '清晨',
+      functionLabel: '高燃收束',
+      plot: `${protagonist}把未签文书重新封起，命人追查${visiblePayoff}。他知道拒签已经从一念良知变成公开承担。清晨第一道传唤送到门前，封套上写着新的案号；${blueprint.ending_hook}`,
+      keyAction: `${protagonist}把复查升级为正式行动，并承接下一集压力。`,
+      conflict: `良知让他多争来一夜，也把更大的阻力引到门前。`,
+      dialogue: `${protagonist}：“今日不签，是为明日能问。”\n${witness}：“问到最后，若无人肯答呢？”`,
+      visual: `${locations.threshold}，清晨，封起文书、新传唤封套、院门晨光、主角接过文书的背影`,
+      camera: '金句后切到新传唤封套，定格案号',
+      chars: [protagonist, witness],
+    },
+  ];
+}
+
+function naturalizeAiComicContinuityState(raw: string | undefined, protagonist: string): string {
+  const text = raw?.trim();
+  if (!text || /建立主角初始状态|核心问题|第一条长期线索/.test(text)) {
+    return `${protagonist}带着尚未回答的问题走进案房。`;
+  }
+  const previousHook = text.match(/^承接第\d+集结尾[:：](.+)$/);
+  if (previousHook?.[1]) {
+    const hook = previousHook[1].trim().replace(/[。！？!?]+$/, '');
+    return `上一集的余波还压在案头：${hook}。`;
+  }
+  const previousState = text.match(/^延续第\d+集后的状态[:：](.+)$/);
+  if (previousState?.[1]) {
+    const state = previousState[1].trim().replace(/[。！？!?]+$/, '');
+    return `${state}。`;
+  }
+  return text.endsWith('。') ? text : `${text}。`;
+}
+
+function chooseAiComicPressureRole(characters: string[], protagonist: string, witness: string): string {
+  const explicit = characters.find(name =>
+    name !== protagonist
+    && name !== witness
+    && /差役|官|吏|施压|上司|权/.test(name)
+  );
+  return naturalizeAiComicCharacterLabel(explicit, '催签差役');
+}
+
+function naturalizeAiComicCharacterLabel(name: string | undefined, fallback: string): string {
+  const value = name?.trim();
+  if (!value || /^(关键见证者|对照角色|配角|反派|主角)$/.test(value)) return fallback;
+  return value;
+}
+
+function naturalizeAiComicNewInformationForScene(raw: string): string {
+  const text = raw.trim().replace(/[。！？!?]+$/, '');
+  const firstVisible = text.match(/^(.+?)相关的第一条可见线索进入案卷$/);
+  if (firstVisible?.[1]) return `与${firstVisible[1].trim()}有关的带泥证物`;
+  const testimony = text.match(/^(.+?)相关的新证词让主角重新判断/);
+  if (testimony?.[1]) return `与${testimony[1].trim()}有关的新证词`;
+  const fallbackVisible = text.match(/^第一条可见线索进入案卷[:：](.+)$/);
+  if (fallbackVisible?.[1]) return fallbackVisible[1].trim();
+  if (/新的证词让主角重新判断/.test(text)) return '新的证词';
+  return text;
+}
+
+function naturalizeAiComicMidpointTurn(raw: string, coreTheme: string): string {
+  const text = raw.trim().replace(/[。！？!?]+$/, '');
+  const phaseTurn = text.match(/^阶段转折落地[:：](.+)$/);
+  if (phaseTurn?.[1]) return naturalizeAiComicMidpointTurn(phaseTurn[1], coreTheme);
+  if (/表面目标背后还有更深层原因/.test(text)) {
+    return '新证和旧录对上，周敦颐发现这不是一纸判词的错，而是整条文书链都可能被人动过';
+  }
+  if (/不是旁观问题/.test(text)) {
+    return `周敦颐终于明白，“${coreTheme}”不是旁观者能绕开的题`;
+  }
+  return text || '新证推翻原先判断，周敦颐不得不改变行动方向';
+}
+
+function naturalizeAiComicForeshadowing(raw: string): string {
+  const text = raw.trim().replace(/[。！？!?]+$/, '');
+  if (/未解释细节/.test(text)) return '旧录边角同样残缺的印痕';
+  if (/案卷|墨痕|封泥|印/.test(text)) return text;
+  return '案卷边角的旧墨痕';
+}
+
+function naturalizeAiComicPayoff(raw: string): string {
+  const text = raw.trim().replace(/[。！？!?]+$/, '');
+  const thread = text.match(/(?:打开线索|回收.+?线|开启线索)[:：](.+)$/);
+  if (thread?.[1]) return naturalizeAiComicPayoff(thread[1]);
+  if (/知识依据|可视化线索|剧情推进|后续承接|长期线索|主线/.test(text)) {
+    return '旧录、封泥和被遮住姓名的案号';
+  }
+  if (/阶段|phase/i.test(text)) return '下一份必须复核的文书';
+  return text || '旧录、封泥和被遮住姓名的案号';
 }
 
 function inferAiComicEpisodeLocations(plan: AiComicSeriesPlan, episode: AiComicEpisodePlan): {
@@ -14804,7 +15013,7 @@ function buildEpisodes(params: {
             `延续第${episodeNo - 1}集后的状态：${previous?.continuity_state_after[0] ?? '人物关系继续变化'}`,
           ],
       new_information: [
-        focus ? `新增知识焦点：${focus}` : `新增剧情信息：${summarizeText(params.outline, 16)}`,
+        buildEpisodeNewInformation(episodeNo, focus, params.coreTheme, params.outline),
         threadSetups.length > 0 ? `开启线索：${threadSetups.map(thread => thread.title).join('、')}` : `推进${phase.phase_id}的阶段目标`,
       ],
       foreshadowing: buildForeshadowing(episodeNo, params.episodeCount, params.plotThreads, focus),
@@ -14874,6 +15083,20 @@ function buildConflict(episodeNo: number, episodeCount: number, coreTheme: strin
     : `新的阻力让主角对“${coreTheme}”产生更具体的判断。`;
 }
 
+function buildEpisodeNewInformation(
+  episodeNo: number,
+  focus: string,
+  coreTheme: string,
+  outline: string,
+): string {
+  if (focus) {
+    if (episodeNo === 1) return `${focus}相关的第一条可见线索进入案卷。`;
+    return `${focus}相关的新证词让主角重新判断“${coreTheme}”。`;
+  }
+  if (episodeNo === 1) return `第一条可见线索进入案卷：${summarizeText(outline, 14)}。`;
+  return `新的证词让主角重新判断“${coreTheme}”。`;
+}
+
 function buildOpeningHook(
   episodeNo: number,
   previous: AiComicEpisodePlan | undefined,
@@ -14933,12 +15156,26 @@ function buildEndingHook(
     return focus ? `${focus}出现反常细节，下一集必须解释。` : '关键细节突然改变，下一集必须解释。';
   }
   if (pacingProfile === 'fast_hook') {
-    return '主角刚做出选择，立刻迎来更高代价。';
+    const focusLabel = naturalizeAiComicHookSubject(focus);
+    const hooks = [
+      `刚暂缓一纸死刑文书，${focusLabel}又牵出另一份被封存的案卷。`,
+      `${focusLabel}改变了他的判断，却把下一道传唤推到门前。`,
+      '主角守住这一笔，门外却传来下一卷案号被连夜送到。',
+      '证物暂时保住一条命，但真正施压的人第一次露出名字。',
+    ];
+    return hooks[(episodeNo - 1) % hooks.length] ?? hooks[0];
   }
   if (pacingProfile === 'slow_burn') {
     return '一个细小变化被保留下来，下一集继续发酵。';
   }
   return '主角得到新信息，也失去一种原本确定的判断。';
+}
+
+function naturalizeAiComicHookSubject(focus: string): string {
+  const text = focus.trim();
+  if (!text) return '关键线索';
+  if (/线索|证物|证词|案卷|封泥/.test(text)) return text;
+  return `${text}相关线索`;
 }
 
 function inferEndingHookTypeFromPlan(

@@ -7,7 +7,7 @@
       </div>
       <div class="projects-page__header-actions">
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建系列漫剧</RouterLink>
-        <RouterLink class="projects-page__cta" to="/story/new">新建创作项目</RouterLink>
+        <RouterLink class="projects-page__cta" to="/story/new">新建单片项目</RouterLink>
       </div>
     </header>
 

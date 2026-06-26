@@ -1904,8 +1904,8 @@ const QUALITY_REPAIR_FIELD_LABELS: Record<string, string> = {
 }
 
 const CREATION_USE_CASE_LABELS: Record<CreationUseCase, string> = {
-  original_ai_comic: '原创 AI 漫剧',
-  adapted_ai_comic: '原作/资料改编',
+  original_ai_comic: '单片原创 AI 漫剧',
+  adapted_ai_comic: '单片资料改编',
   institutional_promo: '机构宣传片',
   documentary_short: '纪录短片',
   brand_commercial: '品牌商业片',

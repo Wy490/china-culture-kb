@@ -2,7 +2,7 @@
   "name": "china-culture-kb-web",
   "version": "0.1.0",
   "private": true,
-  "description": "中国传统文化知识库 Web 版 — Express REST API + Vue3 前端",
+  "description": "AI影视工作台 Web 版 — Express REST API + Vue3 前端",
   "workspaces": [
     "server",
     "client"

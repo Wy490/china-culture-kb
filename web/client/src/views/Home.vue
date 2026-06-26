@@ -2,7 +2,7 @@
   <div class="home">
     <section class="home__hero">
       <div class="home__hero-copy">
-        <p class="home__hero-eyebrow">Story Studio 工作台</p>
+        <p class="home__hero-eyebrow">AI影视工作台</p>
         <h1 class="home__hero-title">AI 影视前期创作与项目素材指挥系统</h1>
         <p class="home__hero-desc">组织创作素材、生成故事与剧本、管理项目版本，并逐步进入局部重写与交付准备流程。</p>
       </div>
@@ -30,12 +30,22 @@
       </RouterLink>
 
       <RouterLink class="home__workbench-card home__workbench-card--studio" to="/story/new">
-        <span class="home__workbench-kicker">创作</span>
-        <h2>Story Studio</h2>
-        <p>从素材条目、主题或大纲出发生成故事方案、剧本结构和可编辑项目版本。</p>
+        <span class="home__workbench-kicker">单片创作</span>
+        <h2>单片创作</h2>
+        <p>从素材条目、主题或大纲出发生成单个故事、剧本结构和可编辑项目版本。</p>
         <div class="home__workbench-meta">
           <span>支持多成片类型</span>
           <span>输出分镜与资产说明</span>
+        </div>
+      </RouterLink>
+
+      <RouterLink class="home__workbench-card home__workbench-card--series" to="/ai-comic-series/new">
+        <span class="home__workbench-kicker">系列漫剧</span>
+        <h2>系列漫剧</h2>
+        <p>先规划多集主线，再逐集生成分镜、连续性账本和 Seedance/GEARS 生产包。</p>
+        <div class="home__workbench-meta">
+          <span>多集连续性</span>
+          <span>逐集生产指挥</span>
         </div>
       </RouterLink>
     </section>
@@ -225,7 +235,7 @@ onMounted(async () => {
 
 .home__workbench {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 24px;
 }
@@ -281,6 +291,11 @@ onMounted(async () => {
 .home__workbench-card--studio .home__workbench-kicker {
   background: #edf5ef;
   color: #2f7a4a;
+}
+
+.home__workbench-card--series .home__workbench-kicker {
+  background: #f0eef9;
+  color: #5944a8;
 }
 
 .home__workbench-meta {
