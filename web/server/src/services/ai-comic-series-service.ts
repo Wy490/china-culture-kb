@@ -7167,7 +7167,8 @@ export async function getAiComicSeriesProductionReadiness(
   const issues: ProductionReadinessIssue[] = [];
   const nextActions: ProductionReadinessNextAction[] = [];
   const generatedEpisodeCount = Object.keys(detail.generated_episode_story_ids ?? {}).length;
-  const episodesNeedRegeneration = aiComicEpisodesNeedingRegeneration(detail);
+  const generatedEpisodeContentIssues = await buildAiComicGeneratedEpisodeContentIssueMap(detail);
+  const episodesNeedRegeneration = aiComicEpisodesNeedingRegeneration(detail, generatedEpisodeContentIssues);
 
   const addIssue = (issue: ProductionReadinessIssue) => issues.push(issue);
   const addAction = (action: ProductionReadinessNextAction) => {
@@ -7196,12 +7197,13 @@ export async function getAiComicSeriesProductionReadiness(
 
   if (episodesNeedRegeneration.length > 0) {
     const first = episodesNeedRegeneration[0]!;
+    const firstContentIssues = generatedEpisodeContentIssues.get(first.episode_no) ?? [];
     addIssue({
       issue_id: 'episodes-need-regeneration',
       severity: 'warning',
       lane_key: 'episode_generation',
       label: `${episodesNeedRegeneration.length} 集需要重新生成`,
-      detail: `第${first.episode_no}集「${first.title}」已有故事但质量或计划状态不可用，需要先替换后再继续生成后续集。`,
+      detail: `第${first.episode_no}集「${first.title}」已有故事但质量或计划状态不可用，需要先替换后再继续生成后续集。${firstContentIssues[0] ? `原因：${firstContentIssues[0]}` : ''}`,
       action_key: 'generate_next_episode',
       action_label: '重生成问题分集',
     });
@@ -7439,7 +7441,8 @@ export async function getAiComicSeriesProductionReadiness(
 
   const episodes = dashboard.episodes.map((episode) => {
     const qualityReport = audit?.episode_reports.find(report => report.episode_no === episode.episode_no);
-    const qualityNeedsAttention = qualityReport ? qualityReport.status !== 'passed' : false;
+    const contentIssues = generatedEpisodeContentIssues.get(episode.episode_no) ?? [];
+    const qualityNeedsAttention = qualityReport ? qualityReport.status !== 'passed' || contentIssues.length > 0 : contentIssues.length > 0;
     const blockerCount = episode.blocker_count + (qualityNeedsAttention ? 1 : 0);
     const status: ProductionReadinessStatus = blockerCount > 0 || episode.failed_shot_count > 0
       ? 'blocked'
@@ -7452,7 +7455,7 @@ export async function getAiComicSeriesProductionReadiness(
       story_id: episode.story_id,
       status,
       quality_score: qualityReport?.score,
-      issue_count: qualityReport?.issues.length,
+      issue_count: (qualityReport?.issues.length ?? 0) + contentIssues.length,
       total_shot_count: episode.total_shot_count,
       ready_shot_count: episode.ready_shot_count,
       failed_shot_count: episode.failed_shot_count,
@@ -7695,8 +7698,9 @@ async function executeAiComicSeriesReadinessAutomationStep(
   if (actionKey === 'generate_next_episode') {
     const detail = await readSeriesProject(seriesProjectId);
     if (!detail) return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
-    const nextEpisode = aiComicEpisodesNeedingRegeneration(detail)[0]
-      ?? detail.plan.episodes.find(episode =>
+    const generatedEpisodeContentIssues = await buildAiComicGeneratedEpisodeContentIssueMap(detail);
+    const nextEpisode = aiComicEpisodesNeedingRegeneration(detail, generatedEpisodeContentIssues)[0]
+      ?? getPlanEpisodes(detail.plan).find(episode =>
         !detail.generated_episode_story_ids[episode.episode_no]
       );
     if (!nextEpisode) return fail(ErrorCodes.VALIDATION_ERROR, 'All episodes have already been generated and no generated episode needs regeneration');
@@ -8375,26 +8379,103 @@ function buildAiComicSeriesQualityAudit(params: {
 
 function aiComicSeriesEpisodeReportNeedsRegeneration(report: AiComicSeriesQualityEpisodeReport): boolean {
   return Boolean(report.story_id)
-    && (
-      report.needs_episode_regeneration === true
-      || report.status === 'needs_attention'
-      || report.status === 'unknown'
-    );
+    && report.needs_episode_regeneration === true;
 }
 
 function aiComicEpisodesNeedingRegeneration(
   detail: Pick<AiComicSeriesProjectDetail, 'plan' | 'series_quality_audit'>,
+  generatedEpisodeContentIssues: Map<number, string[]> = new Map(),
 ): AiComicEpisodePlan[] {
   const episodes = getPlanEpisodes(detail.plan);
   const reports = detail.series_quality_audit?.episode_reports ?? [];
-  const episodeNos = new Set(
-    reports
+  const episodeNos = new Set([
+    ...generatedEpisodeContentIssues.keys(),
+    ...reports
       .filter(aiComicSeriesEpisodeReportNeedsRegeneration)
       .map(report => report.episode_no),
-  );
+  ]);
   return episodes
     .filter(episode => episodeNos.has(episode.episode_no))
     .sort((a, b) => a.episode_no - b.episode_no);
+}
+
+async function buildAiComicGeneratedEpisodeContentIssueMap(
+  detail: Pick<AiComicSeriesProjectDetail, 'plan' | 'generated_episode_story_ids'>,
+): Promise<Map<number, string[]>> {
+  const issuesByEpisode = new Map<number, string[]>();
+  for (const episode of getPlanEpisodes(detail.plan)) {
+    const storyId = detail.generated_episode_story_ids[String(episode.episode_no)];
+    if (!storyId) continue;
+    const storyRes = await getStory(storyId);
+    if (!storyRes.ok || !storyRes.data) {
+      issuesByEpisode.set(episode.episode_no, ['故事文件缺失或无法读取']);
+      continue;
+    }
+    const issues = buildAiComicGeneratedStoryContentIssues(storyRes.data, episode);
+    if (issues.length > 0) {
+      issuesByEpisode.set(episode.episode_no, issues);
+    }
+  }
+  return issuesByEpisode;
+}
+
+function buildAiComicGeneratedStoryContentIssues(
+  story: StoryGenerateResult,
+  episode: AiComicEpisodePlan,
+): string[] {
+  const sceneTitles = (story.scene_breakdown ?? []).map(scene => scene.title);
+  const text = [
+    story.title,
+    story.full_text,
+    story.credibility_note,
+    JSON.stringify(story.dialogue ?? []),
+    ...(story.scene_breakdown ?? []).flatMap(scene => [
+      scene.title,
+      scene.plot,
+      scene.visual_prompt,
+      scene.dialogue_or_narration ?? '',
+      scene.key_action,
+    ]),
+    ...(story.gears_segments ?? []).map(segment => segment.script_text),
+  ].filter(Boolean).join('\n');
+  const issues: string[] = [];
+  const hasInternalTerms = /(生成优先级|核心画面是|知识库使用规则|连续性账本|叙事流派机制|目标场景功能|新增知识焦点|新增剧情信息|推进phase)/.test(text);
+  const hasOldPlaceholderTitle = /(问题出现|最终选择|拒签的新变化|主角被迫|第\d+集：第\d+集)/.test(story.title);
+  const genericSceneTitleCount = sceneTitles.filter(title =>
+    /^(雨夜第\d+集|角色入场|对白交锋|选择时刻|精神定格)$/.test(title)
+  ).length;
+  const hasGenericSceneTitles = genericSceneTitleCount >= Math.min(3, sceneTitles.length);
+  const hasTemplateText = /(周敦颐面对第\d+集|这是他人生的关键时刻|人物登场。周敦颐|冲突爆发。周敦颐|反转\/觉醒。周敦颐|高燃收束。周敦颐|\*\*少年与家庭\*\*)/.test(text);
+
+  if (
+    story.ai_comic_episode_quality?.passed === false
+    && (hasInternalTerms || hasOldPlaceholderTitle || hasGenericSceneTitles || hasTemplateText)
+  ) {
+    issues.push('分集质量报告未通过');
+  }
+  if (
+    (story.quality_report?.passed === false || (story.quality_report?.genre_score ?? 100) < 80)
+    && (hasInternalTerms || hasOldPlaceholderTitle || hasGenericSceneTitles || hasTemplateText)
+  ) {
+    issues.push('故事质量报告未通过');
+  }
+  if (hasInternalTerms) {
+    issues.push('正文或分镜仍含内部检测词');
+  }
+  if (hasOldPlaceholderTitle) {
+    issues.push('故事标题仍是旧占位标题');
+  }
+  if (hasGenericSceneTitles) {
+    issues.push('场景标题仍是模板占位');
+  }
+  if (hasTemplateText) {
+    issues.push('正文仍是素材拼贴或模板话术');
+  }
+  if (episode.title && story.title !== episode.title && /(问题出现|最终选择|新变化|主角)/.test(story.title)) {
+    issues.push('故事标题未同步当前分集计划');
+  }
+
+  return unique(issues);
 }
 
 function buildAiComicThreadClosureReport(params: {

@@ -992,7 +992,7 @@ describe('outline-service', () => {
     expect(readiness.data?.markdown).toContain('Automation Plan');
   });
 
-  it('regenerates the earliest invalid AI comic episode before continuing the series', async () => {
+  it('regenerates the earliest template-like persisted AI comic episode before continuing the series', async () => {
     const planRes = await generateAiComicSeriesPlan({
       outline: '周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
       series_title: '濂溪少年志 regen',
@@ -1014,29 +1014,58 @@ describe('outline-service', () => {
     });
     expect(episodeOne.ok).toBe(true);
     const originalEpisodeOneStoryId = episodeOne.data!.storyId;
-
-    const editedPlan = {
-      ...planRes.data!,
-      episodes: planRes.data!.episodes.map(episode =>
-        episode.episode_no === 1
-          ? { ...episode, ending_hook: `${episode.ending_hook}（新增证词必须先核）` }
-          : episode
-      ),
+    const storyPath = resolve(
+      outlineGeneratedRoot(),
+      'stories',
+      'ai_comic_drama',
+      `${originalEpisodeOneStoryId}.json`,
+    );
+    const storedStory = JSON.parse(await readFile(storyPath, 'utf-8'));
+    const templateSceneTitles = ['雨夜第1集：问题出现', '角色入场', '对白交锋', '选择时刻', '精神定格'];
+    const templateStory = {
+      ...storedStory,
+      title: '第1集：问题出现',
+      full_text: [
+        '雨夜，永州→道县（籍贯/出生地）；衡阳（少年成长地）。周敦颐**少年与家庭**：周敦颐出身道州营道（今永州道县）楼田村书香门第。',
+        '永州→道县（籍贯/出生地）；衡阳（少年成长地），人物登场。周敦颐面对第1集：问题出现的选择——这是他人生的关键时刻。',
+      ].join('\n\n'),
+      quality_report: {
+        ...(storedStory.quality_report ?? {}),
+        passed: false,
+        genre_score: 40,
+        issues: ['模板坏稿'],
+      },
+      scene_breakdown: storedStory.scene_breakdown.map((scene: any, index: number) => ({
+        ...scene,
+        title: templateSceneTitles[index] ?? scene.title,
+        plot: '永州→道县（籍贯/出生地）；衡阳（少年成长地），人物登场。周敦颐**少年与家庭**：周敦颐出身道州营道（今永州道县）楼田村书香门第。',
+        dialogue_or_narration: '周敦颐面对第1集：问题出现的选择——这是他人生的关键时刻。',
+        visual_prompt: '衡阳后来建有濂溪书院（始建于宋淳熙年间，生成优先级：剧情推进与资料完整保持均衡。',
+      })),
     };
-    const editedSaveRes = await saveAiComicSeriesProject({
-      series_project_id: seriesProjectId,
-      plan: editedPlan,
-    });
-    expect(editedSaveRes.ok).toBe(true);
-    expect(editedSaveRes.data?.series_quality_audit?.episode_reports[0]).toMatchObject({
-      episode_no: 1,
-      status: 'needs_attention',
-      needs_episode_regeneration: true,
-    });
+    await writeFile(storyPath, JSON.stringify(templateStory, null, 2), 'utf-8');
+    const versionPath = resolve(
+      outlineGeneratedRoot(),
+      'projects',
+      storedStory.project_id,
+      'versions',
+      `${storedStory.current_version_id}.json`,
+    );
+    const versionSnapshot = JSON.parse(await readFile(versionPath, 'utf-8'));
+    await writeFile(versionPath, JSON.stringify({
+      ...versionSnapshot,
+      quality_report: templateStory.quality_report,
+      story: {
+        ...(versionSnapshot.story ?? {}),
+        ...templateStory,
+      },
+    }, null, 2), 'utf-8');
 
     const readiness = await getAiComicSeriesProductionReadiness(seriesProjectId);
     expect(readiness.ok).toBe(true);
     expect(readiness.data?.issues.map(issue => issue.issue_id)).toContain('episodes-need-regeneration');
+    expect(readiness.data?.issues.find(issue => issue.issue_id === 'episodes-need-regeneration')?.detail)
+      .toContain('故事质量报告未通过');
     const generateStep = readiness.data?.automation_plan.steps.find(step => step.action_key === 'generate_next_episode');
     expect(generateStep?.label).toBe('重生成最早问题分集');
 
