@@ -32,20 +32,20 @@
       <RouterLink class="home__workbench-card home__workbench-card--studio" to="/story/new">
         <span class="home__workbench-kicker">单片创作</span>
         <h2>单片创作</h2>
-        <p>从素材条目、主题或大纲出发生成单个故事、剧本结构和可编辑项目版本。</p>
+        <p>生成一个独立短片项目：故事正文、场景拆分、分镜提示和可编辑版本一次成稿。</p>
         <div class="home__workbench-meta">
-          <span>支持多成片类型</span>
-          <span>输出分镜与资产说明</span>
+          <span>单条短片</span>
+          <span>单次交付包</span>
         </div>
       </RouterLink>
 
       <RouterLink class="home__workbench-card home__workbench-card--series" to="/ai-comic-series/new">
         <span class="home__workbench-kicker">系列漫剧</span>
         <h2>系列漫剧</h2>
-        <p>先规划多集主线，再逐集生成分镜、连续性账本和 Seedance/GEARS 生产包。</p>
+        <p>先建立多集主线和连续性账本，再按集生成分镜、Seedance/GEARS 生产包。</p>
         <div class="home__workbench-meta">
-          <span>多集连续性</span>
-          <span>逐集生产指挥</span>
+          <span>多集连载</span>
+          <span>跨集记忆</span>
         </div>
       </RouterLink>
     </section>

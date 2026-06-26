@@ -1,7 +1,7 @@
 <template>
   <div class="series-studio">
     <aside class="series-studio__panel">
-      <h2 class="series-studio__title">系列漫剧规划</h2>
+      <h2 class="series-studio__title">多集系列漫剧规划</h2>
 
       <section class="series-studio__field">
         <label class="series-studio__label" for="series-title">系列名</label>
@@ -20,7 +20,7 @@
           v-model="outline"
           class="series-studio__textarea"
           rows="9"
-          placeholder="输入漫剧的总故事方向、主角、关键关系、文化主题、主要矛盾。"
+          placeholder="输入多集漫剧的总故事方向、主角、关键关系、文化主题、主要矛盾。"
         />
       </section>
 

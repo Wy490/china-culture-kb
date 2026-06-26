@@ -3,7 +3,7 @@
     <header class="projects-page__header">
       <div>
         <h1 class="projects-page__title">项目工作台</h1>
-        <p class="projects-page__desc">管理影视前期项目、系列漫剧、素材 gate 和最近更新时间。</p>
+        <p class="projects-page__desc">管理单片项目、系列漫剧、素材 gate 和最近更新时间。</p>
       </div>
       <div class="projects-page__header-actions">
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建系列漫剧</RouterLink>
@@ -573,7 +573,7 @@
         <div class="projects-page__section-head">
           <div>
             <h2>创作项目</h2>
-            <p>{{ filteredProjects.length }} 个故事/剧本草稿</p>
+            <p>{{ filteredProjects.length }} 个单片故事/剧本草稿</p>
           </div>
           <RouterLink class="projects-page__text-link" to="/story/new">打开单片创作</RouterLink>
         </div>

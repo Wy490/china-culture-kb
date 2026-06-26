@@ -2,7 +2,7 @@
   <div class="story-studio">
     <!-- Left panel: controls -->
     <aside class="story-studio__left">
-      <h2 class="story-studio__page-title">影视创作工坊</h2>
+      <h2 class="story-studio__page-title">单片创作工坊</h2>
 
       <section class="story-studio__creation-paths" aria-label="创作路径">
         <button
@@ -736,8 +736,8 @@ function characterKindLabel(kind: StoryDetectedCharacterKind) {
 const CREATION_PATH_OPTIONS: CreationPathOption[] = [
   {
     id: 'original',
-    label: '原创开发',
-    summary: '角色、世界观、短剧冲突',
+    label: '原创单片',
+    summary: '一条短片的角色、冲突和分镜',
     inputMode: 'theme',
     creationUseCase: 'original_ai_comic',
     truthMode: 'fictional_original',
@@ -746,8 +746,8 @@ const CREATION_PATH_OPTIONS: CreationPathOption[] = [
   },
   {
     id: 'adaptation',
-    label: '资料改编',
-    summary: '小说、章节、口述素材',
+    label: '改编单片',
+    summary: '把资料或章节压缩成一条短片',
     inputMode: 'novel',
     creationUseCase: 'adapted_ai_comic',
     truthMode: 'source_adaptation',
@@ -756,8 +756,8 @@ const CREATION_PATH_OPTIONS: CreationPathOption[] = [
   },
   {
     id: 'institutional',
-    label: '机构影像',
-    summary: '文旅、公益、教育表达',
+    label: '机构单片',
+    summary: '文旅、公益、教育类单片',
     inputMode: 'entry',
     creationUseCase: 'institutional_promo',
     truthMode: 'institutional_verified',
