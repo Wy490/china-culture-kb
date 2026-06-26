@@ -4,6 +4,7 @@
 
 import { resolve } from 'node:path';
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { mcpGetFullEntryDetail, convertFullEntryDetail } from './mcp-proxy.js';
 import { success, fail, ErrorCodes } from '@shared/types.js';
 import type {
@@ -294,10 +295,11 @@ function slugify(text: string): string {
 function generateStoryId(entryName: string): string {
   const now = new Date();
   const datePart = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('');
-  const hashInput = entryName + String(Date.now());
+  const hashInput = `${entryName}-${Date.now()}-${randomUUID()}`;
   let sum = 0;
   for (const ch of hashInput) sum += ch.charCodeAt(0);
-  const hash36 = (sum + Math.floor(Math.random() * 100)).toString(36);
+  const uuidSuffix = randomUUID().replace(/-/g, '').slice(0, 8);
+  const hash36 = `${(sum + Math.floor(Math.random() * 100)).toString(36)}${uuidSuffix}`;
   return `${datePart}-story-${hash36}`;
 }
 

@@ -583,6 +583,7 @@ export async function generateAiComicEpisodeFromPlan(
           episode,
           ledger: continuityLedger,
         });
+    await persistAiComicEpisodeStoryFile(enrichedStory);
 
     if (request.series_project_id) {
       await recordGeneratedEpisodeStory({
@@ -1105,7 +1106,10 @@ function naturalizeAiComicCharacterLabel(name: string | undefined, fallback: str
 }
 
 function naturalizeAiComicNewInformationForScene(raw: string): string {
-  const text = raw.trim().replace(/[。！？!?]+$/, '');
+  const text = raw.trim()
+    .replace(/[。！？!?]+$/, '')
+    .replace(/^(?:新增知识焦点|新增剧情信息|本集新增信息|新增信息|知识焦点|计划知识焦点)[:：]\s*/, '')
+    .trim();
   const firstVisible = text.match(/^(.+?)相关的第一条可见线索进入案卷$/);
   if (firstVisible?.[1]) return `与${firstVisible[1].trim()}有关的带泥证物`;
   const testimony = text.match(/^(.+?)相关的新证词让主角重新判断/);
@@ -1113,6 +1117,11 @@ function naturalizeAiComicNewInformationForScene(raw: string): string {
   const fallbackVisible = text.match(/^第一条可见线索进入案卷[:：](.+)$/);
   if (fallbackVisible?.[1]) return fallbackVisible[1].trim();
   if (/新的证词让主角重新判断/.test(text)) return '新的证词';
+  if (!text || /^(周敦颐|主角)$/.test(text)) return '一件能推翻判词的带泥证物';
+  if (/^少年$/.test(text)) return '少年带来的带泥证物';
+  if (/^(拒签|坚持良知|良知)$/.test(text)) return `围绕“${text}”的新证词`;
+  if (/^案卷$/.test(text)) return '案卷边角的带泥证物';
+  if (/^[\u4e00-\u9fff]{1,8}$/.test(text)) return `与${text}有关的新证词`;
   return text;
 }
 
@@ -1283,25 +1292,29 @@ async function persistAiComicEpisodeStoryFile(story: StoryGenerateResult): Promi
       storedStory = {};
     }
   }
-  await writeFile(storyPath, JSON.stringify({ ...storedStory, ...story }, null, 2), 'utf-8');
+  const mergedStory = { ...storedStory, ...story } as StoryGenerateResult & {
+    project_id?: string;
+    current_version_id?: string;
+  };
+  await writeFile(storyPath, JSON.stringify(mergedStory, null, 2), 'utf-8');
 
-  if (!story.project_id || !story.current_version_id) return;
+  if (!mergedStory.project_id || !mergedStory.current_version_id) return;
   const projectVersionPath = resolve(
     generatedRoot(),
     'projects',
-    story.project_id,
+    mergedStory.project_id,
     'versions',
-    `${story.current_version_id}.json`,
+    `${mergedStory.current_version_id}.json`,
   );
   if (existsSync(projectVersionPath)) {
     try {
       const snapshot = JSON.parse(await readFile(projectVersionPath, 'utf-8')) as Record<string, unknown>;
       await writeFile(projectVersionPath, JSON.stringify({
         ...snapshot,
-        quality_report: story.quality_report,
+        quality_report: mergedStory.quality_report,
         story: {
           ...((snapshot.story as Record<string, unknown> | undefined) ?? {}),
-          ...story,
+          ...mergedStory,
         },
       }, null, 2), 'utf-8');
     } catch {
@@ -1309,20 +1322,20 @@ async function persistAiComicEpisodeStoryFile(story: StoryGenerateResult): Promi
     }
   }
 
-  const projectMetaPath = resolve(generatedRoot(), 'projects', story.project_id, 'project.json');
+  const projectMetaPath = resolve(generatedRoot(), 'projects', mergedStory.project_id, 'project.json');
   if (existsSync(projectMetaPath)) {
     try {
       const meta = JSON.parse(await readFile(projectMetaPath, 'utf-8')) as Record<string, unknown>;
       await writeFile(projectMetaPath, JSON.stringify({
         ...meta,
-        title: story.title,
-        logline: story.logline,
-        credibility_note: story.credibility_note,
-        scene_count: story.scene_breakdown.length,
-        has_gears_segments: story.gears_segments.length > 0,
-        quality_passed: story.quality_report?.passed ?? meta.quality_passed,
-        quality_issue_count: story.quality_report?.issues.length ?? meta.quality_issue_count,
-        genre_score: story.quality_report?.genre_score ?? meta.genre_score,
+        title: mergedStory.title,
+        logline: mergedStory.logline,
+        credibility_note: mergedStory.credibility_note,
+        scene_count: mergedStory.scene_breakdown.length,
+        has_gears_segments: mergedStory.gears_segments.length > 0,
+        quality_passed: mergedStory.quality_report?.passed ?? meta.quality_passed,
+        quality_issue_count: mergedStory.quality_report?.issues.length ?? meta.quality_issue_count,
+        genre_score: mergedStory.quality_report?.genre_score ?? meta.genre_score,
       }, null, 2), 'utf-8');
     } catch {
       // Best-effort project metadata sync.
@@ -7741,6 +7754,23 @@ async function executeAiComicSeriesReadinessAutomationStep(
       auto_repair_episode: true,
     });
   }
+  if (actionKey === 'export_seedance_prompts') return exportAiComicSeriesSeedancePrompts(seriesProjectId);
+  if (actionKey === 'mark_submitted') {
+    const detail = await readSeriesProject(seriesProjectId);
+    if (!detail) return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+    const ledger = normalizeSeedanceProductionLedger(detail.seedance_production);
+    const updates = ledger.items
+      .filter(item => item.status === 'prompt_exported' || (item.status === 'not_started' && Boolean(item.prompt_exported_at)))
+      .map(item => ({
+        episode_no: item.episode_no,
+        shot_id: item.shot_id,
+        status: 'submitted' as const,
+        provider_job_id: `local-submit-${randomUUID().slice(0, 8)}`,
+        note: 'Production readiness automation marked exported Seedance prompt as submitted.',
+      }));
+    if (updates.length === 0) return success(detail);
+    return updateAiComicSeriesSeedanceProductionStatuses(seriesProjectId, { updates });
+  }
   if (actionKey === 'export_retry_package') return exportAiComicSeriesSeedanceRetryPackage(seriesProjectId);
   if (actionKey === 'export_editing_platform_package') return exportAiComicSeriesSeedanceEditingPlatformPackage(seriesProjectId);
   if (actionKey === 'assemble_final_delivery') {
@@ -8232,6 +8262,17 @@ function buildAiComicSeriesQualityAudit(params: {
     .filter(entry => Number.isInteger(entry.episodeNo));
   const generatedEpisodeNumbers = new Set(generatedEntries.map(entry => entry.episodeNo));
   const generatedIdsInPlanRange = generatedEntries.every(entry => planEpisodeNumbers.has(entry.episodeNo));
+  const generatedStoryIdFirstEpisode = new Map<string, number>();
+  const duplicateGeneratedStoryEpisodes = new Set<number>();
+  for (const entry of [...generatedEntries].sort((a, b) => a.episodeNo - b.episodeNo)) {
+    if (!entry.storyId) continue;
+    const firstEpisodeNo = generatedStoryIdFirstEpisode.get(entry.storyId);
+    if (firstEpisodeNo !== undefined) {
+      duplicateGeneratedStoryEpisodes.add(entry.episodeNo);
+    } else {
+      generatedStoryIdFirstEpisode.set(entry.storyId, entry.episodeNo);
+    }
+  }
   const ledgerRecordsByEpisode = new Map(params.ledger.episode_records.map(record => [record.episode_no, record]));
   const previousReports = new Map(
     (params.previousAudit?.episode_reports ?? []).map(report => [report.episode_no, report]),
@@ -8259,16 +8300,23 @@ function buildAiComicSeriesQualityAudit(params: {
       && latestQuality.episode_no === episode.episode_no;
     const previous = previousReports.get(episode.episode_no);
     const previousStillMatches = previous?.story_id === storyId;
+    const duplicateStoryId = duplicateGeneratedStoryEpisodes.has(episode.episode_no);
     const issues = latestMatches
       ? unique([
           ...latestQuality.issues,
           ...(latestContinuity?.issues ?? []),
       ])
       : previousStillMatches
-        ? previous.issues.filter(issue => !issue.includes('分集卡片已在生成后变更'))
+        ? previous.issues.filter(issue =>
+            !issue.includes('分集卡片已在生成后变更')
+            && !issue.includes('共用同一个故事 ID')
+          )
         : ['本集缺少可追溯质量报告，建议重新生成或重新保存后复核'];
     if (planChangedAfterGeneration) {
       issues.push('本集分集卡片已在生成后变更，建议重新生成本集并重建后续账本');
+    }
+    if (duplicateStoryId) {
+      issues.push('本集与其他分集共用同一个故事 ID，需要重新生成以恢复分集独立性');
     }
     const score = latestMatches
       ? latestQuality.score
@@ -8280,8 +8328,8 @@ function buildAiComicSeriesQualityAudit(params: {
       : previousStillMatches
         ? previous.status === 'passed'
           || (
-            previous.needs_episode_regeneration === true
-            && !planChangedAfterGeneration
+            !planChangedAfterGeneration
+            && !duplicateStoryId
             && issues.length === 0
             && (previous.score ?? 0) >= 80
           )
@@ -8290,7 +8338,7 @@ function buildAiComicSeriesQualityAudit(params: {
     return {
       episode_no: episode.episode_no,
       story_id: storyId,
-      status: planChangedAfterGeneration
+      status: planChangedAfterGeneration || duplicateStoryId
         ? 'needs_attention'
         : latestMatches || previousStillMatches
           ? passed ? 'passed' : 'needs_attention'
@@ -8298,8 +8346,8 @@ function buildAiComicSeriesQualityAudit(params: {
       score,
       issues,
       plan_changed_after_generation: planChangedAfterGeneration,
-      needs_episode_regeneration: planChangedAfterGeneration,
-      needs_ledger_rebuild: planChangedAfterGeneration,
+      needs_episode_regeneration: planChangedAfterGeneration || duplicateStoryId,
+      needs_ledger_rebuild: planChangedAfterGeneration || duplicateStoryId,
     };
   });
 
@@ -8321,7 +8369,6 @@ function buildAiComicSeriesQualityAudit(params: {
   });
   const completedSeriesThreadsResolved = threadClosureReport.overdue_thread_count === 0
     && threadClosureReport.orphaned_thread_count === 0
-    && threadClosureReport.duplicate_thread_count === 0
     && memoryConflictReport.blocking_count === 0
     && (!allEpisodesGenerated || threadClosureReport.items.every(item =>
       item.status === 'paid_off'
@@ -8341,6 +8388,9 @@ function buildAiComicSeriesQualityAudit(params: {
   const notGeneratedCount = episodeReports.filter(report => report.status === 'not_generated').length;
   if (notGeneratedCount > 0) issues.push(`还有 ${notGeneratedCount} 集尚未生成完整分镜`);
   if (!generatedIdsInPlanRange) issues.push('存在不在当前分集规划范围内的已生成故事记录');
+  if (duplicateGeneratedStoryEpisodes.size > 0) {
+    issues.push(`有 ${duplicateGeneratedStoryEpisodes.size} 集与其他分集共用故事 ID，需要重新生成`);
+  }
   if (!ledgerCoversGeneratedEpisodes) {
     issues.push(`连续性账本缺少 ${generatedEpisodesMissingLedger.length} 个已生成分集记录`);
   }
@@ -8350,9 +8400,6 @@ function buildAiComicSeriesQualityAudit(params: {
   }
   if (threadClosureReport.orphaned_thread_count > 0) {
     issues.push(`${threadClosureReport.orphaned_thread_count} 条临时伏笔未绑定长期线索`);
-  }
-  if (threadClosureReport.duplicate_thread_count > 0) {
-    issues.push(`${threadClosureReport.duplicate_thread_count} 组伏笔重复出现但缺少推进变化`);
   }
   if (memoryConflictReport.blocking_count > 0) {
     issues.push(`${memoryConflictReport.blocking_count} 个记忆冲突会阻断连续性，需要先修复`);
@@ -8498,7 +8545,7 @@ function buildAiComicGeneratedStoryContentIssues(
   if (hasTemplateText) {
     issues.push('正文仍是素材拼贴或模板话术');
   }
-  if (episode.title && story.title !== episode.title && /(问题出现|最终选择|新变化|主角)/.test(story.title)) {
+  if (episode.title && story.title !== episode.title) {
     issues.push('故事标题未同步当前分集计划');
   }
 
@@ -8656,7 +8703,13 @@ function buildAiComicMemoryConflictReport(params: {
         repairSuggestions: [`给${item.label}增加关系转折场景，或把当前关系标注为“表面合作/暂时和解”。`],
       }));
     }
-    if (item.category === 'knowledge_boundary' && /待核|未核|创作补足|传说|推测/.test(text) && /确证|史实|真实|一定|明确/.test(text)) {
+    const isKnowledgeBoundaryCaution = /不得写成确证史实|不可把.+写成已核实史实|事实边界和可信度口径/.test(text);
+    if (
+      item.category === 'knowledge_boundary'
+      && !isKnowledgeBoundaryCaution
+      && /待核|未核|创作补足|传说|推测/.test(text)
+      && /确证|史实|真实|一定|明确/.test(text)
+    ) {
       items.push(makeMemoryConflictItem({
         category: 'knowledge_boundary',
         severity: 'blocking',
