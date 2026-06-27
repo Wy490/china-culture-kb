@@ -172,6 +172,32 @@ P0 调整：
 2. 若要治理历史 generated 库存，先新增 dry-run/受控治理入口，再决定归档、删除或重跑旧失败样本；不要直接改写用户历史生成物。
 3. 若要推进 GEARS 95% 后的外部验收，应等待真实 `GEARS_API_BASE_URL`、callback base 和 secret 配置后，再跑 live endpoint acceptance；本仓库仍只做内容与生产指挥层。
 
+## 0.6 2026-06-27 后端/MCP 对外命名审计收口
+
+本轮承接 `0.5` 的下一优先级，只处理后端/MCP 对外可见文案中的旧 `知识库` 心智，不改 `kb_*` 工具名、兼容字段、历史 generated 文件和测试夹具。
+
+已完成修复：
+
+- MCP tool 描述从 `知识库条目/知识库` 收敛为 `素材库 / 素材条目`：覆盖 `kb_search`、`kb_match`、`kb_generate_script`、`kb_ingest_video`、`kb_collect`、`kb_get_entry_detail`、`kb_generate_story_blueprint` 和 `kb_update_project_version` 的中文描述。
+- MCP `verifySource()`、`generateStoryBlueprint()` 和 `story-creation-contract` 中的对外结果文案改为 `素材库 / 素材条目 / 已验证事实`，保留工具名与字段名兼容。
+- Web 生成链路中的质量/边界文案改为 `项目素材 / 素材条目`：覆盖 `genre-quality-service`、`memory-mosaic-service`、`outline-service`、`dramatic-story`、`creation-contract-service` 和 `story-service`。
+- AI 漫剧系列的内部提示标签从 `知识库使用规则 / 知识焦点` 改为 `素材使用规则 / 素材焦点`；同时把新旧标签都加入观众稿泄漏检测，避免换词后测试变钝。
+- 保留 `project-service`、`production-board-service`、`seedance-prompt-service` 等清洗器中的旧词正则，用于拦截历史污染；测试夹具里的旧词也保留为回归输入，不作为产品外显文案。
+
+本轮验证：
+
+- `cd mcp-server && npm test` 通过：28 个测试文件、138 个用例。
+- `cd web/server && npm test` 通过：26 个测试文件、393 个用例。
+- `cd mcp-server && npm run build` 通过。
+- `cd web/server && npm run lint` 通过。
+- `git diff --check` 通过。
+
+下一轮优先级更新：
+
+1. 若继续产品化，优先处理历史 generated 库存治理：新增 dry-run/受控治理入口，再决定归档、删除或重跑旧失败样本；不要直接改写用户历史生成物。
+2. 若要推进 GEARS 95% 后的外部验收，等待真实 `GEARS_API_BASE_URL`、callback base 和 secret 配齐后，再跑 live endpoint acceptance。
+3. 可再做一次用户路径级 smoke，重点覆盖素材补充任务、项目详情创作合同展示和旧项目版本读取。
+
 2026-06-23 Phase 1 首轮已推进：
 
 - Web 共享类型/schema 已新增 `CreationUseCase`、`TruthMode`、`CreationContract`、`MaterialPack`、`MaterialSufficiencyReport`。

@@ -28,6 +28,12 @@ function stableId(prefix: string, value: string, index: number): string {
   return `${prefix}-${slug || index + 1}`;
 }
 
+function normalizeMaterialMessage(message: string): string {
+  return message
+    .replace(/知识库/g, '项目素材')
+    .replace(/知识包/g, '素材包');
+}
+
 function materialPurposesFromKnowledgeEntry(entry: KnowledgePackEntry, primary: boolean): MaterialPurpose[] {
   const purposes = new Set<MaterialPurpose>();
   if (primary) {
@@ -136,7 +142,7 @@ export function materialPackFromKnowledgePack(
       : undefined,
     visual_assets: [],
     verified_facts: primaryMaterials.map(item => `${item.title}：${item.summary}`),
-    uncertain_claims: knowledgePack.missing_needs.map(item => `${item.label}：${item.message}`),
+    uncertain_claims: knowledgePack.missing_needs.map(item => `${item.label}：${normalizeMaterialMessage(item.message)}`),
     creative_space: ['允许把材料转化为场景调度、镜头动作、对白节奏和视觉表达，但不得把创作补足写成已验证事实。'],
     missing_needs: knowledgePack.missing_needs,
     overall_confidence: knowledgePack.overall_confidence,
@@ -402,10 +408,10 @@ export function buildMaterialSufficiencyReport(input: {
     scriptMissing.push(...materialPack.missing_needs.slice(0, 5).map((need, index) => missingItem(
       stableId('material-need', need.need_id || need.label, index),
       need.label,
-      need.message,
+      normalizeMaterialMessage(need.message),
       ['institutional_verified', 'factual_reconstruction'].includes(truthMode) ? 'risk' : 'optional',
       ['script_ready', 'quality_report'],
-      `请补充「${need.label}」：${need.message}`,
+      `请补充「${need.label}」：${normalizeMaterialMessage(need.message)}`,
     )));
   }
   if (truthMode === 'fictional_original' && materialPack.primary_materials.length === 0) {

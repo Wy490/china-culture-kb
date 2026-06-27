@@ -587,7 +587,7 @@ export function generateDramaticContent(input: DramaticContentInput): {
   // Add source_entries to scenes and gears segments
   for (const scene of scenes) {
     scene.source_entries = [entry.name];
-    if (scene.plot.includes(centralEvent)) scene.factual_basis = `基于${entry.name}知识库条目中"${centralEvent}"相关内容`;
+    if (scene.plot.includes(centralEvent)) scene.factual_basis = `基于${entry.name}素材条目中"${centralEvent}"相关内容`;
   }
   for (const seg of gearsSegments) {
     seg.source_entries = sourceEntryNames;
@@ -1957,7 +1957,10 @@ function buildCulturalConstraints(entry: EntryDetail, knowledgePack?: KnowledgeP
   // Missing needs from knowledge_pack
   if (knowledgePack?.missing_needs) {
     for (const missing of knowledgePack.missing_needs) {
-      constraints.push(`知识库缺失：${missing.label}——${missing.message}`);
+      const message = missing.message
+        .replace(/知识库/g, '项目素材')
+        .replace(/知识包/g, '素材包');
+      constraints.push(`项目素材缺失：${missing.label}——${message}`);
     }
   }
 
@@ -1967,15 +1970,15 @@ function buildCulturalConstraints(entry: EntryDetail, knowledgePack?: KnowledgeP
 function buildCredibilityNote(entry: EntryDetail, knowledgePack?: KnowledgePack, originalUserQuery?: string, centralEvent?: string): string {
   let note = entry.credibility;
 
-  // Add what comes from knowledge base vs what is creative treatment
-  note += `；核心事件"${centralEvent}"来自知识库条目"${entry.name}"`;
+  // Add what comes from project material vs what is creative treatment
+  note += `；核心事件"${centralEvent}"来自素材条目"${entry.name}"`;
 
   // Note creative elements
   note += '；场景调度、对白节奏、画面设计为影视化创作处理';
 
   // Note user query if present
   if (originalUserQuery) {
-    note += `；用户创作主题"${originalUserQuery}"中的部分表达未在知识库中验证，已按创作方向处理`;
+    note += `；用户创作主题"${originalUserQuery}"中的部分表达未在项目素材中验证，已按创作方向处理`;
   }
 
   // Note knowledge_pack sourcing

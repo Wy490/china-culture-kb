@@ -374,7 +374,7 @@ describe('outline-service', () => {
       res.data?.dialogue,
       res.data?.gears_segments,
     ])).not.toMatch(
-      /生成优先级|核心画面是|知识库使用规则|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集|对照角色|关键见证者|主角/,
+      /生成优先级|核心画面是|知识库使用规则|素材使用规则|新增知识焦点|新增素材焦点|素材焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|素材线|推进phase|指向第\d+集|对照角色|关键见证者|主角/,
     );
     expect(res.data?.dialogue?.length).toBeGreaterThan(0);
     expect(res.data?.ai_comic_episode_blueprint?.schema_version).toBe('ai-comic-episode-blueprint/v1');
@@ -451,7 +451,7 @@ describe('outline-service', () => {
       episodeTwo.data?.gears_segments,
     ]);
     expect(audienceText).not.toMatch(
-      /生成优先级|核心画面是|知识库使用规则|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集|对照角色|关键见证者|主角/,
+      /生成优先级|核心画面是|知识库使用规则|素材使用规则|新增知识焦点|新增素材焦点|素材焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|素材线|推进phase|指向第\d+集|对照角色|关键见证者|主角/,
     );
 
     const savedEpisodeOne = await getStory(episodeOne.data!.storyId);
@@ -463,7 +463,7 @@ describe('outline-service', () => {
       savedEpisodeOne.data?.dialogue,
       savedEpisodeOne.data?.gears_segments,
     ])).not.toMatch(
-      /生成优先级|核心画面是|知识库使用规则|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集|对照角色|关键见证者|主角/,
+      /生成优先级|核心画面是|知识库使用规则|素材使用规则|新增知识焦点|新增素材焦点|素材焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|素材线|推进phase|指向第\d+集|对照角色|关键见证者|主角/,
     );
   });
 
@@ -505,6 +505,7 @@ describe('outline-service', () => {
     ]);
     expect(audienceText).toContain('带泥证物');
     expect(audienceText).not.toContain('新增知识焦点');
+    expect(audienceText).not.toContain('素材焦点');
     expect(audienceText).not.toContain('把周敦颐摆到灯下');
   });
 
@@ -3823,6 +3824,6 @@ describe('outline-service', () => {
       secondEpisodeRes.data?.full_text,
       ...(secondEpisodeRes.data?.scene_breakdown ?? []).flatMap(scene => [scene.plot, scene.visual_prompt]),
       ...(secondEpisodeRes.data?.gears_segments ?? []).map(segment => segment.script_text),
-    ].join('\n')).not.toMatch(/生成优先级|核心画面是|知识库使用规则/);
+    ].join('\n')).not.toMatch(/生成优先级|核心画面是|知识库使用规则|素材使用规则|素材焦点/);
   });
 });

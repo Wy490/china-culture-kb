@@ -171,6 +171,33 @@ AI 影视前期创作、剧本生产与项目素材指挥系统
 3. 若要处理历史 generated 库存，先做 dry-run/受控治理入口，别直接删除或改写用户历史生成物。
 4. 若要推进真实 GEARS endpoint acceptance，需等 `GEARS_API_BASE_URL`、callback base 和 secret 配齐后再跑 live smoke。
 
+## 0.6 2026-06-27 最新交接：后端/MCP 对外命名审计已收口
+
+本轮已完成 `0.5` 建议的后端/MCP 对外命名审计。当前分支仍是 `codex-ai-comic-series-longform`；本轮变更包含命名收口代码、测试断言和两份文档更新。
+
+本轮代码结论：
+
+- MCP tool 中文描述已从旧 `知识库` 心智改为 `素材库 / 素材条目`，但工具名继续保留 `kb_*`，不破坏现有调用方。
+- MCP 来源核查、蓝图和创作合同结果文案改为 `素材库 / 素材条目 / 已验证事实`。
+- Web 生成链路的质量提示、素材缺口、可信边界、回忆拼图和戏剧故事说明统一改成 `项目素材 / 素材条目`。
+- AI 漫剧系列 episode prompt 标签改成 `素材使用规则 / 素材焦点`，并把新旧标签都纳入观众稿泄漏检测与回归断言。
+- `project-service`、`production-board-service`、`seedance-prompt-service` 中的旧词正则仍保留，作用是清洗历史污染；测试夹具中的旧词也作为回归输入保留。
+
+已验证：
+
+- `cd mcp-server && npm test` 通过：28 个测试文件、138 个用例。
+- `cd web/server && npm test` 通过：26 个测试文件、393 个用例。
+- `cd mcp-server && npm run build` 通过。
+- `cd web/server && npm run lint` 通过。
+- `git diff --check` 通过。
+
+新对话建议第一步更新：
+
+1. 先看 `git status --short` 和最新提交，确认本轮命名审计是否已提交。
+2. 下一步若继续产品化，优先做历史 generated 库存治理入口：先 dry-run，再由用户选择归档、删除、重跑 repair 或固化为回归样本。
+3. 若要推进真实 GEARS endpoint acceptance，需等 `GEARS_API_BASE_URL`、callback base 和 secret 配齐后再跑 live smoke。
+4. 可补一次用户路径级 smoke：素材补充任务、项目详情创作合同展示、旧项目版本读取。
+
 2026-06-23 更新：Phase 1 合同层首轮已落地。Web 后端已新增并接入 `creation_contract`、`material_pack`、`material_sufficiency`，旧 `knowledge_pack` 请求保持兼容；StoryBlueprint、prompt package、StoryGenerateResult、质量报告、项目 meta/version snapshot 均会保存新字段。MCP `kb_generate_story_blueprint` 已能只读返回 `creation_contract` / `material_sufficiency`，`kb_get_project_context` 可读回项目上下文中的新合同字段。
 
 2026-06-23 续更：Phase 2 类型片画像矩阵首个工程切片已落地。`genre-story-profiles.ts` 现在集中维护每类片子的兼容创作用途、真实模式、推荐/允许/禁用叙事流派、素材要求、真实边界、机构规则和改编规则；`resolveGenreStoryMatrix()` 已接入 Story Generate 链路，会补足/过滤 `narrative_pattern_ids`，并把矩阵要求写入 `StoryBlueprint.type_specific_requirements` 和 prompt package 的“类型片画像矩阵”章节。下一步优先做 Phase 3 分阶段素材充分度和前端创作台控件文案。

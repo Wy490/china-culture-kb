@@ -505,7 +505,7 @@ export function generateMemoryMosaicContent(input: {
 
     // Cultural note
     const culturalNote = tmpl.is_reality_line
-      ? '现实线基于知识库条目背景虚构'
+      ? '现实线基于素材条目背景虚构'
       : `基于${entry.name}中${witness!.witness_name}的交集，部分细节经虚构化处理`;
 
     // Dialogue or narration
@@ -683,7 +683,7 @@ export function generateMemoryMosaicContent(input: {
   const culturalConstraints = [
     ...entry.unverifiedPoints.slice(0, 3).map(p => `待核实：${p}`),
     '回忆拼图式叙事中见证人情绪和场景细节经虚构化处理',
-    '主角选择的核心事实基于知识库条目，但呈现方式为创作性叙事',
+    '主角选择的核心事实基于素材条目，但呈现方式为创作性叙事',
   ];
 
   const credibilityNote = entry.credibility === '可靠'

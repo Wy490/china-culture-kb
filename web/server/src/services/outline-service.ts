@@ -691,7 +691,7 @@ export async function multiMatchEntries(
       missingNeeds.push({
         need_id: need.need_id,
         label: need.label,
-        message: `知识库中未找到高置信度条目，可作为创作方向但不可写成已验证史实`,
+        message: `项目素材中未找到高置信度条目，可作为创作方向但不可写成已验证史实`,
       });
     }
   }

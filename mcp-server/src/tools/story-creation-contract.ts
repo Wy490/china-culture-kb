@@ -209,7 +209,7 @@ function buildMaterialSufficiencyReport(
     minimumMissing.push(missingItem(
       'source_entries',
       '来源条目',
-      '需要至少一个知识库条目或来源主体，才能建立前期创作边界。',
+      '需要至少一个素材条目或来源主体，才能建立前期创作边界。',
       'blocking',
       ['story_blueprint', 'script_skeleton'],
       '这个项目的核心条目、人物、地点或原作材料是什么？',
@@ -362,7 +362,7 @@ function truthModeRules(truthMode: TruthMode): Pick<CreationContract, 'allowed_f
     return {
       allowed_fiction: ['可压缩、合并、重排场景以适配成片节奏。'],
       must_verify: ['原作主线、核心人物关系、授权与改编边界。'],
-      forbidden_moves: ['偏离原作主线或用知识库条目替换原作情节。'],
+      forbidden_moves: ['偏离原作主线或用素材条目替换原作情节。'],
       required_disclaimers: ['标明改编来源与影视化处理边界。'],
     };
   }

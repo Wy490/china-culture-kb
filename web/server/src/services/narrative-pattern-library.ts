@@ -397,7 +397,7 @@ const PATTERNS: Record<NarrativePatternId, NarrativePattern> = {
     pacing_pattern: ['原作锚点', '人物关系确认', '事件顺序锁定', '必要压缩', '视听补足', '保真复核'],
     scene_recipes: ['每场标注对应原作段落功能', '新增过场只解决转场问题', '结尾检查人物关系和主题是否仍属于原作'],
     quality_signals: ['人物不丢失', '关系不改写', '主线不换题', '新增内容不抢戏'],
-    avoid: ['以知识库人物替换原主角', '把原作改成全新传记', '新增设定改变原作因果'],
+    avoid: ['以素材库人物替换原主角', '把原作改成全新传记', '新增设定改变原作因果'],
   },
   chapter_slice_adaptation: {
     pattern_id: 'chapter_slice_adaptation',

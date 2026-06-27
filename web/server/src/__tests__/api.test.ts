@@ -5678,7 +5678,7 @@ describe('Story Outline API', () => {
           scene.plot,
           scene.visual_prompt,
         ]),
-      ].join('\n')).not.toMatch(/生成优先级|核心画面是|知识库使用规则/);
+      ].join('\n')).not.toMatch(/生成优先级|核心画面是|知识库使用规则|素材使用规则|素材焦点/);
       expect(res.body.data.scene_breakdown.length).toBeGreaterThan(0);
     });
 

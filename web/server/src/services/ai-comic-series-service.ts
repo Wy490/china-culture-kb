@@ -726,7 +726,7 @@ function shouldRewriteAiComicEpisodeStory(story: StoryGenerateResult, episode: A
     ...(story.gears_segments ?? []).map(segment => segment.script_text),
   ].join('\n');
   if (story.generation_used_fallback || story.generation_mode !== 'external_model') return true;
-  if (/(生成优先级|核心画面是|知识库使用规则|连续性账本|叙事流派机制|目标场景功能|新增知识焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|推进phase|指向第\d+集)/.test(text)) return true;
+  if (/(生成优先级|核心画面是|知识库使用规则|素材使用规则|连续性账本|叙事流派机制|目标场景功能|新增知识焦点|新增素材焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|素材线|推进phase|指向第\d+集)/.test(text)) return true;
   if (/\*\*[^*]+?\*\*/.test(text)) return true;
   const paragraphs = story.full_text
     .split(/\n{2,}/)
@@ -1227,7 +1227,7 @@ function naturalizeAiComicCharacterLabel(name: string | undefined, fallback: str
 function naturalizeAiComicNewInformationForScene(raw: string): string {
   const text = raw.trim()
     .replace(/[。！？!?]+$/, '')
-    .replace(/^(?:新增知识焦点|新增剧情信息|本集新增信息|新增信息|知识焦点|计划知识焦点)[:：]\s*/, '')
+    .replace(/^(?:新增知识焦点|新增素材焦点|新增剧情信息|本集新增信息|新增信息|知识焦点|素材焦点|计划知识焦点|计划素材焦点)[:：]\s*/, '')
     .trim();
   const firstVisible = text.match(/^(.+?)相关的第一条可见线索进入案卷$/);
   if (firstVisible?.[1]) return `与${firstVisible[1].trim()}有关的带泥证物`;
@@ -1614,7 +1614,7 @@ function buildAiComicSeriesBibleMarkdown(pkg: AiComicSeriesBibleExportPackage): 
     `- 当前角色状态: ${pkg.continuity_ledger.character_state_current.join('；') || '暂无'}`,
     `- 未回收线索: ${pkg.continuity_ledger.open_threads.join('；') || '暂无'}`,
     `- 已回收线索: ${pkg.continuity_ledger.paid_off_threads.join('；') || '暂无'}`,
-    `- 已用知识: ${pkg.continuity_ledger.knowledge_used.join('、') || '暂无'}`,
+    `- 已用素材: ${pkg.continuity_ledger.knowledge_used.join('、') || '暂无'}`,
     '',
     '## 系列记忆引擎',
     `- 结构化记忆: ${pkg.continuity_ledger.series_memory ? '已启用' : '未启用'}`,
@@ -1776,7 +1776,7 @@ function buildAiComicSeriesBibleMarkdown(pkg: AiComicSeriesBibleExportPackage): 
         `- 结尾类型: ${hookTypeLabel(blueprint.ending_hook_type)}`,
         `- 角色变化: ${blueprint.character_state_change}`,
         `- 线索动作: ${blueprint.thread_action}`,
-        `- 知识焦点: ${blueprint.knowledge_focus.join('、') || '无'}`,
+        `- 素材焦点: ${blueprint.knowledge_focus.join('、') || '无'}`,
         `- 目标场景功能: ${blueprint.target_scene_functions.join('；')}`,
         '',
       ];
@@ -3134,7 +3134,7 @@ function buildAiComicSeriesBibleProductionTables(input: {
   const knowledgeBoundaries = [...knowledgeMap.entries()].map(([label, episodeNos]) => ({
     label,
     episode_nos: [...episodeNos].sort((a, b) => a - b),
-    usage: episodeNos.size > 0 ? '分集知识焦点' : '连续性账本已用知识',
+    usage: episodeNos.size > 0 ? '分集素材焦点' : '连续性账本已用素材',
     boundary_note: '仅作为文化、人物、地点或事件边界使用；未核实内容不得写成确证史实。',
   }));
 
@@ -8637,7 +8637,7 @@ function buildAiComicGeneratedStoryContentIssues(
     ...(story.gears_segments ?? []).map(segment => segment.script_text),
   ].filter(Boolean).join('\n');
   const issues: string[] = [];
-  const hasInternalTerms = /(生成优先级|核心画面是|知识库使用规则|连续性账本|叙事流派机制|目标场景功能|新增知识焦点|新增剧情信息|推进phase)/.test(text);
+  const hasInternalTerms = /(生成优先级|核心画面是|知识库使用规则|素材使用规则|连续性账本|叙事流派机制|目标场景功能|新增知识焦点|新增素材焦点|新增剧情信息|推进phase)/.test(text);
   const hasOldPlaceholderTitle = /(问题出现|最终选择|拒签的新变化|主角被迫|第\d+集：第\d+集)/.test(story.title);
   const genericSceneTitleCount = sceneTitles.filter(title =>
     /^(雨夜第\d+集|角色入场|对白交锋|选择时刻|精神定格)$/.test(title)
@@ -13553,7 +13553,7 @@ function buildEpisodeProductionConstraints(params: {
         episodeNo: params.episodeNo,
         sceneId,
         shotId,
-        notes: ['镜头连续性说明不得改写为超出知识库的确证史实。'],
+        notes: ['镜头连续性说明不得改写为超出项目素材的确证史实。'],
       }));
     }
     return items;
@@ -13713,12 +13713,12 @@ function buildInitialSeriesMemory(plan: AiComicSeriesPlan): AiComicSeriesMemory 
     .map(label => makeMemoryItem({
       category: 'knowledge_boundary',
       label,
-      status: '计划知识焦点',
+      status: '计划素材焦点',
       relatedEpisodeNos: planEpisodes
         .filter(episode => (episode.knowledge_focus ?? []).includes(label))
         .map(episode => episode.episode_no),
-      continuityNotes: ['知识库内容作为文化、人物、地点或事件边界；未核实内容不得写成确证史实。'],
-      knowledgeBoundary: '知识库不是资料仓库，生成时只作为事实边界和创作约束。',
+      continuityNotes: ['项目素材作为文化、人物、地点或事件边界；未核实内容不得写成确证史实。'],
+      knowledgeBoundary: '项目素材不是资料仓库，生成时只作为事实边界和创作约束。',
     }));
 
   const storyEvents = planEpisodes.map(episode => makeMemoryItem({
@@ -14232,7 +14232,7 @@ function buildSeedanceShotMemoryEvents(params: {
         status: `Seedance镜头${unit.shot_id}连续性边界`,
         relatedEpisodeNos: [params.episodeNo],
         continuityNotes: [note],
-        knowledgeBoundary: 'Seedance 镜头提示词中的连续性说明不得改写为超出知识库的确证史实。',
+        knowledgeBoundary: 'Seedance 镜头提示词中的连续性说明不得改写为超出项目素材的确证史实。',
         firstEpisodeNo: params.episodeNo,
         lastEpisodeNo: params.episodeNo,
       }));
@@ -14846,7 +14846,7 @@ function scoreMemoryItemForEpisode(
   }
   if (item.category === 'knowledge_boundary' && context.knowledgeFocus.some(label => textOverlaps(item.label, label))) {
     score += 34;
-    reasons.push('知识焦点');
+    reasons.push('素材焦点');
   }
   if (item.category === 'story_event' && item.first_episode_no && item.first_episode_no < context.episodeNo) {
     score += 8;
@@ -15098,12 +15098,12 @@ function buildEpisodeGenerationOutline(
     `${beat.beat_id} 第${beat.episode_range[0]}-${beat.episode_range[1]}集：${beat.story_function}；关键问题：${beat.central_question}；必须转向：${beat.required_turn}；目标：${beat.payoff_target}`
   ) ?? [];
   const ledgerLines = ledger ? [
-    '连续性账本：后续分镜必须以账本为准，不得推翻已生成集数的人物状态、线索开合和知识使用记录。',
+    '连续性账本：后续分镜必须以账本为准，不得推翻已生成集数的人物状态、线索开合和素材使用记录。',
     `账本最近生成集：${ledger.last_generated_episode_no ? `第${ledger.last_generated_episode_no}集` : '尚未生成'}`,
     `账本当前角色状态：${ledger.character_state_current.join('；') || '暂无'}`,
     `账本未回收线索：${ledger.open_threads.join('；') || '暂无'}`,
     `账本已回收线索：${ledger.paid_off_threads.join('；') || '暂无'}`,
-    `账本已用知识：${ledger.knowledge_used.join('、') || '暂无'}`,
+    `账本已用素材：${ledger.knowledge_used.join('、') || '暂无'}`,
     ...buildSeriesMemoryPromptLines(ledger.series_memory, plan, episode, memoryRecallControls),
     ...buildEpisodicMemoryPromptLines(ledger.episodic_memory, plan, episode),
     ...buildProductionConstraintPromptLines(ledger.production_constraints, episode),
@@ -15139,11 +15139,11 @@ function buildEpisodeGenerationOutline(
     narrativePatternLines.length > 0
       ? `叙事流派机制：${narrativePatternLines.join('；')}`
       : '',
-    '知识库使用规则：知识库不是资料仓库。本集生成必须把知识焦点转化为人物选择、场景资产、时代边界、线索开合和可信度提示；不要把知识摘要直接铺成旁白资料。',
+    '素材使用规则：项目素材不是资料仓库。本集生成必须把素材焦点转化为人物选择、场景资产、时代边界、线索开合和可信度提示；不要把素材摘要直接铺成旁白资料。',
     `长期线索：${plan.plot_threads.map(thread => `${thread.title}，第${thread.setup_episode}集开启，第${thread.payoff_episode}集回收：${thread.description}`).join('；')}`,
     `角色弧线：${plan.main_characters.map(character => `${character.name}：${character.long_arc}`).join('；')}`,
     `连续性规则：${plan.continuity_rules.map(rule => `${rule.label}：${rule.description}`).join('；')}`,
-    `知识焦点：${episode.knowledge_focus.join('、') || plan.recurring_motifs.join('、')}`,
+    `素材焦点：${episode.knowledge_focus.join('、') || plan.recurring_motifs.join('、')}`,
     '输出要求：按 AI 漫剧分镜生成完整故事文本、场景分解、对白、画面提示和 GEARS 分段；必须回应上一集钩子，并让本集结尾钩子可被下一集承接。',
   ].filter(Boolean).join('\n');
 }

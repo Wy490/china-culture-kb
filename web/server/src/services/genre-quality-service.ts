@@ -110,7 +110,7 @@ function findAdaptationIssues(story: StoryGenerateResult): string[] {
     issues.push('已识别原作可视化场面，但场景画面提示过薄，需把原作场面转成地点、人物、道具、光线和构图。');
   }
   if (/(知识库|词条|文化意义|来源条目|主条目)/.test(story.full_text)) {
-    issues.push('正文出现知识库说明腔，应改成视频剧情/旁白，不要暴露内部资料结构。');
+    issues.push('正文出现资料说明腔，应改成视频剧情/旁白，不要暴露内部资料结构。');
   }
   if (story.full_text.length > source.length * 1.8 && source.length > 120) {
     issues.push('改编正文明显扩写过多，需压回原作主线和目标时长。');

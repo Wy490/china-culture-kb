@@ -29,7 +29,7 @@ export async function verifySource(input: VerifyInput): Promise<VerifyResult> {
   if (credibility === '待核实' && input.internalEvidenceCount !== undefined) {
     if (input.internalEvidenceCount >= 3) {
       credibility = '基本可靠';
-      verificationMethod = `内部互证：知识库内${input.internalEvidenceCount}条佐证`;
+      verificationMethod = `内部互证：素材库内${input.internalEvidenceCount}条佐证`;
     } else if (input.internalEvidenceCount >= 1) {
       verificationMethod += `；内部部分佐证：${input.internalEvidenceCount}条`;
     }
@@ -39,7 +39,7 @@ export async function verifySource(input: VerifyInput): Promise<VerifyResult> {
   if (credibility === '待核实' && input.externalVerificationResults !== undefined && input.internalEvidenceCount !== undefined && (input.internalEvidenceCount ?? 0) === 0) {
     credibility = '存疑';
     unverifiedPoints.push(`来源类型${input.sourceType}无外部佐证`);
-    unverifiedPoints.push('知识库内无相关条目佐证');
+    unverifiedPoints.push('素材库内无相关条目佐证');
     unverifiedPoints.push('建议后续寻找权威来源印证');
   }
 

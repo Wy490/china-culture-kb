@@ -680,7 +680,7 @@ function truthModeRules(truthMode: TruthMode): Pick<CreationContract, 'allowed_f
     return {
       allowed_fiction: ['可压缩、合并、重排场景以适配成片节奏。'],
       must_verify: ['原作主线、核心人物关系、授权与改编边界。'],
-      forbidden_moves: ['偏离原作主线或用知识库条目替换原作情节。'],
+      forbidden_moves: ['偏离原作主线或用素材条目替换原作情节。'],
       required_disclaimers: ['标明改编来源与影视化处理边界。'],
     };
   }
@@ -752,7 +752,7 @@ function buildEvidenceBoundaries(entry: FullEntryDetail, centralEvent?: string, 
     type: entry.credibility === '可靠' ? 'verified' : 'uncertain',
     source: entry.name,
     note: centralEvent
-      ? `中心事件「${centralEvent}」来自知识库条目或用户指定方向，生成时需保留可信度说明。`
+      ? `中心事件「${centralEvent}」来自素材条目或用户指定方向，生成时需保留可信度说明。`
       : '未指定中心事件，生成时需避免把概述写成确定细节。',
   }];
 
@@ -824,7 +824,7 @@ function buildCharacterArcs(protagonist: string, profile: GenreProfileLite, cent
 function buildWarnings(entry: FullEntryDetail, input: GenerateStoryBlueprintInput): string[] {
   const warnings: string[] = [];
   if (entry.unverifiedPoints.length > 0) warnings.push('条目存在待核实点，生成时需要保留事实边界。');
-  if (input.user_outline?.trim()) warnings.push('用户大纲只作为创作方向，不可自动写成已验证知识库事实。');
+  if (input.user_outline?.trim()) warnings.push('用户大纲只作为创作方向，不可自动写成已验证事实。');
   if (input.region_hint?.trim() && !entry.region.includes(input.region_hint)) {
     warnings.push(`地方化目标「${input.region_hint}」与条目地区「${entry.region}」不完全一致，需要避免误写直接发生地。`);
   }

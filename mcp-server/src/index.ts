@@ -43,7 +43,7 @@ const server = new McpServer({
 // kb_search
 server.tool(
   'kb_search',
-  '按关键词、类型、省份、地区检索知识库',
+  '按关键词、类型、省份、地区检索素材库',
   {
     keywords: z.string().describe('搜索关键词，多个关键词用逗号或空格分隔'),
     type: z.string().optional().describe('条目类型过滤'),
@@ -99,7 +99,7 @@ server.tool(
 // kb_match
 server.tool(
   'kb_match',
-  '语义匹配知识库条目，返回条目供Claude Code做语义分析',
+  '语义匹配素材条目，返回条目供Claude Code做创意分析',
   {
     storyText: z.string().describe('用户上传的故事或观点文本'),
     provinceHints: z.string().optional().describe('地理线索省份，逗号分隔'),
@@ -185,7 +185,7 @@ server.tool(
     sourceAuthor: z.string().optional().describe('来源作者'),
     claims: z.string().describe('待核实主张内容'),
     externalVerificationResults: z.string().optional().describe('外部搜索核实结果'),
-    internalEvidenceCount: z.number().optional().describe('知识库内佐证条目数量'),
+    internalEvidenceCount: z.number().optional().describe('素材库内佐证条目数量'),
   },
   async (input) => {
     const result = await verifySource({
@@ -203,7 +203,7 @@ server.tool(
 // kb_generate_script
 server.tool(
   'kb_generate_script',
-  '从知识库条目生成脚本骨架（纪录片/短剧/动画/文化解说），供Claude Code填充内容',
+  '从素材条目生成脚本骨架（纪录片/短剧/动画/文化解说），供Claude Code填充内容',
   {
     entry_names: z.string().describe('条目名称列表，逗号或顿号分隔'),
     script_type: z.string().describe('脚本类型：纪录片/短剧/动画/文化解说'),
@@ -293,7 +293,7 @@ server.tool(
 // kb_ingest_video
 server.tool(
   'kb_ingest_video',
-  '从B站视频录入内容到知识库：自动获取视频元数据、创建来源记录、写入条目',
+  '从B站视频录入内容到素材库：自动获取视频元数据、创建来源记录、写入条目',
   {
     video_url: z.string().describe('B站视频链接或BV号'),
     name: z.string().describe('条目名称'),
@@ -332,7 +332,7 @@ server.tool(
 // kb_collect
 server.tool(
   'kb_collect',
-  '搜集文化故事和人物传记：创建来源记录+写入知识库条目',
+  '搜集文化故事和人物传记：创建来源记录+写入素材条目',
   {
     name: z.string().describe('人物/故事名称'),
     province: z.string().describe('省份'),
@@ -391,7 +391,7 @@ server.tool(
 // kb_get_entry_detail — retrieve full entry content including story, sources, credibility, unverified points
 server.tool(
   'kb_get_entry_detail',
-  '获取知识库条目的完整详情（包含故事梗概、文化意义、来源、可信度、待核实点等全部字段）。用于故事生成的创意分析。',
+  '获取素材条目的完整详情（包含故事梗概、文化意义、来源、可信度、待核实点等全部字段）。用于故事生成的创意分析。',
   {
     entry_name: z.string().describe('条目名称'),
   },
@@ -664,9 +664,9 @@ server.tool(
 // kb_generate_story_blueprint — build genre-aware StoryBlueprint from a knowledge-base entry
 server.tool(
   'kb_generate_story_blueprint',
-  '根据知识库条目生成 Story Agent 类型片蓝图（StoryBlueprint）。只读，不生成正文，不写文件。',
+  '根据素材条目生成 Story Agent 类型片蓝图（StoryBlueprint）。只读，不生成正文，不写文件。',
   {
-    entry_name: z.string().describe('知识库条目名称，例如 周敦颐——理学开山鼻祖'),
+    entry_name: z.string().describe('素材条目名称，例如 周敦颐——理学开山鼻祖'),
     video_type: z.string().optional().describe('成片类型，例如 character_story/historical_drama/ai_comic_drama/heritage_promo'),
     presentation_style: z.string().optional().describe('表现形式，例如 cinematic/ai_comic/documentary'),
     story_structure: z.string().optional().describe('叙事结构，例如 single_event_drama/case_reconstruction/craft_process'),
@@ -790,7 +790,7 @@ server.tool(
 // kb_update_project_version — append a new Story Agent project version
 server.tool(
   'kb_update_project_version',
-  '将 Agent 产出的 story snapshot 保存为项目新版本。只写 web/generated/projects/<projectId>/versions 和 project.json，不覆盖旧版本，不写知识库省份文件。',
+  '将 Agent 产出的 story snapshot 保存为项目新版本。只写 web/generated/projects/<projectId>/versions 和 project.json，不覆盖旧版本，不写底层素材省份文件。',
   {
     project_id: z.string().describe('故事项目 ID，例如 20260614-story-5xim--ai_comic_drama'),
     change_type: z.enum(['scene_regeneration', 'quality_repair', 'production_board_repair']).describe('版本变更类型'),

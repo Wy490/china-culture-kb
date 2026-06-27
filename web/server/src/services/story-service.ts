@@ -462,11 +462,12 @@ function buildKnowledgeSupplementTasks(
     const guidance = buildSupplementTaskGuidance(missing);
     const materialItem = materialItems.find(item => isMaterialItemForKnowledgeNeed(item, missing));
     if (materialItem) usedMaterialItemIds.add(materialItem.item_id);
+    const message = normalizeMaterialMessage(missing.message);
     return {
       task_id: `${context.storyId}--supplement--${missing.need_id}`,
       need_id: missing.need_id,
       label: missing.label,
-      description: `补充「${missing.label}」相关资料：${missing.message}`,
+      description: `补充「${missing.label}」相关资料：${message}`,
       category: guidance.category,
       stage: materialItem ? materialSufficiencyItemStage(materialSufficiency, materialItem) : undefined,
       blocking_level: materialItem?.blocking_level,
@@ -504,6 +505,12 @@ function buildKnowledgeSupplementTasks(
     });
   }
   return tasks;
+}
+
+function normalizeMaterialMessage(message: string): string {
+  return message
+    .replace(/知识库/g, '项目素材')
+    .replace(/知识包/g, '素材包');
 }
 
 function safeTaskIdPart(value: string): string {
