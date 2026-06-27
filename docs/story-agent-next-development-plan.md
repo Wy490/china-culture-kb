@@ -153,6 +153,25 @@ P0 调整：
 2. 若继续清理命名，可再审后端/MCP 对外 tool 描述是否需要从“知识库”逐步改成“素材库 / 项目素材包”；但不要破坏既有 `kb_*` 工具名和兼容字段。
 3. 若要真正治理历史 generated 库存，应新增受控治理命令或人工确认后再移动/删除/归档，不要在普通开发流里直接改写用户历史生成物。
 
+## 0.5 2026-06-27 生成/导出链路浏览器 smoke 收口
+
+本轮承接 `0.4` 的下一优先级，补了 StoryStudio、AiComicSeriesStudio、ProjectDetail 和 Seedance/GEARS 导出入口的真实浏览器 smoke。为避免污染仓库生成物，dev server 使用 `WEB_GENERATED_ROOT=/private/tmp/china-culture-ui-smoke-20260627`，当前工作树保持 clean。
+
+已验证：
+
+- StoryStudio 表单路径通过：浏览器打开 `/story/new?video_type=ai_comic_drama`，切到 `故事大纲`，填写周敦颐拒签案大纲并点击 `生成剧情方案`；结果页出现故事内容、`GEARS 操作`、Seedance 提示词导出和项目链接，生成临时项目 `20260627-story-fmwd67bccf71--ai_comic_drama`。
+- 单片生成/导出 API 通过：临时项目 `20260627-story-in0w1debbb20--ai_comic_drama` 质量通过，类型分 `88`，5 个场景、5 个 GEARS segments；`production-board/export` 返回 `story-production-board-export/v1`，`export-seedance-retry-package` 返回 `story-seedance-retry-package/v1` 且包含 5 个待提交镜头。
+- ProjectDetail UI 通过：浏览器打开 `/projects/20260627-story-in0w1debbb20--ai_comic_drama`，点击 `Production Board` 后，`当前版本质量`、`制作 readiness`、`Production Board`、`Seedance Shot Ledger`、`导出 Board Markdown/JSON`、`导出 GEARS 联调包 MD`、`重试包 MD` 均可见，关键导出按钮未禁用。
+- AiComicSeriesStudio UI 通过：浏览器打开 `/ai-comic-series/new?seriesProjectId=20260627-series-ktp8ply5`，系列标题 `Smoke 拒签案系列`、核心主题 `拒签冤案中的良知选择`、三集标题 `未签的案卷 / 召见之前 / 良知落笔` 和第 1 集已生成状态均可见。
+- 系列导出入口通过：系列 Seedance prompts API 返回 `ai-comic-series-seedance-export/v1`，系列重试包返回 `ai-comic-series-seedance-retry-package/v1`；浏览器里 `导出系列 Bible Markdown`、`导出 Seedance Markdown`、`导出重试包 Markdown`、`导出 GEARS 联调包 MD` 均可见且未禁用。
+- GEARS/Seedance 操作区状态符合预期：`Seedance 生产总览`、`Seedance 生产状态` 和 GEARS 联调导出可见；提交/同步类按钮在当前没有活跃真实 GEARS 任务或 endpoint 未配置时折叠或禁用，不作为本轮阻断。
+
+下一轮优先级更新：
+
+1. 审后端/MCP 对外文案中的 `知识库`：只处理用户可见 tool 描述、报告文案和页面文案，逐步改成 `素材库 / 项目素材包 / 项目素材`；不要改 `kb_*` 工具名、兼容字段、历史 generated 文件和测试语料。
+2. 若要治理历史 generated 库存，先新增 dry-run/受控治理入口，再决定归档、删除或重跑旧失败样本；不要直接改写用户历史生成物。
+3. 若要推进 GEARS 95% 后的外部验收，应等待真实 `GEARS_API_BASE_URL`、callback base 和 secret 配置后，再跑 live endpoint acceptance；本仓库仍只做内容与生产指挥层。
+
 2026-06-23 Phase 1 首轮已推进：
 
 - Web 共享类型/schema 已新增 `CreationUseCase`、`TruthMode`、`CreationContract`、`MaterialPack`、`MaterialSufficiencyReport`。

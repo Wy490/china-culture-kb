@@ -150,6 +150,27 @@ AI 影视前期创作、剧本生产与项目素材指挥系统
 3. 若继续命名清理，只审对外 tool 描述和页面文案；不要破坏 `kb_*` 工具名、历史 generated 文件或兼容字段。
 4. 若要处理历史 generated 库存，先新增 dry-run/受控治理入口或征得人工确认，不要直接删除用户历史生成物。
 
+## 0.5 2026-06-27 最新交接：生成/导出链路 smoke 已收口
+
+本轮已完成 `0.4` 后建议补的生成/导出链路浏览器 smoke。当前分支仍是 `codex-ai-comic-series-longform`；新对话继续前仍先执行 `git status --short`。
+
+本轮验证结论：
+
+- dev server 使用临时根 `WEB_GENERATED_ROOT=/private/tmp/china-culture-ui-smoke-20260627`，没有污染仓库 `web/generated`。
+- StoryStudio 真实表单路径已通过：浏览器打开 `/story/new?video_type=ai_comic_drama`，切到 `故事大纲`，填写周敦颐拒签案大纲并点击 `生成剧情方案`；结果页出现故事内容、`GEARS 操作`、Seedance 提示词导出和项目链接，生成临时项目 `20260627-story-fmwd67bccf71--ai_comic_drama`。
+- 单片 API 临时项目 `20260627-story-in0w1debbb20--ai_comic_drama` 质量通过，类型分 `88`，5 个场景、5 个 GEARS segments；Production Board export 和 Seedance retry package 均成功。
+- ProjectDetail UI 已通过：`当前版本质量`、`制作 readiness`、`Production Board`、`Seedance Shot Ledger`、`导出 Board Markdown/JSON`、`导出 GEARS 联调包 MD`、`重试包 MD` 均可见，关键导出按钮未禁用。
+- AiComicSeriesStudio UI 已通过：临时系列 `20260627-series-ktp8ply5` 显示核心主题 `拒签冤案中的良知选择`，三集标题为 `第1集：未签的案卷 / 第2集：召见之前 / 第3集：良知落笔`，第 1 集已生成。
+- 系列 Seedance prompts export 返回 `ai-comic-series-seedance-export/v1`，系列 retry package 返回 `ai-comic-series-seedance-retry-package/v1`；浏览器里 `导出系列 Bible Markdown`、`导出 Seedance Markdown`、`导出重试包 Markdown`、`导出 GEARS 联调包 MD` 均可见且未禁用。
+- GEARS/Seedance 提交/同步类按钮在没有活跃真实 GEARS 任务或 endpoint 未配置时折叠或禁用，符合当前“内容与生产指挥层，不执行真实媒体生产”的边界。
+
+新对话建议第一步更新：
+
+1. 先看 `git status --short` 和最新提交，确认本轮 smoke 文档是否已提交。
+2. 下一步优先做后端/MCP 对外命名审计：只审用户可见 tool 描述、报告文案和页面文案中的 `知识库`，逐步改成 `素材库 / 项目素材包 / 项目素材`；不要破坏 `kb_*` 工具名、兼容字段、历史 generated 文件和测试语料。
+3. 若要处理历史 generated 库存，先做 dry-run/受控治理入口，别直接删除或改写用户历史生成物。
+4. 若要推进真实 GEARS endpoint acceptance，需等 `GEARS_API_BASE_URL`、callback base 和 secret 配齐后再跑 live smoke。
+
 2026-06-23 更新：Phase 1 合同层首轮已落地。Web 后端已新增并接入 `creation_contract`、`material_pack`、`material_sufficiency`，旧 `knowledge_pack` 请求保持兼容；StoryBlueprint、prompt package、StoryGenerateResult、质量报告、项目 meta/version snapshot 均会保存新字段。MCP `kb_generate_story_blueprint` 已能只读返回 `creation_contract` / `material_sufficiency`，`kb_get_project_context` 可读回项目上下文中的新合同字段。
 
 2026-06-23 续更：Phase 2 类型片画像矩阵首个工程切片已落地。`genre-story-profiles.ts` 现在集中维护每类片子的兼容创作用途、真实模式、推荐/允许/禁用叙事流派、素材要求、真实边界、机构规则和改编规则；`resolveGenreStoryMatrix()` 已接入 Story Generate 链路，会补足/过滤 `narrative_pattern_ids`，并把矩阵要求写入 `StoryBlueprint.type_specific_requirements` 和 prompt package 的“类型片画像矩阵”章节。下一步优先做 Phase 3 分阶段素材充分度和前端创作台控件文案。
