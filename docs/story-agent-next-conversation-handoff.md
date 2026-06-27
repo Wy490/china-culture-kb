@@ -1,6 +1,6 @@
 # Story Agent 下一对话接续文档
 
-> 日期：2026-06-19
+> 日期：2026-06-27
 > 当前分支：`codex-ai-comic-series-longform`  
 > 适用场景：在新的 Codex / Claude 对话中继续 Story Agent、Production Board、GEARS / Seedance 交付链开发。  
 > 当前状态：继续前先执行 `git status --short`；如有未提交改动，先确认来源和范围再推进。
@@ -41,6 +41,53 @@ AI 影视前期创作、剧本生产与项目素材指挥系统
 - `material_sufficiency`：把素材补充拆成 minimum viable story、script ready、production ready 三个阶段。
 
 新对话如果要改 Story Agent 生成链路，继续沿 `docs/story-agent-creative-platform-reposition-plan.md` 推进 Story Studio / AI影视工作台能力，而不是追加知识库补录或 GEARS 媒体实产。
+
+## 0.2 2026-06-27 最新交接：单片生成质量已收口
+
+当前分支：`codex-ai-comic-series-longform`。最新已推送提交为 `22916a7d Improve single-video story generation quality`。提交后工作树曾确认 clean；新对话开始仍应先执行 `git status --short`。
+
+本轮修复目标来自用户反馈：周敦颐故事第一集和第二集正文高度重复，正文不是剧情，素材说明和质量标签进入观众稿，项目名称/导航心智也有混乱。已先把“单片类型生成效果”打通并回归，系列生成还需要下一轮专项复测。
+
+已完成的代码侧结论：
+
+- AI 漫剧单片与系列分集的默认叙事策略已拆开，单片不再默认带连续剧/分集 boilerplate。
+- 周敦颐单片和人物故事现在能生成围绕“拒签死刑文书”的可用 6 场故事，包含证据疑点、上官压力、拒签选择、代价和囚犯免死结果。
+- 地点、角色、引文污染已清理：`南安军衙`、`汨罗江畔`、`岳阳楼`、`湘绣工坊` 会作为可拍空间出现，不再把来源资料句当成场景地点。
+- GEARS/Seedance 交付侧会合并过短子段，视觉提示只保留空间、人物、道具、光线、构图，减少观众稿检测词和 prompt 说明词泄漏。
+- 质量 gate 已从“只认固定标签”改为识别自然剧情证据；简单生成请求不会再被误判为结构化用户大纲。
+
+已验证结果：
+
+| 功能样本 | 验证结果 |
+|---|---|
+| AI 漫剧单片：周敦颐 | passed=true，genre 88，pattern 95，GEARS 100，无坏词污染 |
+| 人物故事：周敦颐 | passed=true，genre 88，pattern 91，GEARS 100，6 场闭环 |
+| 历史剧情：屈原投江 | passed=true，genre 91，pattern 89，GEARS 100 |
+| 微纪录：岳阳楼 | passed=true，genre 91，pattern 89，GEARS 100，观众稿干净 |
+| 非遗宣传：湘绣 | passed=true，genre 100，pattern 97，GEARS 100 |
+
+测试结果：
+
+- `cd web/server && npm test`：26 个测试文件、393 个用例全绿。
+- `cd mcp-server && npm test`：28 个测试文件、138 个用例全绿。
+- 单片矩阵临时生成检查全绿。
+- `git diff --check` 通过。
+
+新对话建议第一步：
+
+1. 执行 `git status --short`，确认是否有用户新改动。
+2. 如继续代码开发，先读取本文件和 `docs/story-agent-next-development-plan.md` 的 `2026-06-27` 小节。
+3. 优先复测并修 AI 漫剧系列：重新生成周敦颐第 1、2 集，确认两集不是同正文、不是单片模板重复，并且每集都有“场景动作、对白、选择、后果、钩子”。
+4. 然后处理产品信息架构：`创作台 -> AI 漫剧` 应解释为单片/短片生成，`漫剧系列` 应解释为多集连续剧；若用户心智仍混乱，直接改名或合并入口。
+5. 最后做 `AI影视工作台` 命名审计，确保浏览器标题、应用壳、导航、侧栏不再显示旧产品名 `中国传统文化知识库`。
+
+下一轮不要重复踩的坑：
+
+- 不要把 `mortal_growth` / `character_arc_adaptation` 重新加回 AI 漫剧默认叙事流派；单片默认应偏短剧钩子、人物选择和可拍场面。
+- 不要把简单一句生成需求当成结构化大纲，除非有明确大纲标记。
+- 不要把来源素材摘要、质量检测词、生成优先级、可信度说明直接写进观众稿或 visual prompt。
+- 不要在本仓库继续实现真实图片/视频/后期实产；GEARS v2 仍是媒体执行层。
+- 不要把修复前的 `20260625-story-5xin`、`20260625-story-5xie` 当成当前质量样本，它们应作为旧失败样本被重跑、归档或回归测试化。
 
 2026-06-23 更新：Phase 1 合同层首轮已落地。Web 后端已新增并接入 `creation_contract`、`material_pack`、`material_sufficiency`，旧 `knowledge_pack` 请求保持兼容；StoryBlueprint、prompt package、StoryGenerateResult、质量报告、项目 meta/version snapshot 均会保存新字段。MCP `kb_generate_story_blueprint` 已能只读返回 `creation_contract` / `material_sufficiency`，`kb_get_project_context` 可读回项目上下文中的新合同字段。
 
