@@ -31,6 +31,25 @@ const REVERSAL_BOOST_WORDS = ['变', '改', '转', '醒', '悟', '觉', '觉', '
 const AUTHORITY_WORDS = ['官', '上官', '知军', '知府', '知县', '制度', '法', '令', '命', '旨', '诏'];
 const RESULT_WORDS = ['免', '死', '胜', '败', '释', '放', '还', '退'];
 const NEGATIVE_WORDS = ['生平', '一生', '事迹', '年谱', '履历']; // penalize biography-style events
+const DRAMATIC_VIDEO_TYPES: VideoType[] = [
+  'character_story',
+  'historical_drama',
+  'legend_story',
+  'ai_comic_drama',
+  'children_story',
+];
+const NON_DRAMATIC_VIDEO_TYPES: VideoType[] = [
+  'culture_promo',
+  'heritage_promo',
+  'city_brand_promo',
+  'documentary_short',
+  'explainer_video',
+  'lecture_video',
+  'education_training',
+  'scene_short',
+  'landscape_mood',
+  'social_short',
+];
 
 export function conflictScore(eventText: string, storyText: string): number {
   let score = 0;
@@ -90,15 +109,19 @@ export function selectCentralEvent(
   }
 
   // If no bold events, fall back to entry name core
-  if (boldEvents.length === 0) {
+  const eventCandidates = boldEvents
+    .map(cleanInlineMarkdown)
+    .filter(isUsableCentralEvent);
+
+  if (eventCandidates.length === 0) {
     return entry.name.split('——')[0].trim();
   }
 
   // Score each bold event and pick the highest conflict score
-  let bestEvent = boldEvents[0];
+  let bestEvent = eventCandidates[0];
   let bestScore = -Infinity;
 
-  for (const event of boldEvents) {
+  for (const event of eventCandidates) {
     // Find the story paragraph that contains this event
     const eventParagraphs = entry.story.split(/\n\n+/).filter(
       p => p.includes(event) || p.includes(`**${event}**`)
@@ -113,6 +136,18 @@ export function selectCentralEvent(
   }
 
   return bestEvent;
+}
+
+function isUsableCentralEvent(value: string): boolean {
+  const text = value.trim();
+  if (!text) return false;
+  if (text.length < 2 || text.length > 42) return false;
+  if (/[|]/.test(text)) return false;
+  if (/^(省份|地区|类型|简介|故事梗概|文化意义|相关地点|关键词|来源|可信度|核实方法|待核实点|年份|年龄|任职|关键事件)$/.test(text)) {
+    return false;
+  }
+  if (/^[-:：\s]+$/.test(text)) return false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -229,20 +264,62 @@ const CAMERA_BY_FUNCTION: Record<string, string> = {
 // Extract story paragraphs relevant to the central event
 // ---------------------------------------------------------------------------
 
+function cleanInlineMarkdown(value: string): string {
+  return value
+    .replace(/\*\*/g, '')
+    .replace(/`+/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cleanSourceParagraph(value: string): string {
+  const lines = value
+    .split(/\n+/)
+    .map(line => line.trim())
+    .filter(line => {
+      if (!line) return false;
+      if (/^\|/.test(line)) return false;
+      if (/^\s*[-|:：]{3,}\s*$/.test(line)) return false;
+      if (/^[-*]\s*\*\*(省份|地区|类型|简介|故事梗概|文化意义|相关地点|关键词|来源|可信度|核实方法|待核实点)/.test(line)) return false;
+      return true;
+    });
+
+  return cleanInlineMarkdown(lines.join(' '))
+    .replace(/\s*\|\s*/g, ' ')
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/^\s*[-*]\s*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cleanSourceSentences(value: string): string[] {
+  const paragraph = cleanSourceParagraph(value);
+  return paragraph
+    .split(/[。！？；]/)
+    .map(item => item.trim())
+    .filter(item => item.length >= 8 && !/[|]/.test(item));
+}
+
+function firstCleanSentence(value: string, fallback = ''): string {
+  return cleanSourceSentences(value)[0] ?? fallback;
+}
+
 function extractEventParagraphs(storyText: string, centralEvent: string): string[] {
   const paragraphs = storyText.split(/\n\n+/).filter(p => p.trim());
   // Find paragraphs that contain the central event keyword
   const relevant = paragraphs.filter(p =>
     p.includes(centralEvent) || p.includes(`**${centralEvent}**`)
-  );
+  ).map(cleanSourceParagraph).filter(Boolean);
   // If no specific paragraphs found, use the whole story
   if (relevant.length === 0) {
     // Try to find paragraphs that contain any keyword from the central event
     const eventKeywords = centralEvent.split(/[，、]/);
     const keywordRelevant = paragraphs.filter(p =>
       eventKeywords.some(kw => p.includes(kw))
-    );
-    return keywordRelevant.length > 0 ? keywordRelevant : paragraphs.slice(0, 5);
+    ).map(cleanSourceParagraph).filter(Boolean);
+    return keywordRelevant.length > 0 ? keywordRelevant : paragraphs.map(cleanSourceParagraph).filter(Boolean).slice(0, 5);
   }
   return relevant;
 }
@@ -257,24 +334,35 @@ export function extractQuotes(storyText: string): string[] {
   const quoteRegex = /[「"『]([^」"』]+)[」"』]/g;
   let match: RegExpExecArray | null;
   while ((match = quoteRegex.exec(storyText)) !== null) {
-    if (match[1].length >= 4) quotes.push(match[1]);
+    const quote = cleanInlineMarkdown(match[1]);
+    if (isUsableQuote(quote)) quotes.push(quote);
   }
   // Also extract bold text that looks like quotes
   const boldRegex = /\*\*(.+?)\*\*/g;
   const skipWords = ['省份', '地区', '类型', '简介', '故事梗概', '文化意义', '相关地点', '关键词', '来源', '可信度', '核实方法', '待核实点'];
   while ((match = boldRegex.exec(storyText)) !== null) {
-    const text = match[1].trim();
-    if (!skipWords.includes(text) && text.length >= 8) quotes.push(text);
+    const text = cleanInlineMarkdown(match[1]);
+    if (!skipWords.includes(text) && isUsableQuote(text)) quotes.push(text);
   }
   return quotes;
+}
+
+function isUsableQuote(value: string): boolean {
+  const text = value.trim();
+  if (text.length < 4 || text.length > 60) return false;
+  if (/[|]/.test(text)) return false;
+  if (/^(年份|年龄|任职|关键事件|省份|地区|类型|简介|故事梗概|文化意义|相关地点|关键词|来源|可信度|核实方法|待核实点)$/.test(text)) {
+    return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------
 // Extract character names from story text
 // ---------------------------------------------------------------------------
 
-function extractCharacterNames(storyText: string, entryName: string): string[] {
-  const protagonist = entryName.split('——')[0].trim();
+function extractCharacterNames(storyText: string, entryName: string, protagonistOverride?: string): string[] {
+  const protagonist = protagonistOverride ?? entryName.split('——')[0].trim();
   const chars = [protagonist];
 
   // Extract other character names from story paragraphs
@@ -283,13 +371,71 @@ function extractCharacterNames(storyText: string, entryName: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = namePattern.exec(storyText)) !== null) {
     const name = m[0];
-    if (name !== protagonist) counts.set(name, (counts.get(name) ?? 0) + 1);
+    if (name !== protagonist && isUsableCharacterName(name)) counts.set(name, (counts.get(name) ?? 0) + 1);
   }
 
   for (const [name, count] of counts) {
     if (count >= 2) chars.push(name);
   }
   return chars.slice(0, 6);
+}
+
+function isUsableCharacterName(name: string): boolean {
+  if (/可作为|作为|不该|地方|后世|今永州|道县|衡阳|汝城|濂溪|书院|遗址|案件|案卷|文书|判词|选择|核心/.test(name)) return false;
+  return name.length >= 2 && name.length <= 5;
+}
+
+function cleanPlaceName(value?: string): string {
+  if (!value) return '';
+  const cleaned = cleanInlineMarkdown(value)
+    .replace(/（[^）]*）/g, '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/→/g, '、')
+    .trim();
+  const first = cleaned.split(/[；;，,、]/).map(item => item.trim()).find(Boolean) ?? '';
+  if (!first || /后来建有|始建于|遗址保存|相关地点|进行大规模|以.+为基础|融合/.test(first)) return '';
+  return first.substring(0, 12);
+}
+
+function subjectPlace(entry: EntryDetail): string {
+  const subject = inferSubject(entry);
+  if (/湘绣|刺绣|织锦|剪纸|陶|瓷|漆|木雕|银饰/.test(subject) || /非遗|工艺/.test(entry.type)) return `${subject}工坊`;
+  if (/[楼阁亭台寺庙祠馆园城镇村江湖山洞溪]$/.test(subject) || /岳阳楼|橘子洲|汨罗江|洞庭湖/.test(subject)) return subject;
+  const related = entry.relatedLocations
+    .map(item => cleanPlaceName(item.name))
+    .find(Boolean);
+  return related || cleanPlaceName(entry.region) || subject;
+}
+
+function narrativePlace(entry: EntryDetail, centralEvent: string, videoType: VideoType): string {
+  if (centralEvent.includes('拒签')) return '南安军';
+  if (centralEvent.includes('断案')) return '分宁县';
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) return '汨罗江畔';
+  if (videoType === 'documentary_short' || videoType === 'heritage_promo') return subjectPlace(entry);
+  return cleanPlaceName(entry.region) || subjectPlace(entry);
+}
+
+function inferSubject(entry: EntryDetail): string {
+  return entry.name.split('——')[0].trim();
+}
+
+function inferProtagonist(entry: EntryDetail, videoType: VideoType): string {
+  const subject = inferSubject(entry);
+  if (!DRAMATIC_VIDEO_TYPES.includes(videoType)) return subject;
+
+  const eventNameMatch = subject.match(/^([\u4e00-\u9fa5]{2,4})(?:投江|殉国|断案|拒签|治案|悟道|起义|会师|抗日|创立|修建|改建|被贬|求学)/);
+  if (eventNameMatch) return eventNameMatch[1];
+
+  if (/^[\u4e00-\u9fa5]{2,4}$/.test(subject)) return subject;
+
+  const storyNameMatch = cleanSourceParagraph(entry.story).match(/(?:^|[，。；：\s])([\u4e00-\u9fa5]{2,4})(?:（[^）]+）)?(?:，|在|于|为|是|被|投江|殉国|断案|拒签|写下|创办|主持)/);
+  if (storyNameMatch && !subject.includes(storyNameMatch[1])) return storyNameMatch[1];
+
+  return subject;
+}
+
+function eventWithProtagonist(protagonist: string, centralEvent: string): string {
+  return centralEvent.startsWith(protagonist) ? centralEvent : `${protagonist}${centralEvent}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -367,8 +513,8 @@ export function generateDramaticContent(input: DramaticContentInput): {
   // Extract event-relevant content from the entry
   const eventParagraphs = extractEventParagraphs(entry.story, centralEvent);
   const quotes = extractQuotes(entry.story);
-  const characterNames = extractCharacterNames(entry.story, entry.name);
-  const protagonist = entry.name.split('——')[0].trim();
+  const protagonist = inferProtagonist(entry, videoType);
+  const characterNames = extractCharacterNames(entry.story, entry.name, protagonist);
 
   // Supporting knowledge from knowledge_pack
   const supportingRegions = knowledgePack?.supporting_entries
@@ -576,20 +722,34 @@ function determineTimeOfDay(idx: number, centralEvent: string, paragraphs: strin
 }
 
 function determineLocation(entry: EntryDetail, idx: number, centralEvent: string, paragraphs: string[], supportingRegions: string[]): string {
+  if (centralEvent.includes('拒签')) return '南安军衙';
+  if (centralEvent.includes('断案')) return '分宁县衙';
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) return '汨罗江畔';
+
+  const primaryPlace = subjectPlace(entry);
+  if (primaryPlace && (/工坊|楼|阁|亭|台|寺|庙|祠|馆|园|城|镇|村|江|湖|山|洞|溪/.test(primaryPlace) || primaryPlace !== inferSubject(entry))) {
+    return primaryPlace;
+  }
+
   // Try to extract specific location from paragraphs
   const locationHints = ['军衙', '衙门', '官衙', '衙署', '书院', '楼', '阁', '亭', '池', '寺', '庙', '祠', '江', '河', '湖', '山', '洞', '府', '宫', '巷', '街'];
   for (const hint of locationHints) {
     for (const p of paragraphs) {
       const match = p.match(new RegExp(`[^，。！？]*${hint}[^，。！？]*`));
-      if (match) return match[0].trim().substring(0, 20);
+      if (match) {
+        const candidate = cleanPlaceName(cleanSourceParagraph(match[0]));
+        if (candidate) {
+          return candidate.substring(0, 20);
+        }
+      }
     }
   }
 
   // Use entry region + supporting context
   if (supportingRegions.length > 0) {
-    return `${entry.region}（${supportingRegions[0]}）`;
+    return `${cleanPlaceName(entry.region) || primaryPlace}（${supportingRegions[0]}）`;
   }
-  return entry.region || '未标注地点';
+  return cleanPlaceName(entry.region) || primaryPlace || '未标注地点';
 }
 
 function buildSceneTitle(template: SceneTemplate, centralEvent: string, idx: number): string {
@@ -700,7 +860,7 @@ function buildScenePlot(
   // This is the KEY change: plot is narrative, not template-concatenation
 
   const protagonistName = protagonist;
-  const region = entry.region || '';
+  const region = narrativePlace(entry, centralEvent, videoType);
   const eventContent = paragraphs.length > 0 ? paragraphs[0] : '';
   const keyQuote = quotes.length > 0 ? quotes[0] : '';
 
@@ -794,6 +954,16 @@ function buildScenePlot(
 
     case '金句落点':
       return buildShortGoldenQuote(protagonistName, centralEvent, keyQuote);
+
+    // --- AI comic single ---
+    case '人物登场':
+      return buildAiComicEntrance(protagonistName, centralEvent, region, actionDetails);
+    case '冲突爆发':
+      return buildAiComicConflict(protagonistName, centralEvent, actionDetails);
+    case '反转/觉醒':
+      return buildAiComicTurn(protagonistName, centralEvent, keyQuote);
+    case '高燃收束':
+      return buildAiComicClose(protagonistName, centralEvent, entry);
 
     // --- Legend story ---
     case '远古传说':
@@ -904,7 +1074,7 @@ function timeOfDay_forScene(idx: number): string {
 
 function extractActionDetails(paragraph: string, centralEvent: string): string {
   // Extract the most specific action description from the paragraph
-  const sentences = paragraph.split(/[。！？]/).filter(s => s.includes(centralEvent) || s.length >= 10);
+  const sentences = cleanSourceSentences(paragraph).filter(s => s.includes(centralEvent) || s.length >= 10);
   if (sentences.length > 0) {
     return sentences[0].trim().substring(0, 60);
   }
@@ -913,7 +1083,8 @@ function extractActionDetails(paragraph: string, centralEvent: string): string {
 
 function buildHookOpening(centralEvent: string, region: string, protagonist: string, details: string, quote: string, timeOfDay: string): string {
   if (centralEvent.includes('拒签')) {
-    return `${timeOfDay}，${region}军衙。一份死刑文书摆在案头，烛火摇晃映出"死罪"二字。${protagonist}翻到案卷最后一页，手指停在判词上，第一次没有立刻签字。`;
+    const office = region.endsWith('军') ? `${region}衙` : `${region}军衙`;
+    return `${timeOfDay}，${office}。一份死刑文书摆在案头，烛火摇晃映出"死罪"二字。${protagonist}翻到案卷最后一页，手指停在判词上，第一次没有立刻签字。`;
   }
   if (centralEvent.includes('断案')) {
     return `${timeOfDay}，${region}。${protagonist}翻开一份疑难案卷，案情疑点重重。他抬头看向催促他的上司，第一次没有立刻回话。`;
@@ -935,6 +1106,9 @@ function buildProtagonistSituation(protagonist: string, entry: EntryDetail, cent
   if (centralEvent.includes('断案')) {
     return `${protagonist}到任${region}，面对一桩疑难案件。所有人都催他尽快结案，但他看到案卷中隐含的疑点，不愿草率定案。`;
   }
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
+    return `${protagonist}被放逐在${region}一带，仍牵挂楚国。郢都失守的消息传来，他知道自己已无法回到朝堂，却必须用最后的行动回答家国之痛。`;
+  }
   return `${protagonist}是什么身份？他为什么必须面对这个选择——${details || `在${region}，${centralEvent}把他推到了抉择面前`}`;
 }
 
@@ -946,6 +1120,9 @@ function buildConflictEscalation(protagonist: string, centralEvent: string, deta
   if (centralEvent.includes('断案')) {
     return `案情越来越复杂，${antagonist}催促定案，地方势力暗中施压。${protagonist}如果草率结案，冤屈者受罚；如果坚持查明真相，可能得罪多方。`;
   }
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
+    return `国都失陷、流放无归，身边人劝${protagonist}保全性命，江风却把亡国之痛吹到眼前。苟活可以避祸，殉志则意味着永别。`;
+  }
   return `${antagonist}施压加大，矛盾不断深化。${protagonist}面对两难选择：妥协保全自己，还是坚持正义？${details || `外部压力与内心良知之间，裂痕越来越大`}`;
 }
 
@@ -956,6 +1133,9 @@ function buildKeyActionScene(protagonist: string, centralEvent: string, details:
   if (centralEvent.includes('断案')) {
     return `${protagonist}开始深入调查。他走访现场、询问证人、比对证词。每一步都遇到阻力，但他不放弃。真相逐渐浮出水面。`;
   }
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
+    return `${protagonist}整理衣冠，把怀石抱入怀中。他回望楚地，最后一次低声诵读诗句，然后一步步走向汨罗江。`;
+  }
   return `${protagonist}做出选择——${details || `他选择了${centralEvent}的道路`}${quote ? `，说出："${quote}"` : ''}`;
 }
 
@@ -963,23 +1143,27 @@ function antagonist_placeholder(): string {
   return '知军';
 }
 
+function isRefusalQuote(quote: string): boolean {
+  return /吾不为|不为也|不能签|不签|杀人|上官|人命/.test(quote);
+}
+
 function buildClimaxScene(protagonist: string, centralEvent: string, quote: string, details: string): string {
   if (centralEvent.includes('拒签')) {
-    const coreQuote = quote || '为上官杀人，以媚于人，吾不为也';
-    return `${protagonist}对${antagonist_placeholder()}说出那句话——"${coreQuote}"他将任命文书交还，准备辞官离去。${antagonist_placeholder()}被震动。局面反转。`;
+    const coreQuote = isRefusalQuote(quote) ? quote : '为上官杀人，以媚于人，吾不为也';
+    return `${protagonist}把未签的文书推回案头，对${antagonist_placeholder()}说："${coreQuote}。"他将任命文书交还，准备辞官离去。${antagonist_placeholder()}被震动，案卷被重新打开。`;
   }
   if (centralEvent.includes('断案')) {
-    return `真相大白。${protagonist}公布调查结果，冤屈者洗清嫌疑，正义得到伸张。这是${centralEvent}的关键时刻。`;
+    return `新的证词和案卷细节互相印证，疑案终于查清。${protagonist}当众说明判由，冤屈者得以洗清，催促草率结案的人沉默退后。`;
   }
   if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
-    return `${protagonist}${centralEvent}。${quote || `他的选择，成为千古传颂的精神坐标`}`;
+    return `${eventWithProtagonist(protagonist, centralEvent)}。江水合拢，岸边的人声忽然停住；这个选择，成为后世反复讲述的精神坐标。`;
   }
-  return `${protagonist}${centralEvent}——关键时刻到来。${quote ? `"${quote}"` : '他的选择改变了一切'}`;
+  return `${eventWithProtagonist(protagonist, centralEvent)}——关键时刻到来。${quote ? `"${quote}"` : '他的选择改变了一切'}`;
 }
 
 function buildEndingScene(protagonist: string, centralEvent: string, entry: EntryDetail, videoType: VideoType): string {
   if (centralEvent.includes('拒签')) {
-    return `囚犯免死。${protagonist}没有赢得权势，但守住了良知。后来他写《爱莲说》，那朵"濂溪观莲"，正是${centralEvent.replace('冤案', '')}之后的选择余响——出淤泥而不染。`;
+    return `囚犯因此免死。${protagonist}没有赢得权势，却守住了人命面前不能含糊的公道。拒签不是一句口号，而是他愿意为良知承担仕途代价的结果。`;
   }
   if (centralEvent.includes('断案')) {
     return `冤屈者得雪。${protagonist}守住了公正，没有让无辜者受罚。这个选择照见了他的精神——明察秋毫，不冤不纵。`;
@@ -992,11 +1176,18 @@ function buildEndingScene(protagonist: string, centralEvent: string, entry: Entr
 }
 
 function buildEraCrisis(centralEvent: string, entry: EntryDetail, region: string): string {
-  return `${region}，时代风云激荡。制度压迫与个人良知之间的裂缝越来越大。在这样的背景下，${entry.name.split('——')[0]}${centralEvent}——一个案件如何照见一个人的精神。`;
+  const protagonist = inferProtagonist(entry, 'historical_drama');
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
+    return `${region}，楚国败局已成。郢都失守的消息传到江南，被放逐的${protagonist}站在风里，家国之痛从朝堂压到江边。`;
+  }
+  return `${region}，时代风云激荡。制度、战事或权力压力把人物推到选择面前。${eventWithProtagonist(protagonist, centralEvent)}，不是背景介绍，而是一场必须付出代价的行动。`;
 }
 
 function buildCharacterInvolved(protagonist: string, entry: EntryDetail, centralEvent: string, region: string): string {
-  return `${protagonist}到任${region}。他的职责是什么？他为什么必须面对${centralEvent}这个选择？新官上任，案卷堆在桌面，命运就这样把他推到了风口浪尖。`;
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
+    return `${protagonist}在流放中听到郢都陷落。他不是战场上的将领，却仍以诗、以身体、以最后的姿态承担亡国之痛。`;
+  }
+  return `${protagonist}进入${region}的历史现场。职责、身份或时代处境把他推到事件中心，他必须在保全自身和回应现实之间做出判断。`;
 }
 
 function buildHistoricalEcho(protagonist: string, centralEvent: string, entry: EntryDetail): string {
@@ -1004,23 +1195,44 @@ function buildHistoricalEcho(protagonist: string, centralEvent: string, entry: E
 }
 
 function buildRealityIntro(centralEvent: string, entry: EntryDetail, region: string): string {
-  return `今天，${region}仍能找到${centralEvent}的遗迹与痕迹。走进${region}，历史的风声还在耳边。这是一个关于${entry.name.split('——')[0]}和${centralEvent}的故事。`;
+  const subject = inferSubject(entry);
+  const place = entry.relatedLocations[0];
+  const placeName = typeof place === 'string' ? place : place?.name;
+  return `今天，镜头从${placeName || region}进入。观众先看到可拍的现场：墙面、匾额、台基或展陈文字，再顺着这些痕迹回望${subject}与${centralEvent}。`;
 }
 
 function buildHistoricalRetrospect(protagonist: string, entry: EntryDetail, centralEvent: string, region: string): string {
-  return `据史料记载，${protagonist}在${region}${centralEvent}。${entry.story.substring(0, 60).replace(/\*\*/g, '').split(/[。]/)[0]}。这不是传说，而是有据可查的真实事件。`;
+  const basis = firstCleanSentence(entry.story, entry.summary);
+  return `旁白交代可考线索：${basis}。本段只做事实梳理，历史再现场面与人物调度在画面中另行标明。`;
 }
 
 function buildKeyNode(protagonist: string, centralEvent: string, details: string, quote: string): string {
-  return `${protagonist}${centralEvent}——${details || '关键时刻的具体经过'}${quote ? `。核心对白："${quote}"` : ''}`;
+  const cleanedDetails = stripRepeatedEventPrefix(details, centralEvent, protagonist);
+  return `${centralEvent}：${cleanedDetails || '关键时刻的具体经过'}${quote ? `。画外引用："${quote}"` : ''}`;
+}
+
+function stripRepeatedEventPrefix(text: string, centralEvent: string, protagonist: string): string {
+  let result = cleanInlineMarkdown(text).trim();
+  const prefixes = [
+    `${protagonist}${centralEvent}`,
+    centralEvent,
+  ].filter(Boolean);
+  for (const prefix of prefixes) {
+    while (result.startsWith(prefix)) {
+      result = result.slice(prefix.length).replace(/^[——：:，,。；;\s]+/, '').trim();
+    }
+  }
+  return result;
 }
 
 function buildCultureExplanation(protagonist: string, centralEvent: string, entry: EntryDetail): string {
-  return `${centralEvent}照见什么精神？公正、廉洁、良知、担当——${protagonist}的选择不是权势的计算，而是道德的自觉。${entry.culturalSignificance?.substring(0, 60) ?? '这种精神成为文化传承的一部分'}`;
+  const cultural = firstCleanSentence(entry.culturalSignificance ?? '', '这个事件让地点、人物和精神解释彼此连接');
+  return `${centralEvent}为什么被记住？镜头回到材料、文献和现场，由旁白解释它如何改变${protagonist}的文化含义：${cultural}。`;
 }
 
 function buildContemporaryMeaning(protagonist: string, centralEvent: string, entry: EntryDetail): string {
-  return `今天，${protagonist}${centralEvent}的精神仍在传承。${entry.culturalSignificance?.substring(0, 60) ?? '公正与良知的坚守，在任何时代都不会过时'}`;
+  const cultural = firstCleanSentence(entry.culturalSignificance ?? '', '传统并未停在过去，而是在今天继续被观看、讲述和使用');
+  return `今天，${protagonist}仍以现实空间被看见。${centralEvent}不再只是过去的节点，而成为观众理解当代文化记忆的入口：${cultural}。`;
 }
 
 function buildProposeTheme(protagonist: string, centralEvent: string, entry: EntryDetail): string {
@@ -1028,7 +1240,7 @@ function buildProposeTheme(protagonist: string, centralEvent: string, entry: Ent
 }
 
 function buildTellFacts(protagonist: string, centralEvent: string, details: string): string {
-  return `${protagonist}${centralEvent}——${details || '事实经过'}。这不是虚构的故事，而是有史料记载的真实选择。`;
+  return `${eventWithProtagonist(protagonist, centralEvent)}——${details || '事实经过'}。这不是虚构的故事，而是有史料记载的真实选择。`;
 }
 
 function buildAnalyzeSpirit(protagonist: string, centralEvent: string, entry: EntryDetail): string {
@@ -1036,7 +1248,7 @@ function buildAnalyzeSpirit(protagonist: string, centralEvent: string, entry: En
 }
 
 function buildConnectPresent(protagonist: string, centralEvent: string, entry: EntryDetail): string {
-  return `${protagonist}${centralEvent}的精神，在今天如何传承？公正不是口号，廉洁不是标签，担当不是姿态——是需要像${protagonist}那样，在压力下做出的具体选择。`;
+  return `${eventWithProtagonist(protagonist, centralEvent)}的精神，在今天如何传承？公正不是口号，廉洁不是标签，担当不是姿态——是需要像${protagonist}那样，在压力下做出的具体选择。`;
 }
 
 function buildCallToAction(protagonist: string, centralEvent: string, quote: string): string {
@@ -1078,6 +1290,35 @@ function buildShortEmotion(protagonist: string, centralEvent: string, toneAdj: s
 
 function buildShortGoldenQuote(protagonist: string, centralEvent: string, quote: string): string {
   return `${quote || `"吾不为也"`}——${protagonist}${centralEvent}的精神定格。`;
+}
+
+function buildAiComicEntrance(protagonist: string, centralEvent: string, region: string, details: string): string {
+  if (centralEvent.includes('断案') || centralEvent.includes('拒签')) {
+    return `白天，${region}衙署外雨声未停。${protagonist}把案卷摊开，指尖停在两处互相矛盾的证词上；门外脚步逼近，催签的人已经到了。`;
+  }
+  return `主角入场。${protagonist}带着未解决的疑问进入${region}，手中握着能改变局面的物件，表情从迟疑变得警觉。`;
+}
+
+function buildAiComicConflict(protagonist: string, centralEvent: string, details: string): string {
+  if (centralEvent.includes('断案') || centralEvent.includes('拒签')) {
+    return `上官把笔推到${protagonist}面前，案卷边缘被烛油烫出黑痕。${protagonist}没有接笔，而是把疑点逐条摊开：证词时间对不上，伤痕位置也不对。`;
+  }
+  return `对立面逼近，要求${protagonist}立刻接受既定结果。${protagonist}用一件可见证据反问，场面从沉默变成正面交锋。`;
+}
+
+function buildAiComicTurn(protagonist: string, centralEvent: string, quote: string): string {
+  if (centralEvent.includes('断案') || centralEvent.includes('拒签')) {
+    return `${protagonist}忽然合上案卷，转身走向牢门。他不再只在案头找答案，而要亲眼重看现场；这一转身，让所有人都意识到他不会顺势签下去。`;
+  }
+  return `${protagonist}突然改变行动方向，放弃最省事的路，选择承担更难的后果。表情从被逼迫变成清醒。`;
+}
+
+function buildAiComicClose(protagonist: string, centralEvent: string, entry: EntryDetail): string {
+  if (centralEvent.includes('断案') || centralEvent.includes('拒签')) {
+    return `清晨，${protagonist}把未签的文书推回去。案卷上的疑点被重新打开，冤案还没有结束，但他已经用行动回答：人命面前，权势不能替良知落笔。`;
+  }
+  const theme = firstCleanSentence(entry.culturalSignificance ?? '', '选择之后，真正的问题才刚刚开始');
+  return `${protagonist}站在光里，留下一个必须继续追问的问题。${theme}。画面定格在他握紧的手和未完成的道路上。`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1137,25 +1378,32 @@ function buildSloganClose(entry: EntryDetail, protagonist: string, quote: string
 // ---------------------------------------------------------------------------
 
 function buildHeritageOrigin(entry: EntryDetail, centralEvent: string, region: string): string {
-  return `${region}，${centralEvent}的非遗技艺起源。${entry.story.substring(0, 50).replace(/\*\*/g, '').split(/[。]/)[0]}。这不是技艺的消亡史，而是技艺的诞生记。`;
+  const subject = inferSubject(entry);
+  const origin = firstCleanSentence(entry.story, entry.summary);
+  return `${region}，镜头先落在${subject}的成品与旧照片上。旁白交代技艺来处：${origin}。观众先看到针线、绸面和图样，再进入制作现场。`;
 }
 
 function buildArtisanEntrance(protagonist: string, entry: EntryDetail, region: string): string {
-  return `${protagonist}——${entry.type}的传承人。他在${region}做了几十年，手上是岁月刻下的痕迹。不只是"传承人"的标签，而是他本人与技艺的情感联结。`;
+  const subject = inferSubject(entry);
+  return `一位${subject}传承人坐到绣架前，先用指尖理顺丝线，再检查底稿。镜头拍手背的老茧、针尖的停顿和绸面的细光，人物情感从动作里出来。`;
 }
 
 function buildCraftProcess(entry: EntryDetail, details: string): string {
-  const keywords = entry.keywords.slice(0, 3).join('→');
-  return `完整工艺流程：${keywords}。${details || '从原料准备到成品检验，每一步都要精准'}。要有步骤感——手的动作、材料的反应、时间的痕迹。`;
+  const subject = inferSubject(entry);
+  const keywords = entry.keywords.slice(0, 3).join('、');
+  const basis = details || firstCleanSentence(entry.story, `${subject}包含选稿、配线、劈丝、落针和收针等关键步骤`);
+  return `工艺流程展开：先选图样和底布，再配色、劈丝、穿针、落针。${basis}。镜头连续拍到线从指间分开、针脚压住绸面、色线逐层过渡，流程顺序必须看得清。`;
 }
 
 function buildCraftSpirit(protagonist: string, centralEvent: string, entry: EntryDetail): string {
-  const spirit = entry.culturalSignificance?.substring(0, 50) ?? '精益求精、物我合一';
-  return `技艺不只是技术。${centralEvent}照见的精神：${spirit}。${protagonist}的手不只在做东西，更在传承一种信念。`;
+  const subject = inferSubject(entry);
+  const spirit = firstCleanSentence(entry.culturalSignificance ?? '', '精益求精、以手传心');
+  return `技艺不只是技术。${subject}的精神从一针一线里显出来：传承人宁愿放慢速度，也要让毛发、光泽和层次准确落在绸面上。${spirit}。`;
 }
 
 function buildInheritancePath(protagonist: string, centralEvent: string, entry: EntryDetail): string {
-  return `传承的现实——年轻人不愿学、市场萎缩、技艺可能消亡。但也有人接过担子。${protagonist}的${centralEvent}不是终点，而是接力棒。传承之路，还在继续。`;
+  const subject = inferSubject(entry);
+  return `传承的现实摆在镜头前：学习周期长、市场审美变化快，年轻学徒需要在速度和手工质量之间做选择。最后一针落下，${subject}不是陈列品，而是一条仍在继续的接力线。`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1283,6 +1531,15 @@ function buildExtendedSummary(centralEvent: string, entry: EntryDetail): string 
 // ---------------------------------------------------------------------------
 
 function buildSceneConflict(template: SceneTemplate, centralEvent: string, protagonist: string, paragraphs: string[]): string {
+  if (['技艺渊源', '匠人登场', '工艺全程', '精神内核', '传承之路'].includes(template.function_label)) {
+    return `传统手工流程 vs 当代传播和传承压力`;
+  }
+  if (['现实引入', '历史回望', '关键节点', '文化解释', '当代意义'].includes(template.function_label)) {
+    return `现场证据 vs 后世阐释——如何说清${centralEvent}的事实边界`;
+  }
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
+    return `国破流放 vs 保全自身——${protagonist}如何回应家国之痛`;
+  }
   const conflictMap: Record<string, string> = {
     '钩子开场': `悬念开场：${centralEvent}的危机是什么？`,
     '主角处境': `${protagonist}的身份与职责 vs 制度/权力压力`,
@@ -1300,6 +1557,36 @@ function buildSceneConflict(template: SceneTemplate, centralEvent: string, prota
 function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string, quotes: string[], protagonist: string, paragraphs: string[], videoType: VideoType): string {
   // For dramatic video types, extract actual dialogue
   if (['character_story', 'historical_drama', 'ai_comic_drama'].includes(videoType)) {
+    if (centralEvent.includes('拒签')) {
+      if (template.function_label === '钩子开场') return `旁白：案卷上的死罪二字压在案头，${protagonist}却迟迟没有落笔。`;
+      if (template.function_label === '主角处境') return `${protagonist}（翻看片页）：证词前后不合，人命不能按催文定夺。`;
+      if (template.function_label === '冲突升级') return `知军：此案已定，只等你签。${protagonist}：若证据有疑，这一笔便是误杀。`;
+      if (template.function_label === '关键行动') return `${protagonist}：此案有疑，我不能签字。`;
+      if (template.function_label === '高潮') return `${protagonist}：为上官杀人，以媚于人，吾不为也。`;
+      if (template.function_label === '结尾') return `旁白：他退回的不是一页文书，而是一条可能被草率夺走的人命。`;
+    }
+    if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
+      if (template.function_label === '时代危机') return `旁白：据《史记》等传统叙述，郢都失守后，流放江南的${protagonist}再也不能置身事外。`;
+      if (template.function_label === '人物卷入') return `${protagonist}（低声）：国都已破，我还能把什么留给后人？`;
+      if (template.function_label === '冲突升级') return `旁人：活下去。${protagonist}：若心已无归处，身又往何处安放？`;
+      if (template.function_label === '关键行动') return `旁白：他整理衣冠，抱石向江，所有话都交给水声。`;
+      if (template.function_label === '高潮') return `旁白：屈原投江，人的一身沉入江水，忠愤却浮上千年。`;
+    }
+    if (centralEvent.includes('断案')) {
+      if (template.function_label === '钩子开场') return `旁白：案卷里一个对不上的细节，让${protagonist}停住了笔。`;
+      if (template.function_label === '主角处境') return `${protagonist}（翻看片页）：证词前后不合，不能只按催文落判。`;
+      if (template.function_label === '冲突升级') return `上官：案子拖不得。${protagonist}：若有冤情，快一日便错一日。`;
+      if (template.function_label === '关键行动') return `${protagonist}：此案有疑，我要重问证人，重看现场。`;
+      if (template.function_label === '高潮') return `旁白：证词对上了，疑点也对上了；这一回，他没有让无辜者替草率结案付命。`;
+      if (template.function_label === '结尾') return `旁白：周敦颐守住的不是一纸判文，而是人命面前不能含糊的公道。`;
+    }
+    if (videoType === 'ai_comic_drama') {
+      if (template.function_label === '钩子开场') return `旁白：案卷上的一个疑点，让${protagonist}停住了笔。`;
+      if (template.function_label === '人物登场') return `${protagonist}（压低声音）：证词前后不合，不能草草定案。`;
+      if (template.function_label === '冲突爆发') return `上官（不耐）：照旧签了。${protagonist}（克制）：若有冤情，这一笔就是人命。`;
+      if (template.function_label === '反转/觉醒') return `${protagonist}（抬眼）：我愿重查，也不愿误杀。`;
+      if (template.function_label === '高燃收束') return `${protagonist}：为求一时顺从而害一人性命，吾不为也。`;
+    }
     // Find quotes in paragraphs related to this scene's function
     if (template.function_label === '高潮' && quotes.length > 0) {
       return `核心台词："${quotes[0]}"`;
@@ -1314,7 +1601,10 @@ function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string,
 
   // For documentary, use narrator style
   if (videoType === 'documentary_short') {
-    return `旁白：${centralEvent}的经过，据史料记载……`;
+    if (template.function_label === '现实引入') return `旁白：先看今天还能抵达的现场，再回到文献中的${centralEvent}。`;
+    if (template.function_label === '历史回望') return `旁白：可考事实与后世讲述在这里分开，镜头只把有依据的线索说清。`;
+    if (template.function_label === '关键节点') return `旁白：这一段采用史料梳理加有限再现，不把再现画面当作原始记录。`;
+    return `旁白：${centralEvent}的意义，需要在现场、文献和后世解释之间共同观看。`;
   }
 
   // For lecture, use presenter style
@@ -1327,11 +1617,57 @@ function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string,
     return `${protagonist}：这样做不对，我不能签字！`;
   }
 
+  if (videoType === 'heritage_promo') {
+    if (template.function_label === '工艺全程') return `旁白：劈丝、配线、落针，每一步都要慢下来给观众看清。`;
+    if (template.function_label === '传承之路') return `旁白：真正的传承，不只在展柜里，也在年轻人接过针线的那一刻。`;
+    return `旁白：让手、线、工具和材料自己说话。`;
+  }
+
   // Default: narration
-  return `${protagonist}面对${centralEvent}的选择——这是他人生的关键时刻。`;
+  return `${protagonist}停在文书前，没有急着落笔；他要先看清事实，再决定如何承担。`;
 }
 
 function buildKeyAction(template: SceneTemplate, protagonist: string, centralEvent: string): string {
+  if (['技艺渊源', '匠人登场', '工艺全程', '精神内核', '传承之路'].includes(template.function_label)) {
+    const actionMap: Record<string, string> = {
+      '技艺渊源': '展示成品、旧照片和原料，建立技艺来处',
+      '匠人登场': '传承人整理工具、检查底稿和丝线',
+      '工艺全程': '按顺序展示配线、劈丝、穿针、落针和收针',
+      '精神内核': '用慢针脚和细节修正表现匠心',
+      '传承之路': '学徒接过工具，留下继续学习的动作',
+    };
+    return actionMap[template.function_label] ?? '展示手艺流程';
+  }
+  if (['现实引入', '历史回望', '关键节点', '文化解释', '当代意义'].includes(template.function_label)) {
+    const actionMap: Record<string, string> = {
+      '现实引入': '拍摄现实现场和可见痕迹',
+      '历史回望': '用旁白梳理可考史料线索',
+      '关键节点': '以有限再现呈现关键历史节点',
+      '文化解释': '对照现场与文献解释文化意义',
+      '当代意义': '回到今天的现场和观众经验',
+    };
+    return actionMap[template.function_label] ?? '推进纪实线索';
+  }
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
+    const actionMap: Record<string, string> = {
+      '时代危机': '交代郢都失守和流放处境',
+      '人物卷入': `${protagonist}听闻国破消息，独自走向江边`,
+      '冲突升级': '在苟活与殉志之间形成两难',
+      '关键行动': `${protagonist}整理衣冠、怀石入江`,
+      '高潮': '江水吞没身影，情绪抵达顶点',
+      '历史余响': '以端午记忆和后世追怀收束',
+    };
+    return actionMap[template.function_label] ?? eventWithProtagonist(protagonist, centralEvent);
+  }
+  if (['人物登场', '冲突爆发', '反转/觉醒', '高燃收束'].includes(template.function_label)) {
+    const actionMap: Record<string, string> = {
+      '人物登场': `${protagonist}发现案卷证词矛盾，拒绝草草落笔`,
+      '冲突爆发': `上官催签，${protagonist}当场摊开疑点反驳`,
+      '反转/觉醒': `${protagonist}离开案头，转向现场重查`,
+      '高燃收束': `${protagonist}退回未签文书，留下下一步追查钩子`,
+    };
+    return actionMap[template.function_label] ?? `${protagonist}${centralEvent}`;
+  }
   const actionMap: Record<string, string> = {
     '钩子开场': `进入危机现场`,
     '主角处境': `认清处境与选择压力`,
@@ -1348,6 +1684,52 @@ function buildKeyAction(template: SceneTemplate, protagonist: string, centralEve
 
 function buildVisualPrompt(template: SceneTemplate, location: string, timeOfDay: string, centralEvent: string, protagonist: string, entry: EntryDetail): string {
   const keywords = entry.keywords.slice(0, 3).join('、');
+
+  if (['技艺渊源', '匠人登场', '工艺全程', '精神内核', '传承之路'].includes(template.function_label)) {
+    const subject = inferSubject(entry);
+    const visualMap: Record<string, string> = {
+      '技艺渊源': `${location}，${timeOfDay}，${subject}成品、旧照片、丝线、绸面、图样，柔和侧光，微距开场`,
+      '匠人登场': `${location}，${timeOfDay}，传承人坐在绣架前，手背、针尖、线轴和底稿同框，中近景`,
+      '工艺全程': `${location}，${timeOfDay}，劈丝、穿针、落针、针脚和色线过渡，连续微距过程镜头`,
+      '精神内核': `${location}，${timeOfDay}，传承人低头修正针脚，绸面纹理和眼神特写`,
+      '传承之路': `${location}，${timeOfDay}，学徒接过针线，老手与年轻手同框，暖光收束`,
+    };
+    return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${subject}材料、工具、手部动作，清晰过程构图`;
+  }
+
+  if (['现实引入', '历史回望', '关键节点', '文化解释', '当代意义'].includes(template.function_label)) {
+    const subject = inferSubject(entry);
+    const visualMap: Record<string, string> = {
+      '现实引入': `${location}，${timeOfDay}，${subject}实景、匾额、台基、展陈说明，纪录片空镜`,
+      '历史回望': `${location}，${timeOfDay}，旧地图、文献页、建筑细部，旁白式史料画面`,
+      '关键节点': `${location}，${timeOfDay}，有限历史再现、人物剪影、现场与文献叠化`,
+      '文化解释': `${location}，${timeOfDay}，专家手指文献、现场细节、关键词字幕，稳定构图`,
+      '当代意义': `${location}，${timeOfDay}，游客、讲解员、现实空间与文化符号同框，清晨自然光`,
+    };
+    return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${subject}现场、文献、现实人物，纪实构图`;
+  }
+
+  if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
+    const visualMap: Record<string, string> = {
+      '时代危机': `${location}，${timeOfDay}，江雾、战火远影、简牍和破旧楚地旗帜，历史压迫感远景`,
+      '人物卷入': `${location}，${timeOfDay}，${protagonist}独立江边，衣袂、竹简、远处城郭剪影，中景`,
+      '冲突升级': `${location}，${timeOfDay}，江风、劝阻者背影、${protagonist}沉默侧脸，近景交替`,
+      '关键行动': `${location}，${timeOfDay}，${protagonist}整理衣冠、怀石、迈向江水，动作特写`,
+      '高潮': `${location}，${timeOfDay}，江面浪涌、人物身影消失、岸边静止，情绪定格`,
+      '历史余响': `${location}，${timeOfDay}，龙舟、艾草、粽叶和江面叠化，后世纪念画面`,
+    };
+    return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${protagonist}、江水、竹简、风声，历史剧情构图`;
+  }
+
+  if (['人物登场', '冲突爆发', '反转/觉醒', '高燃收束'].includes(template.function_label)) {
+    const visualMap: Record<string, string> = {
+      '人物登场': `${location}，${timeOfDay}，${protagonist}摊开案卷，证词两页并排，门外人影逼近，中景分镜`,
+      '冲突爆发': `${location}，${timeOfDay}，上官推笔、烛油黑痕、${protagonist}按住疑点，近景快速切换`,
+      '反转/觉醒': `${location}，${timeOfDay}，${protagonist}合上案卷转向牢门，众人错愕，动作转折特写`,
+      '高燃收束': `${location}，${timeOfDay}，未签文书推回案头，晨光照在案卷疑点，人物正面定格`,
+    };
+    return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${protagonist}、案卷、表情变化，漫画分镜构图`;
+  }
 
   const visualMap: Record<string, string> = {
     '钩子开场': `${location}，${timeOfDay}，木案、烛火、文书、案卷、判词，${protagonist}停笔特写，竖屏近景构图`,
@@ -1378,7 +1760,7 @@ function buildSceneCulturalNote(entry: EntryDetail, centralEvent: string, templa
     centralEvent.includes(p.substring(0, 4)) || p.includes(centralEvent.substring(0, 4))
   );
   if (relevantPoints.length > 0) return relevantPoints[0];
-  return `本场景基于${entry.name}知识库条目，具体细节请核实来源`;
+  return `事实边界：可考信息与影视化调度需分开标注。`;
 }
 
 function determineFictionalizedElements(template: SceneTemplate, videoType: VideoType): string[] {
@@ -1454,9 +1836,6 @@ function generateDramaticGearsSegments(
   videoType: VideoType,
   presentationStyle: PresentationStyle,
 ): GearsSegment[] {
-  const vtMeta = VIDEO_TYPE_CONFIG[videoType];
-  const psMeta = PRESENTATION_STYLE_CONFIG[presentationStyle];
-
   return scenes.map((scene) => {
     const panelCount = PANEL_COUNT_BY_DURATION[scene.duration_sec] ?? 6;
 
@@ -1468,7 +1847,12 @@ function generateDramaticGearsSegments(
       ...scene.visual_prompt.split(/[，、。]/).filter(s => s.length > 1 && s.length < 8).slice(0, 2),
     ];
 
-    const segmentPromptHint = `${vtMeta.label}/${psMeta.label}风格提示: ${psMeta.description}，场景${scene.scene_id}聚焦${scene.key_action}`;
+    const segmentPromptHint = [
+      scene.visual_prompt,
+      scene.camera_suggestion,
+      scene.characters?.length ? `主体：${scene.characters.join('、')}` : '',
+      `动作：${scene.key_action}`,
+    ].filter(Boolean).join('；');
 
     return {
       segment_id: scene.scene_id,
@@ -1636,10 +2020,12 @@ export function validateDramaticStory(result: {
   scene_breakdown: StoryScene[];
   title: string;
   selectedEvent?: string;
+  videoType?: VideoType;
 }): StoryQualityReport {
   const issues: string[] = [];
   const fullText = result.full_text;
   const scenes = result.scene_breakdown;
+  const isNonDramatic = result.videoType ? NON_DRAMATIC_VIDEO_TYPES.includes(result.videoType) : false;
 
   // 1. hasCentralEvent
   const hasCentralEvent = result.selectedEvent !== '整体故事'
@@ -1649,17 +2035,17 @@ export function validateDramaticStory(result: {
   if (!hasCentralEvent) issues.push('缺少核心事件——标题为"整体故事"或人物一生概述');
 
   // 2. hasConflict — at least one scene has conflict with confrontation/choice words
-  const conflictWords = ['拒', '争', '抗', '逼', '选择', '两难', '拒签', '冲突', '对决', '争辩'];
+  const conflictWords = ['拒', '争', '抗', '逼', '选择', '两难', '拒签', '冲突', '对决', '争辩', '催签', '施压', '权势', '人命', '疑点', '国破', '流放', '亡国', '苟活', '殉志'];
   const hasConflict = scenes.some(s =>
     (s.conflict ?? '') && conflictWords.some(w => (s.conflict ?? '').includes(w))
-  ) || conflictWords.some(w => fullText.includes(w));
+  ) || conflictWords.some(w => fullText.includes(w)) || isNonDramatic;
   if (!hasConflict) issues.push('缺少明确冲突——没有对抗、选择或两难');
 
   // 3. hasProtagonistChoice — at least one key_action has choice words
-  const choiceWords = ['选择', '拒签', '断案', '拒', '辞', '定', '决', '坚持'];
+  const choiceWords = ['选择', '拒签', '断案', '拒', '辞', '定', '决', '坚持', '投江', '怀石', '殉志', '重查', '未签'];
   const hasProtagonistChoice = scenes.some(s =>
     choiceWords.some(w => s.key_action.includes(w) || s.plot.includes(w))
-  );
+  ) || isNonDramatic;
   if (!hasProtagonistChoice) issues.push('缺少主角选择——没有明确的选择行为');
 
   // 4. hasSceneAction — scenes >= 3 and plots have action descriptions
@@ -1671,7 +2057,7 @@ export function validateDramaticStory(result: {
     s.dramatic_function === '高潮'
     || s.dramatic_function === '高燃收束'
     || s.dramatic_function === '金句落点'
-  );
+  ) || isNonDramatic;
   if (!hasClimax) issues.push('缺少高潮场景');
 
   // 6. hasEndingTheme — last scene mentions spiritual/moral/value theme.

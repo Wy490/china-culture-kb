@@ -758,6 +758,7 @@ function buildAiComicEpisodeAudienceStory(params: {
     selectedEvent: params.episode.title,
     full_text: fullText,
     scene_breakdown: scenes,
+    videoType: 'ai_comic_drama',
   });
   const qualityReport = {
     ...baseQualityReport,

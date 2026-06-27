@@ -376,6 +376,45 @@ describe('gears-delivery-service', () => {
     expect(pkg.markdown).toContain('- 出场人物: 毛泽东');
   });
 
+  it('merges short sentence chunks so historical drama units stay storyboardable', () => {
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      storyId: '20260627-story-quyuan-gears',
+      title: '屈原投江汨罗',
+      source_entry: '屈原投江汨罗——端午节起源',
+      video_type: 'historical_drama',
+      presentation_style: 'cinematic',
+      full_text: '汨罗江畔，楚国败局已成。郢都失守的消息传到江南，被放逐的屈原站在风里，家国之痛从朝堂压到江边。',
+      scene_breakdown: [
+        {
+          scene_id: 1,
+          title: '时代危机',
+          duration_sec: 36,
+          location: '汨罗江畔',
+          time_of_day: '雨夜',
+          dramatic_function: '时代危机',
+          plot: '汨罗江畔，楚国败局已成。郢都失守的消息传到江南，被放逐的屈原站在风里，家国之痛从朝堂压到江边。',
+          key_action: '交代郢都失守和流放处境',
+          characters: ['屈原'],
+          visual_prompt: '汨罗江畔，江雾、战火远影、简牍和破旧楚地旗帜，历史压迫感远景',
+          camera_suggestion: '远景大画面，建立历史空间',
+          cultural_note: '事实边界：可考信息与影视化调度需分开标注。',
+          conflict: '国破流放 vs 保全自身',
+          dialogue_or_narration: '旁白：据《史记》等传统叙述，郢都失守后，流放江南的屈原再也不能置身事外。',
+        },
+      ],
+      characters: [
+        { name: '屈原', role: 'protagonist', description: '楚国诗人，流放江南' },
+      ],
+    };
+
+    const pkg = buildGearsDeliveryPackage(story);
+
+    expect(pkg.validation_notes.some(note => note.includes('正文过短'))).toBe(false);
+    expect(pkg.units.length).toBeGreaterThan(0);
+    expect(pkg.units.every(unit => (unit.script_text.match(/[\p{Script=Han}A-Za-z0-9]/gu) ?? []).length >= 18)).toBe(true);
+  });
+
   it('infers and summarizes character genders for the delivery package', () => {
     const pkg = buildGearsDeliveryPackage(makeGenderStory());
 

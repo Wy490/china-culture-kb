@@ -757,9 +757,12 @@ function buildGearsSegments(
       ...scene.visual_prompt.split(/[，、。]/).filter(s => s.length > 1 && s.length < 8).slice(0, 2),
     ];
 
-    const vtMeta = VIDEO_TYPE_CONFIG[videoType];
-    const psMeta = PRESENTATION_STYLE_CONFIG[presentationStyle];
-    const segmentPromptHint = `${vtMeta.label}/${psMeta.label}风格提示: ${psMeta.description}，场景${scene.scene_id}聚焦${scene.key_action}`;
+    const segmentPromptHint = [
+      scene.visual_prompt,
+      scene.camera_suggestion,
+      scene.characters?.length ? `主体：${scene.characters.join('、')}` : '',
+      `动作：${scene.key_action}`,
+    ].filter(Boolean).join('；');
 
     return {
       segment_id: scene.scene_id,
@@ -1829,6 +1832,7 @@ export async function generateAndStoreStory(
       scene_breakdown: storyResult.scene_breakdown,
       title: storyResult.title,
       selectedEvent: centralEvent,
+      videoType,
     });
   }
   baseQualityReport = attachCreationQualityContext(baseQualityReport, truthMode, materialSufficiency);
@@ -1997,6 +2001,7 @@ export async function generateAndStoreStory(
               scene_breakdown: repairedResult.scene_breakdown,
               title: repairedResult.title,
               selectedEvent: centralEvent,
+              videoType,
             }), truthMode, materialSufficiency);
         storyData.quality_report = validateGenreStoryQuality({
           story: storyData,

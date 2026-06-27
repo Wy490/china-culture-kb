@@ -647,7 +647,36 @@ function splitSceneIntoChunks(scene: StoryScene): string[] {
     }
   }
   if (current.trim()) chunks.push(current.trim());
-  return chunks.length > 0 ? chunks : [rawText.trim()].filter(Boolean);
+  const mergedChunks = mergeShortChunks(chunks);
+  return mergedChunks.length > 0 ? mergedChunks : [rawText.trim()].filter(Boolean);
+}
+
+function mergeShortChunks(chunks: string[], minScriptChars = 18): string[] {
+  const merged: string[] = [];
+  let current = '';
+
+  for (const chunk of chunks) {
+    if (!current) {
+      current = chunk;
+      continue;
+    }
+    if (countCjkAndWordChars(current) < minScriptChars || hasOnlyQuestion(current)) {
+      current = `${current}\n${chunk}`;
+    } else {
+      merged.push(current);
+      current = chunk;
+    }
+  }
+
+  if (current) {
+    if (merged.length > 0 && (countCjkAndWordChars(current) < minScriptChars || hasOnlyQuestion(current))) {
+      merged[merged.length - 1] = `${merged[merged.length - 1]}\n${current}`;
+    } else {
+      merged.push(current);
+    }
+  }
+
+  return merged;
 }
 
 function buildUnitScriptText(scene: StoryScene): string {

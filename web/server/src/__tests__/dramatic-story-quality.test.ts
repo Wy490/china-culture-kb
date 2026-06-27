@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { validateDramaticStory } from '../services/dramatic-story.js';
-import type { StoryScene } from '@shared/types.js';
+import { generateDramaticContent, validateDramaticStory } from '../services/dramatic-story.js';
+import type { EntryDetail, StoryScene } from '@shared/types.js';
 
 function scene(partial: Partial<StoryScene> & Pick<StoryScene, 'scene_id' | 'title' | 'dramatic_function' | 'plot' | 'key_action'>): StoryScene {
   return {
@@ -55,5 +55,44 @@ describe('validateDramaticStory', () => {
 
     expect(report.hasEndingTheme).toBe(true);
     expect(report.issues).not.toContain('缺少结尾主题——没有精神/道德落点');
+  });
+
+  it('generates a usable Zhou Dunyi refusal character story without polluted place or quote fields', () => {
+    const entry: EntryDetail = {
+      name: '周敦颐——理学开山鼻祖',
+      province: '湖南',
+      region: '永州→道县（籍贯/出生地）；衡阳（少年成长地）',
+      type: '历史人物',
+      summary: '周敦颐，北宋思想家，曾任南安军司理参军。',
+      story: [
+        '拒签死刑文书：周敦颐任南安军司理参军时，发现疑案证据不足，囚犯依法不该死。知军催他签字，他拒绝草草画押。',
+        '他对知军说："为上官杀人，以媚于人，吾不为也。"后来囚犯免死。',
+        '父母爱之如子，为之命名，教之读书。',
+      ].join('\n\n'),
+      culturalSignificance: '周敦颐的选择体现公正、廉洁与良知。',
+      relatedLocations: [{ name: '道县濂溪', description: '周敦颐相关地点' }],
+      keywords: ['周敦颐', '南安军', '拒签', '案卷'],
+      sources: ['知识库测试条目'],
+      credibility: 'medium',
+      unverifiedPoints: [],
+      era: '北宋',
+    };
+
+    const story = generateDramaticContent({
+      entry,
+      centralEvent: '拒签死刑文书',
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      targetDuration: '3分钟',
+      tone: '',
+    });
+
+    expect(story.scene_breakdown).toHaveLength(6);
+    expect(new Set(story.scene_breakdown.map(scene => scene.location))).toEqual(new Set(['南安军衙']));
+    expect(story.full_text).toContain('雨夜，南安军衙');
+    expect(story.full_text).toContain('囚犯因此免死');
+    expect(story.full_text).not.toContain('永州→道县');
+    expect(story.full_text).not.toContain('爱之如子');
+    expect(story.characters.map(character => character.name)).toEqual(['周敦颐']);
   });
 });

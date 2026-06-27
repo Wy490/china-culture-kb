@@ -99,7 +99,16 @@ function makeStory(): StoryGenerateResult {
 describe('quality-workflow-service', () => {
   it('builds P0 reports and repair actions for outline, pattern, and GEARS gaps', () => {
     const report = enrichStoryQualityReport({
-      story: makeStory(),
+      story: {
+        ...makeStory(),
+        original_user_query: [
+          '分镜大纲：',
+          '1. 少年离开山村求学。',
+          '2. 师兄误会他偷书。',
+          '3. 少年夜探藏书楼查清真相。',
+          '4. 真相公开后离开书院。',
+        ].join('\n'),
+      },
       qualityReport: makeBaseReport(),
       narrativePatternIds: ['platform_short_drama_hook'],
     });
@@ -243,5 +252,103 @@ describe('quality-workflow-service', () => {
     expect(weakLabels).not.toContain('历史因果讲述：因果链清楚');
     expect(weakLabels).not.toContain('历史因果讲述：史实边界明确');
     expect(report.audience_text_report?.clean).toBe(true);
+  });
+
+  it('recognizes refusal-case evidence as character-story pattern signals', () => {
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      original_user_query: '生成一个单片人物故事，讲周敦颐面对疑案拒签死刑文书的选择。',
+      logline: '周敦颐在疑案前拒绝草草签下死刑文书。',
+      theme: '人命面前不能含糊。',
+      full_text: [
+        '雨夜，南安军衙。一份死刑文书摆在案头，周敦颐翻到案卷最后一页，第一次没有立刻签字。',
+        '知军催他签字，说此案早已审结；但周敦颐逐页细读案卷，发现疑点重重，证词前后不合。',
+        '签字，囚犯冤死，他保全官位；拒签，得罪上官，可能丢官甚至获罪。',
+        '周敦颐说：此案有疑，我不能签字。他交还任命文书，准备辞官。',
+        '囚犯因此免死。周敦颐没有赢得权势，却守住了人命面前不能含糊的公道。',
+      ].join('\n\n'),
+      scene_breakdown: [
+        {
+          scene_id: 1,
+          title: '雨夜案卷',
+          duration_sec: 30,
+          location: '南安军衙',
+          time_of_day: '夜',
+          dramatic_function: '钩子开场',
+          plot: '雨夜，南安军衙。一份死刑文书摆在案头，周敦颐翻到案卷最后一页，第一次没有立刻签字。',
+          key_action: '翻到案卷，停住签笔',
+          characters: ['周敦颐'],
+          visual_prompt: '南安军衙，案卷，烛火，停住的签笔',
+          camera_suggestion: '近景特写',
+          cultural_note: '事实边界：可考信息与影视化调度分开。',
+          conflict: '人命与官场催签相冲突',
+        },
+        {
+          scene_id: 2,
+          title: '知军催签',
+          duration_sec: 30,
+          location: '南安军衙',
+          time_of_day: '白天',
+          dramatic_function: '冲突升级',
+          plot: '知军催他签字，说此案早已审结；但周敦颐逐页细读案卷，发现疑点重重，证词前后不合。',
+          key_action: '逐页细读案卷',
+          characters: ['周敦颐', '知军'],
+          visual_prompt: '案卷两页并排，知军催签',
+          camera_suggestion: '近景对切',
+          cultural_note: '史实边界明确。',
+          conflict: '此案已定与证据不足相冲突',
+        },
+        {
+          scene_id: 3,
+          title: '不能签字',
+          duration_sec: 30,
+          location: '南安军衙',
+          time_of_day: '夜晚',
+          dramatic_function: '关键行动',
+          plot: '签字，囚犯冤死，他保全官位；拒签，得罪上官，可能丢官甚至获罪。周敦颐说：此案有疑，我不能签字。',
+          key_action: '交还任命文书，准备辞官',
+          characters: ['周敦颐', '知军'],
+          visual_prompt: '未签文书，任命文书，周敦颐抬眼',
+          camera_suggestion: '中近景跟拍',
+          cultural_note: '影视化创作只强化动作节奏。',
+          conflict: '仕途代价与良知选择相冲突',
+        },
+        {
+          scene_id: 4,
+          title: '良知守望',
+          duration_sec: 30,
+          location: '南安军衙',
+          time_of_day: '清晨',
+          dramatic_function: '结尾',
+          plot: '囚犯因此免死。周敦颐没有赢得权势，却守住了人命面前不能含糊的公道。',
+          key_action: '退回未签文书',
+          characters: ['周敦颐'],
+          visual_prompt: '清晨，未签文书推回案头',
+          camera_suggestion: '远景拉开',
+          cultural_note: '事实边界明确。',
+          conflict: '短期权势与长期良知相冲突',
+        },
+      ],
+      gears_segments: [],
+      characters: [{ name: '周敦颐', role: 'protagonist', description: '北宋官员' }],
+      protagonist_arc: [{ starting_state: '面对催签', turning_point: '拒签并准备辞官', resolution: '守住公道' }],
+    };
+
+    const report = enrichStoryQualityReport({
+      story,
+      qualityReport: makeBaseReport(),
+    });
+
+    expect(report.pattern_quality_report?.pattern_score).toBeGreaterThanOrEqual(70);
+    const weakLabels = report.pattern_quality_report?.weak_signals.map(signal => signal.label) ?? [];
+    expect(weakLabels).not.toContain('人物目标清楚');
+    expect(weakLabels).not.toContain('阻力具体');
+    expect(weakLabels).not.toContain('选择有代价');
+    expect(weakLabels).not.toContain('结尾有人物变化');
+    expect(weakLabels).not.toContain('必须有主角目标');
+    expect(weakLabels).not.toContain('必须有阻力');
+    expect(weakLabels).not.toContain('必须有选择和代价');
   });
 });

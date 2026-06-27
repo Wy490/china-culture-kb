@@ -119,7 +119,7 @@ describe('genre-story-profiles', () => {
     expect(matrix.compatible_use_case).toBe(true);
     expect(matrix.compatible_truth_mode).toBe(true);
     expect(matrix.resolved_narrative_pattern_ids).toEqual(
-      expect.arrayContaining(['platform_short_drama_hook', 'mortal_growth', 'character_arc_adaptation']),
+      expect.arrayContaining(['platform_short_drama_hook', 'hero_choice', 'cinematic_setpiece_adaptation']),
     );
     expect(matrix.resolved_narrative_pattern_ids).not.toContain('documentary_investigation');
     expect(matrix.rejected_narrative_pattern_ids).toContain('documentary_investigation');
@@ -164,8 +164,9 @@ describe('genre-story-profiles', () => {
     });
 
     expect(recommendations.map(item => item.pattern_id)).toEqual(expect.arrayContaining([
-      'mortal_growth',
-      'character_arc_adaptation',
+      'platform_short_drama_hook',
+      'hero_choice',
+      'cinematic_setpiece_adaptation',
     ]));
     expect(recommendations[0]).toEqual(expect.objectContaining({
       video_type: 'ai_comic_drama',
@@ -200,8 +201,8 @@ describe('genre-story-profiles', () => {
 
     expect(recommendations.map(item => item.pattern_id)).not.toContain('source_fidelity_adaptation');
     expect(recommendations.map(item => item.pattern_id)).toEqual(expect.arrayContaining([
-      'mortal_growth',
-      'character_arc_adaptation',
+      'platform_short_drama_hook',
+      'hero_choice',
     ]));
   });
 });

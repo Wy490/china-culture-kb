@@ -5595,8 +5595,9 @@ describe('Story Outline API', () => {
         }),
       ]));
       expect(res.body.data.narrative_pattern_ids).toEqual(expect.arrayContaining([
-        'mortal_growth',
-        'character_arc_adaptation',
+        'platform_short_drama_hook',
+        'hero_choice',
+        'cinematic_setpiece_adaptation',
       ]));
     });
 
@@ -6091,8 +6092,9 @@ describe('Stories API', () => {
           item.video_type === 'ai_comic_drama'
         );
         expect(aiComicPatterns.map((item: any) => item.pattern_id)).toEqual(expect.arrayContaining([
-          'mortal_growth',
-          'character_arc_adaptation',
+          'platform_short_drama_hook',
+          'hero_choice',
+          'cinematic_setpiece_adaptation',
         ]));
         expect(aiComicPatterns[0]).toEqual(expect.objectContaining({
           reason: expect.any(String),
@@ -6255,7 +6257,7 @@ describe('Stories API', () => {
         label: '配角人物',
         category: 'supporting_character',
         stage: 'script_ready',
-        blocking_level: 'risk',
+        blocking_level: 'optional',
         affects: expect.arrayContaining(['quality_report']),
         status: 'open',
         source: 'knowledge_pack_missing_need',

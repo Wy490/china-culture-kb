@@ -53,17 +53,17 @@ describe('narrative-pattern-library', () => {
   it('keeps default pattern packs focused for each video type', () => {
     expect(resolveActivePatternIds('character_story')).toEqual(['hero_choice', 'historical_causal_story']);
     expect(resolveActivePatternIds('historical_drama')).toEqual(['historical_causal_story', 'hero_choice']);
-    expect(resolveActivePatternIds('ai_comic_drama')).toEqual(['source_fidelity_adaptation', 'chapter_slice_adaptation']);
+    expect(resolveActivePatternIds('ai_comic_drama')).toEqual(['platform_short_drama_hook', 'cinematic_setpiece_adaptation']);
   });
 
   it('can still strengthen longform AI comic with selected engines', () => {
     const labels = getNarrativePatternsForVideoType('ai_comic_drama').map(pattern => pattern.label);
 
-    expect(labels).toEqual(['原作保真改编', '章节切片改编']);
+    expect(labels).toEqual(['平台短剧钩子', '影视场面转译']);
 
     const strengthenedLabels = getNarrativePatternsForVideoType('ai_comic_drama', ['infinite_mission', 'mystery_reveal'])
       .map(pattern => pattern.label);
-    expect(strengthenedLabels).toEqual(expect.arrayContaining(['无限流任务生存', '悬疑揭示']));
+    expect(strengthenedLabels).toEqual(['无限流任务生存', '悬疑揭示']);
   });
 
   it('exposes novel adaptation pattern packs for user-owned stories', () => {
@@ -111,13 +111,11 @@ describe('narrative-pattern-library', () => {
     );
   });
 
-  it('merges selected patterns before video-type defaults', () => {
+  it('honors selected patterns without pulling unrelated video-type defaults', () => {
     const patterns = getNarrativePatternsForVideoType('culture_promo', ['infinite_mission']);
 
     expect(patterns[0].pattern_id).toBe('infinite_mission');
-    expect(patterns.map(pattern => pattern.pattern_id)).toEqual(
-      expect.arrayContaining(['brand_symbol', 'object_clue_journey']),
-    );
+    expect(patterns.map(pattern => pattern.pattern_id)).toEqual(['infinite_mission']);
   });
 
   it('returns explainable diagnostics for selected pattern mechanisms', () => {

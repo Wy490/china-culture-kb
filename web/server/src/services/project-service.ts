@@ -7559,6 +7559,7 @@ function revalidateRepairedStory(story: StoryGenerateResult): StoryGenerateResul
         scene_breakdown: normalized.scene_breakdown,
         title: normalized.title,
         selectedEvent: normalized.story_blueprint?.central_event ?? normalized.title,
+        videoType: normalized.video_type,
       });
   const narrativePatternIds = normalized.creation_contract?.narrative_pattern_ids ?? [];
   let qualityReport: StoryQualityReport = validateGenreStoryQuality({

@@ -426,6 +426,7 @@ export async function regenerateSceneInStory(
         scene_breakdown: updatedScenes,
         title: updatedStory.title,
         selectedEvent: updatedStory.title,
+        videoType: updatedStory.video_type,
       });
 
   const referenceSafety = validateReferenceSafety({

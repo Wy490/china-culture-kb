@@ -186,6 +186,10 @@ export function resolveTruthMode(
   if (request.source_material_mode === 'adapt_user_novel' || useCase === 'adapted_ai_comic') return 'source_adaptation';
   if (useCase === 'original_ai_comic') return 'fictional_original';
   if (useCase === 'documentary_short' || videoType === 'documentary_short') return 'factual_reconstruction';
+  if (videoType === 'historical_drama') return 'factual_reconstruction';
+  if (videoType === 'character_story' || videoType === 'legend_story' || videoType === 'children_story') {
+    return 'inspired_by_material';
+  }
   if (['institutional_promo', 'education_training', 'public_service'].includes(useCase)) return 'institutional_verified';
   return 'inspired_by_material';
 }

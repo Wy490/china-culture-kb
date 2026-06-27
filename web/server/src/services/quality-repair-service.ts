@@ -101,6 +101,7 @@ export async function repairStoryWithQualityWorkflow(
     scene_breakdown: repairedStory.scene_breakdown,
     title: repairedStory.title,
     selectedEvent: repairedStory.story_blueprint?.central_event,
+    videoType: repairedStory.video_type,
   });
   const narrativePatternIds = extractNarrativePatternIds(repairedStory);
   let qualityReport: StoryQualityReport = validateGenreStoryQuality({

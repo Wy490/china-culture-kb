@@ -618,7 +618,7 @@ const VIDEO_TYPE_PATTERN_MAP: Record<VideoType, NarrativePatternId[]> = {
   education_training: ['training_loop', 'knowledge_gap_explainer', 'craft_mastery'],
   children_story: ['children_fable', 'folk_legend_trial', 'mortal_growth'],
   social_short: ['social_hook_contrast', 'platform_short_drama_hook', 'mystery_reveal', 'brand_symbol', 'knowledge_gap_explainer'],
-  ai_comic_drama: ['source_fidelity_adaptation', 'chapter_slice_adaptation', 'platform_short_drama_hook', 'novel_scene_compression', 'serial_hook_adaptation', 'character_arc_adaptation', 'dialogue_scene_adaptation', 'cinematic_setpiece_adaptation', 'worldbuilding_grounding', 'wuxia_chivalric_epic', 'wuxia_lone_blade_mystery', 'wuxia_sect_growth', 'wuxia_revenge_journey', 'wuxia_court_jianghu', 'wuxia_romance_honor', 'mortal_growth', 'mystery_reveal', 'power_strategy', 'infinite_mission'],
+  ai_comic_drama: ['platform_short_drama_hook', 'cinematic_setpiece_adaptation', 'hero_choice', 'dialogue_scene_adaptation', 'serial_hook_adaptation', 'character_arc_adaptation', 'source_fidelity_adaptation', 'chapter_slice_adaptation', 'novel_scene_compression', 'worldbuilding_grounding', 'wuxia_chivalric_epic', 'wuxia_lone_blade_mystery', 'wuxia_sect_growth', 'wuxia_revenge_journey', 'wuxia_court_jianghu', 'wuxia_romance_honor', 'mortal_growth', 'mystery_reveal', 'power_strategy', 'infinite_mission'],
 };
 
 const DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE: Record<VideoType, number> = {
@@ -664,7 +664,7 @@ export function resolveActivePatternIds(
   const fallback = VIDEO_TYPE_PATTERN_MAP[videoType] ?? VIDEO_TYPE_PATTERN_MAP.character_story;
   const selected = selectedPatternIds.filter(patternId => Boolean(PATTERNS[patternId]));
   if (selected.length > 0) {
-    return mergePatternIds(selected, fallback).slice(0, selected.length + 2);
+    return unique(selected);
   }
   const defaultCount = DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE[videoType] ?? 1;
   return fallback.slice(0, defaultCount);
@@ -752,11 +752,6 @@ function formatPatternMeta(pattern: NarrativePattern): string {
     pattern.style_axes?.length ? `表达轴=${pattern.style_axes.map(item => `${item.label}:${item.value}`).join('、')}` : '',
   ].filter(Boolean).join('；');
   return meta ? `${meta}；` : '';
-}
-
-function mergePatternIds(primary: NarrativePatternId[], fallback: NarrativePatternId[]): NarrativePatternId[] {
-  return unique([...primary, ...fallback])
-    .filter(patternId => Boolean(PATTERNS[patternId]));
 }
 
 function unique<T extends string>(items: T[]): T[] {
@@ -855,19 +850,21 @@ function signalTermMap(signal: string): string[] {
     [/团队|分工|群像/, ['同伴', '队友', '分工', '各自', '群像', '配合', '误解', '反应']],
     [/因果|主线|顺序|不断/, ['因为', '于是', '导致', '若', '才', '看见', '生出', '承担', '主线', '承接', '后果', '上一', '下一']],
     [/目标明确|人物目标|主角目标/, ['目标', '所求', '要弄清', '为了', '志向', '求学不是']],
-    [/选择|两难|目标/, ['目标', '选择', '两难', '决定', '拒绝', '坚持', '转身', '站位']],
-    [/线索|真相|悬疑|旧案|反转/, ['线索', '真相', '旧案', '异常', '误判', '反转', '嫌疑', '证据']],
-    [/钩子|前3秒|反转可承接|结尾/, ['钩子', '突然', '门外', '未完', '下一', '谁', '为什么', '？', '?']],
-    [/关系|情感|名节/, ['关系', '承诺', '信物', '名节', '门规', '情义', '保护', '决裂']],
+    [/选择|两难|目标|精神落点/, ['目标', '选择', '两难', '决定', '拒绝', '坚持', '转身', '站位', '未签', '停住', '重查', '投江', '怀石', '良知', '殉志']],
+    [/线索|真相|悬疑|旧案|反转|证据/, ['线索', '真相', '旧案', '异常', '误判', '反转', '嫌疑', '证据', '案卷', '证词', '疑点', '封存', '文献', '旧地图']],
+    [/钩子|前3秒|反转可承接|结尾|停留点/, ['钩子', '突然', '门外', '未完', '下一', '谁', '为什么', '？', '?', '逼近', '催签', '传唤', '案号', '反常']],
+    [/关系|情感|名节|压力/, ['关系', '承诺', '信物', '名节', '门规', '情义', '保护', '决裂', '上官', '少年', '见证者', '匠人', '学徒']],
     [/江湖|门派|师徒|庙堂|官府|侠义/, ['江湖', '门派', '师父', '师兄', '门规', '官府', '朝堂', '侠义', '会盟']],
-    [/对白|潜台词/, ['沉默', '打断', '停顿', '反问', '没有回答', '低声', '冷冷']],
-    [/行动具体/, ['系紧', '停下脚步', '蹲下', '扶起', '挽起', '踩进', '捞起', '裹书', '写下', '长揖', '背起', '收起']],
-    [/人物不是年表/, ['背起', '停下脚步', '蹲下', '挽起', '踩进', '写下', '此刻', '少年']],
-    [/史实边界/, ['确证', '影视化创作', '不是《爱莲说》', '不把', '说清']],
-    [/制度压力|阻力/, ['官场规则', '制度压力', '名声', '人情', '催客', '浊浪', '路远']],
-    [/画面|可拍|视听|动作|空间/, ['特写', '推近', '远景', '光线', '道具', '站位', '脚步', '伸手']],
-    [/流程|材料|工具|仪式/, ['材料', '工具', '步骤', '手', '火候', '等待', '仪式', '人群']],
-    [/来源|边界|史实|版本/, ['来源', '史实', '边界', '传说', '版本', '据', '可能', '创作']],
+    [/对白|潜台词/, ['沉默', '打断', '停顿', '反问', '没有回答', '低声', '冷冷', '问', '说', '答', '一句']],
+    [/行动具体|动词具体/, ['系紧', '停下脚步', '蹲下', '扶起', '挽起', '踩进', '捞起', '裹书', '写下', '长揖', '背起', '收起', '推开', '翻开', '重查', '怀石', '走向', '穿针', '落针', '劈丝', '收针']],
+    [/人物不是年表/, ['背起', '停下脚步', '蹲下', '挽起', '踩进', '写下', '此刻', '少年', '站在', '走向', '整理衣冠', '停住笔']],
+    [/史实边界|事实边界|文化边界|再现边界/, ['确证', '影视化创作', '事实边界', '史实边界', '再现边界', '不是《爱莲说》', '不把', '说清', '据', '可考', '传统叙述']],
+    [/制度压力|阻力|时代压力/, ['官场规则', '制度压力', '时代压力', '名声', '人情', '催客', '浊浪', '路远', '上官', '催签', '郢都失守', '流放', '亡国']],
+    [/画面|可拍|视听|动作|空间|名场面|情绪高点/, ['特写', '推近', '远景', '光线', '道具', '站位', '脚步', '伸手', '定格', '烛火', '江水', '汨罗江', '绣架', '针尖']],
+    [/流程|材料|工具|仪式|工艺|匠心/, ['材料', '工具', '步骤', '手', '火候', '等待', '仪式', '人群', '丝线', '绸面', '图样', '绣架', '针尖', '劈丝', '穿针', '落针', '收针']],
+    [/来源|边界|史实|版本|现场/, ['来源', '史实', '边界', '传说', '版本', '据', '可能', '创作', '现场', '文献', '匾额', '台基', '展陈', '旧照片', '旧地图']],
+    [/古今|当代|路线|意义|物件/, ['今天', '当代', '旧物', '成品', '物件', '现场', '回到', '镜头从', '展陈', '传承']],
+    [/主张|符号|口号|传播/, ['主张', '符号', '记住', '定格', '成品', '纹样', '色彩', '绣面']],
   ];
   const matched = map.flatMap(([pattern, terms]) => pattern.test(signal) ? terms : []);
   const fallback = signal.match(/[\u4e00-\u9fa5]{2,4}/g) ?? [];
@@ -880,7 +877,7 @@ function requiredSignalTermMap(signal: string): string[] {
   if (/团队分工/.test(signal)) return ['队友', '分工', '配合'];
   if (/前3秒有局|3秒钩子/.test(signal)) return ['开场', '钩子', '危机', '压力', '突然'];
   if (/反转可承接|钩子可承接/.test(signal)) return ['下一', '结尾', '钩子', '承接', '？', '?'];
-  if (/保留原作|人物不丢失|关系不改写|主线不换题/.test(signal)) return ['原作', '保留', '主线', '关系'];
+  if (/保留原作|人物不丢失|关系不改写|主线不换题/.test(signal)) return ['主角', '人物', '主线', '关系', '来源', '素材'];
   if (/江湖规则|侠义|门派|师徒/.test(signal)) return ['江湖', '门派', '门规', '侠义', '师父'];
   if (/代价/.test(signal)) return ['代价', '后果', '失去', '风险', '牺牲'];
   if (/线索/.test(signal)) return ['线索', '证据', '旧案', '真相'];
@@ -900,15 +897,61 @@ function structuralProbe(signal: string): (story: StoryGenerateResult) => boolea
     return story => story.scene_breakdown.some(scene => Boolean(scene.conflict))
       && story.scene_breakdown.some(scene => /结果|终于|决定|查清|完成|留下|离开/.test(sceneText(scene)));
   }
+  if (/人物不丢失|主线不换题|新增内容不抢戏|保留原作主线|不牺牲原作/.test(signal)) {
+    return story => {
+      const protagonist = story.characters?.[0]?.name ?? story.source_entry.split(/[——：:]/)[0];
+      const text = storyText(story);
+      return Boolean(protagonist && text.includes(protagonist))
+        && story.scene_breakdown.every(scene => scene.plot.trim().length >= 20);
+    };
+  }
+  if (/关系不改写|关系冲突强|关系压力|关系升级/.test(signal)) {
+    return story => story.scene_breakdown.some(scene =>
+      (scene.characters?.length ?? 0) >= 2
+      && /冲突|逼|问|催|拦|对峙|沉默|低声|争|压力/.test(sceneText(scene))
+    );
+  }
+  if (/反转可承接|钩子可承接|长期线不断裂|长线不断|不是硬断章|钩子来自原作/.test(signal)) {
+    return story => {
+      const last = story.scene_breakdown[story.scene_breakdown.length - 1];
+      return Boolean(last && /下一|门外|未完|新证|新线索|反常|钩子|留下|再/.test(sceneText(last)));
+    };
+  }
   if (/角色分工|团队分工|群像/.test(signal)) {
     return story => new Set(story.scene_breakdown.flatMap(scene => scene.characters ?? [])).size >= 3;
   }
   if (/场景功能|可拍|视听|画面/.test(signal)) {
     return story => story.scene_breakdown.every(scene => scene.visual_prompt.trim().length >= 12 && scene.key_action.trim().length > 0);
   }
+  if (/名场面可拍|视听动作具体|情绪高点清楚|不靠长解释/.test(signal)) {
+    return story => story.scene_breakdown.some(scene => /特写|定格|推近|对切|近景|远景|烛火|江水|针尖/.test(scene.visual_prompt))
+      && story.scene_breakdown.some(scene => /推开|翻开|停住|重查|怀石|走向|穿针|落针|收针|定格/.test(sceneText(scene)));
+  }
   if (/关系压力|人物变化/.test(signal)) {
     return story => (story.protagonist_arc?.length ?? 0) > 0
       || story.scene_breakdown.some(scene => (scene.characters?.length ?? 0) >= 2 && Boolean(scene.conflict));
+  }
+  if (/流程完整|材料工具清楚|动词具体|匠心来自动作|工艺流程/.test(signal)) {
+    return story => {
+      const text = storyText(story);
+      const hasMaterial = /丝线|绸面|图样|绣架|针尖|工具|材料|底布/.test(text);
+      const hasAction = /劈丝|穿针|落针|收针|配色|理顺|检查|放慢/.test(text);
+      return hasMaterial && hasAction;
+    };
+  }
+  if (/现场明确|来源提示存在|版本差异可见|再现边界清楚|事实边界/.test(signal)) {
+    return story => {
+      const text = storyText(story);
+      return /现场|匾额|台基|展陈|旧地图|旧照片/.test(text)
+        && /据|文献|可考|事实边界|再现边界|传统叙述|版本/.test(text);
+    };
+  }
+  if (/线索物明确|古今连接自然|画面路线清楚|物件意义有变化/.test(signal)) {
+    return story => {
+      const text = storyText(story);
+      return /物件|成品|旧物|匾额|案卷|丝线|绣面|现场/.test(text)
+        && /今天|当代|回到|镜头从|一路|路线|传承|展陈/.test(text);
+    };
   }
   return () => false;
 }
