@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { buildStoryGenerationPromptPackage } from '../services/story-generation-prompt.js';
 import { buildStoryBlueprint } from '../services/story-blueprint-service.js';
 import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
+import { getProductionMaterialPack } from '../services/production-material-pack-service.js';
+import { buildProductionMaterialReadinessReport } from '../services/production-material-readiness-service.js';
 import type { EntryDetail, KnowledgePack, StoryGenerateRequest, VideoType } from '@shared/types.js';
 import {
   buildCreationContract,
@@ -379,6 +381,88 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('无限流任务生存（用户强化');
     expect(pkg.user_prompt).toContain('凡人流成长（用户强化');
     expect(pkg.output_contract.should_respect.join('\n')).toContain('无限流任务生存');
+  });
+
+  it('auto-selects production material packs by video type only', () => {
+    expect(getProductionMaterialPack('heritage_promo')?.label).toBe('非遗/工艺宣传片');
+    expect(getProductionMaterialPack('documentary_short')?.label).toBe('微纪录片');
+    expect(getProductionMaterialPack('ai_comic_drama')?.label).toBe('AI漫剧');
+    expect(getProductionMaterialPack('character_story')).toBeUndefined();
+  });
+
+  it('adds only the current video type production material template to the prompt', () => {
+    const request: StoryGenerateRequest = {
+      entry_name: '周敦颐——理学开山鼻祖',
+      video_type: 'ai_comic_drama',
+      original_user_query: '写成有单镜头和多分镜验证的AI漫剧',
+    };
+    const productionMaterialPack = getProductionMaterialPack('ai_comic_drama');
+    const productionMaterialReadiness = buildProductionMaterialReadinessReport({
+      productionMaterialPack,
+      materialPack: materialPackFromKnowledgePack(makeKnowledgePack(), request),
+      contextText: request.original_user_query,
+    });
+
+    const pkg = buildStoryGenerationPromptPackage({
+      entry: makeEntry(),
+      request,
+      videoType: 'ai_comic_drama',
+      presentationStyle: 'ai_comic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '3分钟',
+      tone: '',
+      knowledgePack: makeKnowledgePack(),
+      productionMaterialPack,
+      productionMaterialReadiness,
+    });
+
+    expect(pkg.production_material_pack?.video_type).toBe('ai_comic_drama');
+    expect(pkg.production_material_readiness?.schema_version).toBe('production-material-readiness/v1');
+    expect(pkg.system_prompt).toContain('当前成片类型生产模板：ai_comic_drama/AI漫剧');
+    expect(pkg.user_prompt).toContain('=== 当前成片类型生产素材模板 ===');
+    expect(pkg.user_prompt).toContain('=== 当前成片类型生产素材缺口 ===');
+    expect(pkg.user_prompt).toContain('提示词/生产分层');
+    expect(pkg.user_prompt).toContain('单镜头验证');
+    expect(pkg.user_prompt).toContain('多分镜验证');
+    expect(pkg.user_prompt).toContain('周敦颐拒签冤案');
+    expect(pkg.user_prompt).not.toContain('湘绣工坊');
+    expect(pkg.user_prompt).not.toContain('岳阳楼与《岳阳楼记》');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('仅使用当前成片类型 production_material_pack：ai_comic_drama/AI漫剧');
+  });
+
+  it('keeps the AI comic explainer template out of heritage and documentary prompts', () => {
+    const cases: Array<{ videoType: VideoType; label: string; expected: string }> = [
+      { videoType: 'heritage_promo', label: '非遗/工艺宣传片', expected: 'materials、tools' },
+      { videoType: 'documentary_short', label: '微纪录片', expected: 'real_world_site_or_object' },
+    ];
+
+    for (const item of cases) {
+      const request: StoryGenerateRequest = {
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: item.videoType,
+        original_user_query: `${item.videoType} 测试`,
+      };
+      const productionMaterialPack = getProductionMaterialPack(item.videoType);
+
+      const pkg = buildStoryGenerationPromptPackage({
+        entry: makeEntry(),
+        request,
+        videoType: item.videoType,
+        presentationStyle: 'cinematic',
+        storyStructure: 'single_event_drama',
+        targetDuration: '3分钟',
+        tone: '',
+        knowledgePack: makeKnowledgePack(),
+        productionMaterialPack,
+      });
+
+      expect(pkg.production_material_pack?.label).toBe(item.label);
+      expect(pkg.user_prompt).toContain(item.expected);
+      expect(pkg.user_prompt).not.toContain('提示词-基础设定');
+      expect(pkg.user_prompt).not.toContain('单镜头验证');
+      expect(pkg.user_prompt).not.toContain('周敦颐拒签冤案');
+      expect(pkg.output_contract.should_respect.join('\n')).toContain(`执行生产素材模板：${item.label}`);
+    }
   });
 
   it('uses an adaptation protocol when the user provides a novel source', () => {

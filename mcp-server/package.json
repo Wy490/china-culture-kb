@@ -8,6 +8,10 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "kb:lint": "node ../scripts/kb-lint.mjs",
+    "kb:production-audit": "../web/node_modules/.bin/tsx src/tools/run-production-material-audit.ts",
+    "kb:production-upgrade-plan": "../web/node_modules/.bin/tsx src/tools/run-production-material-upgrade-plan.ts",
+    "kb:normalize-credibility": "../web/node_modules/.bin/tsx src/tools/run-credibility-normalization.ts",
+    "kb:enrich-machine-metadata": "../web/node_modules/.bin/tsx src/tools/run-machine-metadata-enrichment.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node dist/index.js"

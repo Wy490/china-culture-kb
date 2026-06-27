@@ -5446,6 +5446,70 @@ export interface MaterialPack {
   };
 }
 
+export interface ProductionMaterialTemplate {
+  required_fields: string[];
+  prompt_layers?: string[];
+  minimum_viable_story_gate: string[];
+  script_ready_gate: string[];
+  production_ready_gate: string[];
+  supplement_questions: string[];
+}
+
+export interface ProductionMaterialSampleEntry {
+  sample_id: string;
+  entry_name: string;
+  source_status?: string;
+  core_story_engine?: string;
+  must_collect?: string[];
+  visual_assets?: string[];
+  risk_boundary?: string;
+  episode_hook?: string;
+  core_conflict?: string;
+  character_stability?: string[];
+  shot_prompt_focus?: string[];
+  ending_hook?: string;
+}
+
+export interface ProductionMaterialPack {
+  video_type: VideoType;
+  label: string;
+  goal: string;
+  material_template: ProductionMaterialTemplate;
+  sample_entries: ProductionMaterialSampleEntry[];
+}
+
+export type ProductionMaterialReadinessStatus = 'ready' | 'needs_input' | 'blocked';
+
+export interface ProductionMaterialMissingField {
+  field_id: string;
+  label: string;
+  stage: MaterialSufficiencyStage;
+  blocking_level: MaterialBlockingLevel;
+  reason: string;
+  recommended_question: string;
+}
+
+export interface ProductionMaterialGateReport {
+  stage: MaterialSufficiencyStage;
+  status: ProductionMaterialReadinessStatus;
+  required_items: string[];
+  available_fields: string[];
+  missing_fields: ProductionMaterialMissingField[];
+  notes: string[];
+}
+
+export interface ProductionMaterialReadinessReport {
+  schema_version: 'production-material-readiness/v1';
+  video_type: VideoType;
+  pack_label: string;
+  score: number;
+  status: ProductionMaterialReadinessStatus;
+  available_fields: string[];
+  missing_fields: ProductionMaterialMissingField[];
+  gate_reports: ProductionMaterialGateReport[];
+  recommended_next_questions: string[];
+}
+
 export type MaterialSufficiencyStage =
   | 'minimum_viable_story'
   | 'script_ready'
@@ -5522,7 +5586,8 @@ export interface CreationContract {
 export type KnowledgeSupplementTaskStatus = 'open' | 'resolved';
 export type KnowledgeSupplementTaskSource =
   | 'knowledge_pack_missing_need'
-  | 'material_sufficiency_missing_item';
+  | 'material_sufficiency_missing_item'
+  | 'production_material_missing_field';
 export type KnowledgeSupplementTaskCategory =
   | 'person_experience'
   | 'architecture_detail'
@@ -6595,6 +6660,8 @@ export interface StoryGenerateResult {
   communication_goal?: string;
   creation_contract?: CreationContract;
   material_sufficiency?: MaterialSufficiencyReport;
+  production_material_pack?: ProductionMaterialPack;
+  production_material_readiness?: ProductionMaterialReadinessReport;
   adaptation_analysis?: StoryAdaptationAnalysis;
   supplement_tasks?: KnowledgeSupplementTask[];
   quality_report?: StoryQualityReport | GenreQualityReport;

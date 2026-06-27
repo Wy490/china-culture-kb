@@ -4,6 +4,8 @@
 
 本文件用于把外部样片观察转成可执行的生成规则。当前代码已把这些规则接入 `web/server/src/services/genre-story-profiles.ts` 和 `web/server/src/services/story-generation-prompt.ts`，会在故事生成提示词中按 `video_type` 自动注入。
 
+补充：整体开发蓝图见 `docs/story-agent-production-material-blueprint.md`；首批三类稳定生产素材包见 `docs/video-type-production-material-packs.md`；联网模板研究见 `docs/video-type-online-template-research.md`；机器可读模板和 30 条样板条目见 `data/production-packs/video-type-material-supplement-packs.json`。当前生成链路会通过 `web/server/src/services/production-material-pack-service.ts` 按 `video_type` 自动选择当前类型模板，避免把 AI 漫剧样片方法套用到非遗、微纪录等其他类型。
+
 ## 参考来源类型
 
 - 影视化人物短片：人物传记短片、单事件人物剧情短片、人物微纪录访谈段落。

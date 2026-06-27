@@ -43,6 +43,8 @@ import type {
   MaterialSufficiencyReport,
   MaterialSufficiencyMissingItem,
   MaterialSufficiencyStage,
+  ProductionMaterialReadinessReport,
+  ProductionMaterialMissingField,
   KnowledgeSupplementTask,
   KnowledgeSupplementTaskCategory,
   StoryQualityReport,
@@ -97,6 +99,8 @@ import { buildEntryKnowledgeSummary, extractKeywords } from './entry-service.js'
 import { notifyGearsStoryReady } from './gears-webhook-service.js';
 import type { GearsWebhookResult } from './gears-webhook-service.js';
 import { appendDomainPackEntries } from './domain-pack-service.js';
+import { getProductionMaterialPack } from './production-material-pack-service.js';
+import { buildProductionMaterialReadinessReport } from './production-material-readiness-service.js';
 import { buildAdaptationAnalysis } from './adaptation-analysis-service.js';
 import {
   buildCreationContract,
@@ -449,6 +453,7 @@ function buildMaterialPackEntry(materialPack: MaterialPack, request: StoryGenera
 function buildKnowledgeSupplementTasks(
   knowledgePack: KnowledgePack | undefined,
   materialSufficiency: MaterialSufficiencyReport | undefined,
+  productionMaterialReadiness: ProductionMaterialReadinessReport | undefined,
   context: { storyId: string; createdAt: string },
 ): KnowledgeSupplementTask[] {
   const materialItems = materialSufficiency
@@ -504,7 +509,47 @@ function buildKnowledgeSupplementTasks(
       created_at: context.createdAt,
     });
   }
+  if (productionMaterialReadiness) for (const field of productionMaterialReadiness.missing_fields) {
+    const guidance = buildSupplementTaskGuidance({
+      need_id: field.field_id,
+      label: field.label,
+      message: field.reason,
+    });
+    tasks.push({
+      task_id: `${context.storyId}--production-template--${safeTaskIdPart(field.field_id)}`,
+      need_id: `production_template_${field.field_id}`,
+      label: field.label,
+      description: `补齐「${productionMaterialReadiness.pack_label}」生产模板字段「${field.label}」：${field.reason}`,
+      category: guidance.category,
+      stage: field.stage,
+      blocking_level: field.blocking_level,
+      affects: productionFieldAffects(field),
+      recommended_question: field.recommended_question,
+      recommended_fields: [field.field_id],
+      intake_prompt: mergeSupplementPrompts(guidance.intakePrompt, field.recommended_question),
+      status: 'open',
+      source: 'production_material_missing_field',
+      created_at: context.createdAt,
+    });
+  }
   return tasks;
+}
+
+function productionFieldAffects(field: ProductionMaterialMissingField): string[] {
+  const affects = new Set<string>(['production_material_readiness']);
+  if (field.stage === 'minimum_viable_story') {
+    affects.add('story_blueprint');
+    affects.add('logline');
+  }
+  if (field.stage === 'script_ready') {
+    affects.add('full_text');
+    affects.add('scene_breakdown');
+  }
+  if (field.stage === 'production_ready') {
+    affects.add('gears_segments');
+    affects.add('asset_handoff');
+  }
+  return [...affects];
 }
 
 function normalizeMaterialMessage(message: string): string {
@@ -1556,6 +1601,7 @@ export async function generateAndStoreStory(
   const generationType = request.generation_type ?? resolveGenerationType(videoType);
   const presentationStyle = request.presentation_style ?? VIDEO_TYPE_CONFIG[videoType].default_presentation_style;
   const targetDuration = target_video_duration ?? VIDEO_TYPE_CONFIG[videoType].default_duration;
+  const productionMaterialPack = getProductionMaterialPack(videoType);
 
   // --- Determine the primary entry to use ---
   let primaryEntryName: string;
@@ -1640,6 +1686,22 @@ export async function generateAndStoreStory(
   const adaptationAnalysis = request.source_material_mode === 'adapt_user_novel'
     ? buildAdaptationAnalysis(original_user_query ?? outline)
     : undefined;
+  const productionMaterialReadiness = buildProductionMaterialReadinessReport({
+    productionMaterialPack,
+    materialPack: materialPackToUse,
+    contextText: [
+      original_user_query,
+      outline,
+      selected_event,
+      entry.name,
+      entry.type,
+      entry.region,
+      entry.summary,
+      entry.story,
+      entry.culturalSignificance,
+      entry.keywords.join(' '),
+    ].filter((item): item is string => Boolean(item)).join('\n'),
+  });
 
   const selectedModelProfile = resolveModelProfile(request.model_profile_id);
 
@@ -1748,6 +1810,8 @@ export async function generateAndStoreStory(
     knowledgePack: knowledgePackToUse,
     materialPack: materialPackToUse,
     materialSufficiency,
+    productionMaterialPack,
+    productionMaterialReadiness,
     creationContract,
     genreMatrix,
     memoryMosaicSeed,
@@ -1851,7 +1915,7 @@ export async function generateAndStoreStory(
     : [];
 
   const createdAt = new Date().toISOString();
-  const supplementTasks = buildKnowledgeSupplementTasks(knowledgePackToUse, materialSufficiency, { storyId, createdAt });
+  const supplementTasks = buildKnowledgeSupplementTasks(knowledgePackToUse, materialSufficiency, productionMaterialReadiness, { storyId, createdAt });
 
   const storyData: StoryGenerateResult & { _request_meta: Record<string, unknown> } = {
     storyId,
@@ -1888,6 +1952,8 @@ export async function generateAndStoreStory(
     creation_contract: creationContract,
     material_pack: materialPackToUse,
     material_sufficiency: materialSufficiency,
+    production_material_pack: productionMaterialPack,
+    production_material_readiness: productionMaterialReadiness,
     reference_trace: referenceTrace,
     memory_mosaic_seed: memoryMosaicSeed,
     // Knowledge pack for multi-entry traceability
@@ -1928,6 +1994,8 @@ export async function generateAndStoreStory(
       creation_use_case: creationUseCase,
       truth_mode: truthMode,
       material_sufficiency: materialSufficiency,
+      production_material_pack: productionMaterialPack,
+      production_material_readiness: productionMaterialReadiness,
       creation_contract: creationContract,
       genre_matrix: genreMatrix,
       source_material_mode: request.source_material_mode ?? 'generate_from_knowledge',

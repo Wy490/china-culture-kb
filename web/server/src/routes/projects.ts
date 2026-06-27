@@ -88,7 +88,11 @@ export const projectsRouter = Router();
 const SEEDANCE_ASSET_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
 const SUPPLEMENT_TASK_STAGES: MaterialSufficiencyStage[] = ['minimum_viable_story', 'script_ready', 'production_ready'];
 const SUPPLEMENT_TASK_BLOCKING_LEVELS: MaterialBlockingLevel[] = ['blocking', 'risk', 'optional'];
-const SUPPLEMENT_TASK_SOURCES: KnowledgeSupplementTaskSource[] = ['knowledge_pack_missing_need', 'material_sufficiency_missing_item'];
+const SUPPLEMENT_TASK_SOURCES: KnowledgeSupplementTaskSource[] = [
+  'knowledge_pack_missing_need',
+  'material_sufficiency_missing_item',
+  'production_material_missing_field',
+];
 
 type MultipartFile = {
   field_name: string;

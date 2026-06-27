@@ -12,7 +12,7 @@ export type EntryType =
   | '宗教信仰'
   | '民俗活动';
 
-export type CredibilityLevel = '可靠' | '基本可靠' | '待核实' | '存疑';
+export type CredibilityLevel = '可靠' | '基本可靠' | '待核实' | '存疑' | '混合';
 
 export type SourceType = 'bilibili' | 'article' | 'book' | 'oral';
 

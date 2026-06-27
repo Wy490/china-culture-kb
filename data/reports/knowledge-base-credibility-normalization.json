@@ -1,0 +1,761 @@
+{
+  "schema_version": "kb-credibility-normalization/v1",
+  "generated_at": "2026-06-27T15:33:03.400Z",
+  "apply": true,
+  "totals": {
+    "files_scanned": 34,
+    "files_changed": 1,
+    "entries_changed": 60,
+    "created_verification_sections": 0,
+    "merged_into_existing_verification_sections": 60,
+    "already_contained_verification_sections": 0
+  },
+  "files": [
+    {
+      "province": "北京",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/北京.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "天津",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/天津.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "河北",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/河北.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "山西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/山西.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "内蒙古",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/内蒙古.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "辽宁",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/辽宁.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "吉林",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/吉林.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "黑龙江",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/黑龙江.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "上海",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/上海.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "江苏",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/江苏.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "浙江",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/浙江.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "安徽",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/安徽.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "福建",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/福建.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "江西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/江西.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "山东",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/山东.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "河南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/河南.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "湖北",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖北.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md",
+      "changed": true,
+      "changed_entries": 60
+    },
+    {
+      "province": "广东",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/广东.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "广西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/广西.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "海南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/海南.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "重庆",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/重庆.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "四川",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/四川.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "贵州",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/贵州.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "云南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/云南.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "西藏",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/西藏.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "陕西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/陕西.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "甘肃",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/甘肃.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "青海",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/青海.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "宁夏",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/宁夏.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "新疆",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/新疆.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "香港",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/香港.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "澳门",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/澳门.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "台湾",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/台湾.md",
+      "changed": false,
+      "changed_entries": 0
+    }
+  ],
+  "changes": [
+    {
+      "entry_name": "岳阳楼——先忧后乐的精神地标",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "洞庭湖君山——传说叠加的洞庭明珠",
+      "credibility": "混合",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "张家界武陵源——3.8亿年雕琢的世界自然遗产",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "爱晚亭——枫林晚处的四大名亭",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "贾谊故居——太平街里的千年古宅",
+      "credibility": "混合",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "通道转兵与侗族百姓——红军长征的关键转折与地方传说",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "红军长征过湖南百姓记忆——普通人与长征的故事",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘南湘西抗战游击——大山深处的抵抗群像",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "刘海砍樵——人仙之恋的湖南民间传说",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "柳毅传书——洞庭湖畔的书生与龙女",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "汨罗江畔端午习俗——龙舟文化的发源地",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "苗族赶秋节——湘西秋收的盛大礼赞",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "南岳衡山——五岳独秀的儒释道名山",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "凤凰古城——沈从文笔下的边城与苗族文化",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "月岩悟道传说——周敦颐与道县天然岩洞",
+      "credibility": "混合",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "宋代士人服饰与随身物——周敦颐故事的人物设定边界",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "古代书斋陈设——书院与私塾场景资产",
+      "credibility": "混合",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "狐仙报恩母题——湖南民间叙事与志异边界",
+      "credibility": "混合",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "月岩洞——道县天然洞穴与地方传说空间",
+      "credibility": "混合",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "书生遇异母题——志异叙事中的相遇结构与边界",
+      "credibility": "混合",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "嘉禾伴嫁歌——千年湘南女性的歌堂之夜",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "安仁赶分社——春分时节的神农药市",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "武冈卤菜制作技艺——雪峰山下的药食同源御膳",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "宝庆竹刻——湘西南竹簧雕刻的明清贡品传承",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "洞口墨晶石雕——雪峰山黑玉的楚湘遗韵",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "花瑶挑花——穿在身上的花瑶密码",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘西型苗族服饰——穿在身上的迁徙史书",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "凤凰纸扎——边城千年彩扎的湘西风骨",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘西苗族跳香——五谷神前的秋后斋祭",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "土家族咚咚喹——湘西山野的儿童单簧竹乐",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "土家族吊脚楼营造技艺——武陵山地的木构智慧",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "苗族四月八——湘西苗族纪念英雄亚努的节日",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "凤凰蓝印花布——边城蓝白的湘西素颜",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "土家族打溜子——湘西山村的节奏密码",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "踏虎剪纸——凿刀下的苗族阴阳世界",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "衡山皮影戏——湘南光影的千年传奇",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "江永女书——世界唯一的女性专属文字",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "瑶族长鼓舞——盘王脚下的湘南鼓声",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "祁剧——湘南山野的戏曲长河",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "浏阳菊花石雕——长沙文人案头的石上之菊",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "长沙弹词——月琴敲响的湘中市井",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘剧——湖南戏曲的中州遗韵",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "大戊梁歌会——湘桂黔三省侗族的爱情对歌",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "辰河高腔——沅水中上游的中国戏曲活化石",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "靖州苗族歌鼟——三锹大山的多声部和声",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "辰州傩戏——沅水中游的中国戏剧活化石",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "沅州石雕——沅水中游的青石艺术",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "侗族琵琶歌——鼓楼月堂下的湘西南情歌",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "常德武陵戏——沅澧流域的湖南五大剧种之一",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "澧水船工号子——湘北水路百年船歌",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "新化山歌——湘中雪峰山的呜哇天籁",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "安化千两茶——36公斤的世界茶王",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "土家族毛古斯舞——中国舞蹈活化石",
+      "credibility": "待核实",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "张家界阳戏——大庸土家族的金线吊葫芦",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘昆——山野昆曲的南岭遗音",
+      "credibility": "基本可靠",
+      "had_explicit_credibility": true,
+      "had_explicit_verification_method": true,
+      "verification_action": "merged_into_existing",
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    }
+  ]
+}

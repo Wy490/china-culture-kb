@@ -14,6 +14,9 @@ import type {
   MaterialPack,
   MaterialPackEntry,
   MaterialSufficiencyReport,
+  ProductionMaterialPack,
+  ProductionMaterialReadinessReport,
+  ProductionMaterialSampleEntry,
   KnowledgeAssetUsage,
   KnowledgeAssetSplit,
   KnowledgeDomain,
@@ -83,6 +86,8 @@ export interface StoryGenerationPromptPackage {
   };
   material_pack?: MaterialPack;
   material_sufficiency?: MaterialSufficiencyReport;
+  production_material_pack?: ProductionMaterialPack;
+  production_material_readiness?: ProductionMaterialReadinessReport;
   creation_contract?: CreationContract;
   genre_matrix?: GenreStoryMatrixResolution;
   character_hints?: StoryDetectedCharacter[];
@@ -178,6 +183,7 @@ function buildSystemPrompt(
   sourceMaterialMode: StoryGenerationPromptSourceMode = 'generate_from_knowledge',
   creationContract?: CreationContract,
   genreMatrix?: GenreStoryMatrixResolution,
+  productionMaterialPack?: ProductionMaterialPack,
 ): string {
   const vtMeta = VIDEO_TYPE_CONFIG[videoType];
   const psMeta = PRESENTATION_STYLE_CONFIG[presentationStyle];
@@ -222,6 +228,13 @@ function buildSystemPrompt(
       `类型矩阵推荐流派：${genreMatrix.recommended_narrative_patterns.join('、')}`,
       `类型矩阵素材要求：${genreMatrix.material_requirements.join('；')}`,
       `类型矩阵真实规则：${genreMatrix.truth_rules.join('；')}`,
+    );
+  }
+
+  if (productionMaterialPack) {
+    lines.push(
+      `当前成片类型生产模板：${productionMaterialPack.video_type}/${productionMaterialPack.label}`,
+      '生产模板边界：只使用当前成片类型模板；其他类型样片、爆款拆解或提示词方法不得跨类型套用为本片规则。',
     );
   }
 
@@ -437,6 +450,46 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
     }
   }
 
+  if (pkg.production_material_pack) {
+    lines.push('', '=== 当前成片类型生产素材模板 ===');
+    lines.push(`模板：${pkg.production_material_pack.video_type} / ${pkg.production_material_pack.label}`);
+    lines.push(`目标：${pkg.production_material_pack.goal}`);
+    lines.push('模板边界：本段只适用于当前成片类型；不要把其他类型的样片方法、爆款解说或提示词结构套用到本片。');
+    lines.push(`必补字段：${pkg.production_material_pack.material_template.required_fields.join('、')}`);
+    if (pkg.production_material_pack.material_template.prompt_layers?.length) {
+      lines.push('提示词/生产分层：');
+      for (const item of pkg.production_material_pack.material_template.prompt_layers) lines.push(`- ${item}`);
+    }
+    lines.push('生产 gate：');
+    lines.push(`- minimum_viable_story：${pkg.production_material_pack.material_template.minimum_viable_story_gate.join('；')}`);
+    lines.push(`- script_ready：${pkg.production_material_pack.material_template.script_ready_gate.join('；')}`);
+    lines.push(`- production_ready：${pkg.production_material_pack.material_template.production_ready_gate.join('；')}`);
+    lines.push(`模板建议追问：${pkg.production_material_pack.material_template.supplement_questions.join('；')}`);
+    if (pkg.production_material_pack.sample_entries.length) {
+      lines.push('样板条目（只学习素材组织和生产检查项，不照搬情节）：');
+      for (const sample of pkg.production_material_pack.sample_entries.slice(0, 10)) {
+        lines.push(`- ${formatProductionMaterialSampleForPrompt(sample)}`);
+      }
+    }
+  }
+
+  if (pkg.production_material_readiness) {
+    lines.push('', '=== 当前成片类型生产素材缺口 ===');
+    lines.push(`状态：${pkg.production_material_readiness.status}；评分：${pkg.production_material_readiness.score}`);
+    if (pkg.production_material_readiness.available_fields.length) {
+      lines.push(`已覆盖字段：${pkg.production_material_readiness.available_fields.join('、')}`);
+    }
+    if (pkg.production_material_readiness.missing_fields.length) {
+      lines.push('缺口字段：');
+      for (const field of pkg.production_material_readiness.missing_fields.slice(0, 12)) {
+        lines.push(`- ${field.label}（${field.stage}；${field.blocking_level}）：${field.reason}`);
+      }
+    }
+    if (pkg.production_material_readiness.recommended_next_questions.length) {
+      lines.push(`优先补充问题：${pkg.production_material_readiness.recommended_next_questions.join('；')}`);
+    }
+  }
+
   if (pkg.character_hints?.length) {
     lines.push('', '=== 大纲角色识别 ===');
     for (const character of pkg.character_hints) {
@@ -570,6 +623,43 @@ function formatMaterialForPrompt(entry: MaterialPackEntry): string {
   return `${entry.title}（${tags}）：${entry.summary}`;
 }
 
+function formatProductionMaterialSampleForPrompt(entry: ProductionMaterialSampleEntry): string {
+  const notes = [
+    entry.source_status ? `状态：${entry.source_status}` : '',
+    entry.core_story_engine ? `故事引擎：${entry.core_story_engine}` : '',
+    entry.episode_hook ? `开场钩子：${entry.episode_hook}` : '',
+    entry.core_conflict ? `冲突：${entry.core_conflict}` : '',
+    entry.must_collect?.length ? `必采：${entry.must_collect.join('、')}` : '',
+    entry.visual_assets?.length ? `视觉资产：${entry.visual_assets.join('、')}` : '',
+    entry.shot_prompt_focus?.length ? `镜头/提示词焦点：${entry.shot_prompt_focus.join('、')}` : '',
+    entry.ending_hook ? `结尾钩子：${entry.ending_hook}` : '',
+    entry.risk_boundary ? `边界：${entry.risk_boundary}` : '',
+  ].filter(Boolean).join('；');
+  return `${entry.entry_name}${notes ? `：${notes}` : ''}`;
+}
+
+function productionMaterialPackRequirementLines(pack?: ProductionMaterialPack): string[] {
+  if (!pack) return [];
+  return [
+    `仅使用当前成片类型 production_material_pack：${pack.video_type}/${pack.label}；不要把其他类型样片、爆款解说或提示词方法套用为本片模板。`,
+    `执行生产素材模板：${pack.label}`,
+    `生产素材必补字段：${pack.material_template.required_fields.join('、')}`,
+    `最低故事 gate：${pack.material_template.minimum_viable_story_gate.join('；')}`,
+    `脚本就绪 gate：${pack.material_template.script_ready_gate.join('；')}`,
+    `生产就绪 gate：${pack.material_template.production_ready_gate.join('；')}`,
+  ];
+}
+
+function productionMaterialReadinessRequirementLines(report?: ProductionMaterialReadinessReport): string[] {
+  if (!report) return [];
+  return [
+    `生产素材模板缺口状态：${report.status}，评分 ${report.score}`,
+    ...report.missing_fields.slice(0, 8).map(field =>
+      `生产模板缺口处理：${field.label}（${field.stage}/${field.blocking_level}）——${field.recommended_question}`,
+    ),
+  ];
+}
+
 function formatAssetSplitForPrompt(assetSplit: KnowledgeAssetSplit | undefined): string {
   if (!assetSplit) return '';
   return [
@@ -596,6 +686,8 @@ export function buildStoryGenerationPromptPackage(input: {
   knowledgePack?: KnowledgePack;
   materialPack?: MaterialPack;
   materialSufficiency?: MaterialSufficiencyReport;
+  productionMaterialPack?: ProductionMaterialPack;
+  productionMaterialReadiness?: ProductionMaterialReadinessReport;
   creationContract?: CreationContract;
   memoryMosaicSeed?: MemoryMosaicStorySeed;
   storyBlueprint?: StoryBlueprint;
@@ -660,6 +752,8 @@ export function buildStoryGenerationPromptPackage(input: {
       : undefined,
     material_pack: input.materialPack,
     material_sufficiency: input.materialSufficiency,
+    production_material_pack: input.productionMaterialPack,
+    production_material_readiness: input.productionMaterialReadiness,
     creation_contract: input.creationContract,
     genre_matrix: input.genreMatrix,
     character_hints: input.request.character_hints,
@@ -696,6 +790,8 @@ export function buildStoryGenerationPromptPackage(input: {
         ...(input.materialSufficiency?.missing_items ?? []).map(item => `素材缺口处理：${item.label}——${item.reason}`),
         ...(input.materialSufficiency?.generation_posture ? [`素材生成姿态：${input.materialSufficiency.generation_posture}`] : []),
         ...(input.materialSufficiency?.needs_verification ? ['素材不足时只能生成带待核验边界的草案，不得使用确定口吻。'] : []),
+        ...productionMaterialPackRequirementLines(input.productionMaterialPack),
+        ...productionMaterialReadinessRequirementLines(input.productionMaterialReadiness),
         ...(input.genreMatrix?.requirement_lines ?? []),
         ...(input.genreMatrix?.warnings ?? []).map(item => `类型矩阵警告：${item}`),
         ...getGenreStoryProfile(input.videoType).must_include,
@@ -734,6 +830,7 @@ export function buildStoryGenerationPromptPackage(input: {
       input.request.source_material_mode ?? 'generate_from_knowledge',
       input.creationContract,
       input.genreMatrix,
+      input.productionMaterialPack,
     ),
     user_prompt: buildUserPrompt(base),
   };

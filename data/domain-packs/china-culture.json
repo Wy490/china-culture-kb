@@ -82,6 +82,39 @@
       "keywords": ["历史因果", "人物选择", "制度处境", "后世影响", "当代转化", "地方化叙事"],
       "asset_usage": ["plot_structure", "conflict_engine", "character_arc", "safety_boundary"],
       "trigger_words": ["人物故事", "历史人物", "地方化", "思想影响", "后世影响", "学脉", "书院", "传承", "当代转化"]
+    },
+    {
+      "entry_name": "非遗工艺生产补充包——材料工具、手部动作与传承关系",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack",
+      "type": "生产素材补充模板",
+      "region": "通用",
+      "summary": "用于非遗/工艺宣传片补素材：必须把项目拆成材料、工具、流程步骤、手部动作、声音纹理、传承人/学徒关系、当代困境和禁用夸大表述。每个步骤都要有可拍动作，不用抽象匠心替代工艺过程。",
+      "keywords": ["非遗", "工艺", "流程", "材料", "工具", "手部动作", "传承人", "学徒", "微距", "成品"],
+      "asset_usage": ["plot_structure", "scene_props", "visual_style", "gears_delivery", "credibility_boundary"],
+      "trigger_words": ["非遗宣传片", "工艺宣传片", "传统工艺", "匠人", "手艺", "材料", "工具", "流程", "步骤", "传承", "heritage_promo"]
+    },
+    {
+      "entry_name": "微纪录生产补充包——现实现场、来源提示与再现边界",
+      "domain": "source_pack",
+      "role": "source_pack",
+      "type": "生产素材补充模板",
+      "region": "通用",
+      "summary": "用于微纪录片补素材：先确定当下可见的地点、实物、声音或展陈入口，再补权威来源、时间线、讲述角色、现场笔记、再现边界和今天还能看见的痕迹。事实、再现、传说、推测必须分层。",
+      "keywords": ["微纪录片", "纪录片", "现场", "史料", "来源", "采访", "展陈", "再现边界", "时间线", "实物"],
+      "asset_usage": ["source_grounding", "credibility_boundary", "scene_space", "scene_props", "safety_boundary"],
+      "trigger_words": ["微纪录", "纪录片", "documentary_short", "现实现场", "史料", "来源提示", "采访", "馆员", "展陈", "再现", "事实边界"]
+    },
+    {
+      "entry_name": "AI漫剧爆款生产补充包——提示词分层、单镜头与多分镜验证",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack",
+      "type": "生产素材补充模板",
+      "region": "通用",
+      "summary": "用于AI漫剧补素材：第一格要有强冲突或异常画面；提示词拆成基础设定、氛围画质、画面内容；先做单镜头验证角色、场景、构图和画质，再做多分镜验证动作连续、视线连续、道具位置、情绪节拍和结尾钩子。",
+      "keywords": ["AI漫剧", "提示词分析", "基础设定", "氛围画质", "画面内容", "单镜头", "多分镜", "角色稳定", "表情", "钩子"],
+      "asset_usage": ["plot_structure", "dialogue_tone", "visual_style", "character_arc", "gears_delivery"],
+      "trigger_words": ["AI漫剧", "ai_comic_drama", "漫画分镜", "提示词", "单镜头", "多分镜", "结尾钩子", "表情", "对白", "小云雀", "丧尸清道夫"]
     }
   ]
 }

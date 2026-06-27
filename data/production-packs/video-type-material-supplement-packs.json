@@ -1,0 +1,582 @@
+{
+  "schema_version": "video-type-material-supplement-packs/v1",
+  "updated_at": "2026-06-27",
+  "purpose": "Define production-ready material supplement templates and high-quality sample entries for the first three stable output types: heritage_promo, documentary_short, and ai_comic_drama.",
+  "source_observations": [
+    {
+      "source_id": "bilibili-BV1xuVC6AEbg",
+      "source_type": "bilibili_video",
+      "applies_to_video_types": ["ai_comic_drama"],
+      "bvid": "BV1xuVC6AEbg",
+      "url": "https://www.bilibili.com/video/BV1xuVC6AEbg/",
+      "title": "今天把我关于《丧尸清道夫》的创作思路分享给大家，如果能帮到你，我会很开心。",
+      "creator": "Mx-Shell",
+      "observed_stats": {
+        "view": 1670585,
+        "favorite": 100546,
+        "coin": 39049,
+        "share": 15319,
+        "like": 95192,
+        "his_rank": 16
+      },
+      "duration_seconds": 2573,
+      "confirmed_chapters": [
+        "引言",
+        "提示词分析",
+        "提示词-基础设定",
+        "提示词-氛围与画质",
+        "提示词-画面内容",
+        "视频生成",
+        "功能讲解",
+        "效果演示-单镜头",
+        "效果演示-多分镜",
+        "结尾"
+      ],
+      "usable_takeaways": [
+        "AI漫剧生产包需要把提示词拆成基础设定、氛围画质、画面内容三层，而不是只写剧情梗概。",
+        "先用单镜头验证角色、世界观、画质和镜头语法，再进入多分镜连续性测试。",
+        "爆款短剧解说的关注点是可复用工作流：提示词分析、生成、功能讲解、单镜头演示、多分镜演示。",
+        "样板素材必须包含角色稳定锚点、场景锚点、动作冲突、镜头/构图、情绪节拍和结尾钩子。"
+      ],
+      "limitations": [
+        "公开接口未提供字幕列表。",
+        "B站AI总结接口返回权限不足。",
+        "本地没有可用Whisper工具，且OPENAI_API_KEY未设置，因此本记录不是逐字稿。"
+      ]
+    },
+    {
+      "source_id": "ihchina-video-resource-index",
+      "source_type": "official_resource_index",
+      "applies_to_video_types": ["heritage_promo", "documentary_short"],
+      "url": "https://www.ihchina.cn/video",
+      "title": "中国非物质文化遗产网·资源·影音",
+      "usable_takeaways": [
+        "非遗类成片应优先把项目、传承人、活动、场所和影音资源分开归档。",
+        "宣传片素材模板需要记录官方目录/资源链接，避免只靠二手介绍扩写。",
+        "微纪录片可把影音资源作为现场或展陈入口，但仍需标注来源和再现边界。"
+      ]
+    },
+    {
+      "source_id": "ihchina-xuanzhi-special",
+      "source_type": "official_heritage_special",
+      "applies_to_video_types": ["heritage_promo"],
+      "url": "https://www.ihchina.cn/Article/Index/detail?id=16724",
+      "title": "中国非物质文化遗产网·一纸千年 宣说非遗",
+      "usable_takeaways": [
+        "非遗工艺模板应拆出材料、工具、成品形态、工序、传承空间和当代使用场景。",
+        "专题式非遗内容适合把文献来源、图像/视频资源和生产流程并列，而不是只写历史概述。",
+        "成片素材要能支持微距手部、材料纹理、工坊空间和成品用途四类镜头。"
+      ]
+    },
+    {
+      "source_id": "documentary-techniques-reference",
+      "source_type": "documentary_reference",
+      "applies_to_video_types": ["documentary_short"],
+      "url": "https://en.wikipedia.org/wiki/Documentary_film_techniques",
+      "title": "Documentary film techniques",
+      "usable_takeaways": [
+        "微纪录模板应显式区分实拍现场、访谈、旁白、档案材料、再现画面和蒙太奇。",
+        "再现画面必须带边界，不应让观众误认为它是真实历史影像。",
+        "现场声音、采访对象和档案镜头要进入脚本结构，而不是只在后期临时补素材。"
+      ]
+    },
+    {
+      "source_id": "b-script-b-roll-paper",
+      "source_type": "research_paper",
+      "applies_to_video_types": ["documentary_short"],
+      "url": "https://arxiv.org/abs/1902.11216",
+      "title": "B-Script: Transcript-based B-roll Video Editing with Recommendations",
+      "usable_takeaways": [
+        "微纪录生产模板需要把采访/旁白文本与B-roll需求绑定，提前标注哪里需要补现场、档案、物件或空镜。",
+        "B-roll不是装饰素材，而是用来补足讲述、解释空间关系和减少纯口播负担。",
+        "模板应增加interview_clip_selection和b_roll_plan，便于后续自动拆镜。"
+      ]
+    },
+    {
+      "source_id": "seedance-v2-paper",
+      "source_type": "research_paper",
+      "applies_to_video_types": ["ai_comic_drama"],
+      "url": "https://arxiv.org/abs/2604.14148",
+      "title": "Seedance 2.0: Advancing Video Generation for World Complexity",
+      "usable_takeaways": [
+        "AI视频生产模板要同时考虑文本、图片、音频、视频等多模态输入，而不是只写文字提示词。",
+        "短剧模板应拆出参考图、关键帧、镜头运动、声音/对白和连续性验收项。",
+        "多镜头片段需要在角色一致性、场景连续性和动作连续性之间做显式检查。"
+      ]
+    },
+    {
+      "source_id": "vgot-paper",
+      "source_type": "research_paper",
+      "applies_to_video_types": ["ai_comic_drama"],
+      "url": "https://arxiv.org/abs/2412.02259",
+      "title": "Video-of-Thought: Step-by-Step Video Reasoning from Perception to Cognition",
+      "usable_takeaways": [
+        "AI漫剧模板应把脚本拆成可验证步骤：角色/场景感知、动作推理、镜头组织和结果检查。",
+        "多分镜生成不应只看单格质量，还要检查场景间因果和视觉连续性。",
+        "可以把样片验证分为单镜头测试、多镜头连续性测试和故事逻辑测试。"
+      ]
+    },
+    {
+      "source_id": "motion-by-queries-paper",
+      "source_type": "research_paper",
+      "applies_to_video_types": ["ai_comic_drama"],
+      "url": "https://arxiv.org/abs/2412.07750",
+      "title": "Motion by Queries: Identity-Motion Trade-offs in Text-to-Video Generation",
+      "usable_takeaways": [
+        "AI漫剧模板需要显式记录角色身份锚点和运动要求，避免动作增强导致角色跳变。",
+        "镜头提示词应把身份、动作、场景和风格分层，而不是混成一段。",
+        "多镜头验收要检查角色外观、服饰、道具、动作方向和视线方向。"
+      ]
+    }
+  ],
+  "packs": [
+    {
+      "video_type": "heritage_promo",
+      "label": "非遗/工艺宣传片",
+      "goal": "把非遗、传统工艺、民俗流程从资料介绍转成可拍的材料、工具、手部动作、流程、传承关系和当代困境。",
+      "material_template": {
+        "required_fields": [
+          "project_name",
+          "heritage_or_craft_type",
+          "confirmed_status_and_sources",
+          "official_catalog_or_resource_links",
+          "materials",
+          "tools",
+          "process_steps",
+          "hand_actions",
+          "practitioner_or_transmission_line",
+          "community_or_practitioner_consent",
+          "documentation_assets",
+          "visual_symbols",
+          "sound_or_texture_details",
+          "modern_connection",
+          "production_risks"
+        ],
+        "minimum_viable_story_gate": [
+          "有明确工艺或仪式主体",
+          "有官方目录、专题、影音资源或可核验来源入口",
+          "至少有一个材料/工具/动作锚点",
+          "能说明为什么今天还值得拍"
+        ],
+        "script_ready_gate": [
+          "流程至少拆成3个可拍步骤",
+          "每个步骤有动词和画面",
+          "可说明哪些镜头来自实拍/官方影音/展陈/再现",
+          "传承关系、级别、称谓和来源边界已标明"
+        ],
+        "production_ready_gate": [
+          "角色、场景、工具、材料、成品和禁用画面已列清",
+          "可区分真实传承人、示意匠人、展陈复原和影视化补足",
+          "传承人/社区/展馆参与和授权口径已标明",
+          "有微距、全景、声音、字幕关键词的镜头抓手"
+        ],
+        "supplement_questions": [
+          "有没有官方目录页、专题页、影音资源或馆方说明可作为来源入口？",
+          "这门技艺从什么材料开始？材料的颜色、质地、气味或声音是什么？",
+          "最能代表技艺的3到5个动作分别是什么？",
+          "工具叫什么、怎么握、怎么运动、会留下什么痕迹？",
+          "成品完成前后有什么可视化差别？",
+          "传承人、学徒、家庭作坊、合作社或展馆之间是什么关系？",
+          "哪些级别、年代、传承谱系、获奖信息必须核实后才能写？",
+          "当代困境是什么：市场、学徒、材料、时间、审美还是工序失传？"
+        ]
+      },
+      "sample_entries": [
+        {
+          "sample_id": "heritage-01",
+          "entry_name": "湘绣工坊——一针一线的明暗层次",
+          "source_status": "candidate_or_existing_entry_to_verify",
+          "core_story_engine": "从一根丝线穿过绷架开始，展示劈线、配色、针法、修整到成品亮相的过程。",
+          "must_collect": ["针法名称与步骤", "丝线/绣布/绷架细节", "绣娘或学徒关系", "代表图案和禁用夸大表述"],
+          "visual_assets": ["绷架", "丝线色卡", "针尖入布特写", "半成品与成品对照"],
+          "risk_boundary": "不得把商业工坊宣传语写成非遗级别或传承人身份事实。"
+        },
+        {
+          "sample_id": "heritage-02",
+          "entry_name": "醴陵釉下五彩瓷——火候之前的颜色",
+          "source_status": "existing_hunan_material_to_enrich",
+          "core_story_engine": "以瓷坯入手，串联制坯、绘色、罩釉、入窑、出窑的悬念。",
+          "must_collect": ["釉下五彩的工艺顺序", "颜料与坯体边界", "窑炉/烧成信息", "代表纹样和地域来源"],
+          "visual_assets": ["白瓷坯", "细笔绘色", "窑门火光", "出窑后的釉色变化"],
+          "risk_boundary": "烧制温度、历史年代、国家级称号等必须来源确认。"
+        },
+        {
+          "sample_id": "heritage-03",
+          "entry_name": "浏阳花炮——一声响之前的百道手工",
+          "source_status": "candidate_or_existing_entry_to_verify",
+          "core_story_engine": "用安全边界下的制作流程和现代转型，呈现从纸筒、装药、封口到燃放符号的文化链条。",
+          "must_collect": ["安全可拍环节", "传统工序和现代监管边界", "工具/纸筒/引线细节", "节庆使用场景"],
+          "visual_assets": ["纸筒排列", "封口动作", "仓储警示标识", "夜空燃放远景"],
+          "risk_boundary": "不得给危险制作步骤的操作教程；安全规范和生产资质必须谨慎。"
+        },
+        {
+          "sample_id": "heritage-04",
+          "entry_name": "滩头木版年画——刻刀和颜色的年味",
+          "source_status": "existing_hunan_material_to_enrich",
+          "core_story_engine": "以木版纹路、套色顺序和年画张贴场景，拍出从刻版到上墙的年俗传承。",
+          "must_collect": ["刻版、刷色、套印、晾晒步骤", "木版/颜料/纸张来源", "代表图案寓意", "春节使用方式"],
+          "visual_assets": ["木版纹路", "刷子蘸色", "纸面套色", "门墙张贴"],
+          "risk_boundary": "图案寓意可以解释，但不能凭空编造单一来源。"
+        },
+        {
+          "sample_id": "heritage-05",
+          "entry_name": "土家织锦西兰卡普——腰机上的山河纹样",
+          "source_status": "candidate_or_existing_entry_to_verify",
+          "core_story_engine": "从经纬线交错进入，展示图案、织机、手脚配合和家庭传承。",
+          "must_collect": ["织机结构", "经纬线与打纬动作", "常见纹样和族群边界", "传承场景"],
+          "visual_assets": ["腰机/织机", "手脚配合", "彩线束", "纹样局部"],
+          "risk_boundary": "族群称谓、纹样解释和地域归属必须核对来源。"
+        },
+        {
+          "sample_id": "heritage-06",
+          "entry_name": "桑植民歌——山路里的呼吸和回声",
+          "source_status": "existing_hunan_material_to_enrich",
+          "core_story_engine": "把非物质的歌声转成可拍素材：起调、对唱、山路、劳动/生活场景和传唱人。",
+          "must_collect": ["代表曲调或歌词片段的版权边界", "演唱场景", "传唱人身份", "声腔特点和地域环境"],
+          "visual_assets": ["山路远景", "歌者口型近景", "村寨空间", "听众反应"],
+          "risk_boundary": "不得长引歌词；传承人身份和曲目来源需确认。"
+        },
+        {
+          "sample_id": "heritage-07",
+          "entry_name": "苗族赶秋——秋千、银饰和相会仪式",
+          "source_status": "existing_or_candidate_folk_activity_to_enrich",
+          "core_story_engine": "以秋千装置和青年相会为视觉入口，拆出节庆动作、服饰、音乐和仪式边界。",
+          "must_collect": ["活动流程", "服饰/银饰细节", "音乐舞蹈元素", "当代活动组织方式"],
+          "visual_assets": ["秋千架", "银饰特写", "人群圆场", "节庆旗帜"],
+          "risk_boundary": "不得把旅游展演等同于历史原貌；婚恋叙事需避免刻板化。"
+        },
+        {
+          "sample_id": "heritage-08",
+          "entry_name": "江永女书——纸面上的秘密和传承课堂",
+          "source_status": "candidate_entry_to_verify",
+          "core_story_engine": "从一笔细字开始，连接书写材料、女性传承、课堂教学和当代保护。",
+          "must_collect": ["书写材料", "字形视觉特征", "传承空间", "文献/展馆来源"],
+          "visual_assets": ["细笔书写", "纸扇/布面", "展柜", "课堂手把手教学"],
+          "risk_boundary": "不得编造具体文本含义；引用文字需确认版权和释读。"
+        },
+        {
+          "sample_id": "heritage-09",
+          "entry_name": "龙舟修造与端午水上仪式",
+          "source_status": "candidate_process_entry_linked_to_duanwu",
+          "core_story_engine": "把端午从传说讲述转为木料、修船、鼓点、下水和竞渡的仪式过程。",
+          "must_collect": ["龙舟修造/维护流程", "鼓点和队形", "祭江或下水仪式", "汨罗等地域边界"],
+          "visual_assets": ["船身木纹", "鼓槌", "浆手手臂", "江面队形"],
+          "risk_boundary": "屈原传说层和地方仪式层必须分开。"
+        },
+        {
+          "sample_id": "heritage-10",
+          "entry_name": "地方戏曲后台——一张脸谱之前",
+          "source_status": "candidate_entry_to_verify",
+          "core_story_engine": "从化妆、穿戴、试嗓、候场到上台，拍出传统戏曲的后台流程和演员压力。",
+          "must_collect": ["剧种名称和地区", "妆面步骤", "服装/道具/乐器", "师徒或班社关系"],
+          "visual_assets": ["镜前上妆", "衣箱", "锣鼓点", "候场侧影"],
+          "risk_boundary": "剧种、曲牌和服饰不能跨地区混用。"
+        }
+      ]
+    },
+    {
+      "video_type": "documentary_short",
+      "label": "微纪录片",
+      "goal": "把文化条目转成现场、史料、人物讲述、再现边界和当代回望组成的可信短纪录结构。",
+      "material_template": {
+        "required_fields": [
+          "documentary_question",
+          "real_world_site_or_object",
+          "source_quotes_or_source_cues",
+          "timeline",
+          "witness_or_expert_roles",
+          "interview_clip_selection",
+          "field_notes",
+          "b_roll_plan",
+          "reconstruction_boundary",
+          "present_day_trace",
+          "ambient_sound",
+          "what_must_not_be_claimed"
+        ],
+        "minimum_viable_story_gate": [
+          "有一个当下可见地点/实物/声音入口",
+          "有一个核心问题",
+          "知道哪些内容不能写成确证"
+        ],
+        "script_ready_gate": [
+          "至少两类来源或一个权威来源加现场观察",
+          "时间线和现实现场可互相支撑",
+          "采访/旁白文本已标注需要补充的B-roll、档案、物件或空镜",
+          "再现、推测、传说和事实已分层"
+        ],
+        "production_ready_gate": [
+          "现场镜头清单、文献/展陈镜头、采访角色和旁白边界都已列明",
+          "每段采访或旁白都有对应B-roll或替代画面方案",
+          "引用、图片、馆藏、地图、碑刻等素材的授权或替代方案明确",
+          "有开场声音、转场物件和结尾现实痕迹"
+        ],
+        "supplement_questions": [
+          "今天还能看到什么实物、地点、碑刻、展陈、声音或仪式？",
+          "这条故事的第一手/权威来源是什么？二手解释是什么？",
+          "哪些采访句子必须配B-roll？分别需要现场、档案、物件、地图还是空镜？",
+          "有哪些地方只能做再现画面，不能写成真实影像？",
+          "谁可以作为讲述人：馆员、传承人、研究者、当地居民还是后人？",
+          "时间线最容易被误写的节点是什么？",
+          "结尾能回到哪个今天还存在的痕迹？"
+        ]
+      },
+      "sample_entries": [
+        {
+          "sample_id": "documentary-01",
+          "entry_name": "岳阳楼与《岳阳楼记》——一座楼如何承载一句话",
+          "source_status": "existing_hunan_material_to_enrich",
+          "core_question": "今天登楼看到的空间，如何连接文本、重修历史和公共记忆？",
+          "must_collect": ["现存楼体与重修边界", "文本来源提示", "洞庭湖现场声音", "展陈或碑刻镜头"],
+          "field_assets": ["楼体远景", "匾额/碑刻", "湖面风声", "游客视线"],
+          "risk_boundary": "不得把文学意境写成范仲淹现场亲历画面。"
+        },
+        {
+          "sample_id": "documentary-02",
+          "entry_name": "马王堆汉墓——一件文物打开的西汉生活",
+          "source_status": "existing_hunan_material_to_enrich",
+          "core_question": "考古报告、博物馆展陈和观众观看之间怎样重建西汉生活？",
+          "must_collect": ["考古报告/馆方资料", "核心文物清单", "墓葬结构示意", "不可再现的遗体和敏感镜头边界"],
+          "field_assets": ["展柜", "文物局部", "地图/剖面图", "观众驻足"],
+          "risk_boundary": "文物用途、墓主身份和细节解释必须按来源，不做惊悚化。"
+        },
+        {
+          "sample_id": "documentary-03",
+          "entry_name": "岳麓书院——书院空间里的千年读书声",
+          "source_status": "existing_or_candidate_site_entry",
+          "core_question": "书院作为建筑、教育空间和当代研学场所，今天如何继续发生作用？",
+          "must_collect": ["书院沿革", "核心空间路线", "讲学/藏书/祭祀功能边界", "现代表达方式"],
+          "field_assets": ["门厅", "讲堂", "匾额", "学生脚步声"],
+          "risk_boundary": "现存建筑状态、历史原貌和当代展陈不能混写。"
+        },
+        {
+          "sample_id": "documentary-04",
+          "entry_name": "汨罗江端午——从投江传说到今日竞渡",
+          "source_status": "existing_hunan_material_to_enrich",
+          "core_question": "一个传说如何变成地方节俗、身体动作和集体记忆？",
+          "must_collect": ["《史记》层级", "地方端午习俗来源", "龙舟/粽子传说边界", "今日活动现场"],
+          "field_assets": ["江面", "龙舟鼓点", "粽叶", "屈子祠/纪念空间"],
+          "risk_boundary": "托梦、蛟龙等传说必须标为民间说法。"
+        },
+        {
+          "sample_id": "documentary-05",
+          "entry_name": "通道转兵——一次会议前后的路线选择",
+          "source_status": "existing_or_candidate_history_entry",
+          "core_question": "历史转折如何通过路线、地名、纪念馆和文献变得可见？",
+          "must_collect": ["事件时间线", "会议地点/路线图", "纪念馆资料", "当地口述与官方资料边界"],
+          "field_assets": ["路线地图", "会议旧址", "山路", "展柜文献"],
+          "risk_boundary": "具体人物对白和会议细节不能无来源戏剧化。"
+        },
+        {
+          "sample_id": "documentary-06",
+          "entry_name": "平江起义旧址——一座书院的另一段历史",
+          "source_status": "existing_or_candidate_history_entry",
+          "core_question": "同一空间如何从书院记忆转向革命事件现场？",
+          "must_collect": ["旧址空间功能", "事件经过", "人物名单和身份", "纪念馆/党史来源"],
+          "field_assets": ["旧址门匾", "院落路线", "展陈照片", "墙面文字"],
+          "risk_boundary": "空间历史层必须分清，避免把不同时代人物放在同一现场。"
+        },
+        {
+          "sample_id": "documentary-07",
+          "entry_name": "衡阳保卫战纪念空间——城市里的伤痕与记忆",
+          "source_status": "existing_or_candidate_history_entry",
+          "core_question": "战争记忆如何在城市空间、纪念设施和后代讲述中延续？",
+          "must_collect": ["战役时间线", "纪念馆/文献来源", "城市遗址或纪念设施", "伤亡数据核验"],
+          "field_assets": ["纪念碑", "老城街道", "资料照片", "献花/凝视动作"],
+          "risk_boundary": "战争数字、战斗细节、个人事迹必须按可靠来源。"
+        },
+        {
+          "sample_id": "documentary-08",
+          "entry_name": "芷江受降纪念地——一张桌子见证的历史时刻",
+          "source_status": "existing_or_candidate_history_entry",
+          "core_question": "纪念馆中的场景复原如何帮助观众理解受降历史？",
+          "must_collect": ["受降时间线", "会场复原资料", "文书/照片来源", "展陈与史实边界"],
+          "field_assets": ["会场桌椅", "签字文书", "纪念馆外景", "观众脚步"],
+          "risk_boundary": "复原陈设不能写成当年原物，除非来源确认。"
+        },
+        {
+          "sample_id": "documentary-09",
+          "entry_name": "周敦颐与濂溪书院——思想如何落到地方空间",
+          "source_status": "existing_hunan_material_to_enrich",
+          "core_question": "人物思想、地方遗存和后世教育如何连接，而不误写亲历？",
+          "must_collect": ["直接事件地点", "相关书院/祠庙/爱莲池资料", "后世传播链", "不可写成清单"],
+          "field_assets": ["书院门额", "莲池", "文献翻页", "研学课堂"],
+          "risk_boundary": "思想影响、后世纪念和本人亲历必须严格分层。"
+        },
+        {
+          "sample_id": "documentary-10",
+          "entry_name": "炎帝陵祭祀——传说、礼仪和当代认同",
+          "source_status": "existing_hunan_material_to_enrich",
+          "core_question": "始祖传说如何通过陵寝、祭祀和地方公共仪式被今天讲述？",
+          "must_collect": ["炎帝传说来源层级", "陵区历史资料", "祭祀流程", "当代活动组织方资料"],
+          "field_assets": ["陵区轴线", "祭祀礼器", "人群队列", "山林环境声"],
+          "risk_boundary": "神农尝百草等传说不能写成确证历史。"
+        }
+      ]
+    },
+    {
+      "video_type": "ai_comic_drama",
+      "label": "AI漫剧",
+      "goal": "把文化材料转成强钩子、角色稳定、对白冲突、表情动作、分镜提示和多镜头连续性的短剧生产包。",
+      "material_template": {
+        "required_fields": [
+          "episode_hook",
+          "world_and_truth_mode",
+          "protagonist_goal",
+          "opponent_or_pressure",
+          "relationship_collision",
+          "scene_anchor",
+          "character_stability_tags",
+          "dialogue_bubbles",
+          "emotion_beats",
+          "shot_prompt_layers",
+          "reference_images_or_keyframes",
+          "identity_motion_consistency_plan",
+          "single_shot_test",
+          "multi_shot_continuity",
+          "transition_plan",
+          "ending_hook",
+          "forbidden_claims"
+        ],
+        "prompt_layers": [
+          "基础设定：世界观、角色身份、时代/地域/真实度边界。",
+          "氛围与画质：漫画风格、光线、色彩、镜头质感、画面比例。",
+          "画面内容：主体、动作、表情、场景、道具、构图和字幕气泡。",
+          "单镜头验证：先测试角色外观、场景锚点和情绪是否稳定。",
+          "多分镜验证：再测试动作连续、视线连续、道具位置和结尾钩子。"
+        ],
+        "minimum_viable_story_gate": [
+          "第一格有冲突定格或异常画面",
+          "主角目标和压力一句话能说清",
+          "至少有一个可视化场景锚点",
+          "角色身份锚点和动作需求已分开描述"
+        ],
+        "script_ready_gate": [
+          "每场有3到6个漫画画面",
+          "每场有对白或强旁白",
+          "角色外观、道具、场景不跳变",
+          "关键帧或参考图需求已列出",
+          "结尾有追看问题"
+        ],
+        "production_ready_gate": [
+          "角色设定卡、场景设定卡、道具卡和镜头提示词已分开",
+          "单镜头测试和多分镜测试各有验收点",
+          "角色身份、运动方向、视线方向、道具位置和镜头转场都有连续性检查",
+          "真实人物/机构/历史素材的虚构边界已写清"
+        ],
+        "supplement_questions": [
+          "第一格观众看到什么会停下？",
+          "主角现在想要什么？谁或什么马上阻止他？",
+          "哪一句对白能让关系立刻撞起来？",
+          "主角、对手、见证者分别有什么稳定外观和表情特征？",
+          "本集最重要的场景锚点和道具锚点是什么？",
+          "需要哪些参考图或关键帧来锁定角色、场景和道具？",
+          "动作增强会不会导致角色身份跳变？要用什么验收项检查？",
+          "单镜头测试要验证什么？多分镜测试要验证什么？",
+          "结尾钩子是危险、误会、反转、选择还是新任务？"
+        ]
+      },
+      "sample_entries": [
+        {
+          "sample_id": "comic-01",
+          "entry_name": "周敦颐拒签冤案——案卷压到灯下",
+          "source_status": "existing_material_adaptation",
+          "episode_hook": "第一格：一只手把判词按在油灯下，差役低声逼签。",
+          "core_conflict": "主角坚持复核案卷，对抗上官催签和现场压力。",
+          "character_stability": ["周敦颐：宋代士人常服、冷静眼神、书卷/案卷锚点", "差役：深色短袍、急躁表情", "少年/家属：恐惧但不抢主线"],
+          "shot_prompt_focus": ["基础设定", "官署夜色", "案卷/印章/油灯", "近景表情", "定格金句"],
+          "ending_hook": "新证词露出半行字，主角抬眼：这不是结案，是开始。"
+        },
+        {
+          "sample_id": "comic-02",
+          "entry_name": "柳毅传书——井口传来的求救声",
+          "source_status": "legend_adaptation_with_boundary",
+          "episode_hook": "第一格：雨夜井口泛出幽蓝水光，龙女的信从水面浮起。",
+          "core_conflict": "书生是否相信异界求救，并承担传信代价。",
+          "character_stability": ["柳毅：唐代书生、行旅斗笠、书信锚点", "龙女：水纹衣饰、泪光和鳞纹只作传说视觉", "水府使者：半隐身影"],
+          "shot_prompt_focus": ["唐传奇边界", "井口/水府入口", "信件特写", "惊讶表情", "水墨奇幻"],
+          "ending_hook": "信封上的水印化成龙纹，井底传来第二个名字。"
+        },
+        {
+          "sample_id": "comic-03",
+          "entry_name": "屈原投江前夜——江风里的最后一问",
+          "source_status": "historical_legend_adaptation",
+          "episode_hook": "第一格：汨罗江边，衣袖被风吹起，远处船火像退去的国都。",
+          "core_conflict": "家国崩塌后，主角面对渔父劝返和自我抉择。",
+          "character_stability": ["屈原：楚辞意象服饰、疲惫但坚定", "渔父：蓑衣、船篙、旁观者视角", "江水：持续视觉意象"],
+          "shot_prompt_focus": ["江面夜色", "船火", "近景眼神", "少量对白", "传说与史实边界"],
+          "ending_hook": "江面浮起第一片粽叶，旁白只问：后人会怎样记住他？"
+        },
+        {
+          "sample_id": "comic-04",
+          "entry_name": "贾谊长沙井边——少年太傅的孤独辩论",
+          "source_status": "existing_or_candidate_material_adaptation",
+          "episode_hook": "第一格：井水倒映出朝堂影子，年轻人握紧竹简。",
+          "core_conflict": "被贬者在地方空间里与自己的理想辩论。",
+          "character_stability": ["贾谊：青年文士、竹简/井水锚点", "地方小吏：现实压力", "旁观孩童：当代观众入口"],
+          "shot_prompt_focus": ["井边空间", "竹简", "倒影反转", "独白气泡", "长沙地方化边界"],
+          "ending_hook": "井水里的朝堂影子忽然裂开，露出一行未写完的策论。"
+        },
+        {
+          "sample_id": "comic-05",
+          "entry_name": "岳麓书院夜读——一块匾额下的争论",
+          "source_status": "fictionalized_scene_inspired_by_site",
+          "episode_hook": "第一格：夜里书院门额被雷光照亮，两个学生争抢一卷旧书。",
+          "core_conflict": "少年主角在师友误会中证明旧书真正用途。",
+          "character_stability": ["少年主角：书袋、短衫、紧张表情", "同窗对手：骄傲表情", "先生：克制观察者"],
+          "shot_prompt_focus": ["书院夜色", "旧书", "雷光", "表情三连格", "原创虚构标注"],
+          "ending_hook": "旧书夹层掉出一张地图，指向书院外的第二处地点。"
+        },
+        {
+          "sample_id": "comic-06",
+          "entry_name": "刘海砍樵——山路上多出来的脚印",
+          "source_status": "folk_legend_adaptation",
+          "episode_hook": "第一格：斧头刚落，雪地里出现一串不是人的脚印。",
+          "core_conflict": "樵夫在传说相遇中判断善意、诱惑和禁忌。",
+          "character_stability": ["刘海：樵夫衣着、斧头/柴担", "狐仙/异类角色：传说视觉，不写成史实", "山路：脚印线索"],
+          "shot_prompt_focus": ["雪地脚印", "斧头动作", "狐影", "惊讶特写", "民间说法边界"],
+          "ending_hook": "脚印停在空中，柴担上多了一枚铜钱。"
+        },
+        {
+          "sample_id": "comic-07",
+          "entry_name": "月岩悟道——洞口漏下来的月光",
+          "source_status": "legendary_scene_with_source_boundary",
+          "episode_hook": "第一格：天然岩洞中，月光落在书页上，字忽然像水一样流动。",
+          "core_conflict": "主角在读书、疑问和传说性顿悟之间寻找答案。",
+          "character_stability": ["周敦颐/读书人：宋代士人、书卷锚点", "洞穴：岩壁、石阶、月光", "旁白：相传口径"],
+          "shot_prompt_focus": ["天然岩洞", "月光", "书页", "静态转动态", "不混入衙署案卷"],
+          "ending_hook": "书页上只剩一个圆，洞外传来人声：先生，出事了。"
+        },
+        {
+          "sample_id": "comic-08",
+          "entry_name": "湘妃竹传说——竹节上的泪痕",
+          "source_status": "legend_adaptation_with_boundary",
+          "episode_hook": "第一格：竹林深处，一滴泪落下，竹节浮出斑痕。",
+          "core_conflict": "人物追寻传说源头，却发现不同版本互相矛盾。",
+          "character_stability": ["追寻者：现代或古代视角二选一", "湘妃意象：远景剪影", "竹林：斑竹特写"],
+          "shot_prompt_focus": ["竹节纹理", "泪滴", "版本差异", "水墨慢镜", "传说边界"],
+          "ending_hook": "竹林尽头的碑文和老人讲述说出了两个不同答案。"
+        },
+        {
+          "sample_id": "comic-09",
+          "entry_name": "苗族赶秋少年篇——秋千飞过鼓声",
+          "source_status": "folk_activity_youth_drama",
+          "episode_hook": "第一格：少年在秋千最高点看见人群外有一件失落银饰。",
+          "core_conflict": "少年想归还银饰，却卷入比赛、误会和节庆规则。",
+          "character_stability": ["少年：节庆服饰但不过度装饰", "少女/同伴：银饰锚点", "长者：仪式规则说明者"],
+          "shot_prompt_focus": ["秋千高度", "银饰特写", "鼓声字幕", "人群表情", "节庆氛围"],
+          "ending_hook": "银饰背面刻着并不属于本寨的纹样。"
+        },
+        {
+          "sample_id": "comic-10",
+          "entry_name": "滩头年画夜市——画里的人眨了一下眼",
+          "source_status": "fictional_original_inspired_by_heritage",
+          "episode_hook": "第一格：夜市收摊时，年画门神突然眨眼。",
+          "core_conflict": "少年学徒必须在天亮前找出套色错位的原因，否则整批年画作废。",
+          "character_stability": ["学徒：围裙、染色手指", "师傅：刻刀/木版锚点", "年画门神：纸面角色，不冒充民俗事实"],
+          "shot_prompt_focus": ["木版", "套色错位", "纸面角色", "惊吓表情", "悬疑钩子"],
+          "ending_hook": "门神指向木版背面：那里藏着另一幅图。"
+        }
+      ]
+    }
+  ]
+}

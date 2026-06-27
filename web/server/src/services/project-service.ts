@@ -8160,6 +8160,10 @@ function materialPurposesForSupplementTask(
   }
   if (task.stage === 'production_ready') purposes.add('visual_asset');
   if (task.source === 'material_sufficiency_missing_item') purposes.add('creative_boundary');
+  if (task.source === 'production_material_missing_field') {
+    purposes.add('visual_asset');
+    purposes.add('creative_boundary');
+  }
   if (purposes.size === 0) purposes.add('fact_basis');
   return [...purposes];
 }

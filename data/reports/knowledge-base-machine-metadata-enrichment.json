@@ -1,0 +1,219 @@
+{
+  "schema_version": "kb-machine-metadata-enrichment/v1",
+  "generated_at": "2026-06-27T15:34:47.336Z",
+  "apply": false,
+  "totals": {
+    "files_scanned": 34,
+    "files_changed": 0,
+    "entries_changed": 0,
+    "fields_added": 0,
+    "entries_with_inferred_era": 0
+  },
+  "files": [
+    {
+      "province": "北京",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/北京.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "天津",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/天津.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "河北",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/河北.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "山西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/山西.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "内蒙古",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/内蒙古.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "辽宁",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/辽宁.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "吉林",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/吉林.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "黑龙江",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/黑龙江.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "上海",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/上海.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "江苏",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/江苏.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "浙江",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/浙江.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "安徽",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/安徽.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "福建",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/福建.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "江西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/江西.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "山东",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/山东.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "河南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/河南.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "湖北",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖北.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "广东",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/广东.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "广西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/广西.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "海南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/海南.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "重庆",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/重庆.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "四川",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/四川.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "贵州",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/贵州.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "云南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/云南.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "西藏",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/西藏.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "陕西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/陕西.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "甘肃",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/甘肃.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "青海",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/青海.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "宁夏",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/宁夏.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "新疆",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/新疆.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "香港",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/香港.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "澳门",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/澳门.md",
+      "changed": false,
+      "changed_entries": 0
+    },
+    {
+      "province": "台湾",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/台湾.md",
+      "changed": false,
+      "changed_entries": 0
+    }
+  ],
+  "changes": []
+}
