@@ -3,11 +3,11 @@
     <header class="projects-page__header">
       <div>
         <h1 class="projects-page__title">项目工作台</h1>
-        <p class="projects-page__desc">管理单片项目、系列漫剧、素材 gate 和最近更新时间。</p>
+        <p class="projects-page__desc">管理单片短片、漫剧系列、素材 gate 和最近更新时间。</p>
       </div>
       <div class="projects-page__header-actions">
-        <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建系列漫剧</RouterLink>
-        <RouterLink class="projects-page__cta" to="/story/new">新建单片项目</RouterLink>
+        <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建漫剧系列</RouterLink>
+        <RouterLink class="projects-page__cta" to="/story/new">新建单片短片</RouterLink>
       </div>
     </header>
 
@@ -19,8 +19,8 @@
       />
       <select v-model="projectKindFilter" class="projects-page__select">
         <option value="">全部项目</option>
-        <option value="story">创作项目</option>
-        <option value="series">系列漫剧</option>
+        <option value="story">单片短片</option>
+        <option value="series">漫剧系列</option>
       </select>
       <details class="projects-page__filters">
         <summary class="projects-page__filters-summary">
@@ -230,7 +230,7 @@
           <RouterLink class="projects-page__portfolio-title" :to="portfolioItemLink(item)">
             {{ item.title }}
           </RouterLink>
-          <p>{{ item.scope === 'story_project' ? '创作项目' : '系列漫剧' }} · {{ item.score }}/100</p>
+          <p>{{ item.scope === 'story_project' ? '单片短片' : '漫剧系列' }} · {{ item.score }}/100</p>
           <p v-if="item.primary_issue_label">阻断：{{ item.primary_issue_label }}</p>
           <p v-if="item.primary_action_label">下一步：{{ item.primary_action_label }}</p>
           <small v-if="item.latest_automation_run">
@@ -359,7 +359,7 @@
           <RouterLink class="projects-page__portfolio-title" :to="generatedHealthItemLink(item)">
             {{ item.title || item.project_id }}
           </RouterLink>
-          <p>{{ item.scope === 'story_project' ? '创作项目' : '系列漫剧' }} · {{ item.project_id }}</p>
+          <p>{{ item.scope === 'story_project' ? '单片短片' : '漫剧系列' }} · {{ item.project_id }}</p>
           <p v-if="item.missing_contracts.length">缺口：{{ item.missing_contracts.slice(0, 3).join(' / ') }}</p>
           <p v-if="item.recommended_actions[0]">下一步：{{ item.recommended_actions[0] }}</p>
           <small v-if="item.updated_at">更新 {{ formatDate(item.updated_at) }}</small>
@@ -436,10 +436,10 @@
       <section v-if="showSeriesProjects" class="projects-page__section">
         <div class="projects-page__section-head">
           <div>
-            <h2>系列漫剧</h2>
+            <h2>漫剧系列</h2>
             <p>{{ filteredSeriesProjects.length }} 个系列项目</p>
           </div>
-          <RouterLink class="projects-page__text-link" to="/ai-comic-series/new">打开系列工作台</RouterLink>
+          <RouterLink class="projects-page__text-link" to="/ai-comic-series/new">打开漫剧系列</RouterLink>
         </div>
         <div v-if="filteredSeriesProjects.length > 0" class="projects-page__grid">
           <article
@@ -449,7 +449,7 @@
           >
             <RouterLink class="projects-page__card-link" :to="seriesProjectLink(series.series_project_id)">
               <div class="projects-page__card-top">
-                <span class="projects-page__status-badge" data-status="series">系列漫剧</span>
+                <span class="projects-page__status-badge" data-status="series">漫剧系列</span>
                 <span v-if="series.archived_at" class="projects-page__video-type">已归档</span>
                 <span v-else class="projects-page__video-type">制作中</span>
               </div>
@@ -566,17 +566,17 @@
           </article>
         </div>
         <div v-else class="projects-page__empty projects-page__empty--section">
-          <p>还没有匹配到系列漫剧，可以从系列工作台创建一个长线项目。</p>
+          <p>还没有匹配到漫剧系列，可以从系列工作台创建一个长线项目。</p>
         </div>
       </section>
 
       <section v-if="showStoryProjects" class="projects-page__section">
         <div class="projects-page__section-head">
           <div>
-            <h2>创作项目</h2>
+            <h2>单片短片</h2>
             <p>{{ filteredProjects.length }} 个单片故事/剧本草稿</p>
           </div>
-          <RouterLink class="projects-page__text-link" to="/story/new">打开单片创作</RouterLink>
+          <RouterLink class="projects-page__text-link" to="/story/new">打开单片短片</RouterLink>
         </div>
         <div v-if="filteredProjects.length > 0" class="projects-page__story-table-wrap">
           <table class="projects-page__story-table">
@@ -589,7 +589,7 @@
                       :checked="allFilteredSelected"
                       :indeterminate.prop="someFilteredSelected && !allFilteredSelected"
                       :disabled="batchDeleting || deletingProjectId !== ''"
-                      :aria-label="allFilteredSelected ? '取消选择当前创作项目' : '全选当前创作项目'"
+                      :aria-label="allFilteredSelected ? '取消选择当前单片短片' : '全选当前单片短片'"
                       @change="toggleSelectFiltered"
                     />
                     <span>全选</span>
@@ -676,7 +676,7 @@
           </table>
         </div>
         <div v-else class="projects-page__empty projects-page__empty--section">
-          <p>还没有匹配到创作项目，可以先去单片创作生成一个初稿。</p>
+          <p>还没有匹配到单片短片，可以先去单片短片生成一个初稿。</p>
         </div>
       </section>
     </section>
@@ -957,7 +957,7 @@ function generatedGovernanceActionLabel(key: StoryAgentGeneratedGovernanceAction
     archive_or_rebuild_series_fixtures: '归档或重建历史样本',
     generate_first_series_episode: '生成首集',
     repair_series_command_contracts: '补系列指挥合同',
-    repair_story_project_refs: '修创作项目引用',
+    repair_story_project_refs: '修单片项目引用',
     promote_ready_targets_for_gears_signoff: '进入 GEARS 签收候选',
   }
   return map[key]
@@ -1083,9 +1083,9 @@ async function handleDeleteProject(project: StoryProjectListItem) {
   if (res.ok && res.data) {
     projects.value = projects.value.filter(item => item.project_id !== project.project_id)
     selectedProjectIds.value = selectedProjectIds.value.filter(id => id !== project.project_id)
-    projectMessage.value = `创作项目已删除，${deletionSummary([res.data])}`
+    projectMessage.value = `单片项目已删除，${deletionSummary([res.data])}`
   } else {
-    error.value = res.error?.message ?? '删除创作项目失败'
+    error.value = res.error?.message ?? '删除单片项目失败'
   }
   deletingProjectId.value = ''
 }
@@ -1105,9 +1105,9 @@ async function handleArchiveSeriesProject(project: AiComicSeriesProjectMeta) {
         item.series_project_id === project.series_project_id ? updated : item,
       )
     }
-    projectMessage.value = archived ? '系列漫剧已归档' : '系列漫剧已恢复'
+    projectMessage.value = archived ? '漫剧系列已归档' : '漫剧系列已恢复'
   } else {
-    error.value = res.error?.message ?? '更新系列漫剧状态失败'
+    error.value = res.error?.message ?? '更新漫剧系列状态失败'
   }
   managingSeriesProjectId.value = ''
 }
@@ -1279,7 +1279,7 @@ async function handleCaptureSeriesThumbnails(project: AiComicSeriesProjectMeta) 
 }
 
 async function handleDeleteSeriesProject(project: AiComicSeriesProjectMeta) {
-  const confirmed = window.confirm(`确定删除系列漫剧《${project.title}》吗？这会删除系列规划、连续性账本和导出记录。`)
+  const confirmed = window.confirm(`确定删除漫剧系列《${project.title}》吗？这会删除系列规划、连续性账本和导出记录。`)
   if (!confirmed) return
 
   managingSeriesProjectId.value = project.series_project_id
@@ -1288,9 +1288,9 @@ async function handleDeleteSeriesProject(project: AiComicSeriesProjectMeta) {
   const res = await deleteAiComicSeriesProject(project.series_project_id)
   if (res.ok) {
     seriesProjects.value = seriesProjects.value.filter(item => item.series_project_id !== project.series_project_id)
-    projectMessage.value = '系列漫剧已删除'
+    projectMessage.value = '漫剧系列已删除'
   } else {
-    error.value = res.error?.message ?? '删除系列漫剧失败'
+    error.value = res.error?.message ?? '删除漫剧系列失败'
   }
   managingSeriesProjectId.value = ''
 }
@@ -1415,10 +1415,10 @@ async function handleBatchDeleteProjects() {
     if (res.data.failed.length > 0) {
       error.value = `已删除 ${res.data.deleted.length} 个，${deletionSummary(res.data.deleted)}；${res.data.failed.length} 个删除失败：${res.data.failed[0].error}`
     } else {
-      projectMessage.value = `已删除 ${res.data.deleted.length} 个创作项目，${deletionSummary(res.data.deleted)}`
+      projectMessage.value = `已删除 ${res.data.deleted.length} 个单片项目，${deletionSummary(res.data.deleted)}`
     }
   } else {
-    error.value = res.error?.message ?? '批量删除创作项目失败'
+    error.value = res.error?.message ?? '批量删除单片项目失败'
   }
   batchDeleting.value = false
 }
@@ -1435,13 +1435,13 @@ async function handleRetainRecentProjects() {
   if (res.ok && res.data) {
     projects.value = res.data.kept
     selectedProjectIds.value = selectedProjectIds.value.filter(id => projects.value.some(project => project.project_id === id))
-    projectMessage.value = `已按生成时间保留最近 ${res.data.keep_recent} 个，删除 ${res.data.deleted.length} 个创作项目，${deletionSummary(res.data.deleted)}`
+    projectMessage.value = `已按生成时间保留最近 ${res.data.keep_recent} 个，删除 ${res.data.deleted.length} 个单片项目，${deletionSummary(res.data.deleted)}`
     if (res.data.failed.length > 0) {
       await loadProjects()
       error.value = `有 ${res.data.failed.length} 个项目未删除：${res.data.failed[0].error}`
     }
   } else {
-    error.value = res.error?.message ?? '清理创作项目失败'
+    error.value = res.error?.message ?? '清理单片项目失败'
   }
   retainingRecent.value = false
 }
@@ -1464,8 +1464,8 @@ async function loadProjects() {
   if (portfolioRes.ok && portfolioRes.data) productionPortfolio.value = portfolioRes.data
   if (generatedGovernanceRes.ok && generatedGovernanceRes.data) generatedGovernancePlan.value = generatedGovernanceRes.data
   if (generatedHealthRes.ok && generatedHealthRes.data) generatedHealth.value = generatedHealthRes.data
-  if (!storyRes.ok) error.value = storyRes.error?.message ?? '加载创作项目失败'
-  if (!seriesRes.ok) error.value = seriesRes.error?.message ?? '加载系列漫剧失败'
+  if (!storyRes.ok) error.value = storyRes.error?.message ?? '加载单片项目失败'
+  if (!seriesRes.ok) error.value = seriesRes.error?.message ?? '加载漫剧系列失败'
   if (!mvpStatusRes.ok) error.value = mvpStatusRes.error?.message ?? '加载 Story Agent MVP 状态失败'
   if (!portfolioRes.ok) error.value = portfolioRes.error?.message ?? '加载生产指挥总览失败'
   if (!generatedGovernanceRes.ok) error.value = generatedGovernanceRes.error?.message ?? '加载 generated 治理计划失败'

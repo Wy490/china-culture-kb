@@ -30,21 +30,21 @@
       </RouterLink>
 
       <RouterLink class="home__workbench-card home__workbench-card--studio" to="/story/new">
-        <span class="home__workbench-kicker">单片创作</span>
-        <h2>单片创作</h2>
-        <p>生成一个独立短片项目：故事正文、场景拆分、分镜提示和可编辑版本一次成稿。</p>
+        <span class="home__workbench-kicker">独立成片</span>
+        <h2>单片短片</h2>
+        <p>生成一个独立短片项目：AI 漫剧单片、纪录短片、宣传片和机构短片一次成稿。</p>
         <div class="home__workbench-meta">
-          <span>单条短片</span>
+          <span>单片项目</span>
           <span>单次交付包</span>
         </div>
       </RouterLink>
 
       <RouterLink class="home__workbench-card home__workbench-card--series" to="/ai-comic-series/new">
-        <span class="home__workbench-kicker">系列漫剧</span>
-        <h2>系列漫剧</h2>
-        <p>先建立多集主线和连续性账本，再按集生成分镜、Seedance/GEARS 生产包。</p>
+        <span class="home__workbench-kicker">多集连载</span>
+        <h2>漫剧系列</h2>
+        <p>先建立多集主线、角色弧线和连续性账本，再按集生成分镜与生产包。</p>
         <div class="home__workbench-meta">
-          <span>多集连载</span>
+          <span>分集生产</span>
           <span>跨集记忆</span>
         </div>
       </RouterLink>
@@ -63,14 +63,14 @@
         </div>
         <div class="home__stat-card">
           <span class="home__stat-number">{{ projectCount }}</span>
-          <span class="home__stat-label">创作项目</span>
+          <span class="home__stat-label">单片项目</span>
         </div>
       </div>
     </section>
 
     <section v-if="recentStories.length > 0" class="home__recent">
       <div class="home__section-header">
-        <h2 class="home__section-title">最近创作项目</h2>
+        <h2 class="home__section-title">最近单片项目</h2>
         <RouterLink class="home__section-link" to="/projects">查看全部项目</RouterLink>
       </div>
       <div class="home__recent-list">

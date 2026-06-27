@@ -353,7 +353,10 @@ export async function generateAiComicSeriesPlan(
   const pacingProfile = request.pacing_profile ?? 'balanced_drama';
   const generationScope = request.generation_scope ?? 'full_planning';
   const narrativePatternIds = request.narrative_pattern_ids ?? [];
-  const coreTheme = storyIntent?.core_theme ?? summarizeText(outline, 18);
+  const coreTheme = deriveAiComicSeriesCoreTheme(
+    outline,
+    storyIntent?.core_theme ?? summarizeText(outline, 18),
+  );
   const recommendedNarrativePatterns = recommendNarrativePatternsForEntry({
     entry: buildAiComicNarrativeRecommendationEntry({
       outline,
@@ -402,8 +405,8 @@ export async function generateAiComicSeriesPlan(
     narrative_pattern_ids: resolvedNarrativePatternIds.length > 0 ? resolvedNarrativePatternIds : undefined,
     recommended_narrative_patterns: recommendedNarrativePatterns,
     premise: outline,
-    logline: buildLogline(seriesTitle, outline, storyIntent?.core_theme),
-    core_theme: storyIntent?.core_theme ?? summarizeText(outline, 24),
+    logline: buildLogline(seriesTitle, outline, coreTheme),
+    core_theme: coreTheme,
     main_characters: mainCharacters,
     plot_threads: plotThreads,
     phases,
@@ -994,6 +997,15 @@ function buildAiComicFollowupEpisodeSceneDrafts(input: {
     visibleEndingHook,
     previousState,
   } = input;
+  if (episode.episode_no === 2 && isAiComicRefusalCaseText([
+    episode.title,
+    episode.main_conflict,
+    blueprint.midpoint_turn,
+    blueprint.ending_hook,
+    previousState,
+  ].join('\n'))) {
+    return buildAiComicSecondRefusalEpisodeSceneDrafts(input);
+  }
   return [
     {
       title: '廊下截证',
@@ -1068,6 +1080,112 @@ function buildAiComicFollowupEpisodeSceneDrafts(input: {
   ];
 }
 
+function buildAiComicSecondRefusalEpisodeSceneDrafts(input: {
+  episode: AiComicEpisodePlan;
+  blueprint: AiComicEpisodeBlueprint;
+  protagonist: string;
+  witness: string;
+  pressureRole: string;
+  locations: ReturnType<typeof inferAiComicEpisodeLocations>;
+  visibleNewInfo: string;
+  visibleForeshadowing: string;
+  visiblePayoff: string;
+  visibleMidpoint: string;
+  visibleMainConflict: string;
+  visibleEndingHook: string;
+  previousState: string;
+}): AiComicEpisodeSceneDraft[] {
+  const {
+    protagonist,
+    witness,
+    pressureRole,
+    locations,
+    visibleNewInfo,
+    visibleForeshadowing,
+    visiblePayoff,
+    visibleMidpoint,
+    visibleMainConflict,
+    visibleEndingHook,
+    previousState,
+  } = input;
+  const seniorOfficial = /上官|知府|官|使/.test(pressureRole) && !/差役/.test(pressureRole)
+    ? pressureRole
+    : '上官';
+
+  return [
+    {
+      title: '上官召帖',
+      duration: 12,
+      location: locations.threshold,
+      time: '清晨',
+      functionLabel: '钩子开场',
+      plot: `${previousState}${protagonist}还未合眼，${pressureRole}便送来上官召帖，帖上只写四个字：即刻到堂。未签文书被重新封起，拒签的后果第一次从案桌走到他面前。`,
+      keyAction: `${protagonist}收起未签文书，决定先保住暂缓行刑的命令。`,
+      conflict: `${visibleMainConflict}；上官召见逼他撤回拒签。`,
+      dialogue: `${pressureRole}：“上官问你，一夜够不够想明白？”\n${protagonist}：“想明白了，才不能补这一笔。”`,
+      visual: `${locations.threshold}，清晨，召帖、封起的文书、潮湿门廊、差役递帖，${protagonist}手按案卷`,
+      camera: '召帖特写切到未签文书，前3秒明确“拒签后的代价”',
+      chars: [protagonist, pressureRole],
+    },
+    {
+      title: '暂缓行刑',
+      duration: 18,
+      location: locations.courtyard,
+      time: '清晨',
+      functionLabel: '承接结果',
+      plot: `${protagonist}先到庭院传下暂缓行刑的口令，让${witness}把囚犯家属和旧案号分开登记。${visiblePayoff}，但每多写一个名字，都像在他官袍上添一道风险。`,
+      keyAction: `${protagonist}把上一集的拒签落成正式暂缓命令。`,
+      conflict: `救人不能只靠一句不签；${protagonist}必须把口头拒绝变成可追踪的复核。`,
+      dialogue: `${witness}：“人暂时保住了，可先生呢？”\n${protagonist}：“人命在前，官位在后。”`,
+      visual: `${locations.courtyard}，清晨，暂缓牌、名册、囚犯家属远影、官袍袖口压住文书`,
+      camera: '低机位跟随文书递出，停在囚犯家属抬头一瞬',
+      chars: [protagonist, witness],
+    },
+    {
+      title: '堂前问责',
+      duration: 20,
+      location: locations.office,
+      time: '上午',
+      functionLabel: '冲突爆发',
+      plot: `${seniorOfficial}在案前问他为何越过成例，桌上摆着${visibleNewInfo}。${protagonist}没有再争证物真假，只把暂缓、复核、追问经手人的三条写成文书，逼对方也留下态度。`,
+      keyAction: `${protagonist}把拒签后的压力转成正式复核流程。`,
+      conflict: `${seniorOfficial}要他撤回拒签；${protagonist}要求所有催签者留下签押。`,
+      dialogue: `${seniorOfficial}：“你是在护一个死囚，还是在疑本官？”\n${protagonist}：“我疑的是一条命被草草写完。”`,
+      visual: `${locations.office}，上午，上官座前、复核文书、签押空格、未签死刑文书并排`,
+      camera: `正反打压低${protagonist}视线，切签押空格形成对峙`,
+      chars: [protagonist, seniorOfficial, witness],
+    },
+    {
+      title: '旧案号一角',
+      duration: 20,
+      location: locations.archive,
+      time: '午后',
+      functionLabel: '反转/觉醒',
+      plot: `${visibleMidpoint}。${protagonist}在档房找到被折去一角的旧案号，发现同一个经手人曾在另一卷文书里催过同样的签押；${visibleForeshadowing}，拒签不再只是一案一人的迟疑。`,
+      keyAction: `${protagonist}把旧案号、经手人和催签文书连成一条线。`,
+      conflict: `继续查下去会得罪更高的人；停在此处就只能救一时。`,
+      dialogue: `${witness}：“原来他们急的不是这一卷。”\n${protagonist}：“急着封口的人，最怕文书开口。”`,
+      visual: `${locations.archive}，午后，折角旧案号、经手人签押、落灰档册、窗缝斜光`,
+      camera: '手指沿旧案号移动，推到被遮住姓名的一角',
+      chars: [protagonist, witness],
+    },
+    {
+      title: '递出复核文书',
+      duration: 20,
+      location: locations.threshold,
+      time: '傍晚',
+      functionLabel: '高燃收束',
+      plot: `${protagonist}把复核文书递出门槛，承认自己可能因此丢官，却不撤回暂缓命令。院外有人低声报来新的处置：明日堂审之前，他必须交出全部案卷；${visibleEndingHook}`,
+      keyAction: `${protagonist}公开承担得罪上官的代价，把下一集压力推出。`,
+      conflict: `良知已经救下一刻，也把他推向失去官位的危险。`,
+      dialogue: `${seniorOfficial}：“你可知这一纸递出去，官帽未必还在？”\n${protagonist}：“官帽可摘，人命不可补。”`,
+      visual: `${locations.threshold}，傍晚，门槛、复核文书、夕光、官帽阴影、旧案号露出姓名一角`,
+      camera: '文书递出后不跟手，镜头留在门槛内外的分界',
+      chars: [protagonist, seniorOfficial, witness],
+    },
+  ];
+}
+
 function naturalizeAiComicContinuityState(raw: string | undefined, protagonist: string): string {
   const text = raw?.trim();
   if (!text || /建立主角初始状态|核心问题|第一条长期线索/.test(text)) {
@@ -1115,6 +1233,8 @@ function naturalizeAiComicNewInformationForScene(raw: string): string {
   if (firstVisible?.[1]) return `与${firstVisible[1].trim()}有关的带泥证物`;
   const testimony = text.match(/^(.+?)相关的新证词让主角重新判断/);
   if (testimony?.[1]) return `与${testimony[1].trim()}有关的新证词`;
+  if (/死刑文书里的证词前后不合/.test(text)) return '证词前后不合的死刑文书和封泥';
+  if (/上官催签背后还有旧案号/.test(text)) return '旧案号和文书链漏洞';
   const fallbackVisible = text.match(/^第一条可见线索进入案卷[:：](.+)$/);
   if (fallbackVisible?.[1]) return fallbackVisible[1].trim();
   if (/新的证词让主角重新判断/.test(text)) return '新的证词';
@@ -1146,12 +1266,15 @@ function naturalizeAiComicMidpointTurn(raw: string, coreTheme: string, protagoni
 function naturalizeAiComicForeshadowing(raw: string): string {
   const text = raw.trim().replace(/[。！？!?]+$/, '');
   if (/未解释细节/.test(text)) return '旧录边角同样残缺的印痕';
+  if (/旧案号|遮住|名字|上官|施压/.test(text)) return text;
   if (/案卷|墨痕|封泥|印/.test(text)) return text;
   return '案卷边角的旧墨痕';
 }
 
 function naturalizeAiComicPayoff(raw: string): string {
   const text = raw.trim().replace(/[。！？!?]+$/, '');
+  const previousUnsigned = text.match(/^回收上集未签文书[:：](.+)$/);
+  if (previousUnsigned?.[1]) return previousUnsigned[1].trim();
   const thread = text.match(/(?:打开线索|回收.+?线|开启线索)[:：](.+)$/);
   if (thread?.[1]) return naturalizeAiComicPayoff(thread[1]);
   if (/知识依据|可视化线索|剧情推进|后续承接|长期线索|主线/.test(text)) {
@@ -15102,6 +15225,23 @@ function deriveSeriesTitle(outline: string, mainCharacter: string | null): strin
   return `${titleSeed || 'AI漫剧'}系列`;
 }
 
+function deriveAiComicSeriesCoreTheme(outline: string, fallbackTheme: string): string {
+  const text = `${outline}\n${fallbackTheme}`;
+  if (isAiComicRefusalCaseText(text)) return '拒签冤案中的良知选择';
+  if (/冤案|错案|案卷|证词|判词/.test(text) && /良知|公正|正义|人命/.test(text)) {
+    return '疑案中的公正选择';
+  }
+  if (/少年|成长|求学|立志/.test(text) && /选择|良知|信念|担当/.test(text)) {
+    return '少年成长中的信念选择';
+  }
+  return fallbackTheme || summarizeText(outline, 24);
+}
+
+function isAiComicRefusalCaseText(text: string): boolean {
+  return /拒签|未签|不签|死刑|行刑|冤案|判词|案卷/.test(text)
+    && /周敦颐|濂溪|南安|良知|公正|人命|上官/.test(text);
+}
+
 function buildLogline(seriesTitle: string, outline: string, coreTheme?: string): string {
   const theme = coreTheme || summarizeText(outline, 18);
   return `${seriesTitle}围绕“${theme}”展开，用连续短集推进人物选择、文化线索和情绪回收。`;
@@ -15241,6 +15381,22 @@ function buildSeriesSpine(params: {
   });
 }
 
+type AiComicSerialCaseKind = 'refusal_case' | 'generic';
+
+interface AiComicSerialEpisodeOverride {
+  title: string;
+  openingHook: string;
+  mainConflict: string;
+  midpointTurn: string;
+  newInformation: string[];
+  foreshadowing: string[];
+  payoff: string[];
+  endingHook: string;
+  endingHookType: AiComicEndingHookType;
+  threadAction: string;
+  continuityStateAfter: string[];
+}
+
 function buildEpisodes(params: {
   episodeCount: number;
   durationMin: number;
@@ -15254,6 +15410,7 @@ function buildEpisodes(params: {
   pacingProfile: AiComicPacingProfile;
 }): AiComicEpisodePlan[] {
   const episodes: AiComicEpisodePlan[] = [];
+  const serialCase = inferAiComicSerialCase(params.outline, params.coreTheme, params.knowledgeFocus);
   for (let episodeNo = 1; episodeNo <= params.episodeCount; episodeNo += 1) {
     const phase = findPhase(params.phases, episodeNo);
     const previous = episodes[episodes.length - 1];
@@ -15262,23 +15419,42 @@ function buildEpisodes(params: {
     const threadSetups = params.plotThreads.filter(thread => thread.setup_episode === episodeNo);
     const focus = chooseKnowledgeFocus(params.knowledgeFocus, episodeNo);
     const keyCharacters = chooseKeyCharacters(params.characters, episodeNo);
-    const mainConflict = buildConflict(episodeNo, params.episodeCount, params.coreTheme, focus);
-    const endingHookType = inferEndingHookTypeFromPlan(episodeNo, params.episodeCount, params.pacingProfile);
-    const endingHook = buildEndingHook(episodeNo, params.episodeCount, params.pacingProfile, focus);
-    const continuityStateAfter = [
+    const serialEpisode = buildAiComicSerialEpisodeOverride({
+      serialCase,
+      episodeNo,
+      episodeCount: params.episodeCount,
+      phase,
+      previous,
+      coreTheme: params.coreTheme,
+      focus,
+      keyCharacters,
+      pacingProfile: params.pacingProfile,
+      plotThreads: params.plotThreads,
+      threadSetups,
+      threadPayoffs,
+    });
+    const mainConflict = serialEpisode?.mainConflict
+      ?? buildConflict(episodeNo, params.episodeCount, params.coreTheme, focus);
+    const endingHookType = serialEpisode?.endingHookType
+      ?? inferEndingHookTypeFromPlan(episodeNo, params.episodeCount, params.pacingProfile);
+    const endingHook = serialEpisode?.endingHook
+      ?? buildEndingHook(episodeNo, params.episodeCount, params.pacingProfile, focus);
+    const continuityStateAfter = serialEpisode?.continuityStateAfter ?? [
       `第${episodeNo}集后，${keyCharacters[0] ?? '主角'}对“${params.coreTheme}”的理解推进一层`,
       episodeNo === params.episodeCount ? '主要长期线索完成回收' : `保留第${episodeNo + 1}集需要回应的选择或疑问`,
     ];
 
     episodes.push({
       episode_no: episodeNo,
-      title: buildEpisodeTitle(episodeNo, params.episodeCount, phase, params.coreTheme, focus),
+      title: serialEpisode?.title ?? buildEpisodeTitle(episodeNo, params.episodeCount, phase, params.coreTheme, focus),
       target_duration_sec: duration,
       target_panel_count: Math.max(4, Math.min(60, Math.round(duration / 6))),
       story_phase: `${phase.phase_id}：${phase.purpose}`,
-      opening_hook: buildOpeningHook(episodeNo, previous, params.coreTheme, focus, params.pacingProfile),
+      opening_hook: serialEpisode?.openingHook
+        ?? buildOpeningHook(episodeNo, previous, params.coreTheme, focus, params.pacingProfile),
       main_conflict: mainConflict,
-      midpoint_turn: buildMidpointTurn(episodeNo, params.episodeCount, phase, focus, params.coreTheme),
+      midpoint_turn: serialEpisode?.midpointTurn
+        ?? buildMidpointTurn(episodeNo, params.episodeCount, phase, focus, params.coreTheme),
       key_characters: keyCharacters,
       continuity_from_previous: episodeNo === 1
         ? ['建立主角初始状态、核心问题和第一条长期线索']
@@ -15286,25 +15462,172 @@ function buildEpisodes(params: {
             `承接第${episodeNo - 1}集结尾：${previous?.ending_hook ?? '上一集留下的选择'}`,
             `延续第${episodeNo - 1}集后的状态：${previous?.continuity_state_after[0] ?? '人物关系继续变化'}`,
           ],
-      new_information: [
+      new_information: serialEpisode?.newInformation ?? [
         buildEpisodeNewInformation(episodeNo, focus, params.coreTheme, params.outline),
         threadSetups.length > 0 ? `开启线索：${threadSetups.map(thread => thread.title).join('、')}` : `推进${phase.phase_id}的阶段目标`,
       ],
-      foreshadowing: buildForeshadowing(episodeNo, params.episodeCount, params.plotThreads, focus),
-      payoff: threadPayoffs.length > 0
+      foreshadowing: serialEpisode?.foreshadowing
+        ?? buildForeshadowing(episodeNo, params.episodeCount, params.plotThreads, focus),
+      payoff: serialEpisode?.payoff ?? (threadPayoffs.length > 0
         ? threadPayoffs.map(thread => `回收${thread.title}：${thread.description}`)
         : episodeNo % 5 === 0
           ? [`阶段性回应第${Math.max(1, episodeNo - 3)}集留下的疑问`]
-          : [],
+          : []),
       ending_hook: endingHook,
       ending_hook_type: endingHookType,
       character_state_change: continuityStateAfter[0],
-      thread_action: buildThreadAction(episodeNo, params.plotThreads, threadSetups, threadPayoffs, phase),
+      thread_action: serialEpisode?.threadAction
+        ?? buildThreadAction(episodeNo, params.plotThreads, threadSetups, threadPayoffs, phase),
       knowledge_focus: focus ? [focus] : params.knowledgeFocus.slice(0, 2),
       continuity_state_after: continuityStateAfter,
     });
   }
   return episodes;
+}
+
+function inferAiComicSerialCase(
+  outline: string,
+  coreTheme: string,
+  knowledgeFocus: string[],
+): AiComicSerialCaseKind {
+  return isAiComicRefusalCaseText([outline, coreTheme, ...knowledgeFocus].join('\n'))
+    ? 'refusal_case'
+    : 'generic';
+}
+
+function buildAiComicSerialEpisodeOverride(input: {
+  serialCase: AiComicSerialCaseKind;
+  episodeNo: number;
+  episodeCount: number;
+  phase: AiComicSeriesPhase;
+  previous?: AiComicEpisodePlan;
+  coreTheme: string;
+  focus: string;
+  keyCharacters: string[];
+  pacingProfile: AiComicPacingProfile;
+  plotThreads: AiComicPlotThread[];
+  threadSetups: AiComicPlotThread[];
+  threadPayoffs: AiComicPlotThread[];
+}): AiComicSerialEpisodeOverride | null {
+  if (input.serialCase !== 'refusal_case') return null;
+  return buildRefusalCaseEpisodeOverride(input);
+}
+
+function buildRefusalCaseEpisodeOverride(input: {
+  episodeNo: number;
+  episodeCount: number;
+  phase: AiComicSeriesPhase;
+  previous?: AiComicEpisodePlan;
+  coreTheme: string;
+  focus: string;
+  keyCharacters: string[];
+  pacingProfile: AiComicPacingProfile;
+  plotThreads: AiComicPlotThread[];
+  threadSetups: AiComicPlotThread[];
+  threadPayoffs: AiComicPlotThread[];
+}): AiComicSerialEpisodeOverride {
+  const protagonist = input.keyCharacters[0] ?? '周敦颐';
+  const setupThreads = input.threadSetups.map(thread => thread.title).join('、');
+  const payoffThreads = input.threadPayoffs.map(thread => thread.title).join('、');
+  const activeThread = input.plotThreads.find(thread =>
+    thread.setup_episode < input.episodeNo && thread.payoff_episode > input.episodeNo
+  );
+
+  if (input.episodeNo === 1) {
+    return {
+      title: '第1集：未签的案卷',
+      openingHook: '朱笔悬在死刑文书上，案卷证词却露出第一处破绽。',
+      mainConflict: `${protagonist}发现死刑文书疑点，必须在催签压力下决定是否落笔。`,
+      midpointTurn: '证词时间、封泥和押印对不上，拒签从迟疑变成必须承担的选择。',
+      newInformation: [
+        '死刑文书里的证词前后不合，封泥时间也对不上。',
+        setupThreads ? `开启线索：${setupThreads}` : '开启线索：死刑文书疑点和催签压力',
+      ],
+      foreshadowing: ['被遮住姓名的旧案号指向下一集的上官召见。'],
+      payoff: [],
+      endingHook: `${protagonist}暂缓行刑并拒绝签字，门外却传来上官连夜召见。`,
+      endingHookType: 'danger',
+      threadAction: '打开线索：死刑文书疑点、催签压力和上官召见，写入后续承接。',
+      continuityStateAfter: [
+        `第1集后，${protagonist}从发现疑点走到公开拒签。`,
+        '上官召见和旧案号成为第2集必须回应的压力。',
+      ],
+    };
+  }
+
+  if (input.episodeNo === input.episodeCount && input.episodeCount > 2) {
+    return {
+      title: `第${input.episodeNo}集：良知落笔`,
+      openingHook: `最终复核送到案前，所有压力都逼${protagonist}撤回拒签。`,
+      mainConflict: `${protagonist}必须用最终行动证明拒签不是任性，而是对人命负责。`,
+      midpointTurn: '最后一处证据让错案链条闭合，代价也真正落到主角身上。',
+      newInformation: [
+        '旧案号、封泥和口供终于互相扣合，错案来源浮出水面。',
+        payoffThreads ? `回收线索：${payoffThreads}` : `推进终局复核和${protagonist}代价`,
+      ],
+      foreshadowing: [],
+      payoff: payoffThreads
+        ? [`回收线索：${payoffThreads}，让拒签选择产生结果。`]
+        : [`回收上官召见和旧案号：囚犯免死，${protagonist}承担仕途风险。`],
+      endingHook: `${protagonist}守住这一笔，案卷合上，良知的余波留给更多人。`,
+      endingHookType: 'final_echo',
+      threadAction: payoffThreads
+        ? `回收线索：${payoffThreads}，完成主题表达。`
+        : '回收主线：拒签、复核和囚犯免死形成闭环。',
+      continuityStateAfter: [
+        `第${input.episodeNo}集后，${protagonist}完成拒签冤案的良知选择。`,
+        '主要长期线索完成回收。',
+      ],
+    };
+  }
+
+  if (input.episodeNo === 2) {
+    return {
+      title: '第2集：召见之前',
+      openingHook: `开场回应上一集“${input.previous?.ending_hook ?? '上官连夜召见'}”，让拒签后的代价立刻压到门前。`,
+      mainConflict: `拒签后的上官压力逼近，${protagonist}必须把疑点变成能保护囚犯的复核行动。`,
+      midpointTurn: '上官的话暴露出文书链条里有人急着掩住旧案，拒签从救一人变成追一条线。',
+      newInformation: [
+        '上官催签背后还有旧案号和文书链漏洞。',
+        `拒签带来的官场代价落到${protagonist}身上，囚犯暂缓处决但仍未脱险。`,
+      ],
+      foreshadowing: ['旧案号上的名字被遮住，只露出能指向更高层施压者的一角。'],
+      payoff: ['回收上集未签文书：囚犯暂缓处决，复核正式开始。'],
+      endingHook: `${protagonist}可能因此丢官，仍把复核文书递出；旧案号上的名字露出一角。`,
+      endingHookType: 'danger',
+      threadAction: activeThread
+        ? `推进线索：${activeThread.title}从拒签现场转入上官压力和正式复核。`
+        : '推进线索：拒签现场转入上官压力和正式复核。',
+      continuityStateAfter: [
+        `第2集后，${protagonist}从拒签转入公开复核，并开始承担得罪上官的代价。`,
+        `旧案号上的遮名成为第${Math.min(input.episodeNo + 1, input.episodeCount)}集必须回应的新问题。`,
+      ],
+    };
+  }
+
+  return {
+    title: `第${input.episodeNo}集：旧案号追问`,
+    openingHook: `承接上一集“${input.previous?.ending_hook ?? '旧案号露出一角'}”，把压力转入更深的文书链。`,
+    mainConflict: `${protagonist}继续追问旧案号，却发现每追一步都会扩大拒签代价。`,
+    midpointTurn: '新旧案卷在关键处互相咬合，说明问题不止一份判词。',
+    newInformation: [
+      `${input.focus || '旧案号'}牵出新的文书关联，${protagonist}原有判断必须升级。`,
+      `推进${input.phase.phase_id}的阶段目标`,
+    ],
+    foreshadowing: [`${input.focus || '旧案号'}中留下未解释细节，指向下一集的选择。`],
+    payoff: input.threadPayoffs.length > 0
+      ? input.threadPayoffs.map(thread => `回收${thread.title}：${thread.description}`)
+      : [],
+    endingHook: `${protagonist}暂时守住复核方向，但新的传唤把更大压力推到门前。`,
+    endingHookType: input.pacingProfile === 'slow_burn' ? 'emotional_question' : 'danger',
+    threadAction: activeThread
+      ? `推进线索：${activeThread.title}继续升温，但不提前回收。`
+      : `维持${input.phase.phase_id}阶段线索清晰，避免新增无承接疑问。`,
+    continuityStateAfter: [
+      `第${input.episodeNo}集后，${protagonist}对“${input.coreTheme}”的理解推进到持续承担。`,
+      input.episodeNo === input.episodeCount ? '主要长期线索完成回收' : `保留第${input.episodeNo + 1}集需要回应的旧案号压力。`,
+    ],
+  };
 }
 
 function findPhase(phases: AiComicSeriesPhase[], episodeNo: number): AiComicSeriesPhase {

@@ -93,6 +93,66 @@ P0 调整：
 4. 对旧生成物做治理选择：`20260625-story-5xin`、`20260625-story-5xie`、`20260625-series-39jg5et1` 是本轮修复前生成的失败样本，下一轮应决定删除、归档、重跑 repair，或作为回归测试样本保留。
 5. 补一轮浏览器/UI smoke：覆盖 StoryStudio 单片生成、AiComicSeriesStudio 系列生成、ProjectDetail 质量面板和 Seedance/GEARS 导出按钮。
 
+## 0.3 2026-06-27 AI 漫剧系列第 1/2 集生成收口
+
+本轮承接 `0.2` 的第一优先级，专项复测并修正周敦颐 `AI 漫剧系列`第 1、2 集重复套壳问题。代码变更集中在 `web/server/src/services/ai-comic-series-service.ts` 与 `web/server/src/__tests__/outline-service.test.ts`。
+
+已完成修复：
+
+- 系列规划会识别“周敦颐 / 南安军衙 / 拒签冤案 / 良知”题材，核心主题收敛为 `拒签冤案中的良知选择`，不再把整句用户大纲当主题塞进标题、冲突和中段转折。
+- 拒签案系列第 1、2、终局集有明确连续剧任务分工：第 1 集是“发现疑点并拒签”，第 2 集是“拒签后的上官压力、暂缓行刑、正式复核和丢官风险”，终局集才回收错案链条。
+- 本地 fallback / 净化重写的第 2 集场景从旧的 `廊下截证 / 验印桌前 / 证词对质 / 旧录翻案 / 传唤入门` 改为 `上官召帖 / 暂缓行刑 / 堂前问责 / 旧案号一角 / 递出复核文书`。
+- 第 2 集正文不再重复第 1 集“重新发现证物、重新看判词、重复验印缺口”的单片模板，而是承接上一集拒签结果，写出暂缓行刑、上官问责、复核文书和可能丢官的代价。
+- 清理系列正文中的计划词泄漏：`回收上集未签文书`、`知识库使用规则`、`连续性账本`、`生成优先级` 等不会进入观众稿。
+- 回归测试已覆盖周敦颐系列第 1、2 集相邻生成：第 2 集必须使用新的五场结构，包含“拒签的后果 / 暂缓行刑 / 复核文书 / 可能因此丢官”，并不得出现旧模板句 `重新看向判词`、`把新证移到验印桌前`、`同样的印痕缺口`。
+
+本轮验证：
+
+- 临时 smoke：`WEB_GENERATED_ROOT=/private/tmp/china-culture-ai-comic-series-smoke` 生成周敦颐 3 集系列。结果：第 1 集《未签的案卷》，第 2 集《召见之前》，第 2 集与第 1 集 bigram 相似度约 `0.095`，观众稿污染检查为 false。
+- `cd web/server && npm test -- outline-service.test.ts`：32 个用例通过。
+- `cd web/server && npm test`：26 个测试文件、393 个用例通过。
+- `cd web/server && npm run lint` 通过。
+- `git diff --check` 通过。
+
+下一轮优先级更新：
+
+1. 处理导航信息架构：`创作台 -> AI 漫剧` 应定位为单片/短片生成，`漫剧系列` 应定位为多集连续剧规划与分集生产；若 UI 继续重复，需要改名、合并或在入口层明确区隔。
+2. 完成产品命名全量审计：浏览器标题、应用标题、侧边栏、页面 meta 和导航统一为 `AI影视工作台`，不再把 `中国传统文化知识库` 暴露为产品名；底层素材/来源条目概念可保留。
+3. 对旧失败生成物做治理选择：`20260625-story-5xin`、`20260625-story-5xie`、`20260625-series-39jg5et1` 应删除、归档、重跑 repair，或固化为回归测试样本。
+4. 补浏览器/UI smoke：覆盖 StoryStudio 单片生成、AiComicSeriesStudio 系列生成、ProjectDetail 质量面板和 Seedance/GEARS 导出按钮。
+
+## 0.4 2026-06-27 导航心智与产品命名审计收口
+
+本轮承接 `0.3` 的下一优先级，处理“创作台 AI 漫剧 vs 漫剧系列”的入口心智，并完成 `AI影视工作台` 可见命名审计。代码变更集中在 `web/client/src/App.vue`、`web/client/src/views/Home.vue`、`StoryStudio.vue`、`AiComicSeriesStudio.vue` 和 `Projects.vue`。
+
+已完成修复：
+
+- 全局导航从 `单片创作 / 系列漫剧` 收敛为 `单片短片 / 漫剧系列`。
+- 首页工作台卡片明确区隔：`单片短片` 用于 AI 漫剧单片、纪录短片、宣传片和机构短片一次成稿；`漫剧系列` 用于多集主线、角色弧线、连续性账本和分集生产。
+- `StoryStudio.vue` 页头改为 `单片短片创作`，并提供到 `漫剧系列` 的轻量互跳入口。
+- `AiComicSeriesStudio.vue` 页头改为 `漫剧系列规划`，并提供到 `单片短片` 的轻量互跳入口。
+- `Projects.vue` 的筛选、CTA、列表分区、状态 badge、空态和操作反馈统一为 `单片短片 / 单片项目 / 漫剧系列 / 分集项目`，减少“创作项目”和“系列漫剧”的混用。
+- 可见产品命名审计：`web/client/index.html` 浏览器标题、`App.vue` 应用标题、首页 hero、导航和项目入口均为 `AI影视工作台` 或其业务子入口；未发现旧产品名 `中国传统文化知识库` 作为可见产品名残留。后端/MCP 中的 `知识库` 仍作为底层素材、兼容字段、内部检测词或工具说明保留。
+
+本轮验证：
+
+- `cd web/client && npm run lint` 通过。
+- `rg "系列漫剧|多集系列漫剧|新建系列漫剧|打开系列工作台|单片创作|创作项目" web/client/src/App.vue web/client/src/views/Home.vue web/client/src/views/Projects.vue web/client/src/views/StoryStudio.vue web/client/src/views/AiComicSeriesStudio.vue` 无命中。
+- `rg "中国传统文化知识库|传统文化知识库|文化知识库"` 在前端可见入口无命中。
+- 浏览器 smoke 已覆盖 `/`、`/story/new`、`/ai-comic-series/new`、`/projects` 的默认桌面宽度和 390px 移动宽度：导航与页头均显示 `单片短片 / 漫剧系列`，旧入口词无命中，单片/系列互跳入口可见且未与标题重叠。
+
+旧失败样本治理选择：
+
+- `20260625-story-5xin`、`20260625-story-5xie` 仍保留在 `web/generated`，不做删除或改写。审计确认它们是修复前失败稿：正文地点混入 `永州→道县 / 衡阳` 资料句，质量不通过，标题和正文仍有旧系列模板痕迹。
+- `20260625-series-39jg5et1` 仍保留在 `web/generated`，不做删除或改写。审计确认它是修复前旧系列样本：计划核心主题仍是 `拒签`，多集钩子重复 `主角得到新信息，也失去一种原本确定的判断`；虽然旧审计显示通过，但不再作为当前质量样本。
+- 当前治理策略是“保留为历史失败样本 / 回归参照，不参与当前质量判断”。代码回归已经覆盖这些样本暴露的坏模式：地点资料句污染、单片模板套壳、系列第 1/2 集重复、内部计划词进入观众稿。
+
+下一轮优先级更新：
+
+1. 补生成/导出链路浏览器 smoke：覆盖 StoryStudio 单片短片生成、AiComicSeriesStudio 漫剧系列生成、ProjectDetail 质量面板和 Seedance/GEARS 导出按钮。
+2. 若继续清理命名，可再审后端/MCP 对外 tool 描述是否需要从“知识库”逐步改成“素材库 / 项目素材包”；但不要破坏既有 `kb_*` 工具名和兼容字段。
+3. 若要真正治理历史 generated 库存，应新增受控治理命令或人工确认后再移动/删除/归档，不要在普通开发流里直接改写用户历史生成物。
+
 2026-06-23 Phase 1 首轮已推进：
 
 - Web 共享类型/schema 已新增 `CreationUseCase`、`TruthMode`、`CreationContract`、`MaterialPack`、`MaterialSufficiencyReport`。

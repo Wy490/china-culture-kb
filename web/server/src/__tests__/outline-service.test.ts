@@ -360,12 +360,14 @@ describe('outline-service', () => {
     expect(res.data?.scene_breakdown.some(scene => scene.conflict?.includes(visibleMainConflict)))
       .toBe(true);
     expect(res.data?.scene_breakdown.map(scene => scene.title)).toEqual([
-      '廊下截证',
-      '验印桌前',
-      '证词对质',
-      '旧录翻案',
-      '传唤入门',
+      '上官召帖',
+      '暂缓行刑',
+      '堂前问责',
+      '旧案号一角',
+      '递出复核文书',
     ]);
+    expect(res.data?.full_text).toContain('拒签的后果');
+    expect(res.data?.full_text).toContain('复核文书');
     expect(JSON.stringify([
       res.data?.full_text,
       res.data?.scene_breakdown,
@@ -426,13 +428,15 @@ describe('outline-service', () => {
     const secondSceneTitles = episodeTwo.data?.scene_breakdown.map(scene => scene.title) ?? [];
     expect(firstSceneTitles[0]).toBe('未签的案卷');
     expect(secondSceneTitles).toEqual([
-      '廊下截证',
-      '验印桌前',
-      '证词对质',
-      '旧录翻案',
-      '传唤入门',
+      '上官召帖',
+      '暂缓行刑',
+      '堂前问责',
+      '旧案号一角',
+      '递出复核文书',
     ]);
     expect(firstSceneTitles.filter(title => secondSceneTitles.includes(title))).toHaveLength(0);
+    expect(episodeTwo.data?.full_text).toContain('暂缓行刑');
+    expect(episodeTwo.data?.full_text).toContain('可能因此丢官');
     expect(episodeOne.data?.gears_segments?.length).toBeGreaterThan(0);
     expect(episodeTwo.data?.gears_segments?.length).toBeGreaterThan(0);
 
@@ -744,6 +748,12 @@ describe('outline-service', () => {
       episode_duration_range_sec: { min: 60, max: 120 },
     });
     expect(planRes.ok).toBe(true);
+    expect(planRes.data?.core_theme).toBe('拒签冤案中的良知选择');
+    expect(planRes.data?.episodes[0].ending_hook).toContain('上官');
+    expect(planRes.data?.episodes[1]).toMatchObject({
+      title: '第2集：召见之前',
+      main_conflict: expect.stringContaining('拒签后的上官压力'),
+    });
 
     const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
     expect(saveRes.ok).toBe(true);
@@ -3790,6 +3800,22 @@ describe('outline-service', () => {
     expect(secondEpisodeRes.data?.original_user_query).not.toContain('系列记忆精准召回');
     expect(secondEpisodeRes.data?.original_user_query).not.toContain('长期情景记忆模糊召回');
     expect(secondEpisodeRes.data?.full_text).not.toEqual(firstEpisodeRes.data?.full_text);
+    expect(secondEpisodeRes.data?.scene_breakdown.map(scene => scene.title)).toEqual([
+      '上官召帖',
+      '暂缓行刑',
+      '堂前问责',
+      '旧案号一角',
+      '递出复核文书',
+    ]);
+    const secondEpisodeText = secondEpisodeRes.data?.full_text ?? '';
+    expect(secondEpisodeText).toContain('拒签的后果');
+    expect(secondEpisodeText).toContain('暂缓行刑');
+    expect(secondEpisodeText).toContain('复核文书');
+    expect(secondEpisodeText).toContain('可能因此丢官');
+    expect(firstEpisodeRes.data?.full_text).toContain('重新看向判词');
+    expect(secondEpisodeText).not.toContain('重新看向判词');
+    expect(secondEpisodeText).not.toContain('把新证移到验印桌前');
+    expect(secondEpisodeText).not.toContain('同样的印痕缺口');
     const visibleSecondConflict = planRes.data!.episodes[1].main_conflict.replace(/主角/g, '周敦颐');
     expect(secondEpisodeRes.data?.scene_breakdown.some(scene => scene.conflict?.includes(visibleSecondConflict)))
       .toBe(true);

@@ -1,7 +1,13 @@
 <template>
   <div class="series-studio">
     <aside class="series-studio__panel">
-      <h2 class="series-studio__title">多集系列漫剧规划</h2>
+      <div class="series-studio__page-head">
+        <div>
+          <h2 class="series-studio__title">漫剧系列规划</h2>
+          <p class="series-studio__subtitle">多集连续剧先做系列蓝图，再按集生成分镜。</p>
+        </div>
+        <RouterLink class="series-studio__switch-link" to="/story/new">单片短片</RouterLink>
+      </div>
 
       <section class="series-studio__field">
         <label class="series-studio__label" for="series-title">系列名</label>
@@ -1802,7 +1808,7 @@
                     class="series-studio__episode-link"
                     :to="episodeProjectPath(episode.episode_no)"
                   >
-                    打开创作项目
+                    打开分集项目
                   </RouterLink>
                 </div>
               </header>
@@ -1811,7 +1817,7 @@
                   v-if="episodeStoryId(episode.episode_no)"
                   class="series-studio__message series-studio__message--warning series-studio__episode-edit-warning"
                 >
-                  本集已生成分镜。保存卡片修改后，建议重新生成本集分镜，让创作项目与最新分集规划一致。
+                  本集已生成分镜。保存卡片修改后，建议重新生成本集分镜，让分集项目与最新分集规划一致。
                 </p>
                 <label>
                   <span>主冲突</span>
@@ -5385,10 +5391,41 @@ function episodeProjectPath(episodeNo: number): string {
   padding-right: 20px;
 }
 
+.series-studio__page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
 .series-studio__title {
-  margin: 0 0 18px;
+  margin: 0;
   color: #23313d;
   font-size: 22px;
+}
+
+.series-studio__subtitle {
+  margin: 4px 0 0;
+  color: #667786;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.series-studio__switch-link {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid #2980b9;
+  border-radius: 4px;
+  color: #2980b9;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.series-studio__switch-link:hover {
+  background: #eef7fd;
 }
 
 .series-studio__field {
@@ -7178,6 +7215,15 @@ function episodeProjectPath(episodeNo: number): string {
     border-bottom: 1px solid #dde4ea;
     padding-right: 0;
     padding-bottom: 18px;
+  }
+
+  .series-studio__page-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .series-studio__switch-link {
+    width: fit-content;
   }
 
   .series-studio__summary {

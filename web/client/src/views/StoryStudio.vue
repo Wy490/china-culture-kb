@@ -2,7 +2,13 @@
   <div class="story-studio">
     <!-- Left panel: controls -->
     <aside class="story-studio__left">
-      <h2 class="story-studio__page-title">单片创作工坊</h2>
+      <div class="story-studio__page-head">
+        <div>
+          <h2 class="story-studio__page-title">单片短片创作</h2>
+          <p class="story-studio__page-subtitle">独立短片一次成稿；多集连续剧从漫剧系列进入。</p>
+        </div>
+        <RouterLink class="story-studio__switch-link" to="/ai-comic-series/new">漫剧系列</RouterLink>
+      </div>
 
       <section class="story-studio__creation-paths" aria-label="创作路径">
         <button
@@ -1477,10 +1483,41 @@ async function handleGenerate() {
   overflow-y: auto;
 }
 
+.story-studio__page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
 .story-studio__page-title {
-  margin: 0 0 16px 0;
+  margin: 0;
   font-size: 22px;
   color: #2c3e50;
+}
+
+.story-studio__page-subtitle {
+  margin: 4px 0 0;
+  color: #667887;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.story-studio__switch-link {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid #2980b9;
+  border-radius: 4px;
+  color: #2980b9;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.story-studio__switch-link:hover {
+  background: #eef7fd;
 }
 
 .story-studio__creation-paths {
@@ -2295,6 +2332,13 @@ async function handleGenerate() {
   }
   .story-studio__right {
     width: 100%;
+  }
+  .story-studio__page-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .story-studio__switch-link {
+    width: fit-content;
   }
   .story-studio__recent-head,
   .story-studio__recent-item,

@@ -8,8 +8,8 @@
         <RouterLink to="/projects">项目指挥</RouterLink>
         <RouterLink to="/supplement-tasks">素材补充</RouterLink>
         <RouterLink to="/search">素材搜索</RouterLink>
-        <RouterLink to="/story/new">单片创作</RouterLink>
-        <RouterLink to="/ai-comic-series/new">系列漫剧</RouterLink>
+        <RouterLink to="/story/new">单片短片</RouterLink>
+        <RouterLink to="/ai-comic-series/new">漫剧系列</RouterLink>
       </nav>
     </header>
     <main class="app-main">
