@@ -71,6 +71,7 @@ describe('planProductionMaterialUpgrade', () => {
     expect(plan.schema_version).toBe('kb-production-material-upgrade-plan/v1');
     expect(plan.summary.planned_batches).toBeGreaterThanOrEqual(6);
     expect(plan.batches.map(batch => batch.batch_id)).toContain('credibility_format_normalization');
+    expect(plan.batches.map(batch => batch.batch_id)).toContain('source_location_backfill');
     expect(plan.batches.map(batch => batch.batch_id)).toContain('asset_split_enrichment');
     expect(plan.batches.find(batch => batch.batch_id === 'heritage_promo_minimum_pack')?.entry_count).toBe(1);
     expect(plan.domain_pack_expansion.some(item => item.pack_id === 'heritage_process_pack')).toBe(true);

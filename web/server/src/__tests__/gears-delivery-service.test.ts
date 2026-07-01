@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildGearsDeliveryPackage, ensureGearsDeliveryPackage } from '../services/gears-delivery-service.js';
-import type { GearsDeliveryPackage, StoryGenerateResult } from '@shared/types.js';
+import type { GearsDeliveryPackage, ProductionMaterialReadinessReport, StoryGenerateResult } from '@shared/types.js';
 
 function makeStory(): StoryGenerateResult {
   return {
@@ -366,14 +366,58 @@ describe('gears-delivery-service', () => {
     expect(pkg.units.every(unit => unit.suggested_duration_sec <= 15)).toBe(true);
     expect(pkg.units.every(unit => unit.scene_name === '韶山私塾')).toBe(true);
     expect(pkg.units.every(unit => unit.character_names.includes('毛泽东'))).toBe(true);
+    expect(pkg.delivery_status).toBe('ready');
     expect(pkg.validation_notes).toEqual([]);
     expect(pkg.character_gender_summary.male).toBe(1);
     expect(pkg.character_assets[0].gender).toBe('男');
+    expect(pkg.markdown).toContain('> delivery_status: ready');
     expect(pkg.markdown).toContain('# 人物性别统计');
     expect(pkg.markdown).toContain('# 资产清单');
     expect(pkg.markdown).toContain('### 毛泽东');
     expect(pkg.markdown).toContain('- 场景: 韶山私塾');
     expect(pkg.markdown).toContain('- 出场人物: 毛泽东');
+  });
+
+  it('downgrades delivery status when production material readiness needs input', () => {
+    const missingField = {
+      field_id: 'reference_images_or_keyframes',
+      label: '参考图或关键帧',
+      stage: 'production_ready' as const,
+      blocking_level: 'risk' as const,
+      reason: 'AI 漫剧生产前缺少角色或关键画面参考，可能导致角色和空间漂移。',
+      recommended_question: '请补充主角、关键配角或第一场关键帧参考图。',
+    };
+    const productionMaterialReadiness: ProductionMaterialReadinessReport = {
+      schema_version: 'production-material-readiness/v1',
+      video_type: 'ai_comic_drama',
+      pack_label: 'AI 漫剧单片',
+      score: 66,
+      status: 'needs_input',
+      available_fields: ['core_conflict'],
+      missing_fields: [missingField],
+      gate_reports: [{
+        stage: 'production_ready',
+        status: 'needs_input',
+        required_items: ['reference_images_or_keyframes'],
+        available_fields: ['core_conflict'],
+        missing_fields: [missingField],
+        notes: ['production_ready 阶段需要补参考图。'],
+      }],
+      recommended_next_questions: ['请补充主角、关键配角或第一场关键帧参考图。'],
+    };
+
+    const pkg = buildGearsDeliveryPackage({
+      ...makeStory(),
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      production_material_readiness: productionMaterialReadiness,
+    });
+
+    expect(pkg.delivery_status).toBe('needs_input');
+    expect(pkg.validation_notes.some(note => note.includes('生产素材未达 production_ready'))).toBe(true);
+    expect(pkg.validation_notes.some(note => note.includes('参考图或关键帧'))).toBe(true);
+    expect(pkg.markdown).toContain('> delivery_status: needs_input');
+    expect(pkg.markdown).toContain('生产素材未达 production_ready');
   });
 
   it('merges short sentence chunks so historical drama units stay storyboardable', () => {

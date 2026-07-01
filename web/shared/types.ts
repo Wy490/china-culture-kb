@@ -1033,10 +1033,13 @@ export interface GearsDeliveryUnit {
   script_text: string;
 }
 
+export type GearsDeliveryStatus = 'ready' | 'needs_input';
+
 export interface GearsDeliveryPackage {
   schema_version: string;
   storyId: string;
   title: string;
+  delivery_status?: GearsDeliveryStatus;
   character_assets: GearsCharacterAsset[];
   character_gender_summary: GearsCharacterGenderSummary;
   scene_assets: GearsSceneAsset[];
@@ -6333,6 +6336,7 @@ export interface StoryQualityReport {
   outline_coverage_report?: OutlineCoverageReport;
   pattern_quality_report?: PatternQualityReport;
   gears_readiness_report?: GearsReadinessReport;
+  production_material_readiness_report?: ProductionMaterialQualityReport;
   audience_text_report?: AudienceTextReport;
   repair_action_items?: QualityRepairAction[];
   repair_preview?: string;
@@ -6398,6 +6402,26 @@ export interface GearsReadinessReport {
   preview: string;
 }
 
+export interface ProductionMaterialQualityReport {
+  schema_version: 'production-material-quality/v1';
+  status: ProductionMaterialReadinessStatus;
+  score: number;
+  passed: boolean;
+  pack_label: string;
+  video_type: VideoType;
+  missing_blocking_fields: ProductionMaterialMissingField[];
+  missing_risk_fields: ProductionMaterialMissingField[];
+  missing_optional_fields: ProductionMaterialMissingField[];
+  gate_statuses: Array<{
+    stage: MaterialSufficiencyStage;
+    status: ProductionMaterialReadinessStatus;
+    missing_count: number;
+  }>;
+  recommended_next_questions: string[];
+  repair_prompt: string;
+  preview: string;
+}
+
 export type AudienceTextField =
   | 'full_text'
   | 'theme'
@@ -6431,7 +6455,7 @@ export interface AudienceTextReport {
 export interface QualityRepairAction {
   action_id: string;
   label: string;
-  target_report: 'outline' | 'pattern' | 'gears' | 'audience' | 'combined';
+  target_report: 'outline' | 'pattern' | 'gears' | 'production_material' | 'audience' | 'combined';
   severity: 'low' | 'medium' | 'high';
   scene_ids: number[];
   prompt: string;

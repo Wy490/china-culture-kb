@@ -1217,6 +1217,14 @@
               <p>{{ card.preview }}</p>
             </article>
           </div>
+          <div v-if="productionMaterialMissingSummaries.length > 0" class="project-detail-page__quality-production">
+            <strong>生产素材缺口</strong>
+            <ul>
+              <li v-for="item in productionMaterialMissingSummaries.slice(0, 6)" :key="item">
+                {{ item }}
+              </li>
+            </ul>
+          </div>
           <div v-if="currentQuality.repair_action_items?.length" class="project-detail-page__repair-actions">
             <button
               v-for="action in currentQuality.repair_action_items"
@@ -2210,6 +2218,14 @@ const qualityReportCards = computed(() => {
       preview: quality.gears_readiness_report.preview,
     })
   }
+  if (quality.production_material_readiness_report) {
+    cards.push({
+      key: 'production-material',
+      label: 'Production Material',
+      score: quality.production_material_readiness_report.score,
+      preview: `${productionMaterialStatusLabel(quality.production_material_readiness_report.status)} · ${quality.production_material_readiness_report.preview}`,
+    })
+  }
   if (quality.audience_text_report) {
     cards.push({
       key: 'audience',
@@ -2219,6 +2235,17 @@ const qualityReportCards = computed(() => {
     })
   }
   return cards
+})
+
+const productionMaterialMissingSummaries = computed(() => {
+  const report = currentQuality.value?.production_material_readiness_report
+  if (!report) return []
+  return [
+    ...report.missing_blocking_fields,
+    ...report.missing_risk_fields,
+  ]
+    .filter((field, index, arr) => arr.findIndex(item => item.field_id === field.field_id) === index)
+    .map(field => `${field.label}：${field.reason}`)
 })
 
 const qualityFeedbackGroups = computed<QualityFeedbackGroup[]>(() => {
@@ -2475,6 +2502,12 @@ function productionReadinessStatusLabel(status: StoryProjectProductionReadinessR
   if (status === 'ready') return '可生产'
   if (status === 'blocked') return '阻断'
   return '待处理'
+}
+
+function productionMaterialStatusLabel(status: string): string {
+  if (status === 'ready') return '可生产'
+  if (status === 'blocked') return '阻断'
+  return '待补素材'
 }
 
 function productionReadinessSeverityLabel(severity: StoryProjectProductionReadinessReport['issues'][number]['severity']): string {
@@ -5830,6 +5863,27 @@ watch(selectedModelProfileId, (value) => {
 
 .project-detail-page__report-pill p {
   margin-top: 5px;
+  line-height: 1.45;
+}
+
+.project-detail-page__quality-production {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #efcf8a;
+  border-radius: 6px;
+  background: #fffaf0;
+}
+
+.project-detail-page__quality-production strong {
+  color: #6f4b00;
+  font-size: 13px;
+}
+
+.project-detail-page__quality-production ul {
+  margin: 8px 0 0;
+  padding-left: 17px;
+  color: #4c5e6f;
+  font-size: 12px;
   line-height: 1.45;
 }
 

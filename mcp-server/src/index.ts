@@ -24,6 +24,7 @@ import { generateStoryRepairPrompt, repairStory } from './tools/repair-story.js'
 import { updateProjectVersion } from './tools/update-project-version.js';
 import { getProductionReadiness } from './tools/get-production-readiness.js';
 import { getProductionReadinessPortfolio } from './tools/get-production-readiness-portfolio.js';
+import { draftProductionMaterialPack } from './tools/draft-production-material-pack.js';
 import {
   getStoryAgentGeneratedGovernancePlan,
   runStoryAgentGeneratedGovernance,
@@ -472,6 +473,35 @@ server.tool(
     if (!result) {
       return { content: [{ type: 'text', text: '未找到项目或系列项目' }] };
     }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_draft_production_pack — draft a candidate ProductionMaterialPack from reviewed source observations
+server.tool(
+  'kb_draft_production_pack',
+  '为指定 video_type 生成生产素材模板草案。只读正式 packs，可额外传入 JSON 来源观察；返回候选 ProductionMaterialPack、审稿清单和警告，不自动写入正式模板。',
+  {
+    videoType: z.string().describe('目标成片类型，例如 social_short、explainer_video、ai_comic_drama'),
+    label: z.string().optional().describe('可选模板标签'),
+    goal: z.string().optional().describe('可选模板目标'),
+    sourceObservations: z.string().optional().describe('可选 JSON 数组，元素包含 source_id、applies_to_video_types、usable_takeaways 等字段'),
+  },
+  async (input) => {
+    const additionalObservations = input.sourceObservations
+      ? JSON.parse(input.sourceObservations)
+      : undefined;
+    const result = await draftProductionMaterialPack({
+      videoType: input.videoType,
+      label: input.label,
+      goal: input.goal,
+      additionalObservations,
+    });
     return {
       content: [{
         type: 'text',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { StoryGenerateResult, StoryQualityReport } from '@shared/types.js';
+import type { ProductionMaterialReadinessReport, StoryGenerateResult, StoryQualityReport } from '@shared/types.js';
 import { enrichStoryQualityReport } from '../services/quality-workflow-service.js';
 
 function makeBaseReport(): StoryQualityReport {
@@ -172,6 +172,58 @@ describe('quality-workflow-service', () => {
     ]));
     expect(report.repair_action_items?.some(action => action.action_id === 'repair-audience-text')).toBe(true);
     expect(report.repair_action_items?.find(action => action.action_id === 'repair-audience-text')?.scene_ids).toContain(2);
+  });
+
+  it('downgrades quality when production material readiness is blocked', () => {
+    const productionMaterialReadiness: ProductionMaterialReadinessReport = {
+      schema_version: 'production-material-readiness/v1',
+      video_type: 'ai_comic_drama',
+      pack_label: 'AI 漫剧单片',
+      score: 42,
+      status: 'blocked',
+      available_fields: ['core_conflict'],
+      missing_fields: [{
+        field_id: 'reference_images_or_keyframes',
+        label: '参考图或关键帧',
+        stage: 'production_ready',
+        blocking_level: 'blocking',
+        reason: 'AI 漫剧进入生产前需要角色或关键画面参考，避免角色和空间漂移。',
+        recommended_question: '请补充主角、关键配角或第一场关键帧参考图。',
+      }],
+      gate_reports: [{
+        stage: 'production_ready',
+        status: 'blocked',
+        required_items: ['reference_images_or_keyframes'],
+        available_fields: ['core_conflict'],
+        missing_fields: [{
+          field_id: 'reference_images_or_keyframes',
+          label: '参考图或关键帧',
+          stage: 'production_ready',
+          blocking_level: 'blocking',
+          reason: 'AI 漫剧进入生产前需要角色或关键画面参考，避免角色和空间漂移。',
+          recommended_question: '请补充主角、关键配角或第一场关键帧参考图。',
+        }],
+        notes: ['production_ready 阶段阻塞。'],
+      }],
+      recommended_next_questions: ['请补充主角、关键配角或第一场关键帧参考图。'],
+    };
+
+    const report = enrichStoryQualityReport({
+      story: {
+        ...makeStory(),
+        production_material_readiness: productionMaterialReadiness,
+      },
+      qualityReport: makeBaseReport(),
+    });
+
+    expect(report.passed).toBe(false);
+    expect(report.production_material_readiness_report?.schema_version).toBe('production-material-quality/v1');
+    expect(report.production_material_readiness_report?.status).toBe('blocked');
+    expect(report.production_material_readiness_report?.missing_blocking_fields.map(field => field.field_id))
+      .toContain('reference_images_or_keyframes');
+    expect(report.repair_action_items?.some(action => action.target_report === 'production_material')).toBe(true);
+    expect(report.repair_actions?.join('\n')).toContain('参考图或关键帧');
+    expect(report.repair_preview).toContain('生产素材需补');
   });
 
   it('recognizes natural action evidence in pattern reports', () => {

@@ -5,6 +5,7 @@ import type {
   GearsCharacterRolePosition,
   GearsGender,
   GearsDeliveryPackage,
+  GearsDeliveryStatus,
   GearsDeliveryUnit,
   GearsSceneAsset,
   GearsSceneAtmosphere,
@@ -24,11 +25,15 @@ export function buildGearsDeliveryPackage(story: StoryGenerateResult): GearsDeli
   const characterGenderSummary = summarizeCharacterGenders(characterAssets);
   const sceneAssets = buildSceneAssets(story);
   const units = buildDeliveryUnits(story.scene_breakdown, characterAssets);
-  const validationNotes = validateDeliveryPackage(characterAssets, sceneAssets, units);
+  const validationNotes = [
+    ...validateDeliveryPackage(characterAssets, sceneAssets, units),
+    ...validateProductionMaterialReadiness(story.production_material_readiness),
+  ];
   const pkgWithoutMarkdown = {
     schema_version: 'gears-delivery/v1',
     storyId: story.storyId,
     title: story.title,
+    delivery_status: deriveDeliveryStatus(validationNotes),
     character_assets: characterAssets,
     character_gender_summary: characterGenderSummary,
     scene_assets: sceneAssets,
@@ -48,15 +53,17 @@ export function ensureGearsDeliveryPackage(story: StoryGenerateResult): GearsDel
 
   const fresh = buildGearsDeliveryPackage(story);
   const characterAssets = mergeCharacterAssets(current.character_assets, fresh.character_assets);
+  const validationNotes = current.validation_notes ?? fresh.validation_notes;
   const pkgWithoutMarkdown: Omit<GearsDeliveryPackage, 'markdown'> = {
     schema_version: current.schema_version ?? fresh.schema_version,
     storyId: current.storyId ?? fresh.storyId,
     title: current.title ?? fresh.title,
+    delivery_status: deriveDeliveryStatus(validationNotes),
     character_assets: characterAssets,
     character_gender_summary: summarizeCharacterGenders(characterAssets),
     scene_assets: current.scene_assets?.length ? current.scene_assets : fresh.scene_assets,
     units: current.units?.length ? current.units : fresh.units,
-    validation_notes: current.validation_notes ?? fresh.validation_notes,
+    validation_notes: validationNotes,
   };
   const shouldKeepMarkdown = Boolean(current.markdown?.includes('# 人物性别统计'))
     && areGenderSummariesEqual(current.character_gender_summary, pkgWithoutMarkdown.character_gender_summary);
@@ -819,12 +826,40 @@ function validateDeliveryPackage(
   return notes;
 }
 
+function validateProductionMaterialReadiness(
+  report: StoryGenerateResult['production_material_readiness'],
+): string[] {
+  if (!report) return [];
+  const productionGate = report.gate_reports.find(gate => gate.stage === 'production_ready');
+  if (report.status === 'ready' && report.score >= 70 && (!productionGate || productionGate.status === 'ready')) {
+    return [];
+  }
+
+  const productionMissingFields = report.missing_fields.filter(field => field.stage === 'production_ready');
+  const visibleMissingFields = (productionMissingFields.length > 0 ? productionMissingFields : report.missing_fields)
+    .filter((field, index, arr) => arr.findIndex(item => item.field_id === field.field_id) === index)
+    .slice(0, 6);
+
+  return [
+    `生产素材未达 production_ready：${report.pack_label} ${report.status}，${report.score}/100`,
+    ...visibleMissingFields.map(field =>
+      `生产素材缺口 ${field.label}（${field.stage}/${field.blocking_level}）：${field.reason}`,
+    ),
+    ...report.recommended_next_questions.slice(0, 3).map(question => `生产素材补充问题：${question}`),
+  ];
+}
+
+function deriveDeliveryStatus(validationNotes: string[]): GearsDeliveryStatus {
+  return validationNotes.length > 0 ? 'needs_input' : 'ready';
+}
+
 function renderDeliveryMarkdown(pkg: Omit<GearsDeliveryPackage, 'markdown'>): string {
   const lines: string[] = [
     `# ${pkg.title} — GEARS 供稿包`,
     '',
     `> schema: ${pkg.schema_version}`,
     `> storyId: ${pkg.storyId}`,
+    `> delivery_status: ${pkg.delivery_status ?? deriveDeliveryStatus(pkg.validation_notes)}`,
     '',
     '# 人物性别统计',
     '',

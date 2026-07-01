@@ -35,6 +35,7 @@
         <option value="">全部来源</option>
         <option value="knowledge_pack_missing_need">旧项目素材包缺口</option>
         <option value="material_sufficiency_missing_item">素材 Gate 缺口</option>
+        <option value="production_material_missing_field">生产素材模板缺口</option>
       </select>
     </section>
 
@@ -215,6 +216,7 @@ function sourceLabel(source: KnowledgeSupplementTaskSource): string {
   const map: Record<KnowledgeSupplementTaskSource, string> = {
     knowledge_pack_missing_need: '旧项目素材包缺口',
     material_sufficiency_missing_item: '素材 Gate 缺口',
+    production_material_missing_field: '生产素材模板缺口',
   }
   return map[source]
 }

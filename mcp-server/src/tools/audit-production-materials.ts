@@ -39,6 +39,7 @@ interface EntryProductionAudit {
   type: string;
   credibility: string;
   source_count: number;
+  related_location_count: number;
   has_verification_method: boolean;
   has_explicit_verification_method_section: boolean;
   has_merged_credibility_verification_section: boolean;
@@ -61,6 +62,8 @@ interface ProductionMaterialAuditReport {
     entries: number;
     sources: number;
     average_sources_per_entry: number;
+    entries_missing_sources: number;
+    entries_missing_related_locations: number;
     missing_verification_method: number;
     missing_explicit_verification_method_section: number;
     entries_with_merged_credibility_verification: number;
@@ -163,6 +166,7 @@ function auditEntry(
     type: detail.type,
     credibility: detail.credibility,
     source_count: detail.sources.length,
+    related_location_count: detail.relatedLocations.length,
     has_verification_method: hasUsableVerification(detail, rawEntryText),
     has_explicit_verification_method_section: hasSection(rawEntryText, '核实方法'),
     has_merged_credibility_verification_section: hasSection(rawEntryText, '可信度与核实'),
@@ -270,6 +274,8 @@ function priorityReasonsForEntry(
   if (!hasUsableVerification(detail, rawEntryText)) reasons.push('缺核实方法');
   if (!hasSection(rawEntryText, '核实方法')) reasons.push('缺独立核实方法 section');
   if (!ALLOWED_CREDIBILITY.has(detail.credibility)) reasons.push(`可信度非枚举：${detail.credibility}`);
+  if (detail.sources.length === 0) reasons.push('缺来源');
+  if (detail.relatedLocations.length === 0) reasons.push('缺相关地点');
   if (detail.unverifiedPoints.length > 0) reasons.push('存在待核点');
   if (!hasAssetSplit(detail)) reasons.push('缺 asset_split');
   if (!detail.knowledge_domain || !detail.entry_role || !detail.asset_usage?.length) reasons.push('缺机器字段');
@@ -280,7 +286,7 @@ function priorityReasonsForEntry(
 }
 
 function priorityFromReasons(reasons: string[]): EntryProductionAudit['priority'] {
-  if (reasons.some(reason => /缺核实方法|可信度非枚举|模板覆盖低/.test(reason)) || reasons.length >= 4) return 'high';
+  if (reasons.some(reason => /缺核实方法|可信度非枚举|模板覆盖低|缺来源/.test(reason)) || reasons.length >= 4) return 'high';
   if (reasons.length >= 2) return 'medium';
   return 'low';
 }
@@ -290,11 +296,12 @@ function result(field: ProductionCardField, label: string, present: boolean, rea
 }
 
 function hasAssetSplit(detail: FullEntryDetail): boolean {
+  const assetSplit = detail.asset_split;
   return Boolean(
-    detail.asset_split?.characters.length
-    || detail.asset_split?.scenes.length
-    || detail.asset_split?.character_props.length
-    || detail.asset_split?.scene_props.length,
+    assetSplit?.characters.length
+    && assetSplit.scenes.length
+    && assetSplit.character_props.length
+    && assetSplit.scene_props.length,
   );
 }
 
@@ -365,6 +372,8 @@ function buildTotals(files: number, entries: EntryProductionAudit[]): Production
     entries: entries.length,
     sources,
     average_sources_per_entry: entries.length ? Math.round((sources / entries.length) * 100) / 100 : 0,
+    entries_missing_sources: entries.filter(entry => entry.source_count === 0).length,
+    entries_missing_related_locations: entries.filter(entry => entry.related_location_count === 0).length,
     missing_verification_method: entries.filter(entry => !entry.has_verification_method).length,
     missing_explicit_verification_method_section: entries.filter(entry => !entry.has_explicit_verification_method_section).length,
     entries_with_merged_credibility_verification: entries.filter(entry => entry.has_merged_credibility_verification_section).length,
@@ -419,6 +428,8 @@ function buildMarkdown(report: Omit<ProductionMaterialAuditReport, 'markdown'>):
     `- 条目数：${report.totals.entries}`,
     `- 来源数：${report.totals.sources}`,
     `- 平均来源数：${report.totals.average_sources_per_entry}`,
+    `- 缺来源条目：${report.totals.entries_missing_sources}`,
+    `- 缺相关地点条目：${report.totals.entries_missing_related_locations}`,
     `- 缺核实方法：${report.totals.missing_verification_method}`,
     `- 缺独立核实方法 section：${report.totals.missing_explicit_verification_method_section}`,
     `- 使用可信度与核实合并 section：${report.totals.entries_with_merged_credibility_verification}`,
@@ -449,7 +460,7 @@ function buildMarkdown(report: Omit<ProductionMaterialAuditReport, 'markdown'>):
     '',
     '## 下一步',
     '',
-    '- 先处理高优先级条目的核实方法、可信度枚举和 asset_split。',
+    '- 先处理高优先级条目的来源回溯、相关地点和 asset_split。',
     '- 对非遗、微纪录、AI 漫剧推荐片型覆盖低的条目，按对应 ProductionMaterialPack 补字段。',
     '- 审计报告只做治理指挥，不自动改写省份 Markdown。',
   ];

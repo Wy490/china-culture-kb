@@ -1,0 +1,18 @@
+{
+  "schema_version": "kb-asset-split-suggestions/v1",
+  "generated_at": "2026-07-01T16:10:32.866Z",
+  "totals": {
+    "files": 34,
+    "entries_scanned": 169,
+    "entries_without_asset_split": 0,
+    "entries_with_suggestions": 0,
+    "ready_for_editor_review": 0,
+    "needs_source_or_location_backfill": 0,
+    "low_confidence_hold": 0,
+    "suggested_characters": 0,
+    "suggested_scenes": 0,
+    "suggested_character_props": 0,
+    "suggested_scene_props": 0
+  },
+  "suggestions": []
+}

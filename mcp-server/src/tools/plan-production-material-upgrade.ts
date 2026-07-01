@@ -7,6 +7,7 @@ type EntryAudit = ProductionMaterialAuditReport['entries'][number];
 type UpgradeBatchId =
   | 'credibility_format_normalization'
   | 'machine_metadata_enrichment'
+  | 'source_location_backfill'
   | 'asset_split_enrichment'
   | 'heritage_promo_minimum_pack'
   | 'documentary_short_minimum_pack'
@@ -73,6 +74,7 @@ export async function planProductionMaterialUpgrade(): Promise<ProductionMateria
   const batches: UpgradeBatch[] = [
     buildCredibilityFormatBatch(audit.entries),
     buildMachineMetadataBatch(audit.entries),
+    buildSourceLocationBackfillBatch(audit.entries),
     buildAssetSplitBatch(audit.entries),
     buildVideoTypeBatch(audit.entries, 'heritage_promo'),
     buildVideoTypeBatch(audit.entries, 'documentary_short'),
@@ -166,6 +168,38 @@ function buildMachineMetadataBatch(entries: EntryAudit[]): UpgradeBatch {
   };
 }
 
+function buildSourceLocationBackfillBatch(entries: EntryAudit[]): UpgradeBatch {
+  const targets = entries
+    .filter(entry => entry.source_count === 0 || entry.related_location_count === 0)
+    .sort(sortByPriority)
+    .slice(0, 80);
+  return {
+    batch_id: 'source_location_backfill',
+    phase: 'Phase 6',
+    label: '来源与地点回溯补齐',
+    goal: '为导入残留清洗后暴露出的空来源、空地点条目补齐可核实依据。',
+    rationale: targets.length > 0
+      ? '清洗占位符后，部分条目没有可用来源或可拍地点，必须先回溯补源再进入生产资产扩写。'
+      : '当前未发现空来源或空相关地点条目。',
+    entry_count: targets.length,
+    actions: targets.map(entry => actionForEntry(entry, 'source-location-backfill', [
+      ...(entry.source_count === 0 ? ['来源', '来源等级'] : []),
+      ...(entry.related_location_count === 0 ? ['相关地点', '可拍现场'] : []),
+      '核实方法',
+      '待核实点',
+    ], [
+      '能否回溯到原始来源名称、链接、书名、馆藏或非遗名录条目？',
+      '哪些地点是今天仍能拍摄或访问的现场、展馆、工坊、传习所？',
+      '无法回溯的信息是否应保留为待核实，而不是写成事实？',
+    ], 'none')),
+    acceptance_criteria: [
+      '每条至少补一个可追溯来源，并标注 A/B/C/D 级。',
+      '相关地点必须是真实地点、机构、工坊、展馆或可说明的传承空间。',
+      '无法回溯的旧导入信息只能进入待核实点，不能重写成事实。',
+    ],
+  };
+}
+
 function buildAssetSplitBatch(entries: EntryAudit[]): UpgradeBatch {
   const targets = entries
     .filter(entry => !entry.has_asset_split)
@@ -176,7 +210,7 @@ function buildAssetSplitBatch(entries: EntryAudit[]): UpgradeBatch {
     phase: 'Phase 6',
     label: '资产拆分补齐',
     goal: '补齐人物、场景、人物随身道具和场景陈设，支撑 GEARS/Seedance 生产。',
-    rationale: 'asset_split 覆盖率最低，是从文化资料库升级为生产素材库的关键短板。',
+    rationale: 'asset_split 覆盖率最低，是从文化资料库升级为生产素材库的关键短板；先用 kb:asset-split-suggestions 生成候选，再人工审稿写回。',
     entry_count: targets.length,
     actions: targets.map(entry => actionForEntry(entry, 'asset-split', [
       '人物',
@@ -188,6 +222,7 @@ function buildAssetSplitBatch(entries: EntryAudit[]): UpgradeBatch {
       '有哪些可拍空间、随身物、场景陈设需要保持连续？',
     ], 'none')),
     acceptance_criteria: [
+      '先查看 Asset Split 建议报告，区分可审稿条目和需要先补来源/地点的条目。',
       '每条高优先级素材至少列出一个场景或人物。',
       '道具和陈设分开，不把事件名当人物。',
       '资产拆分不新增未经来源支持的硬事实。',

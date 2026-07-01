@@ -12,6 +12,9 @@
     "kb:production-upgrade-plan": "../web/node_modules/.bin/tsx src/tools/run-production-material-upgrade-plan.ts",
     "kb:normalize-credibility": "../web/node_modules/.bin/tsx src/tools/run-credibility-normalization.ts",
     "kb:enrich-machine-metadata": "../web/node_modules/.bin/tsx src/tools/run-machine-metadata-enrichment.ts",
+    "kb:clean-import-residue": "../web/node_modules/.bin/tsx src/tools/run-import-residue-cleanup.ts",
+    "kb:asset-split-suggestions": "../web/node_modules/.bin/tsx src/tools/run-asset-split-suggestions.ts",
+    "kb:draft-production-pack": "../web/node_modules/.bin/tsx src/tools/run-production-material-pack-draft.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node dist/index.js"

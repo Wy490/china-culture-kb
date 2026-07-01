@@ -1,0 +1,713 @@
+{
+  "schema_version": "kb-import-residue-cleanup/v1",
+  "generated_at": "2026-06-28T11:08:28.768Z",
+  "apply": true,
+  "totals": {
+    "files_scanned": 34,
+    "files_changed": 1,
+    "entries_changed": 40,
+    "removed_invalid_source_lines": 188,
+    "removed_invalid_location_lines": 119
+  },
+  "files": [
+    {
+      "province": "北京",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/北京.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "天津",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/天津.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "河北",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/河北.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "山西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/山西.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "内蒙古",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/内蒙古.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "辽宁",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/辽宁.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "吉林",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/吉林.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "黑龙江",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/黑龙江.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "上海",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/上海.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "江苏",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/江苏.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "浙江",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/浙江.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "安徽",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/安徽.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "福建",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/福建.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "江西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/江西.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "山东",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/山东.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "河南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/河南.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "湖北",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖北.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md",
+      "changed": true,
+      "changed_entries": 40,
+      "removed_invalid_source_lines": 188,
+      "removed_invalid_location_lines": 119
+    },
+    {
+      "province": "广东",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/广东.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "广西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/广西.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "海南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/海南.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "重庆",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/重庆.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "四川",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/四川.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "贵州",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/贵州.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "云南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/云南.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "西藏",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/西藏.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "陕西",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/陕西.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "甘肃",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/甘肃.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "青海",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/青海.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "宁夏",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/宁夏.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "新疆",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/新疆.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "香港",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/香港.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "澳门",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/澳门.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    },
+    {
+      "province": "台湾",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/台湾.md",
+      "changed": false,
+      "changed_entries": 0,
+      "removed_invalid_source_lines": 0,
+      "removed_invalid_location_lines": 0
+    }
+  ],
+  "changes": [
+    {
+      "entry_name": "嘉禾伴嫁歌——千年湘南女性的歌堂之夜",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "安仁赶分社——春分时节的神农药市",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "武冈卤菜制作技艺——雪峰山下的药食同源御膳",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "宝庆竹刻——湘西南竹簧雕刻的明清贡品传承",
+      "removed_invalid_source_lines": 7,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "洞口墨晶石雕——雪峰山黑玉的楚湘遗韵",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "花瑶挑花——穿在身上的花瑶密码",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 4,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘西型苗族服饰——穿在身上的迁徙史书",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "凤凰纸扎——边城千年彩扎的湘西风骨",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘西苗族跳香——五谷神前的秋后斋祭",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "土家族咚咚喹——湘西山野的儿童单簧竹乐",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "土家族吊脚楼营造技艺——武陵山地的木构智慧",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "苗族四月八——湘西苗族纪念英雄亚努的节日",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "凤凰蓝印花布——边城蓝白的湘西素颜",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "土家族打溜子——湘西山村的节奏密码",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 4,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "踏虎剪纸——凿刀下的苗族阴阳世界",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 4,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "衡山皮影戏——湘南光影的千年传奇",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 4,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "江永女书——世界唯一的女性专属文字",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "瑶族长鼓舞——盘王脚下的湘南鼓声",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "祁剧——湘南山野的戏曲长河",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "浏阳菊花石雕——长沙文人案头的石上之菊",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "长沙弹词——月琴敲响的湘中市井",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘剧——湖南戏曲的中州遗韵",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "大戊梁歌会——湘桂黔三省侗族的爱情对歌",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "辰河高腔——沅水中上游的中国戏曲活化石",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "靖州苗族歌鼟——三锹大山的多声部和声",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "辰州傩戏——沅水中游的中国戏剧活化石",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "沅州石雕——沅水中游的青石艺术",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "侗族琵琶歌——鼓楼月堂下的湘西南情歌",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "常德武陵戏——沅澧流域的湖南五大剧种之一",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "澧水船工号子——湘北水路百年船歌",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "新化山歌——湘中雪峰山的呜哇天籁",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "安化千两茶——36公斤的世界茶王",
+      "removed_invalid_source_lines": 5,
+      "removed_invalid_location_lines": 5,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "土家族毛古斯舞——中国舞蹈活化石",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 4,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "张家界阳戏——大庸土家族的金线吊葫芦",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 0,
+      "residue_kinds": [
+        "invalid_source_object"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    },
+    {
+      "entry_name": "湘昆——山野昆曲的南岭遗音",
+      "removed_invalid_source_lines": 4,
+      "removed_invalid_location_lines": 4,
+      "residue_kinds": [
+        "invalid_source_object",
+        "invalid_location_undefined"
+      ],
+      "province": "湖南",
+      "file_path": "/Users/wuyu/Desktop/china-culture-kb/data/provinces/湖南.md"
+    }
+  ]
+}

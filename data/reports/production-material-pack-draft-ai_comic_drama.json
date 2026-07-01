@@ -1,0 +1,404 @@
+{
+  "schema_version": "production-material-pack-draft/v1",
+  "generated_at": "2026-07-01T16:33:48.697Z",
+  "status": "ready_for_editor_review",
+  "video_type": "ai_comic_drama",
+  "source_count": 4,
+  "source_ids": [
+    "bilibili-BV1xuVC6AEbg",
+    "seedance-v2-paper",
+    "vgot-paper",
+    "motion-by-queries-paper"
+  ],
+  "matched_observations": [
+    {
+      "source_id": "bilibili-BV1xuVC6AEbg",
+      "source_type": "bilibili_video",
+      "applies_to_video_types": [
+        "ai_comic_drama"
+      ],
+      "bvid": "BV1xuVC6AEbg",
+      "url": "https://www.bilibili.com/video/BV1xuVC6AEbg/",
+      "title": "今天把我关于《丧尸清道夫》的创作思路分享给大家，如果能帮到你，我会很开心。",
+      "creator": "Mx-Shell",
+      "observed_stats": {
+        "view": 1670585,
+        "favorite": 100546,
+        "coin": 39049,
+        "share": 15319,
+        "like": 95192,
+        "his_rank": 16
+      },
+      "duration_seconds": 2573,
+      "confirmed_chapters": [
+        "引言",
+        "提示词分析",
+        "提示词-基础设定",
+        "提示词-氛围与画质",
+        "提示词-画面内容",
+        "视频生成",
+        "功能讲解",
+        "效果演示-单镜头",
+        "效果演示-多分镜",
+        "结尾"
+      ],
+      "usable_takeaways": [
+        "AI漫剧生产包需要把提示词拆成基础设定、氛围画质、画面内容三层，而不是只写剧情梗概。",
+        "先用单镜头验证角色、世界观、画质和镜头语法，再进入多分镜连续性测试。",
+        "爆款短剧解说的关注点是可复用工作流：提示词分析、生成、功能讲解、单镜头演示、多分镜演示。",
+        "样板素材必须包含角色稳定锚点、场景锚点、动作冲突、镜头/构图、情绪节拍和结尾钩子。"
+      ],
+      "limitations": [
+        "公开接口未提供字幕列表。",
+        "B站AI总结接口返回权限不足。",
+        "本地没有可用Whisper工具，且OPENAI_API_KEY未设置，因此本记录不是逐字稿。"
+      ]
+    },
+    {
+      "source_id": "seedance-v2-paper",
+      "source_type": "research_paper",
+      "applies_to_video_types": [
+        "ai_comic_drama"
+      ],
+      "url": "https://arxiv.org/abs/2604.14148",
+      "title": "Seedance 2.0: Advancing Video Generation for World Complexity",
+      "usable_takeaways": [
+        "AI视频生产模板要同时考虑文本、图片、音频、视频等多模态输入，而不是只写文字提示词。",
+        "短剧模板应拆出参考图、关键帧、镜头运动、声音/对白和连续性验收项。",
+        "多镜头片段需要在角色一致性、场景连续性和动作连续性之间做显式检查。"
+      ]
+    },
+    {
+      "source_id": "vgot-paper",
+      "source_type": "research_paper",
+      "applies_to_video_types": [
+        "ai_comic_drama"
+      ],
+      "url": "https://arxiv.org/abs/2412.02259",
+      "title": "Video-of-Thought: Step-by-Step Video Reasoning from Perception to Cognition",
+      "usable_takeaways": [
+        "AI漫剧模板应把脚本拆成可验证步骤：角色/场景感知、动作推理、镜头组织和结果检查。",
+        "多分镜生成不应只看单格质量，还要检查场景间因果和视觉连续性。",
+        "可以把样片验证分为单镜头测试、多镜头连续性测试和故事逻辑测试。"
+      ]
+    },
+    {
+      "source_id": "motion-by-queries-paper",
+      "source_type": "research_paper",
+      "applies_to_video_types": [
+        "ai_comic_drama"
+      ],
+      "url": "https://arxiv.org/abs/2412.07750",
+      "title": "Motion by Queries: Identity-Motion Trade-offs in Text-to-Video Generation",
+      "usable_takeaways": [
+        "AI漫剧模板需要显式记录角色身份锚点和运动要求，避免动作增强导致角色跳变。",
+        "镜头提示词应把身份、动作、场景和风格分层，而不是混成一段。",
+        "多镜头验收要检查角色外观、服饰、道具、动作方向和视线方向。"
+      ]
+    }
+  ],
+  "draft_pack": {
+    "video_type": "ai_comic_drama",
+    "label": "AI漫剧",
+    "goal": "把文化材料转成强钩子、角色稳定、对白冲突、表情动作、分镜提示和多镜头连续性的短剧生产包。",
+    "material_template": {
+      "required_fields": [
+        "episode_hook",
+        "world_and_truth_mode",
+        "protagonist_goal",
+        "opponent_or_pressure",
+        "relationship_collision",
+        "scene_anchor",
+        "character_stability_tags",
+        "dialogue_bubbles",
+        "emotion_beats",
+        "shot_prompt_layers",
+        "reference_images_or_keyframes",
+        "identity_motion_consistency_plan",
+        "single_shot_test",
+        "multi_shot_continuity",
+        "transition_plan",
+        "ending_hook",
+        "forbidden_claims",
+        "target_audience",
+        "communication_goal",
+        "confirmed_sources",
+        "core_message_or_conflict",
+        "visual_assets",
+        "production_boundaries",
+        "delivery_acceptance_checks"
+      ],
+      "prompt_layers": [
+        "基础设定：世界观、角色身份、时代/地域/真实度边界。",
+        "氛围与画质：漫画风格、光线、色彩、镜头质感、画面比例。",
+        "画面内容：主体、动作、表情、场景、道具、构图和字幕气泡。",
+        "单镜头验证：先测试角色外观、场景锚点和情绪是否稳定。",
+        "多分镜验证：再测试动作连续、视线连续、道具位置和结尾钩子。",
+        "基础设定",
+        "氛围画质",
+        "画面内容",
+        "连续性验收"
+      ],
+      "minimum_viable_story_gate": [
+        "第一格有冲突定格或异常画面",
+        "主角目标和压力一句话能说清",
+        "至少有一个可视化场景锚点",
+        "角色身份锚点和动作需求已分开描述",
+        "有明确 ai_comic_drama 成片目标和受众",
+        "有至少一个可信来源入口",
+        "有可视化主体或可听见的讲述主体",
+        "能说明本片为什么现在值得制作"
+      ],
+      "script_ready_gate": [
+        "每场有3到6个漫画画面",
+        "每场有对白或强旁白",
+        "角色外观、道具、场景不跳变",
+        "关键帧或参考图需求已列出",
+        "结尾有追看问题",
+        "脚本结构可分成开场、展开、转折/证明和收束",
+        "每一段都有可见动作、例子、现场或论据",
+        "事实、观点和再现边界已分开标注"
+      ],
+      "production_ready_gate": [
+        "角色设定卡、场景设定卡、道具卡和镜头提示词已分开",
+        "单镜头测试和多分镜测试各有验收点",
+        "角色身份、运动方向、视线方向、道具位置和镜头转场都有连续性检查",
+        "真实人物/机构/历史素材的虚构边界已写清",
+        "角色/讲述者、场景、道具/图像、声音和字幕关键词已列清",
+        "可区分实拍、档案、示意、再现和 AI 生成画面",
+        "禁用表达、授权边界和核验责任已标明",
+        "有交付验收项：连续性、可拍性、来源边界和平台规格"
+      ],
+      "supplement_questions": [
+        "第一格观众看到什么会停下？",
+        "主角现在想要什么？谁或什么马上阻止他？",
+        "哪一句对白能让关系立刻撞起来？",
+        "主角、对手、见证者分别有什么稳定外观和表情特征？",
+        "本集最重要的场景锚点和道具锚点是什么？",
+        "需要哪些参考图或关键帧来锁定角色、场景和道具？",
+        "动作增强会不会导致角色身份跳变？要用什么验收项检查？",
+        "单镜头测试要验证什么？多分镜测试要验证什么？",
+        "结尾钩子是危险、误会、反转、选择还是新任务？",
+        "AI漫剧生产包需要把提示词拆成基础设定、氛围画质、画面内容三层，而不是只写剧情梗概，当前素材是否已补齐？",
+        "如何把「先用单镜头验证角色、世界观、画质和镜头语法，再进入多分镜连续性测试」转成可核验的素材字段？",
+        "如何把「爆款短剧解说的关注点是可复用工作流：提示词分析、生成、功能讲解、单镜头演示、多分镜演示」转成可核验的素材字段？",
+        "如何把「样板素材必须包含角色稳定锚点、场景锚点、动作冲突、镜头/构图、情绪节拍和结尾钩子」转成可核验的素材字段？",
+        "如何把「AI视频生产模板要同时考虑文本、图片、音频、视频等多模态输入，而不是只写文字提示词」转成可核验的素材字段？"
+      ]
+    },
+    "sample_entries": [
+      {
+        "sample_id": "comic-01",
+        "entry_name": "周敦颐拒签冤案——案卷压到灯下",
+        "source_status": "existing_material_adaptation",
+        "episode_hook": "第一格：一只手把判词按在油灯下，差役低声逼签。",
+        "core_conflict": "主角坚持复核案卷，对抗上官催签和现场压力。",
+        "character_stability": [
+          "周敦颐：宋代士人常服、冷静眼神、书卷/案卷锚点",
+          "差役：深色短袍、急躁表情",
+          "少年/家属：恐惧但不抢主线"
+        ],
+        "shot_prompt_focus": [
+          "基础设定",
+          "官署夜色",
+          "案卷/印章/油灯",
+          "近景表情",
+          "定格金句"
+        ],
+        "ending_hook": "新证词露出半行字，主角抬眼：这不是结案，是开始。"
+      },
+      {
+        "sample_id": "comic-02",
+        "entry_name": "柳毅传书——井口传来的求救声",
+        "source_status": "legend_adaptation_with_boundary",
+        "episode_hook": "第一格：雨夜井口泛出幽蓝水光，龙女的信从水面浮起。",
+        "core_conflict": "书生是否相信异界求救，并承担传信代价。",
+        "character_stability": [
+          "柳毅：唐代书生、行旅斗笠、书信锚点",
+          "龙女：水纹衣饰、泪光和鳞纹只作传说视觉",
+          "水府使者：半隐身影"
+        ],
+        "shot_prompt_focus": [
+          "唐传奇边界",
+          "井口/水府入口",
+          "信件特写",
+          "惊讶表情",
+          "水墨奇幻"
+        ],
+        "ending_hook": "信封上的水印化成龙纹，井底传来第二个名字。"
+      },
+      {
+        "sample_id": "comic-03",
+        "entry_name": "屈原投江前夜——江风里的最后一问",
+        "source_status": "historical_legend_adaptation",
+        "episode_hook": "第一格：汨罗江边，衣袖被风吹起，远处船火像退去的国都。",
+        "core_conflict": "家国崩塌后，主角面对渔父劝返和自我抉择。",
+        "character_stability": [
+          "屈原：楚辞意象服饰、疲惫但坚定",
+          "渔父：蓑衣、船篙、旁观者视角",
+          "江水：持续视觉意象"
+        ],
+        "shot_prompt_focus": [
+          "江面夜色",
+          "船火",
+          "近景眼神",
+          "少量对白",
+          "传说与史实边界"
+        ],
+        "ending_hook": "江面浮起第一片粽叶，旁白只问：后人会怎样记住他？"
+      },
+      {
+        "sample_id": "comic-04",
+        "entry_name": "贾谊长沙井边——少年太傅的孤独辩论",
+        "source_status": "existing_or_candidate_material_adaptation",
+        "episode_hook": "第一格：井水倒映出朝堂影子，年轻人握紧竹简。",
+        "core_conflict": "被贬者在地方空间里与自己的理想辩论。",
+        "character_stability": [
+          "贾谊：青年文士、竹简/井水锚点",
+          "地方小吏：现实压力",
+          "旁观孩童：当代观众入口"
+        ],
+        "shot_prompt_focus": [
+          "井边空间",
+          "竹简",
+          "倒影反转",
+          "独白气泡",
+          "长沙地方化边界"
+        ],
+        "ending_hook": "井水里的朝堂影子忽然裂开，露出一行未写完的策论。"
+      },
+      {
+        "sample_id": "comic-05",
+        "entry_name": "岳麓书院夜读——一块匾额下的争论",
+        "source_status": "fictionalized_scene_inspired_by_site",
+        "episode_hook": "第一格：夜里书院门额被雷光照亮，两个学生争抢一卷旧书。",
+        "core_conflict": "少年主角在师友误会中证明旧书真正用途。",
+        "character_stability": [
+          "少年主角：书袋、短衫、紧张表情",
+          "同窗对手：骄傲表情",
+          "先生：克制观察者"
+        ],
+        "shot_prompt_focus": [
+          "书院夜色",
+          "旧书",
+          "雷光",
+          "表情三连格",
+          "原创虚构标注"
+        ],
+        "ending_hook": "旧书夹层掉出一张地图，指向书院外的第二处地点。"
+      },
+      {
+        "sample_id": "comic-06",
+        "entry_name": "刘海砍樵——山路上多出来的脚印",
+        "source_status": "folk_legend_adaptation",
+        "episode_hook": "第一格：斧头刚落，雪地里出现一串不是人的脚印。",
+        "core_conflict": "樵夫在传说相遇中判断善意、诱惑和禁忌。",
+        "character_stability": [
+          "刘海：樵夫衣着、斧头/柴担",
+          "狐仙/异类角色：传说视觉，不写成史实",
+          "山路：脚印线索"
+        ],
+        "shot_prompt_focus": [
+          "雪地脚印",
+          "斧头动作",
+          "狐影",
+          "惊讶特写",
+          "民间说法边界"
+        ],
+        "ending_hook": "脚印停在空中，柴担上多了一枚铜钱。"
+      },
+      {
+        "sample_id": "comic-07",
+        "entry_name": "月岩悟道——洞口漏下来的月光",
+        "source_status": "legendary_scene_with_source_boundary",
+        "episode_hook": "第一格：天然岩洞中，月光落在书页上，字忽然像水一样流动。",
+        "core_conflict": "主角在读书、疑问和传说性顿悟之间寻找答案。",
+        "character_stability": [
+          "周敦颐/读书人：宋代士人、书卷锚点",
+          "洞穴：岩壁、石阶、月光",
+          "旁白：相传口径"
+        ],
+        "shot_prompt_focus": [
+          "天然岩洞",
+          "月光",
+          "书页",
+          "静态转动态",
+          "不混入衙署案卷"
+        ],
+        "ending_hook": "书页上只剩一个圆，洞外传来人声：先生，出事了。"
+      },
+      {
+        "sample_id": "comic-08",
+        "entry_name": "湘妃竹传说——竹节上的泪痕",
+        "source_status": "legend_adaptation_with_boundary",
+        "episode_hook": "第一格：竹林深处，一滴泪落下，竹节浮出斑痕。",
+        "core_conflict": "人物追寻传说源头，却发现不同版本互相矛盾。",
+        "character_stability": [
+          "追寻者：现代或古代视角二选一",
+          "湘妃意象：远景剪影",
+          "竹林：斑竹特写"
+        ],
+        "shot_prompt_focus": [
+          "竹节纹理",
+          "泪滴",
+          "版本差异",
+          "水墨慢镜",
+          "传说边界"
+        ],
+        "ending_hook": "竹林尽头的碑文和老人讲述说出了两个不同答案。"
+      },
+      {
+        "sample_id": "comic-09",
+        "entry_name": "苗族赶秋少年篇——秋千飞过鼓声",
+        "source_status": "folk_activity_youth_drama",
+        "episode_hook": "第一格：少年在秋千最高点看见人群外有一件失落银饰。",
+        "core_conflict": "少年想归还银饰，却卷入比赛、误会和节庆规则。",
+        "character_stability": [
+          "少年：节庆服饰但不过度装饰",
+          "少女/同伴：银饰锚点",
+          "长者：仪式规则说明者"
+        ],
+        "shot_prompt_focus": [
+          "秋千高度",
+          "银饰特写",
+          "鼓声字幕",
+          "人群表情",
+          "节庆氛围"
+        ],
+        "ending_hook": "银饰背面刻着并不属于本寨的纹样。"
+      },
+      {
+        "sample_id": "comic-10",
+        "entry_name": "滩头年画夜市——画里的人眨了一下眼",
+        "source_status": "fictional_original_inspired_by_heritage",
+        "episode_hook": "第一格：夜市收摊时，年画门神突然眨眼。",
+        "core_conflict": "少年学徒必须在天亮前找出套色错位的原因，否则整批年画作废。",
+        "character_stability": [
+          "学徒：围裙、染色手指",
+          "师傅：刻刀/木版锚点",
+          "年画门神：纸面角色，不冒充民俗事实"
+        ],
+        "shot_prompt_focus": [
+          "木版",
+          "套色错位",
+          "纸面角色",
+          "惊吓表情",
+          "悬疑钩子"
+        ],
+        "ending_hook": "门神指向木版背面：那里藏着另一幅图。"
+      }
+    ]
+  },
+  "review_checklist": [
+    "确认所有来源只适用于 ai_comic_drama，不要跨类型套用爆款方法。",
+    "至少补足 3 个来源后再写入正式 ProductionMaterialPack；当前 4 个。",
+    "人工审查 required_fields 是否能驱动 minimum_viable_story、script_ready、production_ready 三阶段 gate。",
+    "补 10 条高质量 sample_entries，每条包含 source_status、core_story_engine、must_collect、visual_assets、risk_boundary。",
+    "写入正式 JSON 后运行 story prompt、readiness、quality workflow 和前端展示测试。",
+    "该类型已有正式包：本草案只用于增量审稿，不应盲目覆盖。"
+  ],
+  "warnings": [
+    "目标 video_type 已有正式 ProductionMaterialPack，建议走增量审稿。",
+    "部分来源有 limitations，写入正式模板前需人工复核。"
+  ]
+}

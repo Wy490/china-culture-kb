@@ -8,6 +8,8 @@ import type {
   OutlineCoverageReport,
   PatternQualityReport,
   PatternQualitySignal,
+  ProductionMaterialQualityReport,
+  ProductionMaterialReadinessReport,
   QualityRepairAction,
   StoryGenerateResult,
   StoryQualityReport,
@@ -28,8 +30,9 @@ export function enrichStoryQualityReport(input: {
     narrativePatternIds: input.narrativePatternIds ?? [],
   });
   const gearsReport = buildGearsReadinessReport(input.story, input.gearsDelivery);
+  const productionMaterialReport = buildProductionMaterialQualityReport(input.story.production_material_readiness);
   const audienceReport = buildAudienceTextReport(input.story);
-  const repairActionItems = buildRepairActionItems(outlineReport, patternReport, gearsReport, audienceReport);
+  const repairActionItems = buildRepairActionItems(outlineReport, patternReport, gearsReport, productionMaterialReport, audienceReport);
   const mergedRepairActions = [
     ...(input.qualityReport.repair_actions ?? []),
     ...repairActionItems.map(item => item.prompt),
@@ -39,6 +42,7 @@ export function enrichStoryQualityReport(input: {
     && outlineReport.coverage_score >= 70
     && patternReport.pattern_score >= 70
     && gearsReport.readiness_score >= 70
+    && (productionMaterialReport?.passed ?? true)
     && audienceReport.clean;
 
   return {
@@ -48,9 +52,16 @@ export function enrichStoryQualityReport(input: {
     outline_coverage_report: outlineReport,
     pattern_quality_report: patternReport,
     gears_readiness_report: gearsReport,
+    production_material_readiness_report: productionMaterialReport,
     audience_text_report: audienceReport,
     repair_action_items: repairActionItems,
-    repair_preview: buildCombinedPreview(outlineReport.preview, patternReport.preview, gearsReport.preview, audienceReport.preview),
+    repair_preview: buildCombinedPreview(
+      outlineReport.preview,
+      patternReport.preview,
+      gearsReport.preview,
+      productionMaterialReport?.preview ?? '',
+      audienceReport.preview,
+    ),
   };
 }
 
@@ -304,6 +315,7 @@ function buildRepairActionItems(
   outlineReport: OutlineCoverageReport,
   patternReport: PatternQualityReport,
   gearsReport: ReturnType<typeof buildGearsReadinessReport>,
+  productionMaterialReport: ProductionMaterialQualityReport | undefined,
   audienceReport: AudienceTextReport,
 ): QualityRepairAction[] {
   const actions: QualityRepairAction[] = [];
@@ -348,6 +360,21 @@ function buildRepairActionItems(
       expected_effect: gearsReport.preview,
     });
   }
+  if (productionMaterialReport && !productionMaterialReport.passed) {
+    actions.push({
+      action_id: 'repair-production-material-readiness',
+      label: '补齐生产素材',
+      target_report: 'production_material',
+      severity: productionMaterialReport.status === 'blocked'
+        || productionMaterialReport.missing_blocking_fields.length > 0
+        || productionMaterialReport.score < 60
+        ? 'high'
+        : 'medium',
+      scene_ids: [],
+      prompt: productionMaterialReport.repair_prompt,
+      expected_effect: productionMaterialReport.preview,
+    });
+  }
   if (!audienceReport.clean) {
     actions.push({
       action_id: 'repair-audience-text',
@@ -367,10 +394,65 @@ function buildRepairActionItems(
       severity: actions.some(action => action.severity === 'high') ? 'high' : 'medium',
       scene_ids: actions.flatMap(action => action.scene_ids).filter(uniqueNumber),
       prompt: actions.map(action => `【${action.label}】\n${action.prompt}`).join('\n\n'),
-      expected_effect: buildCombinedPreview(outlineReport.preview, patternReport.preview, gearsReport.preview, audienceReport.preview),
+      expected_effect: buildCombinedPreview(
+        outlineReport.preview,
+        patternReport.preview,
+        gearsReport.preview,
+        productionMaterialReport?.preview ?? '',
+        audienceReport.preview,
+      ),
     });
   }
   return actions;
+}
+
+function buildProductionMaterialQualityReport(
+  report: ProductionMaterialReadinessReport | undefined,
+): ProductionMaterialQualityReport | undefined {
+  if (!report) return undefined;
+
+  const missingBlockingFields = report.missing_fields.filter(field => field.blocking_level === 'blocking');
+  const missingRiskFields = report.missing_fields.filter(field => field.blocking_level === 'risk');
+  const missingOptionalFields = report.missing_fields.filter(field => field.blocking_level === 'optional');
+  const passed = report.status === 'ready'
+    && report.score >= 70
+    && missingBlockingFields.length === 0;
+  const missingLabels = report.missing_fields.map(field => field.label).filter((item, index, arr) => arr.indexOf(item) === index);
+  const questions = [
+    ...report.recommended_next_questions,
+    ...report.missing_fields.map(field => field.recommended_question),
+  ].filter(Boolean).filter((item, index, arr) => arr.indexOf(item) === index);
+  const repairPrompt = passed
+    ? `生产素材已满足「${report.pack_label}」模板，保持字段与正文一致即可。`
+    : [
+        `当前「${report.pack_label}」生产素材状态：${report.status}，分数 ${report.score}/100。`,
+        ...report.missing_fields.map(field =>
+          `补充【${field.label}】（${field.stage}/${field.blocking_level}）：${field.reason} 建议提问：${field.recommended_question}`,
+        ),
+        ...(questions.length > 0 ? ['优先补充问题：', ...questions.map(question => `- ${question}`)] : []),
+      ].join('\n');
+
+  return {
+    schema_version: 'production-material-quality/v1',
+    status: report.status,
+    score: report.score,
+    passed,
+    pack_label: report.pack_label,
+    video_type: report.video_type,
+    missing_blocking_fields: missingBlockingFields,
+    missing_risk_fields: missingRiskFields,
+    missing_optional_fields: missingOptionalFields,
+    gate_statuses: report.gate_reports.map(gate => ({
+      stage: gate.stage,
+      status: gate.status,
+      missing_count: gate.missing_fields.length,
+    })),
+    recommended_next_questions: questions,
+    repair_prompt: repairPrompt,
+    preview: passed
+      ? `生产素材已满足「${report.pack_label}」模板。`
+      : `生产素材需补 ${report.missing_fields.length} 项：${missingLabels.slice(0, 6).join('、') || '请查看模板缺口'}。`,
+  };
 }
 
 function buildAudienceTextReport(story: StoryGenerateResult): AudienceTextReport {

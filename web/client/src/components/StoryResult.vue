@@ -352,7 +352,7 @@
     </section>
 
     <section
-      v-if="result.quality_report?.outline_coverage_report || result.quality_report?.pattern_quality_report || result.quality_report?.gears_readiness_report"
+      v-if="result.quality_report?.outline_coverage_report || result.quality_report?.pattern_quality_report || result.quality_report?.gears_readiness_report || result.quality_report?.production_material_readiness_report || result.quality_report?.audience_text_report"
       class="story-result__section"
     >
       <h3 class="story-result__section-title">可修复质量报告</h3>
@@ -395,6 +395,28 @@
               :key="item"
             >
               {{ item }}
+            </li>
+          </ul>
+        </article>
+
+        <article v-if="result.quality_report.production_material_readiness_report" class="story-result__report-card">
+          <span>Production Material</span>
+          <strong>{{ result.quality_report.production_material_readiness_report.score }}/100</strong>
+          <p>
+            {{ productionMaterialStatusLabel(result.quality_report.production_material_readiness_report.status) }}
+            · {{ result.quality_report.production_material_readiness_report.preview }}
+          </p>
+          <ul
+            v-if="result.quality_report.production_material_readiness_report.missing_blocking_fields.length > 0 || result.quality_report.production_material_readiness_report.missing_risk_fields.length > 0"
+          >
+            <li
+              v-for="item in [
+                ...result.quality_report.production_material_readiness_report.missing_blocking_fields,
+                ...result.quality_report.production_material_readiness_report.missing_risk_fields,
+              ].slice(0, 4)"
+              :key="item.field_id"
+            >
+              {{ item.label }}：{{ item.reason }}
             </li>
           </ul>
         </article>
@@ -811,6 +833,12 @@ function stageStatusLabel(status: MaterialSufficiencyStageStatus) {
 
 function generationPostureLabel(posture?: MaterialGenerationPosture) {
   return posture ? GENERATION_POSTURE_LABELS[posture] ?? posture : '未记录'
+}
+
+function productionMaterialStatusLabel(status: string) {
+  if (status === 'ready') return '可生产'
+  if (status === 'blocked') return '阻断'
+  return '待补素材'
 }
 
 const videoTypeLabel = computed(() => {

@@ -62,6 +62,10 @@ describe('auditProductionMaterials', () => {
       '',
       '- 传承人姓名待核实',
       '',
+      '### 人物',
+      '',
+      '- 测试传承人：仅补了人物，还不能算完整 asset_split',
+      '',
     ].join('\n'), 'utf8');
     process.env.KB_ROOT = root;
     clearCache();
@@ -70,10 +74,14 @@ describe('auditProductionMaterials', () => {
 
     expect(report.schema_version).toBe('kb-production-material-audit/v1');
     expect(report.totals.entries).toBe(1);
+    expect(report.totals.entries_missing_sources).toBe(0);
+    expect(report.totals.entries_missing_related_locations).toBe(0);
     expect(report.totals.missing_verification_method).toBe(1);
     expect(report.totals.entries_with_unverified_points).toBe(1);
     expect(report.totals.entries_with_asset_split).toBe(0);
+    expect(report.entries[0].has_asset_split).toBe(false);
     expect(report.entries[0].missing_production_fields).toContain('forbidden_expressions');
+    expect(report.entries[0].related_location_count).toBe(1);
     expect(report.entries[0].type_template_audits.some(item => item.video_type === 'heritage_promo' && item.recommended)).toBe(true);
     expect(report.markdown).toContain('素材库生产化审计报告');
   });

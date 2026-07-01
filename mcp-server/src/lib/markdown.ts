@@ -375,10 +375,10 @@ function mapLocalRelationLabel(label: string): LocalRelationType | null {
 }
 
 function findEntryEnd(content: string, fromIndex: number): number {
-  const nextEntryRegex = /\n---\n\n## /g;
-  nextEntryRegex.lastIndex = fromIndex;
-  const nextEntry = nextEntryRegex.exec(content);
-  return nextEntry ? nextEntry.index : content.length;
+  const nextEntryBoundaryRegex = /\n(?:---(?:\n|$)|## )/g;
+  nextEntryBoundaryRegex.lastIndex = fromIndex;
+  const nextEntryBoundary = nextEntryBoundaryRegex.exec(content);
+  return nextEntryBoundary ? nextEntryBoundary.index : content.length;
 }
 
 function parseEntryMetadata(entryContent: string): {
