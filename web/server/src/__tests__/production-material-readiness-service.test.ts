@@ -44,6 +44,26 @@ describe('production-material-readiness-service', () => {
     expect(report?.recommended_next_questions.length).toBeGreaterThan(0);
   });
 
+  it('does not count missing needs as production material evidence', () => {
+    const pack = getProductionMaterialPack('ai_comic_drama');
+    const materialPack = {
+      ...makeMaterialPack('第一格钩子：少年在书院门口发现旧书。主角目标是查清误会。'),
+      missing_needs: [{
+        need_id: 'production_template_reference_images_or_keyframes',
+        label: '参考图或关键帧',
+        message: '参考图或关键帧待补。',
+      }],
+    };
+
+    const report = buildProductionMaterialReadinessReport({
+      productionMaterialPack: pack,
+      materialPack,
+    });
+
+    expect(report?.available_fields).not.toContain('reference_images_or_keyframes');
+    expect(report?.missing_fields.map(field => field.field_id)).toContain('reference_images_or_keyframes');
+  });
+
   it('does not use AI comic fields for heritage production readiness', () => {
     const pack = getProductionMaterialPack('heritage_promo');
     const materialPack = makeMaterialPack('非遗工艺素材：以纸张、颜料和刻刀为核心，记录刻版、刷色、套印、晾晒等制作流程。');

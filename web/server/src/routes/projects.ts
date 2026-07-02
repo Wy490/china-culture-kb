@@ -46,6 +46,7 @@ import {
   addProjectMaterialPackMaterial,
   autoSelectProjectSeedanceShotVersions,
   exportProjectCurrentVersion,
+  exportProjectKnowledgeCandidates,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   getProject,
@@ -247,7 +248,11 @@ projectsRouter.get('/supplement-tasks', async (req, res, next) => {
     const stage = queryEnum(req.query.stage, SUPPLEMENT_TASK_STAGES);
     const blockingLevel = queryEnum(req.query.blocking_level, SUPPLEMENT_TASK_BLOCKING_LEVELS);
     const source = queryEnum(req.query.source, SUPPLEMENT_TASK_SOURCES);
+    const projectId = typeof req.query.project_id === 'string' && req.query.project_id.trim()
+      ? req.query.project_id.trim()
+      : undefined;
     const result = await listProjectSupplementTasks({
+      project_id: projectId,
       status,
       stage,
       blocking_level: blockingLevel,
@@ -301,6 +306,16 @@ projectsRouter.post('/:projectId/export', validateParams(ProjectIdParamSchema), 
   try {
     const { projectId } = req.params as { projectId: string };
     const result = await exportProjectCurrentVersion(projectId);
+    res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.get('/:projectId/knowledge-candidates/export', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  try {
+    const { projectId } = req.params as { projectId: string };
+    const result = await exportProjectKnowledgeCandidates(projectId);
     res.status(result.ok ? 200 : 404).json(result);
   } catch (err) {
     next(err);

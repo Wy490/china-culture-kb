@@ -874,6 +874,32 @@ export interface StoryProjectExportPackage {
   story: StoryGenerateResult;
 }
 
+export interface ProjectKnowledgeCandidateExportItem {
+  task_id: string;
+  label: string;
+  source: KnowledgeSupplementTaskSource;
+  stage?: MaterialSufficiencyStage;
+  blocking_level?: MaterialBlockingLevel;
+  recommended_fields?: string[];
+  updated_at?: string;
+  review_status?: KnowledgeCandidateReviewStatus;
+  review_note?: string;
+  markdown: string;
+  writeback_draft_markdown?: string;
+}
+
+export interface ProjectKnowledgeCandidateExportPackage {
+  schema_version: 'project-knowledge-candidates/v1';
+  exported_at: string;
+  project_id: string;
+  project_title: string;
+  source_entry: string;
+  video_type: VideoType;
+  candidate_count: number;
+  markdown: string;
+  items: ProjectKnowledgeCandidateExportItem[];
+}
+
 export interface ProjectSupplementTaskListItem {
   project_id: string;
   current_story_id: string;
@@ -885,6 +911,7 @@ export interface ProjectSupplementTaskListItem {
 }
 
 export interface ProjectSupplementTaskListFilters {
+  project_id?: string;
   status?: KnowledgeSupplementTaskStatus;
   stage?: MaterialSufficiencyStage;
   blocking_level?: MaterialBlockingLevel;
@@ -5587,6 +5614,7 @@ export interface CreationContract {
 }
 
 export type KnowledgeSupplementTaskStatus = 'open' | 'resolved';
+export type KnowledgeCandidateReviewStatus = 'pending_review' | 'approved' | 'rejected';
 export type KnowledgeSupplementTaskSource =
   | 'knowledge_pack_missing_need'
   | 'material_sufficiency_missing_item'
@@ -5618,11 +5646,20 @@ export interface KnowledgeSupplementTask {
   updated_at?: string;
   resolved_at?: string;
   supplement_note?: string;
+  supplement_field_values?: Record<string, string>;
+  knowledge_candidate_markdown?: string;
+  knowledge_candidate_review_status?: KnowledgeCandidateReviewStatus;
+  knowledge_candidate_review_note?: string;
+  knowledge_candidate_reviewed_at?: string;
+  knowledge_writeback_draft_markdown?: string;
 }
 
 export interface KnowledgeSupplementTaskUpdateRequest {
   status: KnowledgeSupplementTaskStatus;
   supplement_note?: string;
+  supplement_field_values?: Record<string, string>;
+  knowledge_candidate_review_status?: KnowledgeCandidateReviewStatus;
+  knowledge_candidate_review_note?: string;
 }
 
 export interface MultiMatchResult {

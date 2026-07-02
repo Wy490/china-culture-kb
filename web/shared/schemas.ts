@@ -1290,6 +1290,12 @@ export const SupplementTaskIdParamSchema = ProjectIdParamSchema.extend({
 export const KnowledgeSupplementTaskUpdateRequestSchema = z.object({
   status: z.enum(['open', 'resolved']),
   supplement_note: z.string().trim().max(4000, 'supplement_note is too long').optional(),
+  supplement_field_values: z.record(
+    z.string().trim().min(1).max(120),
+    z.string().trim().max(2000),
+  ).optional(),
+  knowledge_candidate_review_status: z.enum(['pending_review', 'approved', 'rejected']).optional(),
+  knowledge_candidate_review_note: z.string().trim().max(2000, 'knowledge_candidate_review_note is too long').optional(),
 });
 
 // ---------------------------------------------------------------------------

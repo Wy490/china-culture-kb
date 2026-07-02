@@ -33,6 +33,7 @@ import type {
   GearsJobSubmitFailure,
   GearsJobSubmitRequest,
   GearsJobSubmitResult,
+  ProjectKnowledgeCandidateExportPackage,
   ProjectSupplementTaskListItem,
   SeedanceAssetBatchImportRequest,
   SeedanceAssetBatchImportResult,
@@ -144,6 +145,7 @@ import {
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import { enrichStoryQualityReport } from './quality-workflow-service.js';
+import { buildProductionMaterialReadinessReport } from './production-material-readiness-service.js';
 import { repairStoryWithQualityWorkflow } from './quality-repair-service.js';
 import { validateDramaticStory } from './dramatic-story.js';
 import { validateMemoryMosaicStory } from './memory-mosaic-service.js';
@@ -6153,6 +6155,68 @@ export async function exportProjectCurrentVersion(projectId: string): Promise<Ap
   }));
 }
 
+export async function exportProjectKnowledgeCandidates(
+  projectId: string,
+): Promise<ApiResponse<ProjectKnowledgeCandidateExportPackage>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, detailResult.error?.message ?? `Project "${projectId}" not found`);
+  }
+
+  const { project, current_story } = detailResult.data;
+  const exportedAt = new Date().toISOString();
+  const items = (current_story.supplement_tasks ?? [])
+    .filter(task => Boolean(task.knowledge_candidate_markdown))
+    .map(task => ({
+      task_id: task.task_id,
+      label: task.label,
+      source: task.source,
+      stage: task.stage,
+      blocking_level: task.blocking_level,
+      recommended_fields: task.recommended_fields,
+      updated_at: task.updated_at ?? task.resolved_at,
+      review_status: task.knowledge_candidate_review_status,
+      review_note: task.knowledge_candidate_review_note,
+      markdown: task.knowledge_candidate_markdown!,
+      writeback_draft_markdown: task.knowledge_writeback_draft_markdown,
+    }));
+  const markdown = [
+    `# ${project.title} 知识库候选稿`,
+    '',
+    `- 项目 ID：${project.project_id}`,
+    `- 来源条目：${project.source_entry}`,
+    `- 成片类型：${project.video_type}`,
+    `- 导出时间：${exportedAt}`,
+    `- 候选稿数量：${items.length}`,
+    '',
+    '> 这些内容来自项目补充任务，需人工核实来源、地点、核实方法和待核点后，才能写入省份 Markdown。',
+    '',
+    ...items.flatMap((item, index) => [
+      `---`,
+      '',
+      `## ${index + 1}. ${item.label}`,
+      '',
+      item.markdown,
+      '',
+      ...(item.writeback_draft_markdown
+        ? ['### 已通过审稿的正式写入草案', '', item.writeback_draft_markdown, '']
+        : []),
+    ]),
+  ].join('\n');
+
+  return success({
+    schema_version: 'project-knowledge-candidates/v1',
+    exported_at: exportedAt,
+    project_id: project.project_id,
+    project_title: project.title,
+    source_entry: project.source_entry,
+    video_type: project.video_type,
+    candidate_count: items.length,
+    markdown,
+    items,
+  });
+}
+
 function buildProjectExportPackage(params: {
   project: StoryProjectMeta;
   story: StoryGenerateResult;
@@ -6526,6 +6590,7 @@ export async function listProjectSupplementTasks(
 
   const items: ProjectSupplementTaskListItem[] = [];
   for (const project of projectsResult.data) {
+    if (filters.project_id && project.project_id !== filters.project_id) continue;
     const detailResult = await getProject(project.project_id);
     if (!detailResult.ok || !detailResult.data) continue;
     for (const task of detailResult.data.current_story.supplement_tasks ?? []) {
@@ -7853,21 +7918,45 @@ export async function updateProjectSupplementTask(
   }
 
   const updatedAt = new Date().toISOString();
+  const requestFieldValues = normalizeSupplementFieldValues(request.supplement_field_values);
   const updatedTasks = tasks.map((task, index) => {
     if (index !== taskIndex) return task;
-    const supplementNote = request.supplement_note?.trim();
+    const supplementFieldValues = mergeSupplementFieldValues(task.supplement_field_values, requestFieldValues);
+    const incomingSupplementNote = request.supplement_note?.trim()
+      || supplementNoteFromFieldValues(supplementFieldValues);
+    const supplementNote = incomingSupplementNote || task.supplement_note;
+    const knowledgeCandidateMarkdown = request.status === 'resolved' && supplementNote
+      ? buildKnowledgeCandidateMarkdown(current_story, task, supplementNote, supplementFieldValues, updatedAt)
+      : undefined;
+    const reviewStatus = request.knowledge_candidate_review_status
+      ?? task.knowledge_candidate_review_status
+      ?? (knowledgeCandidateMarkdown ? 'pending_review' : undefined);
+    const reviewNote = request.knowledge_candidate_review_note?.trim()
+      || task.knowledge_candidate_review_note;
+    const reviewTouched = Boolean(request.knowledge_candidate_review_status);
+    const writebackDraft = reviewStatus === 'approved' && knowledgeCandidateMarkdown && supplementNote
+      ? buildKnowledgeWritebackDraftMarkdown(current_story, task, supplementNote, supplementFieldValues, updatedAt, reviewNote)
+      : undefined;
     return {
       ...task,
       status: request.status,
       updated_at: updatedAt,
       resolved_at: request.status === 'resolved' ? updatedAt : undefined,
-      supplement_note: supplementNote || task.supplement_note,
+      supplement_note: supplementNote,
+      supplement_field_values: supplementFieldValues,
+      knowledge_candidate_markdown: knowledgeCandidateMarkdown,
+      knowledge_candidate_review_status: request.status === 'resolved' ? reviewStatus : undefined,
+      knowledge_candidate_review_note: request.status === 'resolved' ? reviewNote : undefined,
+      knowledge_candidate_reviewed_at: request.status === 'resolved'
+        ? (reviewTouched ? updatedAt : task.knowledge_candidate_reviewed_at)
+        : undefined,
+      knowledge_writeback_draft_markdown: request.status === 'resolved' ? writebackDraft : undefined,
     };
   });
   const materialRefresh = applySupplementTaskMaterialUpdate(
     current_story,
     updatedTasks[taskIndex],
-    request.supplement_note?.trim(),
+    updatedTasks[taskIndex].supplement_note,
     updatedAt,
   );
   const updatedStory: StoryGenerateResult = {
@@ -7997,6 +8086,39 @@ function refreshStoryMaterialContract(
     storyStructure,
     narrativePatternIds: story.creation_contract?.narrative_pattern_ids ?? [],
   });
+  const productionMaterialReadiness = buildProductionMaterialReadinessReport({
+    productionMaterialPack: story.production_material_pack,
+    materialPack,
+    contextText: productionMaterialContextText(story),
+  }) ?? story.production_material_readiness;
+  const storyForQuality: StoryGenerateResult = {
+    ...story,
+    material_pack: materialPack,
+    knowledge_pack: knowledgePack,
+    creation_use_case: creationUseCase,
+    truth_mode: truthMode,
+    material_sufficiency: materialSufficiency,
+    creation_contract: creationContract,
+    production_material_readiness: productionMaterialReadiness,
+  };
+  const gearsDelivery = story.gears_delivery
+    ? ensureGearsDeliveryPackage(storyForQuality)
+    : story.gears_delivery;
+  const qualityReport = story.quality_report
+    ? enrichStoryQualityReport({
+      story: {
+        ...storyForQuality,
+        gears_delivery: gearsDelivery,
+      },
+      qualityReport: {
+        ...story.quality_report,
+        truth_mode: truthMode,
+        material_sufficiency_report: materialSufficiency,
+      },
+      narrativePatternIds: creationContract.narrative_pattern_ids,
+      gearsDelivery,
+    })
+    : story.quality_report;
   return {
     material_pack: materialPack,
     knowledge_pack: knowledgePack,
@@ -8004,14 +8126,41 @@ function refreshStoryMaterialContract(
     truth_mode: truthMode,
     material_sufficiency: materialSufficiency,
     creation_contract: creationContract,
-    quality_report: story.quality_report
+    production_material_readiness: productionMaterialReadiness,
+    gears_delivery: gearsDelivery,
+    quality_report: qualityReport
       ? {
-        ...story.quality_report,
+        ...qualityReport,
         truth_mode: truthMode,
         material_sufficiency_report: materialSufficiency,
       }
-      : story.quality_report,
+      : qualityReport,
   };
+}
+
+function productionMaterialContextText(story: StoryGenerateResult): string {
+  return [
+    story.title,
+    story.logline,
+    story.theme,
+    story.full_text,
+    story.credibility_note,
+    ...story.scene_breakdown.flatMap(scene => [
+      scene.title,
+      scene.location,
+      scene.plot,
+      scene.key_action,
+      scene.visual_prompt,
+      scene.dialogue_or_narration,
+      scene.cultural_note,
+    ]),
+    ...story.gears_segments.flatMap(segment => [
+      segment.script_text,
+      segment.purpose,
+      ...(segment.visual_focus ?? []),
+      ...(segment.cultural_constraints ?? []),
+    ]),
+  ].filter((item): item is string => Boolean(item)).join('\n');
 }
 
 function buildMaterialPackWithManualMaterial(
@@ -8084,12 +8233,13 @@ function buildMaterialPackWithSupplement(
     role_in_story: task.description,
     provenance: `素材补充任务 ${task.task_id} resolved at ${updatedAt}`,
     linked_entry_name: story.source_entry,
-    tags: ([
+    tags: uniqueStrings(([
       task.stage,
       task.blocking_level,
       task.source,
       task.category,
-    ].filter(Boolean) as string[]),
+      ...(task.recommended_fields ?? []),
+    ].filter(Boolean) as string[])),
   };
   const supporting = [
     ...base.supporting_materials.filter(item => item.material_id !== materialId),
@@ -8113,6 +8263,129 @@ function buildMaterialPackWithSupplement(
     ]),
     overall_confidence: Math.min(1, Math.max(base.overall_confidence, (base.overall_confidence + 0.1))),
   };
+}
+
+function normalizeSupplementFieldValues(values: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (!values) return undefined;
+  const normalized = Object.fromEntries(
+    Object.entries(values)
+      .map(([key, value]) => [key.trim(), value.trim()] as const)
+      .filter(([key, value]) => key.length > 0 && value.length > 0),
+  );
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function mergeSupplementFieldValues(
+  existing: Record<string, string> | undefined,
+  incoming: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+  const merged = {
+    ...(existing ?? {}),
+    ...(incoming ?? {}),
+  };
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function supplementNoteFromFieldValues(fieldValues: Record<string, string> | undefined): string | undefined {
+  if (!fieldValues) return undefined;
+  const lines = Object.entries(fieldValues).map(([field, value]) => `${humanizeSupplementField(field)}：${value}`);
+  return lines.length > 0 ? lines.join('\n') : undefined;
+}
+
+function buildKnowledgeCandidateMarkdown(
+  story: StoryGenerateResult,
+  task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
+  supplementNote: string,
+  fieldValues: Record<string, string> | undefined,
+  updatedAt: string,
+): string {
+  const lines = [
+    `## 知识库候选稿：${task.label}`,
+    '',
+    `- 来源项目：${story.title}`,
+    `- 来源条目：${story.source_entry}`,
+    `- 成片类型：${story.video_type}`,
+    `- 补充任务：${task.task_id}`,
+    `- 生成时间：${updatedAt}`,
+    `- 审稿状态：待人工核实后再写入省份知识库`,
+    '',
+    '### 补充内容',
+    supplementNote,
+  ];
+  if (task.recommended_fields?.length || fieldValues) {
+    lines.push('', '### 字段映射');
+    for (const field of task.recommended_fields ?? []) {
+      lines.push(`- ${humanizeSupplementField(field)}：${fieldValues?.[field] ?? '待审稿补齐'}`);
+    }
+    for (const [field, value] of Object.entries(fieldValues ?? {})) {
+      if (task.recommended_fields?.includes(field)) continue;
+      lines.push(`- ${humanizeSupplementField(field)}：${value}`);
+    }
+  }
+  lines.push(
+    '',
+    '### 审稿提示',
+    '- 不直接覆盖既有知识库事实。',
+    '- 需要补来源、地点、核实方法和待核点后，才能转为正式条目字段。',
+    '- 若该内容只适用于当前项目，应保留在项目素材包，不写入省份 Markdown。',
+  );
+  return lines.join('\n');
+}
+
+function buildKnowledgeWritebackDraftMarkdown(
+  story: StoryGenerateResult,
+  task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
+  supplementNote: string,
+  fieldValues: Record<string, string> | undefined,
+  updatedAt: string,
+  reviewNote: string | undefined,
+): string {
+  const lines = [
+    `## 正式知识库写入草案：${story.source_entry}｜${task.label}`,
+    '',
+    `- 来源项目：${story.title}`,
+    `- 来源条目：${story.source_entry}`,
+    `- 成片类型：${story.video_type}`,
+    `- 补充任务：${task.task_id}`,
+    `- 审稿时间：${updatedAt}`,
+    `- 审稿备注：${reviewNote || '待补人工审稿备注'}`,
+    '',
+    '### 拟写入字段',
+    '',
+    '- 已确认事实：',
+    ...supplementNote.split('\n').map(line => `  - ${line}`),
+    '- 待核事实：待补外部来源核验。',
+    '- 可戏剧化空间：仅限当前项目创作使用；写入知识库前需确认是否具备普适性。',
+    '- 禁用表达：不得把项目补录内容直接表述为已核史实，除非来源补齐。',
+    '',
+    '### 来源与核实方法',
+    '',
+    '- 来源：项目补充任务与人工补录说明。',
+    '- 核实方法：补充正式来源链接、实地/馆藏/官方资料或可引用出版物后再入库。',
+    '- 待核实点：补录内容是否适用于原始文化条目，而不只是当前成片项目。',
+  ];
+  if (fieldValues && Object.keys(fieldValues).length > 0) {
+    lines.push('', '### 生产字段映射', '');
+    for (const [field, value] of Object.entries(fieldValues)) {
+      lines.push(`- ${humanizeSupplementField(field)}：${value}`);
+    }
+  }
+  lines.push(
+    '',
+    '### asset_split 建议',
+    '',
+    '- 主体资产：按补录内容提取人物、地点、道具或画面基准。',
+    '- 生产用途：先作为项目级素材；通过来源核验后再升级为知识库生产卡片字段。',
+    '- 审稿边界：本草案不能自动写入 `data/provinces/*.md`。',
+  );
+  return lines.join('\n');
+}
+
+function humanizeSupplementField(field: string): string {
+  return field
+    .split('_')
+    .filter(Boolean)
+    .join(' ');
 }
 
 function materialPackForStory(story: StoryGenerateResult): MaterialPack {

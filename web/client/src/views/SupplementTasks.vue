@@ -39,6 +39,11 @@
       </select>
     </section>
 
+    <div v-if="projectFilter" class="supplement-page__active-filter">
+      <span>当前项目：{{ projectFilter }}</span>
+      <button type="button" @click="clearProjectFilter">查看全部项目</button>
+    </div>
+
     <section class="supplement-page__summary">
       <div>
         <span>全部</span>
@@ -84,6 +89,19 @@
           <p v-if="item.task.supplement_note" class="supplement-page__note">
             <strong>素材补充说明：</strong>{{ item.task.supplement_note }}
           </p>
+          <div v-if="item.task.knowledge_candidate_markdown" class="supplement-page__candidate">
+            <div class="supplement-page__candidate-head">
+              <strong>知识库候选稿</strong>
+              <span :class="['supplement-page__review', `supplement-page__review--${item.task.knowledge_candidate_review_status ?? 'pending_review'}`]">
+                {{ reviewStatusLabel(item.task.knowledge_candidate_review_status) }}
+              </span>
+            </div>
+            <pre>{{ item.task.knowledge_candidate_markdown }}</pre>
+            <template v-if="item.task.knowledge_writeback_draft_markdown">
+              <strong class="supplement-page__candidate-subtitle">正式写入草案</strong>
+              <pre>{{ item.task.knowledge_writeback_draft_markdown }}</pre>
+            </template>
+          </div>
           <div v-if="item.task.recommended_fields?.length" class="supplement-page__fields">
             <span v-for="field in item.task.recommended_fields" :key="field">{{ field }}</span>
           </div>
@@ -92,6 +110,17 @@
           </div>
           <p v-if="item.task.intake_prompt" class="supplement-page__prompt">{{ item.task.intake_prompt }}</p>
           <div v-if="item.task.status === 'open'" class="supplement-page__editor">
+            <div v-if="item.task.recommended_fields?.length" class="supplement-page__field-editor">
+              <label v-for="field in item.task.recommended_fields" :key="field">
+                <span>{{ fieldLabel(field) }}</span>
+                <textarea
+                  class="supplement-page__field-textarea"
+                  :value="fieldDraftValue(item, field)"
+                  :placeholder="`补充 ${fieldLabel(field)} 的事实、来源、画面或生产边界`"
+                  @input="updateFieldDraft(item.task.task_id, field, $event)"
+                />
+              </label>
+            </div>
             <textarea
               class="supplement-page__textarea"
               :value="drafts[item.task.task_id] ?? item.task.supplement_note ?? ''"
@@ -130,8 +159,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { listSupplementTasks, updateProjectSupplementTask } from '@/api/projects'
 import type {
+  KnowledgeCandidateReviewStatus,
   KnowledgeSupplementTaskCategory,
   KnowledgeSupplementTaskSource,
   KnowledgeSupplementTaskStatus,
@@ -141,16 +172,28 @@ import type {
   VideoType,
 } from '@shared/types'
 
+const route = useRoute()
+const STATUS_FILTERS: KnowledgeSupplementTaskStatus[] = ['open', 'resolved']
+const STAGE_FILTERS: MaterialSufficiencyStage[] = ['minimum_viable_story', 'script_ready', 'production_ready']
+const BLOCKING_FILTERS: MaterialBlockingLevel[] = ['blocking', 'risk', 'optional']
+const SOURCE_FILTERS: KnowledgeSupplementTaskSource[] = [
+  'knowledge_pack_missing_need',
+  'material_sufficiency_missing_item',
+  'production_material_missing_field',
+]
+
 const tasks = ref<ProjectSupplementTaskListItem[]>([])
 const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
-const statusFilter = ref('')
-const stageFilter = ref('')
-const blockingFilter = ref('')
-const sourceFilter = ref('')
+const statusFilter = ref<KnowledgeSupplementTaskStatus | ''>(queryEnum(route.query.status, STATUS_FILTERS))
+const stageFilter = ref<MaterialSufficiencyStage | ''>(queryEnum(route.query.stage, STAGE_FILTERS))
+const blockingFilter = ref<MaterialBlockingLevel | ''>(queryEnum(route.query.blocking_level, BLOCKING_FILTERS))
+const sourceFilter = ref<KnowledgeSupplementTaskSource | ''>(queryEnum(route.query.source, SOURCE_FILTERS))
+const projectFilter = ref(queryString(route.query.project_id))
 const updatingTaskId = ref('')
 const drafts = reactive<Record<string, string>>({})
+const fieldDrafts = reactive<Record<string, Record<string, string>>>({})
 
 const filteredTasks = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -159,20 +202,26 @@ const filteredTasks = computed(() => {
     const matchesStage = !stageFilter.value || item.task.stage === stageFilter.value
     const matchesBlocking = !blockingFilter.value || item.task.blocking_level === blockingFilter.value
     const matchesSource = !sourceFilter.value || item.task.source === sourceFilter.value
+    const matchesProject = !projectFilter.value || item.project_id === projectFilter.value
     const text = [
+      item.project_id,
       item.project_title,
       item.source_entry,
       item.task.label,
       item.task.description,
       item.task.supplement_note ?? '',
+      item.task.knowledge_candidate_markdown ?? '',
+      item.task.knowledge_writeback_draft_markdown ?? '',
+      item.task.knowledge_candidate_review_note ?? '',
       item.task.intake_prompt ?? '',
       item.task.stage ? stageLabel(item.task.stage) : '',
       item.task.blocking_level ? blockingLabel(item.task.blocking_level) : '',
       sourceLabel(item.task.source),
       ...(item.task.affects ?? []),
       ...(item.task.recommended_fields ?? []),
+      ...Object.values(item.task.supplement_field_values ?? {}),
     ].join(' ').toLowerCase()
-    return matchesStatus && matchesStage && matchesBlocking && matchesSource && (!query || text.includes(query))
+    return matchesStatus && matchesStage && matchesBlocking && matchesSource && matchesProject && (!query || text.includes(query))
   })
 })
 
@@ -221,6 +270,21 @@ function sourceLabel(source: KnowledgeSupplementTaskSource): string {
   return map[source]
 }
 
+function reviewStatusLabel(status?: KnowledgeCandidateReviewStatus): string {
+  if (status === 'approved') return '已通过'
+  if (status === 'rejected') return '已驳回'
+  return '待审稿'
+}
+
+function queryString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function queryEnum<T extends string>(value: unknown, allowed: T[]): T | '' {
+  const text = queryString(value)
+  return allowed.includes(text as T) ? text as T : ''
+}
+
 function typeLabel(type: VideoType): string {
   const map: Record<string, string> = {
     character_story: '人物故事',
@@ -252,10 +316,37 @@ function updateDraft(taskId: string, event: Event) {
   drafts[taskId] = (event.target as HTMLTextAreaElement).value
 }
 
+function updateFieldDraft(taskId: string, field: string, event: Event) {
+  if (!fieldDrafts[taskId]) fieldDrafts[taskId] = {}
+  fieldDrafts[taskId][field] = (event.target as HTMLTextAreaElement).value
+}
+
+function fieldDraftValue(item: ProjectSupplementTaskListItem, field: string): string {
+  return fieldDrafts[item.task.task_id]?.[field] ?? item.task.supplement_field_values?.[field] ?? ''
+}
+
+function fieldLabel(field: string): string {
+  return field
+    .split('_')
+    .filter(Boolean)
+    .join(' ')
+}
+
+function normalizedFieldDrafts(taskId: string): Record<string, string> | undefined {
+  const values = fieldDrafts[taskId]
+  if (!values) return undefined
+  const normalized = Object.fromEntries(
+    Object.entries(values)
+      .map(([field, value]) => [field, value.trim()] as const)
+      .filter(([, value]) => value.length > 0),
+  )
+  return Object.keys(normalized).length > 0 ? normalized : undefined
+}
+
 async function loadTasks() {
   loading.value = true
   error.value = ''
-  const res = await listSupplementTasks()
+  const res = await listSupplementTasks(projectFilter.value ? { project_id: projectFilter.value } : {})
   if (res.ok && res.data) {
     tasks.value = res.data
   } else {
@@ -264,14 +355,25 @@ async function loadTasks() {
   loading.value = false
 }
 
+async function clearProjectFilter() {
+  projectFilter.value = ''
+  await loadTasks()
+}
+
 async function updateTask(item: ProjectSupplementTaskListItem, status: KnowledgeSupplementTaskStatus) {
   updatingTaskId.value = item.task.task_id
   error.value = ''
   const note = drafts[item.task.task_id]?.trim()
-  const body = note ? { status, supplement_note: note } : { status }
+  const supplementFieldValues = normalizedFieldDrafts(item.task.task_id)
+  const body = {
+    status,
+    ...(note ? { supplement_note: note } : {}),
+    ...(supplementFieldValues ? { supplement_field_values: supplementFieldValues } : {}),
+  }
   const res = await updateProjectSupplementTask(item.project_id, item.task.task_id, body)
   if (res.ok) {
     delete drafts[item.task.task_id]
+    delete fieldDrafts[item.task.task_id]
     await loadTasks()
   } else {
     error.value = res.error?.message ?? '更新素材补充任务失败'
@@ -329,6 +431,30 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 14px;
+}
+
+.supplement-page__active-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  border: 1px solid #c7d8e8;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #f4f8fb;
+  color: #455866;
+  font-size: 13px;
+}
+
+.supplement-page__active-filter button {
+  border: 1px solid #c7d8e8;
+  border-radius: 4px;
+  background: #fff;
+  color: #2b6f9f;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .supplement-page__search,
@@ -465,6 +591,65 @@ onMounted(async () => {
   background: #fffaf0;
 }
 
+.supplement-page__candidate {
+  margin-bottom: 8px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f8fafb;
+}
+
+.supplement-page__candidate-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.supplement-page__candidate strong {
+  color: #22313f;
+  font-size: 13px;
+}
+
+.supplement-page__candidate-subtitle {
+  display: block;
+  margin-top: 10px;
+}
+
+.supplement-page__review {
+  border: 1px solid #d7dee5;
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #455866;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.supplement-page__review--approved {
+  border-color: #b8dbc8;
+  color: #247447;
+}
+
+.supplement-page__review--rejected {
+  border-color: #f0b8b0;
+  color: #a83224;
+}
+
+.supplement-page__review--pending_review {
+  border-color: #efcf8a;
+  color: #8a5a00;
+}
+
+.supplement-page__candidate pre {
+  max-height: 220px;
+  margin: 8px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #4c5e6f;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 .supplement-page__prompt {
   padding: 8px 10px;
   border-left: 3px solid #7aa6d8;
@@ -479,9 +664,25 @@ onMounted(async () => {
   margin-top: 10px;
 }
 
-.supplement-page__textarea {
+.supplement-page__field-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.supplement-page__field-editor label {
+  display: grid;
+  gap: 5px;
+}
+
+.supplement-page__field-editor span {
+  color: #455866;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.supplement-page__textarea,
+.supplement-page__field-textarea {
   width: 100%;
-  min-height: 90px;
   padding: 9px 10px;
   border: 1px solid #d7dee5;
   border-radius: 6px;
@@ -490,6 +691,14 @@ onMounted(async () => {
   font: inherit;
   font-size: 14px;
   line-height: 1.5;
+}
+
+.supplement-page__textarea {
+  min-height: 90px;
+}
+
+.supplement-page__field-textarea {
+  min-height: 70px;
 }
 
 .supplement-page__task-action {

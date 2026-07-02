@@ -12,8 +12,14 @@
 6. 接入 Story Agent 自动调用：按 `video_type` 读取当前类型生产素材模板，写入 prompt、生成结果和 `_request_meta`。
 7. 新增生产素材 readiness：模板字段不只是进入 prompt，还会生成缺口报告和补库任务。
 8. 完成 Phase 3 核心联动：`production_material_readiness` 已进入 `quality_report`，会参与 `passed` 判断、生成 `production_material` 修复动作，并让 GEARS 交付包在生产素材未达 `production_ready` 时降级为 `needs_input`。
-9. 完成 Phase 4 首版前端接入：项目详情和生成结果页已显示 Production Material 质量卡与生产素材缺口；补充任务页已支持筛选 `production_material_missing_field`。
+9. 推进 Phase 4 前端工作台：项目详情和生成结果页已显示 Production Material 质量卡与生产素材缺口；补充任务页已支持筛选 `production_material_missing_field`；项目详情页已新增当前成片类型生产模板面板，展示 required fields、prompt layers、三阶段 gate、缺口字段和推荐补充问题。
 10. 完成 Phase 5 首版模板草案流水线：新增 `kb_draft_production_pack` / `npm run kb:draft-production-pack`，可从目标类型来源观察生成候选 `ProductionMaterialPack`、审稿清单和警告；已生成 AI 漫剧草案报告。
+11. 补跑 AI 漫剧准真实生成验收：`20260702-story-5zhd4151f8c7--ai_comic_drama` 已落盘，包含 5 个 scene、5 个 GEARS segment、`production_material_readiness=needs_input`、质量报告 `production_material` 修复动作、GEARS delivery `needs_input` 和 5 个补充任务。
+12. 补齐 Phase 4 任务闭环：项目详情页的生产素材模板面板已能跳转到当前项目的 `production_material_missing_field` 补充任务筛选页，缺口字段会映射已有补充任务并支持一键标记完成/重新打开，同时展示当前类型的样板条目摘要。
+13. 补强生产素材补充写回：完成 `production_material_missing_field` 任务并填写补充说明后，会写回 `material_pack`，重新计算 `production_material_readiness`，刷新质量报告中的 Production Material 卡片和已有 GEARS delivery；同时修正 `missing_needs` 被误当作字段证据的 false positive。
+14. 推进字段级补录与候选稿：补充任务支持 `supplement_field_values`，前端按 `recommended_fields` 显示字段级输入；任务完成后自动生成 `knowledge_candidate_markdown`，可在补充任务页和项目详情页回看；补充任务列表 API 支持 `project_id` 过滤。
+15. 建立候选稿导出首版：新增项目知识库候选稿导出包 `project-knowledge-candidates/v1`，项目详情页可一键复制候选稿 Markdown 审稿包，便于人工核实后再转正式知识库草案。
+16. 补齐候选稿审稿首版：候选稿支持 `pending_review / approved / rejected` 审稿状态；项目详情页可标记通过、驳回或待审；通过后自动生成 `knowledge_writeback_draft_markdown` 正式知识库写入草案，并进入候选稿导出包。
 
 ## 原始诊断必须并入路线
 
@@ -160,16 +166,30 @@
 - 已让 production readiness 参与 `quality_report.passed`：状态非 `ready`、分数低于 70 或有阻塞字段时，质量报告自动降级。
 - 已新增 `production_material` 修复动作，repair prompt 会按缺字段生成素材补充清单。
 - 已让 GEARS 交付包写入 `delivery_status`：生产素材未达 `production_ready` 时降级为 `needs_input`，并在 `validation_notes` 和 Markdown 中显示缺口。
-- 待继续：把这些状态接入前端工作台的质量面板和补充任务筛选。
+- 已让补充任务写回后重新计算 `production_material_readiness`，并同步刷新质量报告和已有 GEARS delivery。
+- 已修正 readiness 检索：`missing_needs` 属于缺口声明，不再被当作生产素材证据。
+- 已通过准真实 AI 漫剧生成项目 `20260702-story-5zhd4151f8c7--ai_comic_drama` 验证落盘链路。
+- 待继续：补 Seedance/GEARS 更下游真实交付任务验收。
 
 ### Phase 4：前端工作台
 
-状态：首版已完成，细化交互待继续。
+状态：任务闭环首版已完成，下一步转向真实素材补录与更下游交付验收。
 
 - 已在项目详情页质量区显示 Production Material 分数、状态和缺口摘要。
 - 已在 `StoryResult` 的可修复质量报告区显示 Production Material 卡片。
 - 已在补充任务页支持筛选 `production_material_missing_field`。
-- 待继续：在项目详情页单独展示当前类型生产模板、三阶段 gate 和推荐补充问题。
+- 已在项目详情页单独展示当前类型生产模板、三阶段 gate、required fields、prompt layers、缺口字段和推荐补充问题。
+- 已支持从项目详情页跳转到当前项目的生产素材补充任务列表，URL query 会自动筛选状态、来源和项目。
+- 已支持定位缺口字段对应的补充任务，并在模板面板直接标记完成或重新打开。
+- 已展示当前类型 `sample_entries` 摘要，供创作和补库时对照。
+- 已完成补充说明到 `material_pack` 的项目级写回，并刷新生产素材 readiness。
+- 已给补充任务接入字段级素材录入表单，字段值会随任务更新写入 `supplement_field_values`。
+- 已把可复用补录内容自动整理成 `knowledge_candidate_markdown` 候选稿；候选稿只进入项目任务，不直接写入省份 Markdown。
+- 已让任务列表 API 支持 `project_id` 过滤，项目详情页跳转后可只加载当前项目任务。
+- 已新增候选稿导出包与项目详情页复制入口，支持把当前项目所有候选稿汇总为 Markdown 审稿包。
+- 已新增候选稿审稿状态：待审、通过、驳回。
+- 已在项目详情页支持候选稿审稿操作；通过后自动生成正式知识库写入草案。
+- 待继续：把通过审稿的写入草案转成可下载 patch/PR 草案，并接入省份 Markdown 人工写入队列。
 
 ### Phase 5：在线模板采集流水线
 
@@ -238,7 +258,7 @@
 1. 回溯补源：`source_location_backfill` 已完成 37/37（100%），后续只需在新增条目进入队列时增量处理。
 2. 审稿写回 `asset_split`：剩余 0 条，正式完整写回已到 169/169（100%）。
 3. 处理来源等级缺口和少量 `era` 精细化缺口。
-4. 把 readiness 接进质量报告和 GEARS 交付状态：核心链路已完成，下一步做前端显示。
-5. 在前端显示生产模板缺口：首版已完成，下一步补模板详情和 gate 展示。
+4. 把 readiness 接进质量报告和 GEARS 交付状态：核心链路和前端显示已完成，下一步做 Seedance/GEARS 更下游真实交付验收。
+5. 在前端显示生产模板缺口：模板详情、gate、样板条目、任务跳转/状态更新、项目级写回刷新、字段级录入、知识库候选稿、导出审稿包、审稿状态和正式写入草案已完成，下一步补省份 Markdown patch/PR 草案。
 6. 扩第四类高频类型模板，建议从 `social_short` 或 `explainer_video` 选一个。
 7. 在线模板采集命令：草案生成首版已完成，下一步补联网采集和正式写入审稿流。

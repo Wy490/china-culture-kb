@@ -17,6 +17,7 @@ import {
   deleteProject,
   deleteProjects,
   exportProjectCurrentVersion,
+  exportProjectKnowledgeCandidates,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   getProject,
@@ -52,6 +53,8 @@ import {
   updateProjectSupplementTask,
   uploadProjectSeedanceAssetFile,
 } from '../services/project-service.js';
+import { getProductionMaterialPack } from '../services/production-material-pack-service.js';
+import { buildProductionMaterialReadinessReport } from '../services/production-material-readiness-service.js';
 
 const TEMP_DIRS: string[] = [];
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
@@ -3803,13 +3806,14 @@ describe('project-service', () => {
         },
       ],
     };
-    await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
 
     const allTasks = await listProjectSupplementTasks();
     const openTasks = await listProjectSupplementTasks('open');
     const scriptReadyTasks = await listProjectSupplementTasks({ stage: 'script_ready' });
     const blockingTasks = await listProjectSupplementTasks({ blocking_level: 'blocking' });
     const materialGateTasks = await listProjectSupplementTasks({ source: 'material_sufficiency_missing_item' });
+    const projectTasks = await listProjectSupplementTasks({ project_id: enriched.project_id });
 
     expect(allTasks.ok).toBe(true);
     expect(allTasks.data).toHaveLength(2);
@@ -3821,6 +3825,7 @@ describe('project-service', () => {
     expect(scriptReadyTasks.data?.map(item => item.task.need_id)).toEqual(['supporting_characters']);
     expect(blockingTasks.data?.map(item => item.task.need_id)).toEqual(['supporting_characters']);
     expect(materialGateTasks.data?.map(item => item.task.need_id)).toEqual(['regional_context']);
+    expect(projectTasks.data?.map(item => item.project_id)).toEqual([enriched.project_id, enriched.project_id]);
   });
 
   it('updates supplement task status on the current project and source story file', async () => {
@@ -3876,6 +3881,149 @@ describe('project-service', () => {
     expect(rawSource.supplement_tasks?.[0].supplement_note).toContain('疑案文书');
     expect(rawSource.material_pack?.supporting_materials.some(material => material.summary.includes('疑案文书'))).toBe(true);
     expect(rawSource.material_sufficiency?.schema_version).toBe('material-sufficiency/v1');
+  });
+
+  it('refreshes production material readiness after resolving production material supplement tasks', async () => {
+    const productionPack = getProductionMaterialPack('ai_comic_drama');
+    expect(productionPack).toBeTruthy();
+
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const materialPack: StoryGenerateResult['material_pack'] = {
+      schema_version: 'material-pack/v1',
+      primary_materials: [{
+        material_id: 'ai-comic-core',
+        title: '青石巷 AI 漫剧设定',
+        summary: '第一格钩子、世界观、主角目标、对手压力、关系碰撞、场景锚点、对白气泡、情绪节拍、镜头提示词分层、结尾钩子和禁用边界已整理。',
+        source_type: 'manual_note',
+        purpose: ['fact_basis', 'visual_asset', 'creative_boundary'],
+        confidence: 0.72,
+        tags: ['AI漫剧', '青石巷'],
+      }],
+      supporting_materials: [],
+      reference_materials: [],
+      visual_assets: [],
+      verified_facts: ['虚构边界：本项目为 fictional_original，不声称为真实史实。'],
+      uncertain_claims: ['画面基准待补。'],
+      creative_space: ['可用漫画分镜方式表现青石巷追问。'],
+      missing_needs: [{
+        need_id: 'production_template_reference_images_or_keyframes',
+        label: '画面基准',
+        message: '需要补充角色图像基准。',
+      }],
+      overall_confidence: 0.72,
+    };
+    const initialReadiness = buildProductionMaterialReadinessReport({
+      productionMaterialPack: productionPack!,
+      materialPack,
+      contextText: 'AI漫剧，第一格钩子，世界观，主角目标，场景锚点。',
+    });
+    expect(initialReadiness?.missing_fields.map(field => field.field_id)).toContain('reference_images_or_keyframes');
+
+    const taskId = '20260609-story-abc1--production-template--reference_images_or_keyframes';
+    const baseStory = makeStory();
+    const story: StoryGenerateResult = {
+      ...baseStory,
+      storyId: '20260609-story-ai-comic',
+      title: '青石巷追问',
+      video_type: 'ai_comic_drama',
+      source_entry: '青石巷漫剧测试条目',
+      material_pack: materialPack,
+      production_material_pack: productionPack,
+      production_material_readiness: initialReadiness,
+      creation_use_case: 'original_ai_comic',
+      truth_mode: 'fictional_original',
+      quality_report: {
+        ...baseStory.quality_report!,
+        video_type: 'ai_comic_drama',
+        genre_score: 82,
+      },
+      gears_segments: baseStory.gears_segments.map(segment => ({
+        ...segment,
+        video_type: 'ai_comic_drama',
+      })),
+      supplement_tasks: [{
+        task_id: taskId,
+        need_id: 'production_template_reference_images_or_keyframes',
+        label: '参考图或关键帧',
+        description: '补齐「AI漫剧」生产模板字段「参考图或关键帧」。',
+        stage: 'production_ready',
+        blocking_level: 'risk',
+        affects: ['production_material_readiness', 'gears_delivery'],
+        recommended_fields: ['reference_images_or_keyframes'],
+        recommended_question: '请补充角色参考图、关键帧或画面基准。',
+        status: 'open',
+        source: 'production_material_missing_field',
+        created_at: '2026-06-09T10:00:00.000Z',
+      }],
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+    const storyPath = resolve(storyDir, `${story.storyId}.json`);
+    await mkdir(storyDir, { recursive: true });
+    await writeFile(storyPath, JSON.stringify({
+      ...story,
+      project_id: enriched.project_id,
+      current_version_id: enriched.current_version_id,
+      _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
+    }, null, 2), 'utf-8');
+
+    const updated = await updateProjectSupplementTask(enriched.project_id!, taskId, {
+      status: 'resolved',
+      supplement_field_values: {
+        reference_images_or_keyframes: '参考图：主角青绿色短袄、银色发簪、圆眼漫画脸；关键帧：巷口回头、手中木牌特写、雨后青石反光。',
+      },
+    });
+
+    const refreshedReadiness = updated.data?.current_story.production_material_readiness;
+    expect(updated.ok).toBe(true);
+    expect(refreshedReadiness?.score).toBeGreaterThan(initialReadiness!.score);
+    expect(refreshedReadiness?.available_fields).toContain('reference_images_or_keyframes');
+    expect(refreshedReadiness?.missing_fields.some(field => field.field_id === 'reference_images_or_keyframes')).toBe(false);
+    expect(updated.data?.current_story.supplement_tasks?.[0].supplement_field_values?.reference_images_or_keyframes)
+      .toContain('银色发簪');
+    expect(updated.data?.current_story.supplement_tasks?.[0].supplement_note).toContain('reference images or keyframes');
+    expect(updated.data?.current_story.supplement_tasks?.[0].knowledge_candidate_markdown).toContain('知识库候选稿');
+    expect(updated.data?.current_story.supplement_tasks?.[0].knowledge_candidate_markdown).toContain('待人工核实');
+    expect(updated.data?.current_story.supplement_tasks?.[0].knowledge_candidate_review_status).toBe('pending_review');
+    expect(updated.data?.current_story.quality_report?.production_material_readiness_report?.missing_risk_fields.some(field => (
+      field.field_id === 'reference_images_or_keyframes'
+    ))).toBe(false);
+    expect(updated.data?.current_story.material_pack?.supporting_materials.some(material => (
+      material.material_id === 'supplement-production_template_reference_images_or_keyframes'
+      && material.purpose.includes('visual_asset')
+      && material.tags?.includes('reference_images_or_keyframes')
+      && material.summary.includes('关键帧')
+    ))).toBe(true);
+
+    const reviewed = await updateProjectSupplementTask(enriched.project_id!, taskId, {
+      status: 'resolved',
+      knowledge_candidate_review_status: 'approved',
+      knowledge_candidate_review_note: '画面基准可进入正式写入草案，来源仍待补。',
+    });
+    expect(reviewed.ok).toBe(true);
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_candidate_review_status).toBe('approved');
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_writeback_draft_markdown).toContain('正式知识库写入草案');
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_writeback_draft_markdown).toContain('核实方法');
+
+    const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(rawSource.production_material_readiness?.available_fields).toContain('reference_images_or_keyframes');
+    expect(rawSource.supplement_tasks?.[0].knowledge_candidate_markdown).toContain('青石巷追问');
+    expect(rawSource.supplement_tasks?.[0].knowledge_writeback_draft_markdown).toContain('正式知识库写入草案');
+    expect(rawSource.quality_report?.production_material_readiness_report?.missing_risk_fields.some(field => (
+      field.field_id === 'reference_images_or_keyframes'
+    ))).toBe(false);
+
+    const candidateExport = await exportProjectKnowledgeCandidates(enriched.project_id!);
+    expect(candidateExport.ok).toBe(true);
+    expect(candidateExport.data?.schema_version).toBe('project-knowledge-candidates/v1');
+    expect(candidateExport.data?.candidate_count).toBe(1);
+    expect(candidateExport.data?.markdown).toContain('青石巷追问 知识库候选稿');
+    expect(candidateExport.data?.items[0].recommended_fields).toContain('reference_images_or_keyframes');
+    expect(candidateExport.data?.items[0].review_status).toBe('approved');
+    expect(candidateExport.data?.items[0].writeback_draft_markdown).toContain('正式知识库写入草案');
   });
 
   it('adds manual project material and refreshes creation contract fields', async () => {

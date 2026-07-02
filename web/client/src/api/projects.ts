@@ -14,6 +14,7 @@ import type {
   StoryProjectDeleteResult,
   StoryProjectDetail,
   StoryProjectExportPackage,
+  ProjectKnowledgeCandidateExportPackage,
   StoryProjectListItem,
   ProductionReadinessAutomationRunRequest,
   ProductionReadinessAutomationRunResult,
@@ -100,6 +101,10 @@ export function applyProjectQualityRepairJson(
 
 export function exportProjectCurrentVersion(projectId: string) {
   return apiPost<StoryProjectExportPackage>(`/projects/${projectId}/export`, {})
+}
+
+export function exportProjectKnowledgeCandidates(projectId: string) {
+  return apiGet<ProjectKnowledgeCandidateExportPackage>(`/projects/${projectId}/knowledge-candidates/export`)
 }
 
 export function getProjectProductionBoard(projectId: string) {

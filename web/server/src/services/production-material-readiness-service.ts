@@ -242,7 +242,6 @@ function materialPackToText(materialPack: MaterialPack | undefined, contextText:
     ...materialPack.verified_facts,
     ...materialPack.uncertain_claims,
     ...materialPack.creative_space,
-    ...materialPack.missing_needs.flatMap(need => [need.label, need.message]),
     materialPack.brand_or_institution_profile?.name,
     materialPack.brand_or_institution_profile?.client_type,
     ...(materialPack.brand_or_institution_profile?.verified_claims ?? []),

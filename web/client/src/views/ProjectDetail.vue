@@ -1156,6 +1156,158 @@
         </div>
       </section>
 
+      <section v-if="productionMaterialPanel" class="project-detail-page__production-material">
+        <div class="project-detail-page__production-material-head">
+          <div>
+            <h2 class="project-detail-page__section-title">生产素材模板</h2>
+            <p>
+              {{ productionMaterialPanel.label }}
+              · {{ productionMaterialStatusLabel(productionMaterialPanel.status) }}
+              · {{ productionMaterialPanel.score }}/100
+              · {{ productionMaterialPanel.required_count }} 个字段
+            </p>
+          </div>
+          <div class="project-detail-page__production-material-actions">
+            <RouterLink
+              class="project-detail-page__production-material-link"
+              :to="{ name: 'SupplementTasks', query: { status: 'open', source: 'production_material_missing_field', project_id: detail.project.project_id } }"
+            >
+              查看补充任务
+            </RouterLink>
+            <span :class="['project-detail-page__production-material-status', `project-detail-page__production-material-status--${productionMaterialPanel.status}`]">
+              {{ productionMaterialStatusLabel(productionMaterialPanel.status) }}
+            </span>
+          </div>
+        </div>
+        <p class="project-detail-page__production-material-goal">{{ productionMaterialPanel.goal }}</p>
+        <div class="project-detail-page__production-material-grid">
+          <article>
+            <strong>Required Fields</strong>
+            <div>
+              <span
+                v-for="field in productionMaterialPanel.required_fields.slice(0, 18)"
+                :key="field"
+                :class="productionMaterialPanel.available_fields.includes(field) ? 'project-detail-page__production-material-tag--ready' : ''"
+              >
+                {{ field }}
+              </span>
+            </div>
+          </article>
+          <article>
+            <strong>Prompt Layers</strong>
+            <ul>
+              <li v-for="layer in productionMaterialPanel.prompt_layers.slice(0, 8)" :key="layer">
+                {{ layer }}
+              </li>
+            </ul>
+          </article>
+          <article>
+            <strong>Gate 状态</strong>
+            <ul>
+              <li v-for="gate in productionMaterialPanel.gates" :key="gate.stage">
+                {{ sufficiencyStageLabel(gate.stage) }}：{{ productionMaterialStatusLabel(gate.status) }}
+                · 缺 {{ gate.missing_count }}
+              </li>
+            </ul>
+          </article>
+          <article>
+            <strong>建议补充</strong>
+            <ul>
+              <li v-for="question in productionMaterialPanel.recommended_questions.slice(0, 5)" :key="question">
+                {{ question }}
+              </li>
+            </ul>
+          </article>
+        </div>
+        <div v-if="productionMaterialPanel.missing_fields.length" class="project-detail-page__production-material-missing">
+          <strong>缺口字段</strong>
+          <ul>
+            <li v-for="row in productionMaterialMissingRows.slice(0, 8)" :key="row.field.field_id">
+              <div class="project-detail-page__production-material-missing-head">
+                <span>
+                  {{ row.field.label }} · {{ sufficiencyStageLabel(row.field.stage) }} · {{ blockingLabel(row.field.blocking_level) }}：{{ row.field.reason }}
+                </span>
+                <button
+                  v-if="row.task"
+                  class="project-detail-page__production-material-task-btn"
+                  :class="row.task.status === 'resolved' ? 'project-detail-page__production-material-task-btn--resolved' : ''"
+                  :disabled="updatingSupplementTaskId === row.task.task_id"
+                  @click="handleSupplementTaskUpdate(row.task.task_id, row.task.status === 'open' ? 'resolved' : 'open')"
+                >
+                  {{ productionMaterialTaskActionLabel(row.task) }}
+                </button>
+              </div>
+              <small v-if="row.task?.recommended_question">
+                {{ row.task.recommended_question }}
+              </small>
+            </li>
+          </ul>
+        </div>
+        <div v-if="productionMaterialPanel.sample_entries.length" class="project-detail-page__production-material-samples">
+          <strong>样板条目</strong>
+          <div>
+            <article v-for="sample in productionMaterialPanel.sample_entries.slice(0, 4)" :key="sample.sample_id">
+              <h3>{{ sample.entry_name }}</h3>
+              <p>{{ sample.core_story_engine ?? sample.core_conflict ?? sample.episode_hook ?? '待补核心创作引擎' }}</p>
+              <small v-if="sample.must_collect?.length">必补：{{ sample.must_collect.slice(0, 3).join('、') }}</small>
+              <small v-if="sample.risk_boundary">边界：{{ sample.risk_boundary }}</small>
+            </article>
+          </div>
+        </div>
+        <div v-if="productionMaterialCandidateTasks.length" class="project-detail-page__production-material-candidates">
+          <div class="project-detail-page__production-material-candidates-head">
+            <strong>补录候选稿</strong>
+            <button
+              type="button"
+              class="project-detail-page__production-material-link"
+              :disabled="exportingKnowledgeCandidates"
+              @click="copyKnowledgeCandidateMarkdown"
+            >
+              {{ exportingKnowledgeCandidates ? '复制中…' : '复制审稿包' }}
+            </button>
+          </div>
+          <article v-for="task in productionMaterialCandidateTasks.slice(0, 3)" :key="task.task_id">
+            <div class="project-detail-page__production-material-candidate-top">
+              <h3>{{ task.label }}</h3>
+              <span :class="['project-detail-page__production-material-review', `project-detail-page__production-material-review--${task.knowledge_candidate_review_status ?? 'pending_review'}`]">
+                {{ knowledgeCandidateReviewStatusLabel(task.knowledge_candidate_review_status) }}
+              </span>
+            </div>
+            <div class="project-detail-page__production-material-review-actions">
+              <button
+                type="button"
+                class="project-detail-page__production-material-task-btn project-detail-page__production-material-task-btn--resolved"
+                :disabled="updatingSupplementTaskId === task.task_id"
+                @click="updateKnowledgeCandidateReview(task, 'approved')"
+              >
+                通过
+              </button>
+              <button
+                type="button"
+                class="project-detail-page__production-material-task-btn"
+                :disabled="updatingSupplementTaskId === task.task_id"
+                @click="updateKnowledgeCandidateReview(task, 'rejected')"
+              >
+                驳回
+              </button>
+              <button
+                type="button"
+                class="project-detail-page__production-material-task-btn"
+                :disabled="updatingSupplementTaskId === task.task_id"
+                @click="updateKnowledgeCandidateReview(task, 'pending_review')"
+              >
+                待审
+              </button>
+            </div>
+            <pre>{{ task.knowledge_candidate_markdown }}</pre>
+            <template v-if="task.knowledge_writeback_draft_markdown">
+              <h4>正式写入草案</h4>
+              <pre>{{ task.knowledge_writeback_draft_markdown }}</pre>
+            </template>
+          </article>
+        </div>
+      </section>
+
       <section v-if="currentQuality" class="project-detail-page__quality-tools">
         <div class="project-detail-page__quality-main">
           <div>
@@ -1728,6 +1880,7 @@ import {
   applyProjectQualityRepairJson,
   autoSelectProjectSeedanceShotVersions,
   exportProjectCurrentVersion,
+  exportProjectKnowledgeCandidates,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   generateProjectQualityRepairPrompt,
@@ -1792,6 +1945,8 @@ import type {
   GearsJobLedgerItem,
   GearsJobSubmitFailure,
   CreationUseCase,
+  KnowledgeCandidateReviewStatus,
+  KnowledgeSupplementTask,
   KnowledgeSupplementTaskStatus,
   MaterialGenerationPosture,
   MaterialPurpose,
@@ -2107,6 +2262,7 @@ const productionReadiness = ref<StoryProjectProductionReadinessReport | null>(nu
 const loadingProductionReadiness = ref(false)
 const runningProductionAutomation = ref(false)
 const exportingProductionBoard = ref(false)
+const exportingKnowledgeCandidates = ref(false)
 const repairingProductionBoard = ref(false)
 const repairingAndExportingProductionBoard = ref(false)
 const repairingProductionBoardTaskId = ref('')
@@ -2167,6 +2323,79 @@ const selectedModelProfile = computed(() => {
 })
 
 const currentQuality = computed(() => detail.value?.current_story.quality_report ?? null)
+
+const productionMaterialPanel = computed(() => {
+  const story = detail.value?.current_story
+  const pack = story?.production_material_pack
+  const readiness = story?.production_material_readiness
+  const qualityReadiness = story?.quality_report?.production_material_readiness_report
+  if (!pack && !readiness && !qualityReadiness) return null
+
+  const template = pack?.material_template
+  const requiredFields = template?.required_fields
+    ?? uniqueStrings(readiness?.gate_reports.flatMap(gate => gate.required_items) ?? [])
+  const missingFields = readiness?.missing_fields
+    ?? [
+      ...(qualityReadiness?.missing_blocking_fields ?? []),
+      ...(qualityReadiness?.missing_risk_fields ?? []),
+      ...(qualityReadiness?.missing_optional_fields ?? []),
+    ].filter((field, index, arr) => arr.findIndex(item => item.field_id === field.field_id) === index)
+  const gates = readiness?.gate_reports.map(gate => ({
+    stage: gate.stage,
+    status: gate.status,
+    missing_count: gate.missing_fields.length,
+  })) ?? qualityReadiness?.gate_statuses ?? []
+  const status = readiness?.status ?? qualityReadiness?.status ?? 'ready'
+  const score = readiness?.score ?? qualityReadiness?.score ?? 100
+  const recommendedQuestions = readiness?.recommended_next_questions
+    ?? qualityReadiness?.recommended_next_questions
+    ?? template?.supplement_questions
+    ?? []
+
+  return {
+    label: pack?.label ?? readiness?.pack_label ?? qualityReadiness?.pack_label ?? typeLabel(story?.video_type ?? detail.value!.project.video_type),
+    goal: pack?.goal ?? '当前故事已生成生产素材 readiness，可按缺口字段继续补齐素材。',
+    status,
+    score,
+    required_count: requiredFields.length,
+    required_fields: requiredFields,
+    available_fields: readiness?.available_fields ?? [],
+    prompt_layers: template?.prompt_layers ?? [],
+    gates,
+    recommended_questions: recommendedQuestions,
+    missing_fields: missingFields,
+    sample_entries: pack?.sample_entries ?? [],
+  }
+})
+
+const productionMaterialTaskByField = computed(() => {
+  const tasks = detail.value?.current_story.supplement_tasks ?? []
+  const map = new Map<string, KnowledgeSupplementTask>()
+  for (const task of tasks) {
+    if (task.source !== 'production_material_missing_field') continue
+    for (const field of task.recommended_fields ?? []) {
+      map.set(field, task)
+    }
+    if (task.need_id.startsWith('production_template_')) {
+      map.set(task.need_id.slice('production_template_'.length), task)
+    }
+  }
+  return map
+})
+
+const productionMaterialMissingRows = computed(() => {
+  const panel = productionMaterialPanel.value
+  if (!panel) return []
+  return panel.missing_fields.map(field => ({
+    field,
+    task: productionMaterialTaskByField.value.get(field.field_id) ?? null,
+  }))
+})
+
+const productionMaterialCandidateTasks = computed(() => {
+  return (detail.value?.current_story.supplement_tasks ?? [])
+    .filter(task => task.source === 'production_material_missing_field' && Boolean(task.knowledge_candidate_markdown))
+})
 
 const materialPackSummary = computed(() => {
   const pack = detail.value?.current_story.material_pack
@@ -2508,6 +2737,48 @@ function productionMaterialStatusLabel(status: string): string {
   if (status === 'ready') return '可生产'
   if (status === 'blocked') return '阻断'
   return '待补素材'
+}
+
+function productionMaterialTaskActionLabel(task: KnowledgeSupplementTask): string {
+  if (updatingSupplementTaskId.value === task.task_id) {
+    return task.status === 'open' ? '更新中…' : '重新打开中…'
+  }
+  return task.status === 'open' ? '标记完成' : '重新打开'
+}
+
+function knowledgeCandidateReviewStatusLabel(status?: KnowledgeCandidateReviewStatus): string {
+  if (status === 'approved') return '已通过'
+  if (status === 'rejected') return '已驳回'
+  return '待审稿'
+}
+
+async function updateKnowledgeCandidateReview(task: KnowledgeSupplementTask, status: KnowledgeCandidateReviewStatus) {
+  if (!detail.value) return
+  updatingSupplementTaskId.value = task.task_id
+  error.value = ''
+  successMessage.value = ''
+  const res = await updateProjectSupplementTask(detail.value.project.project_id, task.task_id, {
+    status: task.status,
+    knowledge_candidate_review_status: status,
+    knowledge_candidate_review_note: knowledgeCandidateReviewStatusLabel(status),
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data
+    successMessage.value = `候选稿已标记为${knowledgeCandidateReviewStatusLabel(status)}`
+  } else {
+    error.value = res.error?.message ?? '更新候选稿审稿状态失败'
+  }
+  updatingSupplementTaskId.value = ''
+}
+
+function blockingLabel(level: string): string {
+  if (level === 'blocking') return '当前阻断'
+  if (level === 'risk') return '需核验'
+  return '生产前补充'
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return values.filter((value, index, arr) => value.trim() && arr.indexOf(value) === index)
 }
 
 function productionReadinessSeverityLabel(severity: StoryProjectProductionReadinessReport['issues'][number]['severity']): string {
@@ -4188,6 +4459,26 @@ async function exportCurrentStoryMarkdown() {
   successMessage.value = '当前版本 Markdown 已导出到本地'
 }
 
+async function copyKnowledgeCandidateMarkdown() {
+  if (!detail.value || exportingKnowledgeCandidates.value) return
+  exportingKnowledgeCandidates.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await exportProjectKnowledgeCandidates(detail.value.project.project_id)
+  if (!res.ok || !res.data) {
+    error.value = res.error?.message ?? '导出知识库候选稿失败'
+    exportingKnowledgeCandidates.value = false
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(res.data.markdown)
+    successMessage.value = `已复制 ${res.data.candidate_count} 条知识库候选稿`
+  } catch {
+    error.value = '复制候选稿失败，请检查浏览器剪贴板权限'
+  }
+  exportingKnowledgeCandidates.value = false
+}
+
 async function exportProductionBoardJson() {
   if (!productionBoard.value) await loadProductionBoard()
   if (!productionBoard.value) return
@@ -4678,6 +4969,309 @@ watch(selectedModelProfileId, (value) => {
 .project-detail-page__readiness-list p {
   color: #536573;
   overflow-wrap: anywhere;
+}
+
+.project-detail-page__production-material {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.project-detail-page__production-material-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.project-detail-page__production-material-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.project-detail-page__production-material-link {
+  border: 1px solid #c7d8e8;
+  border-radius: 4px;
+  padding: 4px 10px;
+  background: #f4f8fb;
+  color: #2b6f9f;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.project-detail-page__production-material-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.project-detail-page__production-material-head p,
+.project-detail-page__production-material-goal {
+  margin: 4px 0 0;
+  color: #5c6a76;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.project-detail-page__production-material-status {
+  flex: 0 0 auto;
+  border: 1px solid #d7dee5;
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: #455866;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-detail-page__production-material-status--ready {
+  border-color: #b8dbc8;
+  color: #247447;
+}
+
+.project-detail-page__production-material-status--needs_input {
+  border-color: #efcf8a;
+  color: #8a5a00;
+}
+
+.project-detail-page__production-material-status--blocked {
+  border-color: #f0b8b0;
+  color: #a83224;
+}
+
+.project-detail-page__production-material-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.project-detail-page__production-material-grid article,
+.project-detail-page__production-material-missing,
+.project-detail-page__production-material-samples,
+.project-detail-page__production-material-candidates {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #f8fafb;
+}
+
+.project-detail-page__production-material-grid strong,
+.project-detail-page__production-material-missing strong,
+.project-detail-page__production-material-samples strong,
+.project-detail-page__production-material-candidates strong {
+  color: #22313f;
+  font-size: 13px;
+}
+
+.project-detail-page__production-material-grid div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.project-detail-page__production-material-grid span {
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  background: #fff;
+  padding: 3px 6px;
+  color: #5e6d78;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__production-material-grid .project-detail-page__production-material-tag--ready {
+  border-color: #b8dbc8;
+  color: #247447;
+}
+
+.project-detail-page__production-material-grid ul,
+.project-detail-page__production-material-missing ul {
+  margin: 8px 0 0;
+  padding-left: 17px;
+  color: #4c5e6f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.project-detail-page__production-material-missing {
+  border-color: #efcf8a;
+  background: #fffaf0;
+}
+
+.project-detail-page__production-material-missing li {
+  margin-bottom: 8px;
+}
+
+.project-detail-page__production-material-missing li:last-child {
+  margin-bottom: 0;
+}
+
+.project-detail-page__production-material-missing-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.project-detail-page__production-material-missing-head span {
+  min-width: 0;
+}
+
+.project-detail-page__production-material-missing small {
+  display: block;
+  margin-top: 4px;
+  color: #6f5b22;
+}
+
+.project-detail-page__production-material-task-btn {
+  flex: 0 0 auto;
+  border: 1px solid #efcf8a;
+  border-radius: 4px;
+  padding: 3px 8px;
+  background: #fff;
+  color: #8a5a00;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.project-detail-page__production-material-task-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.project-detail-page__production-material-task-btn--resolved {
+  border-color: #b8dbc8;
+  color: #247447;
+}
+
+.project-detail-page__production-material-samples {
+  background: #f8fafb;
+}
+
+.project-detail-page__production-material-samples > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.project-detail-page__production-material-samples article {
+  min-width: 0;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff;
+}
+
+.project-detail-page__production-material-samples h3,
+.project-detail-page__production-material-samples p {
+  margin: 0;
+}
+
+.project-detail-page__production-material-samples h3 {
+  color: #22313f;
+  font-size: 13px;
+}
+
+.project-detail-page__production-material-samples p,
+.project-detail-page__production-material-samples small {
+  display: block;
+  margin-top: 5px;
+  color: #536573;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.project-detail-page__production-material-candidates {
+  background: #f8fafb;
+}
+
+.project-detail-page__production-material-candidates-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.project-detail-page__production-material-candidates article {
+  margin-top: 8px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff;
+}
+
+.project-detail-page__production-material-candidate-top,
+.project-detail-page__production-material-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-detail-page__production-material-candidate-top {
+  justify-content: space-between;
+}
+
+.project-detail-page__production-material-review-actions {
+  margin-top: 8px;
+}
+
+.project-detail-page__production-material-review {
+  border: 1px solid #d7dee5;
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #455866;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.project-detail-page__production-material-review--approved {
+  border-color: #b8dbc8;
+  color: #247447;
+}
+
+.project-detail-page__production-material-review--rejected {
+  border-color: #f0b8b0;
+  color: #a83224;
+}
+
+.project-detail-page__production-material-review--pending_review {
+  border-color: #efcf8a;
+  color: #8a5a00;
+}
+
+.project-detail-page__production-material-candidates h3 {
+  margin: 0;
+  color: #22313f;
+  font-size: 13px;
+}
+
+.project-detail-page__production-material-candidates h4 {
+  margin: 10px 0 0;
+  color: #22313f;
+  font-size: 12px;
+}
+
+.project-detail-page__production-material-candidates pre {
+  max-height: 220px;
+  margin: 8px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #536573;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .project-detail-page__quality-tools {
@@ -6557,11 +7151,21 @@ watch(selectedModelProfileId, (value) => {
 
   .project-detail-page__report-strip,
   .project-detail-page__material-grid,
+  .project-detail-page__production-material-grid,
+  .project-detail-page__production-material-samples > div,
   .project-detail-page__quality-feedback,
   .project-detail-page__repair-actions,
   .project-detail-page__production-repair-diff,
   .project-detail-page__supervision-list {
     grid-template-columns: 1fr;
+  }
+
+  .project-detail-page__production-material-head {
+    flex-direction: column;
+  }
+
+  .project-detail-page__production-material-actions {
+    justify-content: flex-start;
   }
 
   .project-detail-page__repair-task-actions,
