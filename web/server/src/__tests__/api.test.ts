@@ -475,6 +475,11 @@ describe('System API', () => {
           story_project_count: expect.any(Number),
           ai_comic_series_count: expect.any(Number),
           ready_automation_step_count: expect.any(Number),
+          gears_job_count: expect.any(Number),
+          active_gears_job_count: expect.any(Number),
+          external_ready_gears_job_count: expect.any(Number),
+          local_acceptance_ready_gears_job_count: expect.any(Number),
+          ready_without_external_gears_artifact_count: expect.any(Number),
         },
       });
       expect(res.body.data.summary.total_target_count).toBeGreaterThanOrEqual(2);
@@ -486,9 +491,12 @@ describe('System API', () => {
         scope: expect.stringMatching(/story_project|ai_comic_series/),
         priority_score: expect.any(Number),
         status: expect.stringMatching(/ready|needs_action|blocked/),
+        local_acceptance_ready_gears_job_count: expect.any(Number),
+        ready_without_external_gears_artifact_count: expect.any(Number),
       });
       expect(res.body.data.action_buckets.length).toBeGreaterThan(0);
       expect(res.body.data.markdown).toContain('Production Readiness Portfolio');
+      expect(res.body.data.markdown).toContain('GEARS local acceptance ready');
 
       const runRes = await request
         .post('/api/system/production-readiness-portfolio/run-automation')
@@ -4455,6 +4463,73 @@ describe('Projects API', () => {
         updated_count: 0,
         timed_out_shots: [],
       });
+    });
+  });
+
+  describe('POST /api/projects/:projectId/production-board/gears-jobs/export-external-callback-handoff', () => {
+    it('exports callback samples for GEARS jobs that still need external artifacts', async () => {
+      const baseStory = makeApiProductionRepairStory();
+      const story: StoryGenerateResult = {
+        ...baseStory,
+        storyId: '20260617-story-apg1',
+        title: 'API GEARS 外部回片交接包测试故事',
+        gears_segments_url: '/api/stories/20260617-story-apg1/gears-segments',
+        gears_delivery: baseStory.gears_delivery
+          ? {
+              ...baseStory.gears_delivery,
+              storyId: '20260617-story-apg1',
+              title: 'API GEARS 外部回片交接包测试故事',
+            }
+          : undefined,
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T12:12:00.000Z');
+
+      const submitRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/submit`)
+        .send({
+          job_type: 'seedance_video',
+          note: 'API GEARS 外部回片交接包测试提交',
+        });
+      expect(submitRes.status).toBe(200);
+      expectSuccess(submitRes.body);
+      expect(submitRes.body.data.submitted_count).toBeGreaterThan(0);
+
+      const localAcceptanceRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/local-acceptance`)
+        .send({
+          job_type: 'seedance_video',
+          note: 'API 本地验收占位，不是外部回片',
+        });
+      expect(localAcceptanceRes.status).toBe(200);
+      expectSuccess(localAcceptanceRes.body);
+      expect(localAcceptanceRes.body.data.accepted_count).toBe(submitRes.body.data.submitted_count);
+
+      const handoffRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/export-external-callback-handoff`)
+        .send({});
+      expect(handoffRes.status).toBe(200);
+      expectSuccess(handoffRes.body);
+      expect(handoffRes.body.data).toMatchObject({
+        schema_version: 'project-gears-external-callback-handoff/v1',
+        pending_external_artifact_count: submitRes.body.data.submitted_count,
+        local_acceptance_ready_count: submitRes.body.data.submitted_count,
+        external_ready_count: 0,
+        callback_path: `/api/projects/${enriched.project_id}/gears-callback`,
+      });
+      expect(handoffRes.body.data.items[0]).toMatchObject({
+        source_unit_id: 'shot-1',
+        requires_external_artifact: true,
+        callback_sample: {
+          sourceUnitId: 'shot-1',
+          taskStatus: 'COMPLETED',
+          jobType: 'seedance_video',
+        },
+      });
+      expect(handoffRes.body.data.items[0].local_acceptance_artifact_urls[0]).toContain('https://local.story-agent.invalid/gears-acceptance/');
+      expect(handoffRes.body.data.items[0].external_artifact_urls).toEqual([]);
+      expect(handoffRes.body.data.items[0].callback_sample.outputUrl).toContain('https://gears.example/videos/');
+      expect(handoffRes.body.data.markdown).toContain('GEARS 外部回片交接包');
+      expect(handoffRes.body.data.markdown).toContain('local_acceptance URL 只代表本地链路验收');
     });
   });
 

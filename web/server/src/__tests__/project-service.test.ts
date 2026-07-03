@@ -10,14 +10,19 @@ import {
   type StoryProjectVersionSnapshot,
 } from '@shared/types.js';
 import {
+  acceptProjectLocalGearsArtifacts,
   addProjectMaterialPackMaterial,
   autoSelectProjectSeedanceShotVersions,
   buildProjectId,
   createProjectFromGeneratedStory,
   deleteProject,
   deleteProjects,
+  draftProjectSeedanceAssetPlaceholders,
   exportProjectCurrentVersion,
+  exportProjectGearsExternalCallbackHandoff,
   exportProjectKnowledgeCandidates,
+  exportProjectKnowledgeWritebackPatch,
+  exportProjectKnowledgeWritebackQueuePatch,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   getProject,
@@ -1068,6 +1073,78 @@ describe('project-service', () => {
     });
   });
 
+  it('drafts local Seedance placeholder assets and clears asset binding gaps', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const beforeBoard = await getProjectProductionBoard(enriched.project_id!);
+    expect(beforeBoard.ok).toBe(true);
+    expect(beforeBoard.data?.seedance_asset_report.upload_required_count).toBeGreaterThan(0);
+    expect(beforeBoard.data?.seedance_asset_report.unbound_shot_count).toBeGreaterThan(0);
+
+    const beforeReadiness = await getProjectProductionReadiness(enriched.project_id!);
+    expect(beforeReadiness.ok).toBe(true);
+    expect(beforeReadiness.data?.issues.map(issue => issue.issue_id)).toContain('seedance-assets-unbound');
+    expect(beforeReadiness.data?.next_actions.map(action => action.action_key)).toContain('draft_seedance_asset_placeholders');
+    expect(beforeReadiness.data?.automation_plan.steps.find(step =>
+      step.action_key === 'draft_seedance_asset_placeholders'
+    )).toMatchObject({
+      runner: 'story_agent_api',
+      mode: 'writes_project',
+      can_auto_execute: true,
+      api: {
+        method: 'POST',
+        path: `/api/projects/${enriched.project_id}/production-board/seedance-assets/draft-placeholders`,
+      },
+    });
+
+    const draftRes = await draftProjectSeedanceAssetPlaceholders(enriched.project_id!);
+    expect(draftRes.ok).toBe(true);
+    expect(draftRes.data?.schema_version).toBe('project-seedance-asset-placeholders/v1');
+    expect(draftRes.data?.created_count).toBeGreaterThan(0);
+    expect(draftRes.data?.before_upload_required_count).toBeGreaterThan(0);
+    expect(draftRes.data?.after_upload_required_count).toBe(0);
+    expect(draftRes.data?.after_unbound_shot_count).toBe(0);
+    expect(draftRes.data?.board.seedance_asset_report.assets.every(asset => asset.status === 'bound')).toBe(true);
+
+    const firstItem = draftRes.data!.items[0];
+    const placeholderFilePath = resolve(root, 'web', 'generated', firstItem.local_path);
+    const placeholderFile = await readFile(placeholderFilePath, 'utf-8');
+    expect(placeholderFile).toContain('<svg');
+    expect(placeholderFile).toContain(firstItem.label);
+    expect((await stat(placeholderFilePath)).size).toBe(firstItem.size_bytes);
+
+    const libraryAsset = draftRes.data?.detail.project.seedance_asset_library?.items.find(asset =>
+      asset.asset_id === firstItem.asset_id
+    );
+    expect(libraryAsset).toMatchObject({
+      asset_id: firstItem.asset_id,
+      local_path: firstItem.local_path,
+      provider: 'story_agent_placeholder',
+      upload_status: 'uploaded',
+      mime_type: 'image/svg+xml',
+      history: [expect.objectContaining({
+        event_type: 'placeholder_draft',
+        local_path: firstItem.local_path,
+      })],
+    });
+
+    const exportedReport = JSON.parse(await readFile(
+      resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'production-board', 'seedance-asset-report.json'),
+      'utf-8',
+    )) as { upload_required_count: number; unbound_shot_count: number };
+    expect(exportedReport.upload_required_count).toBe(0);
+    expect(exportedReport.unbound_shot_count).toBe(0);
+
+    const afterReadiness = await getProjectProductionReadiness(enriched.project_id!);
+    expect(afterReadiness.ok).toBe(true);
+    expect(afterReadiness.data?.issues.map(issue => issue.issue_id)).not.toContain('seedance-assets-unbound');
+    expect(afterReadiness.data?.next_actions.map(action => action.action_key)).not.toContain('draft_seedance_asset_placeholders');
+  });
+
   it('builds a project production readiness report across quality, board, and GEARS ledgers', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
@@ -1150,7 +1227,135 @@ describe('project-service', () => {
     expect(afterSubmit.data?.summary.gears_job_count).toBeGreaterThan(0);
     expect(afterSubmit.data?.summary.active_gears_job_count).toBeGreaterThan(0);
     expect(gearsLane?.status).toBe('needs_action');
+    expect(afterSubmit.data?.next_actions.map(action => action.action_key)).toContain('accept_local_gears_artifacts');
+    expect(afterSubmit.data?.next_actions.map(action => action.action_key)).not.toContain('sync_gears_jobs');
+    expect(afterSubmit.data?.automation_plan.steps.find(step =>
+      step.action_key === 'accept_local_gears_artifacts'
+    )).toMatchObject({
+      mode: 'manual',
+      can_auto_execute: false,
+      api: {
+        method: 'POST',
+        path: `/api/projects/${enriched.project_id}/production-board/gears-jobs/local-acceptance`,
+      },
+    });
     expect(afterSubmit.data?.markdown).toContain('GEARS Execution');
+
+    const localAcceptance = await acceptProjectLocalGearsArtifacts(enriched.project_id!, {
+      job_type: 'seedance_video',
+      note: 'local acceptance test artifact; not external provider output',
+    });
+    expect(localAcceptance.ok).toBe(true);
+    expect(localAcceptance.data?.accepted_count).toBe(submitRes.data?.submitted_count);
+    expect(localAcceptance.data?.accepted_jobs.every(job => job.status === 'ready')).toBe(true);
+    expect(localAcceptance.data?.accepted_jobs.every(job =>
+      job.artifacts?.some(artifact =>
+        artifact.role === 'local_acceptance'
+        && artifact.metadata?.not_external_provider_output === true
+      )
+    )).toBe(true);
+    expect(localAcceptance.data?.seedance_shot_ledger?.items.every(item =>
+      item.status === 'ready'
+      && item.video_url?.startsWith('https://local.story-agent.invalid/gears-acceptance/')
+    )).toBe(true);
+
+    const afterLocalAcceptance = await getProjectProductionReadiness(enriched.project_id!);
+    const acceptedGearsLane = afterLocalAcceptance.data?.lanes.find(lane => lane.key === 'gears_execution');
+    expect(afterLocalAcceptance.ok).toBe(true);
+    expect(afterLocalAcceptance.data?.summary.active_gears_job_count).toBe(0);
+    expect(afterLocalAcceptance.data?.summary.external_ready_gears_job_count).toBe(0);
+    expect(afterLocalAcceptance.data?.summary.local_acceptance_ready_gears_job_count).toBe(submitRes.data?.submitted_count);
+    expect(afterLocalAcceptance.data?.summary.ready_without_external_gears_artifact_count).toBe(submitRes.data?.submitted_count);
+    expect(acceptedGearsLane?.status).toBe('ready');
+    expect(acceptedGearsLane?.evidence).toContain(`local_acceptance_ready ${submitRes.data?.submitted_count}`);
+    expect(afterLocalAcceptance.data?.issues.find(issue =>
+      issue.issue_id === 'gears-local-acceptance-only'
+    )).toMatchObject({
+      severity: 'info',
+      lane_key: 'gears_execution',
+    });
+    expect(afterLocalAcceptance.data?.next_actions.map(action => action.action_key)).not.toContain('accept_local_gears_artifacts');
+    expect(afterLocalAcceptance.data?.next_actions.map(action => action.action_key)).not.toContain('sync_gears_jobs');
+    expect(afterLocalAcceptance.data?.next_actions.map(action => action.action_key)).toContain('export_gears_external_callback_handoff');
+    expect(afterLocalAcceptance.data?.automation_plan.steps.find(step =>
+      step.action_key === 'export_gears_external_callback_handoff'
+    )).toMatchObject({
+      runner: 'operator_review',
+      mode: 'manual',
+      can_auto_execute: false,
+      api: {
+        method: 'POST',
+        path: `/api/projects/${enriched.project_id}/production-board/gears-jobs/export-external-callback-handoff`,
+      },
+    });
+
+    const firstAcceptedJob = localAcceptance.data?.accepted_jobs[0];
+    expect(firstAcceptedJob).toBeTruthy();
+    const handoffBeforeExternal = await exportProjectGearsExternalCallbackHandoff(enriched.project_id!);
+    expect(handoffBeforeExternal.ok).toBe(true);
+    expect(handoffBeforeExternal.data).toMatchObject({
+      schema_version: 'project-gears-external-callback-handoff/v1',
+      pending_external_artifact_count: submitRes.data?.submitted_count,
+      local_acceptance_ready_count: submitRes.data?.submitted_count,
+      external_ready_count: 0,
+      callback_path: `/api/projects/${enriched.project_id}/gears-callback`,
+    });
+    expect(handoffBeforeExternal.data?.items).toHaveLength(submitRes.data?.submitted_count ?? 0);
+    expect(handoffBeforeExternal.data?.items[0]).toMatchObject({
+      source_unit_id: firstAcceptedJob!.source_unit_id,
+      gears_job_id: firstAcceptedJob!.gears_job_id,
+      requires_external_artifact: true,
+      callback_path: `/api/projects/${enriched.project_id}/gears-callback`,
+      callback_sample: {
+        jobId: firstAcceptedJob!.gears_job_id,
+        sourceUnitId: firstAcceptedJob!.source_unit_id,
+        jobType: 'seedance_video',
+        taskStatus: 'COMPLETED',
+      },
+    });
+    expect(handoffBeforeExternal.data?.items[0].local_acceptance_artifact_urls[0]).toContain('https://local.story-agent.invalid/gears-acceptance/');
+    expect(handoffBeforeExternal.data?.items[0].external_artifact_urls).toEqual([]);
+    expect(handoffBeforeExternal.data?.items[0].callback_sample.outputUrl).toContain('https://gears.example/videos/');
+    expect(handoffBeforeExternal.data?.items[0].prompt?.seedance_prompt).toContain('0-3秒');
+    expect(handoffBeforeExternal.data?.markdown).toContain('GEARS 外部回片交接包');
+    expect(handoffBeforeExternal.data?.markdown).toContain('local_acceptance URL 只代表本地链路验收');
+    expect(handoffBeforeExternal.data?.markdown).toContain('"outputUrl"');
+    const externalCallbackRes = await importProjectGearsCallbacks(enriched.project_id!, {
+      callbacks: [{
+        jobId: firstAcceptedJob!.gears_job_id,
+        sourceUnitId: firstAcceptedJob!.source_unit_id,
+        jobType: 'seedance_video',
+        taskStatus: 'COMPLETED',
+        outputUrl: 'https://gears.example/videos/external-shot-1.mp4',
+        eventId: 'external-ready-shot-1',
+        note: 'external provider callback replaces local acceptance',
+      }],
+    });
+    expect(externalCallbackRes.ok).toBe(true);
+    expect(externalCallbackRes.data?.seedance_shot_ledger?.items.find(item =>
+      item.shot_id === firstAcceptedJob!.source_unit_id
+    )).toMatchObject({
+      status: 'ready',
+      video_url: 'https://gears.example/videos/external-shot-1.mp4',
+    });
+
+    const afterExternalCallback = await getProjectProductionReadiness(enriched.project_id!);
+    const externalGearsLane = afterExternalCallback.data?.lanes.find(lane => lane.key === 'gears_execution');
+    expect(afterExternalCallback.ok).toBe(true);
+    expect(afterExternalCallback.data?.summary.external_ready_gears_job_count).toBe(1);
+    expect(afterExternalCallback.data?.summary.local_acceptance_ready_gears_job_count).toBe((submitRes.data?.submitted_count ?? 1) - 1);
+    expect(afterExternalCallback.data?.summary.ready_without_external_gears_artifact_count).toBe((submitRes.data?.submitted_count ?? 1) - 1);
+    expect(externalGearsLane?.status).toBe('ready');
+    expect(externalGearsLane?.evidence).toContain('external_ready 1');
+    expect(afterExternalCallback.data?.next_actions.map(action => action.action_key)).toContain('export_gears_external_callback_handoff');
+
+    const handoffAfterExternal = await exportProjectGearsExternalCallbackHandoff(enriched.project_id!);
+    expect(handoffAfterExternal.ok).toBe(true);
+    expect(handoffAfterExternal.data?.pending_external_artifact_count).toBe((submitRes.data?.submitted_count ?? 1) - 1);
+    expect(handoffAfterExternal.data?.external_ready_count).toBe(1);
+    expect(handoffAfterExternal.data?.items.some(item =>
+      item.source_unit_id === firstAcceptedJob!.source_unit_id
+    )).toBe(false);
   });
 
   it('keeps internal labels out of GEARS payload summaries and project ledgers', async () => {
@@ -3930,6 +4135,22 @@ describe('project-service', () => {
       title: '青石巷追问',
       video_type: 'ai_comic_drama',
       source_entry: '青石巷漫剧测试条目',
+      knowledge_pack: {
+        primary_entries: [{
+          entry_name: '青石巷漫剧测试条目',
+          province: '湖南',
+          region: '长沙',
+          type: 'AI漫剧测试素材',
+          summary: '青石巷漫剧测试条目用于验证生产素材候选稿写回。',
+          score: 0.9,
+          role_in_story: '主素材',
+          match_reason: '测试目标条目',
+          keywords: ['青石巷', 'AI漫剧'],
+        }],
+        supporting_entries: [],
+        missing_needs: [],
+        overall_confidence: 0.72,
+      },
       material_pack: materialPack,
       production_material_pack: productionPack,
       production_material_readiness: initialReadiness,
@@ -4007,6 +4228,31 @@ describe('project-service', () => {
     expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_candidate_review_status).toBe('approved');
     expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_writeback_draft_markdown).toContain('正式知识库写入草案');
     expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_writeback_draft_markdown).toContain('核实方法');
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_writeback_status).toBe('draft_ready');
+
+    const draftReadyTasks = await listProjectSupplementTasks({
+      project_id: enriched.project_id,
+      knowledge_writeback_status: 'draft_ready',
+    });
+    expect(draftReadyTasks.ok).toBe(true);
+    expect(draftReadyTasks.data?.map(item => item.task.task_id)).toEqual([taskId]);
+
+    const queued = await updateProjectSupplementTask(enriched.project_id!, taskId, {
+      status: 'resolved',
+      knowledge_candidate_review_status: 'approved',
+      knowledge_writeback_status: 'queued',
+      knowledge_writeback_note: '已进入湖南知识库人工入库队列。',
+    });
+    expect(queued.ok).toBe(true);
+    expect(queued.data?.current_story.supplement_tasks?.[0].knowledge_writeback_status).toBe('queued');
+    expect(queued.data?.current_story.supplement_tasks?.[0].knowledge_writeback_note).toContain('人工入库队列');
+
+    const queuedTasks = await listProjectSupplementTasks({
+      project_id: enriched.project_id,
+      knowledge_writeback_status: 'queued',
+    });
+    expect(queuedTasks.ok).toBe(true);
+    expect(queuedTasks.data?.map(item => item.task.task_id)).toEqual([taskId]);
 
     const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
     expect(rawSource.production_material_readiness?.available_fields).toContain('reference_images_or_keyframes');
@@ -4024,6 +4270,198 @@ describe('project-service', () => {
     expect(candidateExport.data?.items[0].recommended_fields).toContain('reference_images_or_keyframes');
     expect(candidateExport.data?.items[0].review_status).toBe('approved');
     expect(candidateExport.data?.items[0].writeback_draft_markdown).toContain('正式知识库写入草案');
+    expect(candidateExport.data?.items[0].writeback_status).toBe('queued');
+
+    const writebackPatch = await exportProjectKnowledgeWritebackPatch(enriched.project_id!);
+    expect(writebackPatch.ok).toBe(true);
+    expect(writebackPatch.data?.schema_version).toBe('project-knowledge-writeback-patch/v1');
+    expect(writebackPatch.data?.approved_count).toBe(1);
+    expect(writebackPatch.data?.target_files).toContain('data/provinces/湖南.md');
+    expect(writebackPatch.data?.pr_title).toContain('青石巷追问');
+    expect(writebackPatch.data?.items[0].writeback_status).toBe('queued');
+    expect(writebackPatch.data?.items[0].append_markdown).toContain('补录候选：参考图或关键帧');
+    expect(writebackPatch.data?.items[0].append_markdown).toContain('核实方法');
+
+    const queuePatch = await exportProjectKnowledgeWritebackQueuePatch({
+      project_id: enriched.project_id,
+      knowledge_writeback_status: 'queued',
+    });
+    expect(queuePatch.ok).toBe(true);
+    expect(queuePatch.data?.schema_version).toBe('project-knowledge-writeback-patch/v1');
+    expect(queuePatch.data?.approved_count).toBe(1);
+    expect(queuePatch.data?.project_id).toBe(enriched.project_id);
+    expect(queuePatch.data?.target_files).toContain('data/provinces/湖南.md');
+    expect(queuePatch.data?.markdown).toContain('Story Agent 写回队列 Patch 草案');
+    expect(queuePatch.data?.markdown).toContain('写回状态：queued');
+    expect(queuePatch.data?.items[0].writeback_status).toBe('queued');
+  });
+
+  it('drafts AI comic production material fields from scenes through readiness automation', async () => {
+    const productionPack = getProductionMaterialPack('ai_comic_drama');
+    expect(productionPack).toBeTruthy();
+
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const materialPack: StoryGenerateResult['material_pack'] = {
+      schema_version: 'material-pack/v1',
+      primary_materials: [{
+        material_id: 'ai-comic-core-auto-draft',
+        title: '青石巷 AI 漫剧自动草拟设定',
+        summary: '第一格钩子、世界观、真实度、虚构、主角目标、对手压力、关系碰撞、场景锚点、角色稳定、服饰、发式、随身物、对白气泡、台词、情绪节拍、镜头提示词分层、基础设定、氛围、画质、画面内容、结尾钩子、禁用和待核实边界已整理。',
+        source_type: 'manual_note',
+        purpose: ['fact_basis', 'visual_asset', 'creative_boundary'],
+        confidence: 0.72,
+        tags: ['AI漫剧', '青石巷'],
+      }],
+      supporting_materials: [],
+      reference_materials: [],
+      visual_assets: [],
+      verified_facts: ['虚构边界：本项目为 fictional_original，不声称为真实史实。'],
+      uncertain_claims: ['图像生产基准待补。'],
+      creative_space: ['可用漫画分镜方式表现青石巷追问。'],
+      missing_needs: [],
+      overall_confidence: 0.72,
+    };
+    const initialReadiness = buildProductionMaterialReadinessReport({
+      productionMaterialPack: productionPack!,
+      materialPack,
+      contextText: 'AI漫剧，第一格钩子，世界观，主角目标，场景锚点，对白气泡，情绪节拍，结尾钩子，禁用边界。',
+    });
+    const targetFields = [
+      'reference_images_or_keyframes',
+      'identity_motion_consistency_plan',
+      'single_shot_test',
+      'multi_shot_continuity',
+      'transition_plan',
+    ];
+    expect(initialReadiness?.missing_fields.map(field => field.field_id)).toEqual(expect.arrayContaining(targetFields));
+
+    const fieldLabels: Record<string, string> = {
+      reference_images_or_keyframes: '参考图或关键帧',
+      identity_motion_consistency_plan: '身份动作一致性计划',
+      single_shot_test: '单镜头测试',
+      multi_shot_continuity: '多分镜连续性',
+      transition_plan: '转场计划',
+    };
+    const baseStory = makeStory();
+    const story: StoryGenerateResult = {
+      ...baseStory,
+      storyId: '20260609-story-ai-comic-autodraft',
+      title: '青石巷追问',
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      source_entry: '青石巷漫剧自动草拟条目',
+      material_pack: materialPack,
+      production_material_pack: productionPack,
+      production_material_readiness: initialReadiness,
+      creation_use_case: 'original_ai_comic',
+      truth_mode: 'fictional_original',
+      scene_breakdown: baseStory.scene_breakdown.map(scene => ({
+        ...scene,
+        characters: scene.scene_id === 1 ? ['阿青', '巷口老人'] : ['阿青', '追问者'],
+        visual_prompt: scene.scene_id === 1
+          ? '雨后青石巷，阿青穿青绿色短袄，手握旧木牌回头，漫画分格，强表情'
+          : '军衙堂前改为青石巷牌坊下，阿青与追问者对峙，木牌在右手，表情紧张',
+        key_action: scene.scene_id === 1 ? '阿青回头护住木牌' : '阿青举起木牌当面质问',
+        camera_suggestion: scene.scene_id === 1 ? '低机位轻微推进，木牌特写' : '中近景对切，保留对白气泡安全区',
+        dialogue_or_narration: scene.scene_id === 1 ? '阿青：这块牌，为什么会刻我的名字？' : '追问者：你终于发现了。',
+      })),
+      gears_segments: baseStory.gears_segments.map(segment => ({
+        ...segment,
+        video_type: 'ai_comic_drama',
+        presentation_style: 'ai_comic',
+        visual_focus: segment.segment_id === 1
+          ? ['雨后青石巷', '阿青青绿色短袄', '旧木牌特写']
+          : ['牌坊下对峙', '对白气泡', '木牌右手位置'],
+        segment_prompt_hint: segment.segment_id === 1
+          ? 'comic drama panel, rain-wet stone alley, A Qing turns back with wooden tag'
+          : 'comic drama panel, confrontation under stone arch, speech bubbles safe area',
+      })),
+      dialogue: [{
+        scene_id: 1,
+        lines: [{ character: '阿青', text: '这块牌，为什么会刻我的名字？', emotion: '惊疑' }],
+      }, {
+        scene_id: 2,
+        lines: [{ character: '追问者', text: '你终于发现了。', emotion: '压迫' }],
+      }],
+      quality_report: {
+        ...baseStory.quality_report!,
+        video_type: 'ai_comic_drama',
+        genre_score: 82,
+      },
+      supplement_tasks: targetFields.map(fieldId => ({
+        task_id: `20260609-story-ai-comic-autodraft--production-template--${fieldId}`,
+        need_id: `production_template_${fieldId}`,
+        label: fieldLabels[fieldId],
+        description: `补齐「AI漫剧」生产模板字段「${fieldLabels[fieldId]}」。`,
+        stage: 'production_ready',
+        blocking_level: fieldId === 'transition_plan' ? 'optional' : 'risk',
+        affects: ['production_material_readiness', 'gears_delivery'],
+        recommended_fields: [fieldId],
+        recommended_question: `请补充${fieldLabels[fieldId]}。`,
+        status: 'open',
+        source: 'production_material_missing_field',
+        created_at: '2026-06-09T10:00:00.000Z',
+      })),
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+    const storyPath = resolve(storyDir, `${story.storyId}.json`);
+    await mkdir(storyDir, { recursive: true });
+    await writeFile(storyPath, JSON.stringify({
+      ...story,
+      project_id: enriched.project_id,
+      current_version_id: enriched.current_version_id,
+      _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
+    }, null, 2), 'utf-8');
+
+    const beforeReadiness = await getProjectProductionReadiness(enriched.project_id!);
+    expect(beforeReadiness.ok).toBe(true);
+    expect(beforeReadiness.data?.next_actions.map(action => action.action_key))
+      .toContain('draft_production_material_fields');
+    expect(beforeReadiness.data?.automation_plan.steps.find(step => step.action_key === 'draft_production_material_fields'))
+      .toMatchObject({
+        runner: 'story_agent_api',
+        mode: 'writes_project',
+        can_auto_execute: true,
+        api: {
+          method: 'POST',
+          path: `/api/projects/${enriched.project_id}/supplement-tasks/draft-production-material`,
+        },
+      });
+
+    const automationRun = await runProjectProductionReadinessAutomation(enriched.project_id!, {
+      dry_run: false,
+      action_keys: ['draft_production_material_fields'],
+    });
+    expect(automationRun.ok).toBe(true);
+    expect(automationRun.data?.executed_step_count).toBe(1);
+    expect(automationRun.data?.steps[0]).toMatchObject({
+      action_key: 'draft_production_material_fields',
+      status: 'executed',
+      response_schema_version: 'project-production-material-draft/v1',
+    });
+    expect(automationRun.data?.after_readiness.latest_automation_run?.steps[0].action_key)
+      .toBe('draft_production_material_fields');
+    expect(automationRun.data?.after_readiness.project.production_readiness_automation_ledger?.total_run_count)
+      .toBe(1);
+
+    const afterDetail = await getProject(enriched.project_id!);
+    expect(afterDetail.ok).toBe(true);
+    expect(afterDetail.data?.current_story.production_material_readiness?.status).toBe('ready');
+    expect(afterDetail.data?.current_story.production_material_readiness?.missing_fields).toHaveLength(0);
+    expect(afterDetail.data?.current_story.supplement_tasks?.every(task => task.status === 'resolved')).toBe(true);
+    expect(afterDetail.data?.current_story.supplement_tasks?.[0].supplement_field_values?.reference_images_or_keyframes)
+      .toContain('参考图或关键帧');
+    expect(afterDetail.data?.current_story.material_pack?.supporting_materials.some(material => (
+      material.tags?.includes('single_shot_test') && material.summary.includes('单镜头测试')
+    ))).toBe(true);
+
+    const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(rawSource.production_material_readiness?.status).toBe('ready');
+    expect(rawSource.supplement_tasks?.map(task => task.status)).toEqual(targetFields.map(() => 'resolved'));
   });
 
   it('adds manual project material and refreshes creation contract fields', async () => {

@@ -44,10 +44,15 @@ export function enrichStoryQualityReport(input: {
     && gearsReport.readiness_score >= 70
     && (productionMaterialReport?.passed ?? true)
     && audienceReport.clean;
+  const issues = [
+    ...input.qualityReport.issues,
+    ...buildWorkflowBlockingIssues(outlineReport, patternReport, gearsReport, productionMaterialReport, audienceReport),
+  ].filter((item, index, arr) => arr.indexOf(item) === index);
 
   return {
     ...input.qualityReport,
     passed,
+    issues,
     repair_actions: mergedRepairActions,
     outline_coverage_report: outlineReport,
     pattern_quality_report: patternReport,
@@ -63,6 +68,32 @@ export function enrichStoryQualityReport(input: {
       audienceReport.preview,
     ),
   };
+}
+
+function buildWorkflowBlockingIssues(
+  outlineReport: OutlineCoverageReport,
+  patternReport: PatternQualityReport,
+  gearsReport: ReturnType<typeof buildGearsReadinessReport>,
+  productionMaterialReport: ProductionMaterialQualityReport | undefined,
+  audienceReport: AudienceTextReport,
+): string[] {
+  const issues: string[] = [];
+  if (outlineReport.coverage_score < 70) {
+    issues.push(`大纲覆盖不足：${outlineReport.preview}`);
+  }
+  if (patternReport.pattern_score < 70) {
+    issues.push(`流派机制不足：${patternReport.preview}`);
+  }
+  if (gearsReport.readiness_score < 70) {
+    issues.push(`GEARS 供稿不足：${gearsReport.preview}`);
+  }
+  if (productionMaterialReport && !productionMaterialReport.passed) {
+    issues.push(`生产素材不足：${productionMaterialReport.preview}`);
+  }
+  if (!audienceReport.clean) {
+    issues.push(`观众文本污染：${audienceReport.preview}`);
+  }
+  return issues;
 }
 
 function buildOutlineCoverageReport(story: StoryGenerateResult): OutlineCoverageReport {
@@ -92,8 +123,14 @@ function buildOutlineCoverageReport(story: StoryGenerateResult): OutlineCoverage
         return { scene, matched };
       })
       .filter(item => item.matched.length > 0);
+    const matchedTokens = matchedScenes
+      .flatMap(item => item.matched)
+      .filter((item, itemIndex, arr) => arr.indexOf(item) === itemIndex);
+    const strongThreshold = Math.max(2, Math.ceil(tokens.length / 3));
     const strongMatch = matchedScenes.some(item => item.matched.length >= Math.max(2, Math.ceil(tokens.length / 3)));
+    const aggregateStrongMatch = matchedTokens.length >= strongThreshold;
     const status: OutlineCoverageNode['status'] = strongMatch
+      || aggregateStrongMatch
       ? 'covered'
       : matchedScenes.length > 0
         ? 'partial'
@@ -105,10 +142,7 @@ function buildOutlineCoverageReport(story: StoryGenerateResult): OutlineCoverage
       text,
       status,
       matched_scene_ids: matchedScenes.map(item => item.scene.scene_id),
-      evidence: matchedScenes
-        .flatMap(item => item.matched)
-        .filter((item, itemIndex, arr) => arr.indexOf(item) === itemIndex)
-        .slice(0, 6),
+      evidence: matchedTokens.slice(0, 6),
       repair_hint: status === 'covered'
         ? '已在正文或场景中承接。'
         : `补回大纲节点「${shortText(text, 34)}」，并放入对应场景的行动、对白或转折。`,
@@ -619,9 +653,22 @@ function extractMeaningfulTokens(text: string): string[] {
   const blocked = new Set([
     '故事', '人物', '场景', '一个', '他们', '我们', '需要', '开始', '后来', '最后',
     '必须', '保留', '原作', '核心', '情绪', '选择', '镜头', '画面', '主角',
+    '生成', '一集', '漫剧', '突出', '三秒', '前三秒',
   ]);
-  const matches = text.match(/[\u4e00-\u9fa5]{2,8}|[A-Za-z0-9]{3,}/g) ?? [];
-  return matches
+  const anchorTerms = [
+    '周敦颐', '疑案', '拒签', '死刑文书', '文书', '画押', '对白', '冲突',
+    '表情', '动作', '结尾', '追看', '钩子', '案卷', '催签', '重查', '上官',
+    '良知', '证人', '现场',
+  ];
+  const rawMatches = text.match(/[\u4e00-\u9fa5]{2,12}|[A-Za-z0-9]{3,}/g) ?? [];
+  const splitMatches = rawMatches.flatMap(item => item
+    .split(/生成|一集|在|前|突出|和|与|把|通过|围绕|讲述|呈现|进入|要求|需要|必须|的|了/)
+    .map(part => part.trim())
+    .filter(part => part.length >= 2 && part.length <= 8));
+  return [
+    ...anchorTerms.filter(term => text.includes(term)),
+    ...splitMatches,
+  ]
     .map(item => item.trim())
     .filter(item => item.length >= 2 && !blocked.has(item))
     .filter((item, index, arr) => arr.indexOf(item) === index)

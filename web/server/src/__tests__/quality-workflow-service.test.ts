@@ -97,6 +97,57 @@ function makeStory(): StoryGenerateResult {
 }
 
 describe('quality-workflow-service', () => {
+  it('covers instruction-style AI comic outlines across multiple scenes', () => {
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      original_user_query: '生成一集AI漫剧：周敦颐在疑案前拒签死刑文书，突出前三秒钩子、对白冲突、表情动作和结尾追看钩子。',
+      full_text: [
+        '雨夜，周敦颐翻开疑难案卷，案卷首页压着死刑文书，只等他画押。',
+        '上官催签，周敦颐停住笔：若照旧签字，囚犯可能含冤而死；若坚持重查，他就要得罪上官。',
+        '清晨，他推回未签文书，门外又传来证人改口的消息，下一步必须追到现场。',
+      ].join('\n\n'),
+      scene_breakdown: [
+        {
+          ...makeStory().scene_breakdown[0],
+          title: '疑案停笔',
+          plot: '周敦颐翻开疑难案卷，案卷首页压着死刑文书，只等他画押。',
+          key_action: '停住笔、翻开案卷',
+          visual_prompt: '烛火特写，案卷疑点，镜头推近定格',
+        },
+        {
+          ...makeStory().scene_breakdown[1],
+          title: '对白冲突',
+          plot: '上官催签，周敦颐拒签死刑文书，坚持重查。',
+          key_action: '周敦颐推回判词',
+          visual_prompt: '上官推笔，人物表情对切，手部动作特写',
+          conflict: '对白冲突',
+        },
+        {
+          ...makeStory().scene_breakdown[2],
+          title: '追看钩子',
+          plot: '门外又传来证人改口的消息，下一步必须追到现场。',
+          key_action: '推回未签文书',
+          visual_prompt: '未签文书定格，门外脚步逼近',
+        },
+      ],
+    };
+
+    const report = enrichStoryQualityReport({
+      story,
+      qualityReport: makeBaseReport(),
+    });
+
+    expect(report.outline_coverage_report?.coverage_score).toBe(100);
+    expect(report.outline_coverage_report?.nodes[0].evidence).toEqual(expect.arrayContaining([
+      '周敦颐',
+      '疑案',
+      '死刑文书',
+      '拒签',
+      '钩子',
+    ]));
+    expect(report.issues.some(issue => issue.includes('大纲覆盖不足'))).toBe(false);
+  });
+
   it('builds P0 reports and repair actions for outline, pattern, and GEARS gaps', () => {
     const report = enrichStoryQualityReport({
       story: {

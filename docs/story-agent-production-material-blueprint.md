@@ -1,6 +1,6 @@
 # Story Agent 生产素材体系开发蓝图
 
-更新时间：2026-07-02
+更新时间：2026-07-03
 
 ## 本轮对话已完成
 
@@ -20,6 +20,16 @@
 14. 推进字段级补录与候选稿：补充任务支持 `supplement_field_values`，前端按 `recommended_fields` 显示字段级输入；任务完成后自动生成 `knowledge_candidate_markdown`，可在补充任务页和项目详情页回看；补充任务列表 API 支持 `project_id` 过滤。
 15. 建立候选稿导出首版：新增项目知识库候选稿导出包 `project-knowledge-candidates/v1`，项目详情页可一键复制候选稿 Markdown 审稿包，便于人工核实后再转正式知识库草案。
 16. 补齐候选稿审稿首版：候选稿支持 `pending_review / approved / rejected` 审稿状态；项目详情页可标记通过、驳回或待审；通过后自动生成 `knowledge_writeback_draft_markdown` 正式知识库写入草案，并进入候选稿导出包。
+17. 建立省份 Markdown 写入 Patch 草案：新增 `project-knowledge-writeback-patch/v1` 导出包，只汇总已通过审稿的候选稿，自动推断建议目标 `data/provinces/<省份>.md`，生成 append markdown、PR title/body 和项目详情页复制入口；同时修正项目素材反推 `knowledge_pack` 时覆盖真实省份的问题。
+18. 推进人工入库队列首版：通过审稿的写入草案支持 `draft_ready / queued / written_back / needs_revision` 状态，项目详情页可标记入队、已入库、需重审；集中补充任务页同步显示入库状态，导出包携带入库备注。
+19. 补齐写回队列筛选：补充任务列表 API 支持按 `knowledge_writeback_status` 查询；集中补充任务页新增写回状态筛选和写回草案、入库队列、已入库统计，方便人工入库队列从单项目操作进入集中处理。
+20. 建立集中写回队列导出：新增全局 `project-knowledge-writeback-patch/v1` 队列导出接口，支持按项目和写回状态导出多个项目的已通过候选稿；集中补充任务页可一键复制当前筛选范围的写回 Patch Markdown。
+21. 接入生产素材自动草拟：新增 `project-production-material-draft/v1` 项目动作，可从 `scene_breakdown`、`gears_segments`、对白和镜头提示中草拟 AI 漫剧生产字段（参考关键帧、一致性计划、单镜头测试、多分镜连续性、转场计划等），并接入制作 readiness 自动化和项目详情页按钮。
+22. 接入 Seedance 本地参考资产占位生成：新增 `project-seedance-asset-placeholders/v1` 项目动作，可从 Production Board 的 `seedance_asset_report` 为缺文件的 `@图片` 槽位生成 SVG 参考卡，写回 `seedance_asset_library`，刷新交付包，并接入制作 readiness 自动化和项目详情页按钮；已在真实项目 `20260702-story-5zhd4151f8c7--ai_comic_drama` 验证，Seedance 待上传素材 `5→0`、受影响镜头 `5→0`、交付清单 `6/7→7/7 ready`。
+23. 接入本地 GEARS 验收闭环：新增 `accept_local_gears_artifacts` / `project-gears-local-acceptance` 项目动作，可把 `local-gears-*` mocked job 写入 `local_acceptance` artifact，刷新 GEARS ledger、Seedance shot ledger、Production Board 和制作 readiness；已在真实项目 `20260702-story-5zhd4151f8c7--ai_comic_drama` 验证，GEARS active `5→0`、readiness `85→100`、lanes `5/7→7/7 ready`。该动作只代表本地验收占位产物，不代表外部 GEARS/Seedance 已真实回片。
+24. 补强交付来源透明度：制作 readiness summary、GEARS lane evidence 和项目详情页会区分 `external_ready` 与 `local_acceptance_ready`；当 ready job 只有本地验收 artifact 时，报告会生成 info 级 `gears-local-acceptance-only` 提示，保持 100 分 ready 的同时明确真实外部回片仍待验收。
+25. 补齐外部回片覆盖本地验收的回归保护：真实 GEARS callback 带外部 artifact URL 回来后，会替换对应 `local_acceptance` artifact，刷新 Seedance shot ledger 选用版本，并让 readiness 的 `external_ready` 增加、`local_acceptance_ready` 和 `ready_without_external` 下降。
+26. 建立 GEARS 外部回片交接包：新增 `project-gears-external-callback-handoff/v1` 项目导出能力，按项目列出仍缺真实外部 artifact 的 GEARS job、callback path/url、可直接交给外部 worker 的回调样例、local acceptance 边界说明和对应 Seedance prompt；项目详情页已提供 Markdown/JSON 导出入口，制作 readiness 会在 `ready_without_external` 时自动提示 `export_gears_external_callback_handoff`，避免把本地验收产物误当成真实 GEARS/Seedance 回片。
 
 ## 原始诊断必须并入路线
 
@@ -160,7 +170,7 @@
 
 ### Phase 3：质量报告联动
 
-状态：核心联动已完成，前端展示待接入。
+状态：核心联动、前端展示、Seedance 参考资产占位和本地 GEARS 验收闭环已完成；下一步转向真实 GEARS/Seedance 外部回片执行。
 
 - 已将 production readiness 写入 `quality_report.production_material_readiness_report`。
 - 已让 production readiness 参与 `quality_report.passed`：状态非 `ready`、分数低于 70 或有阻塞字段时，质量报告自动降级。
@@ -169,7 +179,9 @@
 - 已让补充任务写回后重新计算 `production_material_readiness`，并同步刷新质量报告和已有 GEARS delivery。
 - 已修正 readiness 检索：`missing_needs` 属于缺口声明，不再被当作生产素材证据。
 - 已通过准真实 AI 漫剧生成项目 `20260702-story-5zhd4151f8c7--ai_comic_drama` 验证落盘链路。
-- 待继续：补 Seedance/GEARS 更下游真实交付任务验收。
+- 已新增 Seedance 参考资产占位生成动作，缺文件的 `@` 槽位可生成本地 SVG 参考卡并被 Production Board 识别为已绑定。
+- 已新增本地 GEARS 验收动作，`local-gears-*` mocked job 可被写入 `local_acceptance` artifact，并刷新项目/镜头账本和制作 readiness。
+- 待继续：接入真实 GEARS/Seedance 外部执行 endpoint 的回片验收，而不是只停留在 local acceptance。
 
 ### Phase 4：前端工作台
 
@@ -189,7 +201,11 @@
 - 已新增候选稿导出包与项目详情页复制入口，支持把当前项目所有候选稿汇总为 Markdown 审稿包。
 - 已新增候选稿审稿状态：待审、通过、驳回。
 - 已在项目详情页支持候选稿审稿操作；通过后自动生成正式知识库写入草案。
-- 待继续：把通过审稿的写入草案转成可下载 patch/PR 草案，并接入省份 Markdown 人工写入队列。
+- 已把通过审稿的写入草案转成省份 Markdown patch/PR 草案导出包，并在项目详情页提供复制入口。
+- 已把 patch 草案接入人工入库队列状态：草案就绪、已入队、已入库、需重审。
+- 已在项目详情页 Seedance 素材缺口区新增“生成占位参考图”，可把缺文件素材自动生成本地 SVG 参考卡并刷新 Production Board。
+- 已在制作 readiness 中新增 `draft_seedance_asset_placeholders` 自动化动作，缺失 Seedance 参考文件时可作为可执行步骤进入安全自动化计划。
+- 待继续：把人工入库队列做成独立列表页/筛选页，并支持按目标省份批量导出。
 
 ### Phase 5：在线模板采集流水线
 
@@ -258,7 +274,7 @@
 1. 回溯补源：`source_location_backfill` 已完成 37/37（100%），后续只需在新增条目进入队列时增量处理。
 2. 审稿写回 `asset_split`：剩余 0 条，正式完整写回已到 169/169（100%）。
 3. 处理来源等级缺口和少量 `era` 精细化缺口。
-4. 把 readiness 接进质量报告和 GEARS 交付状态：核心链路和前端显示已完成，下一步做 Seedance/GEARS 更下游真实交付验收。
-5. 在前端显示生产模板缺口：模板详情、gate、样板条目、任务跳转/状态更新、项目级写回刷新、字段级录入、知识库候选稿、导出审稿包、审稿状态和正式写入草案已完成，下一步补省份 Markdown patch/PR 草案。
+4. 把 readiness 接进质量报告和 GEARS 交付状态：核心链路、前端显示和 Seedance 本地参考资产占位已完成；下一步做 GEARS job 提交、状态同步和真实回片验收。
+5. 在前端显示生产模板缺口：模板详情、gate、样板条目、任务跳转/状态更新、项目级写回刷新、字段级录入、知识库候选稿、导出审稿包、审稿状态、正式写入草案、省份 Markdown patch/PR 草案和人工入库队列状态已完成，下一步做独立队列页和按省份批量导出。
 6. 扩第四类高频类型模板，建议从 `social_short` 或 `explainer_video` 选一个。
 7. 在线模板采集命令：草案生成首版已完成，下一步补联网采集和正式写入审稿流。

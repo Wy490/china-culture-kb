@@ -420,6 +420,69 @@ describe('gears-delivery-service', () => {
     expect(pkg.markdown).toContain('生产素材未达 production_ready');
   });
 
+  it('refreshes production material validation notes when existing delivery is stale', () => {
+    const missingField = {
+      field_id: 'reference_images_or_keyframes',
+      label: '参考图或关键帧',
+      stage: 'production_ready' as const,
+      blocking_level: 'risk' as const,
+      reason: 'AI 漫剧生产前缺少角色或关键画面参考，可能导致角色和空间漂移。',
+      recommended_question: '请补充主角、关键配角或第一场关键帧参考图。',
+    };
+    const staleReadiness: ProductionMaterialReadinessReport = {
+      schema_version: 'production-material-readiness/v1',
+      video_type: 'ai_comic_drama',
+      pack_label: 'AI 漫剧单片',
+      score: 66,
+      status: 'needs_input',
+      available_fields: ['core_conflict'],
+      missing_fields: [missingField],
+      gate_reports: [{
+        stage: 'production_ready',
+        status: 'needs_input',
+        required_items: ['reference_images_or_keyframes'],
+        available_fields: ['core_conflict'],
+        missing_fields: [missingField],
+        notes: ['production_ready 阶段需要补参考图。'],
+      }],
+      recommended_next_questions: ['请补充主角、关键配角或第一场关键帧参考图。'],
+    };
+    const readyReadiness: ProductionMaterialReadinessReport = {
+      ...staleReadiness,
+      score: 100,
+      status: 'ready',
+      available_fields: ['core_conflict', 'reference_images_or_keyframes'],
+      missing_fields: [],
+      gate_reports: [{
+        ...staleReadiness.gate_reports[0],
+        status: 'ready',
+        available_fields: ['core_conflict', 'reference_images_or_keyframes'],
+        missing_fields: [],
+        notes: ['当前素材已覆盖该阶段生产模板字段。'],
+      }],
+      recommended_next_questions: [],
+    };
+    const staleDelivery = buildGearsDeliveryPackage({
+      ...makeStory(),
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      production_material_readiness: staleReadiness,
+    });
+
+    const refreshed = ensureGearsDeliveryPackage({
+      ...makeStory(),
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      production_material_readiness: readyReadiness,
+      gears_delivery: staleDelivery,
+    });
+
+    expect(refreshed.delivery_status).toBe('ready');
+    expect(refreshed.validation_notes.some(note => note.includes('生产素材未达 production_ready'))).toBe(false);
+    expect(refreshed.markdown).toContain('> delivery_status: ready');
+    expect(refreshed.markdown).not.toContain('生产素材未达 production_ready');
+  });
+
   it('merges short sentence chunks so historical drama units stay storyboardable', () => {
     const story: StoryGenerateResult = {
       ...makeStory(),

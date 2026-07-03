@@ -5,12 +5,14 @@ import { validateBody, validateParams } from '../middleware/validate.js';
 import { fail, ErrorCodes } from '@shared/types.js';
 import type {
   KnowledgeSupplementTaskSource,
+  KnowledgeWritebackStatus,
   MaterialBlockingLevel,
   MaterialSufficiencyStage,
 } from '@shared/types.js';
 import {
   KnowledgeSupplementTaskUpdateRequestSchema,
   GearsJobCallbackRequestSchema,
+  GearsJobLocalAcceptanceRequestSchema,
   GearsJobStatusSyncRequestSchema,
   GearsJobSubmitRequestSchema,
   ProjectMaterialPackAddMaterialRequestSchema,
@@ -45,8 +47,13 @@ import {
   deleteProjects,
   addProjectMaterialPackMaterial,
   autoSelectProjectSeedanceShotVersions,
+  draftProjectProductionMaterialFields,
+  draftProjectSeedanceAssetPlaceholders,
   exportProjectCurrentVersion,
   exportProjectKnowledgeCandidates,
+  exportProjectKnowledgeWritebackPatch,
+  exportProjectKnowledgeWritebackQueuePatch,
+  exportProjectGearsExternalCallbackHandoff,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   getProject,
@@ -54,6 +61,7 @@ import {
   getProjectSeedanceProviderRetryPlan,
   getProjectProductionReadiness,
   getProjectProductionBoard,
+  acceptProjectLocalGearsArtifacts,
   applyProjectQualityRepairJson,
   generateProjectQualityRepairPrompt,
   listProjectSeedanceGlobalAssetLibrary,
@@ -93,6 +101,12 @@ const SUPPLEMENT_TASK_SOURCES: KnowledgeSupplementTaskSource[] = [
   'knowledge_pack_missing_need',
   'material_sufficiency_missing_item',
   'production_material_missing_field',
+];
+const SUPPLEMENT_TASK_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
+  'draft_ready',
+  'queued',
+  'written_back',
+  'needs_revision',
 ];
 
 type MultipartFile = {
@@ -248,6 +262,10 @@ projectsRouter.get('/supplement-tasks', async (req, res, next) => {
     const stage = queryEnum(req.query.stage, SUPPLEMENT_TASK_STAGES);
     const blockingLevel = queryEnum(req.query.blocking_level, SUPPLEMENT_TASK_BLOCKING_LEVELS);
     const source = queryEnum(req.query.source, SUPPLEMENT_TASK_SOURCES);
+    const knowledgeWritebackStatus = queryEnum(
+      req.query.knowledge_writeback_status,
+      SUPPLEMENT_TASK_WRITEBACK_STATUSES,
+    );
     const projectId = typeof req.query.project_id === 'string' && req.query.project_id.trim()
       ? req.query.project_id.trim()
       : undefined;
@@ -257,6 +275,26 @@ projectsRouter.get('/supplement-tasks', async (req, res, next) => {
       stage,
       blocking_level: blockingLevel,
       source,
+      knowledge_writeback_status: knowledgeWritebackStatus,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.get('/knowledge-candidates/writeback-patch/export', async (req, res, next) => {
+  try {
+    const knowledgeWritebackStatus = queryEnum(
+      req.query.knowledge_writeback_status,
+      SUPPLEMENT_TASK_WRITEBACK_STATUSES,
+    );
+    const projectId = typeof req.query.project_id === 'string' && req.query.project_id.trim()
+      ? req.query.project_id.trim()
+      : undefined;
+    const result = await exportProjectKnowledgeWritebackQueuePatch({
+      project_id: projectId,
+      knowledge_writeback_status: knowledgeWritebackStatus,
     });
     res.json(result);
   } catch (err) {
@@ -322,6 +360,16 @@ projectsRouter.get('/:projectId/knowledge-candidates/export', validateParams(Pro
   }
 });
 
+projectsRouter.get('/:projectId/knowledge-candidates/writeback-patch/export', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  try {
+    const { projectId } = req.params as { projectId: string };
+    const result = await exportProjectKnowledgeWritebackPatch(projectId);
+    res.status(result.ok ? 200 : 404).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 projectsRouter.get('/:projectId/production-board', validateParams(ProjectIdParamSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params as { projectId: string };
@@ -366,6 +414,20 @@ projectsRouter.post('/:projectId/production-board/export', validateParams(Projec
     next(err);
   }
 });
+
+projectsRouter.post(
+  '/:projectId/production-board/seedance-assets/draft-placeholders',
+  validateParams(ProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await draftProjectSeedanceAssetPlaceholders(projectId);
+      res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 projectsRouter.post(
   '/:projectId/production-board/seedance-assets',
@@ -514,6 +576,35 @@ projectsRouter.post(
               ? 502
               : 404,
       ).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/gears-jobs/local-acceptance',
+  validateParams(ProjectIdParamSchema),
+  validateBody(GearsJobLocalAcceptanceRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await acceptProjectLocalGearsArtifacts(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.VALIDATION_ERROR ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/gears-jobs/export-external-callback-handoff',
+  validateParams(ProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await exportProjectGearsExternalCallbackHandoff(projectId);
+      res.status(result.ok ? 200 : 404).json(result);
     } catch (err) {
       next(err);
     }
@@ -853,6 +944,20 @@ projectsRouter.patch(
     try {
       const { projectId, taskId } = req.params as { projectId: string; taskId: string };
       const result = await updateProjectSupplementTask(projectId, taskId, req.body);
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/supplement-tasks/draft-production-material',
+  validateParams(ProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await draftProjectProductionMaterialFields(projectId);
       res.status(result.ok ? 200 : 400).json(result);
     } catch (err) {
       next(err);

@@ -886,6 +886,8 @@ export interface ProjectKnowledgeCandidateExportItem {
   review_note?: string;
   markdown: string;
   writeback_draft_markdown?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
 }
 
 export interface ProjectKnowledgeCandidateExportPackage {
@@ -898,6 +900,33 @@ export interface ProjectKnowledgeCandidateExportPackage {
   candidate_count: number;
   markdown: string;
   items: ProjectKnowledgeCandidateExportItem[];
+}
+
+export interface ProjectKnowledgeWritebackPatchItem {
+  task_id: string;
+  label: string;
+  source_entry: string;
+  suggested_file_path: string;
+  suggested_section_heading: string;
+  review_note?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
+  append_markdown: string;
+  writeback_draft_markdown: string;
+}
+
+export interface ProjectKnowledgeWritebackPatchPackage {
+  schema_version: 'project-knowledge-writeback-patch/v1';
+  exported_at: string;
+  project_id: string;
+  project_title: string;
+  source_entry: string;
+  approved_count: number;
+  target_files: string[];
+  pr_title: string;
+  pr_body: string;
+  markdown: string;
+  items: ProjectKnowledgeWritebackPatchItem[];
 }
 
 export interface ProjectSupplementTaskListItem {
@@ -916,6 +945,37 @@ export interface ProjectSupplementTaskListFilters {
   stage?: MaterialSufficiencyStage;
   blocking_level?: MaterialBlockingLevel;
   source?: KnowledgeSupplementTaskSource;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+}
+
+export interface ProjectDraftProductionMaterialTaskResult {
+  task_id: string;
+  label: string;
+  field_ids: string[];
+  field_values: Record<string, string>;
+}
+
+export interface ProjectDraftProductionMaterialSkippedTask {
+  task_id: string;
+  label: string;
+  reason: string;
+}
+
+export interface ProjectDraftProductionMaterialFieldsResult {
+  schema_version: 'project-production-material-draft/v1';
+  project_id: string;
+  story_id: string;
+  generated_at: string;
+  before_status?: ProductionMaterialReadinessStatus;
+  after_status?: ProductionMaterialReadinessStatus;
+  before_score?: number;
+  after_score?: number;
+  drafted_task_count: number;
+  drafted_field_count: number;
+  skipped_task_count: number;
+  drafted_tasks: ProjectDraftProductionMaterialTaskResult[];
+  skipped_tasks: ProjectDraftProductionMaterialSkippedTask[];
+  detail?: StoryProjectDetail;
 }
 
 export type ProjectMaterialPackTarget =
@@ -1195,6 +1255,10 @@ export interface ProductionReadinessGearsSummary {
   total: number;
   active: number;
   ready: number;
+  external_ready: number;
+  local_acceptance_ready: number;
+  local_acceptance_active: number;
+  ready_without_external_artifact: number;
   failed: number;
   rejected: number;
   canceled: number;
@@ -1221,6 +1285,9 @@ export interface ProductionReadinessSummary {
   open_review_count?: number;
   gears_job_count: number;
   active_gears_job_count: number;
+  external_ready_gears_job_count: number;
+  local_acceptance_ready_gears_job_count: number;
+  ready_without_external_gears_artifact_count: number;
 }
 
 export interface ProductionReadinessLane {
@@ -1428,6 +1495,9 @@ export interface ProductionReadinessPortfolioItem {
   next_action_count: number;
   gears_job_count: number;
   active_gears_job_count: number;
+  external_ready_gears_job_count: number;
+  local_acceptance_ready_gears_job_count: number;
+  ready_without_external_gears_artifact_count: number;
   ready_automation_step_count: number;
   blocked_automation_step_count: number;
   manual_automation_step_count: number;
@@ -1461,6 +1531,11 @@ export interface ProductionReadinessPortfolioReport {
     ready_automation_step_count: number;
     external_automation_step_count: number;
     manual_automation_step_count: number;
+    gears_job_count: number;
+    active_gears_job_count: number;
+    external_ready_gears_job_count: number;
+    local_acceptance_ready_gears_job_count: number;
+    ready_without_external_gears_artifact_count: number;
     latest_automation_run_count: number;
     portfolio_automation_run_count: number;
   };
@@ -1855,6 +1930,19 @@ export interface GearsJobStatusSyncRequest {
   note?: string;
 }
 
+export interface GearsJobLocalAcceptanceRequest {
+  job_type?: GearsExecutionJobType;
+  source_unit_ids?: string[];
+  source_unit_id?: string;
+  include_completed?: boolean;
+  include_external_jobs?: boolean;
+  limit?: number;
+  artifact_base_url?: string;
+  artifact_url_map?: Record<string, string>;
+  artifact_kind?: string;
+  note?: string;
+}
+
 export interface GearsJobStatusSyncAdapterSummary {
   endpoint_configured: boolean;
   requested_count: number;
@@ -1887,6 +1975,51 @@ export interface GearsJobStatusSyncResult {
   skipped_count: number;
   synced_jobs: GearsJobLedgerItem[];
   failures: GearsJobSubmitFailure[];
+}
+
+export interface GearsJobLocalAcceptanceResult {
+  project: StoryProjectMeta;
+  gears_job_ledger?: GearsJobLedger;
+  seedance_shot_ledger?: SeedanceShotLedger;
+  accepted_count: number;
+  failed_count: number;
+  duplicate_count: number;
+  skipped_count: number;
+  accepted_jobs: GearsJobLedgerItem[];
+  callbacks: GearsJobCallbackRequest[];
+  failures: GearsJobSubmitFailure[];
+}
+
+export interface GearsExternalCallbackHandoffItem {
+  source_unit_id: string;
+  gears_job_id: string;
+  job_type: GearsExecutionJobType;
+  status: GearsExecutionJobStatus;
+  source_scene_id?: number;
+  source_unit_label?: string;
+  local_acceptance_artifact_urls: string[];
+  external_artifact_urls: string[];
+  requires_external_artifact: boolean;
+  callback_path: string;
+  callback_url: string;
+  callback_sample: GearsJobCallbackRequest;
+  prompt?: SeedanceShotRetryPrompt;
+}
+
+export interface GearsExternalCallbackHandoffPackage {
+  schema_version: 'project-gears-external-callback-handoff/v1';
+  project: StoryProjectMeta;
+  storyId: string;
+  title: string;
+  exported_at: string;
+  callback_path: string;
+  callback_url: string;
+  total_job_count: number;
+  external_ready_count: number;
+  local_acceptance_ready_count: number;
+  pending_external_artifact_count: number;
+  items: GearsExternalCallbackHandoffItem[];
+  markdown: string;
 }
 
 export interface GearsJobCallbackRequest {
@@ -2621,6 +2754,7 @@ export type SeedanceAssetHistoryEventType =
   | 'manual_bind'
   | 'batch_import'
   | 'file_upload'
+  | 'placeholder_draft'
   | 'cross_project_reuse';
 
 export interface SeedanceAssetHistoryEvent {
@@ -2767,6 +2901,43 @@ export interface SeedanceAssetFileUploadResult {
   original_filename: string;
   mime_type: string;
   size_bytes: number;
+}
+
+export interface ProjectSeedanceAssetPlaceholderItem {
+  asset_id: string;
+  label: string;
+  kind: SeedanceAssetReferenceKind;
+  modality: SeedanceAssetModality;
+  role: SeedanceAssetSlotRole;
+  reference_slot?: string;
+  local_path: string;
+  relative_path: string;
+  file_path: string;
+  original_filename: string;
+  mime_type: string;
+  size_bytes: number;
+  status: 'created' | 'updated' | 'skipped';
+  source_shot_ids: string[];
+  source_scene_ids: number[];
+}
+
+export interface ProjectSeedanceAssetPlaceholderResult {
+  schema_version: 'project-seedance-asset-placeholders/v1';
+  project_id: string;
+  storyId: string;
+  title: string;
+  generated_at: string;
+  placeholder_dir: string;
+  created_count: number;
+  updated_count: number;
+  skipped_count: number;
+  before_upload_required_count: number;
+  after_upload_required_count: number;
+  before_unbound_shot_count: number;
+  after_unbound_shot_count: number;
+  items: ProjectSeedanceAssetPlaceholderItem[];
+  detail: StoryProjectDetail;
+  board: StoryProductionBoard;
 }
 
 export interface SeedanceGlobalAssetLibraryItem {
@@ -5615,6 +5786,7 @@ export interface CreationContract {
 
 export type KnowledgeSupplementTaskStatus = 'open' | 'resolved';
 export type KnowledgeCandidateReviewStatus = 'pending_review' | 'approved' | 'rejected';
+export type KnowledgeWritebackStatus = 'draft_ready' | 'queued' | 'written_back' | 'needs_revision';
 export type KnowledgeSupplementTaskSource =
   | 'knowledge_pack_missing_need'
   | 'material_sufficiency_missing_item'
@@ -5652,6 +5824,9 @@ export interface KnowledgeSupplementTask {
   knowledge_candidate_review_note?: string;
   knowledge_candidate_reviewed_at?: string;
   knowledge_writeback_draft_markdown?: string;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+  knowledge_writeback_note?: string;
+  knowledge_writeback_updated_at?: string;
 }
 
 export interface KnowledgeSupplementTaskUpdateRequest {
@@ -5660,6 +5835,8 @@ export interface KnowledgeSupplementTaskUpdateRequest {
   supplement_field_values?: Record<string, string>;
   knowledge_candidate_review_status?: KnowledgeCandidateReviewStatus;
   knowledge_candidate_review_note?: string;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+  knowledge_writeback_note?: string;
 }
 
 export interface MultiMatchResult {

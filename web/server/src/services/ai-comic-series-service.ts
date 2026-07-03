@@ -244,6 +244,8 @@ const GEARS_EXECUTION_JOB_STATUSES: GearsExecutionJobStatus[] = [
   'rejected',
 ];
 
+const LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL = 'https://local.story-agent.invalid/gears-acceptance';
+
 const PHASE_TEMPLATES = [
   { id: 'phase-1', purpose: '建立主角目标、世界规则和核心问题', turning_point: '主角被迫做出第一次选择' },
   { id: 'phase-2', purpose: '扩大人物关系和文化背景，让主线矛盾具体化', turning_point: '主角发现表面目标背后还有更深层原因' },
@@ -7913,6 +7915,24 @@ function aiComicProductionAutomationSchemaVersion(data: unknown): string | undef
     : undefined;
 }
 
+function aiComicGearsArtifactIsLocalAcceptance(
+  artifact: { role?: string; url?: string; metadata?: Record<string, unknown> },
+): boolean {
+  return artifact.role === 'local_acceptance'
+    || artifact.metadata?.not_external_provider_output === true
+    || artifact.url?.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL) === true;
+}
+
+function aiComicGearsJobHasLocalAcceptanceArtifact(item: GearsJobLedgerItem): boolean {
+  return (item.artifacts ?? []).some(artifact => aiComicGearsArtifactIsLocalAcceptance(artifact))
+    || item.artifact_urls.some(url => url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
+}
+
+function aiComicGearsJobHasExternalArtifact(item: GearsJobLedgerItem): boolean {
+  return (item.artifacts ?? []).some(artifact => !aiComicGearsArtifactIsLocalAcceptance(artifact))
+    || item.artifact_urls.some(url => !url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
+}
+
 function summarizeAiComicProductionReadinessGears(ledger?: GearsJobLedger): ProductionReadinessGearsSummary {
   const normalized = normalizeGearsJobLedger(ledger);
   const statusCounts = Object.fromEntries(
@@ -7920,8 +7940,20 @@ function summarizeAiComicProductionReadinessGears(ledger?: GearsJobLedger): Prod
   ) as Record<GearsExecutionJobStatus, number>;
   let missingArtifact = 0;
   let pollFailure = 0;
+  let externalReady = 0;
+  let localAcceptanceReady = 0;
+  let localAcceptanceActive = 0;
   for (const item of normalized.items) {
     statusCounts[item.status] += 1;
+    if (['submitted', 'queued', 'processing'].includes(item.status) && item.gears_job_id.startsWith('local-gears-')) {
+      localAcceptanceActive += 1;
+    }
+    if (item.status === 'ready' && aiComicGearsJobHasLocalAcceptanceArtifact(item)) {
+      localAcceptanceReady += 1;
+    }
+    if (item.status === 'ready' && aiComicGearsJobHasExternalArtifact(item)) {
+      externalReady += 1;
+    }
     if (item.status === 'ready' && item.artifact_urls.length === 0 && (item.artifacts?.length ?? 0) === 0) {
       missingArtifact += 1;
     }
@@ -7933,6 +7965,10 @@ function summarizeAiComicProductionReadinessGears(ledger?: GearsJobLedger): Prod
     total: normalized.items.length,
     active: statusCounts.submitted + statusCounts.queued + statusCounts.processing,
     ready: statusCounts.ready,
+    external_ready: externalReady,
+    local_acceptance_ready: localAcceptanceReady,
+    local_acceptance_active: localAcceptanceActive,
+    ready_without_external_artifact: Math.max(0, statusCounts.ready - externalReady),
     failed: statusCounts.failed,
     rejected: statusCounts.rejected,
     canceled: statusCounts.canceled,
@@ -8026,6 +8062,9 @@ function buildAiComicProductionReadinessSummary(
     open_review_count: extras.openReviewCount,
     gears_job_count: extras.gearsSummary.total,
     active_gears_job_count: extras.gearsSummary.active,
+    external_ready_gears_job_count: extras.gearsSummary.external_ready,
+    local_acceptance_ready_gears_job_count: extras.gearsSummary.local_acceptance_ready,
+    ready_without_external_gears_artifact_count: extras.gearsSummary.ready_without_external_artifact,
   };
 }
 

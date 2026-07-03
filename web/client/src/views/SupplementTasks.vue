@@ -37,7 +37,24 @@
         <option value="material_sufficiency_missing_item">素材 Gate 缺口</option>
         <option value="production_material_missing_field">生产素材模板缺口</option>
       </select>
+      <select v-model="writebackFilter" class="supplement-page__select">
+        <option value="">全部写回状态</option>
+        <option value="draft_ready">草案就绪</option>
+        <option value="queued">已入队</option>
+        <option value="written_back">已入库</option>
+        <option value="needs_revision">需重审</option>
+      </select>
+      <button
+        type="button"
+        class="supplement-page__toolbar-action"
+        :disabled="exportingWritebackPatch"
+        @click="copyWritebackQueuePatch"
+      >
+        {{ exportingWritebackPatch ? '复制中…' : '复制写回队列 Patch' }}
+      </button>
     </section>
+
+    <div v-if="copyMessage" class="supplement-page__copy-message">{{ copyMessage }}</div>
 
     <div v-if="projectFilter" class="supplement-page__active-filter">
       <span>当前项目：{{ projectFilter }}</span>
@@ -64,6 +81,18 @@
       <div>
         <span>生产前补充</span>
         <strong>{{ productionReadyOpenCount }}</strong>
+      </div>
+      <div>
+        <span>写回草案</span>
+        <strong>{{ writebackDraftCount }}</strong>
+      </div>
+      <div>
+        <span>入库队列</span>
+        <strong>{{ writebackQueuedCount }}</strong>
+      </div>
+      <div>
+        <span>已入库</span>
+        <strong>{{ writebackWrittenCount }}</strong>
       </div>
     </section>
 
@@ -98,7 +127,12 @@
             </div>
             <pre>{{ item.task.knowledge_candidate_markdown }}</pre>
             <template v-if="item.task.knowledge_writeback_draft_markdown">
-              <strong class="supplement-page__candidate-subtitle">正式写入草案</strong>
+              <div class="supplement-page__candidate-head supplement-page__candidate-head--sub">
+                <strong class="supplement-page__candidate-subtitle">正式写入草案</strong>
+                <span :class="['supplement-page__review', `supplement-page__review--${item.task.knowledge_writeback_status ?? 'draft_ready'}`]">
+                  {{ writebackStatusLabel(item.task.knowledge_writeback_status) }}
+                </span>
+              </div>
               <pre>{{ item.task.knowledge_writeback_draft_markdown }}</pre>
             </template>
           </div>
@@ -160,12 +194,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { listSupplementTasks, updateProjectSupplementTask } from '@/api/projects'
+import { exportKnowledgeWritebackQueuePatch, listSupplementTasks, updateProjectSupplementTask } from '@/api/projects'
 import type {
   KnowledgeCandidateReviewStatus,
   KnowledgeSupplementTaskCategory,
   KnowledgeSupplementTaskSource,
   KnowledgeSupplementTaskStatus,
+  KnowledgeWritebackStatus,
   MaterialBlockingLevel,
   MaterialSufficiencyStage,
   ProjectSupplementTaskListItem,
@@ -181,6 +216,7 @@ const SOURCE_FILTERS: KnowledgeSupplementTaskSource[] = [
   'material_sufficiency_missing_item',
   'production_material_missing_field',
 ]
+const WRITEBACK_FILTERS: KnowledgeWritebackStatus[] = ['draft_ready', 'queued', 'written_back', 'needs_revision']
 
 const tasks = ref<ProjectSupplementTaskListItem[]>([])
 const loading = ref(false)
@@ -190,8 +226,11 @@ const statusFilter = ref<KnowledgeSupplementTaskStatus | ''>(queryEnum(route.que
 const stageFilter = ref<MaterialSufficiencyStage | ''>(queryEnum(route.query.stage, STAGE_FILTERS))
 const blockingFilter = ref<MaterialBlockingLevel | ''>(queryEnum(route.query.blocking_level, BLOCKING_FILTERS))
 const sourceFilter = ref<KnowledgeSupplementTaskSource | ''>(queryEnum(route.query.source, SOURCE_FILTERS))
+const writebackFilter = ref<KnowledgeWritebackStatus | ''>(queryEnum(route.query.knowledge_writeback_status, WRITEBACK_FILTERS))
 const projectFilter = ref(queryString(route.query.project_id))
 const updatingTaskId = ref('')
+const exportingWritebackPatch = ref(false)
+const copyMessage = ref('')
 const drafts = reactive<Record<string, string>>({})
 const fieldDrafts = reactive<Record<string, Record<string, string>>>({})
 
@@ -202,6 +241,7 @@ const filteredTasks = computed(() => {
     const matchesStage = !stageFilter.value || item.task.stage === stageFilter.value
     const matchesBlocking = !blockingFilter.value || item.task.blocking_level === blockingFilter.value
     const matchesSource = !sourceFilter.value || item.task.source === sourceFilter.value
+    const matchesWriteback = !writebackFilter.value || taskWritebackStatus(item.task) === writebackFilter.value
     const matchesProject = !projectFilter.value || item.project_id === projectFilter.value
     const text = [
       item.project_id,
@@ -213,6 +253,8 @@ const filteredTasks = computed(() => {
       item.task.knowledge_candidate_markdown ?? '',
       item.task.knowledge_writeback_draft_markdown ?? '',
       item.task.knowledge_candidate_review_note ?? '',
+      item.task.knowledge_writeback_note ?? '',
+      taskWritebackStatus(item.task) ? writebackStatusLabel(taskWritebackStatus(item.task) || undefined) : '',
       item.task.intake_prompt ?? '',
       item.task.stage ? stageLabel(item.task.stage) : '',
       item.task.blocking_level ? blockingLabel(item.task.blocking_level) : '',
@@ -221,7 +263,7 @@ const filteredTasks = computed(() => {
       ...(item.task.recommended_fields ?? []),
       ...Object.values(item.task.supplement_field_values ?? {}),
     ].join(' ').toLowerCase()
-    return matchesStatus && matchesStage && matchesBlocking && matchesSource && matchesProject && (!query || text.includes(query))
+    return matchesStatus && matchesStage && matchesBlocking && matchesSource && matchesWriteback && matchesProject && (!query || text.includes(query))
   })
 })
 
@@ -229,6 +271,9 @@ const openCount = computed(() => tasks.value.filter(item => item.task.status ===
 const resolvedCount = computed(() => tasks.value.filter(item => item.task.status === 'resolved').length)
 const blockingOpenCount = computed(() => tasks.value.filter(item => item.task.status === 'open' && item.task.blocking_level === 'blocking').length)
 const productionReadyOpenCount = computed(() => tasks.value.filter(item => item.task.status === 'open' && item.task.stage === 'production_ready').length)
+const writebackDraftCount = computed(() => tasks.value.filter(item => taskWritebackStatus(item.task) === 'draft_ready').length)
+const writebackQueuedCount = computed(() => tasks.value.filter(item => taskWritebackStatus(item.task) === 'queued').length)
+const writebackWrittenCount = computed(() => tasks.value.filter(item => taskWritebackStatus(item.task) === 'written_back').length)
 
 function categoryLabel(category: KnowledgeSupplementTaskCategory): string {
   const map: Record<KnowledgeSupplementTaskCategory, string> = {
@@ -274,6 +319,17 @@ function reviewStatusLabel(status?: KnowledgeCandidateReviewStatus): string {
   if (status === 'approved') return '已通过'
   if (status === 'rejected') return '已驳回'
   return '待审稿'
+}
+
+function writebackStatusLabel(status?: KnowledgeWritebackStatus): string {
+  if (status === 'queued') return '已入队'
+  if (status === 'written_back') return '已入库'
+  if (status === 'needs_revision') return '需重审'
+  return '草案就绪'
+}
+
+function taskWritebackStatus(task: ProjectSupplementTaskListItem['task']): KnowledgeWritebackStatus | '' {
+  return task.knowledge_writeback_status ?? (task.knowledge_writeback_draft_markdown ? 'draft_ready' : '')
 }
 
 function queryString(value: unknown): string {
@@ -358,6 +414,28 @@ async function loadTasks() {
 async function clearProjectFilter() {
   projectFilter.value = ''
   await loadTasks()
+}
+
+async function copyWritebackQueuePatch() {
+  exportingWritebackPatch.value = true
+  copyMessage.value = ''
+  error.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePatch({
+      ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+      ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+    })
+    if (res.ok && res.data) {
+      await navigator.clipboard.writeText(res.data.markdown)
+      copyMessage.value = `已复制 ${res.data.approved_count} 条写回候选，目标文件 ${res.data.target_files.length} 个。`
+    } else {
+      error.value = res.error?.message ?? '导出写回队列 Patch 失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制写回队列 Patch 失败'
+  } finally {
+    exportingWritebackPatch.value = false
+  }
 }
 
 async function updateTask(item: ProjectSupplementTaskListItem, status: KnowledgeSupplementTaskStatus) {
@@ -473,9 +551,35 @@ onMounted(async () => {
   min-width: 150px;
 }
 
+.supplement-page__toolbar-action {
+  border: 1px solid #2980b9;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #2980b9;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.supplement-page__toolbar-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.supplement-page__copy-message {
+  margin: -2px 0 14px;
+  border: 1px solid #badbcc;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #f0f8f4;
+  color: #216e44;
+  font-size: 13px;
+}
+
 .supplement-page__summary {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -607,6 +711,10 @@ onMounted(async () => {
   gap: 8px;
 }
 
+.supplement-page__candidate-head--sub {
+  margin-top: 10px;
+}
+
 .supplement-page__candidate strong {
   color: #22313f;
   font-size: 13px;
@@ -614,7 +722,6 @@ onMounted(async () => {
 
 .supplement-page__candidate-subtitle {
   display: block;
-  margin-top: 10px;
 }
 
 .supplement-page__review {
@@ -639,6 +746,26 @@ onMounted(async () => {
 .supplement-page__review--pending_review {
   border-color: #efcf8a;
   color: #8a5a00;
+}
+
+.supplement-page__review--draft_ready {
+  border-color: #c7d8e8;
+  color: #2b6f9f;
+}
+
+.supplement-page__review--queued {
+  border-color: #b9c9f0;
+  color: #3a56a0;
+}
+
+.supplement-page__review--written_back {
+  border-color: #b8dbc8;
+  color: #247447;
+}
+
+.supplement-page__review--needs_revision {
+  border-color: #f0b8b0;
+  color: #a83224;
 }
 
 .supplement-page__candidate pre {

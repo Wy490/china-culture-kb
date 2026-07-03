@@ -53,7 +53,7 @@ export function ensureGearsDeliveryPackage(story: StoryGenerateResult): GearsDel
 
   const fresh = buildGearsDeliveryPackage(story);
   const characterAssets = mergeCharacterAssets(current.character_assets, fresh.character_assets);
-  const validationNotes = current.validation_notes ?? fresh.validation_notes;
+  const validationNotes = fresh.validation_notes;
   const pkgWithoutMarkdown: Omit<GearsDeliveryPackage, 'markdown'> = {
     schema_version: current.schema_version ?? fresh.schema_version,
     storyId: current.storyId ?? fresh.storyId,
@@ -66,7 +66,8 @@ export function ensureGearsDeliveryPackage(story: StoryGenerateResult): GearsDel
     validation_notes: validationNotes,
   };
   const shouldKeepMarkdown = Boolean(current.markdown?.includes('# 人物性别统计'))
-    && areGenderSummariesEqual(current.character_gender_summary, pkgWithoutMarkdown.character_gender_summary);
+    && areGenderSummariesEqual(current.character_gender_summary, pkgWithoutMarkdown.character_gender_summary)
+    && areStringArraysEqual(current.validation_notes, pkgWithoutMarkdown.validation_notes);
   const markdown = shouldKeepMarkdown && current.markdown
     ? current.markdown
     : renderDeliveryMarkdown(pkgWithoutMarkdown);
@@ -75,6 +76,11 @@ export function ensureGearsDeliveryPackage(story: StoryGenerateResult): GearsDel
     ...pkgWithoutMarkdown,
     markdown,
   };
+}
+
+function areStringArraysEqual(left: string[] | undefined, right: string[]): boolean {
+  if (!left) return right.length === 0;
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function mergeCharacterAssets(

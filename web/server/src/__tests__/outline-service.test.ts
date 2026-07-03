@@ -454,6 +454,7 @@ describe('outline-service', () => {
       /生成优先级|核心画面是|知识库使用规则|素材使用规则|新增知识焦点|新增素材焦点|素材焦点|新增剧情信息|建立主角初始状态|阶段转折落地|打开线索|知识线|素材线|推进phase|指向第\d+集|对照角色|关键见证者|主角/,
     );
 
+    useOutlineTestRoots();
     const savedEpisodeOne = await getStory(episodeOne.data!.storyId);
     expect(savedEpisodeOne.ok).toBe(true);
     expect(savedEpisodeOne.data?.full_text).toBe(episodeOne.data?.full_text);

@@ -574,6 +574,7 @@ function seedanceBindingState(
   const isBound = hasReferenceSlot && Boolean(
     libraryItem?.file_url
     || libraryItem?.file_id
+    || libraryItem?.local_path
     || libraryItem?.provider_asset_id
     || hasUploadedProviderAsset
   );
@@ -613,6 +614,7 @@ function upsertSeedanceAssetBinding(
   const isBound = hasReferenceSlot && Boolean(
     fileUrl
     || fileId
+    || localPath
     || providerAssetId
     || uploadStatus === 'uploaded'
     || uploadStatus === 'external'

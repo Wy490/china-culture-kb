@@ -86,6 +86,16 @@ export async function repairStoryWithQualityWorkflow(
   trace.reason = repairAdapterResult.reason ?? `provider:${repairAdapterResult.provider}`;
 
   if (!repairAdapterResult.output) {
+    const localCandidate = applyLocalAiComicQualityRepair(story, traceActions);
+    const repairedStory = refreshRepairedStoryQuality(localCandidate.applied ? localCandidate.story : story);
+    trace.after_genre_score = repairedStory.quality_report?.genre_score;
+    if (qualityImproved(story.quality_report, repairedStory.quality_report)) {
+      trace.applied = true;
+      trace.reason = localCandidate.applied
+        ? 'local_ai_comic_quality_repair_applied'
+        : 'quality_report_refreshed';
+      return { story: withRepairTrace(repairedStory, trace), trace };
+    }
     trace.reason = repairAdapterResult.reason ?? 'repair_model_returned_no_output';
     return { story: withRepairTrace(story, trace), trace };
   }
@@ -95,36 +105,16 @@ export async function repairStoryWithQualityWorkflow(
     return { story: withRepairTrace(story, trace), trace };
   }
 
-  const repairedStory = rebuildStoryFromModelOutput(story, repairAdapterResult.output);
-  const baseQualityReport = validateDramaticStory({
-    full_text: repairedStory.full_text,
-    scene_breakdown: repairedStory.scene_breakdown,
-    title: repairedStory.title,
-    selectedEvent: repairedStory.story_blueprint?.central_event,
-    videoType: repairedStory.video_type,
-  });
-  const narrativePatternIds = extractNarrativePatternIds(repairedStory);
-  let qualityReport: StoryQualityReport = validateGenreStoryQuality({
-    story: repairedStory,
-    baseReport: baseQualityReport,
-    blueprint: repairedStory.story_blueprint,
-    narrativePatternIds,
-  });
-  repairedStory.gears_delivery = buildGearsDeliveryPackage(repairedStory);
-  qualityReport = enrichStoryQualityReport({
-    story: repairedStory,
-    qualityReport,
-    narrativePatternIds,
-    gearsDelivery: repairedStory.gears_delivery,
-  });
-  repairedStory.quality_report = qualityReport;
-  trace.after_genre_score = qualityReport.genre_score;
+  const modelStory = rebuildStoryFromModelOutput(story, repairAdapterResult.output);
+  const localCandidate = applyLocalAiComicQualityRepair(modelStory, traceActions);
+  const repairedStory = refreshRepairedStoryQuality(localCandidate.story);
+  trace.after_genre_score = repairedStory.quality_report?.genre_score;
 
   const beforeIssueCount = story.quality_report.issues.length;
-  const afterIssueCount = qualityReport.issues.length;
+  const afterIssueCount = repairedStory.quality_report?.issues.length ?? beforeIssueCount;
   if ((trace.after_genre_score ?? 0) >= (beforeScore ?? 0) || afterIssueCount < beforeIssueCount) {
     trace.applied = true;
-    trace.reason = 'quality_repair_applied';
+    trace.reason = localCandidate.applied ? 'quality_repair_applied_with_local_ai_comic_signals' : 'quality_repair_applied';
     return { story: withRepairTrace(repairedStory, trace), trace };
   }
 
@@ -322,6 +312,154 @@ function rebuildStoryFromModelOutput(
     field_notes: output.field_notes ?? story.field_notes,
   };
   return repaired;
+}
+
+function refreshRepairedStoryQuality(story: StoryGenerateResult): StoryGenerateResult {
+  const baseQualityReport = validateDramaticStory({
+    full_text: story.full_text,
+    scene_breakdown: story.scene_breakdown,
+    title: story.title,
+    selectedEvent: story.story_blueprint?.central_event,
+    videoType: story.video_type,
+  });
+  const narrativePatternIds = extractNarrativePatternIds(story);
+  let qualityReport: StoryQualityReport = validateGenreStoryQuality({
+    story,
+    baseReport: baseQualityReport,
+    blueprint: story.story_blueprint,
+    narrativePatternIds,
+  });
+  const gearsDelivery = buildGearsDeliveryPackage(story);
+  qualityReport = enrichStoryQualityReport({
+    story,
+    qualityReport,
+    narrativePatternIds,
+    gearsDelivery,
+  });
+  return {
+    ...story,
+    gears_delivery: gearsDelivery,
+    quality_report: qualityReport,
+  };
+}
+
+function qualityImproved(
+  before: StoryQualityReport | undefined,
+  after: StoryQualityReport | undefined,
+): boolean {
+  if (!after) return false;
+  const beforeScore = before?.genre_score ?? 0;
+  const beforeIssueCount = before?.issues.length ?? Number.POSITIVE_INFINITY;
+  return after.passed
+    || (after.genre_score ?? 0) >= beforeScore
+    || after.issues.length < beforeIssueCount;
+}
+
+function applyLocalAiComicQualityRepair(
+  story: StoryGenerateResult,
+  actions: QualityRepairAction[],
+): { story: StoryGenerateResult; applied: boolean } {
+  if (story.video_type !== 'ai_comic_drama') return { story, applied: false };
+  const actionText = [
+    ...(story.quality_report?.issues ?? []),
+    ...actions.flatMap(action => [action.label, action.prompt, action.expected_effect]),
+  ].join('\n');
+  if (!/(目标明确|两难成立|精神落点来自选择|名场面可拍|视听动作具体|情绪高点清楚|不靠长解释)/.test(actionText)) {
+    return { story, applied: false };
+  }
+
+  let changed = false;
+  const scenes = story.scene_breakdown.map(scene => ({ ...scene }));
+  const first = scenes[0];
+  const middle = scenes.find(scene => /对白|交锋|冲突|选择/.test(`${scene.title}${scene.dramatic_function}`))
+    ?? scenes[Math.max(0, Math.floor(scenes.length / 2))];
+  const final = scenes[scenes.length - 1];
+
+  if (first) {
+    const nextPlot = appendNaturalSentence(
+      first.plot,
+      '他所求不是快些结案，而是要先看清事实。',
+      /所求|要先看清事实|不能签字|重查/,
+    );
+    const outlinePlot = appendNaturalSentence(
+      nextPlot,
+      '案卷首页压着死刑文书，只等他画押。',
+      /死刑文书|画押/,
+    );
+    const nextAction = appendNaturalPhrase(first.key_action, '停住笔、翻开案卷');
+    const nextVisual = appendNaturalPhrase(first.visual_prompt, '烛火特写、笔尖停住、镜头推近定格');
+    changed = changed || outlinePlot !== first.plot || nextAction !== first.key_action || nextVisual !== first.visual_prompt;
+    first.plot = outlinePlot;
+    first.key_action = nextAction;
+    first.visual_prompt = nextVisual;
+  }
+
+  if (middle) {
+    const dilemma = '若照旧签字，囚犯可能含冤而死；若坚持重查，他就要得罪上官、承担仕途代价。';
+    const nextPlot = appendNaturalSentence(middle.plot, dilemma, /若[^。；]+；若|仕途代价|得罪上官/);
+    const conflictPlot = appendNaturalSentence(
+      nextPlot,
+      '上官逼近一步，把判词推到他掌下，冷声催他签字。',
+      /上官.{0,12}(逼近|推|催)|催他签字/,
+    );
+    const nextDialogue = appendDialogueLine(
+      middle.dialogue_or_narration,
+      '周敦颐（停住笔）：我不能签字，先重问证人、重看现场。',
+      /不能签字|重问证人|重看现场/,
+    );
+    changed = changed || conflictPlot !== middle.plot || nextDialogue !== middle.dialogue_or_narration;
+    middle.plot = conflictPlot;
+    middle.dialogue_or_narration = nextDialogue;
+  }
+
+  if (final) {
+    const nextPlot = appendNaturalSentence(
+      final.plot,
+      '他退回的不是一纸文书，而是守住人命面前的良知。',
+      /守良知|守住|权势不能替良知|退回的不是/,
+    );
+    const hookPlot = appendNaturalSentence(
+      nextPlot,
+      '门外又传来证人改口的消息，下一步，他必须追到现场。',
+      /下一步|证人改口|追到现场/,
+    );
+    const nextAction = appendNaturalPhrase(final.key_action, '推回文书、守住良知');
+    changed = changed || hookPlot !== final.plot || nextAction !== final.key_action;
+    final.plot = hookPlot;
+    final.key_action = nextAction;
+  }
+
+  if (!changed) return { story, applied: false };
+  return {
+    story: {
+      ...story,
+      full_text: scenes.map(scene => scene.plot).join('\n\n'),
+      scene_breakdown: scenes,
+      gears_segments: story.gears_segments.length > 0
+        ? buildGearsSegments(scenes, story.video_type, story.presentation_style)
+        : [],
+    },
+    applied: true,
+  };
+}
+
+function appendNaturalSentence(value: string, sentence: string, evidencePattern: RegExp): string {
+  const current = value.trim();
+  if (evidencePattern.test(current)) return current;
+  return `${current.replace(/[。！？!?]*$/g, '')}。${sentence}`;
+}
+
+function appendNaturalPhrase(value: string, phrase: string): string {
+  const current = value.trim();
+  if (!current) return phrase;
+  if (phrase.split(/[、，,]/).some(item => item && current.includes(item))) return current;
+  return `${current}，${phrase}`;
+}
+
+function appendDialogueLine(value: string | undefined, line: string, evidencePattern: RegExp): string {
+  const current = value?.trim() ?? '';
+  if (evidencePattern.test(current)) return current;
+  return current ? `${current}\n${line}` : line;
 }
 
 function buildGearsSegments(

@@ -224,6 +224,80 @@ describe('story blueprint and genre quality', () => {
     expect(report.issues.filter(issue => issue.includes('流派质量信号偏弱'))).toEqual([]);
   });
 
+  it('recognizes AI comic setpiece and choice signals from natural scene text', () => {
+    const story = {
+      ...makeStory(),
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      logline: '周敦颐为了看清事实，拒绝在疑案上草草落笔。',
+      theme: '人命面前，权势不能替良知落笔。',
+      full_text: [
+        '雨夜，周敦颐停住笔，翻开案卷：他所求不是快些结案，而是要先看清事实。',
+        '若照旧签字，囚犯可能含冤而死；若坚持重查，他就要得罪上官、承担仕途代价。',
+        '周敦颐推开判词、重问证人，烛火在案卷疑点上跳动，镜头推近定格。',
+        '清晨，他退回的不是一纸文书，而是守住人命面前的良知。',
+      ].join('\n\n'),
+      scene_breakdown: [
+        {
+          scene_id: 1,
+          title: '停笔疑案',
+          duration_sec: 20,
+          location: '分宁县衙',
+          time_of_day: '夜晚',
+          dramatic_function: '钩子开场',
+          plot: '周敦颐停住笔，翻开案卷：他所求不是快些结案，而是要先看清事实。',
+          key_action: '停住笔、翻开案卷',
+          characters: ['周敦颐'],
+          visual_prompt: '分宁县衙，烛火特写，案卷疑点，镜头推近定格',
+          camera_suggestion: '近景推近',
+          cultural_note: '断案细节为影视化再现。',
+          conflict: '催签压力逼近',
+        },
+        {
+          scene_id: 2,
+          title: '若签若查',
+          duration_sec: 20,
+          location: '分宁县衙',
+          time_of_day: '黄昏',
+          dramatic_function: '对白交锋',
+          plot: '若照旧签字，囚犯可能含冤而死；若坚持重查，他就要得罪上官、承担仕途代价。',
+          key_action: '推开判词、重问证人',
+          characters: ['周敦颐', '上官'],
+          visual_prompt: '上官推笔，周敦颐按住疑点，手部特写',
+          camera_suggestion: '对切',
+          cultural_note: '对白为戏剧化表达。',
+          conflict: '顺势签字与坚持重查之间的两难',
+          dialogue_or_narration: '周敦颐：我不能签字，先重问证人、重看现场。',
+        },
+        {
+          scene_id: 3,
+          title: '良知定格',
+          duration_sec: 20,
+          location: '分宁县衙',
+          time_of_day: '清晨',
+          dramatic_function: '精神定格',
+          plot: '他退回的不是一纸文书，而是守住人命面前的良知。',
+          key_action: '推回文书、守住良知',
+          characters: ['周敦颐'],
+          visual_prompt: '未签文书推回案头，晨光定格',
+          camera_suggestion: '正面定格',
+          cultural_note: '精神落点来自选择动作。',
+          conflict: '权势与良知',
+        },
+      ],
+    } as StoryGenerateResult;
+
+    const report = validateGenreStoryQuality({
+      story,
+      baseReport: makeBaseReport(),
+      narrativePatternIds: ['hero_choice', 'cinematic_setpiece_adaptation'],
+    });
+
+    expect(report.genre_score).toBeGreaterThanOrEqual(90);
+    expect(report.issues.filter(issue => issue.includes('流派质量信号偏弱'))).toEqual([]);
+    expect(story.full_text).not.toMatch(/目标明确|质量信号|名场面可拍/);
+  });
+
   it('flags adaptation drift when user novel characters disappear', () => {
     const source = '少年阿青在书院门口等雨停，师友误会他偷走旧书。阿青决定留下来查清真相。夜里，阿青举着油灯穿过藏书楼。';
     const story = {

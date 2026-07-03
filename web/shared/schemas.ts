@@ -693,6 +693,19 @@ export const GearsJobStatusSyncRequestSchema = z.object({
   note: z.string().trim().min(1).max(500).optional(),
 });
 
+export const GearsJobLocalAcceptanceRequestSchema = z.object({
+  job_type: GearsExecutionJobTypeSchema.optional(),
+  source_unit_ids: z.array(z.string().trim().min(1).max(160)).min(1).max(200).optional(),
+  source_unit_id: z.string().trim().min(1).max(160).optional(),
+  include_completed: z.boolean().optional().default(false),
+  include_external_jobs: z.boolean().optional().default(false),
+  limit: z.number().int().min(1).max(200).optional().default(50),
+  artifact_base_url: z.string().trim().url().optional(),
+  artifact_url_map: z.record(z.string(), z.string().trim().url()).optional(),
+  artifact_kind: z.string().trim().min(1).max(80).optional(),
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
 export const GearsExecutionLiveSmokeRunRequestSchema = z.object({
   execute: z.boolean().optional().default(false),
   poll_after_submit: z.boolean().optional().default(false),
@@ -1296,6 +1309,8 @@ export const KnowledgeSupplementTaskUpdateRequestSchema = z.object({
   ).optional(),
   knowledge_candidate_review_status: z.enum(['pending_review', 'approved', 'rejected']).optional(),
   knowledge_candidate_review_note: z.string().trim().max(2000, 'knowledge_candidate_review_note is too long').optional(),
+  knowledge_writeback_status: z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision']).optional(),
+  knowledge_writeback_note: z.string().trim().max(2000, 'knowledge_writeback_note is too long').optional(),
 });
 
 // ---------------------------------------------------------------------------

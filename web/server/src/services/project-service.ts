@@ -24,19 +24,27 @@ import type {
   StoryProjectDeleteResult,
   StoryProjectRetainRecentResult,
   GearsExecutionJobType,
+  GearsExternalCallbackHandoffPackage,
+  GearsExternalCallbackHandoffItem,
   GearsJobCallbackRequest,
   GearsJobCallbackResult,
   GearsJobLedger,
   GearsJobLedgerItem,
+  GearsJobLocalAcceptanceRequest,
+  GearsJobLocalAcceptanceResult,
   GearsJobStatusSyncRequest,
   GearsJobStatusSyncResult,
   GearsJobSubmitFailure,
   GearsJobSubmitRequest,
   GearsJobSubmitResult,
   ProjectKnowledgeCandidateExportPackage,
+  ProjectKnowledgeWritebackPatchPackage,
+  ProjectDraftProductionMaterialFieldsResult,
   ProjectSupplementTaskListItem,
+  ProjectSeedanceAssetPlaceholderResult,
   SeedanceAssetBatchImportRequest,
   SeedanceAssetBatchImportResult,
+  SeedanceAssetBindingItem,
   SeedanceAssetFileUploadResult,
   SeedanceAssetHistoryEvent,
   SeedanceAssetHistoryEventType,
@@ -205,6 +213,8 @@ const GEARS_EXECUTION_JOB_STATUSES: GearsExecutionJobStatus[] = [
   'canceled',
   'rejected',
 ];
+
+const LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL = 'https://local.story-agent.invalid/gears-acceptance';
 
 const DELIVERY_PAYLOAD_SUMMARY_INTERNAL_PATTERN =
   /(质量信号|主角目标|目标明确|行动具体|因果链|史实边界|质量报告|来源说明|内部字段名|来源条目|来源显示|史实依据|影视化创作|知识库|用户大纲|生成优先级|资料显示|摘要|核心画面是|为什么必须面对|具体细节请核实来源|不可写成|确证史实|确证史源|创作边界|治理痕迹|分析|应该|注意|TODO|待补)/;
@@ -3030,6 +3040,276 @@ function seedanceAssetUploadExtension(filename: string, mimeType: string): strin
   return '.bin';
 }
 
+function seedanceAssetPlaceholderFilename(asset: SeedanceAssetBindingItem): string {
+  const slot = slugifySeedanceAssetLabel(asset.reference_slot ?? '').slice(0, 24) || 'slot';
+  const label = slugifySeedanceAssetLabel(asset.label).slice(0, 40) || 'asset';
+  return `placeholder-${slot}-${asset.kind}-${label}.svg`;
+}
+
+function xmlEscape(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function clipSvgText(value: string, maxLength: number): string {
+  const chars = [...value.trim().replace(/\s+/g, ' ')];
+  if (chars.length <= maxLength) return chars.join('');
+  return `${chars.slice(0, Math.max(0, maxLength - 3)).join('')}...`;
+}
+
+function seedanceAssetKindText(kind: SeedanceAssetBindingItem['kind']): string {
+  const map: Record<SeedanceAssetBindingItem['kind'], string> = {
+    character: '人物参考',
+    location: '场景参考',
+    prop: '道具参考',
+    camera: '运镜参考',
+    audio: '声音参考',
+  };
+  return map[kind];
+}
+
+function seedanceAssetRoleText(role: SeedanceAssetBindingItem['role']): string {
+  const map: Record<SeedanceAssetBindingItem['role'], string> = {
+    character_reference: '人物形象',
+    location_reference: '场景氛围',
+    prop_reference: '关键道具',
+    camera_reference: '运镜节奏',
+    music_reference: '音乐情绪',
+    sound_reference: '声音设计',
+  };
+  return map[role];
+}
+
+function seedanceAssetPlaceholderPalette(kind: SeedanceAssetBindingItem['kind']): {
+  background: string;
+  accent: string;
+  tint: string;
+} {
+  const map: Record<SeedanceAssetBindingItem['kind'], { background: string; accent: string; tint: string }> = {
+    character: { background: '#f7efe1', accent: '#8a3f2b', tint: '#f0d4bd' },
+    location: { background: '#e8f1ec', accent: '#285f52', tint: '#c9dfd5' },
+    prop: { background: '#f3f0e8', accent: '#6d5428', tint: '#ded3b2' },
+    camera: { background: '#ebeff5', accent: '#334f78', tint: '#ccd8e8' },
+    audio: { background: '#f1edf5', accent: '#5f4674', tint: '#dacbe7' },
+  };
+  return map[kind];
+}
+
+function seedanceAssetPlaceholderDescription(asset: SeedanceAssetBindingItem): string {
+  return [
+    `Story Agent 自动生成的 Seedance 本地占位参考卡：${asset.reference_slot ?? '未分配槽位'} ${asset.label}`,
+    asset.prompt_usage ? `用途：${asset.prompt_usage}` : undefined,
+    '正式投产前可替换为定稿视觉参考文件。',
+  ].filter(Boolean).join('；');
+}
+
+function renderSeedanceAssetPlaceholderSvg(asset: SeedanceAssetBindingItem, project: StoryProjectMeta): string {
+  const palette = seedanceAssetPlaceholderPalette(asset.kind);
+  const shotText = asset.source_shot_ids.length ? asset.source_shot_ids.join(' / ') : '未绑定镜头';
+  const sceneText = asset.source_scene_ids.length ? asset.source_scene_ids.join(' / ') : '未绑定场景';
+  const promptText = asset.prompt_usage || '按 Production Board 的 Seedance prompt 中对应 @ 槽位使用。';
+  const lines = [
+    `${asset.reference_slot ?? '未分配槽位'} 作为${seedanceAssetRoleText(asset.role)}`,
+    `类型：${seedanceAssetKindText(asset.kind)} / ${asset.modality}`,
+    `项目：${project.title}`,
+    `镜头：${shotText}`,
+    `场景：${sceneText}`,
+    `用途：${promptText}`,
+    '说明：这是本地占位参考卡，后续可替换为正式图片或平台素材 ID。',
+  ].map(line => clipSvgText(line, 60));
+  const lineNodes = lines.map((line, index) => (
+    `<text x="96" y="${300 + index * 48}" class="body">${xmlEscape(line)}</text>`
+  )).join('\n  ');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <style>
+      .title { font: 700 72px "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif; fill: #1f2933; }
+      .subtitle { font: 600 34px "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif; fill: ${palette.accent}; }
+      .body { font: 500 30px "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif; fill: #2f3a40; }
+      .slot { font: 700 42px "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif; fill: #ffffff; }
+    </style>
+  </defs>
+  <rect width="1280" height="720" fill="${palette.background}"/>
+  <rect x="64" y="64" width="1152" height="592" rx="24" fill="#ffffff" opacity="0.78"/>
+  <rect x="96" y="96" width="236" height="116" rx="16" fill="${palette.accent}"/>
+  <text x="124" y="168" class="slot">${xmlEscape(asset.reference_slot ?? '@未分配')}</text>
+  <circle cx="1072" cy="180" r="104" fill="${palette.tint}"/>
+  <circle cx="1118" cy="226" r="54" fill="${palette.accent}" opacity="0.42"/>
+  <text x="96" y="268" class="subtitle">Seedance Reference Card</text>
+  <text x="360" y="150" class="title">${xmlEscape(clipSvgText(asset.label, 24))}</text>
+  <text x="364" y="206" class="subtitle">${xmlEscape(seedanceAssetKindText(asset.kind))}</text>
+  ${lineNodes}
+</svg>
+`;
+}
+
+export async function draftProjectSeedanceAssetPlaceholders(
+  projectId: string,
+): Promise<ApiResponse<ProjectSeedanceAssetPlaceholderResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const generatedAt = new Date().toISOString();
+  const beforeBoard = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  const placeholderDir = resolve(projectDir(project.project_id), 'production-board', 'seedance-assets');
+  await mkdir(placeholderDir, { recursive: true });
+
+  const items: ProjectSeedanceAssetPlaceholderResult['items'] = [];
+  let createdCount = 0;
+  let updatedCount = 0;
+  let skippedCount = 0;
+
+  for (const asset of beforeBoard.seedance_asset_report.assets) {
+    if (asset.is_bound || !asset.reference_slot?.trim()) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const filename = seedanceAssetPlaceholderFilename(asset);
+    const filePath = resolve(placeholderDir, filename);
+    const existed = await pathExists(filePath);
+    const svg = renderSeedanceAssetPlaceholderSvg(asset, project);
+    await writeFile(filePath, svg, 'utf-8');
+    const size = Buffer.byteLength(svg, 'utf-8');
+    const relativePath = `production-board/seedance-assets/${filename}`;
+    const localPath = `projects/${project.project_id}/${relativePath}`;
+    const existing = byId.get(asset.asset_id);
+    const nextAsset: SeedanceAssetLibraryItem = {
+      asset_id: asset.asset_id,
+      kind: asset.kind,
+      label: asset.label,
+      modality: asset.modality,
+      role: asset.role,
+      reference_slot: asset.reference_slot,
+      local_path: localPath,
+      original_filename: filename,
+      mime_type: 'image/svg+xml',
+      size_bytes: size,
+      provider: 'story_agent_placeholder',
+      provider_asset_id: `local:${relativePath}`,
+      upload_status: 'uploaded',
+      upload_error: undefined,
+      description: seedanceAssetPlaceholderDescription(asset),
+      updated_at: generatedAt,
+    };
+    byId.set(asset.asset_id, {
+      ...nextAsset,
+      history: appendSeedanceAssetHistory(existing, seedanceAssetHistoryEvent({
+        asset: nextAsset,
+        eventType: 'placeholder_draft',
+        createdAt: generatedAt,
+        note: '自动生成 Seedance 本地占位参考卡',
+      })),
+    });
+    if (existed) {
+      updatedCount += 1;
+    } else {
+      createdCount += 1;
+    }
+    items.push({
+      asset_id: asset.asset_id,
+      label: asset.label,
+      kind: asset.kind,
+      modality: asset.modality,
+      role: asset.role,
+      reference_slot: asset.reference_slot,
+      local_path: localPath,
+      relative_path: relativePath,
+      file_path: filePath,
+      original_filename: filename,
+      mime_type: 'image/svg+xml',
+      size_bytes: size,
+      status: existed ? 'updated' : 'created',
+      source_shot_ids: asset.source_shot_ids,
+      source_scene_ids: asset.source_scene_ids,
+    });
+  }
+
+  if (!items.length) {
+    return success({
+      schema_version: 'project-seedance-asset-placeholders/v1',
+      project_id: project.project_id,
+      storyId: current_story.storyId,
+      title: current_story.title,
+      generated_at: generatedAt,
+      placeholder_dir: placeholderDir,
+      created_count: 0,
+      updated_count: 0,
+      skipped_count: skippedCount,
+      before_upload_required_count: beforeBoard.seedance_asset_report.upload_required_count,
+      after_upload_required_count: beforeBoard.seedance_asset_report.upload_required_count,
+      before_unbound_shot_count: beforeBoard.seedance_asset_report.unbound_shot_count,
+      after_unbound_shot_count: beforeBoard.seedance_asset_report.unbound_shot_count,
+      items: [],
+      detail: detail.data,
+      board: beforeBoard,
+    });
+  }
+
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: generatedAt,
+    seedance_asset_library: {
+      schema_version: 'seedance-asset-library/v1',
+      updated_at: generatedAt,
+      items: [...byId.values()].sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+        return a.label.localeCompare(b.label, 'zh-CN');
+      }),
+    },
+  };
+  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+
+  const exportResult = await exportProjectProductionBoard(project.project_id);
+  if (!exportResult.ok || !exportResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      exportResult.error?.message ?? `Project "${projectId}" not found after Seedance placeholder draft`,
+    );
+  }
+  const nextDetail = await getProject(project.project_id);
+  if (!nextDetail.ok || !nextDetail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      nextDetail.error?.message ?? `Project "${projectId}" not found after Seedance placeholder draft`,
+    );
+  }
+
+  return success({
+    schema_version: 'project-seedance-asset-placeholders/v1',
+    project_id: project.project_id,
+    storyId: current_story.storyId,
+    title: current_story.title,
+    generated_at: generatedAt,
+    placeholder_dir: placeholderDir,
+    created_count: createdCount,
+    updated_count: updatedCount,
+    skipped_count: skippedCount,
+    before_upload_required_count: beforeBoard.seedance_asset_report.upload_required_count,
+    after_upload_required_count: exportResult.data.board.seedance_asset_report.upload_required_count,
+    before_unbound_shot_count: beforeBoard.seedance_asset_report.unbound_shot_count,
+    after_unbound_shot_count: exportResult.data.board.seedance_asset_report.unbound_shot_count,
+    items,
+    detail: nextDetail.data,
+    board: exportResult.data.board,
+  });
+}
+
 function isReusableSeedanceAsset(item: SeedanceAssetLibraryItem): boolean {
   return Boolean(
     item.file_url
@@ -4959,6 +5239,137 @@ export async function importProjectGearsCallbacks(
   });
 }
 
+function localGearsAcceptanceArtifactUrl(input: {
+  projectId: string;
+  item: GearsJobLedgerItem;
+  request: GearsJobLocalAcceptanceRequest;
+}): string {
+  const mapped = input.request.artifact_url_map?.[input.item.source_unit_id]
+    ?? input.request.artifact_url_map?.[input.item.gears_job_id];
+  if (mapped) return mapped;
+  const base = (input.request.artifact_base_url ?? LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL).replace(/\/+$/, '');
+  return [
+    base,
+    encodeURIComponent(input.projectId),
+    `${encodeURIComponent(input.item.source_unit_id)}.mp4`,
+  ].join('/');
+}
+
+function projectGearsLocalAcceptanceItems(input: {
+  ledger: GearsJobLedger;
+  request: GearsJobLocalAcceptanceRequest;
+}): {
+  items: GearsJobLedgerItem[];
+  skippedCount: number;
+} {
+  const selection = projectGearsSyncItems({
+    ledger: input.ledger,
+    request: {
+      job_type: input.request.job_type,
+      source_unit_ids: input.request.source_unit_ids,
+      source_unit_id: input.request.source_unit_id,
+      include_completed: input.request.include_completed,
+      limit: input.request.limit,
+      note: input.request.note,
+    },
+  });
+  if (input.request.include_external_jobs) return selection;
+  const items = selection.items.filter(item => item.gears_job_id.startsWith('local-gears-'));
+  return {
+    items,
+    skippedCount: selection.skippedCount + selection.items.length - items.length,
+  };
+}
+
+export async function acceptProjectLocalGearsArtifacts(
+  projectId: string,
+  request: GearsJobLocalAcceptanceRequest = {},
+): Promise<ApiResponse<GearsJobLocalAcceptanceResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project } = detail.data;
+  const ledger = normalizeGearsJobLedger(project.gears_job_ledger);
+  const selection = projectGearsLocalAcceptanceItems({ ledger, request });
+  if (!selection.items.length) {
+    return success({
+      project,
+      gears_job_ledger: ledger,
+      seedance_shot_ledger: project.seedance_shot_ledger,
+      accepted_count: 0,
+      failed_count: 0,
+      duplicate_count: 0,
+      skipped_count: selection.skippedCount,
+      accepted_jobs: [],
+      callbacks: [],
+      failures: [],
+    });
+  }
+
+  const note = request.note ?? 'Local GEARS acceptance artifact; not an external provider output.';
+  const callbacks: GearsJobCallbackRequest[] = selection.items.map(item => {
+    const artifactUrl = localGearsAcceptanceArtifactUrl({ projectId, item, request });
+    return {
+      gears_job_id: item.gears_job_id,
+      source_unit_id: item.source_unit_id,
+      job_type: item.job_type,
+      status: 'COMPLETED',
+      progress_percent: 100,
+      output_url: artifactUrl,
+      event_id: `local-acceptance:${item.ledger_id}`,
+      note,
+      artifacts: [{
+        artifact_id: `local-acceptance-${item.source_unit_id}`,
+        kind: request.artifact_kind ?? (item.job_type === 'seedance_video' ? 'video' : 'local_acceptance_artifact'),
+        url: artifactUrl,
+        role: 'local_acceptance',
+        mime_type: item.job_type === 'seedance_video' ? 'video/mp4' : undefined,
+        source_unit_id: item.source_unit_id,
+        metadata: {
+          acceptance_scope: 'local',
+          source: 'story_agent_local_acceptance',
+          not_external_provider_output: true,
+        },
+      }],
+    };
+  });
+
+  const importRes = await importProjectGearsCallbacks(projectId, { callbacks });
+  if (!importRes.ok || !importRes.data) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      importRes.error?.message ?? 'Local GEARS acceptance import failed',
+      importRes.error?.details,
+    );
+  }
+
+  const acceptedIds = new Set(selection.items.map(item => item.ledger_id));
+  const updatedLedger = normalizeGearsJobLedger(importRes.data.gears_job_ledger);
+  const acceptedJobs = updatedLedger.items.filter(item =>
+    acceptedIds.has(item.ledger_id)
+    && item.status === 'ready'
+    && (item.artifact_urls.length > 0 || (item.artifacts?.length ?? 0) > 0)
+  );
+
+  return success({
+    project: importRes.data.project,
+    gears_job_ledger: updatedLedger,
+    seedance_shot_ledger: importRes.data.seedance_shot_ledger,
+    accepted_count: acceptedJobs.length,
+    failed_count: importRes.data.failed_count,
+    duplicate_count: importRes.data.duplicate_count,
+    skipped_count: selection.skippedCount,
+    accepted_jobs: acceptedJobs,
+    callbacks,
+    failures: importRes.data.failures,
+  });
+}
+
 export async function syncProjectGearsJobStatuses(
   projectId: string,
   request: GearsJobStatusSyncRequest = {},
@@ -5140,6 +5551,127 @@ export async function exportProjectSeedanceRetryPackage(
   });
 }
 
+function gearsJobLocalAcceptanceArtifactUrls(item: GearsJobLedgerItem): string[] {
+  const structured = (item.artifacts ?? [])
+    .filter(artifact => artifactIsLocalAcceptance(artifact))
+    .map(artifact => artifact.url);
+  const urls = item.artifact_urls.filter(url => url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
+  return [...new Set([...structured, ...urls])];
+}
+
+function gearsJobExternalArtifactUrls(item: GearsJobLedgerItem): string[] {
+  const structured = (item.artifacts ?? [])
+    .filter(artifact => !artifactIsLocalAcceptance(artifact))
+    .map(artifact => artifact.url);
+  const urls = item.artifact_urls.filter(url => !url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
+  return [...new Set([...structured, ...urls])];
+}
+
+function gearsExternalCallbackSample(input: {
+  project: StoryProjectMeta;
+  storyId: string;
+  item: GearsJobLedgerItem;
+}): GearsJobCallbackRequest {
+  const placeholderUrl = `https://gears.example/videos/${encodeURIComponent(input.project.project_id)}-${encodeURIComponent(input.item.source_unit_id)}.mp4`;
+  return {
+    jobId: input.item.gears_job_id,
+    sourceUnitId: input.item.source_unit_id,
+    jobType: input.item.job_type,
+    sourceProjectId: input.project.project_id,
+    sourceStoryId: input.storyId,
+    taskStatus: 'COMPLETED',
+    progressPercent: 100,
+    outputUrl: placeholderUrl,
+    eventId: `external-ready-${input.item.source_unit_id}`,
+    note: 'Replace outputUrl with the real GEARS/Seedance artifact URL before callback import.',
+  };
+}
+
+function gearsExternalHandoffPrompt(
+  shot: StoryProductionBoard['shot_units'][number] | undefined,
+): SeedanceShotRetryPackageShot['prompt'] | undefined {
+  if (!shot) return undefined;
+  return {
+    duration_sec: shot.seedance_duration_sec,
+    characters: shot.characters,
+    location: shot.location,
+    script_text: shot.script_text,
+    visual_prompt: shot.visual_prompt,
+    camera_suggestion: shot.camera_suggestion,
+    seedance_prompt: shot.seedance_prompt,
+    seedance_asset_slots: shot.seedance_asset_slots,
+    seedance_validation_notes: shot.seedance_validation_notes,
+    negative_constraints: shot.negative_constraints,
+  };
+}
+
+export async function exportProjectGearsExternalCallbackHandoff(
+  projectId: string,
+): Promise<ApiResponse<GearsExternalCallbackHandoffPackage>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const board = buildStoryProductionBoard(current_story, {
+    seedanceAssetLibrary: project.seedance_asset_library,
+    seedanceShotLedger: project.seedance_shot_ledger,
+  });
+  const ledger = normalizeGearsJobLedger(project.gears_job_ledger);
+  const shotById = new Map(board.shot_units.map(shot => [shot.shot_id, shot]));
+  const callbackPath = gearsProjectCallbackPath(project.project_id);
+  const callbackUrl = gearsProjectCallbackUrl(project.project_id) ?? callbackPath;
+  const handoffJobs = ledger.items.filter(item =>
+    item.job_type === 'seedance_video'
+    && !['failed', 'rejected', 'canceled'].includes(item.status)
+    && !gearsJobHasExternalArtifact(item)
+  );
+  const items: GearsExternalCallbackHandoffItem[] = handoffJobs.map(item => {
+    const shot = shotById.get(item.source_unit_id);
+    return {
+      source_unit_id: item.source_unit_id,
+      gears_job_id: item.gears_job_id,
+      job_type: item.job_type,
+      status: item.status,
+      source_scene_id: item.source_scene_id ?? shot?.source_scene_id,
+      source_unit_label: item.source_unit_label,
+      local_acceptance_artifact_urls: gearsJobLocalAcceptanceArtifactUrls(item),
+      external_artifact_urls: gearsJobExternalArtifactUrls(item),
+      requires_external_artifact: true,
+      callback_path: callbackPath,
+      callback_url: callbackUrl,
+      callback_sample: gearsExternalCallbackSample({
+        project,
+        storyId: current_story.storyId,
+        item,
+      }),
+      prompt: gearsExternalHandoffPrompt(shot),
+    };
+  });
+  const basePackage: Omit<GearsExternalCallbackHandoffPackage, 'markdown'> = {
+    schema_version: 'project-gears-external-callback-handoff/v1',
+    project,
+    storyId: current_story.storyId,
+    title: current_story.title,
+    exported_at: new Date().toISOString(),
+    callback_path: callbackPath,
+    callback_url: callbackUrl,
+    total_job_count: ledger.items.length,
+    external_ready_count: ledger.items.filter(item => item.status === 'ready' && gearsJobHasExternalArtifact(item)).length,
+    local_acceptance_ready_count: ledger.items.filter(item => item.status === 'ready' && gearsJobHasLocalAcceptanceArtifact(item)).length,
+    pending_external_artifact_count: items.length,
+    items,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildGearsExternalCallbackHandoffMarkdown(basePackage),
+  });
+}
+
 export async function getProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoard>> {
   const detail = await getProject(projectId);
   if (!detail.ok || !detail.data) {
@@ -5177,6 +5709,9 @@ export async function getProjectProductionReadiness(
       ? 100
       : 0;
   const gearsSummary = summarizeProductionReadinessGears(detail.project.gears_job_ledger);
+  const localActiveGearsCount = activeLocalGearsJobCount(detail.project.gears_job_ledger);
+  const localGearsAcceptanceAvailable = localActiveGearsCount > 0 && localActiveGearsCount === gearsSummary.active;
+  const activeGearsActionKey = localGearsAcceptanceAvailable ? 'accept_local_gears_artifacts' : 'sync_gears_jobs';
   const shotStatusCounts = seedanceShotProductionStatusCounts(board.seedance_shot_ledger.items);
   const activeShotCount = shotStatusCounts.submitted + shotStatusCounts.processing;
   const shotCount = board.seedance_shot_ledger.items.length || board.shot_units.length;
@@ -5190,6 +5725,30 @@ export async function getProjectProductionReadiness(
     if (nextActions.some(item => item.action_key === action.action_key)) return;
     nextActions.push(action);
   };
+  const draftableProductionMaterialTasks = projectProductionMaterialDraftableTasks(detail.current_story);
+
+  if (
+    detail.current_story.production_material_readiness
+    && detail.current_story.production_material_readiness.status !== 'ready'
+    && draftableProductionMaterialTasks.length > 0
+  ) {
+    addIssue({
+      issue_id: 'production-material-drafts-available',
+      severity: detail.current_story.production_material_readiness.status === 'blocked' ? 'blocking' : 'warning',
+      lane_key: 'story_quality',
+      label: `${draftableProductionMaterialTasks.length} 个生产素材字段可草拟`,
+      detail: '当前项目存在可由 scene_breakdown 与 GEARS segments 草拟的生产素材缺口。',
+      action_key: 'draft_production_material_fields',
+      action_label: '草拟生产素材字段',
+    });
+    addAction({
+      action_key: 'draft_production_material_fields',
+      label: '草拟生产素材字段',
+      detail: '从现有场景、镜头提示和 GEARS segment 中整理关键帧、一致性、单镜头测试、连续性和转场计划。',
+      priority: 8,
+      lane_key: 'story_quality',
+    });
+  }
 
   const qualityLaneStatus: ProductionReadinessStatus = quality?.passed
     ? 'ready'
@@ -5260,6 +5819,27 @@ export async function getProjectProductionReadiness(
     });
   }
 
+  if (board.seedance_asset_report.upload_required_count > 0 || board.seedance_asset_report.unbound_shot_count > 0) {
+    addIssue({
+      issue_id: 'seedance-assets-unbound',
+      severity: board.seedance_asset_report.missing_reference_slot_count > 0 ? 'blocking' : 'warning',
+      lane_key: 'delivery_contract',
+      label: `${board.seedance_asset_report.upload_required_count} 个 Seedance 参考素材缺文件`,
+      detail: `当前有 ${board.seedance_asset_report.unbound_shot_count}/${board.seedance_asset_report.shot_binding_count} 个镜头缺少可交付的 @ 参考素材绑定。`,
+      action_key: board.seedance_asset_report.upload_required_count > 0 ? 'draft_seedance_asset_placeholders' : 'export_production_board',
+      action_label: board.seedance_asset_report.upload_required_count > 0 ? '生成占位参考图' : '刷新 Production Board',
+    });
+  }
+  if (board.seedance_asset_report.upload_required_count > 0) {
+    addAction({
+      action_key: 'draft_seedance_asset_placeholders',
+      label: '生成 Seedance 占位参考图',
+      detail: '为缺文件的 @ 参考槽位生成本地 SVG 参考卡，写入 seedance_asset_library 并刷新交付包。',
+      priority: 28,
+      lane_key: 'delivery_contract',
+    });
+  }
+
   if (board.delivery_manifest.stage !== 'ready') {
     addIssue({
       issue_id: 'delivery-contract-not-ready',
@@ -5316,9 +5896,11 @@ export async function getProjectProductionReadiness(
     });
   } else if (activeShotCount > 0 || shotStatusCounts.prompt_exported > 0) {
     addAction({
-      action_key: 'sync_gears_jobs',
-      label: '同步 GEARS 状态或导入回传',
-      detail: `${activeShotCount + shotStatusCounts.prompt_exported} 个镜头仍在生产链路中。`,
+      action_key: activeGearsActionKey,
+      label: localGearsAcceptanceAvailable ? '验收本地 GEARS 占位回片' : '同步 GEARS 状态或导入回传',
+      detail: localGearsAcceptanceAvailable
+        ? `${localActiveGearsCount} 个本地 mocked GEARS job 等待验收占位 artifact。`
+        : `${activeShotCount + shotStatusCounts.prompt_exported} 个镜头仍在生产链路中。`,
       priority: 40,
       lane_key: 'shot_production',
     });
@@ -5377,10 +5959,28 @@ export async function getProjectProductionReadiness(
     }
     if (gearsSummary.active > 0) {
       addAction({
-        action_key: 'sync_gears_jobs',
-        label: '同步活跃 GEARS job',
-        detail: `${gearsSummary.active} 个 GEARS job 仍在 submitted/queued/processing。`,
+        action_key: activeGearsActionKey,
+        label: localGearsAcceptanceAvailable ? '验收本地 GEARS job' : '同步活跃 GEARS job',
+        detail: localGearsAcceptanceAvailable
+          ? `${localActiveGearsCount} 个本地 mocked GEARS job 可写入 local acceptance artifact；不代表外部平台真实回片。`
+          : `${gearsSummary.active} 个 GEARS job 仍在 submitted/queued/processing。`,
         priority: 55,
+        lane_key: 'gears_execution',
+      });
+    }
+    if (gearsSummary.local_acceptance_ready > 0 && gearsSummary.ready_without_external_artifact > 0) {
+      addIssue({
+        issue_id: 'gears-local-acceptance-only',
+        severity: 'info',
+        lane_key: 'gears_execution',
+        label: `${gearsSummary.local_acceptance_ready} 个 GEARS job 为本地验收产物`,
+        detail: '这些 ready job 使用 local_acceptance artifact 完成本地链路验收，不代表外部 GEARS/Seedance 已真实回片。',
+      });
+      addAction({
+        action_key: 'export_gears_external_callback_handoff',
+        label: '导出 GEARS 外部回片交接包',
+        detail: `${gearsSummary.ready_without_external_artifact} 个 ready GEARS job 仍缺真实外部 artifact，需要交给外部 worker 回片并导入 callback。`,
+        priority: 58,
         lane_key: 'gears_execution',
       });
     }
@@ -5465,11 +6065,23 @@ export async function getProjectProductionReadiness(
         : '尚未提交 GEARS job；等待从交付包建账本。',
       count_text: `jobs ${gearsSummary.total}`,
       evidence: [
+        `external_ready ${gearsSummary.external_ready}`,
+        `local_acceptance_ready ${gearsSummary.local_acceptance_ready}`,
         `missing_artifact ${gearsSummary.missing_artifact}`,
         `poll_failure ${gearsSummary.poll_failure}`,
       ],
-      action_key: gearsSummary.total === 0 || gearsSummary.failed > 0 || gearsSummary.active > 0 ? 'submit_gears_jobs' : undefined,
-      action_label: gearsSummary.total === 0 ? '提交 GEARS' : gearsSummary.active > 0 ? '同步 GEARS' : undefined,
+      action_key: gearsSummary.total === 0 || gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled > 0
+        ? 'submit_gears_jobs'
+        : gearsSummary.active > 0
+          ? activeGearsActionKey
+          : undefined,
+      action_label: gearsSummary.total === 0
+        ? '提交 GEARS'
+        : gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled > 0
+          ? '重提 GEARS'
+          : gearsSummary.active > 0
+            ? localGearsAcceptanceAvailable ? '本地验收' : '同步 GEARS'
+            : undefined,
     },
     {
       key: 'review_repair',
@@ -5732,7 +6344,9 @@ async function executeProjectReadinessAutomationStep(
   actionKey: string,
 ): Promise<ApiResponse<unknown>> {
   if (actionKey === 'repair_quality') return repairProjectQuality(projectId, {});
+  if (actionKey === 'draft_production_material_fields') return draftProjectProductionMaterialFields(projectId);
   if (actionKey === 'repair_production_board') return repairAndExportProjectProductionBoard(projectId, { apply_all: true });
+  if (actionKey === 'draft_seedance_asset_placeholders') return draftProjectSeedanceAssetPlaceholders(projectId);
   if (actionKey === 'export_production_board') return exportProjectProductionBoard(projectId);
   if (actionKey === 'export_retry_package') return exportProjectSeedanceRetryPackage(projectId);
   return fail(ErrorCodes.VALIDATION_ERROR, `Automation action "${actionKey}" is not executable for story projects`);
@@ -5756,6 +6370,27 @@ function seedanceShotProductionStatusCounts(
   return counts;
 }
 
+function artifactIsLocalAcceptance(artifact: { role?: string; url?: string; metadata?: Record<string, unknown> }): boolean {
+  return artifact.role === 'local_acceptance'
+    || artifact.metadata?.not_external_provider_output === true
+    || artifact.url?.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL) === true;
+}
+
+function gearsJobHasLocalAcceptanceArtifact(item: GearsJobLedgerItem): boolean {
+  return (item.artifacts ?? []).some(artifact => artifactIsLocalAcceptance(artifact))
+    || item.artifact_urls.some(url => url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
+}
+
+function gearsJobHasExternalArtifact(item: GearsJobLedgerItem): boolean {
+  const hasExternalStructuredArtifact = (item.artifacts ?? []).some(artifact =>
+    !artifactIsLocalAcceptance(artifact)
+  );
+  const hasExternalUrl = item.artifact_urls.some(url =>
+    !url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL)
+  );
+  return hasExternalStructuredArtifact || hasExternalUrl;
+}
+
 function summarizeProductionReadinessGears(ledger?: GearsJobLedger): ProductionReadinessGearsSummary {
   const normalized = normalizeGearsJobLedger(ledger);
   const statusCounts = Object.fromEntries(
@@ -5763,8 +6398,22 @@ function summarizeProductionReadinessGears(ledger?: GearsJobLedger): ProductionR
   ) as Record<GearsExecutionJobStatus, number>;
   let missingArtifact = 0;
   let pollFailure = 0;
+  let externalReady = 0;
+  let localAcceptanceReady = 0;
+  let localAcceptanceActive = 0;
   for (const item of normalized.items) {
     statusCounts[item.status] += 1;
+    const hasLocalAcceptance = gearsJobHasLocalAcceptanceArtifact(item);
+    const hasExternalArtifact = gearsJobHasExternalArtifact(item);
+    if (['submitted', 'queued', 'processing'].includes(item.status) && item.gears_job_id.startsWith('local-gears-')) {
+      localAcceptanceActive += 1;
+    }
+    if (item.status === 'ready' && hasLocalAcceptance) {
+      localAcceptanceReady += 1;
+    }
+    if (item.status === 'ready' && hasExternalArtifact) {
+      externalReady += 1;
+    }
     if (item.status === 'ready' && item.artifact_urls.length === 0 && (item.artifacts?.length ?? 0) === 0) {
       missingArtifact += 1;
     }
@@ -5776,6 +6425,10 @@ function summarizeProductionReadinessGears(ledger?: GearsJobLedger): ProductionR
     total: normalized.items.length,
     active: statusCounts.submitted + statusCounts.queued + statusCounts.processing,
     ready: statusCounts.ready,
+    external_ready: externalReady,
+    local_acceptance_ready: localAcceptanceReady,
+    local_acceptance_active: localAcceptanceActive,
+    ready_without_external_artifact: Math.max(0, statusCounts.ready - externalReady),
     failed: statusCounts.failed,
     rejected: statusCounts.rejected,
     canceled: statusCounts.canceled,
@@ -5783,6 +6436,13 @@ function summarizeProductionReadinessGears(ledger?: GearsJobLedger): ProductionR
     poll_failure: pollFailure,
     status_counts: statusCounts,
   };
+}
+
+function activeLocalGearsJobCount(ledger?: GearsJobLedger): number {
+  return normalizeGearsJobLedger(ledger).items.filter(item =>
+    item.gears_job_id.startsWith('local-gears-')
+    && ['submitted', 'queued', 'processing'].includes(item.status)
+  ).length;
 }
 
 function productionReadinessDeliveryScore(
@@ -5875,6 +6535,9 @@ function buildProductionReadinessSummary(
     open_review_count: extras.openReviewCount,
     gears_job_count: extras.gearsSummary.total,
     active_gears_job_count: extras.gearsSummary.active,
+    external_ready_gears_job_count: extras.gearsSummary.external_ready,
+    local_acceptance_ready_gears_job_count: extras.gearsSummary.local_acceptance_ready,
+    ready_without_external_gears_artifact_count: extras.gearsSummary.ready_without_external_artifact,
   };
 }
 
@@ -6179,6 +6842,8 @@ export async function exportProjectKnowledgeCandidates(
       review_note: task.knowledge_candidate_review_note,
       markdown: task.knowledge_candidate_markdown!,
       writeback_draft_markdown: task.knowledge_writeback_draft_markdown,
+      writeback_status: task.knowledge_writeback_status,
+      writeback_note: task.knowledge_writeback_note,
     }));
   const markdown = [
     `# ${project.title} 知识库候选稿`,
@@ -6212,6 +6877,235 @@ export async function exportProjectKnowledgeCandidates(
     source_entry: project.source_entry,
     video_type: project.video_type,
     candidate_count: items.length,
+    markdown,
+    items,
+  });
+}
+
+export async function exportProjectKnowledgeWritebackPatch(
+  projectId: string,
+): Promise<ApiResponse<ProjectKnowledgeWritebackPatchPackage>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, detailResult.error?.message ?? `Project "${projectId}" not found`);
+  }
+
+  const { project, current_story } = detailResult.data;
+  const exportedAt = new Date().toISOString();
+  const target = inferKnowledgeWritebackTarget(current_story);
+  const items = (current_story.supplement_tasks ?? [])
+    .filter(task => (
+      task.knowledge_candidate_review_status === 'approved'
+      && Boolean(task.knowledge_writeback_draft_markdown)
+    ))
+    .map(task => {
+      const appendMarkdown = buildKnowledgeWritebackAppendMarkdown(current_story, task, exportedAt);
+      return {
+        task_id: task.task_id,
+        label: task.label,
+        source_entry: current_story.source_entry,
+        suggested_file_path: target.filePath,
+        suggested_section_heading: target.sectionHeading,
+        review_note: task.knowledge_candidate_review_note,
+        writeback_status: task.knowledge_writeback_status,
+        writeback_note: task.knowledge_writeback_note,
+        append_markdown: appendMarkdown,
+        writeback_draft_markdown: task.knowledge_writeback_draft_markdown!,
+      };
+    });
+  const targetFiles = [...new Set(items.map(item => item.suggested_file_path))];
+  const prTitle = `补充 ${project.title} 生产素材候选稿`;
+  const prBody = [
+    `## 变更目的`,
+    '',
+    `将项目「${project.title}」中已通过审稿的生产素材候选稿整理为知识库写入草案。`,
+    '',
+    `## 待写入文件`,
+    '',
+    ...(targetFiles.length ? targetFiles.map(file => `- ${file}`) : ['- 暂无可写入草案']),
+    '',
+    `## 人工核实要求`,
+    '',
+    '- 补齐正式来源、地点、核实方法和待核点。',
+    '- 确认内容适用于原始文化条目，而不只是当前项目。',
+    '- 只在人工审稿后复制 append_markdown 到省份 Markdown。',
+  ].join('\n');
+  const markdown = [
+    `# ${project.title} 省份知识库写入 Patch 草案`,
+    '',
+    `- 项目 ID：${project.project_id}`,
+    `- 来源条目：${project.source_entry}`,
+    `- 导出时间：${exportedAt}`,
+    `- 已通过候选稿：${items.length}`,
+    '',
+    '## PR 草案',
+    '',
+    `### Title`,
+    '',
+    prTitle,
+    '',
+    `### Body`,
+    '',
+    prBody,
+    '',
+    '## 文件 Patch 草案',
+    '',
+    ...items.flatMap((item, index) => [
+      `### ${index + 1}. ${item.label}`,
+      '',
+      `- 建议文件：${item.suggested_file_path}`,
+      `- 建议位置：${item.suggested_section_heading}`,
+      `- 审稿备注：${item.review_note || '未填写'}`,
+      `- 入库状态：${item.writeback_status || 'draft_ready'}`,
+      `- 入库备注：${item.writeback_note || '未填写'}`,
+      '',
+      '```markdown',
+      item.append_markdown,
+      '```',
+      '',
+    ]),
+  ].join('\n');
+
+  return success({
+    schema_version: 'project-knowledge-writeback-patch/v1',
+    exported_at: exportedAt,
+    project_id: project.project_id,
+    project_title: project.title,
+    source_entry: project.source_entry,
+    approved_count: items.length,
+    target_files: targetFiles,
+    pr_title: prTitle,
+    pr_body: prBody,
+    markdown,
+    items,
+  });
+}
+
+export async function exportProjectKnowledgeWritebackQueuePatch(
+  filters: Pick<ProjectSupplementTaskListFilters, 'project_id' | 'knowledge_writeback_status'> = {},
+): Promise<ApiResponse<ProjectKnowledgeWritebackPatchPackage>> {
+  const exportedAt = new Date().toISOString();
+  const tasksResult = await listProjectSupplementTasks({
+    project_id: filters.project_id,
+    knowledge_writeback_status: filters.knowledge_writeback_status,
+  });
+  if (!tasksResult.ok || !tasksResult.data) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      tasksResult.error?.message ?? 'Failed to list writeback queue tasks',
+    );
+  }
+
+  const detailCache = new Map<string, NonNullable<Awaited<ReturnType<typeof getProject>>['data']>>();
+  const items: ProjectKnowledgeWritebackPatchPackage['items'] = [];
+  for (const item of tasksResult.data) {
+    const task = item.task;
+    if (
+      task.knowledge_candidate_review_status !== 'approved'
+      || !task.knowledge_writeback_draft_markdown
+    ) {
+      continue;
+    }
+
+    let detail = detailCache.get(item.project_id);
+    if (!detail) {
+      const detailResult = await getProject(item.project_id);
+      if (!detailResult.ok || !detailResult.data) continue;
+      detail = detailResult.data;
+      detailCache.set(item.project_id, detail);
+    }
+
+    const target = inferKnowledgeWritebackTarget(detail.current_story);
+    const appendMarkdown = buildKnowledgeWritebackAppendMarkdown(detail.current_story, task, exportedAt);
+    items.push({
+      task_id: task.task_id,
+      label: task.label,
+      source_entry: detail.current_story.source_entry,
+      suggested_file_path: target.filePath,
+      suggested_section_heading: target.sectionHeading,
+      review_note: task.knowledge_candidate_review_note,
+      writeback_status: task.knowledge_writeback_status,
+      writeback_note: task.knowledge_writeback_note,
+      append_markdown: appendMarkdown,
+      writeback_draft_markdown: task.knowledge_writeback_draft_markdown,
+    });
+  }
+
+  const targetFiles = [...new Set(items.map(item => item.suggested_file_path))];
+  const projectTitles = [...new Set(tasksResult.data.map(item => item.project_title))];
+  const statusText = filters.knowledge_writeback_status ?? 'all';
+  const prTitle = filters.project_id
+    ? `补充 ${projectTitles[0] ?? filters.project_id} 写回队列候选稿`
+    : `批量补充 Story Agent 写回队列候选稿`;
+  const prBody = [
+    `## 变更目的`,
+    '',
+    '将 Story Agent 写回队列中已通过审稿的生产素材候选稿整理为省份知识库写入草案。',
+    '',
+    `## 导出范围`,
+    '',
+    `- 项目筛选：${filters.project_id ?? '全部项目'}`,
+    `- 写回状态：${statusText}`,
+    `- 涉及项目：${projectTitles.length}`,
+    '',
+    `## 待写入文件`,
+    '',
+    ...(targetFiles.length ? targetFiles.map(file => `- ${file}`) : ['- 暂无可写入草案']),
+    '',
+    `## 人工核实要求`,
+    '',
+    '- 补齐正式来源、地点、核实方法和待核点。',
+    '- 确认内容适用于原始文化条目，而不只是当前项目。',
+    '- 只在人工审稿后复制 append_markdown 到省份 Markdown。',
+  ].join('\n');
+  const markdown = [
+    `# Story Agent 写回队列 Patch 草案`,
+    '',
+    `- 导出时间：${exportedAt}`,
+    `- 项目筛选：${filters.project_id ?? '全部项目'}`,
+    `- 写回状态：${statusText}`,
+    `- 已通过候选稿：${items.length}`,
+    `- 目标文件数：${targetFiles.length}`,
+    '',
+    '## PR 草案',
+    '',
+    `### Title`,
+    '',
+    prTitle,
+    '',
+    `### Body`,
+    '',
+    prBody,
+    '',
+    '## 文件 Patch 草案',
+    '',
+    ...items.flatMap((item, index) => [
+      `### ${index + 1}. ${item.label}`,
+      '',
+      `- 来源条目：${item.source_entry}`,
+      `- 建议文件：${item.suggested_file_path}`,
+      `- 建议位置：${item.suggested_section_heading}`,
+      `- 审稿备注：${item.review_note || '未填写'}`,
+      `- 入库状态：${item.writeback_status || 'draft_ready'}`,
+      `- 入库备注：${item.writeback_note || '未填写'}`,
+      '',
+      '```markdown',
+      item.append_markdown,
+      '```',
+      '',
+    ]),
+  ].join('\n');
+
+  return success({
+    schema_version: 'project-knowledge-writeback-patch/v1',
+    exported_at: exportedAt,
+    project_id: filters.project_id ?? 'multiple-projects',
+    project_title: filters.project_id ? projectTitles[0] ?? filters.project_id : 'Story Agent 写回队列',
+    source_entry: filters.project_id ? '项目写回队列' : '多个项目',
+    approved_count: items.length,
+    target_files: targetFiles,
+    pr_title: prTitle,
+    pr_body: prBody,
     markdown,
     items,
   });
@@ -6457,6 +7351,70 @@ function buildSeedanceRetryPackageMarkdown(
   return lines.join('\n');
 }
 
+function buildGearsExternalCallbackHandoffMarkdown(
+  pkg: Omit<GearsExternalCallbackHandoffPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.title} — GEARS 外部回片交接包`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> projectId: ${pkg.project.project_id}`,
+    `> storyId: ${pkg.storyId}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> callbackPath: ${pkg.callback_path}`,
+    `> callbackUrl: ${pkg.callback_url}`,
+    `> 待外部 artifact: ${pkg.pending_external_artifact_count}`,
+    `> 本地验收 ready: ${pkg.local_acceptance_ready_count}`,
+    `> 外部 ready: ${pkg.external_ready_count}`,
+    '',
+    '## 使用边界',
+    '',
+    '- 本包用于把 local_acceptance 或尚未回片的 GEARS job 升级为真实外部 artifact。',
+    '- 回传前必须把 sample 中的 outputUrl 替换成真实 GEARS/Seedance 产物 URL。',
+    '- local_acceptance URL 只代表本地链路验收，不代表外部平台真实回片。',
+    '',
+    '## 待回片镜头',
+  ];
+  for (const item of pkg.items) {
+    lines.push(
+      '',
+      `### ${item.source_unit_id} / ${item.gears_job_id}`,
+      '',
+      `- 状态: ${item.status}`,
+      `- 场景: ${item.source_scene_id ?? '未记录'}`,
+      `- callback: ${item.callback_path}`,
+      `- 本地验收 artifact: ${item.local_acceptance_artifact_urls.join('；') || '无'}`,
+      `- 外部 artifact: ${item.external_artifact_urls.join('；') || '待补'}`,
+      item.prompt ? `- 人物: ${item.prompt.characters.join('、') || '未指定'}` : '- 人物: 未记录',
+      item.prompt ? `- 场景: ${item.prompt.location}` : '- 场景: 未记录',
+      item.prompt ? `- 镜头: ${item.prompt.camera_suggestion}` : '- 镜头: 未记录',
+      item.prompt?.seedance_asset_slots.length
+        ? `- 素材: ${item.prompt.seedance_asset_slots.map(slot => `${slot.reference_slot}=${slot.label}`).join('；')}`
+        : '- 素材: 未记录',
+      '',
+      'Callback sample:',
+      '',
+      '```json',
+      JSON.stringify(item.callback_sample, null, 2),
+      '```',
+    );
+    if (item.prompt) {
+      lines.push(
+        '',
+        'Seedance prompt:',
+        '',
+        '```text',
+        item.prompt.seedance_prompt,
+        '```',
+      );
+    }
+  }
+  if (!pkg.items.length) {
+    lines.push('', '- 当前没有缺少外部 artifact 的 GEARS job。');
+  }
+  return lines.join('\n');
+}
+
 function buildProjectExportMarkdown(pkg: Omit<StoryProjectExportPackage, 'markdown'> & { markdown: string }): string {
   const { story, project, summary } = pkg;
   const quality = story.quality_report;
@@ -6598,6 +7556,11 @@ export async function listProjectSupplementTasks(
       if (filters.stage && task.stage !== filters.stage) continue;
       if (filters.blocking_level && task.blocking_level !== filters.blocking_level) continue;
       if (filters.source && task.source !== filters.source) continue;
+      if (filters.knowledge_writeback_status) {
+        const writebackStatus = task.knowledge_writeback_status
+          ?? (task.knowledge_writeback_draft_markdown ? 'draft_ready' : undefined);
+        if (writebackStatus !== filters.knowledge_writeback_status) continue;
+      }
       items.push({
         project_id: project.project_id,
         current_story_id: project.current_story_id,
@@ -7900,6 +8863,257 @@ function buildQualityRepairNote(trace: StoryRepairTrace): string {
     : `一键质量修复未应用：${trace.reason}${scoreText}`;
 }
 
+export async function draftProjectProductionMaterialFields(
+  projectId: string,
+): Promise<ApiResponse<ProjectDraftProductionMaterialFieldsResult>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detailResult.error?.message ?? `Project "${projectId}" not found`,
+      detailResult.error?.details,
+    );
+  }
+
+  const story = detailResult.data.current_story;
+  const generatedAt = new Date().toISOString();
+  const tasks = projectProductionMaterialDraftableTasks(story);
+  const draftedTasks: ProjectDraftProductionMaterialFieldsResult['drafted_tasks'] = [];
+  const skippedTasks: ProjectDraftProductionMaterialFieldsResult['skipped_tasks'] = [];
+
+  for (const task of tasks) {
+    const fieldValues = productionMaterialDraftFieldValues(story, task);
+    const fieldIds = Object.keys(fieldValues);
+    if (fieldIds.length === 0) {
+      skippedTasks.push({
+        task_id: task.task_id,
+        label: task.label,
+        reason: 'No supported production material field could be drafted from the current story.',
+      });
+      continue;
+    }
+
+    const updateResult = await updateProjectSupplementTask(projectId, task.task_id, {
+      status: 'resolved',
+      supplement_field_values: fieldValues,
+    });
+    if (!updateResult.ok) {
+      skippedTasks.push({
+        task_id: task.task_id,
+        label: task.label,
+        reason: updateResult.error?.message ?? 'Failed to update supplement task.',
+      });
+      continue;
+    }
+
+    draftedTasks.push({
+      task_id: task.task_id,
+      label: task.label,
+      field_ids: fieldIds,
+      field_values: fieldValues,
+    });
+  }
+
+  const afterDetail = await getProject(projectId);
+  const afterStory = afterDetail.ok && afterDetail.data ? afterDetail.data.current_story : story;
+
+  return success({
+    schema_version: 'project-production-material-draft/v1',
+    project_id: projectId,
+    story_id: story.storyId,
+    generated_at: generatedAt,
+    before_status: story.production_material_readiness?.status,
+    after_status: afterStory.production_material_readiness?.status,
+    before_score: story.production_material_readiness?.score,
+    after_score: afterStory.production_material_readiness?.score,
+    drafted_task_count: draftedTasks.length,
+    drafted_field_count: draftedTasks.reduce((sum, task) => sum + task.field_ids.length, 0),
+    skipped_task_count: skippedTasks.length,
+    drafted_tasks: draftedTasks,
+    skipped_tasks: skippedTasks,
+    detail: afterDetail.ok && afterDetail.data ? afterDetail.data : undefined,
+  });
+}
+
+const PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS = new Set([
+  'reference_images_or_keyframes',
+  'identity_motion_consistency_plan',
+  'single_shot_test',
+  'multi_shot_continuity',
+  'transition_plan',
+  'shot_prompt_layers',
+  'character_stability_tags',
+  'dialogue_bubbles',
+  'emotion_beats',
+]);
+
+function projectProductionMaterialDraftableTasks(
+  story: StoryGenerateResult,
+): NonNullable<StoryGenerateResult['supplement_tasks']> {
+  const missingFieldIds = new Set(story.production_material_readiness?.missing_fields.map(field => field.field_id) ?? []);
+  return (story.supplement_tasks ?? []).filter(task => {
+    if (task.status !== 'open') return false;
+    if (task.source !== 'production_material_missing_field') return false;
+    const fields = task.recommended_fields ?? [];
+    return fields.some(fieldId => (
+      PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS.has(fieldId)
+      && (missingFieldIds.size === 0 || missingFieldIds.has(fieldId))
+    ));
+  });
+}
+
+function productionMaterialDraftFieldValues(
+  story: StoryGenerateResult,
+  task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
+): Record<string, string> {
+  const missingFieldIds = new Set(story.production_material_readiness?.missing_fields.map(field => field.field_id) ?? []);
+  const values: Record<string, string> = {};
+  for (const fieldId of task.recommended_fields ?? []) {
+    if (!PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS.has(fieldId)) continue;
+    if (missingFieldIds.size > 0 && !missingFieldIds.has(fieldId)) continue;
+    const value = draftProductionMaterialFieldValue(story, fieldId);
+    if (value) values[fieldId] = value;
+  }
+  return values;
+}
+
+function draftProductionMaterialFieldValue(story: StoryGenerateResult, fieldId: string): string {
+  if (fieldId === 'reference_images_or_keyframes') return draftReferenceImagesOrKeyframes(story);
+  if (fieldId === 'identity_motion_consistency_plan') return draftIdentityMotionConsistencyPlan(story);
+  if (fieldId === 'single_shot_test') return draftSingleShotTest(story);
+  if (fieldId === 'multi_shot_continuity') return draftMultiShotContinuity(story);
+  if (fieldId === 'transition_plan') return draftTransitionPlan(story);
+  if (fieldId === 'shot_prompt_layers') return draftShotPromptLayers(story);
+  if (fieldId === 'character_stability_tags') return draftCharacterStabilityTags(story);
+  if (fieldId === 'dialogue_bubbles') return draftDialogueBubbles(story);
+  if (fieldId === 'emotion_beats') return draftEmotionBeats(story);
+  return '';
+}
+
+function draftReferenceImagesOrKeyframes(story: StoryGenerateResult): string {
+  const sceneLines = story.scene_breakdown.slice(0, 4).map(scene => (
+    `关键帧 S${scene.scene_id}「${scene.title}」：${scene.location}；画面内容=${shortText(scene.visual_prompt || scene.plot, 160)}；动作=${shortText(scene.key_action, 90)}`
+  ));
+  return compactDraftLines([
+    `参考图或关键帧：以项目「${story.title}」现有分镜作为临时参考图说明，正式出图前仍需人工确认角色设定图。`,
+    ...sceneLines,
+    `参考图统一基准：漫画短剧风格、角色轮廓和服饰色块保持一致，关键道具与场景锚点沿用 source_entry=${story.source_entry}。`,
+  ]);
+}
+
+function draftIdentityMotionConsistencyPlan(story: StoryGenerateResult): string {
+  const characters = storyPrimaryCharacters(story);
+  const propHints = story.scene_breakdown
+    .map(scene => scene.key_action)
+    .filter(Boolean)
+    .slice(0, 4)
+    .map((action, index) => `动作方向 ${index + 1}：${shortText(action, 80)}`);
+  return compactDraftLines([
+    `身份动作一致性计划：主角身份锁定为 ${characters.join('、') || story.source_entry}；每镜保持同一发型、服饰色块、随身物和眼神方向。`,
+    `视线与站位：开场建立主角正面或三分之二侧脸，后续镜头只改变表情强度，不改变身份特征。`,
+    ...propHints,
+    `道具位置：关键道具在同一场景内保持左右手和画面方位一致；跨场景转移时用动作或对白交代。`,
+  ]);
+}
+
+function draftSingleShotTest(story: StoryGenerateResult): string {
+  const scene = story.scene_breakdown[0];
+  const segment = story.gears_segments.find(item => item.source_scene_id === scene?.scene_id) ?? story.gears_segments[0];
+  return compactDraftLines([
+    `单镜头测试：优先用 S${scene?.scene_id ?? 1}「${scene?.title ?? story.title}」做 3-5 秒单镜头测试。`,
+    `单镜头测试画面：${shortText(scene?.visual_prompt || segment?.segment_prompt_hint || segment?.visual_focus.join('，') || story.logline, 220)}`,
+    `单镜头测试运镜：${shortText(scene?.camera_suggestion || '轻微推进，人物表情和关键道具清晰可见。', 120)}`,
+    `验收标准：角色脸型、服饰、动作方向、字幕安全区和文化边界稳定后，再批量生成多分镜。`,
+  ]);
+}
+
+function draftMultiShotContinuity(story: StoryGenerateResult): string {
+  const sceneLines = story.scene_breakdown.slice(0, 6).map(scene => (
+    `多分镜连续性 S${scene.scene_id}：${scene.location} -> ${shortText(scene.key_action || scene.plot, 100)}`
+  ));
+  return compactDraftLines([
+    `多分镜连续性：按 scene_id 顺序推进，上一镜动作结果必须成为下一镜的画面前提。`,
+    ...sceneLines,
+    `连续性检查：角色服饰、道具手位、场景光线、情绪节拍和对白气泡阅读方向逐镜核对。`,
+  ]);
+}
+
+function draftTransitionPlan(story: StoryGenerateResult): string {
+  const scenes = story.scene_breakdown;
+  const transitions = scenes.slice(0, -1).map((scene, index) => {
+    const next = scenes[index + 1];
+    const relation = scene.location === next.location ? '同场景动作承接' : `${scene.location} 到 ${next.location} 的空间转场`;
+    return `转场 S${scene.scene_id}->S${next.scene_id}：${relation}；用 ${shortText(scene.key_action || scene.dramatic_function, 70)} 作为出点，接 ${shortText(next.key_action || next.dramatic_function, 70)}。`;
+  });
+  return compactDraftLines([
+    `转场计划：优先使用动作承接、表情反应和道具特写，不使用会破坏漫画连续性的突兀跳切。`,
+    ...transitions,
+    `结尾转场：最后一镜保留追看钩子，画面停在未解问题或角色反应上。`,
+  ]);
+}
+
+function draftShotPromptLayers(story: StoryGenerateResult): string {
+  const focus = story.gears_segments.flatMap(segment => segment.visual_focus).slice(0, 8);
+  return compactDraftLines([
+    `镜头提示词分层：基础设定=${story.title}；人物=${storyPrimaryCharacters(story).join('、') || story.source_entry}；场景=${story.scene_breakdown.map(scene => scene.location).filter(Boolean).slice(0, 4).join('、') || story.source_entry}。`,
+    `画面内容层：${shortText(focus.join('；') || story.logline, 220)}`,
+    `风格层：AI 漫剧漫画分镜、清晰线条、表情夸张但文化边界真实；负面约束沿用项目 cultural_constraints。`,
+  ]);
+}
+
+function draftCharacterStabilityTags(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `角色稳定标签：${storyPrimaryCharacters(story).join('、') || story.source_entry}。`,
+    `服饰/发式：从首场 visual_prompt 提取并锁定，不随镜头随意变化；随身物和主色块在全片保持一致。`,
+    `表情：按情绪节拍逐步变化，身份标签不变。`,
+  ]);
+}
+
+function draftDialogueBubbles(story: StoryGenerateResult): string {
+  const lines = (story.dialogue ?? [])
+    .flatMap(item => item.lines.map(line => `${line.character}（${line.emotion}）：${line.text}`))
+    .slice(0, 8);
+  return compactDraftLines([
+    `对白气泡：保持短句、强情绪、可被单格阅读。`,
+    ...(lines.length ? lines : story.scene_breakdown.slice(0, 4).map(scene => `S${scene.scene_id}：${shortText(scene.dialogue_or_narration || scene.plot, 90)}`)),
+    `排版：每格 1-2 个气泡，避免遮挡人物脸和关键道具。`,
+  ]);
+}
+
+function draftEmotionBeats(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `情绪节拍：${story.scene_breakdown.slice(0, 6).map(scene => `S${scene.scene_id} ${shortText(scene.dramatic_function || scene.conflict || scene.key_action, 60)}`).join(' -> ')}`,
+    `表情动作：每次情绪转折都用眼神、手部动作或身体朝向体现，避免只靠旁白解释。`,
+  ]);
+}
+
+function storyPrimaryCharacters(story: StoryGenerateResult): string[] {
+  const counts = new Map<string, number>();
+  for (const character of story.characters ?? []) {
+    counts.set(character.name, (counts.get(character.name) ?? 0) + 3);
+  }
+  for (const scene of story.scene_breakdown) {
+    for (const character of scene.characters ?? []) {
+      counts.set(character, (counts.get(character) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .filter(([name]) => Boolean(name.trim()))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([name]) => name);
+}
+
+function compactDraftLines(lines: string[]): string {
+  return shortText(lines.filter(line => line.trim().length > 0).join('\n'), 1800);
+}
+
+function shortText(value: string | undefined, maxLength: number): string {
+  const normalized = (value ?? '').replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`;
+}
+
 export async function updateProjectSupplementTask(
   projectId: string,
   taskId: string,
@@ -7937,6 +9151,12 @@ export async function updateProjectSupplementTask(
     const writebackDraft = reviewStatus === 'approved' && knowledgeCandidateMarkdown && supplementNote
       ? buildKnowledgeWritebackDraftMarkdown(current_story, task, supplementNote, supplementFieldValues, updatedAt, reviewNote)
       : undefined;
+    const writebackStatus = request.status === 'resolved' && writebackDraft
+      ? request.knowledge_writeback_status ?? task.knowledge_writeback_status ?? 'draft_ready'
+      : undefined;
+    const writebackNote = request.knowledge_writeback_note?.trim()
+      || task.knowledge_writeback_note;
+    const writebackTouched = Boolean(request.knowledge_writeback_status || request.knowledge_writeback_note);
     return {
       ...task,
       status: request.status,
@@ -7951,6 +9171,11 @@ export async function updateProjectSupplementTask(
         ? (reviewTouched ? updatedAt : task.knowledge_candidate_reviewed_at)
         : undefined,
       knowledge_writeback_draft_markdown: request.status === 'resolved' ? writebackDraft : undefined,
+      knowledge_writeback_status: writebackStatus,
+      knowledge_writeback_note: writebackStatus ? writebackNote : undefined,
+      knowledge_writeback_updated_at: writebackStatus
+        ? (writebackTouched || !task.knowledge_writeback_updated_at ? updatedAt : task.knowledge_writeback_updated_at)
+        : undefined,
     };
   });
   const materialRefresh = applySupplementTaskMaterialUpdate(
@@ -8065,7 +9290,10 @@ function refreshStoryMaterialContract(
   const storyStructure = story.story_structure
     ?? story.creation_contract?.story_structure
     ?? inferStoryStructureFromStory(story);
-  const knowledgePack = knowledgePackFromMaterialPack(materialPack) ?? story.knowledge_pack;
+  const materialKnowledgePack = knowledgePackFromMaterialPack(materialPack);
+  const knowledgePack = hasConcreteKnowledgePackProvince(materialKnowledgePack)
+    ? materialKnowledgePack
+    : story.knowledge_pack ?? materialKnowledgePack;
   const creationContract = buildCreationContract({
     request: {
       entry_name: story.source_entry,
@@ -8136,6 +9364,15 @@ function refreshStoryMaterialContract(
       }
       : qualityReport,
   };
+}
+
+function hasConcreteKnowledgePackProvince(pack: StoryGenerateResult['knowledge_pack']): boolean {
+  if (!pack) return false;
+  const virtualProvinces = new Set(['项目素材', '待确认']);
+  return [
+    ...pack.primary_entries,
+    ...pack.supporting_entries,
+  ].some(entry => entry.province.trim() && !virtualProvinces.has(entry.province.trim()));
 }
 
 function productionMaterialContextText(story: StoryGenerateResult): string {
@@ -8377,6 +9614,64 @@ function buildKnowledgeWritebackDraftMarkdown(
     '- 主体资产：按补录内容提取人物、地点、道具或画面基准。',
     '- 生产用途：先作为项目级素材；通过来源核验后再升级为知识库生产卡片字段。',
     '- 审稿边界：本草案不能自动写入 `data/provinces/*.md`。',
+  );
+  return lines.join('\n');
+}
+
+function inferKnowledgeWritebackTarget(story: StoryGenerateResult): { filePath: string; sectionHeading: string } {
+  const entries = [
+    ...(story.knowledge_pack?.primary_entries ?? []),
+    ...(story.knowledge_pack?.supporting_entries ?? []),
+  ];
+  const matched = entries.find(entry => entry.entry_name === story.source_entry) ?? entries[0];
+  const province = matched?.province?.trim();
+  return {
+    filePath: province ? `data/provinces/${province}.md` : 'data/provinces/待确认.md',
+    sectionHeading: story.source_entry,
+  };
+}
+
+function buildKnowledgeWritebackAppendMarkdown(
+  story: StoryGenerateResult,
+  task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
+  exportedAt: string,
+): string {
+  const fieldValues = task.supplement_field_values ?? {};
+  const lines = [
+    `### 补录候选：${task.label}`,
+    '',
+    `- 来源项目：${story.title}`,
+    `- 来源条目：${story.source_entry}`,
+    `- 补充任务：${task.task_id}`,
+    `- 审稿状态：${task.knowledge_candidate_review_status === 'approved' ? '已通过' : '待审'}`,
+    `- 审稿备注：${task.knowledge_candidate_review_note || '待补'}`,
+    `- 草案导出时间：${exportedAt}`,
+    '',
+    '#### 已确认事实',
+    '',
+    task.supplement_note || '待补',
+    '',
+    '#### 生产字段映射',
+    '',
+  ];
+  if (Object.keys(fieldValues).length > 0) {
+    for (const [field, value] of Object.entries(fieldValues)) {
+      lines.push(`- ${humanizeSupplementField(field)}：${value}`);
+    }
+  } else {
+    lines.push('- 待补字段映射。');
+  }
+  lines.push(
+    '',
+    '#### 核实方法',
+    '',
+    '- 需补正式来源链接、馆藏/官方资料、出版物或实地核验记录。',
+    '- 核实后再将本块拆分进正式条目的来源、核实方法、待核实点与 asset_split。',
+    '',
+    '#### 待核实点',
+    '',
+    '- 该补录内容是否适用于原始知识条目，而非仅适用于当前项目。',
+    '- 是否需要新增地点、人物、视觉资产或禁用表达边界。',
   );
   return lines.join('\n');
 }

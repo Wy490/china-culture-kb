@@ -71,6 +71,8 @@
               · lanes {{ productionReadiness.summary.ready_lane_count }}/{{ productionReadiness.summary.total_lane_count }}
               · blockers {{ productionReadiness.summary.blocker_count }}
               · GEARS {{ productionReadiness.summary.gears_job_count }}
+              · 外部 {{ productionReadiness.summary.external_ready_gears_job_count }}
+              · 本地验收 {{ productionReadiness.summary.local_acceptance_ready_gears_job_count }}
             </p>
           </div>
           <div class="project-detail-page__readiness-actions">
@@ -99,6 +101,16 @@
           <strong>阻断与提醒</strong>
           <p v-for="issue in productionReadiness.issues.slice(0, 3)" :key="issue.issue_id">
             {{ productionReadinessSeverityLabel(issue.severity) }} · {{ issue.label }}：{{ issue.detail }}
+          </p>
+        </div>
+        <div
+          v-if="productionReadiness.summary.ready_without_external_gears_artifact_count > 0"
+          class="project-detail-page__readiness-list"
+        >
+          <strong>回片来源</strong>
+          <p>
+            {{ productionReadiness.summary.ready_without_external_gears_artifact_count }} 个 ready GEARS job 还没有外部 artifact；
+            当前可用于本地链路验收，正式投产仍需真实 GEARS/Seedance 回片。
           </p>
         </div>
         <div v-if="productionReadiness.next_actions.length" class="project-detail-page__readiness-list">
@@ -469,6 +481,9 @@
             <span>完成 {{ gearsJobStats.ready }}</span>
             <span>失败 {{ gearsJobStats.failed }}</span>
             <span>视频 {{ gearsJobStats.seedance_video }}</span>
+            <span v-if="localGearsActiveJobCount">
+              本地待验收 {{ localGearsActiveJobCount }}
+            </span>
             <span v-if="latestGearsJob">
               最新 {{ gearsJobTypeLabel(latestGearsJob.job_type) }} · {{ gearsJobStatusLabel(latestGearsJob.status) }}
             </span>
@@ -679,6 +694,14 @@
                 {{ syncingGearsJobs ? '同步中…' : '同步 GEARS 状态' }}
               </button>
               <button
+                v-if="gearsJobStats.total"
+                class="project-detail-page__repair-task-btn"
+                :disabled="acceptingLocalGearsArtifacts || !localGearsActiveJobCount"
+                @click="acceptLocalGearsArtifacts"
+              >
+                {{ acceptingLocalGearsArtifacts ? '验收中…' : '本地验收 GEARS' }}
+              </button>
+              <button
                 class="project-detail-page__repair-task-btn"
                 :disabled="submittingSeedanceProvider || submittingSeedanceProviderAdapter"
                 @click="submitSeedanceProviderJobs(false)"
@@ -727,6 +750,22 @@
               >
                 重试包 JSON
               </button>
+              <button
+                v-if="gearsJobStats.total"
+                class="project-detail-page__repair-task-btn"
+                :disabled="exportingGearsExternalHandoff"
+                @click="exportGearsExternalCallbackHandoffMarkdown"
+              >
+                外部回片 MD
+              </button>
+              <button
+                v-if="gearsJobStats.total"
+                class="project-detail-page__repair-task-btn"
+                :disabled="exportingGearsExternalHandoff"
+                @click="exportGearsExternalCallbackHandoffJson"
+              >
+                外部回片 JSON
+              </button>
             </div>
           </details>
         </div>
@@ -739,6 +778,15 @@
               · 缺槽位 {{ productionBoard.seedance_asset_report.missing_reference_slot_count }}
               · 受影响镜头 {{ productionBoard.seedance_asset_report.unbound_shot_count }}/{{ productionBoard.seedance_asset_report.shot_binding_count }}
             </p>
+            <div class="project-detail-page__seedance-ledger-action-row">
+              <button
+                class="project-detail-page__repair-task-btn"
+                :disabled="draftingSeedanceAssetPlaceholders || productionBoard.seedance_asset_report.upload_required_count === 0"
+                @click="draftSeedanceAssetPlaceholders"
+              >
+                {{ draftingSeedanceAssetPlaceholders ? '生成中…' : '生成占位参考图' }}
+              </button>
+            </div>
             <details class="project-detail-page__seedance-asset-import">
               <summary>批量导入素材</summary>
               <textarea
@@ -1168,6 +1216,15 @@
             </p>
           </div>
           <div class="project-detail-page__production-material-actions">
+            <button
+              v-if="canDraftProductionMaterialFields"
+              type="button"
+              class="project-detail-page__production-material-link"
+              :disabled="draftingProductionMaterialFields"
+              @click="draftProductionMaterialFields"
+            >
+              {{ draftingProductionMaterialFields ? '草拟中…' : '草拟生产字段' }}
+            </button>
             <RouterLink
               class="project-detail-page__production-material-link"
               :to="{ name: 'SupplementTasks', query: { status: 'open', source: 'production_material_missing_field', project_id: detail.project.project_id } }"
@@ -1257,14 +1314,24 @@
         <div v-if="productionMaterialCandidateTasks.length" class="project-detail-page__production-material-candidates">
           <div class="project-detail-page__production-material-candidates-head">
             <strong>补录候选稿</strong>
-            <button
-              type="button"
-              class="project-detail-page__production-material-link"
-              :disabled="exportingKnowledgeCandidates"
-              @click="copyKnowledgeCandidateMarkdown"
-            >
-              {{ exportingKnowledgeCandidates ? '复制中…' : '复制审稿包' }}
-            </button>
+            <div class="project-detail-page__production-material-candidate-actions">
+              <button
+                type="button"
+                class="project-detail-page__production-material-link"
+                :disabled="exportingKnowledgeCandidates"
+                @click="copyKnowledgeCandidateMarkdown"
+              >
+                {{ exportingKnowledgeCandidates ? '复制中…' : '复制审稿包' }}
+              </button>
+              <button
+                type="button"
+                class="project-detail-page__production-material-link"
+                :disabled="exportingKnowledgeWritebackPatch"
+                @click="copyKnowledgeWritebackPatchMarkdown"
+              >
+                {{ exportingKnowledgeWritebackPatch ? '复制中…' : '复制写入 Patch' }}
+              </button>
+            </div>
           </div>
           <article v-for="task in productionMaterialCandidateTasks.slice(0, 3)" :key="task.task_id">
             <div class="project-detail-page__production-material-candidate-top">
@@ -1301,7 +1368,38 @@
             </div>
             <pre>{{ task.knowledge_candidate_markdown }}</pre>
             <template v-if="task.knowledge_writeback_draft_markdown">
-              <h4>正式写入草案</h4>
+              <div class="project-detail-page__production-material-writeback-head">
+                <h4>正式写入草案</h4>
+                <span :class="['project-detail-page__production-material-review', `project-detail-page__production-material-review--${task.knowledge_writeback_status ?? 'draft_ready'}`]">
+                  {{ knowledgeWritebackStatusLabel(task.knowledge_writeback_status) }}
+                </span>
+              </div>
+              <div class="project-detail-page__production-material-review-actions">
+                <button
+                  type="button"
+                  class="project-detail-page__production-material-task-btn project-detail-page__production-material-task-btn--resolved"
+                  :disabled="updatingSupplementTaskId === task.task_id"
+                  @click="updateKnowledgeWritebackStatus(task, 'queued')"
+                >
+                  入队
+                </button>
+                <button
+                  type="button"
+                  class="project-detail-page__production-material-task-btn project-detail-page__production-material-task-btn--resolved"
+                  :disabled="updatingSupplementTaskId === task.task_id"
+                  @click="updateKnowledgeWritebackStatus(task, 'written_back')"
+                >
+                  已入库
+                </button>
+                <button
+                  type="button"
+                  class="project-detail-page__production-material-task-btn"
+                  :disabled="updatingSupplementTaskId === task.task_id"
+                  @click="updateKnowledgeWritebackStatus(task, 'needs_revision')"
+                >
+                  需重审
+                </button>
+              </div>
               <pre>{{ task.knowledge_writeback_draft_markdown }}</pre>
             </template>
           </article>
@@ -1875,12 +1973,17 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  acceptProjectLocalGearsArtifacts,
   deleteProject,
   addProjectMaterialPackMaterial,
   applyProjectQualityRepairJson,
   autoSelectProjectSeedanceShotVersions,
+  draftProjectProductionMaterialFields,
+  draftProjectSeedanceAssetPlaceholders,
   exportProjectCurrentVersion,
+  exportProjectGearsExternalCallbackHandoff,
   exportProjectKnowledgeCandidates,
+  exportProjectKnowledgeWritebackPatch,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   generateProjectQualityRepairPrompt,
@@ -1948,6 +2051,7 @@ import type {
   KnowledgeCandidateReviewStatus,
   KnowledgeSupplementTask,
   KnowledgeSupplementTaskStatus,
+  KnowledgeWritebackStatus,
   MaterialGenerationPosture,
   MaterialPurpose,
   MaterialSourceType,
@@ -2253,6 +2357,17 @@ const qualityRepairBoundaryCards = computed<QualityRepairOverviewCard[]>(() => {
   }
   return cards
 })
+const AUTO_DRAFT_PRODUCTION_FIELDS = new Set([
+  'reference_images_or_keyframes',
+  'identity_motion_consistency_plan',
+  'single_shot_test',
+  'multi_shot_continuity',
+  'transition_plan',
+  'shot_prompt_layers',
+  'character_stability_tags',
+  'dialogue_bubbles',
+  'emotion_beats',
+])
 const productionBoard = ref<StoryProductionBoard | null>(null)
 const productionBoardExport = ref<StoryProductionBoardExportPackage | null>(null)
 const productionRepairResult = ref<StoryProductionBoardRepairResult | null>(null)
@@ -2261,8 +2376,10 @@ const loadingProductionBoard = ref(false)
 const productionReadiness = ref<StoryProjectProductionReadinessReport | null>(null)
 const loadingProductionReadiness = ref(false)
 const runningProductionAutomation = ref(false)
+const draftingProductionMaterialFields = ref(false)
 const exportingProductionBoard = ref(false)
 const exportingKnowledgeCandidates = ref(false)
+const exportingKnowledgeWritebackPatch = ref(false)
 const repairingProductionBoard = ref(false)
 const repairingAndExportingProductionBoard = ref(false)
 const repairingProductionBoardTaskId = ref('')
@@ -2270,6 +2387,7 @@ const repairingProductionBoardScope = ref('')
 const seedanceAssetFileInputs = ref<Record<string, string>>({})
 const bindingSeedanceAssetId = ref('')
 const seedanceAssetBatchImportText = ref('')
+const draftingSeedanceAssetPlaceholders = ref(false)
 const importingSeedanceAssets = ref(false)
 const uploadingSeedanceAssetId = ref('')
 const seedanceGlobalAssets = ref<SeedanceGlobalAssetLibraryItem[]>([])
@@ -2283,6 +2401,7 @@ const importingSeedanceCallbacks = ref(false)
 const gearsCallbackImportText = ref('')
 const importingGearsCallbacks = ref(false)
 const exportingSeedanceRetryPackage = ref(false)
+const exportingGearsExternalHandoff = ref(false)
 const batchingSeedanceShots = ref(false)
 const autoSelectingSeedanceShots = ref(false)
 const submittingSeedanceProvider = ref(false)
@@ -2290,6 +2409,7 @@ const submittingSeedanceProviderAdapter = ref(false)
 const submittingGearsJobs = ref(false)
 const submittingGearsApiJobs = ref(false)
 const syncingGearsJobs = ref(false)
+const acceptingLocalGearsArtifacts = ref(false)
 const loadingGearsExecutionConfig = ref(false)
 const gearsExecutionConfig = ref<GearsExecutionConfigInfo | null>(null)
 const gearsExecutionReadiness = ref<GearsExecutionReadinessReport | null>(null)
@@ -2390,6 +2510,16 @@ const productionMaterialMissingRows = computed(() => {
     field,
     task: productionMaterialTaskByField.value.get(field.field_id) ?? null,
   }))
+})
+
+const canDraftProductionMaterialFields = computed(() => {
+  if (productionReadiness.value?.next_actions.some(action => action.action_key === 'draft_production_material_fields')) {
+    return true
+  }
+  return productionMaterialMissingRows.value.some(row => (
+    row.task?.status === 'open'
+    && (row.task.recommended_fields ?? []).some(field => AUTO_DRAFT_PRODUCTION_FIELDS.has(field))
+  ))
 })
 
 const productionMaterialCandidateTasks = computed(() => {
@@ -2649,6 +2779,13 @@ const gearsJobStats = computed(() => {
   return stats
 })
 
+const localGearsActiveJobCount = computed(() => {
+  return gearsJobItems.value.filter(item =>
+    item.gears_job_id.startsWith('local-gears-')
+    && !['ready', 'failed', 'rejected', 'canceled'].includes(item.status)
+  ).length
+})
+
 const latestGearsJob = computed(() => gearsJobItems.value[0] ?? null)
 
 const latestSeedanceProviderQueueBatch = computed(() => {
@@ -2752,6 +2889,13 @@ function knowledgeCandidateReviewStatusLabel(status?: KnowledgeCandidateReviewSt
   return '待审稿'
 }
 
+function knowledgeWritebackStatusLabel(status?: KnowledgeWritebackStatus): string {
+  if (status === 'queued') return '已入队'
+  if (status === 'written_back') return '已入库'
+  if (status === 'needs_revision') return '需重审'
+  return '草案就绪'
+}
+
 async function updateKnowledgeCandidateReview(task: KnowledgeSupplementTask, status: KnowledgeCandidateReviewStatus) {
   if (!detail.value) return
   updatingSupplementTaskId.value = task.task_id
@@ -2767,6 +2911,26 @@ async function updateKnowledgeCandidateReview(task: KnowledgeSupplementTask, sta
     successMessage.value = `候选稿已标记为${knowledgeCandidateReviewStatusLabel(status)}`
   } else {
     error.value = res.error?.message ?? '更新候选稿审稿状态失败'
+  }
+  updatingSupplementTaskId.value = ''
+}
+
+async function updateKnowledgeWritebackStatus(task: KnowledgeSupplementTask, status: KnowledgeWritebackStatus) {
+  if (!detail.value) return
+  updatingSupplementTaskId.value = task.task_id
+  error.value = ''
+  successMessage.value = ''
+  const res = await updateProjectSupplementTask(detail.value.project.project_id, task.task_id, {
+    status: task.status,
+    knowledge_candidate_review_status: task.knowledge_candidate_review_status ?? 'approved',
+    knowledge_writeback_status: status,
+    knowledge_writeback_note: knowledgeWritebackStatusLabel(status),
+  })
+  if (res.ok && res.data) {
+    detail.value = res.data
+    successMessage.value = `写入草案已标记为${knowledgeWritebackStatusLabel(status)}`
+  } else {
+    error.value = res.error?.message ?? '更新写入草案状态失败'
   }
   updatingSupplementTaskId.value = ''
 }
@@ -2942,6 +3106,7 @@ function seedanceAssetHistoryTypeLabel(type: SeedanceAssetHistoryEvent['event_ty
     manual_bind: '手动绑定',
     batch_import: '批量导入',
     file_upload: '文件上传',
+    placeholder_draft: '占位草拟',
     cross_project_reuse: '跨项目复用',
   }
   return map[type]
@@ -3160,6 +3325,58 @@ async function runProductionReadinessAutomation() {
     error.value = res.error?.message ?? '运行制作自动化失败'
   }
   runningProductionAutomation.value = false
+}
+
+async function draftProductionMaterialFields() {
+  if (!detail.value || draftingProductionMaterialFields.value) return
+  draftingProductionMaterialFields.value = true
+  error.value = ''
+  successMessage.value = ''
+  const projectId = detail.value.project.project_id
+  try {
+    const res = await draftProjectProductionMaterialFields(projectId)
+    if (res.ok && res.data) {
+      const message = `已草拟 ${res.data.drafted_field_count} 个生产素材字段，状态 ${res.data.before_status ?? '-'}→${res.data.after_status ?? '-'}`
+      if (res.data.detail) {
+        detail.value = res.data.detail
+      } else {
+        await loadProject(projectId)
+      }
+      await loadProductionBoard()
+      await loadProjectProductionReadiness()
+      successMessage.value = message
+    } else {
+      error.value = res.error?.message ?? '草拟生产素材字段失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '草拟生产素材字段失败'
+  } finally {
+    draftingProductionMaterialFields.value = false
+  }
+}
+
+async function draftSeedanceAssetPlaceholders() {
+  if (!detail.value || draftingSeedanceAssetPlaceholders.value) return
+  draftingSeedanceAssetPlaceholders.value = true
+  error.value = ''
+  successMessage.value = ''
+  const projectId = detail.value.project.project_id
+  try {
+    const res = await draftProjectSeedanceAssetPlaceholders(projectId)
+    if (res.ok && res.data) {
+      detail.value = res.data.detail
+      productionBoard.value = res.data.board
+      await loadSeedanceGlobalAssets()
+      await loadProjectProductionReadiness()
+      successMessage.value = `已生成 ${res.data.created_count} 个 Seedance 占位参考图，更新 ${res.data.updated_count} 个；未绑定镜头 ${res.data.before_unbound_shot_count}→${res.data.after_unbound_shot_count}`
+    } else {
+      error.value = res.error?.message ?? '生成 Seedance 占位参考图失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '生成 Seedance 占位参考图失败'
+  } finally {
+    draftingSeedanceAssetPlaceholders.value = false
+  }
 }
 
 async function loadSeedanceGlobalAssets(showMessage = false) {
@@ -3782,6 +3999,39 @@ async function syncGearsJobs() {
   syncingGearsJobs.value = false
 }
 
+async function acceptLocalGearsArtifacts() {
+  if (!detail.value || acceptingLocalGearsArtifacts.value) return
+  if (!localGearsActiveJobCount.value) {
+    error.value = '当前没有可本地验收的 GEARS job'
+    return
+  }
+  acceptingLocalGearsArtifacts.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await acceptProjectLocalGearsArtifacts(detail.value.project.project_id, {
+    job_type: 'seedance_video',
+    note: '前端本地验收 GEARS 占位产物；非外部真实回片',
+  })
+  if (res.ok && res.data) {
+    detail.value = {
+      ...detail.value,
+      project: res.data.project,
+    }
+    await loadProductionBoard()
+    await loadProjectProductionReadiness()
+    const duplicateText = res.data.duplicate_count ? `，重复 ${res.data.duplicate_count} 条` : ''
+    successMessage.value = `GEARS 本地验收完成：验收 ${res.data.accepted_count} 条，跳过 ${res.data.skipped_count} 条，失败 ${res.data.failed_count} 条${duplicateText}`
+    if (res.data.failures.length) {
+      error.value = res.data.failures.map(item => {
+        return `${gearsFailureTargetLabel(item)} ${item.message}`
+      }).join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? 'GEARS 本地验收失败'
+  }
+  acceptingLocalGearsArtifacts.value = false
+}
+
 async function pollSeedanceProviderJobs() {
   if (!detail.value || pollingSeedanceProvider.value) return
   pollingSeedanceProvider.value = true
@@ -3916,6 +4166,42 @@ async function exportSeedanceRetryPackageJson() {
     error.value = res.error?.message ?? '导出 Seedance 重试包失败'
   }
   exportingSeedanceRetryPackage.value = false
+}
+
+async function exportGearsExternalCallbackHandoffMarkdown() {
+  if (!detail.value || exportingGearsExternalHandoff.value) return
+  exportingGearsExternalHandoff.value = true
+  error.value = ''
+  const res = await exportProjectGearsExternalCallbackHandoff(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.project_id}-gears-external-callback-handoff.md`,
+      res.data.markdown,
+      'text/markdown;charset=utf-8',
+    )
+    successMessage.value = `GEARS 外部回片交接包 Markdown 已导出 · 待回片 ${res.data.pending_external_artifact_count} 条`
+  } else {
+    error.value = res.error?.message ?? '导出 GEARS 外部回片交接包失败'
+  }
+  exportingGearsExternalHandoff.value = false
+}
+
+async function exportGearsExternalCallbackHandoffJson() {
+  if (!detail.value || exportingGearsExternalHandoff.value) return
+  exportingGearsExternalHandoff.value = true
+  error.value = ''
+  const res = await exportProjectGearsExternalCallbackHandoff(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.project_id}-gears-external-callback-handoff.json`,
+      JSON.stringify(res.data, null, 2),
+      'application/json;charset=utf-8',
+    )
+    successMessage.value = `GEARS 外部回片交接包 JSON 已导出 · 待回片 ${res.data.pending_external_artifact_count} 条`
+  } else {
+    error.value = res.error?.message ?? '导出 GEARS 外部回片交接包失败'
+  }
+  exportingGearsExternalHandoff.value = false
 }
 
 async function exportSeedanceProviderRetryPlanMarkdown() {
@@ -4477,6 +4763,26 @@ async function copyKnowledgeCandidateMarkdown() {
     error.value = '复制候选稿失败，请检查浏览器剪贴板权限'
   }
   exportingKnowledgeCandidates.value = false
+}
+
+async function copyKnowledgeWritebackPatchMarkdown() {
+  if (!detail.value || exportingKnowledgeWritebackPatch.value) return
+  exportingKnowledgeWritebackPatch.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await exportProjectKnowledgeWritebackPatch(detail.value.project.project_id)
+  if (!res.ok || !res.data) {
+    error.value = res.error?.message ?? '导出知识库写入 Patch 草案失败'
+    exportingKnowledgeWritebackPatch.value = false
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(res.data.markdown)
+    successMessage.value = `已复制 ${res.data.approved_count} 条知识库写入 Patch 草案`
+  } catch {
+    error.value = '复制写入 Patch 草案失败，请检查浏览器剪贴板权限'
+  }
+  exportingKnowledgeWritebackPatch.value = false
 }
 
 async function exportProductionBoardJson() {
@@ -5205,6 +5511,12 @@ watch(selectedModelProfileId, (value) => {
   gap: 8px;
 }
 
+.project-detail-page__production-material-candidate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .project-detail-page__production-material-candidates article {
   margin-top: 8px;
   border: 1px solid #d7dee5;
@@ -5251,6 +5563,26 @@ watch(selectedModelProfileId, (value) => {
 .project-detail-page__production-material-review--pending_review {
   border-color: #efcf8a;
   color: #8a5a00;
+}
+
+.project-detail-page__production-material-review--draft_ready {
+  border-color: #c7d8e8;
+  color: #2b6f9f;
+}
+
+.project-detail-page__production-material-review--queued {
+  border-color: #b9c9f0;
+  color: #3a56a0;
+}
+
+.project-detail-page__production-material-review--written_back {
+  border-color: #b8dbc8;
+  color: #247447;
+}
+
+.project-detail-page__production-material-review--needs_revision {
+  border-color: #f0b8b0;
+  color: #a83224;
 }
 
 .project-detail-page__production-material-candidates h3 {

@@ -3,18 +3,24 @@ import type {
   KnowledgeSupplementTaskUpdateRequest,
   GearsJobCallbackRequest,
   GearsJobCallbackResult,
+  GearsExternalCallbackHandoffPackage,
+  GearsJobLocalAcceptanceRequest,
+  GearsJobLocalAcceptanceResult,
   GearsJobStatusSyncRequest,
   GearsJobStatusSyncResult,
   GearsJobSubmitRequest,
   GearsJobSubmitResult,
   StoryProjectBatchDeleteResult,
   ProjectMaterialPackAddMaterialRequest,
+  ProjectDraftProductionMaterialFieldsResult,
+  ProjectSeedanceAssetPlaceholderResult,
   ProjectSupplementTaskListItem,
   ProjectSupplementTaskListFilters,
   StoryProjectDeleteResult,
   StoryProjectDetail,
   StoryProjectExportPackage,
   ProjectKnowledgeCandidateExportPackage,
+  ProjectKnowledgeWritebackPatchPackage,
   StoryProjectListItem,
   ProductionReadinessAutomationRunRequest,
   ProductionReadinessAutomationRunResult,
@@ -107,6 +113,17 @@ export function exportProjectKnowledgeCandidates(projectId: string) {
   return apiGet<ProjectKnowledgeCandidateExportPackage>(`/projects/${projectId}/knowledge-candidates/export`)
 }
 
+export function exportProjectKnowledgeWritebackPatch(projectId: string) {
+  return apiGet<ProjectKnowledgeWritebackPatchPackage>(`/projects/${projectId}/knowledge-candidates/writeback-patch/export`)
+}
+
+export function exportKnowledgeWritebackQueuePatch(filters: ProjectSupplementTaskListFilters = {}) {
+  const query = Object.fromEntries(
+    Object.entries(filters).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0),
+  )
+  return apiGet<ProjectKnowledgeWritebackPatchPackage>('/projects/knowledge-candidates/writeback-patch/export', query)
+}
+
 export function getProjectProductionBoard(projectId: string) {
   return apiGet<StoryProductionBoard>(`/projects/${projectId}/production-board`)
 }
@@ -125,6 +142,10 @@ export function runProjectProductionReadinessAutomation(
   )
 }
 
+export function draftProjectProductionMaterialFields(projectId: string) {
+  return apiPost<ProjectDraftProductionMaterialFieldsResult>(`/projects/${projectId}/supplement-tasks/draft-production-material`, {})
+}
+
 export function exportProjectProductionBoard(projectId: string) {
   return apiPost<StoryProductionBoardExportPackage>(`/projects/${projectId}/production-board/export`, {})
 }
@@ -135,6 +156,10 @@ export function updateProjectSeedanceAssetLibrary(projectId: string, body: Seeda
 
 export function importProjectSeedanceAssetBatch(projectId: string, body: SeedanceAssetBatchImportRequest) {
   return apiPost<SeedanceAssetBatchImportResult>(`/projects/${projectId}/production-board/seedance-assets/import`, body)
+}
+
+export function draftProjectSeedanceAssetPlaceholders(projectId: string) {
+  return apiPost<ProjectSeedanceAssetPlaceholderResult>(`/projects/${projectId}/production-board/seedance-assets/draft-placeholders`, {})
 }
 
 export function uploadProjectSeedanceAssetFile(projectId: string, body: FormData) {
@@ -199,6 +224,14 @@ export function submitProjectGearsJobs(projectId: string, body: GearsJobSubmitRe
 
 export function syncProjectGearsJobs(projectId: string, body: GearsJobStatusSyncRequest = {}) {
   return apiPost<GearsJobStatusSyncResult>(`/projects/${projectId}/production-board/gears-jobs/sync`, body)
+}
+
+export function acceptProjectLocalGearsArtifacts(projectId: string, body: GearsJobLocalAcceptanceRequest = {}) {
+  return apiPost<GearsJobLocalAcceptanceResult>(`/projects/${projectId}/production-board/gears-jobs/local-acceptance`, body)
+}
+
+export function exportProjectGearsExternalCallbackHandoff(projectId: string) {
+  return apiPost<GearsExternalCallbackHandoffPackage>(`/projects/${projectId}/production-board/gears-jobs/export-external-callback-handoff`, {})
 }
 
 export function importProjectGearsCallback(projectId: string, body: GearsJobCallbackRequest) {

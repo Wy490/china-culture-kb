@@ -136,6 +136,9 @@ function portfolioItem(report: ReadinessReport): ProductionReadinessPortfolioIte
     next_action_count: report.summary.next_action_count,
     gears_job_count: report.summary.gears_job_count,
     active_gears_job_count: report.summary.active_gears_job_count,
+    external_ready_gears_job_count: report.summary.external_ready_gears_job_count,
+    local_acceptance_ready_gears_job_count: report.summary.local_acceptance_ready_gears_job_count,
+    ready_without_external_gears_artifact_count: report.summary.ready_without_external_gears_artifact_count,
     ready_automation_step_count: report.automation_plan.ready_step_count,
     blocked_automation_step_count: report.automation_plan.blocked_step_count,
     manual_automation_step_count: report.automation_plan.manual_step_count,
@@ -190,6 +193,10 @@ function buildMarkdown(report: Omit<ProductionReadinessPortfolioReport, 'markdow
     `- ready: ${report.summary.ready_count}`,
     `- ready automation steps: ${report.summary.ready_automation_step_count}`,
     `- external GEARS/operator steps: ${report.summary.external_automation_step_count + report.summary.manual_automation_step_count}`,
+    `- GEARS jobs: ${report.summary.gears_job_count} · active ${report.summary.active_gears_job_count}`,
+    `- GEARS external ready: ${report.summary.external_ready_gears_job_count}`,
+    `- GEARS local acceptance ready: ${report.summary.local_acceptance_ready_gears_job_count}`,
+    `- GEARS ready without external artifact: ${report.summary.ready_without_external_gears_artifact_count}`,
     `- portfolio automation runs: ${report.summary.portfolio_automation_run_count}`,
     ...(latestRun
       ? [`- latest portfolio run: ${latestRun.completed_at} · executed ${latestRun.executed_target_count} · failed ${latestRun.failed_target_count}`]
@@ -275,6 +282,11 @@ export async function getProductionReadinessPortfolio(
     ready_automation_step_count: reports.reduce((sum, report) => sum + report.automation_plan.ready_step_count, 0),
     external_automation_step_count: reports.reduce((sum, report) => sum + report.automation_plan.external_step_count, 0),
     manual_automation_step_count: reports.reduce((sum, report) => sum + report.automation_plan.manual_step_count, 0),
+    gears_job_count: reports.reduce((sum, report) => sum + report.summary.gears_job_count, 0),
+    active_gears_job_count: reports.reduce((sum, report) => sum + report.summary.active_gears_job_count, 0),
+    external_ready_gears_job_count: reports.reduce((sum, report) => sum + report.summary.external_ready_gears_job_count, 0),
+    local_acceptance_ready_gears_job_count: reports.reduce((sum, report) => sum + report.summary.local_acceptance_ready_gears_job_count, 0),
+    ready_without_external_gears_artifact_count: reports.reduce((sum, report) => sum + report.summary.ready_without_external_gears_artifact_count, 0),
     latest_automation_run_count: reports.filter(report => Boolean(report.latest_automation_run)).length,
     portfolio_automation_run_count: 0,
   };
