@@ -5,7 +5,7 @@
       <p>正在加载创作项目…</p>
     </div>
 
-    <div v-else-if="error" class="project-detail-page__error">{{ error }}</div>
+    <div v-else-if="error && !detail" class="project-detail-page__error">{{ error }}</div>
 
     <div v-else-if="detail">
       <header class="project-detail-page__header">
@@ -41,6 +41,11 @@
           <RouterLink class="project-detail-page__action-btn" to="/story/new">继续创作</RouterLink>
         </div>
       </header>
+
+      <div v-if="error || successMessage" class="project-detail-page__status-strip">
+        <div v-if="error" class="project-detail-page__error">{{ error }}</div>
+        <div v-if="successMessage" class="project-detail-page__success project-detail-page__success--inline">{{ successMessage }}</div>
+      </div>
 
       <section class="project-detail-page__summary">
         <div class="project-detail-page__summary-card">
@@ -1753,7 +1758,6 @@
             <h2 class="project-detail-page__editor-title">局部重写</h2>
             <p class="project-detail-page__editor-desc">先在下方场景卡片里选择“重写这一场”，再提交局部修改要求。</p>
           </div>
-          <span v-if="successMessage" class="project-detail-page__success">{{ successMessage }}</span>
         </div>
 
         <div v-if="selectedSceneId" class="project-detail-page__editor-form">
@@ -5168,6 +5172,13 @@ watch(selectedModelProfileId, (value) => {
   font-size: 14px;
 }
 
+.project-detail-page__status-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0;
+}
+
 .project-detail-page__header {
   display: flex;
   justify-content: space-between;
@@ -7327,6 +7338,13 @@ watch(selectedModelProfileId, (value) => {
 .project-detail-page__success {
   color: #1b7f4a;
   font-size: 13px;
+}
+
+.project-detail-page__success--inline {
+  padding: 10px 14px;
+  border: 1px solid #b7dfc8;
+  border-radius: 4px;
+  background: #f1fbf5;
 }
 
 .project-detail-page__editor-form {

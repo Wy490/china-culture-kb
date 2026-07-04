@@ -226,9 +226,9 @@ P0 调整：
 2. 若暂无真实 endpoint，补浏览器 smoke 覆盖项目详情的 `校验 GEARS 回片 / 安全导入 GEARS 回片 / 回片 Payload` 三个新入口和阻断提示。
 3. 继续不要把 `local_acceptance` 当真实回片；本地验收只证明 Story Agent 指挥链路和账本更新闭环，不代表外部媒体实产完成。
 
-## 0.8 2026-07-04 外部回片安全导入 smoke 补测
+## 0.8 2026-07-04 外部回片安全导入浏览器 smoke 补测
 
-本轮在暂无真实 GEARS/Seedance endpoint 的情况下，继续推进到 API + 静态 UI smoke。当前项目总体进度估算 **99%**：外部回片交接包、preflight、安全导入、readiness 计数回落和项目详情入口均已验证；最后剩余是真实外部 worker / artifact URL 接入后的 live 用户路径验收。
+本轮在暂无真实 GEARS/Seedance endpoint 的情况下，继续推进到 API + 真浏览器 UI smoke。当前项目总体进度估算 **99.5%**：外部回片交接包、preflight、安全导入、readiness 计数回落和项目详情入口均已验证；最后剩余是真实外部 worker / artifact URL 接入后的 live 用户路径验收。
 
 本轮补测：
 
@@ -236,14 +236,15 @@ P0 调整：
 - API smoke 先提交 5 条本地 GEARS 验收任务，再把首条 callback 的 `outputUrl` 替换为真实形态 URL `https://media.story-agent.test/browser-smoke-shot-1.mp4`，通过 `preflight-external-callbacks` 与 `import-external-callbacks` 完成安全导入。
 - 导入后 readiness 复核通过：`external_ready_gears_job_count=1`、`local_acceptance_ready_gears_job_count=4`、`ready_without_external_gears_artifact_count=4`，handoff 剩余 `pending_external_artifact_count=4`。
 - 剩余 4 条占位 payload 复核通过：`ready_to_import_count=0`、`blocking_count=8`，阻断码包含 `missing_external_artifact_url` 与 `placeholder_artifact_url`，证明占位样例不会被误写入 ledger。
-- 静态 UI 检查通过：`ProjectDetail.vue` 仍包含 `校验 GEARS 回片`、`安全导入 GEARS 回片`、`回片 Payload`，并接入 `preflightGearsCallbacks()`、`importGearsCallbacks()`、`exportGearsExternalCallbackPayloadJson()`。
-- 浏览器自动化未完成，原因是当前机器没有可用 Chrome distribution（Playwright/MCP 均报 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` 不存在）；这属于验收环境缺口，不是本轮产品代码失败。
+- 已安装 Playwright Chromium，并完成 ProjectDetail 真浏览器 smoke：`回片 Payload` 下载文件名为 `20260704-story-iduh419a1c9b--ai_comic_drama-gears-external-callbacks.json`；占位 payload 点击 `校验 GEARS 回片` 后显示阻断，且 `安全导入 GEARS 回片` 操作区仍保留。
+- 浏览器 smoke 再把 `shot-2` 替换为真实形态 URL `https://media.story-agent.test/browser-ui-smoke-shot-2.mp4` 后点击 `安全导入 GEARS 回片`，成功提示 `更新 1 条`；readiness 从 `external=1/local=4/ready_without_external=4/pending=4` 变为 `external=2/local=3/ready_without_external=3/pending=3`，浏览器控制台错误与失败 API 请求均为 0。
+- 顺手修复 ProjectDetail 状态提示：详情页已加载后，`error` 不再把整页替换成错误页；错误和成功信息统一显示在页内顶部状态条，阻断提示不会丢失操作上下文。
 
 下一轮优先级更新：
 
-1. 若用户允许安装/配置浏览器，先补 ProjectDetail 真浏览器 smoke：打开临时或真实项目，触发 `回片 Payload`、`校验 GEARS 回片`、`安全导入 GEARS 回片`，确认阻断提示和成功提示在 UI 上可见。
-2. 若已有真实 GEARS/Seedance artifact URL，直接做 live 用户路径 smoke：导出 payload -> 替换真实 URL -> preflight -> safe import -> readiness 的 `external_ready` 继续上升、`ready_without_external` 继续下降。
-3. 若仍无真实 endpoint，本项目 Story Agent/Production Board/GEARS 指挥层可视为工程收口，后续重点应转向真实 GEARS worker 对接或产品命名/导航体验优化。
+1. 若已有真实 GEARS/Seedance artifact URL，直接做 live 用户路径 smoke：导出 payload -> 替换真实 URL -> preflight -> safe import -> readiness 的 `external_ready` 继续上升、`ready_without_external` 继续下降。
+2. 若仍无真实 endpoint，本项目 Story Agent/Production Board/GEARS 指挥层可视为工程收口，后续重点应转向真实 GEARS worker 对接或产品命名/导航体验优化。
+3. 继续不要把本轮 `media.story-agent.test` 的真实形态 URL 误认为真实媒体产物；它只用于验证安全导入与 UI 操作链。
 
 2026-06-23 Phase 1 首轮已推进：
 
