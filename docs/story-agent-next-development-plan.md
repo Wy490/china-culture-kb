@@ -269,6 +269,30 @@ P0 调整：
 2. 若无真实 endpoint，可继续把 `npm run audit:copy` 纳入更上层 CI/check 脚本，或扩展到后端/MCP 对外报告文案，但不要改 `kb_*` 工具名、兼容字段和历史 generated 文件。
 3. 项目可见命名与入口心智当前按 `AI影视工作台 -> 单片短片 / 漫剧系列 / 项目指挥 / 素材库` 收口。
 
+## 1.0 2026-07-04 项目总结与下一阶段计划收口
+
+本轮把项目从“散落在多段 handoff 的状态描述”收口为独立总结与开发计划文档：`docs/story-agent-project-summary-and-next-plan.md`。当前项目总体进度估算 **99.8%**：Story Agent 内容/生产指挥层和外部回片安全导入合同已基本完成，剩余主要是接入真实 GEARS/Seedance artifact URL 后的 live 验收。
+
+本轮工程补强：
+
+- 外部回片 handoff 包新增 `preflight_path`、`preflight_url` 和 `callback_batch_preflight_curl`，Markdown 交接包明确区分 `Preflight curl` 与 `Safe import curl`。
+- operator checklist 改为先跑 preflight，`blocking_count=0` 后再 safe import；safe import 仍会再次 preflight，保持写入前保护。
+- `web/package.json` 新增 `npm run check`，当前组合为 `audit:copy + lint`。
+- 新增项目总结与下一阶段开发计划文档，明确 P0 真实 GEARS/Seedance live 用户路径验收、P1 CI 固化、P2 工作流体验优化、P3 发布候选资料。
+
+本轮验证：
+
+- `cd web/server && npx vitest run src/__tests__/project-service.test.ts` 通过：56 个用例。
+- `cd web/server && npx vitest run src/__tests__/api.test.ts` 通过：159 个用例。
+- `cd web/server && npm run lint` 通过。
+- `cd web && npm run audit:copy` 通过。
+
+下一轮优先级更新：
+
+1. 若有真实 artifact URL，按 `docs/story-agent-project-summary-and-next-plan.md` 的 P0 执行 live 用户路径验收。
+2. 若无真实 artifact URL，先跑 `cd web && npm run check` 作为本仓库交付前统一前端/文案守门，再考虑把它纳入 CI。
+3. 继续把本仓库定位为内容与生产指挥层，真实媒体执行继续交给 GEARS v2。
+
 2026-06-23 Phase 1 首轮已推进：
 
 - Web 共享类型/schema 已新增 `CreationUseCase`、`TruthMode`、`CreationContract`、`MaterialPack`、`MaterialSufficiencyReport`。

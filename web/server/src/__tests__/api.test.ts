@@ -4512,8 +4512,10 @@ describe('Projects API', () => {
       if (previousCallbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
       else process.env.GEARS_CALLBACK_BASE_URL = previousCallbackBaseUrl;
       const expectedCallbackPath = `/api/projects/${enriched.project_id}/gears-callback`;
+      const expectedPreflightPath = `/api/projects/${enriched.project_id}/production-board/gears-jobs/preflight-external-callbacks`;
       const expectedSafeImportPath = `/api/projects/${enriched.project_id}/production-board/gears-jobs/import-external-callbacks`;
       const expectedCallbackUrl = `https://story.example.test/public${expectedCallbackPath}`;
+      const expectedPreflightUrl = `https://story.example.test/public${expectedPreflightPath}`;
       const expectedSafeImportUrl = `https://story.example.test/public${expectedSafeImportPath}`;
       expect(handoffRes.status).toBe(200);
       expectSuccess(handoffRes.body);
@@ -4524,6 +4526,8 @@ describe('Projects API', () => {
         external_ready_count: 0,
         callback_path: expectedCallbackPath,
         callback_url: expectedCallbackUrl,
+        preflight_path: expectedPreflightPath,
+        preflight_url: expectedPreflightUrl,
         safe_import_path: expectedSafeImportPath,
         safe_import_url: expectedSafeImportUrl,
       });
@@ -4547,14 +4551,20 @@ describe('Projects API', () => {
       expect(handoffRes.body.data.callback_batch_sample.replace_before_import).toEqual(expect.arrayContaining([
         expect.stringContaining('absolute public http(s) URL'),
       ]));
+      expect(handoffRes.body.data.callback_batch_preflight_curl).toContain(expectedPreflightUrl);
+      expect(handoffRes.body.data.callback_batch_preflight_curl).not.toContain('GEARS_CALLBACK_SECRET');
       expect(handoffRes.body.data.callback_batch_curl).toContain(expectedSafeImportUrl);
       expect(handoffRes.body.data.callback_batch_curl).not.toContain('GEARS_CALLBACK_SECRET');
       expect(handoffRes.body.data.operator_checklist).toEqual(expect.arrayContaining([
+        expect.stringContaining('preflight endpoint'),
         expect.stringContaining('safe import endpoint'),
         expect.stringContaining('absolute public http(s) outputUrl'),
       ]));
       expect(handoffRes.body.data.markdown).toContain('GEARS 外部回片交接包');
       expect(handoffRes.body.data.markdown).toContain('## 批量回传 payload');
+      expect(handoffRes.body.data.markdown).toContain('preflightPath');
+      expect(handoffRes.body.data.markdown).toContain('Preflight curl');
+      expect(handoffRes.body.data.markdown).toContain('Safe import curl');
       expect(handoffRes.body.data.markdown).toContain('local_acceptance URL 只代表本地链路验收');
 
       const placeholderPreflightRes = await request

@@ -1295,8 +1295,10 @@ describe('project-service', () => {
     expect(firstAcceptedJob).toBeTruthy();
     process.env.GEARS_CALLBACK_BASE_URL = 'https://story.example.test/public/';
     const expectedCallbackPath = `/api/projects/${enriched.project_id}/gears-callback`;
+    const expectedPreflightPath = `/api/projects/${enriched.project_id}/production-board/gears-jobs/preflight-external-callbacks`;
     const expectedSafeImportPath = `/api/projects/${enriched.project_id}/production-board/gears-jobs/import-external-callbacks`;
     const expectedCallbackUrl = `https://story.example.test/public${expectedCallbackPath}`;
+    const expectedPreflightUrl = `https://story.example.test/public${expectedPreflightPath}`;
     const expectedSafeImportUrl = `https://story.example.test/public${expectedSafeImportPath}`;
     const handoffBeforeExternal = await exportProjectGearsExternalCallbackHandoff(enriched.project_id!);
     expect(handoffBeforeExternal.ok).toBe(true);
@@ -1307,6 +1309,8 @@ describe('project-service', () => {
       external_ready_count: 0,
       callback_path: expectedCallbackPath,
       callback_url: expectedCallbackUrl,
+      preflight_path: expectedPreflightPath,
+      preflight_url: expectedPreflightUrl,
       safe_import_path: expectedSafeImportPath,
       safe_import_url: expectedSafeImportUrl,
     });
@@ -1338,14 +1342,20 @@ describe('project-service', () => {
       expect.stringContaining('absolute public http(s) URL'),
     ]));
     expect(handoffBeforeExternal.data?.callback_batch_sample.import_note).toContain('safe external callback import endpoint');
+    expect(handoffBeforeExternal.data?.callback_batch_preflight_curl).toContain(expectedPreflightUrl);
+    expect(handoffBeforeExternal.data?.callback_batch_preflight_curl).not.toContain('GEARS_CALLBACK_SECRET');
     expect(handoffBeforeExternal.data?.callback_batch_curl).toContain(expectedSafeImportUrl);
     expect(handoffBeforeExternal.data?.callback_batch_curl).not.toContain('GEARS_CALLBACK_SECRET');
     expect(handoffBeforeExternal.data?.operator_checklist).toEqual(expect.arrayContaining([
+      expect.stringContaining('preflight endpoint'),
       expect.stringContaining('safe import endpoint'),
       expect.stringContaining('absolute public http(s) outputUrl'),
     ]));
     expect(handoffBeforeExternal.data?.markdown).toContain('GEARS 外部回片交接包');
     expect(handoffBeforeExternal.data?.markdown).toContain('## 批量回传 payload');
+    expect(handoffBeforeExternal.data?.markdown).toContain('preflightPath');
+    expect(handoffBeforeExternal.data?.markdown).toContain('Preflight curl');
+    expect(handoffBeforeExternal.data?.markdown).toContain('Safe import curl');
     expect(handoffBeforeExternal.data?.markdown).toContain('safeImportPath');
     expect(handoffBeforeExternal.data?.markdown).toContain('curl -sS -X POST');
     expect(handoffBeforeExternal.data?.markdown).toContain('local_acceptance URL 只代表本地链路验收');

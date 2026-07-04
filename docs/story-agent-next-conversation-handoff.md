@@ -272,6 +272,32 @@ AI 影视前期创作、剧本生产与项目素材指挥系统
 2. 若已有真实 GEARS/Seedance artifact URL，优先跑 live 用户路径 smoke。
 3. 若仍无真实 endpoint，可把 `npm run audit:copy` 纳入上层 CI/check，或扩展后端/MCP 对外报告文案审计；不要改 `kb_*` 工具名、兼容字段和历史 generated 文件。
 
+## 1.0 2026-07-04 最新交接：项目总结与下一阶段计划已收口
+
+本轮继续推进到总结/计划层，并补强外部回片 handoff 的操作员路径。当前项目总体进度估算 **99.8%**：本仓库内容与生产指挥层基本完成，真实 GEARS/Seedance live artifact 验收仍是最后阻断项。
+
+本轮代码结论：
+
+- `GearsExternalCallbackHandoffPackage` 新增 `preflight_path`、`preflight_url`、`callback_batch_preflight_curl`。
+- `project-gears-external-callback-handoff/v1` 交接包现在同时输出 preflight curl 和 safe import curl，Markdown 中分为 `Preflight curl` 与 `Safe import curl`。
+- operator checklist 明确：先 POST 到 preflight endpoint，确认 `blocking_count=0` 后，再 POST 到 safe import endpoint。
+- `web/package.json` 新增 `npm run check`，当前组合为 `audit:copy + lint`。
+- 新增 `docs/story-agent-project-summary-and-next-plan.md`，集中说明项目状态、已完成能力、验证基线、P0-P3 下一阶段计划和开发边界。
+
+已验证：
+
+- `cd web/server && npx vitest run src/__tests__/project-service.test.ts` 通过：56 个用例。
+- `cd web/server && npx vitest run src/__tests__/api.test.ts` 通过：159 个用例。
+- `cd web/server && npm run lint` 通过。
+- `cd web && npm run audit:copy` 通过。
+
+新对话建议第一步更新：
+
+1. 先看 `git status --short --branch` 与最新提交，确认本轮 summary/roadmap 和 preflight curl handoff 是否已提交并推送。
+2. 优先阅读 `docs/story-agent-project-summary-and-next-plan.md`。
+3. 若已有真实 GEARS/Seedance artifact URL，按文档 P0 做 live 用户路径验收。
+4. 若仍无真实 artifact URL，先把 `cd web && npm run check` 纳入交付前检查或 CI，再推进 ProjectDetail 操作体验优化。
+
 2026-06-23 更新：Phase 1 合同层首轮已落地。Web 后端已新增并接入 `creation_contract`、`material_pack`、`material_sufficiency`，旧 `knowledge_pack` 请求保持兼容；StoryBlueprint、prompt package、StoryGenerateResult、质量报告、项目 meta/version snapshot 均会保存新字段。MCP `kb_generate_story_blueprint` 已能只读返回 `creation_contract` / `material_sufficiency`，`kb_get_project_context` 可读回项目上下文中的新合同字段。
 
 2026-06-23 续更：Phase 2 类型片画像矩阵首个工程切片已落地。`genre-story-profiles.ts` 现在集中维护每类片子的兼容创作用途、真实模式、推荐/允许/禁用叙事流派、素材要求、真实边界、机构规则和改编规则；`resolveGenreStoryMatrix()` 已接入 Story Generate 链路，会补足/过滤 `narrative_pattern_ids`，并把矩阵要求写入 `StoryBlueprint.type_specific_requirements` 和 prompt package 的“类型片画像矩阵”章节。下一步优先做 Phase 3 分阶段素材充分度和前端创作台控件文案。

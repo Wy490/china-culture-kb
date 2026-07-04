@@ -6046,36 +6046,40 @@ function gearsExternalSafeImportPath(projectId: string): string {
   return `/api/projects/${encodeURIComponent(projectId)}/production-board/gears-jobs/import-external-callbacks`;
 }
 
-function gearsExternalSafeImportUrl(input: {
+function gearsExternalPreflightPath(projectId: string): string {
+  return `/api/projects/${encodeURIComponent(projectId)}/production-board/gears-jobs/preflight-external-callbacks`;
+}
+
+function gearsExternalOperationUrl(input: {
   callbackPath: string;
   callbackUrl: string;
-  safeImportPath: string;
+  operationPath: string;
 }): string {
-  if (!/^https?:\/\//.test(input.callbackUrl)) return input.safeImportPath;
+  if (!/^https?:\/\//.test(input.callbackUrl)) return input.operationPath;
   try {
     const url = new URL(input.callbackUrl);
     const callbackPathname = new URL(input.callbackPath, url.origin).pathname;
-    const safeImportPathname = new URL(input.safeImportPath, url.origin).pathname;
+    const operationPathname = new URL(input.operationPath, url.origin).pathname;
     if (url.pathname.endsWith(callbackPathname)) {
       const publicPathPrefix = url.pathname
         .slice(0, url.pathname.length - callbackPathname.length)
         .replace(/\/+$/, '');
-      return `${url.origin}${publicPathPrefix}${safeImportPathname}`;
+      return `${url.origin}${publicPathPrefix}${operationPathname}`;
     }
-    return `${url.origin}${safeImportPathname}`;
+    return `${url.origin}${operationPathname}`;
   } catch {
-    return input.safeImportPath;
+    return input.operationPath;
   }
 }
 
 function gearsExternalCallbackCurlCommand(input: {
   projectId: string;
-  safeImportPath: string;
-  safeImportUrl: string;
+  targetPath: string;
+  targetUrl: string;
 }): string {
-  const target = /^https?:\/\//.test(input.safeImportUrl)
-    ? input.safeImportUrl
-    : `$STORY_AGENT_BASE_URL${input.safeImportPath}`;
+  const target = /^https?:\/\//.test(input.targetUrl)
+    ? input.targetUrl
+    : `$STORY_AGENT_BASE_URL${input.targetPath}`;
   const fileName = `${input.projectId}-gears-external-callbacks.json`;
   return `curl -sS -X POST "${target}" -H "content-type: application/json" --data-binary @${fileName}`;
 }
@@ -6087,7 +6091,8 @@ function gearsExternalOperatorChecklist(): string[] {
     'Use absolute public http(s) outputUrl values; do not use localhost, private network, local_acceptance, file, or relative URLs.',
     'Keep jobId, sourceUnitId, jobType, sourceProjectId and sourceStoryId unchanged unless the worker remaps ids intentionally.',
     'Use a unique eventId per callback to preserve callback idempotency and lifecycle history.',
-    'POST the batch payload to the safe import endpoint; it runs preflight before writing ledgers.',
+    'POST the batch payload to the preflight endpoint first and continue only when blocking_count is 0.',
+    'POST the same batch payload to the safe import endpoint after preflight passes; it runs preflight again before writing ledgers.',
     'After import, re-run project production readiness and confirm external_ready increases while ready_without_external decreases.',
   ];
 }
@@ -6130,8 +6135,10 @@ export async function exportProjectGearsExternalCallbackHandoff(
   const shotById = new Map(board.shot_units.map(shot => [shot.shot_id, shot]));
   const callbackPath = gearsProjectCallbackPath(project.project_id);
   const callbackUrl = gearsProjectCallbackUrl(project.project_id) ?? callbackPath;
+  const preflightPath = gearsExternalPreflightPath(project.project_id);
+  const preflightUrl = gearsExternalOperationUrl({ callbackPath, callbackUrl, operationPath: preflightPath });
   const safeImportPath = gearsExternalSafeImportPath(project.project_id);
-  const safeImportUrl = gearsExternalSafeImportUrl({ callbackPath, callbackUrl, safeImportPath });
+  const safeImportUrl = gearsExternalOperationUrl({ callbackPath, callbackUrl, operationPath: safeImportPath });
   const handoffJobs = ledger.items.filter(item =>
     item.job_type === 'seedance_video'
     && !['failed', 'rejected', 'canceled'].includes(item.status)
@@ -6168,6 +6175,8 @@ export async function exportProjectGearsExternalCallbackHandoff(
     exported_at: new Date().toISOString(),
     callback_path: callbackPath,
     callback_url: callbackUrl,
+    preflight_path: preflightPath,
+    preflight_url: preflightUrl,
     safe_import_path: safeImportPath,
     safe_import_url: safeImportUrl,
     total_job_count: ledger.items.length,
@@ -6175,10 +6184,15 @@ export async function exportProjectGearsExternalCallbackHandoff(
     local_acceptance_ready_count: ledger.items.filter(item => item.status === 'ready' && gearsJobHasLocalAcceptanceArtifact(item)).length,
     pending_external_artifact_count: items.length,
     callback_batch_sample: callbackBatchSample,
+    callback_batch_preflight_curl: gearsExternalCallbackCurlCommand({
+      projectId: project.project_id,
+      targetPath: preflightPath,
+      targetUrl: preflightUrl,
+    }),
     callback_batch_curl: gearsExternalCallbackCurlCommand({
       projectId: project.project_id,
-      safeImportPath,
-      safeImportUrl,
+      targetPath: safeImportPath,
+      targetUrl: safeImportUrl,
     }),
     operator_checklist: gearsExternalOperatorChecklist(),
     items,
@@ -7880,6 +7894,8 @@ function buildGearsExternalCallbackHandoffMarkdown(
     `> exportedAt: ${pkg.exported_at}`,
     `> callbackPath: ${pkg.callback_path}`,
     `> callbackUrl: ${pkg.callback_url}`,
+    `> preflightPath: ${pkg.preflight_path}`,
+    `> preflightUrl: ${pkg.preflight_url}`,
     `> safeImportPath: ${pkg.safe_import_path}`,
     `> safeImportUrl: ${pkg.safe_import_url}`,
     `> 待外部 artifact: ${pkg.pending_external_artifact_count}`,
@@ -7898,7 +7914,13 @@ function buildGearsExternalCallbackHandoffMarkdown(
     '',
     '## 批量回传 payload',
     '',
-    'Curl:',
+    'Preflight curl:',
+    '',
+    '```bash',
+    pkg.callback_batch_preflight_curl,
+    '```',
+    '',
+    'Safe import curl:',
     '',
     '```bash',
     pkg.callback_batch_curl,

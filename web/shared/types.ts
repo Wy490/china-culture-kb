@@ -2020,6 +2020,8 @@ export interface GearsExternalCallbackHandoffPackage {
   exported_at: string;
   callback_path: string;
   callback_url: string;
+  preflight_path: string;
+  preflight_url: string;
   safe_import_path: string;
   safe_import_url: string;
   total_job_count: number;
@@ -2027,6 +2029,7 @@ export interface GearsExternalCallbackHandoffPackage {
   local_acceptance_ready_count: number;
   pending_external_artifact_count: number;
   callback_batch_sample: GearsExternalCallbackBatchSample;
+  callback_batch_preflight_curl: string;
   callback_batch_curl: string;
   operator_checklist: string[];
   items: GearsExternalCallbackHandoffItem[];

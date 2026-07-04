@@ -15,7 +15,8 @@
     "build:server": "npm run build -w server",
     "build:client": "npm run build -w client",
     "lint": "npm run lint --workspaces",
-    "audit:copy": "npm run audit:copy -w client"
+    "audit:copy": "npm run audit:copy -w client",
+    "check": "npm run audit:copy && npm run lint"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
