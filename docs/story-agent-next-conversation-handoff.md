@@ -1,6 +1,6 @@
 # Story Agent 下一对话接续文档
 
-> 日期：2026-06-27
+> 日期：2026-07-04
 > 当前分支：`codex-ai-comic-series-longform`  
 > 适用场景：在新的 Codex / Claude 对话中继续 Story Agent、Production Board、GEARS / Seedance 交付链开发。  
 > 当前状态：继续前先执行 `git status --short`；如有未提交改动，先确认来源和范围再推进。
@@ -225,6 +225,27 @@ AI 影视前期创作、剧本生产与项目素材指挥系统
 1. 先看 `git status --short --branch` 和最新提交，确认本轮 safe import 是否已提交并推送。
 2. 若已有真实 GEARS/Seedance artifact URL，优先做 ProjectDetail 用户路径 smoke：导出 payload、替换真实 URL、preflight、safe import、确认 readiness 的 `external_ready` 上升且 `ready_without_external` 下降。
 3. 若暂无真实 endpoint，补浏览器 smoke 覆盖新按钮和阻断提示即可，不要把 `local_acceptance` 误当真实回片。
+
+## 0.8 2026-07-04 最新交接：外部回片 smoke 已补到 API + 静态 UI
+
+本轮继续把 `0.7` 的下一步往前推：暂无真实 GEARS/Seedance endpoint，因此先完成外部回片 API smoke 与 ProjectDetail 静态 UI 复核。当前分支仍是 `codex-ai-comic-series-longform`。当前项目总体进度估算 **99%**：指挥层、交接包、安全导入和 readiness 计数闭环已跑通；剩余只差真实外部 worker/artifact URL 与浏览器环境验收。
+
+本轮补测结果：
+
+- 临时生成根目录：`/private/tmp/china-culture-safe-import-smoke-20260704`。
+- 临时项目：`20260704-story-iduh419a1c9b--ai_comic_drama`。
+- API smoke：先提交 5 条本地 GEARS 验收任务，再把首条 callback 替换为真实形态 URL `https://media.story-agent.test/browser-smoke-shot-1.mp4` 后安全导入。
+- readiness 复核：`external_ready_gears_job_count=1`、`local_acceptance_ready_gears_job_count=4`、`ready_without_external_gears_artifact_count=4`，handoff 剩余 `pending_external_artifact_count=4`。
+- 占位 payload 复核：剩余 4 条样例 `ready_to_import_count=0`、`blocking_count=8`，阻断码包含 `missing_external_artifact_url` 与 `placeholder_artifact_url`。
+- ProjectDetail 静态 UI 检查：源码仍包含 `校验 GEARS 回片`、`安全导入 GEARS 回片`、`回片 Payload`，并接入 `preflightGearsCallbacks()`、`importGearsCallbacks()`、`exportGearsExternalCallbackPayloadJson()`。
+- 浏览器自动化未跑完：Playwright/MCP 均因缺少 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` 失败；这是当前机器浏览器环境缺口，不代表产品代码失败。
+
+新对话建议第一步更新：
+
+1. 先看 `git status --short --branch` 与最新提交，确认本轮 smoke 文档是否已提交并推送。
+2. 若用户允许安装或配置浏览器，补一次 ProjectDetail 真浏览器 smoke，覆盖 `回片 Payload`、`校验 GEARS 回片`、`安全导入 GEARS 回片` 与阻断/成功提示。
+3. 若已有真实 GEARS/Seedance artifact URL，直接跑 live 用户路径：导出 payload、替换真实 URL、preflight、safe import，并确认 readiness 的 `external_ready` 上升、`ready_without_external` 下降。
+4. 若仍无真实 endpoint，本仓库 Story Agent/Production Board/GEARS 指挥层可进入收口状态，下一步转向真实 GEARS worker 对接或产品命名/导航体验优化。
 
 2026-06-23 更新：Phase 1 合同层首轮已落地。Web 后端已新增并接入 `creation_contract`、`material_pack`、`material_sufficiency`，旧 `knowledge_pack` 请求保持兼容；StoryBlueprint、prompt package、StoryGenerateResult、质量报告、项目 meta/version snapshot 均会保存新字段。MCP `kb_generate_story_blueprint` 已能只读返回 `creation_contract` / `material_sufficiency`，`kb_get_project_context` 可读回项目上下文中的新合同字段。
 

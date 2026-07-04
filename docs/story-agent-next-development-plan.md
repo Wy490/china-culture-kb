@@ -1,6 +1,6 @@
 # Story Agent 下一阶段开发计划
 
-> 日期：2026-06-27
+> 日期：2026-07-04
 > 分支：`codex-ai-comic-series-longform`
 > 用途：给新对话快速接续 Story Agent、Production Board、GEARS / Seedance 交付链开发。
 
@@ -225,6 +225,25 @@ P0 调整：
 1. 若有真实外部 GEARS/Seedance artifact URL，优先做 ProjectDetail 用户路径 smoke：导出回片 payload -> 替换真实 URL -> preflight -> safe import -> readiness 中 `external_ready` 上升、`ready_without_external` 下降。
 2. 若暂无真实 endpoint，补浏览器 smoke 覆盖项目详情的 `校验 GEARS 回片 / 安全导入 GEARS 回片 / 回片 Payload` 三个新入口和阻断提示。
 3. 继续不要把 `local_acceptance` 当真实回片；本地验收只证明 Story Agent 指挥链路和账本更新闭环，不代表外部媒体实产完成。
+
+## 0.8 2026-07-04 外部回片安全导入 smoke 补测
+
+本轮在暂无真实 GEARS/Seedance endpoint 的情况下，继续推进到 API + 静态 UI smoke。当前项目总体进度估算 **99%**：外部回片交接包、preflight、安全导入、readiness 计数回落和项目详情入口均已验证；最后剩余是真实外部 worker / artifact URL 接入后的 live 用户路径验收。
+
+本轮补测：
+
+- 使用临时生成根目录 `/private/tmp/china-culture-safe-import-smoke-20260704`，临时项目 `20260704-story-iduh419a1c9b--ai_comic_drama`。
+- API smoke 先提交 5 条本地 GEARS 验收任务，再把首条 callback 的 `outputUrl` 替换为真实形态 URL `https://media.story-agent.test/browser-smoke-shot-1.mp4`，通过 `preflight-external-callbacks` 与 `import-external-callbacks` 完成安全导入。
+- 导入后 readiness 复核通过：`external_ready_gears_job_count=1`、`local_acceptance_ready_gears_job_count=4`、`ready_without_external_gears_artifact_count=4`，handoff 剩余 `pending_external_artifact_count=4`。
+- 剩余 4 条占位 payload 复核通过：`ready_to_import_count=0`、`blocking_count=8`，阻断码包含 `missing_external_artifact_url` 与 `placeholder_artifact_url`，证明占位样例不会被误写入 ledger。
+- 静态 UI 检查通过：`ProjectDetail.vue` 仍包含 `校验 GEARS 回片`、`安全导入 GEARS 回片`、`回片 Payload`，并接入 `preflightGearsCallbacks()`、`importGearsCallbacks()`、`exportGearsExternalCallbackPayloadJson()`。
+- 浏览器自动化未完成，原因是当前机器没有可用 Chrome distribution（Playwright/MCP 均报 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` 不存在）；这属于验收环境缺口，不是本轮产品代码失败。
+
+下一轮优先级更新：
+
+1. 若用户允许安装/配置浏览器，先补 ProjectDetail 真浏览器 smoke：打开临时或真实项目，触发 `回片 Payload`、`校验 GEARS 回片`、`安全导入 GEARS 回片`，确认阻断提示和成功提示在 UI 上可见。
+2. 若已有真实 GEARS/Seedance artifact URL，直接做 live 用户路径 smoke：导出 payload -> 替换真实 URL -> preflight -> safe import -> readiness 的 `external_ready` 继续上升、`ready_without_external` 继续下降。
+3. 若仍无真实 endpoint，本项目 Story Agent/Production Board/GEARS 指挥层可视为工程收口，后续重点应转向真实 GEARS worker 对接或产品命名/导航体验优化。
 
 2026-06-23 Phase 1 首轮已推进：
 
