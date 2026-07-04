@@ -653,10 +653,18 @@
               <button
                 v-if="gearsJobStats.total"
                 class="project-detail-page__repair-task-btn"
+                :disabled="preflightingGearsCallbacks"
+                @click="preflightGearsCallbacks"
+              >
+                {{ preflightingGearsCallbacks ? '校验中…' : '校验 GEARS 回片' }}
+              </button>
+              <button
+                v-if="gearsJobStats.total"
+                class="project-detail-page__repair-task-btn"
                 :disabled="importingGearsCallbacks"
                 @click="importGearsCallbacks"
               >
-                {{ importingGearsCallbacks ? '导入中…' : '导入 GEARS 回调' }}
+                {{ importingGearsCallbacks ? '导入中…' : '安全导入 GEARS 回片' }}
               </button>
               <button
                 class="project-detail-page__repair-task-btn"
@@ -765,6 +773,14 @@
                 @click="exportGearsExternalCallbackHandoffJson"
               >
                 外部回片 JSON
+              </button>
+              <button
+                v-if="gearsJobStats.total"
+                class="project-detail-page__repair-task-btn"
+                :disabled="exportingGearsExternalHandoff"
+                @click="exportGearsExternalCallbackPayloadJson"
+              >
+                回片 Payload
               </button>
             </div>
           </details>
@@ -1993,10 +2009,11 @@ import {
   getProject,
   getProjectProductionBoard,
   getProjectProductionReadiness,
-  importProjectGearsCallback,
+  importProjectGearsExternalCallbacks,
   importProjectSeedanceAssetBatch,
   importProjectSeedanceShotCallbacks,
   pollProjectSeedanceProviderQueue,
+  preflightProjectGearsExternalCallbacks,
   recoverProjectSeedanceProviderQueue,
   repairAndExportProjectProductionBoard,
   repairProjectQuality,
@@ -2400,6 +2417,7 @@ const seedanceCallbackImportText = ref('')
 const importingSeedanceCallbacks = ref(false)
 const gearsCallbackImportText = ref('')
 const importingGearsCallbacks = ref(false)
+const preflightingGearsCallbacks = ref(false)
 const exportingSeedanceRetryPackage = ref(false)
 const exportingGearsExternalHandoff = ref(false)
 const batchingSeedanceShots = ref(false)
@@ -3761,6 +3779,29 @@ function fillLatestGearsCallbackSample() {
   }, null, 2)
 }
 
+async function preflightGearsCallbacks() {
+  if (!detail.value || preflightingGearsCallbacks.value) return
+  const callbacks = normalizeGearsCallbackImportPayloads()
+  if (!callbacks) return
+  preflightingGearsCallbacks.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await preflightProjectGearsExternalCallbacks(detail.value.project.project_id, { callbacks })
+  if (res.ok && res.data) {
+    successMessage.value = `GEARS 回片校验完成：可导入 ${res.data.ready_to_import_count}/${res.data.received_count} 条，重复 ${res.data.duplicate_event_count} 条，阻断 ${res.data.blocking_count}，提醒 ${res.data.warning_count}`
+    if (res.data.blocking_count > 0) {
+      error.value = res.data.issues
+        .filter(issue => issue.severity === 'blocking')
+        .slice(0, 4)
+        .map(issue => `#${issue.index + 1} ${issue.message}`)
+        .join('；')
+    }
+  } else {
+    error.value = res.error?.message ?? 'GEARS 回片校验失败'
+  }
+  preflightingGearsCallbacks.value = false
+}
+
 async function importGearsCallbacks() {
   if (!detail.value || importingGearsCallbacks.value) return
   const callbacks = normalizeGearsCallbackImportPayloads()
@@ -3768,33 +3809,31 @@ async function importGearsCallbacks() {
   importingGearsCallbacks.value = true
   error.value = ''
   successMessage.value = ''
-  let updatedCount = 0
-  let failedCount = 0
-  const failureMessages: string[] = []
-  for (const [index, callback] of callbacks.entries()) {
-    const res = await importProjectGearsCallback(detail.value.project.project_id, callback)
-    if (res.ok && res.data) {
-      updatedCount += res.data.updated_count
-      failedCount += res.data.failed_count
+  const res = await importProjectGearsExternalCallbacks(detail.value.project.project_id, { callbacks })
+  if (res.ok && res.data) {
+    if (res.data.blocked) {
+      successMessage.value = `GEARS 回片导入已阻断：可导入 ${res.data.preflight.ready_to_import_count}/${res.data.preflight.received_count} 条，重复 ${res.data.preflight.duplicate_event_count} 条，阻断 ${res.data.preflight.blocking_count}`
+      error.value = res.data.preflight.issues
+        .filter(issue => issue.severity === 'blocking')
+        .slice(0, 6)
+        .map(issue => `#${issue.index + 1} ${issue.message}`)
+        .join('；')
+    } else {
       detail.value = {
         ...detail.value,
         project: res.data.project,
       }
-      if (res.data.failures.length) {
-        failureMessages.push(...res.data.failures.map(item => {
+      gearsCallbackImportText.value = ''
+      await loadProductionBoard()
+      successMessage.value = `GEARS 外部回片已安全导入：更新 ${res.data.updated_count} 条，重复 ${res.data.duplicate_count} 条，失败 ${res.data.failed_count} 条`
+      if (res.data.import_result?.failures.length) {
+        error.value = res.data.import_result.failures.map(item => {
           return `${gearsFailureTargetLabel(item)} ${item.message}`
-        }))
+        }).join('；')
       }
-    } else {
-      failedCount += 1
-      failureMessages.push(`#${index + 1} ${res.error?.message ?? '导入失败'}`)
     }
-  }
-  gearsCallbackImportText.value = ''
-  await loadProductionBoard()
-  successMessage.value = `GEARS 回调已导入：更新 ${updatedCount} 条，失败 ${failedCount} 条`
-  if (failureMessages.length) {
-    error.value = failureMessages.join('；')
+  } else {
+    error.value = res.error?.message ?? 'GEARS 外部回片导入失败'
   }
   importingGearsCallbacks.value = false
 }
@@ -4200,6 +4239,24 @@ async function exportGearsExternalCallbackHandoffJson() {
     successMessage.value = `GEARS 外部回片交接包 JSON 已导出 · 待回片 ${res.data.pending_external_artifact_count} 条`
   } else {
     error.value = res.error?.message ?? '导出 GEARS 外部回片交接包失败'
+  }
+  exportingGearsExternalHandoff.value = false
+}
+
+async function exportGearsExternalCallbackPayloadJson() {
+  if (!detail.value || exportingGearsExternalHandoff.value) return
+  exportingGearsExternalHandoff.value = true
+  error.value = ''
+  const res = await exportProjectGearsExternalCallbackHandoff(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    downloadText(
+      `${res.data.project.project_id}-gears-external-callbacks.json`,
+      JSON.stringify(res.data.callback_batch_sample, null, 2),
+      'application/json;charset=utf-8',
+    )
+    successMessage.value = `GEARS 外部回片 payload 已导出 · callbacks ${res.data.callback_batch_sample.callbacks.length} 条`
+  } else {
+    error.value = res.error?.message ?? '导出 GEARS 外部回片 payload 失败'
   }
   exportingGearsExternalHandoff.value = false
 }

@@ -31,6 +31,7 @@ import {
   getProjectProductionBoard,
   getProjectProductionReadiness,
   importProjectGearsCallback,
+  importProjectGearsExternalCallbacks,
   importProjectGearsCallbacks,
   importProjectSeedanceAssetBatch,
   importProjectSeedanceProviderCallback,
@@ -39,6 +40,7 @@ import {
   listProjects,
   listProjectSupplementTasks,
   pollProjectSeedanceProviderQueue,
+  preflightProjectGearsExternalCallbacks,
   regenerateProjectScene,
   recoverProjectSeedanceProviderQueue,
   repairAndExportProjectProductionBoard,
@@ -1291,6 +1293,11 @@ describe('project-service', () => {
 
     const firstAcceptedJob = localAcceptance.data?.accepted_jobs[0];
     expect(firstAcceptedJob).toBeTruthy();
+    process.env.GEARS_CALLBACK_BASE_URL = 'https://story.example.test/public/';
+    const expectedCallbackPath = `/api/projects/${enriched.project_id}/gears-callback`;
+    const expectedSafeImportPath = `/api/projects/${enriched.project_id}/production-board/gears-jobs/import-external-callbacks`;
+    const expectedCallbackUrl = `https://story.example.test/public${expectedCallbackPath}`;
+    const expectedSafeImportUrl = `https://story.example.test/public${expectedSafeImportPath}`;
     const handoffBeforeExternal = await exportProjectGearsExternalCallbackHandoff(enriched.project_id!);
     expect(handoffBeforeExternal.ok).toBe(true);
     expect(handoffBeforeExternal.data).toMatchObject({
@@ -1298,14 +1305,18 @@ describe('project-service', () => {
       pending_external_artifact_count: submitRes.data?.submitted_count,
       local_acceptance_ready_count: submitRes.data?.submitted_count,
       external_ready_count: 0,
-      callback_path: `/api/projects/${enriched.project_id}/gears-callback`,
+      callback_path: expectedCallbackPath,
+      callback_url: expectedCallbackUrl,
+      safe_import_path: expectedSafeImportPath,
+      safe_import_url: expectedSafeImportUrl,
     });
     expect(handoffBeforeExternal.data?.items).toHaveLength(submitRes.data?.submitted_count ?? 0);
     expect(handoffBeforeExternal.data?.items[0]).toMatchObject({
       source_unit_id: firstAcceptedJob!.source_unit_id,
       gears_job_id: firstAcceptedJob!.gears_job_id,
       requires_external_artifact: true,
-      callback_path: `/api/projects/${enriched.project_id}/gears-callback`,
+      callback_path: expectedCallbackPath,
+      callback_url: expectedCallbackUrl,
       callback_sample: {
         jobId: firstAcceptedJob!.gears_job_id,
         sourceUnitId: firstAcceptedJob!.source_unit_id,
@@ -1317,26 +1328,195 @@ describe('project-service', () => {
     expect(handoffBeforeExternal.data?.items[0].external_artifact_urls).toEqual([]);
     expect(handoffBeforeExternal.data?.items[0].callback_sample.outputUrl).toContain('https://gears.example/videos/');
     expect(handoffBeforeExternal.data?.items[0].prompt?.seedance_prompt).toContain('0-3秒');
+    expect(handoffBeforeExternal.data?.callback_batch_sample.callbacks).toHaveLength(submitRes.data?.submitted_count ?? 0);
+    expect(handoffBeforeExternal.data?.callback_batch_sample.callbacks[0]).toMatchObject({
+      sourceUnitId: firstAcceptedJob!.source_unit_id,
+      outputUrl: expect.stringContaining('https://gears.example/videos/'),
+    });
+    expect(handoffBeforeExternal.data?.callback_batch_sample.replace_before_import).toEqual(expect.arrayContaining([
+      expect.stringContaining('outputUrl'),
+      expect.stringContaining('absolute public http(s) URL'),
+    ]));
+    expect(handoffBeforeExternal.data?.callback_batch_sample.import_note).toContain('safe external callback import endpoint');
+    expect(handoffBeforeExternal.data?.callback_batch_curl).toContain(expectedSafeImportUrl);
+    expect(handoffBeforeExternal.data?.callback_batch_curl).not.toContain('GEARS_CALLBACK_SECRET');
+    expect(handoffBeforeExternal.data?.operator_checklist).toEqual(expect.arrayContaining([
+      expect.stringContaining('safe import endpoint'),
+      expect.stringContaining('absolute public http(s) outputUrl'),
+    ]));
     expect(handoffBeforeExternal.data?.markdown).toContain('GEARS 外部回片交接包');
+    expect(handoffBeforeExternal.data?.markdown).toContain('## 批量回传 payload');
+    expect(handoffBeforeExternal.data?.markdown).toContain('safeImportPath');
+    expect(handoffBeforeExternal.data?.markdown).toContain('curl -sS -X POST');
     expect(handoffBeforeExternal.data?.markdown).toContain('local_acceptance URL 只代表本地链路验收');
     expect(handoffBeforeExternal.data?.markdown).toContain('"outputUrl"');
-    const externalCallbackRes = await importProjectGearsCallbacks(enriched.project_id!, {
+
+    const placeholderPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, handoffBeforeExternal.data!.callback_batch_sample);
+    expect(placeholderPreflight.ok).toBe(true);
+    expect(placeholderPreflight.data).toMatchObject({
+      schema_version: 'project-gears-external-callback-preflight/v1',
+      received_count: submitRes.data?.submitted_count,
+      ready_to_import_count: 0,
+      duplicate_event_count: 0,
+    });
+    expect(placeholderPreflight.data?.blocking_count).toBeGreaterThan(0);
+    expect(placeholderPreflight.data?.issues.map(issue => issue.code)).toContain('placeholder_artifact_url');
+    expect(placeholderPreflight.data?.markdown).toContain('GEARS 外部回片 preflight');
+    const blockedImport = await importProjectGearsExternalCallbacks(enriched.project_id!, handoffBeforeExternal.data!.callback_batch_sample);
+    expect(blockedImport.ok).toBe(true);
+    expect(blockedImport.data).toMatchObject({
+      schema_version: 'project-gears-external-callback-import/v1',
+      blocked: true,
+      received_count: submitRes.data?.submitted_count,
+      updated_count: 0,
+      failed_count: submitRes.data?.submitted_count,
+      duplicate_count: 0,
+    });
+
+    const realExternalPayload = {
+      callbacks: handoffBeforeExternal.data!.callback_batch_sample.callbacks.map((callback, index) => ({
+        ...callback,
+        outputUrl: `https://media.story-agent.test/external-shot-${index + 1}.mp4`,
+        eventId: `external-ready-shot-${index + 1}`,
+      })),
+    };
+    const realPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, realExternalPayload);
+    expect(realPreflight.ok).toBe(true);
+    expect(realPreflight.data).toMatchObject({
+      received_count: submitRes.data?.submitted_count,
+      ready_to_import_count: submitRes.data?.submitted_count,
+      duplicate_event_count: 0,
+      blocking_count: 0,
+    });
+    expect(realPreflight.data?.items[0]).toMatchObject({
+      has_event_id: true,
+      would_update: true,
+    });
+    const { eventId: omittedEventId, ...missingEventIdCallback } = realExternalPayload.callbacks[0];
+    expect(omittedEventId).toBe('external-ready-shot-1');
+    const missingEventIdPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, {
+      callbacks: [missingEventIdCallback],
+    });
+    expect(missingEventIdPreflight.ok).toBe(true);
+    expect(missingEventIdPreflight.data).toMatchObject({
+      received_count: 1,
+      ready_to_import_count: 1,
+      duplicate_event_count: 0,
+      blocking_count: 0,
+      warning_count: 1,
+    });
+    expect(missingEventIdPreflight.data?.issues.map(issue => issue.code)).toContain('missing_event_id');
+    expect(missingEventIdPreflight.data?.items[0]).toMatchObject({
+      has_event_id: false,
+      is_duplicate_event: false,
+      would_update: true,
+    });
+    const privateArtifactPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, {
+      callbacks: [{
+        ...realExternalPayload.callbacks[0],
+        outputUrl: 'http://127.0.0.1:9000/external-shot-1.mp4',
+        eventId: 'external-private-shot-1',
+      }],
+    });
+    expect(privateArtifactPreflight.ok).toBe(true);
+    expect(privateArtifactPreflight.data).toMatchObject({
+      received_count: 1,
+      ready_to_import_count: 0,
+      duplicate_event_count: 0,
+      blocking_count: 2,
+    });
+    expect(privateArtifactPreflight.data?.issues.map(issue => issue.code)).toEqual(expect.arrayContaining([
+      'missing_external_artifact_url',
+      'private_or_local_artifact_url',
+    ]));
+    expect(privateArtifactPreflight.data?.items[0]).toMatchObject({
+      has_external_artifact_url: false,
+      has_private_or_local_artifact_url: true,
+      has_invalid_artifact_url: false,
+      would_update: false,
+    });
+    const invalidArtifactPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, {
+      callbacks: [{
+        ...realExternalPayload.callbacks[0],
+        outputUrl: '/tmp/external-shot-1.mp4',
+        eventId: 'external-invalid-url-shot-1',
+      }],
+    });
+    expect(invalidArtifactPreflight.ok).toBe(true);
+    expect(invalidArtifactPreflight.data).toMatchObject({
+      received_count: 1,
+      ready_to_import_count: 0,
+      duplicate_event_count: 0,
+      blocking_count: 2,
+    });
+    expect(invalidArtifactPreflight.data?.issues.map(issue => issue.code)).toEqual(expect.arrayContaining([
+      'missing_external_artifact_url',
+      'invalid_artifact_url',
+    ]));
+    expect(invalidArtifactPreflight.data?.items[0]).toMatchObject({
+      has_external_artifact_url: false,
+      has_private_or_local_artifact_url: false,
+      has_invalid_artifact_url: true,
+      would_update: false,
+    });
+    const duplicateBatchPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, {
+      callbacks: [
+        realExternalPayload.callbacks[0],
+        realExternalPayload.callbacks[0],
+      ],
+    });
+    expect(duplicateBatchPreflight.ok).toBe(true);
+    expect(duplicateBatchPreflight.data).toMatchObject({
+      received_count: 2,
+      ready_to_import_count: 1,
+      duplicate_event_count: 1,
+      blocking_count: 0,
+      warning_count: 1,
+    });
+    expect(duplicateBatchPreflight.data?.issues.map(issue => issue.code)).toContain('duplicate_event_id_in_batch');
+    expect(duplicateBatchPreflight.data?.items[1]).toMatchObject({
+      event_id: 'external-ready-shot-1',
+      is_duplicate_event: true,
+      duplicate_event_source: 'batch',
+      duplicate_of_index: 0,
+      would_update: false,
+    });
+    const externalCallbackRes = await importProjectGearsExternalCallbacks(enriched.project_id!, {
       callbacks: [{
         jobId: firstAcceptedJob!.gears_job_id,
         sourceUnitId: firstAcceptedJob!.source_unit_id,
         jobType: 'seedance_video',
         taskStatus: 'COMPLETED',
-        outputUrl: 'https://gears.example/videos/external-shot-1.mp4',
+        outputUrl: 'https://media.story-agent.test/external-shot-1.mp4',
         eventId: 'external-ready-shot-1',
         note: 'external provider callback replaces local acceptance',
       }],
     });
     expect(externalCallbackRes.ok).toBe(true);
-    expect(externalCallbackRes.data?.seedance_shot_ledger?.items.find(item =>
+    expect(externalCallbackRes.data?.blocked).toBe(false);
+    expect(externalCallbackRes.data?.import_result?.seedance_shot_ledger?.items.find(item =>
       item.shot_id === firstAcceptedJob!.source_unit_id
     )).toMatchObject({
       status: 'ready',
-      video_url: 'https://gears.example/videos/external-shot-1.mp4',
+      video_url: 'https://media.story-agent.test/external-shot-1.mp4',
+    });
+    const duplicateLedgerPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, {
+      callbacks: [realExternalPayload.callbacks[0]],
+    });
+    expect(duplicateLedgerPreflight.ok).toBe(true);
+    expect(duplicateLedgerPreflight.data).toMatchObject({
+      received_count: 1,
+      ready_to_import_count: 0,
+      duplicate_event_count: 1,
+      blocking_count: 0,
+      warning_count: 1,
+    });
+    expect(duplicateLedgerPreflight.data?.issues.map(issue => issue.code)).toContain('duplicate_callback_event');
+    expect(duplicateLedgerPreflight.data?.items[0]).toMatchObject({
+      event_id: 'external-ready-shot-1',
+      is_duplicate_event: true,
+      duplicate_event_source: 'ledger',
+      would_update: false,
     });
 
     const afterExternalCallback = await getProjectProductionReadiness(enriched.project_id!);
@@ -1352,6 +1532,7 @@ describe('project-service', () => {
     const handoffAfterExternal = await exportProjectGearsExternalCallbackHandoff(enriched.project_id!);
     expect(handoffAfterExternal.ok).toBe(true);
     expect(handoffAfterExternal.data?.pending_external_artifact_count).toBe((submitRes.data?.submitted_count ?? 1) - 1);
+    expect(handoffAfterExternal.data?.callback_batch_sample.callbacks).toHaveLength((submitRes.data?.submitted_count ?? 1) - 1);
     expect(handoffAfterExternal.data?.external_ready_count).toBe(1);
     expect(handoffAfterExternal.data?.items.some(item =>
       item.source_unit_id === firstAcceptedJob!.source_unit_id

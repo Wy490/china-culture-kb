@@ -66,12 +66,14 @@ import {
   generateProjectQualityRepairPrompt,
   listProjectSeedanceGlobalAssetLibrary,
   importProjectSeedanceAssetBatch,
+  importProjectGearsExternalCallbacks,
   importProjectGearsCallbacks,
   importProjectSeedanceProviderCallback,
   importProjectSeedanceShotCallbacks,
   listProjectSupplementTasks,
   listProjects,
   pollProjectSeedanceProviderQueue,
+  preflightProjectGearsExternalCallbacks,
   recoverProjectSeedanceProviderQueue,
   repairAndExportProjectProductionBoard,
   repairProjectQuality,
@@ -605,6 +607,36 @@ projectsRouter.post(
       const { projectId } = req.params as { projectId: string };
       const result = await exportProjectGearsExternalCallbackHandoff(projectId);
       res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/gears-jobs/preflight-external-callbacks',
+  validateParams(ProjectIdParamSchema),
+  validateBody(GearsJobCallbackRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await preflightProjectGearsExternalCallbacks(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.VALIDATION_ERROR ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/gears-jobs/import-external-callbacks',
+  validateParams(ProjectIdParamSchema),
+  validateBody(GearsJobCallbackRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await importProjectGearsExternalCallbacks(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.VALIDATION_ERROR ? 400 : 404).json(result);
     } catch (err) {
       next(err);
     }

@@ -1,6 +1,6 @@
 # Story Agent 生产素材体系开发蓝图
 
-更新时间：2026-07-03
+更新时间：2026-07-04
 
 ## 本轮对话已完成
 
@@ -29,7 +29,7 @@
 23. 接入本地 GEARS 验收闭环：新增 `accept_local_gears_artifacts` / `project-gears-local-acceptance` 项目动作，可把 `local-gears-*` mocked job 写入 `local_acceptance` artifact，刷新 GEARS ledger、Seedance shot ledger、Production Board 和制作 readiness；已在真实项目 `20260702-story-5zhd4151f8c7--ai_comic_drama` 验证，GEARS active `5→0`、readiness `85→100`、lanes `5/7→7/7 ready`。该动作只代表本地验收占位产物，不代表外部 GEARS/Seedance 已真实回片。
 24. 补强交付来源透明度：制作 readiness summary、GEARS lane evidence 和项目详情页会区分 `external_ready` 与 `local_acceptance_ready`；当 ready job 只有本地验收 artifact 时，报告会生成 info 级 `gears-local-acceptance-only` 提示，保持 100 分 ready 的同时明确真实外部回片仍待验收。
 25. 补齐外部回片覆盖本地验收的回归保护：真实 GEARS callback 带外部 artifact URL 回来后，会替换对应 `local_acceptance` artifact，刷新 Seedance shot ledger 选用版本，并让 readiness 的 `external_ready` 增加、`local_acceptance_ready` 和 `ready_without_external` 下降。
-26. 建立 GEARS 外部回片交接包：新增 `project-gears-external-callback-handoff/v1` 项目导出能力，按项目列出仍缺真实外部 artifact 的 GEARS job、callback path/url、可直接交给外部 worker 的回调样例、local acceptance 边界说明和对应 Seedance prompt；项目详情页已提供 Markdown/JSON 导出入口，制作 readiness 会在 `ready_without_external` 时自动提示 `export_gears_external_callback_handoff`，避免把本地验收产物误当成真实 GEARS/Seedance 回片。
+26. 建立 GEARS 外部回片交接包：新增 `project-gears-external-callback-handoff/v1` 项目导出能力，按项目列出仍缺真实外部 artifact 的 GEARS job、callback path/url、safe import path/url、可直接交给外部 worker 的回调样例、批量 callback payload、指向安全导入端点的 curl 命令、operator checklist、local acceptance 边界说明和对应 Seedance prompt；项目详情页已提供 Markdown/JSON/独立 payload 导出入口，并新增外部回片 preflight 与安全导入路径，可在写入前拦截 `gears.example` 示例 URL、local acceptance URL、localhost/private network URL、非 `http(s)` 绝对 URL、账本不匹配、重复 eventId/replay 和缺真实 artifact 的 payload，同时返回 `duplicate_event_count` 方便操作员核对重复回传数量；缺 `eventId` 的真实回片会给 warning 但不阻断导入，以兼容外部 provider。制作 readiness 会在 `ready_without_external` 时自动提示 `export_gears_external_callback_handoff`，避免把本地验收产物误当成真实 GEARS/Seedance 回片。
 
 ## 原始诊断必须并入路线
 

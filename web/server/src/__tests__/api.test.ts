@@ -4504,9 +4504,17 @@ describe('Projects API', () => {
       expectSuccess(localAcceptanceRes.body);
       expect(localAcceptanceRes.body.data.accepted_count).toBe(submitRes.body.data.submitted_count);
 
+      const previousCallbackBaseUrl = process.env.GEARS_CALLBACK_BASE_URL;
+      process.env.GEARS_CALLBACK_BASE_URL = 'https://story.example.test/public/';
       const handoffRes = await request
         .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/export-external-callback-handoff`)
         .send({});
+      if (previousCallbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+      else process.env.GEARS_CALLBACK_BASE_URL = previousCallbackBaseUrl;
+      const expectedCallbackPath = `/api/projects/${enriched.project_id}/gears-callback`;
+      const expectedSafeImportPath = `/api/projects/${enriched.project_id}/production-board/gears-jobs/import-external-callbacks`;
+      const expectedCallbackUrl = `https://story.example.test/public${expectedCallbackPath}`;
+      const expectedSafeImportUrl = `https://story.example.test/public${expectedSafeImportPath}`;
       expect(handoffRes.status).toBe(200);
       expectSuccess(handoffRes.body);
       expect(handoffRes.body.data).toMatchObject({
@@ -4514,7 +4522,10 @@ describe('Projects API', () => {
         pending_external_artifact_count: submitRes.body.data.submitted_count,
         local_acceptance_ready_count: submitRes.body.data.submitted_count,
         external_ready_count: 0,
-        callback_path: `/api/projects/${enriched.project_id}/gears-callback`,
+        callback_path: expectedCallbackPath,
+        callback_url: expectedCallbackUrl,
+        safe_import_path: expectedSafeImportPath,
+        safe_import_url: expectedSafeImportUrl,
       });
       expect(handoffRes.body.data.items[0]).toMatchObject({
         source_unit_id: 'shot-1',
@@ -4528,8 +4539,188 @@ describe('Projects API', () => {
       expect(handoffRes.body.data.items[0].local_acceptance_artifact_urls[0]).toContain('https://local.story-agent.invalid/gears-acceptance/');
       expect(handoffRes.body.data.items[0].external_artifact_urls).toEqual([]);
       expect(handoffRes.body.data.items[0].callback_sample.outputUrl).toContain('https://gears.example/videos/');
+      expect(handoffRes.body.data.callback_batch_sample.callbacks).toHaveLength(submitRes.body.data.submitted_count);
+      expect(handoffRes.body.data.callback_batch_sample.callbacks[0]).toMatchObject({
+        sourceUnitId: 'shot-1',
+        outputUrl: expect.stringContaining('https://gears.example/videos/'),
+      });
+      expect(handoffRes.body.data.callback_batch_sample.replace_before_import).toEqual(expect.arrayContaining([
+        expect.stringContaining('absolute public http(s) URL'),
+      ]));
+      expect(handoffRes.body.data.callback_batch_curl).toContain(expectedSafeImportUrl);
+      expect(handoffRes.body.data.callback_batch_curl).not.toContain('GEARS_CALLBACK_SECRET');
+      expect(handoffRes.body.data.operator_checklist).toEqual(expect.arrayContaining([
+        expect.stringContaining('safe import endpoint'),
+        expect.stringContaining('absolute public http(s) outputUrl'),
+      ]));
       expect(handoffRes.body.data.markdown).toContain('GEARS 外部回片交接包');
+      expect(handoffRes.body.data.markdown).toContain('## 批量回传 payload');
       expect(handoffRes.body.data.markdown).toContain('local_acceptance URL 只代表本地链路验收');
+
+      const placeholderPreflightRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/preflight-external-callbacks`)
+        .send(handoffRes.body.data.callback_batch_sample);
+      expect(placeholderPreflightRes.status).toBe(200);
+      expectSuccess(placeholderPreflightRes.body);
+      expect(placeholderPreflightRes.body.data).toMatchObject({
+        schema_version: 'project-gears-external-callback-preflight/v1',
+        received_count: submitRes.body.data.submitted_count,
+        ready_to_import_count: 0,
+        duplicate_event_count: 0,
+      });
+      expect(placeholderPreflightRes.body.data.issues.map((issue: any) => issue.code)).toContain('placeholder_artifact_url');
+
+      const blockedImportRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/import-external-callbacks`)
+        .send(handoffRes.body.data.callback_batch_sample);
+      expect(blockedImportRes.status).toBe(200);
+      expectSuccess(blockedImportRes.body);
+      expect(blockedImportRes.body.data).toMatchObject({
+        schema_version: 'project-gears-external-callback-import/v1',
+        blocked: true,
+        received_count: submitRes.body.data.submitted_count,
+        updated_count: 0,
+        failed_count: submitRes.body.data.submitted_count,
+        duplicate_count: 0,
+      });
+
+      const realCallbackPayload = {
+        callbacks: handoffRes.body.data.callback_batch_sample.callbacks.map((callback: any, index: number) => ({
+          ...callback,
+          outputUrl: `https://media.story-agent.test/api-external-shot-${index + 1}.mp4`,
+          eventId: `api-external-ready-shot-${index + 1}`,
+        })),
+      };
+      const realPreflightRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/preflight-external-callbacks`)
+        .send(realCallbackPayload);
+      expect(realPreflightRes.status).toBe(200);
+      expectSuccess(realPreflightRes.body);
+      expect(realPreflightRes.body.data).toMatchObject({
+        received_count: submitRes.body.data.submitted_count,
+        ready_to_import_count: submitRes.body.data.submitted_count,
+        duplicate_event_count: 0,
+        blocking_count: 0,
+      });
+      expect(realPreflightRes.body.data.items[0]).toMatchObject({
+        has_event_id: true,
+        would_update: true,
+      });
+      const missingEventIdCallback = { ...realCallbackPayload.callbacks[0] };
+      delete missingEventIdCallback.eventId;
+      const missingEventIdPreflightRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/preflight-external-callbacks`)
+        .send({ callbacks: [missingEventIdCallback] });
+      expect(missingEventIdPreflightRes.status).toBe(200);
+      expectSuccess(missingEventIdPreflightRes.body);
+      expect(missingEventIdPreflightRes.body.data).toMatchObject({
+        received_count: 1,
+        ready_to_import_count: 1,
+        duplicate_event_count: 0,
+        blocking_count: 0,
+        warning_count: 1,
+      });
+      expect(missingEventIdPreflightRes.body.data.issues.map((issue: any) => issue.code)).toContain('missing_event_id');
+      expect(missingEventIdPreflightRes.body.data.items[0]).toMatchObject({
+        has_event_id: false,
+        is_duplicate_event: false,
+        would_update: true,
+      });
+      const privateArtifactPreflightRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/preflight-external-callbacks`)
+        .send({
+          callbacks: [{
+            ...realCallbackPayload.callbacks[0],
+            outputUrl: 'http://127.0.0.1:9000/api-external-shot-1.mp4',
+            eventId: 'api-external-private-shot-1',
+          }],
+        });
+      expect(privateArtifactPreflightRes.status).toBe(200);
+      expectSuccess(privateArtifactPreflightRes.body);
+      expect(privateArtifactPreflightRes.body.data).toMatchObject({
+        received_count: 1,
+        ready_to_import_count: 0,
+        duplicate_event_count: 0,
+        blocking_count: 2,
+      });
+      expect(privateArtifactPreflightRes.body.data.issues.map((issue: any) => issue.code)).toEqual(expect.arrayContaining([
+        'missing_external_artifact_url',
+        'private_or_local_artifact_url',
+      ]));
+      expect(privateArtifactPreflightRes.body.data.items[0]).toMatchObject({
+        has_external_artifact_url: false,
+        has_private_or_local_artifact_url: true,
+        has_invalid_artifact_url: false,
+        would_update: false,
+      });
+      const invalidArtifactPreflightRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/preflight-external-callbacks`)
+        .send({
+          callbacks: [{
+            ...realCallbackPayload.callbacks[0],
+            outputUrl: '/tmp/api-external-shot-1.mp4',
+            eventId: 'api-external-invalid-url-shot-1',
+          }],
+        });
+      expect(invalidArtifactPreflightRes.status).toBe(200);
+      expectSuccess(invalidArtifactPreflightRes.body);
+      expect(invalidArtifactPreflightRes.body.data).toMatchObject({
+        received_count: 1,
+        ready_to_import_count: 0,
+        duplicate_event_count: 0,
+        blocking_count: 2,
+      });
+      expect(invalidArtifactPreflightRes.body.data.issues.map((issue: any) => issue.code)).toEqual(expect.arrayContaining([
+        'missing_external_artifact_url',
+        'invalid_artifact_url',
+      ]));
+      expect(invalidArtifactPreflightRes.body.data.items[0]).toMatchObject({
+        has_external_artifact_url: false,
+        has_private_or_local_artifact_url: false,
+        has_invalid_artifact_url: true,
+        would_update: false,
+      });
+      const duplicateBatchPreflightRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/preflight-external-callbacks`)
+        .send({
+          callbacks: [
+            realCallbackPayload.callbacks[0],
+            realCallbackPayload.callbacks[0],
+          ],
+        });
+      expect(duplicateBatchPreflightRes.status).toBe(200);
+      expectSuccess(duplicateBatchPreflightRes.body);
+      expect(duplicateBatchPreflightRes.body.data).toMatchObject({
+        received_count: 2,
+        ready_to_import_count: 1,
+        duplicate_event_count: 1,
+        blocking_count: 0,
+        warning_count: 1,
+      });
+      expect(duplicateBatchPreflightRes.body.data.issues.map((issue: any) => issue.code)).toContain('duplicate_event_id_in_batch');
+      expect(duplicateBatchPreflightRes.body.data.items[1]).toMatchObject({
+        event_id: 'api-external-ready-shot-1',
+        is_duplicate_event: true,
+        duplicate_event_source: 'batch',
+        duplicate_of_index: 0,
+        would_update: false,
+      });
+
+      const importRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/import-external-callbacks`)
+        .send(realCallbackPayload);
+      expect(importRes.status).toBe(200);
+      expectSuccess(importRes.body);
+      expect(importRes.body.data).toMatchObject({
+        schema_version: 'project-gears-external-callback-import/v1',
+        blocked: false,
+        received_count: submitRes.body.data.submitted_count,
+        updated_count: submitRes.body.data.submitted_count,
+      });
+      expect(importRes.body.data.import_result.seedance_shot_ledger.items[0]).toMatchObject({
+        status: 'ready',
+        video_url: 'https://media.story-agent.test/api-external-shot-1.mp4',
+      });
     });
   });
 

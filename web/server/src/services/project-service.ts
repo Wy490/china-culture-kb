@@ -26,6 +26,10 @@ import type {
   GearsExecutionJobType,
   GearsExternalCallbackHandoffPackage,
   GearsExternalCallbackHandoffItem,
+  GearsExternalCallbackImportResult,
+  GearsExternalCallbackPreflightIssue,
+  GearsExternalCallbackPreflightItem,
+  GearsExternalCallbackPreflightResult,
   GearsJobCallbackRequest,
   GearsJobCallbackResult,
   GearsJobLedger,
@@ -5019,6 +5023,381 @@ function findGearsLedgerMatch(input: {
   return `GEARS source_unit_id "${sourceUnitId}" was not found in project ledger`;
 }
 
+function urlHostname(value: string): string | undefined {
+  try {
+    return new URL(value).hostname.toLowerCase();
+  } catch {
+    return undefined;
+  }
+}
+
+function isPlaceholderExternalArtifactUrl(value: string): boolean {
+  const host = urlHostname(value);
+  return Boolean(
+    host === 'example.com'
+    || host === 'example.test'
+    || host === 'gears.example'
+    || host?.endsWith('.example')
+    || host?.endsWith('.example.com')
+    || host?.endsWith('.example.test')
+    || /gears\.example/i.test(value),
+  );
+}
+
+function isLocalAcceptanceArtifactUrl(value: string): boolean {
+  return value.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL);
+}
+
+function isHttpArtifactUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function isPrivateOrLocalArtifactUrl(value: string): boolean {
+  const host = urlHostname(value)?.replace(/^\[|\]$/g, '');
+  if (!host) return false;
+  const lowerHost = host.toLowerCase();
+  const isIpv6Address = lowerHost.includes(':');
+  if (
+    host === 'localhost'
+    || host.endsWith('.localhost')
+    || host.endsWith('.local')
+    || host === 'host.docker.internal'
+    || host === '0.0.0.0'
+    || host === '::1'
+    || (isIpv6Address && (
+      lowerHost.startsWith('fe80:')
+      || lowerHost.startsWith('fc')
+      || lowerHost.startsWith('fd')
+    ))
+  ) {
+    return true;
+  }
+  const ipv4Parts = host.split('.').map(part => Number.parseInt(part, 10));
+  if (ipv4Parts.length !== 4 || ipv4Parts.some(part => Number.isNaN(part))) return false;
+  const [first, second] = ipv4Parts;
+  return first === 10
+    || first === 127
+    || (first === 169 && second === 254)
+    || (first === 172 && second >= 16 && second <= 31)
+    || (first === 192 && second === 168);
+}
+
+function preflightIssue(input: {
+  index: number;
+  severity: GearsExternalCallbackPreflightIssue['severity'];
+  code: string;
+  message: string;
+  path?: string;
+  sourceUnitId?: string;
+  gearsJobId?: string;
+}): GearsExternalCallbackPreflightIssue {
+  return {
+    index: input.index,
+    severity: input.severity,
+    code: input.code,
+    message: input.message,
+    path: input.path,
+    source_unit_id: input.sourceUnitId,
+    gears_job_id: input.gearsJobId,
+  };
+}
+
+function buildGearsExternalCallbackPreflightMarkdown(
+  report: Omit<GearsExternalCallbackPreflightResult, 'markdown'>,
+): string {
+  return [
+    `# ${report.project.title} — GEARS 外部回片 preflight`,
+    '',
+    `> schema: ${report.schema_version}`,
+    `> projectId: ${report.project.project_id}`,
+    `> received: ${report.received_count}`,
+    `> readyToImport: ${report.ready_to_import_count}`,
+    `> duplicateEvents: ${report.duplicate_event_count}`,
+    `> blocking: ${report.blocking_count}`,
+    `> warnings: ${report.warning_count}`,
+    '',
+    '## Issues',
+    '',
+    ...(report.issues.length
+      ? report.issues.map(issue =>
+        `- ${issue.severity} · #${issue.index + 1} · ${issue.code}: ${issue.message}`
+      )
+      : ['- 未发现阻断问题。']),
+    '',
+    '## Items',
+    '',
+    ...(report.items.length
+      ? report.items.map(item =>
+        `- #${item.index + 1} ${item.source_unit_id ?? item.gears_job_id ?? 'unknown'} · matched=${item.matched_ledger} · eventId=${item.has_event_id} · external=${item.has_external_artifact_url} · placeholder=${item.has_placeholder_artifact_url} · local=${item.has_local_acceptance_artifact_url} · private=${item.has_private_or_local_artifact_url} · invalid=${item.has_invalid_artifact_url} · duplicate=${item.is_duplicate_event} · wouldUpdate=${item.would_update}`
+      )
+      : ['- 没有可检查的 callback。']),
+  ].join('\n');
+}
+
+export async function preflightProjectGearsExternalCallbacks(
+  projectId: string,
+  request: GearsJobCallbackRequest,
+): Promise<ApiResponse<GearsExternalCallbackPreflightResult>> {
+  const callbacks = extractGearsJobCallbackRequests(request);
+  if (callbacks.length > GEARS_CALLBACK_BATCH_ITEM_LIMIT) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `GEARS callback batch item count must be <= ${GEARS_CALLBACK_BATCH_ITEM_LIMIT}`,
+    );
+  }
+
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+      detail.error?.details,
+    );
+  }
+
+  const { project, current_story } = detail.data;
+  const ledger = normalizeGearsJobLedger(project.gears_job_ledger);
+  const issues: GearsExternalCallbackPreflightIssue[] = [];
+  const firstBatchEventIndex = new Map<string, number>();
+  const items: GearsExternalCallbackPreflightItem[] = callbacks.map((callbackRequest, index) => {
+    const callback = normalizeGearsJobCallback(callbackRequest);
+    const match = findGearsLedgerMatch({ ledger, callback });
+    const matchedItem = typeof match === 'string' ? undefined : match;
+    const itemIssues: GearsExternalCallbackPreflightIssue[] = [];
+    const artifactUrls = callback.artifact_urls;
+    const hasInvalidArtifactUrl = artifactUrls.some(url => !isHttpArtifactUrl(url));
+    const hasPlaceholderArtifactUrl = artifactUrls.some(isPlaceholderExternalArtifactUrl);
+    const hasLocalAcceptanceArtifactUrl = artifactUrls.some(isLocalAcceptanceArtifactUrl);
+    const hasPrivateOrLocalArtifactUrl = artifactUrls.some(isPrivateOrLocalArtifactUrl);
+    const hasExternalArtifactUrl = artifactUrls.some(url =>
+      isHttpArtifactUrl(url)
+      && !isPlaceholderExternalArtifactUrl(url)
+      && !isLocalAcceptanceArtifactUrl(url)
+      && !isPrivateOrLocalArtifactUrl(url)
+    );
+    const sourceUnitId = callback.source_unit_id ?? matchedItem?.source_unit_id;
+    const gearsJobId = callback.gears_job_id ?? matchedItem?.gears_job_id;
+    const path = gearsCallbackBatchPath(callbackRequest);
+    const eventId = callback.event_id?.trim();
+    const previousBatchEventIndex = eventId ? firstBatchEventIndex.get(eventId) : undefined;
+    const duplicateInBatch = previousBatchEventIndex !== undefined;
+    if (eventId && previousBatchEventIndex === undefined) {
+      firstBatchEventIndex.set(eventId, index);
+    }
+    const duplicateInLedger = matchedItem
+      ? gearsCallbackEventIsDuplicate({
+          existing: matchedItem.callback_events,
+          callback,
+        })
+      : false;
+    const duplicateEventSource = duplicateInLedger && duplicateInBatch
+      ? 'ledger_and_batch'
+      : duplicateInLedger
+        ? 'ledger'
+        : duplicateInBatch
+          ? 'batch'
+          : undefined;
+
+    if (!matchedItem) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'blocking',
+        code: 'ledger_match_failed',
+        message: typeof match === 'string' ? match : 'Callback did not match a GEARS ledger item.',
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (callback.source_project_id && callback.source_project_id !== project.project_id) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'blocking',
+        code: 'source_project_mismatch',
+        message: `Callback sourceProjectId "${callback.source_project_id}" does not match project "${project.project_id}".`,
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (callback.source_story_id && callback.source_story_id !== current_story.storyId) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'warning',
+        code: 'source_story_mismatch',
+        message: `Callback sourceStoryId "${callback.source_story_id}" does not match story "${current_story.storyId}".`,
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (matchedItem && callback.job_type && callback.job_type !== matchedItem.job_type) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'blocking',
+        code: 'job_type_mismatch',
+        message: `Callback jobType "${callback.job_type}" does not match ledger jobType "${matchedItem.job_type}".`,
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (callback.status !== 'ready') {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'warning',
+        code: 'callback_not_ready',
+        message: `Callback normalized status is "${callback.status}", not ready.`,
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (callback.status === 'ready' && hasExternalArtifactUrl && !eventId) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'warning',
+        code: 'missing_event_id',
+        message: 'Callback is ready and has a real external artifact URL, but eventId is missing; add a unique eventId to improve replay auditability.',
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (!hasExternalArtifactUrl) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'blocking',
+        code: 'missing_external_artifact_url',
+        message: 'Callback does not contain a real external artifact URL.',
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (hasPlaceholderArtifactUrl) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'blocking',
+        code: 'placeholder_artifact_url',
+        message: 'Callback still contains example/gears.example placeholder artifact URLs.',
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (hasLocalAcceptanceArtifactUrl) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'blocking',
+        code: 'local_acceptance_artifact_url',
+        message: 'Callback contains a local_acceptance artifact URL; this is not a real external provider output.',
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (hasPrivateOrLocalArtifactUrl) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'blocking',
+        code: 'private_or_local_artifact_url',
+        message: 'Callback contains a localhost, private network, or local-only artifact URL; use a real external provider URL.',
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (hasInvalidArtifactUrl) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'blocking',
+        code: 'invalid_artifact_url',
+        message: 'Callback artifact URL must be an absolute http(s) URL that Story Agent can hand off to production.',
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (duplicateInLedger) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'warning',
+        code: 'duplicate_callback_event',
+        message: eventId
+          ? `Callback eventId "${eventId}" already exists in the GEARS ledger; safe import will treat it as a replay.`
+          : 'Callback event already exists in the GEARS ledger; safe import will treat it as a replay.',
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+    if (duplicateInBatch) {
+      itemIssues.push(preflightIssue({
+        index,
+        severity: 'warning',
+        code: 'duplicate_event_id_in_batch',
+        message: `Callback eventId "${eventId}" duplicates item #${(previousBatchEventIndex ?? 0) + 1} in this batch.`,
+        path,
+        sourceUnitId,
+        gearsJobId,
+      }));
+    }
+
+    issues.push(...itemIssues);
+    const blockingCount = itemIssues.filter(issue => issue.severity === 'blocking').length;
+    const isDuplicateEvent = duplicateInLedger || duplicateInBatch;
+    return {
+      index,
+      source_unit_id: sourceUnitId,
+      gears_job_id: gearsJobId,
+      job_type: callback.job_type ?? matchedItem?.job_type,
+      event_id: eventId,
+      has_event_id: Boolean(eventId),
+      callback_status: callback.status,
+      ledger_status: matchedItem?.status,
+      artifact_urls: artifactUrls,
+      matched_ledger: Boolean(matchedItem),
+      has_external_artifact_url: hasExternalArtifactUrl,
+      has_placeholder_artifact_url: hasPlaceholderArtifactUrl,
+      has_local_acceptance_artifact_url: hasLocalAcceptanceArtifactUrl,
+      has_private_or_local_artifact_url: hasPrivateOrLocalArtifactUrl,
+      has_invalid_artifact_url: hasInvalidArtifactUrl,
+      is_duplicate_event: isDuplicateEvent,
+      duplicate_event_source: duplicateEventSource,
+      duplicate_of_index: previousBatchEventIndex,
+      would_update: Boolean(matchedItem)
+        && callback.status === 'ready'
+        && hasExternalArtifactUrl
+        && blockingCount === 0
+        && !isDuplicateEvent,
+      issue_count: itemIssues.length,
+    };
+  });
+
+  const base: Omit<GearsExternalCallbackPreflightResult, 'markdown'> = {
+    schema_version: 'project-gears-external-callback-preflight/v1',
+    project,
+    received_count: callbacks.length,
+    ready_to_import_count: items.filter(item => item.would_update).length,
+    duplicate_event_count: items.filter(item => item.is_duplicate_event).length,
+    blocking_count: issues.filter(issue => issue.severity === 'blocking').length,
+    warning_count: issues.filter(issue => issue.severity === 'warning').length,
+    info_count: issues.filter(issue => issue.severity === 'info').length,
+    items,
+    issues,
+  };
+  return success({
+    ...base,
+    markdown: buildGearsExternalCallbackPreflightMarkdown(base),
+  });
+}
+
 function projectGearsSyncItems(input: {
   ledger: GearsJobLedger;
   request: GearsJobStatusSyncRequest;
@@ -5236,6 +5615,67 @@ export async function importProjectGearsCallbacks(
     failed_count: failedCount,
     duplicate_count: duplicateCount,
     failures,
+  });
+}
+
+export async function importProjectGearsExternalCallbacks(
+  projectId: string,
+  request: GearsJobCallbackRequest,
+): Promise<ApiResponse<GearsExternalCallbackImportResult>> {
+  const preflightRes = await preflightProjectGearsExternalCallbacks(projectId, request);
+  if (!preflightRes.ok || !preflightRes.data) {
+    return fail(
+      preflightRes.error?.code === ErrorCodes.STORY_NOT_FOUND
+        ? ErrorCodes.STORY_NOT_FOUND
+        : preflightRes.error?.code === ErrorCodes.VALIDATION_ERROR
+          ? ErrorCodes.VALIDATION_ERROR
+          : ErrorCodes.INTERNAL_ERROR,
+      preflightRes.error?.message ?? 'GEARS external callback preflight failed',
+      preflightRes.error?.details,
+    );
+  }
+
+  if (preflightRes.data.blocking_count > 0) {
+    const blockedItemCount = new Set(
+      preflightRes.data.issues
+        .filter(issue => issue.severity === 'blocking')
+        .map(issue => issue.index),
+    ).size;
+    return success({
+      schema_version: 'project-gears-external-callback-import/v1',
+      project: preflightRes.data.project,
+      preflight: preflightRes.data,
+      blocked: true,
+      received_count: preflightRes.data.received_count,
+      updated_count: 0,
+      failed_count: blockedItemCount,
+      duplicate_count: preflightRes.data.duplicate_event_count,
+    });
+  }
+
+  const importRes = await importProjectGearsCallbacks(projectId, request);
+  if (!importRes.ok || !importRes.data) {
+    return fail(
+      importRes.error?.code === ErrorCodes.VALIDATION_ERROR
+        ? ErrorCodes.VALIDATION_ERROR
+        : importRes.error?.code === ErrorCodes.STORY_NOT_FOUND
+          ? ErrorCodes.STORY_NOT_FOUND
+          : ErrorCodes.INTERNAL_ERROR,
+      importRes.error?.message ?? 'GEARS external callback import failed',
+      importRes.error?.details,
+    );
+  }
+
+  return success({
+    schema_version: 'project-gears-external-callback-import/v1',
+    project: importRes.data.project,
+    preflight: preflightRes.data,
+    blocked: false,
+    received_count: importRes.data.received_count,
+    updated_count: importRes.data.updated_count,
+    failed_count: importRes.data.failed_count,
+    duplicate_count: importRes.data.duplicate_count,
+    import_result: importRes.data,
   });
 }
 
@@ -5587,6 +6027,71 @@ function gearsExternalCallbackSample(input: {
   };
 }
 
+function gearsExternalCallbackBatchSample(
+  items: GearsExternalCallbackHandoffItem[],
+): GearsExternalCallbackHandoffPackage['callback_batch_sample'] {
+  return {
+    callbacks: items.map(item => item.callback_sample),
+    replace_before_import: [
+      'callbacks[].outputUrl must be replaced with the real GEARS/Seedance artifact URL.',
+      'callbacks[].outputUrl must be an absolute public http(s) URL, not localhost, a private network URL, local_acceptance, or a local file path.',
+      'callbacks[].eventId should be unique for every external provider callback.',
+      'Do not submit local_acceptance artifact URLs as external outputUrl values.',
+    ],
+    import_note: 'This payload is a batch callback sample for the safe external callback import endpoint.',
+  };
+}
+
+function gearsExternalSafeImportPath(projectId: string): string {
+  return `/api/projects/${encodeURIComponent(projectId)}/production-board/gears-jobs/import-external-callbacks`;
+}
+
+function gearsExternalSafeImportUrl(input: {
+  callbackPath: string;
+  callbackUrl: string;
+  safeImportPath: string;
+}): string {
+  if (!/^https?:\/\//.test(input.callbackUrl)) return input.safeImportPath;
+  try {
+    const url = new URL(input.callbackUrl);
+    const callbackPathname = new URL(input.callbackPath, url.origin).pathname;
+    const safeImportPathname = new URL(input.safeImportPath, url.origin).pathname;
+    if (url.pathname.endsWith(callbackPathname)) {
+      const publicPathPrefix = url.pathname
+        .slice(0, url.pathname.length - callbackPathname.length)
+        .replace(/\/+$/, '');
+      return `${url.origin}${publicPathPrefix}${safeImportPathname}`;
+    }
+    return `${url.origin}${safeImportPathname}`;
+  } catch {
+    return input.safeImportPath;
+  }
+}
+
+function gearsExternalCallbackCurlCommand(input: {
+  projectId: string;
+  safeImportPath: string;
+  safeImportUrl: string;
+}): string {
+  const target = /^https?:\/\//.test(input.safeImportUrl)
+    ? input.safeImportUrl
+    : `$STORY_AGENT_BASE_URL${input.safeImportPath}`;
+  const fileName = `${input.projectId}-gears-external-callbacks.json`;
+  return `curl -sS -X POST "${target}" -H "content-type: application/json" --data-binary @${fileName}`;
+}
+
+function gearsExternalOperatorChecklist(): string[] {
+  return [
+    'Render or collect the real external GEARS/Seedance artifact for each sourceUnitId.',
+    'Replace every sample outputUrl with the real artifact URL before importing callbacks.',
+    'Use absolute public http(s) outputUrl values; do not use localhost, private network, local_acceptance, file, or relative URLs.',
+    'Keep jobId, sourceUnitId, jobType, sourceProjectId and sourceStoryId unchanged unless the worker remaps ids intentionally.',
+    'Use a unique eventId per callback to preserve callback idempotency and lifecycle history.',
+    'POST the batch payload to the safe import endpoint; it runs preflight before writing ledgers.',
+    'After import, re-run project production readiness and confirm external_ready increases while ready_without_external decreases.',
+  ];
+}
+
 function gearsExternalHandoffPrompt(
   shot: StoryProductionBoard['shot_units'][number] | undefined,
 ): SeedanceShotRetryPackageShot['prompt'] | undefined {
@@ -5625,6 +6130,8 @@ export async function exportProjectGearsExternalCallbackHandoff(
   const shotById = new Map(board.shot_units.map(shot => [shot.shot_id, shot]));
   const callbackPath = gearsProjectCallbackPath(project.project_id);
   const callbackUrl = gearsProjectCallbackUrl(project.project_id) ?? callbackPath;
+  const safeImportPath = gearsExternalSafeImportPath(project.project_id);
+  const safeImportUrl = gearsExternalSafeImportUrl({ callbackPath, callbackUrl, safeImportPath });
   const handoffJobs = ledger.items.filter(item =>
     item.job_type === 'seedance_video'
     && !['failed', 'rejected', 'canceled'].includes(item.status)
@@ -5652,6 +6159,7 @@ export async function exportProjectGearsExternalCallbackHandoff(
       prompt: gearsExternalHandoffPrompt(shot),
     };
   });
+  const callbackBatchSample = gearsExternalCallbackBatchSample(items);
   const basePackage: Omit<GearsExternalCallbackHandoffPackage, 'markdown'> = {
     schema_version: 'project-gears-external-callback-handoff/v1',
     project,
@@ -5660,10 +6168,19 @@ export async function exportProjectGearsExternalCallbackHandoff(
     exported_at: new Date().toISOString(),
     callback_path: callbackPath,
     callback_url: callbackUrl,
+    safe_import_path: safeImportPath,
+    safe_import_url: safeImportUrl,
     total_job_count: ledger.items.length,
     external_ready_count: ledger.items.filter(item => item.status === 'ready' && gearsJobHasExternalArtifact(item)).length,
     local_acceptance_ready_count: ledger.items.filter(item => item.status === 'ready' && gearsJobHasLocalAcceptanceArtifact(item)).length,
     pending_external_artifact_count: items.length,
+    callback_batch_sample: callbackBatchSample,
+    callback_batch_curl: gearsExternalCallbackCurlCommand({
+      projectId: project.project_id,
+      safeImportPath,
+      safeImportUrl,
+    }),
+    operator_checklist: gearsExternalOperatorChecklist(),
     items,
   };
   return success({
@@ -7363,6 +7880,8 @@ function buildGearsExternalCallbackHandoffMarkdown(
     `> exportedAt: ${pkg.exported_at}`,
     `> callbackPath: ${pkg.callback_path}`,
     `> callbackUrl: ${pkg.callback_url}`,
+    `> safeImportPath: ${pkg.safe_import_path}`,
+    `> safeImportUrl: ${pkg.safe_import_url}`,
     `> 待外部 artifact: ${pkg.pending_external_artifact_count}`,
     `> 本地验收 ready: ${pkg.local_acceptance_ready_count}`,
     `> 外部 ready: ${pkg.external_ready_count}`,
@@ -7372,6 +7891,24 @@ function buildGearsExternalCallbackHandoffMarkdown(
     '- 本包用于把 local_acceptance 或尚未回片的 GEARS job 升级为真实外部 artifact。',
     '- 回传前必须把 sample 中的 outputUrl 替换成真实 GEARS/Seedance 产物 URL。',
     '- local_acceptance URL 只代表本地链路验收，不代表外部平台真实回片。',
+    '',
+    '## Operator Checklist',
+    '',
+    ...pkg.operator_checklist.map(item => `- ${item}`),
+    '',
+    '## 批量回传 payload',
+    '',
+    'Curl:',
+    '',
+    '```bash',
+    pkg.callback_batch_curl,
+    '```',
+    '',
+    'Batch callback sample:',
+    '',
+    '```json',
+    JSON.stringify(pkg.callback_batch_sample, null, 2),
+    '```',
     '',
     '## 待回片镜头',
   ];

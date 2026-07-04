@@ -198,6 +198,34 @@ P0 调整：
 2. 若要推进 GEARS 95% 后的外部验收，等待真实 `GEARS_API_BASE_URL`、callback base 和 secret 配齐后，再跑 live endpoint acceptance。
 3. 可再做一次用户路径级 smoke，重点覆盖素材补充任务、项目详情创作合同展示和旧项目版本读取。
 
+## 0.7 2026-07-04 GEARS 外部回片安全导入收口
+
+本轮接续生产素材与本地 GEARS 验收链路，重点把“本地验收占位产物”和“真实外部 GEARS/Seedance 回片”之间的交接闭环做安全化。当前项目总体进度估算 **97%**：Story Agent 内容/生产指挥面、生产素材 readiness、候选稿/写回队列、本地 GEARS 验收和外部回片安全导入命令面已收口；剩余主要取决于真实外部 worker endpoint 与真实 artifact 回传验收。
+
+已完成修复：
+
+- `project-gears-external-callback-handoff/v1` 交接包新增 `safe_import_path`、`safe_import_url`、批量 callback sample、curl 命令和 operator checklist，外部 worker 可直接拿 payload 替换真实 artifact URL 后走安全导入端点。
+- 新增单故事项目 API：`POST /api/projects/:projectId/production-board/gears-jobs/preflight-external-callbacks` 与 `POST /api/projects/:projectId/production-board/gears-jobs/import-external-callbacks`。
+- preflight 会在写入前拦截 `gears.example` / example placeholder、`local_acceptance` URL、localhost/private network/local-only URL、非绝对 `http(s)` URL、账本不匹配、job type 不匹配和 source project 不匹配；缺 `eventId` 的真实 ready callback 只给 warning，不阻断兼容外部 provider。
+- 安全导入会先跑 preflight，存在 blocking issue 时不写 ledger，并按被阻断 callback 条数返回 `failed_count`；通过后才调用既有 GEARS callback 导入逻辑，保持幂等与重复 event 统计。
+- 项目详情页新增 `校验 GEARS 回片`、`安全导入 GEARS 回片` 和 `回片 Payload` 导出，原有逐条导入改为批量安全导入。
+- `docs/story-agent-production-material-blueprint.md` 已记录外部回片交接包和安全导入边界。
+
+本轮验证：
+
+- `cd web/server && npm test` 通过：28 个测试文件、409 个用例。
+- `cd web/server && npm run lint` 通过。
+- `cd web/client && npm run lint` 通过。
+- `npx vitest run src/__tests__/project-service.test.ts` 通过：56 个用例。
+- `npx vitest run src/__tests__/api.test.ts` 通过：159 个用例；单文件 API 测试需要允许 supertest 监听本机临时端口。
+- `git diff --check` 通过。
+
+下一轮优先级更新：
+
+1. 若有真实外部 GEARS/Seedance artifact URL，优先做 ProjectDetail 用户路径 smoke：导出回片 payload -> 替换真实 URL -> preflight -> safe import -> readiness 中 `external_ready` 上升、`ready_without_external` 下降。
+2. 若暂无真实 endpoint，补浏览器 smoke 覆盖项目详情的 `校验 GEARS 回片 / 安全导入 GEARS 回片 / 回片 Payload` 三个新入口和阻断提示。
+3. 继续不要把 `local_acceptance` 当真实回片；本地验收只证明 Story Agent 指挥链路和账本更新闭环，不代表外部媒体实产完成。
+
 2026-06-23 Phase 1 首轮已推进：
 
 - Web 共享类型/schema 已新增 `CreationUseCase`、`TruthMode`、`CreationContract`、`MaterialPack`、`MaterialSufficiencyReport`。

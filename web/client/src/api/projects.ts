@@ -4,6 +4,8 @@ import type {
   GearsJobCallbackRequest,
   GearsJobCallbackResult,
   GearsExternalCallbackHandoffPackage,
+  GearsExternalCallbackImportResult,
+  GearsExternalCallbackPreflightResult,
   GearsJobLocalAcceptanceRequest,
   GearsJobLocalAcceptanceResult,
   GearsJobStatusSyncRequest,
@@ -232,6 +234,14 @@ export function acceptProjectLocalGearsArtifacts(projectId: string, body: GearsJ
 
 export function exportProjectGearsExternalCallbackHandoff(projectId: string) {
   return apiPost<GearsExternalCallbackHandoffPackage>(`/projects/${projectId}/production-board/gears-jobs/export-external-callback-handoff`, {})
+}
+
+export function preflightProjectGearsExternalCallbacks(projectId: string, body: GearsJobCallbackRequest) {
+  return apiPost<GearsExternalCallbackPreflightResult>(`/projects/${projectId}/production-board/gears-jobs/preflight-external-callbacks`, body)
+}
+
+export function importProjectGearsExternalCallbacks(projectId: string, body: GearsJobCallbackRequest) {
+  return apiPost<GearsExternalCallbackImportResult>(`/projects/${projectId}/production-board/gears-jobs/import-external-callbacks`, body)
 }
 
 export function importProjectGearsCallback(projectId: string, body: GearsJobCallbackRequest) {

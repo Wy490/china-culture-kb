@@ -198,6 +198,34 @@ AI 影视前期创作、剧本生产与项目素材指挥系统
 3. 若要推进真实 GEARS endpoint acceptance，需等 `GEARS_API_BASE_URL`、callback base 和 secret 配齐后再跑 live smoke。
 4. 可补一次用户路径级 smoke：素材补充任务、项目详情创作合同展示、旧项目版本读取。
 
+## 0.7 2026-07-04 最新交接：GEARS 外部回片安全导入已收口
+
+本轮接续 `project-gears-external-callback-handoff/v1` 与本地 GEARS 验收链路，完成外部回片 preflight + safe import 命令面。当前分支仍是 `codex-ai-comic-series-longform`。当前项目总体进度估算 **97%**：Story Agent 内容/生产指挥层、生产素材 readiness、本地 GEARS 验收和外部回片安全导入都已可用；真实 GEARS/Seedance 媒体执行仍等待外部 worker 与真实 artifact URL。
+
+本轮代码结论：
+
+- `exportProjectGearsExternalCallbackHandoff()` 已输出 safe import path/url、批量 callback payload、curl 命令和 operator checklist。
+- 新增 `preflightProjectGearsExternalCallbacks()`：写入前检查 placeholder URL、local_acceptance URL、localhost/private/local-only URL、非法 URL、账本匹配、job type、source project、重复 eventId/replay 和缺 eventId。
+- 新增 `importProjectGearsExternalCallbacks()`：先 preflight，若有 blocking issue 则不写 ledger；通过后复用既有 GEARS callback 导入，保留幂等与 duplicate 统计。
+- ProjectDetail 已把 GEARS 回传入口改为 `校验 GEARS 回片` + `安全导入 GEARS 回片`，并新增独立 `回片 Payload` JSON 导出。
+- blocked import 的 `failed_count` 已按被阻断 callback 条数计算，不再按 blocking issue 条数计算。
+- `docs/story-agent-production-material-blueprint.md` 已把外部回片交接包、preflight、安全导入和 local acceptance 边界写入第 26 条。
+
+已验证：
+
+- `cd web/server && npm test` 通过：28 个测试文件、409 个用例。
+- `cd web/server && npm run lint` 通过。
+- `cd web/client && npm run lint` 通过。
+- `npx vitest run src/__tests__/project-service.test.ts` 通过：56 个用例。
+- `npx vitest run src/__tests__/api.test.ts` 通过：159 个用例；该单文件测试在沙箱内会因 supertest 监听临时端口 EPERM，需要提权运行。
+- `git diff --check` 通过。
+
+新对话建议第一步更新：
+
+1. 先看 `git status --short --branch` 和最新提交，确认本轮 safe import 是否已提交并推送。
+2. 若已有真实 GEARS/Seedance artifact URL，优先做 ProjectDetail 用户路径 smoke：导出 payload、替换真实 URL、preflight、safe import、确认 readiness 的 `external_ready` 上升且 `ready_without_external` 下降。
+3. 若暂无真实 endpoint，补浏览器 smoke 覆盖新按钮和阻断提示即可，不要把 `local_acceptance` 误当真实回片。
+
 2026-06-23 更新：Phase 1 合同层首轮已落地。Web 后端已新增并接入 `creation_contract`、`material_pack`、`material_sufficiency`，旧 `knowledge_pack` 请求保持兼容；StoryBlueprint、prompt package、StoryGenerateResult、质量报告、项目 meta/version snapshot 均会保存新字段。MCP `kb_generate_story_blueprint` 已能只读返回 `creation_contract` / `material_sufficiency`，`kb_get_project_context` 可读回项目上下文中的新合同字段。
 
 2026-06-23 续更：Phase 2 类型片画像矩阵首个工程切片已落地。`genre-story-profiles.ts` 现在集中维护每类片子的兼容创作用途、真实模式、推荐/允许/禁用叙事流派、素材要求、真实边界、机构规则和改编规则；`resolveGenreStoryMatrix()` 已接入 Story Generate 链路，会补足/过滤 `narrative_pattern_ids`，并把矩阵要求写入 `StoryBlueprint.type_specific_requirements` 和 prompt package 的“类型片画像矩阵”章节。下一步优先做 Phase 3 分阶段素材充分度和前端创作台控件文案。

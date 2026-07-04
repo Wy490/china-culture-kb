@@ -2006,6 +2006,12 @@ export interface GearsExternalCallbackHandoffItem {
   prompt?: SeedanceShotRetryPrompt;
 }
 
+export interface GearsExternalCallbackBatchSample {
+  callbacks: GearsJobCallbackRequest[];
+  replace_before_import: string[];
+  import_note: string;
+}
+
 export interface GearsExternalCallbackHandoffPackage {
   schema_version: 'project-gears-external-callback-handoff/v1';
   project: StoryProjectMeta;
@@ -2014,11 +2020,65 @@ export interface GearsExternalCallbackHandoffPackage {
   exported_at: string;
   callback_path: string;
   callback_url: string;
+  safe_import_path: string;
+  safe_import_url: string;
   total_job_count: number;
   external_ready_count: number;
   local_acceptance_ready_count: number;
   pending_external_artifact_count: number;
+  callback_batch_sample: GearsExternalCallbackBatchSample;
+  callback_batch_curl: string;
+  operator_checklist: string[];
   items: GearsExternalCallbackHandoffItem[];
+  markdown: string;
+}
+
+export type GearsExternalCallbackPreflightSeverity = 'blocking' | 'warning' | 'info';
+
+export interface GearsExternalCallbackPreflightIssue {
+  index: number;
+  severity: GearsExternalCallbackPreflightSeverity;
+  code: string;
+  message: string;
+  path?: string;
+  source_unit_id?: string;
+  gears_job_id?: string;
+}
+
+export interface GearsExternalCallbackPreflightItem {
+  index: number;
+  source_unit_id?: string;
+  gears_job_id?: string;
+  job_type?: GearsExecutionJobType;
+  event_id?: string;
+  has_event_id: boolean;
+  callback_status: GearsExecutionJobStatus;
+  ledger_status?: GearsExecutionJobStatus;
+  artifact_urls: string[];
+  matched_ledger: boolean;
+  has_external_artifact_url: boolean;
+  has_placeholder_artifact_url: boolean;
+  has_local_acceptance_artifact_url: boolean;
+  has_private_or_local_artifact_url: boolean;
+  has_invalid_artifact_url: boolean;
+  is_duplicate_event: boolean;
+  duplicate_event_source?: 'ledger' | 'batch' | 'ledger_and_batch';
+  duplicate_of_index?: number;
+  would_update: boolean;
+  issue_count: number;
+}
+
+export interface GearsExternalCallbackPreflightResult {
+  schema_version: 'project-gears-external-callback-preflight/v1';
+  project: StoryProjectMeta;
+  received_count: number;
+  ready_to_import_count: number;
+  duplicate_event_count: number;
+  blocking_count: number;
+  warning_count: number;
+  info_count: number;
+  items: GearsExternalCallbackPreflightItem[];
+  issues: GearsExternalCallbackPreflightIssue[];
   markdown: string;
 }
 
@@ -2158,6 +2218,18 @@ export interface GearsJobCallbackResult {
   gears_job_id?: string;
   source_unit_id?: string;
   status?: GearsExecutionJobStatus;
+}
+
+export interface GearsExternalCallbackImportResult {
+  schema_version: 'project-gears-external-callback-import/v1';
+  project: StoryProjectMeta;
+  preflight: GearsExternalCallbackPreflightResult;
+  blocked: boolean;
+  received_count: number;
+  updated_count: number;
+  failed_count: number;
+  duplicate_count: number;
+  import_result?: GearsJobCallbackResult;
 }
 
 export interface GearsExecutionConfigInfo {
