@@ -248,6 +248,30 @@ AI 影视前期创作、剧本生产与项目素材指挥系统
 3. 若仍无真实 endpoint，本仓库 Story Agent/Production Board/GEARS 指挥层可进入收口状态，下一步转向真实 GEARS worker 对接或产品命名/导航体验优化。
 4. 继续不要把 `media.story-agent.test` 或 `local_acceptance` 当真实回片；它们只证明安全导入和 UI 操作链路。
 
+## 0.9 2026-07-04 最新交接：可见命名审计已脚本化
+
+本轮在暂无真实 GEARS/Seedance endpoint 的情况下，继续推进产品命名与导航心智防回归。当前分支仍是 `codex-ai-comic-series-longform`。当前项目总体进度估算 **99.7%**：真实外部 artifact live smoke 仍是最后阻断项；可见产品名与 `单片短片 / 漫剧系列` 入口心智已新增自动审计。
+
+本轮代码结论：
+
+- 新增 `web/client/scripts/audit-visible-copy.mjs`，扫描 8 个前端可见入口文件。
+- 审计会阻断旧产品名 `中国传统文化知识库 / 传统文化知识库 / 文化知识库` 和旧入口词 `系列漫剧 / 多集系列漫剧 / 新建系列漫剧 / 打开系列工作台 / 单片创作`。
+- 审计会要求关键入口文案存在：浏览器标题和应用标题 `AI影视工作台`，全局导航 `单片短片 / 漫剧系列`，首页两张入口卡片，两个工作台页头和双向互跳入口。
+- `web/client/package.json` 新增 `audit:copy`，`web/package.json` 新增 workspace 级 `audit:copy`。
+- `StoryDetail.vue` 空态残留的 `单片创作` 已改成 `单片短片`。
+
+已验证：
+
+- `cd web && npm run audit:copy` 通过：8 个可见文件、10 个必备文案检查。
+- `cd web/client && npm run lint` 通过。
+- `git diff --check` 通过。
+
+新对话建议第一步更新：
+
+1. 先看 `git status --short --branch` 与最新提交，确认本轮 copy audit 是否已提交并推送。
+2. 若已有真实 GEARS/Seedance artifact URL，优先跑 live 用户路径 smoke。
+3. 若仍无真实 endpoint，可把 `npm run audit:copy` 纳入上层 CI/check，或扩展后端/MCP 对外报告文案审计；不要改 `kb_*` 工具名、兼容字段和历史 generated 文件。
+
 2026-06-23 更新：Phase 1 合同层首轮已落地。Web 后端已新增并接入 `creation_contract`、`material_pack`、`material_sufficiency`，旧 `knowledge_pack` 请求保持兼容；StoryBlueprint、prompt package、StoryGenerateResult、质量报告、项目 meta/version snapshot 均会保存新字段。MCP `kb_generate_story_blueprint` 已能只读返回 `creation_contract` / `material_sufficiency`，`kb_get_project_context` 可读回项目上下文中的新合同字段。
 
 2026-06-23 续更：Phase 2 类型片画像矩阵首个工程切片已落地。`genre-story-profiles.ts` 现在集中维护每类片子的兼容创作用途、真实模式、推荐/允许/禁用叙事流派、素材要求、真实边界、机构规则和改编规则；`resolveGenreStoryMatrix()` 已接入 Story Generate 链路，会补足/过滤 `narrative_pattern_ids`，并把矩阵要求写入 `StoryBlueprint.type_specific_requirements` 和 prompt package 的“类型片画像矩阵”章节。下一步优先做 Phase 3 分阶段素材充分度和前端创作台控件文案。

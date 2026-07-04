@@ -246,6 +246,29 @@ P0 调整：
 2. 若仍无真实 endpoint，本项目 Story Agent/Production Board/GEARS 指挥层可视为工程收口，后续重点应转向真实 GEARS worker 对接或产品命名/导航体验优化。
 3. 继续不要把本轮 `media.story-agent.test` 的真实形态 URL 误认为真实媒体产物；它只用于验证安全导入与 UI 操作链。
 
+## 0.9 2026-07-04 可见命名与入口心智防回归审计
+
+本轮在真实 GEARS/Seedance endpoint 仍未接入的情况下，继续收口产品命名与导航心智。当前项目总体进度估算 **99.7%**：`AI影视工作台`、`单片短片`、`漫剧系列` 三个关键可见概念已经从手工审计推进为可运行审计；后续真实进度仍主要受外部真实 artifact live smoke 阻断。
+
+本轮完成：
+
+- 新增 `web/client/scripts/audit-visible-copy.mjs`，扫描前端 8 个可见入口文件，阻断旧产品名 `中国传统文化知识库 / 传统文化知识库 / 文化知识库` 和旧入口词 `系列漫剧 / 多集系列漫剧 / 新建系列漫剧 / 打开系列工作台 / 单片创作`。
+- 审计脚本同时要求关键入口文案存在：浏览器标题 `AI影视工作台`、应用标题 `AI影视工作台`、全局导航 `单片短片 / 漫剧系列`、首页两张工作台卡片、`StoryStudio` 页头 `单片短片创作`、`AiComicSeriesStudio` 页头 `漫剧系列规划` 和双向互跳入口。
+- `web/client/package.json` 新增 `npm run audit:copy`，`web/package.json` 新增同名 workspace 入口。
+- 修正 `StoryDetail.vue` 空态残留的旧词：`请从单片创作或首页进入故事详情` 改为 `请从单片短片或首页进入故事详情`。
+
+本轮验证：
+
+- `cd web && npm run audit:copy` 通过：8 个可见文件、10 个必备文案检查。
+- `cd web/client && npm run lint` 通过。
+- `git diff --check` 通过。
+
+下一轮优先级更新：
+
+1. 若已有真实 GEARS/Seedance artifact URL，仍优先做 live 用户路径 smoke。
+2. 若无真实 endpoint，可继续把 `npm run audit:copy` 纳入更上层 CI/check 脚本，或扩展到后端/MCP 对外报告文案，但不要改 `kb_*` 工具名、兼容字段和历史 generated 文件。
+3. 项目可见命名与入口心智当前按 `AI影视工作台 -> 单片短片 / 漫剧系列 / 项目指挥 / 素材库` 收口。
+
 2026-06-23 Phase 1 首轮已推进：
 
 - Web 共享类型/schema 已新增 `CreationUseCase`、`TruthMode`、`CreationContract`、`MaterialPack`、`MaterialSufficiencyReport`。

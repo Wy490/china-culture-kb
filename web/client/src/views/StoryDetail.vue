@@ -26,7 +26,7 @@
 
     <!-- No storyId -->
     <div v-if="!storyIdParam" class="story-detail-page__empty">
-      <p>请从单片创作或首页进入故事详情。</p>
+      <p>请从单片短片或首页进入故事详情。</p>
     </div>
   </div>
 </template>
