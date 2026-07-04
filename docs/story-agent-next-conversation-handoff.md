@@ -298,6 +298,29 @@ AI 影视前期创作、剧本生产与项目素材指挥系统
 3. 若已有真实 GEARS/Seedance artifact URL，按文档 P0 做 live 用户路径验收。
 4. 若仍无真实 artifact URL，先把 `cd web && npm run check` 纳入交付前检查或 CI，再推进 ProjectDetail 操作体验优化。
 
+## 1.1 2026-07-04 最新交接：ProjectDetail 外部回片操作体验已收口
+
+本轮继续推进 P2，处理真实外部回片操作员体验。当前项目总体进度估算 **99.95%**：真实 GEARS/Seedance artifact live 验收是最后阻断项；无真实 artifact 的前提下，本仓库继续推进空间已经很窄。
+
+本轮代码结论：
+
+- ProjectDetail 的 `回传与重试` 区新增 `复制 Preflight curl` 与 `复制 Safe import curl`。
+- 制作 readiness 的 `回片来源` 提示新增 `导出回片 Payload` 与 `复制 Preflight curl` 直达动作。
+- 复制 curl 仍来自后端 handoff 包，不在前端拼接 URL；避免前端与 API 合同漂移。
+- Projects 生产指挥总览新增 `待外部回片` 指标，portfolio 优先目标卡片显示待回片、外部 ready 和本地验收计数。
+
+已验证：
+
+- `cd web && npm run check` 通过。
+- ProjectDetail 真浏览器 smoke 通过：样本项目 `20260702-story-5zhd4151f8c7--ai_comic_drama`，readiness 直达复制和 Production Board 区复制均成功，preflight/safe import endpoint 正确，curl 未包含 `GEARS_CALLBACK_SECRET`，控制台错误与失败 API 请求均为 0。
+- Projects 真浏览器 smoke 通过：`/projects` 显示 `待外部回片 5`，控制台错误与失败 API 请求均为 0。
+
+新对话建议第一步更新：
+
+1. 先看 `git status --short --branch` 与最新提交，确认本轮 ProjectDetail curl 复制体验是否已提交并推送。
+2. 若已有真实 GEARS/Seedance artifact URL，直接执行 live 用户路径验收，不要继续在本仓库堆功能。
+3. 若仍无真实 artifact URL，当前已没有值得继续强推的 P0/P1/P2 项；可转入发布资料/操作手册，或等待真实 GEARS/Seedance 条件。
+
 2026-06-23 更新：Phase 1 合同层首轮已落地。Web 后端已新增并接入 `creation_contract`、`material_pack`、`material_sufficiency`，旧 `knowledge_pack` 请求保持兼容；StoryBlueprint、prompt package、StoryGenerateResult、质量报告、项目 meta/version snapshot 均会保存新字段。MCP `kb_generate_story_blueprint` 已能只读返回 `creation_contract` / `material_sufficiency`，`kb_get_project_context` 可读回项目上下文中的新合同字段。
 
 2026-06-23 续更：Phase 2 类型片画像矩阵首个工程切片已落地。`genre-story-profiles.ts` 现在集中维护每类片子的兼容创作用途、真实模式、推荐/允许/禁用叙事流派、素材要求、真实边界、机构规则和改编规则；`resolveGenreStoryMatrix()` 已接入 Story Generate 链路，会补足/过滤 `narrative_pattern_ids`，并把矩阵要求写入 `StoryBlueprint.type_specific_requirements` 和 prompt package 的“类型片画像矩阵”章节。下一步优先做 Phase 3 分阶段素材充分度和前端创作台控件文案。

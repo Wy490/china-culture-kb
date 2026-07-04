@@ -293,6 +293,28 @@ P0 调整：
 2. 若无真实 artifact URL，先跑 `cd web && npm run check` 作为本仓库交付前统一前端/文案守门，再考虑把它纳入 CI。
 3. 继续把本仓库定位为内容与生产指挥层，真实媒体执行继续交给 GEARS v2。
 
+## 1.1 2026-07-04 ProjectDetail 外部回片操作体验收口
+
+本轮继续把 P2 体验优化推进到 ProjectDetail 与项目指挥页。当前项目总体进度估算 **99.95%**：真实外部 GEARS/Seedance artifact live 验收仍是最后阻断项；本仓库内可完成的外部回片操作员路径已基本收口。
+
+本轮完成：
+
+- `回传与重试` 操作区新增 `复制 Preflight curl` 与 `复制 Safe import curl`，复用 `project-gears-external-callback-handoff/v1`，操作员无需先打开 Markdown 手动寻找命令。
+- 制作 readiness 的 `回片来源` 提示新增 `导出回片 Payload` 与 `复制 Preflight curl` 直达动作，`ready_without_external` 出现时可从顶部面板直接开始外部回片流程。
+- 复制命令时不会包含 `GEARS_CALLBACK_SECRET`，仍只复制公开 API curl；密钥继续留在服务端 callback 配置边界外。
+- 项目指挥页的生产指挥总览新增 `待外部回片` 指标，portfolio 优先目标卡片显示每个目标的待回片、外部 ready 和本地验收计数，帮助操作员先定位需要真实回片的项目。
+
+本轮验证：
+
+- `cd web && npm run check` 通过。
+- ProjectDetail 真浏览器 smoke 通过：样本项目 `20260702-story-5zhd4151f8c7--ai_comic_drama`，readiness 直达复制、Production Board 区复制 preflight/safe import 均成功，剪贴板 endpoint 正确，控制台错误和失败 API 请求均为 0。
+- Projects 真浏览器 smoke 通过：`/projects` 生产指挥总览显示 `待外部回片 5`，控制台错误和失败 API 请求均为 0。
+
+下一轮优先级更新：
+
+1. 若已有真实 artifact URL，停止继续堆本仓库功能，直接执行 live 用户路径验收。
+2. 若仍无真实 artifact URL，当前已经没有值得继续在本仓库内强推的 P0/P1/P2 项；后续应等待真实 GEARS/Seedance 条件或转入发布资料/操作手册。
+
 2026-06-23 Phase 1 首轮已推进：
 
 - Web 共享类型/schema 已新增 `CreationUseCase`、`TruthMode`、`CreationContract`、`MaterialPack`、`MaterialSufficiencyReport`。

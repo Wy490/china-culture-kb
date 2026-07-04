@@ -117,6 +117,22 @@
             {{ productionReadiness.summary.ready_without_external_gears_artifact_count }} 个 ready GEARS job 还没有外部 artifact；
             当前可用于本地链路验收，正式投产仍需真实 GEARS/Seedance 回片。
           </p>
+          <div class="project-detail-page__readiness-inline-actions">
+            <button
+              class="project-detail-page__action-btn"
+              :disabled="exportingGearsExternalHandoff"
+              @click="exportGearsExternalCallbackPayloadJson"
+            >
+              导出回片 Payload
+            </button>
+            <button
+              class="project-detail-page__action-btn"
+              :disabled="exportingGearsExternalHandoff"
+              @click="copyGearsExternalPreflightCurl"
+            >
+              复制 Preflight curl
+            </button>
+          </div>
         </div>
         <div v-if="productionReadiness.next_actions.length" class="project-detail-page__readiness-list">
           <strong>下一步</strong>
@@ -786,6 +802,22 @@
                 @click="exportGearsExternalCallbackPayloadJson"
               >
                 回片 Payload
+              </button>
+              <button
+                v-if="gearsJobStats.total"
+                class="project-detail-page__repair-task-btn"
+                :disabled="exportingGearsExternalHandoff"
+                @click="copyGearsExternalPreflightCurl"
+              >
+                复制 Preflight curl
+              </button>
+              <button
+                v-if="gearsJobStats.total"
+                class="project-detail-page__repair-task-btn"
+                :disabled="exportingGearsExternalHandoff"
+                @click="copyGearsExternalSafeImportCurl"
+              >
+                复制 Safe import curl
               </button>
             </div>
           </details>
@@ -4265,6 +4297,44 @@ async function exportGearsExternalCallbackPayloadJson() {
   exportingGearsExternalHandoff.value = false
 }
 
+async function copyGearsExternalPreflightCurl() {
+  if (!detail.value || exportingGearsExternalHandoff.value) return
+  exportingGearsExternalHandoff.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await exportProjectGearsExternalCallbackHandoff(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    try {
+      await navigator.clipboard.writeText(res.data.callback_batch_preflight_curl)
+      successMessage.value = `GEARS preflight curl 已复制 · 待回片 ${res.data.pending_external_artifact_count} 条`
+    } catch {
+      error.value = '复制 GEARS preflight curl 失败，请导出外部回片 MD 后手动复制'
+    }
+  } else {
+    error.value = res.error?.message ?? '读取 GEARS preflight curl 失败'
+  }
+  exportingGearsExternalHandoff.value = false
+}
+
+async function copyGearsExternalSafeImportCurl() {
+  if (!detail.value || exportingGearsExternalHandoff.value) return
+  exportingGearsExternalHandoff.value = true
+  error.value = ''
+  successMessage.value = ''
+  const res = await exportProjectGearsExternalCallbackHandoff(detail.value.project.project_id)
+  if (res.ok && res.data) {
+    try {
+      await navigator.clipboard.writeText(res.data.callback_batch_curl)
+      successMessage.value = `GEARS safe import curl 已复制 · 待回片 ${res.data.pending_external_artifact_count} 条`
+    } catch {
+      error.value = '复制 GEARS safe import curl 失败，请导出外部回片 MD 后手动复制'
+    }
+  } else {
+    error.value = res.error?.message ?? '读取 GEARS safe import curl 失败'
+  }
+  exportingGearsExternalHandoff.value = false
+}
+
 async function exportSeedanceProviderRetryPlanMarkdown() {
   if (!detail.value) return
   if (!seedanceProviderRetryPlan.value) {
@@ -5343,6 +5413,13 @@ watch(selectedModelProfileId, (value) => {
 .project-detail-page__readiness-list p {
   color: #536573;
   overflow-wrap: anywhere;
+}
+
+.project-detail-page__readiness-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
 }
 
 .project-detail-page__production-material {

@@ -93,9 +93,9 @@ Story Agent 已从“文化知识库故事生成器”推进为 **AI影视工作
 
 ### P2：真实工作流体验优化
 
-- 在 ProjectDetail 为外部回片加入更清晰的“复制 preflight curl / 复制 safe import curl”按钮。
-- 给 readiness 的 `ready_without_external` 提示加上“一键导出 handoff payload”的直达动作。
-- 在项目指挥页显示外部回片待处理数量，帮助操作员批量处理。
+- 已完成：在 ProjectDetail 为外部回片加入更清晰的“复制 preflight curl / 复制 safe import curl”按钮。
+- 已完成：给 readiness 的 `ready_without_external` 提示加上“导出回片 Payload / 复制 Preflight curl”的直达动作。
+- 已完成：在项目指挥页显示外部回片待处理数量，帮助操作员批量处理。
 
 ### P3：发布候选与运营资料
 
