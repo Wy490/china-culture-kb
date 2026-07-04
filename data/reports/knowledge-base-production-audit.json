@@ -1,6 +1,6 @@
 {
   "schema_version": "kb-production-material-audit/v1",
-  "generated_at": "2026-07-01T16:10:32.992Z",
+  "generated_at": "2026-07-04T14:08:11.732Z",
   "totals": {
     "files": 34,
     "entries": 169,
@@ -352,6 +352,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -376,7 +391,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -505,6 +520,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -529,7 +560,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -657,6 +688,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -681,7 +728,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -808,6 +855,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -833,7 +895,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -961,6 +1023,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -985,7 +1062,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -1113,6 +1190,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -1137,7 +1230,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -1265,6 +1358,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -1288,7 +1397,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -1416,6 +1525,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -1441,7 +1566,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -1569,6 +1694,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -1592,7 +1734,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -1719,6 +1861,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -1744,7 +1902,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -1872,6 +2030,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -1897,7 +2072,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -2026,6 +2201,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -2050,7 +2241,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -2176,6 +2367,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -2200,7 +2407,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -2326,6 +2533,24 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 17
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -2351,7 +2576,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -2477,6 +2702,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -2500,7 +2742,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -2626,6 +2868,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -2650,7 +2907,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -2776,6 +3033,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -2799,7 +3073,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -2925,6 +3199,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -2949,7 +3238,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -3075,6 +3364,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -3100,7 +3405,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -3224,6 +3529,20 @@
             "what_must_not_be_claimed"
           ],
           "readiness_score": 25
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -3378,6 +3697,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -3403,7 +3737,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -3530,6 +3864,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -3555,7 +3905,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -3682,6 +4032,20 @@
             "what_must_not_be_claimed"
           ],
           "readiness_score": 25
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -3835,6 +4199,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -3858,7 +4238,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -3986,6 +4366,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -4009,7 +4405,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -4133,6 +4529,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -4285,6 +4694,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -4307,7 +4731,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -4433,6 +4857,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -4455,7 +4894,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -4582,6 +5021,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -4605,7 +5060,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -4730,6 +5185,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -4883,6 +5351,19 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -5032,6 +5513,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -5056,7 +5552,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -5179,6 +5675,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -5202,7 +5714,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -5328,6 +5840,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -5351,7 +5878,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -5478,6 +6005,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -5500,7 +6042,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -5626,6 +6168,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -5648,7 +6205,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -5776,6 +6333,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -5800,7 +6372,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -5927,6 +6499,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -5950,7 +6538,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -6079,6 +6667,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -6103,7 +6707,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -6228,6 +6832,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -6381,6 +6998,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -6405,7 +7038,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -6533,6 +7166,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -6557,7 +7206,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -6680,6 +7329,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -6833,6 +7496,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -6858,7 +7536,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -6984,6 +7662,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -7007,7 +7700,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -7134,6 +7827,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -7158,7 +7867,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -7286,6 +7995,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -7310,7 +8034,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -7437,6 +8161,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -7460,7 +8199,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -7584,6 +8323,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -7732,6 +8484,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -7886,6 +8652,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -7910,7 +8692,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -8033,6 +8815,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -8186,6 +8981,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -8210,7 +9021,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -8336,6 +9147,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -8359,7 +9185,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -8484,6 +9310,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -8507,7 +9348,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -8635,6 +9476,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -8658,7 +9515,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -8786,6 +9643,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -8811,7 +9684,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -8930,6 +9803,23 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
         },
         {
           "video_type": "ai_comic_drama",
@@ -9075,6 +9965,22 @@
             "reconstruction_boundary",
             "present_day_trace",
             "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
           ],
           "readiness_score": 33
         },
@@ -9228,6 +10134,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -9376,6 +10299,20 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -9522,6 +10459,23 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -9544,7 +10498,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -9666,6 +10620,18 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "knowledge_outline",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 67
         },
         {
           "video_type": "ai_comic_drama",
@@ -9817,6 +10783,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -9839,7 +10821,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -9967,6 +10949,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -9990,7 +10989,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -10114,6 +11113,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -10138,7 +11153,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -10263,6 +11278,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -10287,7 +11318,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -10409,6 +11440,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -10559,6 +11603,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -10583,7 +11642,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -10705,6 +11764,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -10853,6 +11926,23 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -10877,7 +11967,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -11003,6 +12093,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -11028,7 +12133,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -11150,6 +12255,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -11300,6 +12419,20 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -11447,6 +12580,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -11471,7 +12619,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -11597,6 +12745,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -11622,7 +12787,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -11749,6 +12914,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -11774,7 +12955,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -11900,6 +13081,23 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -11924,7 +13122,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -12050,6 +13248,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -12074,7 +13287,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -12199,6 +13412,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -12223,7 +13452,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -12349,6 +13578,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -12373,7 +13617,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -12497,6 +13741,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -12521,7 +13781,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -12644,6 +13904,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -12668,7 +13944,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -12793,6 +14069,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "diagram_or_caption_plan"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -12816,7 +14107,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -12944,6 +14235,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -12969,7 +14276,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -13096,6 +14403,23 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -13119,7 +14443,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -13241,6 +14565,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -13265,7 +14604,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -13392,6 +14731,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -13416,7 +14771,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -13541,6 +14896,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -13564,7 +14934,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -13688,6 +15058,23 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -13712,7 +15099,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -13837,6 +15224,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -13860,7 +15263,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -13984,6 +15387,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -14008,7 +15427,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -14131,6 +15550,22 @@
             "ambient_sound"
           ],
           "readiness_score": 25
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
         },
         {
           "video_type": "ai_comic_drama",
@@ -14276,6 +15711,21 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
         },
         {
           "video_type": "ai_comic_drama",
@@ -14426,6 +15876,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -14451,7 +15917,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -14574,6 +16040,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -14598,7 +16079,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -14723,6 +16204,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -14748,7 +16245,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -14872,6 +16369,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -14896,7 +16409,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -15019,6 +16532,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -15041,7 +16570,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -15166,6 +16695,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -15187,7 +16731,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -15312,6 +16856,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -15337,7 +16897,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -15464,6 +17024,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -15488,7 +17063,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -15613,6 +17188,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -15767,6 +17355,24 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 17
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -15790,7 +17396,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -15916,6 +17522,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -15940,7 +17561,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -16068,6 +17689,24 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 17
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -16092,7 +17731,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -16216,6 +17855,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -16240,7 +17894,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -16367,6 +18021,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -16391,7 +18060,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -16519,6 +18188,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -16544,7 +18230,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -16670,6 +18356,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -16694,7 +18397,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -16823,6 +18526,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -16847,7 +18566,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -16974,6 +18693,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -16998,7 +18732,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -17123,6 +18857,23 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -17145,7 +18896,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -17272,6 +19023,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -17297,7 +19064,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -17424,6 +19191,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -17448,7 +19230,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -17575,6 +19357,24 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 17
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -17600,7 +19400,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -17725,6 +19525,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -17748,7 +19563,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -17875,6 +19690,24 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 17
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -17899,7 +19732,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -18027,6 +19860,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -18050,7 +19898,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -18173,6 +20021,18 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "concrete_examples",
+            "recap_sentence"
+          ],
+          "readiness_score": 67
         },
         {
           "video_type": "ai_comic_drama",
@@ -18320,6 +20180,21 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
         },
         {
           "video_type": "ai_comic_drama",
@@ -18470,6 +20345,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -18493,7 +20383,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -18613,6 +20503,23 @@
             "reconstruction_boundary",
             "present_day_trace",
             "ambient_sound"
+          ],
+          "readiness_score": 25
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
           ],
           "readiness_score": 25
         },
@@ -18759,6 +20666,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -18909,6 +20830,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -19052,6 +20989,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -19203,6 +21154,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -19227,7 +21194,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -19350,6 +21317,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -19372,7 +21355,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -19499,6 +21482,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -19524,7 +21523,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -19648,6 +21647,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -19672,7 +21687,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -19793,6 +21808,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -19816,7 +21846,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -19937,6 +21967,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -20087,6 +22131,20 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -20234,6 +22292,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -20258,7 +22332,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -20381,6 +22455,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -20405,7 +22494,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -20529,6 +22618,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -20552,7 +22657,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -20675,6 +22780,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -20699,7 +22819,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -20820,6 +22940,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -20970,6 +23103,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -20993,7 +23142,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -21119,6 +23268,24 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 17
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -21144,7 +23311,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -21270,6 +23437,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -21293,7 +23477,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -21419,6 +23603,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -21443,7 +23642,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -21565,6 +23764,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -21715,6 +23927,19 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "analogy_or_visual_metaphor",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -21861,6 +24086,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -21884,7 +24124,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -22007,6 +24247,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -22030,7 +24285,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -22151,6 +24406,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -22300,6 +24569,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -22324,7 +24608,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -22445,6 +24729,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -22468,7 +24767,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -22591,6 +24890,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -22741,6 +25054,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -22765,7 +25093,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -22888,6 +25216,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -22912,7 +25256,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -23034,6 +25378,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "concept_definitions",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -23180,6 +25537,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -23330,6 +25701,19 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -23477,6 +25861,19 @@
             "ambient_sound"
           ],
           "readiness_score": 25
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -23629,6 +26026,23 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -23652,7 +26066,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -23773,6 +26187,18 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "concept_definitions",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 67
         },
         {
           "video_type": "ai_comic_drama",
@@ -23922,6 +26348,18 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 67
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -24069,6 +26507,18 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 67
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -24212,6 +26662,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -24364,6 +26828,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -24388,7 +26867,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -24514,6 +26993,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -24539,7 +27033,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -24665,6 +27159,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -24690,7 +27200,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -24815,6 +27325,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -24839,7 +27364,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -24960,6 +27485,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -25108,6 +27647,20 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -25253,6 +27806,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -25404,6 +27971,20 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -25551,6 +28132,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -25701,6 +28296,20 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -25848,6 +28457,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -25872,7 +28496,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -25993,6 +28617,18 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 67
         },
         {
           "video_type": "ai_comic_drama",
@@ -26141,6 +28777,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -26294,6 +28944,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -26319,7 +28985,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -26443,6 +29109,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -26466,7 +29147,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -26588,6 +29269,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -26738,6 +29433,19 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -26881,6 +29589,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -27034,6 +29756,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -27059,7 +29796,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -27186,6 +29923,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -27211,7 +29964,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -27338,6 +30091,20 @@
             "what_must_not_be_claimed"
           ],
           "readiness_score": 25
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -27489,6 +30256,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -27512,7 +30294,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -27638,6 +30420,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -27661,7 +30458,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -27788,6 +30585,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -27811,7 +30624,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -27935,6 +30748,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -28086,6 +30912,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -28108,7 +30949,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -28232,6 +31073,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "diagram_or_caption_plan"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -28385,6 +31239,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -28408,7 +31278,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -28534,6 +31404,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -28557,7 +31442,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -28681,6 +31566,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -28831,6 +31730,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -28854,7 +31768,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -28981,6 +31895,21 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": false,
@@ -29006,7 +31935,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short"
+        "推荐片型模板覆盖低：documentary_short、explainer_video"
       ]
     },
     {
@@ -29132,6 +32061,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -29155,7 +32100,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -29278,6 +32223,20 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
         },
         {
           "video_type": "ai_comic_drama",
@@ -29428,6 +32387,21 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -29450,7 +32424,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -29576,6 +32550,22 @@
           "readiness_score": 33
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -29598,7 +32588,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     },
     {
@@ -29721,6 +32711,19 @@
             "ambient_sound"
           ],
           "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan"
+          ],
+          "readiness_score": 58
         },
         {
           "video_type": "ai_comic_drama",
@@ -29872,6 +32875,22 @@
           "readiness_score": 25
         },
         {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
           "video_type": "ai_comic_drama",
           "label": "AI漫剧",
           "recommended": true,
@@ -29896,7 +32915,7 @@
       "priority": "high",
       "priority_reasons": [
         "存在待核点",
-        "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+        "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
       ]
     }
   ]

@@ -1029,6 +1029,15 @@
             <span v-if="gearsExecutionWorkerEvidenceSignoff" class="series-studio__episode-audit series-studio__episode-audit--unknown">
               callback errors {{ gearsExecutionWorkerEvidenceSignoff.callback_transport_error_count }}/{{ gearsExecutionWorkerEvidenceSignoff.callback_http_error_count }}
             </span>
+            <span
+              v-if="gearsExecutionWorkerEvidenceSignoff"
+              :class="['series-studio__episode-audit', gearsExecutionWorkerEvidenceSignoff.system_external_callback_passed ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']"
+            >
+              system external {{ gearsExecutionWorkerEvidenceSignoff.system_external_callback_passed ? 'passed' : 'blocked' }} · {{ gearsExecutionWorkerEvidenceSignoff.system_external_output_url_source }} · ready {{ gearsExecutionWorkerEvidenceSignoff.system_external_callback_ready_to_import_count }} · updated {{ gearsExecutionWorkerEvidenceSignoff.system_external_callback_updated_count }}
+            </span>
+            <span v-if="gearsExecutionWorkerEvidenceSignoff" class="series-studio__episode-audit series-studio__episode-audit--unknown">
+              system blockers {{ gearsExecutionWorkerEvidenceSignoff.system_external_callback_blocking_count }} · failed {{ gearsExecutionWorkerEvidenceSignoff.system_external_callback_failed_count }} · unresolved {{ gearsExecutionWorkerEvidenceSignoff.system_external_callback_unresolved_count }}
+            </span>
             <span v-if="gearsExecutionWorkerEvidenceSignoff" class="series-studio__episode-audit series-studio__episode-audit--unknown">
               pressure echo {{ gearsExecutionWorkerEvidenceSignoff.large_project_source_echo_count }}/{{ gearsExecutionWorkerEvidenceSignoff.large_project_request_unit_count }}
             </span>
@@ -3772,7 +3781,7 @@ async function loadGearsWorkerEvidenceSignoff() {
     if (!evidenceDir && res.data.evidence_dir) {
       gearsExecutionWorkerEvidenceSignoffDir.value = res.data.evidence_dir
     }
-    saveMessage.value = `GEARS worker evidence signoff 已读取 · ${res.data.status} · gates ${res.data.gate_counts.passed}/${res.data.gate_counts.total}`
+    saveMessage.value = `GEARS worker evidence signoff 已读取 · ${res.data.status} · system external ${res.data.system_external_callback_passed ? 'passed' : 'blocked'} · ${res.data.system_external_output_url_source} · gates ${res.data.gate_counts.passed}/${res.data.gate_counts.total}`
   } else {
     gearsExecutionWorkerEvidenceSignoff.value = null
     gearsExecutionWorkerEvidenceSignoffError.value = res.error?.message ?? '读取 GEARS worker evidence signoff 失败'

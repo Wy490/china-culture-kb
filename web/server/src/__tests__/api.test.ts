@@ -560,6 +560,29 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/gears-external-callback-handoff-queue', () => {
+    it('returns a read-only cross-project GEARS external callback queue package', async () => {
+      const res = await request.get('/api/system/gears-external-callback-handoff-queue?limit=5');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'gears-external-callback-handoff-queue/v1',
+        project_count: expect.any(Number),
+        pending_external_artifact_count: expect.any(Number),
+        callback_batch_sample: {
+          callbacks: expect.any(Array),
+          replace_before_import: expect.any(Array),
+          import_note: expect.any(String),
+        },
+        projects: expect.any(Array),
+        operator_checklist: expect.any(Array),
+      });
+      expect(res.body.data.markdown).toContain('GEARS External Callback Handoff Queue');
+      expect(res.body.data.callback_batch_sample.import_note).toContain('cross-project operator handoff');
+    });
+  });
+
   describe('GET /api/system/story-agent-generated-health', () => {
     it('distinguishes interrupted, planned and production-gap generated projects', async () => {
       const generatedRoot = process.env.WEB_GENERATED_ROOT ?? resolve(testWorkspaceRoot, 'web', 'generated');
@@ -1806,6 +1829,11 @@ describe('System API', () => {
             required: true,
           }),
           expect.objectContaining({
+            name: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
+            required: false,
+            value_placeholder: '<real-public-gears-artifact-url>',
+          }),
+          expect.objectContaining({
             name: 'GEARS_SMOKE_STORY_ID',
             required: false,
           }),
@@ -1872,9 +1900,14 @@ describe('System API', () => {
           'gears-submit-smoke.json',
           'gears-project-callback-smoke.json',
           'gears-series-callback-smoke.json',
+          'gears-system-external-callback-smoke.json',
           'gears-live-smoke.json',
           'gears-large-project-pressure-plan.json',
         ]));
+        expect(res.body.data.payloads.find((payload: any) => payload.id === 'system_external_callback')?.content.callbacks[0]).toMatchObject({
+          outputUrl: '<GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>',
+        });
+        expect(JSON.stringify(res.body.data.payloads.find((payload: any) => payload.id === 'system_external_callback')?.content)).not.toContain('media.story-agent.test/gears-worker-acceptance');
         expect(res.body.data.commands.map((command: any) => command.id)).toEqual([
           'write_env',
           'read_acceptance_report',
@@ -1885,6 +1918,8 @@ describe('System API', () => {
           'audit_worker_response_shapes',
           'seed_story_agent_ledgers_optional',
           'post_project_callback',
+          'preflight_system_external_callback_batch',
+          'import_system_external_callback_batch',
           'post_series_callback',
           'run_story_agent_live_smoke',
           'audit_story_agent_callback_responses',
@@ -1907,6 +1942,16 @@ describe('System API', () => {
             id: 'post_series_callback',
             phase: 'story_agent_callback',
             payload_id: 'series_callback',
+          }),
+          expect.objectContaining({
+            id: 'preflight_system_external_callback_batch',
+            phase: 'story_agent_callback',
+            payload_id: 'system_external_callback',
+          }),
+          expect.objectContaining({
+            id: 'import_system_external_callback_batch',
+            phase: 'story_agent_callback',
+            payload_id: 'system_external_callback',
           }),
           expect.objectContaining({
             id: 'generate_large_project_pressure_payload',
@@ -1950,6 +1995,8 @@ describe('System API', () => {
         ]));
         expect(res.body.data.verification_checklist).toEqual(expect.arrayContaining([
           'Duplicate callback replay increments duplicate_count without duplicate artifacts or versions.',
+          'System external callback preflight reports blocked=false before batch import.',
+          'System external callback import uses safe preflight/import and writes real external artifact URLs instead of local_acceptance placeholders.',
           'GEARS worker response audit records observed status aliases, id fields, error codes, and failure categories.',
           'story-agent-smoke-targets.json contains existing Story Agent project ids or explicit warnings before callback smoke.',
           'Story Agent callback id preflight has warning_count=0 before callback smoke is trusted.',
@@ -1958,6 +2005,7 @@ describe('System API', () => {
           'Large project pressure payload is generated for at least 30 episodes and is submitted only when explicitly enabled.',
           'Large project response audit has no source_echo_gap after a real pressure submit.',
           'Final worker acceptance verdict has acceptance_passed=true before a GEARS v2 run is signed off.',
+          'Final worker evidence signoff requires system_external_callback_passed=true with ready_to_import_count>0 and updated_count>0.',
           'Final worker acceptance archive has signoff_ready=true and no missing required attachments before handoff.',
           'Final worker acceptance integrity has integrity_passed=true and no checksum mismatches before handoff.',
           'Final worker evidence signoff snapshot is saved as gears-worker-evidence-signoff.json/.md after archive integrity is evaluated.',
@@ -1975,6 +2023,15 @@ describe('System API', () => {
         expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_STATUS_POLL_ATTEMPTS');
         expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_STATUS_POLL_INTERVAL_SECONDS');
         expect(res.body.data.shell_script).toContain('GEARS_LARGE_PRESSURE_EPISODE_COUNT');
+        expect(res.body.data.shell_script).toContain('GEARS_SYSTEM_EXTERNAL_OUTPUT_URL');
+        expect(res.body.data.shell_script).toContain('<GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>');
+        expect(res.body.data.shell_script).toContain('story-agent-system-external-output-url-source.json');
+        expect(res.body.data.shell_script).toContain('story-agent-system-external-output-url-source/v1');
+        expect(res.body.data.shell_script).toContain('extract_gears_system_external_output_url_from_worker_responses');
+        expect(res.body.data.shell_script).toContain('story-agent-system-external-output-url-extract/v1');
+        expect(res.body.data.shell_script).toContain('GEARS_SYSTEM_EXTERNAL_OUTPUT_URL_SOURCE="worker_response"');
+        expect(res.body.data.shell_script).toContain('output_url_source_unverified');
+        expect(res.body.data.shell_script).not.toContain('media.story-agent.test/gears-worker-acceptance');
         expect(res.body.data.shell_script).not.toContain('GEARS_AUTH_ARGS');
         expect(res.body.data.shell_script).toContain('if is_placeholder "${GEARS_API_TOKEN:-}"; then');
         expect(res.body.data.shell_script).toContain('-H "authorization: Bearer $GEARS_API_TOKEN"');
@@ -2107,6 +2164,15 @@ describe('System API', () => {
         expect(res.body.data.shell_script).toContain('story-agent-project-callback-replay-response.json');
         expect(res.body.data.shell_script).toContain('story-agent-series-callback-replay-response.json');
         expect(res.body.data.shell_script).toContain('post_json_capture "Story Agent project callback"');
+        expect(res.body.data.shell_script).toContain('post_json_capture "Story Agent system external callback preflight"');
+        expect(res.body.data.shell_script).toContain('post_json_capture "Story Agent system external callback import"');
+        expect(res.body.data.shell_script).toContain('/api/system/gears-external-callbacks/preflight');
+        expect(res.body.data.shell_script).toContain('/api/system/gears-external-callbacks/import');
+        expect(res.body.data.shell_script).toContain('story-agent-system-external-callback-preflight-response.json');
+        expect(res.body.data.shell_script).toContain('story-agent-system-external-callback-import-response.json');
+        expect(res.body.data.shell_script).toContain('artifact URL extracted from GEARS worker responses or provided through GEARS_SYSTEM_EXTERNAL_OUTPUT_URL');
+        expect(res.body.data.shell_script).toContain('story-agent-system-external-ledger-seed-selected.json');
+        expect(res.body.data.shell_script).toContain('gears-system-external-callback-smoke.json');
         expect(res.body.data.shell_script).toContain('post_json_capture "Story Agent live smoke"');
         expect(res.body.data.shell_script).toContain('$base-http-status.txt');
         expect(res.body.data.shell_script).toContain('$base-curl-exit-code.txt');
@@ -2117,6 +2183,11 @@ describe('System API', () => {
         expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-generated-health-after.json" "Post-run generated health audit"');
         expect(res.body.data.shell_script).toContain('story_agent_generated_health_audit');
         expect(res.body.data.shell_script).toContain('story_agent_mvp_status_audit');
+        expect(res.body.data.shell_script).toContain('system_external_callback_batch');
+        expect(res.body.data.shell_script).toContain('system_external_callback_passed');
+        expect(res.body.data.shell_script).toContain('system-gears-external-callback-batch-import/v1');
+        expect(res.body.data.shell_script).toContain('preflight_ready_to_import_count_zero');
+        expect(res.body.data.shell_script).toContain('import_updated_count_zero');
         expect(res.body.data.shell_script).toContain('generated_health_ready_regressed');
         expect(res.body.data.shell_script).toContain('generated_health_interrupted_regressed');
         expect(res.body.data.shell_script).toContain('missing_generated_health_after');
@@ -2207,12 +2278,14 @@ describe('System API', () => {
         ).toEqual(expect.arrayContaining([
           expect.stringContaining('auto-filled from smoke_targets'),
           expect.stringContaining('payload templates replace GEARS_SMOKE_PROJECT_ID'),
+          expect.stringContaining('story-agent-system-external-output-url-source.json'),
           expect.stringContaining('story-agent-callback-id-preflight.json'),
         ]));
         expect(
           res.body.data.commands.find((command: any) => command.id === 'write_env')?.expected_assertions,
         ).toEqual(expect.arrayContaining([
           expect.stringContaining('story-agent-smoke-targets.json'),
+          expect.stringContaining('GEARS_SYSTEM_EXTERNAL_OUTPUT_URL'),
           expect.stringContaining('GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER=1'),
           expect.stringContaining('GEARS_SMOKE_PROJECT_ID and GEARS_SMOKE_SERIES_PROJECT_ID match Story Agent route id formats'),
         ]));
@@ -2222,6 +2295,20 @@ describe('System API', () => {
           expect.stringContaining('Story Agent submit APIs'),
           expect.stringContaining('story-agent-project-ledger-seed-selected.json'),
           expect.stringContaining('ledger_match_missing_count should drop to zero'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'preflight_system_external_callback_batch')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('system-gears-external-callback-batch-import/v1'),
+          expect.stringContaining('blocked=false'),
+          expect.stringContaining('ready_to_import_count'),
+        ]));
+        expect(
+          res.body.data.commands.find((command: any) => command.id === 'import_system_external_callback_batch')?.expected_assertions,
+        ).toEqual(expect.arrayContaining([
+          expect.stringContaining('updated_count'),
+          expect.stringContaining('does not accept local_acceptance'),
+          expect.stringContaining('external_ready increases'),
         ]));
         expect(
           res.body.data.commands.find((command: any) => command.id === 'generate_large_project_pressure_payload')?.expected_assertions,
@@ -2245,6 +2332,7 @@ describe('System API', () => {
           res.body.data.commands.find((command: any) => command.id === 'write_acceptance_verdict')?.expected_assertions,
         ).toEqual(expect.arrayContaining([
           expect.stringContaining('required envs'),
+          expect.stringContaining('system external callback batch'),
           expect.stringContaining('acceptance_passed'),
           expect.stringContaining('GEARS_ACCEPTANCE_STRICT_AUDIT=1'),
         ]));
@@ -2338,8 +2426,8 @@ describe('System API', () => {
           schema_version: 'gears-execution-worker-evidence-bundle/v1',
           status: 'blocked',
           readiness_status: 'blocked',
-          command_count: 20,
-          payload_count: 5,
+          command_count: 22,
+          payload_count: 6,
           local_smoke_passed_count: 5,
           local_smoke_total_count: 5,
           generated_health_status: expect.stringMatching(/ready|attention|blocked/),
@@ -2431,7 +2519,7 @@ describe('System API', () => {
         status: 'passed',
         acceptance_passed: true,
         pressure_submitted: true,
-        gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+        gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
         failed_gate_ids: [],
         skipped_gate_ids: [],
         recommended_actions: [],
@@ -2442,12 +2530,15 @@ describe('System API', () => {
         signoff_ready: true,
         totals: {
           missing_required_attachment_count: 0,
-          required_attachment_count: 26,
-          required_checksum_count: 26,
-          evidence_file_count: 65,
+          required_attachment_count: 31,
+          required_checksum_count: 31,
+          evidence_file_count: 70,
         },
         required_attachments: [
           'gears-worker-acceptance-verdict.json',
+          'story-agent-system-external-output-url-source.json',
+          'story-agent-system-external-callback-preflight-response.json',
+          'story-agent-system-external-callback-import-response.json',
           'story-agent-mvp-status-audit.json',
         ],
         missing_required_files: [],
@@ -2479,6 +2570,52 @@ describe('System API', () => {
           failed_count: 0,
         },
         recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-output-url-source.json', {
+        schema_version: 'story-agent-system-external-output-url-source/v1',
+        env_var: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
+        configured_from_env: false,
+        discovered_from_worker_response: true,
+        source: 'worker_response',
+        output_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4',
+        placeholder: false,
+        ready_for_external_import: true,
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-preflight-response.json', {
+        ok: true,
+        data: {
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'preflight',
+          blocked: false,
+          received_count: 1,
+          resolved_count: 1,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 1,
+          updated_count: 0,
+          failed_count: 0,
+          duplicate_count: 0,
+          blocking_count: 0,
+          warning_count: 0,
+        },
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
+        ok: true,
+        data: {
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'import',
+          blocked: false,
+          received_count: 1,
+          resolved_count: 1,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 1,
+          updated_count: 1,
+          failed_count: 0,
+          duplicate_count: 0,
+          blocking_count: 0,
+          warning_count: 0,
+        },
       });
       await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
         schema_version: 'story-agent-generated-health-audit/v1',
@@ -2572,7 +2709,8 @@ describe('System API', () => {
           evidence_dir: latestEvidenceDir,
           evidence_dir_source: 'latest',
           evidence_dir_allowed: true,
-          gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+          gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
+          system_external_output_url_source: 'worker_response',
           large_project_source_echo_count: 120,
         });
         expect(res.body.data.markdown).toContain('evidence_dir_source: latest');
@@ -2593,10 +2731,16 @@ describe('System API', () => {
         status: 'passed',
         acceptance_passed: true,
         pressure_submitted: true,
-        gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+        gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
         failed_gate_ids: [],
         skipped_gate_ids: [],
         gates: [
+          {
+            id: 'system_external_callback_batch',
+            label: 'Story Agent system external callback batch',
+            status: 'passed',
+            summary: 'System external callbacks wrote real external artifacts.',
+          },
           {
             id: 'story_agent_generated_health_audit',
             label: 'Story Agent generated health smoke audit',
@@ -2618,12 +2762,17 @@ describe('System API', () => {
         signoff_ready: true,
         totals: {
           missing_required_attachment_count: 0,
-          required_attachment_count: 26,
-          required_checksum_count: 26,
-          evidence_file_count: 65,
+          required_attachment_count: 31,
+          required_checksum_count: 31,
+          evidence_file_count: 70,
         },
         required_attachments: [
           'gears-worker-acceptance-verdict.json',
+          'gears-system-external-callback-smoke.json',
+          'story-agent-system-external-output-url-source.json',
+          'story-agent-system-external-ledger-seed-selected.json',
+          'story-agent-system-external-callback-preflight-response.json',
+          'story-agent-system-external-callback-import-response.json',
           'story-agent-generated-health-audit.json',
           'story-agent-mvp-status-audit.json',
         ],
@@ -2663,6 +2812,51 @@ describe('System API', () => {
           failed_count: 0,
         },
         recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-output-url-source.json', {
+        schema_version: 'story-agent-system-external-output-url-source/v1',
+        env_var: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
+        configured_from_env: true,
+        source: 'env',
+        output_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4',
+        placeholder: false,
+        ready_for_external_import: true,
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-preflight-response.json', {
+        ok: true,
+        data: {
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'preflight',
+          blocked: false,
+          received_count: 3,
+          resolved_count: 3,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 3,
+          updated_count: 0,
+          failed_count: 0,
+          duplicate_count: 0,
+          blocking_count: 0,
+          warning_count: 0,
+        },
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
+        ok: true,
+        data: {
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'import',
+          blocked: false,
+          received_count: 3,
+          resolved_count: 3,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 3,
+          updated_count: 3,
+          failed_count: 0,
+          duplicate_count: 0,
+          blocking_count: 0,
+          warning_count: 0,
+        },
       });
       await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
         schema_version: 'story-agent-generated-health-audit/v1',
@@ -2713,14 +2907,24 @@ describe('System API', () => {
         integrity_passed: true,
         health_audit_passed: true,
         mvp_status_audit_passed: true,
+        system_external_callback_passed: true,
+        system_external_callback_ready_to_import_count: 3,
+        system_external_callback_updated_count: 3,
+        system_external_callback_blocking_count: 0,
+        system_external_callback_failed_count: 0,
+        system_external_callback_unresolved_count: 0,
+        system_external_callback_project_count: 1,
+        system_external_output_url_source_ready: true,
+        system_external_output_url_configured_from_env: true,
+        system_external_output_url_source: 'env',
         pressure_submitted: true,
-        gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+        gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
         failed_gate_ids: [],
         skipped_gate_ids: [],
         missing_required_attachment_count: 0,
-        required_attachment_count: 26,
-        required_checksum_count: 26,
-        evidence_file_count: 65,
+        required_attachment_count: 31,
+        required_checksum_count: 31,
+        evidence_file_count: 70,
         worker_record_count: 370,
         worker_transport_error_count: 0,
         worker_http_error_count: 0,
@@ -2749,10 +2953,17 @@ describe('System API', () => {
       expect(res.body.data.worker_failure_category_counts).toEqual({ render_failed: 1 });
       expect(res.body.data.required_files).toEqual(expect.arrayContaining([
         'gears-worker-acceptance-verdict.json',
+        'story-agent-system-external-output-url-source.json',
+        'story-agent-system-external-callback-preflight-response.json',
+        'story-agent-system-external-callback-import-response.json',
         'story-agent-generated-health-audit.json',
         'story-agent-mvp-status-audit.json',
       ]));
       expect(res.body.data.gates).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: 'system_external_callback_batch',
+          status: 'passed',
+        }),
         expect.objectContaining({
           id: 'story_agent_generated_health_audit',
           status: 'passed',
@@ -2764,6 +2975,10 @@ describe('System API', () => {
       ]));
       expect(res.body.data.recommended_actions).toEqual([]);
       expect(res.body.data.markdown).toContain('# GEARS Worker Evidence Signoff');
+      expect(res.body.data.markdown).toContain('system_external_callback_passed: true');
+      expect(res.body.data.markdown).toContain('system_external_output_url_source: env');
+      expect(res.body.data.markdown).toContain('system_external_output_url_source_ready: true');
+      expect(res.body.data.markdown).toContain('system_external_callback_ready/updated: 3/3');
       expect(res.body.data.markdown).toContain('large_project_source_echo: 120/120');
       expect(res.body.data.markdown).toContain('mvp_score_delta: 0');
     });
@@ -2787,7 +3002,7 @@ describe('System API', () => {
         status: 'failed',
         acceptance_passed: false,
         pressure_submitted: false,
-        gate_counts: { passed: 5, failed: 3, skipped: 0, total: 8 },
+        gate_counts: { passed: 6, failed: 3, skipped: 0, total: 9 },
         failed_gate_ids: ['worker_response_audit'],
         skipped_gate_ids: [],
         gates: [{
@@ -2804,8 +3019,8 @@ describe('System API', () => {
         signoff_ready: false,
         totals: {
           missing_required_attachment_count: 0,
-          required_attachment_count: 26,
-          required_checksum_count: 26,
+          required_attachment_count: 31,
+          required_checksum_count: 31,
           evidence_file_count: 37,
         },
         required_attachments: ['gears-worker-acceptance-verdict.json'],
@@ -2838,6 +3053,51 @@ describe('System API', () => {
           failed_count: 0,
         },
         recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-output-url-source.json', {
+        schema_version: 'story-agent-system-external-output-url-source/v1',
+        env_var: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
+        configured_from_env: true,
+        source: 'env',
+        output_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4',
+        placeholder: false,
+        ready_for_external_import: true,
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-preflight-response.json', {
+        ok: true,
+        data: {
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'preflight',
+          blocked: false,
+          received_count: 1,
+          resolved_count: 1,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 1,
+          updated_count: 0,
+          failed_count: 0,
+          duplicate_count: 0,
+          blocking_count: 0,
+          warning_count: 0,
+        },
+      });
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
+        ok: true,
+        data: {
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'import',
+          blocked: false,
+          received_count: 1,
+          resolved_count: 1,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 1,
+          updated_count: 1,
+          failed_count: 0,
+          duplicate_count: 0,
+          blocking_count: 0,
+          warning_count: 0,
+        },
       });
       await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
         schema_version: 'story-agent-generated-health-audit/v1',
@@ -4731,6 +4991,122 @@ describe('Projects API', () => {
         status: 'ready',
         video_url: 'https://media.story-agent.test/api-external-shot-1.mp4',
       });
+    });
+  });
+
+  describe('POST /api/system/gears-external-callbacks/import', () => {
+    it('preflights and imports real external GEARS callbacks across projects with callback secret', async () => {
+      const previousCallbackSecret = process.env.GEARS_CALLBACK_SECRET;
+      process.env.GEARS_CALLBACK_SECRET = 'test-system-gears-secret';
+      try {
+        const baseStory = makeApiProductionRepairStory();
+        const story: StoryGenerateResult = {
+          ...baseStory,
+          storyId: '20260617-story-apg2',
+          title: 'API GEARS 系统级外部回片导入测试故事',
+          gears_segments_url: '/api/stories/20260617-story-apg2/gears-segments',
+          gears_delivery: baseStory.gears_delivery
+            ? {
+                ...baseStory.gears_delivery,
+                storyId: '20260617-story-apg2',
+                title: 'API GEARS 系统级外部回片导入测试故事',
+              }
+            : undefined,
+        };
+        const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T12:13:00.000Z');
+
+        const submitRes = await request
+          .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/submit`)
+          .send({
+            job_type: 'seedance_video',
+            note: 'API GEARS 系统级外部回片导入测试提交',
+          });
+        expect(submitRes.status).toBe(200);
+        expectSuccess(submitRes.body);
+
+        const localAcceptanceRes = await request
+          .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/local-acceptance`)
+          .send({
+            job_type: 'seedance_video',
+            note: 'API 本地验收占位，不是系统级外部回片',
+          });
+        expect(localAcceptanceRes.status).toBe(200);
+        expectSuccess(localAcceptanceRes.body);
+
+        const handoffRes = await request
+          .post(`/api/projects/${enriched.project_id}/production-board/gears-jobs/export-external-callback-handoff`)
+          .send({});
+        expect(handoffRes.status).toBe(200);
+        expectSuccess(handoffRes.body);
+
+        const unauthorizedRes = await request
+          .post('/api/system/gears-external-callbacks/preflight')
+          .send(handoffRes.body.data.callback_batch_sample);
+        expect(unauthorizedRes.status).toBe(401);
+        expectFailure(unauthorizedRes.body, 'VALIDATION_ERROR');
+
+        const blockedPreflightRes = await request
+          .post('/api/system/gears-external-callbacks/preflight')
+          .set('Authorization', 'Bearer test-system-gears-secret')
+          .send(handoffRes.body.data.callback_batch_sample);
+        expect(blockedPreflightRes.status).toBe(200);
+        expectSuccess(blockedPreflightRes.body);
+        expect(blockedPreflightRes.body.data).toMatchObject({
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'preflight',
+          blocked: true,
+          received_count: submitRes.body.data.submitted_count,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 0,
+          updated_count: 0,
+        });
+        expect(blockedPreflightRes.body.data.blocking_count).toBeGreaterThan(0);
+
+        const realCallbackPayload = {
+          callbacks: handoffRes.body.data.callback_batch_sample.callbacks.map((callback: any, index: number) => ({
+            ...callback,
+            outputUrl: `https://media.story-agent.test/system-external-shot-${index + 1}.mp4`,
+            eventId: `system-external-ready-shot-${index + 1}`,
+          })),
+        };
+        const importRes = await request
+          .post('/api/system/gears-external-callbacks/import')
+          .set('X-GEARS-Callback-Secret', 'test-system-gears-secret')
+          .send(realCallbackPayload);
+        expect(importRes.status).toBe(200);
+        expectSuccess(importRes.body);
+        expect(importRes.body.data).toMatchObject({
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'import',
+          blocked: false,
+          received_count: submitRes.body.data.submitted_count,
+          resolved_count: submitRes.body.data.submitted_count,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: submitRes.body.data.submitted_count,
+          updated_count: submitRes.body.data.submitted_count,
+          failed_count: 0,
+        });
+        expect(importRes.body.data.project_results[0]).toMatchObject({
+          project_id: enriched.project_id,
+          blocked: false,
+          import_result: {
+            blocked: false,
+            updated_count: submitRes.body.data.submitted_count,
+          },
+        });
+        expect(importRes.body.data.markdown).toContain('GEARS External Callback Batch Import');
+
+        const readinessRes = await request.get(`/api/projects/${enriched.project_id}/production-readiness`);
+        expect(readinessRes.status).toBe(200);
+        expectSuccess(readinessRes.body);
+        expect(readinessRes.body.data.summary.external_ready_gears_job_count).toBe(submitRes.body.data.submitted_count);
+        expect(readinessRes.body.data.summary.ready_without_external_gears_artifact_count).toBe(0);
+      } finally {
+        if (previousCallbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previousCallbackSecret;
+      }
     });
   });
 

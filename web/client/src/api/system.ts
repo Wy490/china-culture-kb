@@ -5,6 +5,8 @@ import type {
   GearsExecutionConfigInfo,
   GearsExecutionContractInfo,
   GearsExecutionGeneratedProjectPressureReport,
+  GearsExternalCallbackBatchImportResult,
+  GearsExternalCallbackHandoffQueuePackage,
   GearsExecutionLiveSmokeRunReport,
   GearsExecutionLiveSmokeRunRequest,
   GearsExecutionPressureReport,
@@ -13,6 +15,7 @@ import type {
   GearsExecutionWorkerAcceptanceKit,
   GearsExecutionWorkerEvidenceBundle,
   GearsExecutionWorkerEvidenceSignoffReport,
+  GearsJobCallbackRequest,
   NarrativePatternCatalog,
   ProductionReadinessPortfolioReport,
   ProductionReadinessPortfolioRunRequest,
@@ -58,6 +61,21 @@ export function getProductionReadinessPortfolio(options: { includeArchivedSeries
 
 export function runProductionReadinessPortfolioAutomation(req: ProductionReadinessPortfolioRunRequest = { dry_run: false }) {
   return apiPost<ProductionReadinessPortfolioRunResult>('/system/production-readiness-portfolio/run-automation', req)
+}
+
+export function getGearsExternalCallbackHandoffQueue(options: { limit?: number } = {}) {
+  const params = new URLSearchParams()
+  if (typeof options.limit === 'number') params.set('limit', String(options.limit))
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return apiGet<GearsExternalCallbackHandoffQueuePackage>(`/system/gears-external-callback-handoff-queue${suffix}`)
+}
+
+export function preflightGearsExternalCallbackBatch(req: GearsJobCallbackRequest) {
+  return apiPost<GearsExternalCallbackBatchImportResult>('/system/gears-external-callbacks/preflight', req)
+}
+
+export function importGearsExternalCallbackBatch(req: GearsJobCallbackRequest) {
+  return apiPost<GearsExternalCallbackBatchImportResult>('/system/gears-external-callbacks/import', req)
 }
 
 export function getStoryAgentGeneratedHealth(options: { limit?: number } = {}) {

@@ -30,6 +30,16 @@
 24. 补强交付来源透明度：制作 readiness summary、GEARS lane evidence 和项目详情页会区分 `external_ready` 与 `local_acceptance_ready`；当 ready job 只有本地验收 artifact 时，报告会生成 info 级 `gears-local-acceptance-only` 提示，保持 100 分 ready 的同时明确真实外部回片仍待验收。
 25. 补齐外部回片覆盖本地验收的回归保护：真实 GEARS callback 带外部 artifact URL 回来后，会替换对应 `local_acceptance` artifact，刷新 Seedance shot ledger 选用版本，并让 readiness 的 `external_ready` 增加、`local_acceptance_ready` 和 `ready_without_external` 下降。
 26. 建立 GEARS 外部回片交接包：新增 `project-gears-external-callback-handoff/v1` 项目导出能力，按项目列出仍缺真实外部 artifact 的 GEARS job、callback path/url、preflight path/url、safe import path/url、可直接交给外部 worker 的回调样例、批量 callback payload、指向 preflight 与安全导入端点的 curl 命令、operator checklist、local acceptance 边界说明和对应 Seedance prompt；项目详情页已提供 Markdown/JSON/独立 payload 导出入口，并新增外部回片 preflight 与安全导入路径，可在写入前拦截 `gears.example` 示例 URL、local acceptance URL、localhost/private network URL、非 `http(s)` 绝对 URL、账本不匹配、重复 eventId/replay 和缺真实 artifact 的 payload，同时返回 `duplicate_event_count` 方便操作员核对重复回传数量；缺 `eventId` 的真实回片会给 warning 但不阻断导入，以兼容外部 provider。制作 readiness 会在 `ready_without_external` 时自动提示 `export_gears_external_callback_handoff`，避免把本地验收产物误当成真实 GEARS/Seedance 回片。
+27. 补齐独立知识库写回队列页：新增 `/knowledge-writeback-queue`，只显示已通过审稿并生成正式写入草案的候选稿，支持按项目、成片类型、目标省份和写回状态筛选，支持复制当前筛选范围的省份 Markdown Patch，并可直接把草案标记为草案就绪、已入队、已入库或需重审。
+28. 扩展写回队列 API 筛选：`/api/projects/supplement-tasks` 和全局 `project-knowledge-writeback-patch/v1` 导出支持 `video_type`、`province` 与 `knowledge_writeback_status` 组合筛选；列表项会带出推断目标省份和建议写入文件，导出 Markdown 记录片型/省份筛选范围。
+29. 补深三类核心片型生产模板：`heritage_promo` 和 `documentary_short` 新增 production prompt layers，分别把事实边界、流程资产、人物空间、镜头抓手，以及现实入口、来源结构、影像组织、事实边界拆清；`ai_comic_drama` 继续沿用基础设定、氛围画质、画面内容、单镜头验证和多分镜验证分层。
+30. 正式接入第四类高频片型 `explainer_video`：新增知识讲解视频 ProductionMaterialPack，包含 12 个 required fields、4 层 prompt layers、三阶段 gate、补充问题和 10 条样板；readiness、审计和升级计划已能生成 explainer 缺口报告与最小素材包批次。
+31. 推进 Domain Pack 扩库：`data/domain-packs/china-culture.json` 增补非遗流程生产包、纪录片来源包、AI漫剧分镜包、朝代服饰与器物包、讲解知识结构包；升级计划新增 `explainer_knowledge_structure_pack` 建议，并重新生成审计/升级计划报告。所有知识库写回仍只进入候选稿、审稿和写回草案，不自动改写 `data/provinces/*.md`。
+32. 建立跨项目 GEARS 外部回片交接队列：新增系统级 `gears-external-callback-handoff-queue/v1` 只读导出，汇总所有仍缺真实外部 artifact 的项目级 GEARS handoff，提供合并 callback 样例、逐项目 preflight/safe import 路径、operator checklist 和 Markdown；项目总览页可一键复制外部回片队列，但导入仍必须走各项目 preflight 与安全导入端点，且继续禁止把 `local_acceptance`、localhost/private network 或 `gears.example` 示例 URL 当作真实外部回片。
+33. 推进真实外部回片闭环到系统级批量入口：新增 `/api/system/gears-external-callbacks/preflight` 与 `/api/system/gears-external-callbacks/import`，外部 GEARS/Seedance worker 可一次回传多项目真实 artifact callback；系统会按 `sourceProjectId` 分组，缺失时只在 GEARS ledger 唯一命中时反查项目，先逐项目 preflight，确认无阻断后才调用现有项目安全导入。入口复用 `GEARS_CALLBACK_SECRET`，并继续拦截示例 URL、本地验收 URL、localhost/private network URL、非 `http(s)` URL 和账本不匹配 payload。
+34. 把系统级外部回片纳入 GEARS worker acceptance kit：`gears-execution-worker-acceptance-kit/v1` 新增 `gears-system-external-callback-smoke.json` payload、系统级 preflight/import 两个 Story Agent callback 阶段命令、shell 脚本证据文件和 callback response audit 扫描；ledger seed 会同步 patch 系统级 payload，验收脚本可验证 `blocked=false`、`updated_count>0`、真实外部 artifact 写入和 `local_acceptance`/示例 URL 边界。
+35. 把系统级外部回片纳入最终 worker evidence 签收门槛：`gears-worker-acceptance-verdict` 新增 `system_external_callback_batch` 独立 gate，要求系统级 preflight/import 响应均为 `blocked=false`、`ready_to_import_count>0`、`updated_count>0`、`failed_count=0`、`unresolved_count=0`；archive 把系统级回片 payload、ledger seed、preflight/import 响应列为必需证据；signoff API/Markdown 新增 `system_external_callback_passed` 和 ready/updated/blocking 计数，最终 `ready` 不再可能只靠 local acceptance 或普通 callback audit 通过。
+36. 移除 worker acceptance kit 的固定 `.test` 回片样例并接入真实 worker artifact 自动抽取：系统级外部 callback payload 的 `outputUrl` 改为 `<GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>`，脚本会先从 GEARS submit/status 响应中的 `artifact`/`output`/`media`/`video` URL 字段抽取真实公网 artifact URL，抽不到时才要求操作员用 `GEARS_SYSTEM_EXTERNAL_OUTPUT_URL` 手工覆盖；`story-agent-system-external-output-url-source.json` 会记录 URL 来源是 `worker_response` 还是 `env`、是否仍是占位、是否可外部导入，verdict/signoff 会在 URL 来源未验证、仍是占位或不可外部导入时失败，archive 也把该来源证据列为必需附件。
 
 ## 原始诊断必须并入路线
 
@@ -170,7 +180,7 @@
 
 ### Phase 3：质量报告联动
 
-状态：核心联动、前端展示、Seedance 参考资产占位和本地 GEARS 验收闭环已完成；下一步转向真实 GEARS/Seedance 外部回片执行。
+状态：核心联动、前端展示、Seedance 参考资产占位、本地 GEARS 验收闭环、外部回片交接队列、系统级批量回片 preflight/import 和 worker acceptance runbook 接入已完成；下一步转向真实 GEARS/Seedance 外部执行 worker 实跑与证据签收。
 
 - 已将 production readiness 写入 `quality_report.production_material_readiness_report`。
 - 已让 production readiness 参与 `quality_report.passed`：状态非 `ready`、分数低于 70 或有阻塞字段时，质量报告自动降级。
@@ -181,7 +191,10 @@
 - 已通过准真实 AI 漫剧生成项目 `20260702-story-5zhd4151f8c7--ai_comic_drama` 验证落盘链路。
 - 已新增 Seedance 参考资产占位生成动作，缺文件的 `@` 槽位可生成本地 SVG 参考卡并被 Production Board 识别为已绑定。
 - 已新增本地 GEARS 验收动作，`local-gears-*` mocked job 可被写入 `local_acceptance` artifact，并刷新项目/镜头账本和制作 readiness。
-- 待继续：接入真实 GEARS/Seedance 外部执行 endpoint 的回片验收，而不是只停留在 local acceptance。
+- 已新增项目级 GEARS 外部回片交接包和系统级跨项目外部回片队列，外部 worker 可按项目拿到 preflight/safe import 路径、callback 样例和待替换真实 artifact URL 清单。
+- 已新增系统级批量 GEARS 外部 callback preflight/import，外部 worker 可一次回传多项目真实公网 artifact URL；系统仍会按项目执行 preflight 和安全导入，不会把 `local_acceptance` 或示例 URL 当外部回片。
+- 已将系统级外部 callback preflight/import 纳入 GEARS worker acceptance kit、shell script、payload 文件、callback response audit、acceptance verdict、archive 必需证据和 worker evidence signoff ready 判定；worker kit 已不再内置 `.test` 回片 URL，会优先从 GEARS worker 响应自动抽取真实公网 artifact，必要时再通过 `GEARS_SYSTEM_EXTERNAL_OUTPUT_URL` 手工覆盖。
+- 待继续：接入真实 GEARS/Seedance 外部执行 worker，把交接队列中的样例 `outputUrl` 替换为真实公网 artifact URL 后回传，并跑出 `system_external_callback_passed=true` 的 worker evidence signoff。
 
 ### Phase 4：前端工作台
 
@@ -205,7 +218,7 @@
 - 已把 patch 草案接入人工入库队列状态：草案就绪、已入队、已入库、需重审。
 - 已在项目详情页 Seedance 素材缺口区新增“生成占位参考图”，可把缺文件素材自动生成本地 SVG 参考卡并刷新 Production Board。
 - 已在制作 readiness 中新增 `draft_seedance_asset_placeholders` 自动化动作，缺失 Seedance 参考文件时可作为可执行步骤进入安全自动化计划。
-- 待继续：把人工入库队列做成独立列表页/筛选页，并支持按目标省份批量导出。
+- 已完成独立人工入库队列页，支持按项目、片型、目标省份和写回状态筛选，并可批量复制当前筛选范围的写回 Patch。
 
 ### Phase 5：在线模板采集流水线
 
@@ -274,7 +287,7 @@
 1. 回溯补源：`source_location_backfill` 已完成 37/37（100%），后续只需在新增条目进入队列时增量处理。
 2. 审稿写回 `asset_split`：剩余 0 条，正式完整写回已到 169/169（100%）。
 3. 处理来源等级缺口和少量 `era` 精细化缺口。
-4. 把 readiness 接进质量报告和 GEARS 交付状态：核心链路、前端显示和 Seedance 本地参考资产占位已完成；下一步做 GEARS job 提交、状态同步和真实回片验收。
-5. 在前端显示生产模板缺口：模板详情、gate、样板条目、任务跳转/状态更新、项目级写回刷新、字段级录入、知识库候选稿、导出审稿包、审稿状态、正式写入草案、省份 Markdown patch/PR 草案和人工入库队列状态已完成，下一步做独立队列页和按省份批量导出。
-6. 扩第四类高频类型模板，建议从 `social_short` 或 `explainer_video` 选一个。
+4. 把 readiness 接进质量报告和 GEARS 交付状态：核心链路、前端显示、Seedance 本地参考资产占位、GEARS 本地验收边界、外部回片交接队列、系统级批量 preflight/import 和 worker acceptance runbook 已完成；下一步做真实 GEARS/Seedance worker 实跑、状态同步和证据签收。
+5. 在前端显示生产模板缺口：模板详情、gate、样板条目、任务跳转/状态更新、项目级写回刷新、字段级录入、知识库候选稿、导出审稿包、审稿状态、正式写入草案、省份 Markdown patch/PR 草案、人工入库队列状态和独立写回队列页已完成。
+6. 第四类高频类型模板已选择并接入 `explainer_video`；下一步可继续补联网采集、样片审稿和正式包隔离测试。
 7. 在线模板采集命令：草案生成首版已完成，下一步补联网采集和正式写入审稿流。

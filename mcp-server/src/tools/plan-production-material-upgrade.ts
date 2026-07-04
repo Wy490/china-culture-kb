@@ -11,6 +11,7 @@ type UpgradeBatchId =
   | 'asset_split_enrichment'
   | 'heritage_promo_minimum_pack'
   | 'documentary_short_minimum_pack'
+  | 'explainer_video_minimum_pack'
   | 'ai_comic_drama_minimum_pack'
   | 'domain_pack_expansion';
 
@@ -65,6 +66,7 @@ export interface ProductionMaterialUpgradePlan {
 const VIDEO_TYPE_LABEL: Record<string, string> = {
   heritage_promo: '非遗/工艺宣传片',
   documentary_short: '微纪录片',
+  explainer_video: '知识讲解视频',
   ai_comic_drama: 'AI漫剧',
 };
 
@@ -78,6 +80,7 @@ export async function planProductionMaterialUpgrade(): Promise<ProductionMateria
     buildAssetSplitBatch(audit.entries),
     buildVideoTypeBatch(audit.entries, 'heritage_promo'),
     buildVideoTypeBatch(audit.entries, 'documentary_short'),
+    buildVideoTypeBatch(audit.entries, 'explainer_video'),
     buildVideoTypeBatch(audit.entries, 'ai_comic_drama'),
     buildDomainPackBatch(audit.entries, domainPackExpansion),
   ];
@@ -325,6 +328,13 @@ function buildDomainPackExpansion(audit: ProductionMaterialAuditReport): DomainP
       seed_fields: ['era', 'character_clothing', 'character_props', 'dialogue_tone', 'credibility_boundary'],
     },
     {
+      pack_id: 'explainer_knowledge_structure_pack',
+      label: '讲解知识结构包',
+      priority: (typeCounts.get('explainer_video') ?? 0) > 20 ? 'high' : 'medium',
+      reason: '知识讲解视频需要核心问题、知识层级、例子、图示字幕和误区边界，适合沉淀成通用结构包。',
+      seed_fields: ['core_question', 'knowledge_outline', 'concrete_examples', 'diagram_or_caption_plan', 'misconception_or_boundary'],
+    },
+    {
       pack_id: 'short_video_hook_pack',
       label: '短视频钩子包',
       priority: 'medium',
@@ -375,6 +385,13 @@ function questionsForVideoType(videoType: VideoType): string[] {
       '今天还能看到的地点、实物、展陈、声音或仪式是什么？',
       '哪些信息来自一手/权威来源，哪些只能做再现或推测？',
       '采访/旁白需要哪些 B-roll、档案、地图或空镜支撑？',
+    ];
+  }
+  if (videoType === 'explainer_video') {
+    return [
+      '观众看完要解决的核心问题是什么？',
+      '这个知识点能拆成哪3到5个层级、定义、例子或对比？',
+      '哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？',
     ];
   }
   if (videoType === 'ai_comic_drama') {

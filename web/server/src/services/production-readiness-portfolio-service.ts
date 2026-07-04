@@ -1,5 +1,12 @@
 import type {
   AiComicSeriesProductionReadinessReport,
+  GearsExternalCallbackBatchImportMode,
+  GearsExternalCallbackBatchImportResult,
+  GearsExternalCallbackBatchProjectResult,
+  GearsExternalCallbackBatchUnresolvedItem,
+  GearsExternalCallbackHandoffQueuePackage,
+  GearsJobCallbackRequest,
+  GearsJobLedgerItem,
   ProductionReadinessPortfolioActionBucket,
   ProductionReadinessPortfolioItem,
   ProductionReadinessPortfolioReport,
@@ -16,10 +23,20 @@ import { randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import {
+  exportProjectGearsExternalCallbackHandoff,
+  getProject,
   getProjectProductionReadiness,
+  importProjectGearsExternalCallbacks,
   listProjects,
+  preflightProjectGearsExternalCallbacks,
   runProjectProductionReadinessAutomation,
 } from './project-service.js';
+import {
+  extractGearsJobCallbackRequests,
+  gearsCallbackBatchPath,
+  normalizeGearsJobCallback,
+  normalizeGearsJobLedger,
+} from './gears-execution-service.js';
 import {
   getAiComicSeriesProductionReadiness,
   listAiComicSeriesProjects,
@@ -28,6 +45,10 @@ import {
 
 export interface ProductionReadinessPortfolioOptions {
   includeArchivedSeries?: boolean;
+  limit?: number;
+}
+
+export interface GearsExternalCallbackHandoffQueueOptions {
   limit?: number;
 }
 
@@ -82,6 +103,143 @@ async function readPortfolioAutomationLedger(): Promise<ProductionReadinessPortf
 function boundedLimit(limit: number | undefined): number {
   if (!Number.isFinite(limit)) return 30;
   return Math.max(1, Math.min(Math.floor(limit ?? 30), 100));
+}
+
+const systemGearsExternalCallbackPreflightPath = '/api/system/gears-external-callbacks/preflight';
+const systemGearsExternalCallbackImportPath = '/api/system/gears-external-callbacks/import';
+
+function callbackSourceProjectId(callback: GearsJobCallbackRequest): string | undefined {
+  const value = callback.source_project_id ?? callback.sourceProjectId;
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function callbackMatchSummary(callback: GearsJobCallbackRequest): Pick<
+  GearsExternalCallbackBatchUnresolvedItem,
+  'source_project_id' | 'source_unit_id' | 'gears_job_id' | 'event_id'
+> {
+  const normalized = normalizeGearsJobCallback(callback);
+  return {
+    source_project_id: normalized.source_project_id,
+    source_unit_id: normalized.source_unit_id,
+    gears_job_id: normalized.gears_job_id,
+    event_id: normalized.event_id,
+  };
+}
+
+function callbackMatchesLedgerItem(callback: GearsJobCallbackRequest, item: GearsJobLedgerItem): boolean {
+  const normalized = normalizeGearsJobCallback(callback);
+  if (normalized.gears_job_id && normalized.gears_job_id === item.gears_job_id) return true;
+  if (normalized.idempotency_key && normalized.idempotency_key === item.idempotency_key) return true;
+  return Boolean(normalized.source_unit_id && normalized.source_unit_id === item.source_unit_id);
+}
+
+async function resolveCallbackProjectFromLedgers(callback: GearsJobCallbackRequest): Promise<string[] | undefined> {
+  const projectsRes = await listProjects();
+  const projectIds = projectsRes.data?.map(project => project.project_id) ?? [];
+  const matches = new Set<string>();
+  for (const projectId of projectIds) {
+    const detail = await getProject(projectId);
+    if (!detail.ok || !detail.data) continue;
+    const ledger = normalizeGearsJobLedger(detail.data.project.gears_job_ledger);
+    if (ledger.items.some(item => callbackMatchesLedgerItem(callback, item))) {
+      matches.add(projectId);
+    }
+  }
+  return matches.size ? [...matches] : undefined;
+}
+
+function blockedPreflightItemCount(projectResults: GearsExternalCallbackBatchProjectResult[]): number {
+  return projectResults.reduce((sum, result) => {
+    const blockingIndexes = new Set(
+      result.preflight?.issues
+        .filter(issue => issue.severity === 'blocking')
+        .map(issue => issue.index) ?? [],
+    );
+    return sum + blockingIndexes.size;
+  }, 0);
+}
+
+function buildGearsExternalCallbackBatchMarkdown(
+  report: Omit<GearsExternalCallbackBatchImportResult, 'markdown'>,
+): string {
+  return [
+    '# GEARS External Callback Batch Import',
+    '',
+    `> mode: ${report.mode}`,
+    `> blocked: ${report.blocked}`,
+    '',
+    '## Summary',
+    '',
+    `- received callbacks: ${report.received_count}`,
+    `- resolved callbacks: ${report.resolved_count}`,
+    `- unresolved callbacks: ${report.unresolved_count}`,
+    `- projects: ${report.project_count}`,
+    `- ready to import: ${report.ready_to_import_count}`,
+    `- updated: ${report.updated_count}`,
+    `- failed: ${report.failed_count}`,
+    `- duplicates: ${report.duplicate_count}`,
+    `- blocking: ${report.blocking_count}`,
+    `- warnings: ${report.warning_count}`,
+    '',
+    '## Operator Checklist',
+    '',
+    ...report.operator_checklist.map(item => `- ${item}`),
+    '',
+    '## Project Results',
+    '',
+    ...(report.project_results.length
+      ? report.project_results.map(project =>
+        `- ${project.project_id}: received=${project.received_count} blocked=${project.blocked} ready=${project.preflight?.ready_to_import_count ?? 0} updated=${project.import_result?.updated_count ?? 0}`
+      )
+      : ['- none']),
+    '',
+    '## Unresolved Callbacks',
+    '',
+    ...(report.unresolved_callbacks.length
+      ? report.unresolved_callbacks.map(item =>
+        `- #${item.index + 1} ${item.reason}: ${item.message}`
+      )
+      : ['- none']),
+  ].join('\n');
+}
+
+async function groupGearsExternalCallbacksByProject(callbacks: GearsJobCallbackRequest[]): Promise<{
+  groups: Map<string, { callbacks: GearsJobCallbackRequest[]; indexes: number[] }>;
+  unresolved: GearsExternalCallbackBatchUnresolvedItem[];
+}> {
+  const groups = new Map<string, { callbacks: GearsJobCallbackRequest[]; indexes: number[] }>();
+  const unresolved: GearsExternalCallbackBatchUnresolvedItem[] = [];
+
+  for (const [index, callback] of callbacks.entries()) {
+    const explicitProjectId = callbackSourceProjectId(callback);
+    const projectMatches = explicitProjectId ? [explicitProjectId] : await resolveCallbackProjectFromLedgers(callback);
+    if (!projectMatches?.length) {
+      unresolved.push({
+        index,
+        ...callbackMatchSummary(callback),
+        reason: 'missing_project',
+        message: 'Callback does not include sourceProjectId and did not uniquely match any project GEARS ledger item.',
+      });
+      continue;
+    }
+    if (projectMatches.length > 1) {
+      unresolved.push({
+        index,
+        ...callbackMatchSummary(callback),
+        reason: 'ambiguous_project',
+        candidate_project_ids: projectMatches,
+        message: `Callback matched multiple project GEARS ledgers: ${projectMatches.join(', ')}`,
+      });
+      continue;
+    }
+    const [projectId] = projectMatches;
+    const group = groups.get(projectId) ?? { callbacks: [], indexes: [] };
+    group.callbacks.push(callback);
+    group.indexes.push(index);
+    groups.set(projectId, group);
+  }
+
+  return { groups, unresolved };
 }
 
 function statusRank(status: ProductionReadinessStatus): number {
@@ -315,6 +473,258 @@ export async function getProductionReadinessPortfolio(
     ...base,
     markdown: buildMarkdown(base),
   };
+}
+
+function buildGearsExternalCallbackHandoffQueueMarkdown(
+  pkg: Omit<GearsExternalCallbackHandoffQueuePackage, 'markdown'>,
+): string {
+  return [
+    '# GEARS External Callback Handoff Queue',
+    '',
+    `> exportedAt: ${pkg.exported_at}`,
+    '',
+    '## Summary',
+    '',
+    `- system preflight: ${pkg.system_preflight_path}`,
+    `- system safe import: ${pkg.system_safe_import_path}`,
+    `- projects: ${pkg.project_count}`,
+    `- total GEARS jobs: ${pkg.total_job_count}`,
+    `- external ready: ${pkg.external_ready_count}`,
+    `- local acceptance ready: ${pkg.local_acceptance_ready_count}`,
+    `- pending external artifacts: ${pkg.pending_external_artifact_count}`,
+    '',
+    '## Operator Checklist',
+    '',
+    ...pkg.operator_checklist.map(item => `- ${item}`),
+    '',
+    '## Project Queue',
+    '',
+    ...(pkg.projects.length
+      ? pkg.projects.flatMap((project, index) => [
+        `### ${index + 1}. ${project.title}`,
+        '',
+        `- projectId: ${project.project_id}`,
+        `- storyId: ${project.storyId}`,
+        `- pendingExternalArtifacts: ${project.pending_external_artifact_count}`,
+        `- externalReady: ${project.external_ready_count}`,
+        `- localAcceptanceReady: ${project.local_acceptance_ready_count}`,
+        `- callbackPath: ${project.callback_path}`,
+        `- preflightPath: ${project.preflight_path}`,
+        `- safeImportPath: ${project.safe_import_path}`,
+        '',
+        '```json',
+        JSON.stringify(project.callback_batch_sample, null, 2),
+        '```',
+        '',
+      ])
+      : ['- none']),
+    '## Combined Callback Sample',
+    '',
+    '```json',
+    JSON.stringify(pkg.callback_batch_sample, null, 2),
+    '```',
+    '',
+    '## Notes',
+    '',
+    ...pkg.notes.map(note => `- ${note}`),
+  ].join('\n');
+}
+
+export async function getGearsExternalCallbackHandoffQueue(
+  options: GearsExternalCallbackHandoffQueueOptions = {},
+): Promise<GearsExternalCallbackHandoffQueuePackage> {
+  const exportedAt = new Date().toISOString();
+  const limit = boundedLimit(options.limit);
+  const projects = await listProjects();
+  const queueProjects: GearsExternalCallbackHandoffQueuePackage['projects'] = [];
+
+  for (const project of projects.data ?? []) {
+    if (queueProjects.length >= limit) break;
+    const readiness = await getProjectProductionReadiness(project.project_id);
+    if (!readiness.ok || !readiness.data) continue;
+    if (readiness.data.summary.ready_without_external_gears_artifact_count <= 0) continue;
+    const handoff = await exportProjectGearsExternalCallbackHandoff(project.project_id);
+    if (!handoff.ok || !handoff.data || handoff.data.pending_external_artifact_count <= 0) continue;
+    queueProjects.push({
+      project_id: handoff.data.project.project_id,
+      title: handoff.data.title,
+      storyId: handoff.data.storyId,
+      updated_at: handoff.data.project.updated_at,
+      total_job_count: handoff.data.total_job_count,
+      external_ready_count: handoff.data.external_ready_count,
+      local_acceptance_ready_count: handoff.data.local_acceptance_ready_count,
+      pending_external_artifact_count: handoff.data.pending_external_artifact_count,
+      callback_path: handoff.data.callback_path,
+      callback_url: handoff.data.callback_url,
+      preflight_path: handoff.data.preflight_path,
+      preflight_url: handoff.data.preflight_url,
+      safe_import_path: handoff.data.safe_import_path,
+      safe_import_url: handoff.data.safe_import_url,
+      callback_batch_sample: handoff.data.callback_batch_sample,
+      items: handoff.data.items,
+    });
+  }
+
+  queueProjects.sort((a, b) => {
+    if (a.pending_external_artifact_count !== b.pending_external_artifact_count) {
+      return b.pending_external_artifact_count - a.pending_external_artifact_count;
+    }
+    return (b.updated_at ?? '').localeCompare(a.updated_at ?? '');
+  });
+
+  const callbackBatchSample = {
+    callbacks: queueProjects.flatMap(project => project.callback_batch_sample.callbacks),
+    replace_before_import: [
+      'Replace every placeholder outputUrl with an absolute public http(s) external provider artifact URL.',
+      'Use each project safeImportPath/safeImportUrl for import; combined callbacks are grouped for operator planning only.',
+      `For cross-project batches, POST to ${systemGearsExternalCallbackPreflightPath} first, then ${systemGearsExternalCallbackImportPath} only after preflight passes.`,
+      'Never import local_acceptance URLs, localhost/private-network URLs, or gears.example placeholder URLs as real external output.',
+    ],
+    import_note: 'This queue is a cross-project operator handoff. Import callbacks through the system safe import endpoint or each project safe import endpoint after preflight passes.',
+  };
+
+  const base: Omit<GearsExternalCallbackHandoffQueuePackage, 'markdown'> = {
+    schema_version: 'gears-external-callback-handoff-queue/v1',
+    exported_at: exportedAt,
+    system_preflight_path: systemGearsExternalCallbackPreflightPath,
+    system_safe_import_path: systemGearsExternalCallbackImportPath,
+    project_count: queueProjects.length,
+    total_job_count: queueProjects.reduce((sum, project) => sum + project.total_job_count, 0),
+    external_ready_count: queueProjects.reduce((sum, project) => sum + project.external_ready_count, 0),
+    local_acceptance_ready_count: queueProjects.reduce((sum, project) => sum + project.local_acceptance_ready_count, 0),
+    pending_external_artifact_count: queueProjects.reduce((sum, project) => sum + project.pending_external_artifact_count, 0),
+    projects: queueProjects,
+    callback_batch_sample: callbackBatchSample,
+    operator_checklist: [
+      `Run ${systemGearsExternalCallbackPreflightPath} or each project preflight endpoint before safe import.`,
+      'Replace sample outputUrl values with real external GEARS/Seedance artifact URLs.',
+      'Confirm external_ready increases and ready_without_external decreases after import.',
+      'Do not treat local_acceptance artifacts as final external media.',
+    ],
+    notes: [
+      `Returned top ${queueProjects.length} projects with ready GEARS jobs still missing external artifacts.`,
+      'The combined callback sample may be sent to the system preflight/import endpoints; each callback still belongs to its project ledger.',
+      'This endpoint is read-only and does not modify project ledgers or generated artifacts.',
+    ],
+  };
+
+  return {
+    ...base,
+    markdown: buildGearsExternalCallbackHandoffQueueMarkdown(base),
+  };
+}
+
+export async function processGearsExternalCallbackBatch(
+  request: GearsJobCallbackRequest,
+  mode: GearsExternalCallbackBatchImportMode,
+): Promise<GearsExternalCallbackBatchImportResult> {
+  const callbacks = extractGearsJobCallbackRequests(request);
+  const { groups, unresolved } = await groupGearsExternalCallbacksByProject(callbacks);
+  const projectResults: GearsExternalCallbackBatchProjectResult[] = [];
+
+  for (const [projectId, group] of groups.entries()) {
+    const preflightRes = await preflightProjectGearsExternalCallbacks(projectId, { callbacks: group.callbacks });
+    if (!preflightRes.ok || !preflightRes.data) {
+      projectResults.push({
+        project_id: projectId,
+        received_count: group.callbacks.length,
+        blocked: true,
+        error: preflightRes.error?.message ?? 'GEARS external callback project preflight failed.',
+      });
+      continue;
+    }
+    projectResults.push({
+      project_id: projectId,
+      received_count: group.callbacks.length,
+      blocked: preflightRes.data.blocking_count > 0,
+      preflight: preflightRes.data,
+    });
+  }
+
+  const hasBlockingProject = projectResults.some(result => result.blocked);
+  const blocked = unresolved.length > 0 || hasBlockingProject;
+  if (mode === 'import' && !blocked) {
+    for (const result of projectResults) {
+      const group = groups.get(result.project_id);
+      if (!group) continue;
+      const importRes = await importProjectGearsExternalCallbacks(result.project_id, { callbacks: group.callbacks });
+      if (!importRes.ok || !importRes.data) {
+        result.blocked = true;
+        result.error = importRes.error?.message ?? 'GEARS external callback project import failed.';
+        continue;
+      }
+      result.import_result = importRes.data;
+      result.blocked = importRes.data.blocked;
+    }
+  }
+
+  const finalBlocked = blocked || projectResults.some(result => result.blocked);
+  const readyToImportCount = projectResults.reduce(
+    (sum, result) => sum + (result.preflight?.ready_to_import_count ?? 0),
+    0,
+  );
+  const updatedCount = projectResults.reduce(
+    (sum, result) => sum + (result.import_result?.updated_count ?? 0),
+    0,
+  );
+  const importFailedCount = projectResults.reduce(
+    (sum, result) => sum + (result.import_result?.failed_count ?? 0),
+    0,
+  );
+  const failedCount = mode === 'import' && !finalBlocked
+    ? importFailedCount
+    : unresolved.length + blockedPreflightItemCount(projectResults) + projectResults.filter(result => result.error).length;
+  const duplicateCount = projectResults.reduce(
+    (sum, result) => sum + (result.import_result?.duplicate_count ?? result.preflight?.duplicate_event_count ?? 0),
+    0,
+  );
+  const blockingCount = unresolved.length
+    + projectResults.reduce((sum, result) =>
+      sum + (result.preflight?.blocking_count ?? (result.error ? 1 : 0)), 0);
+  const warningCount = projectResults.reduce(
+    (sum, result) => sum + (result.preflight?.warning_count ?? 0),
+    0,
+  );
+
+  const base: Omit<GearsExternalCallbackBatchImportResult, 'markdown'> = {
+    schema_version: 'system-gears-external-callback-batch-import/v1',
+    mode,
+    blocked: finalBlocked,
+    received_count: callbacks.length,
+    resolved_count: callbacks.length - unresolved.length,
+    unresolved_count: unresolved.length,
+    project_count: projectResults.length,
+    ready_to_import_count: readyToImportCount,
+    updated_count: updatedCount,
+    failed_count: failedCount,
+    duplicate_count: duplicateCount,
+    blocking_count: blockingCount,
+    warning_count: warningCount,
+    project_results: projectResults,
+    unresolved_callbacks: unresolved,
+    operator_checklist: [
+      'Run system preflight before import and confirm blocking_count is 0.',
+      'Replace every gears.example placeholder outputUrl with a real public external GEARS/Seedance artifact URL.',
+      'Do not submit local_acceptance URLs, localhost/private network URLs, or local file paths as external output.',
+      'After import, verify project readiness external_ready increased and ready_without_external decreased.',
+    ],
+  };
+  return {
+    ...base,
+    markdown: buildGearsExternalCallbackBatchMarkdown(base),
+  };
+}
+
+export function preflightGearsExternalCallbackBatch(
+  request: GearsJobCallbackRequest,
+): Promise<GearsExternalCallbackBatchImportResult> {
+  return processGearsExternalCallbackBatch(request, 'preflight');
+}
+
+export function importGearsExternalCallbackBatch(
+  request: GearsJobCallbackRequest,
+): Promise<GearsExternalCallbackBatchImportResult> {
+  return processGearsExternalCallbackBatch(request, 'import');
 }
 
 function selectedPortfolioTargets(

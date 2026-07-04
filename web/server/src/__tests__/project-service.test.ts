@@ -60,6 +60,10 @@ import {
   updateProjectSupplementTask,
   uploadProjectSeedanceAssetFile,
 } from '../services/project-service.js';
+import {
+  getGearsExternalCallbackHandoffQueue,
+  preflightGearsExternalCallbackBatch,
+} from '../services/production-readiness-portfolio-service.js';
 import { getProductionMaterialPack } from '../services/production-material-pack-service.js';
 import { buildProductionMaterialReadinessReport } from '../services/production-material-readiness-service.js';
 
@@ -1361,6 +1365,21 @@ describe('project-service', () => {
     expect(handoffBeforeExternal.data?.markdown).toContain('local_acceptance URL 只代表本地链路验收');
     expect(handoffBeforeExternal.data?.markdown).toContain('"outputUrl"');
 
+    const globalHandoffQueue = await getGearsExternalCallbackHandoffQueue({ limit: 10 });
+    expect(globalHandoffQueue.schema_version).toBe('gears-external-callback-handoff-queue/v1');
+    expect(globalHandoffQueue.project_count).toBeGreaterThanOrEqual(1);
+    expect(globalHandoffQueue.pending_external_artifact_count).toBeGreaterThanOrEqual(submitRes.data?.submitted_count ?? 1);
+    expect(globalHandoffQueue.projects.some(project =>
+      project.project_id === enriched.project_id
+      && project.pending_external_artifact_count === submitRes.data?.submitted_count
+      && project.safe_import_path === expectedSafeImportPath
+    )).toBe(true);
+    expect(globalHandoffQueue.callback_batch_sample.callbacks.some(callback =>
+      callback.jobId === firstAcceptedJob!.gears_job_id
+    )).toBe(true);
+    expect(globalHandoffQueue.markdown).toContain('GEARS External Callback Handoff Queue');
+    expect(globalHandoffQueue.markdown).toContain('Do not treat local_acceptance artifacts as final external media.');
+
     const placeholderPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, handoffBeforeExternal.data!.callback_batch_sample);
     expect(placeholderPreflight.ok).toBe(true);
     expect(placeholderPreflight.data).toMatchObject({
@@ -1490,6 +1509,47 @@ describe('project-service', () => {
       duplicate_event_source: 'batch',
       duplicate_of_index: 0,
       would_update: false,
+    });
+    const systemPlaceholderPreflight = await preflightGearsExternalCallbackBatch(handoffBeforeExternal.data!.callback_batch_sample);
+    expect(systemPlaceholderPreflight).toMatchObject({
+      schema_version: 'system-gears-external-callback-batch-import/v1',
+      mode: 'preflight',
+      blocked: true,
+      received_count: submitRes.data?.submitted_count,
+      resolved_count: submitRes.data?.submitted_count,
+      unresolved_count: 0,
+      project_count: 1,
+      ready_to_import_count: 0,
+      updated_count: 0,
+    });
+    expect(systemPlaceholderPreflight.blocking_count).toBeGreaterThan(0);
+    expect(systemPlaceholderPreflight.project_results[0]).toMatchObject({
+      project_id: enriched.project_id,
+      blocked: true,
+      preflight: {
+        blocking_count: expect.any(Number),
+      },
+    });
+    expect(systemPlaceholderPreflight.markdown).toContain('GEARS External Callback Batch Import');
+    const systemRealPreflight = await preflightGearsExternalCallbackBatch(realExternalPayload);
+    expect(systemRealPreflight).toMatchObject({
+      schema_version: 'system-gears-external-callback-batch-import/v1',
+      mode: 'preflight',
+      blocked: false,
+      received_count: submitRes.data?.submitted_count,
+      resolved_count: submitRes.data?.submitted_count,
+      unresolved_count: 0,
+      project_count: 1,
+      ready_to_import_count: submitRes.data?.submitted_count,
+      updated_count: 0,
+      failed_count: 0,
+      blocking_count: 0,
+    });
+    expect(systemRealPreflight.project_results[0]).toMatchObject({
+      project_id: enriched.project_id,
+      preflight: {
+        ready_to_import_count: submitRes.data?.submitted_count,
+      },
     });
     const externalCallbackRes = await importProjectGearsExternalCallbacks(enriched.project_id!, {
       callbacks: [{
@@ -4440,10 +4500,14 @@ describe('project-service', () => {
 
     const queuedTasks = await listProjectSupplementTasks({
       project_id: enriched.project_id,
+      video_type: 'ai_comic_drama',
+      province: '湖南',
       knowledge_writeback_status: 'queued',
     });
     expect(queuedTasks.ok).toBe(true);
     expect(queuedTasks.data?.map(item => item.task.task_id)).toEqual([taskId]);
+    expect(queuedTasks.data?.[0].target_province).toBe('湖南');
+    expect(queuedTasks.data?.[0].suggested_file_path).toBe('data/provinces/湖南.md');
 
     const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
     expect(rawSource.production_material_readiness?.available_fields).toContain('reference_images_or_keyframes');
@@ -4475,6 +4539,8 @@ describe('project-service', () => {
 
     const queuePatch = await exportProjectKnowledgeWritebackQueuePatch({
       project_id: enriched.project_id,
+      video_type: 'ai_comic_drama',
+      province: '湖南',
       knowledge_writeback_status: 'queued',
     });
     expect(queuePatch.ok).toBe(true);
@@ -4483,7 +4549,12 @@ describe('project-service', () => {
     expect(queuePatch.data?.project_id).toBe(enriched.project_id);
     expect(queuePatch.data?.target_files).toContain('data/provinces/湖南.md');
     expect(queuePatch.data?.markdown).toContain('Story Agent 写回队列 Patch 草案');
+    expect(queuePatch.data?.markdown).toContain('片型筛选：ai_comic_drama');
+    expect(queuePatch.data?.markdown).toContain('省份筛选：湖南');
     expect(queuePatch.data?.markdown).toContain('写回状态：queued');
+    expect(queuePatch.data?.items[0].project_id).toBe(enriched.project_id);
+    expect(queuePatch.data?.items[0].video_type).toBe('ai_comic_drama');
+    expect(queuePatch.data?.items[0].target_province).toBe('湖南');
     expect(queuePatch.data?.items[0].writeback_status).toBe('queued');
   });
 

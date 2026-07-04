@@ -1,9 +1,11 @@
 // web/server/src/routes/system.ts — System info routes (provinces, types)
 
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
+import { timingSafeEqual } from 'node:crypto';
 import { mcpReadAllProvinceFiles, mcpParseEntries } from '../services/mcp-proxy.js';
-import { success } from '@shared/types.js';
+import { ErrorCodes, fail, success } from '@shared/types.js';
 import {
+  GearsJobCallbackRequestSchema,
   GearsExecutionLiveSmokeRunRequestSchema,
   ProductionReadinessPortfolioRunRequestSchema,
   StoryAgentGeneratedGovernanceRunRequestSchema,
@@ -34,7 +36,10 @@ import {
   runGearsExecutionLiveSmoke,
 } from '../services/gears-execution-service.js';
 import {
+  getGearsExternalCallbackHandoffQueue,
   getProductionReadinessPortfolio,
+  importGearsExternalCallbackBatch,
+  preflightGearsExternalCallbackBatch,
   runProductionReadinessPortfolioAutomation,
 } from '../services/production-readiness-portfolio-service.js';
 import {
@@ -45,6 +50,37 @@ import { getStoryAgentGeneratedHealth } from '../services/generated-health-servi
 import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
 
 export const systemRouter = Router();
+
+function gearsCallbackSecretFromRequest(req: Request): string | undefined {
+  const explicit = req.header('x-gears-callback-secret')?.trim();
+  if (explicit) return explicit;
+  const authorization = req.header('authorization')?.trim();
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim();
+}
+
+function safeEqualText(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function validateSystemGearsCallbackSecret(req: Request, res: Response, next: NextFunction): void {
+  const expectedSecret = process.env.GEARS_CALLBACK_SECRET?.trim();
+  if (!expectedSecret) {
+    next();
+    return;
+  }
+  const providedSecret = gearsCallbackSecretFromRequest(req);
+  if (providedSecret && safeEqualText(providedSecret, expectedSecret)) {
+    next();
+    return;
+  }
+  res.status(401).json(fail(
+    ErrorCodes.VALIDATION_ERROR,
+    'GEARS callback secret is missing or invalid',
+  ));
+}
 
 // ---------------------------------------------------------------------------
 // GET /api/system/provinces — list provinces with entry counts
@@ -122,6 +158,53 @@ systemRouter.get('/production-readiness-portfolio', async (req, res, next) => {
     next(err);
   }
 });
+
+// ---------------------------------------------------------------------------
+// GET /api/system/gears-external-callback-handoff-queue — cross-project external callback handoff
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/gears-external-callback-handoff-queue', async (req, res, next) => {
+  try {
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+    res.json(success(await getGearsExternalCallbackHandoffQueue({ limit })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/system/gears-external-callbacks/preflight — cross-project external callback preflight
+// ---------------------------------------------------------------------------
+
+systemRouter.post(
+  '/gears-external-callbacks/preflight',
+  validateSystemGearsCallbackSecret,
+  validateBody(GearsJobCallbackRequestSchema),
+  async (req, res, next) => {
+    try {
+      res.json(success(await preflightGearsExternalCallbackBatch(req.body)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/system/gears-external-callbacks/import — cross-project safe external callback import
+// ---------------------------------------------------------------------------
+
+systemRouter.post(
+  '/gears-external-callbacks/import',
+  validateSystemGearsCallbackSecret,
+  validateBody(GearsJobCallbackRequestSchema),
+  async (req, res, next) => {
+    try {
+      res.json(success(await importGearsExternalCallbackBatch(req.body)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // POST /api/system/production-readiness-portfolio/run-automation — run safe portfolio queue automation

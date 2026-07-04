@@ -78,4 +78,27 @@ describe('production-material-readiness-service', () => {
     expect(report?.missing_fields.map(field => field.field_id)).not.toContain('single_shot_test');
     expect(report?.gate_reports.some(gate => gate.stage === 'production_ready')).toBe(true);
   });
+
+  it('builds explainer video readiness from knowledge structure evidence', () => {
+    const pack = getProductionMaterialPack('explainer_video');
+    const materialPack = makeMaterialPack('核心问题：为什么非遗素材不能只写匠心？受众是研学入门观众。知识大纲分为材料、工具、步骤、来源边界；论点是每个知识层级都要有例子、图示字幕和总结记忆点。');
+
+    const report = buildProductionMaterialReadinessReport({
+      productionMaterialPack: pack,
+      materialPack,
+    });
+
+    expect(report?.video_type).toBe('explainer_video');
+    expect(report?.available_fields).toEqual(expect.arrayContaining([
+      'core_question',
+      'audience_level',
+      'argument_points',
+      'knowledge_outline',
+      'concrete_examples',
+      'diagram_or_caption_plan',
+      'recap_sentence',
+    ]));
+    expect(report?.missing_fields.map(field => field.field_id)).toContain('concept_definitions');
+    expect(report?.missing_fields.map(field => field.field_id)).not.toContain('single_shot_test');
+  });
 });

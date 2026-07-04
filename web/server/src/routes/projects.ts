@@ -8,7 +8,9 @@ import type {
   KnowledgeWritebackStatus,
   MaterialBlockingLevel,
   MaterialSufficiencyStage,
+  VideoType,
 } from '@shared/types.js';
+import { VIDEO_TYPE_CONFIG } from '@shared/types.js';
 import {
   KnowledgeSupplementTaskUpdateRequestSchema,
   GearsJobCallbackRequestSchema,
@@ -110,6 +112,7 @@ const SUPPLEMENT_TASK_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'written_back',
   'needs_revision',
 ];
+const SUPPLEMENT_TASK_VIDEO_TYPES = Object.keys(VIDEO_TYPE_CONFIG) as VideoType[];
 
 type MultipartFile = {
   field_name: string;
@@ -271,8 +274,14 @@ projectsRouter.get('/supplement-tasks', async (req, res, next) => {
     const projectId = typeof req.query.project_id === 'string' && req.query.project_id.trim()
       ? req.query.project_id.trim()
       : undefined;
+    const videoType = queryEnum(req.query.video_type, SUPPLEMENT_TASK_VIDEO_TYPES);
+    const province = typeof req.query.province === 'string' && req.query.province.trim()
+      ? req.query.province.trim()
+      : undefined;
     const result = await listProjectSupplementTasks({
       project_id: projectId,
+      video_type: videoType,
+      province,
       status,
       stage,
       blocking_level: blockingLevel,
@@ -294,8 +303,14 @@ projectsRouter.get('/knowledge-candidates/writeback-patch/export', async (req, r
     const projectId = typeof req.query.project_id === 'string' && req.query.project_id.trim()
       ? req.query.project_id.trim()
       : undefined;
+    const videoType = queryEnum(req.query.video_type, SUPPLEMENT_TASK_VIDEO_TYPES);
+    const province = typeof req.query.province === 'string' && req.query.province.trim()
+      ? req.query.province.trim()
+      : undefined;
     const result = await exportProjectKnowledgeWritebackQueuePatch({
       project_id: projectId,
+      video_type: videoType,
+      province,
       knowledge_writeback_status: knowledgeWritebackStatus,
     });
     res.json(result);

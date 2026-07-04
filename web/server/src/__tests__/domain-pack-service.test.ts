@@ -15,6 +15,9 @@ describe('domain-pack-service', () => {
     expect(seeds.length).toBeGreaterThanOrEqual(6);
     expect(seeds.some(seed => seed.entry_name === '宋代士人设定包——服饰器物与称谓')).toBe(true);
     expect(seeds.some(seed => seed.entry_name === 'GEARS场景资产包——洞穴、书院与衙署边界')).toBe(true);
+    expect(seeds.some(seed => seed.entry_name === '纪录片来源包——现实现场、来源线索与再现边界')).toBe(true);
+    expect(seeds.some(seed => seed.entry_name === 'AI漫剧分镜包——关键帧、表情节拍与连续性验收')).toBe(true);
+    expect(seeds.some(seed => seed.entry_name === '朝代服饰与器物包——时代称谓、服装道具和事实边界')).toBe(true);
     expect(seeds.some(seed => seed.domain === 'narrative_pattern' && seed.role === 'pattern_pack')).toBe(true);
   });
 
@@ -39,5 +42,16 @@ describe('domain-pack-service', () => {
       && entry.entry_role === 'pattern_pack'
       && entry.asset_usage?.includes('plot_structure'),
     )).toBe(true);
+  });
+
+  it('injects production domain packs for explainer and storyboard gaps', () => {
+    const entries = buildDomainPackEntries({
+      query: 'explainer_video 需要讲解知识结构包、核心问题、图示字幕，同时 AI漫剧分镜包 要补关键帧和连续性验收',
+      limit: 6,
+    });
+
+    expect(entries.some(entry => entry.entry_name === '讲解知识结构包——核心问题、层级例子与图示字幕')).toBe(true);
+    expect(entries.some(entry => entry.entry_name === 'AI漫剧分镜包——关键帧、表情节拍与连续性验收')).toBe(true);
+    expect(entries.some(entry => entry.asset_usage?.includes('credibility_boundary'))).toBe(true);
   });
 });

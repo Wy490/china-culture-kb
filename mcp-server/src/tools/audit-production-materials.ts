@@ -108,6 +108,7 @@ const CORE_PRODUCTION_FIELDS: Array<{ field: ProductionCardField; label: string 
 const VIDEO_TYPE_LABELS: Partial<Record<VideoType, string>> = {
   heritage_promo: '非遗/工艺宣传片',
   documentary_short: '微纪录片',
+  explainer_video: '知识讲解视频',
   ai_comic_drama: 'AI漫剧',
 };
 
@@ -155,7 +156,7 @@ function auditEntry(
   const missingProductionFields = fieldAudits.filter(item => !item.present).map(item => item.field);
   const productionCardScore = Math.round(((CORE_PRODUCTION_FIELDS.length - missingProductionFields.length) / CORE_PRODUCTION_FIELDS.length) * 100);
   const typeTemplateAudits = productionPacks
-    .filter(pack => ['heritage_promo', 'documentary_short', 'ai_comic_drama'].includes(pack.video_type))
+    .filter(pack => ['heritage_promo', 'documentary_short', 'explainer_video', 'ai_comic_drama'].includes(pack.video_type))
     .map(pack => auditTypeTemplate(pack, detail, text));
   const priorityReasons = priorityReasonsForEntry(detail, rawEntryText, fieldAudits, typeTemplateAudits);
 
@@ -245,6 +246,18 @@ function hasTemplateFieldEvidence(fieldId: string, text: string, detail: FullEnt
   if (fieldId === 'character_stability_tags') return hasAssetSplit(detail) || /服饰|发式|随身|表情|角色/.test(text);
   if (fieldId === 'visual_symbols') return /视觉|符号|纹样|图案|象征|色彩/.test(text);
   if (fieldId === 'timeline') return /公元|年|朝|时期|年代|时间/.test(text);
+  if (fieldId === 'core_question') return /问题|为什么|如何|到底|核心/.test(text);
+  if (fieldId === 'audience_level') return /受众|学生|游客|研学|入门|小白|观众/.test(text);
+  if (fieldId === 'argument_points') return /论点|观点|要点|主张|解释/.test(text);
+  if (fieldId === 'knowledge_outline') return /知识|大纲|层级|结构|提纲|脉络/.test(text);
+  if (fieldId === 'concept_definitions') return /概念|定义|术语|是什么/.test(text);
+  if (fieldId === 'knowledge_steps') return /步骤|流程|顺序|脉络|阶段/.test(text);
+  if (fieldId === 'concrete_examples') return /例子|案例|比如|例如|对比/.test(text);
+  if (fieldId === 'analogy_or_visual_metaphor') return /类比|隐喻|好比|像|示意/.test(text);
+  if (fieldId === 'diagram_or_caption_plan') return /图示|字幕|关键词|信息图|图表/.test(text);
+  if (fieldId === 'source_cues') return detail.sources.length > 0 || /来源|出处|文献|展陈|馆方/.test(text);
+  if (fieldId === 'misconception_or_boundary') return /误区|边界|不得|不能|不可|待核实/.test(text);
+  if (fieldId === 'recap_sentence') return /总结|记忆点|一句话|复盘/.test(text);
   if (fieldId === 'materials') return /材料|原料|纸|线|瓷|木|布|颜料|泥/.test(text);
   if (fieldId === 'tools') return /工具|刀|针|窑|织机|鼓|笔|刷/.test(text);
   if (fieldId === 'process_steps') return /流程|步骤|工序|制作|烧制|套印|演唱|仪式/.test(text);
@@ -260,6 +273,7 @@ function recommendedVideoTypes(detail: FullEntryDetail): VideoType[] {
   const types = new Set<VideoType>();
   if (/非遗|传统工艺|地方戏曲|民俗活动|节庆习俗/.test(signal)) types.add('heritage_promo');
   if (/历史人物|名胜古迹|地方掌故|革命|旧址|纪念|墓|楼|书院|文物/.test(signal)) types.add('documentary_short');
+  if (/非遗|传统工艺|饮食文化|节庆习俗|宗教信仰|名胜古迹|历史人物|地方掌故|文物|书院|礼制|工艺/.test(signal)) types.add('explainer_video');
   if (/神话传说|民间故事|历史人物|地方掌故|非遗|传说|志异|少年|案/.test(signal)) types.add('ai_comic_drama');
   return [...types];
 }

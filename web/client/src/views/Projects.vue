@@ -6,6 +6,7 @@
         <p class="projects-page__desc">管理单片短片、漫剧系列、素材 gate 和最近更新时间。</p>
       </div>
       <div class="projects-page__header-actions">
+        <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/knowledge-writeback-queue">知识库写回队列</RouterLink>
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建漫剧系列</RouterLink>
         <RouterLink class="projects-page__cta" to="/story/new">新建单片短片</RouterLink>
       </div>
@@ -196,6 +197,13 @@
             @click="runPortfolioAutomation"
           >
             {{ runningPortfolioAutomation ? '自动化中…' : '运行队列安全自动化' }}
+          </button>
+          <button
+            class="projects-page__muted-btn"
+            :disabled="copyingGearsExternalQueue"
+            @click="copyGearsExternalCallbackQueue"
+          >
+            {{ copyingGearsExternalQueue ? '复制中…' : '复制外部回片队列' }}
           </button>
           <button class="projects-page__muted-btn" :disabled="loadingPortfolio" @click="loadProductionPortfolio">
             {{ loadingPortfolio ? '刷新中…' : '刷新总览' }}
@@ -692,7 +700,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { deleteProject, deleteProjects, listProjects, retainRecentProjects } from '@/api/projects'
-import { getProductionReadinessPortfolio, getStoryAgentGeneratedGovernancePlan, getStoryAgentGeneratedHealth, getStoryAgentMvpStatus, runProductionReadinessPortfolioAutomation, runStoryAgentGeneratedGovernance } from '@/api/system'
+import {
+  getGearsExternalCallbackHandoffQueue,
+  getProductionReadinessPortfolio,
+  getStoryAgentGeneratedGovernancePlan,
+  getStoryAgentGeneratedHealth,
+  getStoryAgentMvpStatus,
+  runProductionReadinessPortfolioAutomation,
+  runStoryAgentGeneratedGovernance,
+} from '@/api/system'
 import {
   archiveAiComicSeriesProject,
   assembleAiComicSeriesSeedanceCut,
@@ -746,6 +762,7 @@ const loadingGeneratedGovernance = ref(false)
 const runningGeneratedGovernance = ref(false)
 const loadingGeneratedHealth = ref(false)
 const runningPortfolioAutomation = ref(false)
+const copyingGearsExternalQueue = ref(false)
 const error = ref('')
 const projectMessage = ref('')
 const searchQuery = ref('')
@@ -1499,6 +1516,27 @@ async function loadProductionPortfolio() {
     error.value = res.error?.message ?? '刷新生产指挥总览失败'
   }
   loadingPortfolio.value = false
+}
+
+async function copyGearsExternalCallbackQueue() {
+  copyingGearsExternalQueue.value = true
+  error.value = ''
+  projectMessage.value = ''
+  try {
+    const res = await getGearsExternalCallbackHandoffQueue({ limit: 30 })
+    if (res.ok && res.data) {
+      await navigator.clipboard.writeText(res.data.markdown)
+      projectMessage.value = res.data.pending_external_artifact_count > 0
+        ? `已复制 ${res.data.project_count} 个项目、${res.data.pending_external_artifact_count} 个待外部 artifact 的 GEARS 回片交接队列。`
+        : '当前没有待外部回片的 GEARS job，已复制空队列摘要。'
+    } else {
+      error.value = res.error?.message ?? '导出 GEARS 外部回片队列失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制 GEARS 外部回片队列失败'
+  } finally {
+    copyingGearsExternalQueue.value = false
+  }
 }
 
 async function loadGeneratedGovernancePlan() {

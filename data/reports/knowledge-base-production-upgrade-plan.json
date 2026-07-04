@@ -1,12 +1,12 @@
 {
   "schema_version": "kb-production-material-upgrade-plan/v1",
-  "generated_at": "2026-07-01T16:10:33.247Z",
-  "source_audit_generated_at": "2026-07-01T16:10:33.240Z",
+  "generated_at": "2026-07-04T14:08:11.739Z",
+  "source_audit_generated_at": "2026-07-04T14:08:11.732Z",
   "summary": {
     "total_entries": 169,
     "high_priority_entries": 167,
-    "planned_batches": 8,
-    "planned_entry_actions": 180,
+    "planned_batches": 9,
+    "planned_entry_actions": 230,
     "format_only_actions": 0
   },
   "batches": [
@@ -84,7 +84,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -114,7 +114,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -174,7 +174,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -204,7 +204,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -233,7 +233,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -262,7 +262,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -291,7 +291,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -320,7 +320,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -349,7 +349,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -407,7 +407,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -494,7 +494,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -668,7 +668,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -726,7 +726,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -784,7 +784,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -812,7 +812,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -840,7 +840,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -868,7 +868,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -924,7 +924,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -952,7 +952,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -980,7 +980,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1120,7 +1120,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1148,7 +1148,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1204,7 +1204,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1232,7 +1232,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1260,7 +1260,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1316,7 +1316,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1372,7 +1372,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1527,7 +1527,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1556,7 +1556,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1614,7 +1614,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1643,7 +1643,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1672,7 +1672,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1701,7 +1701,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1730,7 +1730,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1759,7 +1759,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1788,7 +1788,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1817,7 +1817,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1846,7 +1846,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1875,7 +1875,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1904,7 +1904,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1933,7 +1933,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1962,7 +1962,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1991,7 +1991,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2020,7 +2020,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2049,7 +2049,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2078,7 +2078,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2107,7 +2107,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2136,7 +2136,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2165,7 +2165,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2194,7 +2194,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2223,7 +2223,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2252,7 +2252,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2281,7 +2281,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2310,7 +2310,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2339,7 +2339,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2368,7 +2368,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2396,7 +2396,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2452,7 +2452,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2480,7 +2480,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2508,7 +2508,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2564,7 +2564,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2592,7 +2592,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2620,7 +2620,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2648,7 +2648,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2676,7 +2676,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2704,7 +2704,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2788,7 +2788,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2816,7 +2816,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2872,7 +2872,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2928,7 +2928,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2944,6 +2944,1443 @@
             "今天还能看到的地点、实物、展陈、声音或仪式是什么？",
             "哪些信息来自一手/权威来源，哪些只能做再现或推测？",
             "采访/旁白需要哪些 B-roll、档案、地图或空镜支撑？"
+          ],
+          "safe_auto_apply": "none"
+        }
+      ],
+      "acceptance_criteria": [
+        "补齐当前片型 required_fields 中最影响生成的字段。",
+        "只记录可来源追溯的信息，戏剧化空间和事实边界分开。",
+        "补完后重新运行 kb:production-audit 和 kb:production-upgrade-plan。"
+      ]
+    },
+    {
+      "batch_id": "explainer_video_minimum_pack",
+      "phase": "Phase 6",
+      "label": "知识讲解视频最小素材包补齐",
+      "goal": "补齐知识讲解视频生产所需的最小字段。",
+      "rationale": "只补目标片型需要的字段，比泛泛扩库更快提升生成质量。",
+      "entry_count": 50,
+      "actions": [
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--岳州扇-洞庭湖畔的文人雅扇",
+          "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
+          "province": "湖南",
+          "type": "传统工艺",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--常德会战与常德细菌战-湘北战场的血与疫",
+          "entry_name": "常德会战与常德细菌战——湘北战场的血与疫",
+          "province": "湖南",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--文夕大火-千年古城的自毁之殇",
+          "entry_name": "文夕大火——千年古城的自毁之殇",
+          "province": "湖南",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--左权-太行山上的最高殉国将领",
+          "entry_name": "左权——太行山上的最高殉国将领",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--陈赓-黄埔出身的传奇大将",
+          "entry_name": "陈赓——黄埔出身的传奇大将",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 91,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--曾国藩-湘军创立者与洋务先驱",
+          "entry_name": "曾国藩——湘军创立者与洋务先驱",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--平江起义-从旧军队内部爆发的革命枪响",
+          "entry_name": "平江起义——从旧军队内部爆发的革命枪响",
+          "province": "湖南",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--踏虎剪纸-凿刀下的苗族阴阳世界",
+          "entry_name": "踏虎剪纸——凿刀下的苗族阴阳世界",
+          "province": "湖南",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--湘潭龙舞-纸扎龙灯的火光与鼓声",
+          "entry_name": "湘潭龙舞——纸扎龙灯的火光与鼓声",
+          "province": "湖南",
+          "type": "民俗活动",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--汝城-半条被子-什么是共产党的永恒追问",
+          "entry_name": "汝城\"半条被子\"——什么是共产党的永恒追问",
+          "province": "湖南",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--桑植民歌-长征路上的歌声与守望",
+          "entry_name": "桑植民歌——长征路上的歌声与守望",
+          "province": "湖南",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--辛弃疾-飞虎军建军潭州的壮志与词心",
+          "entry_name": "辛弃疾——飞虎军建军潭州的壮志与词心",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--岳麓书院-千年学府弦歌不绝",
+          "entry_name": "岳麓书院——千年学府弦歌不绝",
+          "province": "湖南",
+          "type": "名胜古迹",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--通道转兵与侗族百姓-红军长征的关键转折与地方传说",
+          "entry_name": "通道转兵与侗族百姓——红军长征的关键转折与地方传说",
+          "province": "湖南",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 91,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--杨开慧-骄杨-殉道识字岭",
+          "entry_name": "杨开慧——\"骄杨\"殉道识字岭",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 91,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--洞庭湖君山-传说叠加的洞庭明珠",
+          "entry_name": "洞庭湖君山——传说叠加的洞庭明珠",
+          "province": "湖南",
+          "type": "名胜古迹",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--贺龙-两把菜刀闹革命",
+          "entry_name": "贺龙——两把菜刀闹革命",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--黑龙江--东北抗联-冰天雪地中的十四年抗战",
+          "entry_name": "东北抗联——冰天雪地中的十四年抗战",
+          "province": "黑龙江",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--海南--红色娘子军-琼崖妇女的革命传奇",
+          "entry_name": "红色娘子军——琼崖妇女的革命传奇",
+          "province": "海南",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--辽宁--九一八事变-东北沦陷的开端",
+          "entry_name": "九一八事变——东北沦陷的开端",
+          "province": "辽宁",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--江西--南昌起义-人民军队的第一声枪响",
+          "entry_name": "南昌起义——人民军队的第一声枪响",
+          "province": "江西",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--贵州--四渡赤水-毛泽东军事生涯的-得意之笔",
+          "entry_name": "四渡赤水——毛泽东军事生涯的\"得意之笔\"",
+          "province": "贵州",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--滩头年画-湘西南木版年画的最后守望",
+          "entry_name": "滩头年画——湘西南木版年画的最后守望",
+          "province": "湖南",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--土家族摆手舞-湘西土家的集体仪式",
+          "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+          "province": "湖南",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖北--武昌起义-辛亥革命的第一声枪响",
+          "entry_name": "武昌起义——辛亥革命的第一声枪响",
+          "province": "湖北",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--湘昆-山野昆曲的南岭遗音",
+          "entry_name": "湘昆——山野昆曲的南岭遗音",
+          "province": "湖南",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--新民学会-湖南共产党的前身",
+          "entry_name": "新民学会——湖南共产党的前身",
+          "province": "湖南",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--长沙窑铜官陶瓷烧制技艺-海上丝绸之路的釉下彩开创",
+          "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+          "province": "湖南",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--河南--中原突围-解放战争的序幕",
+          "entry_name": "中原突围——解放战争的序幕",
+          "province": "河南",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 73,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--常德丝弦-湘北水乡的扬琴说唱",
+          "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+          "province": "湖南",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--内蒙古--大青山抗日游击根据地-草原上的铁骑兵",
+          "entry_name": "大青山抗日游击根据地——草原上的铁骑兵",
+          "province": "内蒙古",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--青海--红军西路军-悲壮的西征",
+          "entry_name": "红军西路军——悲壮的西征",
+          "province": "青海",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--湖南花鼓戏-湖南人的戏",
+          "entry_name": "湖南花鼓戏——湖南人的戏",
+          "province": "湖南",
+          "type": "地方戏曲",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--汨罗江畔端午习俗-龙舟文化的发源地",
+          "entry_name": "汨罗江畔端午习俗——龙舟文化的发源地",
+          "province": "湖南",
+          "type": "节庆习俗",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--南岳衡山-五岳独秀的儒释道名山",
+          "entry_name": "南岳衡山——五岳独秀的儒释道名山",
+          "province": "湖南",
+          "type": "名胜古迹",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
+          ],
+          "recommended_fields": [
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--任弼时-党的骆驼",
+          "entry_name": "任弼时——\"党的骆驼\"",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--陶侃-长沙公的精进与隐忍",
+          "entry_name": "陶侃——长沙公的精进与隐忍",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--土家哭嫁歌-新娘的眼泪与歌声",
+          "entry_name": "土家哭嫁歌——新娘的眼泪与歌声",
+          "province": "湖南",
+          "type": "民俗活动",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--陕西--西安事变-抗日民族统一战线的转折",
+          "entry_name": "西安事变——抗日民族统一战线的转折",
+          "province": "陕西",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--湘西土家织锦-西兰卡普-穿在身上的土家史诗",
+          "entry_name": "湘西土家织锦——西兰卡普：穿在身上的土家史诗",
+          "province": "湖南",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--湘绣-中国四大名绣之一",
+          "entry_name": "湘绣——中国四大名绣之一",
+          "province": "湖南",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--吉林--杨靖宇-长白山上的抗日孤雄",
+          "entry_name": "杨靖宇——长白山上的抗日孤雄",
+          "province": "吉林",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--江西--于都-长征出发的渡口",
+          "entry_name": "于都——长征出发的渡口",
+          "province": "江西",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--岳阳巴陵戏-洞庭湖畔的古戏曲遗存",
+          "entry_name": "岳阳巴陵戏——洞庭湖畔的古戏曲遗存",
+          "province": "湖南",
+          "type": "地方戏曲",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--浙江--浙东抗日根据地-四明山上的-浙东延安",
+          "entry_name": "浙东抗日根据地——四明山上的\"浙东延安\"",
+          "province": "浙江",
+          "type": "名胜古迹",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--左宗棠-湖南不可一日无之",
+          "entry_name": "左宗棠——湖南不可一日无之",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--凤凰古城-沈从文笔下的边城与苗族文化",
+          "entry_name": "凤凰古城——沈从文笔下的边城与苗族文化",
+          "province": "湖南",
+          "type": "名胜古迹",
+          "priority": "high",
+          "production_card_score": 91,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--红军长征过湖南百姓记忆-普通人与长征的故事",
+          "entry_name": "红军长征过湖南百姓记忆——普通人与长征的故事",
+          "province": "湖南",
+          "type": "地方掌故",
+          "priority": "high",
+          "production_card_score": 91,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--橘子洲-一江碧水映文心",
+          "entry_name": "橘子洲——一江碧水映文心",
+          "province": "湖南",
+          "type": "名胜古迹",
+          "priority": "high",
+          "production_card_score": 91,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
+          ],
+          "recommended_fields": [
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "explainer_video-minimum-pack--湖南--刘少奇-花明楼走出的工人运动领袖与国家主席",
+          "entry_name": "刘少奇——花明楼走出的工人运动领袖与国家主席",
+          "province": "湖南",
+          "type": "历史人物",
+          "priority": "high",
+          "production_card_score": 91,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
           ],
           "safe_auto_apply": "none"
         }
@@ -2971,7 +4408,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3001,7 +4438,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3031,7 +4468,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3091,7 +4528,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3121,7 +4558,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3151,7 +4588,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3181,7 +4618,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3211,7 +4648,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3241,7 +4678,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3271,7 +4708,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3301,7 +4738,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3331,7 +4768,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3361,7 +4798,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3391,7 +4828,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3421,7 +4858,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3451,7 +4888,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3481,7 +4918,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3511,7 +4948,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3541,7 +4978,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3601,7 +5038,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3631,7 +5068,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3661,7 +5098,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3691,7 +5128,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3721,7 +5158,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3751,7 +5188,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3781,7 +5218,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3841,7 +5278,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3871,7 +5308,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3931,7 +5368,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -3961,7 +5398,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4021,7 +5458,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4051,7 +5488,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4141,7 +5578,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4201,7 +5638,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4231,7 +5668,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4261,7 +5698,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4291,7 +5728,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4321,7 +5758,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4351,7 +5788,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4411,7 +5848,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -4486,7 +5923,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4509,7 +5946,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4555,7 +5992,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4578,7 +6015,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4601,7 +6038,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4624,7 +6061,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4647,7 +6084,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4670,7 +6107,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4693,7 +6130,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4716,7 +6153,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4739,7 +6176,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4762,7 +6199,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4785,7 +6222,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4808,7 +6245,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4831,7 +6268,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4877,7 +6314,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4900,7 +6337,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4923,7 +6360,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4946,7 +6383,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4969,7 +6406,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -4992,7 +6429,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -5015,7 +6452,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -5038,7 +6475,7 @@
           "production_card_score": 73,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -5084,7 +6521,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -5130,7 +6567,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -5153,7 +6590,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -5225,6 +6662,19 @@
         "character_props",
         "dialogue_tone",
         "credibility_boundary"
+      ]
+    },
+    {
+      "pack_id": "explainer_knowledge_structure_pack",
+      "label": "讲解知识结构包",
+      "priority": "high",
+      "reason": "知识讲解视频需要核心问题、知识层级、例子、图示字幕和误区边界，适合沉淀成通用结构包。",
+      "seed_fields": [
+        "core_question",
+        "knowledge_outline",
+        "concrete_examples",
+        "diagram_or_caption_plan",
+        "misconception_or_boundary"
       ]
     },
     {

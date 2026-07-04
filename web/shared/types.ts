@@ -903,6 +903,10 @@ export interface ProjectKnowledgeCandidateExportPackage {
 }
 
 export interface ProjectKnowledgeWritebackPatchItem {
+  project_id?: string;
+  project_title?: string;
+  video_type?: VideoType;
+  target_province?: string;
   task_id: string;
   label: string;
   source_entry: string;
@@ -935,12 +939,16 @@ export interface ProjectSupplementTaskListItem {
   project_title: string;
   source_entry: string;
   video_type: VideoType;
+  target_province?: string;
+  suggested_file_path?: string;
   updated_at: string;
   task: KnowledgeSupplementTask;
 }
 
 export interface ProjectSupplementTaskListFilters {
   project_id?: string;
+  video_type?: VideoType;
+  province?: string;
   status?: KnowledgeSupplementTaskStatus;
   stage?: MaterialSufficiencyStage;
   blocking_level?: MaterialBlockingLevel;
@@ -2036,6 +2044,84 @@ export interface GearsExternalCallbackHandoffPackage {
   markdown: string;
 }
 
+export interface GearsExternalCallbackHandoffQueueProject {
+  project_id: string;
+  title: string;
+  storyId: string;
+  updated_at?: string;
+  total_job_count: number;
+  external_ready_count: number;
+  local_acceptance_ready_count: number;
+  pending_external_artifact_count: number;
+  callback_path: string;
+  callback_url: string;
+  preflight_path: string;
+  preflight_url: string;
+  safe_import_path: string;
+  safe_import_url: string;
+  callback_batch_sample: GearsExternalCallbackBatchSample;
+  items: GearsExternalCallbackHandoffItem[];
+}
+
+export interface GearsExternalCallbackHandoffQueuePackage {
+  schema_version: 'gears-external-callback-handoff-queue/v1';
+  exported_at: string;
+  system_preflight_path: string;
+  system_safe_import_path: string;
+  project_count: number;
+  total_job_count: number;
+  external_ready_count: number;
+  local_acceptance_ready_count: number;
+  pending_external_artifact_count: number;
+  projects: GearsExternalCallbackHandoffQueueProject[];
+  callback_batch_sample: GearsExternalCallbackBatchSample;
+  operator_checklist: string[];
+  notes: string[];
+  markdown: string;
+}
+
+export type GearsExternalCallbackBatchImportMode = 'preflight' | 'import';
+
+export interface GearsExternalCallbackBatchUnresolvedItem {
+  index: number;
+  source_project_id?: string;
+  source_unit_id?: string;
+  gears_job_id?: string;
+  event_id?: string;
+  reason: 'missing_project' | 'ambiguous_project';
+  candidate_project_ids?: string[];
+  message: string;
+}
+
+export interface GearsExternalCallbackBatchProjectResult {
+  project_id: string;
+  received_count: number;
+  blocked: boolean;
+  preflight?: GearsExternalCallbackPreflightResult;
+  import_result?: GearsExternalCallbackImportResult;
+  error?: string;
+}
+
+export interface GearsExternalCallbackBatchImportResult {
+  schema_version: 'system-gears-external-callback-batch-import/v1';
+  mode: GearsExternalCallbackBatchImportMode;
+  blocked: boolean;
+  received_count: number;
+  resolved_count: number;
+  unresolved_count: number;
+  project_count: number;
+  ready_to_import_count: number;
+  updated_count: number;
+  failed_count: number;
+  duplicate_count: number;
+  blocking_count: number;
+  warning_count: number;
+  project_results: GearsExternalCallbackBatchProjectResult[];
+  unresolved_callbacks: GearsExternalCallbackBatchUnresolvedItem[];
+  operator_checklist: string[];
+  markdown: string;
+}
+
 export type GearsExternalCallbackPreflightSeverity = 'blocking' | 'warning' | 'info';
 
 export interface GearsExternalCallbackPreflightIssue {
@@ -2718,6 +2804,16 @@ export interface GearsExecutionWorkerEvidenceSignoffReport {
   integrity_passed: boolean;
   health_audit_passed: boolean;
   mvp_status_audit_passed: boolean;
+  system_external_callback_passed: boolean;
+  system_external_callback_ready_to_import_count: number;
+  system_external_callback_updated_count: number;
+  system_external_callback_blocking_count: number;
+  system_external_callback_failed_count: number;
+  system_external_callback_unresolved_count: number;
+  system_external_callback_project_count: number;
+  system_external_output_url_source_ready: boolean;
+  system_external_output_url_configured_from_env: boolean;
+  system_external_output_url_source: string;
   pressure_submitted: boolean;
   gate_counts: {
     passed: number;

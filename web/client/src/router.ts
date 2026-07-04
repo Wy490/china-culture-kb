@@ -24,6 +24,11 @@ export const router = createRouter({
       component: () => import('./views/SupplementTasks.vue'),
     },
     {
+      path: '/knowledge-writeback-queue',
+      name: 'KnowledgeWritebackQueue',
+      component: () => import('./views/KnowledgeWritebackQueue.vue'),
+    },
+    {
       path: '/projects/:projectId',
       name: 'ProjectDetail',
       component: () => import('./views/ProjectDetail.vue'),

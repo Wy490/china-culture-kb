@@ -386,6 +386,7 @@ describe('story-generation-prompt', () => {
   it('auto-selects production material packs by video type only', () => {
     expect(getProductionMaterialPack('heritage_promo')?.label).toBe('非遗/工艺宣传片');
     expect(getProductionMaterialPack('documentary_short')?.label).toBe('微纪录片');
+    expect(getProductionMaterialPack('explainer_video')?.label).toBe('知识讲解视频');
     expect(getProductionMaterialPack('ai_comic_drama')?.label).toBe('AI漫剧');
     expect(getProductionMaterialPack('character_story')).toBeUndefined();
   });

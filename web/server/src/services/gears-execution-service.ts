@@ -2000,13 +2000,13 @@ function getWorkerRealEndpointReadiness(
     smoke_target_ready: smokeTargetReady,
     ...(smokeTargets.story_project ? { story_project_id: smokeTargets.story_project.id } : {}),
     ...(smokeTargets.series_project ? { series_project_id: smokeTargets.series_project.id } : {}),
-    recommended_command: 'GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER=1 GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE=1 bash run-gears-worker-acceptance.sh',
+    recommended_command: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL=https://<real-public-gears-artifact-url> GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER=1 GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE=1 bash run-gears-worker-acceptance.sh',
     next_actions: [
       ...missingEnvNames.map(name => `Configure ${name} before running real GEARS v2 worker acceptance.`),
       ...(!smokeTargets.story_project ? ['Prepare or select a Story Agent story project smoke target.'] : []),
       ...(!smokeTargets.series_project ? ['Prepare or select an AI comic series smoke target.'] : []),
       ...(status === 'ready'
-        ? ['Export run-gears-worker-acceptance.sh and run it with ledger seed plus large pressure enabled.']
+        ? ['Export run-gears-worker-acceptance.sh and run it with ledger seed plus large pressure enabled; set GEARS_SYSTEM_EXTERNAL_OUTPUT_URL only when the worker status response cannot expose a public artifact URL.']
         : ['Do not treat the GEARS v2 end-to-end acceptance slice as signed off until a real evidence directory passes signoff.']),
     ],
   };
@@ -2052,11 +2052,13 @@ function renderPayloadTemplatesCommand(targetDirExpression: string): string {
     '  ["GEARS_SMOKE_STORY_ID", envValue("GEARS_SMOKE_STORY_ID") || envValue("GEARS_SMOKE_PROJECT_ID")],',
     '  ["<GEARS_CALLBACK_BASE_URL>", cleanBaseUrl("GEARS_CALLBACK_BASE_URL")],',
     '  ["<gears_job_id>", envValue("GEARS_SMOKE_JOB_ID")],',
+    '  ["<GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>", envValue("GEARS_SYSTEM_EXTERNAL_OUTPUT_URL")],',
     ']',
     'const files = [',
     '  "gears-submit-smoke.json",',
     '  "gears-project-callback-smoke.json",',
     '  "gears-series-callback-smoke.json",',
+    '  "gears-system-external-callback-smoke.json",',
     '  "gears-live-smoke.json",',
     ']',
     'for (const filename of files) {',
@@ -2069,6 +2071,38 @@ function renderPayloadTemplatesCommand(targetDirExpression: string): string {
     '  }',
     '  fs.writeFileSync(filePath, text)',
     '}',
+    'const systemExternalFile = path.join(dir, "gears-system-external-callback-smoke.json")',
+    'const sourceFile = path.join(dir, "story-agent-system-external-output-url-source.json")',
+    'function extractOutputUrl(root) {',
+    '  const callbacks = Array.isArray(root?.callbacks) ? root.callbacks : []',
+    '  const first = callbacks.find(item => item && typeof item === "object")',
+    '  const value = first?.outputUrl || first?.output_url || first?.videoUrl || first?.video_url',
+    '  return typeof value === "string" ? value.trim() : ""',
+    '}',
+    'function isPlaceholderUrl(value) {',
+    '  return !value || value.includes("<GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>") || value.startsWith("<") || value.includes("gears.example") || value.includes("story-agent.example") || value.includes("local.story-agent.invalid")',
+    '}',
+    'let outputUrl = ""',
+    'let parseError = undefined',
+    'try { outputUrl = extractOutputUrl(JSON.parse(fs.readFileSync(systemExternalFile, "utf8"))) }',
+    'catch (error) { parseError = error instanceof Error ? error.message : String(error) }',
+    'const configuredFromEnv = Boolean(envValue("GEARS_SYSTEM_EXTERNAL_OUTPUT_URL"))',
+    'const sourceName = envValue("GEARS_SYSTEM_EXTERNAL_OUTPUT_URL_SOURCE") || (configuredFromEnv ? "env" : "placeholder")',
+    'const placeholder = isPlaceholderUrl(outputUrl)',
+    'const source = {',
+    '  schema_version: "story-agent-system-external-output-url-source/v1",',
+    '  generated_at: new Date().toISOString(),',
+    '  env_var: "GEARS_SYSTEM_EXTERNAL_OUTPUT_URL",',
+    '  configured_from_env: sourceName === "env",',
+    '  discovered_from_worker_response: sourceName === "worker_response",',
+    '  source: sourceName,',
+    '  output_url: outputUrl || undefined,',
+    '  placeholder,',
+    '  ready_for_external_import: !placeholder && /^https?:\\/\\//.test(outputUrl),',
+    '  parse_error: parseError,',
+    '  note: "Final worker evidence signoff requires this to be a real external GEARS/Seedance artifact URL, not local acceptance or a sample URL.",',
+    '}',
+    'fs.writeFileSync(sourceFile, `${JSON.stringify(source, null, 2)}\\n`)',
     'NODE',
   ].join('\n');
 }
@@ -2929,6 +2963,8 @@ function renderStoryAgentCallbackResponseAuditCommand(targetDirExpression: strin
     'const responseFiles = [',
     '  { filename: "story-agent-project-callback-response.json", kind: "project_callback" },',
     '  { filename: "story-agent-project-callback-replay-response.json", kind: "project_callback_replay" },',
+    '  { filename: "story-agent-system-external-callback-preflight-response.json", kind: "system_external_callback_preflight" },',
+    '  { filename: "story-agent-system-external-callback-import-response.json", kind: "system_external_callback_import" },',
     '  { filename: "story-agent-series-callback-response.json", kind: "series_callback" },',
     '  { filename: "story-agent-series-callback-replay-response.json", kind: "series_callback_replay" },',
     '  { filename: "story-agent-live-smoke-response.json", kind: "live_smoke" },',
@@ -2978,6 +3014,7 @@ function renderStoryAgentCallbackResponseAuditCommand(targetDirExpression: strin
     '    parse_ok: true,',
     '    ok: undefined,',
     '    status: undefined,',
+    '    blocked: false,',
     '    received_count: 0,',
     '    updated_count: 0,',
     '    failed_count: 0,',
@@ -3002,6 +3039,7 @@ function renderStoryAgentCallbackResponseAuditCommand(targetDirExpression: strin
     '  if (root && typeof root === "object" && typeof root.ok === "boolean") summary.ok = root.ok',
     '  const body = responseBody(root)',
     '  summary.status = firstString(body?.status, root?.status)',
+    '  summary.blocked = Boolean(body?.blocked ?? root?.blocked)',
     '  summary.received_count = numberValue(body?.received_count ?? body?.receivedCount ?? root?.received_count)',
     '  summary.updated_count = numberValue(body?.updated_count ?? body?.updatedCount ?? root?.updated_count)',
     '  summary.failed_count = numberValue(body?.failed_count ?? body?.failedCount ?? root?.failed_count)',
@@ -3016,6 +3054,7 @@ function renderStoryAgentCallbackResponseAuditCommand(targetDirExpression: strin
     '    if (failureMessage.includes("not found in project ledger") || failureMessage.includes("not found in series ledger") || failureMessage.includes("source_unit_id") && failureMessage.includes("not found")) summary.ledger_match_missing_count += 1',
     '  })',
     '  if (summary.ok === false) summary.contract_warnings.push("Story Agent response ok=false")',
+    '  if (summary.blocked) summary.contract_warnings.push("Story Agent response reports blocked=true")',
     '  if (summary.failed_count > 0) summary.contract_warnings.push("Story Agent response reports failed callback items")',
     '  return summary',
     '}',
@@ -3072,7 +3111,7 @@ function renderStoryAgentCallbackResponseAuditCommand(targetDirExpression: strin
     '    totals.not_found_count += 1',
     '    samplePush(totals.sample_not_found_files, file.filename)',
     '  }',
-    '  if (status === "blocked") {',
+    '  if (status === "blocked" || file.blocked) {',
     '    totals.blocked_count += 1',
     '    samplePush(totals.sample_blocked_files, file.filename)',
     '  }',
@@ -3474,6 +3513,7 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '}',
     'function numberValue(value) { return typeof value === "number" && Number.isFinite(value) ? value : 0 }',
     'function actionsFrom(audit) { return Array.isArray(audit?.recommended_actions) ? audit.recommended_actions : [] }',
+    'function responseBody(root) { return root && typeof root === "object" && root.data && typeof root.data === "object" ? root.data : root }',
     'function action(priority, owner, text, evidence, sampleFiles = []) {',
     '  return { priority, owner, action: text, evidence, sample_files: sampleFiles }',
     '}',
@@ -3538,6 +3578,75 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '    + numberValue(totals.ledger_match_missing_count)',
     '  addGate("story_agent_callback_audit", "Story Agent callback response audit", callbackBlockingCount ? "failed" : "passed", callbackBlockingCount ? "Story Agent callback audit still has writeback blockers." : "Story Agent project/series callback writeback and replay pass the audit.", { totals }, actionsFrom(callbackAudit))',
     '}',
+    'const systemExternalIssues = []',
+    'function inspectSystemExternalCallbackResponse(label, filename, root, expectedMode) {',
+    '  const summary = { filename }',
+    '  if (!root) {',
+    '    systemExternalIssues.push(`${label}_missing`)',
+    '    summary.missing = true',
+    '    return summary',
+    '  }',
+    '  if (root.__parse_error) {',
+    '    systemExternalIssues.push(`${label}_parse_error`)',
+    '    summary.parse_error = root.__parse_error',
+    '    return summary',
+    '  }',
+    '  const data = responseBody(root)',
+    '  summary.ok = Object.prototype.hasOwnProperty.call(root, "ok") ? root.ok === true : true',
+    '  summary.schema_version = data?.schema_version',
+    '  summary.mode = data?.mode',
+    '  summary.blocked = data?.blocked',
+    '  summary.received_count = numberValue(data?.received_count)',
+    '  summary.resolved_count = numberValue(data?.resolved_count)',
+    '  summary.unresolved_count = numberValue(data?.unresolved_count)',
+    '  summary.project_count = numberValue(data?.project_count)',
+    '  summary.ready_to_import_count = numberValue(data?.ready_to_import_count)',
+    '  summary.updated_count = numberValue(data?.updated_count)',
+    '  summary.failed_count = numberValue(data?.failed_count)',
+    '  summary.blocking_count = numberValue(data?.blocking_count)',
+    '  if (!summary.ok) systemExternalIssues.push(`${label}_ok_false`)',
+    '  if (summary.schema_version !== "system-gears-external-callback-batch-import/v1") systemExternalIssues.push(`${label}_schema_version_invalid`)',
+    '  if (summary.mode !== expectedMode) systemExternalIssues.push(`${label}_mode_invalid`)',
+    '  if (summary.blocked !== false) systemExternalIssues.push(`${label}_blocked`)',
+    '  if (summary.unresolved_count > 0) systemExternalIssues.push(`${label}_unresolved_callbacks`)',
+    '  if (summary.blocking_count > 0) systemExternalIssues.push(`${label}_blocking_count`)',
+    '  if (expectedMode === "preflight" && summary.ready_to_import_count < 1) systemExternalIssues.push("preflight_ready_to_import_count_zero")',
+    '  if (expectedMode === "import" && summary.updated_count < 1) systemExternalIssues.push("import_updated_count_zero")',
+    '  if (expectedMode === "import" && summary.failed_count > 0) systemExternalIssues.push("import_failed_count")',
+    '  return summary',
+    '}',
+    'const systemExternalPreflight = inspectSystemExternalCallbackResponse(',
+    '  "system_external_preflight",',
+    '  "story-agent-system-external-callback-preflight-response.json",',
+    '  readJson("story-agent-system-external-callback-preflight-response.json"),',
+    '  "preflight",',
+    ')',
+    'const systemExternalImport = inspectSystemExternalCallbackResponse(',
+    '  "system_external_import",',
+    '  "story-agent-system-external-callback-import-response.json",',
+    '  readJson("story-agent-system-external-callback-import-response.json"),',
+    '  "import",',
+    ')',
+    'const systemExternalOutputSource = readJson("story-agent-system-external-output-url-source.json")',
+    'if (!systemExternalOutputSource) {',
+    '  systemExternalIssues.push("output_url_source_missing")',
+    '} else if (systemExternalOutputSource.__parse_error) {',
+    '  systemExternalIssues.push("output_url_source_parse_error")',
+    '} else {',
+    '  if (!["env", "worker_response"].includes(systemExternalOutputSource.source)) systemExternalIssues.push("output_url_source_unverified")',
+    '  if (systemExternalOutputSource.ready_for_external_import !== true) systemExternalIssues.push("output_url_not_ready_for_external_import")',
+    '  if (systemExternalOutputSource.placeholder === true) systemExternalIssues.push("output_url_placeholder")',
+    '}',
+    'addGate(',
+    '  "system_external_callback_batch",',
+    '  "Story Agent system external callback batch",',
+    '  systemExternalIssues.length ? "failed" : "passed",',
+    '  systemExternalIssues.length',
+    '    ? "System-level external callback preflight/import has unresolved, blocked, or non-imported callbacks."',
+    '    : "System-level external callback preflight/import wrote real external artifacts through safe import.",',
+    '  { preflight: systemExternalPreflight, import: systemExternalImport, output_source: systemExternalOutputSource, issues: systemExternalIssues },',
+    '  systemExternalIssues.length ? [action("P0", "Story Agent + GEARS v2", "Run system GEARS external callback preflight/import with a real public artifact URL extracted from GEARS worker responses or provided through GEARS_SYSTEM_EXTERNAL_OUTPUT_URL after Story Agent ledger seed succeeds; do not sign off local_acceptance placeholders.", "system_external_callback_batch_blocked", ["story-agent-system-external-output-url-source.json", "story-agent-system-external-callback-preflight-response.json", "story-agent-system-external-callback-import-response.json", "gears-system-external-callback-smoke.json"])] : [],',
+    ')',
     'const generatedHealthAudit = readJson("story-agent-generated-health-audit.json")',
     'if (!generatedHealthAudit) {',
     '  addGate("story_agent_generated_health_audit", "Story Agent generated health smoke audit", "failed", "Generated health smoke audit did not run.", { filename: "story-agent-generated-health-audit.json" }, [action("P0", "Story Agent smoke env", "Run generated health before/after audit before signing off GEARS worker acceptance.", "missing_generated_health_audit", [])])',
@@ -3705,6 +3814,7 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '  if (filename.includes("verdict")) return "verdict"',
     '  if (filename.includes("archive")) return "archive"',
     '  if (filename.includes("response-audit")) return "audit"',
+    '  if (filename.includes("output-url-source")) return "artifact_source"',
     '  if (filename.includes("preflight")) return "preflight"',
     '  if (filename.includes("generated-health")) return "generated_health"',
     '  if (filename.includes("mvp-status")) return "mvp_status"',
@@ -3723,6 +3833,8 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     'const verdict = readJson("gears-worker-acceptance-verdict.json")',
     'const workerAudit = readJson("gears-worker-response-audit.json")',
     'const callbackAudit = readJson("story-agent-callback-response-audit.json")',
+    'const systemExternalPreflight = readJson("story-agent-system-external-callback-preflight-response.json")',
+    'const systemExternalImport = readJson("story-agent-system-external-callback-import-response.json")',
     'const generatedHealthAudit = readJson("story-agent-generated-health-audit.json")',
     'const mvpStatusAudit = readJson("story-agent-mvp-status-audit.json")',
     'const pressureAudit = readJson("gears-large-project-response-audit.json")',
@@ -3745,6 +3857,11 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '  "story-agent-mvp-status-audit.json",',
     '  "story-agent-mvp-status-audit.md",',
     '  "story-agent-callback-id-preflight.json",',
+    '  "gears-system-external-callback-smoke.json",',
+    '  "story-agent-system-external-output-url-source.json",',
+    '  "story-agent-system-external-ledger-seed-selected.json",',
+    '  "story-agent-system-external-callback-preflight-response.json",',
+    '  "story-agent-system-external-callback-import-response.json",',
     '  "story-agent-callback-response-audit.json",',
     '  "story-agent-callback-response-audit.md",',
     '  "gears-large-project-submit-pressure.json",',
@@ -3824,6 +3941,23 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '  audit_summaries: {',
     '    worker: workerAudit?.totals,',
     '    story_agent_callback: callbackAudit?.totals,',
+    '    system_external_callback: {',
+    '      preflight: systemExternalPreflight && !systemExternalPreflight.__parse_error ? {',
+    '        ok: Object.prototype.hasOwnProperty.call(systemExternalPreflight, "ok") ? systemExternalPreflight.ok : undefined,',
+    '        blocked: (systemExternalPreflight.data || systemExternalPreflight)?.blocked,',
+    '        ready_to_import_count: (systemExternalPreflight.data || systemExternalPreflight)?.ready_to_import_count,',
+    '        blocking_count: (systemExternalPreflight.data || systemExternalPreflight)?.blocking_count,',
+    '        unresolved_count: (systemExternalPreflight.data || systemExternalPreflight)?.unresolved_count,',
+    '      } : undefined,',
+    '      import: systemExternalImport && !systemExternalImport.__parse_error ? {',
+    '        ok: Object.prototype.hasOwnProperty.call(systemExternalImport, "ok") ? systemExternalImport.ok : undefined,',
+    '        blocked: (systemExternalImport.data || systemExternalImport)?.blocked,',
+    '        updated_count: (systemExternalImport.data || systemExternalImport)?.updated_count,',
+    '        failed_count: (systemExternalImport.data || systemExternalImport)?.failed_count,',
+    '        blocking_count: (systemExternalImport.data || systemExternalImport)?.blocking_count,',
+    '        unresolved_count: (systemExternalImport.data || systemExternalImport)?.unresolved_count,',
+    '      } : undefined,',
+    '    },',
     '    story_agent_generated_health: generatedHealthAudit && !generatedHealthAudit.__parse_error ? {',
     '      status: generatedHealthAudit.status,',
     '      before_summary: generatedHealthAudit.before?.summary,',
@@ -4152,7 +4286,7 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '  const data = root && typeof root === "object" && root.data && typeof root.data === "object" ? root.data : root',
     '  const parts = []',
     '  if (Object.prototype.hasOwnProperty.call(root, "ok")) parts.push(`ok=${root.ok}`)',
-    '  for (const key of ["status", "readiness_status", "schema_version", "command_count", "payload_count", "acceptance_passed", "strict_exit_code", "signoff_ready", "integrity_passed"]) {',
+    '  for (const key of ["status", "readiness_status", "schema_version", "command_count", "payload_count", "acceptance_passed", "strict_exit_code", "signoff_ready", "integrity_passed", "system_external_callback_passed", "system_external_callback_ready_to_import_count", "system_external_callback_updated_count"]) {',
     '    if (data && data[key] !== undefined) parts.push(`${key}=${data[key]}`)',
     '  }',
     '  const totals = data?.totals || root?.totals',
@@ -4439,6 +4573,12 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '    "$EVIDENCE_DIR/story-agent-project-ledger-seed-selected.json" \\',
     '    "project"',
     '  print_json_summary "$EVIDENCE_DIR/story-agent-project-ledger-seed-selected.json" "Story Agent project ledger seed selected"',
+    '  patch_callback_payload_from_story_agent_submit \\',
+    '    "$project_seed_response" \\',
+    '    "$EVIDENCE_DIR/gears-system-external-callback-smoke.json" \\',
+    '    "$EVIDENCE_DIR/story-agent-system-external-ledger-seed-selected.json" \\',
+    '    "system_external"',
+    '  print_json_summary "$EVIDENCE_DIR/story-agent-system-external-ledger-seed-selected.json" "Story Agent system external ledger seed selected"',
     '',
     '  series_seed_body="$EVIDENCE_DIR/story-agent-series-gears-submit-seed.json"',
     '  series_seed_response="$EVIDENCE_DIR/story-agent-series-gears-submit-seed-response.json"',
@@ -4517,6 +4657,110 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '    echo "MVP status after fetch failed; copied before snapshot for audit continuity." | tee "$EVIDENCE_DIR/story-agent-mvp-status-after-fetch-failed.txt"',
     '  fi',
     '  print_json_summary "$EVIDENCE_DIR/story-agent-mvp-status-after.json" "Post-run Story Agent MVP status"',
+    '}',
+    '',
+    'extract_gears_system_external_output_url_from_worker_responses() {',
+    '  if ! is_placeholder "${GEARS_SYSTEM_EXTERNAL_OUTPUT_URL:-}"; then',
+    '    export GEARS_SYSTEM_EXTERNAL_OUTPUT_URL_SOURCE="${GEARS_SYSTEM_EXTERNAL_OUTPUT_URL_SOURCE:-env}"',
+    '    printf "%s\\n" "$GEARS_SYSTEM_EXTERNAL_OUTPUT_URL" > "$EVIDENCE_DIR/story-agent-system-external-output-url.txt"',
+    '    return 0',
+    '  fi',
+    '  if ! command -v node >/dev/null 2>&1; then',
+    '    echo "Skipping system external output URL auto-extract: node is not installed." | tee "$EVIDENCE_DIR/story-agent-system-external-output-url-node-missing.txt"',
+    '    return 0',
+    '  fi',
+    '  node - "$EVIDENCE_DIR" <<\'NODE\'',
+    'const fs = require("fs")',
+    'const path = require("path")',
+    'const dir = process.argv[2]',
+    'const outputFile = path.join(dir, "story-agent-system-external-output-url.txt")',
+    'const summaryFile = path.join(dir, "story-agent-system-external-output-url-extract.json")',
+    'const urlFields = new Set(["outputurl", "output_url", "videourl", "video_url", "artifacturl", "artifact_url", "mediaurl", "media_url", "fileurl", "file_url", "downloadurl", "download_url", "resulturl", "result_url", "url"])',
+    'const artifactTokens = /(artifact|artifacts|output|outputs|file|files|media|asset|assets|result|results|video|videos)/i',
+    'function isObject(value) { return value && typeof value === "object" && !Array.isArray(value) }',
+    'function normalizeKey(key) { return String(key || "").replace(/[-_]/g, "").toLowerCase() }',
+    'function isPublicArtifactUrl(value) {',
+    '  if (typeof value !== "string") return false',
+    '  const trimmed = value.trim()',
+    '  if (!/^https?:\\/\\//i.test(trimmed)) return false',
+    '  if (trimmed.includes("<") || trimmed.includes(">")) return false',
+    '  try {',
+    '    const url = new URL(trimmed)',
+    '    const host = url.hostname.toLowerCase()',
+    '    if (!host || host === "localhost" || host === "127.0.0.1" || host === "::1") return false',
+    '    if (/^(10|127)\\./.test(host) || /^192\\.168\\./.test(host) || /^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(host)) return false',
+    '    if (host.includes("gears.example") || host.includes("story-agent.example") || host.includes("local.story-agent.invalid")) return false',
+    '    return true',
+    '  } catch {',
+    '    return false',
+    '  }',
+    '}',
+    'function fileCandidates() {',
+    '  const files = []',
+    '  for (const filename of fs.readdirSync(dir)) {',
+    '    if (!filename.endsWith(".json")) continue',
+    '    if (filename === "gears-submit-response.json" || /^gears-status-response-.*\\.json$/.test(filename)) files.push(filename)',
+    '  }',
+    '  return files.sort((left, right) => {',
+    '    const leftStatus = left.startsWith("gears-status-response-") ? 0 : 1',
+    '    const rightStatus = right.startsWith("gears-status-response-") ? 0 : 1',
+    '    return leftStatus - rightStatus || left.localeCompare(right)',
+    '  })',
+    '}',
+    'function collectUrls(root, filename) {',
+    '  const urls = []',
+    '  const queue = [{ value: root, pathParts: [] }]',
+    '  const seen = new Set()',
+    '  while (queue.length) {',
+    '    const current = queue.shift()',
+    '    const value = current.value',
+    '    if (!value || typeof value !== "object") continue',
+    '    if (seen.has(value)) continue',
+    '    seen.add(value)',
+    '    if (Array.isArray(value)) {',
+    '      value.forEach((item, index) => queue.push({ value: item, pathParts: [...current.pathParts, String(index)] }))',
+    '      continue',
+    '    }',
+    '    for (const [key, child] of Object.entries(value)) {',
+    '      const nextPath = [...current.pathParts, key]',
+    '      const normalized = normalizeKey(key)',
+    '      const pathText = nextPath.join(".")',
+    '      const pathLooksArtifact = artifactTokens.test(pathText)',
+    '      if (typeof child === "string" && isPublicArtifactUrl(child) && (urlFields.has(normalized) || (normalized === "url" && pathLooksArtifact))) {',
+    '        urls.push({ url: child.trim(), filename, path: pathText, score: pathLooksArtifact ? 2 : 1 })',
+    '      }',
+    '      if (child && typeof child === "object") queue.push({ value: child, pathParts: nextPath })',
+    '    }',
+    '  }',
+    '  return urls',
+    '}',
+    'const candidates = []',
+    'for (const filename of fileCandidates()) {',
+    '  try { candidates.push(...collectUrls(JSON.parse(fs.readFileSync(path.join(dir, filename), "utf8")), filename)) }',
+    '  catch (error) { candidates.push({ filename, parse_error: error instanceof Error ? error.message : String(error), score: 0 }) }',
+    '}',
+    'const urlCandidates = candidates.filter(item => item.url)',
+    'const selected = urlCandidates.sort((left, right) => right.score - left.score || left.filename.localeCompare(right.filename))[0]',
+    'const summary = {',
+    '  schema_version: "story-agent-system-external-output-url-extract/v1",',
+    '  generated_at: new Date().toISOString(),',
+    '  selected_url: selected?.url,',
+    '  selected_source_file: selected?.filename,',
+    '  selected_path: selected?.path,',
+    '  candidate_count: urlCandidates.length,',
+    '  candidates: urlCandidates.slice(0, 10),',
+    '}',
+    'fs.writeFileSync(summaryFile, `${JSON.stringify(summary, null, 2)}\\n`)',
+    'if (selected?.url) fs.writeFileSync(outputFile, `${selected.url}\\n`)',
+    'NODE',
+    '  if [ -s "$EVIDENCE_DIR/story-agent-system-external-output-url.txt" ]; then',
+    '    GEARS_SYSTEM_EXTERNAL_OUTPUT_URL="$(head -n 1 "$EVIDENCE_DIR/story-agent-system-external-output-url.txt")"',
+    '    export GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
+    '    export GEARS_SYSTEM_EXTERNAL_OUTPUT_URL_SOURCE="worker_response"',
+    '    echo "Extracted system external output URL from GEARS worker response."',
+    '  else',
+    '    echo "Could not auto-extract a public system external artifact URL from GEARS worker responses. Set GEARS_SYSTEM_EXTERNAL_OUTPUT_URL before importing system callback." | tee "$EVIDENCE_DIR/story-agent-system-external-output-url-missing.txt"',
+    '  fi',
     '}',
     '',
     'write_early_exit_audits() {',
@@ -4746,6 +4990,12 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     ...renderWorkerResponseAuditCommand('"$EVIDENCE_DIR"').split('\n'),
     'print_json_summary "$EVIDENCE_DIR/gears-worker-response-audit.json" "GEARS worker response audit"',
     '',
+    'echo "Resolving system external output URL from GEARS worker responses..."',
+    'extract_gears_system_external_output_url_from_worker_responses',
+    'echo "Rendering system external callback payload with resolved artifact URL..."',
+    ...renderPayloadTemplatesCommand('"$EVIDENCE_DIR"').split('\n'),
+    'print_json_summary "$EVIDENCE_DIR/story-agent-system-external-output-url-source.json" "Story Agent system external output URL source"',
+    '',
     'seed_story_agent_gears_ledgers',
     '',
     'echo "Posting single-story callback to Story Agent..."',
@@ -4765,6 +5015,20 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     'else',
     '  echo "Skipping single-story callback replay: GEARS_ACCEPTANCE_REPLAY_CALLBACKS=$GEARS_ACCEPTANCE_REPLAY_CALLBACKS" | tee "$EVIDENCE_DIR/story-agent-project-callback-replay-skip.txt"',
     'fi',
+    '',
+    'echo "Preflighting system-level external callback batch..."',
+    'post_json_capture "Story Agent system external callback preflight" \\',
+    '  "$STORY_AGENT_BASE_URL/api/system/gears-external-callbacks/preflight" \\',
+    '  "$EVIDENCE_DIR/gears-system-external-callback-smoke.json" \\',
+    '  "$EVIDENCE_DIR/story-agent-system-external-callback-preflight-response.json" \\',
+    '  "$GEARS_CALLBACK_SECRET"',
+    '',
+    'echo "Importing system-level external callback batch..."',
+    'post_json_capture "Story Agent system external callback import" \\',
+    '  "$STORY_AGENT_BASE_URL/api/system/gears-external-callbacks/import" \\',
+    '  "$EVIDENCE_DIR/gears-system-external-callback-smoke.json" \\',
+    '  "$EVIDENCE_DIR/story-agent-system-external-callback-import-response.json" \\',
+    '  "$GEARS_CALLBACK_SECRET"',
     '',
     'echo "Posting AI comic series callback to Story Agent..."',
     'post_json_capture "Story Agent series callback" \\',
@@ -4959,6 +5223,21 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
     callback_event_retention_limit: GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
     execution_guard: 'The generated shell script writes this payload by default, but submits it only when GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE=1.',
   };
+  const systemExternalCallbackPayload = {
+    schema_version: 'gears-system-external-callback-smoke/v1',
+    callbacks: [{
+      jobId: '<gears_job_id>',
+      sourceUnitId: 'readiness-shot-1',
+      sourceProjectId: 'GEARS_SMOKE_PROJECT_ID',
+      sourceStoryId: 'GEARS_SMOKE_STORY_ID',
+      jobType: 'seedance_video',
+      taskStatus: 'COMPLETED',
+      progressPercent: 100,
+      eventId: 'gears-system-external-callback-smoke-001',
+      outputUrl: '<GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>',
+      note: 'System-level external callback smoke; set GEARS_SYSTEM_EXTERNAL_OUTPUT_URL to a real public provider artifact URL before live acceptance.',
+    }],
+  };
   const payloads = [
     ...(submitStep?.request_body
       ? [acceptanceKitPayload('submit_smoke', 'GEARS submit smoke request', 'gears-submit-smoke.json', submitStep.request_body)]
@@ -4969,6 +5248,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
     ...(seriesCallbackStep?.request_body
       ? [acceptanceKitPayload('series_callback', 'Story Agent series callback smoke', 'gears-series-callback-smoke.json', seriesCallbackStep.request_body)]
       : []),
+    acceptanceKitPayload('system_external_callback', 'Story Agent system external callback smoke', 'gears-system-external-callback-smoke.json', systemExternalCallbackPayload),
     acceptanceKitPayload('live_smoke', 'Story Agent live smoke request', 'gears-live-smoke.json', liveSmokeBody),
     acceptanceKitPayload('large_project_pressure_plan', 'GEARS large project pressure plan', 'gears-large-project-pressure-plan.json', largeProjectPressurePlan),
   ];
@@ -5002,6 +5282,12 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       required: true,
       value_placeholder: 'https://story-agent.example.test',
       description: 'Public base URL GEARS worker can call back into.',
+    },
+    {
+      name: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
+      required: false,
+      value_placeholder: '<real-public-gears-artifact-url>',
+      description: 'Optional manual override for the real public GEARS/Seedance artifact URL; otherwise the script extracts one from worker submit/status responses.',
     },
     {
       name: 'GEARS_SMOKE_PROJECT_ID',
@@ -5083,6 +5369,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
   const submitPayload = payloads.find(payload => payload.id === 'submit_smoke');
   const projectPayload = payloads.find(payload => payload.id === 'project_callback');
   const seriesPayload = payloads.find(payload => payload.id === 'series_callback');
+  const systemExternalCallbackPayloadFile = payloads.find(payload => payload.id === 'system_external_callback');
   const liveSmokePayload = payloads.find(payload => payload.id === 'live_smoke');
   const pressurePlanPayload = payloads.find(payload => payload.id === 'large_project_pressure_plan');
   const commands: GearsExecutionWorkerAcceptanceCommand[] = [
@@ -5095,6 +5382,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
         'STORY_AGENT_BASE_URL points to a running china-culture-kb server.',
         'GEARS_API_BASE_URL points to a reachable GEARS v2 worker.',
         'GEARS_CALLBACK_BASE_URL is reachable by the GEARS worker.',
+        'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL is optional; when omitted, the script extracts a real public artifact URL from GEARS worker submit/status responses before system external import.',
         'story-agent-smoke-targets.json contains recommended existing project ids when generated projects are available.',
         'GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER=1 uses Story Agent submit APIs to create matching GEARS Job Ledger items before callback smoke.',
         'GEARS_SMOKE_PROJECT_ID and GEARS_SMOKE_SERIES_PROJECT_ID match Story Agent route id formats.',
@@ -5124,7 +5412,8 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
         'gears-submit-smoke.json exists when submit smoke is available.',
         'callback payload files contain source ids and idempotency keys.',
         'GEARS_SMOKE_PROJECT_ID, GEARS_SMOKE_STORY_ID, and GEARS_SMOKE_SERIES_PROJECT_ID are auto-filled from smoke_targets when env values are blank or placeholders.',
-        'payload templates replace GEARS_SMOKE_PROJECT_ID, GEARS_SMOKE_STORY_ID, GEARS_SMOKE_SERIES_PROJECT_ID, <GEARS_CALLBACK_BASE_URL>, and <gears_job_id> from env before posting.',
+        'payload templates replace GEARS_SMOKE_PROJECT_ID, GEARS_SMOKE_STORY_ID, GEARS_SMOKE_SERIES_PROJECT_ID, <GEARS_CALLBACK_BASE_URL>, <GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>, and <gears_job_id> from env before posting.',
+        'story-agent-system-external-output-url-source.json records whether the system external callback artifact URL came from GEARS_SYSTEM_EXTERNAL_OUTPUT_URL or a GEARS worker response.',
         'story-agent-callback-id-preflight.json warns if callback route ids will fail Story Agent validation.',
       ],
     },
@@ -5201,6 +5490,31 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
         'Response ok=true.',
         'received_count is greater than 0.',
         'GEARS Job Ledger item becomes ready and Seedance Shot Ledger receives video/artifact data.',
+      ],
+    }] : []),
+    ...(systemExternalCallbackPayloadFile ? [{
+      id: 'preflight_system_external_callback_batch',
+      label: 'Preflight system external callback batch',
+      phase: 'story_agent_callback' as const,
+      payload_id: systemExternalCallbackPayloadFile.id,
+      command: 'curl -sS -X POST "$STORY_AGENT_BASE_URL/api/system/gears-external-callbacks/preflight" -H "content-type: application/json" -H "authorization: Bearer $GEARS_CALLBACK_SECRET" --data-binary @gears-system-external-callback-smoke.json',
+      expected_assertions: [
+        'Response ok=true.',
+        'schema_version is system-gears-external-callback-batch-import/v1.',
+        'blocked=false before importing real external artifact callbacks.',
+        'ready_to_import_count is greater than 0 when Story Agent project ledger seed succeeded.',
+      ],
+    }, {
+      id: 'import_system_external_callback_batch',
+      label: 'Import system external callback batch',
+      phase: 'story_agent_callback' as const,
+      payload_id: systemExternalCallbackPayloadFile.id,
+      command: 'curl -sS -X POST "$STORY_AGENT_BASE_URL/api/system/gears-external-callbacks/import" -H "content-type: application/json" -H "authorization: Bearer $GEARS_CALLBACK_SECRET" --data-binary @gears-system-external-callback-smoke.json',
+      expected_assertions: [
+        'Response ok=true.',
+        'blocked=false and updated_count is greater than 0.',
+        'System import uses project safe preflight/import logic and does not accept local_acceptance or gears.example placeholder URLs.',
+        'Project readiness external_ready increases and ready_without_external decreases after import.',
       ],
     }] : []),
     ...(seriesPayload ? [{
@@ -5294,7 +5608,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       command: renderWorkerAcceptanceVerdictCommand('"."'),
       expected_assertions: [
         'gears-worker-acceptance-verdict.json and gears-worker-acceptance-verdict.md exist.',
-        'Verdict gates cover required envs, callback id preflight, worker response audit, generated health audit, MVP status audit, Story Agent callback audit, large project pressure audit, and manifest.',
+        'Verdict gates cover required envs, callback id preflight, worker response audit, system external callback batch, generated health audit, MVP status audit, Story Agent callback audit, large project pressure audit, and manifest.',
         'acceptance_passed is true only when all non-skipped gates pass.',
         'When GEARS_ACCEPTANCE_STRICT_AUDIT=1, the generated shell exits non-zero if verdict acceptance_passed=false.',
       ],
@@ -5333,7 +5647,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
         'Response schema_version is gears-execution-worker-evidence-signoff/v1.',
         'run-gears-worker-acceptance.sh saves gears-worker-evidence-signoff.json and gears-worker-evidence-signoff.md after archive/integrity generation.',
         'evidence_dir_source is input when an explicit evidence_dir query is used.',
-        'status is ready only when verdict acceptance_passed, archive signoff_ready, integrity_passed, generated health audit, and MVP status audit all pass.',
+        'status is ready only when verdict acceptance_passed, archive signoff_ready, integrity_passed, system external callback batch, generated health audit, and MVP status audit all pass.',
         'recommended_actions lists remaining GEARS/Story Agent contract fixes when status is attention or blocked.',
       ],
     },
@@ -5362,6 +5676,8 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       'Project callback writes GEARS Job Ledger and single-story production ledger.',
       'Series callback writes GEARS Job Ledger and AI comic production/post-production ledgers.',
       'Duplicate callback replay increments duplicate_count without duplicate artifacts or versions.',
+      'System external callback preflight reports blocked=false before batch import.',
+      'System external callback import uses safe preflight/import and writes real external artifact URLs instead of local_acceptance placeholders.',
       'Story Agent callback id preflight has warning_count=0 before callback smoke is trusted.',
       'Story Agent callback response audit has no ok=false validation/auth blockers.',
       'Story Agent generated health audit has no missing ready target or post-smoke regression.',
@@ -5370,6 +5686,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       'Large project pressure payload is generated for at least 30 episodes and is submitted only when explicitly enabled.',
       'Large project response audit has no source_echo_gap after a real pressure submit.',
       'Final worker acceptance verdict has acceptance_passed=true before a GEARS v2 run is signed off.',
+      'Final worker evidence signoff requires system_external_callback_passed=true with ready_to_import_count>0 and updated_count>0.',
       'Final worker acceptance archive has signoff_ready=true and no missing required attachments before handoff.',
       'Final worker acceptance integrity has integrity_passed=true and no checksum mismatches before handoff.',
       'Final worker evidence signoff snapshot is saved as gears-worker-evidence-signoff.json/.md after archive integrity is evaluated.',
@@ -5809,6 +6126,12 @@ function evidenceObject(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function evidenceApiData(value: unknown): Record<string, unknown> {
+  const root = evidenceObject(value);
+  const data = evidenceObject(root.data);
+  return Object.keys(data).length ? data : root;
+}
+
 function evidenceArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
@@ -5879,6 +6202,12 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- integrity_passed: ${report.integrity_passed}`,
     `- health_audit_passed: ${report.health_audit_passed}`,
     `- mvp_status_audit_passed: ${report.mvp_status_audit_passed}`,
+    `- system_external_callback_passed: ${report.system_external_callback_passed}`,
+    `- system_external_output_url_source: ${report.system_external_output_url_source}`,
+    `- system_external_output_url_source_ready: ${report.system_external_output_url_source_ready}`,
+    `- system_external_output_url_configured_from_env: ${report.system_external_output_url_configured_from_env}`,
+    `- system_external_callback_ready/updated: ${report.system_external_callback_ready_to_import_count}/${report.system_external_callback_updated_count}`,
+    `- system_external_callback_blocking/failed/unresolved: ${report.system_external_callback_blocking_count}/${report.system_external_callback_failed_count}/${report.system_external_callback_unresolved_count}`,
     `- pressure_submitted: ${report.pressure_submitted}`,
     `- gates passed/failed/skipped/total: ${report.gate_counts.passed}/${report.gate_counts.failed}/${report.gate_counts.skipped}/${report.gate_counts.total}`,
     `- failed_gate_ids: ${report.failed_gate_ids.join(', ') || 'none'}`,
@@ -5936,6 +6265,16 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       integrity_passed: false,
       health_audit_passed: false,
       mvp_status_audit_passed: false,
+      system_external_callback_passed: false,
+      system_external_callback_ready_to_import_count: 0,
+      system_external_callback_updated_count: 0,
+      system_external_callback_blocking_count: 0,
+      system_external_callback_failed_count: 0,
+      system_external_callback_unresolved_count: 0,
+      system_external_callback_project_count: 0,
+      system_external_output_url_source_ready: false,
+      system_external_output_url_configured_from_env: false,
+      system_external_output_url_source: 'missing',
       pressure_submitted: false,
       gate_counts: { passed: 0, failed: 1, skipped: 0, total: 1 },
       failed_gate_ids: ['evidence_dir'],
@@ -6001,6 +6340,9 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     integrityRead,
     workerRead,
     callbackRead,
+    systemExternalOutputSourceRead,
+    systemExternalPreflightRead,
+    systemExternalImportRead,
     healthRead,
     mvpRead,
     pressureRead,
@@ -6010,6 +6352,9 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     readEvidenceJson(resolvedDir.evidenceDir, 'gears-worker-acceptance-integrity.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'gears-worker-response-audit.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-callback-response-audit.json'),
+    readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-system-external-output-url-source.json'),
+    readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-system-external-callback-preflight-response.json'),
+    readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-system-external-callback-import-response.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-generated-health-audit.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-mvp-status-audit.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'gears-large-project-response-audit.json'),
@@ -6019,6 +6364,11 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const integrity = integrityRead.data;
   const workerTotals = evidenceObject(workerRead.data?.totals);
   const callbackTotals = evidenceObject(callbackRead.data?.totals);
+  const systemExternalOutputSource = evidenceObject(systemExternalOutputSourceRead.data);
+  const systemExternalPreflightRoot = evidenceObject(systemExternalPreflightRead.data);
+  const systemExternalImportRoot = evidenceObject(systemExternalImportRead.data);
+  const systemExternalPreflight = evidenceApiData(systemExternalPreflightRead.data);
+  const systemExternalImport = evidenceApiData(systemExternalImportRead.data);
   const healthBeforeSummary = evidenceObject(evidenceObject(healthRead.data?.before).summary);
   const healthAfterSummary = evidenceObject(evidenceObject(healthRead.data?.after).summary);
   const healthDeltas = evidenceObject(healthRead.data?.deltas);
@@ -6042,12 +6392,42 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const integrityPassed = evidenceBool(integrity?.integrity_passed);
   const healthAuditPassed = healthRead.data?.status === 'passed';
   const mvpStatusAuditPassed = mvpRead.data?.status === 'passed' || mvpRead.data?.status === 'warning';
+  const systemExternalOutputUrlSourceReady = systemExternalOutputSourceRead.exists
+    && systemExternalOutputSourceRead.parse_ok
+    && evidenceBool(systemExternalOutputSource.ready_for_external_import)
+    && (systemExternalOutputSource.source === 'env' || systemExternalOutputSource.source === 'worker_response')
+    && systemExternalOutputSource.placeholder !== true;
+  const systemExternalOutputUrlSource = typeof systemExternalOutputSource.source === 'string'
+    ? systemExternalOutputSource.source
+    : systemExternalOutputSourceRead.exists
+      ? 'unknown'
+      : 'missing';
+  const systemExternalCallbackPassed = systemExternalPreflightRead.exists
+    && systemExternalPreflightRead.parse_ok
+    && systemExternalImportRead.exists
+    && systemExternalImportRead.parse_ok
+    && systemExternalOutputUrlSourceReady
+    && (!('ok' in systemExternalPreflightRoot) || evidenceBool(systemExternalPreflightRoot.ok))
+    && (!('ok' in systemExternalImportRoot) || evidenceBool(systemExternalImportRoot.ok))
+    && systemExternalPreflight.schema_version === 'system-gears-external-callback-batch-import/v1'
+    && systemExternalImport.schema_version === 'system-gears-external-callback-batch-import/v1'
+    && systemExternalPreflight.mode === 'preflight'
+    && systemExternalImport.mode === 'import'
+    && systemExternalPreflight.blocked === false
+    && systemExternalImport.blocked === false
+    && evidenceNumber(systemExternalPreflight.ready_to_import_count) > 0
+    && evidenceNumber(systemExternalImport.updated_count) > 0
+    && evidenceNumber(systemExternalPreflight.blocking_count) === 0
+    && evidenceNumber(systemExternalImport.blocking_count) === 0
+    && evidenceNumber(systemExternalImport.failed_count) === 0
+    && evidenceNumber(systemExternalPreflight.unresolved_count) === 0
+    && evidenceNumber(systemExternalImport.unresolved_count) === 0;
   const gateCounts = evidenceObject(verdict?.gate_counts);
   const recommendedActions: GearsExecutionWorkerEvidenceSignoffAction[] = [
     ...evidenceActions(verdict?.recommended_actions),
     ...evidenceActions(archive?.recommended_actions),
     ...evidenceActions(integrity?.recommended_actions),
-    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, healthRead, mvpRead, pressureRead]
+    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, systemExternalOutputSourceRead, systemExternalPreflightRead, systemExternalImportRead, healthRead, mvpRead, pressureRead]
       .filter(read => !read.exists || !read.parse_ok)
       .map(read => ({
         priority: 'P0',
@@ -6063,6 +6443,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     && healthRead.exists;
   const status: GearsExecutionAcceptanceStatus = acceptancePassed && signoffReady && integrityPassed && healthAuditPassed
     && mvpStatusAuditPassed
+    && systemExternalCallbackPassed
     ? 'ready'
     : coreEvidenceAvailable
       ? 'attention'
@@ -6079,6 +6460,21 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     integrity_passed: integrityPassed,
     health_audit_passed: healthAuditPassed,
     mvp_status_audit_passed: mvpStatusAuditPassed,
+    system_external_callback_passed: systemExternalCallbackPassed,
+    system_external_callback_ready_to_import_count: evidenceNumber(systemExternalPreflight.ready_to_import_count),
+    system_external_callback_updated_count: evidenceNumber(systemExternalImport.updated_count),
+    system_external_callback_blocking_count: evidenceNumber(systemExternalPreflight.blocking_count)
+      + evidenceNumber(systemExternalImport.blocking_count),
+    system_external_callback_failed_count: evidenceNumber(systemExternalImport.failed_count),
+    system_external_callback_unresolved_count: evidenceNumber(systemExternalPreflight.unresolved_count)
+      + evidenceNumber(systemExternalImport.unresolved_count),
+    system_external_callback_project_count: Math.max(
+      evidenceNumber(systemExternalPreflight.project_count),
+      evidenceNumber(systemExternalImport.project_count),
+    ),
+    system_external_output_url_source_ready: systemExternalOutputUrlSourceReady,
+    system_external_output_url_configured_from_env: evidenceBool(systemExternalOutputSource.configured_from_env),
+    system_external_output_url_source: systemExternalOutputUrlSource,
     pressure_submitted: evidenceBool(verdict?.pressure_submitted) || evidenceBool(pressureTotals.pressure_submitted),
     gate_counts: {
       passed: evidenceNumber(gateCounts.passed),

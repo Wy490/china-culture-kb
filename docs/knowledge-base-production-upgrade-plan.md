@@ -1,14 +1,14 @@
 # 素材库生产化升级计划
 
-生成时间：2026-07-01T16:10:33.247Z
-来源审计时间：2026-07-01T16:10:33.240Z
+生成时间：2026-07-04T14:08:11.739Z
+来源审计时间：2026-07-04T14:08:11.732Z
 
 ## 总览
 
 - 条目总数：169
 - 高优先级条目：167
-- 批次数：8
-- 计划动作数：180
+- 批次数：9
+- 计划动作数：230
 - 可格式化自动处理动作：0
 
 ## 批次
@@ -150,6 +150,42 @@
 - 只记录可来源追溯的信息，戏剧化空间和事实边界分开。
 - 补完后重新运行 kb:production-audit 和 kb:production-upgrade-plan。
 
+### 知识讲解视频最小素材包补齐
+
+- 阶段：Phase 6
+- 批次 ID：explainer_video_minimum_pack
+- 目标：补齐知识讲解视频生产所需的最小字段。
+- 原因：只补目标片型需要的字段，比泛泛扩库更快提升生成质量。
+- 条目数：50
+
+| 条目 | 省份 | 类型 | 分数 | 优先级 | 建议字段 |
+|---|---|---|---:|---|---|
+| 岳州扇——洞庭湖畔的文人雅扇 | 湖南 | 传统工艺 | 73 | high | audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+| 常德会战与常德细菌战——湘北战场的血与疫 | 湖南 | 地方掌故 | 82 | high | core_question、audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、recap_sentence |
+| 文夕大火——千年古城的自毁之殇 | 湖南 | 地方掌故 | 82 | high | core_question、audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、recap_sentence |
+| 左权——太行山上的最高殉国将领 | 湖南 | 历史人物 | 82 | high | audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+| 陈赓——黄埔出身的传奇大将 | 湖南 | 历史人物 | 91 | high | core_question、audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+| 曾国藩——湘军创立者与洋务先驱 | 湖南 | 历史人物 | 73 | high | audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+| 平江起义——从旧军队内部爆发的革命枪响 | 湖南 | 地方掌故 | 73 | high | audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+| 踏虎剪纸——凿刀下的苗族阴阳世界 | 湖南 | 非遗 | 73 | high | audience_level、argument_points、concept_definitions、knowledge_steps、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+| 湘潭龙舞——纸扎龙灯的火光与鼓声 | 湖南 | 民俗活动 | 73 | high | audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+| 汝城"半条被子"——什么是共产党的永恒追问 | 湖南 | 地方掌故 | 82 | high | audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+| 桑植民歌——长征路上的歌声与守望 | 湖南 | 非遗 | 82 | high | core_question、audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、analogy_or_visual_metaphor、misconception_or_boundary、recap_sentence |
+| 辛弃疾——飞虎军建军潭州的壮志与词心 | 湖南 | 历史人物 | 82 | high | core_question、audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、diagram_or_caption_plan、recap_sentence |
+| 岳麓书院——千年学府弦歌不绝 | 湖南 | 名胜古迹 | 82 | high | core_question、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、recap_sentence |
+| 通道转兵与侗族百姓——红军长征的关键转折与地方传说 | 湖南 | 地方掌故 | 91 | high | audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、recap_sentence |
+| 杨开慧——"骄杨"殉道识字岭 | 湖南 | 历史人物 | 91 | high | core_question、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、recap_sentence |
+| 洞庭湖君山——传说叠加的洞庭明珠 | 湖南 | 名胜古迹 | 100 | high | core_question、audience_level、argument_points、knowledge_outline、concept_definitions、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、recap_sentence |
+| 贺龙——两把菜刀闹革命 | 湖南 | 历史人物 | 100 | high | audience_level、argument_points、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、analogy_or_visual_metaphor、diagram_or_caption_plan、recap_sentence |
+| 东北抗联——冰天雪地中的十四年抗战 | 黑龙江 | 地方掌故 | 73 | high | audience_level、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+| 红色娘子军——琼崖妇女的革命传奇 | 海南 | 地方掌故 | 73 | high | core_question、audience_level、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、diagram_or_caption_plan、recap_sentence |
+| 九一八事变——东北沦陷的开端 | 辽宁 | 地方掌故 | 73 | high | audience_level、knowledge_outline、concept_definitions、knowledge_steps、concrete_examples、diagram_or_caption_plan、misconception_or_boundary、recap_sentence |
+
+验收标准：
+- 补齐当前片型 required_fields 中最影响生成的字段。
+- 只记录可来源追溯的信息，戏剧化空间和事实边界分开。
+- 补完后重新运行 kb:production-audit 和 kb:production-upgrade-plan。
+
 ### AI漫剧最小素材包补齐
 
 - 阶段：Phase 6
@@ -230,6 +266,7 @@
 | 纪录片来源包 | high | 微纪录条目普遍需要现实地点、来源提示、再现边界和 B-roll 计划。 | real_world_site_or_object、source_quotes_or_source_cues、reconstruction_boundary、b_roll_plan |
 | AI漫剧分镜包 | high | AI漫剧高频缺冲突、对白、表情节拍、关键帧和连续性验收。 | episode_hook、dialogue_bubbles、emotion_beats、reference_images_or_keyframes、multi_shot_continuity |
 | 朝代服饰与器物包 | medium | 历史人物、名胜古迹和传说条目常缺时代、服饰、称谓和器物口径。 | era、character_clothing、character_props、dialogue_tone、credibility_boundary |
+| 讲解知识结构包 | high | 知识讲解视频需要核心问题、知识层级、例子、图示字幕和误区边界，适合沉淀成通用结构包。 | core_question、knowledge_outline、concrete_examples、diagram_or_caption_plan、misconception_or_boundary |
 | 短视频钩子包 | medium | 短视频和漫剧需要前三秒钩子、反转、问题和追看机制。 | opening_hook、conflict_question、reversal、ending_hook |
 | 宣讲/培训结构包 | medium | 讲解和培训片需要学习目标、步骤、例子、复盘和练习。 | learning_goal、knowledge_outline、steps、examples、recap |
 

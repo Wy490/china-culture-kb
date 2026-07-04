@@ -83,6 +83,7 @@ describe('auditProductionMaterials', () => {
     expect(report.entries[0].missing_production_fields).toContain('forbidden_expressions');
     expect(report.entries[0].related_location_count).toBe(1);
     expect(report.entries[0].type_template_audits.some(item => item.video_type === 'heritage_promo' && item.recommended)).toBe(true);
+    expect(report.entries[0].type_template_audits.some(item => item.video_type === 'explainer_video' && item.recommended)).toBe(true);
     expect(report.markdown).toContain('素材库生产化审计报告');
   });
 });

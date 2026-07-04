@@ -1,7 +1,7 @@
 {
   "schema_version": "video-type-material-supplement-packs/v1",
-  "updated_at": "2026-06-27",
-  "purpose": "Define production-ready material supplement templates and high-quality sample entries for the first three stable output types: heritage_promo, documentary_short, and ai_comic_drama.",
+  "updated_at": "2026-07-04",
+  "purpose": "Define production-ready material supplement templates and high-quality sample entries for stable output types: heritage_promo, documentary_short, explainer_video, and ai_comic_drama.",
   "source_observations": [
     {
       "source_id": "bilibili-BV1xuVC6AEbg",
@@ -152,6 +152,12 @@
           "modern_connection",
           "production_risks"
         ],
+        "prompt_layers": [
+          "事实边界：项目级别、来源入口、传承人/社区身份和不可夸大事项。",
+          "流程资产：材料、工具、工序、手部动作、声音质感和成品变化。",
+          "人物空间：传承人、学徒、工坊、展馆、传习所或社区参与关系。",
+          "镜头抓手：微距手部、材料纹理、全景空间、成品对照和当代使用场景。"
+        ],
         "minimum_viable_story_gate": [
           "有明确工艺或仪式主体",
           "有官方目录、专题、影音资源或可核验来源入口",
@@ -293,6 +299,12 @@
           "ambient_sound",
           "what_must_not_be_claimed"
         ],
+        "prompt_layers": [
+          "现实入口：今天可见的地点、实物、展陈、声音或仪式。",
+          "来源结构：权威来源、二手解释、时间线和仍待核实事项。",
+          "影像组织：采访片段、旁白段落、B-roll、档案材料和再现画面分层。",
+          "事实边界：确证事实、传说、推测、复原陈设和影视化再现必须分清。"
+        ],
         "minimum_viable_story_gate": [
           "有一个当下可见地点/实物/声音入口",
           "有一个核心问题",
@@ -410,6 +422,153 @@
           "must_collect": ["炎帝传说来源层级", "陵区历史资料", "祭祀流程", "当代活动组织方资料"],
           "field_assets": ["陵区轴线", "祭祀礼器", "人群队列", "山林环境声"],
           "risk_boundary": "神农尝百草等传说不能写成确证历史。"
+        }
+      ]
+    },
+    {
+      "video_type": "explainer_video",
+      "label": "知识讲解视频",
+      "goal": "把文化条目转成一个清晰问题、一套知识层级、可视化例子、来源边界和字幕图示计划，适合主持讲述、图文示意或轻动画讲解。",
+      "material_template": {
+        "required_fields": [
+          "core_question",
+          "audience_level",
+          "argument_points",
+          "knowledge_outline",
+          "concept_definitions",
+          "knowledge_steps",
+          "concrete_examples",
+          "analogy_or_visual_metaphor",
+          "diagram_or_caption_plan",
+          "source_cues",
+          "misconception_or_boundary",
+          "recap_sentence"
+        ],
+        "prompt_layers": [
+          "问题入口：用一个观众能理解的问题打开，不直接堆结论。",
+          "知识层级：概念定义、步骤脉络、例子对比和来源线索分开。",
+          "视觉辅助：图示、字幕关键词、时间线、地图、流程图或类比画面。",
+          "理解闭环：误区纠正、事实边界和一句总结记忆点。"
+        ],
+        "minimum_viable_story_gate": [
+          "能用一个问题说清观众为什么要看",
+          "受众层级明确，知道是入门、进阶还是研学讲解",
+          "至少有一个可视化例子或对比",
+          "知道哪些结论需要来源支撑"
+        ],
+        "script_ready_gate": [
+          "知识大纲拆成3到5层，每层只讲一个要点",
+          "每个要点有定义、例子或反例支撑",
+          "来源线索和不可声称事项已标明",
+          "讲解顺序从问题、概念、例子到总结递进"
+        ],
+        "production_ready_gate": [
+          "图示、字幕关键词、主持人口播和B-roll/动画辅助分开列明",
+          "抽象概念有类比、流程图、时间线或空间示意",
+          "误区、传说层、待核事实和确证事实不混写",
+          "结尾有一句可记住的复盘句或延伸问题"
+        ],
+        "supplement_questions": [
+          "观众看完要解决的核心问题是什么？",
+          "目标受众是零基础游客、学生、研学团、馆内观众还是专业入门者？",
+          "这个知识点可以拆成哪3到5个层级？",
+          "每个层级分别需要定义、步骤、例子还是对比？",
+          "哪些内容来自可靠来源，哪些只是传说、推测或讲解类比？",
+          "最适合做字幕关键词、时间线、地图、剖面图或流程图的内容是什么？",
+          "观众最容易误解的说法是什么？应该怎么纠正？",
+          "最后一句能被记住的总结是什么？"
+        ]
+      },
+      "sample_entries": [
+        {
+          "sample_id": "explainer-01",
+          "entry_name": "为什么岳阳楼记不是一篇旅游广告",
+          "source_status": "existing_hunan_material_to_explain",
+          "core_question": "《岳阳楼记》为什么能从一座楼讲到公共责任？",
+          "knowledge_outline": ["楼与文的关系", "迁客骚人的情绪对比", "先忧后乐的价值转折", "今天如何理解公共精神"],
+          "visual_plan": ["楼体轴线图", "洞庭湖天气对比", "金句字幕", "古今观看路径"],
+          "risk_boundary": "不能把范仲淹写成亲临岳阳楼现场创作，需标明文本和空间的关系。"
+        },
+        {
+          "sample_id": "explainer-02",
+          "entry_name": "马王堆汉墓能告诉我们什么",
+          "source_status": "existing_hunan_material_to_explain",
+          "core_question": "一座墓葬如何帮助观众理解西汉人的生活、技术和礼制？",
+          "knowledge_outline": ["墓葬结构", "出土文物类别", "生活信息", "考古解释边界"],
+          "visual_plan": ["墓室剖面示意", "文物类别图标", "时间线", "馆方来源字幕"],
+          "risk_boundary": "遗体、墓主身份和文物用途必须按可靠来源，不做猎奇表达。"
+        },
+        {
+          "sample_id": "explainer-03",
+          "entry_name": "非遗里的材料、工具和工序有什么区别",
+          "source_status": "domain_pack_driven_template",
+          "core_question": "为什么补非遗素材不能只写匠心，而要写材料、工具和步骤？",
+          "knowledge_outline": ["材料是起点", "工具决定动作", "工序形成镜头顺序", "传承关系给出人物线"],
+          "visual_plan": ["三栏对比表", "手部动作箭头", "成品前后对照", "禁用夸大提示"],
+          "risk_boundary": "讲解的是生产素材组织方法，不替代具体项目事实。"
+        },
+        {
+          "sample_id": "explainer-04",
+          "entry_name": "屈原、端午和龙舟之间到底是什么关系",
+          "source_status": "legend_and_custom_boundary",
+          "core_question": "如何区分历史人物、民间传说和节俗实践？",
+          "knowledge_outline": ["人物史料层", "投江传说层", "地方节俗层", "当代活动层"],
+          "visual_plan": ["四层关系图", "时间线", "江面与龙舟B-roll", "传说边界字幕"],
+          "risk_boundary": "不能把所有端午习俗都归为单一历史原因。"
+        },
+        {
+          "sample_id": "explainer-05",
+          "entry_name": "一座书院为什么不只是古建筑",
+          "source_status": "existing_or_candidate_site_entry",
+          "core_question": "书院如何同时是建筑、教育制度、祭祀空间和当代研学现场？",
+          "knowledge_outline": ["空间功能", "讲学与藏书", "祭祀与地方记忆", "当代使用"],
+          "visual_plan": ["空间路线图", "门额/讲堂/藏书节点", "功能标签", "古今对照"],
+          "risk_boundary": "历史原貌、现存建筑和展陈复原必须分清。"
+        },
+        {
+          "sample_id": "explainer-06",
+          "entry_name": "为什么说釉下彩要在入窑前决定颜色",
+          "source_status": "heritage_process_to_explainer",
+          "core_question": "釉下彩的关键知识点如何从制坯、绘色、罩釉到烧成一步步讲清？",
+          "knowledge_outline": ["坯体", "颜料", "罩釉", "烧成变化", "成品观感"],
+          "visual_plan": ["流程图", "局部微距", "烧成前后对比", "术语字幕"],
+          "risk_boundary": "温度、年代和工艺称号需来源确认。"
+        },
+        {
+          "sample_id": "explainer-07",
+          "entry_name": "革命旧址讲解为什么要分清现场、路线和纪念",
+          "source_status": "documentary_source_to_explainer",
+          "core_question": "一个历史事件如何通过今天的地点、路线和展陈被理解？",
+          "knowledge_outline": ["事件发生地", "行军或会议路线", "纪念馆展陈", "后世阐释"],
+          "visual_plan": ["地图路线", "旧址节点", "文献/展板B-roll", "事实边界提示"],
+          "risk_boundary": "会议细节、人物对白和具体数据不能无来源戏剧化。"
+        },
+        {
+          "sample_id": "explainer-08",
+          "entry_name": "AI漫剧为什么先测单镜头再做多分镜",
+          "source_status": "ai_comic_workflow_explainer",
+          "core_question": "角色一致性和动作连续性为什么需要分两步验收？",
+          "knowledge_outline": ["单镜头验证外观", "多分镜验证动作", "道具位置连续", "结尾钩子复核"],
+          "visual_plan": ["单镜头/多分镜对照", "角色稳定标签", "动作方向箭头", "验收清单"],
+          "risk_boundary": "这是生产工作流讲解，不把样片方法跨类型写成文化事实。"
+        },
+        {
+          "sample_id": "explainer-09",
+          "entry_name": "神话传说为什么要写真实度边界",
+          "source_status": "folklore_boundary_explainer",
+          "core_question": "传说可以影视化，但为什么不能写成确证史实？",
+          "knowledge_outline": ["传说来源", "文学母题", "地方版本", "影视化空间", "禁用声称"],
+          "visual_plan": ["事实/传说/改编三层图", "版本对比字幕", "水墨意象", "边界提示卡"],
+          "risk_boundary": "灵异情节、神迹和地方附会必须标明口径。"
+        },
+        {
+          "sample_id": "explainer-10",
+          "entry_name": "怎样把文化素材变成生产卡片",
+          "source_status": "production_system_explainer",
+          "core_question": "从文化条目到可拍素材，中间为什么需要生产卡片字段？",
+          "knowledge_outline": ["已确认事实", "待核事实", "人物场景道具", "片型模板", "审稿写回"],
+          "visual_plan": ["流程图", "字段卡片", "候选稿审稿节点", "省份 Markdown 写回边界"],
+          "risk_boundary": "知识库写回必须经过候选稿和审稿流程，不能自动改写省份文件。"
         }
       ]
     },

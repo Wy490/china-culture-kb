@@ -7513,11 +7513,13 @@ export async function exportProjectKnowledgeWritebackPatch(
 }
 
 export async function exportProjectKnowledgeWritebackQueuePatch(
-  filters: Pick<ProjectSupplementTaskListFilters, 'project_id' | 'knowledge_writeback_status'> = {},
+  filters: Pick<ProjectSupplementTaskListFilters, 'project_id' | 'video_type' | 'province' | 'knowledge_writeback_status'> = {},
 ): Promise<ApiResponse<ProjectKnowledgeWritebackPatchPackage>> {
   const exportedAt = new Date().toISOString();
   const tasksResult = await listProjectSupplementTasks({
     project_id: filters.project_id,
+    video_type: filters.video_type,
+    province: filters.province,
     knowledge_writeback_status: filters.knowledge_writeback_status,
   });
   if (!tasksResult.ok || !tasksResult.data) {
@@ -7549,6 +7551,10 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     const target = inferKnowledgeWritebackTarget(detail.current_story);
     const appendMarkdown = buildKnowledgeWritebackAppendMarkdown(detail.current_story, task, exportedAt);
     items.push({
+      project_id: item.project_id,
+      project_title: item.project_title,
+      video_type: item.video_type,
+      target_province: target.province,
       task_id: task.task_id,
       label: task.label,
       source_entry: detail.current_story.source_entry,
@@ -7565,6 +7571,8 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
   const targetFiles = [...new Set(items.map(item => item.suggested_file_path))];
   const projectTitles = [...new Set(tasksResult.data.map(item => item.project_title))];
   const statusText = filters.knowledge_writeback_status ?? 'all';
+  const videoTypeText = filters.video_type ?? 'all';
+  const provinceText = filters.province ?? 'all';
   const prTitle = filters.project_id
     ? `补充 ${projectTitles[0] ?? filters.project_id} 写回队列候选稿`
     : `批量补充 Story Agent 写回队列候选稿`;
@@ -7576,6 +7584,8 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     `## 导出范围`,
     '',
     `- 项目筛选：${filters.project_id ?? '全部项目'}`,
+    `- 片型筛选：${videoTypeText}`,
+    `- 省份筛选：${provinceText}`,
     `- 写回状态：${statusText}`,
     `- 涉及项目：${projectTitles.length}`,
     '',
@@ -7594,6 +7604,8 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     '',
     `- 导出时间：${exportedAt}`,
     `- 项目筛选：${filters.project_id ?? '全部项目'}`,
+    `- 片型筛选：${videoTypeText}`,
+    `- 省份筛选：${provinceText}`,
     `- 写回状态：${statusText}`,
     `- 已通过候选稿：${items.length}`,
     `- 目标文件数：${targetFiles.length}`,
@@ -7613,7 +7625,10 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     ...items.flatMap((item, index) => [
       `### ${index + 1}. ${item.label}`,
       '',
+      `- 项目：${item.project_title || item.project_id || '未记录'}`,
+      `- 成片类型：${item.video_type || '未记录'}`,
       `- 来源条目：${item.source_entry}`,
+      `- 目标省份：${item.target_province || '待确认'}`,
       `- 建议文件：${item.suggested_file_path}`,
       `- 建议位置：${item.suggested_section_heading}`,
       `- 审稿备注：${item.review_note || '未填写'}`,
@@ -8108,8 +8123,11 @@ export async function listProjectSupplementTasks(
   const items: ProjectSupplementTaskListItem[] = [];
   for (const project of projectsResult.data) {
     if (filters.project_id && project.project_id !== filters.project_id) continue;
+    if (filters.video_type && project.video_type !== filters.video_type) continue;
     const detailResult = await getProject(project.project_id);
     if (!detailResult.ok || !detailResult.data) continue;
+    const writebackTarget = inferKnowledgeWritebackTarget(detailResult.data.current_story);
+    if (filters.province && writebackTarget.province !== filters.province) continue;
     for (const task of detailResult.data.current_story.supplement_tasks ?? []) {
       if (filters.status && task.status !== filters.status) continue;
       if (filters.stage && task.stage !== filters.stage) continue;
@@ -8126,6 +8144,8 @@ export async function listProjectSupplementTasks(
         project_title: project.title,
         source_entry: project.source_entry,
         video_type: project.video_type,
+        target_province: writebackTarget.province,
+        suggested_file_path: writebackTarget.filePath,
         updated_at: project.updated_at,
         task,
       });
@@ -10177,7 +10197,7 @@ function buildKnowledgeWritebackDraftMarkdown(
   return lines.join('\n');
 }
 
-function inferKnowledgeWritebackTarget(story: StoryGenerateResult): { filePath: string; sectionHeading: string } {
+function inferKnowledgeWritebackTarget(story: StoryGenerateResult): { filePath: string; sectionHeading: string; province?: string } {
   const entries = [
     ...(story.knowledge_pack?.primary_entries ?? []),
     ...(story.knowledge_pack?.supporting_entries ?? []),
@@ -10185,6 +10205,7 @@ function inferKnowledgeWritebackTarget(story: StoryGenerateResult): { filePath: 
   const matched = entries.find(entry => entry.entry_name === story.source_entry) ?? entries[0];
   const province = matched?.province?.trim();
   return {
+    province: province || undefined,
     filePath: province ? `data/provinces/${province}.md` : 'data/provinces/待确认.md',
     sectionHeading: story.source_entry,
   };

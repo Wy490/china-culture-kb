@@ -1,7 +1,7 @@
 {
   "domain_id": "china_culture",
-  "version": "1.0.0",
-  "description": "中国传统文化故事生成的可编辑领域知识包。用于自动补足时代设定、地域背景、志异母题和 GEARS 资产边界。",
+  "version": "1.1.0",
+  "description": "中国传统文化故事生成的可编辑领域知识包。用于自动补足时代设定、地域背景、志异母题、生产素材模板和 GEARS/Seedance 资产边界。",
   "entries": [
     {
       "entry_name": "宋代士人设定包——服饰器物与称谓",
@@ -115,6 +115,61 @@
       "keywords": ["AI漫剧", "提示词分析", "基础设定", "氛围画质", "画面内容", "单镜头", "多分镜", "角色稳定", "表情", "钩子"],
       "asset_usage": ["plot_structure", "dialogue_tone", "visual_style", "character_arc", "gears_delivery"],
       "trigger_words": ["AI漫剧", "ai_comic_drama", "漫画分镜", "提示词", "单镜头", "多分镜", "结尾钩子", "表情", "对白", "小云雀", "丧尸清道夫"]
+    },
+    {
+      "entry_name": "非遗流程生产包——材料工具、工序动作与授权边界",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack",
+      "type": "Domain Pack",
+      "region": "通用",
+      "summary": "用于非遗流程类条目的生产补库：把项目拆成材料、工具、流程步骤、手部动作、声音纹理、传承关系、当代困境和授权边界。该包只提供采集结构，不把任何具体项目称号、年代或传承人身份写成事实。",
+      "keywords": ["非遗流程包", "材料", "工具", "工序", "手部动作", "传承关系", "授权边界", "heritage_promo"],
+      "asset_usage": ["plot_structure", "scene_props", "visual_style", "source_grounding", "credibility_boundary"],
+      "trigger_words": ["非遗流程包", "heritage_process_pack", "非遗", "传统工艺", "材料", "工具", "工序", "传承人", "传习所", "授权"]
+    },
+    {
+      "entry_name": "纪录片来源包——现实现场、来源线索与再现边界",
+      "domain": "source_pack",
+      "role": "source_pack",
+      "type": "Domain Pack",
+      "region": "通用",
+      "summary": "用于微纪录和历史讲解的来源组织：优先列当下可见现场、文物或展陈，再补来源线索、时间线、采访角色、B-roll计划和再现边界。该包不能替代具体文献核验，未知信息只能进入待核或再现说明。",
+      "keywords": ["纪录片来源包", "现实现场", "来源线索", "时间线", "采访角色", "B-roll", "再现边界"],
+      "asset_usage": ["source_grounding", "credibility_boundary", "scene_space", "scene_props", "gears_delivery"],
+      "trigger_words": ["纪录片来源包", "documentary_source_pack", "documentary_short", "微纪录", "现实现场", "展陈", "旧址", "B-roll", "再现边界", "采访"]
+    },
+    {
+      "entry_name": "AI漫剧分镜包——关键帧、表情节拍与连续性验收",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack",
+      "type": "Domain Pack",
+      "region": "通用",
+      "summary": "用于AI漫剧分镜补库：每集先定第一格钩子、主角目标、对手压力、关系碰撞和结尾钩子，再列对白气泡、表情节拍、参考图或关键帧、单镜头测试、多分镜连续性和转场计划。该包只约束分镜生产，不把爆款样片方法跨类型套用为文化事实。",
+      "keywords": ["AI漫剧分镜包", "第一格钩子", "对白气泡", "表情节拍", "关键帧", "单镜头测试", "多分镜连续性"],
+      "asset_usage": ["plot_structure", "dialogue_tone", "visual_style", "character_arc", "gears_delivery"],
+      "trigger_words": ["AI漫剧分镜包", "ai_comic_storyboard_pack", "ai_comic_drama", "漫画分镜", "关键帧", "表情节拍", "对白气泡", "连续性验收", "Seedance"]
+    },
+    {
+      "entry_name": "朝代服饰与器物包——时代称谓、服装道具和事实边界",
+      "domain": "era_setting",
+      "role": "setting_pack",
+      "type": "Domain Pack",
+      "region": "通用",
+      "summary": "用于历史人物、传说改编和古代空间讲解：先确认朝代或时代层，再给出服饰轮廓、称谓口径、随身器物、场景陈设和禁用现代物件。该包提供通用边界，具体服饰器物名称必须回到条目来源或专题资料核实。",
+      "keywords": ["朝代服饰", "器物", "称谓", "服装", "随身道具", "场景陈设", "事实边界"],
+      "asset_usage": ["character_clothing", "character_props", "scene_props", "dialogue_tone", "credibility_boundary"],
+      "trigger_words": ["朝代服饰与器物包", "era_and_costume_pack", "唐", "宋", "明", "清", "民国", "服饰", "器物", "称谓", "现代物件"]
+    },
+    {
+      "entry_name": "讲解知识结构包——核心问题、层级例子与图示字幕",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack",
+      "type": "Domain Pack",
+      "region": "通用",
+      "summary": "用于知识讲解视频补素材：把观众问题、受众层级、概念定义、知识大纲、步骤、例子、类比、图示字幕、来源线索、误区边界和总结记忆句拆开。该包只提供讲解结构，不新增未经来源支持的文化事实。",
+      "keywords": ["知识讲解", "核心问题", "知识大纲", "概念定义", "例子", "图示字幕", "误区边界"],
+      "asset_usage": ["plot_structure", "source_grounding", "visual_style", "credibility_boundary"],
+      "trigger_words": ["讲解知识结构包", "explainer_knowledge_structure_pack", "explainer_video", "知识讲解", "核心问题", "知识大纲", "图示", "字幕", "误区"]
     }
   ]
 }
