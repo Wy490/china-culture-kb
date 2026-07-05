@@ -9541,6 +9541,11 @@ const PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS = new Set([
   'emotional_resolution',
   'parent_teacher_note',
   'core_question',
+  'audience_level',
+  'argument_points',
+  'knowledge_outline',
+  'concept_definitions',
+  'knowledge_steps',
   'opening_hook',
   'share_trigger',
   'beat_interval',
@@ -9561,6 +9566,8 @@ const PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS = new Set([
   'source_cues',
   'misconception_or_boundary',
   'forbidden_claims',
+  'analogy_or_visual_metaphor',
+  'recap_sentence',
 ]);
 
 function projectProductionMaterialDraftableTasks(
@@ -9604,6 +9611,11 @@ function draftProductionMaterialFieldValue(story: StoryGenerateResult, fieldId: 
   if (fieldId === 'emotional_resolution') return draftEmotionalResolution(story);
   if (fieldId === 'parent_teacher_note') return draftParentTeacherNote(story);
   if (fieldId === 'core_question') return draftCoreQuestion(story);
+  if (fieldId === 'audience_level') return draftAudienceLevel(story);
+  if (fieldId === 'argument_points') return draftArgumentPoints(story);
+  if (fieldId === 'knowledge_outline') return draftKnowledgeOutline(story);
+  if (fieldId === 'concept_definitions') return draftConceptDefinitions(story);
+  if (fieldId === 'knowledge_steps') return draftKnowledgeSteps(story);
   if (fieldId === 'opening_hook') return draftOpeningHook(story);
   if (fieldId === 'share_trigger') return draftShareTrigger(story);
   if (fieldId === 'beat_interval') return draftBeatInterval(story);
@@ -9624,6 +9636,8 @@ function draftProductionMaterialFieldValue(story: StoryGenerateResult, fieldId: 
   if (fieldId === 'source_cues') return draftSourceCues(story);
   if (fieldId === 'misconception_or_boundary') return draftMisconceptionOrBoundary(story);
   if (fieldId === 'forbidden_claims') return draftForbiddenClaims(story);
+  if (fieldId === 'analogy_or_visual_metaphor') return draftAnalogyOrVisualMetaphor(story);
+  if (fieldId === 'recap_sentence') return draftRecapSentence(story);
   return '';
 }
 
@@ -9786,6 +9800,65 @@ function draftCoreQuestion(story: StoryGenerateResult): string {
   ]);
 }
 
+function draftAudienceLevel(story: StoryGenerateResult): string {
+  const audience = story.target_audience || '零基础文化入门观众/馆内观众/研学团';
+  return compactDraftLines([
+    `受众层级：草拟为 ${audience}；默认先给背景、定义和可视化例子，再进入延伸信息。`,
+    `理解门槛：不预设专业史学、工艺或民俗知识，术语需要先解释，再用地点、道具或动作举例。`,
+  ]);
+}
+
+function draftArgumentPoints(story: StoryGenerateResult): string {
+  const points = story.argument_points?.length
+    ? story.argument_points
+    : story.scene_breakdown
+      .map(scene => scene.dramatic_function || scene.key_action || scene.title)
+      .filter(Boolean)
+      .slice(0, 5);
+  return compactDraftLines([
+    `讲解论点：围绕核心问题拆成 3-5 个递进观点，每个观点只回答一个小问题。`,
+    ...points.map((point, index) => `论点 ${index + 1}：${shortText(point, 120)}`),
+    `论点边界：需要来源支持的结论单独标注，不用类比或分镜效果替代事实依据。`,
+  ]);
+}
+
+function draftKnowledgeOutline(story: StoryGenerateResult): string {
+  const outline = story.knowledge_outline?.length
+    ? story.knowledge_outline
+    : story.scene_breakdown
+      .map(scene => scene.title || scene.dramatic_function || scene.location)
+      .filter(Boolean)
+      .slice(0, 5);
+  return compactDraftLines([
+    `知识层级：从问题入口、概念定义、具体例子、事实边界到一句复盘递进。`,
+    ...outline.map((item, index) => `层级 ${index + 1}：${shortText(item, 120)}`),
+  ]);
+}
+
+function draftConceptDefinitions(story: StoryGenerateResult): string {
+  const terms = uniqueStrings([
+    story.source_entry,
+    story.theme,
+    ...story.scene_breakdown.map(scene => scene.location),
+    ...story.gears_segments.flatMap(segment => segment.visual_focus ?? []),
+  ].filter((item): item is string => Boolean(item)))
+    .slice(0, 5);
+  return compactDraftLines([
+    `概念定义：先解释「${story.source_entry}」在本片中的含义，再区分事实、传说/类比和生产示意。`,
+    ...terms.map(term => `术语/对象：${shortText(term, 90)} - 正式口播前需确认定义和来源口径。`),
+  ]);
+}
+
+function draftKnowledgeSteps(story: StoryGenerateResult): string {
+  const steps = story.scene_breakdown.slice(0, 5).map((scene, index) => (
+    `知识步骤 ${index + 1}：${shortText(scene.dialogue_or_narration || scene.key_action || scene.dramatic_function || scene.plot, 120)}`
+  ));
+  return compactDraftLines([
+    `知识步骤：先抛问题，再给定义，再用例子/图示解释，最后回到来源边界和复盘句。`,
+    ...steps,
+  ]);
+}
+
 function draftOpeningHook(story: StoryGenerateResult): string {
   const firstScene = story.scene_breakdown[0];
   return compactDraftLines([
@@ -9945,6 +10018,25 @@ function draftForbiddenClaims(story: StoryGenerateResult): string {
   return compactDraftLines([
     `禁用/不可声称内容：不得声称未经来源确认的年代、人物关系、官方身份、传承谱系或因果结论。`,
     `待核实边界：${shortText(story.material_pack?.uncertain_claims.join('；') || story.credibility_note || '所有补录内容需人工审稿后才能进入省份 Markdown。', 220)}`,
+  ]);
+}
+
+function draftAnalogyOrVisualMetaphor(story: StoryGenerateResult): string {
+  const visualAnchors = story.scene_breakdown
+    .map(scene => scene.visual_prompt || scene.location || scene.key_action)
+    .filter(Boolean)
+    .slice(0, 4);
+  return compactDraftLines([
+    `类比/视觉隐喻：把抽象关系画成“问题 -> 定义 -> 例子 -> 边界”的流程图或分层卡。`,
+    ...visualAnchors.map((anchor, index) => `可视化 ${index + 1}：${shortText(anchor, 120)}`),
+    `使用边界：类比只帮助理解，不替代史实、工艺参数或官方称号。`,
+  ]);
+}
+
+function draftRecapSentence(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `复盘句：看懂 ${story.source_entry}，先问清核心问题，再分清概念、例子和来源边界。`,
+    `收束提醒：${shortText(story.communication_goal || story.theme || story.logline, 140)}`,
   ]);
 }
 

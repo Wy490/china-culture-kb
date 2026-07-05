@@ -4756,7 +4756,7 @@ describe('project-service', () => {
     expect(rawSource.supplement_tasks?.map(task => task.status)).toEqual(targetFields.map(() => 'resolved'));
   });
 
-  it('drafts second-wave production material fields from scenes and delivery hints', async () => {
+  it('drafts explainer and second-wave production material fields from scenes and delivery hints', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
     process.env.KB_ROOT = resolve(root, 'data');
@@ -4768,7 +4768,32 @@ describe('project-service', () => {
       communicationGoal: string;
       fieldIds: string[];
       expectedSnippet: string;
+      argumentPoints?: string[];
+      knowledgeOutline?: string[];
     }> = [
+      {
+        videoType: 'explainer_video',
+        style: 'host_narration',
+        targetAudience: '零基础馆内观众',
+        communicationGoal: '让观众用三层结构理解文化素材的事实、例子与边界。',
+        fieldIds: [
+          'core_question',
+          'audience_level',
+          'argument_points',
+          'knowledge_outline',
+          'concept_definitions',
+          'knowledge_steps',
+          'concrete_examples',
+          'analogy_or_visual_metaphor',
+          'diagram_or_caption_plan',
+          'source_cues',
+          'misconception_or_boundary',
+          'recap_sentence',
+        ],
+        expectedSnippet: '知识层级',
+        argumentPoints: ['先解释核心概念', '再用地点和道具举例', '最后标出事实边界'],
+        knowledgeOutline: ['问题入口', '概念定义', '具体例子', '来源边界', '一句复盘'],
+      },
       {
         videoType: 'children_story',
         style: 'children_animation',
@@ -4835,6 +4860,8 @@ describe('project-service', () => {
         source_entry: `${productionPack!.label}测试条目`,
         target_audience: item.targetAudience,
         communication_goal: item.communicationGoal,
+        argument_points: item.argumentPoints,
+        knowledge_outline: item.knowledgeOutline,
         material_pack: materialPack,
         production_material_pack: productionPack,
         production_material_readiness: initialReadiness,
