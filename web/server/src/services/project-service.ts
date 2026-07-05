@@ -9534,6 +9534,29 @@ const PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS = new Set([
   'character_stability_tags',
   'dialogue_bubbles',
   'emotion_beats',
+  'project_name',
+  'heritage_or_craft_type',
+  'materials',
+  'tools',
+  'process_steps',
+  'hand_actions',
+  'documentation_assets',
+  'visual_symbols',
+  'sound_or_texture_details',
+  'modern_connection',
+  'production_risks',
+  'documentary_question',
+  'real_world_site_or_object',
+  'source_quotes_or_source_cues',
+  'timeline',
+  'witness_or_expert_roles',
+  'interview_clip_selection',
+  'field_notes',
+  'b_roll_plan',
+  'reconstruction_boundary',
+  'present_day_trace',
+  'ambient_sound',
+  'what_must_not_be_claimed',
   'audience_age_band',
   'child_safe_conflict',
   'protagonist_choice',
@@ -9604,6 +9627,29 @@ function draftProductionMaterialFieldValue(story: StoryGenerateResult, fieldId: 
   if (fieldId === 'character_stability_tags') return draftCharacterStabilityTags(story);
   if (fieldId === 'dialogue_bubbles') return draftDialogueBubbles(story);
   if (fieldId === 'emotion_beats') return draftEmotionBeats(story);
+  if (fieldId === 'project_name') return draftProjectName(story);
+  if (fieldId === 'heritage_or_craft_type') return draftHeritageOrCraftType(story);
+  if (fieldId === 'materials') return draftHeritageMaterials(story);
+  if (fieldId === 'tools') return draftHeritageTools(story);
+  if (fieldId === 'process_steps') return draftProcessSteps(story);
+  if (fieldId === 'hand_actions') return draftHandActions(story);
+  if (fieldId === 'documentation_assets') return draftDocumentationAssets(story);
+  if (fieldId === 'visual_symbols') return draftVisualSymbols(story);
+  if (fieldId === 'sound_or_texture_details') return draftSoundOrTextureDetails(story);
+  if (fieldId === 'modern_connection') return draftModernConnection(story);
+  if (fieldId === 'production_risks') return draftProductionRisks(story);
+  if (fieldId === 'documentary_question') return draftDocumentaryQuestion(story);
+  if (fieldId === 'real_world_site_or_object') return draftRealWorldSiteOrObject(story);
+  if (fieldId === 'source_quotes_or_source_cues') return draftSourceQuotesOrSourceCues(story);
+  if (fieldId === 'timeline') return draftTimeline(story);
+  if (fieldId === 'witness_or_expert_roles') return draftWitnessOrExpertRoles(story);
+  if (fieldId === 'interview_clip_selection') return draftInterviewClipSelection(story);
+  if (fieldId === 'field_notes') return draftFieldNotes(story);
+  if (fieldId === 'b_roll_plan') return draftBRollPlan(story);
+  if (fieldId === 'reconstruction_boundary') return draftReconstructionBoundary(story);
+  if (fieldId === 'present_day_trace') return draftPresentDayTrace(story);
+  if (fieldId === 'ambient_sound') return draftAmbientSound(story);
+  if (fieldId === 'what_must_not_be_claimed') return draftWhatMustNotBeClaimed(story);
   if (fieldId === 'audience_age_band') return draftAudienceAgeBand(story);
   if (fieldId === 'child_safe_conflict') return draftChildSafeConflict(story);
   if (fieldId === 'protagonist_choice') return draftProtagonistChoice(story);
@@ -9735,6 +9781,211 @@ function draftEmotionBeats(story: StoryGenerateResult): string {
   return compactDraftLines([
     `情绪节拍：${story.scene_breakdown.slice(0, 6).map(scene => `S${scene.scene_id} ${shortText(scene.dramatic_function || scene.conflict || scene.key_action, 60)}`).join(' -> ')}`,
     `表情动作：每次情绪转折都用眼神、手部动作或身体朝向体现，避免只靠旁白解释。`,
+  ]);
+}
+
+function draftProjectName(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `项目名称：草拟为「${story.source_entry || story.title}」。`,
+    `核实提醒：正式写入生产卡片前需确认该名称与官方目录、馆方说明或项目资料一致。`,
+  ]);
+}
+
+function draftHeritageOrCraftType(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `非遗/工艺类型：根据当前成片类型与条目名，暂按「${story.source_entry}」相关技艺、民俗或传统工艺处理。`,
+    `分类边界：国家/省/市级名录、传承人称谓和项目级别必须另补来源后确认。`,
+  ]);
+}
+
+function draftHeritageMaterials(story: StoryGenerateResult): string {
+  const anchors = productionVisualAnchors(story).slice(0, 6);
+  return compactDraftLines([
+    `材料线索：从现有分镜和视觉焦点提取可拍材料/对象，需人工确认其真实名称与来源。`,
+    ...anchors.map((anchor, index) => `材料候选 ${index + 1}：${shortText(anchor, 100)}`),
+  ]);
+}
+
+function draftHeritageTools(story: StoryGenerateResult): string {
+  const anchors = productionVisualAnchors(story).slice(0, 6);
+  return compactDraftLines([
+    `工具线索：从镜头中的手持物、场景器物和操作对象提取工具候选。`,
+    ...anchors.map((anchor, index) => `工具/器物候选 ${index + 1}：${shortText(anchor, 100)}`),
+    `核实提醒：工具名称、用法和危险步骤不能凭分镜推断为事实。`,
+  ]);
+}
+
+function draftProcessSteps(story: StoryGenerateResult): string {
+  const steps = story.scene_breakdown.slice(0, 6).map((scene, index) => (
+    `流程 ${index + 1}：${shortText(scene.key_action || scene.dramatic_function || scene.plot, 130)}`
+  ));
+  return compactDraftLines([
+    `流程步骤：按现有分镜顺序草拟为可拍流程，正式工序顺序需再查来源。`,
+    ...steps,
+  ]);
+}
+
+function draftHandActions(story: StoryGenerateResult): string {
+  const actions = story.scene_breakdown.slice(0, 6).map(scene => (
+    `手部/身体动作 S${scene.scene_id}：${shortText(scene.key_action || scene.visual_prompt || scene.plot, 120)}`
+  ));
+  return compactDraftLines([
+    `手部动作：优先提取能被微距或中近景拍清的动作。`,
+    ...actions,
+  ]);
+}
+
+function draftDocumentationAssets(story: StoryGenerateResult): string {
+  const facts = story.material_pack?.verified_facts.slice(0, 4) ?? [];
+  return compactDraftLines([
+    `文献/影像资产：先以项目来源、现有事实线索和分镜场景作为待补清单，不替代正式授权。`,
+    ...(facts.length ? facts.map(item => `已有关联线索：${shortText(item, 110)}`) : [`来源入口：${story.source_entry}，待补官方目录、馆方说明、影音资源或出版物。`]),
+    `资产边界：图片、馆藏、曲目、歌词和传承人影像需确认授权或替代方案。`,
+  ]);
+}
+
+function draftVisualSymbols(story: StoryGenerateResult): string {
+  const symbols = productionVisualAnchors(story).slice(0, 8);
+  return compactDraftLines([
+    `视觉符号：从场景、道具、字幕关键词和视觉焦点中抽取。`,
+    ...symbols.map((symbol, index) => `符号 ${index + 1}：${shortText(symbol, 90)}`),
+  ]);
+}
+
+function draftSoundOrTextureDetails(story: StoryGenerateResult): string {
+  const cues = story.scene_breakdown.slice(0, 5).map(scene => (
+    `声音/质感 S${scene.scene_id}：${shortText(scene.time_of_day || scene.location || scene.visual_prompt || scene.key_action, 110)}`
+  ));
+  return compactDraftLines([
+    `声音与质感：草拟可用于现场声、拟音、材料纹理和字幕关键词的感官线索。`,
+    ...cues,
+  ]);
+}
+
+function draftModernConnection(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `当代连接：${story.communication_goal || `把「${shortText(story.theme || story.logline, 130)}」连接到今天的观看、学习、传承或使用场景。`}`,
+    `现实入口：可从现存空间、展陈、课堂、工坊、社区活动或观众行动切入，具体对象需人工核实。`,
+  ]);
+}
+
+function draftProductionRisks(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `生产风险：不得把级别、传承谱系、官方身份、年代、工序顺序、授权状态写成未经核实的事实。`,
+    `画面风险：危险工艺、仪式禁忌、未授权人物影像和商业宣传语需单独审稿。`,
+    `项目边界：${shortText(story.cultural_constraints.join('；') || story.credibility_note || '待补来源和核实方法。', 220)}`,
+  ]);
+}
+
+function draftDocumentaryQuestion(story: StoryGenerateResult): string {
+  const question = story.logline.endsWith('？') || story.logline.endsWith('?')
+    ? story.logline
+    : `${story.source_entry}今天还能通过什么现场、实物或声音被看见？`;
+  return compactDraftLines([
+    `纪录片核心问题：${question}`,
+    `追问方向：用现实入口、来源线索和当代痕迹回答，不用无来源再现替代事实。`,
+  ]);
+}
+
+function draftRealWorldSiteOrObject(story: StoryGenerateResult): string {
+  const sites = uniqueStrings([
+    ...story.scene_breakdown.map(scene => scene.location),
+    ...story.gears_segments.flatMap(segment => segment.visual_focus ?? []),
+  ].filter((item): item is string => Boolean(item)))
+    .slice(0, 8);
+  return compactDraftLines([
+    `现实地点/实物入口：从分镜和 GEARS visual focus 提取可拍对象，正式拍摄前需确认是否今天可见。`,
+    ...sites.map((site, index) => `入口 ${index + 1}：${shortText(site, 100)}`),
+  ]);
+}
+
+function draftSourceQuotesOrSourceCues(story: StoryGenerateResult): string {
+  const quotes = story.source_quotes?.slice(0, 4) ?? [];
+  const facts = story.material_pack?.verified_facts.slice(0, 4) ?? [];
+  return compactDraftLines([
+    `来源引文/线索：优先使用 source_quotes，其次使用 material_pack 已有事实线索；正式引用需补出处和授权。`,
+    ...(quotes.length ? quotes.map(item => `引文候选：${shortText(item, 120)}`) : []),
+    ...(facts.length ? facts.map(item => `来源线索：${shortText(item, 120)}`) : [`来源线索：${story.source_entry}，待补官方/馆方/出版物来源。`]),
+  ]);
+}
+
+function draftTimeline(story: StoryGenerateResult): string {
+  const scenes = story.scene_breakdown.slice(0, 6).map((scene, index) => (
+    `时间线 ${index + 1}：${shortText(scene.title || scene.dramatic_function || scene.plot, 120)}`
+  ));
+  return compactDraftLines([
+    `时间线：先按叙事顺序草拟，历史年代和事件先后必须另行核实。`,
+    ...scenes,
+  ]);
+}
+
+function draftWitnessOrExpertRoles(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `讲述人角色：可考虑馆员/研究者/传承人/当地居民/后人/项目执行者，但具体身份必须人工确认。`,
+    `角色分工：一人解释来源，一人连接现场，一人补充当代痕迹；不要让演员口吻冒充真实证言。`,
+  ]);
+}
+
+function draftInterviewClipSelection(story: StoryGenerateResult): string {
+  const clips = story.scene_breakdown.slice(0, 5).map(scene => (
+    `采访/旁白片段 S${scene.scene_id}：${shortText(scene.dialogue_or_narration || scene.plot || scene.key_action, 130)}`
+  ));
+  return compactDraftLines([
+    `采访片段选择：从现有旁白/对白中抽取需要真人讲述或主持串联的段落。`,
+    ...clips,
+  ]);
+}
+
+function draftFieldNotes(story: StoryGenerateResult): string {
+  const existing = story.field_notes?.slice(0, 5) ?? [];
+  const notes = existing.length
+    ? existing.map(item => `已有田野/现场笔记：${shortText(item, 130)}`)
+    : story.scene_breakdown.slice(0, 5).map(scene => `现场观察 S${scene.scene_id}：${scene.location}；${shortText(scene.visual_prompt || scene.key_action || scene.plot, 120)}`);
+  return compactDraftLines([
+    `现场笔记：草拟为拍摄/采风前的问题清单，不替代真实田野记录。`,
+    ...notes,
+  ]);
+}
+
+function draftBRollPlan(story: StoryGenerateResult): string {
+  const shots = story.scene_breakdown.slice(0, 6).map(scene => (
+    `B-roll S${scene.scene_id}：${shortText(scene.location || story.source_entry, 50)}；${shortText(scene.visual_prompt || scene.key_action || scene.plot, 140)}`
+  ));
+  return compactDraftLines([
+    `B-roll 计划：每段旁白或采访都配现场、物件、档案、地图、空镜或手部动作，不让画面只停在口播。`,
+    ...shots,
+  ]);
+}
+
+function draftReconstructionBoundary(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `再现边界：复原、示意、动画、演员补拍和类比画面必须明确标注，不能伪装成真实历史影像。`,
+    `边界说明：${shortText(story.cultural_constraints.join('；') || story.credibility_note || '待核事实只作线索。', 220)}`,
+  ]);
+}
+
+function draftPresentDayTrace(story: StoryGenerateResult): string {
+  const traces = uniqueStrings(story.scene_breakdown.map(scene => scene.location).filter(Boolean)).slice(0, 6);
+  return compactDraftLines([
+    `当代痕迹：结尾可回到今天仍可看见的地点、展陈、活动、声音或物件。`,
+    ...(traces.length ? traces.map((trace, index) => `痕迹 ${index + 1}：${shortText(trace, 100)}`) : [`痕迹候选：${story.source_entry} 的现存空间或展陈，待人工确认。`]),
+  ]);
+}
+
+function draftAmbientSound(story: StoryGenerateResult): string {
+  const sounds = story.scene_breakdown.slice(0, 5).map(scene => (
+    `环境声 S${scene.scene_id}：${shortText(scene.time_of_day || scene.location || scene.visual_prompt || '现场自然声', 100)}`
+  ));
+  return compactDraftLines([
+    `环境声：为开场、转场和结尾草拟可采集声音，正式拍摄需现场确认。`,
+    ...sounds,
+  ]);
+}
+
+function draftWhatMustNotBeClaimed(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `不可声称：未经来源确认的年代、数据、人物对白、亲历关系、官方级别、传承谱系、馆藏真伪和因果结论。`,
+    `待核边界：${shortText(story.material_pack?.uncertain_claims.join('；') || story.credibility_note || story.cultural_constraints.join('；') || '需要补正式来源。', 240)}`,
   ]);
 }
 
@@ -10038,6 +10289,18 @@ function draftRecapSentence(story: StoryGenerateResult): string {
     `复盘句：看懂 ${story.source_entry}，先问清核心问题，再分清概念、例子和来源边界。`,
     `收束提醒：${shortText(story.communication_goal || story.theme || story.logline, 140)}`,
   ]);
+}
+
+function productionVisualAnchors(story: StoryGenerateResult): string[] {
+  return uniqueStrings([
+    ...story.scene_breakdown.flatMap(scene => [
+      scene.location,
+      scene.visual_prompt,
+      scene.key_action,
+      scene.title,
+    ]),
+    ...story.gears_segments.flatMap(segment => segment.visual_focus ?? []),
+  ].filter((item): item is string => Boolean(item)));
 }
 
 function storyPrimaryCharacters(story: StoryGenerateResult): string[] {

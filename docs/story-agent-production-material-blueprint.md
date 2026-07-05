@@ -50,6 +50,7 @@
 44. 继续加硬真实外部回片签收：Web `gears-execution-worker-evidence-signoff` 与 MCP `kb_get_gears_worker_evidence_signoff` 现在会独立复核 `story-agent-system-external-output-url-source.json` 中的 `output_url`，即使证据声明 `ready_for_external_import=true`，只要 URL 是 localhost、私网 IP、`.local`、`gears.example`、`story-agent.example` 或 `local.story-agent.invalid`，也不会让 `system_external_output_url_source_ready` 通过，避免把本地地址或示例地址签成真实 GEARS/Seedance 外部回片。
 45. 补强独立知识库写回队列批量导出：`/knowledge-writeback-queue` 在继续只加载已审稿通过且已生成写回草案任务的前提下，新增当前项目/片型/省份/写回状态筛选范围的 JSON 导出包复制入口；Markdown Patch 面向人工 PR，JSON 包面向审稿工具和外部写回流水线，二者都不直接改写 `data/provinces/*.md`。
 46. 接上 `explainer_video` 生产素材自动草拟：`draft_production_material_fields` 现在可从目标受众、传播目标、`argument_points`、`knowledge_outline`、分镜、GEARS visual focus 和素材事实边界草拟知识讲解片的受众层级、论点、知识大纲、概念定义、讲解步骤、可视化类比和复盘句；第四类高频片型的缺口任务也会先进入项目候选稿和审稿流程，不直接写入省份 Markdown。
+47. 补齐首批核心片型自动草拟面：`heritage_promo` 可从分镜、GEARS visual focus、传播目标和素材边界草拟项目名、工艺类型、材料/工具线索、流程步骤、手部动作、文献影像资产、视觉符号、声音质感、当代连接和生产风险；`documentary_short` 可草拟纪录片核心问题、现实入口、来源线索、时间线、采访角色、片段选择、现场笔记、B-roll、再现边界、当代痕迹、环境声和禁用声称。官方链接、授权、传承谱系等硬事实仍必须人工核实后才能写回。
 
 ## 原始诊断必须并入路线
 

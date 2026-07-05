@@ -4756,7 +4756,7 @@ describe('project-service', () => {
     expect(rawSource.supplement_tasks?.map(task => task.status)).toEqual(targetFields.map(() => 'resolved'));
   });
 
-  it('drafts explainer and second-wave production material fields from scenes and delivery hints', async () => {
+  it('drafts core, explainer, and second-wave production material fields from scenes and delivery hints', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
     process.env.KB_ROOT = resolve(root, 'data');
@@ -4770,7 +4770,52 @@ describe('project-service', () => {
       expectedSnippet: string;
       argumentPoints?: string[];
       knowledgeOutline?: string[];
+      sourceQuotes?: string[];
+      fieldNotes?: string[];
     }> = [
+      {
+        videoType: 'heritage_promo',
+        style: 'documentary',
+        targetAudience: '非遗宣传片观众',
+        communicationGoal: '把工艺流程、手部动作、声音质感和当代连接拆成可拍素材。',
+        fieldIds: [
+          'project_name',
+          'heritage_or_craft_type',
+          'materials',
+          'tools',
+          'process_steps',
+          'hand_actions',
+          'documentation_assets',
+          'visual_symbols',
+          'sound_or_texture_details',
+          'modern_connection',
+          'production_risks',
+        ],
+        expectedSnippet: '流程步骤',
+      },
+      {
+        videoType: 'documentary_short',
+        style: 'documentary',
+        targetAudience: '微纪录片观众',
+        communicationGoal: '让观众通过现实入口、来源线索和当代痕迹理解文化条目。',
+        fieldIds: [
+          'documentary_question',
+          'real_world_site_or_object',
+          'source_quotes_or_source_cues',
+          'timeline',
+          'witness_or_expert_roles',
+          'interview_clip_selection',
+          'field_notes',
+          'b_roll_plan',
+          'reconstruction_boundary',
+          'present_day_trace',
+          'ambient_sound',
+          'what_must_not_be_claimed',
+        ],
+        expectedSnippet: 'B-roll',
+        sourceQuotes: ['馆方资料提示：该条目需要结合现场展陈理解。'],
+        fieldNotes: ['现场观察：旧街入口可作为当代痕迹开场。'],
+      },
       {
         videoType: 'explainer_video',
         style: 'host_narration',
@@ -4862,6 +4907,8 @@ describe('project-service', () => {
         communication_goal: item.communicationGoal,
         argument_points: item.argumentPoints,
         knowledge_outline: item.knowledgeOutline,
+        source_quotes: item.sourceQuotes,
+        field_notes: item.fieldNotes,
         material_pack: materialPack,
         production_material_pack: productionPack,
         production_material_readiness: initialReadiness,
@@ -4926,8 +4973,9 @@ describe('project-service', () => {
       expect(afterDetail.ok).toBe(true);
       expect(afterDetail.data?.current_story.supplement_tasks?.map(task => task.status))
         .toEqual(item.fieldIds.map(() => 'resolved'));
+      const expectedAvailableFields = item.fieldIds.filter(fieldId => fieldId !== 'project_name');
       expect(afterDetail.data?.current_story.production_material_readiness?.available_fields)
-        .toEqual(expect.arrayContaining(item.fieldIds));
+        .toEqual(expect.arrayContaining(expectedAvailableFields));
       expect(JSON.stringify(afterDetail.data?.current_story.supplement_tasks?.map(task => task.supplement_field_values)))
         .toContain(item.expectedSnippet);
     }
