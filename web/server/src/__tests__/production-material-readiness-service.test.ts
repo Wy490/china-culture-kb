@@ -101,4 +101,93 @@ describe('production-material-readiness-service', () => {
     expect(report?.missing_fields.map(field => field.field_id)).toContain('concept_definitions');
     expect(report?.missing_fields.map(field => field.field_id)).not.toContain('single_shot_test');
   });
+
+  it('builds children story readiness from age band and safe conflict evidence', () => {
+    const pack = getProductionMaterialPack('children_story');
+    const materialPack = makeMaterialPack('目标儿童为7-9岁。核心问题：为什么端午要听龙舟鼓点？具体例子是孩子跟着鼓点学会配合。主角选择先听同伴再敲鼓，温和阻力来自节奏误会；文化符号是小鼓、粽叶和江面队形。结尾有情绪安放和家长复盘，事实边界提示屈原传说与地方竞渡习俗分层，不得写成单一事实。');
+
+    const report = buildProductionMaterialReadinessReport({
+      productionMaterialPack: pack,
+      materialPack,
+    });
+
+    expect(report?.video_type).toBe('children_story');
+    expect(report?.available_fields).toEqual(expect.arrayContaining([
+      'audience_age_band',
+      'core_question',
+      'child_safe_conflict',
+      'protagonist_choice',
+      'wonder_or_cultural_symbol',
+      'emotional_resolution',
+      'parent_teacher_note',
+      'misconception_or_boundary',
+      'forbidden_claims',
+    ]));
+  });
+
+  it('builds social short readiness from hook and vertical rhythm evidence', () => {
+    const pack = getProductionMaterialPack('social_short');
+    const materialPack = makeMaterialPack('前三秒开场钩子：这句名文常被误解。平台语境是9:16竖屏短视频，核心问题是作者是否亲临岳阳楼。每10秒有字幕转折和事实边界卡，分享触发点是原来如此的反转，评论提示是你还听过哪些误解；来源线索来自文本和展陈。');
+
+    const report = buildProductionMaterialReadinessReport({
+      productionMaterialPack: pack,
+      materialPack,
+    });
+
+    expect(report?.video_type).toBe('social_short');
+    expect(report?.available_fields).toEqual(expect.arrayContaining([
+      'opening_hook',
+      'platform_context',
+      'core_question',
+      'share_trigger',
+      'beat_interval',
+      'vertical_shot_plan',
+      'comment_prompt',
+      'source_cues',
+      'fact_boundary_card',
+    ]));
+  });
+
+  it('builds lecture and training readiness from teaching structure evidence', () => {
+    const lecturePack = getProductionMaterialPack('lecture_video');
+    const trainingPack = getProductionMaterialPack('education_training');
+    const materialPack = makeMaterialPack('主讲人是老师，传播目标是让观众理解书院既是建筑也是教育空间。论点包括空间、制度和当代研学，案例来自岳麓书院；知识大纲、概念定义、板书、图示和字幕资产已列出，来源线索来自馆方展陈，误区边界是不把后世影响写成本人亲历。学习目标是学会拆分空间功能，学习者为中学生，步骤序列为先看门额、再看讲堂、最后复盘；练习任务是给一个旧址列三类画面，掌握检查用判断题，受众带走点是事实分层。');
+
+    const lectureReport = buildProductionMaterialReadinessReport({
+      productionMaterialPack: lecturePack,
+      materialPack,
+    });
+    const trainingReport = buildProductionMaterialReadinessReport({
+      productionMaterialPack: trainingPack,
+      materialPack,
+    });
+
+    expect(lectureReport?.video_type).toBe('lecture_video');
+    expect(lectureReport?.available_fields).toEqual(expect.arrayContaining([
+      'speaker_position',
+      'communication_goal',
+      'argument_points',
+      'case_examples',
+      'knowledge_outline',
+      'slide_or_board_assets',
+      'source_cues',
+      'audience_takeaway',
+      'misconception_or_boundary',
+    ]));
+    expect(trainingReport?.video_type).toBe('education_training');
+    expect(trainingReport?.available_fields).toEqual(expect.arrayContaining([
+      'learning_objective',
+      'learner_profile',
+      'knowledge_outline',
+      'concept_definitions',
+      'step_sequence',
+      'case_examples',
+      'practice_task',
+      'assessment_check',
+      'slide_or_board_assets',
+      'audience_takeaway',
+      'source_cues',
+      'misconception_or_boundary',
+    ]));
+  });
 });

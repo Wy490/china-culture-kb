@@ -43,6 +43,7 @@
 37. 同步 MCP worker evidence signoff 的真实回片门禁：`kb_get_gears_worker_evidence_signoff` 现在会读取 `story-agent-system-external-output-url-source.json`、系统级 preflight 响应和 import 响应，输出 `system_external_callback_passed`、URL 来源、ready/updated/blocking 计数和 verdict gates；MCP `status=ready` 同样要求 URL 来源为 `worker_response` 或 `env` 且非占位、系统级 preflight/import 全部通过，避免命令行签收把 placeholder、local acceptance 或普通 callback audit 当成真实外部回片。
 38. 把 Domain Pack 从检索包升级为生产提示包：`KnowledgePackEntry` 新增可选 `production_prompts` 和 `review_boundaries`；非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物、讲解知识结构五类包已写入结构化生产提示和审稿边界，Story Agent prompt 会把这些字段随知识包一起注入，明确“怎么拍/怎么审”以及“哪些不能写成事实”。
 39. 补齐第二批高频 Domain Pack：新增儿童改写规则包、短视频钩子包、宣讲培训结构包，并为 `children_story`/`children_animation`、`social_short`、`lecture_video`/`education_training` query 增加优先匹配；升级计划的 Domain Pack 扩库建议同步输出 `children_adaptation_safety_pack`、`short_video_hook_pack` 和 `education_training_structure_pack`。
+40. 接入第二批高频片型 production pack 首版：`children_story`、`social_short`、`lecture_video`、`education_training` 已进入 `video-type-material-supplement-packs.json`，包含 required fields、prompt layers、三阶段 gate、补充问题和样板条目；Story Agent 会按当前 video_type 自动注入对应模板，readiness service 已能识别儿童年龄段/安全冲突、短视频三秒钩子/竖屏节奏、宣讲主讲定位/论点案例、培训学习目标/练习检查等字段。
 
 ## 原始诊断必须并入路线
 
@@ -289,5 +290,5 @@
 3. 处理来源等级缺口和少量 `era` 精细化缺口。
 4. 把 readiness 接进质量报告和 GEARS 交付状态：核心链路、前端显示、Seedance 本地参考资产占位、GEARS 本地验收边界、外部回片交接队列、系统级批量 preflight/import 和 worker acceptance runbook 已完成；下一步做真实 GEARS/Seedance worker 实跑、状态同步和证据签收。
 5. 在前端显示生产模板缺口：模板详情、gate、样板条目、任务跳转/状态更新、项目级写回刷新、字段级录入、知识库候选稿、导出审稿包、审稿状态、正式写入草案、省份 Markdown patch/PR 草案、人工入库队列状态和独立写回队列页已完成。
-6. 第四类高频类型模板已选择并接入 `explainer_video`；下一步可继续补联网采集、样片审稿和正式包隔离测试。
+6. 第四类高频类型模板已选择并接入 `explainer_video`，第二批 `children_story` / `social_short` / `lecture_video` / `education_training` production pack 首版已接入；下一步可继续补联网采集、样片审稿和正式包隔离测试。
 7. 在线模板采集命令：草案生成首版已完成，下一步补联网采集和正式写入审稿流。

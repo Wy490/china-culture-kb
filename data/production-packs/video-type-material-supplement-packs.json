@@ -1,7 +1,7 @@
 {
   "schema_version": "video-type-material-supplement-packs/v1",
-  "updated_at": "2026-07-04",
-  "purpose": "Define production-ready material supplement templates and high-quality sample entries for stable output types: heritage_promo, documentary_short, explainer_video, and ai_comic_drama.",
+  "updated_at": "2026-07-05",
+  "purpose": "Define production-ready material supplement templates and high-quality sample entries for stable output types: heritage_promo, documentary_short, explainer_video, ai_comic_drama, plus second-wave high-frequency packs for children_story, social_short, lecture_video, and education_training.",
   "source_observations": [
     {
       "source_id": "bilibili-BV1xuVC6AEbg",
@@ -569,6 +569,304 @@
           "knowledge_outline": ["已确认事实", "待核事实", "人物场景道具", "片型模板", "审稿写回"],
           "visual_plan": ["流程图", "字段卡片", "候选稿审稿节点", "省份 Markdown 写回边界"],
           "risk_boundary": "知识库写回必须经过候选稿和审稿流程，不能自动改写省份文件。"
+        }
+      ]
+    },
+    {
+      "video_type": "children_story",
+      "label": "儿童故事片",
+      "goal": "把文化素材改写成适龄、温和、有选择和复盘的儿童故事，不把童话化细节写成事实。",
+      "material_template": {
+        "required_fields": [
+          "audience_age_band",
+          "core_question",
+          "child_safe_conflict",
+          "protagonist_choice",
+          "wonder_or_cultural_symbol",
+          "concrete_examples",
+          "emotional_resolution",
+          "parent_teacher_note",
+          "misconception_or_boundary",
+          "forbidden_claims"
+        ],
+        "prompt_layers": [
+          "受众分层：3-6岁、7-9岁、10-12岁的词汇、冲突和节奏分开。",
+          "善意张力：用误会、任务、选择和帮助替代成人权谋或恐怖刺激。",
+          "文化符号：把节俗、器物、地点或传说意象转成儿童能看懂的行动。",
+          "情绪复盘：结尾给安全感、价值选择和家长/教师延伸提示。"
+        ],
+        "minimum_viable_story_gate": [
+          "年龄段和理解门槛明确",
+          "有一个儿童能理解的问题或任务",
+          "有文化符号或可见道具锚点",
+          "知道哪些神异/传说不能写成事实"
+        ],
+        "script_ready_gate": [
+          "冲突温和但有选择压力",
+          "主角每场有清楚行动",
+          "故事中至少一个例子能解释文化知识",
+          "情绪收束不靠惩罚或惊吓"
+        ],
+        "production_ready_gate": [
+          "角色、场景、道具和安全边界已列明",
+          "画面避免血腥、恐怖、猎奇和成人化对白",
+          "家长/教师可用的复盘句或延伸问题已准备",
+          "传说、童话化和可核事实分层"
+        ],
+        "supplement_questions": [
+          "目标儿童年龄段是哪一档？哪些词必须换成更简单的说法？",
+          "主角要完成什么小任务？中途遇到什么温和阻力？",
+          "哪个文化符号最适合变成可见道具或场景？",
+          "故事里哪些内容是传说或童话化表达，不能写成事实？",
+          "结尾如何让孩子理解选择、合作或保护文化的意义？"
+        ]
+      },
+      "sample_entries": [
+        {
+          "sample_id": "children-01",
+          "entry_name": "端午龙舟小鼓手",
+          "source_status": "folk_custom_adaptation",
+          "core_question": "为什么龙舟上要听鼓点？",
+          "child_safe_conflict": "小鼓手一开始敲乱节奏，学会先听同伴再下槌。",
+          "visual_assets": ["小鼓", "龙舟船头", "粽叶", "江面队形"],
+          "risk_boundary": "屈原传说和地方竞渡习俗要分层，不写成单一事实原因。"
+        },
+        {
+          "sample_id": "children-02",
+          "entry_name": "年画门神眨眼睛",
+          "source_status": "fictionalized_heritage_intro",
+          "core_question": "一张年画为什么要一层一层套色？",
+          "child_safe_conflict": "学徒发现颜色错位，和门神纸像一起找回套印顺序。",
+          "visual_assets": ["木版", "彩色纸张", "刷子", "门墙"],
+          "risk_boundary": "纸像说话是童话化表达，不能写成民俗事实。"
+        },
+        {
+          "sample_id": "children-03",
+          "entry_name": "书院里的迷路书签",
+          "source_status": "site_inspired_story",
+          "core_question": "书院为什么既是建筑，也是学习空间？",
+          "child_safe_conflict": "孩子跟着一枚书签找讲堂、藏书和匾额，学会不乱碰展陈。",
+          "visual_assets": ["书签", "讲堂", "匾额", "书架"],
+          "risk_boundary": "现存建筑、历史原貌和童话向导必须分清。"
+        }
+      ]
+    },
+    {
+      "video_type": "social_short",
+      "label": "竖屏短视频",
+      "goal": "把文化素材转成前三秒问题、竖屏视觉对比、字幕节奏、评论触发和事实边界清晰的社媒短片。",
+      "material_template": {
+        "required_fields": [
+          "opening_hook",
+          "platform_context",
+          "core_question",
+          "share_trigger",
+          "beat_interval",
+          "vertical_shot_plan",
+          "diagram_or_caption_plan",
+          "comment_prompt",
+          "source_cues",
+          "fact_boundary_card"
+        ],
+        "prompt_layers": [
+          "前三秒：问题、反差画面或误区句先出现。",
+          "平台节奏：竖屏近景、字幕转折、10-15秒一次揭示。",
+          "互动触发：评论投票、对比选择或下集追问。",
+          "事实边界：标题钩子不能变成未核实断言。"
+        ],
+        "minimum_viable_story_gate": [
+          "前三秒钩子清楚",
+          "知道目标平台和竖屏呈现方式",
+          "有一个核心问题或误区",
+          "有来源或事实边界提示"
+        ],
+        "script_ready_gate": [
+          "每个节奏点有字幕或画面转折",
+          "分享触发点不靠虚假争议",
+          "来源线索、误区和事实边界已标注",
+          "结尾能引导评论或下一条"
+        ],
+        "production_ready_gate": [
+          "9:16镜头计划、字幕关键词和声音钩子明确",
+          "封面句、开头句和结尾互动句分开",
+          "严肃题材不娱乐化猎奇",
+          "可直接拆成 GEARS/Seedance 竖屏分段"
+        ],
+        "supplement_questions": [
+          "前三秒观众看到或听到的反差是什么？",
+          "这条内容适合问答、误区纠正、对比还是流程快剪？",
+          "每10到15秒的字幕转折是什么？",
+          "评论区想让观众回答什么问题？",
+          "标题钩子有哪些事实边界，不能写成断言？"
+        ]
+      },
+      "sample_entries": [
+        {
+          "sample_id": "social-01",
+          "entry_name": "为什么非遗不能只拍匠心",
+          "source_status": "production_system_explainer_short",
+          "opening_hook": "别再只写匠心了，镜头真正需要的是这三样。",
+          "beat_plan": ["材料", "工具", "手部动作", "事实边界卡"],
+          "vertical_assets": ["手部近景", "三栏字幕", "成品对比"],
+          "risk_boundary": "这是生产方法讲解，不替代具体非遗项目事实。"
+        },
+        {
+          "sample_id": "social-02",
+          "entry_name": "岳阳楼记作者真的到过岳阳楼吗",
+          "source_status": "fact_boundary_short",
+          "opening_hook": "这句名文，常被误解成一次登楼游记。",
+          "beat_plan": ["问题", "文本来源", "空间关系", "边界总结"],
+          "vertical_assets": ["楼体竖屏", "金句字幕", "事实/误区对照卡"],
+          "risk_boundary": "不要把反问句剪成确定谣言；需提示文本和空间关系。"
+        },
+        {
+          "sample_id": "social-03",
+          "entry_name": "一张年画为什么要套好几次颜色",
+          "source_status": "heritage_process_short",
+          "opening_hook": "一张年画不是画出来的，是一层层对准的。",
+          "beat_plan": ["木版", "刷色", "套印", "成品前后对照"],
+          "vertical_assets": ["木版纹理", "刷子动作", "错位/对准对比"],
+          "risk_boundary": "具体工序名称、地域和年代必须回到来源。"
+        }
+      ]
+    },
+    {
+      "video_type": "lecture_video",
+      "label": "宣讲片",
+      "goal": "把文化素材转成观点、论据、案例、主讲人位置、板书/字幕资产和可执行行动号召。",
+      "material_template": {
+        "required_fields": [
+          "speaker_position",
+          "communication_goal",
+          "argument_points",
+          "case_examples",
+          "knowledge_outline",
+          "slide_or_board_assets",
+          "source_cues",
+          "audience_takeaway",
+          "misconception_or_boundary",
+          "forbidden_claims"
+        ],
+        "prompt_layers": [
+          "主讲定位：谁在讲、对谁讲、希望听众带走什么。",
+          "论点案例：每个观点配来源、案例或现场证据。",
+          "视觉辅助：板书、字幕、图示、实物或现场画面分工。",
+          "行动转化：结尾给倡议、复盘或下一步。"
+        ],
+        "minimum_viable_story_gate": [
+          "主讲人位置和受众明确",
+          "有传播目标或核心观点",
+          "至少一个案例或来源入口",
+          "禁用夸大表达已标注"
+        ],
+        "script_ready_gate": [
+          "观点、案例和来源能一一对应",
+          "结构可拆成开场、论证、案例、总结",
+          "严肃表述不靠空泛口号",
+          "误区和事实边界已说明"
+        ],
+        "production_ready_gate": [
+          "主讲画面、B-roll、板书/字幕资产已列明",
+          "每个论点有对应画面或文字辅助",
+          "机构成果、政策口径和数据有来源",
+          "结尾行动号召不过度承诺"
+        ],
+        "supplement_questions": [
+          "主讲人以什么身份说话？面对谁？",
+          "本片最核心的三个论点是什么？",
+          "每个论点对应哪个案例、地点、实物或来源？",
+          "需要哪些板书、字幕、图示或现场画面？",
+          "哪些口号、数据或成果不能无来源使用？"
+        ]
+      },
+      "sample_entries": [
+        {
+          "sample_id": "lecture-01",
+          "entry_name": "从一座书院讲湖湘文教传统",
+          "source_status": "site_and_idea_lecture",
+          "argument_points": ["书院是空间", "书院是教育制度", "书院是当代研学入口"],
+          "visual_assets": ["主讲人侧身", "书院路线图", "匾额字幕"],
+          "risk_boundary": "本人亲历、后世影响和当代使用必须分层。"
+        },
+        {
+          "sample_id": "lecture-02",
+          "entry_name": "非遗保护为什么要从材料开始讲",
+          "source_status": "heritage_training_lecture",
+          "argument_points": ["材料决定动作", "工具形成工序", "工序才能变成镜头"],
+          "visual_assets": ["材料样本", "流程板书", "手部动作B-roll"],
+          "risk_boundary": "不把通用方法写成某个具体项目已核事实。"
+        }
+      ]
+    },
+    {
+      "video_type": "education_training",
+      "label": "教育/培训片",
+      "goal": "把文化素材转成学习目标、学习者画像、步骤演示、案例练习、掌握检查和复盘板书。",
+      "material_template": {
+        "required_fields": [
+          "learning_objective",
+          "learner_profile",
+          "knowledge_outline",
+          "concept_definitions",
+          "step_sequence",
+          "case_examples",
+          "practice_task",
+          "assessment_check",
+          "slide_or_board_assets",
+          "audience_takeaway",
+          "source_cues",
+          "misconception_or_boundary"
+        ],
+        "prompt_layers": [
+          "学习目标：看完能理解什么、说出什么或完成什么任务。",
+          "步骤教学：概念、步骤、案例、练习按学习顺序组织。",
+          "互动检查：提问、判断、选择、复述或小练习。",
+          "板书复盘：用字幕、图示或板书收束知识结构。"
+        ],
+        "minimum_viable_story_gate": [
+          "学习目标和学习者画像明确",
+          "有知识大纲或步骤序列",
+          "至少一个案例或练习方向",
+          "来源和误区边界明确"
+        ],
+        "script_ready_gate": [
+          "每个知识点有定义、步骤或案例支撑",
+          "练习任务能检验学习目标",
+          "错误理解和例外已标注",
+          "脚本可拆成教学段落"
+        ],
+        "production_ready_gate": [
+          "板书/课件/字幕资产已列出",
+          "互动题和掌握检查可直接使用",
+          "来源线索和不可声称事项进入讲稿",
+          "结尾有复盘和延伸任务"
+        ],
+        "supplement_questions": [
+          "学习者是谁？看完要能做什么？",
+          "这个知识点分成哪几个教学步骤？",
+          "每一步最适合用什么案例或图示？",
+          "练习任务和掌握检查分别是什么？",
+          "哪些解释只是类比，不能替代来源？"
+        ]
+      },
+      "sample_entries": [
+        {
+          "sample_id": "training-01",
+          "entry_name": "怎样把文化条目拆成生产素材卡",
+          "source_status": "production_training",
+          "learning_objective": "学会区分事实、待核、人物、场景、道具和片型字段。",
+          "practice_task": "给一个条目补出3个可拍场景和2条不可声称事项。",
+          "board_assets": ["六栏素材卡", "候选稿审稿流程图"],
+          "risk_boundary": "训练示例不能自动写回省份 Markdown。"
+        },
+        {
+          "sample_id": "training-02",
+          "entry_name": "微纪录 B-roll 怎么提前规划",
+          "source_status": "documentary_training",
+          "learning_objective": "学会把旁白句对应到现场、档案、物件和空镜。",
+          "practice_task": "把一段旁白标注至少三类 B-roll。",
+          "board_assets": ["旁白/B-roll 对照表", "再现边界提示卡"],
+          "risk_boundary": "再现镜头不能替代史实证据。"
         }
       ]
     },

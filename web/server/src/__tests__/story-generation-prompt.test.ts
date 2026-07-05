@@ -394,6 +394,10 @@ describe('story-generation-prompt', () => {
     expect(getProductionMaterialPack('documentary_short')?.label).toBe('微纪录片');
     expect(getProductionMaterialPack('explainer_video')?.label).toBe('知识讲解视频');
     expect(getProductionMaterialPack('ai_comic_drama')?.label).toBe('AI漫剧');
+    expect(getProductionMaterialPack('children_story')?.label).toBe('儿童故事片');
+    expect(getProductionMaterialPack('social_short')?.label).toBe('竖屏短视频');
+    expect(getProductionMaterialPack('lecture_video')?.label).toBe('宣讲片');
+    expect(getProductionMaterialPack('education_training')?.label).toBe('教育/培训片');
     expect(getProductionMaterialPack('character_story')).toBeUndefined();
   });
 
@@ -467,6 +471,42 @@ describe('story-generation-prompt', () => {
       expect(pkg.user_prompt).toContain(item.expected);
       expect(pkg.user_prompt).not.toContain('提示词-基础设定');
       expect(pkg.user_prompt).not.toContain('单镜头验证');
+      expect(pkg.user_prompt).not.toContain('周敦颐拒签冤案');
+      expect(pkg.output_contract.should_respect.join('\n')).toContain(`执行生产素材模板：${item.label}`);
+    }
+  });
+
+  it('injects second-wave production material templates without leaking AI comic samples', () => {
+    const cases: Array<{ videoType: VideoType; label: string; expected: string }> = [
+      { videoType: 'children_story', label: '儿童故事片', expected: 'audience_age_band' },
+      { videoType: 'social_short', label: '竖屏短视频', expected: 'opening_hook' },
+      { videoType: 'lecture_video', label: '宣讲片', expected: 'speaker_position' },
+      { videoType: 'education_training', label: '教育/培训片', expected: 'learning_objective' },
+    ];
+
+    for (const item of cases) {
+      const request: StoryGenerateRequest = {
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: item.videoType,
+        original_user_query: `${item.videoType} production template smoke`,
+      };
+      const productionMaterialPack = getProductionMaterialPack(item.videoType);
+
+      const pkg = buildStoryGenerationPromptPackage({
+        entry: makeEntry(),
+        request,
+        videoType: item.videoType,
+        presentationStyle: 'cinematic',
+        storyStructure: 'single_event_drama',
+        targetDuration: '3分钟',
+        tone: '',
+        knowledgePack: makeKnowledgePack(),
+        productionMaterialPack,
+      });
+
+      expect(pkg.production_material_pack?.label).toBe(item.label);
+      expect(pkg.user_prompt).toContain(item.expected);
+      expect(pkg.user_prompt).not.toContain('提示词-基础设定');
       expect(pkg.user_prompt).not.toContain('周敦颐拒签冤案');
       expect(pkg.output_contract.should_respect.join('\n')).toContain(`执行生产素材模板：${item.label}`);
     }
