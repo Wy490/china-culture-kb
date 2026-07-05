@@ -6120,6 +6120,34 @@ function evidenceBool(value: unknown): boolean {
   return value === true;
 }
 
+function evidencePublicExternalArtifactUrl(value: unknown): boolean {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(value.trim());
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+  const host = parsed.hostname.toLowerCase();
+  if (!host || host === 'localhost' || host === '0.0.0.0' || host === '::1') return false;
+  if (host.endsWith('.local')) return false;
+  if (
+    host.includes('gears.example')
+    || host.includes('story-agent.example')
+    || host.includes('local.story-agent.invalid')
+  ) {
+    return false;
+  }
+  if (/^127\./.test(host) || /^10\./.test(host) || /^192\.168\./.test(host)) return false;
+  const private172 = host.match(/^172\.(\d{1,3})\./);
+  if (private172) {
+    const secondOctet = Number(private172[1]);
+    if (secondOctet >= 16 && secondOctet <= 31) return false;
+  }
+  return true;
+}
+
 function evidenceObject(value: unknown): Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -6395,6 +6423,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const systemExternalOutputUrlSourceReady = systemExternalOutputSourceRead.exists
     && systemExternalOutputSourceRead.parse_ok
     && evidenceBool(systemExternalOutputSource.ready_for_external_import)
+    && evidencePublicExternalArtifactUrl(systemExternalOutputSource.output_url)
     && (systemExternalOutputSource.source === 'env' || systemExternalOutputSource.source === 'worker_response')
     && systemExternalOutputSource.placeholder !== true;
   const systemExternalOutputUrlSource = typeof systemExternalOutputSource.source === 'string'

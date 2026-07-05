@@ -2983,6 +2983,35 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('mvp_score_delta: 0');
     });
 
+    it('rejects localhost system external output URLs even when evidence claims ready', async () => {
+      const evidenceDir = await mkdtemp(resolve(tmpdir(), 'gears-signoff-localhost-'));
+      await writeReadyEvidence(evidenceDir);
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-output-url-source.json', {
+        schema_version: 'story-agent-system-external-output-url-source/v1',
+        env_var: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
+        configured_from_env: true,
+        source: 'env',
+        output_url: 'http://127.0.0.1:9000/gears-worker-acceptance/readiness-shot-1.mp4',
+        placeholder: false,
+        ready_for_external_import: true,
+      });
+
+      const res = await request.get(`/api/system/gears-execution-worker-evidence-signoff?evidence_dir=${encodeURIComponent(evidenceDir)}`);
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        status: 'attention',
+        acceptance_passed: true,
+        signoff_ready: true,
+        integrity_passed: true,
+        system_external_callback_passed: false,
+        system_external_output_url_source_ready: false,
+        system_external_output_url_source: 'env',
+      });
+      expect(res.body.data.markdown).toContain('system_external_output_url_source_ready: false');
+    });
+
     it('deduplicates repeated recommended actions from evidence artifacts', async () => {
       const evidenceDir = await mkdtemp(resolve(tmpdir(), 'gears-signoff-dedupe-'));
       const repeatedAction = {

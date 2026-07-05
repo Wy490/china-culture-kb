@@ -233,4 +233,26 @@ describe('getGearsWorkerEvidenceSignoff', () => {
     expect(report.markdown).toContain('system_external_callback_passed: false');
     expect(report.markdown).toContain('system_external_output_url_source_ready: false');
   });
+
+  it('does not sign off localhost output URLs even when source metadata claims ready', async () => {
+    const evidenceDir = await fs.mkdtemp(path.join(tmpdir(), 'mcp-gears-signoff-localhost-'));
+    await writeReadyEvidence(evidenceDir);
+    await writeEvidenceJson(evidenceDir, 'story-agent-system-external-output-url-source.json', {
+      schema_version: 'story-agent-system-external-output-url-source/v1',
+      env_var: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
+      configured_from_env: true,
+      source: 'env',
+      output_url: 'http://127.0.0.1:9000/gears-worker-acceptance/readiness-shot-1.mp4',
+      placeholder: false,
+      ready_for_external_import: true,
+    });
+
+    const report = await getGearsWorkerEvidenceSignoff({ evidence_dir: evidenceDir });
+
+    expect(report.status).toBe('attention');
+    expect(report.system_external_callback_passed).toBe(false);
+    expect(report.system_external_output_url_source_ready).toBe(false);
+    expect(report.system_external_output_url_source).toBe('env');
+    expect(report.markdown).toContain('system_external_output_url_source_ready: false');
+  });
 });
