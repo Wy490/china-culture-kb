@@ -46,6 +46,7 @@
 40. 接入第二批高频片型 production pack 首版：`children_story`、`social_short`、`lecture_video`、`education_training` 已进入 `video-type-material-supplement-packs.json`，包含 required fields、prompt layers、三阶段 gate、补充问题和样板条目；Story Agent 会按当前 video_type 自动注入对应模板，readiness service 已能识别儿童年龄段/安全冲突、短视频三秒钩子/竖屏节奏、宣讲主讲定位/论点案例、培训学习目标/练习检查等字段。
 41. 把第二批高频片型接入底库生产化治理：`kb:production-audit` 现在会审计 `children_story`、`social_short`、`lecture_video`、`education_training` 的模板覆盖；`kb:production-upgrade-plan` 会输出四个对应最小素材包批次，并把儿童改写安全、短视频钩子、宣讲/培训结构包按真实缺口动态升优先级。重生成后的升级计划为 13 个批次、396 个计划动作，仍只生成报告和候选补库任务，不直接改写 `data/provinces/*.md`。
 42. 加硬知识库写回队列服务端门禁：`updateProjectSupplementTask` 现在只有在候选稿 `approved` 且已生成 `knowledge_writeback_draft_markdown` 后，才允许变更 `knowledge_writeback_status` 或写回备注；补充任务列表新增 `knowledge_writeback_ready` 服务端筛选，独立写回队列页只请求已通过审稿并有正式写回草案的任务，防止前端误操作或接口调用绕过候选稿/审稿流程。
+43. 扩展生产素材自动草拟到第二批高频片型：`draft_production_material_fields` 不再只服务 AI 漫剧关键帧/一致性字段，也会从 `scene_breakdown`、`gears_segments`、`target_audience`、`communication_goal` 和素材边界中草拟儿童年龄段/安全冲突、短视频三秒钩子/竖屏镜头/评论互动、宣讲主讲定位/案例/板书资产、培训学习目标/步骤/练习/掌握检查等字段。草拟结果仍只写入项目补充任务和候选稿，等待人工审稿后才能进入知识库写回队列。
 
 ## 原始诊断必须并入路线
 

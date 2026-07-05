@@ -17,6 +17,7 @@ import {
   createProjectFromGeneratedStory,
   deleteProject,
   deleteProjects,
+  draftProjectProductionMaterialFields,
   draftProjectSeedanceAssetPlaceholders,
   exportProjectCurrentVersion,
   exportProjectGearsExternalCallbackHandoff,
@@ -4753,6 +4754,156 @@ describe('project-service', () => {
     const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
     expect(rawSource.production_material_readiness?.status).toBe('ready');
     expect(rawSource.supplement_tasks?.map(task => task.status)).toEqual(targetFields.map(() => 'resolved'));
+  });
+
+  it('drafts second-wave production material fields from scenes and delivery hints', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const cases: Array<{
+      videoType: StoryGenerateResult['video_type'];
+      style: StoryGenerateResult['presentation_style'];
+      targetAudience: string;
+      communicationGoal: string;
+      fieldIds: string[];
+      expectedSnippet: string;
+    }> = [
+      {
+        videoType: 'children_story',
+        style: 'children_animation',
+        targetAudience: '7-9岁儿童',
+        communicationGoal: '让孩子理解端午传说与事实边界。',
+        fieldIds: ['audience_age_band', 'child_safe_conflict', 'protagonist_choice', 'emotional_resolution', 'parent_teacher_note'],
+        expectedSnippet: '儿童',
+      },
+      {
+        videoType: 'social_short',
+        style: 'social_media_fastcut',
+        targetAudience: '短视频观众',
+        communicationGoal: '用竖屏短视频解释一件文化冷知识。',
+        fieldIds: ['opening_hook', 'beat_interval', 'vertical_shot_plan', 'comment_prompt', 'fact_boundary_card'],
+        expectedSnippet: '竖屏',
+      },
+      {
+        videoType: 'lecture_video',
+        style: 'host_narration',
+        targetAudience: '基层宣讲受众',
+        communicationGoal: '让观众理解历史选择背后的公共价值。',
+        fieldIds: ['speaker_position', 'communication_goal', 'case_examples', 'slide_or_board_assets', 'audience_takeaway'],
+        expectedSnippet: '主讲人',
+      },
+      {
+        videoType: 'education_training',
+        style: 'host_narration',
+        targetAudience: '课堂学员',
+        communicationGoal: '训练学员拆解文化素材的事实、例子与边界。',
+        fieldIds: ['learning_objective', 'learner_profile', 'step_sequence', 'practice_task', 'assessment_check'],
+        expectedSnippet: '学习目标',
+      },
+    ];
+
+    for (const item of cases) {
+      const productionPack = getProductionMaterialPack(item.videoType);
+      expect(productionPack).toBeTruthy();
+      const materialPack: StoryGenerateResult['material_pack'] = {
+        schema_version: 'material-pack/v1',
+        primary_materials: [],
+        supporting_materials: [],
+        reference_materials: [],
+        visual_assets: [],
+        verified_facts: ['已有来源线索：测试资料显示该素材与地方文化传播有关。'],
+        uncertain_claims: ['人物关系、年代和传说流传范围待核实。'],
+        creative_space: ['可从分镜中抽取讲解例子和镜头节奏。'],
+        missing_needs: [],
+        overall_confidence: 0.62,
+      };
+      const initialReadiness = buildProductionMaterialReadinessReport({
+        productionMaterialPack: productionPack!,
+        materialPack,
+        contextText: '',
+      });
+      expect(initialReadiness?.missing_fields.length).toBeGreaterThan(0);
+
+      const baseStory = makeStory();
+      const story: StoryGenerateResult = {
+        ...baseStory,
+        storyId: `20260609-story-autodraft-${item.videoType}`,
+        title: `${productionPack!.label}自动草拟测试`,
+        video_type: item.videoType,
+        presentation_style: item.style,
+        source_entry: `${productionPack!.label}测试条目`,
+        target_audience: item.targetAudience,
+        communication_goal: item.communicationGoal,
+        material_pack: materialPack,
+        production_material_pack: productionPack,
+        production_material_readiness: initialReadiness,
+        scene_breakdown: baseStory.scene_breakdown.map(scene => ({
+          ...scene,
+          title: `文化线索 ${scene.scene_id}`,
+          location: scene.scene_id === 1 ? '旧街入口' : '展陈空间',
+          visual_prompt: scene.scene_id === 1
+            ? '竖屏近景，孩子或主讲人站在旧街入口，手指向文化符号，字幕安全区清晰'
+            : '展陈空间中展示道具、地点卡和事实边界卡，讲述者用手势引导',
+          key_action: scene.scene_id === 1 ? '主角发现一个文化符号并提出问题' : '讲述者用道具解释例子并提示待核实边界',
+          dramatic_function: scene.scene_id === 1 ? '提出核心问题和前三秒钩子' : '给出具体例子并复盘',
+          conflict: scene.scene_id === 1 ? '误会和好奇推动选择' : '事实、传说和改写之间需要分清',
+          camera_suggestion: scene.scene_id === 1 ? '9:16 近景轻推，保留字幕区' : '中近景对切，切到道具特写',
+          dialogue_or_narration: scene.scene_id === 1 ? '为什么这个符号会出现在这里？' : '我们只把有来源的部分当作事实。',
+        })),
+        gears_segments: baseStory.gears_segments.map(segment => ({
+          ...segment,
+          video_type: item.videoType,
+          presentation_style: item.style,
+          visual_focus: ['旧街入口', '文化符号', '字幕关键词', '事实边界卡'],
+          segment_prompt_hint: '9:16 vertical shot, presenter or child notices cultural symbol, caption-safe composition',
+        })),
+        cultural_constraints: [
+          '不得把传说和戏剧化表达写成已确认事实。',
+          '待核实内容需保留来源线索和边界提示。',
+        ],
+        supplement_tasks: item.fieldIds.map(fieldId => ({
+          task_id: `20260609-story-autodraft-${item.videoType}--production-template--${fieldId}`,
+          need_id: `production_template_${fieldId}`,
+          label: fieldId,
+          description: `补齐「${productionPack!.label}」生产模板字段「${fieldId}」。`,
+          stage: 'production_ready',
+          blocking_level: 'risk',
+          affects: ['production_material_readiness', 'gears_delivery'],
+          recommended_fields: [fieldId],
+          recommended_question: `请补充 ${fieldId}。`,
+          status: 'open',
+          source: 'production_material_missing_field',
+          created_at: '2026-06-09T10:00:00.000Z',
+        })),
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+      const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+      const storyPath = resolve(storyDir, `${story.storyId}.json`);
+      await mkdir(storyDir, { recursive: true });
+      await writeFile(storyPath, JSON.stringify({
+        ...story,
+        project_id: enriched.project_id,
+        current_version_id: enriched.current_version_id,
+        _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
+      }, null, 2), 'utf-8');
+
+      const draftResult = await draftProjectProductionMaterialFields(enriched.project_id!);
+      expect(draftResult.ok).toBe(true);
+      expect(draftResult.data?.drafted_task_count).toBe(item.fieldIds.length);
+      expect(draftResult.data?.drafted_field_count).toBe(item.fieldIds.length);
+      expect(draftResult.data?.drafted_tasks.flatMap(task => task.field_ids))
+        .toEqual(expect.arrayContaining(item.fieldIds));
+
+      const afterDetail = await getProject(enriched.project_id!);
+      expect(afterDetail.ok).toBe(true);
+      expect(afterDetail.data?.current_story.supplement_tasks?.map(task => task.status))
+        .toEqual(item.fieldIds.map(() => 'resolved'));
+      expect(afterDetail.data?.current_story.production_material_readiness?.available_fields)
+        .toEqual(expect.arrayContaining(item.fieldIds));
+      expect(JSON.stringify(afterDetail.data?.current_story.supplement_tasks?.map(task => task.supplement_field_values)))
+        .toContain(item.expectedSnippet);
+    }
   });
 
   it('adds manual project material and refreshes creation contract fields', async () => {

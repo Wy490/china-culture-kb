@@ -9534,20 +9534,43 @@ const PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS = new Set([
   'character_stability_tags',
   'dialogue_bubbles',
   'emotion_beats',
+  'audience_age_band',
+  'child_safe_conflict',
+  'protagonist_choice',
+  'concrete_examples',
+  'emotional_resolution',
+  'parent_teacher_note',
+  'core_question',
+  'opening_hook',
+  'share_trigger',
+  'beat_interval',
+  'vertical_shot_plan',
+  'diagram_or_caption_plan',
+  'comment_prompt',
+  'fact_boundary_card',
+  'speaker_position',
+  'communication_goal',
+  'case_examples',
+  'slide_or_board_assets',
+  'audience_takeaway',
+  'learning_objective',
+  'learner_profile',
+  'step_sequence',
+  'practice_task',
+  'assessment_check',
+  'source_cues',
+  'misconception_or_boundary',
+  'forbidden_claims',
 ]);
 
 function projectProductionMaterialDraftableTasks(
   story: StoryGenerateResult,
 ): NonNullable<StoryGenerateResult['supplement_tasks']> {
-  const missingFieldIds = new Set(story.production_material_readiness?.missing_fields.map(field => field.field_id) ?? []);
   return (story.supplement_tasks ?? []).filter(task => {
     if (task.status !== 'open') return false;
     if (task.source !== 'production_material_missing_field') return false;
     const fields = task.recommended_fields ?? [];
-    return fields.some(fieldId => (
-      PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS.has(fieldId)
-      && (missingFieldIds.size === 0 || missingFieldIds.has(fieldId))
-    ));
+    return fields.some(fieldId => PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS.has(fieldId));
   });
 }
 
@@ -9555,11 +9578,9 @@ function productionMaterialDraftFieldValues(
   story: StoryGenerateResult,
   task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
 ): Record<string, string> {
-  const missingFieldIds = new Set(story.production_material_readiness?.missing_fields.map(field => field.field_id) ?? []);
   const values: Record<string, string> = {};
   for (const fieldId of task.recommended_fields ?? []) {
     if (!PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS.has(fieldId)) continue;
-    if (missingFieldIds.size > 0 && !missingFieldIds.has(fieldId)) continue;
     const value = draftProductionMaterialFieldValue(story, fieldId);
     if (value) values[fieldId] = value;
   }
@@ -9576,6 +9597,33 @@ function draftProductionMaterialFieldValue(story: StoryGenerateResult, fieldId: 
   if (fieldId === 'character_stability_tags') return draftCharacterStabilityTags(story);
   if (fieldId === 'dialogue_bubbles') return draftDialogueBubbles(story);
   if (fieldId === 'emotion_beats') return draftEmotionBeats(story);
+  if (fieldId === 'audience_age_band') return draftAudienceAgeBand(story);
+  if (fieldId === 'child_safe_conflict') return draftChildSafeConflict(story);
+  if (fieldId === 'protagonist_choice') return draftProtagonistChoice(story);
+  if (fieldId === 'concrete_examples') return draftConcreteExamples(story);
+  if (fieldId === 'emotional_resolution') return draftEmotionalResolution(story);
+  if (fieldId === 'parent_teacher_note') return draftParentTeacherNote(story);
+  if (fieldId === 'core_question') return draftCoreQuestion(story);
+  if (fieldId === 'opening_hook') return draftOpeningHook(story);
+  if (fieldId === 'share_trigger') return draftShareTrigger(story);
+  if (fieldId === 'beat_interval') return draftBeatInterval(story);
+  if (fieldId === 'vertical_shot_plan') return draftVerticalShotPlan(story);
+  if (fieldId === 'diagram_or_caption_plan') return draftDiagramOrCaptionPlan(story);
+  if (fieldId === 'comment_prompt') return draftCommentPrompt(story);
+  if (fieldId === 'fact_boundary_card') return draftFactBoundaryCard(story);
+  if (fieldId === 'speaker_position') return draftSpeakerPosition(story);
+  if (fieldId === 'communication_goal') return draftCommunicationGoal(story);
+  if (fieldId === 'case_examples') return draftCaseExamples(story);
+  if (fieldId === 'slide_or_board_assets') return draftSlideOrBoardAssets(story);
+  if (fieldId === 'audience_takeaway') return draftAudienceTakeaway(story);
+  if (fieldId === 'learning_objective') return draftLearningObjective(story);
+  if (fieldId === 'learner_profile') return draftLearnerProfile(story);
+  if (fieldId === 'step_sequence') return draftStepSequence(story);
+  if (fieldId === 'practice_task') return draftPracticeTask(story);
+  if (fieldId === 'assessment_check') return draftAssessmentCheck(story);
+  if (fieldId === 'source_cues') return draftSourceCues(story);
+  if (fieldId === 'misconception_or_boundary') return draftMisconceptionOrBoundary(story);
+  if (fieldId === 'forbidden_claims') return draftForbiddenClaims(story);
   return '';
 }
 
@@ -9673,6 +9721,230 @@ function draftEmotionBeats(story: StoryGenerateResult): string {
   return compactDraftLines([
     `情绪节拍：${story.scene_breakdown.slice(0, 6).map(scene => `S${scene.scene_id} ${shortText(scene.dramatic_function || scene.conflict || scene.key_action, 60)}`).join(' -> ')}`,
     `表情动作：每次情绪转折都用眼神、手部动作或身体朝向体现，避免只靠旁白解释。`,
+  ]);
+}
+
+function draftAudienceAgeBand(story: StoryGenerateResult): string {
+  const target = story.target_audience || '7-9岁儿童';
+  return compactDraftLines([
+    `儿童受众年龄段：草拟为 ${target}；若项目未明确年龄，先按 7-9岁儿童理解力处理，待人工确认。`,
+    `语言尺度：短句、具体动作、低恐惧强度，不使用复杂政治/死亡/暴力细节作为直接画面。`,
+  ]);
+}
+
+function draftChildSafeConflict(story: StoryGenerateResult): string {
+  const conflict = story.scene_breakdown.find(scene => scene.conflict)?.conflict
+    ?? story.scene_breakdown.find(scene => scene.dramatic_function)?.dramatic_function
+    ?? story.logline;
+  return compactDraftLines([
+    `儿童安全冲突：把「${shortText(conflict, 140)}」处理为温和阻力或善意张力。`,
+    `安全边界：冲突通过误会、选择、尝试、帮助或道歉推进；不制造恐怖惊吓和不可逆伤害画面。`,
+  ]);
+}
+
+function draftProtagonistChoice(story: StoryGenerateResult): string {
+  const character = storyPrimaryCharacters(story)[0] ?? story.source_entry;
+  const action = story.scene_breakdown.find(scene => scene.key_action)?.key_action ?? story.theme;
+  return compactDraftLines([
+    `主角选择：${character} 在关键场景中选择「${shortText(action, 120)}」。`,
+    `选择结果：用帮助、勇敢尝试、承认误会或继续追问表现成长，避免把胜负写成唯一奖励。`,
+  ]);
+}
+
+function draftConcreteExamples(story: StoryGenerateResult): string {
+  const examples = story.scene_breakdown.slice(0, 4).map(scene => (
+    `具体例子 S${scene.scene_id}：${scene.location || story.source_entry}；${shortText(scene.key_action || scene.plot, 110)}`
+  ));
+  return compactDraftLines([
+    `具体例子：从现有分镜抽取可讲、可画、可举例的动作。`,
+    ...examples,
+  ]);
+}
+
+function draftEmotionalResolution(story: StoryGenerateResult): string {
+  const lastScene = story.scene_breakdown.at(-1);
+  return compactDraftLines([
+    `情绪安放：结尾从「${shortText(lastScene?.conflict || story.theme, 120)}」收束到安心、理解或继续好奇。`,
+    `收束方式：用角色表情放松、道具归位、同伴回应或一句复盘完成情绪释放。`,
+  ]);
+}
+
+function draftParentTeacherNote(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `家长/教师提示：可引导孩子复述「${shortText(story.theme || story.logline, 120)}」，再区分故事改写与事实边界。`,
+    `延伸问题：你看到哪个文化符号？角色做了什么选择？哪些内容还需要查来源？`,
+  ]);
+}
+
+function draftCoreQuestion(story: StoryGenerateResult): string {
+  const question = story.logline.endsWith('？') || story.logline.endsWith('?')
+    ? story.logline
+    : `${story.title}最值得观众带走的问题是什么？`;
+  return compactDraftLines([
+    `核心问题：${question}`,
+    `回答路径：围绕 ${shortText(story.theme || story.source_entry, 140)} 展开，避免把待核实内容写成确定结论。`,
+  ]);
+}
+
+function draftOpeningHook(story: StoryGenerateResult): string {
+  const firstScene = story.scene_breakdown[0];
+  return compactDraftLines([
+    `前三秒开场钩子：${shortText(firstScene?.dialogue_or_narration || firstScene?.key_action || story.logline, 100)}`,
+    `钩子形式：先给反差问题、异常动作或冷知识画面，再在 3秒 内落到 ${story.source_entry}。`,
+  ]);
+}
+
+function draftShareTrigger(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `分享触发点：把「${shortText(story.theme || story.logline, 120)}」包装成“原来如此”的冷知识或反差发现。`,
+    `转发理由：观众能用一句话讲给别人听，并愿意补充自己的地方经验或记忆。`,
+  ]);
+}
+
+function draftBeatInterval(story: StoryGenerateResult): string {
+  const beats = story.scene_breakdown.slice(0, 5).map((scene, index) => (
+    `${index * 5}-${(index + 1) * 5}秒：${shortText(scene.key_action || scene.dramatic_function || scene.plot, 70)}`
+  ));
+  return compactDraftLines([
+    `短视频节奏点：每 5-10秒 有一次信息揭示、动作转折或字幕关键词变化。`,
+    ...beats,
+  ]);
+}
+
+function draftVerticalShotPlan(story: StoryGenerateResult): string {
+  const shots = story.scene_breakdown.slice(0, 4).map(scene => (
+    `竖屏镜头 S${scene.scene_id}：9:16 近景/中近景；${shortText(scene.camera_suggestion || scene.visual_prompt, 110)}`
+  ));
+  return compactDraftLines([
+    `竖屏镜头计划：优先人物表情、手部动作、道具特写和字幕安全区，避免横向信息过密。`,
+    ...shots,
+  ]);
+}
+
+function draftDiagramOrCaptionPlan(story: StoryGenerateResult): string {
+  const captions = story.scene_breakdown.slice(0, 4).map(scene => (
+    `字幕/图示 S${scene.scene_id}：关键词=${shortText(scene.title || scene.location || story.source_entry, 40)}；说明=${shortText(scene.dramatic_function || scene.plot, 80)}`
+  ));
+  return compactDraftLines([
+    `图示/字幕计划：每段只上 1 个关键词和 1 句解释，重要事实旁标“来源/待核”。`,
+    ...captions,
+  ]);
+}
+
+function draftCommentPrompt(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `评论互动提示：你还知道 ${story.source_entry} 的哪个版本、地点或实物线索？`,
+    `评论边界：鼓励补充来源，不引导观众把传说、戏剧化表达或未核信息当作定论。`,
+  ]);
+}
+
+function draftFactBoundaryCard(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `事实边界卡：已确认内容以项目来源和 material_pack verified_facts 为准；待核实内容只作线索，不作断言。`,
+    `边界提示：${shortText(story.credibility_note || story.cultural_constraints.join('；') || '来源、年代、人物关系需人工复核。', 220)}`,
+  ]);
+}
+
+function draftSpeakerPosition(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `主讲人定位：以“文化讲述者/课程主持人”口吻解释 ${story.source_entry}，不冒充亲历者或权威机构。`,
+    `表达方式：先提出问题，再用来源线索、场景例子和当代关联推进。`,
+  ]);
+}
+
+function draftCommunicationGoal(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `传播目标：${story.communication_goal || `让观众理解「${shortText(story.theme || story.logline, 140)}」并知道哪些内容仍需核实。`}`,
+    `行动转化：看完能复述核心观点，愿意查看来源或进入项目对应地点/展陈继续了解。`,
+  ]);
+}
+
+function draftCaseExamples(story: StoryGenerateResult): string {
+  const cases = story.scene_breakdown.slice(0, 4).map(scene => (
+    `案例 ${scene.scene_id}：${scene.location || story.source_entry} - ${shortText(scene.plot || scene.key_action, 120)}`
+  ));
+  return compactDraftLines([
+    `案例例子：从当前分镜抽取可讲述案例，正式使用前需补来源。`,
+    ...cases,
+  ]);
+}
+
+function draftSlideOrBoardAssets(story: StoryGenerateResult): string {
+  const assets = story.scene_breakdown.slice(0, 5).map(scene => (
+    `板书/课件资产 S${scene.scene_id}：标题「${shortText(scene.title, 36)}」；图示=${shortText(scene.location || scene.visual_prompt, 90)}`
+  ));
+  return compactDraftLines([
+    `板书/课件资产：标题卡、时间/地点卡、关键词字幕、事实边界卡。`,
+    ...assets,
+  ]);
+}
+
+function draftAudienceTakeaway(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `受众带走点：用一句话记住 ${shortText(story.theme || story.logline, 140)}。`,
+    `复盘句：我知道了 ${story.source_entry} 的核心问题、一个具体例子，以及哪些信息需要看来源。`,
+  ]);
+}
+
+function draftLearningObjective(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `学习目标：学会说出 ${story.source_entry} 的核心问题、一个具体例子和一条事实边界。`,
+    `掌握标准：能用自己的话复述 ${shortText(story.theme || story.logline, 120)}，并区分事实、传说和改写。`,
+  ]);
+}
+
+function draftLearnerProfile(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `学习者画像：${story.target_audience || '文化入门学习者/课堂学员'}，默认需要先给背景，再给例子和练习。`,
+    `基础假设：不预设专业史学知识，用地点、人物、道具和动作建立理解。`,
+  ]);
+}
+
+function draftStepSequence(story: StoryGenerateResult): string {
+  const steps = story.scene_breakdown.slice(0, 5).map((scene, index) => (
+    `步骤 ${index + 1}：${shortText(scene.title || scene.dramatic_function || scene.key_action, 90)}`
+  ));
+  return compactDraftLines([
+    `步骤序列：先提出问题，再解释背景，再给案例，最后复盘边界。`,
+    ...steps,
+  ]);
+}
+
+function draftPracticeTask(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `练习任务：请用 60 秒复述 ${story.source_entry} 的核心问题，并指出一个需要继续核实的点。`,
+    `互动题：从分镜中选一个道具/地点，说明它如何帮助理解主题。`,
+  ]);
+}
+
+function draftAssessmentCheck(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `掌握检查：能否回答“核心问题是什么、例子是什么、边界是什么”。`,
+    `测验建议：1 道判断题检查事实边界，1 道简答题检查具体例子，1 道开放题收集新来源线索。`,
+  ]);
+}
+
+function draftSourceCues(story: StoryGenerateResult): string {
+  const facts = story.material_pack?.verified_facts.slice(0, 4) ?? [];
+  const claims = story.material_pack?.uncertain_claims.slice(0, 4) ?? [];
+  return compactDraftLines([
+    `来源线索：source_entry=${story.source_entry}；credibility_note=${shortText(story.credibility_note, 160) || '待补来源说明'}。`,
+    ...(facts.length ? facts.map(item => `已确认事实线索：${shortText(item, 100)}`) : []),
+    ...(claims.length ? claims.map(item => `待核实线索：${shortText(item, 100)}`) : ['待核实线索：来源、年代、人物关系和地点仍需人工复核。']),
+  ]);
+}
+
+function draftMisconceptionOrBoundary(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `误区或边界：不要把戏剧化、传说、类比或示意镜头写成已确认事实。`,
+    `边界说明：${shortText(story.cultural_constraints.join('；') || story.credibility_note || '存在待核实信息，正式入库前需补核实方法。', 220)}`,
+  ]);
+}
+
+function draftForbiddenClaims(story: StoryGenerateResult): string {
+  return compactDraftLines([
+    `禁用/不可声称内容：不得声称未经来源确认的年代、人物关系、官方身份、传承谱系或因果结论。`,
+    `待核实边界：${shortText(story.material_pack?.uncertain_claims.join('；') || story.credibility_note || '所有补录内容需人工审稿后才能进入省份 Markdown。', 220)}`,
   ]);
 }
 
