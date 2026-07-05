@@ -109,8 +109,23 @@ const VIDEO_TYPE_LABELS: Partial<Record<VideoType, string>> = {
   heritage_promo: '非遗/工艺宣传片',
   documentary_short: '微纪录片',
   explainer_video: '知识讲解视频',
+  children_story: '儿童故事片',
+  social_short: '竖屏短视频',
+  lecture_video: '宣讲片',
+  education_training: '教育/培训片',
   ai_comic_drama: 'AI漫剧',
 };
+
+const AUDITED_VIDEO_TYPES: VideoType[] = [
+  'heritage_promo',
+  'documentary_short',
+  'explainer_video',
+  'children_story',
+  'social_short',
+  'lecture_video',
+  'education_training',
+  'ai_comic_drama',
+];
 
 export async function auditProductionMaterials(): Promise<ProductionMaterialAuditReport> {
   const allFiles = await readAllProvinceFiles();
@@ -156,7 +171,7 @@ function auditEntry(
   const missingProductionFields = fieldAudits.filter(item => !item.present).map(item => item.field);
   const productionCardScore = Math.round(((CORE_PRODUCTION_FIELDS.length - missingProductionFields.length) / CORE_PRODUCTION_FIELDS.length) * 100);
   const typeTemplateAudits = productionPacks
-    .filter(pack => ['heritage_promo', 'documentary_short', 'explainer_video', 'ai_comic_drama'].includes(pack.video_type))
+    .filter(pack => AUDITED_VIDEO_TYPES.includes(pack.video_type))
     .map(pack => auditTypeTemplate(pack, detail, text));
   const priorityReasons = priorityReasonsForEntry(detail, rawEntryText, fieldAudits, typeTemplateAudits);
 
@@ -258,6 +273,29 @@ function hasTemplateFieldEvidence(fieldId: string, text: string, detail: FullEnt
   if (fieldId === 'source_cues') return detail.sources.length > 0 || /来源|出处|文献|展陈|馆方/.test(text);
   if (fieldId === 'misconception_or_boundary') return /误区|边界|不得|不能|不可|待核实/.test(text);
   if (fieldId === 'recap_sentence') return /总结|记忆点|一句话|复盘/.test(text);
+  if (fieldId === 'audience_age_band') return /3-6岁|7-9岁|10-12岁|年龄|儿童|少儿|亲子|低龄/.test(text);
+  if (fieldId === 'child_safe_conflict') return /温和|善意|误会|选择|不恐怖|不惊吓|安全冲突/.test(text);
+  if (fieldId === 'protagonist_choice') return /主角|选择|决定|帮助|勇敢|道歉|尝试/.test(text);
+  if (fieldId === 'wonder_or_cultural_symbol') return /奇观|文化符号|神奇|纹样|节日|道具/.test(text);
+  if (fieldId === 'emotional_resolution') return /情绪|安放|和解|安心|成长|复盘/.test(text);
+  if (fieldId === 'parent_teacher_note') return /家长|教师|老师|亲子|课堂|延伸/.test(text);
+  if (fieldId === 'opening_hook') return /前三秒|三秒|开场|钩子|反差|悬念/.test(text);
+  if (fieldId === 'platform_context') return /竖屏|短视频|平台|社媒|评论区|完播/.test(text);
+  if (fieldId === 'share_trigger') return /分享|转发|共鸣|反转|冷知识|原来/.test(text);
+  if (fieldId === 'beat_interval') return /10秒|15秒|节奏|转折|揭示|beat/.test(text);
+  if (fieldId === 'vertical_shot_plan') return /竖屏|9:16|近景|字幕|快剪|镜头/.test(text);
+  if (fieldId === 'comment_prompt') return /评论|留言|投票|你觉得|互动/.test(text);
+  if (fieldId === 'fact_boundary_card') return /边界卡|事实边界|不得|待核实|来源/.test(text);
+  if (fieldId === 'learning_objective') return /学习目标|学会|掌握|能说出|能理解/.test(text);
+  if (fieldId === 'learner_profile') return /学习者|学生|学员|年级|基础|受众/.test(text);
+  if (fieldId === 'speaker_position') return /主讲人|讲述者|老师|主持人|speaker/.test(text);
+  if (fieldId === 'communication_goal') return /传播目标|沟通目标|希望观众|行动转化|让观众/.test(text);
+  if (fieldId === 'case_examples') return /案例|例子|比如|例如|case/.test(text);
+  if (fieldId === 'slide_or_board_assets') return /板书|课件|字幕|图示|白板|slide/.test(text);
+  if (fieldId === 'audience_takeaway') return /带走|总结|行动|复盘|takeaway/.test(text);
+  if (fieldId === 'practice_task') return /练习|任务|互动题|试一试|practice/.test(text);
+  if (fieldId === 'assessment_check') return /检查|测验|判断题|选择题|assessment/.test(text);
+  if (fieldId === 'step_sequence') return /步骤|序列|流程|先|再|最后/.test(text);
   if (fieldId === 'materials') return /材料|原料|纸|线|瓷|木|布|颜料|泥/.test(text);
   if (fieldId === 'tools') return /工具|刀|针|窑|织机|鼓|笔|刷/.test(text);
   if (fieldId === 'process_steps') return /流程|步骤|工序|制作|烧制|套印|演唱|仪式/.test(text);
@@ -274,6 +312,10 @@ function recommendedVideoTypes(detail: FullEntryDetail): VideoType[] {
   if (/非遗|传统工艺|地方戏曲|民俗活动|节庆习俗/.test(signal)) types.add('heritage_promo');
   if (/历史人物|名胜古迹|地方掌故|革命|旧址|纪念|墓|楼|书院|文物/.test(signal)) types.add('documentary_short');
   if (/非遗|传统工艺|饮食文化|节庆习俗|宗教信仰|名胜古迹|历史人物|地方掌故|文物|书院|礼制|工艺/.test(signal)) types.add('explainer_video');
+  if (/神话传说|民间故事|节庆习俗|民俗活动|少年|儿童|亲子/.test(signal)) types.add('children_story');
+  if (/非遗|传统工艺|饮食文化|节庆习俗|民俗活动|地方戏曲|文旅|冷知识/.test(signal)) types.add('social_short');
+  if (/历史人物|地方掌故|革命|纪念|旧址|抗战|起义|人物/.test(signal)) types.add('lecture_video');
+  if (/非遗|传统工艺|节庆习俗|地方戏曲|民俗活动|工艺|课程|培训/.test(signal)) types.add('education_training');
   if (/神话传说|民间故事|历史人物|地方掌故|非遗|传说|志异|少年|案/.test(signal)) types.add('ai_comic_drama');
   return [...types];
 }
@@ -475,7 +517,7 @@ function buildMarkdown(report: Omit<ProductionMaterialAuditReport, 'markdown'>):
     '## 下一步',
     '',
     '- 先处理高优先级条目的来源回溯、相关地点和 asset_split。',
-    '- 对非遗、微纪录、AI 漫剧推荐片型覆盖低的条目，按对应 ProductionMaterialPack 补字段。',
+    '- 对非遗、微纪录、知识讲解、儿童故事、竖屏短视频、宣讲/培训和 AI 漫剧推荐片型覆盖低的条目，按对应 ProductionMaterialPack 补字段。',
     '- 审计报告只做治理指挥，不自动改写省份 Markdown。',
   ];
   return `${lines.join('\n')}\n`;

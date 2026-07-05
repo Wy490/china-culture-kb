@@ -1,6 +1,6 @@
 # Story Agent 生产素材体系开发蓝图
 
-更新时间：2026-07-04
+更新时间：2026-07-05
 
 ## 本轮对话已完成
 
@@ -44,6 +44,7 @@
 38. 把 Domain Pack 从检索包升级为生产提示包：`KnowledgePackEntry` 新增可选 `production_prompts` 和 `review_boundaries`；非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物、讲解知识结构五类包已写入结构化生产提示和审稿边界，Story Agent prompt 会把这些字段随知识包一起注入，明确“怎么拍/怎么审”以及“哪些不能写成事实”。
 39. 补齐第二批高频 Domain Pack：新增儿童改写规则包、短视频钩子包、宣讲培训结构包，并为 `children_story`/`children_animation`、`social_short`、`lecture_video`/`education_training` query 增加优先匹配；升级计划的 Domain Pack 扩库建议同步输出 `children_adaptation_safety_pack`、`short_video_hook_pack` 和 `education_training_structure_pack`。
 40. 接入第二批高频片型 production pack 首版：`children_story`、`social_short`、`lecture_video`、`education_training` 已进入 `video-type-material-supplement-packs.json`，包含 required fields、prompt layers、三阶段 gate、补充问题和样板条目；Story Agent 会按当前 video_type 自动注入对应模板，readiness service 已能识别儿童年龄段/安全冲突、短视频三秒钩子/竖屏节奏、宣讲主讲定位/论点案例、培训学习目标/练习检查等字段。
+41. 把第二批高频片型接入底库生产化治理：`kb:production-audit` 现在会审计 `children_story`、`social_short`、`lecture_video`、`education_training` 的模板覆盖；`kb:production-upgrade-plan` 会输出四个对应最小素材包批次，并把儿童改写安全、短视频钩子、宣讲/培训结构包按真实缺口动态升优先级。重生成后的升级计划为 13 个批次、396 个计划动作，仍只生成报告和候选补库任务，不直接改写 `data/provinces/*.md`。
 
 ## 原始诊断必须并入路线
 

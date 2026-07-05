@@ -1,14 +1,14 @@
 # 素材库生产化升级计划
 
-生成时间：2026-07-05T03:57:03.832Z
-来源审计时间：2026-07-05T03:57:03.826Z
+生成时间：2026-07-05T04:29:37.351Z
+来源审计时间：2026-07-05T04:29:37.344Z
 
 ## 总览
 
 - 条目总数：169
-- 高优先级条目：167
-- 批次数：9
-- 计划动作数：230
+- 高优先级条目：169
+- 批次数：13
+- 计划动作数：396
 - 可格式化自动处理动作：0
 
 ## 批次
@@ -186,6 +186,146 @@
 - 只记录可来源追溯的信息，戏剧化空间和事实边界分开。
 - 补完后重新运行 kb:production-audit 和 kb:production-upgrade-plan。
 
+### 儿童故事片最小素材包补齐
+
+- 阶段：Phase 6
+- 批次 ID：children_story_minimum_pack
+- 目标：补齐儿童故事片生产所需的最小字段。
+- 原因：只补目标片型需要的字段，比泛泛扩库更快提升生成质量。
+- 条目数：16
+
+| 条目 | 省份 | 类型 | 分数 | 优先级 | 建议字段 |
+|---|---|---|---:|---|---|
+| 湘潭龙舞——纸扎龙灯的火光与鼓声 | 湖南 | 民俗活动 | 73 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note、misconception_or_boundary、forbidden_claims |
+| 汨罗江畔端午习俗——龙舟文化的发源地 | 湖南 | 节庆习俗 | 82 | high | child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note、misconception_or_boundary、forbidden_claims |
+| 洞庭湖与娥皇女英——湘妃竹传说 | 湖南 | 神话传说 | 100 | high | audience_age_band、core_question、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 苗族赶秋节——湘西秋收的盛大礼赞 | 湖南 | 节庆习俗 | 91 | high | audience_age_band、core_question、child_safe_conflict、protagonist_choice、emotional_resolution、parent_teacher_note |
+| 苗族四月八——湘西苗族纪念英雄亚努的节日 | 湖南 | 民俗活动 | 91 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 苗族椎牛祭——湘西苗族最高祭祀礼仪 | 湖南 | 民俗活动 | 91 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 瑶族盘王节——瑶族始祖的千年祭典 | 湖南 | 节庆习俗 | 91 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 狐仙报恩母题——湖南民间叙事与志异边界 | 湖南 | 志异母题；民间故事结构；GEARS叙事设定包 | 100 | high | audience_age_band、core_question、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 炎帝神农氏——炎陵传说 | 湖南 | 神话传说 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 土家哭嫁歌——新娘的眼泪与歌声 | 湖南 | 民俗活动 | 82 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、parent_teacher_note |
+| 安仁赶分社——春分时节的神农药市 | 湖南 | 民俗活动 | 91 | high | audience_age_band、child_safe_conflict、protagonist_choice、emotional_resolution、parent_teacher_note |
+| 刘海砍樵——人仙之恋的湖南民间传说 | 湖南 | 民间故事 | 91 | high | audience_age_band、core_question、child_safe_conflict、emotional_resolution、parent_teacher_note |
+| 汨罗江畔端午习俗——屈原故乡的龙舟与粽子 | 湖南 | 节庆习俗 | 91 | high | child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 柳毅传书——洞庭湖畔的书生与龙女 | 湖南 | 民间故事 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、emotional_resolution、parent_teacher_note |
+| 屈原投江汨罗——端午节起源 | 湖南 | 神话传说 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、parent_teacher_note |
+| 书生遇异母题——志异叙事中的相遇结构与边界 | 湖南 | 志异母题；民间故事结构；GEARS叙事设定包 | 100 | high | audience_age_band、core_question、concrete_examples、emotional_resolution、parent_teacher_note |
+
+验收标准：
+- 补齐当前片型 required_fields 中最影响生成的字段。
+- 只记录可来源追溯的信息，戏剧化空间和事实边界分开。
+- 补完后重新运行 kb:production-audit 和 kb:production-upgrade-plan。
+
+### 竖屏短视频最小素材包补齐
+
+- 阶段：Phase 6
+- 批次 ID：social_short_minimum_pack
+- 目标：补齐竖屏短视频生产所需的最小字段。
+- 原因：只补目标片型需要的字段，比泛泛扩库更快提升生成质量。
+- 条目数：50
+
+| 条目 | 省份 | 类型 | 分数 | 优先级 | 建议字段 |
+|---|---|---|---:|---|---|
+| 滩头年画——湘西南木版年画的最后守望 | 湖南 | 非遗 | 73 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创 | 湖南 | 非遗 | 73 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 安化千两茶——36公斤的世界茶王 | 湖南 | 非遗 | 82 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 醴陵釉下五彩瓷——东方陶瓷巅峰的百年传奇 | 湖南 | 非遗 | 82 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 桑植民歌——长征路上的歌声与守望 | 湖南 | 非遗 | 82 | high | opening_hook、platform_context、core_question、share_trigger、beat_interval、vertical_shot_plan、comment_prompt、fact_boundary_card |
+| 湘菜与辣椒文化——从美洲外来物到湘魂之味的逆袭 | 湖南 | 饮食文化 | 82 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 湘西土家织锦——西兰卡普：穿在身上的土家史诗 | 湖南 | 非遗 | 82 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 湘绣——中国四大名绣之一 | 湖南 | 非遗 | 82 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 宝庆竹刻——湘西南竹簧雕刻的明清贡品传承 | 湖南 | 非遗 | 91 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 衡山皮影戏——湘南光影的千年传奇 | 湖南 | 非遗 | 91 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 汝城香火龙——元宵夜的火龙腾空 | 湖南 | 非遗 | 91 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 土家族吊脚楼营造技艺——武陵山地的木构智慧 | 湖南 | 非遗 | 91 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 湘西苗族银饰——穿在身上的迁徙史诗 | 湖南 | 非遗 | 91 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 湘西阳戏——傩戏遗存的山地戏曲 | 湖南 | 地方戏曲 | 91 | high | opening_hook、platform_context、core_question、share_trigger、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 常德武陵戏——沅澧流域的湖南五大剧种之一 | 湖南 | 非遗 | 100 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 邵阳布袋戏——一人撑起一台戏 | 湖南 | 非遗 | 100 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 湘西苗医苗药——武陵山中的民族医药体系 | 湖南 | 非遗 | 100 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 浏阳菊花石雕——长沙文人案头的石上之菊 | 湖南 | 非遗 | 73 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt |
+| 踏虎剪纸——凿刀下的苗族阴阳世界 | 湖南 | 非遗 | 73 | high | opening_hook、platform_context、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt、fact_boundary_card |
+| 通道侗锦——湘西南侗寨的指尖花雨 | 湖南 | 非遗 | 73 | high | opening_hook、platform_context、share_trigger、beat_interval、vertical_shot_plan、diagram_or_caption_plan、comment_prompt |
+
+验收标准：
+- 补齐当前片型 required_fields 中最影响生成的字段。
+- 只记录可来源追溯的信息，戏剧化空间和事实边界分开。
+- 补完后重新运行 kb:production-audit 和 kb:production-upgrade-plan。
+
+### 宣讲片最小素材包补齐
+
+- 阶段：Phase 6
+- 批次 ID：lecture_video_minimum_pack
+- 目标：补齐宣讲片生产所需的最小字段。
+- 原因：只补目标片型需要的字段，比泛泛扩库更快提升生成质量。
+- 条目数：50
+
+| 条目 | 省份 | 类型 | 分数 | 优先级 | 建议字段 |
+|---|---|---|---:|---|---|
+| 东北抗联——冰天雪地中的十四年抗战 | 黑龙江 | 地方掌故 | 73 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 淮海战役——小推车推出来的胜利 | 安徽 | 地方掌故 | 73 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 南京大屠杀——中华民族最深的伤痕 | 江苏 | 地方掌故 | 73 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 平江起义——从旧军队内部爆发的革命枪响 | 湖南 | 地方掌故 | 73 | high | speaker_position、communication_goal、argument_points、case_examples、knowledge_outline、slide_or_board_assets、misconception_or_boundary、forbidden_claims |
+| 四渡赤水——毛泽东军事生涯的"得意之笔" | 贵州 | 地方掌故 | 73 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 太行山八路军根据地——抗战的中流砥柱 | 山西 | 名胜古迹 | 73 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 武昌起义——辛亥革命的第一声枪响 | 湖北 | 地方掌故 | 73 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 中原突围——解放战争的序幕 | 河南 | 地方掌故 | 73 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 大青山抗日游击根据地——草原上的铁骑兵 | 内蒙古 | 地方掌故 | 82 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 任弼时——"党的骆驼" | 湖南 | 历史人物 | 82 | high | speaker_position、communication_goal、argument_points、case_examples、knowledge_outline、slide_or_board_assets、misconception_or_boundary、forbidden_claims |
+| 延安——中国革命的圣地 | 陕西 | 名胜古迹 | 82 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 杨靖宇——长白山上的抗日孤雄 | 吉林 | 历史人物 | 82 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 于都——长征出发的渡口 | 江西 | 地方掌故 | 82 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 芷江受降——抗战胜利的庄严见证 | 湖南 | 地方掌故 | 82 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 左权——太行山上的最高殉国将领 | 湖南 | 历史人物 | 82 | high | speaker_position、communication_goal、argument_points、case_examples、knowledge_outline、slide_or_board_assets、misconception_or_boundary、forbidden_claims |
+| 陈赓——黄埔出身的传奇大将 | 湖南 | 历史人物 | 91 | high | speaker_position、communication_goal、argument_points、case_examples、knowledge_outline、slide_or_board_assets、misconception_or_boundary、forbidden_claims |
+| 新疆和平解放——西北边疆的统一 | 新疆 | 地方掌故 | 91 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、audience_takeaway、misconception_or_boundary、forbidden_claims |
+| 曾国藩——湘军创立者与洋务先驱 | 湖南 | 历史人物 | 73 | high | communication_goal、argument_points、case_examples、knowledge_outline、slide_or_board_assets、misconception_or_boundary、forbidden_claims |
+| 九一八事变——东北沦陷的开端 | 辽宁 | 地方掌故 | 73 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、misconception_or_boundary、forbidden_claims |
+| 南昌起义——人民军队的第一声枪响 | 江西 | 地方掌故 | 73 | high | speaker_position、communication_goal、case_examples、knowledge_outline、slide_or_board_assets、misconception_or_boundary、forbidden_claims |
+
+验收标准：
+- 补齐当前片型 required_fields 中最影响生成的字段。
+- 只记录可来源追溯的信息，戏剧化空间和事实边界分开。
+- 补完后重新运行 kb:production-audit 和 kb:production-upgrade-plan。
+
+### 教育/培训片最小素材包补齐
+
+- 阶段：Phase 6
+- 批次 ID：education_training_minimum_pack
+- 目标：补齐教育/培训片生产所需的最小字段。
+- 原因：只补目标片型需要的字段，比泛泛扩库更快提升生成质量。
+- 条目数：50
+
+| 条目 | 省份 | 类型 | 分数 | 优先级 | 建议字段 |
+|---|---|---|---:|---|---|
+| 湘潭龙舞——纸扎龙灯的火光与鼓声 | 湖南 | 民俗活动 | 73 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、step_sequence、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway |
+| 桑植白族仗鼓舞——700年前迁徙白族的武舞合一 | 湖南 | 非遗 | 73 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 土家族摆手舞——湘西土家的集体仪式 | 湖南 | 非遗 | 73 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 岳州扇——洞庭湖畔的文人雅扇 | 湖南 | 传统工艺 | 73 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创 | 湖南 | 非遗 | 73 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 汨罗江畔端午习俗——龙舟文化的发源地 | 湖南 | 节庆习俗 | 82 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 湘西阳戏——傩戏遗存的山地戏曲 | 湖南 | 地方戏曲 | 91 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、step_sequence、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway |
+| 嘉禾伴嫁歌——千年湘南女性的歌堂之夜 | 湖南 | 非遗 | 73 | high | learning_objective、learner_profile、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 浏阳菊花石雕——长沙文人案头的石上之菊 | 湖南 | 非遗 | 73 | high | learning_objective、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 踏虎剪纸——凿刀下的苗族阴阳世界 | 湖南 | 非遗 | 73 | high | learning_objective、learner_profile、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 滩头年画——湘西南木版年画的最后守望 | 湖南 | 非遗 | 73 | high | learning_objective、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 湘昆——山野昆曲的南岭遗音 | 湖南 | 非遗 | 73 | high | learning_objective、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 凤凰蓝印花布——边城蓝白的湘西素颜 | 湖南 | 非遗 | 82 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway |
+| 桑植民歌——长征路上的歌声与守望 | 湖南 | 非遗 | 82 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、audience_takeaway、misconception_or_boundary |
+| 湘西苗族跳香——五谷神前的秋后斋祭 | 湖南 | 非遗 | 82 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway |
+| 湘西土家织锦——西兰卡普：穿在身上的土家史诗 | 湖南 | 非遗 | 82 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway |
+| 岳阳巴陵戏——洞庭湖畔的古戏曲遗存 | 湖南 | 地方戏曲 | 82 | high | learning_objective、knowledge_outline、concept_definitions、step_sequence、practice_task、assessment_check、slide_or_board_assets、audience_takeaway、misconception_or_boundary |
+| 侗族琵琶歌——鼓楼月堂下的湘西南情歌 | 湖南 | 非遗 | 91 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway |
+| 浏阳花炮——千年花炮之乡的火药盛典 | 湖南 | 非遗 | 91 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway |
+| 汨罗江畔端午习俗——屈原故乡的龙舟与粽子 | 湖南 | 节庆习俗 | 91 | high | learning_objective、learner_profile、knowledge_outline、concept_definitions、case_examples、practice_task、assessment_check、slide_or_board_assets、audience_takeaway |
+
+验收标准：
+- 补齐当前片型 required_fields 中最影响生成的字段。
+- 只记录可来源追溯的信息，戏剧化空间和事实边界分开。
+- 补完后重新运行 kb:production-audit 和 kb:production-upgrade-plan。
+
 ### AI漫剧最小素材包补齐
 
 - 阶段：Phase 6
@@ -227,7 +367,7 @@
 - 阶段：Phase 7
 - 批次 ID：domain_pack_expansion
 - 目标：用高频缺口反推通用素材包，减少逐条补库重复劳动。
-- 原因：很多缺口来自同一类共性素材，如非遗流程、纪录片来源、AI 漫剧分镜和朝代设定。
+- 原因：很多缺口来自同一类共性素材，如非遗流程、纪录片来源、AI 漫剧分镜、儿童改写安全、短视频钩子和宣讲培训结构。
 - 条目数：30
 
 | 条目 | 省份 | 类型 | 分数 | 优先级 | 建议字段 |
@@ -267,9 +407,9 @@
 | AI漫剧分镜包 | high | AI漫剧高频缺冲突、对白、表情节拍、关键帧和连续性验收。 | episode_hook、dialogue_bubbles、emotion_beats、reference_images_or_keyframes、multi_shot_continuity |
 | 朝代服饰与器物包 | medium | 历史人物、名胜古迹和传说条目常缺时代、服饰、称谓和器物口径。 | era、character_clothing、character_props、dialogue_tone、credibility_boundary |
 | 讲解知识结构包 | high | 知识讲解视频需要核心问题、知识层级、例子、图示字幕和误区边界，适合沉淀成通用结构包。 | core_question、knowledge_outline、concrete_examples、diagram_or_caption_plan、misconception_or_boundary |
-| 短视频钩子包 | medium | 短视频和漫剧需要前三秒钩子、反转、问题和追看机制。 | opening_hook、conflict_question、reversal、ending_hook |
-| 儿童改写安全包 | medium | 儿童故事和亲子向改写需要年龄分层、善意张力、恐惧尺度和事实边界。 | audience_age_band、gentle_conflict、safe_resolution、fact_boundary |
-| 宣讲/培训结构包 | medium | 讲解和培训片需要学习目标、步骤、例子、复盘和练习。 | learning_goal、knowledge_outline、steps、examples、recap |
+| 短视频钩子包 | high | 短视频和漫剧需要前三秒钩子、平台节奏、分享触发和事实边界卡。 | opening_hook、platform_context、share_trigger、vertical_shot_plan、fact_boundary_card |
+| 儿童改写安全包 | high | 儿童故事和亲子向改写需要年龄分层、善意张力、情绪安放和事实边界。 | audience_age_band、child_safe_conflict、protagonist_choice、emotional_resolution、forbidden_claims |
+| 宣讲/培训结构包 | high | 宣讲和培训片需要传播目标、学习目标、步骤序列、案例、板书和练习检查。 | communication_goal、learning_objective、knowledge_outline、step_sequence、practice_task、assessment_check |
 
 ## 执行原则
 

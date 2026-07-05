@@ -12,6 +12,10 @@ type UpgradeBatchId =
   | 'heritage_promo_minimum_pack'
   | 'documentary_short_minimum_pack'
   | 'explainer_video_minimum_pack'
+  | 'children_story_minimum_pack'
+  | 'social_short_minimum_pack'
+  | 'lecture_video_minimum_pack'
+  | 'education_training_minimum_pack'
   | 'ai_comic_drama_minimum_pack'
   | 'domain_pack_expansion';
 
@@ -67,6 +71,10 @@ const VIDEO_TYPE_LABEL: Record<string, string> = {
   heritage_promo: '非遗/工艺宣传片',
   documentary_short: '微纪录片',
   explainer_video: '知识讲解视频',
+  children_story: '儿童故事片',
+  social_short: '竖屏短视频',
+  lecture_video: '宣讲片',
+  education_training: '教育/培训片',
   ai_comic_drama: 'AI漫剧',
 };
 
@@ -81,6 +89,10 @@ export async function planProductionMaterialUpgrade(): Promise<ProductionMateria
     buildVideoTypeBatch(audit.entries, 'heritage_promo'),
     buildVideoTypeBatch(audit.entries, 'documentary_short'),
     buildVideoTypeBatch(audit.entries, 'explainer_video'),
+    buildVideoTypeBatch(audit.entries, 'children_story'),
+    buildVideoTypeBatch(audit.entries, 'social_short'),
+    buildVideoTypeBatch(audit.entries, 'lecture_video'),
+    buildVideoTypeBatch(audit.entries, 'education_training'),
     buildVideoTypeBatch(audit.entries, 'ai_comic_drama'),
     buildDomainPackBatch(audit.entries, domainPackExpansion),
   ];
@@ -273,7 +285,7 @@ function buildDomainPackBatch(
     phase: 'Phase 7',
     label: 'Domain Pack 扩库牵引',
     goal: '用高频缺口反推通用素材包，减少逐条补库重复劳动。',
-    rationale: '很多缺口来自同一类共性素材，如非遗流程、纪录片来源、AI 漫剧分镜和朝代设定。',
+    rationale: '很多缺口来自同一类共性素材，如非遗流程、纪录片来源、AI 漫剧分镜、儿童改写安全、短视频钩子和宣讲培训结构。',
     entry_count: targets.length,
     actions: targets.map(entry => actionForEntry(entry, 'domain-pack-expansion', [
       ...domainPackExpansion.slice(0, 4).map(item => item.pack_id),
@@ -337,23 +349,23 @@ function buildDomainPackExpansion(audit: ProductionMaterialAuditReport): DomainP
     {
       pack_id: 'short_video_hook_pack',
       label: '短视频钩子包',
-      priority: 'medium',
-      reason: '短视频和漫剧需要前三秒钩子、反转、问题和追看机制。',
-      seed_fields: ['opening_hook', 'conflict_question', 'reversal', 'ending_hook'],
+      priority: ((typeCounts.get('social_short') ?? 0) + (typeCounts.get('ai_comic_drama') ?? 0)) > 20 ? 'high' : 'medium',
+      reason: '短视频和漫剧需要前三秒钩子、平台节奏、分享触发和事实边界卡。',
+      seed_fields: ['opening_hook', 'platform_context', 'share_trigger', 'vertical_shot_plan', 'fact_boundary_card'],
     },
     {
       pack_id: 'children_adaptation_safety_pack',
       label: '儿童改写安全包',
-      priority: 'medium',
-      reason: '儿童故事和亲子向改写需要年龄分层、善意张力、恐惧尺度和事实边界。',
-      seed_fields: ['audience_age_band', 'gentle_conflict', 'safe_resolution', 'fact_boundary'],
+      priority: (typeCounts.get('children_story') ?? 0) > 10 ? 'high' : 'medium',
+      reason: '儿童故事和亲子向改写需要年龄分层、善意张力、情绪安放和事实边界。',
+      seed_fields: ['audience_age_band', 'child_safe_conflict', 'protagonist_choice', 'emotional_resolution', 'forbidden_claims'],
     },
     {
       pack_id: 'education_training_structure_pack',
       label: '宣讲/培训结构包',
-      priority: 'medium',
-      reason: '讲解和培训片需要学习目标、步骤、例子、复盘和练习。',
-      seed_fields: ['learning_goal', 'knowledge_outline', 'steps', 'examples', 'recap'],
+      priority: ((typeCounts.get('lecture_video') ?? 0) + (typeCounts.get('education_training') ?? 0)) > 20 ? 'high' : 'medium',
+      reason: '宣讲和培训片需要传播目标、学习目标、步骤序列、案例、板书和练习检查。',
+      seed_fields: ['communication_goal', 'learning_objective', 'knowledge_outline', 'step_sequence', 'practice_task', 'assessment_check'],
     },
   ];
 }
@@ -406,6 +418,34 @@ function questionsForVideoType(videoType: VideoType): string[] {
       '第一格钩子、主角目标、对手压力和关系碰撞分别是什么？',
       '角色稳定标签、参考图/关键帧和道具锚点是什么？',
       '单镜头与多分镜连续性要验收哪些项目？',
+    ];
+  }
+  if (videoType === 'children_story') {
+    return [
+      '目标儿童年龄段是什么，哪些词汇、恐惧尺度和情绪强度必须控制？',
+      '主角面对的善意张力、选择和成长结果分别是什么？',
+      '哪些文化信息可以儿童化讲述，哪些仍必须保留事实边界或禁写？',
+    ];
+  }
+  if (videoType === 'social_short') {
+    return [
+      '前三秒钩子、反差问题或冷知识入口是什么？',
+      '竖屏镜头、字幕节奏、分享触发点和评论互动如何安排？',
+      '哪些信息需要做成事实边界卡，避免短视频夸张成未经核实的断言？',
+    ];
+  }
+  if (videoType === 'lecture_video') {
+    return [
+      '主讲人的身份、传播目标和核心观点分别是什么？',
+      '论点、案例、来源线索和受众带走点如何分层组织？',
+      '需要哪些板书、课件、图示或字幕资产支撑宣讲节奏？',
+    ];
+  }
+  if (videoType === 'education_training') {
+    return [
+      '学习目标、学习者画像和课后掌握标准分别是什么？',
+      '知识步骤、案例、练习任务和测验检查如何形成闭环？',
+      '哪些板书/课件资产、来源线索和误区边界需要先补齐？',
     ];
   }
   return ['补齐该类型 required_fields 中缺失的关键字段。'];
