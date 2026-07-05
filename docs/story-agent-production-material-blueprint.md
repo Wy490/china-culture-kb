@@ -48,6 +48,7 @@
 42. 加硬知识库写回队列服务端门禁：`updateProjectSupplementTask` 现在只有在候选稿 `approved` 且已生成 `knowledge_writeback_draft_markdown` 后，才允许变更 `knowledge_writeback_status` 或写回备注；补充任务列表新增 `knowledge_writeback_ready` 服务端筛选，独立写回队列页只请求已通过审稿并有正式写回草案的任务，防止前端误操作或接口调用绕过候选稿/审稿流程。
 43. 扩展生产素材自动草拟到第二批高频片型：`draft_production_material_fields` 不再只服务 AI 漫剧关键帧/一致性字段，也会从 `scene_breakdown`、`gears_segments`、`target_audience`、`communication_goal` 和素材边界中草拟儿童年龄段/安全冲突、短视频三秒钩子/竖屏镜头/评论互动、宣讲主讲定位/案例/板书资产、培训学习目标/步骤/练习/掌握检查等字段。草拟结果仍只写入项目补充任务和候选稿，等待人工审稿后才能进入知识库写回队列。
 44. 继续加硬真实外部回片签收：Web `gears-execution-worker-evidence-signoff` 与 MCP `kb_get_gears_worker_evidence_signoff` 现在会独立复核 `story-agent-system-external-output-url-source.json` 中的 `output_url`，即使证据声明 `ready_for_external_import=true`，只要 URL 是 localhost、私网 IP、`.local`、`gears.example`、`story-agent.example` 或 `local.story-agent.invalid`，也不会让 `system_external_output_url_source_ready` 通过，避免把本地地址或示例地址签成真实 GEARS/Seedance 外部回片。
+45. 补强独立知识库写回队列批量导出：`/knowledge-writeback-queue` 在继续只加载已审稿通过且已生成写回草案任务的前提下，新增当前项目/片型/省份/写回状态筛选范围的 JSON 导出包复制入口；Markdown Patch 面向人工 PR，JSON 包面向审稿工具和外部写回流水线，二者都不直接改写 `data/provinces/*.md`。
 
 ## 原始诊断必须并入路线
 

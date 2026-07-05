@@ -52,10 +52,18 @@
       <button
         type="button"
         class="writeback-page__action"
-        :disabled="exporting"
-        @click="copyPatch"
+        :disabled="Boolean(exportingFormat)"
+        @click="copyPatch('markdown')"
       >
-        {{ exporting ? '复制中…' : '复制当前筛选 Patch' }}
+        {{ exportingFormat === 'markdown' ? '复制中…' : '复制 Markdown Patch' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
+        @click="copyPatch('json')"
+      >
+        {{ exportingFormat === 'json' ? '复制中…' : '复制 JSON 包' }}
       </button>
     </section>
 
@@ -142,7 +150,7 @@ const tasks = ref<ProjectSupplementTaskListItem[]>([])
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const exporting = ref(false)
+const exportingFormat = ref<'markdown' | 'json' | ''>('')
 const updatingTaskId = ref('')
 const searchQuery = ref('')
 const projectFilter = ref('')
@@ -259,8 +267,8 @@ async function loadTasks() {
   loading.value = false
 }
 
-async function copyPatch() {
-  exporting.value = true
+async function copyPatch(format: 'markdown' | 'json') {
+  exportingFormat.value = format
   error.value = ''
   copyMessage.value = ''
   try {
@@ -271,15 +279,19 @@ async function copyPatch() {
       ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
     })
     if (res.ok && res.data) {
-      await navigator.clipboard.writeText(res.data.markdown)
-      copyMessage.value = `已复制 ${res.data.approved_count} 条写回草案，目标文件 ${res.data.target_files.length} 个。`
+      const clipboardText = format === 'json'
+        ? JSON.stringify(res.data, null, 2)
+        : res.data.markdown
+      await navigator.clipboard.writeText(clipboardText)
+      const exportLabel = format === 'json' ? 'JSON 导出包' : 'Markdown Patch'
+      copyMessage.value = `已复制 ${exportLabel}：${res.data.approved_count} 条写回草案，目标文件 ${res.data.target_files.length} 个。`
     } else {
-      error.value = res.error?.message ?? '导出写回队列 Patch 失败'
+      error.value = res.error?.message ?? '导出写回队列失败'
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '复制写回队列 Patch 失败'
+    error.value = err instanceof Error ? err.message : '复制写回队列失败'
   } finally {
-    exporting.value = false
+    exportingFormat.value = ''
   }
 }
 
@@ -377,6 +389,12 @@ onMounted(async () => {
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.writeback-page__action--secondary {
+  border-color: #7d8b99;
+  background: #fff;
+  color: #2f3f4f;
 }
 
 .writeback-page__action:disabled,
