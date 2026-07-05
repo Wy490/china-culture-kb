@@ -4470,6 +4470,28 @@ describe('project-service', () => {
       && material.summary.includes('关键帧')
     ))).toBe(true);
 
+    const prematureQueue = await updateProjectSupplementTask(enriched.project_id!, taskId, {
+      status: 'resolved',
+      knowledge_writeback_status: 'queued',
+      knowledge_writeback_note: '不应绕过候选稿审稿。',
+    });
+    expect(prematureQueue.ok).toBe(false);
+    expect(prematureQueue.error?.message).toContain('candidate is approved');
+
+    const prematureQueuedTasks = await listProjectSupplementTasks({
+      project_id: enriched.project_id,
+      knowledge_writeback_status: 'queued',
+    });
+    expect(prematureQueuedTasks.ok).toBe(true);
+    expect(prematureQueuedTasks.data).toEqual([]);
+
+    const prematureReadyTasks = await listProjectSupplementTasks({
+      project_id: enriched.project_id,
+      knowledge_writeback_ready: true,
+    });
+    expect(prematureReadyTasks.ok).toBe(true);
+    expect(prematureReadyTasks.data).toEqual([]);
+
     const reviewed = await updateProjectSupplementTask(enriched.project_id!, taskId, {
       status: 'resolved',
       knowledge_candidate_review_status: 'approved',
@@ -4487,6 +4509,13 @@ describe('project-service', () => {
     });
     expect(draftReadyTasks.ok).toBe(true);
     expect(draftReadyTasks.data?.map(item => item.task.task_id)).toEqual([taskId]);
+
+    const writebackReadyTasks = await listProjectSupplementTasks({
+      project_id: enriched.project_id,
+      knowledge_writeback_ready: true,
+    });
+    expect(writebackReadyTasks.ok).toBe(true);
+    expect(writebackReadyTasks.data?.map(item => item.task.task_id)).toEqual([taskId]);
 
     const queued = await updateProjectSupplementTask(enriched.project_id!, taskId, {
       status: 'resolved',

@@ -76,7 +76,11 @@ export function listProjects() {
 
 export function listSupplementTasks(filters: ProjectSupplementTaskListFilters = {}) {
   const query = Object.fromEntries(
-    Object.entries(filters).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0),
+    Object.entries(filters).flatMap(([key, value]) => {
+      if (typeof value === 'string' && value.length > 0) return [[key, value]];
+      if (typeof value === 'boolean') return [[key, value ? '1' : '0']];
+      return [];
+    }),
   )
   return apiGet<ProjectSupplementTaskListItem[]>('/projects/supplement-tasks', query)
 }

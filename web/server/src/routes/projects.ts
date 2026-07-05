@@ -271,6 +271,8 @@ projectsRouter.get('/supplement-tasks', async (req, res, next) => {
       req.query.knowledge_writeback_status,
       SUPPLEMENT_TASK_WRITEBACK_STATUSES,
     );
+    const knowledgeWritebackReady = req.query.knowledge_writeback_ready === '1'
+      || req.query.knowledge_writeback_ready === 'true';
     const projectId = typeof req.query.project_id === 'string' && req.query.project_id.trim()
       ? req.query.project_id.trim()
       : undefined;
@@ -287,6 +289,7 @@ projectsRouter.get('/supplement-tasks', async (req, res, next) => {
       blocking_level: blockingLevel,
       source,
       knowledge_writeback_status: knowledgeWritebackStatus,
+      knowledge_writeback_ready: knowledgeWritebackReady,
     });
     res.json(result);
   } catch (err) {

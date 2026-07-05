@@ -104,6 +104,7 @@ import type {
   SeedanceShotStatusBatchUpdateResult,
   SeedanceShotStatusUpdateRequest,
   SeedanceShotVersionSelectRequest,
+  KnowledgeSupplementTask,
   KnowledgeSupplementTaskUpdateRequest,
   KnowledgeSupplementTaskStatus,
   ProjectSupplementTaskListFilters,
@@ -8133,7 +8134,9 @@ export async function listProjectSupplementTasks(
       if (filters.stage && task.stage !== filters.stage) continue;
       if (filters.blocking_level && task.blocking_level !== filters.blocking_level) continue;
       if (filters.source && task.source !== filters.source) continue;
+      if (filters.knowledge_writeback_ready && !isKnowledgeWritebackReadyTask(task)) continue;
       if (filters.knowledge_writeback_status) {
+        if (!isKnowledgeWritebackReadyTask(task)) continue;
         const writebackStatus = task.knowledge_writeback_status
           ?? (task.knowledge_writeback_draft_markdown ? 'draft_ready' : undefined);
         if (writebackStatus !== filters.knowledge_writeback_status) continue;
@@ -8163,6 +8166,13 @@ export async function listProjectSupplementTasks(
     return bTime.localeCompare(aTime);
   });
   return success(items);
+}
+
+function isKnowledgeWritebackReadyTask(task: KnowledgeSupplementTask): boolean {
+  return Boolean(
+    task.knowledge_candidate_review_status === 'approved'
+    && task.knowledge_writeback_draft_markdown,
+  );
 }
 
 function supplementBlockingPriority(level: ProjectSupplementTaskListItem['task']['blocking_level']): number {
@@ -9757,10 +9767,24 @@ export async function updateProjectSupplementTask(
         : undefined,
     };
   });
+  const updatedTask = updatedTasks[taskIndex];
+  const writebackTouched = Boolean(request.knowledge_writeback_status || request.knowledge_writeback_note);
+  if (
+    writebackTouched
+    && (
+      updatedTask.knowledge_candidate_review_status !== 'approved'
+      || !updatedTask.knowledge_writeback_draft_markdown
+    )
+  ) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'Knowledge writeback status can only be changed after a candidate is approved and a writeback draft exists.',
+    );
+  }
   const materialRefresh = applySupplementTaskMaterialUpdate(
     current_story,
-    updatedTasks[taskIndex],
-    updatedTasks[taskIndex].supplement_note,
+    updatedTask,
+    updatedTask.supplement_note,
     updatedAt,
   );
   const updatedStory: StoryGenerateResult = {

@@ -250,7 +250,7 @@ function updateNoteDraft(taskId: string, event: Event) {
 async function loadTasks() {
   loading.value = true
   error.value = ''
-  const res = await listSupplementTasks()
+  const res = await listSupplementTasks({ knowledge_writeback_ready: true })
   if (res.ok && res.data) {
     tasks.value = res.data
   } else {

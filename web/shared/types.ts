@@ -954,6 +954,7 @@ export interface ProjectSupplementTaskListFilters {
   blocking_level?: MaterialBlockingLevel;
   source?: KnowledgeSupplementTaskSource;
   knowledge_writeback_status?: KnowledgeWritebackStatus;
+  knowledge_writeback_ready?: boolean;
 }
 
 export interface ProjectDraftProductionMaterialTaskResult {
