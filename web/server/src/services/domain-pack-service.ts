@@ -29,6 +29,8 @@ interface DomainPackSeed {
   keywords: string[];
   asset_usage: KnowledgeAssetUsage[];
   trigger_words: string[];
+  production_prompts?: string[];
+  review_boundaries?: string[];
 }
 
 interface DomainPackFile {
@@ -394,6 +396,12 @@ function priorityDomainPackMatchers(text: string): Array<(seed: DomainPackSeed) 
 }
 
 function seedToKnowledgePackEntry(seed: DomainPackSeed, score: number): KnowledgePackEntry {
+  const productionPrompts = Array.isArray(seed.production_prompts)
+    ? seed.production_prompts.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+    : [];
+  const reviewBoundaries = Array.isArray(seed.review_boundaries)
+    ? seed.review_boundaries.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+    : [];
   return {
     entry_name: seed.entry_name,
     province: seed.region === '湖南' || seed.region.startsWith('湖南') ? '湖南' : '通用',
@@ -408,6 +416,8 @@ function seedToKnowledgePackEntry(seed: DomainPackSeed, score: number): Knowledg
     entry_role: seed.role,
     ...(seed.era ? { era: seed.era } : {}),
     asset_usage: seed.asset_usage,
+    ...(productionPrompts.length ? { production_prompts: productionPrompts } : {}),
+    ...(reviewBoundaries.length ? { review_boundaries: reviewBoundaries } : {}),
   };
 }
 

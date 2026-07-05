@@ -24,6 +24,13 @@ export interface GearsWorkerEvidenceSignoffAction {
   sample_paths?: string[];
 }
 
+export interface GearsWorkerEvidenceSignoffGate {
+  id: string;
+  label?: string;
+  status: string;
+  summary?: string;
+}
+
 export interface GearsWorkerEvidenceSignoffReport {
   schema_version: 'mcp-gears-worker-evidence-signoff/v1';
   provider: 'gears';
@@ -37,6 +44,16 @@ export interface GearsWorkerEvidenceSignoffReport {
   integrity_passed: boolean;
   health_audit_passed: boolean;
   mvp_status_audit_passed: boolean;
+  system_external_callback_passed: boolean;
+  system_external_callback_ready_to_import_count: number;
+  system_external_callback_updated_count: number;
+  system_external_callback_blocking_count: number;
+  system_external_callback_failed_count: number;
+  system_external_callback_unresolved_count: number;
+  system_external_callback_project_count: number;
+  system_external_output_url_source_ready: boolean;
+  system_external_output_url_configured_from_env: boolean;
+  system_external_output_url_source: string;
   pressure_submitted: boolean;
   gate_counts: {
     passed: number;
@@ -83,6 +100,7 @@ export interface GearsWorkerEvidenceSignoffReport {
   large_project_unexpected_source_count: number;
   required_files: string[];
   missing_required_files: string[];
+  gates: GearsWorkerEvidenceSignoffGate[];
   recommended_actions: GearsWorkerEvidenceSignoffAction[];
   markdown?: string;
   generated_at: string;
@@ -224,6 +242,12 @@ function asRecord(value: unknown): JsonRecord {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {};
 }
 
+function asApiData(value: unknown): JsonRecord {
+  const root = asRecord(value);
+  const data = asRecord(root.data);
+  return Object.keys(data).length ? data : root;
+}
+
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
@@ -301,6 +325,12 @@ function renderMarkdown(report: Omit<GearsWorkerEvidenceSignoffReport, 'markdown
     `- integrity_passed: ${report.integrity_passed}`,
     `- health_audit_passed: ${report.health_audit_passed}`,
     `- mvp_status_audit_passed: ${report.mvp_status_audit_passed}`,
+    `- system_external_callback_passed: ${report.system_external_callback_passed}`,
+    `- system_external_output_url_source: ${report.system_external_output_url_source}`,
+    `- system_external_output_url_source_ready: ${report.system_external_output_url_source_ready}`,
+    `- system_external_output_url_configured_from_env: ${report.system_external_output_url_configured_from_env}`,
+    `- system_external_callback_ready/updated: ${report.system_external_callback_ready_to_import_count}/${report.system_external_callback_updated_count}`,
+    `- system_external_callback_blocking/failed/unresolved: ${report.system_external_callback_blocking_count}/${report.system_external_callback_failed_count}/${report.system_external_callback_unresolved_count}`,
     `- pressure_submitted: ${report.pressure_submitted}`,
     `- gates passed/failed/skipped/total: ${report.gate_counts.passed}/${report.gate_counts.failed}/${report.gate_counts.skipped}/${report.gate_counts.total}`,
     `- failed_gate_ids: ${report.failed_gate_ids.join(', ') || 'none'}`,
@@ -316,6 +346,12 @@ function renderMarkdown(report: Omit<GearsWorkerEvidenceSignoffReport, 'markdown
     `- mvp_score_delta: ${report.mvp_score_delta}`,
     `- large_project_source_echo: ${report.large_project_source_echo_count}/${report.large_project_request_unit_count}`,
     `- large_project_records/accepted/rejected/failed: ${report.large_project_response_record_count}/${report.large_project_accepted_count}/${report.large_project_rejected_count}/${report.large_project_failed_count}`,
+    '',
+    '## Gates',
+    '',
+    ...(report.gates.length
+      ? report.gates.map(gate => `- ${gate.id}: ${gate.status}${gate.summary ? ` - ${gate.summary}` : ''}`)
+      : ['- none']),
     '',
     '## Missing Required Files',
     '',
@@ -349,6 +385,16 @@ export async function getGearsWorkerEvidenceSignoff(
       integrity_passed: false,
       health_audit_passed: false,
       mvp_status_audit_passed: false,
+      system_external_callback_passed: false,
+      system_external_callback_ready_to_import_count: 0,
+      system_external_callback_updated_count: 0,
+      system_external_callback_blocking_count: 0,
+      system_external_callback_failed_count: 0,
+      system_external_callback_unresolved_count: 0,
+      system_external_callback_project_count: 0,
+      system_external_output_url_source_ready: false,
+      system_external_output_url_configured_from_env: false,
+      system_external_output_url_source: 'missing',
       pressure_submitted: false,
       gate_counts: { passed: 0, failed: 1, skipped: 0, total: 1 },
       failed_gate_ids: ['evidence_dir'],
@@ -388,6 +434,12 @@ export async function getGearsWorkerEvidenceSignoff(
       large_project_unexpected_source_count: 0,
       required_files: [],
       missing_required_files: [],
+      gates: [{
+        id: 'evidence_dir',
+        label: 'Evidence directory',
+        status: 'failed',
+        summary: resolved.error,
+      }],
       recommended_actions: [{
         priority: 'P0',
         owner: 'Story Agent smoke env',
@@ -405,6 +457,9 @@ export async function getGearsWorkerEvidenceSignoff(
     integrityRead,
     workerRead,
     callbackRead,
+    systemExternalOutputSourceRead,
+    systemExternalPreflightRead,
+    systemExternalImportRead,
     healthRead,
     mvpRead,
     pressureRead,
@@ -414,6 +469,9 @@ export async function getGearsWorkerEvidenceSignoff(
     readEvidenceJson(resolved.evidenceDir, 'gears-worker-acceptance-integrity.json'),
     readEvidenceJson(resolved.evidenceDir, 'gears-worker-response-audit.json'),
     readEvidenceJson(resolved.evidenceDir, 'story-agent-callback-response-audit.json'),
+    readEvidenceJson(resolved.evidenceDir, 'story-agent-system-external-output-url-source.json'),
+    readEvidenceJson(resolved.evidenceDir, 'story-agent-system-external-callback-preflight-response.json'),
+    readEvidenceJson(resolved.evidenceDir, 'story-agent-system-external-callback-import-response.json'),
     readEvidenceJson(resolved.evidenceDir, 'story-agent-generated-health-audit.json'),
     readEvidenceJson(resolved.evidenceDir, 'story-agent-mvp-status-audit.json'),
     readEvidenceJson(resolved.evidenceDir, 'gears-large-project-response-audit.json'),
@@ -424,6 +482,11 @@ export async function getGearsWorkerEvidenceSignoff(
   const integrity = integrityRead.data;
   const workerTotals = asRecord(workerRead.data?.totals);
   const callbackTotals = asRecord(callbackRead.data?.totals);
+  const systemExternalOutputSource = asRecord(systemExternalOutputSourceRead.data);
+  const systemExternalPreflightRoot = asRecord(systemExternalPreflightRead.data);
+  const systemExternalImportRoot = asRecord(systemExternalImportRead.data);
+  const systemExternalPreflight = asApiData(systemExternalPreflightRead.data);
+  const systemExternalImport = asApiData(systemExternalImportRead.data);
   const healthBeforeSummary = asRecord(asRecord(healthRead.data?.before).summary);
   const healthAfterSummary = asRecord(asRecord(healthRead.data?.after).summary);
   const healthDeltas = asRecord(healthRead.data?.deltas);
@@ -440,11 +503,49 @@ export async function getGearsWorkerEvidenceSignoff(
   const integrityPassed = asBool(integrity?.integrity_passed);
   const healthAuditPassed = healthRead.data?.status === 'passed';
   const mvpStatusAuditPassed = mvpRead.data?.status === 'passed' || mvpRead.data?.status === 'warning';
+  const systemExternalOutputUrlSourceReady = systemExternalOutputSourceRead.exists
+    && systemExternalOutputSourceRead.parse_ok
+    && asBool(systemExternalOutputSource.ready_for_external_import)
+    && (systemExternalOutputSource.source === 'env' || systemExternalOutputSource.source === 'worker_response')
+    && systemExternalOutputSource.placeholder !== true;
+  const systemExternalOutputUrlSource = typeof systemExternalOutputSource.source === 'string'
+    ? systemExternalOutputSource.source
+    : systemExternalOutputSourceRead.exists
+      ? 'unknown'
+      : 'missing';
+  const systemExternalCallbackPassed = systemExternalPreflightRead.exists
+    && systemExternalPreflightRead.parse_ok
+    && systemExternalImportRead.exists
+    && systemExternalImportRead.parse_ok
+    && systemExternalOutputUrlSourceReady
+    && (!('ok' in systemExternalPreflightRoot) || asBool(systemExternalPreflightRoot.ok))
+    && (!('ok' in systemExternalImportRoot) || asBool(systemExternalImportRoot.ok))
+    && systemExternalPreflight.schema_version === 'system-gears-external-callback-batch-import/v1'
+    && systemExternalImport.schema_version === 'system-gears-external-callback-batch-import/v1'
+    && systemExternalPreflight.mode === 'preflight'
+    && systemExternalImport.mode === 'import'
+    && systemExternalPreflight.blocked === false
+    && systemExternalImport.blocked === false
+    && asNumber(systemExternalPreflight.ready_to_import_count) > 0
+    && asNumber(systemExternalImport.updated_count) > 0
+    && asNumber(systemExternalPreflight.blocking_count) === 0
+    && asNumber(systemExternalImport.blocking_count) === 0
+    && asNumber(systemExternalImport.failed_count) === 0
+    && asNumber(systemExternalPreflight.unresolved_count) === 0
+    && asNumber(systemExternalImport.unresolved_count) === 0;
+  const gates = asArray(verdict?.gates)
+    .filter((item): item is JsonRecord => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    .map(item => ({
+      id: typeof item.id === 'string' ? item.id : 'unknown_gate',
+      label: typeof item.label === 'string' ? item.label : undefined,
+      status: typeof item.status === 'string' ? item.status : 'unknown',
+      summary: typeof item.summary === 'string' ? item.summary : undefined,
+    }));
   const recommendedActions = dedupeActions([
     ...evidenceActions(verdict?.recommended_actions),
     ...evidenceActions(archive?.recommended_actions),
     ...evidenceActions(integrity?.recommended_actions),
-    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, healthRead, mvpRead, pressureRead]
+    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, systemExternalOutputSourceRead, systemExternalPreflightRead, systemExternalImportRead, healthRead, mvpRead, pressureRead]
       .filter(read => !read.exists || !read.parse_ok)
       .map(read => ({
         priority: 'P0',
@@ -456,6 +557,7 @@ export async function getGearsWorkerEvidenceSignoff(
   ]);
   const coreEvidenceAvailable = verdictRead.exists && archiveRead.exists && integrityRead.exists && healthRead.exists;
   const status: SignoffStatus = acceptancePassed && signoffReady && integrityPassed && healthAuditPassed && mvpStatusAuditPassed
+    && systemExternalCallbackPassed
     ? 'ready'
     : coreEvidenceAvailable
       ? 'attention'
@@ -472,6 +574,21 @@ export async function getGearsWorkerEvidenceSignoff(
     integrity_passed: integrityPassed,
     health_audit_passed: healthAuditPassed,
     mvp_status_audit_passed: mvpStatusAuditPassed,
+    system_external_callback_passed: systemExternalCallbackPassed,
+    system_external_callback_ready_to_import_count: asNumber(systemExternalPreflight.ready_to_import_count),
+    system_external_callback_updated_count: asNumber(systemExternalImport.updated_count),
+    system_external_callback_blocking_count: asNumber(systemExternalPreflight.blocking_count)
+      + asNumber(systemExternalImport.blocking_count),
+    system_external_callback_failed_count: asNumber(systemExternalImport.failed_count),
+    system_external_callback_unresolved_count: asNumber(systemExternalPreflight.unresolved_count)
+      + asNumber(systemExternalImport.unresolved_count),
+    system_external_callback_project_count: Math.max(
+      asNumber(systemExternalPreflight.project_count),
+      asNumber(systemExternalImport.project_count),
+    ),
+    system_external_output_url_source_ready: systemExternalOutputUrlSourceReady,
+    system_external_output_url_configured_from_env: asBool(systemExternalOutputSource.configured_from_env),
+    system_external_output_url_source: systemExternalOutputUrlSource,
     pressure_submitted: asBool(verdict?.pressure_submitted) || asBool(pressureTotals.pressure_submitted),
     gate_counts: {
       passed: asNumber(gateCounts.passed),
@@ -518,6 +635,7 @@ export async function getGearsWorkerEvidenceSignoff(
     large_project_unexpected_source_count: asNumber(pressureTotals.unexpected_source_count),
     required_files: requiredFiles,
     missing_required_files: missingRequiredFiles,
+    gates,
     recommended_actions: recommendedActions,
     generated_at: generatedAt,
   };

@@ -40,6 +40,8 @@
 34. 把系统级外部回片纳入 GEARS worker acceptance kit：`gears-execution-worker-acceptance-kit/v1` 新增 `gears-system-external-callback-smoke.json` payload、系统级 preflight/import 两个 Story Agent callback 阶段命令、shell 脚本证据文件和 callback response audit 扫描；ledger seed 会同步 patch 系统级 payload，验收脚本可验证 `blocked=false`、`updated_count>0`、真实外部 artifact 写入和 `local_acceptance`/示例 URL 边界。
 35. 把系统级外部回片纳入最终 worker evidence 签收门槛：`gears-worker-acceptance-verdict` 新增 `system_external_callback_batch` 独立 gate，要求系统级 preflight/import 响应均为 `blocked=false`、`ready_to_import_count>0`、`updated_count>0`、`failed_count=0`、`unresolved_count=0`；archive 把系统级回片 payload、ledger seed、preflight/import 响应列为必需证据；signoff API/Markdown 新增 `system_external_callback_passed` 和 ready/updated/blocking 计数，最终 `ready` 不再可能只靠 local acceptance 或普通 callback audit 通过。
 36. 移除 worker acceptance kit 的固定 `.test` 回片样例并接入真实 worker artifact 自动抽取：系统级外部 callback payload 的 `outputUrl` 改为 `<GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>`，脚本会先从 GEARS submit/status 响应中的 `artifact`/`output`/`media`/`video` URL 字段抽取真实公网 artifact URL，抽不到时才要求操作员用 `GEARS_SYSTEM_EXTERNAL_OUTPUT_URL` 手工覆盖；`story-agent-system-external-output-url-source.json` 会记录 URL 来源是 `worker_response` 还是 `env`、是否仍是占位、是否可外部导入，verdict/signoff 会在 URL 来源未验证、仍是占位或不可外部导入时失败，archive 也把该来源证据列为必需附件。
+37. 同步 MCP worker evidence signoff 的真实回片门禁：`kb_get_gears_worker_evidence_signoff` 现在会读取 `story-agent-system-external-output-url-source.json`、系统级 preflight 响应和 import 响应，输出 `system_external_callback_passed`、URL 来源、ready/updated/blocking 计数和 verdict gates；MCP `status=ready` 同样要求 URL 来源为 `worker_response` 或 `env` 且非占位、系统级 preflight/import 全部通过，避免命令行签收把 placeholder、local acceptance 或普通 callback audit 当成真实外部回片。
+38. 把 Domain Pack 从检索包升级为生产提示包：`KnowledgePackEntry` 新增可选 `production_prompts` 和 `review_boundaries`；非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物、讲解知识结构五类包已写入结构化生产提示和审稿边界，Story Agent prompt 会把这些字段随知识包一起注入，明确“怎么拍/怎么审”以及“哪些不能写成事实”。
 
 ## 原始诊断必须并入路线
 
@@ -194,6 +196,7 @@
 - 已新增项目级 GEARS 外部回片交接包和系统级跨项目外部回片队列，外部 worker 可按项目拿到 preflight/safe import 路径、callback 样例和待替换真实 artifact URL 清单。
 - 已新增系统级批量 GEARS 外部 callback preflight/import，外部 worker 可一次回传多项目真实公网 artifact URL；系统仍会按项目执行 preflight 和安全导入，不会把 `local_acceptance` 或示例 URL 当外部回片。
 - 已将系统级外部 callback preflight/import 纳入 GEARS worker acceptance kit、shell script、payload 文件、callback response audit、acceptance verdict、archive 必需证据和 worker evidence signoff ready 判定；worker kit 已不再内置 `.test` 回片 URL，会优先从 GEARS worker 响应自动抽取真实公网 artifact，必要时再通过 `GEARS_SYSTEM_EXTERNAL_OUTPUT_URL` 手工覆盖。
+- 已同步 MCP `kb_get_gears_worker_evidence_signoff` 的签收口径，MCP 与 Web signoff 一样要求系统级外部 artifact URL 来源可验证，且 preflight/import 真正写入外部回片后才会返回 `ready`。
 - 待继续：接入真实 GEARS/Seedance 外部执行 worker，把交接队列中的样例 `outputUrl` 替换为真实公网 artifact URL 后回传，并跑出 `system_external_callback_passed=true` 的 worker evidence signoff。
 
 ### Phase 4：前端工作台
@@ -271,16 +274,12 @@
 
 ### Phase 7：Domain Pack 扩库
 
-下一步。
+状态：首批生产型 Domain Pack 已接入，继续扩儿童改写、短视频钩子和培训结构包。
 
-- 朝代设定包。
-- 地域文化包。
-- 非遗流程包。
-- 纪录片来源包。
-- 儿童改写规则包。
-- AI 漫剧分镜包。
-- 短视频钩子包。
-- 宣讲/培训结构包。
+- 朝代设定包、地域文化包、非遗流程包、纪录片来源包、AI 漫剧分镜包、朝代服饰与器物包、讲解知识结构包已进入 `data/domain-packs/china-culture.json`。
+- 非遗流程、纪录片来源、AI 漫剧分镜、朝代服饰器物、讲解知识结构五类包已带 `production_prompts` 和 `review_boundaries`，会进入 Story Agent prompt。
+- 儿童改写规则包、短视频钩子包、宣讲/培训结构包仍待扩。
+- 所有 Domain Pack 只提供采集结构、生产提示和审稿边界，不自动写入 `data/provinces/*.md`，也不得替代具体来源核验。
 
 ## 近期优先级
 

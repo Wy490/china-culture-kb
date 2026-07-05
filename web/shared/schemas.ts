@@ -208,6 +208,8 @@ export const KnowledgePackEntrySchema = z.object({
   era: z.string().optional(),
   asset_usage: z.array(KnowledgeAssetUsageSchema).optional(),
   asset_split: KnowledgeAssetSplitSchema.optional(),
+  production_prompts: z.array(z.string()).optional(),
+  review_boundaries: z.array(z.string()).optional(),
 });
 
 export const KnowledgePackMissingSchema = z.object({

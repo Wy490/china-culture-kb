@@ -121,6 +121,8 @@ interface PromptKnowledgeEntry {
   era?: string;
   asset_usage?: KnowledgeAssetUsage[];
   asset_split?: KnowledgeAssetSplit;
+  production_prompts?: string[];
+  review_boundaries?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -609,7 +611,13 @@ function formatKnowledgeEntryForPrompt(entry: PromptKnowledgeEntry): string {
     entry.asset_usage?.length ? `用途：${entry.asset_usage.join('、')}` : '',
   ].filter(Boolean).join('；');
   const assetSplitText = formatAssetSplitForPrompt(entry.asset_split);
-  return `${entry.entry_name}（${tags}）: ${entry.summary}${assetSplitText ? `；资产拆分：${assetSplitText}` : ''}`;
+  const productionPromptText = entry.production_prompts?.length
+    ? `；生产提示：${entry.production_prompts.join('；')}`
+    : '';
+  const reviewBoundaryText = entry.review_boundaries?.length
+    ? `；审稿边界：${entry.review_boundaries.join('；')}`
+    : '';
+  return `${entry.entry_name}（${tags}）: ${entry.summary}${assetSplitText ? `；资产拆分：${assetSplitText}` : ''}${productionPromptText}${reviewBoundaryText}`;
 }
 
 function formatMaterialForPrompt(entry: MaterialPackEntry): string {
@@ -737,6 +745,8 @@ export function buildStoryGenerationPromptPackage(input: {
             era: e.era,
             asset_usage: e.asset_usage,
             asset_split: e.asset_split,
+            production_prompts: e.production_prompts,
+            review_boundaries: e.review_boundaries,
           })),
           supporting_entries: input.knowledgePack.supporting_entries.map(e => ({
             entry_name: e.entry_name,
@@ -747,6 +757,8 @@ export function buildStoryGenerationPromptPackage(input: {
             era: e.era,
             asset_usage: e.asset_usage,
             asset_split: e.asset_split,
+            production_prompts: e.production_prompts,
+            review_boundaries: e.review_boundaries,
           })),
         }
       : undefined,

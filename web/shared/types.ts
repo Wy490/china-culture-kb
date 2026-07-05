@@ -5705,6 +5705,8 @@ export interface KnowledgePackEntry {
   era?: string;
   asset_usage?: KnowledgeAssetUsage[];
   asset_split?: KnowledgeAssetSplit;
+  production_prompts?: string[];
+  review_boundaries?: string[];
 }
 
 export interface KnowledgePackMissing {

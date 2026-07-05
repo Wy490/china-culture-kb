@@ -19,6 +19,16 @@ describe('domain-pack-service', () => {
     expect(seeds.some(seed => seed.entry_name === 'AI漫剧分镜包——关键帧、表情节拍与连续性验收')).toBe(true);
     expect(seeds.some(seed => seed.entry_name === '朝代服饰与器物包——时代称谓、服装道具和事实边界')).toBe(true);
     expect(seeds.some(seed => seed.domain === 'narrative_pattern' && seed.role === 'pattern_pack')).toBe(true);
+    expect(
+      seeds.find(seed => seed.entry_name === '讲解知识结构包——核心问题、层级例子与图示字幕')?.production_prompts,
+    ).toEqual(expect.arrayContaining([
+      expect.stringContaining('观众问题'),
+    ]));
+    expect(
+      seeds.find(seed => seed.entry_name === '非遗流程生产包——材料工具、工序动作与授权边界')?.review_boundaries,
+    ).toEqual(expect.arrayContaining([
+      expect.stringContaining('不得把通用流程包写成具体项目已确认流程'),
+    ]));
   });
 
   it('builds knowledge pack entries from editable domain pack data', () => {
@@ -53,5 +63,15 @@ describe('domain-pack-service', () => {
     expect(entries.some(entry => entry.entry_name === '讲解知识结构包——核心问题、层级例子与图示字幕')).toBe(true);
     expect(entries.some(entry => entry.entry_name === 'AI漫剧分镜包——关键帧、表情节拍与连续性验收')).toBe(true);
     expect(entries.some(entry => entry.asset_usage?.includes('credibility_boundary'))).toBe(true);
+    expect(
+      entries.find(entry => entry.entry_name === '讲解知识结构包——核心问题、层级例子与图示字幕')?.production_prompts,
+    ).toEqual(expect.arrayContaining([
+      expect.stringContaining('图示'),
+    ]));
+    expect(
+      entries.find(entry => entry.entry_name === 'AI漫剧分镜包——关键帧、表情节拍与连续性验收')?.review_boundaries,
+    ).toEqual(expect.arrayContaining([
+      expect.stringContaining('文化条目事实'),
+    ]));
   });
 });

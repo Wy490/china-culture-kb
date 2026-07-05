@@ -22,9 +22,15 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
     status: 'passed',
     acceptance_passed: true,
     pressure_submitted: true,
-    gate_counts: { passed: 8, failed: 0, skipped: 0, total: 8 },
+    gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
     failed_gate_ids: [],
     skipped_gate_ids: [],
+    gates: [{
+      id: 'system_external_callback_batch',
+      label: 'Story Agent system external callback batch',
+      status: 'passed',
+      summary: 'System external callback imported a real external artifact.',
+    }],
     recommended_actions: recommendedActions,
   });
   writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-archive.json', {
@@ -39,6 +45,9 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
     },
     required_attachments: [
       'gears-worker-acceptance-verdict.json',
+      'story-agent-system-external-output-url-source.json',
+      'story-agent-system-external-callback-preflight-response.json',
+      'story-agent-system-external-callback-import-response.json',
       'story-agent-generated-health-audit.json',
       'story-agent-mvp-status-audit.json',
     ],
@@ -78,6 +87,52 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
       failed_count: 0,
     },
     recommended_actions: [],
+  });
+  writeEvidenceJson(evidenceDir, 'story-agent-system-external-output-url-source.json', {
+    schema_version: 'story-agent-system-external-output-url-source/v1',
+    env_var: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
+    configured_from_env: false,
+    discovered_from_worker_response: true,
+    source: 'worker_response',
+    output_url: 'https://cdn.example.com/gears-worker-acceptance/readiness-shot-1.mp4',
+    placeholder: false,
+    ready_for_external_import: true,
+  });
+  writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-preflight-response.json', {
+    ok: true,
+    data: {
+      schema_version: 'system-gears-external-callback-batch-import/v1',
+      mode: 'preflight',
+      blocked: false,
+      received_count: 3,
+      resolved_count: 3,
+      unresolved_count: 0,
+      project_count: 1,
+      ready_to_import_count: 3,
+      updated_count: 0,
+      failed_count: 0,
+      duplicate_count: 0,
+      blocking_count: 0,
+      warning_count: 0,
+    },
+  });
+  writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
+    ok: true,
+    data: {
+      schema_version: 'system-gears-external-callback-batch-import/v1',
+      mode: 'import',
+      blocked: false,
+      received_count: 3,
+      resolved_count: 3,
+      unresolved_count: 0,
+      project_count: 1,
+      ready_to_import_count: 3,
+      updated_count: 3,
+      failed_count: 0,
+      duplicate_count: 0,
+      blocking_count: 0,
+      warning_count: 0,
+    },
   });
   writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
     schema_version: 'story-agent-generated-health-audit/v1',
@@ -175,6 +230,11 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.integrity_passed).toBe(true);
     expect(result.health_audit_passed).toBe(true);
     expect(result.mvp_status_audit_passed).toBe(true);
+    expect(result.system_external_callback_passed).toBe(true);
+    expect(result.system_external_callback_ready_to_import_count).toBe(3);
+    expect(result.system_external_callback_updated_count).toBe(3);
+    expect(result.system_external_output_url_source_ready).toBe(true);
+    expect(result.system_external_output_url_source).toBe('worker_response');
     expect(result.pressure_submitted).toBe(true);
     expect(result.worker_record_count).toBe(370);
     expect(result.worker_failure_category_counts).toEqual({ render_failed: 2 });
@@ -185,6 +245,14 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.mvp_status_after).toBe('ready');
     expect(result.mvp_score_delta).toBe(0);
     expect(result.missing_required_files).toEqual([]);
+    expect(result.gates).toEqual([
+      expect.objectContaining({
+        id: 'system_external_callback_batch',
+        status: 'passed',
+      }),
+    ]);
+    expect(result.markdown).toContain('system_external_callback_passed: true');
+    expect(result.markdown).toContain('system_external_output_url_source: worker_response');
     expect(result.markdown).toContain('large_project_source_echo: 120/120');
     expect(result.markdown).toContain('mvp_score_delta: 0');
   });

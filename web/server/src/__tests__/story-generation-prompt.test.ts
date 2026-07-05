@@ -99,6 +99,8 @@ function makeKnowledgePack(): KnowledgePack {
         character_props: ['书卷：人物随身物'],
         scene_props: ['案卷：场景陈设', '油灯：场景陈设'],
       },
+      production_prompts: ['把洞穴、书院和衙署拆成独立可拍场景，不混用陈设'],
+      review_boundaries: ['不得把通用资产包写成主条目已发生史实'],
     }],
     missing_needs: [],
     overall_confidence: 1,
@@ -128,7 +130,11 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('用途：scene_space、scene_props、gears_delivery');
     expect(pkg.user_prompt).toContain('资产拆分：人物=周敦颐：主角');
     expect(pkg.user_prompt).toContain('场景=洞穴：场景资产、书院：场景资产');
+    expect(pkg.user_prompt).toContain('生产提示：把洞穴、书院和衙署拆成独立可拍场景');
+    expect(pkg.user_prompt).toContain('审稿边界：不得把通用资产包写成主条目已发生史实');
     expect(pkg.knowledge_context?.primary_entries[0].asset_split?.character_props[0]).toContain('手稿');
+    expect(pkg.knowledge_context?.supporting_entries[0].production_prompts?.[0]).toContain('独立可拍场景');
+    expect(pkg.knowledge_context?.supporting_entries[0].review_boundaries?.[0]).toContain('不得把通用资产包写成主条目');
     expect(pkg.system_prompt).toContain('结构化项目素材库，不是资料仓库');
     expect(pkg.user_prompt).toContain('项目素材库不是资料仓库');
     expect(pkg.user_prompt).toContain('先读取素材域、条目角色、时代、用途、资产拆分、可信度和风险提示');
