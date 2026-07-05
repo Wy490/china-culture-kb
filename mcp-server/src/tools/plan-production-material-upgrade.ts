@@ -342,6 +342,13 @@ function buildDomainPackExpansion(audit: ProductionMaterialAuditReport): DomainP
       seed_fields: ['opening_hook', 'conflict_question', 'reversal', 'ending_hook'],
     },
     {
+      pack_id: 'children_adaptation_safety_pack',
+      label: '儿童改写安全包',
+      priority: 'medium',
+      reason: '儿童故事和亲子向改写需要年龄分层、善意张力、恐惧尺度和事实边界。',
+      seed_fields: ['audience_age_band', 'gentle_conflict', 'safe_resolution', 'fact_boundary'],
+    },
+    {
       pack_id: 'education_training_structure_pack',
       label: '宣讲/培训结构包',
       priority: 'medium',

@@ -1,7 +1,7 @@
 {
   "schema_version": "kb-production-material-upgrade-plan/v1",
-  "generated_at": "2026-07-04T14:08:11.739Z",
-  "source_audit_generated_at": "2026-07-04T14:08:11.732Z",
+  "generated_at": "2026-07-05T03:57:03.832Z",
+  "source_audit_generated_at": "2026-07-05T03:57:03.826Z",
   "summary": {
     "total_entries": 169,
     "high_priority_entries": 167,
@@ -6687,6 +6687,18 @@
         "conflict_question",
         "reversal",
         "ending_hook"
+      ]
+    },
+    {
+      "pack_id": "children_adaptation_safety_pack",
+      "label": "儿童改写安全包",
+      "priority": "medium",
+      "reason": "儿童故事和亲子向改写需要年龄分层、善意张力、恐惧尺度和事实边界。",
+      "seed_fields": [
+        "audience_age_band",
+        "gentle_conflict",
+        "safe_resolution",
+        "fact_boundary"
       ]
     },
     {

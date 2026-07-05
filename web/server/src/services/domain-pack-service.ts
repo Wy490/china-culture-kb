@@ -388,6 +388,15 @@ function priorityDomainPackMatchers(text: string): Array<(seed: DomainPackSeed) 
   if (/思想影响|后世影响|当代转化|学脉|传承|地方化/.test(text)) {
     matchers.push(seed => seed.domain === 'narrative_pattern');
   }
+  if (/儿童|少儿|亲子|年龄分层|children_story|children_animation|低龄|善意张力/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('儿童改写规则包') || seed.domain === 'safety_rule');
+  }
+  if (/短视频|竖屏|前三秒|三秒钩子|完播|评论区|social_short|平台节奏|对比反转/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('短视频钩子包'));
+  }
+  if (/宣讲|培训|课程|学习目标|练习|板书|lecture_video|education_training|行动转化/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('宣讲培训结构包'));
+  }
   if (/湖南|长沙|岳麓|永州|道县|洞庭|湘楚/.test(text)) {
     matchers.push(seed => seed.domain === 'regional_culture');
   }

@@ -180,6 +180,45 @@
       "production_prompts": ["用一个观众问题开场，再按概念、层级、例子、图示、总结组织", "每个知识点对应一个字幕句、图示元素或可见例子", "把误区、例外和来源线索放进讲解边界"],
       "review_boundaries": ["不能用类比替代事实来源", "不可把未核实解释写成确定结论", "面向儿童或大众时需要降低术语密度但保留事实边界"],
       "trigger_words": ["讲解知识结构包", "explainer_knowledge_structure_pack", "explainer_video", "知识讲解", "核心问题", "知识大纲", "图示", "字幕", "误区"]
+    },
+    {
+      "entry_name": "儿童改写规则包——年龄分层、善意张力与事实边界",
+      "domain": "safety_rule",
+      "role": "rule_pack",
+      "type": "Domain Pack",
+      "region": "通用",
+      "summary": "用于儿童故事片和儿童动画改写：按年龄层调整词汇、冲突强度、恐惧尺度、角色关系、善意解决和结尾复盘。该包只约束表达方式，不把童话化细节写成文化事实。",
+      "keywords": ["儿童改写", "年龄分层", "善意张力", "儿童动画", "恐惧尺度", "事实边界"],
+      "asset_usage": ["plot_structure", "dialogue_tone", "safety_boundary", "credibility_boundary"],
+      "production_prompts": ["先标明3-6岁、7-9岁或10-12岁受众层级", "用清晰目标、温和阻力和可理解选择替代成人化权谋冲突", "结尾要有复盘句、情绪安放或安全行动"],
+      "review_boundaries": ["不可用恐怖、血腥、猎奇或惩罚性画面制造儿童钩子", "传说和神异元素必须保留相传口径", "不得把童话化角色、对白或拟人道具写回事实条目"],
+      "trigger_words": ["儿童改写规则包", "children_adaptation_safety_pack", "children_story", "children_animation", "儿童故事", "少儿", "亲子", "年龄分层", "善意张力"]
+    },
+    {
+      "entry_name": "短视频钩子包——三秒问题、对比反转与平台节奏",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack",
+      "type": "Domain Pack",
+      "region": "通用",
+      "summary": "用于竖屏短视频和社媒快剪：把前三秒问题、视觉对比、误区反转、字幕节奏、评论触发和结尾追问拆成生产字段。该包服务传播结构，不允许制造虚假争议或夸大事实。",
+      "keywords": ["短视频钩子", "三秒问题", "对比反转", "竖屏", "字幕节奏", "评论触发", "social_short"],
+      "asset_usage": ["plot_structure", "dialogue_tone", "visual_style", "gears_delivery", "credibility_boundary"],
+      "production_prompts": ["前三秒必须有可视问题、反差画面或误区句", "每10到15秒设置一个字幕转折、视觉对比或知识揭示", "结尾用追问、投票或下集线索承接评论区"],
+      "review_boundaries": ["不得为了钩子制造未核实争议、地域刻板印象或伪冷知识", "不能把标题党反问写成事实断言", "历史灾难、真实人物和严肃题材不得娱乐化猎奇"],
+      "trigger_words": ["短视频钩子包", "short_video_hook_pack", "social_short", "竖屏短视频", "前三秒", "三秒钩子", "反转", "完播", "评论区"]
+    },
+    {
+      "entry_name": "宣讲培训结构包——论点案例、练习复盘与行动转化",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack",
+      "type": "Domain Pack",
+      "region": "通用",
+      "summary": "用于宣讲片、教育培训片和课程型讲解：把学习目标、受众画像、论点、案例、步骤演示、互动练习、板书/字幕和复盘行动拆开。该包只提供教学结构，机构成果和政策表述必须回到来源。",
+      "keywords": ["宣讲培训", "学习目标", "案例", "步骤演示", "练习", "复盘", "行动转化", "education_training"],
+      "asset_usage": ["plot_structure", "source_grounding", "visual_style", "safety_boundary", "credibility_boundary"],
+      "production_prompts": ["先写学习目标、受众画像和完成后能做什么", "每个论点必须配案例、步骤演示或互动问题", "结尾给复盘板书、练习任务或行动转化"],
+      "review_boundaries": ["机构成果、政策口径和数据必须有来源", "培训建议不能替代专业、法律或医疗意见", "不得把宣讲金句当作已核实文化事实"],
+      "trigger_words": ["宣讲培训结构包", "education_training_structure_pack", "lecture_video", "education_training", "宣讲片", "培训片", "学习目标", "练习", "板书", "复盘"]
     }
   ]
 }

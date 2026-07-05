@@ -1,7 +1,7 @@
 # 素材库生产化升级计划
 
-生成时间：2026-07-04T14:08:11.739Z
-来源审计时间：2026-07-04T14:08:11.732Z
+生成时间：2026-07-05T03:57:03.832Z
+来源审计时间：2026-07-05T03:57:03.826Z
 
 ## 总览
 
@@ -268,6 +268,7 @@
 | 朝代服饰与器物包 | medium | 历史人物、名胜古迹和传说条目常缺时代、服饰、称谓和器物口径。 | era、character_clothing、character_props、dialogue_tone、credibility_boundary |
 | 讲解知识结构包 | high | 知识讲解视频需要核心问题、知识层级、例子、图示字幕和误区边界，适合沉淀成通用结构包。 | core_question、knowledge_outline、concrete_examples、diagram_or_caption_plan、misconception_or_boundary |
 | 短视频钩子包 | medium | 短视频和漫剧需要前三秒钩子、反转、问题和追看机制。 | opening_hook、conflict_question、reversal、ending_hook |
+| 儿童改写安全包 | medium | 儿童故事和亲子向改写需要年龄分层、善意张力、恐惧尺度和事实边界。 | audience_age_band、gentle_conflict、safe_resolution、fact_boundary |
 | 宣讲/培训结构包 | medium | 讲解和培训片需要学习目标、步骤、例子、复盘和练习。 | learning_goal、knowledge_outline、steps、examples、recap |
 
 ## 执行原则

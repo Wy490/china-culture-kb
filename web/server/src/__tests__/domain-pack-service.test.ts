@@ -18,6 +18,9 @@ describe('domain-pack-service', () => {
     expect(seeds.some(seed => seed.entry_name === '纪录片来源包——现实现场、来源线索与再现边界')).toBe(true);
     expect(seeds.some(seed => seed.entry_name === 'AI漫剧分镜包——关键帧、表情节拍与连续性验收')).toBe(true);
     expect(seeds.some(seed => seed.entry_name === '朝代服饰与器物包——时代称谓、服装道具和事实边界')).toBe(true);
+    expect(seeds.some(seed => seed.entry_name === '儿童改写规则包——年龄分层、善意张力与事实边界')).toBe(true);
+    expect(seeds.some(seed => seed.entry_name === '短视频钩子包——三秒问题、对比反转与平台节奏')).toBe(true);
+    expect(seeds.some(seed => seed.entry_name === '宣讲培训结构包——论点案例、练习复盘与行动转化')).toBe(true);
     expect(seeds.some(seed => seed.domain === 'narrative_pattern' && seed.role === 'pattern_pack')).toBe(true);
     expect(
       seeds.find(seed => seed.entry_name === '讲解知识结构包——核心问题、层级例子与图示字幕')?.production_prompts,
@@ -28,6 +31,11 @@ describe('domain-pack-service', () => {
       seeds.find(seed => seed.entry_name === '非遗流程生产包——材料工具、工序动作与授权边界')?.review_boundaries,
     ).toEqual(expect.arrayContaining([
       expect.stringContaining('不得把通用流程包写成具体项目已确认流程'),
+    ]));
+    expect(
+      seeds.find(seed => seed.entry_name === '儿童改写规则包——年龄分层、善意张力与事实边界')?.production_prompts,
+    ).toEqual(expect.arrayContaining([
+      expect.stringContaining('受众层级'),
     ]));
   });
 
@@ -72,6 +80,27 @@ describe('domain-pack-service', () => {
       entries.find(entry => entry.entry_name === 'AI漫剧分镜包——关键帧、表情节拍与连续性验收')?.review_boundaries,
     ).toEqual(expect.arrayContaining([
       expect.stringContaining('文化条目事实'),
+    ]));
+  });
+
+  it('injects high-frequency domain packs for children, social short, and training requests', () => {
+    const entries = buildDomainPackEntries({
+      query: 'children_story 儿童故事要做年龄分层和善意张力；social_short 竖屏短视频要前三秒钩子；education_training 培训片要学习目标、练习和板书复盘',
+      limit: 8,
+    });
+
+    expect(entries.some(entry => entry.entry_name === '儿童改写规则包——年龄分层、善意张力与事实边界')).toBe(true);
+    expect(entries.some(entry => entry.entry_name === '短视频钩子包——三秒问题、对比反转与平台节奏')).toBe(true);
+    expect(entries.some(entry => entry.entry_name === '宣讲培训结构包——论点案例、练习复盘与行动转化')).toBe(true);
+    expect(
+      entries.find(entry => entry.entry_name === '短视频钩子包——三秒问题、对比反转与平台节奏')?.review_boundaries,
+    ).toEqual(expect.arrayContaining([
+      expect.stringContaining('标题党'),
+    ]));
+    expect(
+      entries.find(entry => entry.entry_name === '宣讲培训结构包——论点案例、练习复盘与行动转化')?.production_prompts,
+    ).toEqual(expect.arrayContaining([
+      expect.stringContaining('学习目标'),
     ]));
   });
 });
