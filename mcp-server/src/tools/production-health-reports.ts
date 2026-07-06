@@ -134,6 +134,9 @@ export interface DomainPackProductionHealthReport {
   issues: DomainPackProductionHealthIssue[];
 }
 
+export type ProductionMaterialPackHealthToolResult = ProductionMaterialPackHealthReport & { markdown?: string };
+export type DomainPackProductionHealthToolResult = DomainPackProductionHealthReport & { markdown?: string };
+
 const CORE_PRODUCTION_READY_VIDEO_TYPES = [
   'heritage_promo',
   'documentary_short',
@@ -474,6 +477,53 @@ export function getProductionMaterialPackHealthReport(): ProductionMaterialPackH
   };
 }
 
+export function renderProductionMaterialPackHealthMarkdown(report: ProductionMaterialPackHealthReport): string {
+  const issueLines = report.issues.length
+    ? report.issues.map(issue =>
+      `- ${issue.severity} · ${issue.issue_type}${issue.video_type ? ` · ${issue.video_type}` : ''}: ${issue.message}`,
+    )
+    : ['- none'];
+  const packLines = report.packs.length
+    ? report.packs.map(pack =>
+      `- ${pack.status} · ${pack.video_type} · fields=${pack.required_field_count} prompts=${pack.prompt_layer_count} samples=${pack.sample_entry_count}`,
+    )
+    : ['- none'];
+
+  return [
+    '# Production Material Pack Health',
+    '',
+    `> schema_version: ${report.schema_version}`,
+    `> generated_at: ${report.generated_at}`,
+    `> status: ${report.status}`,
+    '',
+    '## Summary',
+    '',
+    `- pack_count: ${report.pack_count}`,
+    `- required_video_types: ${report.required_video_types.length}`,
+    `- covered_required_video_types: ${report.covered_required_video_types.length}`,
+    `- missing_required_video_types: ${report.missing_required_video_types.join(', ') || 'none'}`,
+    `- core_ready: ${report.production_ready_core_video_types.length}/${report.core_video_types.length}`,
+    `- issue_count: ${report.issues.length}`,
+    '',
+    '## Packs',
+    '',
+    ...packLines,
+    '',
+    '## Issues',
+    '',
+    ...issueLines,
+  ].join('\n').trim() + '\n';
+}
+
+export function getProductionMaterialPackHealthToolResult(input: {
+  include_markdown?: boolean;
+} = {}): ProductionMaterialPackHealthToolResult {
+  const report = getProductionMaterialPackHealthReport();
+  return input.include_markdown === false
+    ? report
+    : { ...report, markdown: renderProductionMaterialPackHealthMarkdown(report) };
+}
+
 function isDomainPackSeed(value: unknown): value is DomainPackSeed {
   if (!isRecord(value)) return false;
   return Boolean(
@@ -611,4 +661,54 @@ export function getDomainPackProductionHealthReport(): DomainPackProductionHealt
     packs: summaries,
     issues,
   };
+}
+
+export function renderDomainPackProductionHealthMarkdown(report: DomainPackProductionHealthReport): string {
+  const issueLines = report.issues.length
+    ? report.issues.map(issue =>
+      `- ${issue.severity} · ${issue.issue_type}${issue.pack_id ? ` · ${issue.pack_id}` : ''}: ${issue.message}`,
+    )
+    : ['- none'];
+  const packLines = report.packs.length
+    ? report.packs.map(pack =>
+      `- ${pack.status} · ${pack.pack_id} · triggers=${pack.trigger_word_count} prompts=${pack.production_prompt_count} boundaries=${pack.review_boundary_count}`,
+    )
+    : ['- none'];
+
+  return [
+    '# Domain Pack Production Health',
+    '',
+    `> schema_version: ${report.schema_version}`,
+    `> generated_at: ${report.generated_at}`,
+    `> domain_id: ${report.domain_id}`,
+    `> version: ${report.version}`,
+    `> status: ${report.status}`,
+    '',
+    '## Summary',
+    '',
+    `- pack_count: ${report.pack_count}`,
+    `- production_pack_count: ${report.production_pack_count}`,
+    `- required_pack_count: ${report.required_pack_ids.length}`,
+    `- covered_required_pack_count: ${report.covered_required_pack_ids.length}`,
+    `- missing_required_pack_ids: ${report.missing_required_pack_ids.join(', ') || 'none'}`,
+    `- production_ready_pack_count: ${report.production_ready_pack_ids.length}/${report.required_pack_ids.length}`,
+    `- issue_count: ${report.issues.length}`,
+    '',
+    '## Packs',
+    '',
+    ...packLines,
+    '',
+    '## Issues',
+    '',
+    ...issueLines,
+  ].join('\n').trim() + '\n';
+}
+
+export function getDomainPackProductionHealthToolResult(input: {
+  include_markdown?: boolean;
+} = {}): DomainPackProductionHealthToolResult {
+  const report = getDomainPackProductionHealthReport();
+  return input.include_markdown === false
+    ? report
+    : { ...report, markdown: renderDomainPackProductionHealthMarkdown(report) };
 }

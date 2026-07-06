@@ -4,9 +4,14 @@ import path from 'node:path';
 import os from 'node:os';
 import { collect } from '../src/tools/collect.js';
 
-const tmpDir = path.join(os.tmpdir(), 'kb-collect-test-' + Date.now());
+const previousKbRoot = process.env.KB_ROOT;
+let tmpRoot = '';
+let tmpDir = '';
 
 beforeEach(() => {
+  tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-collect-test-'));
+  tmpDir = path.join(tmpRoot, 'data');
+  process.env.KB_ROOT = tmpDir;
   fs.mkdirSync(path.join(tmpDir, 'provinces'), { recursive: true });
   fs.writeFileSync(path.join(tmpDir, 'provinces', '湖南.md'), `# 湖南
 
@@ -39,7 +44,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  fs.rmSync(tmpDir, { recursive: true, force: true });
+  fs.rmSync(tmpRoot, { recursive: true, force: true });
+  if (previousKbRoot === undefined) delete process.env.KB_ROOT;
+  else process.env.KB_ROOT = previousKbRoot;
 });
 
 describe('kb_collect', () => {

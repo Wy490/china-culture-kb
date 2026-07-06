@@ -63,6 +63,7 @@
 57. 暴露独立 MCP 包健康命令面：新增 `kb_get_production_material_pack_health` 与 `kb_get_domain_pack_production_health`，让 Story Agent、GEARS 签收和外部编排可以在不读取完整 MVP 报告的情况下单独拉取生产素材模板与 Domain Pack 生产提示健康；两个工具均为只读扫描，不写入省份 Markdown，也不绕过候选稿/审稿流程。
 58. 抽出 MCP 共享生产健康模块：`production-health-reports.ts` 统一承载 ProductionMaterialPack 与 Domain Pack 只读健康扫描，MVP 状态页和两个独立 MCP 健康工具共用同一套通过/警告/阻断判定，避免后续新增片型或生产提示包时出现命令面口径漂移。
 59. 加硬 MCP 包健康 fail-closed 回归测试：`production-health-reports.test.ts` 覆盖生产素材包文件或 Domain Pack 文件缺失时必须返回 `failed`、列出 8 个必需片型/生产提示包缺口，防止独立 MCP 工具、MVP lane 或 worker signoff 在素材包缺失时误报为健康。
+60. 补强独立 MCP 健康工具的人机双读输出：`kb_get_production_material_pack_health` 与 `kb_get_domain_pack_production_health` 默认返回 Markdown 摘要，包含状态、覆盖数、ready 数、缺口和问题清单；同时支持 `include_markdown=false` 只返回结构化 JSON，方便 GEARS 签收、外部编排和人工审稿材料复用同一只读报告。
 
 ## 原始诊断必须并入路线
 

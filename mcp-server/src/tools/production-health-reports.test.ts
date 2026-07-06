@@ -4,7 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   getDomainPackProductionHealthReport,
+  getDomainPackProductionHealthToolResult,
   getProductionMaterialPackHealthReport,
+  getProductionMaterialPackHealthToolResult,
 } from './production-health-reports.js';
 
 let tmpRoot = '';
@@ -77,5 +79,23 @@ describe('production health reports', () => {
         pack_id: 'explainer_knowledge_structure_pack',
       }),
     ]));
+  });
+
+  it('renders markdown for standalone MCP health tool results by default', () => {
+    const productionMaterialPackHealth = getProductionMaterialPackHealthToolResult();
+    const domainPackHealth = getDomainPackProductionHealthToolResult();
+
+    expect(productionMaterialPackHealth.status).toBe('failed');
+    expect(productionMaterialPackHealth.markdown).toContain('Production Material Pack Health');
+    expect(productionMaterialPackHealth.markdown).toContain('missing_required_video_types');
+    expect(productionMaterialPackHealth.markdown).toContain('heritage_promo');
+
+    expect(domainPackHealth.status).toBe('failed');
+    expect(domainPackHealth.markdown).toContain('Domain Pack Production Health');
+    expect(domainPackHealth.markdown).toContain('missing_required_pack_ids');
+    expect(domainPackHealth.markdown).toContain('heritage_process_pack');
+
+    expect(getProductionMaterialPackHealthToolResult({ include_markdown: false }).markdown).toBeUndefined();
+    expect(getDomainPackProductionHealthToolResult({ include_markdown: false }).markdown).toBeUndefined();
   });
 });

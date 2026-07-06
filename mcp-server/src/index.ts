@@ -32,8 +32,8 @@ import {
 import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
 import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
 import {
-  getDomainPackProductionHealthReport,
-  getProductionMaterialPackHealthReport,
+  getDomainPackProductionHealthToolResult,
+  getProductionMaterialPackHealthToolResult,
 } from './tools/production-health-reports.js';
 import { getGearsWorkerEvidenceSignoff } from './tools/get-gears-worker-evidence-signoff.js';
 import { runProductionReadinessAutomation } from './tools/run-production-readiness-automation.js';
@@ -605,9 +605,11 @@ server.tool(
 server.tool(
   'kb_get_production_material_pack_health',
   '只读扫描 ProductionMaterialPack 组合体健康。检查核心/高频成片类型模板覆盖、required_fields 映射、prompt layers、三阶段 gate、补充问题和样板条目下限。',
-  {},
-  async () => {
-    const result = getProductionMaterialPackHealthReport();
+  {
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = getProductionMaterialPackHealthToolResult(input);
     return {
       content: [{
         type: 'text',
@@ -621,9 +623,11 @@ server.tool(
 server.tool(
   'kb_get_domain_pack_production_health',
   '只读扫描 Domain Pack 生产提示健康。检查非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物、讲解知识结构、儿童改写、短视频钩子和宣讲培训结构包的生产提示与审稿边界。',
-  {},
-  async () => {
-    const result = getDomainPackProductionHealthReport();
+  {
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = getDomainPackProductionHealthToolResult(input);
     return {
       content: [{
         type: 'text',
