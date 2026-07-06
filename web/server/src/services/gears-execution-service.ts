@@ -14,6 +14,7 @@ import {
 import { GearsJobCallbackRequestSchema } from '@shared/schemas.js';
 import type {
   ApiResponse,
+  DomainPackProductionHealthReport,
   GearsExecutionArtifact,
   GearsExecutionAcceptanceArtifact,
   GearsExecutionAcceptanceCheck,
@@ -67,6 +68,7 @@ import {
 import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
 import { getStoryAgentMvpStatus } from './story-agent-mvp-status-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
+import { getDomainPackProductionHealthReport } from './domain-pack-service.js';
 
 export const GEARS_EXECUTION_JOB_TYPES: GearsExecutionJobType[] = [
   'storyboard_image',
@@ -3482,6 +3484,148 @@ function renderProductionMaterialPackHealthAuditCommand(targetDirExpression: str
   ].join('\n');
 }
 
+function renderDomainPackProductionHealthAuditCommand(targetDirExpression: string): string {
+  return [
+    `node - ${targetDirExpression} <<'NODE'`,
+    'const fs = require("fs")',
+    'const path = require("path")',
+    'const dir = process.argv[2] || "."',
+    'const beforeFilename = "domain-pack-production-health-before.json"',
+    'const afterFilename = "domain-pack-production-health-after.json"',
+    'const outputFilename = "domain-pack-production-health-audit.json"',
+    'const markdownFilename = "domain-pack-production-health-audit.md"',
+    'const statusRank = { failed: 0, warning: 1, passed: 2 }',
+    'function filePath(filename) { return path.join(dir, filename) }',
+    'function exists(filename) { return fs.existsSync(filePath(filename)) }',
+    'function readJson(filename) {',
+    '  if (!exists(filename)) return undefined',
+    '  try { return JSON.parse(fs.readFileSync(filePath(filename), "utf8")) }',
+    '  catch (error) { return { __parse_error: error instanceof Error ? error.message : String(error) } }',
+    '}',
+    'function numberValue(value) {',
+    '  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN',
+    '  return Number.isFinite(parsed) ? parsed : 0',
+    '}',
+    'function reportOf(root) {',
+    '  if (!root || root.__parse_error) return undefined',
+    '  if (root.data && typeof root.data === "object" && root.data.schema_version) return root.data',
+    '  return root',
+    '}',
+    'function action(priority, owner, text, evidence, sampleFiles = []) {',
+    '  return { priority, owner, action: text, evidence, sample_files: sampleFiles }',
+    '}',
+    'function snapshot(filename) {',
+    '  const root = readJson(filename)',
+    '  if (!root) return { filename, exists: false, parse_ok: false }',
+    '  if (root.__parse_error) return { filename, exists: true, parse_ok: false, parse_error: root.__parse_error }',
+    '  const report = reportOf(root)',
+    '  const issues = Array.isArray(report?.issues) ? report.issues : []',
+    '  return {',
+    '    filename,',
+    '    exists: true,',
+    '    parse_ok: true,',
+    '    ok: root.ok,',
+    '    schema_version: report?.schema_version || root.schema_version,',
+    '    generated_at: report?.generated_at || root.generated_at,',
+    '    status: typeof report?.status === "string" ? report.status : "failed",',
+    '    pack_count: numberValue(report?.pack_count),',
+    '    production_pack_count: numberValue(report?.production_pack_count),',
+    '    required_pack_count: Array.isArray(report?.required_pack_ids) ? report.required_pack_ids.length : 0,',
+    '    covered_required_pack_count: Array.isArray(report?.covered_required_pack_ids) ? report.covered_required_pack_ids.length : 0,',
+    '    missing_required_pack_count: Array.isArray(report?.missing_required_pack_ids) ? report.missing_required_pack_ids.length : 0,',
+    '    ready_pack_count: Array.isArray(report?.production_ready_pack_ids) ? report.production_ready_pack_ids.length : 0,',
+    '    issue_count: issues.length,',
+    '    error_count: issues.filter(issue => issue?.severity === "error").length,',
+    '    warning_count: issues.filter(issue => issue?.severity === "warning").length,',
+    '  }',
+    '}',
+    'const before = snapshot(beforeFilename)',
+    'const after = snapshot(afterFilename)',
+    'const deltas = {',
+    '  status_rank: (statusRank[after.status] ?? 0) - (statusRank[before.status] ?? 0),',
+    '  issue_count: numberValue(after.issue_count) - numberValue(before.issue_count),',
+    '  error_count: numberValue(after.error_count) - numberValue(before.error_count),',
+    '  warning_count: numberValue(after.warning_count) - numberValue(before.warning_count),',
+    '  ready_pack_count: numberValue(after.ready_pack_count) - numberValue(before.ready_pack_count),',
+    '}',
+    'const failed_checks = []',
+    'const warning_checks = []',
+    'const compatibility_notes = []',
+    'const recommended_actions = []',
+    'function failCheck(check, priority, owner, text, samples) {',
+    '  failed_checks.push(check)',
+    '  recommended_actions.push(action(priority, owner, text, check, samples))',
+    '}',
+    'function warnCheck(check, priority, owner, text, samples) {',
+    '  warning_checks.push(check)',
+    '  recommended_actions.push(action(priority, owner, text, check, samples))',
+    '}',
+    'if (!before.exists) failCheck("missing_domain_pack_health_before", "P0", "Story Agent smoke env", "Fetch Domain Pack production health before worker submit.", [beforeFilename])',
+    'if (before.exists && !before.parse_ok) failCheck("domain_pack_health_before_parse_error", "P0", "Story Agent", "Regenerate valid JSON for pre-smoke Domain Pack production health.", [beforeFilename])',
+    'if (!after.exists) failCheck("missing_domain_pack_health_after", "P0", "Story Agent smoke env", "Fetch Domain Pack production health after worker smoke before signing off.", [afterFilename])',
+    'if (after.exists && !after.parse_ok) failCheck("domain_pack_health_after_parse_error", "P0", "Story Agent", "Regenerate valid JSON for post-smoke Domain Pack production health.", [afterFilename])',
+    'if (before.parse_ok && before.schema_version !== "domain-pack-production-health/v1") warnCheck("domain_pack_health_before_schema_unexpected", "P1", "Story Agent", "Confirm the pre-smoke Domain Pack production health schema remains compatible.", [beforeFilename])',
+    'if (after.parse_ok && after.schema_version !== "domain-pack-production-health/v1") warnCheck("domain_pack_health_after_schema_unexpected", "P1", "Story Agent", "Confirm the post-smoke Domain Pack production health schema remains compatible.", [afterFilename])',
+    'if (before.parse_ok && before.status !== "passed") failCheck("domain_pack_health_not_passed_before", "P0", "Story Agent Domain Packs", "Domain Pack production health must be passed before GEARS worker signoff.", [beforeFilename])',
+    'if (after.parse_ok && after.status !== "passed") failCheck("domain_pack_health_not_passed_after", "P0", "Story Agent Domain Packs", "Domain Pack production health regressed or is not passed after GEARS worker smoke.", [afterFilename])',
+    'if (before.parse_ok && before.issue_count > 0) failCheck("domain_pack_health_issues_before", "P0", "Story Agent Domain Packs", "Resolve Domain Pack production health issues before worker signoff.", [beforeFilename])',
+    'if (after.parse_ok && after.issue_count > 0) failCheck("domain_pack_health_issues_after", "P0", "Story Agent Domain Packs", "Resolve post-smoke Domain Pack production health issues before worker signoff.", [afterFilename])',
+    'if (before.parse_ok && after.parse_ok && deltas.status_rank < 0) failCheck("domain_pack_health_status_regressed", "P0", "Story Agent Domain Packs", "Domain Pack production health status regressed during worker smoke.", [beforeFilename, afterFilename])',
+    'if (before.parse_ok && after.parse_ok && deltas.ready_pack_count < 0) failCheck("domain_pack_health_ready_count_regressed", "P0", "Story Agent Domain Packs", "Production Domain Pack readiness regressed during worker smoke.", [beforeFilename, afterFilename])',
+    'if (before.parse_ok && after.parse_ok && deltas.issue_count > 0) warnCheck("domain_pack_health_issue_count_increased", "P1", "Story Agent Domain Packs", "Domain Pack production health issue count increased during worker smoke.", [beforeFilename, afterFilename])',
+    'if (before.parse_ok && before.status === "passed" && before.issue_count === 0) compatibility_notes.push("Domain Pack production health was passed before worker smoke.")',
+    'if (before.parse_ok && after.parse_ok && !failed_checks.length && !warning_checks.length) compatibility_notes.push("Domain Pack production health stayed passed across the worker smoke run.")',
+    'const status = failed_checks.length ? "failed" : warning_checks.length ? "warning" : "passed"',
+    'const audit = {',
+    '  schema_version: "domain-pack-production-health-audit/v1",',
+    '  generated_at: new Date().toISOString(),',
+    '  scanned_dir: dir,',
+    '  status,',
+    '  before,',
+    '  after,',
+    '  deltas,',
+    '  failed_checks,',
+    '  warning_checks,',
+    '  compatibility_notes,',
+    '  recommended_actions,',
+    '}',
+    'const lines = [',
+    '  "# Domain Pack Production Health Smoke Audit",',
+    '  "",',
+    '  `> schema_version: ${audit.schema_version}`,',
+    '  `> generated_at: ${audit.generated_at}`,',
+    '  `> scanned_dir: ${audit.scanned_dir}`,',
+    '  "",',
+    '  "## Summary",',
+    '  "",',
+    '  `- status: ${audit.status}` ,',
+    '  `- before_status/issues/ready: ${audit.before.status || "n/a"}/${audit.before.issue_count ?? "n/a"}/${audit.before.ready_pack_count ?? "n/a"}/${audit.before.required_pack_count ?? "n/a"}` ,',
+    '  `- after_status/issues/ready: ${audit.after.status || "n/a"}/${audit.after.issue_count ?? "n/a"}/${audit.after.ready_pack_count ?? "n/a"}/${audit.after.required_pack_count ?? "n/a"}` ,',
+    '  `- issue_count_delta: ${audit.deltas.issue_count}` ,',
+    '  `- ready_pack_count_delta: ${audit.deltas.ready_pack_count}` ,',
+    '  "",',
+    '  "## Failed Checks",',
+    '  "",',
+    '  ...(audit.failed_checks.length ? audit.failed_checks.map(item => `- ${item}`) : ["- none"]),',
+    '  "",',
+    '  "## Warning Checks",',
+    '  "",',
+    '  ...(audit.warning_checks.length ? audit.warning_checks.map(item => `- ${item}`) : ["- none"]),',
+    '  "",',
+    '  "## Compatibility Notes",',
+    '  "",',
+    '  ...(audit.compatibility_notes.length ? audit.compatibility_notes.map(item => `- ${item}`) : ["- none"]),',
+    '  "",',
+    '  "## Recommended Actions",',
+    '  "",',
+    '  ...(audit.recommended_actions.length ? audit.recommended_actions.map(item => `- [${item.priority}] ${item.owner}: ${item.action} (${item.evidence}; samples=${(item.sample_files || []).join(", ") || "none"})`) : ["- none"]),',
+    ']',
+    'fs.writeFileSync(path.join(dir, outputFilename), `${JSON.stringify(audit, null, 2)}\\n`)',
+    'fs.writeFileSync(path.join(dir, markdownFilename), `${lines.join("\\n").trim()}\\n`)',
+    'NODE',
+  ].join('\n');
+}
+
 function renderStoryAgentMvpStatusAuditCommand(targetDirExpression: string): string {
   return [
     `node - ${targetDirExpression} <<'NODE'`,
@@ -3836,6 +3980,28 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '    actionsFrom(productionMaterialPackHealthAudit),',
     '  )',
     '}',
+    'const domainPackProductionHealthAudit = readJson("domain-pack-production-health-audit.json")',
+    'if (!domainPackProductionHealthAudit) {',
+    '  addGate("domain_pack_production_health_audit", "Domain Pack production health smoke audit", "failed", "Domain Pack production health audit did not run.", { filename: "domain-pack-production-health-audit.json" }, [action("P0", "Story Agent Domain Packs", "Run Domain Pack production health before/after audit before signing off GEARS worker acceptance.", "missing_domain_pack_production_health_audit", [])])',
+    '} else if (domainPackProductionHealthAudit.__parse_error) {',
+    '  addGate("domain_pack_production_health_audit", "Domain Pack production health smoke audit", "failed", "Domain Pack production health audit is not valid JSON.", { parse_error: domainPackProductionHealthAudit.__parse_error }, [action("P0", "Story Agent Domain Packs", "Regenerate a valid Domain Pack production health audit.", "domain_pack_health_audit_parse_error", ["domain-pack-production-health-audit.json"])])',
+    '} else {',
+    '  const domainPackHealthBlockingCount = (domainPackProductionHealthAudit.status === "passed" ? 0 : 1) + (Array.isArray(domainPackProductionHealthAudit.failed_checks) ? domainPackProductionHealthAudit.failed_checks.length : 0)',
+    '  addGate(',
+    '    "domain_pack_production_health_audit",',
+    '    "Domain Pack production health smoke audit",',
+    '    domainPackHealthBlockingCount ? "failed" : "passed",',
+    '    domainPackHealthBlockingCount ? "Domain Pack production health is not passed or regressed during smoke." : "Domain Pack production health stayed passed across worker smoke.",',
+    '    {',
+    '      status: domainPackProductionHealthAudit.status,',
+    '      before: { status: domainPackProductionHealthAudit.before?.status, issue_count: domainPackProductionHealthAudit.before?.issue_count, ready_pack_count: domainPackProductionHealthAudit.before?.ready_pack_count },',
+    '      after: { status: domainPackProductionHealthAudit.after?.status, issue_count: domainPackProductionHealthAudit.after?.issue_count, ready_pack_count: domainPackProductionHealthAudit.after?.ready_pack_count },',
+    '      deltas: domainPackProductionHealthAudit.deltas,',
+    '      warning_checks: domainPackProductionHealthAudit.warning_checks || [],',
+    '    },',
+    '    actionsFrom(domainPackProductionHealthAudit),',
+    '  )',
+    '}',
     'const mvpStatusAudit = readJson("story-agent-mvp-status-audit.json")',
     'if (!mvpStatusAudit) {',
     '  addGate("story_agent_mvp_status_audit", "Story Agent MVP status smoke audit", "failed", "MVP status smoke audit did not run.", { filename: "story-agent-mvp-status-audit.json" }, [action("P0", "Story Agent smoke env", "Run MVP status before/after audit before signing off GEARS worker acceptance.", "missing_mvp_status_audit", [])])',
@@ -3983,6 +4149,7 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '  if (filename.includes("archive")) return "archive"',
     '  if (filename.includes("response-audit")) return "audit"',
     '  if (filename.includes("production-material-pack-health")) return "production_material_pack_health"',
+    '  if (filename.includes("domain-pack-production-health")) return "domain_pack_production_health"',
     '  if (filename.includes("output-url-source")) return "artifact_source"',
     '  if (filename.includes("preflight")) return "preflight"',
     '  if (filename.includes("generated-health")) return "generated_health"',
@@ -4025,6 +4192,10 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '  "production-material-pack-health-after.json",',
     '  "production-material-pack-health-audit.json",',
     '  "production-material-pack-health-audit.md",',
+    '  "domain-pack-production-health-before.json",',
+    '  "domain-pack-production-health-after.json",',
+    '  "domain-pack-production-health-audit.json",',
+    '  "domain-pack-production-health-audit.md",',
     '  "story-agent-mvp-status-before.json",',
     '  "story-agent-mvp-status-after.json",',
     '  "story-agent-mvp-status-audit.json",',
@@ -4804,6 +4975,10 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     'curl -sS -o "$EVIDENCE_DIR/production-material-pack-health-before.json" "$STORY_AGENT_BASE_URL/api/system/production-material-pack-health"',
     'print_json_summary "$EVIDENCE_DIR/production-material-pack-health-before.json" "Production material pack health before smoke"',
     '',
+    'echo "Reading Domain Pack production health before worker smoke..."',
+    'curl -sS -o "$EVIDENCE_DIR/domain-pack-production-health-before.json" "$STORY_AGENT_BASE_URL/api/system/domain-pack-production-health"',
+    'print_json_summary "$EVIDENCE_DIR/domain-pack-production-health-before.json" "Domain Pack production health before smoke"',
+    '',
     'echo "Reading Story Agent MVP status before worker smoke..."',
     'curl -sS -o "$EVIDENCE_DIR/story-agent-mvp-status-before.json" "$STORY_AGENT_BASE_URL/api/system/story-agent-mvp-status?generatedLimit=50&portfolioLimit=50"',
     'print_json_summary "$EVIDENCE_DIR/story-agent-mvp-status-before.json" "Story Agent MVP status before smoke"',
@@ -4834,6 +5009,20 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '    echo "Production material pack health after fetch failed; copied before snapshot for audit continuity." | tee "$EVIDENCE_DIR/production-material-pack-health-after-fetch-failed.txt"',
     '  fi',
     '  print_json_summary "$EVIDENCE_DIR/production-material-pack-health-after.json" "Post-run production material pack health"',
+    '}',
+    '',
+    'fetch_domain_pack_production_health_after() {',
+    '  echo "Reading post-run Domain Pack production health..."',
+    '  local domain_pack_after_exit_code',
+    '  set +e',
+    '  curl -sS -o "$EVIDENCE_DIR/domain-pack-production-health-after.json" "$STORY_AGENT_BASE_URL/api/system/domain-pack-production-health"',
+    '  domain_pack_after_exit_code=$?',
+    '  set -e',
+    '  if [ "$domain_pack_after_exit_code" -ne 0 ] && [ -f "$EVIDENCE_DIR/domain-pack-production-health-before.json" ]; then',
+    '    cp "$EVIDENCE_DIR/domain-pack-production-health-before.json" "$EVIDENCE_DIR/domain-pack-production-health-after.json"',
+    '    echo "Domain Pack production health after fetch failed; copied before snapshot for audit continuity." | tee "$EVIDENCE_DIR/domain-pack-production-health-after-fetch-failed.txt"',
+    '  fi',
+    '  print_json_summary "$EVIDENCE_DIR/domain-pack-production-health-after.json" "Post-run Domain Pack production health"',
     '}',
     '',
     'fetch_story_agent_mvp_status_after() {',
@@ -4970,6 +5159,10 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '  echo "Auditing production material pack health after $reason..."',
     ...renderProductionMaterialPackHealthAuditCommand('"$EVIDENCE_DIR"').split('\n'),
     '  print_json_summary "$EVIDENCE_DIR/production-material-pack-health-audit.json" "Production material pack health smoke audit"',
+    '  fetch_domain_pack_production_health_after',
+    '  echo "Auditing Domain Pack production health after $reason..."',
+    ...renderDomainPackProductionHealthAuditCommand('"$EVIDENCE_DIR"').split('\n'),
+    '  print_json_summary "$EVIDENCE_DIR/domain-pack-production-health-audit.json" "Domain Pack production health smoke audit"',
     '  fetch_story_agent_mvp_status_after',
     '  echo "Auditing Story Agent MVP status after $reason..."',
     ...renderStoryAgentMvpStatusAuditCommand('"$EVIDENCE_DIR"').split('\n'),
@@ -5309,6 +5502,9 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '  echo "Reading post-run production material pack health..."',
     '  fetch_production_material_pack_health_after',
     '',
+    '  echo "Reading post-run Domain Pack production health..."',
+    '  fetch_domain_pack_production_health_after',
+    '',
     '  echo "Reading post-run Story Agent MVP status..."',
     '  fetch_story_agent_mvp_status_after',
     'else',
@@ -5322,6 +5518,10 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     'echo "Auditing production material pack health before final verdict..."',
     ...renderProductionMaterialPackHealthAuditCommand('"$EVIDENCE_DIR"').split('\n'),
     'print_json_summary "$EVIDENCE_DIR/production-material-pack-health-audit.json" "Production material pack health smoke audit"',
+    '',
+    'echo "Auditing Domain Pack production health before final verdict..."',
+    ...renderDomainPackProductionHealthAuditCommand('"$EVIDENCE_DIR"').split('\n'),
+    'print_json_summary "$EVIDENCE_DIR/domain-pack-production-health-audit.json" "Domain Pack production health smoke audit"',
     '',
     'echo "Auditing Story Agent MVP status before final verdict..."',
     ...renderStoryAgentMvpStatusAuditCommand('"$EVIDENCE_DIR"').split('\n'),
@@ -5780,6 +5980,18 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       ],
     },
     {
+      id: 'audit_domain_pack_production_health',
+      label: 'Audit Domain Pack production health before/after smoke',
+      phase: 'story_agent_callback',
+      command: renderDomainPackProductionHealthAuditCommand('"."'),
+      expected_assertions: [
+        'domain-pack-production-health-before.json and domain-pack-production-health-after.json exist for sign-off runs.',
+        'domain-pack-production-health-audit.json and domain-pack-production-health-audit.md exist before the final verdict.',
+        'Audit fails if Domain Pack production health is not passed, issue_count is greater than 0, or production ready pack count regresses.',
+        'Audit warns if Domain Pack production health issue_count increases during smoke.',
+      ],
+    },
+    {
       id: 'audit_story_agent_mvp_status',
       label: 'Audit Story Agent MVP status before/after smoke',
       phase: 'story_agent_callback',
@@ -5896,6 +6108,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       'Story Agent callback response audit has no ok=false validation/auth blockers.',
       'Story Agent generated health audit has no missing ready target or post-smoke regression.',
       'Production material pack health audit has status=passed before GEARS worker signoff.',
+      'Domain Pack production health audit has status=passed before GEARS worker signoff.',
       'Story Agent MVP status audit has no status regression or blocker increase after worker smoke.',
       'Generated project pressure audit remains ok/watch with no blocked project before large batch rollout.',
       'Large project pressure payload is generated for at least 30 episodes and is submitted only when explicitly enabled.',
@@ -5973,6 +6186,40 @@ function renderProductionMaterialPackHealthMarkdown(report: ProductionMaterialPa
   ].join('\n').trim() + '\n';
 }
 
+function renderDomainPackProductionHealthMarkdown(report: DomainPackProductionHealthReport): string {
+  return [
+    '# Domain Pack Production Health',
+    '',
+    `> schema_version: ${report.schema_version}`,
+    `> generated_at: ${report.generated_at}`,
+    `> domain_id: ${report.domain_id}`,
+    `> version: ${report.version}`,
+    '',
+    '## Summary',
+    '',
+    `- status: ${report.status}`,
+    `- pack_count: ${report.pack_count}`,
+    `- production_pack_count: ${report.production_pack_count}`,
+    `- required_pack_count: ${report.required_pack_ids.length}`,
+    `- covered_required_pack_count: ${report.covered_required_pack_ids.length}`,
+    `- missing_required_pack_ids: ${report.missing_required_pack_ids.join(', ') || 'none'}`,
+    `- production_ready_pack_count: ${report.production_ready_pack_ids.length}/${report.required_pack_ids.length}`,
+    `- issue_count: ${report.issues.length}`,
+    '',
+    '## Required Production Packs',
+    '',
+    ...report.packs.map(pack =>
+      `- ${pack.pack_id}: ${pack.status}; triggers=${pack.trigger_word_count}; prompts=${pack.production_prompt_count}; boundaries=${pack.review_boundary_count}`,
+    ),
+    '',
+    '## Issues',
+    '',
+    ...(report.issues.length
+      ? report.issues.map(issue => `- [${issue.severity}] ${issue.pack_id ?? issue.entry_name ?? 'portfolio'} · ${issue.issue_type}: ${issue.message}`)
+      : ['- none']),
+  ].join('\n').trim() + '\n';
+}
+
 function renderGearsExecutionWorkerEvidenceBundleMarkdown(
   bundle: Omit<GearsExecutionWorkerEvidenceBundle, 'markdown'>,
 ): string {
@@ -6003,6 +6250,9 @@ function renderGearsExecutionWorkerEvidenceBundleMarkdown(
     `- production_material_pack_status: ${bundle.production_material_pack_status}`,
     `- production_material_pack_issues: ${bundle.production_material_pack_issue_count}`,
     `- production_material_core_ready: ${bundle.production_material_pack_core_ready_count}/${bundle.production_material_pack_core_total_count}`,
+    `- domain_pack_status: ${bundle.domain_pack_status}`,
+    `- domain_pack_issues: ${bundle.domain_pack_issue_count}`,
+    `- domain_pack_ready: ${bundle.domain_pack_ready_count}/${bundle.domain_pack_required_count}`,
     `- acceptance: ${bundle.acceptance_passed_count}/${bundle.acceptance_total_count}`,
     `- worker_kit_commands: ${bundle.command_count}`,
     `- worker_kit_payloads: ${bundle.payload_count}`,
@@ -6058,6 +6308,7 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
   const generatedHealth = await getStoryAgentGeneratedHealth({ limit: 50 });
   const mvpStatus = await getStoryAgentMvpStatus({ generatedLimit: 50, portfolioLimit: 50 });
   const productionMaterialPackHealth = getProductionMaterialPackHealthReport();
+  const domainPackHealth = getDomainPackProductionHealthReport();
   const documents = [
     workerEvidenceDocument(
       'acceptance_report',
@@ -6123,6 +6374,14 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
       renderProductionMaterialPackHealthMarkdown(productionMaterialPackHealth),
       'Read-only template portfolio gate proving core and high-frequency video type production packs are mapped and sufficiently filled before GEARS worker sign-off.',
     ),
+    workerEvidenceDocument(
+      'domain_pack_production_health_report',
+      'Domain Pack production health report',
+      'domain-pack-production-health-report.md',
+      '/api/system/domain-pack-production-health',
+      renderDomainPackProductionHealthMarkdown(domainPackHealth),
+      'Read-only production prompt pack gate proving Domain Packs have trigger words, production prompts, review boundaries, and asset usage coverage before GEARS worker sign-off.',
+    ),
   ];
   const recommendedNextActions = [...new Set([
     ...acceptance.recommended_next_actions,
@@ -6136,6 +6395,7 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
     'Read GET /api/system/gears-execution-worker-evidence-signoff?evidence_dir=... or MCP kb_get_gears_worker_evidence_signoff after the run to produce the final signoff summary.',
     'Attach story-agent-mvp-status-before.json, story-agent-mvp-status-after.json, and story-agent-mvp-status-audit.json/.md to prove MVP status did not regress during worker smoke.',
     'Attach production-material-pack-health-before.json, production-material-pack-health-after.json, and production-material-pack-health-audit.json/.md to prove production template health stayed passed during worker smoke.',
+    'Attach domain-pack-production-health-before.json, domain-pack-production-health-after.json, and domain-pack-production-health-audit.json/.md to prove production prompt pack health stayed passed during worker smoke.',
     'Replay project and series callbacks once to confirm duplicate_count and ledger idempotency.',
     'After basic smoke passes, enable GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE=1 once and attach the large-project pressure response.',
   ])];
@@ -6165,6 +6425,10 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
     production_material_pack_issue_count: productionMaterialPackHealth.issues.length,
     production_material_pack_core_ready_count: productionMaterialPackHealth.production_ready_core_video_types.length,
     production_material_pack_core_total_count: productionMaterialPackHealth.core_video_types.length,
+    domain_pack_status: domainPackHealth.status,
+    domain_pack_issue_count: domainPackHealth.issues.length,
+    domain_pack_ready_count: domainPackHealth.production_ready_pack_ids.length,
+    domain_pack_required_count: domainPackHealth.required_pack_ids.length,
     acceptance_passed_count: acceptance.acceptance_passed_count,
     acceptance_total_count: acceptance.acceptance_total_count,
     command_count: kit.commands.length,
@@ -6189,6 +6453,7 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
       'Attach story-agent-mvp-status-report.md to show Story Agent MVP lane status before GEARS worker sign-off.',
       'Attach story-agent-mvp-status-audit.json/.md and require status=passed or warning with no failed_checks before sign-off.',
       'Attach production-material-pack-health-report.md and production-material-pack-health-audit.json/.md to prove video type templates are production-ready before GEARS worker sign-off.',
+      'Attach domain-pack-production-health-report.md and domain-pack-production-health-audit.json/.md to prove production prompt packs are production-ready before GEARS worker sign-off.',
       'Attach story-agent-generated-health-audit.json/.md and require status=passed before sign-off.',
       'Replay callback payloads once to prove duplicate_count is reported and no duplicate artifacts are created.',
       'Generate the 30-episode pressure payload and submit it only after basic smoke is green.',
@@ -6498,6 +6763,7 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- integrity_passed: ${report.integrity_passed}`,
     `- health_audit_passed: ${report.health_audit_passed}`,
     `- production_material_pack_health_audit_passed: ${report.production_material_pack_health_audit_passed}`,
+    `- domain_pack_production_health_audit_passed: ${report.domain_pack_production_health_audit_passed}`,
     `- mvp_status_audit_passed: ${report.mvp_status_audit_passed}`,
     `- system_external_callback_passed: ${report.system_external_callback_passed}`,
     `- system_external_output_url_source: ${report.system_external_output_url_source}`,
@@ -6519,6 +6785,9 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- production_material_pack_status_before/after: ${report.production_material_pack_status_before ?? 'n/a'}/${report.production_material_pack_status_after ?? 'n/a'}`,
     `- production_material_pack_issue_delta: ${report.production_material_pack_issue_count_delta}`,
     `- production_material_pack_core_ready_before/after: ${report.production_material_pack_core_ready_count_before}/${report.production_material_pack_core_ready_count_after}`,
+    `- domain_pack_status_before/after: ${report.domain_pack_status_before ?? 'n/a'}/${report.domain_pack_status_after ?? 'n/a'}`,
+    `- domain_pack_issue_delta: ${report.domain_pack_issue_count_delta}`,
+    `- domain_pack_ready_before/after: ${report.domain_pack_ready_count_before}/${report.domain_pack_ready_count_after}`,
     `- mvp_status_before/after: ${report.mvp_status_before ?? 'n/a'}/${report.mvp_status_after ?? 'n/a'}`,
     `- mvp_score_delta: ${report.mvp_score_delta}`,
     `- large_project_source_echo: ${report.large_project_source_echo_count}/${report.large_project_request_unit_count}`,
@@ -6565,6 +6834,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       integrity_passed: false,
       health_audit_passed: false,
       production_material_pack_health_audit_passed: false,
+      domain_pack_production_health_audit_passed: false,
       mvp_status_audit_passed: false,
       system_external_callback_passed: false,
       system_external_callback_ready_to_import_count: 0,
@@ -6606,6 +6876,11 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       production_material_pack_issue_count_delta: 0,
       production_material_pack_core_ready_count_before: 0,
       production_material_pack_core_ready_count_after: 0,
+      domain_pack_issue_count_before: 0,
+      domain_pack_issue_count_after: 0,
+      domain_pack_issue_count_delta: 0,
+      domain_pack_ready_count_before: 0,
+      domain_pack_ready_count_after: 0,
       mvp_score_before: 0,
       mvp_score_after: 0,
       mvp_score_delta: 0,
@@ -6651,6 +6926,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     systemExternalImportRead,
     healthRead,
     productionMaterialPackHealthRead,
+    domainPackProductionHealthRead,
     mvpRead,
     pressureRead,
   ] = await Promise.all([
@@ -6664,6 +6940,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-system-external-callback-import-response.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-generated-health-audit.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'production-material-pack-health-audit.json'),
+    readEvidenceJson(resolvedDir.evidenceDir, 'domain-pack-production-health-audit.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-mvp-status-audit.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'gears-large-project-response-audit.json'),
   ]);
@@ -6683,6 +6960,9 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const productionPackBefore = evidenceObject(productionMaterialPackHealthRead.data?.before);
   const productionPackAfter = evidenceObject(productionMaterialPackHealthRead.data?.after);
   const productionPackDeltas = evidenceObject(productionMaterialPackHealthRead.data?.deltas);
+  const domainPackBefore = evidenceObject(domainPackProductionHealthRead.data?.before);
+  const domainPackAfter = evidenceObject(domainPackProductionHealthRead.data?.after);
+  const domainPackDeltas = evidenceObject(domainPackProductionHealthRead.data?.deltas);
   const mvpBefore = evidenceObject(mvpRead.data?.before);
   const mvpAfter = evidenceObject(mvpRead.data?.after);
   const mvpDeltas = evidenceObject(mvpRead.data?.deltas);
@@ -6703,6 +6983,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const integrityPassed = evidenceBool(integrity?.integrity_passed);
   const healthAuditPassed = healthRead.data?.status === 'passed';
   const productionMaterialPackHealthAuditPassed = productionMaterialPackHealthRead.data?.status === 'passed';
+  const domainPackProductionHealthAuditPassed = domainPackProductionHealthRead.data?.status === 'passed';
   const mvpStatusAuditPassed = mvpRead.data?.status === 'passed' || mvpRead.data?.status === 'warning';
   const systemExternalOutputUrlSourceReady = systemExternalOutputSourceRead.exists
     && systemExternalOutputSourceRead.parse_ok
@@ -6740,7 +7021,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     ...evidenceActions(verdict?.recommended_actions),
     ...evidenceActions(archive?.recommended_actions),
     ...evidenceActions(integrity?.recommended_actions),
-    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, systemExternalOutputSourceRead, systemExternalPreflightRead, systemExternalImportRead, healthRead, productionMaterialPackHealthRead, mvpRead, pressureRead]
+    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, systemExternalOutputSourceRead, systemExternalPreflightRead, systemExternalImportRead, healthRead, productionMaterialPackHealthRead, domainPackProductionHealthRead, mvpRead, pressureRead]
       .filter(read => !read.exists || !read.parse_ok)
       .map(read => ({
         priority: 'P0',
@@ -6756,6 +7037,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     && healthRead.exists;
   const status: GearsExecutionAcceptanceStatus = acceptancePassed && signoffReady && integrityPassed && healthAuditPassed
     && productionMaterialPackHealthAuditPassed
+    && domainPackProductionHealthAuditPassed
     && mvpStatusAuditPassed
     && systemExternalCallbackPassed
     ? 'ready'
@@ -6774,6 +7056,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     integrity_passed: integrityPassed,
     health_audit_passed: healthAuditPassed,
     production_material_pack_health_audit_passed: productionMaterialPackHealthAuditPassed,
+    domain_pack_production_health_audit_passed: domainPackProductionHealthAuditPassed,
     mvp_status_audit_passed: mvpStatusAuditPassed,
     system_external_callback_passed: systemExternalCallbackPassed,
     system_external_callback_ready_to_import_count: evidenceNumber(systemExternalPreflight.ready_to_import_count),
@@ -6831,6 +7114,17 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     production_material_pack_issue_count_delta: evidenceNumber(productionPackDeltas.issue_count),
     production_material_pack_core_ready_count_before: evidenceNumber(productionPackBefore.core_ready_count),
     production_material_pack_core_ready_count_after: evidenceNumber(productionPackAfter.core_ready_count),
+    domain_pack_status_before: typeof domainPackBefore.status === 'string'
+      ? domainPackBefore.status as GearsExecutionWorkerEvidenceSignoffReport['domain_pack_status_before']
+      : undefined,
+    domain_pack_status_after: typeof domainPackAfter.status === 'string'
+      ? domainPackAfter.status as GearsExecutionWorkerEvidenceSignoffReport['domain_pack_status_after']
+      : undefined,
+    domain_pack_issue_count_before: evidenceNumber(domainPackBefore.issue_count),
+    domain_pack_issue_count_after: evidenceNumber(domainPackAfter.issue_count),
+    domain_pack_issue_count_delta: evidenceNumber(domainPackDeltas.issue_count),
+    domain_pack_ready_count_before: evidenceNumber(domainPackBefore.ready_pack_count),
+    domain_pack_ready_count_after: evidenceNumber(domainPackAfter.ready_pack_count),
     mvp_status_before: typeof mvpBefore.status === 'string'
       ? mvpBefore.status as GearsExecutionWorkerEvidenceSignoffReport['mvp_status_before']
       : undefined,

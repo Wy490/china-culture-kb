@@ -58,6 +58,7 @@
 52. 将生产素材模板健康纳入 Story Agent MVP 状态：`story-agent-mvp-status/v1` 新增 `production_material_packs` lane，并嵌入 `production_material_pack_health`；模板缺失、未知 required field 或重复字段会让 MVP 状态阻断，样板、prompt layers、gate 或补充问题不足会进入需处理状态，项目总览页同步展示核心片型模板通过数。
 53. 将生产素材模板健康纳入 GEARS worker 签收证据链：worker acceptance kit 会抓取 `production-material-pack-health-before/after.json` 并生成 `production-material-pack-health-audit.json/.md`，最终 verdict 增加 `production_material_pack_health_audit` gate，archive 将这些文件列为 required attachments，Web signoff 也要求该 audit passed 后才可 ready；避免真实 GEARS/Seedance 回片签收时忽略片型模板退化。
 54. 建立 Domain Pack 生产提示健康门禁：新增 `/api/system/domain-pack-production-health` 只读报告，检查非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物、讲解知识结构、儿童改写、短视频钩子和宣讲培训结构 8 个生产提示包是否具备 trigger words、production prompts、review boundaries 和预期 asset usage；`story-agent-mvp-status/v1` 新增 `domain_packs` lane，项目总览页同步展示生产 Domain Pack 通过数，继续保持所有知识库写回只走候选稿与审稿流程。
+55. 将 Domain Pack 生产提示健康纳入 GEARS worker 签收证据链：worker acceptance kit 会抓取 `domain-pack-production-health-before/after.json` 并生成 `domain-pack-production-health-audit.json/.md`，最终 verdict 增加 `domain_pack_production_health_audit` gate，archive 将这些文件列为 required attachments，Web/MCP evidence signoff 要求该 audit passed 后才可 ready；避免真实 GEARS/Seedance 回片签收时忽略生产提示包和审稿边界退化。
 
 ## 原始诊断必须并入路线
 

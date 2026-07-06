@@ -2749,7 +2749,8 @@ export type GearsExecutionWorkerEvidenceDocumentKind =
   | 'generated_project_pressure_report'
   | 'generated_health_report'
   | 'story_agent_mvp_status_report'
-  | 'production_material_pack_health_report';
+  | 'production_material_pack_health_report'
+  | 'domain_pack_production_health_report';
 
 export interface GearsExecutionWorkerEvidenceDocument {
   id: GearsExecutionWorkerEvidenceDocumentKind;
@@ -2788,6 +2789,10 @@ export interface GearsExecutionWorkerEvidenceBundle {
   production_material_pack_issue_count: number;
   production_material_pack_core_ready_count: number;
   production_material_pack_core_total_count: number;
+  domain_pack_status: DomainPackProductionHealthStatus;
+  domain_pack_issue_count: number;
+  domain_pack_ready_count: number;
+  domain_pack_required_count: number;
   acceptance_passed_count: number;
   acceptance_total_count: number;
   command_count: number;
@@ -2832,6 +2837,7 @@ export interface GearsExecutionWorkerEvidenceSignoffReport {
   integrity_passed: boolean;
   health_audit_passed: boolean;
   production_material_pack_health_audit_passed: boolean;
+  domain_pack_production_health_audit_passed: boolean;
   mvp_status_audit_passed: boolean;
   system_external_callback_passed: boolean;
   system_external_callback_ready_to_import_count: number;
@@ -2880,6 +2886,13 @@ export interface GearsExecutionWorkerEvidenceSignoffReport {
   production_material_pack_issue_count_delta: number;
   production_material_pack_core_ready_count_before: number;
   production_material_pack_core_ready_count_after: number;
+  domain_pack_status_before?: DomainPackProductionHealthStatus;
+  domain_pack_status_after?: DomainPackProductionHealthStatus;
+  domain_pack_issue_count_before: number;
+  domain_pack_issue_count_after: number;
+  domain_pack_issue_count_delta: number;
+  domain_pack_ready_count_before: number;
+  domain_pack_ready_count_after: number;
   mvp_status_before?: StoryAgentMvpStatus;
   mvp_status_after?: StoryAgentMvpStatus;
   mvp_score_before: number;
