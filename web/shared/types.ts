@@ -2076,6 +2076,12 @@ export interface GearsExternalCallbackHandoffQueuePackage {
   external_ready_count: number;
   local_acceptance_ready_count: number;
   pending_external_artifact_count: number;
+  callback_sample_count: number;
+  callback_sample_ready_for_import_count: number;
+  callback_sample_placeholder_output_url_count: number;
+  callback_sample_local_or_private_output_url_count: number;
+  callback_sample_invalid_output_url_count: number;
+  sample_payload_ready_for_import: boolean;
   projects: GearsExternalCallbackHandoffQueueProject[];
   callback_batch_sample: GearsExternalCallbackBatchSample;
   operator_checklist: string[];

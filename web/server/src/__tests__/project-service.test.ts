@@ -1370,6 +1370,11 @@ describe('project-service', () => {
     expect(globalHandoffQueue.schema_version).toBe('gears-external-callback-handoff-queue/v1');
     expect(globalHandoffQueue.project_count).toBeGreaterThanOrEqual(1);
     expect(globalHandoffQueue.pending_external_artifact_count).toBeGreaterThanOrEqual(submitRes.data?.submitted_count ?? 1);
+    expect(globalHandoffQueue.callback_sample_count).toBeGreaterThanOrEqual(submitRes.data?.submitted_count ?? 1);
+    expect(globalHandoffQueue.callback_sample_placeholder_output_url_count).toBeGreaterThanOrEqual(submitRes.data?.submitted_count ?? 1);
+    expect(globalHandoffQueue.callback_sample_ready_for_import_count).toBe(0);
+    expect(globalHandoffQueue.callback_sample_invalid_output_url_count).toBe(0);
+    expect(globalHandoffQueue.sample_payload_ready_for_import).toBe(false);
     expect(globalHandoffQueue.projects.some(project =>
       project.project_id === enriched.project_id
       && project.pending_external_artifact_count === submitRes.data?.submitted_count
@@ -1385,6 +1390,7 @@ describe('project-service', () => {
     expect(globalHandoffQueue.markdown).toContain('GEARS External Callback Handoff Queue');
     expect(globalHandoffQueue.markdown).toContain('## System Commands');
     expect(globalHandoffQueue.markdown).toContain(globalHandoffQueue.system_preflight_curl);
+    expect(globalHandoffQueue.markdown).toContain('callback sample ready/total: 0/');
     expect(globalHandoffQueue.markdown).toContain('Do not treat local_acceptance artifacts as final external media.');
 
     const placeholderPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, handoffBeforeExternal.data!.callback_batch_sample);

@@ -1548,9 +1548,12 @@ async function copyGearsExternalCallbackQueue(mode: GearsExternalQueueCopyMode) 
         : mode === 'payload'
           ? 'callback payload JSON'
           : 'system preflight/import 命令'
+      const sampleStatus = mode === 'payload' || mode === 'commands'
+        ? ` · sample ready ${res.data.callback_sample_ready_for_import_count}/${res.data.callback_sample_count} · placeholder ${res.data.callback_sample_placeholder_output_url_count}`
+        : ''
       projectMessage.value = res.data.pending_external_artifact_count > 0
-        ? `已复制 ${label}：${res.data.project_count} 个项目、${res.data.pending_external_artifact_count} 个待外部 artifact 的 GEARS 回片。`
-        : `当前没有待外部回片的 GEARS job，已复制空队列 ${label}。`
+        ? `已复制 ${label}：${res.data.project_count} 个项目、${res.data.pending_external_artifact_count} 个待外部 artifact 的 GEARS 回片${sampleStatus}。`
+        : `当前没有待外部回片的 GEARS job，已复制空队列 ${label}${sampleStatus}。`
     } else {
       error.value = res.error?.message ?? '导出 GEARS 外部回片队列失败'
     }

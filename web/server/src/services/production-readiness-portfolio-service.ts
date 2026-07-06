@@ -117,6 +117,81 @@ function gearsSystemExternalCallbackCurlCommand(targetPath: string): string {
   ].join(' ');
 }
 
+function callbackArtifactUrlIsHttp(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function callbackArtifactUrlIsPlaceholder(value: string): boolean {
+  if (value.includes('<') || value.includes('>')) return true;
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === 'gears.example'
+      || host === 'story-agent.example'
+      || host === 'local.story-agent.invalid';
+  } catch {
+    return true;
+  }
+}
+
+function callbackArtifactUrlIsLocalOrPrivate(value: string): boolean {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === 'localhost'
+      || host === '0.0.0.0'
+      || host === '::1'
+      || host.endsWith('.local')
+      || host.startsWith('127.')
+      || host.startsWith('10.')
+      || host.startsWith('192.168.')
+      || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+  } catch {
+    return false;
+  }
+}
+
+function summarizeCallbackSampleSafety(
+  callbacks: GearsJobCallbackRequest[],
+): Pick<
+  GearsExternalCallbackHandoffQueuePackage,
+  | 'callback_sample_count'
+  | 'callback_sample_ready_for_import_count'
+  | 'callback_sample_placeholder_output_url_count'
+  | 'callback_sample_local_or_private_output_url_count'
+  | 'callback_sample_invalid_output_url_count'
+  | 'sample_payload_ready_for_import'
+> {
+  let readyForImport = 0;
+  let placeholder = 0;
+  let localOrPrivate = 0;
+  let invalid = 0;
+
+  for (const callback of callbacks) {
+    const normalized = normalizeGearsJobCallback(callback);
+    const urls = normalized.artifact_urls;
+    const hasInvalid = urls.length === 0 || urls.some(url => !callbackArtifactUrlIsHttp(url));
+    const hasPlaceholder = urls.some(callbackArtifactUrlIsPlaceholder);
+    const hasLocalOrPrivate = urls.some(callbackArtifactUrlIsLocalOrPrivate);
+    if (hasInvalid) invalid += 1;
+    if (hasPlaceholder) placeholder += 1;
+    if (hasLocalOrPrivate) localOrPrivate += 1;
+    if (urls.length > 0 && !hasInvalid && !hasPlaceholder && !hasLocalOrPrivate) readyForImport += 1;
+  }
+
+  return {
+    callback_sample_count: callbacks.length,
+    callback_sample_ready_for_import_count: readyForImport,
+    callback_sample_placeholder_output_url_count: placeholder,
+    callback_sample_local_or_private_output_url_count: localOrPrivate,
+    callback_sample_invalid_output_url_count: invalid,
+    sample_payload_ready_for_import: callbacks.length > 0 && readyForImport === callbacks.length,
+  };
+}
+
 function callbackSourceProjectId(callback: GearsJobCallbackRequest): string | undefined {
   const value = callback.source_project_id ?? callback.sourceProjectId;
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
@@ -501,6 +576,11 @@ function buildGearsExternalCallbackHandoffQueueMarkdown(
     `- external ready: ${pkg.external_ready_count}`,
     `- local acceptance ready: ${pkg.local_acceptance_ready_count}`,
     `- pending external artifacts: ${pkg.pending_external_artifact_count}`,
+    `- callback sample ready for import: ${pkg.sample_payload_ready_for_import}`,
+    `- callback sample ready/total: ${pkg.callback_sample_ready_for_import_count}/${pkg.callback_sample_count}`,
+    `- callback sample placeholders: ${pkg.callback_sample_placeholder_output_url_count}`,
+    `- callback sample local/private: ${pkg.callback_sample_local_or_private_output_url_count}`,
+    `- callback sample invalid/missing URL: ${pkg.callback_sample_invalid_output_url_count}`,
     '',
     '## Operator Checklist',
     '',
@@ -602,6 +682,7 @@ export async function getGearsExternalCallbackHandoffQueue(
     ],
     import_note: 'This queue is a cross-project operator handoff. Import callbacks through the system safe import endpoint or each project safe import endpoint after preflight passes.',
   };
+  const sampleSafety = summarizeCallbackSampleSafety(callbackBatchSample.callbacks);
 
   const base: Omit<GearsExternalCallbackHandoffQueuePackage, 'markdown'> = {
     schema_version: 'gears-external-callback-handoff-queue/v1',
@@ -615,6 +696,7 @@ export async function getGearsExternalCallbackHandoffQueue(
     external_ready_count: queueProjects.reduce((sum, project) => sum + project.external_ready_count, 0),
     local_acceptance_ready_count: queueProjects.reduce((sum, project) => sum + project.local_acceptance_ready_count, 0),
     pending_external_artifact_count: queueProjects.reduce((sum, project) => sum + project.pending_external_artifact_count, 0),
+    ...sampleSafety,
     projects: queueProjects,
     callback_batch_sample: callbackBatchSample,
     operator_checklist: [
