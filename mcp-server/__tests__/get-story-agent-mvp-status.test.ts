@@ -3,6 +3,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { getStoryAgentMvpStatus } from '../src/tools/get-story-agent-mvp-status.js';
+import {
+  getDomainPackProductionHealthReport,
+  getProductionMaterialPackHealthReport,
+} from '../src/tools/production-health-reports.js';
 
 const tmpRoot = path.join(os.tmpdir(), 'kb-story-agent-mvp-status-test-' + Date.now());
 const dataRoot = path.join(tmpRoot, 'data');
@@ -213,7 +217,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.production_domain_pack_required_count).toBe(8);
     expect(result.summary.story_agent_command_surface_status).toBe('ready');
     expect(result.summary.story_agent_command_surface_percent).toBe(100);
-    expect(result.summary.mcp_story_agent_tool_count).toBe(20);
+    expect(result.summary.mcp_story_agent_tool_count).toBe(22);
     expect(result.summary.mcp_story_agent_loop_percent).toBe(100);
     expect(result.summary.content_command_layer_percent).toBe(100);
     expect(result.summary.production_delivery_contract_percent).toBe(100);
@@ -262,7 +266,9 @@ describe('kb_get_story_agent_mvp_status', () => {
     ]));
     expect(result.progress.find(slice => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
       'implementation_progress=100',
-      expect.stringContaining('tool_count=20'),
+      expect.stringContaining('tool_count=22'),
+      expect.stringContaining('kb_get_production_material_pack_health'),
+      expect.stringContaining('kb_get_domain_pack_production_health'),
       expect.stringContaining('kb_generate_story_repair_prompt'),
       'media_execution=gears_v2',
     ]));
@@ -322,5 +328,34 @@ describe('kb_get_story_agent_mvp_status', () => {
 
     expect(result.schema_version).toBe('mcp-story-agent-mvp-status/v1');
     expect(result.markdown).toBeUndefined();
+  });
+
+  it('exposes standalone read-only pack health reports for MCP tools', () => {
+    const productionMaterialPackHealth = getProductionMaterialPackHealthReport();
+    const domainPackHealth = getDomainPackProductionHealthReport();
+
+    expect(productionMaterialPackHealth).toMatchObject({
+      schema_version: 'production-material-pack-health/v1',
+      status: 'passed',
+      pack_count: 8,
+      production_ready_core_video_types: ['heritage_promo', 'documentary_short', 'ai_comic_drama', 'explainer_video'],
+      issues: [],
+    });
+    expect(domainPackHealth).toMatchObject({
+      schema_version: 'domain-pack-production-health/v1',
+      status: 'passed',
+      pack_count: 8,
+      production_ready_pack_ids: [
+        'heritage_process_pack',
+        'documentary_source_pack',
+        'ai_comic_storyboard_pack',
+        'era_and_costume_pack',
+        'explainer_knowledge_structure_pack',
+        'children_adaptation_safety_pack',
+        'short_video_hook_pack',
+        'education_training_structure_pack',
+      ],
+      issues: [],
+    });
   });
 });

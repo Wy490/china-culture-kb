@@ -60,6 +60,9 @@
 54. 建立 Domain Pack 生产提示健康门禁：新增 `/api/system/domain-pack-production-health` 只读报告，检查非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物、讲解知识结构、儿童改写、短视频钩子和宣讲培训结构 8 个生产提示包是否具备 trigger words、production prompts、review boundaries 和预期 asset usage；`story-agent-mvp-status/v1` 新增 `domain_packs` lane，项目总览页同步展示生产 Domain Pack 通过数，继续保持所有知识库写回只走候选稿与审稿流程。
 55. 将 Domain Pack 生产提示健康纳入 GEARS worker 签收证据链：worker acceptance kit 会抓取 `domain-pack-production-health-before/after.json` 并生成 `domain-pack-production-health-audit.json/.md`，最终 verdict 增加 `domain_pack_production_health_audit` gate，archive 将这些文件列为 required attachments，Web/MCP evidence signoff 要求该 audit passed 后才可 ready；避免真实 GEARS/Seedance 回片签收时忽略生产提示包和审稿边界退化。
 56. 同步 MCP Story Agent MVP 与 worker evidence signoff 的模板/Domain Pack 健康门禁：`kb_get_story_agent_mvp_status` 现在只读扫描 `data/production-packs` 与 `data/domain-packs`，输出 `production_material_packs`、`domain_packs` 两条 lane、对应 summary 字段和嵌入式健康报告；`kb_get_gears_worker_evidence_signoff` 同步读取并要求 `production-material-pack-health-audit.json`、`domain-pack-production-health-audit.json` 通过后才可 `ready`，避免 Web 与 MCP 签收口径分裂。
+57. 暴露独立 MCP 包健康命令面：新增 `kb_get_production_material_pack_health` 与 `kb_get_domain_pack_production_health`，让 Story Agent、GEARS 签收和外部编排可以在不读取完整 MVP 报告的情况下单独拉取生产素材模板与 Domain Pack 生产提示健康；两个工具均为只读扫描，不写入省份 Markdown，也不绕过候选稿/审稿流程。
+58. 抽出 MCP 共享生产健康模块：`production-health-reports.ts` 统一承载 ProductionMaterialPack 与 Domain Pack 只读健康扫描，MVP 状态页和两个独立 MCP 健康工具共用同一套通过/警告/阻断判定，避免后续新增片型或生产提示包时出现命令面口径漂移。
+59. 加硬 MCP 包健康 fail-closed 回归测试：`production-health-reports.test.ts` 覆盖生产素材包文件或 Domain Pack 文件缺失时必须返回 `failed`、列出 8 个必需片型/生产提示包缺口，防止独立 MCP 工具、MVP lane 或 worker signoff 在素材包缺失时误报为健康。
 
 ## 原始诊断必须并入路线
 

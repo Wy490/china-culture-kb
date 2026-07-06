@@ -31,6 +31,10 @@ import {
 } from './tools/get-generated-governance-plan.js';
 import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
 import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
+import {
+  getDomainPackProductionHealthReport,
+  getProductionMaterialPackHealthReport,
+} from './tools/production-health-reports.js';
 import { getGearsWorkerEvidenceSignoff } from './tools/get-gears-worker-evidence-signoff.js';
 import { runProductionReadinessAutomation } from './tools/run-production-readiness-automation.js';
 import { runProductionReadinessPortfolioAutomationBridge } from './tools/run-production-readiness-portfolio-automation.js';
@@ -597,10 +601,42 @@ server.tool(
   }
 );
 
+// kb_get_production_material_pack_health — read production material pack portfolio health
+server.tool(
+  'kb_get_production_material_pack_health',
+  '只读扫描 ProductionMaterialPack 组合体健康。检查核心/高频成片类型模板覆盖、required_fields 映射、prompt layers、三阶段 gate、补充问题和样板条目下限。',
+  {},
+  async () => {
+    const result = getProductionMaterialPackHealthReport();
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_domain_pack_production_health — read Domain Pack production prompt health
+server.tool(
+  'kb_get_domain_pack_production_health',
+  '只读扫描 Domain Pack 生产提示健康。检查非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物、讲解知识结构、儿童改写、短视频钩子和宣讲培训结构包的生产提示与审稿边界。',
+  {},
+  async () => {
+    const result = getDomainPackProductionHealthReport();
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
 // kb_get_story_agent_mvp_status — read Story Agent MVP command status
 server.tool(
   'kb_get_story_agent_mvp_status',
-  '读取本地 Story Agent MVP 状态总控。只读组合 generated health、generated governance 与 production readiness portfolio，输出生成物、Generated 治理、质量、修复、交付合同和生产指挥 lane。',
+  '读取本地 Story Agent MVP 状态总控。只读组合 generated health、generated governance、生产素材包健康、Domain Pack 健康与 production readiness portfolio，输出生成物、Generated 治理、模板/提示包、质量、修复、交付合同和生产指挥 lane。',
   {
     generated_limit: z.number().int().positive().max(100).optional().describe('generated health 最多返回多少个目标，默认 100'),
     portfolio_limit: z.number().int().positive().max(100).optional().describe('production readiness portfolio 最多返回多少个目标，默认 100'),

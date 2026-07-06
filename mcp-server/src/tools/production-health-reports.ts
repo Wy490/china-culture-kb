@@ -1,0 +1,614 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { getKbRoot } from '../lib/provinces.js';
+
+export type PackHealthStatus = 'passed' | 'warning' | 'failed';
+type IssueSeverity = 'warning' | 'error';
+type MaterialSufficiencyStage = 'minimum_viable_story' | 'script_ready' | 'production_ready';
+type JsonRecord = Record<string, unknown>;
+
+interface ProductionMaterialPack {
+  video_type: string;
+  label: string;
+  goal?: string;
+  material_template: {
+    required_fields: string[];
+    prompt_layers?: string[];
+    minimum_viable_story_gate: string[];
+    script_ready_gate: string[];
+    production_ready_gate: string[];
+    supplement_questions: string[];
+  };
+  sample_entries: unknown[];
+}
+
+interface ProductionMaterialPackHealthIssue {
+  severity: IssueSeverity;
+  issue_type:
+    | 'missing_required_video_type'
+    | 'unknown_required_field'
+    | 'duplicate_required_field'
+    | 'underfilled_prompt_layers'
+    | 'underfilled_sample_entries'
+    | 'underfilled_supplement_questions'
+    | 'underfilled_gate_items';
+  video_type?: string;
+  message: string;
+  details?: string[];
+}
+
+interface ProductionMaterialPackHealthSummary {
+  video_type: string;
+  label: string;
+  required_field_count: number;
+  prompt_layer_count: number;
+  sample_entry_count: number;
+  supplement_question_count: number;
+  gate_item_counts: Record<MaterialSufficiencyStage, number>;
+  unknown_required_fields: string[];
+  duplicate_required_fields: string[];
+  status: PackHealthStatus;
+}
+
+export interface ProductionMaterialPackHealthReport {
+  schema_version: 'production-material-pack-health/v1';
+  generated_at: string;
+  status: PackHealthStatus;
+  pack_count: number;
+  required_video_types: string[];
+  covered_required_video_types: string[];
+  missing_required_video_types: string[];
+  core_video_types: string[];
+  production_ready_core_video_types: string[];
+  high_frequency_video_types: string[];
+  packs: ProductionMaterialPackHealthSummary[];
+  issues: ProductionMaterialPackHealthIssue[];
+}
+
+interface DomainPackSeed {
+  entry_name: string;
+  domain: string;
+  role: string;
+  type?: string;
+  region?: string;
+  summary?: string;
+  keywords?: string[];
+  asset_usage: string[];
+  trigger_words: string[];
+  production_prompts?: string[];
+  review_boundaries?: string[];
+}
+
+interface DomainPackFile {
+  domain_id?: string;
+  version?: string;
+  entries?: unknown[];
+}
+
+interface RequiredProductionDomainPack {
+  pack_id: string;
+  entry_name: string;
+  expected_asset_usage: string[];
+}
+
+interface DomainPackProductionHealthIssue {
+  severity: IssueSeverity;
+  issue_type:
+    | 'missing_required_pack'
+    | 'duplicate_entry_name'
+    | 'underfilled_trigger_words'
+    | 'underfilled_production_prompts'
+    | 'underfilled_review_boundaries'
+    | 'missing_expected_asset_usage';
+  pack_id?: string;
+  entry_name?: string;
+  message: string;
+  details?: string[];
+}
+
+interface DomainPackProductionHealthSummary {
+  pack_id: string;
+  entry_name: string;
+  domain: string;
+  role: string;
+  trigger_word_count: number;
+  production_prompt_count: number;
+  review_boundary_count: number;
+  asset_usage: string[];
+  status: PackHealthStatus;
+}
+
+export interface DomainPackProductionHealthReport {
+  schema_version: 'domain-pack-production-health/v1';
+  generated_at: string;
+  domain_id: string;
+  version: string;
+  status: PackHealthStatus;
+  pack_count: number;
+  production_pack_count: number;
+  required_pack_ids: string[];
+  covered_required_pack_ids: string[];
+  missing_required_pack_ids: string[];
+  production_ready_pack_ids: string[];
+  packs: DomainPackProductionHealthSummary[];
+  issues: DomainPackProductionHealthIssue[];
+}
+
+const CORE_PRODUCTION_READY_VIDEO_TYPES = [
+  'heritage_promo',
+  'documentary_short',
+  'ai_comic_drama',
+  'explainer_video',
+] as const;
+
+const HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES = [
+  ...CORE_PRODUCTION_READY_VIDEO_TYPES,
+  'children_story',
+  'social_short',
+  'lecture_video',
+  'education_training',
+] as const;
+
+const PACK_HEALTH_GATE_STAGES: MaterialSufficiencyStage[] = [
+  'minimum_viable_story',
+  'script_ready',
+  'production_ready',
+];
+
+const KNOWN_PRODUCTION_MATERIAL_FIELD_IDS = new Set([
+  'ambient_sound',
+  'analogy_or_visual_metaphor',
+  'argument_points',
+  'assessment_check',
+  'audience_age_band',
+  'audience_level',
+  'audience_takeaway',
+  'b_roll_plan',
+  'beat_interval',
+  'case_examples',
+  'character_stability_tags',
+  'child_safe_conflict',
+  'comment_prompt',
+  'communication_goal',
+  'community_or_practitioner_consent',
+  'concept_definitions',
+  'concrete_examples',
+  'confirmed_status_and_sources',
+  'core_question',
+  'diagram_or_caption_plan',
+  'dialogue_bubbles',
+  'documentary_question',
+  'documentation_assets',
+  'emotion_beats',
+  'emotional_resolution',
+  'ending_hook',
+  'episode_hook',
+  'fact_boundary_card',
+  'field_notes',
+  'forbidden_claims',
+  'hand_actions',
+  'heritage_or_craft_type',
+  'identity_motion_consistency_plan',
+  'interview_clip_selection',
+  'knowledge_outline',
+  'knowledge_steps',
+  'learner_profile',
+  'learning_objective',
+  'materials',
+  'misconception_or_boundary',
+  'modern_connection',
+  'multi_shot_continuity',
+  'official_catalog_or_resource_links',
+  'opening_hook',
+  'opponent_or_pressure',
+  'parent_teacher_note',
+  'platform_context',
+  'practice_task',
+  'practitioner_or_transmission_line',
+  'present_day_trace',
+  'process_steps',
+  'production_risks',
+  'project_name',
+  'protagonist_choice',
+  'protagonist_goal',
+  'real_world_site_or_object',
+  'recap_sentence',
+  'reconstruction_boundary',
+  'reference_images_or_keyframes',
+  'relationship_collision',
+  'scene_anchor',
+  'share_trigger',
+  'shot_prompt_layers',
+  'single_shot_test',
+  'slide_or_board_assets',
+  'sound_or_texture_details',
+  'source_cues',
+  'source_quotes_or_source_cues',
+  'speaker_position',
+  'step_sequence',
+  'timeline',
+  'tools',
+  'transition_plan',
+  'vertical_shot_plan',
+  'visual_symbols',
+  'what_must_not_be_claimed',
+  'witness_or_expert_roles',
+  'wonder_or_cultural_symbol',
+  'world_and_truth_mode',
+]);
+
+const REQUIRED_PRODUCTION_DOMAIN_PACKS: RequiredProductionDomainPack[] = [
+  {
+    pack_id: 'heritage_process_pack',
+    entry_name: '非遗流程生产包——材料工具、工序动作与授权边界',
+    expected_asset_usage: ['source_grounding', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'documentary_source_pack',
+    entry_name: '纪录片来源包——现实现场、来源线索与再现边界',
+    expected_asset_usage: ['source_grounding', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'ai_comic_storyboard_pack',
+    entry_name: 'AI漫剧分镜包——关键帧、表情节拍与连续性验收',
+    expected_asset_usage: ['visual_style', 'gears_delivery'],
+  },
+  {
+    pack_id: 'era_and_costume_pack',
+    entry_name: '朝代服饰与器物包——时代称谓、服装道具和事实边界',
+    expected_asset_usage: ['character_clothing', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'explainer_knowledge_structure_pack',
+    entry_name: '讲解知识结构包——核心问题、层级例子与图示字幕',
+    expected_asset_usage: ['source_grounding', 'visual_style'],
+  },
+  {
+    pack_id: 'children_adaptation_safety_pack',
+    entry_name: '儿童改写规则包——年龄分层、善意张力与事实边界',
+    expected_asset_usage: ['safety_boundary', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'short_video_hook_pack',
+    entry_name: '短视频钩子包——三秒问题、对比反转与平台节奏',
+    expected_asset_usage: ['visual_style', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'education_training_structure_pack',
+    entry_name: '宣讲培训结构包——论点案例、练习复盘与行动转化',
+    expected_asset_usage: ['source_grounding', 'safety_boundary'],
+  },
+];
+
+function isRecord(value: unknown): value is JsonRecord {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
+function duplicateStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value)) duplicates.add(value);
+    seen.add(value);
+  }
+  return [...duplicates].sort((a, b) => a.localeCompare(b));
+}
+
+function healthStatusFromIssues(issues: Array<{ severity: IssueSeverity }>): PackHealthStatus {
+  if (issues.some(issue => issue.severity === 'error')) return 'failed';
+  if (issues.length > 0) return 'warning';
+  return 'passed';
+}
+
+function readDataJsonRecord(...segments: string[]): JsonRecord | undefined {
+  try {
+    const parsed = JSON.parse(readFileSync(path.join(getKbRoot(), ...segments), 'utf8')) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isProductionMaterialPack(value: unknown): value is ProductionMaterialPack {
+  if (!isRecord(value)) return false;
+  const template = value.material_template;
+  return Boolean(
+    typeof value.video_type === 'string'
+    && typeof value.label === 'string'
+    && isRecord(template)
+    && isStringArray(template.required_fields)
+    && (!('prompt_layers' in template) || isStringArray(template.prompt_layers))
+    && isStringArray(template.minimum_viable_story_gate)
+    && isStringArray(template.script_ready_gate)
+    && isStringArray(template.production_ready_gate)
+    && isStringArray(template.supplement_questions)
+    && Array.isArray(value.sample_entries),
+  );
+}
+
+function loadProductionMaterialPacks(): ProductionMaterialPack[] {
+  const file = readDataJsonRecord('production-packs', 'video-type-material-supplement-packs.json');
+  return Array.isArray(file?.packs)
+    ? file.packs.filter(isProductionMaterialPack)
+    : [];
+}
+
+function gateItemsForStage(pack: ProductionMaterialPack, stage: MaterialSufficiencyStage): string[] {
+  if (stage === 'minimum_viable_story') return pack.material_template.minimum_viable_story_gate;
+  if (stage === 'script_ready') return pack.material_template.script_ready_gate;
+  return pack.material_template.production_ready_gate;
+}
+
+export function getProductionMaterialPackHealthReport(): ProductionMaterialPackHealthReport {
+  const requiredVideoTypes = [...HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES];
+  const coreVideoTypes = [...CORE_PRODUCTION_READY_VIDEO_TYPES];
+  const packs = loadProductionMaterialPacks();
+  const packsByType = new Map(packs.map(pack => [pack.video_type, pack]));
+  const issues: ProductionMaterialPackHealthIssue[] = [];
+
+  for (const videoType of requiredVideoTypes) {
+    if (!packsByType.has(videoType)) {
+      issues.push({
+        severity: 'error',
+        issue_type: 'missing_required_video_type',
+        video_type: videoType,
+        message: `缺少 ${videoType} 的 ProductionMaterialPack。`,
+      });
+    }
+  }
+
+  const summaries = packs
+    .map((pack): ProductionMaterialPackHealthSummary => {
+      const fields = pack.material_template.required_fields;
+      const unknownRequiredFields = fields.filter(fieldId => !KNOWN_PRODUCTION_MATERIAL_FIELD_IDS.has(fieldId));
+      const duplicateRequiredFields = duplicateStrings(fields);
+      const promptLayerCount = pack.material_template.prompt_layers?.length ?? 0;
+      const sampleEntryCount = pack.sample_entries.length;
+      const supplementQuestionCount = pack.material_template.supplement_questions.length;
+      const gateItemCounts: Record<MaterialSufficiencyStage, number> = {
+        minimum_viable_story: pack.material_template.minimum_viable_story_gate.length,
+        script_ready: pack.material_template.script_ready_gate.length,
+        production_ready: pack.material_template.production_ready_gate.length,
+      };
+      const beforeIssueCount = issues.length;
+
+      if (unknownRequiredFields.length > 0) {
+        issues.push({
+          severity: 'error',
+          issue_type: 'unknown_required_field',
+          video_type: pack.video_type,
+          message: `${pack.video_type} 包含 readiness 未识别的 required_fields。`,
+          details: unknownRequiredFields,
+        });
+      }
+      if (duplicateRequiredFields.length > 0) {
+        issues.push({
+          severity: 'error',
+          issue_type: 'duplicate_required_field',
+          video_type: pack.video_type,
+          message: `${pack.video_type} 包含重复 required_fields。`,
+          details: duplicateRequiredFields,
+        });
+      }
+      if (promptLayerCount < 4) {
+        issues.push({
+          severity: 'warning',
+          issue_type: 'underfilled_prompt_layers',
+          video_type: pack.video_type,
+          message: `${pack.video_type} prompt layers 低于 4 层。`,
+          details: [`current=${promptLayerCount}`],
+        });
+      }
+      if (supplementQuestionCount < 4) {
+        issues.push({
+          severity: 'warning',
+          issue_type: 'underfilled_supplement_questions',
+          video_type: pack.video_type,
+          message: `${pack.video_type} 补充问题低于 4 条。`,
+          details: [`current=${supplementQuestionCount}`],
+        });
+      }
+
+      const minimumSampleEntries = coreVideoTypes.includes(pack.video_type as typeof CORE_PRODUCTION_READY_VIDEO_TYPES[number])
+        ? 10
+        : requiredVideoTypes.includes(pack.video_type as typeof HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES[number])
+          ? 2
+          : 1;
+      if (sampleEntryCount < minimumSampleEntries) {
+        issues.push({
+          severity: 'warning',
+          issue_type: 'underfilled_sample_entries',
+          video_type: pack.video_type,
+          message: `${pack.video_type} 样板条目低于 ${minimumSampleEntries} 条。`,
+          details: [`current=${sampleEntryCount}`],
+        });
+      }
+
+      for (const stage of PACK_HEALTH_GATE_STAGES) {
+        const gateItemCount = gateItemsForStage(pack, stage).length;
+        if (gateItemCount < 3) {
+          issues.push({
+            severity: 'warning',
+            issue_type: 'underfilled_gate_items',
+            video_type: pack.video_type,
+            message: `${pack.video_type} ${stage} gate 低于 3 条。`,
+            details: [`current=${gateItemCount}`],
+          });
+        }
+      }
+
+      return {
+        video_type: pack.video_type,
+        label: pack.label,
+        required_field_count: fields.length,
+        prompt_layer_count: promptLayerCount,
+        sample_entry_count: sampleEntryCount,
+        supplement_question_count: supplementQuestionCount,
+        gate_item_counts: gateItemCounts,
+        unknown_required_fields: unknownRequiredFields,
+        duplicate_required_fields: duplicateRequiredFields,
+        status: healthStatusFromIssues(issues.slice(beforeIssueCount)),
+      };
+    })
+    .sort((a, b) => a.video_type.localeCompare(b.video_type));
+
+  return {
+    schema_version: 'production-material-pack-health/v1',
+    generated_at: new Date().toISOString(),
+    status: healthStatusFromIssues(issues),
+    pack_count: packs.length,
+    required_video_types: requiredVideoTypes,
+    covered_required_video_types: requiredVideoTypes.filter(videoType => packsByType.has(videoType)),
+    missing_required_video_types: requiredVideoTypes.filter(videoType => !packsByType.has(videoType)),
+    core_video_types: coreVideoTypes,
+    production_ready_core_video_types: coreVideoTypes.filter(videoType =>
+      summaries.some(summary => summary.video_type === videoType && summary.status === 'passed'),
+    ),
+    high_frequency_video_types: [...HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES],
+    packs: summaries,
+    issues,
+  };
+}
+
+function isDomainPackSeed(value: unknown): value is DomainPackSeed {
+  if (!isRecord(value)) return false;
+  return Boolean(
+    typeof value.entry_name === 'string'
+    && typeof value.domain === 'string'
+    && typeof value.role === 'string'
+    && isStringArray(value.asset_usage)
+    && isStringArray(value.trigger_words)
+    && (!('production_prompts' in value) || isStringArray(value.production_prompts))
+    && (!('review_boundaries' in value) || isStringArray(value.review_boundaries)),
+  );
+}
+
+function loadDomainPackFile(): { domain_id: string; version: string; seeds: DomainPackSeed[] } {
+  const file = readDataJsonRecord('domain-packs', 'china-culture.json') as DomainPackFile | undefined;
+  return {
+    domain_id: typeof file?.domain_id === 'string' ? file.domain_id : 'china_culture',
+    version: typeof file?.version === 'string' ? file.version : 'unknown',
+    seeds: Array.isArray(file?.entries) ? file.entries.filter(isDomainPackSeed) : [],
+  };
+}
+
+export function getDomainPackProductionHealthReport(): DomainPackProductionHealthReport {
+  const file = loadDomainPackFile();
+  const seedByName = new Map(file.seeds.map(seed => [seed.entry_name, seed]));
+  const issues: DomainPackProductionHealthIssue[] = [];
+  const duplicateNames = duplicateStrings(file.seeds.map(seed => seed.entry_name));
+
+  for (const entryName of duplicateNames) {
+    issues.push({
+      severity: 'error',
+      issue_type: 'duplicate_entry_name',
+      entry_name: entryName,
+      message: `Domain Pack 存在重复 entry_name：${entryName}。`,
+    });
+  }
+
+  const summaries: DomainPackProductionHealthSummary[] = [];
+  for (const contract of REQUIRED_PRODUCTION_DOMAIN_PACKS) {
+    const seed = seedByName.get(contract.entry_name);
+    if (!seed) {
+      issues.push({
+        severity: 'error',
+        issue_type: 'missing_required_pack',
+        pack_id: contract.pack_id,
+        entry_name: contract.entry_name,
+        message: `缺少生产提示 Domain Pack：${contract.entry_name}。`,
+      });
+      continue;
+    }
+
+    const beforeIssueCount = issues.length;
+    const triggerWordCount = seed.trigger_words.length;
+    const productionPromptCount = seed.production_prompts?.filter(item => item.trim()).length ?? 0;
+    const reviewBoundaryCount = seed.review_boundaries?.filter(item => item.trim()).length ?? 0;
+    const missingAssetUsage = contract.expected_asset_usage.filter(usage => !seed.asset_usage.includes(usage));
+
+    if (triggerWordCount < 8) {
+      issues.push({
+        severity: 'warning',
+        issue_type: 'underfilled_trigger_words',
+        pack_id: contract.pack_id,
+        entry_name: seed.entry_name,
+        message: `${seed.entry_name} trigger_words 低于 8 个。`,
+        details: [`current=${triggerWordCount}`],
+      });
+    }
+    if (productionPromptCount < 3) {
+      issues.push({
+        severity: 'warning',
+        issue_type: 'underfilled_production_prompts',
+        pack_id: contract.pack_id,
+        entry_name: seed.entry_name,
+        message: `${seed.entry_name} production_prompts 低于 3 条。`,
+        details: [`current=${productionPromptCount}`],
+      });
+    }
+    if (reviewBoundaryCount < 3) {
+      issues.push({
+        severity: 'warning',
+        issue_type: 'underfilled_review_boundaries',
+        pack_id: contract.pack_id,
+        entry_name: seed.entry_name,
+        message: `${seed.entry_name} review_boundaries 低于 3 条。`,
+        details: [`current=${reviewBoundaryCount}`],
+      });
+    }
+    if (missingAssetUsage.length > 0) {
+      issues.push({
+        severity: 'warning',
+        issue_type: 'missing_expected_asset_usage',
+        pack_id: contract.pack_id,
+        entry_name: seed.entry_name,
+        message: `${seed.entry_name} 缺少预期 asset_usage 标记。`,
+        details: missingAssetUsage,
+      });
+    }
+
+    summaries.push({
+      pack_id: contract.pack_id,
+      entry_name: seed.entry_name,
+      domain: seed.domain,
+      role: seed.role,
+      trigger_word_count: triggerWordCount,
+      production_prompt_count: productionPromptCount,
+      review_boundary_count: reviewBoundaryCount,
+      asset_usage: seed.asset_usage,
+      status: healthStatusFromIssues(issues.slice(beforeIssueCount)),
+    });
+  }
+
+  const coveredRequiredPackIds = summaries.map(summary => summary.pack_id);
+  const missingRequiredPackIds = REQUIRED_PRODUCTION_DOMAIN_PACKS
+    .filter(contract => !coveredRequiredPackIds.includes(contract.pack_id))
+    .map(contract => contract.pack_id);
+  const productionReadyPackIds = summaries
+    .filter(summary => summary.status === 'passed')
+    .map(summary => summary.pack_id);
+
+  return {
+    schema_version: 'domain-pack-production-health/v1',
+    generated_at: new Date().toISOString(),
+    domain_id: file.domain_id,
+    version: file.version,
+    status: healthStatusFromIssues(issues),
+    pack_count: file.seeds.length,
+    production_pack_count: file.seeds.filter(seed =>
+      Boolean(seed.production_prompts?.some(item => item.trim()))
+      || Boolean(seed.review_boundaries?.some(item => item.trim())),
+    ).length,
+    required_pack_ids: REQUIRED_PRODUCTION_DOMAIN_PACKS.map(contract => contract.pack_id),
+    covered_required_pack_ids: coveredRequiredPackIds,
+    missing_required_pack_ids: missingRequiredPackIds,
+    production_ready_pack_ids: productionReadyPackIds,
+    packs: summaries,
+    issues,
+  };
+}
