@@ -1577,23 +1577,17 @@ function gearsExternalQueueClipboardText(
     JSON.stringify(queue.callback_batch_sample, null, 2),
     'JSON',
     '',
-    `curl -sS -X POST "${absoluteApiUrl(queue.system_preflight_path)}" \\`,
-    '  -H "content-type: application/json" \\',
-    '  -H "x-gears-callback-secret: <GEARS_CALLBACK_SECRET>" \\',
-    '  --data-binary @/tmp/gears-system-external-callbacks.json',
+    queue.system_preflight_curl.replace(
+      '--data-binary @gears-system-external-callbacks.json',
+      '--data-binary @/tmp/gears-system-external-callbacks.json',
+    ),
     '',
     '# Import only after preflight passes with blocked=false.',
-    `curl -sS -X POST "${absoluteApiUrl(queue.system_safe_import_path)}" \\`,
-    '  -H "content-type: application/json" \\',
-    '  -H "x-gears-callback-secret: <GEARS_CALLBACK_SECRET>" \\',
-    '  --data-binary @/tmp/gears-system-external-callbacks.json',
+    queue.system_safe_import_curl.replace(
+      '--data-binary @gears-system-external-callbacks.json',
+      '--data-binary @/tmp/gears-system-external-callbacks.json',
+    ),
   ].join('\n')
-}
-
-function absoluteApiUrl(path: string): string {
-  if (/^https?:\/\//i.test(path)) return path
-  const normalized = path.startsWith('/') ? path : `/${path}`
-  return `${window.location.origin}${normalized}`
 }
 
 async function loadGeneratedGovernancePlan() {

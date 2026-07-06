@@ -2069,6 +2069,8 @@ export interface GearsExternalCallbackHandoffQueuePackage {
   exported_at: string;
   system_preflight_path: string;
   system_safe_import_path: string;
+  system_preflight_curl: string;
+  system_safe_import_curl: string;
   project_count: number;
   total_job_count: number;
   external_ready_count: number;

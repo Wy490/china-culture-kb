@@ -1378,7 +1378,13 @@ describe('project-service', () => {
     expect(globalHandoffQueue.callback_batch_sample.callbacks.some(callback =>
       callback.jobId === firstAcceptedJob!.gears_job_id
     )).toBe(true);
+    expect(globalHandoffQueue.system_preflight_curl).toContain('/api/system/gears-external-callbacks/preflight');
+    expect(globalHandoffQueue.system_preflight_curl).toContain('$GEARS_CALLBACK_SECRET');
+    expect(globalHandoffQueue.system_safe_import_curl).toContain('/api/system/gears-external-callbacks/import');
+    expect(globalHandoffQueue.system_safe_import_curl).toContain('@gears-system-external-callbacks.json');
     expect(globalHandoffQueue.markdown).toContain('GEARS External Callback Handoff Queue');
+    expect(globalHandoffQueue.markdown).toContain('## System Commands');
+    expect(globalHandoffQueue.markdown).toContain(globalHandoffQueue.system_preflight_curl);
     expect(globalHandoffQueue.markdown).toContain('Do not treat local_acceptance artifacts as final external media.');
 
     const placeholderPreflight = await preflightProjectGearsExternalCallbacks(enriched.project_id!, handoffBeforeExternal.data!.callback_batch_sample);

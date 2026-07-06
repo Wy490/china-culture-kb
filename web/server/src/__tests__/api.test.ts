@@ -570,6 +570,8 @@ describe('System API', () => {
         schema_version: 'gears-external-callback-handoff-queue/v1',
         project_count: expect.any(Number),
         pending_external_artifact_count: expect.any(Number),
+        system_preflight_curl: expect.stringContaining('/api/system/gears-external-callbacks/preflight'),
+        system_safe_import_curl: expect.stringContaining('/api/system/gears-external-callbacks/import'),
         callback_batch_sample: {
           callbacks: expect.any(Array),
           replace_before_import: expect.any(Array),
@@ -579,6 +581,7 @@ describe('System API', () => {
         operator_checklist: expect.any(Array),
       });
       expect(res.body.data.markdown).toContain('GEARS External Callback Handoff Queue');
+      expect(res.body.data.markdown).toContain('## System Commands');
       expect(res.body.data.callback_batch_sample.import_note).toContain('cross-project operator handoff');
     });
   });

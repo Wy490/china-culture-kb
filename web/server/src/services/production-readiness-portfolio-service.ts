@@ -108,6 +108,15 @@ function boundedLimit(limit: number | undefined): number {
 const systemGearsExternalCallbackPreflightPath = '/api/system/gears-external-callbacks/preflight';
 const systemGearsExternalCallbackImportPath = '/api/system/gears-external-callbacks/import';
 
+function gearsSystemExternalCallbackCurlCommand(targetPath: string): string {
+  return [
+    `curl -sS -X POST "$STORY_AGENT_BASE_URL${targetPath}"`,
+    '-H "content-type: application/json"',
+    '-H "x-gears-callback-secret: $GEARS_CALLBACK_SECRET"',
+    '--data-binary @gears-system-external-callbacks.json',
+  ].join(' ');
+}
+
 function callbackSourceProjectId(callback: GearsJobCallbackRequest): string | undefined {
   const value = callback.source_project_id ?? callback.sourceProjectId;
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
@@ -497,6 +506,17 @@ function buildGearsExternalCallbackHandoffQueueMarkdown(
     '',
     ...pkg.operator_checklist.map(item => `- ${item}`),
     '',
+    '## System Commands',
+    '',
+    'Write the JSON payload below to `gears-system-external-callbacks.json`, replace placeholder `outputUrl` values with real public artifact URLs, run preflight first, then import only when preflight is not blocked.',
+    '',
+    '```bash',
+    pkg.system_preflight_curl,
+    '',
+    '# Import only after preflight passes with blocked=false and blocking_count=0.',
+    pkg.system_safe_import_curl,
+    '```',
+    '',
     '## Project Queue',
     '',
     ...(pkg.projects.length
@@ -588,6 +608,8 @@ export async function getGearsExternalCallbackHandoffQueue(
     exported_at: exportedAt,
     system_preflight_path: systemGearsExternalCallbackPreflightPath,
     system_safe_import_path: systemGearsExternalCallbackImportPath,
+    system_preflight_curl: gearsSystemExternalCallbackCurlCommand(systemGearsExternalCallbackPreflightPath),
+    system_safe_import_curl: gearsSystemExternalCallbackCurlCommand(systemGearsExternalCallbackImportPath),
     project_count: queueProjects.length,
     total_job_count: queueProjects.reduce((sum, project) => sum + project.total_job_count, 0),
     external_ready_count: queueProjects.reduce((sum, project) => sum + project.external_ready_count, 0),

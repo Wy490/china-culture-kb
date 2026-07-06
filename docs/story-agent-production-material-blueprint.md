@@ -52,6 +52,7 @@
 46. 接上 `explainer_video` 生产素材自动草拟：`draft_production_material_fields` 现在可从目标受众、传播目标、`argument_points`、`knowledge_outline`、分镜、GEARS visual focus 和素材事实边界草拟知识讲解片的受众层级、论点、知识大纲、概念定义、讲解步骤、可视化类比和复盘句；第四类高频片型的缺口任务也会先进入项目候选稿和审稿流程，不直接写入省份 Markdown。
 47. 补齐首批核心片型自动草拟面：`heritage_promo` 可从分镜、GEARS visual focus、传播目标和素材边界草拟项目名、工艺类型、材料/工具线索、流程步骤、手部动作、文献影像资产、视觉符号、声音质感、当代连接和生产风险；`documentary_short` 可草拟纪录片核心问题、现实入口、来源线索、时间线、采访角色、片段选择、现场笔记、B-roll、再现边界、当代痕迹、环境声和禁用声称。官方链接、授权、传承谱系等硬事实仍必须人工核实后才能写回。
 48. 补强系统级真实外部回片操作物料：项目指挥页的生产指挥总览现在可分别复制跨项目 GEARS 外部回片队列 Markdown、`callback_batch_sample` JSON payload，以及带 `x-gears-callback-secret` 占位的系统 preflight/import curl 模板；前端仍不直接导入回片，必须先把 placeholder outputUrl 替换成真实公网 artifact URL 并通过系统 preflight，避免把 local acceptance 或示例 URL 当成真实外部回片。
+49. 下沉系统级回片命令模板到服务端：`gears-external-callback-handoff-queue/v1` 现在直接返回 `system_preflight_curl` 和 `system_safe_import_curl`，Markdown 也包含统一命令段；项目指挥页复制命令时复用服务端字段，避免 UI、API、worker 证据包之间出现不同 preflight/import 操作口径。
 
 ## 原始诊断必须并入路线
 
