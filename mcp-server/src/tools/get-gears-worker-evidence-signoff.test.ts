@@ -28,15 +28,29 @@ async function writeReadyEvidence(
     status: 'passed',
     acceptance_passed: true,
     pressure_submitted: true,
-    gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
+    gate_counts: { passed: 11, failed: 0, skipped: 0, total: 11 },
     failed_gate_ids: [],
     skipped_gate_ids: [],
-    gates: [{
-      id: 'system_external_callback_batch',
-      label: 'Story Agent system external callback batch',
-      status: 'passed',
-      summary: 'System external callback wrote back a public GEARS artifact.',
-    }],
+    gates: [
+      {
+        id: 'production_material_pack_health_audit',
+        label: 'Production material pack health smoke audit',
+        status: 'passed',
+        summary: 'Production material pack health stayed passed during worker smoke.',
+      },
+      {
+        id: 'domain_pack_production_health_audit',
+        label: 'Domain Pack production health smoke audit',
+        status: 'passed',
+        summary: 'Domain Pack production health stayed passed during worker smoke.',
+      },
+      {
+        id: 'system_external_callback_batch',
+        label: 'Story Agent system external callback batch',
+        status: 'passed',
+        summary: 'System external callback wrote back a public GEARS artifact.',
+      },
+    ],
     recommended_actions: [],
   });
   await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-archive.json', {
@@ -45,15 +59,18 @@ async function writeReadyEvidence(
     signoff_ready: true,
     totals: {
       missing_required_attachment_count: 0,
-      required_attachment_count: 31,
-      required_checksum_count: 31,
-      evidence_file_count: 70,
+      required_attachment_count: 39,
+      required_checksum_count: 39,
+      evidence_file_count: 78,
     },
     required_attachments: [
       'gears-worker-acceptance-verdict.json',
       'story-agent-system-external-output-url-source.json',
       'story-agent-system-external-callback-preflight-response.json',
       'story-agent-system-external-callback-import-response.json',
+      'story-agent-generated-health-audit.json',
+      'production-material-pack-health-audit.json',
+      'domain-pack-production-health-audit.json',
       'story-agent-mvp-status-audit.json',
     ],
     missing_required_files: [],
@@ -141,6 +158,26 @@ async function writeReadyEvidence(
     deltas: { ready_count: 0, interrupted_count: 0, production_gap_count: 0 },
     recommended_actions: [],
   });
+  await writeEvidenceJson(evidenceDir, 'production-material-pack-health-audit.json', {
+    schema_version: 'production-material-pack-health-audit/v1',
+    status: 'passed',
+    before: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+    after: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+    deltas: { issue_count: 0, core_ready_count: 0 },
+    failed_checks: [],
+    warning_checks: [],
+    recommended_actions: [],
+  });
+  await writeEvidenceJson(evidenceDir, 'domain-pack-production-health-audit.json', {
+    schema_version: 'domain-pack-production-health-audit/v1',
+    status: 'passed',
+    before: { status: 'passed', issue_count: 0, ready_pack_count: 8, required_pack_count: 8 },
+    after: { status: 'passed', issue_count: 0, ready_pack_count: 8, required_pack_count: 8 },
+    deltas: { issue_count: 0, ready_pack_count: 0 },
+    failed_checks: [],
+    warning_checks: [],
+    recommended_actions: [],
+  });
   await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
     schema_version: 'story-agent-mvp-status-audit/v1',
     status: 'passed',
@@ -186,6 +223,8 @@ describe('getGearsWorkerEvidenceSignoff', () => {
       signoff_ready: true,
       integrity_passed: true,
       health_audit_passed: true,
+      production_material_pack_health_audit_passed: true,
+      domain_pack_production_health_audit_passed: true,
       mvp_status_audit_passed: true,
       system_external_callback_passed: true,
       system_external_callback_ready_to_import_count: 3,
@@ -199,14 +238,34 @@ describe('getGearsWorkerEvidenceSignoff', () => {
       system_external_output_url_source: 'worker_response',
       pressure_submitted: true,
       large_project_source_echo_count: 120,
+      production_material_pack_status_before: 'passed',
+      production_material_pack_status_after: 'passed',
+      production_material_pack_issue_count_delta: 0,
+      production_material_pack_core_ready_count_before: 4,
+      production_material_pack_core_ready_count_after: 4,
+      domain_pack_status_before: 'passed',
+      domain_pack_status_after: 'passed',
+      domain_pack_issue_count_delta: 0,
+      domain_pack_ready_count_before: 8,
+      domain_pack_ready_count_after: 8,
     });
-    expect(report.gates).toEqual([
+    expect(report.gates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'production_material_pack_health_audit',
+        status: 'passed',
+      }),
+      expect.objectContaining({
+        id: 'domain_pack_production_health_audit',
+        status: 'passed',
+      }),
       expect.objectContaining({
         id: 'system_external_callback_batch',
         status: 'passed',
       }),
-    ]);
+    ]));
     expect(report.worker_failure_category_counts).toEqual({ render_failed: 1 });
+    expect(report.markdown).toContain('production_material_pack_health_audit_passed: true');
+    expect(report.markdown).toContain('domain_pack_production_health_audit_passed: true');
     expect(report.markdown).toContain('system_external_callback_passed: true');
     expect(report.markdown).toContain('system_external_output_url_source: worker_response');
     expect(report.markdown).toContain('system_external_callback_ready/updated: 3/3');

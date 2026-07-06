@@ -43,6 +43,8 @@ export interface GearsWorkerEvidenceSignoffReport {
   signoff_ready: boolean;
   integrity_passed: boolean;
   health_audit_passed: boolean;
+  production_material_pack_health_audit_passed: boolean;
+  domain_pack_production_health_audit_passed: boolean;
   mvp_status_audit_passed: boolean;
   system_external_callback_passed: boolean;
   system_external_callback_ready_to_import_count: number;
@@ -84,6 +86,20 @@ export interface GearsWorkerEvidenceSignoffReport {
   health_ready_count_delta: number;
   health_interrupted_count_delta: number;
   health_production_gap_count_delta: number;
+  production_material_pack_status_before?: 'passed' | 'warning' | 'failed';
+  production_material_pack_status_after?: 'passed' | 'warning' | 'failed';
+  production_material_pack_issue_count_before: number;
+  production_material_pack_issue_count_after: number;
+  production_material_pack_issue_count_delta: number;
+  production_material_pack_core_ready_count_before: number;
+  production_material_pack_core_ready_count_after: number;
+  domain_pack_status_before?: 'passed' | 'warning' | 'failed';
+  domain_pack_status_after?: 'passed' | 'warning' | 'failed';
+  domain_pack_issue_count_before: number;
+  domain_pack_issue_count_after: number;
+  domain_pack_issue_count_delta: number;
+  domain_pack_ready_count_before: number;
+  domain_pack_ready_count_after: number;
   mvp_status_before?: StoryAgentMvpStatus;
   mvp_status_after?: StoryAgentMvpStatus;
   mvp_score_before: number;
@@ -352,6 +368,8 @@ function renderMarkdown(report: Omit<GearsWorkerEvidenceSignoffReport, 'markdown
     `- signoff_ready: ${report.signoff_ready}`,
     `- integrity_passed: ${report.integrity_passed}`,
     `- health_audit_passed: ${report.health_audit_passed}`,
+    `- production_material_pack_health_audit_passed: ${report.production_material_pack_health_audit_passed}`,
+    `- domain_pack_production_health_audit_passed: ${report.domain_pack_production_health_audit_passed}`,
     `- mvp_status_audit_passed: ${report.mvp_status_audit_passed}`,
     `- system_external_callback_passed: ${report.system_external_callback_passed}`,
     `- system_external_output_url_source: ${report.system_external_output_url_source}`,
@@ -370,6 +388,12 @@ function renderMarkdown(report: Omit<GearsWorkerEvidenceSignoffReport, 'markdown
     `- callback_ledger_match_missing_count: ${report.callback_ledger_match_missing_count}`,
     `- health_ready_delta: ${report.health_ready_count_delta}`,
     `- health_interrupted_delta: ${report.health_interrupted_count_delta}`,
+    `- production_material_pack_status_before/after: ${report.production_material_pack_status_before ?? 'n/a'}/${report.production_material_pack_status_after ?? 'n/a'}`,
+    `- production_material_pack_issue_delta: ${report.production_material_pack_issue_count_delta}`,
+    `- production_material_pack_core_ready_before/after: ${report.production_material_pack_core_ready_count_before}/${report.production_material_pack_core_ready_count_after}`,
+    `- domain_pack_status_before/after: ${report.domain_pack_status_before ?? 'n/a'}/${report.domain_pack_status_after ?? 'n/a'}`,
+    `- domain_pack_issue_delta: ${report.domain_pack_issue_count_delta}`,
+    `- domain_pack_ready_before/after: ${report.domain_pack_ready_count_before}/${report.domain_pack_ready_count_after}`,
     `- mvp_status_before/after: ${report.mvp_status_before ?? 'n/a'}/${report.mvp_status_after ?? 'n/a'}`,
     `- mvp_score_delta: ${report.mvp_score_delta}`,
     `- large_project_source_echo: ${report.large_project_source_echo_count}/${report.large_project_request_unit_count}`,
@@ -412,6 +436,8 @@ export async function getGearsWorkerEvidenceSignoff(
       signoff_ready: false,
       integrity_passed: false,
       health_audit_passed: false,
+      production_material_pack_health_audit_passed: false,
+      domain_pack_production_health_audit_passed: false,
       mvp_status_audit_passed: false,
       system_external_callback_passed: false,
       system_external_callback_ready_to_import_count: 0,
@@ -448,6 +474,16 @@ export async function getGearsWorkerEvidenceSignoff(
       health_ready_count_delta: 0,
       health_interrupted_count_delta: 0,
       health_production_gap_count_delta: 0,
+      production_material_pack_issue_count_before: 0,
+      production_material_pack_issue_count_after: 0,
+      production_material_pack_issue_count_delta: 0,
+      production_material_pack_core_ready_count_before: 0,
+      production_material_pack_core_ready_count_after: 0,
+      domain_pack_issue_count_before: 0,
+      domain_pack_issue_count_after: 0,
+      domain_pack_issue_count_delta: 0,
+      domain_pack_ready_count_before: 0,
+      domain_pack_ready_count_after: 0,
       mvp_score_before: 0,
       mvp_score_after: 0,
       mvp_score_delta: 0,
@@ -489,6 +525,8 @@ export async function getGearsWorkerEvidenceSignoff(
     systemExternalPreflightRead,
     systemExternalImportRead,
     healthRead,
+    productionMaterialPackHealthRead,
+    domainPackProductionHealthRead,
     mvpRead,
     pressureRead,
   ] = await Promise.all([
@@ -501,6 +539,8 @@ export async function getGearsWorkerEvidenceSignoff(
     readEvidenceJson(resolved.evidenceDir, 'story-agent-system-external-callback-preflight-response.json'),
     readEvidenceJson(resolved.evidenceDir, 'story-agent-system-external-callback-import-response.json'),
     readEvidenceJson(resolved.evidenceDir, 'story-agent-generated-health-audit.json'),
+    readEvidenceJson(resolved.evidenceDir, 'production-material-pack-health-audit.json'),
+    readEvidenceJson(resolved.evidenceDir, 'domain-pack-production-health-audit.json'),
     readEvidenceJson(resolved.evidenceDir, 'story-agent-mvp-status-audit.json'),
     readEvidenceJson(resolved.evidenceDir, 'gears-large-project-response-audit.json'),
   ]);
@@ -518,6 +558,12 @@ export async function getGearsWorkerEvidenceSignoff(
   const healthBeforeSummary = asRecord(asRecord(healthRead.data?.before).summary);
   const healthAfterSummary = asRecord(asRecord(healthRead.data?.after).summary);
   const healthDeltas = asRecord(healthRead.data?.deltas);
+  const productionPackBefore = asRecord(productionMaterialPackHealthRead.data?.before);
+  const productionPackAfter = asRecord(productionMaterialPackHealthRead.data?.after);
+  const productionPackDeltas = asRecord(productionMaterialPackHealthRead.data?.deltas);
+  const domainPackBefore = asRecord(domainPackProductionHealthRead.data?.before);
+  const domainPackAfter = asRecord(domainPackProductionHealthRead.data?.after);
+  const domainPackDeltas = asRecord(domainPackProductionHealthRead.data?.deltas);
   const mvpBefore = asRecord(mvpRead.data?.before);
   const mvpAfter = asRecord(mvpRead.data?.after);
   const mvpDeltas = asRecord(mvpRead.data?.deltas);
@@ -530,6 +576,8 @@ export async function getGearsWorkerEvidenceSignoff(
   const signoffReady = asBool(archive?.signoff_ready);
   const integrityPassed = asBool(integrity?.integrity_passed);
   const healthAuditPassed = healthRead.data?.status === 'passed';
+  const productionMaterialPackHealthAuditPassed = productionMaterialPackHealthRead.data?.status === 'passed';
+  const domainPackProductionHealthAuditPassed = domainPackProductionHealthRead.data?.status === 'passed';
   const mvpStatusAuditPassed = mvpRead.data?.status === 'passed' || mvpRead.data?.status === 'warning';
   const systemExternalOutputUrlSourceReady = systemExternalOutputSourceRead.exists
     && systemExternalOutputSourceRead.parse_ok
@@ -574,7 +622,7 @@ export async function getGearsWorkerEvidenceSignoff(
     ...evidenceActions(verdict?.recommended_actions),
     ...evidenceActions(archive?.recommended_actions),
     ...evidenceActions(integrity?.recommended_actions),
-    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, systemExternalOutputSourceRead, systemExternalPreflightRead, systemExternalImportRead, healthRead, mvpRead, pressureRead]
+    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, systemExternalOutputSourceRead, systemExternalPreflightRead, systemExternalImportRead, healthRead, productionMaterialPackHealthRead, domainPackProductionHealthRead, mvpRead, pressureRead]
       .filter(read => !read.exists || !read.parse_ok)
       .map(read => ({
         priority: 'P0',
@@ -585,7 +633,10 @@ export async function getGearsWorkerEvidenceSignoff(
       })),
   ]);
   const coreEvidenceAvailable = verdictRead.exists && archiveRead.exists && integrityRead.exists && healthRead.exists;
-  const status: SignoffStatus = acceptancePassed && signoffReady && integrityPassed && healthAuditPassed && mvpStatusAuditPassed
+  const status: SignoffStatus = acceptancePassed && signoffReady && integrityPassed && healthAuditPassed
+    && productionMaterialPackHealthAuditPassed
+    && domainPackProductionHealthAuditPassed
+    && mvpStatusAuditPassed
     && systemExternalCallbackPassed
     ? 'ready'
     : coreEvidenceAvailable
@@ -602,6 +653,8 @@ export async function getGearsWorkerEvidenceSignoff(
     signoff_ready: signoffReady,
     integrity_passed: integrityPassed,
     health_audit_passed: healthAuditPassed,
+    production_material_pack_health_audit_passed: productionMaterialPackHealthAuditPassed,
+    domain_pack_production_health_audit_passed: domainPackProductionHealthAuditPassed,
     mvp_status_audit_passed: mvpStatusAuditPassed,
     system_external_callback_passed: systemExternalCallbackPassed,
     system_external_callback_ready_to_import_count: asNumber(systemExternalPreflight.ready_to_import_count),
@@ -648,6 +701,28 @@ export async function getGearsWorkerEvidenceSignoff(
     health_ready_count_delta: asNumber(healthDeltas.ready_count),
     health_interrupted_count_delta: asNumber(healthDeltas.interrupted_count),
     health_production_gap_count_delta: asNumber(healthDeltas.production_gap_count),
+    production_material_pack_status_before: typeof productionPackBefore.status === 'string'
+      ? productionPackBefore.status as 'passed' | 'warning' | 'failed'
+      : undefined,
+    production_material_pack_status_after: typeof productionPackAfter.status === 'string'
+      ? productionPackAfter.status as 'passed' | 'warning' | 'failed'
+      : undefined,
+    production_material_pack_issue_count_before: asNumber(productionPackBefore.issue_count),
+    production_material_pack_issue_count_after: asNumber(productionPackAfter.issue_count),
+    production_material_pack_issue_count_delta: asNumber(productionPackDeltas.issue_count),
+    production_material_pack_core_ready_count_before: asNumber(productionPackBefore.core_ready_count),
+    production_material_pack_core_ready_count_after: asNumber(productionPackAfter.core_ready_count),
+    domain_pack_status_before: typeof domainPackBefore.status === 'string'
+      ? domainPackBefore.status as 'passed' | 'warning' | 'failed'
+      : undefined,
+    domain_pack_status_after: typeof domainPackAfter.status === 'string'
+      ? domainPackAfter.status as 'passed' | 'warning' | 'failed'
+      : undefined,
+    domain_pack_issue_count_before: asNumber(domainPackBefore.issue_count),
+    domain_pack_issue_count_after: asNumber(domainPackAfter.issue_count),
+    domain_pack_issue_count_delta: asNumber(domainPackDeltas.issue_count),
+    domain_pack_ready_count_before: asNumber(domainPackBefore.ready_pack_count),
+    domain_pack_ready_count_after: asNumber(domainPackAfter.ready_pack_count),
     mvp_status_before: typeof mvpBefore.status === 'string' ? mvpBefore.status as StoryAgentMvpStatus : undefined,
     mvp_status_after: typeof mvpAfter.status === 'string' ? mvpAfter.status as StoryAgentMvpStatus : undefined,
     mvp_score_before: asNumber(mvpBefore.score),

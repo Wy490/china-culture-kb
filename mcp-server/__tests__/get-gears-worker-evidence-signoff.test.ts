@@ -22,15 +22,29 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
     status: 'passed',
     acceptance_passed: true,
     pressure_submitted: true,
-    gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
+    gate_counts: { passed: 11, failed: 0, skipped: 0, total: 11 },
     failed_gate_ids: [],
     skipped_gate_ids: [],
-    gates: [{
-      id: 'system_external_callback_batch',
-      label: 'Story Agent system external callback batch',
-      status: 'passed',
-      summary: 'System external callback imported a real external artifact.',
-    }],
+    gates: [
+      {
+        id: 'production_material_pack_health_audit',
+        label: 'Production material pack health smoke audit',
+        status: 'passed',
+        summary: 'Production material pack health stayed passed during worker smoke.',
+      },
+      {
+        id: 'domain_pack_production_health_audit',
+        label: 'Domain Pack production health smoke audit',
+        status: 'passed',
+        summary: 'Domain Pack production health stayed passed during worker smoke.',
+      },
+      {
+        id: 'system_external_callback_batch',
+        label: 'Story Agent system external callback batch',
+        status: 'passed',
+        summary: 'System external callback imported a real external artifact.',
+      },
+    ],
     recommended_actions: recommendedActions,
   });
   writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-archive.json', {
@@ -39,9 +53,9 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
     signoff_ready: true,
     totals: {
       missing_required_attachment_count: 0,
-      required_attachment_count: 26,
-      required_checksum_count: 26,
-      evidence_file_count: 70,
+      required_attachment_count: 39,
+      required_checksum_count: 39,
+      evidence_file_count: 78,
     },
     required_attachments: [
       'gears-worker-acceptance-verdict.json',
@@ -49,6 +63,8 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
       'story-agent-system-external-callback-preflight-response.json',
       'story-agent-system-external-callback-import-response.json',
       'story-agent-generated-health-audit.json',
+      'production-material-pack-health-audit.json',
+      'domain-pack-production-health-audit.json',
       'story-agent-mvp-status-audit.json',
     ],
     missing_required_files: [],
@@ -142,6 +158,26 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
     deltas: { ready_count: 0, interrupted_count: 0, production_gap_count: 0 },
     recommended_actions: [],
   });
+  writeEvidenceJson(evidenceDir, 'production-material-pack-health-audit.json', {
+    schema_version: 'production-material-pack-health-audit/v1',
+    status: 'passed',
+    before: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+    after: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+    deltas: { issue_count: 0, core_ready_count: 0 },
+    failed_checks: [],
+    warning_checks: [],
+    recommended_actions: [],
+  });
+  writeEvidenceJson(evidenceDir, 'domain-pack-production-health-audit.json', {
+    schema_version: 'domain-pack-production-health-audit/v1',
+    status: 'passed',
+    before: { status: 'passed', issue_count: 0, ready_pack_count: 8, required_pack_count: 8 },
+    after: { status: 'passed', issue_count: 0, ready_pack_count: 8, required_pack_count: 8 },
+    deltas: { issue_count: 0, ready_pack_count: 0 },
+    failed_checks: [],
+    warning_checks: [],
+    recommended_actions: [],
+  });
   writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
     schema_version: 'story-agent-mvp-status-audit/v1',
     status: 'passed',
@@ -229,6 +265,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.signoff_ready).toBe(true);
     expect(result.integrity_passed).toBe(true);
     expect(result.health_audit_passed).toBe(true);
+    expect(result.production_material_pack_health_audit_passed).toBe(true);
+    expect(result.domain_pack_production_health_audit_passed).toBe(true);
     expect(result.mvp_status_audit_passed).toBe(true);
     expect(result.system_external_callback_passed).toBe(true);
     expect(result.system_external_callback_ready_to_import_count).toBe(3);
@@ -241,16 +279,36 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.large_project_request_unit_count).toBe(120);
     expect(result.large_project_response_record_count).toBe(120);
     expect(result.large_project_source_echo_count).toBe(120);
+    expect(result.production_material_pack_status_before).toBe('passed');
+    expect(result.production_material_pack_status_after).toBe('passed');
+    expect(result.production_material_pack_issue_count_delta).toBe(0);
+    expect(result.production_material_pack_core_ready_count_before).toBe(4);
+    expect(result.production_material_pack_core_ready_count_after).toBe(4);
+    expect(result.domain_pack_status_before).toBe('passed');
+    expect(result.domain_pack_status_after).toBe('passed');
+    expect(result.domain_pack_issue_count_delta).toBe(0);
+    expect(result.domain_pack_ready_count_before).toBe(8);
+    expect(result.domain_pack_ready_count_after).toBe(8);
     expect(result.mvp_status_before).toBe('ready');
     expect(result.mvp_status_after).toBe('ready');
     expect(result.mvp_score_delta).toBe(0);
     expect(result.missing_required_files).toEqual([]);
-    expect(result.gates).toEqual([
+    expect(result.gates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'production_material_pack_health_audit',
+        status: 'passed',
+      }),
+      expect.objectContaining({
+        id: 'domain_pack_production_health_audit',
+        status: 'passed',
+      }),
       expect.objectContaining({
         id: 'system_external_callback_batch',
         status: 'passed',
       }),
-    ]);
+    ]));
+    expect(result.markdown).toContain('production_material_pack_health_audit_passed: true');
+    expect(result.markdown).toContain('domain_pack_production_health_audit_passed: true');
     expect(result.markdown).toContain('system_external_callback_passed: true');
     expect(result.markdown).toContain('system_external_output_url_source: worker_response');
     expect(result.markdown).toContain('large_project_source_echo: 120/120');

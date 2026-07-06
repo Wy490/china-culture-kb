@@ -8,10 +8,124 @@ const tmpRoot = path.join(os.tmpdir(), 'kb-story-agent-mvp-status-test-' + Date.
 const dataRoot = path.join(tmpRoot, 'data');
 const previousKbRoot = process.env.KB_ROOT;
 const projectId = '20260623-story-mvp-mcp--ai_comic_drama';
+const productionVideoTypes = [
+  'heritage_promo',
+  'documentary_short',
+  'ai_comic_drama',
+  'explainer_video',
+  'children_story',
+  'social_short',
+  'lecture_video',
+  'education_training',
+];
+const coreProductionVideoTypes = new Set(['heritage_promo', 'documentary_short', 'ai_comic_drama', 'explainer_video']);
+const requiredDomainPackEntries = [
+  {
+    pack_id: 'heritage_process_pack',
+    entry_name: '非遗流程生产包——材料工具、工序动作与授权边界',
+    asset_usage: ['plot_structure', 'source_grounding', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'documentary_source_pack',
+    entry_name: '纪录片来源包——现实现场、来源线索与再现边界',
+    asset_usage: ['source_grounding', 'credibility_boundary', 'scene_space'],
+  },
+  {
+    pack_id: 'ai_comic_storyboard_pack',
+    entry_name: 'AI漫剧分镜包——关键帧、表情节拍与连续性验收',
+    asset_usage: ['plot_structure', 'visual_style', 'gears_delivery'],
+  },
+  {
+    pack_id: 'era_and_costume_pack',
+    entry_name: '朝代服饰与器物包——时代称谓、服装道具和事实边界',
+    asset_usage: ['character_clothing', 'character_props', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'explainer_knowledge_structure_pack',
+    entry_name: '讲解知识结构包——核心问题、层级例子与图示字幕',
+    asset_usage: ['plot_structure', 'source_grounding', 'visual_style'],
+  },
+  {
+    pack_id: 'children_adaptation_safety_pack',
+    entry_name: '儿童改写规则包——年龄分层、善意张力与事实边界',
+    asset_usage: ['plot_structure', 'safety_boundary', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'short_video_hook_pack',
+    entry_name: '短视频钩子包——三秒问题、对比反转与平台节奏',
+    asset_usage: ['plot_structure', 'visual_style', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'education_training_structure_pack',
+    entry_name: '宣讲培训结构包——论点案例、练习复盘与行动转化',
+    asset_usage: ['source_grounding', 'safety_boundary', 'visual_style'],
+  },
+];
+
+function makeProductionPacks() {
+  return productionVideoTypes.map(videoType => ({
+    video_type: videoType,
+    label: `${videoType} 测试生产模板`,
+    goal: '测试 MCP MVP 状态的生产素材包健康门禁。',
+    material_template: {
+      required_fields: requiredFieldsForVideoType(videoType),
+      prompt_layers: ['事实边界', '素材资产', '镜头抓手', '审稿约束'],
+      minimum_viable_story_gate: ['主体明确', '来源明确', '画面明确'],
+      script_ready_gate: ['结构明确', '动作明确', '边界明确'],
+      production_ready_gate: ['资产明确', '镜头明确', '验收明确'],
+      supplement_questions: ['问题一？', '问题二？', '问题三？', '问题四？'],
+    },
+    sample_entries: Array.from(
+      { length: coreProductionVideoTypes.has(videoType) ? 10 : 2 },
+      (_, index) => ({
+        sample_id: `${videoType}-${index + 1}`,
+        entry_name: `${videoType} 样板 ${index + 1}`,
+      }),
+    ),
+  }));
+}
+
+function requiredFieldsForVideoType(videoType: string): string[] {
+  if (videoType === 'heritage_promo') return ['project_name', 'heritage_or_craft_type', 'process_steps'];
+  if (videoType === 'documentary_short') return ['documentary_question', 'real_world_site_or_object', 'source_quotes_or_source_cues'];
+  if (videoType === 'ai_comic_drama') return ['episode_hook', 'world_and_truth_mode', 'protagonist_goal'];
+  if (videoType === 'explainer_video') return ['core_question', 'audience_level', 'argument_points'];
+  if (videoType === 'children_story') return ['audience_age_band', 'child_safe_conflict', 'protagonist_choice'];
+  if (videoType === 'social_short') return ['opening_hook', 'platform_context', 'share_trigger'];
+  if (videoType === 'lecture_video') return ['speaker_position', 'communication_goal', 'case_examples'];
+  return ['learning_objective', 'learner_profile', 'practice_task'];
+}
+
+function makeDomainPackEntries() {
+  return requiredDomainPackEntries.map((entry, index) => ({
+    entry_name: entry.entry_name,
+    domain: 'narrative_pattern',
+    role: 'pattern_pack',
+    type: 'Domain Pack',
+    region: '通用',
+    summary: `用于 ${entry.pack_id} 的测试生产提示包。`,
+    keywords: [entry.pack_id, '测试', '生产提示包'],
+    asset_usage: entry.asset_usage,
+    production_prompts: ['生产提示一', '生产提示二', '生产提示三'],
+    review_boundaries: ['审稿边界一', '审稿边界二', '审稿边界三'],
+    trigger_words: Array.from({ length: 8 }, (_, triggerIndex) => `${entry.pack_id}_${index}_${triggerIndex}`),
+  }));
+}
 
 beforeEach(() => {
   process.env.KB_ROOT = dataRoot;
   fs.mkdirSync(path.join(dataRoot, 'provinces'), { recursive: true });
+  fs.mkdirSync(path.join(dataRoot, 'production-packs'), { recursive: true });
+  fs.mkdirSync(path.join(dataRoot, 'domain-packs'), { recursive: true });
+  fs.writeFileSync(path.join(dataRoot, 'production-packs', 'video-type-material-supplement-packs.json'), JSON.stringify({
+    schema_version: 'video-type-material-supplement-packs/v1',
+    packs: makeProductionPacks(),
+  }, null, 2));
+  fs.writeFileSync(path.join(dataRoot, 'domain-packs', 'china-culture.json'), JSON.stringify({
+    domain_id: 'china_culture',
+    version: 'test',
+    entries: makeDomainPackEntries(),
+  }, null, 2));
 
   const projectRoot = path.join(tmpRoot, 'web', 'generated', 'projects', projectId);
   fs.mkdirSync(path.join(projectRoot, 'versions'), { recursive: true });
@@ -87,6 +201,16 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.generated_governance_action_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.generated_governance_ready_signoff_candidate_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.production_material_pack_status).toBe('passed');
+    expect(result.summary.production_material_pack_count).toBe(8);
+    expect(result.summary.production_material_pack_issue_count).toBe(0);
+    expect(result.summary.production_material_pack_core_ready_count).toBe(4);
+    expect(result.summary.production_material_pack_core_total_count).toBe(4);
+    expect(result.summary.domain_pack_status).toBe('passed');
+    expect(result.summary.domain_pack_count).toBe(8);
+    expect(result.summary.domain_pack_issue_count).toBe(0);
+    expect(result.summary.production_domain_pack_ready_count).toBe(8);
+    expect(result.summary.production_domain_pack_required_count).toBe(8);
     expect(result.summary.story_agent_command_surface_status).toBe('ready');
     expect(result.summary.story_agent_command_surface_percent).toBe(100);
     expect(result.summary.mcp_story_agent_tool_count).toBe(20);
@@ -96,10 +220,14 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.production_delivery_contract_surface_count).toBe(13);
     expect(result.generated_health.schema_version).toBe('mcp-story-agent-generated-health/v1');
     expect(result.generated_governance_plan.schema_version).toBe('mcp-story-agent-generated-governance-plan/v1');
+    expect(result.production_material_pack_health.schema_version).toBe('production-material-pack-health/v1');
+    expect(result.domain_pack_health.schema_version).toBe('domain-pack-production-health/v1');
     expect(result.production_portfolio.schema_version).toBe('mcp-production-readiness-portfolio/v1');
     expect(result.lanes.map(lane => lane.key)).toEqual(expect.arrayContaining([
       'generated_artifacts',
       'generated_governance',
+      'production_material_packs',
+      'domain_packs',
       'story_quality',
       'repair_loop',
       'delivery_contract',
@@ -140,6 +268,12 @@ describe('kb_get_story_agent_mvp_status', () => {
     ]));
     expect(result.progress.find(slice => slice.key === 'content_command_layer')?.evidence).toEqual(expect.arrayContaining([
       'implementation_progress=100',
+      'production_material_pack_status=passed',
+      'production_material_core_ready=4/4',
+      'production_material_pack_issues=0',
+      'domain_pack_status=passed',
+      'domain_pack_ready=8/8',
+      'domain_pack_issues=0',
       'local_target_health_tracked_by=lanes',
       'real_media_execution=gears_v2',
     ]));
@@ -167,6 +301,8 @@ describe('kb_get_story_agent_mvp_status', () => {
       }),
     ]));
     expect(result.notes.join('\n')).toContain('Generated governance command surface is complete at 100%');
+    expect(result.notes.join('\n')).toContain('Production material pack health is now a MCP Story Agent MVP lane');
+    expect(result.notes.join('\n')).toContain('Domain Pack production health is now a MCP Story Agent MVP lane');
     expect(result.notes.join('\n')).toContain('MCP Story Agent loop is complete at 100%');
     expect(result.notes.join('\n')).toContain('Content and production command layer is complete at 100%');
     expect(result.notes.join('\n')).toContain('Production Board / Delivery Contract command surface is complete at 100%');
@@ -175,6 +311,8 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.notes.join('\n')).toContain('remaining 5%');
     expect(result.markdown).toContain('MCP Story Agent MVP Status');
     expect(result.markdown).toContain('Progress Split');
+    expect(result.markdown).toContain('production material pack health: passed');
+    expect(result.markdown).toContain('domain pack health: passed');
     expect(result.markdown).toContain('production delivery contract: 100%');
     expect(result.markdown).toContain('Story Agent command surface: ready · 100%');
   });
