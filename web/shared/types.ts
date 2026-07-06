@@ -2741,7 +2741,8 @@ export type GearsExecutionWorkerEvidenceDocumentKind =
   | 'pressure_report'
   | 'generated_project_pressure_report'
   | 'generated_health_report'
-  | 'story_agent_mvp_status_report';
+  | 'story_agent_mvp_status_report'
+  | 'production_material_pack_health_report';
 
 export interface GearsExecutionWorkerEvidenceDocument {
   id: GearsExecutionWorkerEvidenceDocumentKind;
@@ -2776,6 +2777,10 @@ export interface GearsExecutionWorkerEvidenceBundle {
   generated_health_interrupted_count: number;
   story_agent_mvp_status: StoryAgentMvpStatus;
   story_agent_mvp_score: number;
+  production_material_pack_status: ProductionMaterialPackHealthStatus;
+  production_material_pack_issue_count: number;
+  production_material_pack_core_ready_count: number;
+  production_material_pack_core_total_count: number;
   acceptance_passed_count: number;
   acceptance_total_count: number;
   command_count: number;
@@ -2819,6 +2824,7 @@ export interface GearsExecutionWorkerEvidenceSignoffReport {
   signoff_ready: boolean;
   integrity_passed: boolean;
   health_audit_passed: boolean;
+  production_material_pack_health_audit_passed: boolean;
   mvp_status_audit_passed: boolean;
   system_external_callback_passed: boolean;
   system_external_callback_ready_to_import_count: number;
@@ -2860,6 +2866,13 @@ export interface GearsExecutionWorkerEvidenceSignoffReport {
   health_ready_count_delta: number;
   health_interrupted_count_delta: number;
   health_production_gap_count_delta: number;
+  production_material_pack_status_before?: ProductionMaterialPackHealthStatus;
+  production_material_pack_status_after?: ProductionMaterialPackHealthStatus;
+  production_material_pack_issue_count_before: number;
+  production_material_pack_issue_count_after: number;
+  production_material_pack_issue_count_delta: number;
+  production_material_pack_core_ready_count_before: number;
+  production_material_pack_core_ready_count_after: number;
   mvp_status_before?: StoryAgentMvpStatus;
   mvp_status_after?: StoryAgentMvpStatus;
   mvp_score_before: number;

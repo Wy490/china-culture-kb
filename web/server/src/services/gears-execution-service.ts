@@ -58,6 +58,7 @@ import type {
   GearsJobSubmitAdapterSummary,
   GearsJobSubmitFailure,
   GearsJobStatusSyncAdapterSummary,
+  ProductionMaterialPackHealthReport,
 } from '@shared/types.js';
 import {
   GEARS_CALLBACK_BATCH_ITEM_LIMIT,
@@ -65,6 +66,7 @@ import {
 } from '@shared/types.js';
 import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
 import { getStoryAgentMvpStatus } from './story-agent-mvp-status-service.js';
+import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
 
 export const GEARS_EXECUTION_JOB_TYPES: GearsExecutionJobType[] = [
   'storyboard_image',
@@ -3336,6 +3338,150 @@ function renderStoryAgentGeneratedHealthAuditCommand(targetDirExpression: string
   ].join('\n');
 }
 
+function renderProductionMaterialPackHealthAuditCommand(targetDirExpression: string): string {
+  return [
+    `node - ${targetDirExpression} <<'NODE'`,
+    'const fs = require("fs")',
+    'const path = require("path")',
+    'const dir = process.argv[2] || "."',
+    'const beforeFilename = "production-material-pack-health-before.json"',
+    'const afterFilename = "production-material-pack-health-after.json"',
+    'const outputFilename = "production-material-pack-health-audit.json"',
+    'const markdownFilename = "production-material-pack-health-audit.md"',
+    'const statusRank = { failed: 0, warning: 1, passed: 2 }',
+    'function filePath(filename) { return path.join(dir, filename) }',
+    'function exists(filename) { return fs.existsSync(filePath(filename)) }',
+    'function readJson(filename) {',
+    '  if (!exists(filename)) return undefined',
+    '  try { return JSON.parse(fs.readFileSync(filePath(filename), "utf8")) }',
+    '  catch (error) { return { __parse_error: error instanceof Error ? error.message : String(error) } }',
+    '}',
+    'function numberValue(value) {',
+    '  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN',
+    '  return Number.isFinite(parsed) ? parsed : 0',
+    '}',
+    'function reportOf(root) {',
+    '  if (!root || root.__parse_error) return undefined',
+    '  if (root.data && typeof root.data === "object" && root.data.schema_version) return root.data',
+    '  return root',
+    '}',
+    'function action(priority, owner, text, evidence, sampleFiles = []) {',
+    '  return { priority, owner, action: text, evidence, sample_files: sampleFiles }',
+    '}',
+    'function snapshot(filename) {',
+    '  const root = readJson(filename)',
+    '  if (!root) return { filename, exists: false, parse_ok: false }',
+    '  if (root.__parse_error) return { filename, exists: true, parse_ok: false, parse_error: root.__parse_error }',
+    '  const report = reportOf(root)',
+    '  const coreTypes = Array.isArray(report?.core_video_types) ? report.core_video_types : []',
+    '  const coreReady = Array.isArray(report?.production_ready_core_video_types) ? report.production_ready_core_video_types : []',
+    '  const issues = Array.isArray(report?.issues) ? report.issues : []',
+    '  return {',
+    '    filename,',
+    '    exists: true,',
+    '    parse_ok: true,',
+    '    ok: root.ok,',
+    '    schema_version: report?.schema_version || root.schema_version,',
+    '    generated_at: report?.generated_at || root.generated_at,',
+    '    status: typeof report?.status === "string" ? report.status : "failed",',
+    '    pack_count: numberValue(report?.pack_count),',
+    '    required_video_type_count: Array.isArray(report?.required_video_types) ? report.required_video_types.length : 0,',
+    '    covered_required_video_type_count: Array.isArray(report?.covered_required_video_types) ? report.covered_required_video_types.length : 0,',
+    '    missing_required_video_type_count: Array.isArray(report?.missing_required_video_types) ? report.missing_required_video_types.length : 0,',
+    '    core_ready_count: coreReady.length,',
+    '    core_total_count: coreTypes.length,',
+    '    issue_count: issues.length,',
+    '    error_count: issues.filter(issue => issue?.severity === "error").length,',
+    '    warning_count: issues.filter(issue => issue?.severity === "warning").length,',
+    '  }',
+    '}',
+    'const before = snapshot(beforeFilename)',
+    'const after = snapshot(afterFilename)',
+    'const deltas = {',
+    '  status_rank: (statusRank[after.status] ?? 0) - (statusRank[before.status] ?? 0),',
+    '  issue_count: numberValue(after.issue_count) - numberValue(before.issue_count),',
+    '  error_count: numberValue(after.error_count) - numberValue(before.error_count),',
+    '  warning_count: numberValue(after.warning_count) - numberValue(before.warning_count),',
+    '  core_ready_count: numberValue(after.core_ready_count) - numberValue(before.core_ready_count),',
+    '}',
+    'const failed_checks = []',
+    'const warning_checks = []',
+    'const compatibility_notes = []',
+    'const recommended_actions = []',
+    'function failCheck(check, priority, owner, text, samples) {',
+    '  failed_checks.push(check)',
+    '  recommended_actions.push(action(priority, owner, text, check, samples))',
+    '}',
+    'function warnCheck(check, priority, owner, text, samples) {',
+    '  warning_checks.push(check)',
+    '  recommended_actions.push(action(priority, owner, text, check, samples))',
+    '}',
+    'if (!before.exists) failCheck("missing_pack_health_before", "P0", "Story Agent smoke env", "Fetch production material pack health before worker submit.", [beforeFilename])',
+    'if (before.exists && !before.parse_ok) failCheck("pack_health_before_parse_error", "P0", "Story Agent", "Regenerate valid JSON for pre-smoke production material pack health.", [beforeFilename])',
+    'if (!after.exists) failCheck("missing_pack_health_after", "P0", "Story Agent smoke env", "Fetch production material pack health after worker smoke before signing off.", [afterFilename])',
+    'if (after.exists && !after.parse_ok) failCheck("pack_health_after_parse_error", "P0", "Story Agent", "Regenerate valid JSON for post-smoke production material pack health.", [afterFilename])',
+    'if (before.parse_ok && before.schema_version !== "production-material-pack-health/v1") warnCheck("pack_health_before_schema_unexpected", "P1", "Story Agent", "Confirm the pre-smoke production pack health schema remains compatible.", [beforeFilename])',
+    'if (after.parse_ok && after.schema_version !== "production-material-pack-health/v1") warnCheck("pack_health_after_schema_unexpected", "P1", "Story Agent", "Confirm the post-smoke production pack health schema remains compatible.", [afterFilename])',
+    'if (before.parse_ok && before.status !== "passed") failCheck("pack_health_not_passed_before", "P0", "Story Agent production templates", "ProductionMaterialPack health must be passed before GEARS worker signoff.", [beforeFilename])',
+    'if (after.parse_ok && after.status !== "passed") failCheck("pack_health_not_passed_after", "P0", "Story Agent production templates", "ProductionMaterialPack health regressed or is not passed after GEARS worker smoke.", [afterFilename])',
+    'if (before.parse_ok && before.issue_count > 0) failCheck("pack_health_issues_before", "P0", "Story Agent production templates", "Resolve ProductionMaterialPack health issues before worker signoff.", [beforeFilename])',
+    'if (after.parse_ok && after.issue_count > 0) failCheck("pack_health_issues_after", "P0", "Story Agent production templates", "Resolve post-smoke ProductionMaterialPack health issues before worker signoff.", [afterFilename])',
+    'if (before.parse_ok && after.parse_ok && deltas.status_rank < 0) failCheck("pack_health_status_regressed", "P0", "Story Agent production templates", "ProductionMaterialPack health status regressed during worker smoke.", [beforeFilename, afterFilename])',
+    'if (before.parse_ok && after.parse_ok && deltas.core_ready_count < 0) failCheck("pack_health_core_ready_regressed", "P0", "Story Agent production templates", "Core production video type template readiness regressed during worker smoke.", [beforeFilename, afterFilename])',
+    'if (before.parse_ok && after.parse_ok && deltas.issue_count > 0) warnCheck("pack_health_issue_count_increased", "P1", "Story Agent production templates", "ProductionMaterialPack health issue count increased during worker smoke.", [beforeFilename, afterFilename])',
+    'if (before.parse_ok && before.status === "passed" && before.issue_count === 0) compatibility_notes.push("Production material pack health was passed before worker smoke.")',
+    'if (before.parse_ok && after.parse_ok && !failed_checks.length && !warning_checks.length) compatibility_notes.push("Production material pack health stayed passed across the worker smoke run.")',
+    'const status = failed_checks.length ? "failed" : warning_checks.length ? "warning" : "passed"',
+    'const audit = {',
+    '  schema_version: "production-material-pack-health-audit/v1",',
+    '  generated_at: new Date().toISOString(),',
+    '  scanned_dir: dir,',
+    '  status,',
+    '  before,',
+    '  after,',
+    '  deltas,',
+    '  failed_checks,',
+    '  warning_checks,',
+    '  compatibility_notes,',
+    '  recommended_actions,',
+    '}',
+    'const lines = [',
+    '  "# Production Material Pack Health Smoke Audit",',
+    '  "",',
+    '  `> schema_version: ${audit.schema_version}`,',
+    '  `> generated_at: ${audit.generated_at}`,',
+    '  `> scanned_dir: ${audit.scanned_dir}`,',
+    '  "",',
+    '  "## Summary",',
+    '  "",',
+    '  `- status: ${audit.status}` ,',
+    '  `- before_status/issues/core_ready: ${audit.before.status || "n/a"}/${audit.before.issue_count ?? "n/a"}/${audit.before.core_ready_count ?? "n/a"}/${audit.before.core_total_count ?? "n/a"}` ,',
+    '  `- after_status/issues/core_ready: ${audit.after.status || "n/a"}/${audit.after.issue_count ?? "n/a"}/${audit.after.core_ready_count ?? "n/a"}/${audit.after.core_total_count ?? "n/a"}` ,',
+    '  `- issue_count_delta: ${audit.deltas.issue_count}` ,',
+    '  `- core_ready_count_delta: ${audit.deltas.core_ready_count}` ,',
+    '  "",',
+    '  "## Failed Checks",',
+    '  "",',
+    '  ...(audit.failed_checks.length ? audit.failed_checks.map(item => `- ${item}`) : ["- none"]),',
+    '  "",',
+    '  "## Warning Checks",',
+    '  "",',
+    '  ...(audit.warning_checks.length ? audit.warning_checks.map(item => `- ${item}`) : ["- none"]),',
+    '  "",',
+    '  "## Compatibility Notes",',
+    '  "",',
+    '  ...(audit.compatibility_notes.length ? audit.compatibility_notes.map(item => `- ${item}`) : ["- none"]),',
+    '  "",',
+    '  "## Recommended Actions",',
+    '  "",',
+    '  ...(audit.recommended_actions.length ? audit.recommended_actions.map(item => `- [${item.priority}] ${item.owner}: ${item.action} (${item.evidence}; samples=${(item.sample_files || []).join(", ") || "none"})`) : ["- none"]),',
+    ']',
+    'fs.writeFileSync(path.join(dir, outputFilename), `${JSON.stringify(audit, null, 2)}\\n`)',
+    'fs.writeFileSync(path.join(dir, markdownFilename), `${lines.join("\\n").trim()}\\n`)',
+    'NODE',
+  ].join('\n');
+}
+
 function renderStoryAgentMvpStatusAuditCommand(targetDirExpression: string): string {
   return [
     `node - ${targetDirExpression} <<'NODE'`,
@@ -3668,6 +3814,28 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '    actionsFrom(generatedHealthAudit),',
     '  )',
     '}',
+    'const productionMaterialPackHealthAudit = readJson("production-material-pack-health-audit.json")',
+    'if (!productionMaterialPackHealthAudit) {',
+    '  addGate("production_material_pack_health_audit", "Production material pack health smoke audit", "failed", "Production material pack health audit did not run.", { filename: "production-material-pack-health-audit.json" }, [action("P0", "Story Agent production templates", "Run production material pack health before/after audit before signing off GEARS worker acceptance.", "missing_production_material_pack_health_audit", [])])',
+    '} else if (productionMaterialPackHealthAudit.__parse_error) {',
+    '  addGate("production_material_pack_health_audit", "Production material pack health smoke audit", "failed", "Production material pack health audit is not valid JSON.", { parse_error: productionMaterialPackHealthAudit.__parse_error }, [action("P0", "Story Agent production templates", "Regenerate a valid production material pack health audit.", "production_pack_health_audit_parse_error", ["production-material-pack-health-audit.json"])])',
+    '} else {',
+    '  const packHealthBlockingCount = (productionMaterialPackHealthAudit.status === "passed" ? 0 : 1) + (Array.isArray(productionMaterialPackHealthAudit.failed_checks) ? productionMaterialPackHealthAudit.failed_checks.length : 0)',
+    '  addGate(',
+    '    "production_material_pack_health_audit",',
+    '    "Production material pack health smoke audit",',
+    '    packHealthBlockingCount ? "failed" : "passed",',
+    '    packHealthBlockingCount ? "Production material pack health is not passed or regressed during smoke." : "Production material pack health stayed passed across worker smoke.",',
+    '    {',
+    '      status: productionMaterialPackHealthAudit.status,',
+    '      before: { status: productionMaterialPackHealthAudit.before?.status, issue_count: productionMaterialPackHealthAudit.before?.issue_count, core_ready_count: productionMaterialPackHealthAudit.before?.core_ready_count },',
+    '      after: { status: productionMaterialPackHealthAudit.after?.status, issue_count: productionMaterialPackHealthAudit.after?.issue_count, core_ready_count: productionMaterialPackHealthAudit.after?.core_ready_count },',
+    '      deltas: productionMaterialPackHealthAudit.deltas,',
+    '      warning_checks: productionMaterialPackHealthAudit.warning_checks || [],',
+    '    },',
+    '    actionsFrom(productionMaterialPackHealthAudit),',
+    '  )',
+    '}',
     'const mvpStatusAudit = readJson("story-agent-mvp-status-audit.json")',
     'if (!mvpStatusAudit) {',
     '  addGate("story_agent_mvp_status_audit", "Story Agent MVP status smoke audit", "failed", "MVP status smoke audit did not run.", { filename: "story-agent-mvp-status-audit.json" }, [action("P0", "Story Agent smoke env", "Run MVP status before/after audit before signing off GEARS worker acceptance.", "missing_mvp_status_audit", [])])',
@@ -3814,6 +3982,7 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '  if (filename.includes("verdict")) return "verdict"',
     '  if (filename.includes("archive")) return "archive"',
     '  if (filename.includes("response-audit")) return "audit"',
+    '  if (filename.includes("production-material-pack-health")) return "production_material_pack_health"',
     '  if (filename.includes("output-url-source")) return "artifact_source"',
     '  if (filename.includes("preflight")) return "preflight"',
     '  if (filename.includes("generated-health")) return "generated_health"',
@@ -3852,6 +4021,10 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '  "story-agent-generated-health-after.json",',
     '  "story-agent-generated-health-audit.json",',
     '  "story-agent-generated-health-audit.md",',
+    '  "production-material-pack-health-before.json",',
+    '  "production-material-pack-health-after.json",',
+    '  "production-material-pack-health-audit.json",',
+    '  "production-material-pack-health-audit.md",',
     '  "story-agent-mvp-status-before.json",',
     '  "story-agent-mvp-status-after.json",',
     '  "story-agent-mvp-status-audit.json",',
@@ -4627,6 +4800,10 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     'curl -sS -o "$EVIDENCE_DIR/story-agent-generated-health-before.json" "$STORY_AGENT_BASE_URL/api/system/story-agent-generated-health?limit=50"',
     'print_json_summary "$EVIDENCE_DIR/story-agent-generated-health-before.json" "Story Agent generated health audit"',
     '',
+    'echo "Reading production material pack health before worker smoke..."',
+    'curl -sS -o "$EVIDENCE_DIR/production-material-pack-health-before.json" "$STORY_AGENT_BASE_URL/api/system/production-material-pack-health"',
+    'print_json_summary "$EVIDENCE_DIR/production-material-pack-health-before.json" "Production material pack health before smoke"',
+    '',
     'echo "Reading Story Agent MVP status before worker smoke..."',
     'curl -sS -o "$EVIDENCE_DIR/story-agent-mvp-status-before.json" "$STORY_AGENT_BASE_URL/api/system/story-agent-mvp-status?generatedLimit=50&portfolioLimit=50"',
     'print_json_summary "$EVIDENCE_DIR/story-agent-mvp-status-before.json" "Story Agent MVP status before smoke"',
@@ -4643,6 +4820,20 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '    echo "Generated health after fetch failed; copied before snapshot for audit continuity." | tee "$EVIDENCE_DIR/story-agent-generated-health-after-fetch-failed.txt"',
     '  fi',
     '  print_json_summary "$EVIDENCE_DIR/story-agent-generated-health-after.json" "Post-run generated health audit"',
+    '}',
+    '',
+    'fetch_production_material_pack_health_after() {',
+    '  echo "Reading post-run production material pack health..."',
+    '  local pack_after_exit_code',
+    '  set +e',
+    '  curl -sS -o "$EVIDENCE_DIR/production-material-pack-health-after.json" "$STORY_AGENT_BASE_URL/api/system/production-material-pack-health"',
+    '  pack_after_exit_code=$?',
+    '  set -e',
+    '  if [ "$pack_after_exit_code" -ne 0 ] && [ -f "$EVIDENCE_DIR/production-material-pack-health-before.json" ]; then',
+    '    cp "$EVIDENCE_DIR/production-material-pack-health-before.json" "$EVIDENCE_DIR/production-material-pack-health-after.json"',
+    '    echo "Production material pack health after fetch failed; copied before snapshot for audit continuity." | tee "$EVIDENCE_DIR/production-material-pack-health-after-fetch-failed.txt"',
+    '  fi',
+    '  print_json_summary "$EVIDENCE_DIR/production-material-pack-health-after.json" "Post-run production material pack health"',
     '}',
     '',
     'fetch_story_agent_mvp_status_after() {',
@@ -4775,6 +4966,10 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '  echo "Auditing Story Agent generated health after $reason..."',
     ...renderStoryAgentGeneratedHealthAuditCommand('"$EVIDENCE_DIR"').split('\n'),
     '  print_json_summary "$EVIDENCE_DIR/story-agent-generated-health-audit.json" "Story Agent generated health smoke audit"',
+    '  fetch_production_material_pack_health_after',
+    '  echo "Auditing production material pack health after $reason..."',
+    ...renderProductionMaterialPackHealthAuditCommand('"$EVIDENCE_DIR"').split('\n'),
+    '  print_json_summary "$EVIDENCE_DIR/production-material-pack-health-audit.json" "Production material pack health smoke audit"',
     '  fetch_story_agent_mvp_status_after',
     '  echo "Auditing Story Agent MVP status after $reason..."',
     ...renderStoryAgentMvpStatusAuditCommand('"$EVIDENCE_DIR"').split('\n'),
@@ -5111,6 +5306,9 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '  echo "Reading post-run generated health audit..."',
     '  fetch_story_agent_generated_health_after',
     '',
+    '  echo "Reading post-run production material pack health..."',
+    '  fetch_production_material_pack_health_after',
+    '',
     '  echo "Reading post-run Story Agent MVP status..."',
     '  fetch_story_agent_mvp_status_after',
     'else',
@@ -5120,6 +5318,10 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     'echo "Auditing Story Agent generated health before final verdict..."',
     ...renderStoryAgentGeneratedHealthAuditCommand('"$EVIDENCE_DIR"').split('\n'),
     'print_json_summary "$EVIDENCE_DIR/story-agent-generated-health-audit.json" "Story Agent generated health smoke audit"',
+    '',
+    'echo "Auditing production material pack health before final verdict..."',
+    ...renderProductionMaterialPackHealthAuditCommand('"$EVIDENCE_DIR"').split('\n'),
+    'print_json_summary "$EVIDENCE_DIR/production-material-pack-health-audit.json" "Production material pack health smoke audit"',
     '',
     'echo "Auditing Story Agent MVP status before final verdict..."',
     ...renderStoryAgentMvpStatusAuditCommand('"$EVIDENCE_DIR"').split('\n'),
@@ -5566,6 +5768,18 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       ],
     },
     {
+      id: 'audit_production_material_pack_health',
+      label: 'Audit production material pack health before/after smoke',
+      phase: 'story_agent_callback',
+      command: renderProductionMaterialPackHealthAuditCommand('"."'),
+      expected_assertions: [
+        'production-material-pack-health-before.json and production-material-pack-health-after.json exist for sign-off runs.',
+        'production-material-pack-health-audit.json and production-material-pack-health-audit.md exist before the final verdict.',
+        'Audit fails if ProductionMaterialPack health is not passed, issue_count is greater than 0, or core video type readiness regresses.',
+        'Audit warns if production template issue_count increases during smoke.',
+      ],
+    },
+    {
       id: 'audit_story_agent_mvp_status',
       label: 'Audit Story Agent MVP status before/after smoke',
       phase: 'story_agent_callback',
@@ -5608,7 +5822,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       command: renderWorkerAcceptanceVerdictCommand('"."'),
       expected_assertions: [
         'gears-worker-acceptance-verdict.json and gears-worker-acceptance-verdict.md exist.',
-        'Verdict gates cover required envs, callback id preflight, worker response audit, system external callback batch, generated health audit, MVP status audit, Story Agent callback audit, large project pressure audit, and manifest.',
+        'Verdict gates cover required envs, callback id preflight, worker response audit, system external callback batch, generated health audit, production material pack health audit, MVP status audit, Story Agent callback audit, large project pressure audit, and manifest.',
         'acceptance_passed is true only when all non-skipped gates pass.',
         'When GEARS_ACCEPTANCE_STRICT_AUDIT=1, the generated shell exits non-zero if verdict acceptance_passed=false.',
       ],
@@ -5681,6 +5895,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       'Story Agent callback id preflight has warning_count=0 before callback smoke is trusted.',
       'Story Agent callback response audit has no ok=false validation/auth blockers.',
       'Story Agent generated health audit has no missing ready target or post-smoke regression.',
+      'Production material pack health audit has status=passed before GEARS worker signoff.',
       'Story Agent MVP status audit has no status regression or blocker increase after worker smoke.',
       'Generated project pressure audit remains ok/watch with no blocked project before large batch rollout.',
       'Large project pressure payload is generated for at least 30 episodes and is submitted only when explicitly enabled.',
@@ -5723,6 +5938,41 @@ function workerEvidenceDocument(
   };
 }
 
+function renderProductionMaterialPackHealthMarkdown(report: ProductionMaterialPackHealthReport): string {
+  return [
+    '# Production Material Pack Health',
+    '',
+    `> schema_version: ${report.schema_version}`,
+    `> generated_at: ${report.generated_at}`,
+    '',
+    '## Summary',
+    '',
+    `- status: ${report.status}`,
+    `- pack_count: ${report.pack_count}`,
+    `- required_video_types: ${report.required_video_types.length}`,
+    `- covered_required_video_types: ${report.covered_required_video_types.length}`,
+    `- missing_required_video_types: ${report.missing_required_video_types.join(', ') || 'none'}`,
+    `- core_ready: ${report.production_ready_core_video_types.length}/${report.core_video_types.length}`,
+    `- issue_count: ${report.issues.length}`,
+    '',
+    '## Core Video Types',
+    '',
+    ...report.core_video_types.map(videoType => `- ${videoType}: ${report.production_ready_core_video_types.includes(videoType) ? 'passed' : 'needs_attention'}`),
+    '',
+    '## Pack Summaries',
+    '',
+    ...report.packs.map(pack =>
+      `- ${pack.video_type}: ${pack.status}; fields=${pack.required_field_count}; samples=${pack.sample_entry_count}; layers=${pack.prompt_layer_count}; issues=${pack.unknown_required_fields.length + pack.duplicate_required_fields.length}`,
+    ),
+    '',
+    '## Issues',
+    '',
+    ...(report.issues.length
+      ? report.issues.map(issue => `- [${issue.severity}] ${issue.video_type ?? 'portfolio'} · ${issue.issue_type}: ${issue.message}`)
+      : ['- none']),
+  ].join('\n').trim() + '\n';
+}
+
 function renderGearsExecutionWorkerEvidenceBundleMarkdown(
   bundle: Omit<GearsExecutionWorkerEvidenceBundle, 'markdown'>,
 ): string {
@@ -5750,6 +6000,9 @@ function renderGearsExecutionWorkerEvidenceBundleMarkdown(
     `- generated_health_interrupted_count: ${bundle.generated_health_interrupted_count}`,
     `- story_agent_mvp_status: ${bundle.story_agent_mvp_status}`,
     `- story_agent_mvp_score: ${bundle.story_agent_mvp_score}`,
+    `- production_material_pack_status: ${bundle.production_material_pack_status}`,
+    `- production_material_pack_issues: ${bundle.production_material_pack_issue_count}`,
+    `- production_material_core_ready: ${bundle.production_material_pack_core_ready_count}/${bundle.production_material_pack_core_total_count}`,
     `- acceptance: ${bundle.acceptance_passed_count}/${bundle.acceptance_total_count}`,
     `- worker_kit_commands: ${bundle.command_count}`,
     `- worker_kit_payloads: ${bundle.payload_count}`,
@@ -5804,6 +6057,7 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
   const generatedPressure = await getGearsExecutionGeneratedProjectPressureReport();
   const generatedHealth = await getStoryAgentGeneratedHealth({ limit: 50 });
   const mvpStatus = await getStoryAgentMvpStatus({ generatedLimit: 50, portfolioLimit: 50 });
+  const productionMaterialPackHealth = getProductionMaterialPackHealthReport();
   const documents = [
     workerEvidenceDocument(
       'acceptance_report',
@@ -5861,6 +6115,14 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
       mvpStatus.markdown,
       'Read-only Story Agent MVP lane summary combining generated health and production readiness before GEARS sign-off.',
     ),
+    workerEvidenceDocument(
+      'production_material_pack_health_report',
+      'Production material pack health report',
+      'production-material-pack-health-report.md',
+      '/api/system/production-material-pack-health',
+      renderProductionMaterialPackHealthMarkdown(productionMaterialPackHealth),
+      'Read-only template portfolio gate proving core and high-frequency video type production packs are mapped and sufficiently filled before GEARS worker sign-off.',
+    ),
   ];
   const recommendedNextActions = [...new Set([
     ...acceptance.recommended_next_actions,
@@ -5873,6 +6135,7 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
     'Attach gears-worker-evidence-signoff.json/.md as the final post-archive Web signoff snapshot.',
     'Read GET /api/system/gears-execution-worker-evidence-signoff?evidence_dir=... or MCP kb_get_gears_worker_evidence_signoff after the run to produce the final signoff summary.',
     'Attach story-agent-mvp-status-before.json, story-agent-mvp-status-after.json, and story-agent-mvp-status-audit.json/.md to prove MVP status did not regress during worker smoke.',
+    'Attach production-material-pack-health-before.json, production-material-pack-health-after.json, and production-material-pack-health-audit.json/.md to prove production template health stayed passed during worker smoke.',
     'Replay project and series callbacks once to confirm duplicate_count and ledger idempotency.',
     'After basic smoke passes, enable GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE=1 once and attach the large-project pressure response.',
   ])];
@@ -5898,6 +6161,10 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
     generated_health_interrupted_count: acceptance.generated_health_interrupted_count,
     story_agent_mvp_status: mvpStatus.status,
     story_agent_mvp_score: mvpStatus.score,
+    production_material_pack_status: productionMaterialPackHealth.status,
+    production_material_pack_issue_count: productionMaterialPackHealth.issues.length,
+    production_material_pack_core_ready_count: productionMaterialPackHealth.production_ready_core_video_types.length,
+    production_material_pack_core_total_count: productionMaterialPackHealth.core_video_types.length,
     acceptance_passed_count: acceptance.acceptance_passed_count,
     acceptance_total_count: acceptance.acceptance_total_count,
     command_count: kit.commands.length,
@@ -5921,6 +6188,7 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
       'Read worker evidence signoff through Web API or MCP and attach the signoff Markdown / JSON summary.',
       'Attach story-agent-mvp-status-report.md to show Story Agent MVP lane status before GEARS worker sign-off.',
       'Attach story-agent-mvp-status-audit.json/.md and require status=passed or warning with no failed_checks before sign-off.',
+      'Attach production-material-pack-health-report.md and production-material-pack-health-audit.json/.md to prove video type templates are production-ready before GEARS worker sign-off.',
       'Attach story-agent-generated-health-audit.json/.md and require status=passed before sign-off.',
       'Replay callback payloads once to prove duplicate_count is reported and no duplicate artifacts are created.',
       'Generate the 30-episode pressure payload and submit it only after basic smoke is green.',
@@ -6229,6 +6497,7 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- signoff_ready: ${report.signoff_ready}`,
     `- integrity_passed: ${report.integrity_passed}`,
     `- health_audit_passed: ${report.health_audit_passed}`,
+    `- production_material_pack_health_audit_passed: ${report.production_material_pack_health_audit_passed}`,
     `- mvp_status_audit_passed: ${report.mvp_status_audit_passed}`,
     `- system_external_callback_passed: ${report.system_external_callback_passed}`,
     `- system_external_output_url_source: ${report.system_external_output_url_source}`,
@@ -6247,6 +6516,9 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- callback_ledger_match_missing_count: ${report.callback_ledger_match_missing_count}`,
     `- health_ready_delta: ${report.health_ready_count_delta}`,
     `- health_interrupted_delta: ${report.health_interrupted_count_delta}`,
+    `- production_material_pack_status_before/after: ${report.production_material_pack_status_before ?? 'n/a'}/${report.production_material_pack_status_after ?? 'n/a'}`,
+    `- production_material_pack_issue_delta: ${report.production_material_pack_issue_count_delta}`,
+    `- production_material_pack_core_ready_before/after: ${report.production_material_pack_core_ready_count_before}/${report.production_material_pack_core_ready_count_after}`,
     `- mvp_status_before/after: ${report.mvp_status_before ?? 'n/a'}/${report.mvp_status_after ?? 'n/a'}`,
     `- mvp_score_delta: ${report.mvp_score_delta}`,
     `- large_project_source_echo: ${report.large_project_source_echo_count}/${report.large_project_request_unit_count}`,
@@ -6292,6 +6564,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       signoff_ready: false,
       integrity_passed: false,
       health_audit_passed: false,
+      production_material_pack_health_audit_passed: false,
       mvp_status_audit_passed: false,
       system_external_callback_passed: false,
       system_external_callback_ready_to_import_count: 0,
@@ -6328,6 +6601,11 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       health_ready_count_delta: 0,
       health_interrupted_count_delta: 0,
       health_production_gap_count_delta: 0,
+      production_material_pack_issue_count_before: 0,
+      production_material_pack_issue_count_after: 0,
+      production_material_pack_issue_count_delta: 0,
+      production_material_pack_core_ready_count_before: 0,
+      production_material_pack_core_ready_count_after: 0,
       mvp_score_before: 0,
       mvp_score_after: 0,
       mvp_score_delta: 0,
@@ -6372,6 +6650,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     systemExternalPreflightRead,
     systemExternalImportRead,
     healthRead,
+    productionMaterialPackHealthRead,
     mvpRead,
     pressureRead,
   ] = await Promise.all([
@@ -6384,6 +6663,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-system-external-callback-preflight-response.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-system-external-callback-import-response.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-generated-health-audit.json'),
+    readEvidenceJson(resolvedDir.evidenceDir, 'production-material-pack-health-audit.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'story-agent-mvp-status-audit.json'),
     readEvidenceJson(resolvedDir.evidenceDir, 'gears-large-project-response-audit.json'),
   ]);
@@ -6400,6 +6680,9 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const healthBeforeSummary = evidenceObject(evidenceObject(healthRead.data?.before).summary);
   const healthAfterSummary = evidenceObject(evidenceObject(healthRead.data?.after).summary);
   const healthDeltas = evidenceObject(healthRead.data?.deltas);
+  const productionPackBefore = evidenceObject(productionMaterialPackHealthRead.data?.before);
+  const productionPackAfter = evidenceObject(productionMaterialPackHealthRead.data?.after);
+  const productionPackDeltas = evidenceObject(productionMaterialPackHealthRead.data?.deltas);
   const mvpBefore = evidenceObject(mvpRead.data?.before);
   const mvpAfter = evidenceObject(mvpRead.data?.after);
   const mvpDeltas = evidenceObject(mvpRead.data?.deltas);
@@ -6419,6 +6702,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const signoffReady = evidenceBool(archive?.signoff_ready);
   const integrityPassed = evidenceBool(integrity?.integrity_passed);
   const healthAuditPassed = healthRead.data?.status === 'passed';
+  const productionMaterialPackHealthAuditPassed = productionMaterialPackHealthRead.data?.status === 'passed';
   const mvpStatusAuditPassed = mvpRead.data?.status === 'passed' || mvpRead.data?.status === 'warning';
   const systemExternalOutputUrlSourceReady = systemExternalOutputSourceRead.exists
     && systemExternalOutputSourceRead.parse_ok
@@ -6456,7 +6740,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     ...evidenceActions(verdict?.recommended_actions),
     ...evidenceActions(archive?.recommended_actions),
     ...evidenceActions(integrity?.recommended_actions),
-    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, systemExternalOutputSourceRead, systemExternalPreflightRead, systemExternalImportRead, healthRead, mvpRead, pressureRead]
+    ...[verdictRead, archiveRead, integrityRead, workerRead, callbackRead, systemExternalOutputSourceRead, systemExternalPreflightRead, systemExternalImportRead, healthRead, productionMaterialPackHealthRead, mvpRead, pressureRead]
       .filter(read => !read.exists || !read.parse_ok)
       .map(read => ({
         priority: 'P0',
@@ -6471,6 +6755,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     && integrityRead.exists
     && healthRead.exists;
   const status: GearsExecutionAcceptanceStatus = acceptancePassed && signoffReady && integrityPassed && healthAuditPassed
+    && productionMaterialPackHealthAuditPassed
     && mvpStatusAuditPassed
     && systemExternalCallbackPassed
     ? 'ready'
@@ -6488,6 +6773,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     signoff_ready: signoffReady,
     integrity_passed: integrityPassed,
     health_audit_passed: healthAuditPassed,
+    production_material_pack_health_audit_passed: productionMaterialPackHealthAuditPassed,
     mvp_status_audit_passed: mvpStatusAuditPassed,
     system_external_callback_passed: systemExternalCallbackPassed,
     system_external_callback_ready_to_import_count: evidenceNumber(systemExternalPreflight.ready_to_import_count),
@@ -6534,6 +6820,17 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     health_ready_count_delta: evidenceNumber(healthDeltas.ready_count),
     health_interrupted_count_delta: evidenceNumber(healthDeltas.interrupted_count),
     health_production_gap_count_delta: evidenceNumber(healthDeltas.production_gap_count),
+    production_material_pack_status_before: typeof productionPackBefore.status === 'string'
+      ? productionPackBefore.status as GearsExecutionWorkerEvidenceSignoffReport['production_material_pack_status_before']
+      : undefined,
+    production_material_pack_status_after: typeof productionPackAfter.status === 'string'
+      ? productionPackAfter.status as GearsExecutionWorkerEvidenceSignoffReport['production_material_pack_status_after']
+      : undefined,
+    production_material_pack_issue_count_before: evidenceNumber(productionPackBefore.issue_count),
+    production_material_pack_issue_count_after: evidenceNumber(productionPackAfter.issue_count),
+    production_material_pack_issue_count_delta: evidenceNumber(productionPackDeltas.issue_count),
+    production_material_pack_core_ready_count_before: evidenceNumber(productionPackBefore.core_ready_count),
+    production_material_pack_core_ready_count_after: evidenceNumber(productionPackAfter.core_ready_count),
     mvp_status_before: typeof mvpBefore.status === 'string'
       ? mvpBefore.status as GearsExecutionWorkerEvidenceSignoffReport['mvp_status_before']
       : undefined,

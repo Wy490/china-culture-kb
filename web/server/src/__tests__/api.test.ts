@@ -1986,6 +1986,7 @@ describe('System API', () => {
           'run_story_agent_live_smoke',
           'audit_story_agent_callback_responses',
           'audit_story_agent_generated_health',
+          'audit_production_material_pack_health',
           'audit_story_agent_mvp_status',
           'submit_large_project_pressure_optional',
           'audit_large_project_pressure_response',
@@ -2039,6 +2040,10 @@ describe('System API', () => {
             phase: 'story_agent_callback',
           }),
           expect.objectContaining({
+            id: 'audit_production_material_pack_health',
+            phase: 'story_agent_callback',
+          }),
+          expect.objectContaining({
             id: 'audit_story_agent_mvp_status',
             phase: 'story_agent_callback',
           }),
@@ -2063,6 +2068,7 @@ describe('System API', () => {
           'story-agent-smoke-targets.json contains existing Story Agent project ids or explicit warnings before callback smoke.',
           'Story Agent callback id preflight has warning_count=0 before callback smoke is trusted.',
           'Story Agent callback response audit has no ok=false validation/auth blockers.',
+          'Production material pack health audit has status=passed before GEARS worker signoff.',
           'Story Agent MVP status audit has no status regression or blocker increase after worker smoke.',
           'Large project pressure payload is generated for at least 30 episodes and is submitted only when explicitly enabled.',
           'Large project response audit has no source_echo_gap after a real pressure submit.',
@@ -2145,6 +2151,14 @@ describe('System API', () => {
         expect(res.body.data.shell_script).toContain('story-agent-generated-health-audit/v1');
         expect(res.body.data.shell_script).toContain('Auditing Story Agent generated health before final verdict');
         expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-generated-health-audit.json" "Story Agent generated health smoke audit"');
+        expect(res.body.data.shell_script).toContain('production-material-pack-health-before.json');
+        expect(res.body.data.shell_script).toContain('production-material-pack-health-after.json');
+        expect(res.body.data.shell_script).toContain('production-material-pack-health-audit.json');
+        expect(res.body.data.shell_script).toContain('production-material-pack-health-audit.md');
+        expect(res.body.data.shell_script).toContain('production-material-pack-health-audit/v1');
+        expect(res.body.data.shell_script).toContain('fetch_production_material_pack_health_after()');
+        expect(res.body.data.shell_script).toContain('Auditing production material pack health before final verdict');
+        expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/production-material-pack-health-audit.json" "Production material pack health smoke audit"');
         expect(res.body.data.shell_script).toContain('story-agent-mvp-status-before.json');
         expect(res.body.data.shell_script).toContain('print_json_summary "$EVIDENCE_DIR/story-agent-mvp-status-before.json" "Story Agent MVP status before smoke"');
         expect(res.body.data.shell_script).toContain('fetch_story_agent_mvp_status_after()');
@@ -2488,7 +2502,7 @@ describe('System API', () => {
           schema_version: 'gears-execution-worker-evidence-bundle/v1',
           status: 'blocked',
           readiness_status: 'blocked',
-          command_count: 22,
+          command_count: 23,
           payload_count: 6,
           local_smoke_passed_count: 5,
           local_smoke_total_count: 5,
@@ -2499,6 +2513,10 @@ describe('System API', () => {
           generated_health_interrupted_count: expect.any(Number),
           story_agent_mvp_status: expect.stringMatching(/ready|needs_action|blocked/),
           story_agent_mvp_score: expect.any(Number),
+          production_material_pack_status: 'passed',
+          production_material_pack_issue_count: 0,
+          production_material_pack_core_ready_count: 4,
+          production_material_pack_core_total_count: 4,
           required_envs: expect.arrayContaining(['GEARS_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
         });
         expect(res.body.data.documents.map((doc: any) => doc.id)).toEqual([
@@ -2509,6 +2527,7 @@ describe('System API', () => {
           'generated_project_pressure_report',
           'generated_health_report',
           'story_agent_mvp_status_report',
+          'production_material_pack_health_report',
         ]);
         expect(res.body.data.documents).toEqual(expect.arrayContaining([
           expect.objectContaining({
@@ -2531,6 +2550,11 @@ describe('System API', () => {
             filename: 'story-agent-mvp-status-report.md',
             source_endpoint: '/api/system/story-agent-mvp-status',
             content: expect.stringContaining('# Story Agent MVP Status'),
+          }),
+          expect.objectContaining({
+            filename: 'production-material-pack-health-report.md',
+            source_endpoint: '/api/system/production-material-pack-health',
+            content: expect.stringContaining('# Production Material Pack Health'),
           }),
         ]));
         expect(res.body.data.operator_checklist).toEqual(expect.arrayContaining([
@@ -2581,7 +2605,7 @@ describe('System API', () => {
         status: 'passed',
         acceptance_passed: true,
         pressure_submitted: true,
-        gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
+        gate_counts: { passed: 10, failed: 0, skipped: 0, total: 10 },
         failed_gate_ids: [],
         skipped_gate_ids: [],
         recommended_actions: [],
@@ -2592,8 +2616,8 @@ describe('System API', () => {
         signoff_ready: true,
         totals: {
           missing_required_attachment_count: 0,
-          required_attachment_count: 31,
-          required_checksum_count: 31,
+          required_attachment_count: 35,
+          required_checksum_count: 35,
           evidence_file_count: 70,
         },
         required_attachments: [
@@ -2601,6 +2625,7 @@ describe('System API', () => {
           'story-agent-system-external-output-url-source.json',
           'story-agent-system-external-callback-preflight-response.json',
           'story-agent-system-external-callback-import-response.json',
+          'production-material-pack-health-audit.json',
           'story-agent-mvp-status-audit.json',
         ],
         missing_required_files: [],
@@ -2687,6 +2712,16 @@ describe('System API', () => {
         deltas: { ready_count: 0, interrupted_count: 0, production_gap_count: 0 },
         recommended_actions: [],
       });
+      await writeEvidenceJson(evidenceDir, 'production-material-pack-health-audit.json', {
+        schema_version: 'production-material-pack-health-audit/v1',
+        status: 'passed',
+        before: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+        after: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+        deltas: { issue_count: 0, core_ready_count: 0 },
+        failed_checks: [],
+        warning_checks: [],
+        recommended_actions: [],
+      });
       await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
         schema_version: 'story-agent-mvp-status-audit/v1',
         status: 'passed',
@@ -2736,6 +2771,7 @@ describe('System API', () => {
           signoff_ready: false,
           integrity_passed: false,
           health_audit_passed: false,
+          production_material_pack_health_audit_passed: false,
           mvp_status_audit_passed: false,
         });
         expect(res.body.data.markdown).toContain('# GEARS Worker Evidence Signoff');
@@ -2771,7 +2807,7 @@ describe('System API', () => {
           evidence_dir: latestEvidenceDir,
           evidence_dir_source: 'latest',
           evidence_dir_allowed: true,
-          gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
+          gate_counts: { passed: 10, failed: 0, skipped: 0, total: 10 },
           system_external_output_url_source: 'worker_response',
           large_project_source_echo_count: 120,
         });
@@ -2793,7 +2829,7 @@ describe('System API', () => {
         status: 'passed',
         acceptance_passed: true,
         pressure_submitted: true,
-        gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
+        gate_counts: { passed: 10, failed: 0, skipped: 0, total: 10 },
         failed_gate_ids: [],
         skipped_gate_ids: [],
         gates: [
@@ -2810,6 +2846,12 @@ describe('System API', () => {
             summary: 'Generated health stayed stable.',
           },
           {
+            id: 'production_material_pack_health_audit',
+            label: 'Production material pack health smoke audit',
+            status: 'passed',
+            summary: 'Production material pack health stayed passed.',
+          },
+          {
             id: 'story_agent_mvp_status_audit',
             label: 'Story Agent MVP status smoke audit',
             status: 'passed',
@@ -2824,8 +2866,8 @@ describe('System API', () => {
         signoff_ready: true,
         totals: {
           missing_required_attachment_count: 0,
-          required_attachment_count: 31,
-          required_checksum_count: 31,
+          required_attachment_count: 35,
+          required_checksum_count: 35,
           evidence_file_count: 70,
         },
         required_attachments: [
@@ -2836,6 +2878,7 @@ describe('System API', () => {
           'story-agent-system-external-callback-preflight-response.json',
           'story-agent-system-external-callback-import-response.json',
           'story-agent-generated-health-audit.json',
+          'production-material-pack-health-audit.json',
           'story-agent-mvp-status-audit.json',
         ],
         missing_required_files: [],
@@ -2928,6 +2971,16 @@ describe('System API', () => {
         deltas: { ready_count: 0, interrupted_count: 0, production_gap_count: 0 },
         recommended_actions: [],
       });
+      await writeEvidenceJson(evidenceDir, 'production-material-pack-health-audit.json', {
+        schema_version: 'production-material-pack-health-audit/v1',
+        status: 'passed',
+        before: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+        after: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+        deltas: { issue_count: 0, core_ready_count: 0 },
+        failed_checks: [],
+        warning_checks: [],
+        recommended_actions: [],
+      });
       await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
         schema_version: 'story-agent-mvp-status-audit/v1',
         status: 'passed',
@@ -2968,6 +3021,7 @@ describe('System API', () => {
         signoff_ready: true,
         integrity_passed: true,
         health_audit_passed: true,
+        production_material_pack_health_audit_passed: true,
         mvp_status_audit_passed: true,
         system_external_callback_passed: true,
         system_external_callback_ready_to_import_count: 3,
@@ -2980,12 +3034,12 @@ describe('System API', () => {
         system_external_output_url_configured_from_env: true,
         system_external_output_url_source: 'env',
         pressure_submitted: true,
-        gate_counts: { passed: 9, failed: 0, skipped: 0, total: 9 },
+        gate_counts: { passed: 10, failed: 0, skipped: 0, total: 10 },
         failed_gate_ids: [],
         skipped_gate_ids: [],
         missing_required_attachment_count: 0,
-        required_attachment_count: 31,
-        required_checksum_count: 31,
+        required_attachment_count: 35,
+        required_checksum_count: 35,
         evidence_file_count: 70,
         worker_record_count: 370,
         worker_transport_error_count: 0,
@@ -2996,6 +3050,13 @@ describe('System API', () => {
         health_ready_count_before: 1,
         health_ready_count_after: 1,
         health_ready_count_delta: 0,
+        production_material_pack_status_before: 'passed',
+        production_material_pack_status_after: 'passed',
+        production_material_pack_issue_count_before: 0,
+        production_material_pack_issue_count_after: 0,
+        production_material_pack_issue_count_delta: 0,
+        production_material_pack_core_ready_count_before: 4,
+        production_material_pack_core_ready_count_after: 4,
         mvp_status_before: 'ready',
         mvp_status_after: 'ready',
         mvp_score_before: 96,
@@ -3019,6 +3080,7 @@ describe('System API', () => {
         'story-agent-system-external-callback-preflight-response.json',
         'story-agent-system-external-callback-import-response.json',
         'story-agent-generated-health-audit.json',
+        'production-material-pack-health-audit.json',
         'story-agent-mvp-status-audit.json',
       ]));
       expect(res.body.data.gates).toEqual(expect.arrayContaining([
@@ -3028,6 +3090,10 @@ describe('System API', () => {
         }),
         expect.objectContaining({
           id: 'story_agent_generated_health_audit',
+          status: 'passed',
+        }),
+        expect.objectContaining({
+          id: 'production_material_pack_health_audit',
           status: 'passed',
         }),
         expect.objectContaining({
@@ -3041,6 +3107,8 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('system_external_output_url_source: env');
       expect(res.body.data.markdown).toContain('system_external_output_url_source_ready: true');
       expect(res.body.data.markdown).toContain('system_external_callback_ready/updated: 3/3');
+      expect(res.body.data.markdown).toContain('production_material_pack_health_audit_passed: true');
+      expect(res.body.data.markdown).toContain('production_material_pack_status_before/after: passed/passed');
       expect(res.body.data.markdown).toContain('large_project_source_echo: 120/120');
       expect(res.body.data.markdown).toContain('mvp_score_delta: 0');
     });
@@ -3196,6 +3264,16 @@ describe('System API', () => {
         before: { summary: { ready_count: 1 } },
         after: { summary: { ready_count: 1 } },
         deltas: { ready_count: 0, interrupted_count: 0, production_gap_count: 0 },
+        recommended_actions: [],
+      });
+      await writeEvidenceJson(evidenceDir, 'production-material-pack-health-audit.json', {
+        schema_version: 'production-material-pack-health-audit/v1',
+        status: 'passed',
+        before: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+        after: { status: 'passed', issue_count: 0, core_ready_count: 4, core_total_count: 4 },
+        deltas: { issue_count: 0, core_ready_count: 0 },
+        failed_checks: [],
+        warning_checks: [],
         recommended_actions: [],
       });
       await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
