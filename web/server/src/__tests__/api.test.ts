@@ -1036,6 +1036,11 @@ describe('System API', () => {
           generated_governance_action_count: expect.any(Number),
           generated_governance_p0_p1_action_count: expect.any(Number),
           generated_governance_ready_signoff_candidate_count: expect.any(Number),
+          production_material_pack_status: 'passed',
+          production_material_pack_count: expect.any(Number),
+          production_material_pack_issue_count: 0,
+          production_material_pack_core_ready_count: 4,
+          production_material_pack_core_total_count: 4,
           story_agent_command_surface_status: 'ready',
           story_agent_command_surface_percent: 100,
           mcp_story_agent_tool_count: expect.any(Number),
@@ -1050,6 +1055,10 @@ describe('System API', () => {
         generated_governance_plan: {
           schema_version: 'story-agent-generated-governance-plan/v1',
         },
+        production_material_pack_health: {
+          schema_version: 'production-material-pack-health/v1',
+          status: 'passed',
+        },
         production_portfolio: {
           schema_version: 'production-readiness-portfolio/v1',
         },
@@ -1059,6 +1068,7 @@ describe('System API', () => {
       expect(res.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
         'generated_artifacts',
         'generated_governance',
+        'production_material_packs',
         'story_quality',
         'repair_loop',
         'delivery_contract',
@@ -1099,6 +1109,9 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'content_command_layer')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
+        'production_material_pack_status=passed',
+        'production_material_core_ready=4/4',
+        'production_material_pack_issues=0',
         'local_target_health_tracked_by=lanes',
         'real_media_execution=gears_v2',
       ]));
@@ -1117,6 +1130,11 @@ describe('System API', () => {
           score: 100,
           status: 'ready',
         }),
+        expect.objectContaining({
+          key: 'production_material_packs',
+          score: 100,
+          status: 'ready',
+        }),
       ]));
       expect(res.body.data.priority_targets).toEqual(expect.arrayContaining([
         expect.objectContaining({
@@ -1126,6 +1144,7 @@ describe('System API', () => {
         }),
       ]));
       expect(res.body.data.notes.join('\n')).toContain('Generated governance command surface is complete at 100%');
+      expect(res.body.data.notes.join('\n')).toContain('Production material pack health is now a Story Agent MVP lane');
       expect(res.body.data.notes.join('\n')).toContain('MCP Story Agent loop is complete at 100%');
       expect(res.body.data.notes.join('\n')).toContain('Content and production command layer is complete at 100%');
       expect(res.body.data.notes.join('\n')).toContain('Production Board / Delivery Contract command surface is complete at 100%');
@@ -1135,6 +1154,8 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('# Story Agent MVP Status');
       expect(res.body.data.markdown).toContain('Progress Split');
       expect(res.body.data.markdown).toContain('production delivery contract: 100%');
+      expect(res.body.data.markdown).toContain('production material pack health: passed');
+      expect(res.body.data.markdown).toContain('Production material packs');
       expect(res.body.data.markdown).toContain('Story Agent command surface: ready · 100%');
       expect(res.body.data.markdown).toContain('Delivery contract');
     });

@@ -118,6 +118,7 @@
         <span>阻断目标 {{ storyAgentMvpStatus.summary.readiness_blocked_count }}</span>
         <span>安全自动化 {{ storyAgentMvpStatus.summary.ready_automation_step_count }}</span>
         <span>GEARS/人工 {{ storyAgentMvpStatus.summary.external_or_manual_step_count }}</span>
+        <span>模板 {{ storyAgentMvpStatus.summary.production_material_pack_status }} {{ storyAgentMvpStatus.summary.production_material_pack_core_ready_count }}/{{ storyAgentMvpStatus.summary.production_material_pack_core_total_count }}</span>
       </div>
       <div class="projects-page__mvp-progress">
         <article
@@ -1006,6 +1007,7 @@ function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number][
   const map: Record<StoryAgentMvpStatusReport['lanes'][number]['key'], string> = {
     generated_artifacts: '生成物',
     generated_governance: 'Generated 治理',
+    production_material_packs: '生产素材模板',
     story_quality: '故事质量',
     repair_loop: '修复闭环',
     delivery_contract: 'GEARS 交付合同',

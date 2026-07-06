@@ -1817,6 +1817,7 @@ export type StoryAgentMvpStatus = ProductionReadinessStatus;
 export type StoryAgentMvpLaneKey =
   | 'generated_artifacts'
   | 'generated_governance'
+  | 'production_material_packs'
   | 'story_quality'
   | 'repair_loop'
   | 'delivery_contract'
@@ -1881,6 +1882,11 @@ export interface StoryAgentMvpStatusReport {
     generated_governance_action_count: number;
     generated_governance_p0_p1_action_count: number;
     generated_governance_ready_signoff_candidate_count: number;
+    production_material_pack_status: ProductionMaterialPackHealthStatus;
+    production_material_pack_count: number;
+    production_material_pack_issue_count: number;
+    production_material_pack_core_ready_count: number;
+    production_material_pack_core_total_count: number;
     story_agent_command_surface_status: StoryAgentMvpStatus;
     story_agent_command_surface_percent: number;
     mcp_story_agent_tool_count: number;
@@ -1896,6 +1902,7 @@ export interface StoryAgentMvpStatusReport {
   notes: string[];
   generated_health: StoryAgentGeneratedHealthReport;
   generated_governance_plan: StoryAgentGeneratedGovernancePlan;
+  production_material_pack_health: ProductionMaterialPackHealthReport;
   production_portfolio: ProductionReadinessPortfolioReport;
   markdown: string;
 }
