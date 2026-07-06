@@ -43,6 +43,7 @@ import {
   runProductionReadinessPortfolioAutomation,
 } from '../services/production-readiness-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from '../services/production-material-pack-service.js';
+import { getDomainPackProductionHealthReport } from '../services/domain-pack-service.js';
 import {
   getStoryAgentGeneratedGovernancePlan,
   runStoryAgentGeneratedGovernance,
@@ -152,6 +153,14 @@ systemRouter.get('/narrative-patterns', (_req, res) => {
 
 systemRouter.get('/production-material-pack-health', (_req, res) => {
   res.json(success(getProductionMaterialPackHealthReport()));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/domain-pack-production-health — production prompt pack gate
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/domain-pack-production-health', (_req, res) => {
+  res.json(success(getDomainPackProductionHealthReport()));
 });
 
 // ---------------------------------------------------------------------------

@@ -1818,6 +1818,7 @@ export type StoryAgentMvpLaneKey =
   | 'generated_artifacts'
   | 'generated_governance'
   | 'production_material_packs'
+  | 'domain_packs'
   | 'story_quality'
   | 'repair_loop'
   | 'delivery_contract'
@@ -1887,6 +1888,11 @@ export interface StoryAgentMvpStatusReport {
     production_material_pack_issue_count: number;
     production_material_pack_core_ready_count: number;
     production_material_pack_core_total_count: number;
+    domain_pack_status: DomainPackProductionHealthStatus;
+    domain_pack_count: number;
+    domain_pack_issue_count: number;
+    production_domain_pack_ready_count: number;
+    production_domain_pack_required_count: number;
     story_agent_command_surface_status: StoryAgentMvpStatus;
     story_agent_command_surface_percent: number;
     mcp_story_agent_tool_count: number;
@@ -1903,6 +1909,7 @@ export interface StoryAgentMvpStatusReport {
   generated_health: StoryAgentGeneratedHealthReport;
   generated_governance_plan: StoryAgentGeneratedGovernancePlan;
   production_material_pack_health: ProductionMaterialPackHealthReport;
+  domain_pack_health: DomainPackProductionHealthReport;
   production_portfolio: ProductionReadinessPortfolioReport;
   markdown: string;
 }
@@ -5749,6 +5756,52 @@ export interface KnowledgePack {
   supporting_entries: KnowledgePackEntry[];
   missing_needs: KnowledgePackMissing[];
   overall_confidence: number;
+}
+
+export type DomainPackProductionHealthStatus = 'passed' | 'warning' | 'failed';
+export type DomainPackProductionHealthIssueSeverity = 'warning' | 'error';
+
+export interface DomainPackProductionHealthIssue {
+  severity: DomainPackProductionHealthIssueSeverity;
+  issue_type:
+    | 'missing_required_pack'
+    | 'duplicate_entry_name'
+    | 'underfilled_trigger_words'
+    | 'underfilled_production_prompts'
+    | 'underfilled_review_boundaries'
+    | 'missing_expected_asset_usage';
+  pack_id?: string;
+  entry_name?: string;
+  message: string;
+  details?: string[];
+}
+
+export interface DomainPackProductionHealthSummary {
+  pack_id: string;
+  entry_name: string;
+  domain: KnowledgeDomain;
+  role: KnowledgeEntryRole;
+  trigger_word_count: number;
+  production_prompt_count: number;
+  review_boundary_count: number;
+  asset_usage: KnowledgeAssetUsage[];
+  status: DomainPackProductionHealthStatus;
+}
+
+export interface DomainPackProductionHealthReport {
+  schema_version: 'domain-pack-production-health/v1';
+  generated_at: string;
+  domain_id: string;
+  version: string;
+  status: DomainPackProductionHealthStatus;
+  pack_count: number;
+  production_pack_count: number;
+  required_pack_ids: string[];
+  covered_required_pack_ids: string[];
+  missing_required_pack_ids: string[];
+  production_ready_pack_ids: string[];
+  packs: DomainPackProductionHealthSummary[];
+  issues: DomainPackProductionHealthIssue[];
 }
 
 export type CreationUseCase =

@@ -1,4 +1,5 @@
 import type {
+  DomainPackProductionHealthReport,
   ProductionMaterialPackHealthReport,
   ProductionReadinessPortfolioItem,
   ProductionReadinessPortfolioReport,
@@ -12,6 +13,7 @@ import type {
   StoryAgentMvpStatus,
   StoryAgentMvpStatusReport,
 } from '@shared/types.js';
+import { getDomainPackProductionHealthReport } from './domain-pack-service.js';
 import { getStoryAgentGeneratedGovernancePlan } from './generated-governance-service.js';
 import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
 import { getProductionReadinessPortfolio } from './production-readiness-portfolio-service.js';
@@ -187,6 +189,45 @@ function productionMaterialPackLane(report: ProductionMaterialPackHealthReport):
       ? 'Fix missing production packs, unknown required_fields, or duplicate fields before Story Agent generation sign-off.'
       : report.status === 'warning'
         ? 'Top up underfilled prompt layers, gate items, supplement questions, or sample entries before expanding production volume.'
+        : undefined,
+  };
+}
+
+function domainPackLane(report: DomainPackProductionHealthReport): StoryAgentMvpLane {
+  const errorCount = report.issues.filter(issue => issue.severity === 'error').length;
+  const warningCount = report.issues.filter(issue => issue.severity === 'warning').length;
+  const status: StoryAgentMvpStatus = report.status === 'failed'
+    ? 'blocked'
+    : report.status === 'warning'
+      ? 'needs_action'
+      : 'ready';
+  return {
+    key: 'domain_packs',
+    label: 'Domain packs',
+    status,
+    score: clampScore(100 - errorCount * 25 - warningCount * 8 - report.missing_required_pack_ids.length * 20),
+    detail: report.status === 'passed'
+      ? `${report.production_ready_pack_ids.length}/${report.required_pack_ids.length} production Domain Packs pass prompt and review-boundary gates.`
+      : `${errorCount} errors and ${warningCount} warnings in Domain Pack production gates.`,
+    evidence: [
+      `schema=${report.schema_version}`,
+      `domain_id=${report.domain_id}`,
+      `version=${report.version}`,
+      `pack_status=${report.status}`,
+      `pack_count=${report.pack_count}`,
+      `production_pack_count=${report.production_pack_count}`,
+      `required_pack_count=${report.required_pack_ids.length}`,
+      `covered_required_pack_count=${report.covered_required_pack_ids.length}`,
+      `missing_required_pack_count=${report.missing_required_pack_ids.length}`,
+      `production_ready_pack_count=${report.production_ready_pack_ids.length}`,
+      `issues=${report.issues.length}`,
+      `errors=${errorCount}`,
+      `warnings=${warningCount}`,
+    ],
+    next_action: report.status === 'failed'
+      ? 'Restore missing production Domain Packs before Story Agent prompt package sign-off.'
+      : report.status === 'warning'
+        ? 'Top up production_prompts, review_boundaries, trigger_words, or asset_usage coverage for production Domain Packs.'
         : undefined,
   };
 }
@@ -422,6 +463,7 @@ function progressSlices(
   health: StoryAgentGeneratedHealthReport,
   governancePlan: StoryAgentGeneratedGovernancePlan,
   productionMaterialPackHealth: ProductionMaterialPackHealthReport,
+  domainPackHealth: DomainPackProductionHealthReport,
   portfolio: ProductionReadinessPortfolioReport,
 ): StoryAgentMvpProgressSlice[] {
   const endpointConfigured = Boolean(process.env.GEARS_API_BASE_URL?.trim());
@@ -477,6 +519,9 @@ function progressSlices(
         `production_material_pack_status=${productionMaterialPackHealth.status}`,
         `production_material_core_ready=${productionMaterialPackHealth.production_ready_core_video_types.length}/${productionMaterialPackHealth.core_video_types.length}`,
         `production_material_pack_issues=${productionMaterialPackHealth.issues.length}`,
+        `domain_pack_status=${domainPackHealth.status}`,
+        `domain_pack_ready=${domainPackHealth.production_ready_pack_ids.length}/${domainPackHealth.required_pack_ids.length}`,
+        `domain_pack_issues=${domainPackHealth.issues.length}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
         `local_contract_blocked=${hasLocalContractBlocker}`,
         'local_target_health_tracked_by=lanes',
@@ -543,6 +588,10 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- production material packs: ${report.summary.production_material_pack_count}`,
     `- production material pack issues: ${report.summary.production_material_pack_issue_count}`,
     `- production material core ready: ${report.summary.production_material_pack_core_ready_count}/${report.summary.production_material_pack_core_total_count}`,
+    `- domain pack health: ${report.summary.domain_pack_status}`,
+    `- domain packs: ${report.summary.domain_pack_count}`,
+    `- domain pack issues: ${report.summary.domain_pack_issue_count}`,
+    `- production domain packs ready: ${report.summary.production_domain_pack_ready_count}/${report.summary.production_domain_pack_required_count}`,
     `- Story Agent command surface: ${report.summary.story_agent_command_surface_status} · ${report.summary.story_agent_command_surface_percent}%`,
     `- MCP Story Agent tools: ${report.summary.mcp_story_agent_tool_count}`,
     `- MCP Story Agent loop: ${report.summary.mcp_story_agent_loop_percent}%`,
@@ -583,10 +632,11 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
 export async function getStoryAgentMvpStatus(
   options: StoryAgentMvpStatusOptions = {},
 ): Promise<StoryAgentMvpStatusReport> {
-  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, productionPortfolio] = await Promise.all([
+  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, productionPortfolio] = await Promise.all([
     getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 }),
     getStoryAgentGeneratedGovernancePlan({ limit: options.generatedLimit ?? 200 }),
     getProductionMaterialPackHealthReport(),
+    getDomainPackProductionHealthReport(),
     getProductionReadinessPortfolio({
       includeArchivedSeries: options.includeArchivedSeries,
       limit: options.portfolioLimit ?? 100,
@@ -596,6 +646,7 @@ export async function getStoryAgentMvpStatus(
     generatedArtifactsLane(generatedHealth),
     generatedGovernanceLane(generatedGovernancePlan),
     productionMaterialPackLane(productionMaterialPackHealth),
+    domainPackLane(domainPackHealth),
     storyQualityLane(generatedHealth),
     repairLoopLane(productionPortfolio),
     deliveryContractLane(generatedHealth),
@@ -604,7 +655,7 @@ export async function getStoryAgentMvpStatus(
   const status = overallStatus(lanes);
   const targets = priorityTargets(generatedHealth, productionPortfolio);
   const actions = nextActions(lanes, generatedHealth, productionPortfolio);
-  const progress = progressSlices(lanes, generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, productionPortfolio);
+  const progress = progressSlices(lanes, generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, productionPortfolio);
   const externalOrManual = productionPortfolio.summary.external_automation_step_count
     + productionPortfolio.summary.manual_automation_step_count;
   const base: Omit<StoryAgentMvpStatusReport, 'markdown'> = {
@@ -634,6 +685,11 @@ export async function getStoryAgentMvpStatus(
       production_material_pack_issue_count: productionMaterialPackHealth.issues.length,
       production_material_pack_core_ready_count: productionMaterialPackHealth.production_ready_core_video_types.length,
       production_material_pack_core_total_count: productionMaterialPackHealth.core_video_types.length,
+      domain_pack_status: domainPackHealth.status,
+      domain_pack_count: domainPackHealth.pack_count,
+      domain_pack_issue_count: domainPackHealth.issues.length,
+      production_domain_pack_ready_count: domainPackHealth.production_ready_pack_ids.length,
+      production_domain_pack_required_count: domainPackHealth.required_pack_ids.length,
       story_agent_command_surface_status: 'ready',
       story_agent_command_surface_percent: 100,
       mcp_story_agent_tool_count: MCP_STORY_AGENT_LOOP_TOOLS.length,
@@ -650,6 +706,7 @@ export async function getStoryAgentMvpStatus(
       'Read-only MVP status: combines generated artifact health with production readiness portfolio state.',
       'Generated governance command surface is complete at 100%: health scan, governance plan, dry-run manifest, project_id targeting, Web/MCP exports, and no-write safety gates are available.',
       'Production material pack health is now a Story Agent MVP lane: core and high-frequency video types must keep mapped required_fields, prompt layers, gate items, supplement questions, and sample-entry coverage before production sign-off.',
+      'Domain Pack production health is now a Story Agent MVP lane: required production prompt packs must keep trigger words, production prompts, review boundaries, and asset usage coverage before prompt package sign-off.',
       'MCP Story Agent loop is complete at 100%: read-only context, blueprint, validation, delivery, repair prompt, controlled versioning, generated governance, readiness automation, MVP status, and GEARS evidence signoff are all exposed as tools.',
       'Content and production command layer is complete at 100% inside china-culture-kb; generated target health and real GEARS endpoint acceptance remain separate status surfaces.',
       'Production Board / Delivery Contract command surface is complete at 100%; Seedance asset upload checklists now make external reference-material handoff explicit, and missing per-target exports remain tracked by the delivery_contract lane and generated governance plan.',
@@ -662,6 +719,7 @@ export async function getStoryAgentMvpStatus(
     generated_health: generatedHealth,
     generated_governance_plan: generatedGovernancePlan,
     production_material_pack_health: productionMaterialPackHealth,
+    domain_pack_health: domainPackHealth,
     production_portfolio: productionPortfolio,
   };
   return {

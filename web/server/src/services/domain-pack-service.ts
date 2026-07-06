@@ -1,4 +1,8 @@
 import type {
+  DomainPackProductionHealthIssue,
+  DomainPackProductionHealthReport,
+  DomainPackProductionHealthStatus,
+  DomainPackProductionHealthSummary,
   EntryDetail,
   EntrySearchResult,
   KnowledgeAssetUsage,
@@ -38,6 +42,12 @@ interface DomainPackFile {
   version: string;
   description?: string;
   entries: DomainPackSeed[];
+}
+
+interface RequiredProductionDomainPack {
+  pack_id: string;
+  entry_name: string;
+  expected_asset_usage: KnowledgeAssetUsage[];
 }
 
 const DYNASTY_ERAS = [
@@ -135,6 +145,49 @@ const FALLBACK_DOMAIN_PACK_SEEDS: DomainPackSeed[] = [
 
 let cachedDomainPackSeeds: DomainPackSeed[] | null = null;
 
+const REQUIRED_PRODUCTION_DOMAIN_PACKS: RequiredProductionDomainPack[] = [
+  {
+    pack_id: 'heritage_process_pack',
+    entry_name: '非遗流程生产包——材料工具、工序动作与授权边界',
+    expected_asset_usage: ['source_grounding', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'documentary_source_pack',
+    entry_name: '纪录片来源包——现实现场、来源线索与再现边界',
+    expected_asset_usage: ['source_grounding', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'ai_comic_storyboard_pack',
+    entry_name: 'AI漫剧分镜包——关键帧、表情节拍与连续性验收',
+    expected_asset_usage: ['visual_style', 'gears_delivery'],
+  },
+  {
+    pack_id: 'era_and_costume_pack',
+    entry_name: '朝代服饰与器物包——时代称谓、服装道具和事实边界',
+    expected_asset_usage: ['character_clothing', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'explainer_knowledge_structure_pack',
+    entry_name: '讲解知识结构包——核心问题、层级例子与图示字幕',
+    expected_asset_usage: ['source_grounding', 'visual_style'],
+  },
+  {
+    pack_id: 'children_adaptation_safety_pack',
+    entry_name: '儿童改写规则包——年龄分层、善意张力与事实边界',
+    expected_asset_usage: ['safety_boundary', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'short_video_hook_pack',
+    entry_name: '短视频钩子包——三秒问题、对比反转与平台节奏',
+    expected_asset_usage: ['visual_style', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'education_training_structure_pack',
+    entry_name: '宣讲培训结构包——论点案例、练习复盘与行动转化',
+    expected_asset_usage: ['source_grounding', 'safety_boundary'],
+  },
+];
+
 export function inferEntryMetadata(entry: Pick<EntrySearchResult, 'name' | 'type' | 'summary' | 'keywords' | 'province' | 'region'>): EntryMetadata {
   const text = `${entry.name} ${entry.type} ${entry.summary} ${entry.keywords.join(' ')} ${entry.province} ${entry.region}`;
   const era = detectEra(text);
@@ -207,6 +260,134 @@ export function getDomainPackSeeds(): DomainPackSeed[] {
   if (cachedDomainPackSeeds) return cachedDomainPackSeeds;
   cachedDomainPackSeeds = loadDomainPackSeeds();
   return cachedDomainPackSeeds;
+}
+
+export function getDomainPackProductionHealthReport(input: {
+  requiredPacks?: RequiredProductionDomainPack[];
+  minimumTriggerWords?: number;
+  minimumProductionPrompts?: number;
+  minimumReviewBoundaries?: number;
+  generatedAt?: string;
+} = {}): DomainPackProductionHealthReport {
+  const file = loadDomainPackFile();
+  const seeds = getDomainPackSeeds();
+  const requiredPacks = input.requiredPacks ?? REQUIRED_PRODUCTION_DOMAIN_PACKS;
+  const minimumTriggerWords = input.minimumTriggerWords ?? 8;
+  const minimumProductionPrompts = input.minimumProductionPrompts ?? 3;
+  const minimumReviewBoundaries = input.minimumReviewBoundaries ?? 3;
+  const seedByName = new Map(seeds.map(seed => [seed.entry_name, seed]));
+  const issues: DomainPackProductionHealthIssue[] = [];
+  const duplicateNames = duplicateStrings(seeds.map(seed => seed.entry_name));
+
+  for (const entryName of duplicateNames) {
+    issues.push({
+      severity: 'error',
+      issue_type: 'duplicate_entry_name',
+      entry_name: entryName,
+      message: `Domain Pack 存在重复 entry_name：${entryName}。`,
+    });
+  }
+
+  const summaries: DomainPackProductionHealthSummary[] = [];
+  for (const contract of requiredPacks) {
+    const seed = seedByName.get(contract.entry_name);
+    if (!seed) {
+      issues.push({
+        severity: 'error',
+        issue_type: 'missing_required_pack',
+        pack_id: contract.pack_id,
+        entry_name: contract.entry_name,
+        message: `缺少生产提示 Domain Pack：${contract.entry_name}。`,
+      });
+      continue;
+    }
+
+    const beforeIssueCount = issues.length;
+    const triggerWordCount = seed.trigger_words.length;
+    const productionPromptCount = seed.production_prompts?.filter(item => item.trim()).length ?? 0;
+    const reviewBoundaryCount = seed.review_boundaries?.filter(item => item.trim()).length ?? 0;
+    const missingAssetUsage = contract.expected_asset_usage.filter(usage => !seed.asset_usage.includes(usage));
+
+    if (triggerWordCount < minimumTriggerWords) {
+      issues.push({
+        severity: 'warning',
+        issue_type: 'underfilled_trigger_words',
+        pack_id: contract.pack_id,
+        entry_name: seed.entry_name,
+        message: `${seed.entry_name} trigger_words 低于 ${minimumTriggerWords} 个。`,
+        details: [`current=${triggerWordCount}`],
+      });
+    }
+    if (productionPromptCount < minimumProductionPrompts) {
+      issues.push({
+        severity: 'warning',
+        issue_type: 'underfilled_production_prompts',
+        pack_id: contract.pack_id,
+        entry_name: seed.entry_name,
+        message: `${seed.entry_name} production_prompts 低于 ${minimumProductionPrompts} 条。`,
+        details: [`current=${productionPromptCount}`],
+      });
+    }
+    if (reviewBoundaryCount < minimumReviewBoundaries) {
+      issues.push({
+        severity: 'warning',
+        issue_type: 'underfilled_review_boundaries',
+        pack_id: contract.pack_id,
+        entry_name: seed.entry_name,
+        message: `${seed.entry_name} review_boundaries 低于 ${minimumReviewBoundaries} 条。`,
+        details: [`current=${reviewBoundaryCount}`],
+      });
+    }
+    if (missingAssetUsage.length > 0) {
+      issues.push({
+        severity: 'warning',
+        issue_type: 'missing_expected_asset_usage',
+        pack_id: contract.pack_id,
+        entry_name: seed.entry_name,
+        message: `${seed.entry_name} 缺少预期 asset_usage 标记。`,
+        details: missingAssetUsage,
+      });
+    }
+
+    summaries.push({
+      pack_id: contract.pack_id,
+      entry_name: seed.entry_name,
+      domain: seed.domain,
+      role: seed.role,
+      trigger_word_count: triggerWordCount,
+      production_prompt_count: productionPromptCount,
+      review_boundary_count: reviewBoundaryCount,
+      asset_usage: seed.asset_usage,
+      status: domainPackHealthStatusFromIssues(issues.slice(beforeIssueCount)),
+    });
+  }
+
+  const coveredRequiredPackIds = summaries.map(summary => summary.pack_id);
+  const missingRequiredPackIds = requiredPacks
+    .filter(contract => !coveredRequiredPackIds.includes(contract.pack_id))
+    .map(contract => contract.pack_id);
+  const productionReadyPackIds = summaries
+    .filter(summary => summary.status === 'passed')
+    .map(summary => summary.pack_id);
+
+  return {
+    schema_version: 'domain-pack-production-health/v1',
+    generated_at: input.generatedAt ?? new Date().toISOString(),
+    domain_id: file.domain_id,
+    version: file.version,
+    status: domainPackHealthStatusFromIssues(issues),
+    pack_count: seeds.length,
+    production_pack_count: seeds.filter(seed => (
+      (seed.production_prompts?.some(item => item.trim()) ?? false)
+      || (seed.review_boundaries?.some(item => item.trim()) ?? false)
+    )).length,
+    required_pack_ids: requiredPacks.map(contract => contract.pack_id),
+    covered_required_pack_ids: coveredRequiredPackIds,
+    missing_required_pack_ids: missingRequiredPackIds,
+    production_ready_pack_ids: productionReadyPackIds,
+    packs: summaries,
+    issues,
+  };
 }
 
 export function appendDomainPackEntries(
@@ -295,15 +476,30 @@ function scoreDomainPackSeed(seed: DomainPackSeed, text: string): number {
 }
 
 function loadDomainPackSeeds(): DomainPackSeed[] {
+  const file = loadDomainPackFile();
+  return file.entries.length > 0 ? file.entries : FALLBACK_DOMAIN_PACK_SEEDS;
+}
+
+function loadDomainPackFile(): DomainPackFile {
   try {
     const filePath = resolve(kbRoot(), 'domain-packs', 'china-culture.json');
     const parsed = JSON.parse(readFileSync(filePath, 'utf8')) as DomainPackFile;
     const validEntries = Array.isArray(parsed.entries)
       ? parsed.entries.filter(isValidDomainPackSeed)
       : [];
-    return validEntries.length > 0 ? validEntries : FALLBACK_DOMAIN_PACK_SEEDS;
+    return {
+      domain_id: typeof parsed.domain_id === 'string' && parsed.domain_id.trim() ? parsed.domain_id : 'china_culture',
+      version: typeof parsed.version === 'string' && parsed.version.trim() ? parsed.version : 'unknown',
+      ...(parsed.description ? { description: parsed.description } : {}),
+      entries: validEntries,
+    };
   } catch {
-    return FALLBACK_DOMAIN_PACK_SEEDS;
+    return {
+      domain_id: 'china_culture',
+      version: 'fallback',
+      description: 'Fallback in-memory china culture domain packs.',
+      entries: FALLBACK_DOMAIN_PACK_SEEDS,
+    };
   }
 }
 
@@ -324,6 +520,24 @@ function isValidDomainPackSeed(seed: Partial<DomainPackSeed>): seed is DomainPac
     && Array.isArray(seed.asset_usage)
     && Array.isArray(seed.trigger_words),
   );
+}
+
+function duplicateStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value)) duplicates.add(value);
+    seen.add(value);
+  }
+  return [...duplicates].sort((a, b) => a.localeCompare(b));
+}
+
+function domainPackHealthStatusFromIssues(
+  issues: DomainPackProductionHealthIssue[],
+): DomainPackProductionHealthStatus {
+  if (issues.some(issue => issue.severity === 'error')) return 'failed';
+  if (issues.length > 0) return 'warning';
+  return 'passed';
 }
 
 function selectDomainPackSeeds(

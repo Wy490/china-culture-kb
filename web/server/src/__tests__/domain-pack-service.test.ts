@@ -1,6 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { resolve } from 'node:path';
-import { getDomainPackSeeds, buildDomainPackEntries } from '../services/domain-pack-service.js';
+import {
+  buildDomainPackEntries,
+  getDomainPackProductionHealthReport,
+  getDomainPackSeeds,
+} from '../services/domain-pack-service.js';
 
 beforeAll(() => {
   if (!process.env.KB_ROOT) {
@@ -36,6 +40,43 @@ describe('domain-pack-service', () => {
       seeds.find(seed => seed.entry_name === '儿童改写规则包——年龄分层、善意张力与事实边界')?.production_prompts,
     ).toEqual(expect.arrayContaining([
       expect.stringContaining('受众层级'),
+    ]));
+  });
+
+  it('reports production Domain Pack health for prompt and review-boundary gates', () => {
+    const report = getDomainPackProductionHealthReport({ generatedAt: '2026-07-06T00:00:00.000Z' });
+
+    expect(report).toMatchObject({
+      schema_version: 'domain-pack-production-health/v1',
+      generated_at: '2026-07-06T00:00:00.000Z',
+      domain_id: 'china_culture',
+      status: 'passed',
+      production_pack_count: 8,
+      missing_required_pack_ids: [],
+      issues: [],
+    });
+    expect(report.required_pack_ids).toEqual([
+      'heritage_process_pack',
+      'documentary_source_pack',
+      'ai_comic_storyboard_pack',
+      'era_and_costume_pack',
+      'explainer_knowledge_structure_pack',
+      'children_adaptation_safety_pack',
+      'short_video_hook_pack',
+      'education_training_structure_pack',
+    ]);
+    expect(report.production_ready_pack_ids).toEqual(report.required_pack_ids);
+    expect(report.packs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        pack_id: 'explainer_knowledge_structure_pack',
+        production_prompt_count: 3,
+        review_boundary_count: 3,
+        status: 'passed',
+      }),
+      expect.objectContaining({
+        pack_id: 'ai_comic_storyboard_pack',
+        asset_usage: expect.arrayContaining(['visual_style', 'gears_delivery']),
+      }),
     ]));
   });
 

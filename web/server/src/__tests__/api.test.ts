@@ -593,6 +593,44 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/domain-pack-production-health', () => {
+    it('returns production Domain Pack prompt and review-boundary health gates', async () => {
+      const res = await request.get('/api/system/domain-pack-production-health');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'domain-pack-production-health/v1',
+        domain_id: 'china_culture',
+        status: 'passed',
+        pack_count: expect.any(Number),
+        production_pack_count: 8,
+        required_pack_ids: expect.arrayContaining([
+          'heritage_process_pack',
+          'documentary_source_pack',
+          'ai_comic_storyboard_pack',
+          'explainer_knowledge_structure_pack',
+        ]),
+        missing_required_pack_ids: [],
+        production_ready_pack_ids: expect.arrayContaining([
+          'heritage_process_pack',
+          'documentary_source_pack',
+          'ai_comic_storyboard_pack',
+          'explainer_knowledge_structure_pack',
+        ]),
+        issues: [],
+      });
+      expect(res.body.data.packs).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          pack_id: 'education_training_structure_pack',
+          production_prompt_count: 3,
+          review_boundary_count: 3,
+          status: 'passed',
+        }),
+      ]));
+    });
+  });
+
   describe('GET /api/system/gears-external-callback-handoff-queue', () => {
     it('returns a read-only cross-project GEARS external callback queue package', async () => {
       const res = await request.get('/api/system/gears-external-callback-handoff-queue?limit=5');
@@ -1041,6 +1079,11 @@ describe('System API', () => {
           production_material_pack_issue_count: 0,
           production_material_pack_core_ready_count: 4,
           production_material_pack_core_total_count: 4,
+          domain_pack_status: 'passed',
+          domain_pack_count: expect.any(Number),
+          domain_pack_issue_count: 0,
+          production_domain_pack_ready_count: 8,
+          production_domain_pack_required_count: 8,
           story_agent_command_surface_status: 'ready',
           story_agent_command_surface_percent: 100,
           mcp_story_agent_tool_count: expect.any(Number),
@@ -1059,6 +1102,10 @@ describe('System API', () => {
           schema_version: 'production-material-pack-health/v1',
           status: 'passed',
         },
+        domain_pack_health: {
+          schema_version: 'domain-pack-production-health/v1',
+          status: 'passed',
+        },
         production_portfolio: {
           schema_version: 'production-readiness-portfolio/v1',
         },
@@ -1069,6 +1116,7 @@ describe('System API', () => {
         'generated_artifacts',
         'generated_governance',
         'production_material_packs',
+        'domain_packs',
         'story_quality',
         'repair_loop',
         'delivery_contract',
@@ -1112,6 +1160,9 @@ describe('System API', () => {
         'production_material_pack_status=passed',
         'production_material_core_ready=4/4',
         'production_material_pack_issues=0',
+        'domain_pack_status=passed',
+        'domain_pack_ready=8/8',
+        'domain_pack_issues=0',
         'local_target_health_tracked_by=lanes',
         'real_media_execution=gears_v2',
       ]));
@@ -1135,6 +1186,11 @@ describe('System API', () => {
           score: 100,
           status: 'ready',
         }),
+        expect.objectContaining({
+          key: 'domain_packs',
+          score: 100,
+          status: 'ready',
+        }),
       ]));
       expect(res.body.data.priority_targets).toEqual(expect.arrayContaining([
         expect.objectContaining({
@@ -1145,6 +1201,7 @@ describe('System API', () => {
       ]));
       expect(res.body.data.notes.join('\n')).toContain('Generated governance command surface is complete at 100%');
       expect(res.body.data.notes.join('\n')).toContain('Production material pack health is now a Story Agent MVP lane');
+      expect(res.body.data.notes.join('\n')).toContain('Domain Pack production health is now a Story Agent MVP lane');
       expect(res.body.data.notes.join('\n')).toContain('MCP Story Agent loop is complete at 100%');
       expect(res.body.data.notes.join('\n')).toContain('Content and production command layer is complete at 100%');
       expect(res.body.data.notes.join('\n')).toContain('Production Board / Delivery Contract command surface is complete at 100%');
@@ -1155,7 +1212,9 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('Progress Split');
       expect(res.body.data.markdown).toContain('production delivery contract: 100%');
       expect(res.body.data.markdown).toContain('production material pack health: passed');
+      expect(res.body.data.markdown).toContain('domain pack health: passed');
       expect(res.body.data.markdown).toContain('Production material packs');
+      expect(res.body.data.markdown).toContain('Domain packs');
       expect(res.body.data.markdown).toContain('Story Agent command surface: ready · 100%');
       expect(res.body.data.markdown).toContain('Delivery contract');
     });
