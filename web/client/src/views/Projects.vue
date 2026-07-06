@@ -200,10 +200,24 @@
           </button>
           <button
             class="projects-page__muted-btn"
-            :disabled="copyingGearsExternalQueue"
-            @click="copyGearsExternalCallbackQueue"
+            :disabled="Boolean(gearsExternalQueueCopyMode)"
+            @click="copyGearsExternalCallbackQueue('markdown')"
           >
-            {{ copyingGearsExternalQueue ? '复制中…' : '复制外部回片队列' }}
+            {{ gearsExternalQueueCopyMode === 'markdown' ? '复制中…' : '复制回片队列 MD' }}
+          </button>
+          <button
+            class="projects-page__muted-btn"
+            :disabled="Boolean(gearsExternalQueueCopyMode)"
+            @click="copyGearsExternalCallbackQueue('payload')"
+          >
+            {{ gearsExternalQueueCopyMode === 'payload' ? '复制中…' : '复制 Payload JSON' }}
+          </button>
+          <button
+            class="projects-page__muted-btn"
+            :disabled="Boolean(gearsExternalQueueCopyMode)"
+            @click="copyGearsExternalCallbackQueue('commands')"
+          >
+            {{ gearsExternalQueueCopyMode === 'commands' ? '复制中…' : '复制 Preflight 命令' }}
           </button>
           <button class="projects-page__muted-btn" :disabled="loadingPortfolio" @click="loadProductionPortfolio">
             {{ loadingPortfolio ? '刷新中…' : '刷新总览' }}
@@ -737,6 +751,7 @@ import type {
   StoryAgentGeneratedHealthReport,
   StoryAgentGeneratedHealthStatus,
   StoryAgentMvpStatusReport,
+  GearsExternalCallbackHandoffQueuePackage,
   StoryProjectDeleteResult,
   StoryProjectListItem,
   StoryProjectStatus,
@@ -762,7 +777,8 @@ const loadingGeneratedGovernance = ref(false)
 const runningGeneratedGovernance = ref(false)
 const loadingGeneratedHealth = ref(false)
 const runningPortfolioAutomation = ref(false)
-const copyingGearsExternalQueue = ref(false)
+type GearsExternalQueueCopyMode = 'markdown' | 'payload' | 'commands'
+const gearsExternalQueueCopyMode = ref<GearsExternalQueueCopyMode | ''>('')
 const error = ref('')
 const projectMessage = ref('')
 const searchQuery = ref('')
@@ -1518,25 +1534,66 @@ async function loadProductionPortfolio() {
   loadingPortfolio.value = false
 }
 
-async function copyGearsExternalCallbackQueue() {
-  copyingGearsExternalQueue.value = true
+async function copyGearsExternalCallbackQueue(mode: GearsExternalQueueCopyMode) {
+  gearsExternalQueueCopyMode.value = mode
   error.value = ''
   projectMessage.value = ''
   try {
     const res = await getGearsExternalCallbackHandoffQueue({ limit: 30 })
     if (res.ok && res.data) {
-      await navigator.clipboard.writeText(res.data.markdown)
+      const clipboardText = gearsExternalQueueClipboardText(res.data, mode)
+      await navigator.clipboard.writeText(clipboardText)
+      const label = mode === 'markdown'
+        ? 'Markdown 队列'
+        : mode === 'payload'
+          ? 'callback payload JSON'
+          : 'system preflight/import 命令'
       projectMessage.value = res.data.pending_external_artifact_count > 0
-        ? `已复制 ${res.data.project_count} 个项目、${res.data.pending_external_artifact_count} 个待外部 artifact 的 GEARS 回片交接队列。`
-        : '当前没有待外部回片的 GEARS job，已复制空队列摘要。'
+        ? `已复制 ${label}：${res.data.project_count} 个项目、${res.data.pending_external_artifact_count} 个待外部 artifact 的 GEARS 回片。`
+        : `当前没有待外部回片的 GEARS job，已复制空队列 ${label}。`
     } else {
       error.value = res.error?.message ?? '导出 GEARS 外部回片队列失败'
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '复制 GEARS 外部回片队列失败'
   } finally {
-    copyingGearsExternalQueue.value = false
+    gearsExternalQueueCopyMode.value = ''
   }
+}
+
+function gearsExternalQueueClipboardText(
+  queue: GearsExternalCallbackHandoffQueuePackage,
+  mode: GearsExternalQueueCopyMode,
+): string {
+  if (mode === 'markdown') return queue.markdown
+  if (mode === 'payload') return JSON.stringify(queue.callback_batch_sample, null, 2)
+  return [
+    '# GEARS/Seedance system external callback preflight/import',
+    '# 1. Replace every placeholder outputUrl with a real public http(s) external provider artifact URL.',
+    '# 2. Do not import local_acceptance, localhost/private network, file, or gears.example URLs.',
+    '# 3. Run preflight first. Run import only after blocked=false and blocking_count=0.',
+    '',
+    'cat > /tmp/gears-system-external-callbacks.json <<\'JSON\'',
+    JSON.stringify(queue.callback_batch_sample, null, 2),
+    'JSON',
+    '',
+    `curl -sS -X POST "${absoluteApiUrl(queue.system_preflight_path)}" \\`,
+    '  -H "content-type: application/json" \\',
+    '  -H "x-gears-callback-secret: <GEARS_CALLBACK_SECRET>" \\',
+    '  --data-binary @/tmp/gears-system-external-callbacks.json',
+    '',
+    '# Import only after preflight passes with blocked=false.',
+    `curl -sS -X POST "${absoluteApiUrl(queue.system_safe_import_path)}" \\`,
+    '  -H "content-type: application/json" \\',
+    '  -H "x-gears-callback-secret: <GEARS_CALLBACK_SECRET>" \\',
+    '  --data-binary @/tmp/gears-system-external-callbacks.json',
+  ].join('\n')
+}
+
+function absoluteApiUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path
+  const normalized = path.startsWith('/') ? path : `/${path}`
+  return `${window.location.origin}${normalized}`
 }
 
 async function loadGeneratedGovernancePlan() {
