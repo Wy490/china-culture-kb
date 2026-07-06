@@ -54,6 +54,7 @@
 48. 补强系统级真实外部回片操作物料：项目指挥页的生产指挥总览现在可分别复制跨项目 GEARS 外部回片队列 Markdown、`callback_batch_sample` JSON payload，以及带 `x-gears-callback-secret` 占位的系统 preflight/import curl 模板；前端仍不直接导入回片，必须先把 placeholder outputUrl 替换成真实公网 artifact URL 并通过系统 preflight，避免把 local acceptance 或示例 URL 当成真实外部回片。
 49. 下沉系统级回片命令模板到服务端：`gears-external-callback-handoff-queue/v1` 现在直接返回 `system_preflight_curl` 和 `system_safe_import_curl`，Markdown 也包含统一命令段；项目指挥页复制命令时复用服务端字段，避免 UI、API、worker 证据包之间出现不同 preflight/import 操作口径。
 50. 增加系统级回片队列 payload 自检：`gears-external-callback-handoff-queue/v1` 会统计 callback sample 总数、可直接导入数量、placeholder outputUrl、local/private outputUrl 和 invalid/missing URL，并输出 `sample_payload_ready_for_import`；项目指挥页复制 JSON payload 或命令时同步显示 ready/placeholder 计数，明确样例 payload 默认不能当真实外部回片导入。
+51. 建立 ProductionMaterialPack 组合体健康门禁：新增 `/api/system/production-material-pack-health` 只读报告，检查核心/高频片型是否有模板、required fields 是否全部映射到 readiness field spec、是否存在重复字段，以及 prompt layers、三阶段 gate、补充问题和样板条目是否达到下限；首批核心片型和 `explainer_video` 被固定为 10 条样板与 4 层 prompt 以上，后续扩片型可先过健康报告再进入 Story Agent 调用链。
 
 ## 原始诊断必须并入路线
 

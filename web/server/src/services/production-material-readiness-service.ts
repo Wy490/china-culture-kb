@@ -9,7 +9,7 @@ import type {
   ProductionMaterialReadinessStatus,
 } from '@shared/types.js';
 
-interface FieldSpec {
+export interface ProductionMaterialFieldSpec {
   label: string;
   stage: MaterialSufficiencyStage;
   blocking_level: MaterialBlockingLevel;
@@ -17,7 +17,7 @@ interface FieldSpec {
   question?: string;
 }
 
-const FIELD_SPECS: Record<string, FieldSpec> = {
+const FIELD_SPECS: Record<string, ProductionMaterialFieldSpec> = {
   project_name: field('项目名称', 'minimum_viable_story', 'blocking', ['项目名称', '片名', '主题', 'project', 'entry_name']),
   communication_goal: field('传播目标', 'minimum_viable_story', 'blocking', ['传播目标', '目标', '希望', '让观众', 'communication']),
   heritage_or_craft_type: field('非遗/工艺类别', 'minimum_viable_story', 'blocking', ['非遗', '工艺', '技艺', '民俗', '传承', 'craft', 'heritage']),
@@ -145,13 +145,21 @@ export function buildProductionMaterialReadinessReport(input: {
   };
 }
 
+export function getProductionMaterialFieldSpec(fieldId: string): ProductionMaterialFieldSpec | undefined {
+  return FIELD_SPECS[fieldId];
+}
+
+export function listProductionMaterialFieldIds(): string[] {
+  return Object.keys(FIELD_SPECS).sort((a, b) => a.localeCompare(b));
+}
+
 function field(
   label: string,
   stage: MaterialSufficiencyStage,
   blocking_level: MaterialBlockingLevel,
   keywords: string[],
   question?: string,
-): FieldSpec {
+): ProductionMaterialFieldSpec {
   return { label, stage, blocking_level, keywords, question };
 }
 

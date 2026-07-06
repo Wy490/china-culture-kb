@@ -560,6 +560,39 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/production-material-pack-health', () => {
+    it('returns production material pack portfolio health gates', async () => {
+      const res = await request.get('/api/system/production-material-pack-health');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'production-material-pack-health/v1',
+        status: 'passed',
+        pack_count: expect.any(Number),
+        required_video_types: expect.arrayContaining([
+          'heritage_promo',
+          'documentary_short',
+          'ai_comic_drama',
+          'explainer_video',
+        ]),
+        missing_required_video_types: [],
+        production_ready_core_video_types: expect.arrayContaining([
+          'heritage_promo',
+          'documentary_short',
+          'ai_comic_drama',
+          'explainer_video',
+        ]),
+        issues: [],
+      });
+      expect(res.body.data.packs.some((pack: any) => (
+        pack.video_type === 'ai_comic_drama'
+        && pack.sample_entry_count >= 10
+        && pack.unknown_required_fields.length === 0
+      ))).toBe(true);
+    });
+  });
+
   describe('GET /api/system/gears-external-callback-handoff-queue', () => {
     it('returns a read-only cross-project GEARS external callback queue package', async () => {
       const res = await request.get('/api/system/gears-external-callback-handoff-queue?limit=5');

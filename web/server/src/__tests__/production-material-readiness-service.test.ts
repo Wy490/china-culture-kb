@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { MaterialPack } from '@shared/types.js';
-import { getProductionMaterialPack } from '../services/production-material-pack-service.js';
-import { buildProductionMaterialReadinessReport } from '../services/production-material-readiness-service.js';
+import {
+  getProductionMaterialPack,
+  getProductionMaterialPackHealthReport,
+  getProductionMaterialPacks,
+} from '../services/production-material-pack-service.js';
+import {
+  buildProductionMaterialReadinessReport,
+  getProductionMaterialFieldSpec,
+} from '../services/production-material-readiness-service.js';
 
 function makeMaterialPack(summary: string): MaterialPack {
   return {
@@ -27,6 +34,46 @@ function makeMaterialPack(summary: string): MaterialPack {
 }
 
 describe('production-material-readiness-service', () => {
+  it('keeps production material packs mapped to readiness field specs', () => {
+    const packs = getProductionMaterialPacks();
+    const report = getProductionMaterialPackHealthReport({ generatedAt: '2026-07-06T00:00:00.000Z' });
+
+    expect(report.schema_version).toBe('production-material-pack-health/v1');
+    expect(report.status).toBe('passed');
+    expect(report.pack_count).toBe(packs.length);
+    expect(report.missing_required_video_types).toHaveLength(0);
+    expect(report.issues).toHaveLength(0);
+
+    for (const pack of packs) {
+      for (const fieldId of pack.material_template.required_fields) {
+        expect(getProductionMaterialFieldSpec(fieldId), `${pack.video_type}:${fieldId}`).toBeTruthy();
+      }
+    }
+  });
+
+  it('holds core production-ready video types to sample and prompt coverage gates', () => {
+    const report = getProductionMaterialPackHealthReport({ generatedAt: '2026-07-06T00:00:00.000Z' });
+
+    expect(report.production_ready_core_video_types).toEqual(expect.arrayContaining([
+      'heritage_promo',
+      'documentary_short',
+      'ai_comic_drama',
+      'explainer_video',
+    ]));
+
+    for (const videoType of report.core_video_types) {
+      const summary = report.packs.find(pack => pack.video_type === videoType);
+      expect(summary, videoType).toBeTruthy();
+      expect(summary?.status).toBe('passed');
+      expect(summary?.sample_entry_count).toBeGreaterThanOrEqual(10);
+      expect(summary?.prompt_layer_count).toBeGreaterThanOrEqual(4);
+      expect(summary?.supplement_question_count).toBeGreaterThanOrEqual(4);
+      expect(summary?.gate_item_counts.minimum_viable_story).toBeGreaterThanOrEqual(3);
+      expect(summary?.gate_item_counts.script_ready).toBeGreaterThanOrEqual(3);
+      expect(summary?.gate_item_counts.production_ready).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   it('builds type-specific missing field reports for AI comic drama', () => {
     const pack = getProductionMaterialPack('ai_comic_drama');
     const materialPack = makeMaterialPack('第一格钩子：少年在书院门口发现旧书。主角目标是查清误会，对手压力来自同窗质疑。场景锚点是岳麓书院夜色，真实度为原创虚构。');

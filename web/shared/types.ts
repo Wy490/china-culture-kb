@@ -5861,6 +5861,52 @@ export interface ProductionMaterialPack {
   sample_entries: ProductionMaterialSampleEntry[];
 }
 
+export type ProductionMaterialPackHealthStatus = 'passed' | 'warning' | 'failed';
+export type ProductionMaterialPackIssueSeverity = 'warning' | 'error';
+
+export interface ProductionMaterialPackHealthIssue {
+  severity: ProductionMaterialPackIssueSeverity;
+  issue_type:
+    | 'missing_required_video_type'
+    | 'unknown_required_field'
+    | 'duplicate_required_field'
+    | 'underfilled_prompt_layers'
+    | 'underfilled_sample_entries'
+    | 'underfilled_supplement_questions'
+    | 'underfilled_gate_items';
+  video_type?: VideoType;
+  message: string;
+  details?: string[];
+}
+
+export interface ProductionMaterialPackHealthSummary {
+  video_type: VideoType;
+  label: string;
+  required_field_count: number;
+  prompt_layer_count: number;
+  sample_entry_count: number;
+  supplement_question_count: number;
+  gate_item_counts: Record<MaterialSufficiencyStage, number>;
+  unknown_required_fields: string[];
+  duplicate_required_fields: string[];
+  status: ProductionMaterialPackHealthStatus;
+}
+
+export interface ProductionMaterialPackHealthReport {
+  schema_version: 'production-material-pack-health/v1';
+  generated_at: string;
+  status: ProductionMaterialPackHealthStatus;
+  pack_count: number;
+  required_video_types: VideoType[];
+  covered_required_video_types: VideoType[];
+  missing_required_video_types: VideoType[];
+  core_video_types: VideoType[];
+  production_ready_core_video_types: VideoType[];
+  high_frequency_video_types: VideoType[];
+  packs: ProductionMaterialPackHealthSummary[];
+  issues: ProductionMaterialPackHealthIssue[];
+}
+
 export type ProductionMaterialReadinessStatus = 'ready' | 'needs_input' | 'blocked';
 
 export interface ProductionMaterialMissingField {

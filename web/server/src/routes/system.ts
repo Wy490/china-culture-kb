@@ -42,6 +42,7 @@ import {
   preflightGearsExternalCallbackBatch,
   runProductionReadinessPortfolioAutomation,
 } from '../services/production-readiness-portfolio-service.js';
+import { getProductionMaterialPackHealthReport } from '../services/production-material-pack-service.js';
 import {
   getStoryAgentGeneratedGovernancePlan,
   runStoryAgentGeneratedGovernance,
@@ -143,6 +144,14 @@ systemRouter.get('/models', (_req, res) => {
 
 systemRouter.get('/narrative-patterns', (_req, res) => {
   res.json(success(getNarrativePatternCatalog()));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/production-material-pack-health — template portfolio gate
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/production-material-pack-health', (_req, res) => {
+  res.json(success(getProductionMaterialPackHealthReport()));
 });
 
 // ---------------------------------------------------------------------------
