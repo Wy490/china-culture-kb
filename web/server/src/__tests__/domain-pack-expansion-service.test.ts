@@ -39,6 +39,37 @@ describe('domain-pack-expansion-service', () => {
     ]);
     expect(report.seed_target_count).toBeGreaterThanOrEqual(18);
     expect(report.candidate_field_count).toBeGreaterThanOrEqual(40);
+    expect(report.review_packet).toMatchObject({
+      schema_version: 'domain-pack-expansion-review-packet/v1',
+      source_schema_version: 'domain-pack-expansion-candidates/v1',
+      domain_id: 'china_culture',
+      status: 'passed',
+      batch_count: 5,
+      review_item_count: report.seed_target_count,
+      candidate_field_count: report.candidate_field_count,
+      review_policy: {
+        direct_writeback_to_province_markdown: false,
+        requires_candidate_markdown: true,
+        requires_human_review: true,
+        requires_source_level: true,
+      },
+    });
+    expect(report.review_packet.batches).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        pack_id: 'heritage_process_pack',
+        review_items: expect.arrayContaining([
+          expect.objectContaining({
+            entry_name: '滩头年画——湘西南木版年画的最后守望',
+            province: '湖南',
+            candidate_status: 'candidate_review',
+            candidate_markdown: expect.stringContaining('direct_writeback_to_province_markdown: false'),
+          }),
+        ]),
+      }),
+    ]));
+    expect(report.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
+    expect(report.review_packet.markdown).toContain('滩头年画');
+    expect(report.review_packet.markdown).toContain('候选稿只记录待补字段');
     expect(report.batches).toEqual(expect.arrayContaining([
       expect.objectContaining({
         pack_id: 'heritage_process_pack',
@@ -57,6 +88,7 @@ describe('domain-pack-expansion-service', () => {
     ]));
     expect(report.markdown).toContain('Domain Pack Expansion Candidates');
     expect(report.markdown).toContain('direct_writeback_to_province_markdown: false');
+    expect(report.markdown).toContain('review_packet_item_count');
   });
 
   it('can omit markdown for machine-only callers', () => {
@@ -64,5 +96,7 @@ describe('domain-pack-expansion-service', () => {
 
     expect(report.status).toBe('passed');
     expect(report.markdown).toBeUndefined();
+    expect(report.review_packet.review_item_count).toBe(report.seed_target_count);
+    expect(report.review_packet.markdown).toBeUndefined();
   });
 });

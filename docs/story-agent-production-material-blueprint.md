@@ -78,6 +78,7 @@
 72. 将外部回片 URL 复核证据写入 archive 并签收：`gears-worker-acceptance-archive.json/.md` 的 `audit_summaries.system_external_callback` 会保留 verdict 中的 `output_url_verification`；Web/MCP 最终 signoff 会继续比对 archive 嵌入副本与真实 import 回执，确保交接包不丢失或篡改 GEARS/Seedance 回片 URL 证据。
 73. 正式启动 Domain Pack 素材扩库候选批次：`data/domain-packs/china-culture-production-expansion-candidates.json` 新增非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物和讲解知识结构 5 个首批候选批次，均保持 `candidate_review` 且禁止 direct writeback；Web `/api/system/domain-pack-expansion-candidates` 与 MCP `kb_get_domain_pack_expansion_candidates` 可只读导出覆盖率、候选条目、字段组和审稿门禁，后续只能通过候选稿、人工审稿和写回队列进入正式省份 Markdown。
 74. 将 Domain Pack 扩库候选纳入 Story Agent MVP 总控：Web/MCP `story-agent-mvp-status` 新增 `domain_pack_expansion` lane，summary/Markdown/progress evidence 会显示候选批次数、种子条目数、候选字段数、issue 数和 direct writeback=false；项目总览页同步展示“扩库候选”指标，便于把素材库补充进度纳入日常生产指挥。
+75. 补齐 Domain Pack 扩库候选审稿包：Web `/api/system/domain-pack-expansion-candidates` 与 MCP `kb_get_domain_pack_expansion_candidates` 新增 `domain-pack-expansion-review-packet/v1`，把 5 个候选批次展开为逐条 `review_item_id`、推荐补字段、禁写断言和候选 Markdown；默认 Markdown 输出可直接交给人工审稿或外部写回队列工具，`include_markdown=false` 仍保留结构化 JSON。该包只生成候选稿，不直接改写 `data/provinces/*.md`。
 
 ## 原始诊断必须并入路线
 
@@ -233,7 +234,7 @@
 - 已新增系统级批量 GEARS 外部 callback preflight/import，外部 worker 可一次回传多项目真实公网 artifact URL；系统仍会按项目执行 preflight 和安全导入，不会把 `local_acceptance` 或示例 URL 当外部回片。
 - 已将系统级外部 callback preflight/import 纳入 GEARS worker acceptance kit、shell script、payload 文件、callback response audit、acceptance verdict、archive 必需证据和 worker evidence signoff ready 判定；worker kit 已不再内置 `.test` 回片 URL，会优先从 GEARS worker 响应自动抽取真实公网 artifact，必要时再通过 `GEARS_SYSTEM_EXTERNAL_OUTPUT_URL` 手工覆盖；acceptance verdict 也会复核 import response 是否包含该已验证 URL。
 - 已同步 MCP `kb_get_gears_worker_evidence_signoff` 的签收口径，MCP 与 Web signoff 一样要求系统级外部 artifact URL 来源可验证，系统级 import response 本体包含该已验证 `output_url`，且 acceptance verdict 与 archive 嵌入的 `output_url_verification` 都与最终重算结果一致后才会返回 `ready`。
-- 已开始素材库扩充第一批候选：5 个 Domain Pack 扩库批次已进入只读候选报告和 Story Agent MVP 总控，覆盖 18 个种子条目和 40+ 个候选字段；所有候选均保持审稿状态，不直接改写正式知识库。
+- 已开始素材库扩充第一批候选：5 个 Domain Pack 扩库批次已进入只读候选报告、审稿包和 Story Agent MVP 总控，覆盖 18 个种子条目和 40+ 个候选字段；所有候选均保持审稿状态，不直接改写正式知识库。
 - 待继续：接入真实 GEARS/Seedance 外部执行 worker，把交接队列中的样例 `outputUrl` 替换为真实公网 artifact URL 后回传，并跑出 `system_external_callback_passed=true` 的 worker evidence signoff。
 
 ### Phase 4：前端工作台
@@ -316,6 +317,7 @@
 - 朝代设定包、地域文化包、非遗流程包、纪录片来源包、AI 漫剧分镜包、朝代服饰与器物包、讲解知识结构包、儿童改写规则包、短视频钩子包、宣讲培训结构包已进入 `data/domain-packs/china-culture.json`。
 - 非遗流程、纪录片来源、AI 漫剧分镜、朝代服饰器物、讲解知识结构、儿童改写、短视频钩子、宣讲培训结构包已带 `production_prompts` 和 `review_boundaries`，会进入 Story Agent prompt。
 - `china-culture-production-expansion-candidates.json` 已建立非遗流程、纪录片来源、AI 漫剧分镜、朝代服饰器物和讲解知识结构 5 个 `candidate_review` 批次，Web/MCP 均可只读导出并进入 MVP 总控，不允许 direct writeback。
+- Web/MCP 扩库候选报告已生成 `domain-pack-expansion-review-packet/v1`，将每个 seed target 展开为候选审稿项、禁写断言和 Markdown 候选稿，后续可接入批量审稿或写回队列，但仍不得直接写省份 Markdown。
 - `children_story` / `social_short` / `lecture_video` / `education_training` 相关 query 已有优先 Domain Pack 命中。
 - 所有 Domain Pack 只提供采集结构、生产提示和审稿边界，不自动写入 `data/provinces/*.md`，也不得替代具体来源核验。
 

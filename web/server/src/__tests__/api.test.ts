@@ -663,9 +663,33 @@ describe('System API', () => {
         },
         batch_count: 5,
         issues: [],
+        review_packet: {
+          schema_version: 'domain-pack-expansion-review-packet/v1',
+          status: 'passed',
+          review_policy: {
+            direct_writeback_to_province_markdown: false,
+            requires_candidate_markdown: true,
+            requires_human_review: true,
+            requires_source_level: true,
+          },
+        },
       });
       expect(res.body.data.seed_target_count).toBeGreaterThanOrEqual(18);
       expect(res.body.data.candidate_field_count).toBeGreaterThanOrEqual(40);
+      expect(res.body.data.review_packet.review_item_count).toBe(res.body.data.seed_target_count);
+      expect(res.body.data.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
+      expect(res.body.data.review_packet.markdown).toContain('滩头年画');
+      expect(res.body.data.review_packet.batches).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          pack_id: 'heritage_process_pack',
+          review_items: expect.arrayContaining([
+            expect.objectContaining({
+              candidate_status: 'candidate_review',
+              candidate_markdown: expect.stringContaining('不得直接改写 data/provinces/*.md'),
+            }),
+          ]),
+        }),
+      ]));
       expect(res.body.data.batches).toEqual(expect.arrayContaining([
         expect.objectContaining({
           pack_id: 'heritage_process_pack',
@@ -679,6 +703,7 @@ describe('System API', () => {
       ]));
       expect(res.body.data.markdown).toContain('Domain Pack Expansion Candidates');
       expect(res.body.data.markdown).toContain('direct_writeback_to_province_markdown: false');
+      expect(res.body.data.markdown).toContain('review_packet_item_count');
     });
   });
 

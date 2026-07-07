@@ -164,6 +164,57 @@ interface DomainPackExpansionBatchSummary {
   provinces: string[];
 }
 
+interface DomainPackExpansionReviewFieldGroup {
+  group_id: string;
+  candidate_fields: string[];
+  review_questions: string[];
+}
+
+interface DomainPackExpansionReviewItem {
+  review_item_id: string;
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  province: string;
+  priority: string;
+  target_video_types: string[];
+  candidate_status: string;
+  recommended_fields: string[];
+  forbidden_direct_claims: string[];
+  candidate_markdown: string;
+}
+
+interface DomainPackExpansionReviewBatch {
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  priority: string;
+  status: string;
+  target_video_types: string[];
+  field_groups: DomainPackExpansionReviewFieldGroup[];
+  review_item_count: number;
+  review_items: DomainPackExpansionReviewItem[];
+}
+
+interface DomainPackExpansionReviewPacket {
+  schema_version: 'domain-pack-expansion-review-packet/v1';
+  generated_at: string;
+  source_schema_version: string;
+  domain_id: string;
+  status: PackHealthStatus;
+  review_policy: {
+    direct_writeback_to_province_markdown: boolean;
+    requires_candidate_markdown: boolean;
+    requires_human_review: boolean;
+    requires_source_level: boolean;
+  };
+  batch_count: number;
+  review_item_count: number;
+  candidate_field_count: number;
+  batches: DomainPackExpansionReviewBatch[];
+  markdown?: string;
+}
+
 export interface DomainPackExpansionCandidateReport {
   schema_version: 'domain-pack-expansion-candidates-report/v1';
   generated_at: string;
@@ -185,6 +236,7 @@ export interface DomainPackExpansionCandidateReport {
   candidate_field_count: number;
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];
+  review_packet: DomainPackExpansionReviewPacket;
 }
 
 export type ProductionMaterialPackHealthToolResult = ProductionMaterialPackHealthReport & { markdown?: string };
@@ -800,6 +852,12 @@ interface ExpansionBatch {
   seed_targets: ExpansionSeedTarget[];
 }
 
+type DomainPackExpansionCandidateReportDraft = Omit<
+  DomainPackExpansionCandidateReport,
+  'review_packet'
+>;
+type DomainPackExpansionReviewItemDraft = Omit<DomainPackExpansionReviewItem, 'candidate_markdown'>;
+
 export function getDomainPackExpansionCandidateReport(): DomainPackExpansionCandidateReport {
   const file = readDataJsonRecord('domain-packs', 'china-culture-production-expansion-candidates.json');
   const issues: DomainPackExpansionCandidateIssue[] = [];
@@ -810,7 +868,7 @@ export function getDomainPackExpansionCandidateReport(): DomainPackExpansionCand
       issue_type: 'missing_candidate_file',
       message: '缺少 Domain Pack 扩库候选文件：data/domain-packs/china-culture-production-expansion-candidates.json。',
     });
-    return {
+    return withExpansionReviewPacket({
       schema_version: 'domain-pack-expansion-candidates-report/v1',
       generated_at: new Date().toISOString(),
       source_schema_version: 'missing',
@@ -831,7 +889,7 @@ export function getDomainPackExpansionCandidateReport(): DomainPackExpansionCand
       candidate_field_count: 0,
       batches: [],
       issues,
-    };
+    }, []);
   }
 
   if (file.schema_version !== 'domain-pack-expansion-candidates/v1') {
@@ -918,7 +976,7 @@ export function getDomainPackExpansionCandidateReport(): DomainPackExpansionCand
   }
 
   const batchSummaries = batches.map(summarizeExpansionBatch);
-  return {
+  return withExpansionReviewPacket({
     schema_version: 'domain-pack-expansion-candidates-report/v1',
     generated_at: new Date().toISOString(),
     source_schema_version: typeof file.schema_version === 'string' ? file.schema_version : 'missing',
@@ -939,6 +997,82 @@ export function getDomainPackExpansionCandidateReport(): DomainPackExpansionCand
     candidate_field_count: batchSummaries.reduce((sum, batch) => sum + batch.candidate_field_count, 0),
     batches: batchSummaries,
     issues,
+  }, batches);
+}
+
+function withExpansionReviewPacket(
+  report: DomainPackExpansionCandidateReportDraft,
+  sourceBatches: ExpansionBatch[],
+  includeMarkdown = false,
+): DomainPackExpansionCandidateReport {
+  return {
+    ...report,
+    review_packet: buildDomainPackExpansionReviewPacket(report, sourceBatches, includeMarkdown),
+  };
+}
+
+function buildDomainPackExpansionReviewPacket(
+  report: DomainPackExpansionCandidateReportDraft,
+  sourceBatches: ExpansionBatch[],
+  includeMarkdown: boolean,
+): DomainPackExpansionReviewPacket {
+  const reviewBatches = sourceBatches.map(batch => {
+    const reviewItems = batch.seed_targets.map((target, index) => buildExpansionReviewItem(batch, target, index));
+    return {
+      batch_id: batch.batch_id,
+      pack_id: batch.pack_id,
+      entry_name: batch.entry_name,
+      priority: batch.priority,
+      status: batch.status,
+      target_video_types: batch.target_video_types,
+      field_groups: batch.field_groups.map(group => ({
+        group_id: group.group_id,
+        candidate_fields: group.candidate_fields,
+        review_questions: group.review_questions,
+      })),
+      review_item_count: reviewItems.length,
+      review_items: reviewItems,
+    };
+  });
+  const packet: Omit<DomainPackExpansionReviewPacket, 'markdown'> = {
+    schema_version: 'domain-pack-expansion-review-packet/v1',
+    generated_at: report.generated_at,
+    source_schema_version: report.source_schema_version,
+    domain_id: report.domain_id,
+    status: report.status,
+    review_policy: report.review_policy,
+    batch_count: reviewBatches.length,
+    review_item_count: reviewBatches.reduce((sum, batch) => sum + batch.review_item_count, 0),
+    candidate_field_count: report.candidate_field_count,
+    batches: reviewBatches,
+  };
+
+  return includeMarkdown
+    ? { ...packet, markdown: renderDomainPackExpansionReviewPacketMarkdown(packet) }
+    : packet;
+}
+
+function buildExpansionReviewItem(
+  batch: ExpansionBatch,
+  target: ExpansionSeedTarget,
+  index: number,
+): DomainPackExpansionReviewItem {
+  const item: DomainPackExpansionReviewItemDraft = {
+    review_item_id: `${batch.batch_id}::target_${String(index + 1).padStart(2, '0')}`,
+    batch_id: batch.batch_id,
+    pack_id: batch.pack_id,
+    entry_name: target.entry_name,
+    province: target.province,
+    priority: batch.priority,
+    target_video_types: batch.target_video_types,
+    candidate_status: target.candidate_status,
+    recommended_fields: target.recommended_fields,
+    forbidden_direct_claims: target.forbidden_direct_claims,
+  };
+
+  return {
+    ...item,
+    candidate_markdown: renderDomainPackExpansionReviewItemMarkdown(item),
   };
 }
 
@@ -978,6 +1112,9 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     `- batch_count: ${report.batch_count}`,
     `- seed_target_count: ${report.seed_target_count}`,
     `- candidate_field_count: ${report.candidate_field_count}`,
+    `- review_packet_schema_version: ${report.review_packet.schema_version}`,
+    `- review_packet_item_count: ${report.review_packet.review_item_count}`,
+    `- review_packet_markdown: ${report.review_packet.markdown ? 'included' : 'omitted'}`,
     '',
     '## Batches',
     '',
@@ -989,13 +1126,118 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
   ].join('\n').trim() + '\n';
 }
 
+export function renderDomainPackExpansionReviewPacketMarkdown(
+  packet: Omit<DomainPackExpansionReviewPacket, 'markdown'>,
+): string {
+  const batchSections = packet.batches.length
+    ? packet.batches.flatMap(batch => [
+      `## ${batch.priority} · ${batch.pack_id} · ${batch.batch_id}`,
+      '',
+      `- entry_name: ${batch.entry_name}`,
+      `- status: ${batch.status}`,
+      `- target_video_types: ${batch.target_video_types.join(', ') || 'none'}`,
+      `- review_item_count: ${batch.review_item_count}`,
+      '',
+      '### Field Groups',
+      '',
+      ...batch.field_groups.flatMap(group => [
+        `#### ${group.group_id}`,
+        '',
+        'Candidate fields:',
+        ...markdownList(group.candidate_fields),
+        '',
+        'Review questions:',
+        ...markdownList(group.review_questions),
+        '',
+      ]),
+      '### Candidate Review Items',
+      '',
+      ...batch.review_items.flatMap(item => [item.candidate_markdown, '']),
+    ])
+    : ['## Batches', '', '- none'];
+
+  return [
+    '# Domain Pack Expansion Review Packet',
+    '',
+    `> schema_version: ${packet.schema_version}`,
+    `> generated_at: ${packet.generated_at}`,
+    `> source_schema_version: ${packet.source_schema_version}`,
+    `> domain_id: ${packet.domain_id}`,
+    `> status: ${packet.status}`,
+    '',
+    '## Review Policy',
+    '',
+    `- direct_writeback_to_province_markdown: ${packet.review_policy.direct_writeback_to_province_markdown}`,
+    `- requires_candidate_markdown: ${packet.review_policy.requires_candidate_markdown}`,
+    `- requires_human_review: ${packet.review_policy.requires_human_review}`,
+    `- requires_source_level: ${packet.review_policy.requires_source_level}`,
+    '',
+    '## Counts',
+    '',
+    `- batch_count: ${packet.batch_count}`,
+    `- review_item_count: ${packet.review_item_count}`,
+    `- candidate_field_count: ${packet.candidate_field_count}`,
+    '',
+    ...batchSections,
+  ].join('\n').trim() + '\n';
+}
+
+function renderDomainPackExpansionReviewItemMarkdown(
+  item: DomainPackExpansionReviewItemDraft,
+): string {
+  return [
+    `#### Candidate: ${item.entry_name}`,
+    '',
+    `- review_item_id: ${item.review_item_id}`,
+    `- province: ${item.province}`,
+    `- pack_id: ${item.pack_id}`,
+    `- batch_id: ${item.batch_id}`,
+    `- target_video_types: ${item.target_video_types.join(', ') || 'none'}`,
+    `- candidate_status: ${item.candidate_status}`,
+    `- candidate_draft_only: true`,
+    `- direct_writeback_to_province_markdown: false`,
+    '',
+    'Recommended fields:',
+    ...markdownList(item.recommended_fields),
+    '',
+    'Forbidden direct claims:',
+    ...markdownList(item.forbidden_direct_claims),
+    '',
+    'Review notes:',
+    '- 候选稿只记录待补字段、禁写断言和审稿问题，不得直接改写 data/provinces/*.md。',
+    '- 进入正式知识库前必须补足来源级证据，并经人工审稿后进入写回队列。',
+  ].join('\n');
+}
+
 export function getDomainPackExpansionCandidateToolResult(input: {
   include_markdown?: boolean;
 } = {}): DomainPackExpansionCandidateToolResult {
   const report = getDomainPackExpansionCandidateReport();
   return input.include_markdown === false
     ? report
-    : { ...report, markdown: renderDomainPackExpansionCandidateMarkdown(report) };
+    : withExpansionCandidateMarkdown(report);
+}
+
+function withExpansionCandidateMarkdown(
+  report: DomainPackExpansionCandidateReport,
+): DomainPackExpansionCandidateToolResult {
+  const reviewPacket: DomainPackExpansionReviewPacket = {
+    ...report.review_packet,
+    markdown: renderDomainPackExpansionReviewPacketMarkdown(report.review_packet),
+  };
+  const reportWithMarkdownPacket: DomainPackExpansionCandidateReport = {
+    ...report,
+    review_packet: reviewPacket,
+  };
+
+  return {
+    ...reportWithMarkdownPacket,
+    markdown: renderDomainPackExpansionCandidateMarkdown(reportWithMarkdownPacket),
+  };
+}
+
+function markdownList(items: string[]): string[] {
+  return items.length ? items.map(item => `- ${item}`) : ['- none'];
 }
 
 function normalizeExpansionBatch(value: unknown): ExpansionBatch | undefined {

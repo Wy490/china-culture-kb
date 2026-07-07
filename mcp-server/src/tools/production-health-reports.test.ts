@@ -91,6 +91,13 @@ describe('production health reports', () => {
       seed_target_count: 0,
       candidate_field_count: 0,
       covered_required_pack_ids: [],
+      review_packet: {
+        schema_version: 'domain-pack-expansion-review-packet/v1',
+        status: 'failed',
+        batch_count: 0,
+        review_item_count: 0,
+        candidate_field_count: 0,
+      },
     });
     expect(domainPackExpansionCandidates.required_pack_ids).toHaveLength(5);
     expect(domainPackExpansionCandidates.missing_required_pack_ids).toEqual(domainPackExpansionCandidates.required_pack_ids);
@@ -123,7 +130,11 @@ describe('production health reports', () => {
     expect(domainPackExpansionCandidates.status).toBe('failed');
     expect(domainPackExpansionCandidates.markdown).toContain('Domain Pack Expansion Candidates');
     expect(domainPackExpansionCandidates.markdown).toContain('missing_candidate_file');
+    expect(domainPackExpansionCandidates.markdown).toContain('review_packet_item_count');
+    expect(domainPackExpansionCandidates.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
+    expect(domainPackExpansionCandidates.review_packet.markdown).toContain('direct_writeback_to_province_markdown: true');
     expect(getDomainPackExpansionCandidateToolResult({ include_markdown: false }).markdown).toBeUndefined();
+    expect(getDomainPackExpansionCandidateToolResult({ include_markdown: false }).review_packet.markdown).toBeUndefined();
   });
 
   it('reports review-gated Domain Pack expansion candidates', () => {
@@ -181,6 +192,13 @@ describe('production health reports', () => {
       seed_target_count: 5,
       candidate_field_count: 5,
       issues: [],
+      review_packet: {
+        schema_version: 'domain-pack-expansion-review-packet/v1',
+        status: 'passed',
+        batch_count: 5,
+        review_item_count: 5,
+        candidate_field_count: 5,
+      },
       review_policy: {
         direct_writeback_to_province_markdown: false,
         requires_candidate_markdown: true,
@@ -194,5 +212,19 @@ describe('production health reports', () => {
         provinces: ['湖南'],
       }),
     ]));
+    expect(report.review_packet.batches).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        pack_id: 'heritage_process_pack',
+        review_items: expect.arrayContaining([
+          expect.objectContaining({
+            entry_name: 'heritage_process_pack target',
+            candidate_markdown: expect.stringContaining('candidate_draft_only: true'),
+          }),
+        ]),
+      }),
+    ]));
+    const toolResult = getDomainPackExpansionCandidateToolResult();
+    expect(toolResult.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
+    expect(toolResult.review_packet.markdown).toContain('heritage_process_pack target');
   });
 });

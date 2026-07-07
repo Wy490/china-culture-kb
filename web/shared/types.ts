@@ -5912,6 +5912,57 @@ export interface DomainPackExpansionBatchSummary {
   provinces: string[];
 }
 
+export interface DomainPackExpansionReviewFieldGroup {
+  group_id: string;
+  candidate_fields: string[];
+  review_questions: string[];
+}
+
+export interface DomainPackExpansionReviewItem {
+  review_item_id: string;
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  province: string;
+  priority: string;
+  target_video_types: string[];
+  candidate_status: string;
+  recommended_fields: string[];
+  forbidden_direct_claims: string[];
+  candidate_markdown: string;
+}
+
+export interface DomainPackExpansionReviewBatch {
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  priority: string;
+  status: string;
+  target_video_types: string[];
+  field_groups: DomainPackExpansionReviewFieldGroup[];
+  review_item_count: number;
+  review_items: DomainPackExpansionReviewItem[];
+}
+
+export interface DomainPackExpansionReviewPacket {
+  schema_version: 'domain-pack-expansion-review-packet/v1';
+  generated_at: string;
+  source_schema_version: string;
+  domain_id: string;
+  status: DomainPackProductionHealthStatus;
+  review_policy: {
+    direct_writeback_to_province_markdown: boolean;
+    requires_candidate_markdown: boolean;
+    requires_human_review: boolean;
+    requires_source_level: boolean;
+  };
+  batch_count: number;
+  review_item_count: number;
+  candidate_field_count: number;
+  batches: DomainPackExpansionReviewBatch[];
+  markdown?: string;
+}
+
 export interface DomainPackExpansionCandidateReport {
   schema_version: 'domain-pack-expansion-candidates-report/v1';
   generated_at: string;
@@ -5933,6 +5984,7 @@ export interface DomainPackExpansionCandidateReport {
   candidate_field_count: number;
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];
+  review_packet: DomainPackExpansionReviewPacket;
   markdown?: string;
 }
 
