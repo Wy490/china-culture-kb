@@ -153,6 +153,8 @@ export interface ProductionReadinessReport {
     failed_shot_count?: number;
     gears_job_count: number;
     active_gears_job_count: number;
+    seedance_placeholder_asset_count: number;
+    seedance_production_asset_ready_count: number;
   };
   lanes: ProductionReadinessLane[];
   issues: ProductionReadinessIssue[];
@@ -213,6 +215,10 @@ function asString(value: unknown, fallback = ''): string {
 
 function asNumber(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function asOptionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
 function asBoolean(value: unknown): boolean | undefined {
@@ -280,6 +286,67 @@ function clampScore(score: number): number {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
+function isSeedancePlaceholderAsset(asset: JsonRecord): boolean {
+  const provider = asString(asset.provider);
+  const providerAssetId = asString(asset.provider_asset_id);
+  const localPath = asString(asset.local_path);
+  const originalFilename = asString(asset.original_filename);
+  const mimeType = asString(asset.mime_type);
+  return provider === 'story_agent_placeholder'
+    || providerAssetId.startsWith('story-agent-placeholder:')
+    || localPath.includes('/seedance-assets/placeholder-')
+    || originalFilename.startsWith('placeholder-')
+    || (mimeType === 'image/svg+xml' && localPath.includes('/seedance-assets/'));
+}
+
+function isSeedanceBoundAsset(asset: JsonRecord): boolean {
+  const uploadStatus = asString(asset.upload_status);
+  return asBoolean(asset.is_bound) === true
+    || Boolean(
+      asString(asset.file_url)
+      || asString(asset.file_id)
+      || asString(asset.local_path)
+      || asString(asset.provider_asset_id)
+      || uploadStatus === 'uploaded'
+      || uploadStatus === 'external'
+    );
+}
+
+function seedanceAssetCountsFromRecords(records: JsonRecord[]): {
+  placeholder: number;
+  productionReady: number;
+} {
+  let placeholder = 0;
+  let productionReady = 0;
+  for (const record of records) {
+    if (!isSeedanceBoundAsset(record)) continue;
+    if (asBoolean(record.is_placeholder) === true || isSeedancePlaceholderAsset(record)) placeholder += 1;
+    else productionReady += 1;
+  }
+  return { placeholder, productionReady };
+}
+
+async function readStorySeedanceAssetCounts(
+  projectId: string,
+  project: JsonRecord,
+): Promise<{ placeholder: number; productionReady: number }> {
+  try {
+    const report = asRecord(await readJsonFile<unknown>(
+      path.resolve(generatedRoot(), 'projects', projectId, 'production-board', 'seedance-asset-report.json'),
+    ));
+    const placeholder = asOptionalNumber(report.placeholder_asset_count);
+    const productionReady = asOptionalNumber(report.production_asset_ready_count);
+    if (placeholder !== undefined && productionReady !== undefined) {
+      return { placeholder, productionReady };
+    }
+    const assets = asArray(report.assets);
+    if (assets.length > 0) return seedanceAssetCountsFromRecords(assets);
+  } catch {
+    // Older projects may not have exported seedance-asset-report.json yet.
+  }
+  return seedanceAssetCountsFromRecords(asArray(asRecord(project.seedance_asset_library).items));
+}
+
 function statusScore(status: ProductionReadinessStatus): number {
   if (status === 'ready') return 100;
   if (status === 'needs_action') return 65;
@@ -341,6 +408,8 @@ function buildSummary(params: {
   totalShotCount?: number;
   readyShotCount?: number;
   failedShotCount?: number;
+  seedancePlaceholderAssetCount?: number;
+  seedanceProductionAssetReadyCount?: number;
   gearsSummary: GearsSummary;
 }): ProductionReadinessReport['summary'] {
   const blockerCount = params.issues.filter(issue => issue.severity === 'blocking').length;
@@ -369,6 +438,8 @@ function buildSummary(params: {
     failed_shot_count: params.failedShotCount,
     gears_job_count: params.gearsSummary.total,
     active_gears_job_count: params.gearsSummary.active,
+    seedance_placeholder_asset_count: params.seedancePlaceholderAssetCount ?? 0,
+    seedance_production_asset_ready_count: params.seedanceProductionAssetReadyCount ?? 0,
   };
 }
 
@@ -547,6 +618,8 @@ function buildMarkdown(report: Omit<ProductionReadinessReport, 'markdown'>): str
     `- blockers: ${report.summary.blocker_count}`,
     `- warnings: ${report.summary.warning_count}`,
     `- next actions: ${report.summary.next_action_count}`,
+    `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
+    `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
     '',
     '## Lanes',
     '',
@@ -613,6 +686,7 @@ async function buildStoryProjectReadiness(
   const exportRecord = asRecord(currentVersion.production_board_export);
   const exportStage = asString(exportRecord.delivery_stage);
   const hasExport = Boolean(exportRecord.exported_at);
+  const seedanceAssetCounts = await readStorySeedanceAssetCounts(projectId, project);
 
   const issues: ProductionReadinessIssue[] = [];
   const actions: ProductionReadinessNextAction[] = [];
@@ -669,6 +743,16 @@ async function buildStoryProjectReadiness(
       detail: '通过 Web/API 导出 Production Board JSON/Markdown/Seedance prompt/shot ledger。',
       priority: 30,
       lane_key: 'delivery_contract',
+    });
+  }
+  if (seedanceAssetCounts.placeholder > 0) {
+    issues.push({
+      issue_id: 'seedance-assets-placeholder-only',
+      severity: 'warning',
+      lane_key: 'delivery_contract',
+      label: `${seedanceAssetCounts.placeholder} 个 Seedance 占位参考图待替换`,
+      detail: 'MCP 检测到 story_agent_placeholder 或 placeholder SVG；它们只表示结构化绑定，正式投产前仍需替换为真实视觉素材。',
+      action_label: '批量导入正式素材',
     });
   }
   if (shots.failed > 0) {
@@ -761,11 +845,21 @@ async function buildStoryProjectReadiness(
     {
       key: 'delivery_contract',
       label: 'Delivery Contract',
-      status: hasExport && exportStage === 'ready' ? 'ready' : hasExport ? 'needs_action' : 'blocked',
-      score: hasExport && exportStage === 'ready' ? 100 : hasExport ? 70 : 25,
-      detail: hasExport ? `最近交付包阶段：${exportStage || 'unknown'}。` : '当前版本尚未记录交付包导出。',
+      status: hasExport && exportStage === 'ready'
+        ? seedanceAssetCounts.placeholder > 0 ? 'needs_action' : 'ready'
+        : hasExport ? 'needs_action' : 'blocked',
+      score: clampScore((hasExport && exportStage === 'ready' ? 100 : hasExport ? 70 : 25) - (seedanceAssetCounts.placeholder > 0 ? 10 : 0)),
+      detail: hasExport
+        ? seedanceAssetCounts.placeholder > 0
+          ? `最近交付包阶段：${exportStage || 'unknown'}；仍有 ${seedanceAssetCounts.placeholder} 个占位参考图需替换。`
+          : `最近交付包阶段：${exportStage || 'unknown'}。`
+        : '当前版本尚未记录交付包导出。',
       count_text: hasExport ? `files ${asNumber(exportRecord.file_count, 0)}` : 'not exported',
-      evidence: [hasExport ? `exported ${asString(exportRecord.exported_at)}` : 'no export record'],
+      evidence: [
+        hasExport ? `exported ${asString(exportRecord.exported_at)}` : 'no export record',
+        `seedance_placeholder_assets ${seedanceAssetCounts.placeholder}`,
+        `seedance_production_assets_ready ${seedanceAssetCounts.productionReady}`,
+      ],
       action_key: hasExport && exportStage === 'ready' ? undefined : 'export_production_board',
       action_label: hasExport && exportStage === 'ready' ? undefined : '导出交付包',
     },
@@ -819,6 +913,8 @@ async function buildStoryProjectReadiness(
       totalShotCount,
       readyShotCount: shots.ready,
       failedShotCount: shots.failed,
+      seedancePlaceholderAssetCount: seedanceAssetCounts.placeholder,
+      seedanceProductionAssetReadyCount: seedanceAssetCounts.productionReady,
       gearsSummary,
     }),
     lanes,
@@ -1065,6 +1161,8 @@ async function buildSeriesReadiness(
       totalShotCount: shots.total,
       readyShotCount: shots.ready,
       failedShotCount: shots.failed,
+      seedancePlaceholderAssetCount: 0,
+      seedanceProductionAssetReadyCount: 0,
       gearsSummary,
     }),
     lanes,

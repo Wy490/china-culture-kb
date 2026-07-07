@@ -1884,6 +1884,8 @@ export interface StoryAgentMvpStatusReport {
     readiness_blocked_count: number;
     ready_automation_step_count: number;
     external_or_manual_step_count: number;
+    seedance_placeholder_asset_count: number;
+    seedance_production_asset_ready_count: number;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;

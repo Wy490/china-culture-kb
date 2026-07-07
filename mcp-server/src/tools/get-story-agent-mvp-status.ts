@@ -92,6 +92,8 @@ export interface StoryAgentMvpStatusReport {
     readiness_blocked_count: number;
     ready_automation_step_count: number;
     external_or_manual_step_count: number;
+    seedance_placeholder_asset_count: number;
+    seedance_production_asset_ready_count: number;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;
@@ -462,6 +464,8 @@ function productionCommandLane(portfolio: ProductionReadinessPortfolioReport): S
       `needs_action=${summary.needs_action_count}`,
       `blocked=${summary.blocked_count}`,
       `external_or_manual_steps=${externalOrManual}`,
+      `seedance_placeholder_assets=${summary.seedance_placeholder_asset_count}`,
+      `seedance_production_assets_ready=${summary.seedance_production_asset_ready_count}`,
       `read_errors=${portfolio.errors.length}`,
     ],
     next_action: portfolio.errors.length > 0
@@ -514,6 +518,8 @@ function priorityTargets(
         `score=${item.score}`,
         `blockers=${item.blocker_count}`,
         `warnings=${item.warning_count}`,
+        `seedance_placeholder_assets=${item.seedance_placeholder_asset_count}`,
+        `seedance_production_assets_ready=${item.seedance_production_asset_ready_count}`,
         `ready_automation_steps=${item.ready_automation_step_count}`,
       ],
     })),
@@ -587,6 +593,8 @@ function progressSlices(
         `domain_pack_ready=${domainPackHealth.production_ready_pack_ids.length}/${domainPackHealth.required_pack_ids.length}`,
         `domain_pack_issues=${domainPackHealth.issues.length}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
+        `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
+        `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
         `local_contract_blocked=${hasLocalContractBlocker}`,
         'local_target_health_tracked_by=lanes',
         'real_media_execution=gears_v2',
@@ -602,6 +610,8 @@ function progressSlices(
         'implementation_progress=100',
         `surface_count=${PRODUCTION_DELIVERY_CONTRACT_SURFACES.length}`,
         `surfaces=${PRODUCTION_DELIVERY_CONTRACT_SURFACES.join(',')}`,
+        `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
+        `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
         'local_target_health_tracked_by=delivery_contract_lane',
         'real_media_execution=gears_v2',
       ],
@@ -636,6 +646,8 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     '',
     `- generated targets: ${report.summary.generated_target_count}`,
     `- readiness targets: ${report.summary.readiness_target_count}`,
+    `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
+    `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
     `- generated governance actions: ${report.summary.generated_governance_action_count}`,
@@ -732,6 +744,8 @@ export async function getStoryAgentMvpStatus(
       readiness_blocked_count: productionPortfolio.summary.blocked_count,
       ready_automation_step_count: productionPortfolio.summary.ready_automation_step_count,
       external_or_manual_step_count: externalOrManual,
+      seedance_placeholder_asset_count: productionPortfolio.summary.seedance_placeholder_asset_count,
+      seedance_production_asset_ready_count: productionPortfolio.summary.seedance_production_asset_ready_count,
       blocker_count: productionPortfolio.summary.blocker_count,
       warning_count: productionPortfolio.summary.warning_count,
       generated_governance_action_count: generatedGovernancePlan.actions.length,

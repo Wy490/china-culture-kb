@@ -145,6 +145,13 @@ beforeEach(() => {
       gears_segments: [{ segment_id: 1, script_text: '开场文本' }, { segment_id: 2, script_text: '转折文本' }],
     },
   }, null, 2));
+  fs.mkdirSync(path.join(projectRoot, 'production-board'), { recursive: true });
+  fs.writeFileSync(path.join(projectRoot, 'production-board', 'seedance-asset-report.json'), JSON.stringify({
+    schema_version: 'seedance-asset-report/v1',
+    placeholder_asset_count: 2,
+    production_asset_ready_count: 1,
+    assets: [],
+  }, null, 2));
 
   const seriesRoot = path.join(tmpDir, 'web', 'generated', 'ai-comic-series-projects', seriesProjectId);
   fs.mkdirSync(seriesRoot, { recursive: true });
@@ -335,8 +342,11 @@ describe('kb_get_production_readiness', () => {
     expect(result!.scope).toBe('story_project');
     expect(result!.summary.gears_job_count).toBe(2);
     expect(result!.summary.failed_shot_count).toBe(1);
+    expect(result!.summary.seedance_placeholder_asset_count).toBe(2);
+    expect(result!.summary.seedance_production_asset_ready_count).toBe(1);
     expect(result!.issues.map(issue => issue.issue_id)).toContain('shot-production-failed');
     expect(result!.issues.map(issue => issue.issue_id)).toContain('gears-terminal-risk');
+    expect(result!.issues.map(issue => issue.issue_id)).toContain('seedance-assets-placeholder-only');
     expect(result!.automation_plan.schema_version).toBe('mcp-production-readiness-automation-plan/v1');
     expect(result!.automation_plan.steps.map(step => step.action_key)).toEqual(expect.arrayContaining([
       'export_retry_package',
@@ -362,6 +372,7 @@ describe('kb_get_production_readiness', () => {
     });
     expect(result!.automation_ledger?.total_run_count).toBe(1);
     expect(result!.markdown).toContain('MCP Production Readiness');
+    expect(result!.markdown).toContain('Seedance placeholder assets: 2');
     expect(result!.markdown).toContain('Automation Plan');
     expect(result!.markdown).toContain('Latest Automation Run');
   });
@@ -425,6 +436,8 @@ describe('kb_get_production_readiness', () => {
     expect(result.summary.story_project_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.ai_comic_series_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.portfolio_automation_run_count).toBe(1);
+    expect(result.summary.seedance_placeholder_asset_count).toBeGreaterThanOrEqual(2);
+    expect(result.summary.seedance_production_asset_ready_count).toBeGreaterThanOrEqual(1);
     expect(result.latest_portfolio_automation_run).toMatchObject({
       run_id: 'production-readiness-portfolio-run-1',
       selected_target_count: 2,
@@ -434,12 +447,17 @@ describe('kb_get_production_readiness', () => {
       projectId,
       seriesProjectId,
     ]));
+    expect(result.items.find(item => item.project_id === projectId)).toMatchObject({
+      seedance_placeholder_asset_count: 2,
+      seedance_production_asset_ready_count: 1,
+    });
     expect(result.items[0]).toMatchObject({
       priority_score: expect.any(Number),
       status: expect.stringMatching(/ready|needs_action|blocked/),
     });
     expect(result.action_buckets.length).toBeGreaterThan(0);
     expect(result.markdown).toContain('MCP Production Readiness Portfolio');
+    expect(result.markdown).toContain('Seedance placeholder assets');
     expect(result.markdown).toContain('portfolio automation runs: 1');
   });
 

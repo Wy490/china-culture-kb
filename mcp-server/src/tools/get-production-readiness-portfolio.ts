@@ -18,6 +18,8 @@ interface PortfolioItem {
   ready_automation_step_count: number;
   external_automation_step_count: number;
   manual_automation_step_count: number;
+  seedance_placeholder_asset_count: number;
+  seedance_production_asset_ready_count: number;
   primary_action_key?: string;
   primary_action_label?: string;
   latest_automation_run_id?: string;
@@ -87,6 +89,8 @@ export interface ProductionReadinessPortfolioReport {
     ready_automation_step_count: number;
     external_automation_step_count: number;
     manual_automation_step_count: number;
+    seedance_placeholder_asset_count: number;
+    seedance_production_asset_ready_count: number;
     latest_automation_run_count: number;
     portfolio_automation_run_count: number;
   };
@@ -167,6 +171,8 @@ function toItem(report: ProductionReadinessReport): PortfolioItem {
     ready_automation_step_count: report.automation_plan.ready_step_count,
     external_automation_step_count: report.automation_plan.steps.filter(step => step.runner === 'gears_worker').length,
     manual_automation_step_count: report.automation_plan.manual_step_count,
+    seedance_placeholder_asset_count: report.summary.seedance_placeholder_asset_count,
+    seedance_production_asset_ready_count: report.summary.seedance_production_asset_ready_count,
     primary_action_key: primaryAction?.action_key,
     primary_action_label: primaryAction?.label,
     latest_automation_run_id: report.latest_automation_run?.run_id,
@@ -212,6 +218,8 @@ function buildMarkdown(report: Omit<ProductionReadinessPortfolioReport, 'markdow
     `- blocked: ${report.summary.blocked_count}`,
     `- needs action: ${report.summary.needs_action_count}`,
     `- ready automation steps: ${report.summary.ready_automation_step_count}`,
+    `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
+    `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
     `- portfolio automation runs: ${report.summary.portfolio_automation_run_count}`,
     ...(report.latest_portfolio_automation_run
       ? [`- latest portfolio run: ${report.latest_portfolio_automation_run.completed_at} · executed ${report.latest_portfolio_automation_run.executed_target_count} · failed ${report.latest_portfolio_automation_run.failed_target_count}`]
@@ -296,6 +304,8 @@ export async function getProductionReadinessPortfolio(
         sum + report.automation_plan.steps.filter(step => step.runner === 'gears_worker').length
       ), 0),
       manual_automation_step_count: reports.reduce((sum, report) => sum + report.automation_plan.manual_step_count, 0),
+      seedance_placeholder_asset_count: reports.reduce((sum, report) => sum + report.summary.seedance_placeholder_asset_count, 0),
+      seedance_production_asset_ready_count: reports.reduce((sum, report) => sum + report.summary.seedance_production_asset_ready_count, 0),
       latest_automation_run_count: reports.filter(report => Boolean(report.latest_automation_run)).length,
       portfolio_automation_run_count: portfolioAutomationLedger?.total_run_count ?? 0,
     },

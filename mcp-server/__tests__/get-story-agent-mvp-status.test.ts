@@ -187,6 +187,13 @@ beforeEach(() => {
       ],
     },
   }, null, 2));
+  fs.mkdirSync(path.join(projectRoot, 'production-board'), { recursive: true });
+  fs.writeFileSync(path.join(projectRoot, 'production-board', 'seedance-asset-report.json'), JSON.stringify({
+    schema_version: 'seedance-asset-report/v1',
+    placeholder_asset_count: 2,
+    production_asset_ready_count: 1,
+    assets: [],
+  }, null, 2));
 });
 
 afterEach(() => {
@@ -203,6 +210,8 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.status).toMatch(/ready|needs_action|blocked/);
     expect(result.summary.generated_target_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.seedance_placeholder_asset_count).toBe(2);
+    expect(result.summary.seedance_production_asset_ready_count).toBe(1);
     expect(result.summary.generated_governance_action_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.generated_governance_ready_signoff_candidate_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.production_material_pack_status).toBe('passed');
@@ -227,6 +236,8 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.production_material_pack_health.schema_version).toBe('production-material-pack-health/v1');
     expect(result.domain_pack_health.schema_version).toBe('domain-pack-production-health/v1');
     expect(result.production_portfolio.schema_version).toBe('mcp-production-readiness-portfolio/v1');
+    expect(result.production_portfolio.summary.seedance_placeholder_asset_count).toBe(2);
+    expect(result.production_portfolio.summary.seedance_production_asset_ready_count).toBe(1);
     expect(result.lanes.map(lane => lane.key)).toEqual(expect.arrayContaining([
       'generated_artifacts',
       'generated_governance',
@@ -280,6 +291,8 @@ describe('kb_get_story_agent_mvp_status', () => {
       'domain_pack_status=passed',
       'domain_pack_ready=8/8',
       'domain_pack_issues=0',
+      'seedance_placeholder_assets=2',
+      'seedance_production_assets_ready=1',
       'local_target_health_tracked_by=lanes',
       'real_media_execution=gears_v2',
     ]));
@@ -289,6 +302,8 @@ describe('kb_get_story_agent_mvp_status', () => {
       expect.stringContaining('production_board_export'),
       expect.stringContaining('seedance_asset_upload_checklist'),
       expect.stringContaining('worker_evidence_signoff'),
+      'seedance_placeholder_assets=2',
+      'seedance_production_assets_ready=1',
       'local_target_health_tracked_by=delivery_contract_lane',
       'real_media_execution=gears_v2',
     ]));
@@ -319,6 +334,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.markdown).toContain('Progress Split');
     expect(result.markdown).toContain('production material pack health: passed');
     expect(result.markdown).toContain('domain pack health: passed');
+    expect(result.markdown).toContain('Seedance placeholder assets: 2');
     expect(result.markdown).toContain('production delivery contract: 100%');
     expect(result.markdown).toContain('Story Agent command surface: ready · 100%');
   });

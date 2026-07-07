@@ -1076,6 +1076,8 @@ describe('System API', () => {
           readiness_target_count: expect.any(Number),
           ready_automation_step_count: expect.any(Number),
           external_or_manual_step_count: expect.any(Number),
+          seedance_placeholder_asset_count: expect.any(Number),
+          seedance_production_asset_ready_count: expect.any(Number),
           generated_governance_action_count: expect.any(Number),
           generated_governance_p0_p1_action_count: expect.any(Number),
           generated_governance_ready_signoff_candidate_count: expect.any(Number),
@@ -1121,6 +1123,7 @@ describe('System API', () => {
       });
       expect(res.body.data.summary.generated_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.markdown).toContain('Seedance placeholder assets');
       expect(res.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
         'generated_artifacts',
         'generated_governance',
