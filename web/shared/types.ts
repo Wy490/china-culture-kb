@@ -1840,6 +1840,7 @@ export type StoryAgentMvpLaneKey =
   | 'generated_governance'
   | 'production_material_packs'
   | 'domain_packs'
+  | 'domain_pack_expansion'
   | 'knowledge_writeback'
   | 'story_quality'
   | 'repair_loop'
@@ -1923,6 +1924,11 @@ export interface StoryAgentMvpStatusReport {
     domain_pack_issue_count: number;
     production_domain_pack_ready_count: number;
     production_domain_pack_required_count: number;
+    domain_pack_expansion_status: DomainPackProductionHealthStatus;
+    domain_pack_expansion_batch_count: number;
+    domain_pack_expansion_seed_target_count: number;
+    domain_pack_expansion_candidate_field_count: number;
+    domain_pack_expansion_issue_count: number;
     story_agent_command_surface_status: StoryAgentMvpStatus;
     story_agent_command_surface_percent: number;
     mcp_story_agent_tool_count: number;
@@ -1940,6 +1946,7 @@ export interface StoryAgentMvpStatusReport {
   generated_governance_plan: StoryAgentGeneratedGovernancePlan;
   production_material_pack_health: ProductionMaterialPackHealthReport;
   domain_pack_health: DomainPackProductionHealthReport;
+  domain_pack_expansion_candidates: DomainPackExpansionCandidateReport;
   production_portfolio: ProductionReadinessPortfolioReport;
   markdown: string;
 }
@@ -5873,6 +5880,60 @@ export interface DomainPackProductionHealthReport {
   production_ready_pack_ids: string[];
   packs: DomainPackProductionHealthSummary[];
   issues: DomainPackProductionHealthIssue[];
+}
+
+export interface DomainPackExpansionCandidateIssue {
+  severity: DomainPackProductionHealthIssueSeverity;
+  issue_type:
+    | 'missing_candidate_file'
+    | 'invalid_schema_version'
+    | 'direct_writeback_enabled'
+    | 'missing_required_pack'
+    | 'duplicate_batch_id'
+    | 'invalid_batch_status'
+    | 'underfilled_field_group'
+    | 'underfilled_seed_target';
+  batch_id?: string;
+  pack_id?: string;
+  message: string;
+  details?: string[];
+}
+
+export interface DomainPackExpansionBatchSummary {
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  priority: string;
+  status: string;
+  target_video_types: string[];
+  field_group_count: number;
+  candidate_field_count: number;
+  seed_target_count: number;
+  provinces: string[];
+}
+
+export interface DomainPackExpansionCandidateReport {
+  schema_version: 'domain-pack-expansion-candidates-report/v1';
+  generated_at: string;
+  source_schema_version: string;
+  updated_at: string;
+  domain_id: string;
+  status: DomainPackProductionHealthStatus;
+  required_pack_ids: string[];
+  covered_required_pack_ids: string[];
+  missing_required_pack_ids: string[];
+  review_policy: {
+    direct_writeback_to_province_markdown: boolean;
+    requires_candidate_markdown: boolean;
+    requires_human_review: boolean;
+    requires_source_level: boolean;
+  };
+  batch_count: number;
+  seed_target_count: number;
+  candidate_field_count: number;
+  batches: DomainPackExpansionBatchSummary[];
+  issues: DomainPackExpansionCandidateIssue[];
+  markdown?: string;
 }
 
 export type CreationUseCase =

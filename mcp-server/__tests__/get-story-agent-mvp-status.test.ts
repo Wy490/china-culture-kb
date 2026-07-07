@@ -116,6 +116,35 @@ function makeDomainPackEntries() {
   }));
 }
 
+function makeDomainPackExpansionCandidateBatches() {
+  return [
+    'heritage_process_pack',
+    'documentary_source_pack',
+    'ai_comic_storyboard_pack',
+    'era_and_costume_pack',
+    'explainer_knowledge_structure_pack',
+  ].map(packId => ({
+    batch_id: `${packId}_candidate_batch`,
+    pack_id: packId,
+    entry_name: `${packId} 扩库候选批次`,
+    priority: 'P0',
+    status: 'candidate_review',
+    target_video_types: ['explainer_video'],
+    field_groups: [{
+      group_id: 'core',
+      candidate_fields: ['core_question'],
+      review_questions: ['是否保持候选稿和人工审稿？'],
+    }],
+    seed_targets: [{
+      entry_name: `${packId} 种子条目`,
+      province: '湖南',
+      recommended_fields: ['core_question'],
+      candidate_status: 'candidate_review',
+      forbidden_direct_claims: ['未经审稿不得写回正式知识库'],
+    }],
+  }));
+}
+
 beforeEach(() => {
   process.env.KB_ROOT = dataRoot;
   fs.mkdirSync(path.join(dataRoot, 'provinces'), { recursive: true });
@@ -129,6 +158,18 @@ beforeEach(() => {
     domain_id: 'china_culture',
     version: 'test',
     entries: makeDomainPackEntries(),
+  }, null, 2));
+  fs.writeFileSync(path.join(dataRoot, 'domain-packs', 'china-culture-production-expansion-candidates.json'), JSON.stringify({
+    schema_version: 'domain-pack-expansion-candidates/v1',
+    updated_at: '2026-07-07',
+    domain_id: 'china_culture',
+    review_policy: {
+      direct_writeback_to_province_markdown: false,
+      requires_candidate_markdown: true,
+      requires_human_review: true,
+      requires_source_level: true,
+    },
+    batches: makeDomainPackExpansionCandidateBatches(),
   }, null, 2));
 
   const projectRoot = path.join(tmpRoot, 'web', 'generated', 'projects', projectId);
@@ -244,9 +285,14 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.domain_pack_issue_count).toBe(0);
     expect(result.summary.production_domain_pack_ready_count).toBe(8);
     expect(result.summary.production_domain_pack_required_count).toBe(8);
+    expect(result.summary.domain_pack_expansion_status).toBe('passed');
+    expect(result.summary.domain_pack_expansion_batch_count).toBe(5);
+    expect(result.summary.domain_pack_expansion_seed_target_count).toBe(5);
+    expect(result.summary.domain_pack_expansion_candidate_field_count).toBe(5);
+    expect(result.summary.domain_pack_expansion_issue_count).toBe(0);
     expect(result.summary.story_agent_command_surface_status).toBe('ready');
     expect(result.summary.story_agent_command_surface_percent).toBe(100);
-    expect(result.summary.mcp_story_agent_tool_count).toBe(22);
+    expect(result.summary.mcp_story_agent_tool_count).toBe(23);
     expect(result.summary.mcp_story_agent_loop_percent).toBe(100);
     expect(result.summary.content_command_layer_percent).toBe(100);
     expect(result.summary.production_delivery_contract_percent).toBe(100);
@@ -257,6 +303,8 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.generated_governance_plan.schema_version).toBe('mcp-story-agent-generated-governance-plan/v1');
     expect(result.production_material_pack_health.schema_version).toBe('production-material-pack-health/v1');
     expect(result.domain_pack_health.schema_version).toBe('domain-pack-production-health/v1');
+    expect(result.domain_pack_expansion_candidates.schema_version).toBe('domain-pack-expansion-candidates-report/v1');
+    expect(result.domain_pack_expansion_candidates.status).toBe('passed');
     expect(result.production_portfolio.schema_version).toBe('mcp-production-readiness-portfolio/v1');
     expect(result.production_portfolio.summary.seedance_placeholder_asset_count).toBe(2);
     expect(result.production_portfolio.summary.seedance_production_asset_ready_count).toBe(1);
@@ -265,6 +313,7 @@ describe('kb_get_story_agent_mvp_status', () => {
       'generated_governance',
       'production_material_packs',
       'domain_packs',
+      'domain_pack_expansion',
       'story_quality',
       'repair_loop',
       'delivery_contract',
@@ -299,9 +348,10 @@ describe('kb_get_story_agent_mvp_status', () => {
     ]));
     expect(result.progress.find(slice => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
       'implementation_progress=100',
-      expect.stringContaining('tool_count=22'),
+      expect.stringContaining('tool_count=23'),
       expect.stringContaining('kb_get_production_material_pack_health'),
       expect.stringContaining('kb_get_domain_pack_production_health'),
+      expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
       expect.stringContaining('kb_generate_story_repair_prompt'),
       'media_execution=gears_v2',
     ]));
@@ -313,6 +363,11 @@ describe('kb_get_story_agent_mvp_status', () => {
       'domain_pack_status=passed',
       'domain_pack_ready=8/8',
       'domain_pack_issues=0',
+      'domain_pack_expansion_status=passed',
+      'domain_pack_expansion_batches=5',
+      'domain_pack_expansion_seed_targets=5',
+      'domain_pack_expansion_candidate_fields=5',
+      'domain_pack_expansion_direct_writeback=false',
       'seedance_placeholder_assets=2',
       'seedance_production_assets_ready=1',
       'local_target_health_tracked_by=lanes',
@@ -346,6 +401,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.notes.join('\n')).toContain('Generated governance command surface is complete at 100%');
     expect(result.notes.join('\n')).toContain('Production material pack health is now a MCP Story Agent MVP lane');
     expect(result.notes.join('\n')).toContain('Domain Pack production health is now a MCP Story Agent MVP lane');
+    expect(result.notes.join('\n')).toContain('Domain Pack expansion candidates are tracked as a MCP Story Agent MVP lane');
     expect(result.notes.join('\n')).toContain('MCP Story Agent loop is complete at 100%');
     expect(result.notes.join('\n')).toContain('Content and production command layer is complete at 100%');
     expect(result.notes.join('\n')).toContain('Production Board / Delivery Contract command surface is complete at 100%');
@@ -356,6 +412,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.markdown).toContain('Progress Split');
     expect(result.markdown).toContain('production material pack health: passed');
     expect(result.markdown).toContain('domain pack health: passed');
+    expect(result.markdown).toContain('domain pack expansion candidates: passed');
     expect(result.markdown).toContain('Seedance placeholder assets: 2');
     expect(result.markdown).toContain('knowledge writeback queued: 1');
     expect(result.markdown).toContain('production delivery contract: 100%');

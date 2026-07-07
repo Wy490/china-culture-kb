@@ -15,8 +15,10 @@ import {
   type ProductionReadinessPortfolioReport,
 } from './get-production-readiness-portfolio.js';
 import {
+  getDomainPackExpansionCandidateReport,
   getDomainPackProductionHealthReport,
   getProductionMaterialPackHealthReport,
+  type DomainPackExpansionCandidateReport,
   type DomainPackProductionHealthReport,
   type PackHealthStatus,
   type ProductionMaterialPackHealthReport,
@@ -28,6 +30,7 @@ type MvpLaneKey =
   | 'generated_governance'
   | 'production_material_packs'
   | 'domain_packs'
+  | 'domain_pack_expansion'
   | 'knowledge_writeback'
   | 'story_quality'
   | 'repair_loop'
@@ -121,6 +124,11 @@ export interface StoryAgentMvpStatusReport {
     domain_pack_issue_count: number;
     production_domain_pack_ready_count: number;
     production_domain_pack_required_count: number;
+    domain_pack_expansion_status: PackHealthStatus;
+    domain_pack_expansion_batch_count: number;
+    domain_pack_expansion_seed_target_count: number;
+    domain_pack_expansion_candidate_field_count: number;
+    domain_pack_expansion_issue_count: number;
     story_agent_command_surface_status: MvpStatus;
     story_agent_command_surface_percent: number;
     mcp_story_agent_tool_count: number;
@@ -138,6 +146,7 @@ export interface StoryAgentMvpStatusReport {
   generated_governance_plan: StoryAgentGeneratedGovernancePlan;
   production_material_pack_health: ProductionMaterialPackHealthReport;
   domain_pack_health: DomainPackProductionHealthReport;
+  domain_pack_expansion_candidates: DomainPackExpansionCandidateReport;
   production_portfolio: ProductionReadinessPortfolioReport;
   markdown?: string;
 }
@@ -164,6 +173,7 @@ const MCP_STORY_AGENT_LOOP_TOOLS = [
   'kb_run_story_agent_generated_governance',
   'kb_get_production_material_pack_health',
   'kb_get_domain_pack_production_health',
+  'kb_get_domain_pack_expansion_candidates',
   'kb_get_story_agent_mvp_status',
   'kb_get_production_readiness',
   'kb_get_production_readiness_portfolio',
@@ -399,6 +409,48 @@ function domainPackLane(report: DomainPackProductionHealthReport): StoryAgentMvp
       : report.status === 'warning'
         ? 'Top up production_prompts, review_boundaries, trigger_words, or asset_usage coverage for production Domain Packs.'
         : undefined,
+  };
+}
+
+function domainPackExpansionLane(report: DomainPackExpansionCandidateReport): StoryAgentMvpLane {
+  const errorCount = report.issues.filter(issue => issue.severity === 'error').length;
+  const warningCount = report.issues.filter(issue => issue.severity === 'warning').length;
+  const status: MvpStatus = report.status === 'passed' ? 'ready' : 'needs_action';
+  return {
+    key: 'domain_pack_expansion',
+    label: 'Domain pack expansion candidates',
+    status,
+    score: clampScore(
+      100
+      - errorCount * 18
+      - warningCount * 8
+      - report.missing_required_pack_ids.length * 16
+      - (report.review_policy.direct_writeback_to_province_markdown ? 35 : 0),
+    ),
+    detail: report.status === 'passed'
+      ? `${report.batch_count} review-gated Domain Pack expansion batches cover ${report.seed_target_count} seed targets and ${report.candidate_field_count} candidate fields.`
+      : `${errorCount} errors and ${warningCount} warnings in review-gated Domain Pack expansion candidates.`,
+    evidence: [
+      `schema=${report.schema_version}`,
+      `source_schema=${report.source_schema_version}`,
+      `candidate_status=${report.status}`,
+      `required_pack_count=${report.required_pack_ids.length}`,
+      `covered_required_pack_count=${report.covered_required_pack_ids.length}`,
+      `missing_required_pack_count=${report.missing_required_pack_ids.length}`,
+      `batch_count=${report.batch_count}`,
+      `seed_target_count=${report.seed_target_count}`,
+      `candidate_field_count=${report.candidate_field_count}`,
+      `direct_writeback=${report.review_policy.direct_writeback_to_province_markdown}`,
+      `requires_candidate_markdown=${report.review_policy.requires_candidate_markdown}`,
+      `requires_human_review=${report.review_policy.requires_human_review}`,
+      `requires_source_level=${report.review_policy.requires_source_level}`,
+      `issues=${report.issues.length}`,
+      `errors=${errorCount}`,
+      `warnings=${warningCount}`,
+    ],
+    next_action: report.status === 'passed'
+      ? undefined
+      : 'Repair Domain Pack expansion candidate batches so all required packs remain in candidate_review with source-level, candidate Markdown, and human review gates.',
   };
 }
 
@@ -702,6 +754,7 @@ function progressSlices(
   governancePlan: StoryAgentGeneratedGovernancePlan,
   productionMaterialPackHealth: ProductionMaterialPackHealthReport,
   domainPackHealth: DomainPackProductionHealthReport,
+  domainPackExpansionCandidates: DomainPackExpansionCandidateReport,
   writebackMetrics: KnowledgeWritebackQueueMetrics,
   portfolio: ProductionReadinessPortfolioReport,
 ): StoryAgentMvpProgressSlice[] {
@@ -761,6 +814,11 @@ function progressSlices(
         `domain_pack_status=${domainPackHealth.status}`,
         `domain_pack_ready=${domainPackHealth.production_ready_pack_ids.length}/${domainPackHealth.required_pack_ids.length}`,
         `domain_pack_issues=${domainPackHealth.issues.length}`,
+        `domain_pack_expansion_status=${domainPackExpansionCandidates.status}`,
+        `domain_pack_expansion_batches=${domainPackExpansionCandidates.batch_count}`,
+        `domain_pack_expansion_seed_targets=${domainPackExpansionCandidates.seed_target_count}`,
+        `domain_pack_expansion_candidate_fields=${domainPackExpansionCandidates.candidate_field_count}`,
+        `domain_pack_expansion_direct_writeback=${domainPackExpansionCandidates.review_policy.direct_writeback_to_province_markdown}`,
         `knowledge_writeback_ready=${writebackMetrics.ready_count}`,
         `knowledge_writeback_draft_ready=${writebackMetrics.draft_ready_count}`,
         `knowledge_writeback_queued=${writebackMetrics.queued_count}`,
@@ -840,6 +898,11 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     `- domain packs: ${report.summary.domain_pack_count}`,
     `- domain pack issues: ${report.summary.domain_pack_issue_count}`,
     `- production domain packs ready: ${report.summary.production_domain_pack_ready_count}/${report.summary.production_domain_pack_required_count}`,
+    `- domain pack expansion candidates: ${report.summary.domain_pack_expansion_status}`,
+    `- domain pack expansion batches: ${report.summary.domain_pack_expansion_batch_count}`,
+    `- domain pack expansion seed targets: ${report.summary.domain_pack_expansion_seed_target_count}`,
+    `- domain pack expansion candidate fields: ${report.summary.domain_pack_expansion_candidate_field_count}`,
+    `- domain pack expansion issues: ${report.summary.domain_pack_expansion_issue_count}`,
     `- Story Agent command surface: ${report.summary.story_agent_command_surface_status} · ${report.summary.story_agent_command_surface_percent}%`,
     `- MCP Story Agent tools: ${report.summary.mcp_story_agent_tool_count}`,
     `- MCP Story Agent loop: ${report.summary.mcp_story_agent_loop_percent}%`,
@@ -878,11 +941,12 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
 export async function getStoryAgentMvpStatus(
   input: GetStoryAgentMvpStatusInput = {},
 ): Promise<StoryAgentMvpStatusReport> {
-  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, writebackMetrics, productionPortfolio] = await Promise.all([
+  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio] = await Promise.all([
     getStoryAgentGeneratedHealth({ limit: input.generated_limit ?? 100, include_markdown: false }),
     getStoryAgentGeneratedGovernancePlan({ limit: input.generated_limit ?? 100, include_markdown: false }),
     Promise.resolve(getProductionMaterialPackHealthReport()),
     Promise.resolve(getDomainPackProductionHealthReport()),
+    Promise.resolve(getDomainPackExpansionCandidateReport()),
     getKnowledgeWritebackQueueMetrics(),
     getProductionReadinessPortfolio({ limit: input.portfolio_limit ?? 100, include_markdown: false }),
   ]);
@@ -891,6 +955,7 @@ export async function getStoryAgentMvpStatus(
     generatedGovernanceLane(generatedGovernancePlan),
     productionMaterialPackLane(productionMaterialPackHealth),
     domainPackLane(domainPackHealth),
+    domainPackExpansionLane(domainPackExpansionCandidates),
     knowledgeWritebackLane(writebackMetrics),
     storyQualityLane(generatedHealth),
     repairLoopLane(productionPortfolio),
@@ -906,6 +971,7 @@ export async function getStoryAgentMvpStatus(
     generatedGovernancePlan,
     productionMaterialPackHealth,
     domainPackHealth,
+    domainPackExpansionCandidates,
     writebackMetrics,
     productionPortfolio,
   );
@@ -949,6 +1015,11 @@ export async function getStoryAgentMvpStatus(
       domain_pack_issue_count: domainPackHealth.issues.length,
       production_domain_pack_ready_count: domainPackHealth.production_ready_pack_ids.length,
       production_domain_pack_required_count: domainPackHealth.required_pack_ids.length,
+      domain_pack_expansion_status: domainPackExpansionCandidates.status,
+      domain_pack_expansion_batch_count: domainPackExpansionCandidates.batch_count,
+      domain_pack_expansion_seed_target_count: domainPackExpansionCandidates.seed_target_count,
+      domain_pack_expansion_candidate_field_count: domainPackExpansionCandidates.candidate_field_count,
+      domain_pack_expansion_issue_count: domainPackExpansionCandidates.issues.length,
       story_agent_command_surface_status: 'ready',
       story_agent_command_surface_percent: 100,
       mcp_story_agent_tool_count: MCP_STORY_AGENT_LOOP_TOOLS.length,
@@ -970,6 +1041,7 @@ export async function getStoryAgentMvpStatus(
       'Generated governance command surface is complete at 100%: health scan, governance plan, dry-run manifest, project_id targeting, Web/MCP exports, and no-write safety gates are available.',
       'Production material pack health is now a MCP Story Agent MVP lane: core and high-frequency video types must keep mapped required_fields, prompt layers, gate items, supplement questions, and sample-entry coverage before production sign-off.',
       'Domain Pack production health is now a MCP Story Agent MVP lane: required production prompt packs must keep trigger words, production prompts, review boundaries, and asset usage coverage before prompt package sign-off.',
+      'Domain Pack expansion candidates are tracked as a MCP Story Agent MVP lane: first-wave material expansion must stay in candidate_review with candidate Markdown, human review, source-level checks, and no direct province Markdown writeback.',
       'Knowledge writeback queue governance is now a MCP Story Agent MVP lane: only approved candidates with writeback drafts are counted, and province Markdown changes remain manual review patches.',
       'MCP Story Agent loop is complete at 100%: read-only context, blueprint, validation, delivery, repair prompt, controlled versioning, generated governance, readiness automation, MVP status, and GEARS evidence signoff are all exposed as tools.',
       'Content and production command layer is complete at 100% inside china-culture-kb; generated target health and real GEARS endpoint acceptance remain separate status surfaces.',
@@ -984,6 +1056,7 @@ export async function getStoryAgentMvpStatus(
     generated_governance_plan: generatedGovernancePlan,
     production_material_pack_health: productionMaterialPackHealth,
     domain_pack_health: domainPackHealth,
+    domain_pack_expansion_candidates: domainPackExpansionCandidates,
     production_portfolio: productionPortfolio,
   };
   return input.include_markdown === false ? base : { ...base, markdown: buildMarkdown(base) };

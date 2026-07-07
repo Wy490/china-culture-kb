@@ -120,6 +120,7 @@
         <span>GEARS/人工 {{ storyAgentMvpStatus.summary.external_or_manual_step_count }}</span>
         <span>模板 {{ storyAgentMvpStatus.summary.production_material_pack_status }} {{ storyAgentMvpStatus.summary.production_material_pack_core_ready_count }}/{{ storyAgentMvpStatus.summary.production_material_pack_core_total_count }}</span>
         <span>Domain Pack {{ storyAgentMvpStatus.summary.domain_pack_status }} {{ storyAgentMvpStatus.summary.production_domain_pack_ready_count }}/{{ storyAgentMvpStatus.summary.production_domain_pack_required_count }}</span>
+        <span>扩库候选 {{ storyAgentMvpStatus.summary.domain_pack_expansion_status }} {{ storyAgentMvpStatus.summary.domain_pack_expansion_batch_count }} 批</span>
       </div>
       <div class="projects-page__mvp-progress">
         <article
@@ -1017,6 +1018,7 @@ function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number][
     generated_governance: 'Generated 治理',
     production_material_packs: '生产素材模板',
     domain_packs: 'Domain Pack',
+    domain_pack_expansion: '扩库候选',
     knowledge_writeback: '写回队列',
     story_quality: '故事质量',
     repair_loop: '修复闭环',
