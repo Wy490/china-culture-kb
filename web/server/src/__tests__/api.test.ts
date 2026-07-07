@@ -2737,6 +2737,19 @@ describe('System API', () => {
         failed_gate_ids: [],
         skipped_gate_ids: [],
         mvp_governance_counts: mvpGovernanceCounts,
+        gates: [{
+          id: 'system_external_callback_batch',
+          label: 'Story Agent system external callback batch',
+          status: 'passed',
+          summary: 'System external callbacks wrote real external artifacts.',
+          evidence: {
+            output_url_verification: {
+              expected_output_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4',
+              imported: true,
+              import_match_count: 1,
+            },
+          },
+        }],
         recommended_actions: [],
       });
       await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-archive.json', {
@@ -3035,6 +3048,13 @@ describe('System API', () => {
             label: 'Story Agent system external callback batch',
             status: 'passed',
             summary: 'System external callbacks wrote real external artifacts.',
+            evidence: {
+              output_url_verification: {
+                expected_output_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4',
+                imported: true,
+                import_match_count: 1,
+              },
+            },
           },
           {
             id: 'story_agent_generated_health_audit',
@@ -3300,6 +3320,8 @@ describe('System API', () => {
         system_external_output_url_source_ready: true,
         system_external_output_url_imported: true,
         system_external_output_url_import_match_count: 1,
+        system_external_output_url_verdict_embedded: true,
+        system_external_output_url_verdict_consistent: true,
         system_external_output_url_configured_from_env: true,
         system_external_output_url_source: 'env',
         pressure_submitted: true,
@@ -3404,6 +3426,8 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('system_external_output_url_source_ready: true');
       expect(res.body.data.markdown).toContain('system_external_output_url_imported: true');
       expect(res.body.data.markdown).toContain('system_external_output_url_import_match_count: 1');
+      expect(res.body.data.markdown).toContain('system_external_output_url_verdict_embedded: true');
+      expect(res.body.data.markdown).toContain('system_external_output_url_verdict_consistent: true');
       expect(res.body.data.markdown).toContain('system_external_callback_ready/updated: 3/3');
       expect(res.body.data.markdown).toContain('production_material_pack_health_audit_passed: true');
       expect(res.body.data.markdown).toContain('production_material_pack_status_before/after: passed/passed');
@@ -3460,6 +3484,38 @@ describe('System API', () => {
         }),
       ]));
       expect(res.body.data.markdown).toContain('system_external_output_url_imported: false');
+    });
+
+    it('requires verdict output URL verification to match the imported response', async () => {
+      const evidenceDir = await mkdtemp(resolve(tmpdir(), 'gears-signoff-output-url-verdict-mismatch-'));
+      await writeReadyEvidence(evidenceDir);
+      const verdict = JSON.parse(await readFile(resolve(evidenceDir, 'gears-worker-acceptance-verdict.json'), 'utf-8'));
+      verdict.gates[0].evidence.output_url_verification.import_match_count = 99;
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', verdict);
+
+      const res = await request.get(`/api/system/gears-execution-worker-evidence-signoff?evidence_dir=${encodeURIComponent(evidenceDir)}`);
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        status: 'attention',
+        acceptance_passed: true,
+        signoff_ready: true,
+        integrity_passed: true,
+        system_external_output_url_source_ready: true,
+        system_external_output_url_imported: true,
+        system_external_output_url_import_match_count: 1,
+        system_external_output_url_verdict_embedded: true,
+        system_external_output_url_verdict_consistent: false,
+        system_external_callback_passed: true,
+      });
+      expect(res.body.data.recommended_actions).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          evidence: 'system_external_output_url_verdict_verification_inconsistent',
+          gate_id: 'system_external_callback_batch',
+        }),
+      ]));
+      expect(res.body.data.markdown).toContain('system_external_output_url_verdict_consistent: false');
     });
 
     it('requires embedded MVP governance counts to match the source audit', async () => {
@@ -3560,6 +3616,18 @@ describe('System API', () => {
           label: 'GEARS worker response audit',
           status: 'failed',
           summary: 'Worker was unreachable.',
+        }, {
+          id: 'system_external_callback_batch',
+          label: 'Story Agent system external callback batch',
+          status: 'passed',
+          summary: 'System external callbacks wrote real external artifacts.',
+          evidence: {
+            output_url_verification: {
+              expected_output_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4',
+              imported: true,
+              import_match_count: 1,
+            },
+          },
         }],
         recommended_actions: [repeatedAction, repeatedAction, uniqueAction],
       });

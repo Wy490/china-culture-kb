@@ -51,6 +51,13 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
         label: 'Story Agent system external callback batch',
         status: 'passed',
         summary: 'System external callback imported a real external artifact.',
+        evidence: {
+          output_url_verification: {
+            expected_output_url: 'https://cdn.example.com/gears-worker-acceptance/readiness-shot-1.mp4',
+            imported: true,
+            import_match_count: 1,
+          },
+        },
       },
     ],
     recommended_actions: recommendedActions,
@@ -334,6 +341,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.system_external_output_url_source_ready).toBe(true);
     expect(result.system_external_output_url_imported).toBe(true);
     expect(result.system_external_output_url_import_match_count).toBe(1);
+    expect(result.system_external_output_url_verdict_embedded).toBe(true);
+    expect(result.system_external_output_url_verdict_consistent).toBe(true);
     expect(result.system_external_output_url_source).toBe('worker_response');
     expect(result.pressure_submitted).toBe(true);
     expect(result.worker_record_count).toBe(370);
@@ -380,6 +389,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.markdown).toContain('system_external_output_url_source: worker_response');
     expect(result.markdown).toContain('system_external_output_url_imported: true');
     expect(result.markdown).toContain('system_external_output_url_import_match_count: 1');
+    expect(result.markdown).toContain('system_external_output_url_verdict_embedded: true');
+    expect(result.markdown).toContain('system_external_output_url_verdict_consistent: true');
     expect(result.markdown).toContain('large_project_source_echo: 120/120');
     expect(result.markdown).toContain('mvp_score_delta: 0');
     expect(result.markdown).toContain('mvp_governance_counts_consistent: true');
@@ -458,6 +469,35 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
       }),
     ]));
     expect(result.markdown).toContain('system_external_output_url_imported: false');
+  });
+
+  it('requires verdict output URL verification to match the imported response', async () => {
+    const evidenceDir = path.join(tmpRoot, 'gears-evidence-output-url-verdict-mismatch');
+    writeCompleteEvidence(evidenceDir);
+    const verdictPath = path.join(evidenceDir, 'gears-worker-acceptance-verdict.json');
+    const verdict = JSON.parse(fs.readFileSync(verdictPath, 'utf-8'));
+    verdict.gates.find((gate: any) => gate.id === 'system_external_callback_batch').evidence.output_url_verification.expected_output_url = 'https://cdn.example.com/gears-worker-acceptance/wrong-shot.mp4';
+    writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', verdict);
+
+    const result = await getGearsWorkerEvidenceSignoff({ evidence_dir: evidenceDir });
+
+    expect(result.status).toBe('attention');
+    expect(result.acceptance_passed).toBe(true);
+    expect(result.signoff_ready).toBe(true);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.system_external_output_url_source_ready).toBe(true);
+    expect(result.system_external_output_url_imported).toBe(true);
+    expect(result.system_external_output_url_import_match_count).toBe(1);
+    expect(result.system_external_output_url_verdict_embedded).toBe(true);
+    expect(result.system_external_output_url_verdict_consistent).toBe(false);
+    expect(result.system_external_callback_passed).toBe(true);
+    expect(result.recommended_actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        evidence: 'system_external_output_url_verdict_verification_inconsistent',
+        gate_id: 'system_external_callback_batch',
+      }),
+    ]));
+    expect(result.markdown).toContain('system_external_output_url_verdict_consistent: false');
   });
 
   it('deduplicates repeated recommended actions', async () => {

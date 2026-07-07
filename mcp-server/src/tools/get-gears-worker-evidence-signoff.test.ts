@@ -23,6 +23,10 @@ async function writeReadyEvidence(
   },
 ) {
   await fs.mkdir(evidenceDir, { recursive: true });
+  const outputUrl = outputSource.placeholder
+    ? '<GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>'
+    : 'https://cdn.example.com/gears-worker-acceptance/readiness-shot-1.mp4';
+  const outputUrlImported = !outputSource.placeholder && outputSource.ready_for_external_import;
   const mvpGovernanceCounts = {
     seedance_placeholder_asset_count: { before: 0, after: 0, delta: 0 },
     seedance_production_asset_ready_count: { before: 0, after: 0, delta: 0 },
@@ -57,6 +61,13 @@ async function writeReadyEvidence(
         label: 'Story Agent system external callback batch',
         status: 'passed',
         summary: 'System external callback wrote back a public GEARS artifact.',
+        evidence: {
+          output_url_verification: {
+            expected_output_url: outputUrl,
+            imported: outputUrlImported,
+            import_match_count: outputUrlImported ? 1 : 0,
+          },
+        },
       },
     ],
     recommended_actions: [],
@@ -122,9 +133,7 @@ async function writeReadyEvidence(
   await writeEvidenceJson(evidenceDir, 'story-agent-system-external-output-url-source.json', {
     schema_version: 'story-agent-system-external-output-url-source/v1',
     env_var: 'GEARS_SYSTEM_EXTERNAL_OUTPUT_URL',
-    output_url: outputSource.placeholder
-      ? '<GEARS_SYSTEM_EXTERNAL_OUTPUT_URL>'
-      : 'https://cdn.example.com/gears-worker-acceptance/readiness-shot-1.mp4',
+    output_url: outputUrl,
     ...outputSource,
   });
   await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-preflight-response.json', {
@@ -267,6 +276,8 @@ describe('getGearsWorkerEvidenceSignoff', () => {
       system_external_output_url_source_ready: true,
       system_external_output_url_imported: true,
       system_external_output_url_import_match_count: 1,
+      system_external_output_url_verdict_embedded: true,
+      system_external_output_url_verdict_consistent: true,
       system_external_output_url_configured_from_env: false,
       system_external_output_url_source: 'worker_response',
       pressure_submitted: true,

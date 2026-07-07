@@ -6960,6 +6960,8 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- system_external_output_url_source_ready: ${report.system_external_output_url_source_ready}`,
     `- system_external_output_url_imported: ${report.system_external_output_url_imported}`,
     `- system_external_output_url_import_match_count: ${report.system_external_output_url_import_match_count}`,
+    `- system_external_output_url_verdict_embedded: ${report.system_external_output_url_verdict_embedded}`,
+    `- system_external_output_url_verdict_consistent: ${report.system_external_output_url_verdict_consistent}`,
     `- system_external_output_url_configured_from_env: ${report.system_external_output_url_configured_from_env}`,
     `- system_external_callback_ready/updated: ${report.system_external_callback_ready_to_import_count}/${report.system_external_callback_updated_count}`,
     `- system_external_callback_blocking/failed/unresolved: ${report.system_external_callback_blocking_count}/${report.system_external_callback_failed_count}/${report.system_external_callback_unresolved_count}`,
@@ -7047,6 +7049,8 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       system_external_output_url_source_ready: false,
       system_external_output_url_imported: false,
       system_external_output_url_import_match_count: 0,
+      system_external_output_url_verdict_embedded: false,
+      system_external_output_url_verdict_consistent: false,
       system_external_output_url_configured_from_env: false,
       system_external_output_url_source: 'missing',
       pressure_submitted: false,
@@ -7186,9 +7190,10 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const mvpBeforeSummary = evidenceObject(mvpBefore.summary);
   const mvpAfterSummary = evidenceObject(mvpAfter.summary);
   const mvpDeltas = evidenceObject(mvpRead.data?.deltas);
-  const verdictMvpGate = evidenceArray(verdict?.gates)
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
-    .find(item => item.id === 'story_agent_mvp_status_audit');
+  const rawVerdictGates = evidenceArray(verdict?.gates)
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item));
+  const verdictMvpGate = rawVerdictGates.find(item => item.id === 'story_agent_mvp_status_audit');
+  const verdictSystemExternalGate = rawVerdictGates.find(item => item.id === 'system_external_callback_batch');
   const expectedMvpGovernanceCounts = mvpRead.exists && mvpRead.parse_ok
     ? evidenceMvpGovernanceCountsFromAudit(mvpBeforeSummary, mvpAfterSummary, mvpDeltas)
     : undefined;
@@ -7207,9 +7212,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     && mvpGovernanceCountMismatchIds.length === 0;
   const pressureTotals = evidenceObject(pressureRead.data?.totals);
   const archiveTotals = evidenceObject(archive?.totals);
-  const gates = evidenceArray(verdict?.gates)
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
-    .map(item => ({
+  const gates = rawVerdictGates.map(item => ({
       id: typeof item.id === 'string' ? item.id : 'unknown_gate',
       label: typeof item.label === 'string' ? item.label : undefined,
       status: typeof item.status === 'string' ? item.status : 'unknown',
@@ -7242,6 +7245,14 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     ? evidenceStringMatchCount(systemExternalImportRead.data, systemExternalOutputUrl)
     : 0;
   const systemExternalOutputUrlImported = systemExternalOutputUrlImportMatchCount > 0;
+  const verdictOutputUrlVerification = evidenceObject(
+    evidenceObject(verdictSystemExternalGate?.evidence).output_url_verification,
+  );
+  const systemExternalOutputUrlVerdictEmbedded = Object.keys(verdictOutputUrlVerification).length > 0;
+  const systemExternalOutputUrlVerdictConsistent = systemExternalOutputUrlVerdictEmbedded
+    && verdictOutputUrlVerification.expected_output_url === systemExternalOutputUrl
+    && evidenceBool(verdictOutputUrlVerification.imported) === systemExternalOutputUrlImported
+    && evidenceNumber(verdictOutputUrlVerification.import_match_count) === systemExternalOutputUrlImportMatchCount;
   const systemExternalCallbackPassed = systemExternalPreflightRead.exists
     && systemExternalPreflightRead.parse_ok
     && systemExternalImportRead.exists
@@ -7289,6 +7300,18 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
         'gears-worker-acceptance-archive.json',
       ],
     }] : []),
+    ...(!systemExternalOutputUrlVerdictConsistent ? [{
+      priority: 'P0',
+      owner: 'Story Agent + GEARS v2',
+      action: 'Regenerate worker acceptance verdict so system_external_callback_batch embeds output_url_verification matching the verified import response before final GEARS/Seedance signoff.',
+      evidence: 'system_external_output_url_verdict_verification_inconsistent',
+      gate_id: 'system_external_callback_batch',
+      sample_files: [
+        'story-agent-system-external-output-url-source.json',
+        'story-agent-system-external-callback-import-response.json',
+        'gears-worker-acceptance-verdict.json',
+      ],
+    }] : []),
     ...(systemExternalOutputUrlSourceReady && !systemExternalOutputUrlImported ? [{
       priority: 'P0',
       owner: 'Story Agent + GEARS v2',
@@ -7311,6 +7334,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     && mvpStatusAuditPassed
     && mvpGovernanceCountsConsistent
     && systemExternalCallbackPassed
+    && systemExternalOutputUrlVerdictConsistent
     ? 'ready'
     : coreEvidenceAvailable
       ? 'attention'
@@ -7348,6 +7372,8 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     system_external_output_url_source_ready: systemExternalOutputUrlSourceReady,
     system_external_output_url_imported: systemExternalOutputUrlImported,
     system_external_output_url_import_match_count: systemExternalOutputUrlImportMatchCount,
+    system_external_output_url_verdict_embedded: systemExternalOutputUrlVerdictEmbedded,
+    system_external_output_url_verdict_consistent: systemExternalOutputUrlVerdictConsistent,
     system_external_output_url_configured_from_env: evidenceBool(systemExternalOutputSource.configured_from_env),
     system_external_output_url_source: systemExternalOutputUrlSource,
     pressure_submitted: evidenceBool(verdict?.pressure_submitted) || evidenceBool(pressureTotals.pressure_submitted),
