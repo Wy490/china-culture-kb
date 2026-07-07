@@ -32,6 +32,7 @@ import {
 import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
 import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
 import {
+  getDomainPackExpansionCandidateToolResult,
   getDomainPackProductionHealthToolResult,
   getProductionMaterialPackHealthToolResult,
 } from './tools/production-health-reports.js';
@@ -628,6 +629,24 @@ server.tool(
   },
   async (input) => {
     const result = getDomainPackProductionHealthToolResult(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_domain_pack_expansion_candidates — read review-gated Domain Pack expansion candidates
+server.tool(
+  'kb_get_domain_pack_expansion_candidates',
+  '只读扫描 Domain Pack 扩库候选批次。输出非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物和讲解知识结构包的候选补字段、种子条目和审稿门禁；不写入省份 Markdown。',
+  {
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = getDomainPackExpansionCandidateToolResult(input);
     return {
       content: [{
         type: 'text',

@@ -1,0 +1,252 @@
+{
+  "schema_version": "domain-pack-expansion-candidates/v1",
+  "updated_at": "2026-07-07",
+  "domain_id": "china_culture",
+  "review_policy": {
+    "default_status": "candidate_review",
+    "direct_writeback_to_province_markdown": false,
+    "requires_candidate_markdown": true,
+    "requires_human_review": true,
+    "requires_source_level": true,
+    "writeback_flow": ["candidate_draft", "pending_review", "approved", "queued", "written_back"],
+    "note": "本文件只定义素材扩库候选批次和审稿字段，不直接改写 data/provinces/*.md。"
+  },
+  "batches": [
+    {
+      "batch_id": "heritage_process_pack_expansion_20260707",
+      "pack_id": "heritage_process_pack",
+      "entry_name": "非遗流程生产包——材料工具、工序动作与授权边界",
+      "priority": "P0",
+      "status": "candidate_review",
+      "target_video_types": ["heritage_promo", "explainer_video", "social_short", "education_training"],
+      "field_groups": [
+        {
+          "group_id": "process_assets",
+          "candidate_fields": ["materials", "tools", "process_steps", "hand_actions", "sound_or_texture_details"],
+          "review_questions": ["每个工序是否有来源或传承人口述依据？", "动作描述是否可拍但不泄露危险操作教程？"]
+        },
+        {
+          "group_id": "transmission_and_permission",
+          "candidate_fields": ["practitioner_or_transmission_line", "community_or_practitioner_consent", "documentation_assets", "production_risks"],
+          "review_questions": ["传承人、机构、展演空间和授权状态是否可核验？", "是否把旅游展演误写成历史原貌？"]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "滩头年画——湘西南木版年画的最后守望",
+          "province": "湖南",
+          "recommended_fields": ["process_steps", "tools", "visual_symbols", "documentation_assets"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["未核实传承谱系", "未核实唯一正宗表述", "未授权工坊身份"]
+        },
+        {
+          "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+          "province": "湖南",
+          "recommended_fields": ["materials", "process_steps", "documentation_assets", "production_risks"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["未核实烧制温度", "未核实年代断言", "未核实海上丝路唯一性"]
+        },
+        {
+          "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
+          "province": "湖南",
+          "recommended_fields": ["materials", "tools", "hand_actions", "modern_connection"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["未核实文人使用谱系", "未核实工艺级别", "未核实代表传承人"]
+        },
+        {
+          "entry_name": "踏虎剪纸——凿刀下的苗族阴阳世界",
+          "province": "湖南",
+          "recommended_fields": ["tools", "hand_actions", "visual_symbols", "community_or_practitioner_consent"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["未核实纹样寓意", "族群刻板化解释", "未授权仪式镜头"]
+        }
+      ]
+    },
+    {
+      "batch_id": "documentary_source_pack_expansion_20260707",
+      "pack_id": "documentary_source_pack",
+      "entry_name": "纪录片来源包——现实现场、来源线索与再现边界",
+      "priority": "P0",
+      "status": "candidate_review",
+      "target_video_types": ["documentary_short", "explainer_video", "lecture_video"],
+      "field_groups": [
+        {
+          "group_id": "source_and_scene",
+          "candidate_fields": ["documentary_question", "source_trail", "timeline", "present_day_trace", "field_notes"],
+          "review_questions": ["今天还能拍到什么现场、旧址、展陈或实物？", "时间线是否区分一手资料、二手研究和口述材料？"]
+        },
+        {
+          "group_id": "film_language",
+          "candidate_fields": ["witness_or_expert_roles", "interview_clip_selection", "b_roll_plan", "reconstruction_boundary", "ambient_sound"],
+          "review_questions": ["B-roll 是否承担证据、空间说明或情绪转场功能？", "再现镜头是否明确标注依据和不可断言项？"]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "曾国藩——湘军创立者与洋务先驱",
+          "province": "湖南",
+          "recommended_fields": ["documentary_question", "source_trail", "reconstruction_boundary", "what_must_not_be_claimed"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["后世评价冒充当时动机", "无来源心理独白", "单一立场盖过争议边界"]
+        },
+        {
+          "entry_name": "新民学会——湖南共产党的前身",
+          "province": "湖南",
+          "recommended_fields": ["timeline", "present_day_trace", "witness_or_expert_roles", "b_roll_plan"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["成员关系未核实断言", "旧址空间误置", "后续组织沿革简化"]
+        },
+        {
+          "entry_name": "九一八事变——东北沦陷的开端",
+          "province": "辽宁",
+          "recommended_fields": ["source_trail", "timeline", "reconstruction_boundary", "ambient_sound"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["灾难娱乐化", "无来源现场对白", "以再现画面冒充历史影像"]
+        },
+        {
+          "entry_name": "太行山八路军根据地——抗战的中流砥柱",
+          "province": "山西",
+          "recommended_fields": ["present_day_trace", "field_notes", "b_roll_plan", "interview_clip_selection"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["泛化根据地范围", "无来源战斗细节", "口号替代证据"]
+        }
+      ]
+    },
+    {
+      "batch_id": "ai_comic_storyboard_pack_expansion_20260707",
+      "pack_id": "ai_comic_storyboard_pack",
+      "entry_name": "AI漫剧分镜包——关键帧、表情节拍与连续性验收",
+      "priority": "P0",
+      "status": "candidate_review",
+      "target_video_types": ["ai_comic_drama"],
+      "field_groups": [
+        {
+          "group_id": "panel_continuity",
+          "candidate_fields": ["opening_hook", "character_anchor", "dialogue_bubbles", "expression_beats", "ending_question"],
+          "review_questions": ["第一格是否有画面异常或人物压力？", "对白是否服务冲突而不是讲解资料？"]
+        },
+        {
+          "group_id": "seedance_validation",
+          "candidate_fields": ["reference_frames", "single_shot_test", "multi_panel_continuity", "transition_plan", "forbidden_tone"],
+          "review_questions": ["参考图缺失时是否只生成占位需求？", "动作、视线、道具位置和情绪是否跨镜头连续？"]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "柳毅传书——洞庭湖畔的书生与龙女",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "character_anchor", "dialogue_bubbles", "reference_frames"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["文学传说写成史实", "水府设定无边界", "人物服饰跨朝代混用"]
+        },
+        {
+          "entry_name": "狐仙报恩母题——湖南民间叙事与志异边界",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "expression_beats", "forbidden_tone", "ending_question"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["灵异情节写成可证事实", "恐怖猎奇化", "报恩母题单一化"]
+        },
+        {
+          "entry_name": "洞庭湖与娥皇女英——湘妃竹传说",
+          "province": "湖南",
+          "recommended_fields": ["character_anchor", "visual_symbols", "transition_plan", "forbidden_tone"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["神话传说写成历史事件", "过度爱情化改写", "地域来源无边界"]
+        }
+      ]
+    },
+    {
+      "batch_id": "era_and_costume_pack_expansion_20260707",
+      "pack_id": "era_and_costume_pack",
+      "entry_name": "朝代服饰与器物包——时代称谓、服装道具和事实边界",
+      "priority": "P1",
+      "status": "candidate_review",
+      "target_video_types": ["historical_drama", "ai_comic_drama", "documentary_short", "explainer_video"],
+      "field_groups": [
+        {
+          "group_id": "era_identity",
+          "candidate_fields": ["era_layer", "status_or_role", "address_terms", "clothing_silhouette", "hair_or_headwear"],
+          "review_questions": ["时代层是故事发生时代、传说成书时代还是当代纪念空间？", "身份称谓是否有来源或保守替代说法？"]
+        },
+        {
+          "group_id": "props_and_scene",
+          "candidate_fields": ["character_props", "scene_props", "forbidden_modern_objects", "mixed_era_risk", "visual_reference_needs"],
+          "review_questions": ["器物是随身物、陈设还是象征物？", "是否存在影视化造型反向污染事实条目的风险？"]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "周敦颐月岩悟道——理学源头的山洞想象",
+          "province": "湖南",
+          "recommended_fields": ["era_layer", "clothing_silhouette", "character_props", "scene_props"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["衙署陈设混入岩洞", "现代书房物件", "未核实悟道现场细节"]
+        },
+        {
+          "entry_name": "岳麓书院——千年学府弦歌不绝",
+          "province": "湖南",
+          "recommended_fields": ["era_layer", "address_terms", "scene_props", "mixed_era_risk"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["跨朝代服饰同屏无说明", "后世书院制度误置", "现代校园称谓混入古代场景"]
+        },
+        {
+          "entry_name": "曾国藩——湘军创立者与洋务先驱",
+          "province": "湖南",
+          "recommended_fields": ["status_or_role", "clothing_silhouette", "character_props", "forbidden_modern_objects"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["官职服饰未经核实", "军营器物时代错置", "现代政治词汇代替时代称谓"]
+        }
+      ]
+    },
+    {
+      "batch_id": "explainer_knowledge_structure_pack_expansion_20260707",
+      "pack_id": "explainer_knowledge_structure_pack",
+      "entry_name": "讲解知识结构包——核心问题、层级例子与图示字幕",
+      "priority": "P0",
+      "status": "candidate_review",
+      "target_video_types": ["explainer_video", "lecture_video", "education_training"],
+      "field_groups": [
+        {
+          "group_id": "knowledge_scaffold",
+          "candidate_fields": ["core_question", "audience_level", "argument_points", "knowledge_outline", "concept_definitions"],
+          "review_questions": ["核心问题是否能在开场一句话说清？", "概念定义是否来自来源而不是类比想象？"]
+        },
+        {
+          "group_id": "visual_explanation",
+          "candidate_fields": ["knowledge_steps", "concrete_examples", "analogy_or_visual_metaphor", "diagram_or_caption_plan", "recap_sentence"],
+          "review_questions": ["图示是否解释结构而不是制造单因单果？", "复盘句是否保留误区和来源边界？"]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "knowledge_steps", "diagram_or_caption_plan", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["文人雅器来源未核实", "工艺流程顺序未核实", "审美评价冒充事实"]
+        },
+        {
+          "entry_name": "常德会战与常德细菌战——湘北战场的血与疫",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "argument_points", "misconception_or_boundary", "diagram_or_caption_plan"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["灾难简化成爽感反转", "医学细节无来源断言", "以类比替代证据"]
+        },
+        {
+          "entry_name": "踏虎剪纸——凿刀下的苗族阴阳世界",
+          "province": "湖南",
+          "recommended_fields": ["concept_definitions", "concrete_examples", "analogy_or_visual_metaphor", "misconception_or_boundary"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["纹样寓意单一化", "族群刻板化", "未核实禁忌写成事实"]
+        },
+        {
+          "entry_name": "岳麓书院——千年学府弦歌不绝",
+          "province": "湖南",
+          "recommended_fields": ["knowledge_outline", "concept_definitions", "diagram_or_caption_plan", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["千年学脉简化为单线传承", "后世影响误写成本人现场行为", "现代机构口径混入古代事实"]
+        }
+      ]
+    }
+  ]
+}

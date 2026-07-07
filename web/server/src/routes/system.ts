@@ -43,6 +43,7 @@ import {
   runProductionReadinessPortfolioAutomation,
 } from '../services/production-readiness-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from '../services/production-material-pack-service.js';
+import { getDomainPackExpansionCandidateReport } from '../services/domain-pack-expansion-service.js';
 import { getDomainPackProductionHealthReport } from '../services/domain-pack-service.js';
 import {
   getStoryAgentGeneratedGovernancePlan,
@@ -161,6 +162,15 @@ systemRouter.get('/production-material-pack-health', (_req, res) => {
 
 systemRouter.get('/domain-pack-production-health', (_req, res) => {
   res.json(success(getDomainPackProductionHealthReport()));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/domain-pack-expansion-candidates — review-gated expansion queue
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/domain-pack-expansion-candidates', (req, res) => {
+  const includeMarkdown = req.query.include_markdown !== 'false' && req.query.include_markdown !== '0';
+  res.json(success(getDomainPackExpansionCandidateReport({ includeMarkdown })));
 });
 
 // ---------------------------------------------------------------------------

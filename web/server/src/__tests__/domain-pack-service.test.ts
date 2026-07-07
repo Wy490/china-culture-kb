@@ -30,11 +30,13 @@ describe('domain-pack-service', () => {
       seeds.find(seed => seed.entry_name === '讲解知识结构包——核心问题、层级例子与图示字幕')?.production_prompts,
     ).toEqual(expect.arrayContaining([
       expect.stringContaining('观众问题'),
+      expect.stringContaining('继续查证'),
     ]));
     expect(
       seeds.find(seed => seed.entry_name === '非遗流程生产包——材料工具、工序动作与授权边界')?.review_boundaries,
     ).toEqual(expect.arrayContaining([
       expect.stringContaining('不得把通用流程包写成具体项目已确认流程'),
+      expect.stringContaining('操作教程'),
     ]));
     expect(
       seeds.find(seed => seed.entry_name === '儿童改写规则包——年龄分层、善意张力与事实边界')?.production_prompts,
@@ -69,8 +71,8 @@ describe('domain-pack-service', () => {
     expect(report.packs).toEqual(expect.arrayContaining([
       expect.objectContaining({
         pack_id: 'explainer_knowledge_structure_pack',
-        production_prompt_count: 3,
-        review_boundary_count: 3,
+        production_prompt_count: 5,
+        review_boundary_count: 5,
         status: 'passed',
       }),
       expect.objectContaining({

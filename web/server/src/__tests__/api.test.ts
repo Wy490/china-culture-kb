@@ -636,6 +636,52 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/domain-pack-expansion-candidates', () => {
+    it('returns review-gated Domain Pack expansion candidate batches', async () => {
+      const res = await request.get('/api/system/domain-pack-expansion-candidates');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'domain-pack-expansion-candidates-report/v1',
+        source_schema_version: 'domain-pack-expansion-candidates/v1',
+        domain_id: 'china_culture',
+        status: 'passed',
+        required_pack_ids: expect.arrayContaining([
+          'heritage_process_pack',
+          'documentary_source_pack',
+          'ai_comic_storyboard_pack',
+          'era_and_costume_pack',
+          'explainer_knowledge_structure_pack',
+        ]),
+        missing_required_pack_ids: [],
+        review_policy: {
+          direct_writeback_to_province_markdown: false,
+          requires_candidate_markdown: true,
+          requires_human_review: true,
+          requires_source_level: true,
+        },
+        batch_count: 5,
+        issues: [],
+      });
+      expect(res.body.data.seed_target_count).toBeGreaterThanOrEqual(18);
+      expect(res.body.data.candidate_field_count).toBeGreaterThanOrEqual(40);
+      expect(res.body.data.batches).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          pack_id: 'heritage_process_pack',
+          priority: 'P0',
+          seed_target_count: 4,
+        }),
+        expect.objectContaining({
+          pack_id: 'explainer_knowledge_structure_pack',
+          target_video_types: expect.arrayContaining(['explainer_video']),
+        }),
+      ]));
+      expect(res.body.data.markdown).toContain('Domain Pack Expansion Candidates');
+      expect(res.body.data.markdown).toContain('direct_writeback_to_province_markdown: false');
+    });
+  });
+
   describe('GET /api/system/gears-external-callback-handoff-queue', () => {
     it('returns a read-only cross-project GEARS external callback queue package', async () => {
       const res = await request.get('/api/system/gears-external-callback-handoff-queue?limit=5');
