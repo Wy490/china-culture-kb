@@ -143,6 +143,13 @@ async function writeReadyEvidence(
       duplicate_count: 0,
       blocking_count: 0,
       warning_count: 0,
+      project_results: [{
+        import_result: {
+          seedance_shot_ledger: {
+            items: [{ video_url: 'https://cdn.example.com/gears-worker-acceptance/readiness-shot-1.mp4' }],
+          },
+        },
+      }],
     },
   });
   await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
@@ -161,6 +168,13 @@ async function writeReadyEvidence(
       duplicate_count: 0,
       blocking_count: 0,
       warning_count: 0,
+      project_results: [{
+        import_result: {
+          seedance_shot_ledger: {
+            items: [{ video_url: 'https://cdn.example.com/gears-worker-acceptance/readiness-shot-1.mp4' }],
+          },
+        },
+      }],
     },
   });
   await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
@@ -251,6 +265,8 @@ describe('getGearsWorkerEvidenceSignoff', () => {
       system_external_callback_unresolved_count: 0,
       system_external_callback_project_count: 1,
       system_external_output_url_source_ready: true,
+      system_external_output_url_imported: true,
+      system_external_output_url_import_match_count: 1,
       system_external_output_url_configured_from_env: false,
       system_external_output_url_source: 'worker_response',
       pressure_submitted: true,

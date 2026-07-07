@@ -2881,6 +2881,8 @@ export interface GearsExecutionWorkerEvidenceSignoffReport {
   system_external_callback_unresolved_count: number;
   system_external_callback_project_count: number;
   system_external_output_url_source_ready: boolean;
+  system_external_output_url_imported: boolean;
+  system_external_output_url_import_match_count: number;
   system_external_output_url_configured_from_env: boolean;
   system_external_output_url_source: string;
   pressure_submitted: boolean;

@@ -58,6 +58,8 @@ export interface GearsWorkerEvidenceSignoffReport {
   system_external_callback_unresolved_count: number;
   system_external_callback_project_count: number;
   system_external_output_url_source_ready: boolean;
+  system_external_output_url_imported: boolean;
+  system_external_output_url_import_match_count: number;
   system_external_output_url_configured_from_env: boolean;
   system_external_output_url_source: string;
   pressure_submitted: boolean;
@@ -291,6 +293,25 @@ function asStringArray(value: unknown): string[] {
   return asArray(value).filter((item): item is string => typeof item === 'string');
 }
 
+function stringMatchCount(value: unknown, expected: string, seen = new Set<unknown>()): number {
+  if (!expected) return 0;
+  if (typeof value === 'string') return value === expected ? 1 : 0;
+  if (!value || typeof value !== 'object') return 0;
+  if (seen.has(value)) return 0;
+  seen.add(value);
+  let matchCount = 0;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      matchCount += stringMatchCount(item, expected, seen);
+    }
+    return matchCount;
+  }
+  for (const item of Object.values(value as JsonRecord)) {
+    matchCount += stringMatchCount(item, expected, seen);
+  }
+  return matchCount;
+}
+
 function asNumber(value: unknown): number {
   const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : 0;
@@ -460,6 +481,8 @@ function renderMarkdown(report: Omit<GearsWorkerEvidenceSignoffReport, 'markdown
     `- system_external_callback_passed: ${report.system_external_callback_passed}`,
     `- system_external_output_url_source: ${report.system_external_output_url_source}`,
     `- system_external_output_url_source_ready: ${report.system_external_output_url_source_ready}`,
+    `- system_external_output_url_imported: ${report.system_external_output_url_imported}`,
+    `- system_external_output_url_import_match_count: ${report.system_external_output_url_import_match_count}`,
     `- system_external_output_url_configured_from_env: ${report.system_external_output_url_configured_from_env}`,
     `- system_external_callback_ready/updated: ${report.system_external_callback_ready_to_import_count}/${report.system_external_callback_updated_count}`,
     `- system_external_callback_blocking/failed/unresolved: ${report.system_external_callback_blocking_count}/${report.system_external_callback_failed_count}/${report.system_external_callback_unresolved_count}`,
@@ -542,6 +565,8 @@ export async function getGearsWorkerEvidenceSignoff(
       system_external_callback_unresolved_count: 0,
       system_external_callback_project_count: 0,
       system_external_output_url_source_ready: false,
+      system_external_output_url_imported: false,
+      system_external_output_url_import_match_count: 0,
       system_external_output_url_configured_from_env: false,
       system_external_output_url_source: 'missing',
       pressure_submitted: false,
@@ -721,11 +746,19 @@ export async function getGearsWorkerEvidenceSignoff(
     : systemExternalOutputSourceRead.exists
       ? 'unknown'
       : 'missing';
+  const systemExternalOutputUrl = typeof systemExternalOutputSource.output_url === 'string'
+    ? systemExternalOutputSource.output_url.trim()
+    : '';
+  const systemExternalOutputUrlImportMatchCount = systemExternalOutputUrlSourceReady
+    ? stringMatchCount(systemExternalImportRead.data, systemExternalOutputUrl)
+    : 0;
+  const systemExternalOutputUrlImported = systemExternalOutputUrlImportMatchCount > 0;
   const systemExternalCallbackPassed = systemExternalPreflightRead.exists
     && systemExternalPreflightRead.parse_ok
     && systemExternalImportRead.exists
     && systemExternalImportRead.parse_ok
     && systemExternalOutputUrlSourceReady
+    && systemExternalOutputUrlImported
     && (!('ok' in systemExternalPreflightRoot) || asBool(systemExternalPreflightRoot.ok))
     && (!('ok' in systemExternalImportRoot) || asBool(systemExternalImportRoot.ok))
     && systemExternalPreflight.schema_version === 'system-gears-external-callback-batch-import/v1'
@@ -772,6 +805,17 @@ export async function getGearsWorkerEvidenceSignoff(
         'gears-worker-acceptance-archive.json',
       ],
     }] : []),
+    ...(systemExternalOutputUrlSourceReady && !systemExternalOutputUrlImported ? [{
+      priority: 'P0',
+      owner: 'Story Agent + GEARS v2',
+      action: 'Regenerate system external callback import evidence so the imported response contains the verified GEARS/Seedance output_url from story-agent-system-external-output-url-source.json.',
+      evidence: 'system_external_output_url_not_imported',
+      gate_id: 'system_external_callback_batch',
+      sample_files: [
+        'story-agent-system-external-output-url-source.json',
+        'story-agent-system-external-callback-import-response.json',
+      ],
+    }] : []),
   ]);
   const coreEvidenceAvailable = verdictRead.exists && archiveRead.exists && integrityRead.exists && healthRead.exists;
   const status: SignoffStatus = acceptancePassed && signoffReady && integrityPassed && healthAuditPassed
@@ -815,6 +859,8 @@ export async function getGearsWorkerEvidenceSignoff(
       asNumber(systemExternalImport.project_count),
     ),
     system_external_output_url_source_ready: systemExternalOutputUrlSourceReady,
+    system_external_output_url_imported: systemExternalOutputUrlImported,
+    system_external_output_url_import_match_count: systemExternalOutputUrlImportMatchCount,
     system_external_output_url_configured_from_env: asBool(systemExternalOutputSource.configured_from_env),
     system_external_output_url_source: systemExternalOutputUrlSource,
     pressure_submitted: asBool(verdict?.pressure_submitted) || asBool(pressureTotals.pressure_submitted),

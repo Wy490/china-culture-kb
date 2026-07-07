@@ -2813,6 +2813,13 @@ describe('System API', () => {
           duplicate_count: 0,
           blocking_count: 0,
           warning_count: 0,
+          project_results: [{
+            import_result: {
+              seedance_shot_ledger: {
+                items: [{ video_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4' }],
+              },
+            },
+          }],
         },
       });
       await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
@@ -2831,6 +2838,13 @@ describe('System API', () => {
           duplicate_count: 0,
           blocking_count: 0,
           warning_count: 0,
+          project_results: [{
+            import_result: {
+              seedance_shot_ledger: {
+                items: [{ video_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4' }],
+              },
+            },
+          }],
         },
       });
       await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
@@ -3132,6 +3146,13 @@ describe('System API', () => {
           duplicate_count: 0,
           blocking_count: 0,
           warning_count: 0,
+          project_results: [{
+            import_result: {
+              seedance_shot_ledger: {
+                items: [{ video_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4' }],
+              },
+            },
+          }],
         },
       });
       await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
@@ -3150,6 +3171,13 @@ describe('System API', () => {
           duplicate_count: 0,
           blocking_count: 0,
           warning_count: 0,
+          project_results: [{
+            import_result: {
+              seedance_shot_ledger: {
+                items: [{ video_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4' }],
+              },
+            },
+          }],
         },
       });
       await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
@@ -3264,6 +3292,8 @@ describe('System API', () => {
         system_external_callback_unresolved_count: 0,
         system_external_callback_project_count: 1,
         system_external_output_url_source_ready: true,
+        system_external_output_url_imported: true,
+        system_external_output_url_import_match_count: 1,
         system_external_output_url_configured_from_env: true,
         system_external_output_url_source: 'env',
         pressure_submitted: true,
@@ -3366,6 +3396,8 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('system_external_callback_passed: true');
       expect(res.body.data.markdown).toContain('system_external_output_url_source: env');
       expect(res.body.data.markdown).toContain('system_external_output_url_source_ready: true');
+      expect(res.body.data.markdown).toContain('system_external_output_url_imported: true');
+      expect(res.body.data.markdown).toContain('system_external_output_url_import_match_count: 1');
       expect(res.body.data.markdown).toContain('system_external_callback_ready/updated: 3/3');
       expect(res.body.data.markdown).toContain('production_material_pack_health_audit_passed: true');
       expect(res.body.data.markdown).toContain('production_material_pack_status_before/after: passed/passed');
@@ -3377,6 +3409,51 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('mvp_governance_counts_embedded verdict/archive: true/true');
       expect(res.body.data.markdown).toContain('mvp_seedance_placeholder_before/after/delta: 0/0/0');
       expect(res.body.data.markdown).toContain('mvp_knowledge_writeback_queued_before/after/delta: 1/1/0');
+    });
+
+    it('requires system external import evidence to contain the verified output URL', async () => {
+      const evidenceDir = await mkdtemp(resolve(tmpdir(), 'gears-signoff-output-url-missing-'));
+      await writeReadyEvidence(evidenceDir);
+      await writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
+        ok: true,
+        data: {
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'import',
+          blocked: false,
+          received_count: 3,
+          resolved_count: 3,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 3,
+          updated_count: 3,
+          failed_count: 0,
+          duplicate_count: 0,
+          blocking_count: 0,
+          warning_count: 0,
+        },
+      });
+
+      const res = await request.get(`/api/system/gears-execution-worker-evidence-signoff?evidence_dir=${encodeURIComponent(evidenceDir)}`);
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        status: 'attention',
+        acceptance_passed: true,
+        signoff_ready: true,
+        integrity_passed: true,
+        system_external_output_url_source_ready: true,
+        system_external_output_url_imported: false,
+        system_external_output_url_import_match_count: 0,
+        system_external_callback_passed: false,
+      });
+      expect(res.body.data.recommended_actions).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          evidence: 'system_external_output_url_not_imported',
+          gate_id: 'system_external_callback_batch',
+        }),
+      ]));
+      expect(res.body.data.markdown).toContain('system_external_output_url_imported: false');
     });
 
     it('requires embedded MVP governance counts to match the source audit', async () => {
@@ -3569,6 +3646,13 @@ describe('System API', () => {
           duplicate_count: 0,
           blocking_count: 0,
           warning_count: 0,
+          project_results: [{
+            import_result: {
+              seedance_shot_ledger: {
+                items: [{ video_url: 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4' }],
+              },
+            },
+          }],
         },
       });
       await writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {

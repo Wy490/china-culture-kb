@@ -1,6 +1,6 @@
 # Story Agent 生产素材体系开发蓝图
 
-更新时间：2026-07-05
+更新时间：2026-07-07
 
 ## 本轮对话已完成
 
@@ -72,6 +72,7 @@
 66. 下沉 MVP 治理计数到 GEARS worker evidence 签收：worker acceptance kit 的 `story-agent-mvp-status-audit.json/.md` 会保留 Seedance 占位/正式素材和知识库写回队列计数；Web `gears-execution-worker-evidence-signoff` 与 MCP `kb_get_gears_worker_evidence_signoff` 会在最终签收报告中展示这些 before/after/delta，真实外部回片签收时不再只看 MVP status/score。
 67. 把 MVP 治理计数嵌入 worker acceptance verdict/archive：`gears-worker-acceptance-verdict.json/.md` 的 `story_agent_mvp_status_audit` gate evidence 新增 `governance_counts`，verdict 顶层同步输出 `mvp_governance_counts`，`gears-worker-acceptance-archive.json/.md` 的 `audit_summaries.story_agent_mvp_status` 保留 Seedance 占位/正式素材与知识库写回 ready/queued/needs_revision before/after/delta；外部 GEARS/Seedance 回片签收包不再需要单独展开 MVP audit 文件才能确认占位素材和写回队列没有被 smoke 扰动。
 68. 加硬 MVP 治理计数签收一致性：Web `gears-execution-worker-evidence-signoff` 与 MCP `kb_get_gears_worker_evidence_signoff` 会把 `story-agent-mvp-status-audit.json` 重新计算出的治理计数，与 verdict 顶层/gate evidence、archive audit summary 中的嵌入副本逐项比对；缺失或 before/after/delta 不一致会把最终签收降为 `attention` 并给出 P0 修复动作，防止真实外部回片签收包遗漏或篡改 Seedance 占位素材和知识库写回队列证据。
+69. 将真实外部回片 URL 复核推进到 import 回执本体：Web `gears-execution-worker-evidence-signoff` 与 MCP `kb_get_gears_worker_evidence_signoff` 现在会在系统级 import response 中递归查找 `story-agent-system-external-output-url-source.json` 已验证的 `output_url`；即使 `updated_count>0`、preflight/import 计数都通过，只要导入回执没有包含该 URL，`system_external_callback_passed` 仍会失败并生成 P0 修复动作，避免把无关导入计数当成真实 GEARS/Seedance 回片闭环。
 
 ## 原始诊断必须并入路线
 
@@ -226,7 +227,7 @@
 - 已新增项目级 GEARS 外部回片交接包和系统级跨项目外部回片队列，外部 worker 可按项目拿到 preflight/safe import 路径、callback 样例和待替换真实 artifact URL 清单。
 - 已新增系统级批量 GEARS 外部 callback preflight/import，外部 worker 可一次回传多项目真实公网 artifact URL；系统仍会按项目执行 preflight 和安全导入，不会把 `local_acceptance` 或示例 URL 当外部回片。
 - 已将系统级外部 callback preflight/import 纳入 GEARS worker acceptance kit、shell script、payload 文件、callback response audit、acceptance verdict、archive 必需证据和 worker evidence signoff ready 判定；worker kit 已不再内置 `.test` 回片 URL，会优先从 GEARS worker 响应自动抽取真实公网 artifact，必要时再通过 `GEARS_SYSTEM_EXTERNAL_OUTPUT_URL` 手工覆盖。
-- 已同步 MCP `kb_get_gears_worker_evidence_signoff` 的签收口径，MCP 与 Web signoff 一样要求系统级外部 artifact URL 来源可验证，且 preflight/import 真正写入外部回片后才会返回 `ready`。
+- 已同步 MCP `kb_get_gears_worker_evidence_signoff` 的签收口径，MCP 与 Web signoff 一样要求系统级外部 artifact URL 来源可验证，且系统级 import response 本体包含该已验证 `output_url` 后才会返回 `ready`。
 - 待继续：接入真实 GEARS/Seedance 外部执行 worker，把交接队列中的样例 `outputUrl` 替换为真实公网 artifact URL 后回传，并跑出 `system_external_callback_passed=true` 的 worker evidence signoff。
 
 ### Phase 4：前端工作台
@@ -316,7 +317,7 @@
 1. 回溯补源：`source_location_backfill` 已完成 37/37（100%），后续只需在新增条目进入队列时增量处理。
 2. 审稿写回 `asset_split`：剩余 0 条，正式完整写回已到 169/169（100%）。
 3. 处理来源等级缺口和少量 `era` 精细化缺口。
-4. 把 readiness 接进质量报告和 GEARS 交付状态：核心链路、前端显示、Seedance 本地参考资产占位、GEARS 本地验收边界、外部回片交接队列、系统级批量 preflight/import 和 worker acceptance runbook 已完成；下一步做真实 GEARS/Seedance worker 实跑、状态同步和证据签收。
+4. 把 readiness 接进质量报告和 GEARS 交付状态：核心链路、前端显示、Seedance 本地参考资产占位、GEARS 本地验收边界、外部回片交接队列、系统级批量 preflight/import、worker acceptance runbook 和 import 回执 URL 复核已完成；下一步做真实 GEARS/Seedance worker 实跑、状态同步和证据签收。
 5. 在前端显示生产模板缺口：模板详情、gate、样板条目、任务跳转/状态更新、项目级写回刷新、字段级录入、知识库候选稿、导出审稿包、审稿状态、正式写入草案、省份 Markdown patch/PR 草案、人工入库队列状态和独立写回队列页已完成。
 6. 第四类高频类型模板已选择并接入 `explainer_video`，第二批 `children_story` / `social_short` / `lecture_video` / `education_training` production pack 首版已接入；下一步可继续补联网采集、样片审稿和正式包隔离测试。
 7. 在线模板采集命令：草案生成首版已完成，下一步补联网采集和正式写入审稿流。

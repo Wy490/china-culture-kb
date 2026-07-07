@@ -143,6 +143,13 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
       duplicate_count: 0,
       blocking_count: 0,
       warning_count: 0,
+      project_results: [{
+        import_result: {
+          seedance_shot_ledger: {
+            items: [{ video_url: 'https://cdn.example.com/gears-worker-acceptance/readiness-shot-1.mp4' }],
+          },
+        },
+      }],
     },
   });
   writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
@@ -161,6 +168,13 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
       duplicate_count: 0,
       blocking_count: 0,
       warning_count: 0,
+      project_results: [{
+        import_result: {
+          seedance_shot_ledger: {
+            items: [{ video_url: 'https://cdn.example.com/gears-worker-acceptance/readiness-shot-1.mp4' }],
+          },
+        },
+      }],
     },
   });
   writeEvidenceJson(evidenceDir, 'story-agent-generated-health-audit.json', {
@@ -318,6 +332,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.system_external_callback_ready_to_import_count).toBe(3);
     expect(result.system_external_callback_updated_count).toBe(3);
     expect(result.system_external_output_url_source_ready).toBe(true);
+    expect(result.system_external_output_url_imported).toBe(true);
+    expect(result.system_external_output_url_import_match_count).toBe(1);
     expect(result.system_external_output_url_source).toBe('worker_response');
     expect(result.pressure_submitted).toBe(true);
     expect(result.worker_record_count).toBe(370);
@@ -362,6 +378,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.markdown).toContain('domain_pack_production_health_audit_passed: true');
     expect(result.markdown).toContain('system_external_callback_passed: true');
     expect(result.markdown).toContain('system_external_output_url_source: worker_response');
+    expect(result.markdown).toContain('system_external_output_url_imported: true');
+    expect(result.markdown).toContain('system_external_output_url_import_match_count: 1');
     expect(result.markdown).toContain('large_project_source_echo: 120/120');
     expect(result.markdown).toContain('mvp_score_delta: 0');
     expect(result.markdown).toContain('mvp_governance_counts_consistent: true');
@@ -399,6 +417,47 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     ]));
     expect(result.markdown).toContain('mvp_governance_counts_consistent: false');
     expect(result.markdown).toContain('mvp_governance_count_mismatch_ids: verdict.knowledge_writeback_queued_count.delta');
+  });
+
+  it('requires system external import evidence to contain the verified output URL', async () => {
+    const evidenceDir = path.join(tmpRoot, 'gears-evidence-output-url-missing');
+    writeCompleteEvidence(evidenceDir);
+    writeEvidenceJson(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
+      ok: true,
+      data: {
+        schema_version: 'system-gears-external-callback-batch-import/v1',
+        mode: 'import',
+        blocked: false,
+        received_count: 3,
+        resolved_count: 3,
+        unresolved_count: 0,
+        project_count: 1,
+        ready_to_import_count: 3,
+        updated_count: 3,
+        failed_count: 0,
+        duplicate_count: 0,
+        blocking_count: 0,
+        warning_count: 0,
+      },
+    });
+
+    const result = await getGearsWorkerEvidenceSignoff({ evidence_dir: evidenceDir });
+
+    expect(result.status).toBe('attention');
+    expect(result.acceptance_passed).toBe(true);
+    expect(result.signoff_ready).toBe(true);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.system_external_output_url_source_ready).toBe(true);
+    expect(result.system_external_output_url_imported).toBe(false);
+    expect(result.system_external_output_url_import_match_count).toBe(0);
+    expect(result.system_external_callback_passed).toBe(false);
+    expect(result.recommended_actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        evidence: 'system_external_output_url_not_imported',
+        gate_id: 'system_external_callback_batch',
+      }),
+    ]));
+    expect(result.markdown).toContain('system_external_output_url_imported: false');
   });
 
   it('deduplicates repeated recommended actions', async () => {
