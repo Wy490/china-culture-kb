@@ -381,6 +381,14 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.mvp_real_external_callback_readiness_consistent).toBe(true);
     expect(result.mvp_real_external_callback_readiness_verdict_embedded).toBe(true);
     expect(result.mvp_real_external_callback_readiness_archive_embedded).toBe(true);
+    expect(result.mvp_real_gears_acceptance_ready_before).toBe(true);
+    expect(result.mvp_real_gears_acceptance_ready_after).toBe(true);
+    expect(result.mvp_real_gears_callback_base_public_before).toBe(true);
+    expect(result.mvp_real_gears_callback_base_public_after).toBe(true);
+    expect(result.mvp_local_acceptance_counts_as_real_external_callback_before).toBe(false);
+    expect(result.mvp_local_acceptance_counts_as_real_external_callback_after).toBe(false);
+    expect(result.mvp_real_gears_acceptance_blocker_before).toBe('gears_worker_signoff_evidence_pending');
+    expect(result.mvp_real_gears_acceptance_blocker_after).toBe('gears_worker_signoff_evidence_pending');
     expect(result.mvp_governance_count_mismatch_ids).toEqual([]);
     expect(result.system_external_callback_passed).toBe(true);
     expect(result.system_external_callback_ready_to_import_count).toBe(3);
@@ -448,6 +456,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.markdown).toContain('mvp_governance_counts_embedded verdict/archive: true/true');
     expect(result.markdown).toContain('mvp_real_external_callback_readiness_consistent: true');
     expect(result.markdown).toContain('mvp_real_external_callback_readiness_embedded verdict/archive: true/true');
+    expect(result.markdown).toContain('mvp_real_gears_acceptance_ready_before/after: true/true');
+    expect(result.markdown).toContain('mvp_local_acceptance_counts_as_real_external_callback_before/after: false/false');
     expect(result.markdown).toContain('mvp_seedance_placeholder_before/after/delta: 0/0/0');
     expect(result.markdown).toContain('mvp_knowledge_writeback_queued_before/after/delta: 1/1/0');
   });

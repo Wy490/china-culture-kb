@@ -7206,6 +7206,10 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- mvp_real_external_callback_readiness_consistent: ${report.mvp_real_external_callback_readiness_consistent}`,
     `- mvp_real_external_callback_readiness_embedded verdict/archive: ${report.mvp_real_external_callback_readiness_verdict_embedded}/${report.mvp_real_external_callback_readiness_archive_embedded}`,
     `- mvp_real_external_callback_readiness_mismatch_ids: ${report.mvp_real_external_callback_readiness_mismatch_ids.join(', ') || 'none'}`,
+    `- mvp_real_gears_acceptance_ready_before/after: ${report.mvp_real_gears_acceptance_ready_before}/${report.mvp_real_gears_acceptance_ready_after}`,
+    `- mvp_real_gears_callback_base_public_before/after: ${report.mvp_real_gears_callback_base_public_before}/${report.mvp_real_gears_callback_base_public_after}`,
+    `- mvp_local_acceptance_counts_as_real_external_callback_before/after: ${report.mvp_local_acceptance_counts_as_real_external_callback_before}/${report.mvp_local_acceptance_counts_as_real_external_callback_after}`,
+    `- mvp_real_gears_acceptance_blocker_before/after: ${report.mvp_real_gears_acceptance_blocker_before || 'none'}/${report.mvp_real_gears_acceptance_blocker_after || 'none'}`,
     `- system_external_callback_passed: ${report.system_external_callback_passed}`,
     `- system_external_output_url_source: ${report.system_external_output_url_source}`,
     `- system_external_output_url_source_ready: ${report.system_external_output_url_source_ready}`,
@@ -7296,6 +7300,14 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       mvp_real_external_callback_readiness_verdict_embedded: false,
       mvp_real_external_callback_readiness_archive_embedded: false,
       mvp_real_external_callback_readiness_mismatch_ids: [],
+      mvp_real_gears_acceptance_ready_before: false,
+      mvp_real_gears_acceptance_ready_after: false,
+      mvp_real_gears_callback_base_public_before: false,
+      mvp_real_gears_callback_base_public_after: false,
+      mvp_local_acceptance_counts_as_real_external_callback_before: false,
+      mvp_local_acceptance_counts_as_real_external_callback_after: false,
+      mvp_real_gears_acceptance_blocker_before: '',
+      mvp_real_gears_acceptance_blocker_after: '',
       system_external_callback_passed: false,
       system_external_callback_ready_to_import_count: 0,
       system_external_callback_updated_count: 0,
@@ -7485,6 +7497,14 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     : ['mvp_status_audit.missing_or_invalid'];
   const mvpRealExternalCallbackReadinessConsistent = Boolean(expectedMvpRealExternalCallbackReadiness)
     && mvpRealExternalCallbackReadinessMismatchIds.length === 0;
+  const mvpRealGearsAcceptanceReadyBefore = expectedMvpRealExternalCallbackReadiness?.booleans.real_gears_acceptance_ready_to_run?.before ?? false;
+  const mvpRealGearsAcceptanceReadyAfter = expectedMvpRealExternalCallbackReadiness?.booleans.real_gears_acceptance_ready_to_run?.after ?? false;
+  const mvpRealGearsCallbackBasePublicBefore = expectedMvpRealExternalCallbackReadiness?.booleans.real_gears_callback_base_public?.before ?? false;
+  const mvpRealGearsCallbackBasePublicAfter = expectedMvpRealExternalCallbackReadiness?.booleans.real_gears_callback_base_public?.after ?? false;
+  const mvpLocalAcceptanceCountsAsRealExternalCallbackBefore = expectedMvpRealExternalCallbackReadiness?.booleans.local_acceptance_counts_as_real_external_callback?.before ?? false;
+  const mvpLocalAcceptanceCountsAsRealExternalCallbackAfter = expectedMvpRealExternalCallbackReadiness?.booleans.local_acceptance_counts_as_real_external_callback?.after ?? false;
+  const mvpRealGearsAcceptanceBlockerBefore = expectedMvpRealExternalCallbackReadiness?.blocker.before ?? '';
+  const mvpRealGearsAcceptanceBlockerAfter = expectedMvpRealExternalCallbackReadiness?.blocker.after ?? '';
   const pressureTotals = evidenceObject(pressureRead.data?.totals);
   const archiveTotals = evidenceObject(archive?.totals);
   const gates = rawVerdictGates.map(item => ({
@@ -7670,6 +7690,14 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     mvp_real_external_callback_readiness_verdict_embedded: Boolean(verdictMvpRealExternalCallbackReadiness),
     mvp_real_external_callback_readiness_archive_embedded: Boolean(archiveMvpRealExternalCallbackReadiness),
     mvp_real_external_callback_readiness_mismatch_ids: mvpRealExternalCallbackReadinessMismatchIds,
+    mvp_real_gears_acceptance_ready_before: mvpRealGearsAcceptanceReadyBefore,
+    mvp_real_gears_acceptance_ready_after: mvpRealGearsAcceptanceReadyAfter,
+    mvp_real_gears_callback_base_public_before: mvpRealGearsCallbackBasePublicBefore,
+    mvp_real_gears_callback_base_public_after: mvpRealGearsCallbackBasePublicAfter,
+    mvp_local_acceptance_counts_as_real_external_callback_before: mvpLocalAcceptanceCountsAsRealExternalCallbackBefore,
+    mvp_local_acceptance_counts_as_real_external_callback_after: mvpLocalAcceptanceCountsAsRealExternalCallbackAfter,
+    mvp_real_gears_acceptance_blocker_before: mvpRealGearsAcceptanceBlockerBefore,
+    mvp_real_gears_acceptance_blocker_after: mvpRealGearsAcceptanceBlockerAfter,
     system_external_callback_passed: systemExternalCallbackPassed,
     system_external_callback_ready_to_import_count: evidenceNumber(systemExternalPreflight.ready_to_import_count),
     system_external_callback_updated_count: evidenceNumber(systemExternalImport.updated_count),

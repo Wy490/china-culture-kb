@@ -312,6 +312,14 @@ describe('getGearsWorkerEvidenceSignoff', () => {
       mvp_real_external_callback_readiness_verdict_embedded: true,
       mvp_real_external_callback_readiness_archive_embedded: true,
       mvp_real_external_callback_readiness_mismatch_ids: [],
+      mvp_real_gears_acceptance_ready_before: true,
+      mvp_real_gears_acceptance_ready_after: true,
+      mvp_real_gears_callback_base_public_before: true,
+      mvp_real_gears_callback_base_public_after: true,
+      mvp_local_acceptance_counts_as_real_external_callback_before: false,
+      mvp_local_acceptance_counts_as_real_external_callback_after: false,
+      mvp_real_gears_acceptance_blocker_before: 'gears_worker_signoff_evidence_pending',
+      mvp_real_gears_acceptance_blocker_after: 'gears_worker_signoff_evidence_pending',
       system_external_callback_passed: true,
       system_external_callback_ready_to_import_count: 3,
       system_external_callback_updated_count: 3,
@@ -361,6 +369,8 @@ describe('getGearsWorkerEvidenceSignoff', () => {
     expect(report.markdown).toContain('system_external_callback_passed: true');
     expect(report.markdown).toContain('mvp_real_external_callback_readiness_consistent: true');
     expect(report.markdown).toContain('mvp_real_external_callback_readiness_embedded verdict/archive: true/true');
+    expect(report.markdown).toContain('mvp_real_gears_acceptance_ready_before/after: true/true');
+    expect(report.markdown).toContain('mvp_local_acceptance_counts_as_real_external_callback_before/after: false/false');
     expect(report.markdown).toContain('system_external_output_url_source: worker_response');
     expect(report.markdown).toContain('system_external_callback_ready/updated: 3/3');
   });

@@ -4193,6 +4193,14 @@ describe('System API', () => {
         mvp_real_external_callback_readiness_verdict_embedded: true,
         mvp_real_external_callback_readiness_archive_embedded: true,
         mvp_real_external_callback_readiness_mismatch_ids: [],
+        mvp_real_gears_acceptance_ready_before: true,
+        mvp_real_gears_acceptance_ready_after: true,
+        mvp_real_gears_callback_base_public_before: true,
+        mvp_real_gears_callback_base_public_after: true,
+        mvp_local_acceptance_counts_as_real_external_callback_before: false,
+        mvp_local_acceptance_counts_as_real_external_callback_after: false,
+        mvp_real_gears_acceptance_blocker_before: 'gears_worker_signoff_evidence_pending',
+        mvp_real_gears_acceptance_blocker_after: 'gears_worker_signoff_evidence_pending',
         system_external_callback_passed: true,
         system_external_callback_ready_to_import_count: 3,
         system_external_callback_updated_count: 3,
@@ -4326,6 +4334,8 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('mvp_governance_counts_embedded verdict/archive: true/true');
       expect(res.body.data.markdown).toContain('mvp_real_external_callback_readiness_consistent: true');
       expect(res.body.data.markdown).toContain('mvp_real_external_callback_readiness_embedded verdict/archive: true/true');
+      expect(res.body.data.markdown).toContain('mvp_real_gears_acceptance_ready_before/after: true/true');
+      expect(res.body.data.markdown).toContain('mvp_local_acceptance_counts_as_real_external_callback_before/after: false/false');
       expect(res.body.data.markdown).toContain('mvp_seedance_placeholder_before/after/delta: 0/0/0');
       expect(res.body.data.markdown).toContain('mvp_knowledge_writeback_queued_before/after/delta: 1/1/0');
     });

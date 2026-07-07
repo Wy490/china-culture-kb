@@ -2928,6 +2928,14 @@ export interface GearsExecutionWorkerEvidenceSignoffReport {
   mvp_real_external_callback_readiness_verdict_embedded: boolean;
   mvp_real_external_callback_readiness_archive_embedded: boolean;
   mvp_real_external_callback_readiness_mismatch_ids: string[];
+  mvp_real_gears_acceptance_ready_before: boolean;
+  mvp_real_gears_acceptance_ready_after: boolean;
+  mvp_real_gears_callback_base_public_before: boolean;
+  mvp_real_gears_callback_base_public_after: boolean;
+  mvp_local_acceptance_counts_as_real_external_callback_before: boolean;
+  mvp_local_acceptance_counts_as_real_external_callback_after: boolean;
+  mvp_real_gears_acceptance_blocker_before: string;
+  mvp_real_gears_acceptance_blocker_after: string;
   system_external_callback_passed: boolean;
   system_external_callback_ready_to_import_count: number;
   system_external_callback_updated_count: number;
