@@ -2813,6 +2813,11 @@ describe('System API', () => {
         expect(res.body.data.shell_script).toContain('mvpGovernanceCountsFrom');
         expect(res.body.data.shell_script).toContain('mvp_governance_counts');
         expect(res.body.data.shell_script).toContain('governance_counts: mvpGovernanceCounts');
+        expect(res.body.data.shell_script).toContain('realExternalCallbackReadinessFrom');
+        expect(res.body.data.shell_script).toContain('real_external_callback_readiness');
+        expect(res.body.data.shell_script).toContain('mvpRealExternalCallbackReadinessFrom');
+        expect(res.body.data.shell_script).toContain('mvp_real_external_callback_readiness');
+        expect(res.body.data.shell_script).toContain('local_acceptance_counts_as_real_external_callback');
         expect(res.body.data.shell_script).toContain('system_external_callback_batch');
         expect(res.body.data.shell_script).toContain('system_external_callback_passed');
         expect(res.body.data.shell_script).toContain('stringMatchCount');
@@ -2907,6 +2912,7 @@ describe('System API', () => {
           expect.stringContaining('MVP score decreases'),
           expect.stringContaining('Seedance placeholder/production-ready asset counts'),
           expect.stringContaining('knowledge writeback ready/queued/needs_revision counts'),
+          expect.stringContaining('real_external_callback_readiness'),
         ]));
         expect(
           res.body.data.commands.find((command: any) => command.id === 'write_payload_files')?.command,
@@ -2973,6 +2979,7 @@ describe('System API', () => {
           expect.stringContaining('system external callback batch'),
           expect.stringContaining('exact output_url'),
           expect.stringContaining('Seedance asset and knowledge writeback governance counts'),
+          expect.stringContaining('real external callback readiness'),
           expect.stringContaining('acceptance_passed'),
           expect.stringContaining('GEARS_ACCEPTANCE_STRICT_AUDIT=1'),
         ]));
@@ -2984,6 +2991,7 @@ describe('System API', () => {
         ).toEqual(expect.arrayContaining([
           expect.stringContaining('missing_required_files'),
           expect.stringContaining('MVP Seedance asset and knowledge writeback governance counts'),
+          expect.stringContaining('MVP real external callback readiness'),
           expect.stringContaining('output_url_verification'),
           expect.stringContaining('checksum_manifest'),
           expect.stringContaining('gears-worker-acceptance-checksums.json'),
@@ -3184,6 +3192,38 @@ describe('System API', () => {
         knowledge_writeback_queued_count: { before: 1, after: 1, delta: 0 },
         knowledge_writeback_needs_revision_count: { before: 0, after: 0, delta: 0 },
       };
+      const mvpRealExternalSummary = {
+        real_gears_endpoint_configured: true,
+        real_gears_callback_secret_configured: true,
+        real_gears_callback_base_configured: true,
+        real_gears_callback_base_public: true,
+        real_gears_acceptance_ready_to_run: true,
+        real_gears_acceptance_blocker: 'gears_worker_signoff_evidence_pending',
+        local_acceptance_counts_as_real_external_callback: false,
+        seedance_provider_submit_adapter_configured: true,
+        seedance_provider_poll_adapter_configured: true,
+        seedance_provider_callback_base_configured: true,
+        seedance_provider_external_loop_ready: true,
+      };
+      const mvpRealExternalCallbackReadiness = {
+        booleans: {
+          real_gears_endpoint_configured: { before: true, after: true, changed: false },
+          real_gears_callback_secret_configured: { before: true, after: true, changed: false },
+          real_gears_callback_base_configured: { before: true, after: true, changed: false },
+          real_gears_callback_base_public: { before: true, after: true, changed: false },
+          real_gears_acceptance_ready_to_run: { before: true, after: true, changed: false },
+          local_acceptance_counts_as_real_external_callback: { before: false, after: false, changed: false },
+          seedance_provider_submit_adapter_configured: { before: true, after: true, changed: false },
+          seedance_provider_poll_adapter_configured: { before: true, after: true, changed: false },
+          seedance_provider_callback_base_configured: { before: true, after: true, changed: false },
+          seedance_provider_external_loop_ready: { before: true, after: true, changed: false },
+        },
+        blocker: {
+          before: 'gears_worker_signoff_evidence_pending',
+          after: 'gears_worker_signoff_evidence_pending',
+          changed: false,
+        },
+      };
       await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
         schema_version: 'gears-worker-acceptance-verdict/v1',
         status: 'passed',
@@ -3193,6 +3233,7 @@ describe('System API', () => {
         failed_gate_ids: [],
         skipped_gate_ids: [],
         mvp_governance_counts: mvpGovernanceCounts,
+        mvp_real_external_callback_readiness: mvpRealExternalCallbackReadiness,
         gates: [{
           id: 'system_external_callback_batch',
           label: 'Story Agent system external callback batch',
@@ -3238,6 +3279,7 @@ describe('System API', () => {
           },
           story_agent_mvp_status: {
             governance_counts: mvpGovernanceCounts,
+            real_external_callback_readiness: mvpRealExternalCallbackReadiness,
           },
         },
         recommended_actions: [],
@@ -3364,6 +3406,7 @@ describe('System API', () => {
           status: 'ready',
           score: 95,
           summary: {
+            ...mvpRealExternalSummary,
             seedance_placeholder_asset_count: 0,
             seedance_production_asset_ready_count: 5,
             knowledge_writeback_ready_count: 1,
@@ -3375,6 +3418,7 @@ describe('System API', () => {
           status: 'ready',
           score: 95,
           summary: {
+            ...mvpRealExternalSummary,
             seedance_placeholder_asset_count: 0,
             seedance_production_asset_ready_count: 5,
             knowledge_writeback_ready_count: 1,
@@ -3394,6 +3438,7 @@ describe('System API', () => {
         },
         failed_checks: [],
         warning_checks: [],
+        real_external_callback_readiness: mvpRealExternalCallbackReadiness,
         recommended_actions: [],
       });
       await writeEvidenceJson(evidenceDir, 'gears-large-project-response-audit.json', {
@@ -3496,6 +3541,38 @@ describe('System API', () => {
         knowledge_writeback_queued_count: { before: 1, after: 1, delta: 0 },
         knowledge_writeback_needs_revision_count: { before: 0, after: 0, delta: 0 },
       };
+      const mvpRealExternalSummary = {
+        real_gears_endpoint_configured: true,
+        real_gears_callback_secret_configured: true,
+        real_gears_callback_base_configured: true,
+        real_gears_callback_base_public: true,
+        real_gears_acceptance_ready_to_run: true,
+        real_gears_acceptance_blocker: 'gears_worker_signoff_evidence_pending',
+        local_acceptance_counts_as_real_external_callback: false,
+        seedance_provider_submit_adapter_configured: true,
+        seedance_provider_poll_adapter_configured: true,
+        seedance_provider_callback_base_configured: true,
+        seedance_provider_external_loop_ready: true,
+      };
+      const mvpRealExternalCallbackReadiness = {
+        booleans: {
+          real_gears_endpoint_configured: { before: true, after: true, changed: false },
+          real_gears_callback_secret_configured: { before: true, after: true, changed: false },
+          real_gears_callback_base_configured: { before: true, after: true, changed: false },
+          real_gears_callback_base_public: { before: true, after: true, changed: false },
+          real_gears_acceptance_ready_to_run: { before: true, after: true, changed: false },
+          local_acceptance_counts_as_real_external_callback: { before: false, after: false, changed: false },
+          seedance_provider_submit_adapter_configured: { before: true, after: true, changed: false },
+          seedance_provider_poll_adapter_configured: { before: true, after: true, changed: false },
+          seedance_provider_callback_base_configured: { before: true, after: true, changed: false },
+          seedance_provider_external_loop_ready: { before: true, after: true, changed: false },
+        },
+        blocker: {
+          before: 'gears_worker_signoff_evidence_pending',
+          after: 'gears_worker_signoff_evidence_pending',
+          changed: false,
+        },
+      };
       await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
         schema_version: 'gears-worker-acceptance-verdict/v1',
         status: 'passed',
@@ -3505,6 +3582,7 @@ describe('System API', () => {
         failed_gate_ids: [],
         skipped_gate_ids: [],
         mvp_governance_counts: mvpGovernanceCounts,
+        mvp_real_external_callback_readiness: mvpRealExternalCallbackReadiness,
         gates: [
           {
             id: 'system_external_callback_batch',
@@ -3579,6 +3657,7 @@ describe('System API', () => {
           },
           story_agent_mvp_status: {
             governance_counts: mvpGovernanceCounts,
+            real_external_callback_readiness: mvpRealExternalCallbackReadiness,
           },
         },
         recommended_actions: [],
@@ -3711,6 +3790,7 @@ describe('System API', () => {
           status: 'ready',
           score: 96,
           summary: {
+            ...mvpRealExternalSummary,
             seedance_placeholder_asset_count: 0,
             seedance_production_asset_ready_count: 5,
             knowledge_writeback_ready_count: 1,
@@ -3722,6 +3802,7 @@ describe('System API', () => {
           status: 'ready',
           score: 96,
           summary: {
+            ...mvpRealExternalSummary,
             seedance_placeholder_asset_count: 0,
             seedance_production_asset_ready_count: 5,
             knowledge_writeback_ready_count: 1,
@@ -3741,6 +3822,7 @@ describe('System API', () => {
         },
         failed_checks: [],
         warning_checks: [],
+        real_external_callback_readiness: mvpRealExternalCallbackReadiness,
         recommended_actions: [],
       });
       await writeEvidenceJson(evidenceDir, 'gears-large-project-response-audit.json', {
@@ -3780,6 +3862,10 @@ describe('System API', () => {
         mvp_governance_counts_verdict_embedded: true,
         mvp_governance_counts_archive_embedded: true,
         mvp_governance_count_mismatch_ids: [],
+        mvp_real_external_callback_readiness_consistent: true,
+        mvp_real_external_callback_readiness_verdict_embedded: true,
+        mvp_real_external_callback_readiness_archive_embedded: true,
+        mvp_real_external_callback_readiness_mismatch_ids: [],
         system_external_callback_passed: true,
         system_external_callback_ready_to_import_count: 3,
         system_external_callback_updated_count: 3,
@@ -3911,6 +3997,8 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('mvp_score_delta: 0');
       expect(res.body.data.markdown).toContain('mvp_governance_counts_consistent: true');
       expect(res.body.data.markdown).toContain('mvp_governance_counts_embedded verdict/archive: true/true');
+      expect(res.body.data.markdown).toContain('mvp_real_external_callback_readiness_consistent: true');
+      expect(res.body.data.markdown).toContain('mvp_real_external_callback_readiness_embedded verdict/archive: true/true');
       expect(res.body.data.markdown).toContain('mvp_seedance_placeholder_before/after/delta: 0/0/0');
       expect(res.body.data.markdown).toContain('mvp_knowledge_writeback_queued_before/after/delta: 1/1/0');
     });
@@ -4060,6 +4148,40 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('mvp_governance_count_mismatch_ids: verdict.seedance_placeholder_asset_count.after');
     });
 
+    it('requires embedded MVP real external callback readiness to match the source audit', async () => {
+      const evidenceDir = await mkdtemp(resolve(tmpdir(), 'gears-signoff-mvp-real-callback-mismatch-'));
+      await writeReadyEvidence(evidenceDir);
+      const verdict = JSON.parse(await readFile(resolve(evidenceDir, 'gears-worker-acceptance-verdict.json'), 'utf-8'));
+      verdict.mvp_real_external_callback_readiness.booleans.real_gears_callback_base_public.after = false;
+      await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', verdict);
+
+      const res = await request.get(`/api/system/gears-execution-worker-evidence-signoff?evidence_dir=${encodeURIComponent(evidenceDir)}`);
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        status: 'attention',
+        acceptance_passed: true,
+        signoff_ready: true,
+        integrity_passed: true,
+        mvp_status_audit_passed: true,
+        mvp_real_external_callback_readiness_consistent: false,
+        mvp_real_external_callback_readiness_verdict_embedded: true,
+        mvp_real_external_callback_readiness_archive_embedded: true,
+      });
+      expect(res.body.data.mvp_real_external_callback_readiness_mismatch_ids).toEqual([
+        'verdict.real_gears_callback_base_public.after',
+      ]);
+      expect(res.body.data.recommended_actions).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          evidence: 'mvp_real_external_callback_readiness_inconsistent',
+          gate_id: 'story_agent_mvp_status_audit',
+        }),
+      ]));
+      expect(res.body.data.markdown).toContain('mvp_real_external_callback_readiness_consistent: false');
+      expect(res.body.data.markdown).toContain('mvp_real_external_callback_readiness_mismatch_ids: verdict.real_gears_callback_base_public.after');
+    });
+
     it('rejects localhost system external output URLs even when evidence claims ready', async () => {
       const evidenceDir = await mkdtemp(resolve(tmpdir(), 'gears-signoff-localhost-'));
       await writeReadyEvidence(evidenceDir);
@@ -4110,6 +4232,38 @@ describe('System API', () => {
         knowledge_writeback_queued_count: { before: 0, after: 0, delta: 0 },
         knowledge_writeback_needs_revision_count: { before: 0, after: 0, delta: 0 },
       };
+      const mvpRealExternalSummary = {
+        real_gears_endpoint_configured: true,
+        real_gears_callback_secret_configured: true,
+        real_gears_callback_base_configured: true,
+        real_gears_callback_base_public: true,
+        real_gears_acceptance_ready_to_run: true,
+        real_gears_acceptance_blocker: 'gears_worker_signoff_evidence_pending',
+        local_acceptance_counts_as_real_external_callback: false,
+        seedance_provider_submit_adapter_configured: true,
+        seedance_provider_poll_adapter_configured: true,
+        seedance_provider_callback_base_configured: true,
+        seedance_provider_external_loop_ready: true,
+      };
+      const mvpRealExternalCallbackReadiness = {
+        booleans: {
+          real_gears_endpoint_configured: { before: true, after: true, changed: false },
+          real_gears_callback_secret_configured: { before: true, after: true, changed: false },
+          real_gears_callback_base_configured: { before: true, after: true, changed: false },
+          real_gears_callback_base_public: { before: true, after: true, changed: false },
+          real_gears_acceptance_ready_to_run: { before: true, after: true, changed: false },
+          local_acceptance_counts_as_real_external_callback: { before: false, after: false, changed: false },
+          seedance_provider_submit_adapter_configured: { before: true, after: true, changed: false },
+          seedance_provider_poll_adapter_configured: { before: true, after: true, changed: false },
+          seedance_provider_callback_base_configured: { before: true, after: true, changed: false },
+          seedance_provider_external_loop_ready: { before: true, after: true, changed: false },
+        },
+        blocker: {
+          before: 'gears_worker_signoff_evidence_pending',
+          after: 'gears_worker_signoff_evidence_pending',
+          changed: false,
+        },
+      };
       await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
         schema_version: 'gears-worker-acceptance-verdict/v1',
         status: 'failed',
@@ -4119,6 +4273,7 @@ describe('System API', () => {
         failed_gate_ids: ['worker_response_audit'],
         skipped_gate_ids: [],
         mvp_governance_counts: mvpGovernanceCounts,
+        mvp_real_external_callback_readiness: mvpRealExternalCallbackReadiness,
         gates: [{
           id: 'worker_response_audit',
           label: 'GEARS worker response audit',
@@ -4161,6 +4316,7 @@ describe('System API', () => {
           },
           story_agent_mvp_status: {
             governance_counts: mvpGovernanceCounts,
+            real_external_callback_readiness: mvpRealExternalCallbackReadiness,
           },
         },
         recommended_actions: [repeatedAction],
@@ -4275,11 +4431,12 @@ describe('System API', () => {
       await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
         schema_version: 'story-agent-mvp-status-audit/v1',
         status: 'passed',
-        before: { status: 'ready', score: 90 },
-        after: { status: 'ready', score: 90 },
+        before: { status: 'ready', score: 90, summary: mvpRealExternalSummary },
+        after: { status: 'ready', score: 90, summary: mvpRealExternalSummary },
         deltas: { score: 0, status_rank: 0, blocker_count: 0 },
         failed_checks: [],
         warning_checks: [],
+        real_external_callback_readiness: mvpRealExternalCallbackReadiness,
         recommended_actions: [],
       });
       await writeEvidenceJson(evidenceDir, 'gears-large-project-response-audit.json', {

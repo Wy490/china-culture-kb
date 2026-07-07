@@ -3648,6 +3648,33 @@ function renderStoryAgentMvpStatusAuditCommand(targetDirExpression: string): str
     '  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN',
     '  return Number.isFinite(parsed) ? parsed : 0',
     '}',
+    'function boolValue(value) { return value === true }',
+    'function stringValue(value) { return typeof value === "string" ? value : "" }',
+    'const realExternalCallbackBooleanKeys = [',
+    '  "real_gears_endpoint_configured",',
+    '  "real_gears_callback_secret_configured",',
+    '  "real_gears_callback_base_configured",',
+    '  "real_gears_callback_base_public",',
+    '  "real_gears_acceptance_ready_to_run",',
+    '  "local_acceptance_counts_as_real_external_callback",',
+    '  "seedance_provider_submit_adapter_configured",',
+    '  "seedance_provider_poll_adapter_configured",',
+    '  "seedance_provider_callback_base_configured",',
+    '  "seedance_provider_external_loop_ready",',
+    ']',
+    'function realExternalCallbackReadinessFrom(beforeSummary, afterSummary) {',
+    '  const booleans = Object.fromEntries(realExternalCallbackBooleanKeys.map(key => {',
+    '    const before = boolValue(beforeSummary?.[key])',
+    '    const after = boolValue(afterSummary?.[key])',
+    '    return [key, { before, after, changed: before !== after }]',
+    '  }))',
+    '  const beforeBlocker = stringValue(beforeSummary?.real_gears_acceptance_blocker)',
+    '  const afterBlocker = stringValue(afterSummary?.real_gears_acceptance_blocker)',
+    '  return {',
+    '    booleans,',
+    '    blocker: { before: beforeBlocker, after: afterBlocker, changed: beforeBlocker !== afterBlocker },',
+    '  }',
+    '}',
     'function reportOf(root) {',
     '  if (!root || root.__parse_error) return undefined',
     '  if (root.data && typeof root.data === "object" && root.data.schema_version) return root.data',
@@ -3686,6 +3713,17 @@ function renderStoryAgentMvpStatusAuditCommand(targetDirExpression: string): str
     '      readiness_ready_count: numberValue(summary.readiness_ready_count),',
     '      readiness_blocked_count: numberValue(summary.readiness_blocked_count),',
     '      ready_automation_step_count: numberValue(summary.ready_automation_step_count),',
+    '      real_gears_endpoint_configured: boolValue(summary.real_gears_endpoint_configured),',
+    '      real_gears_callback_secret_configured: boolValue(summary.real_gears_callback_secret_configured),',
+    '      real_gears_callback_base_configured: boolValue(summary.real_gears_callback_base_configured),',
+    '      real_gears_callback_base_public: boolValue(summary.real_gears_callback_base_public),',
+    '      real_gears_acceptance_ready_to_run: boolValue(summary.real_gears_acceptance_ready_to_run),',
+    '      real_gears_acceptance_blocker: stringValue(summary.real_gears_acceptance_blocker),',
+    '      local_acceptance_counts_as_real_external_callback: boolValue(summary.local_acceptance_counts_as_real_external_callback),',
+    '      seedance_provider_submit_adapter_configured: boolValue(summary.seedance_provider_submit_adapter_configured),',
+    '      seedance_provider_poll_adapter_configured: boolValue(summary.seedance_provider_poll_adapter_configured),',
+    '      seedance_provider_callback_base_configured: boolValue(summary.seedance_provider_callback_base_configured),',
+    '      seedance_provider_external_loop_ready: boolValue(summary.seedance_provider_external_loop_ready),',
     '      seedance_placeholder_asset_count: numberValue(summary.seedance_placeholder_asset_count),',
     '      seedance_production_asset_ready_count: numberValue(summary.seedance_production_asset_ready_count),',
     '      knowledge_writeback_ready_count: numberValue(summary.knowledge_writeback_ready_count),',
@@ -3712,6 +3750,7 @@ function renderStoryAgentMvpStatusAuditCommand(targetDirExpression: string): str
     '  knowledge_writeback_queued_count: numberValue(after.summary?.knowledge_writeback_queued_count) - numberValue(before.summary?.knowledge_writeback_queued_count),',
     '  knowledge_writeback_needs_revision_count: numberValue(after.summary?.knowledge_writeback_needs_revision_count) - numberValue(before.summary?.knowledge_writeback_needs_revision_count),',
     '}',
+    'const realExternalCallbackReadiness = realExternalCallbackReadinessFrom(before.summary, after.summary)',
     'const failed_checks = []',
     'const warning_checks = []',
     'const compatibility_notes = []',
@@ -3732,6 +3771,8 @@ function renderStoryAgentMvpStatusAuditCommand(targetDirExpression: string): str
     'if (after.parse_ok && after.schema_version !== "story-agent-mvp-status/v1") warnCheck("mvp_status_after_schema_unexpected", "P1", "Story Agent", "Confirm the post-smoke MVP status schema remains compatible.", [afterFilename])',
     'if (before.parse_ok && before.lane_count < 1) failCheck("mvp_status_no_lanes_before", "P0", "Story Agent", "MVP status has no lanes before smoke; restore the Story Agent MVP status report.", [beforeFilename])',
     'if (after.parse_ok && after.lane_count < 1) failCheck("mvp_status_no_lanes_after", "P0", "Story Agent", "MVP status has no lanes after smoke; restore the Story Agent MVP status report.", [afterFilename])',
+    'if (before.parse_ok && before.summary?.local_acceptance_counts_as_real_external_callback !== false) failCheck("mvp_local_acceptance_real_callback_boundary_before", "P0", "Story Agent + GEARS v2", "Pre-smoke MVP status must explicitly keep local acceptance out of real external callback readiness.", [beforeFilename])',
+    'if (after.parse_ok && after.summary?.local_acceptance_counts_as_real_external_callback !== false) failCheck("mvp_local_acceptance_real_callback_boundary_after", "P0", "Story Agent + GEARS v2", "Post-smoke MVP status must explicitly keep local acceptance out of real external callback readiness.", [afterFilename])',
     'if (before.parse_ok && after.parse_ok && deltas.status_rank < 0) failCheck("mvp_status_regressed", "P0", "Story Agent", "Story Agent MVP status regressed during worker smoke; inspect generated health and production readiness writes.", [beforeFilename, afterFilename])',
     'if (before.parse_ok && after.parse_ok && deltas.blocker_count > 0) failCheck("mvp_blocker_count_increased", "P0", "Story Agent", "Story Agent MVP blocker count increased during worker smoke; inspect callback or readiness side effects.", [beforeFilename, afterFilename])',
     'if (before.parse_ok && after.parse_ok && deltas.score < 0) warnCheck("mvp_score_decreased", "P1", "Story Agent", "Story Agent MVP score decreased during worker smoke; compare before/after lane details before rollout.", [beforeFilename, afterFilename])',
@@ -3747,6 +3788,7 @@ function renderStoryAgentMvpStatusAuditCommand(targetDirExpression: string): str
     '  before,',
     '  after,',
     '  deltas,',
+    '  real_external_callback_readiness: realExternalCallbackReadiness,',
     '  failed_checks,',
     '  warning_checks,',
     '  compatibility_notes,',
@@ -3768,6 +3810,10 @@ function renderStoryAgentMvpStatusAuditCommand(targetDirExpression: string): str
     '  `- status_rank_delta: ${audit.deltas.status_rank}` ,',
     '  `- ready_lane_delta: ${audit.deltas.ready_lane_count}` ,',
     '  `- blocker_count_delta: ${audit.deltas.blocker_count}` ,',
+    '  `- real_gears_acceptance_ready_before/after/changed: ${audit.real_external_callback_readiness.booleans.real_gears_acceptance_ready_to_run.before}/${audit.real_external_callback_readiness.booleans.real_gears_acceptance_ready_to_run.after}/${audit.real_external_callback_readiness.booleans.real_gears_acceptance_ready_to_run.changed}` ,',
+    '  `- real_gears_callback_base_public_before/after/changed: ${audit.real_external_callback_readiness.booleans.real_gears_callback_base_public.before}/${audit.real_external_callback_readiness.booleans.real_gears_callback_base_public.after}/${audit.real_external_callback_readiness.booleans.real_gears_callback_base_public.changed}` ,',
+    '  `- local_acceptance_counts_as_real_external_callback_before/after/changed: ${audit.real_external_callback_readiness.booleans.local_acceptance_counts_as_real_external_callback.before}/${audit.real_external_callback_readiness.booleans.local_acceptance_counts_as_real_external_callback.after}/${audit.real_external_callback_readiness.booleans.local_acceptance_counts_as_real_external_callback.changed}` ,',
+    '  `- real_gears_acceptance_blocker_before/after/changed: ${audit.real_external_callback_readiness.blocker.before || "none"}/${audit.real_external_callback_readiness.blocker.after || "none"}/${audit.real_external_callback_readiness.blocker.changed}` ,',
     '  `- seedance_placeholder_before/after/delta: ${audit.before.summary?.seedance_placeholder_asset_count ?? 0}/${audit.after.summary?.seedance_placeholder_asset_count ?? 0}/${audit.deltas.seedance_placeholder_asset_count}` ,',
     '  `- seedance_production_ready_before/after/delta: ${audit.before.summary?.seedance_production_asset_ready_count ?? 0}/${audit.after.summary?.seedance_production_asset_ready_count ?? 0}/${audit.deltas.seedance_production_asset_ready_count}` ,',
     '  `- knowledge_writeback_ready_before/after/delta: ${audit.before.summary?.knowledge_writeback_ready_count ?? 0}/${audit.after.summary?.knowledge_writeback_ready_count ?? 0}/${audit.deltas.knowledge_writeback_ready_count}` ,',
@@ -3817,6 +3863,8 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '  return fs.readFileSync(filePath(filename), "utf8").split(/\\r?\\n/).map(line => line.trim()).filter(Boolean)',
     '}',
     'function numberValue(value) { return typeof value === "number" && Number.isFinite(value) ? value : 0 }',
+    'function boolValue(value) { return value === true }',
+    'function stringValue(value) { return typeof value === "string" ? value : "" }',
     'function actionsFrom(audit) { return Array.isArray(audit?.recommended_actions) ? audit.recommended_actions : [] }',
     'function responseBody(root) { return root && typeof root === "object" && root.data && typeof root.data === "object" ? root.data : root }',
     'function stringMatchCount(value, expected, seen = new Set()) {',
@@ -3850,6 +3898,34 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '    knowledge_writeback_ready_count: record("knowledge_writeback_ready_count"),',
     '    knowledge_writeback_queued_count: record("knowledge_writeback_queued_count"),',
     '    knowledge_writeback_needs_revision_count: record("knowledge_writeback_needs_revision_count"),',
+    '  }',
+    '}',
+    'const realExternalCallbackBooleanKeys = [',
+    '  "real_gears_endpoint_configured",',
+    '  "real_gears_callback_secret_configured",',
+    '  "real_gears_callback_base_configured",',
+    '  "real_gears_callback_base_public",',
+    '  "real_gears_acceptance_ready_to_run",',
+    '  "local_acceptance_counts_as_real_external_callback",',
+    '  "seedance_provider_submit_adapter_configured",',
+    '  "seedance_provider_poll_adapter_configured",',
+    '  "seedance_provider_callback_base_configured",',
+    '  "seedance_provider_external_loop_ready",',
+    ']',
+    'function mvpRealExternalCallbackReadinessFrom(audit) {',
+    '  if (audit?.real_external_callback_readiness && typeof audit.real_external_callback_readiness === "object") return audit.real_external_callback_readiness',
+    '  const beforeSummary = audit?.before?.summary || {}',
+    '  const afterSummary = audit?.after?.summary || {}',
+    '  const booleans = Object.fromEntries(realExternalCallbackBooleanKeys.map(key => {',
+    '    const before = boolValue(beforeSummary[key])',
+    '    const after = boolValue(afterSummary[key])',
+    '    return [key, { before, after, changed: before !== after }]',
+    '  }))',
+    '  const beforeBlocker = stringValue(beforeSummary.real_gears_acceptance_blocker)',
+    '  const afterBlocker = stringValue(afterSummary.real_gears_acceptance_blocker)',
+    '  return {',
+    '    booleans,',
+    '    blocker: { before: beforeBlocker, after: afterBlocker, changed: beforeBlocker !== afterBlocker },',
     '  }',
     '}',
     'const gates = []',
@@ -4065,6 +4141,7 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '} else {',
     '  const mvpBlockingCount = (mvpStatusAudit.status === "failed" ? 1 : 0) + (Array.isArray(mvpStatusAudit.failed_checks) ? mvpStatusAudit.failed_checks.length : 0)',
     '  const mvpGovernanceCounts = mvpGovernanceCountsFrom(mvpStatusAudit)',
+    '  const mvpRealExternalCallbackReadiness = mvpRealExternalCallbackReadinessFrom(mvpStatusAudit)',
     '  addGate(',
     '    "story_agent_mvp_status_audit",',
     '    "Story Agent MVP status smoke audit",',
@@ -4076,6 +4153,7 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '      after: { status: mvpStatusAudit.after?.status, score: mvpStatusAudit.after?.score, summary: mvpStatusAudit.after?.summary },',
     '      deltas: mvpStatusAudit.deltas,',
     '      governance_counts: mvpGovernanceCounts,',
+    '      real_external_callback_readiness: mvpRealExternalCallbackReadiness,',
     '      warning_checks: mvpStatusAudit.warning_checks || [],',
     '    },',
     '    actionsFrom(mvpStatusAudit),',
@@ -4120,6 +4198,7 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     'const pressureGate = gates.find(gate => gate.id === "large_project_pressure_audit")',
     'const mvpStatusGate = gates.find(gate => gate.id === "story_agent_mvp_status_audit")',
     'const mvpGovernanceEvidence = mvpStatusGate?.evidence?.governance_counts',
+    'const mvpRealExternalCallbackReadinessEvidence = mvpStatusGate?.evidence?.real_external_callback_readiness',
     'const acceptancePassed = failedGates.length === 0',
     'const status = acceptancePassed',
     '  ? pressureGate?.status === "passed" ? "passed" : "passed_basic"',
@@ -4143,6 +4222,7 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '  failed_gate_ids: failedGates.map(gate => gate.id),',
     '  skipped_gate_ids: skippedGates.map(gate => gate.id),',
     '  mvp_governance_counts: mvpGovernanceEvidence,',
+    '  mvp_real_external_callback_readiness: mvpRealExternalCallbackReadinessEvidence,',
     '  gates,',
     '  recommended_actions: recommendedActions,',
     '}',
@@ -4169,6 +4249,11 @@ function renderWorkerAcceptanceVerdictCommand(targetDirExpression: string): stri
     '    `- mvp_knowledge_writeback_ready_before/after/delta: ${verdict.mvp_governance_counts.knowledge_writeback_ready_count.before}/${verdict.mvp_governance_counts.knowledge_writeback_ready_count.after}/${verdict.mvp_governance_counts.knowledge_writeback_ready_count.delta}` ,',
     '    `- mvp_knowledge_writeback_queued_before/after/delta: ${verdict.mvp_governance_counts.knowledge_writeback_queued_count.before}/${verdict.mvp_governance_counts.knowledge_writeback_queued_count.after}/${verdict.mvp_governance_counts.knowledge_writeback_queued_count.delta}` ,',
     '    `- mvp_knowledge_writeback_needs_revision_before/after/delta: ${verdict.mvp_governance_counts.knowledge_writeback_needs_revision_count.before}/${verdict.mvp_governance_counts.knowledge_writeback_needs_revision_count.after}/${verdict.mvp_governance_counts.knowledge_writeback_needs_revision_count.delta}` ,',
+    '  ] : []),',
+    '  ...(verdict.mvp_real_external_callback_readiness ? [',
+    '    `- mvp_real_gears_acceptance_ready_before/after/changed: ${verdict.mvp_real_external_callback_readiness.booleans.real_gears_acceptance_ready_to_run.before}/${verdict.mvp_real_external_callback_readiness.booleans.real_gears_acceptance_ready_to_run.after}/${verdict.mvp_real_external_callback_readiness.booleans.real_gears_acceptance_ready_to_run.changed}` ,',
+    '    `- mvp_real_gears_callback_base_public_before/after/changed: ${verdict.mvp_real_external_callback_readiness.booleans.real_gears_callback_base_public.before}/${verdict.mvp_real_external_callback_readiness.booleans.real_gears_callback_base_public.after}/${verdict.mvp_real_external_callback_readiness.booleans.real_gears_callback_base_public.changed}` ,',
+    '    `- mvp_local_acceptance_counts_as_real_external_callback_before/after/changed: ${verdict.mvp_real_external_callback_readiness.booleans.local_acceptance_counts_as_real_external_callback.before}/${verdict.mvp_real_external_callback_readiness.booleans.local_acceptance_counts_as_real_external_callback.after}/${verdict.mvp_real_external_callback_readiness.booleans.local_acceptance_counts_as_real_external_callback.changed}` ,',
     '  ] : []),',
     '  "",',
     '  "## Gates",',
@@ -4234,6 +4319,8 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '  return { priority, owner, action: text, evidence, sample_files: sampleFiles }',
     '}',
     'function numberValue(value) { return typeof value === "number" && Number.isFinite(value) ? value : 0 }',
+    'function boolValue(value) { return value === true }',
+    'function stringValue(value) { return typeof value === "string" ? value : "" }',
     'function mvpGovernanceCountsFrom(audit) {',
     '  const beforeSummary = audit?.before?.summary || {}',
     '  const afterSummary = audit?.after?.summary || {}',
@@ -4253,6 +4340,34 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '    knowledge_writeback_needs_revision_count: record("knowledge_writeback_needs_revision_count"),',
     '  }',
     '}',
+    'const realExternalCallbackBooleanKeys = [',
+    '  "real_gears_endpoint_configured",',
+    '  "real_gears_callback_secret_configured",',
+    '  "real_gears_callback_base_configured",',
+    '  "real_gears_callback_base_public",',
+    '  "real_gears_acceptance_ready_to_run",',
+    '  "local_acceptance_counts_as_real_external_callback",',
+    '  "seedance_provider_submit_adapter_configured",',
+    '  "seedance_provider_poll_adapter_configured",',
+    '  "seedance_provider_callback_base_configured",',
+    '  "seedance_provider_external_loop_ready",',
+    ']',
+    'function mvpRealExternalCallbackReadinessFrom(audit) {',
+    '  if (audit?.real_external_callback_readiness && typeof audit.real_external_callback_readiness === "object") return audit.real_external_callback_readiness',
+    '  const beforeSummary = audit?.before?.summary || {}',
+    '  const afterSummary = audit?.after?.summary || {}',
+    '  const booleans = Object.fromEntries(realExternalCallbackBooleanKeys.map(key => {',
+    '    const before = boolValue(beforeSummary[key])',
+    '    const after = boolValue(afterSummary[key])',
+    '    return [key, { before, after, changed: before !== after }]',
+    '  }))',
+    '  const beforeBlocker = stringValue(beforeSummary.real_gears_acceptance_blocker)',
+    '  const afterBlocker = stringValue(afterSummary.real_gears_acceptance_blocker)',
+    '  return {',
+    '    booleans,',
+    '    blocker: { before: beforeBlocker, after: afterBlocker, changed: beforeBlocker !== afterBlocker },',
+    '  }',
+    '}',
     'const verdict = readJson("gears-worker-acceptance-verdict.json")',
     'const workerAudit = readJson("gears-worker-response-audit.json")',
     'const callbackAudit = readJson("story-agent-callback-response-audit.json")',
@@ -4261,6 +4376,7 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     'const generatedHealthAudit = readJson("story-agent-generated-health-audit.json")',
     'const mvpStatusAudit = readJson("story-agent-mvp-status-audit.json")',
     'const mvpGovernanceCounts = mvpStatusAudit && !mvpStatusAudit.__parse_error ? mvpGovernanceCountsFrom(mvpStatusAudit) : undefined',
+    'const mvpRealExternalCallbackReadiness = mvpStatusAudit && !mvpStatusAudit.__parse_error ? mvpRealExternalCallbackReadinessFrom(mvpStatusAudit) : undefined',
     'const pressureAudit = readJson("gears-large-project-response-audit.json")',
     'const pressureSubmitted = Boolean(verdict?.pressure_submitted || pressureAudit?.totals?.pressure_submitted)',
     'const verdictSystemExternalGate = Array.isArray(verdict?.gates)',
@@ -4409,6 +4525,7 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '      after: { status: mvpStatusAudit.after?.status, score: mvpStatusAudit.after?.score, summary: mvpStatusAudit.after?.summary },',
     '      deltas: mvpStatusAudit.deltas,',
     '      governance_counts: mvpGovernanceCounts,',
+    '      real_external_callback_readiness: mvpRealExternalCallbackReadiness,',
     '      failed_checks: mvpStatusAudit.failed_checks || [],',
     '      warning_checks: mvpStatusAudit.warning_checks || [],',
     '    } : undefined,',
@@ -4431,6 +4548,7 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     'function renderMarkdown(archive) {',
     '  const requiredFiles = archive.files.filter(file => file.required)',
     '  const mvpCounts = archive.audit_summaries?.story_agent_mvp_status?.governance_counts',
+    '  const mvpReadiness = archive.audit_summaries?.story_agent_mvp_status?.real_external_callback_readiness',
     '  const outputUrlVerification = archive.audit_summaries?.system_external_callback?.output_url_verification',
     '  const lines = [',
     '    "# GEARS Worker Acceptance Archive",',
@@ -4458,6 +4576,11 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '      `- mvp_knowledge_writeback_ready_before/after/delta: ${mvpCounts.knowledge_writeback_ready_count.before}/${mvpCounts.knowledge_writeback_ready_count.after}/${mvpCounts.knowledge_writeback_ready_count.delta}` ,',
     '      `- mvp_knowledge_writeback_queued_before/after/delta: ${mvpCounts.knowledge_writeback_queued_count.before}/${mvpCounts.knowledge_writeback_queued_count.after}/${mvpCounts.knowledge_writeback_queued_count.delta}` ,',
     '      `- mvp_knowledge_writeback_needs_revision_before/after/delta: ${mvpCounts.knowledge_writeback_needs_revision_count.before}/${mvpCounts.knowledge_writeback_needs_revision_count.after}/${mvpCounts.knowledge_writeback_needs_revision_count.delta}` ,',
+    '    ] : []),',
+    '    ...(mvpReadiness ? [',
+    '      `- mvp_real_gears_acceptance_ready_before/after/changed: ${mvpReadiness.booleans.real_gears_acceptance_ready_to_run.before}/${mvpReadiness.booleans.real_gears_acceptance_ready_to_run.after}/${mvpReadiness.booleans.real_gears_acceptance_ready_to_run.changed}` ,',
+    '      `- mvp_real_gears_callback_base_public_before/after/changed: ${mvpReadiness.booleans.real_gears_callback_base_public.before}/${mvpReadiness.booleans.real_gears_callback_base_public.after}/${mvpReadiness.booleans.real_gears_callback_base_public.changed}` ,',
+    '      `- mvp_local_acceptance_counts_as_real_external_callback_before/after/changed: ${mvpReadiness.booleans.local_acceptance_counts_as_real_external_callback.before}/${mvpReadiness.booleans.local_acceptance_counts_as_real_external_callback.after}/${mvpReadiness.booleans.local_acceptance_counts_as_real_external_callback.changed}` ,',
     '    ] : []),',
     '    ...(outputUrlVerification ? [',
     '      `- system_external_output_url_verification_imported: ${outputUrlVerification.imported === true}` ,',
@@ -6112,6 +6235,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
         'Audit warns if MVP score decreases without a status regression.',
         'Audit records Seedance placeholder/production-ready asset counts before and after smoke.',
         'Audit records knowledge writeback ready/queued/needs_revision counts before and after smoke.',
+        'Audit records real_external_callback_readiness and keeps local_acceptance_counts_as_real_external_callback=false.',
       ],
     },
     ...(pressurePlanPayload ? [{
@@ -6147,7 +6271,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
         'gears-worker-acceptance-verdict.json and gears-worker-acceptance-verdict.md exist.',
         'Verdict gates cover required envs, callback id preflight, worker response audit, system external callback batch, generated health audit, production material pack health audit, MVP status audit, Story Agent callback audit, large project pressure audit, and manifest.',
         'System external callback gate verifies the import response contains the exact output_url from story-agent-system-external-output-url-source.json.',
-        'Verdict story_agent_mvp_status_audit gate evidence includes Seedance asset and knowledge writeback governance counts.',
+        'Verdict story_agent_mvp_status_audit gate evidence includes Seedance asset and knowledge writeback governance counts plus real external callback readiness.',
         'acceptance_passed is true only when all non-skipped gates pass.',
         'When GEARS_ACCEPTANCE_STRICT_AUDIT=1, the generated shell exits non-zero if verdict acceptance_passed=false.',
       ],
@@ -6161,6 +6285,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
         'gears-worker-acceptance-archive.json and gears-worker-acceptance-archive.md exist.',
         'Archive lists required evidence attachments, missing_required_files, byte lengths, checksum_manifest, and sha256 checksums.',
         'Archive audit_summaries include MVP Seedance asset and knowledge writeback governance counts.',
+        'Archive audit_summaries include MVP real external callback readiness.',
         'Archive audit_summaries include system external output_url_verification for handoff integrity.',
         'gears-worker-acceptance-checksums.json and gears-worker-acceptance-checksums.md exist with every archived evidence file checksum.',
         'signoff_ready is true only when acceptance_passed=true and all required handoff attachments exist.',
@@ -6768,6 +6893,11 @@ function evidenceNumber(value: unknown): number {
 
 type MvpGovernanceCountMetric = 'before' | 'after' | 'delta';
 type MvpGovernanceCounts = Record<string, Record<MvpGovernanceCountMetric, number>>;
+type MvpRealExternalReadinessMetric = 'before' | 'after' | 'changed';
+type MvpRealExternalCallbackReadiness = {
+  booleans: Record<string, Record<MvpRealExternalReadinessMetric, boolean>>;
+  blocker: { before: string; after: string; changed: boolean };
+};
 
 const MVP_GOVERNANCE_COUNT_KEYS = [
   'seedance_placeholder_asset_count',
@@ -6778,6 +6908,21 @@ const MVP_GOVERNANCE_COUNT_KEYS = [
 ] as const;
 
 const MVP_GOVERNANCE_COUNT_METRICS = ['before', 'after', 'delta'] as const satisfies readonly MvpGovernanceCountMetric[];
+
+const MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_KEYS = [
+  'real_gears_endpoint_configured',
+  'real_gears_callback_secret_configured',
+  'real_gears_callback_base_configured',
+  'real_gears_callback_base_public',
+  'real_gears_acceptance_ready_to_run',
+  'local_acceptance_counts_as_real_external_callback',
+  'seedance_provider_submit_adapter_configured',
+  'seedance_provider_poll_adapter_configured',
+  'seedance_provider_callback_base_configured',
+  'seedance_provider_external_loop_ready',
+] as const;
+
+const MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_METRICS = ['before', 'after', 'changed'] as const satisfies readonly MvpRealExternalReadinessMetric[];
 
 function evidenceMvpGovernanceCountsFromAudit(
   beforeSummary: Record<string, unknown>,
@@ -6832,6 +6977,82 @@ function compareMvpGovernanceCounts(
 
 function evidenceBool(value: unknown): boolean {
   return value === true;
+}
+
+function evidenceString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function evidenceMvpRealExternalCallbackReadinessFromAudit(
+  beforeSummary: Record<string, unknown>,
+  afterSummary: Record<string, unknown>,
+): MvpRealExternalCallbackReadiness {
+  const booleans = Object.fromEntries(MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_KEYS.map(key => {
+    const before = evidenceBool(beforeSummary[key]);
+    const after = evidenceBool(afterSummary[key]);
+    return [key, { before, after, changed: before !== after }];
+  })) as Record<string, Record<MvpRealExternalReadinessMetric, boolean>>;
+  const beforeBlocker = evidenceString(beforeSummary.real_gears_acceptance_blocker);
+  const afterBlocker = evidenceString(afterSummary.real_gears_acceptance_blocker);
+  return {
+    booleans,
+    blocker: {
+      before: beforeBlocker,
+      after: afterBlocker,
+      changed: beforeBlocker !== afterBlocker,
+    },
+  };
+}
+
+function evidenceMvpRealExternalCallbackReadiness(value: unknown): MvpRealExternalCallbackReadiness | undefined {
+  const root = evidenceObject(value);
+  const booleanRoot = evidenceObject(root.booleans);
+  const entries = MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_KEYS.map(key => {
+    const record = evidenceObject(booleanRoot[key]);
+    const hasAllMetrics = MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_METRICS.every(metric => Object.prototype.hasOwnProperty.call(record, metric));
+    if (!hasAllMetrics) return undefined;
+    return [
+      key,
+      {
+        before: evidenceBool(record.before),
+        after: evidenceBool(record.after),
+        changed: evidenceBool(record.changed),
+      },
+    ] as const;
+  });
+  const blocker = evidenceObject(root.blocker);
+  const hasBlocker = ['before', 'after', 'changed'].every(key => Object.prototype.hasOwnProperty.call(blocker, key));
+  if (entries.some(item => item === undefined) || !hasBlocker) return undefined;
+  return {
+    booleans: Object.fromEntries(entries as Array<readonly [string, Record<MvpRealExternalReadinessMetric, boolean>]>),
+    blocker: {
+      before: evidenceString(blocker.before),
+      after: evidenceString(blocker.after),
+      changed: evidenceBool(blocker.changed),
+    },
+  };
+}
+
+function compareMvpRealExternalCallbackReadiness(
+  source: 'verdict' | 'archive',
+  actual: MvpRealExternalCallbackReadiness | undefined,
+  expected: MvpRealExternalCallbackReadiness,
+): string[] {
+  if (!actual) return [`${source}.missing`];
+  const mismatches: string[] = [];
+  for (const key of MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_KEYS) {
+    for (const metric of MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_METRICS) {
+      if (actual.booleans[key]?.[metric] !== expected.booleans[key][metric]) {
+        mismatches.push(`${source}.${key}.${metric}`);
+      }
+    }
+  }
+  for (const metric of MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_METRICS) {
+    if (actual.blocker[metric] !== expected.blocker[metric]) {
+      mismatches.push(`${source}.real_gears_acceptance_blocker.${metric}`);
+    }
+  }
+  return mismatches;
 }
 
 function evidencePublicExternalArtifactUrl(value: unknown): boolean {
@@ -6968,6 +7189,9 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- mvp_governance_counts_consistent: ${report.mvp_governance_counts_consistent}`,
     `- mvp_governance_counts_embedded verdict/archive: ${report.mvp_governance_counts_verdict_embedded}/${report.mvp_governance_counts_archive_embedded}`,
     `- mvp_governance_count_mismatch_ids: ${report.mvp_governance_count_mismatch_ids.join(', ') || 'none'}`,
+    `- mvp_real_external_callback_readiness_consistent: ${report.mvp_real_external_callback_readiness_consistent}`,
+    `- mvp_real_external_callback_readiness_embedded verdict/archive: ${report.mvp_real_external_callback_readiness_verdict_embedded}/${report.mvp_real_external_callback_readiness_archive_embedded}`,
+    `- mvp_real_external_callback_readiness_mismatch_ids: ${report.mvp_real_external_callback_readiness_mismatch_ids.join(', ') || 'none'}`,
     `- system_external_callback_passed: ${report.system_external_callback_passed}`,
     `- system_external_output_url_source: ${report.system_external_output_url_source}`,
     `- system_external_output_url_source_ready: ${report.system_external_output_url_source_ready}`,
@@ -7054,6 +7278,10 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       mvp_governance_counts_verdict_embedded: false,
       mvp_governance_counts_archive_embedded: false,
       mvp_governance_count_mismatch_ids: [],
+      mvp_real_external_callback_readiness_consistent: false,
+      mvp_real_external_callback_readiness_verdict_embedded: false,
+      mvp_real_external_callback_readiness_archive_embedded: false,
+      mvp_real_external_callback_readiness_mismatch_ids: [],
       system_external_callback_passed: false,
       system_external_callback_ready_to_import_count: 0,
       system_external_callback_updated_count: 0,
@@ -7227,6 +7455,22 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     : ['mvp_status_audit.missing_or_invalid'];
   const mvpGovernanceCountsConsistent = Boolean(expectedMvpGovernanceCounts)
     && mvpGovernanceCountMismatchIds.length === 0;
+  const expectedMvpRealExternalCallbackReadiness = mvpRead.exists && mvpRead.parse_ok
+    ? evidenceMvpRealExternalCallbackReadinessFromAudit(mvpBeforeSummary, mvpAfterSummary)
+    : undefined;
+  const verdictMvpRealExternalCallbackReadiness = evidenceMvpRealExternalCallbackReadiness(verdict?.mvp_real_external_callback_readiness)
+    ?? evidenceMvpRealExternalCallbackReadiness(evidenceObject(verdictMvpGate?.evidence).real_external_callback_readiness);
+  const archiveMvpRealExternalCallbackReadiness = evidenceMvpRealExternalCallbackReadiness(
+    evidenceObject(evidenceObject(evidenceObject(archive?.audit_summaries).story_agent_mvp_status).real_external_callback_readiness),
+  );
+  const mvpRealExternalCallbackReadinessMismatchIds = expectedMvpRealExternalCallbackReadiness
+    ? [
+      ...compareMvpRealExternalCallbackReadiness('verdict', verdictMvpRealExternalCallbackReadiness, expectedMvpRealExternalCallbackReadiness),
+      ...compareMvpRealExternalCallbackReadiness('archive', archiveMvpRealExternalCallbackReadiness, expectedMvpRealExternalCallbackReadiness),
+    ]
+    : ['mvp_status_audit.missing_or_invalid'];
+  const mvpRealExternalCallbackReadinessConsistent = Boolean(expectedMvpRealExternalCallbackReadiness)
+    && mvpRealExternalCallbackReadinessMismatchIds.length === 0;
   const pressureTotals = evidenceObject(pressureRead.data?.totals);
   const archiveTotals = evidenceObject(archive?.totals);
   const gates = rawVerdictGates.map(item => ({
@@ -7325,6 +7569,18 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
         'gears-worker-acceptance-archive.json',
       ],
     }] : []),
+    ...(!mvpRealExternalCallbackReadinessConsistent ? [{
+      priority: 'P0',
+      owner: 'Story Agent evidence signoff',
+      action: 'Regenerate worker acceptance verdict/archive from the same story-agent-mvp-status-audit.json so embedded real external callback readiness matches before GEARS/Seedance signoff.',
+      evidence: 'mvp_real_external_callback_readiness_inconsistent',
+      gate_id: 'story_agent_mvp_status_audit',
+      sample_files: [
+        'story-agent-mvp-status-audit.json',
+        'gears-worker-acceptance-verdict.json',
+        'gears-worker-acceptance-archive.json',
+      ],
+    }] : []),
     ...(!systemExternalOutputUrlVerdictConsistent ? [{
       priority: 'P0',
       owner: 'Story Agent + GEARS v2',
@@ -7370,6 +7626,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     && domainPackProductionHealthAuditPassed
     && mvpStatusAuditPassed
     && mvpGovernanceCountsConsistent
+    && mvpRealExternalCallbackReadinessConsistent
     && systemExternalCallbackPassed
     && systemExternalOutputUrlVerdictConsistent
     && systemExternalOutputUrlArchiveConsistent
@@ -7395,6 +7652,10 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     mvp_governance_counts_verdict_embedded: Boolean(verdictMvpGovernanceCounts),
     mvp_governance_counts_archive_embedded: Boolean(archiveMvpGovernanceCounts),
     mvp_governance_count_mismatch_ids: mvpGovernanceCountMismatchIds,
+    mvp_real_external_callback_readiness_consistent: mvpRealExternalCallbackReadinessConsistent,
+    mvp_real_external_callback_readiness_verdict_embedded: Boolean(verdictMvpRealExternalCallbackReadiness),
+    mvp_real_external_callback_readiness_archive_embedded: Boolean(archiveMvpRealExternalCallbackReadiness),
+    mvp_real_external_callback_readiness_mismatch_ids: mvpRealExternalCallbackReadinessMismatchIds,
     system_external_callback_passed: systemExternalCallbackPassed,
     system_external_callback_ready_to_import_count: evidenceNumber(systemExternalPreflight.ready_to_import_count),
     system_external_callback_updated_count: evidenceNumber(systemExternalImport.updated_count),

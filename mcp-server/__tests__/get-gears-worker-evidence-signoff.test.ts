@@ -24,6 +24,38 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
     knowledge_writeback_queued_count: { before: 1, after: 1, delta: 0 },
     knowledge_writeback_needs_revision_count: { before: 0, after: 0, delta: 0 },
   };
+  const mvpRealExternalSummary = {
+    real_gears_endpoint_configured: true,
+    real_gears_callback_secret_configured: true,
+    real_gears_callback_base_configured: true,
+    real_gears_callback_base_public: true,
+    real_gears_acceptance_ready_to_run: true,
+    real_gears_acceptance_blocker: 'gears_worker_signoff_evidence_pending',
+    local_acceptance_counts_as_real_external_callback: false,
+    seedance_provider_submit_adapter_configured: true,
+    seedance_provider_poll_adapter_configured: true,
+    seedance_provider_callback_base_configured: true,
+    seedance_provider_external_loop_ready: true,
+  };
+  const mvpRealExternalCallbackReadiness = {
+    booleans: {
+      real_gears_endpoint_configured: { before: true, after: true, changed: false },
+      real_gears_callback_secret_configured: { before: true, after: true, changed: false },
+      real_gears_callback_base_configured: { before: true, after: true, changed: false },
+      real_gears_callback_base_public: { before: true, after: true, changed: false },
+      real_gears_acceptance_ready_to_run: { before: true, after: true, changed: false },
+      local_acceptance_counts_as_real_external_callback: { before: false, after: false, changed: false },
+      seedance_provider_submit_adapter_configured: { before: true, after: true, changed: false },
+      seedance_provider_poll_adapter_configured: { before: true, after: true, changed: false },
+      seedance_provider_callback_base_configured: { before: true, after: true, changed: false },
+      seedance_provider_external_loop_ready: { before: true, after: true, changed: false },
+    },
+    blocker: {
+      before: 'gears_worker_signoff_evidence_pending',
+      after: 'gears_worker_signoff_evidence_pending',
+      changed: false,
+    },
+  };
   writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
     schema_version: 'gears-worker-acceptance-verdict/v1',
     status: 'passed',
@@ -33,6 +65,7 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
     failed_gate_ids: [],
     skipped_gate_ids: [],
     mvp_governance_counts: mvpGovernanceCounts,
+    mvp_real_external_callback_readiness: mvpRealExternalCallbackReadiness,
     gates: [
       {
         id: 'production_material_pack_health_audit',
@@ -93,6 +126,7 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
       },
       story_agent_mvp_status: {
         governance_counts: mvpGovernanceCounts,
+        real_external_callback_readiness: mvpRealExternalCallbackReadiness,
       },
     },
     recommended_actions: recommendedActions,
@@ -226,6 +260,7 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
       status: 'ready',
       score: 96,
       summary: {
+        ...mvpRealExternalSummary,
         seedance_placeholder_asset_count: 0,
         seedance_production_asset_ready_count: 5,
         knowledge_writeback_ready_count: 1,
@@ -237,6 +272,7 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
       status: 'ready',
       score: 96,
       summary: {
+        ...mvpRealExternalSummary,
         seedance_placeholder_asset_count: 0,
         seedance_production_asset_ready_count: 5,
         knowledge_writeback_ready_count: 1,
@@ -254,6 +290,7 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
       knowledge_writeback_queued_count: 0,
       knowledge_writeback_needs_revision_count: 0,
     },
+    real_external_callback_readiness: mvpRealExternalCallbackReadiness,
     failed_checks: [],
     warning_checks: [],
     recommended_actions: [],
@@ -341,6 +378,9 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.mvp_governance_counts_consistent).toBe(true);
     expect(result.mvp_governance_counts_verdict_embedded).toBe(true);
     expect(result.mvp_governance_counts_archive_embedded).toBe(true);
+    expect(result.mvp_real_external_callback_readiness_consistent).toBe(true);
+    expect(result.mvp_real_external_callback_readiness_verdict_embedded).toBe(true);
+    expect(result.mvp_real_external_callback_readiness_archive_embedded).toBe(true);
     expect(result.mvp_governance_count_mismatch_ids).toEqual([]);
     expect(result.system_external_callback_passed).toBe(true);
     expect(result.system_external_callback_ready_to_import_count).toBe(3);
@@ -406,6 +446,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.markdown).toContain('mvp_score_delta: 0');
     expect(result.markdown).toContain('mvp_governance_counts_consistent: true');
     expect(result.markdown).toContain('mvp_governance_counts_embedded verdict/archive: true/true');
+    expect(result.markdown).toContain('mvp_real_external_callback_readiness_consistent: true');
+    expect(result.markdown).toContain('mvp_real_external_callback_readiness_embedded verdict/archive: true/true');
     expect(result.markdown).toContain('mvp_seedance_placeholder_before/after/delta: 0/0/0');
     expect(result.markdown).toContain('mvp_knowledge_writeback_queued_before/after/delta: 1/1/0');
   });
@@ -439,6 +481,36 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     ]));
     expect(result.markdown).toContain('mvp_governance_counts_consistent: false');
     expect(result.markdown).toContain('mvp_governance_count_mismatch_ids: verdict.knowledge_writeback_queued_count.delta');
+  });
+
+  it('requires embedded MVP real external callback readiness to match the source audit', async () => {
+    const evidenceDir = path.join(tmpRoot, 'gears-evidence-mvp-real-callback-mismatch');
+    writeCompleteEvidence(evidenceDir);
+    const verdictPath = path.join(evidenceDir, 'gears-worker-acceptance-verdict.json');
+    const verdict = JSON.parse(fs.readFileSync(verdictPath, 'utf-8'));
+    verdict.mvp_real_external_callback_readiness.booleans.real_gears_callback_base_public.after = false;
+    writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', verdict);
+
+    const result = await getGearsWorkerEvidenceSignoff({ evidence_dir: evidenceDir });
+
+    expect(result.status).toBe('attention');
+    expect(result.acceptance_passed).toBe(true);
+    expect(result.signoff_ready).toBe(true);
+    expect(result.mvp_status_audit_passed).toBe(true);
+    expect(result.mvp_real_external_callback_readiness_consistent).toBe(false);
+    expect(result.mvp_real_external_callback_readiness_verdict_embedded).toBe(true);
+    expect(result.mvp_real_external_callback_readiness_archive_embedded).toBe(true);
+    expect(result.mvp_real_external_callback_readiness_mismatch_ids).toEqual([
+      'verdict.real_gears_callback_base_public.after',
+    ]);
+    expect(result.recommended_actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        evidence: 'mvp_real_external_callback_readiness_inconsistent',
+        gate_id: 'story_agent_mvp_status_audit',
+      }),
+    ]));
+    expect(result.markdown).toContain('mvp_real_external_callback_readiness_consistent: false');
+    expect(result.markdown).toContain('mvp_real_external_callback_readiness_mismatch_ids: verdict.real_gears_callback_base_public.after');
   });
 
   it('requires system external import evidence to contain the verified output URL', async () => {

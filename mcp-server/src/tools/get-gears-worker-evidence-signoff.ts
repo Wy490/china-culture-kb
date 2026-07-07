@@ -50,6 +50,10 @@ export interface GearsWorkerEvidenceSignoffReport {
   mvp_governance_counts_verdict_embedded: boolean;
   mvp_governance_counts_archive_embedded: boolean;
   mvp_governance_count_mismatch_ids: string[];
+  mvp_real_external_callback_readiness_consistent: boolean;
+  mvp_real_external_callback_readiness_verdict_embedded: boolean;
+  mvp_real_external_callback_readiness_archive_embedded: boolean;
+  mvp_real_external_callback_readiness_mismatch_ids: string[];
   system_external_callback_passed: boolean;
   system_external_callback_ready_to_import_count: number;
   system_external_callback_updated_count: number;
@@ -323,6 +327,11 @@ function asNumber(value: unknown): number {
 
 type MvpGovernanceCountMetric = 'before' | 'after' | 'delta';
 type MvpGovernanceCounts = Record<string, Record<MvpGovernanceCountMetric, number>>;
+type MvpRealExternalReadinessMetric = 'before' | 'after' | 'changed';
+type MvpRealExternalCallbackReadiness = {
+  booleans: Record<string, Record<MvpRealExternalReadinessMetric, boolean>>;
+  blocker: { before: string; after: string; changed: boolean };
+};
 
 const MVP_GOVERNANCE_COUNT_KEYS = [
   'seedance_placeholder_asset_count',
@@ -333,6 +342,21 @@ const MVP_GOVERNANCE_COUNT_KEYS = [
 ] as const;
 
 const MVP_GOVERNANCE_COUNT_METRICS = ['before', 'after', 'delta'] as const satisfies readonly MvpGovernanceCountMetric[];
+
+const MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_KEYS = [
+  'real_gears_endpoint_configured',
+  'real_gears_callback_secret_configured',
+  'real_gears_callback_base_configured',
+  'real_gears_callback_base_public',
+  'real_gears_acceptance_ready_to_run',
+  'local_acceptance_counts_as_real_external_callback',
+  'seedance_provider_submit_adapter_configured',
+  'seedance_provider_poll_adapter_configured',
+  'seedance_provider_callback_base_configured',
+  'seedance_provider_external_loop_ready',
+] as const;
+
+const MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_METRICS = ['before', 'after', 'changed'] as const satisfies readonly MvpRealExternalReadinessMetric[];
 
 function mvpGovernanceCountsFromAudit(
   beforeSummary: JsonRecord,
@@ -387,6 +411,82 @@ function compareMvpGovernanceCounts(
 
 function asBool(value: unknown): boolean {
   return value === true;
+}
+
+function asString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function mvpRealExternalCallbackReadinessFromAudit(
+  beforeSummary: JsonRecord,
+  afterSummary: JsonRecord,
+): MvpRealExternalCallbackReadiness {
+  const booleans = Object.fromEntries(MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_KEYS.map(key => {
+    const before = asBool(beforeSummary[key]);
+    const after = asBool(afterSummary[key]);
+    return [key, { before, after, changed: before !== after }];
+  })) as Record<string, Record<MvpRealExternalReadinessMetric, boolean>>;
+  const beforeBlocker = asString(beforeSummary.real_gears_acceptance_blocker);
+  const afterBlocker = asString(afterSummary.real_gears_acceptance_blocker);
+  return {
+    booleans,
+    blocker: {
+      before: beforeBlocker,
+      after: afterBlocker,
+      changed: beforeBlocker !== afterBlocker,
+    },
+  };
+}
+
+function asMvpRealExternalCallbackReadiness(value: unknown): MvpRealExternalCallbackReadiness | undefined {
+  const root = asRecord(value);
+  const booleanRoot = asRecord(root.booleans);
+  const entries = MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_KEYS.map(key => {
+    const record = asRecord(booleanRoot[key]);
+    const hasAllMetrics = MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_METRICS.every(metric => Object.prototype.hasOwnProperty.call(record, metric));
+    if (!hasAllMetrics) return undefined;
+    return [
+      key,
+      {
+        before: asBool(record.before),
+        after: asBool(record.after),
+        changed: asBool(record.changed),
+      },
+    ] as const;
+  });
+  const blocker = asRecord(root.blocker);
+  const hasBlocker = ['before', 'after', 'changed'].every(key => Object.prototype.hasOwnProperty.call(blocker, key));
+  if (entries.some(item => item === undefined) || !hasBlocker) return undefined;
+  return {
+    booleans: Object.fromEntries(entries as Array<readonly [string, Record<MvpRealExternalReadinessMetric, boolean>]>),
+    blocker: {
+      before: asString(blocker.before),
+      after: asString(blocker.after),
+      changed: asBool(blocker.changed),
+    },
+  };
+}
+
+function compareMvpRealExternalCallbackReadiness(
+  source: 'verdict' | 'archive',
+  actual: MvpRealExternalCallbackReadiness | undefined,
+  expected: MvpRealExternalCallbackReadiness,
+): string[] {
+  if (!actual) return [`${source}.missing`];
+  const mismatches: string[] = [];
+  for (const key of MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_KEYS) {
+    for (const metric of MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_METRICS) {
+      if (actual.booleans[key]?.[metric] !== expected.booleans[key][metric]) {
+        mismatches.push(`${source}.${key}.${metric}`);
+      }
+    }
+  }
+  for (const metric of MVP_REAL_EXTERNAL_CALLBACK_BOOLEAN_METRICS) {
+    if (actual.blocker[metric] !== expected.blocker[metric]) {
+      mismatches.push(`${source}.real_gears_acceptance_blocker.${metric}`);
+    }
+  }
+  return mismatches;
 }
 
 function isPublicExternalArtifactUrl(value: unknown): boolean {
@@ -482,6 +582,9 @@ function renderMarkdown(report: Omit<GearsWorkerEvidenceSignoffReport, 'markdown
     `- mvp_governance_counts_consistent: ${report.mvp_governance_counts_consistent}`,
     `- mvp_governance_counts_embedded verdict/archive: ${report.mvp_governance_counts_verdict_embedded}/${report.mvp_governance_counts_archive_embedded}`,
     `- mvp_governance_count_mismatch_ids: ${report.mvp_governance_count_mismatch_ids.join(', ') || 'none'}`,
+    `- mvp_real_external_callback_readiness_consistent: ${report.mvp_real_external_callback_readiness_consistent}`,
+    `- mvp_real_external_callback_readiness_embedded verdict/archive: ${report.mvp_real_external_callback_readiness_verdict_embedded}/${report.mvp_real_external_callback_readiness_archive_embedded}`,
+    `- mvp_real_external_callback_readiness_mismatch_ids: ${report.mvp_real_external_callback_readiness_mismatch_ids.join(', ') || 'none'}`,
     `- system_external_callback_passed: ${report.system_external_callback_passed}`,
     `- system_external_output_url_source: ${report.system_external_output_url_source}`,
     `- system_external_output_url_source_ready: ${report.system_external_output_url_source_ready}`,
@@ -565,6 +668,10 @@ export async function getGearsWorkerEvidenceSignoff(
       mvp_governance_counts_verdict_embedded: false,
       mvp_governance_counts_archive_embedded: false,
       mvp_governance_count_mismatch_ids: [],
+      mvp_real_external_callback_readiness_consistent: false,
+      mvp_real_external_callback_readiness_verdict_embedded: false,
+      mvp_real_external_callback_readiness_archive_embedded: false,
+      mvp_real_external_callback_readiness_mismatch_ids: [],
       system_external_callback_passed: false,
       system_external_callback_ready_to_import_count: 0,
       system_external_callback_updated_count: 0,
@@ -736,6 +843,22 @@ export async function getGearsWorkerEvidenceSignoff(
     : ['mvp_status_audit.missing_or_invalid'];
   const mvpGovernanceCountsConsistent = Boolean(expectedMvpGovernanceCounts)
     && mvpGovernanceCountMismatchIds.length === 0;
+  const expectedMvpRealExternalCallbackReadiness = mvpRead.exists && mvpRead.parse_ok
+    ? mvpRealExternalCallbackReadinessFromAudit(mvpBeforeSummary, mvpAfterSummary)
+    : undefined;
+  const verdictMvpRealExternalCallbackReadiness = asMvpRealExternalCallbackReadiness(verdict?.mvp_real_external_callback_readiness)
+    ?? asMvpRealExternalCallbackReadiness(asRecord(verdictMvpGate?.evidence).real_external_callback_readiness);
+  const archiveMvpRealExternalCallbackReadiness = asMvpRealExternalCallbackReadiness(
+    asRecord(asRecord(asRecord(archive?.audit_summaries).story_agent_mvp_status).real_external_callback_readiness),
+  );
+  const mvpRealExternalCallbackReadinessMismatchIds = expectedMvpRealExternalCallbackReadiness
+    ? [
+      ...compareMvpRealExternalCallbackReadiness('verdict', verdictMvpRealExternalCallbackReadiness, expectedMvpRealExternalCallbackReadiness),
+      ...compareMvpRealExternalCallbackReadiness('archive', archiveMvpRealExternalCallbackReadiness, expectedMvpRealExternalCallbackReadiness),
+    ]
+    : ['mvp_status_audit.missing_or_invalid'];
+  const mvpRealExternalCallbackReadinessConsistent = Boolean(expectedMvpRealExternalCallbackReadiness)
+    && mvpRealExternalCallbackReadinessMismatchIds.length === 0;
   const pressureTotals = asRecord(pressureRead.data?.totals);
   const archiveTotals = asRecord(archive?.totals);
   const gateCounts = asRecord(verdict?.gate_counts);
@@ -834,6 +957,18 @@ export async function getGearsWorkerEvidenceSignoff(
         'gears-worker-acceptance-archive.json',
       ],
     }] : []),
+    ...(!mvpRealExternalCallbackReadinessConsistent ? [{
+      priority: 'P0',
+      owner: 'Story Agent evidence signoff',
+      action: 'Regenerate worker acceptance verdict/archive from the same story-agent-mvp-status-audit.json so embedded real external callback readiness matches before GEARS/Seedance signoff.',
+      evidence: 'mvp_real_external_callback_readiness_inconsistent',
+      gate_id: 'story_agent_mvp_status_audit',
+      sample_files: [
+        'story-agent-mvp-status-audit.json',
+        'gears-worker-acceptance-verdict.json',
+        'gears-worker-acceptance-archive.json',
+      ],
+    }] : []),
     ...(!systemExternalOutputUrlVerdictConsistent ? [{
       priority: 'P0',
       owner: 'Story Agent + GEARS v2',
@@ -876,6 +1011,7 @@ export async function getGearsWorkerEvidenceSignoff(
     && domainPackProductionHealthAuditPassed
     && mvpStatusAuditPassed
     && mvpGovernanceCountsConsistent
+    && mvpRealExternalCallbackReadinessConsistent
     && systemExternalCallbackPassed
     && systemExternalOutputUrlVerdictConsistent
     && systemExternalOutputUrlArchiveConsistent
@@ -901,6 +1037,10 @@ export async function getGearsWorkerEvidenceSignoff(
     mvp_governance_counts_verdict_embedded: Boolean(verdictMvpGovernanceCounts),
     mvp_governance_counts_archive_embedded: Boolean(archiveMvpGovernanceCounts),
     mvp_governance_count_mismatch_ids: mvpGovernanceCountMismatchIds,
+    mvp_real_external_callback_readiness_consistent: mvpRealExternalCallbackReadinessConsistent,
+    mvp_real_external_callback_readiness_verdict_embedded: Boolean(verdictMvpRealExternalCallbackReadiness),
+    mvp_real_external_callback_readiness_archive_embedded: Boolean(archiveMvpRealExternalCallbackReadiness),
+    mvp_real_external_callback_readiness_mismatch_ids: mvpRealExternalCallbackReadinessMismatchIds,
     system_external_callback_passed: systemExternalCallbackPassed,
     system_external_callback_ready_to_import_count: asNumber(systemExternalPreflight.ready_to_import_count),
     system_external_callback_updated_count: asNumber(systemExternalImport.updated_count),

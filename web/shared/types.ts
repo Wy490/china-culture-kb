@@ -2919,6 +2919,10 @@ export interface GearsExecutionWorkerEvidenceSignoffReport {
   mvp_governance_counts_verdict_embedded: boolean;
   mvp_governance_counts_archive_embedded: boolean;
   mvp_governance_count_mismatch_ids: string[];
+  mvp_real_external_callback_readiness_consistent: boolean;
+  mvp_real_external_callback_readiness_verdict_embedded: boolean;
+  mvp_real_external_callback_readiness_archive_embedded: boolean;
+  mvp_real_external_callback_readiness_mismatch_ids: string[];
   system_external_callback_passed: boolean;
   system_external_callback_ready_to_import_count: number;
   system_external_callback_updated_count: number;

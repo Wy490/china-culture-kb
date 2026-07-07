@@ -34,6 +34,38 @@ async function writeReadyEvidence(
     knowledge_writeback_queued_count: { before: 0, after: 0, delta: 0 },
     knowledge_writeback_needs_revision_count: { before: 0, after: 0, delta: 0 },
   };
+  const mvpRealExternalSummary = {
+    real_gears_endpoint_configured: true,
+    real_gears_callback_secret_configured: true,
+    real_gears_callback_base_configured: true,
+    real_gears_callback_base_public: true,
+    real_gears_acceptance_ready_to_run: true,
+    real_gears_acceptance_blocker: 'gears_worker_signoff_evidence_pending',
+    local_acceptance_counts_as_real_external_callback: false,
+    seedance_provider_submit_adapter_configured: true,
+    seedance_provider_poll_adapter_configured: true,
+    seedance_provider_callback_base_configured: true,
+    seedance_provider_external_loop_ready: true,
+  };
+  const mvpRealExternalCallbackReadiness = {
+    booleans: {
+      real_gears_endpoint_configured: { before: true, after: true, changed: false },
+      real_gears_callback_secret_configured: { before: true, after: true, changed: false },
+      real_gears_callback_base_configured: { before: true, after: true, changed: false },
+      real_gears_callback_base_public: { before: true, after: true, changed: false },
+      real_gears_acceptance_ready_to_run: { before: true, after: true, changed: false },
+      local_acceptance_counts_as_real_external_callback: { before: false, after: false, changed: false },
+      seedance_provider_submit_adapter_configured: { before: true, after: true, changed: false },
+      seedance_provider_poll_adapter_configured: { before: true, after: true, changed: false },
+      seedance_provider_callback_base_configured: { before: true, after: true, changed: false },
+      seedance_provider_external_loop_ready: { before: true, after: true, changed: false },
+    },
+    blocker: {
+      before: 'gears_worker_signoff_evidence_pending',
+      after: 'gears_worker_signoff_evidence_pending',
+      changed: false,
+    },
+  };
   await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
     schema_version: 'gears-worker-acceptance-verdict/v1',
     status: 'passed',
@@ -43,6 +75,7 @@ async function writeReadyEvidence(
     failed_gate_ids: [],
     skipped_gate_ids: [],
     mvp_governance_counts: mvpGovernanceCounts,
+    mvp_real_external_callback_readiness: mvpRealExternalCallbackReadiness,
     gates: [
       {
         id: 'production_material_pack_health_audit',
@@ -103,6 +136,7 @@ async function writeReadyEvidence(
       },
       story_agent_mvp_status: {
         governance_counts: mvpGovernanceCounts,
+        real_external_callback_readiness: mvpRealExternalCallbackReadiness,
       },
     },
     recommended_actions: [],
@@ -224,11 +258,12 @@ async function writeReadyEvidence(
   await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
     schema_version: 'story-agent-mvp-status-audit/v1',
     status: 'passed',
-    before: { status: 'ready', score: 96 },
-    after: { status: 'ready', score: 96 },
+    before: { status: 'ready', score: 96, summary: mvpRealExternalSummary },
+    after: { status: 'ready', score: 96, summary: mvpRealExternalSummary },
     deltas: { score: 0, status_rank: 0, blocker_count: 0 },
     failed_checks: [],
     warning_checks: [],
+    real_external_callback_readiness: mvpRealExternalCallbackReadiness,
     recommended_actions: [],
   });
   await writeEvidenceJson(evidenceDir, 'gears-large-project-response-audit.json', {
@@ -273,6 +308,10 @@ describe('getGearsWorkerEvidenceSignoff', () => {
       mvp_governance_counts_verdict_embedded: true,
       mvp_governance_counts_archive_embedded: true,
       mvp_governance_count_mismatch_ids: [],
+      mvp_real_external_callback_readiness_consistent: true,
+      mvp_real_external_callback_readiness_verdict_embedded: true,
+      mvp_real_external_callback_readiness_archive_embedded: true,
+      mvp_real_external_callback_readiness_mismatch_ids: [],
       system_external_callback_passed: true,
       system_external_callback_ready_to_import_count: 3,
       system_external_callback_updated_count: 3,
@@ -320,6 +359,8 @@ describe('getGearsWorkerEvidenceSignoff', () => {
     expect(report.markdown).toContain('production_material_pack_health_audit_passed: true');
     expect(report.markdown).toContain('domain_pack_production_health_audit_passed: true');
     expect(report.markdown).toContain('system_external_callback_passed: true');
+    expect(report.markdown).toContain('mvp_real_external_callback_readiness_consistent: true');
+    expect(report.markdown).toContain('mvp_real_external_callback_readiness_embedded verdict/archive: true/true');
     expect(report.markdown).toContain('system_external_output_url_source: worker_response');
     expect(report.markdown).toContain('system_external_callback_ready/updated: 3/3');
   });
