@@ -3,11 +3,25 @@ import { fail, ErrorCodes } from '@shared/types'
 
 const API_BASE = '/api'
 
-export async function apiGet<T>(path: string, params?: Record<string, string>): Promise<ApiResponse<T>> {
+type QueryParams = Record<string, string | string[]>
+
+function buildQueryString(params: QueryParams): string {
+  const qs = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.filter(Boolean).forEach(item => qs.append(key, item))
+    } else if (value) {
+      qs.set(key, value)
+    }
+  })
+  return qs.toString()
+}
+
+export async function apiGet<T>(path: string, params?: QueryParams): Promise<ApiResponse<T>> {
   let url = `${API_BASE}${path}`
   if (params) {
-    const qs = new URLSearchParams(params).toString()
-    url += `?${qs}`
+    const qs = buildQueryString(params)
+    if (qs) url += `?${qs}`
   }
   try {
     const res = await fetch(url)

@@ -903,6 +903,7 @@ export interface ProjectKnowledgeCandidateExportPackage {
 }
 
 export interface ProjectKnowledgeWritebackPatchItem {
+  task_key?: string;
   project_id?: string;
   project_title?: string;
   video_type?: VideoType;
@@ -919,13 +920,25 @@ export interface ProjectKnowledgeWritebackPatchItem {
   writeback_draft_markdown: string;
 }
 
+export interface ProjectKnowledgeWritebackPatchFilters {
+  project_id?: string;
+  video_type?: VideoType;
+  province?: string;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+  search_query?: string;
+  task_key_count?: number;
+}
+
 export interface ProjectKnowledgeWritebackPatchPackage {
   schema_version: 'project-knowledge-writeback-patch/v1';
   exported_at: string;
   project_id: string;
   project_title: string;
   source_entry: string;
+  filters?: ProjectKnowledgeWritebackPatchFilters;
   approved_count: number;
+  project_count?: number;
+  status_counts?: Record<KnowledgeWritebackStatus, number>;
   target_files: string[];
   pr_title: string;
   pr_body: string;
@@ -955,6 +968,8 @@ export interface ProjectSupplementTaskListFilters {
   source?: KnowledgeSupplementTaskSource;
   knowledge_writeback_status?: KnowledgeWritebackStatus;
   knowledge_writeback_ready?: boolean;
+  task_keys?: string[];
+  search_query?: string;
 }
 
 export interface ProjectDraftProductionMaterialTaskResult {

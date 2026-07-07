@@ -268,6 +268,13 @@ async function loadTasks() {
 }
 
 async function copyPatch(format: 'markdown' | 'json') {
+  const visibleItems = filteredItems.value
+  if (visibleItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可导出的写回草案'
+    return
+  }
+
   exportingFormat.value = format
   error.value = ''
   copyMessage.value = ''
@@ -277,6 +284,8 @@ async function copyPatch(format: 'markdown' | 'json') {
       ...(videoTypeFilter.value ? { video_type: videoTypeFilter.value } : {}),
       ...(provinceFilter.value ? { province: provinceFilter.value } : {}),
       ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+      ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+      task_keys: visibleItems.map(writebackItemKey),
     })
     if (res.ok && res.data) {
       const clipboardText = format === 'json'
@@ -284,7 +293,8 @@ async function copyPatch(format: 'markdown' | 'json') {
         : res.data.markdown
       await navigator.clipboard.writeText(clipboardText)
       const exportLabel = format === 'json' ? 'JSON 导出包' : 'Markdown Patch'
-      copyMessage.value = `已复制 ${exportLabel}：${res.data.approved_count} 条写回草案，目标文件 ${res.data.target_files.length} 个。`
+      const statusText = res.data.status_counts ? `；${statusCountSummary(res.data.status_counts)}` : ''
+      copyMessage.value = `已复制 ${exportLabel}：${res.data.approved_count}/${visibleItems.length} 条当前可见草案，目标文件 ${res.data.target_files.length} 个${statusText}。`
     } else {
       error.value = res.error?.message ?? '导出写回队列失败'
     }
@@ -310,6 +320,19 @@ async function setWritebackStatus(item: ProjectSupplementTaskListItem, status: K
     error.value = res.error?.message ?? '更新写回状态失败'
   }
   updatingTaskId.value = ''
+}
+
+function writebackItemKey(item: ProjectSupplementTaskListItem): string {
+  return `${item.project_id}::${item.task.task_id}`
+}
+
+function statusCountSummary(counts: Record<KnowledgeWritebackStatus, number>): string {
+  return [
+    `草案 ${counts.draft_ready ?? 0}`,
+    `入队 ${counts.queued ?? 0}`,
+    `已入库 ${counts.written_back ?? 0}`,
+    `重审 ${counts.needs_revision ?? 0}`,
+  ].join(' / ')
 }
 
 onMounted(async () => {

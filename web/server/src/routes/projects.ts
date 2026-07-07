@@ -139,6 +139,20 @@ function queryEnum<T extends string>(value: unknown, allowed: readonly T[]): T |
   return typeof value === 'string' && allowed.includes(value as T) ? value as T : undefined;
 }
 
+function queryStringList(value: unknown, maxItems = 500): string[] {
+  const values = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? [value]
+      : [];
+  return [...new Set(values.flatMap(item => (
+    typeof item === 'string' ? item.split(',') : []
+  ))
+    .map(item => item.trim())
+    .filter(Boolean))]
+    .slice(0, maxItems);
+}
+
 function validateSeedanceProviderCallbackSecret(req: Request, res: Response, next: NextFunction): void {
   const expectedSecret = process.env.SEEDANCE_CALLBACK_SECRET?.trim();
   if (!expectedSecret) {
@@ -310,11 +324,17 @@ projectsRouter.get('/knowledge-candidates/writeback-patch/export', async (req, r
     const province = typeof req.query.province === 'string' && req.query.province.trim()
       ? req.query.province.trim()
       : undefined;
+    const taskKeys = queryStringList(req.query.task_keys);
+    const searchQuery = typeof req.query.search_query === 'string' && req.query.search_query.trim()
+      ? req.query.search_query.trim()
+      : undefined;
     const result = await exportProjectKnowledgeWritebackQueuePatch({
       project_id: projectId,
       video_type: videoType,
       province,
       knowledge_writeback_status: knowledgeWritebackStatus,
+      task_keys: taskKeys,
+      search_query: searchQuery,
     });
     res.json(result);
   } catch (err) {

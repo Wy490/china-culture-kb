@@ -4603,20 +4603,40 @@ describe('project-service', () => {
       video_type: 'ai_comic_drama',
       province: '湖南',
       knowledge_writeback_status: 'queued',
+      search_query: '青石巷',
+      task_keys: [`${enriched.project_id}::${taskId}`],
     });
     expect(queuePatch.ok).toBe(true);
     expect(queuePatch.data?.schema_version).toBe('project-knowledge-writeback-patch/v1');
     expect(queuePatch.data?.approved_count).toBe(1);
+    expect(queuePatch.data?.project_count).toBe(1);
     expect(queuePatch.data?.project_id).toBe(enriched.project_id);
+    expect(queuePatch.data?.filters?.search_query).toBe('青石巷');
+    expect(queuePatch.data?.filters?.task_key_count).toBe(1);
+    expect(queuePatch.data?.status_counts?.queued).toBe(1);
+    expect(queuePatch.data?.status_counts?.draft_ready).toBe(0);
     expect(queuePatch.data?.target_files).toContain('data/provinces/湖南.md');
     expect(queuePatch.data?.markdown).toContain('Story Agent 写回队列 Patch 草案');
     expect(queuePatch.data?.markdown).toContain('片型筛选：ai_comic_drama');
     expect(queuePatch.data?.markdown).toContain('省份筛选：湖南');
     expect(queuePatch.data?.markdown).toContain('写回状态：queued');
+    expect(queuePatch.data?.markdown).toContain('搜索条件：青石巷');
+    expect(queuePatch.data?.markdown).toContain('可见任务键：1 条');
     expect(queuePatch.data?.items[0].project_id).toBe(enriched.project_id);
+    expect(queuePatch.data?.items[0].task_key).toBe(`${enriched.project_id}::${taskId}`);
     expect(queuePatch.data?.items[0].video_type).toBe('ai_comic_drama');
     expect(queuePatch.data?.items[0].target_province).toBe('湖南');
     expect(queuePatch.data?.items[0].writeback_status).toBe('queued');
+
+    const hiddenByVisibleTaskKeys = await exportProjectKnowledgeWritebackQueuePatch({
+      project_id: enriched.project_id,
+      task_keys: [`${enriched.project_id}::missing-task`],
+    });
+    expect(hiddenByVisibleTaskKeys.ok).toBe(true);
+    expect(hiddenByVisibleTaskKeys.data?.approved_count).toBe(0);
+    expect(hiddenByVisibleTaskKeys.data?.project_count).toBe(0);
+    expect(hiddenByVisibleTaskKeys.data?.status_counts?.queued).toBe(0);
+    expect(hiddenByVisibleTaskKeys.data?.markdown).toContain('可见任务键：1 条');
   });
 
   it('drafts AI comic production material fields from scenes through readiness automation', async () => {

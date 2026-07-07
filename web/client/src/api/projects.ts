@@ -125,8 +125,11 @@ export function exportProjectKnowledgeWritebackPatch(projectId: string) {
 
 export function exportKnowledgeWritebackQueuePatch(filters: ProjectSupplementTaskListFilters = {}) {
   const query = Object.fromEntries(
-    Object.entries(filters).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0),
-  )
+    Object.entries(filters).filter((entry): entry is [string, string | string[]] => (
+      (typeof entry[1] === 'string' && entry[1].length > 0)
+      || (Array.isArray(entry[1]) && entry[1].length > 0)
+    )),
+  ) as Record<string, string | string[]>
   return apiGet<ProjectKnowledgeWritebackPatchPackage>('/projects/knowledge-candidates/writeback-patch/export', query)
 }
 

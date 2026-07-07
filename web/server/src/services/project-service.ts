@@ -107,6 +107,7 @@ import type {
   KnowledgeSupplementTask,
   KnowledgeSupplementTaskUpdateRequest,
   KnowledgeSupplementTaskStatus,
+  KnowledgeWritebackStatus,
   ProjectSupplementTaskListFilters,
   ProjectMaterialPackAddMaterialRequest,
   QualityRepairAction,
@@ -7540,9 +7541,11 @@ export async function exportProjectKnowledgeWritebackPatch(
 }
 
 export async function exportProjectKnowledgeWritebackQueuePatch(
-  filters: Pick<ProjectSupplementTaskListFilters, 'project_id' | 'video_type' | 'province' | 'knowledge_writeback_status'> = {},
+  filters: Pick<ProjectSupplementTaskListFilters, 'project_id' | 'video_type' | 'province' | 'knowledge_writeback_status' | 'task_keys' | 'search_query'> = {},
 ): Promise<ApiResponse<ProjectKnowledgeWritebackPatchPackage>> {
   const exportedAt = new Date().toISOString();
+  const taskKeySet = new Set((filters.task_keys ?? []).map(item => item.trim()).filter(Boolean));
+  const searchQuery = filters.search_query?.trim();
   const tasksResult = await listProjectSupplementTasks({
     project_id: filters.project_id,
     video_type: filters.video_type,
@@ -7560,6 +7563,8 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
   const items: ProjectKnowledgeWritebackPatchPackage['items'] = [];
   for (const item of tasksResult.data) {
     const task = item.task;
+    const taskKey = knowledgeWritebackTaskKey(item.project_id, task.task_id);
+    if (taskKeySet.size > 0 && !taskKeySet.has(taskKey)) continue;
     if (
       task.knowledge_candidate_review_status !== 'approved'
       || !task.knowledge_writeback_draft_markdown
@@ -7578,6 +7583,7 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     const target = inferKnowledgeWritebackTarget(detail.current_story);
     const appendMarkdown = buildKnowledgeWritebackAppendMarkdown(detail.current_story, task, exportedAt);
     items.push({
+      task_key: taskKey,
       project_id: item.project_id,
       project_title: item.project_title,
       video_type: item.video_type,
@@ -7596,10 +7602,21 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
   }
 
   const targetFiles = [...new Set(items.map(item => item.suggested_file_path))];
-  const projectTitles = [...new Set(tasksResult.data.map(item => item.project_title))];
+  const projectTitles = [...new Set(items.map(item => item.project_title).filter((item): item is string => Boolean(item)))];
+  const projectCount = new Set(items.map(item => item.project_id).filter(Boolean)).size;
+  const statusCounts = countKnowledgeWritebackStatuses(items);
+  const statusCountText = formatKnowledgeWritebackStatusCounts(statusCounts);
   const statusText = filters.knowledge_writeback_status ?? 'all';
   const videoTypeText = filters.video_type ?? 'all';
   const provinceText = filters.province ?? 'all';
+  const exportFilters: ProjectKnowledgeWritebackPatchPackage['filters'] = {
+    ...(filters.project_id ? { project_id: filters.project_id } : {}),
+    ...(filters.video_type ? { video_type: filters.video_type } : {}),
+    ...(filters.province ? { province: filters.province } : {}),
+    ...(filters.knowledge_writeback_status ? { knowledge_writeback_status: filters.knowledge_writeback_status } : {}),
+    ...(searchQuery ? { search_query: searchQuery } : {}),
+    ...(taskKeySet.size > 0 ? { task_key_count: taskKeySet.size } : {}),
+  };
   const prTitle = filters.project_id
     ? `补充 ${projectTitles[0] ?? filters.project_id} 写回队列候选稿`
     : `批量补充 Story Agent 写回队列候选稿`;
@@ -7614,7 +7631,10 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     `- 片型筛选：${videoTypeText}`,
     `- 省份筛选：${provinceText}`,
     `- 写回状态：${statusText}`,
-    `- 涉及项目：${projectTitles.length}`,
+    `- 搜索条件：${searchQuery || '无'}`,
+    `- 可见任务键：${taskKeySet.size ? `${taskKeySet.size} 条` : '未指定'}`,
+    `- 涉及项目：${projectCount}`,
+    `- 状态汇总：${statusCountText}`,
     '',
     `## 待写入文件`,
     '',
@@ -7634,6 +7654,10 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     `- 片型筛选：${videoTypeText}`,
     `- 省份筛选：${provinceText}`,
     `- 写回状态：${statusText}`,
+    `- 搜索条件：${searchQuery || '无'}`,
+    `- 可见任务键：${taskKeySet.size ? `${taskKeySet.size} 条` : '未指定'}`,
+    `- 涉及项目：${projectCount}`,
+    `- 状态汇总：${statusCountText}`,
     `- 已通过候选稿：${items.length}`,
     `- 目标文件数：${targetFiles.length}`,
     '',
@@ -7675,13 +7699,41 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     project_id: filters.project_id ?? 'multiple-projects',
     project_title: filters.project_id ? projectTitles[0] ?? filters.project_id : 'Story Agent 写回队列',
     source_entry: filters.project_id ? '项目写回队列' : '多个项目',
+    filters: exportFilters,
     approved_count: items.length,
+    project_count: projectCount,
+    status_counts: statusCounts,
     target_files: targetFiles,
     pr_title: prTitle,
     pr_body: prBody,
     markdown,
     items,
   });
+}
+
+const KNOWLEDGE_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
+  'draft_ready',
+  'queued',
+  'written_back',
+  'needs_revision',
+];
+
+function knowledgeWritebackTaskKey(projectId: string, taskId: string): string {
+  return `${projectId}::${taskId}`;
+}
+
+function countKnowledgeWritebackStatuses(
+  items: ProjectKnowledgeWritebackPatchPackage['items'],
+): Record<KnowledgeWritebackStatus, number> {
+  const counts = Object.fromEntries(KNOWLEDGE_WRITEBACK_STATUSES.map(status => [status, 0])) as Record<KnowledgeWritebackStatus, number>;
+  items.forEach(item => {
+    counts[item.writeback_status ?? 'draft_ready'] += 1;
+  });
+  return counts;
+}
+
+function formatKnowledgeWritebackStatusCounts(counts: Record<KnowledgeWritebackStatus, number>): string {
+  return KNOWLEDGE_WRITEBACK_STATUSES.map(status => `${status}=${counts[status] ?? 0}`).join(', ');
 }
 
 function buildProjectExportPackage(params: {

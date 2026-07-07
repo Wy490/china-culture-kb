@@ -67,6 +67,7 @@
 61. 收紧 Seedance 占位素材生产语义：`seedance_asset_report` 新增 `placeholder_asset_count` 与 `production_asset_ready_count`，占位 SVG 绑定后仍会让 Seedance Asset Report artifact 保持 `needs_repair`，Production readiness 生成 `seedance-assets-placeholder-only` warning，项目详情页显示占位数与正式 ready 数，明确 exported/ready 只代表结构化交付，不等于可直接投产。
 62. 把 Seedance 占位素材计数上升到系统生产总览：`ProductionReadinessSummary`、`production-readiness-portfolio/v1` 和项目总览页新增 `seedance_placeholder_asset_count` / `seedance_production_asset_ready_count` 汇总，团队可在跨项目队列第一屏看到占位素材压力，而不必逐个进入项目详情排查。
 63. 同步 Web/MCP Story Agent MVP 状态的占位素材口径：Web `story-agent-mvp-status/v1` 与 MCP `kb_get_story_agent_mvp_status` 的 summary、Markdown、lane evidence 和 priority target evidence 均输出 Seedance 占位/正式素材计数；MCP 本地 `kb_get_production_readiness` 会读取导出的 `seedance-asset-report.json` 或项目资产库 fallback，离线扫描也能识别 `story_agent_placeholder` 不是正式投产素材。
+64. 补强独立知识库写回队列的批量导出一致性：`/knowledge-writeback-queue` 的 Markdown/JSON 导出会把当前可见任务键传给服务端，搜索后的列表与导出范围一致；全局 `project-knowledge-writeback-patch/v1` 现在返回筛选摘要、可见任务键数量、项目数和写回状态汇总，继续只导出已通过候选稿审稿并生成正式写回草案的内容。
 
 ## 原始诊断必须并入路线
 
