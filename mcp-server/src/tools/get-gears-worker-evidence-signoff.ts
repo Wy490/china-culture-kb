@@ -62,6 +62,8 @@ export interface GearsWorkerEvidenceSignoffReport {
   system_external_output_url_import_match_count: number;
   system_external_output_url_verdict_embedded: boolean;
   system_external_output_url_verdict_consistent: boolean;
+  system_external_output_url_archive_embedded: boolean;
+  system_external_output_url_archive_consistent: boolean;
   system_external_output_url_configured_from_env: boolean;
   system_external_output_url_source: string;
   pressure_submitted: boolean;
@@ -487,6 +489,8 @@ function renderMarkdown(report: Omit<GearsWorkerEvidenceSignoffReport, 'markdown
     `- system_external_output_url_import_match_count: ${report.system_external_output_url_import_match_count}`,
     `- system_external_output_url_verdict_embedded: ${report.system_external_output_url_verdict_embedded}`,
     `- system_external_output_url_verdict_consistent: ${report.system_external_output_url_verdict_consistent}`,
+    `- system_external_output_url_archive_embedded: ${report.system_external_output_url_archive_embedded}`,
+    `- system_external_output_url_archive_consistent: ${report.system_external_output_url_archive_consistent}`,
     `- system_external_output_url_configured_from_env: ${report.system_external_output_url_configured_from_env}`,
     `- system_external_callback_ready/updated: ${report.system_external_callback_ready_to_import_count}/${report.system_external_callback_updated_count}`,
     `- system_external_callback_blocking/failed/unresolved: ${report.system_external_callback_blocking_count}/${report.system_external_callback_failed_count}/${report.system_external_callback_unresolved_count}`,
@@ -573,6 +577,8 @@ export async function getGearsWorkerEvidenceSignoff(
       system_external_output_url_import_match_count: 0,
       system_external_output_url_verdict_embedded: false,
       system_external_output_url_verdict_consistent: false,
+      system_external_output_url_archive_embedded: false,
+      system_external_output_url_archive_consistent: false,
       system_external_output_url_configured_from_env: false,
       system_external_output_url_source: 'missing',
       pressure_submitted: false,
@@ -763,11 +769,19 @@ export async function getGearsWorkerEvidenceSignoff(
   const verdictOutputUrlVerification = asRecord(
     asRecord(verdictSystemExternalGate?.evidence).output_url_verification,
   );
+  const archiveOutputUrlVerification = asRecord(
+    asRecord(asRecord(archive?.audit_summaries).system_external_callback).output_url_verification,
+  );
   const systemExternalOutputUrlVerdictEmbedded = Object.keys(verdictOutputUrlVerification).length > 0;
   const systemExternalOutputUrlVerdictConsistent = systemExternalOutputUrlVerdictEmbedded
     && verdictOutputUrlVerification.expected_output_url === systemExternalOutputUrl
     && asBool(verdictOutputUrlVerification.imported) === systemExternalOutputUrlImported
     && asNumber(verdictOutputUrlVerification.import_match_count) === systemExternalOutputUrlImportMatchCount;
+  const systemExternalOutputUrlArchiveEmbedded = Object.keys(archiveOutputUrlVerification).length > 0;
+  const systemExternalOutputUrlArchiveConsistent = systemExternalOutputUrlArchiveEmbedded
+    && archiveOutputUrlVerification.expected_output_url === systemExternalOutputUrl
+    && asBool(archiveOutputUrlVerification.imported) === systemExternalOutputUrlImported
+    && asNumber(archiveOutputUrlVerification.import_match_count) === systemExternalOutputUrlImportMatchCount;
   const systemExternalCallbackPassed = systemExternalPreflightRead.exists
     && systemExternalPreflightRead.parse_ok
     && systemExternalImportRead.exists
@@ -832,6 +846,18 @@ export async function getGearsWorkerEvidenceSignoff(
         'gears-worker-acceptance-verdict.json',
       ],
     }] : []),
+    ...(!systemExternalOutputUrlArchiveConsistent ? [{
+      priority: 'P0',
+      owner: 'Story Agent + GEARS v2',
+      action: 'Regenerate worker acceptance archive so system_external_callback audit summary preserves output_url_verification matching the verified import response before handoff.',
+      evidence: 'system_external_output_url_archive_verification_inconsistent',
+      gate_id: 'system_external_callback_batch',
+      sample_files: [
+        'story-agent-system-external-output-url-source.json',
+        'story-agent-system-external-callback-import-response.json',
+        'gears-worker-acceptance-archive.json',
+      ],
+    }] : []),
     ...(systemExternalOutputUrlSourceReady && !systemExternalOutputUrlImported ? [{
       priority: 'P0',
       owner: 'Story Agent + GEARS v2',
@@ -852,6 +878,7 @@ export async function getGearsWorkerEvidenceSignoff(
     && mvpGovernanceCountsConsistent
     && systemExternalCallbackPassed
     && systemExternalOutputUrlVerdictConsistent
+    && systemExternalOutputUrlArchiveConsistent
     ? 'ready'
     : coreEvidenceAvailable
       ? 'attention'
@@ -891,6 +918,8 @@ export async function getGearsWorkerEvidenceSignoff(
     system_external_output_url_import_match_count: systemExternalOutputUrlImportMatchCount,
     system_external_output_url_verdict_embedded: systemExternalOutputUrlVerdictEmbedded,
     system_external_output_url_verdict_consistent: systemExternalOutputUrlVerdictConsistent,
+    system_external_output_url_archive_embedded: systemExternalOutputUrlArchiveEmbedded,
+    system_external_output_url_archive_consistent: systemExternalOutputUrlArchiveConsistent,
     system_external_output_url_configured_from_env: asBool(systemExternalOutputSource.configured_from_env),
     system_external_output_url_source: systemExternalOutputUrlSource,
     pressure_submitted: asBool(verdict?.pressure_submitted) || asBool(pressureTotals.pressure_submitted),

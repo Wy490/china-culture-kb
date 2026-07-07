@@ -84,6 +84,13 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
     ],
     missing_required_files: [],
     audit_summaries: {
+      system_external_callback: {
+        output_url_verification: {
+          expected_output_url: 'https://cdn.example.com/gears-worker-acceptance/readiness-shot-1.mp4',
+          imported: true,
+          import_match_count: 1,
+        },
+      },
       story_agent_mvp_status: {
         governance_counts: mvpGovernanceCounts,
       },
@@ -343,6 +350,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.system_external_output_url_import_match_count).toBe(1);
     expect(result.system_external_output_url_verdict_embedded).toBe(true);
     expect(result.system_external_output_url_verdict_consistent).toBe(true);
+    expect(result.system_external_output_url_archive_embedded).toBe(true);
+    expect(result.system_external_output_url_archive_consistent).toBe(true);
     expect(result.system_external_output_url_source).toBe('worker_response');
     expect(result.pressure_submitted).toBe(true);
     expect(result.worker_record_count).toBe(370);
@@ -391,6 +400,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.markdown).toContain('system_external_output_url_import_match_count: 1');
     expect(result.markdown).toContain('system_external_output_url_verdict_embedded: true');
     expect(result.markdown).toContain('system_external_output_url_verdict_consistent: true');
+    expect(result.markdown).toContain('system_external_output_url_archive_embedded: true');
+    expect(result.markdown).toContain('system_external_output_url_archive_consistent: true');
     expect(result.markdown).toContain('large_project_source_echo: 120/120');
     expect(result.markdown).toContain('mvp_score_delta: 0');
     expect(result.markdown).toContain('mvp_governance_counts_consistent: true');
@@ -498,6 +509,37 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
       }),
     ]));
     expect(result.markdown).toContain('system_external_output_url_verdict_consistent: false');
+  });
+
+  it('requires archive output URL verification to match the imported response', async () => {
+    const evidenceDir = path.join(tmpRoot, 'gears-evidence-output-url-archive-mismatch');
+    writeCompleteEvidence(evidenceDir);
+    const archivePath = path.join(evidenceDir, 'gears-worker-acceptance-archive.json');
+    const archive = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
+    archive.audit_summaries.system_external_callback.output_url_verification.import_match_count = 0;
+    writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-archive.json', archive);
+
+    const result = await getGearsWorkerEvidenceSignoff({ evidence_dir: evidenceDir });
+
+    expect(result.status).toBe('attention');
+    expect(result.acceptance_passed).toBe(true);
+    expect(result.signoff_ready).toBe(true);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.system_external_output_url_source_ready).toBe(true);
+    expect(result.system_external_output_url_imported).toBe(true);
+    expect(result.system_external_output_url_import_match_count).toBe(1);
+    expect(result.system_external_output_url_verdict_embedded).toBe(true);
+    expect(result.system_external_output_url_verdict_consistent).toBe(true);
+    expect(result.system_external_output_url_archive_embedded).toBe(true);
+    expect(result.system_external_output_url_archive_consistent).toBe(false);
+    expect(result.system_external_callback_passed).toBe(true);
+    expect(result.recommended_actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        evidence: 'system_external_output_url_archive_verification_inconsistent',
+        gate_id: 'system_external_callback_batch',
+      }),
+    ]));
+    expect(result.markdown).toContain('system_external_output_url_archive_consistent: false');
   });
 
   it('deduplicates repeated recommended actions', async () => {

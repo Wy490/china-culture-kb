@@ -4263,6 +4263,12 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     'const mvpGovernanceCounts = mvpStatusAudit && !mvpStatusAudit.__parse_error ? mvpGovernanceCountsFrom(mvpStatusAudit) : undefined',
     'const pressureAudit = readJson("gears-large-project-response-audit.json")',
     'const pressureSubmitted = Boolean(verdict?.pressure_submitted || pressureAudit?.totals?.pressure_submitted)',
+    'const verdictSystemExternalGate = Array.isArray(verdict?.gates)',
+    '  ? verdict.gates.find(gate => gate?.id === "system_external_callback_batch")',
+    '  : undefined',
+    'const verdictOutputUrlVerification = verdictSystemExternalGate?.evidence?.output_url_verification && typeof verdictSystemExternalGate.evidence.output_url_verification === "object"',
+    '  ? verdictSystemExternalGate.evidence.output_url_verification',
+    '  : undefined',
     'const requiredAttachments = [',
     '  "manifest.json",',
     '  "env.template.sh",',
@@ -4389,6 +4395,7 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '        blocking_count: (systemExternalImport.data || systemExternalImport)?.blocking_count,',
     '        unresolved_count: (systemExternalImport.data || systemExternalImport)?.unresolved_count,',
     '      } : undefined,',
+    '      output_url_verification: verdictOutputUrlVerification,',
     '    },',
     '    story_agent_generated_health: generatedHealthAudit && !generatedHealthAudit.__parse_error ? {',
     '      status: generatedHealthAudit.status,',
@@ -4424,6 +4431,7 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     'function renderMarkdown(archive) {',
     '  const requiredFiles = archive.files.filter(file => file.required)',
     '  const mvpCounts = archive.audit_summaries?.story_agent_mvp_status?.governance_counts',
+    '  const outputUrlVerification = archive.audit_summaries?.system_external_callback?.output_url_verification',
     '  const lines = [',
     '    "# GEARS Worker Acceptance Archive",',
     '    "",',
@@ -4450,6 +4458,10 @@ function renderWorkerAcceptanceArchiveCommand(targetDirExpression: string): stri
     '      `- mvp_knowledge_writeback_ready_before/after/delta: ${mvpCounts.knowledge_writeback_ready_count.before}/${mvpCounts.knowledge_writeback_ready_count.after}/${mvpCounts.knowledge_writeback_ready_count.delta}` ,',
     '      `- mvp_knowledge_writeback_queued_before/after/delta: ${mvpCounts.knowledge_writeback_queued_count.before}/${mvpCounts.knowledge_writeback_queued_count.after}/${mvpCounts.knowledge_writeback_queued_count.delta}` ,',
     '      `- mvp_knowledge_writeback_needs_revision_before/after/delta: ${mvpCounts.knowledge_writeback_needs_revision_count.before}/${mvpCounts.knowledge_writeback_needs_revision_count.after}/${mvpCounts.knowledge_writeback_needs_revision_count.delta}` ,',
+    '    ] : []),',
+    '    ...(outputUrlVerification ? [',
+    '      `- system_external_output_url_verification_imported: ${outputUrlVerification.imported === true}` ,',
+    '      `- system_external_output_url_verification_match_count: ${outputUrlVerification.import_match_count ?? 0}` ,',
     '    ] : []),',
     '    "",',
     '    "## Missing Required Files",',
@@ -6149,6 +6161,7 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
         'gears-worker-acceptance-archive.json and gears-worker-acceptance-archive.md exist.',
         'Archive lists required evidence attachments, missing_required_files, byte lengths, checksum_manifest, and sha256 checksums.',
         'Archive audit_summaries include MVP Seedance asset and knowledge writeback governance counts.',
+        'Archive audit_summaries include system external output_url_verification for handoff integrity.',
         'gears-worker-acceptance-checksums.json and gears-worker-acceptance-checksums.md exist with every archived evidence file checksum.',
         'signoff_ready is true only when acceptance_passed=true and all required handoff attachments exist.',
         'When GEARS_ACCEPTANCE_STRICT_AUDIT=1, the generated shell exits non-zero if archive signoff_ready=false.',
@@ -6962,6 +6975,8 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- system_external_output_url_import_match_count: ${report.system_external_output_url_import_match_count}`,
     `- system_external_output_url_verdict_embedded: ${report.system_external_output_url_verdict_embedded}`,
     `- system_external_output_url_verdict_consistent: ${report.system_external_output_url_verdict_consistent}`,
+    `- system_external_output_url_archive_embedded: ${report.system_external_output_url_archive_embedded}`,
+    `- system_external_output_url_archive_consistent: ${report.system_external_output_url_archive_consistent}`,
     `- system_external_output_url_configured_from_env: ${report.system_external_output_url_configured_from_env}`,
     `- system_external_callback_ready/updated: ${report.system_external_callback_ready_to_import_count}/${report.system_external_callback_updated_count}`,
     `- system_external_callback_blocking/failed/unresolved: ${report.system_external_callback_blocking_count}/${report.system_external_callback_failed_count}/${report.system_external_callback_unresolved_count}`,
@@ -7051,6 +7066,8 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       system_external_output_url_import_match_count: 0,
       system_external_output_url_verdict_embedded: false,
       system_external_output_url_verdict_consistent: false,
+      system_external_output_url_archive_embedded: false,
+      system_external_output_url_archive_consistent: false,
       system_external_output_url_configured_from_env: false,
       system_external_output_url_source: 'missing',
       pressure_submitted: false,
@@ -7248,11 +7265,19 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const verdictOutputUrlVerification = evidenceObject(
     evidenceObject(verdictSystemExternalGate?.evidence).output_url_verification,
   );
+  const archiveOutputUrlVerification = evidenceObject(
+    evidenceObject(evidenceObject(archive?.audit_summaries).system_external_callback).output_url_verification,
+  );
   const systemExternalOutputUrlVerdictEmbedded = Object.keys(verdictOutputUrlVerification).length > 0;
   const systemExternalOutputUrlVerdictConsistent = systemExternalOutputUrlVerdictEmbedded
     && verdictOutputUrlVerification.expected_output_url === systemExternalOutputUrl
     && evidenceBool(verdictOutputUrlVerification.imported) === systemExternalOutputUrlImported
     && evidenceNumber(verdictOutputUrlVerification.import_match_count) === systemExternalOutputUrlImportMatchCount;
+  const systemExternalOutputUrlArchiveEmbedded = Object.keys(archiveOutputUrlVerification).length > 0;
+  const systemExternalOutputUrlArchiveConsistent = systemExternalOutputUrlArchiveEmbedded
+    && archiveOutputUrlVerification.expected_output_url === systemExternalOutputUrl
+    && evidenceBool(archiveOutputUrlVerification.imported) === systemExternalOutputUrlImported
+    && evidenceNumber(archiveOutputUrlVerification.import_match_count) === systemExternalOutputUrlImportMatchCount;
   const systemExternalCallbackPassed = systemExternalPreflightRead.exists
     && systemExternalPreflightRead.parse_ok
     && systemExternalImportRead.exists
@@ -7312,6 +7337,18 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
         'gears-worker-acceptance-verdict.json',
       ],
     }] : []),
+    ...(!systemExternalOutputUrlArchiveConsistent ? [{
+      priority: 'P0',
+      owner: 'Story Agent + GEARS v2',
+      action: 'Regenerate worker acceptance archive so system_external_callback audit summary preserves output_url_verification matching the verified import response before handoff.',
+      evidence: 'system_external_output_url_archive_verification_inconsistent',
+      gate_id: 'system_external_callback_batch',
+      sample_files: [
+        'story-agent-system-external-output-url-source.json',
+        'story-agent-system-external-callback-import-response.json',
+        'gears-worker-acceptance-archive.json',
+      ],
+    }] : []),
     ...(systemExternalOutputUrlSourceReady && !systemExternalOutputUrlImported ? [{
       priority: 'P0',
       owner: 'Story Agent + GEARS v2',
@@ -7335,6 +7372,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     && mvpGovernanceCountsConsistent
     && systemExternalCallbackPassed
     && systemExternalOutputUrlVerdictConsistent
+    && systemExternalOutputUrlArchiveConsistent
     ? 'ready'
     : coreEvidenceAvailable
       ? 'attention'
@@ -7374,6 +7412,8 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     system_external_output_url_import_match_count: systemExternalOutputUrlImportMatchCount,
     system_external_output_url_verdict_embedded: systemExternalOutputUrlVerdictEmbedded,
     system_external_output_url_verdict_consistent: systemExternalOutputUrlVerdictConsistent,
+    system_external_output_url_archive_embedded: systemExternalOutputUrlArchiveEmbedded,
+    system_external_output_url_archive_consistent: systemExternalOutputUrlArchiveConsistent,
     system_external_output_url_configured_from_env: evidenceBool(systemExternalOutputSource.configured_from_env),
     system_external_output_url_source: systemExternalOutputUrlSource,
     pressure_submitted: evidenceBool(verdict?.pressure_submitted) || evidenceBool(pressureTotals.pressure_submitted),

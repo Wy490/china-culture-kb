@@ -94,6 +94,13 @@ async function writeReadyEvidence(
     ],
     missing_required_files: [],
     audit_summaries: {
+      system_external_callback: {
+        output_url_verification: {
+          expected_output_url: outputUrl,
+          imported: outputUrlImported,
+          import_match_count: outputUrlImported ? 1 : 0,
+        },
+      },
       story_agent_mvp_status: {
         governance_counts: mvpGovernanceCounts,
       },
@@ -278,6 +285,8 @@ describe('getGearsWorkerEvidenceSignoff', () => {
       system_external_output_url_import_match_count: 1,
       system_external_output_url_verdict_embedded: true,
       system_external_output_url_verdict_consistent: true,
+      system_external_output_url_archive_embedded: true,
+      system_external_output_url_archive_consistent: true,
       system_external_output_url_configured_from_env: false,
       system_external_output_url_source: 'worker_response',
       pressure_submitted: true,
