@@ -5,6 +5,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { mcpReadAllProvinceFiles, mcpParseEntries } from '../services/mcp-proxy.js';
 import { ErrorCodes, fail, success } from '@shared/types.js';
 import {
+  DomainPackExpansionReviewStateBulkUpdateRequestSchema,
   DomainPackExpansionReviewStateUpdateRequestSchema,
   GearsJobCallbackRequestSchema,
   GearsExecutionLiveSmokeRunRequestSchema,
@@ -48,6 +49,7 @@ import {
   getDomainPackExpansionCandidateReport,
   getDomainPackExpansionWritebackDraftPackage,
   updateDomainPackExpansionReviewState,
+  updateDomainPackExpansionReviewStateBulk,
 } from '../services/domain-pack-expansion-service.js';
 import { getDomainPackProductionHealthReport } from '../services/domain-pack-service.js';
 import {
@@ -191,6 +193,22 @@ systemRouter.patch(
       return;
     }
     res.json(success(result.report));
+  },
+);
+
+systemRouter.patch(
+  '/domain-pack-expansion-candidates/review-state/bulk',
+  validateBody(DomainPackExpansionReviewStateBulkUpdateRequestSchema),
+  (req, res) => {
+    const result = updateDomainPackExpansionReviewStateBulk(req.body);
+    if (!result.ok || !result.result) {
+      res.status(400).json(fail(
+        ErrorCodes.VALIDATION_ERROR,
+        result.message ?? 'Domain Pack expansion review state bulk update failed',
+      ));
+      return;
+    }
+    res.json(success(result.result));
   },
 );
 

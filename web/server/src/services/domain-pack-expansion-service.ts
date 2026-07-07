@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type {
+  DomainPackExpansionReviewStateBulkUpdateRequest,
+  DomainPackExpansionReviewStateBulkUpdateResult,
   DomainPackExpansionReviewStateItem,
   DomainPackExpansionReviewStateUpdateRequest,
   DomainPackExpansionReviewStatus,
@@ -177,6 +179,12 @@ interface DomainPackExpansionReviewStateUpdateResult {
   ok: boolean;
   message?: string;
   report?: DomainPackExpansionCandidateReport;
+}
+
+interface DomainPackExpansionReviewStateBulkUpdateServiceResult {
+  ok: boolean;
+  message?: string;
+  result?: DomainPackExpansionReviewStateBulkUpdateResult;
 }
 
 const REQUIRED_EXPANSION_PACK_IDS = [
@@ -632,6 +640,74 @@ export function updateDomainPackExpansionReviewState(
       includeMarkdown: true,
       generatedAt: updatedAt,
     }),
+  };
+}
+
+export function updateDomainPackExpansionReviewStateBulk(
+  input: DomainPackExpansionReviewStateBulkUpdateRequest,
+  options: { updatedAt?: string } = {},
+): DomainPackExpansionReviewStateBulkUpdateServiceResult {
+  const uniqueReviewItemIds = [...new Set(input.review_item_ids.map(id => id.trim()).filter(Boolean))];
+  if (uniqueReviewItemIds.length === 0) {
+    return {
+      ok: false,
+      message: '批量扩库审稿项不能为空。',
+    };
+  }
+
+  const baseReport = getDomainPackExpansionCandidateReport({ includeMarkdown: false });
+  const itemById = new Map(baseReport.review_packet.batches
+    .flatMap(batch => batch.review_items)
+    .map(item => [item.review_item_id, item]));
+  const missingReviewItemIds = uniqueReviewItemIds.filter(reviewItemId => !itemById.has(reviewItemId));
+  if (missingReviewItemIds.length > 0) {
+    return {
+      ok: false,
+      message: `未找到 ${missingReviewItemIds.length} 个扩库候选审稿项：${missingReviewItemIds.slice(0, 5).join(', ')}。`,
+    };
+  }
+
+  const updatedAt = options.updatedAt ?? new Date().toISOString();
+  const currentItems = loadDomainPackExpansionReviewStateItems();
+  const nextItems = new Map(currentItems.map(item => [item.review_item_id, item]));
+  const reviewNote = input.review_note?.trim() || undefined;
+  const writebackNote = input.review_status === 'approved'
+    ? (input.writeback_note?.trim() || undefined)
+    : undefined;
+
+  for (const reviewItemId of uniqueReviewItemIds) {
+    const existing = nextItems.get(reviewItemId);
+    const writebackStatus = input.review_status === 'approved'
+      ? (input.writeback_status ?? existing?.writeback_status ?? 'draft_ready')
+      : undefined;
+    nextItems.set(reviewItemId, {
+      review_item_id: reviewItemId,
+      review_status: input.review_status,
+      review_note: reviewNote,
+      reviewed_at: updatedAt,
+      writeback_status: writebackStatus,
+      writeback_note: writebackStatus ? (writebackNote ?? existing?.writeback_note) : undefined,
+      writeback_updated_at: writebackStatus ? updatedAt : undefined,
+    });
+  }
+
+  saveDomainPackExpansionReviewStateItems([...nextItems.values()], updatedAt);
+  const report = getDomainPackExpansionCandidateReport({
+    includeMarkdown: true,
+    generatedAt: updatedAt,
+  });
+
+  return {
+    ok: true,
+    result: {
+      schema_version: 'domain-pack-expansion-review-state-bulk-update/v1',
+      updated_at: updatedAt,
+      updated_count: uniqueReviewItemIds.length,
+      missing_review_item_ids: [],
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      report,
+    },
   };
 }
 

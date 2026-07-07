@@ -6005,6 +6005,24 @@ export interface DomainPackExpansionReviewStateUpdateRequest {
   writeback_note?: string;
 }
 
+export interface DomainPackExpansionReviewStateBulkUpdateRequest {
+  review_item_ids: string[];
+  review_status: DomainPackExpansionReviewStatus;
+  review_note?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
+}
+
+export interface DomainPackExpansionReviewStateBulkUpdateResult {
+  schema_version: 'domain-pack-expansion-review-state-bulk-update/v1';
+  updated_at: string;
+  updated_count: number;
+  missing_review_item_ids: string[];
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  report: DomainPackExpansionCandidateReport;
+}
+
 export interface DomainPackExpansionWritebackDraftItem {
   review_item_id: string;
   batch_id: string;

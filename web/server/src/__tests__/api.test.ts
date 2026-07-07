@@ -767,6 +767,53 @@ describe('System API', () => {
       await rm(stateDir, { recursive: true, force: true });
     });
 
+    it('bulk updates filtered expansion review state without writing provinces', async () => {
+      const stateDir = resolve(process.env.WEB_GENERATED_ROOT!, 'domain-pack-expansion');
+      await rm(stateDir, { recursive: true, force: true });
+
+      const bulkRes = await request
+        .patch('/api/system/domain-pack-expansion-candidates/review-state/bulk')
+        .send({
+          review_item_ids: [
+            'short_video_hook_pack_expansion_20260707::target_01',
+            'short_video_hook_pack_expansion_20260707::target_02',
+          ],
+          review_status: 'approved',
+          review_note: 'API 批量审稿通过，仍需人工补源。',
+          writeback_status: 'queued',
+          writeback_note: '批量排入短视频钩子补录。',
+        });
+
+      expect(bulkRes.status).toBe(200);
+      expectSuccess(bulkRes.body);
+      expect(bulkRes.body.data).toMatchObject({
+        schema_version: 'domain-pack-expansion-review-state-bulk-update/v1',
+        updated_count: 2,
+        missing_review_item_ids: [],
+        direct_writeback_to_province_markdown: false,
+        province_markdown_written: false,
+        report: {
+          review_packet: {
+            approved_writeback_draft_count: 2,
+          },
+        },
+      });
+      expect(bulkRes.body.data.report.review_packet.review_status_counts).toMatchObject({
+        approved: 2,
+      });
+
+      const draftRes = await request.get('/api/system/domain-pack-expansion-writeback-draft');
+      expect(draftRes.status).toBe(200);
+      expectSuccess(draftRes.body);
+      expect(draftRes.body.data).toMatchObject({
+        approved_count: 2,
+        status_counts: expect.objectContaining({
+          queued: 2,
+        }),
+      });
+      await rm(stateDir, { recursive: true, force: true });
+    });
+
     it('rejects expansion review updates for unknown items', async () => {
       const res = await request
         .patch('/api/system/domain-pack-expansion-candidates/review-state')

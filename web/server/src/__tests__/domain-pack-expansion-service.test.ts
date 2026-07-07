@@ -6,6 +6,7 @@ import {
   getDomainPackExpansionCandidateReport,
   getDomainPackExpansionWritebackDraftPackage,
   updateDomainPackExpansionReviewState,
+  updateDomainPackExpansionReviewStateBulk,
 } from '../services/domain-pack-expansion-service.js';
 
 const previousGeneratedRoot = process.env.WEB_GENERATED_ROOT;
@@ -182,6 +183,53 @@ describe('domain-pack-expansion-service', () => {
     });
     expect(draftPackage.markdown).toContain('Domain Pack Expansion Writeback Draft');
     expect(draftPackage.markdown).toContain('本草案只作为人工补库采集清单');
+  });
+
+  it('bulk updates filtered review candidates without writing province markdown', () => {
+    const update = updateDomainPackExpansionReviewStateBulk({
+      review_item_ids: [
+        'children_adaptation_safety_pack_expansion_20260707::target_01',
+        'children_adaptation_safety_pack_expansion_20260707::target_02',
+      ],
+      review_status: 'approved',
+      review_note: '批量审稿通过，仍需人工补来源。',
+      writeback_status: 'queued',
+      writeback_note: '批量进入儿童改写安全补录队列。',
+    }, {
+      updatedAt: '2026-07-07T11:00:00.000Z',
+    });
+
+    expect(update.ok).toBe(true);
+    expect(update.result).toMatchObject({
+      schema_version: 'domain-pack-expansion-review-state-bulk-update/v1',
+      updated_at: '2026-07-07T11:00:00.000Z',
+      updated_count: 2,
+      missing_review_item_ids: [],
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      report: {
+        review_packet: {
+          approved_writeback_draft_count: 2,
+        },
+      },
+    });
+    expect(update.result?.report.review_packet.review_status_counts).toMatchObject({
+      approved: 2,
+    });
+    expect(update.result?.report.review_packet.batches
+      .flatMap(batch => batch.review_items)
+      .filter(item => item.review_status === 'approved')).toHaveLength(2);
+
+    const draftPackage = getDomainPackExpansionWritebackDraftPackage({
+      exportedAt: '2026-07-07T11:10:00.000Z',
+    });
+    expect(draftPackage).toMatchObject({
+      approved_count: 2,
+      status_counts: expect.objectContaining({
+        queued: 2,
+      }),
+    });
+    expect(draftPackage.items.map(item => item.writeback_status)).toEqual(['queued', 'queued']);
   });
 
   it('rejects review updates for unknown candidate items', () => {

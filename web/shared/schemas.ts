@@ -1323,6 +1323,16 @@ export const DomainPackExpansionReviewStateUpdateRequestSchema = z.object({
   writeback_note: z.string().trim().max(2000, 'writeback_note is too long').optional(),
 });
 
+export const DomainPackExpansionReviewStateBulkUpdateRequestSchema = z.object({
+  review_item_ids: z.array(
+    z.string().trim().min(1, 'review_item_id is required').max(240),
+  ).min(1, 'review_item_ids cannot be empty').max(200, 'review_item_ids is too large'),
+  review_status: z.enum(['candidate_review', 'approved', 'rejected', 'needs_revision']),
+  review_note: z.string().trim().max(4000, 'review_note is too long').optional(),
+  writeback_status: z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision']).optional(),
+  writeback_note: z.string().trim().max(2000, 'writeback_note is too long').optional(),
+});
+
 // ---------------------------------------------------------------------------
 // Story outline analyze request
 // ---------------------------------------------------------------------------

@@ -17,6 +17,8 @@ import type {
   GearsExecutionWorkerEvidenceSignoffReport,
   GearsJobCallbackRequest,
   DomainPackExpansionCandidateReport,
+  DomainPackExpansionReviewStateBulkUpdateRequest,
+  DomainPackExpansionReviewStateBulkUpdateResult,
   DomainPackExpansionReviewStateUpdateRequest,
   DomainPackExpansionWritebackDraftPackage,
   NarrativePatternCatalog,
@@ -121,6 +123,10 @@ export function getDomainPackExpansionCandidates(options: { includeMarkdown?: bo
 
 export function updateDomainPackExpansionReviewState(req: DomainPackExpansionReviewStateUpdateRequest) {
   return apiPatch<DomainPackExpansionCandidateReport>('/system/domain-pack-expansion-candidates/review-state', req)
+}
+
+export function updateDomainPackExpansionReviewStateBulk(req: DomainPackExpansionReviewStateBulkUpdateRequest) {
+  return apiPatch<DomainPackExpansionReviewStateBulkUpdateResult>('/system/domain-pack-expansion-candidates/review-state/bulk', req)
 }
 
 export function getDomainPackExpansionWritebackDraft() {

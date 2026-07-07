@@ -37,6 +37,30 @@
       </select>
       <button
         type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(bulkUpdatingKey) || filteredItems.length === 0"
+        @click="bulkUpdateFiltered('approved', 'draft_ready')"
+      >
+        {{ bulkUpdatingKey === 'approved:draft_ready' ? '更新中…' : '筛选通过' }}
+      </button>
+      <button
+        type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(bulkUpdatingKey) || filteredItems.length === 0"
+        @click="bulkUpdateFiltered('approved', 'queued')"
+      >
+        {{ bulkUpdatingKey === 'approved:queued' ? '更新中…' : '筛选入队' }}
+      </button>
+      <button
+        type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(bulkUpdatingKey) || filteredItems.length === 0"
+        @click="bulkUpdateFiltered('needs_revision')"
+      >
+        {{ bulkUpdatingKey === 'needs_revision' ? '更新中…' : '筛选重审' }}
+      </button>
+      <button
+        type="button"
         class="expansion-page__action"
         :disabled="Boolean(copyingFormat)"
         @click="copyReviewPacket('markdown')"
@@ -180,6 +204,7 @@ import {
   getDomainPackExpansionCandidates,
   getDomainPackExpansionWritebackDraft,
   updateDomainPackExpansionReviewState,
+  updateDomainPackExpansionReviewStateBulk,
 } from '@/api/system'
 import type {
   DomainPackExpansionCandidateReport,
@@ -203,6 +228,7 @@ const error = ref('')
 const copyMessage = ref('')
 const copyingFormat = ref<'markdown' | 'json' | 'writeback' | ''>('')
 const updatingItemId = ref('')
+const bulkUpdatingKey = ref('')
 const searchQuery = ref('')
 const packFilter = ref('')
 const videoTypeFilter = ref<VideoType | ''>('')
@@ -437,6 +463,44 @@ async function setWritebackStatus(item: ReviewQueueItem, status: KnowledgeWriteb
     error.value = err instanceof Error ? err.message : '更新扩库写回状态失败'
   } finally {
     updatingItemId.value = ''
+  }
+}
+
+async function bulkUpdateFiltered(
+  reviewStatus: DomainPackExpansionReviewStatus,
+  writebackStatus?: KnowledgeWritebackStatus,
+) {
+  const items = filteredItems.value
+  if (items.length === 0) return
+  const actionLabel = writebackStatus === 'queued'
+    ? '标记为已入队'
+    : reviewStatus === 'approved'
+      ? '标记为已通过'
+      : '标记为需重审'
+  const confirmed = window.confirm(`${actionLabel}当前筛选的 ${items.length} 条扩库候选？`)
+  if (!confirmed) return
+
+  bulkUpdatingKey.value = writebackStatus ? `${reviewStatus}:${writebackStatus}` : reviewStatus
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await updateDomainPackExpansionReviewStateBulk({
+      review_item_ids: items.map(item => item.review_item_id),
+      review_status: reviewStatus,
+      review_note: `批量操作：${actionLabel}`,
+      writeback_status: reviewStatus === 'approved' ? writebackStatus : undefined,
+      writeback_note: writebackStatus ? `批量操作：${writebackStatusLabel(writebackStatus)}` : undefined,
+    })
+    if (res.ok && res.data) {
+      report.value = res.data.report
+      copyMessage.value = `已批量更新 ${res.data.updated_count} 条扩库候选：${actionLabel}。`
+    } else {
+      error.value = res.error?.message ?? '批量更新扩库审稿状态失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '批量更新扩库审稿状态失败'
+  } finally {
+    bulkUpdatingKey.value = ''
   }
 }
 
