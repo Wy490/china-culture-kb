@@ -290,9 +290,18 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.domain_pack_expansion_seed_target_count).toBe(5);
     expect(result.summary.domain_pack_expansion_candidate_field_count).toBe(5);
     expect(result.summary.domain_pack_expansion_issue_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_review_candidate_count).toBe(5);
+    expect(result.summary.domain_pack_expansion_review_approved_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_review_rejected_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_review_needs_revision_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_approved_writeback_draft_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_writeback_draft_ready_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_writeback_queued_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_writeback_written_back_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_writeback_needs_revision_count).toBe(0);
     expect(result.summary.story_agent_command_surface_status).toBe('ready');
     expect(result.summary.story_agent_command_surface_percent).toBe(100);
-    expect(result.summary.mcp_story_agent_tool_count).toBe(23);
+    expect(result.summary.mcp_story_agent_tool_count).toBe(24);
     expect(result.summary.mcp_story_agent_loop_percent).toBe(100);
     expect(result.summary.content_command_layer_percent).toBe(100);
     expect(result.summary.production_delivery_contract_percent).toBe(100);
@@ -348,10 +357,11 @@ describe('kb_get_story_agent_mvp_status', () => {
     ]));
     expect(result.progress.find(slice => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
       'implementation_progress=100',
-      expect.stringContaining('tool_count=23'),
+      expect.stringContaining('tool_count=24'),
       expect.stringContaining('kb_get_production_material_pack_health'),
       expect.stringContaining('kb_get_domain_pack_production_health'),
       expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
+      expect.stringContaining('kb_get_domain_pack_expansion_writeback_draft'),
       expect.stringContaining('kb_generate_story_repair_prompt'),
       'media_execution=gears_v2',
     ]));
@@ -367,6 +377,9 @@ describe('kb_get_story_agent_mvp_status', () => {
       'domain_pack_expansion_batches=5',
       'domain_pack_expansion_seed_targets=5',
       'domain_pack_expansion_candidate_fields=5',
+      'domain_pack_expansion_review_approved=0',
+      'domain_pack_expansion_approved_writeback_drafts=0',
+      'domain_pack_expansion_writeback_queued=0',
       'domain_pack_expansion_direct_writeback=false',
       'seedance_placeholder_assets=2',
       'seedance_production_assets_ready=1',
@@ -390,6 +403,17 @@ describe('kb_get_story_agent_mvp_status', () => {
         score: 100,
         status: 'ready',
       }),
+      expect.objectContaining({
+        key: 'domain_pack_expansion',
+        status: 'ready',
+        evidence: expect.arrayContaining([
+          'review_candidate_count=5',
+          'review_approved_count=0',
+          'approved_writeback_drafts=0',
+          'writeback_queued=0',
+          'direct_writeback=false',
+        ]),
+      }),
     ]));
     expect(result.priority_targets).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -402,6 +426,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.notes.join('\n')).toContain('Production material pack health is now a MCP Story Agent MVP lane');
     expect(result.notes.join('\n')).toContain('Domain Pack production health is now a MCP Story Agent MVP lane');
     expect(result.notes.join('\n')).toContain('Domain Pack expansion candidates are tracked as a MCP Story Agent MVP lane');
+    expect(result.notes.join('\n')).toContain('Domain Pack expansion writeback drafts are read-only MCP exports');
     expect(result.notes.join('\n')).toContain('MCP Story Agent loop is complete at 100%');
     expect(result.notes.join('\n')).toContain('Content and production command layer is complete at 100%');
     expect(result.notes.join('\n')).toContain('Production Board / Delivery Contract command surface is complete at 100%');
@@ -413,6 +438,8 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.markdown).toContain('production material pack health: passed');
     expect(result.markdown).toContain('domain pack health: passed');
     expect(result.markdown).toContain('domain pack expansion candidates: passed');
+    expect(result.markdown).toContain('domain pack expansion review approved: 0');
+    expect(result.markdown).toContain('domain pack expansion approved writeback drafts: 0');
     expect(result.markdown).toContain('Seedance placeholder assets: 2');
     expect(result.markdown).toContain('knowledge writeback queued: 1');
     expect(result.markdown).toContain('production delivery contract: 100%');

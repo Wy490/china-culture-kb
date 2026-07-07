@@ -33,6 +33,7 @@ import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
 import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
 import {
   getDomainPackExpansionCandidateToolResult,
+  getDomainPackExpansionWritebackDraftToolResult,
   getDomainPackProductionHealthToolResult,
   getProductionMaterialPackHealthToolResult,
 } from './tools/production-health-reports.js';
@@ -647,6 +648,24 @@ server.tool(
   },
   async (input) => {
     const result = getDomainPackExpansionCandidateToolResult(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_domain_pack_expansion_writeback_draft — export approved expansion writeback drafts
+server.tool(
+  'kb_get_domain_pack_expansion_writeback_draft',
+  '只读导出已审通过的 Domain Pack 扩库写回草案。仅输出人工补库采集清单和建议补丁片段，不写入 data/provinces/*.md。',
+  {
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = getDomainPackExpansionWritebackDraftToolResult(input);
     return {
       content: [{
         type: 'text',

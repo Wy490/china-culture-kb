@@ -1929,6 +1929,15 @@ export interface StoryAgentMvpStatusReport {
     domain_pack_expansion_seed_target_count: number;
     domain_pack_expansion_candidate_field_count: number;
     domain_pack_expansion_issue_count: number;
+    domain_pack_expansion_review_candidate_count: number;
+    domain_pack_expansion_review_approved_count: number;
+    domain_pack_expansion_review_rejected_count: number;
+    domain_pack_expansion_review_needs_revision_count: number;
+    domain_pack_expansion_approved_writeback_draft_count: number;
+    domain_pack_expansion_writeback_draft_ready_count: number;
+    domain_pack_expansion_writeback_queued_count: number;
+    domain_pack_expansion_writeback_written_back_count: number;
+    domain_pack_expansion_writeback_needs_revision_count: number;
     story_agent_command_surface_status: StoryAgentMvpStatus;
     story_agent_command_surface_percent: number;
     mcp_story_agent_tool_count: number;

@@ -1232,6 +1232,15 @@ describe('System API', () => {
           domain_pack_expansion_seed_target_count: expect.any(Number),
           domain_pack_expansion_candidate_field_count: expect.any(Number),
           domain_pack_expansion_issue_count: 0,
+          domain_pack_expansion_review_candidate_count: expect.any(Number),
+          domain_pack_expansion_review_approved_count: 0,
+          domain_pack_expansion_review_rejected_count: 0,
+          domain_pack_expansion_review_needs_revision_count: 0,
+          domain_pack_expansion_approved_writeback_draft_count: 0,
+          domain_pack_expansion_writeback_draft_ready_count: 0,
+          domain_pack_expansion_writeback_queued_count: 0,
+          domain_pack_expansion_writeback_written_back_count: 0,
+          domain_pack_expansion_writeback_needs_revision_count: 0,
           story_agent_command_surface_status: 'ready',
           story_agent_command_surface_percent: 100,
           mcp_story_agent_tool_count: expect.any(Number),
@@ -1270,6 +1279,8 @@ describe('System API', () => {
       expect(res.body.data.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.markdown).toContain('Seedance placeholder assets');
       expect(res.body.data.markdown).toContain('knowledge writeback ready drafts');
+      expect(res.body.data.markdown).toContain('domain pack expansion review approved: 0');
+      expect(res.body.data.markdown).toContain('domain pack expansion approved writeback drafts: 0');
       expect(res.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
         'generated_artifacts',
         'generated_governance',
@@ -1311,8 +1322,9 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        expect.stringContaining('tool_count=23'),
+        expect.stringContaining('tool_count=24'),
         expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
+        expect.stringContaining('kb_get_domain_pack_expansion_writeback_draft'),
         expect.stringContaining('kb_generate_story_repair_prompt'),
         'media_execution=gears_v2',
       ]));
@@ -1328,6 +1340,9 @@ describe('System API', () => {
         'domain_pack_expansion_batches=5',
         expect.stringContaining('domain_pack_expansion_seed_targets='),
         expect.stringContaining('domain_pack_expansion_candidate_fields='),
+        'domain_pack_expansion_review_approved=0',
+        'domain_pack_expansion_approved_writeback_drafts=0',
+        'domain_pack_expansion_writeback_queued=0',
         'domain_pack_expansion_direct_writeback=false',
         'local_target_health_tracked_by=lanes',
         'real_media_execution=gears_v2',
@@ -1362,6 +1377,10 @@ describe('System API', () => {
           status: 'ready',
           evidence: expect.arrayContaining([
             'candidate_status=passed',
+            expect.stringContaining('review_candidate_count='),
+            'review_approved_count=0',
+            'approved_writeback_drafts=0',
+            'writeback_queued=0',
             'direct_writeback=false',
             'requires_candidate_markdown=true',
             'requires_human_review=true',

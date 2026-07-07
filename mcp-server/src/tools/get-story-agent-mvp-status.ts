@@ -129,6 +129,15 @@ export interface StoryAgentMvpStatusReport {
     domain_pack_expansion_seed_target_count: number;
     domain_pack_expansion_candidate_field_count: number;
     domain_pack_expansion_issue_count: number;
+    domain_pack_expansion_review_candidate_count: number;
+    domain_pack_expansion_review_approved_count: number;
+    domain_pack_expansion_review_rejected_count: number;
+    domain_pack_expansion_review_needs_revision_count: number;
+    domain_pack_expansion_approved_writeback_draft_count: number;
+    domain_pack_expansion_writeback_draft_ready_count: number;
+    domain_pack_expansion_writeback_queued_count: number;
+    domain_pack_expansion_writeback_written_back_count: number;
+    domain_pack_expansion_writeback_needs_revision_count: number;
     story_agent_command_surface_status: MvpStatus;
     story_agent_command_surface_percent: number;
     mcp_story_agent_tool_count: number;
@@ -174,6 +183,7 @@ const MCP_STORY_AGENT_LOOP_TOOLS = [
   'kb_get_production_material_pack_health',
   'kb_get_domain_pack_production_health',
   'kb_get_domain_pack_expansion_candidates',
+  'kb_get_domain_pack_expansion_writeback_draft',
   'kb_get_story_agent_mvp_status',
   'kb_get_production_readiness',
   'kb_get_production_readiness_portfolio',
@@ -213,6 +223,18 @@ interface KnowledgeWritebackQueueMetrics {
   written_back_count: number;
   needs_revision_count: number;
   read_error_count: number;
+}
+
+interface DomainPackExpansionReviewMetrics {
+  candidate_review_count: number;
+  approved_count: number;
+  rejected_count: number;
+  needs_revision_count: number;
+  approved_writeback_draft_count: number;
+  writeback_draft_ready_count: number;
+  writeback_queued_count: number;
+  writeback_written_back_count: number;
+  writeback_needs_revision_count: number;
 }
 
 function uniqueStrings(values: Array<string | undefined>): string[] {
@@ -415,6 +437,7 @@ function domainPackLane(report: DomainPackProductionHealthReport): StoryAgentMvp
 function domainPackExpansionLane(report: DomainPackExpansionCandidateReport): StoryAgentMvpLane {
   const errorCount = report.issues.filter(issue => issue.severity === 'error').length;
   const warningCount = report.issues.filter(issue => issue.severity === 'warning').length;
+  const reviewMetrics = domainPackExpansionReviewMetrics(report);
   const status: MvpStatus = report.status === 'passed' ? 'ready' : 'needs_action';
   return {
     key: 'domain_pack_expansion',
@@ -428,7 +451,7 @@ function domainPackExpansionLane(report: DomainPackExpansionCandidateReport): St
       - (report.review_policy.direct_writeback_to_province_markdown ? 35 : 0),
     ),
     detail: report.status === 'passed'
-      ? `${report.batch_count} review-gated Domain Pack expansion batches cover ${report.seed_target_count} seed targets and ${report.candidate_field_count} candidate fields.`
+      ? `${report.batch_count} review-gated Domain Pack expansion batches cover ${report.seed_target_count} seed targets, ${reviewMetrics.approved_count} approved items, and ${reviewMetrics.approved_writeback_draft_count} writeback drafts.`
       : `${errorCount} errors and ${warningCount} warnings in review-gated Domain Pack expansion candidates.`,
     evidence: [
       `schema=${report.schema_version}`,
@@ -440,6 +463,15 @@ function domainPackExpansionLane(report: DomainPackExpansionCandidateReport): St
       `batch_count=${report.batch_count}`,
       `seed_target_count=${report.seed_target_count}`,
       `candidate_field_count=${report.candidate_field_count}`,
+      `review_candidate_count=${reviewMetrics.candidate_review_count}`,
+      `review_approved_count=${reviewMetrics.approved_count}`,
+      `review_rejected_count=${reviewMetrics.rejected_count}`,
+      `review_needs_revision_count=${reviewMetrics.needs_revision_count}`,
+      `approved_writeback_drafts=${reviewMetrics.approved_writeback_draft_count}`,
+      `writeback_draft_ready=${reviewMetrics.writeback_draft_ready_count}`,
+      `writeback_queued=${reviewMetrics.writeback_queued_count}`,
+      `writeback_written_back=${reviewMetrics.writeback_written_back_count}`,
+      `writeback_needs_revision=${reviewMetrics.writeback_needs_revision_count}`,
       `direct_writeback=${report.review_policy.direct_writeback_to_province_markdown}`,
       `requires_candidate_markdown=${report.review_policy.requires_candidate_markdown}`,
       `requires_human_review=${report.review_policy.requires_human_review}`,
@@ -451,6 +483,35 @@ function domainPackExpansionLane(report: DomainPackExpansionCandidateReport): St
     next_action: report.status === 'passed'
       ? undefined
       : 'Repair Domain Pack expansion candidate batches so all required packs remain in candidate_review with source-level, candidate Markdown, and human review gates.',
+  };
+}
+
+function domainPackExpansionReviewMetrics(report: DomainPackExpansionCandidateReport): DomainPackExpansionReviewMetrics {
+  const reviewCounts = report.review_packet.review_status_counts ?? {
+    candidate_review: report.review_packet.review_item_count,
+    approved: 0,
+    rejected: 0,
+    needs_revision: 0,
+  };
+  const items = report.review_packet.batches.flatMap(batch => batch.review_items);
+  const writebackCounts = Object.fromEntries(
+    KNOWLEDGE_WRITEBACK_STATUSES.map(status => [status, 0]),
+  ) as Record<KnowledgeWritebackStatus, number>;
+  for (const item of items) {
+    if (item.review_status !== 'approved') continue;
+    writebackCounts[item.writeback_status ?? 'draft_ready'] += 1;
+  }
+
+  return {
+    candidate_review_count: reviewCounts.candidate_review ?? 0,
+    approved_count: reviewCounts.approved ?? 0,
+    rejected_count: reviewCounts.rejected ?? 0,
+    needs_revision_count: reviewCounts.needs_revision ?? 0,
+    approved_writeback_draft_count: report.review_packet.approved_writeback_draft_count ?? 0,
+    writeback_draft_ready_count: writebackCounts.draft_ready,
+    writeback_queued_count: writebackCounts.queued,
+    writeback_written_back_count: writebackCounts.written_back,
+    writeback_needs_revision_count: writebackCounts.needs_revision,
   };
 }
 
@@ -762,6 +823,7 @@ function progressSlices(
   const hasLocalContractBlocker = lanes.some(lane => lane.status === 'blocked');
   const externalOrManual = portfolio.summary.external_automation_step_count
     + portfolio.summary.manual_automation_step_count;
+  const domainPackExpansionReview = domainPackExpansionReviewMetrics(domainPackExpansionCandidates);
   return [
     {
       key: 'generated_governance',
@@ -818,6 +880,9 @@ function progressSlices(
         `domain_pack_expansion_batches=${domainPackExpansionCandidates.batch_count}`,
         `domain_pack_expansion_seed_targets=${domainPackExpansionCandidates.seed_target_count}`,
         `domain_pack_expansion_candidate_fields=${domainPackExpansionCandidates.candidate_field_count}`,
+        `domain_pack_expansion_review_approved=${domainPackExpansionReview.approved_count}`,
+        `domain_pack_expansion_approved_writeback_drafts=${domainPackExpansionReview.approved_writeback_draft_count}`,
+        `domain_pack_expansion_writeback_queued=${domainPackExpansionReview.writeback_queued_count}`,
         `domain_pack_expansion_direct_writeback=${domainPackExpansionCandidates.review_policy.direct_writeback_to_province_markdown}`,
         `knowledge_writeback_ready=${writebackMetrics.ready_count}`,
         `knowledge_writeback_draft_ready=${writebackMetrics.draft_ready_count}`,
@@ -903,6 +968,15 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     `- domain pack expansion seed targets: ${report.summary.domain_pack_expansion_seed_target_count}`,
     `- domain pack expansion candidate fields: ${report.summary.domain_pack_expansion_candidate_field_count}`,
     `- domain pack expansion issues: ${report.summary.domain_pack_expansion_issue_count}`,
+    `- domain pack expansion review candidate: ${report.summary.domain_pack_expansion_review_candidate_count}`,
+    `- domain pack expansion review approved: ${report.summary.domain_pack_expansion_review_approved_count}`,
+    `- domain pack expansion review rejected: ${report.summary.domain_pack_expansion_review_rejected_count}`,
+    `- domain pack expansion review needs_revision: ${report.summary.domain_pack_expansion_review_needs_revision_count}`,
+    `- domain pack expansion approved writeback drafts: ${report.summary.domain_pack_expansion_approved_writeback_draft_count}`,
+    `- domain pack expansion writeback draft_ready: ${report.summary.domain_pack_expansion_writeback_draft_ready_count}`,
+    `- domain pack expansion writeback queued: ${report.summary.domain_pack_expansion_writeback_queued_count}`,
+    `- domain pack expansion writeback written_back: ${report.summary.domain_pack_expansion_writeback_written_back_count}`,
+    `- domain pack expansion writeback needs_revision: ${report.summary.domain_pack_expansion_writeback_needs_revision_count}`,
     `- Story Agent command surface: ${report.summary.story_agent_command_surface_status} · ${report.summary.story_agent_command_surface_percent}%`,
     `- MCP Story Agent tools: ${report.summary.mcp_story_agent_tool_count}`,
     `- MCP Story Agent loop: ${report.summary.mcp_story_agent_loop_percent}%`,
@@ -965,6 +1039,7 @@ export async function getStoryAgentMvpStatus(
   const status = overallStatus(lanes);
   const externalOrManual = productionPortfolio.summary.external_automation_step_count
     + productionPortfolio.summary.manual_automation_step_count;
+  const domainPackExpansionReview = domainPackExpansionReviewMetrics(domainPackExpansionCandidates);
   const progress = progressSlices(
     lanes,
     generatedHealth,
@@ -1020,6 +1095,15 @@ export async function getStoryAgentMvpStatus(
       domain_pack_expansion_seed_target_count: domainPackExpansionCandidates.seed_target_count,
       domain_pack_expansion_candidate_field_count: domainPackExpansionCandidates.candidate_field_count,
       domain_pack_expansion_issue_count: domainPackExpansionCandidates.issues.length,
+      domain_pack_expansion_review_candidate_count: domainPackExpansionReview.candidate_review_count,
+      domain_pack_expansion_review_approved_count: domainPackExpansionReview.approved_count,
+      domain_pack_expansion_review_rejected_count: domainPackExpansionReview.rejected_count,
+      domain_pack_expansion_review_needs_revision_count: domainPackExpansionReview.needs_revision_count,
+      domain_pack_expansion_approved_writeback_draft_count: domainPackExpansionReview.approved_writeback_draft_count,
+      domain_pack_expansion_writeback_draft_ready_count: domainPackExpansionReview.writeback_draft_ready_count,
+      domain_pack_expansion_writeback_queued_count: domainPackExpansionReview.writeback_queued_count,
+      domain_pack_expansion_writeback_written_back_count: domainPackExpansionReview.writeback_written_back_count,
+      domain_pack_expansion_writeback_needs_revision_count: domainPackExpansionReview.writeback_needs_revision_count,
       story_agent_command_surface_status: 'ready',
       story_agent_command_surface_percent: 100,
       mcp_story_agent_tool_count: MCP_STORY_AGENT_LOOP_TOOLS.length,
@@ -1042,6 +1126,7 @@ export async function getStoryAgentMvpStatus(
       'Production material pack health is now a MCP Story Agent MVP lane: core and high-frequency video types must keep mapped required_fields, prompt layers, gate items, supplement questions, and sample-entry coverage before production sign-off.',
       'Domain Pack production health is now a MCP Story Agent MVP lane: required production prompt packs must keep trigger words, production prompts, review boundaries, and asset usage coverage before prompt package sign-off.',
       'Domain Pack expansion candidates are tracked as a MCP Story Agent MVP lane: first-wave material expansion must stay in candidate_review with candidate Markdown, human review, source-level checks, and no direct province Markdown writeback.',
+      'Domain Pack expansion writeback drafts are read-only MCP exports for approved review items; they are candidate patch material, not completed province Markdown writes.',
       'Knowledge writeback queue governance is now a MCP Story Agent MVP lane: only approved candidates with writeback drafts are counted, and province Markdown changes remain manual review patches.',
       'MCP Story Agent loop is complete at 100%: read-only context, blueprint, validation, delivery, repair prompt, controlled versioning, generated governance, readiness automation, MVP status, and GEARS evidence signoff are all exposed as tools.',
       'Content and production command layer is complete at 100% inside china-culture-kb; generated target health and real GEARS endpoint acceptance remain separate status surfaces.',

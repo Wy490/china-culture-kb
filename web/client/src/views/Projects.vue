@@ -122,7 +122,7 @@
         <span>模板 {{ storyAgentMvpStatus.summary.production_material_pack_status }} {{ storyAgentMvpStatus.summary.production_material_pack_core_ready_count }}/{{ storyAgentMvpStatus.summary.production_material_pack_core_total_count }}</span>
         <span>Domain Pack {{ storyAgentMvpStatus.summary.domain_pack_status }} {{ storyAgentMvpStatus.summary.production_domain_pack_ready_count }}/{{ storyAgentMvpStatus.summary.production_domain_pack_required_count }}</span>
         <RouterLink class="projects-page__metric-link" to="/domain-pack-expansion-queue">
-          扩库候选 {{ storyAgentMvpStatus.summary.domain_pack_expansion_status }} {{ storyAgentMvpStatus.summary.domain_pack_expansion_batch_count }} 批
+          扩库候选 {{ storyAgentMvpStatus.summary.domain_pack_expansion_status }} {{ storyAgentMvpStatus.summary.domain_pack_expansion_batch_count }} 批 · 已通过 {{ storyAgentMvpStatus.summary.domain_pack_expansion_review_approved_count }} · 草案 {{ storyAgentMvpStatus.summary.domain_pack_expansion_approved_writeback_draft_count }}
         </RouterLink>
       </div>
       <div class="projects-page__mvp-progress">

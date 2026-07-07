@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   getDomainPackExpansionCandidateReport,
   getDomainPackExpansionCandidateToolResult,
+  getDomainPackExpansionWritebackDraftToolResult,
   getDomainPackProductionHealthReport,
   getDomainPackProductionHealthToolResult,
   getProductionMaterialPackHealthReport,
@@ -14,17 +15,21 @@ import {
 let tmpRoot = '';
 let dataRoot = '';
 const previousKbRoot = process.env.KB_ROOT;
+const previousGeneratedRoot = process.env.WEB_GENERATED_ROOT;
 
 beforeEach(() => {
   tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-production-health-reports-'));
   dataRoot = path.join(tmpRoot, 'data');
   process.env.KB_ROOT = dataRoot;
+  process.env.WEB_GENERATED_ROOT = path.join(tmpRoot, 'web-generated');
   fs.mkdirSync(path.join(dataRoot, 'provinces'), { recursive: true });
 });
 
 afterEach(() => {
   if (previousKbRoot === undefined) delete process.env.KB_ROOT;
   else process.env.KB_ROOT = previousKbRoot;
+  if (previousGeneratedRoot === undefined) delete process.env.WEB_GENERATED_ROOT;
+  else process.env.WEB_GENERATED_ROOT = previousGeneratedRoot;
   fs.rmSync(tmpRoot, { recursive: true, force: true });
 });
 
@@ -135,6 +140,8 @@ describe('production health reports', () => {
     expect(domainPackExpansionCandidates.review_packet.markdown).toContain('direct_writeback_to_province_markdown: true');
     expect(getDomainPackExpansionCandidateToolResult({ include_markdown: false }).markdown).toBeUndefined();
     expect(getDomainPackExpansionCandidateToolResult({ include_markdown: false }).review_packet.markdown).toBeUndefined();
+    expect(getDomainPackExpansionWritebackDraftToolResult().markdown).toContain('Domain Pack Expansion Writeback Draft');
+    expect(getDomainPackExpansionWritebackDraftToolResult({ include_markdown: false }).markdown).toBeUndefined();
   });
 
   it('reports review-gated Domain Pack expansion candidates', () => {
@@ -179,6 +186,24 @@ describe('production health reports', () => {
         })),
       }),
     );
+    fs.mkdirSync(path.join(process.env.WEB_GENERATED_ROOT!, 'domain-pack-expansion'), { recursive: true });
+    fs.writeFileSync(
+      path.join(process.env.WEB_GENERATED_ROOT!, 'domain-pack-expansion', 'review-state.json'),
+      JSON.stringify({
+        schema_version: 'domain-pack-expansion-review-state/v1',
+        updated_at: '2026-07-07T09:00:00.000Z',
+        direct_writeback_to_province_markdown: false,
+        items: [{
+          review_item_id: 'heritage_process_pack_batch::target_01',
+          review_status: 'approved',
+          review_note: 'MCP 审稿通过，进入人工补源清单。',
+          reviewed_at: '2026-07-07T09:00:00.000Z',
+          writeback_status: 'queued',
+          writeback_note: '先排入湖南非遗流程补录批次。',
+          writeback_updated_at: '2026-07-07T09:00:00.000Z',
+        }],
+      }),
+    );
 
     const report = getDomainPackExpansionCandidateReport();
 
@@ -198,6 +223,13 @@ describe('production health reports', () => {
         batch_count: 5,
         review_item_count: 5,
         candidate_field_count: 5,
+        review_status_counts: {
+          candidate_review: 4,
+          approved: 1,
+          rejected: 0,
+          needs_revision: 0,
+        },
+        approved_writeback_draft_count: 1,
       },
       review_policy: {
         direct_writeback_to_province_markdown: false,
@@ -218,6 +250,9 @@ describe('production health reports', () => {
         review_items: expect.arrayContaining([
           expect.objectContaining({
             entry_name: 'heritage_process_pack target',
+            review_status: 'approved',
+            writeback_status: 'queued',
+            writeback_draft_markdown: expect.stringContaining('扩库候选审稿草案'),
             candidate_markdown: expect.stringContaining('candidate_draft_only: true'),
           }),
         ]),
@@ -226,5 +261,23 @@ describe('production health reports', () => {
     const toolResult = getDomainPackExpansionCandidateToolResult();
     expect(toolResult.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
     expect(toolResult.review_packet.markdown).toContain('heritage_process_pack target');
+    expect(toolResult.review_packet.markdown).toContain('approved_writeback_draft_count: 1');
+
+    const writebackDraft = getDomainPackExpansionWritebackDraftToolResult();
+    expect(writebackDraft).toMatchObject({
+      schema_version: 'domain-pack-expansion-writeback-draft/v1',
+      domain_id: 'china_culture',
+      approved_count: 1,
+      target_files: ['data/provinces/湖南.md'],
+      status_counts: expect.objectContaining({
+        queued: 1,
+      }),
+    });
+    expect(writebackDraft.items[0]).toMatchObject({
+      review_item_id: 'heritage_process_pack_batch::target_01',
+      suggested_file_path: 'data/provinces/湖南.md',
+      writeback_status: 'queued',
+    });
+    expect(writebackDraft.markdown).toContain('本草案只作为人工补库采集清单');
   });
 });
