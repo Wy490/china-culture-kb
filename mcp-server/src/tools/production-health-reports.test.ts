@@ -105,7 +105,7 @@ describe('production health reports', () => {
         candidate_field_count: 0,
       },
     });
-    expect(domainPackExpansionCandidates.required_pack_ids).toHaveLength(5);
+    expect(domainPackExpansionCandidates.required_pack_ids).toHaveLength(8);
     expect(domainPackExpansionCandidates.missing_required_pack_ids).toEqual(domainPackExpansionCandidates.required_pack_ids);
     expect(domainPackExpansionCandidates.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -165,6 +165,9 @@ describe('production health reports', () => {
           'ai_comic_storyboard_pack',
           'era_and_costume_pack',
           'explainer_knowledge_structure_pack',
+          'children_adaptation_safety_pack',
+          'short_video_hook_pack',
+          'education_training_structure_pack',
         ].map(packId => ({
           batch_id: `${packId}_batch`,
           pack_id: packId,
@@ -214,18 +217,18 @@ describe('production health reports', () => {
       domain_id: 'china_culture',
       status: 'passed',
       missing_required_pack_ids: [],
-      batch_count: 5,
-      seed_target_count: 5,
-      candidate_field_count: 5,
+      batch_count: 8,
+      seed_target_count: 8,
+      candidate_field_count: 8,
       issues: [],
       review_packet: {
         schema_version: 'domain-pack-expansion-review-packet/v1',
         status: 'passed',
-        batch_count: 5,
-        review_item_count: 5,
-        candidate_field_count: 5,
+        batch_count: 8,
+        review_item_count: 8,
+        candidate_field_count: 8,
         review_status_counts: {
-          candidate_review: 4,
+          candidate_review: 7,
           approved: 1,
           rejected: 0,
           needs_revision: 0,

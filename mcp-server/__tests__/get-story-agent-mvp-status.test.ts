@@ -123,6 +123,9 @@ function makeDomainPackExpansionCandidateBatches() {
     'ai_comic_storyboard_pack',
     'era_and_costume_pack',
     'explainer_knowledge_structure_pack',
+    'children_adaptation_safety_pack',
+    'short_video_hook_pack',
+    'education_training_structure_pack',
   ].map(packId => ({
     batch_id: `${packId}_candidate_batch`,
     pack_id: packId,
@@ -286,11 +289,11 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.production_domain_pack_ready_count).toBe(8);
     expect(result.summary.production_domain_pack_required_count).toBe(8);
     expect(result.summary.domain_pack_expansion_status).toBe('passed');
-    expect(result.summary.domain_pack_expansion_batch_count).toBe(5);
-    expect(result.summary.domain_pack_expansion_seed_target_count).toBe(5);
-    expect(result.summary.domain_pack_expansion_candidate_field_count).toBe(5);
+    expect(result.summary.domain_pack_expansion_batch_count).toBe(8);
+    expect(result.summary.domain_pack_expansion_seed_target_count).toBe(8);
+    expect(result.summary.domain_pack_expansion_candidate_field_count).toBe(8);
     expect(result.summary.domain_pack_expansion_issue_count).toBe(0);
-    expect(result.summary.domain_pack_expansion_review_candidate_count).toBe(5);
+    expect(result.summary.domain_pack_expansion_review_candidate_count).toBe(8);
     expect(result.summary.domain_pack_expansion_review_approved_count).toBe(0);
     expect(result.summary.domain_pack_expansion_review_rejected_count).toBe(0);
     expect(result.summary.domain_pack_expansion_review_needs_revision_count).toBe(0);
@@ -375,9 +378,9 @@ describe('kb_get_story_agent_mvp_status', () => {
       'domain_pack_ready=8/8',
       'domain_pack_issues=0',
       'domain_pack_expansion_status=passed',
-      'domain_pack_expansion_batches=5',
-      'domain_pack_expansion_seed_targets=5',
-      'domain_pack_expansion_candidate_fields=5',
+      'domain_pack_expansion_batches=8',
+      'domain_pack_expansion_seed_targets=8',
+      'domain_pack_expansion_candidate_fields=8',
       'domain_pack_expansion_review_approved=0',
       'domain_pack_expansion_approved_writeback_drafts=0',
       'domain_pack_expansion_writeback_queued=0',
@@ -408,7 +411,7 @@ describe('kb_get_story_agent_mvp_status', () => {
         key: 'domain_pack_expansion',
         status: 'ready',
         evidence: expect.arrayContaining([
-          'review_candidate_count=5',
+          'review_candidate_count=8',
           'review_approved_count=0',
           'approved_writeback_drafts=0',
           'writeback_queued=0',

@@ -653,6 +653,9 @@ describe('System API', () => {
           'ai_comic_storyboard_pack',
           'era_and_costume_pack',
           'explainer_knowledge_structure_pack',
+          'children_adaptation_safety_pack',
+          'short_video_hook_pack',
+          'education_training_structure_pack',
         ]),
         missing_required_pack_ids: [],
         review_policy: {
@@ -661,7 +664,7 @@ describe('System API', () => {
           requires_human_review: true,
           requires_source_level: true,
         },
-        batch_count: 5,
+        batch_count: 8,
         issues: [],
         review_packet: {
           schema_version: 'domain-pack-expansion-review-packet/v1',
@@ -674,8 +677,8 @@ describe('System API', () => {
           },
         },
       });
-      expect(res.body.data.seed_target_count).toBeGreaterThanOrEqual(18);
-      expect(res.body.data.candidate_field_count).toBeGreaterThanOrEqual(40);
+      expect(res.body.data.seed_target_count).toBeGreaterThanOrEqual(30);
+      expect(res.body.data.candidate_field_count).toBeGreaterThanOrEqual(80);
       expect(res.body.data.review_packet.review_item_count).toBe(res.body.data.seed_target_count);
       expect(res.body.data.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
       expect(res.body.data.review_packet.markdown).toContain('滩头年画');
@@ -699,6 +702,18 @@ describe('System API', () => {
         expect.objectContaining({
           pack_id: 'explainer_knowledge_structure_pack',
           target_video_types: expect.arrayContaining(['explainer_video']),
+        }),
+        expect.objectContaining({
+          pack_id: 'children_adaptation_safety_pack',
+          target_video_types: expect.arrayContaining(['children_story']),
+        }),
+        expect.objectContaining({
+          pack_id: 'short_video_hook_pack',
+          target_video_types: expect.arrayContaining(['social_short']),
+        }),
+        expect.objectContaining({
+          pack_id: 'education_training_structure_pack',
+          target_video_types: expect.arrayContaining(['education_training']),
         }),
       ]));
       expect(res.body.data.markdown).toContain('Domain Pack Expansion Candidates');
@@ -1228,7 +1243,7 @@ describe('System API', () => {
           production_domain_pack_ready_count: 8,
           production_domain_pack_required_count: 8,
           domain_pack_expansion_status: 'passed',
-          domain_pack_expansion_batch_count: 5,
+          domain_pack_expansion_batch_count: 8,
           domain_pack_expansion_seed_target_count: expect.any(Number),
           domain_pack_expansion_candidate_field_count: expect.any(Number),
           domain_pack_expansion_issue_count: 0,
@@ -1338,7 +1353,7 @@ describe('System API', () => {
         'domain_pack_ready=8/8',
         'domain_pack_issues=0',
         'domain_pack_expansion_status=passed',
-        'domain_pack_expansion_batches=5',
+        'domain_pack_expansion_batches=8',
         expect.stringContaining('domain_pack_expansion_seed_targets='),
         expect.stringContaining('domain_pack_expansion_candidate_fields='),
         'domain_pack_expansion_review_approved=0',

@@ -247,6 +247,156 @@
           "forbidden_direct_claims": ["千年学脉简化为单线传承", "后世影响误写成本人现场行为", "现代机构口径混入古代事实"]
         }
       ]
+    },
+    {
+      "batch_id": "children_adaptation_safety_pack_expansion_20260707",
+      "pack_id": "children_adaptation_safety_pack",
+      "entry_name": "儿童改写规则包——年龄分层、善意张力与事实边界",
+      "priority": "P1",
+      "status": "candidate_review",
+      "target_video_types": ["children_story", "children_animation", "explainer_video", "education_training"],
+      "field_groups": [
+        {
+          "group_id": "age_and_kind_conflict",
+          "candidate_fields": ["audience_age_band", "audience_level", "child_safe_conflict", "emotional_resolution", "parent_teacher_note"],
+          "review_questions": ["目标年龄是否决定冲突强度、句子长度和知识密度？", "冲突是否保留善意张力而不制造恐吓、羞辱或残酷惩罚？"]
+        },
+        {
+          "group_id": "fact_and_wonder_boundary",
+          "candidate_fields": ["fact_boundary_card", "forbidden_claims", "wonder_or_cultural_symbol", "concrete_examples", "assessment_check"],
+          "review_questions": ["传说、神话和历史事实是否在儿童可理解层面分清？", "趣味化表达是否避免把未核实说法写成知识结论？"]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "柳毅传书——洞庭湖畔的书生与龙女",
+          "province": "湖南",
+          "recommended_fields": ["audience_age_band", "child_safe_conflict", "fact_boundary_card", "emotional_resolution"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["传说写成历史事实", "恐怖化水府惩罚", "儿童观众无法分辨虚构边界"]
+        },
+        {
+          "entry_name": "洞庭湖与娥皇女英——湘妃竹传说",
+          "province": "湖南",
+          "recommended_fields": ["audience_age_band", "wonder_or_cultural_symbol", "fact_boundary_card", "parent_teacher_note"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["神话传说写成历史事件", "过度悲情化儿童叙事", "地域来源无边界"]
+        },
+        {
+          "entry_name": "滩头年画——湘西南木版年画的最后守望",
+          "province": "湖南",
+          "recommended_fields": ["concrete_examples", "wonder_or_cultural_symbol", "parent_teacher_note", "assessment_check"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["未核实传承谱系", "工艺难度变成儿童操作教程", "唯一正宗表述"]
+        },
+        {
+          "entry_name": "岳麓书院——千年学府弦歌不绝",
+          "province": "湖南",
+          "recommended_fields": ["audience_level", "fact_boundary_card", "concrete_examples", "parent_teacher_note"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["千年学脉简化为单线传承", "古代书院生活过度童话化", "现代校园经验误置"]
+        }
+      ]
+    },
+    {
+      "batch_id": "short_video_hook_pack_expansion_20260707",
+      "pack_id": "short_video_hook_pack",
+      "entry_name": "短视频钩子包——三秒问题、对比反转与平台节奏",
+      "priority": "P1",
+      "status": "candidate_review",
+      "target_video_types": ["social_short", "heritage_promo", "documentary_short", "explainer_video"],
+      "field_groups": [
+        {
+          "group_id": "hook_and_vertical_rhythm",
+          "candidate_fields": ["opening_hook", "platform_context", "vertical_shot_plan", "beat_interval", "comment_prompt"],
+          "review_questions": ["前三秒问题是否来自素材真实张力，而不是夸张标题党？", "竖屏镜头节奏是否保留可核实的文化对象或现场动作？"]
+        },
+        {
+          "group_id": "share_boundary",
+          "candidate_fields": ["share_trigger", "misconception_or_boundary", "visual_symbols", "sound_or_texture_details", "production_risks"],
+          "review_questions": ["反转点是否纠正常见误解而不制造新误解？", "评论互动是否诱导补源和辨析，而不是引战或猎奇？"]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "vertical_shot_plan", "visual_symbols", "production_risks"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["未核实海上丝路唯一性", "烧制参数无来源断言", "夸张成绝密技法"]
+        },
+        {
+          "entry_name": "踏虎剪纸——凿刀下的苗族阴阳世界",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "beat_interval", "sound_or_texture_details", "misconception_or_boundary"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["族群刻板化解释", "纹样寓意单一化", "猎奇化仪式空间"]
+        },
+        {
+          "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
+          "province": "湖南",
+          "recommended_fields": ["platform_context", "share_trigger", "visual_symbols", "comment_prompt"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["文人使用谱系未核实", "审美评价冒充事实", "工艺级别未核实"]
+        },
+        {
+          "entry_name": "常德会战与常德细菌战——湘北战场的血与疫",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "misconception_or_boundary", "production_risks", "comment_prompt"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["灾难娱乐化", "以反转掩盖来源边界", "医学细节无来源断言"]
+        }
+      ]
+    },
+    {
+      "batch_id": "education_training_structure_pack_expansion_20260707",
+      "pack_id": "education_training_structure_pack",
+      "entry_name": "宣讲培训结构包——论点案例、练习复盘与行动转化",
+      "priority": "P1",
+      "status": "candidate_review",
+      "target_video_types": ["lecture_video", "education_training", "explainer_video"],
+      "field_groups": [
+        {
+          "group_id": "learning_flow",
+          "candidate_fields": ["learning_objective", "learner_profile", "step_sequence", "practice_task", "assessment_check"],
+          "review_questions": ["学习目标是否能拆成可观察的理解或行动？", "练习任务是否只要求辨析素材和来源，不要求背诵无来源结论？"]
+        },
+        {
+          "group_id": "speaker_and_case_board",
+          "candidate_fields": ["speaker_position", "communication_goal", "case_examples", "slide_or_board_assets", "recap_sentence"],
+          "review_questions": ["主讲人立场是讲解、培训还是倡导，是否与事实边界相容？", "案例是否覆盖正例、反例和不可断言项？"]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "新民学会——湖南共产党的前身",
+          "province": "湖南",
+          "recommended_fields": ["learning_objective", "case_examples", "slide_or_board_assets", "assessment_check"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["成员关系未核实断言", "组织沿革过度简化", "后见之明替代当时语境"]
+        },
+        {
+          "entry_name": "岳麓书院——千年学府弦歌不绝",
+          "province": "湖南",
+          "recommended_fields": ["learner_profile", "step_sequence", "case_examples", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["现代教育概念直接套入古代书院", "千年学脉单线化", "后世影响误写成现场事实"]
+        },
+        {
+          "entry_name": "周敦颐月岩悟道——理学源头的山洞想象",
+          "province": "湖南",
+          "recommended_fields": ["speaker_position", "communication_goal", "practice_task", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["悟道细节无来源断言", "哲学概念神秘化", "地点与事件关系未核实"]
+        },
+        {
+          "entry_name": "太行山八路军根据地——抗战的中流砥柱",
+          "province": "山西",
+          "recommended_fields": ["learning_objective", "case_examples", "slide_or_board_assets", "assessment_check"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["泛化根据地范围", "口号替代证据", "无来源战斗细节"]
+        }
+      ]
     }
   ]
 }

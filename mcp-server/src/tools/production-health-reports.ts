@@ -485,6 +485,9 @@ const REQUIRED_EXPANSION_PACK_IDS = [
   'ai_comic_storyboard_pack',
   'era_and_costume_pack',
   'explainer_knowledge_structure_pack',
+  'children_adaptation_safety_pack',
+  'short_video_hook_pack',
+  'education_training_structure_pack',
 ] as const;
 
 const DOMAIN_PACK_EXPANSION_REVIEW_STATE_FILE_NAME = 'review-state.json';

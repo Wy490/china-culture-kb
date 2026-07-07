@@ -47,7 +47,7 @@ describe('domain-pack-expansion-service', () => {
         requires_human_review: true,
         requires_source_level: true,
       },
-      batch_count: 5,
+      batch_count: 8,
       issues: [],
     });
     expect(report.required_pack_ids).toEqual([
@@ -56,15 +56,18 @@ describe('domain-pack-expansion-service', () => {
       'ai_comic_storyboard_pack',
       'era_and_costume_pack',
       'explainer_knowledge_structure_pack',
+      'children_adaptation_safety_pack',
+      'short_video_hook_pack',
+      'education_training_structure_pack',
     ]);
-    expect(report.seed_target_count).toBeGreaterThanOrEqual(18);
-    expect(report.candidate_field_count).toBeGreaterThanOrEqual(40);
+    expect(report.seed_target_count).toBeGreaterThanOrEqual(30);
+    expect(report.candidate_field_count).toBeGreaterThanOrEqual(80);
     expect(report.review_packet).toMatchObject({
       schema_version: 'domain-pack-expansion-review-packet/v1',
       source_schema_version: 'domain-pack-expansion-candidates/v1',
       domain_id: 'china_culture',
       status: 'passed',
-      batch_count: 5,
+      batch_count: 8,
       review_item_count: report.seed_target_count,
       candidate_field_count: report.candidate_field_count,
       review_policy: {
@@ -106,6 +109,18 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         pack_id: 'explainer_knowledge_structure_pack',
         target_video_types: expect.arrayContaining(['explainer_video']),
+      }),
+      expect.objectContaining({
+        pack_id: 'children_adaptation_safety_pack',
+        target_video_types: expect.arrayContaining(['children_story']),
+      }),
+      expect.objectContaining({
+        pack_id: 'short_video_hook_pack',
+        target_video_types: expect.arrayContaining(['social_short']),
+      }),
+      expect.objectContaining({
+        pack_id: 'education_training_structure_pack',
+        target_video_types: expect.arrayContaining(['education_training']),
       }),
     ]));
     expect(report.markdown).toContain('Domain Pack Expansion Candidates');
