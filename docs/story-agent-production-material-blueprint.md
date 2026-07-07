@@ -93,6 +93,7 @@
 87. 对齐 MCP 统一写回导出命令面：新增 `kb_get_knowledge_writeback_queue_export`，可离线扫描 `web/generated/projects` 中已通过审稿的项目写回草案，并与 Domain Pack 扩库 approved 草案合并输出同 schema 的统一导出包；支持按项目、片型、省份、写回状态、项目 task key 和扩库 review item ID 筛选，`project_id` 筛选时不会混入扩库草案，继续保持 `province_markdown_written=false`。
 88. 收紧 Story Agent MVP 总控的真实外部回片 gate：Web/MCP `story-agent-mvp-status` 新增 GEARS API、callback secret、callback base、callback base public、`ready_to_run_real_acceptance`、Seedance provider adapter 和 `local_acceptance_counts_as_real_external_callback=false` 字段；`gears_end_to_end_acceptance` 进度证据会在 callback base 是 localhost/127.0.0.1/`.local`/`.invalid` 等本地地址时阻断为 `real_gears_callback_base_not_public`，避免把本地 acceptance 或本地回环配置误报成真实 GEARS/Seedance 外部回片准备完成。
 89. 将真实外部回片 readiness 下沉到 GEARS worker 证据链：`story-agent-mvp-status-audit.json/.md` 会记录 real external callback readiness 和 `local_acceptance_counts_as_real_external_callback=false`；acceptance verdict/archive 会嵌入该 readiness；Web/MCP 最终 signoff 会把嵌入副本与 MVP audit 重算结果逐项比对，缺失或不一致即降为 `attention` 并给出 P0 修复动作，确保真实 GEARS/Seedance 外部回片签收不能只靠本地 acceptance 或被篡改的 readiness 通过。
+90. 建立 worker acceptance kit 生成脚本执行护栏：Web API 测试现在会从 `/api/system/gears-execution-worker-acceptance-kit` 抽取 `audit_story_agent_mvp_status`、`write_acceptance_verdict` 和 `write_acceptance_archive` 三段 Node heredoc，在临时 evidence 目录中真实执行，并验证 MVP real external callback readiness 写入 audit/verdict/archive/checksum 产物；后续再改 runbook 字符串时，未定义变量或证据嵌入漂移会在测试阶段暴露。
 
 ## 原始诊断必须并入路线
 

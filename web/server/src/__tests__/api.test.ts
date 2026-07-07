@@ -11,6 +11,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import { resolve } from 'path';
 import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { spawn } from 'node:child_process';
 import supertest from 'supertest';
 import express from 'express';
 import cors from 'cors';
@@ -79,6 +80,61 @@ async function cleanupDefaultProjectArtifacts(): Promise<void> {
       continue;
     }
   }
+}
+
+async function writeJsonFixture(dirPath: string, filename: string, value: unknown): Promise<void> {
+  await writeFile(resolve(dirPath, filename), `${JSON.stringify(value, null, 2)}\n`, 'utf-8');
+}
+
+async function ensureEvidenceFixtureFile(dirPath: string, filename: string, value: unknown = {}): Promise<void> {
+  try {
+    await readFile(resolve(dirPath, filename), 'utf-8');
+    return;
+  } catch {
+    // Continue below and create a small placeholder attachment.
+  }
+  if (filename.endsWith('.json')) {
+    await writeJsonFixture(dirPath, filename, value);
+    return;
+  }
+  await writeFile(resolve(dirPath, filename), `placeholder for ${filename}\n`, 'utf-8');
+}
+
+function extractNodeHeredocScript(command: string): string {
+  const startMarker = "<<'NODE'\n";
+  const start = command.indexOf(startMarker);
+  const end = command.lastIndexOf('\nNODE');
+  if (start < 0 || end < 0 || end <= start) {
+    throw new Error(`Command does not contain a NODE heredoc: ${command.slice(0, 80)}`);
+  }
+  return command.slice(start + startMarker.length, end);
+}
+
+async function runAcceptanceKitNodeCommand(command: string, evidenceDir: string): Promise<void> {
+  const script = extractNodeHeredocScript(command);
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn(process.execPath, ['-', evidenceDir], {
+      cwd: evidenceDir,
+      env: {
+        ...process.env,
+        GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE: '0',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', chunk => { stdout += String(chunk); });
+    child.stderr.on('data', chunk => { stderr += String(chunk); });
+    child.on('error', reject);
+    child.on('close', code => {
+      if (code === 0) {
+        resolvePromise();
+        return;
+      }
+      reject(new Error(`Acceptance kit command failed with exit ${code}\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+    });
+    child.stdin.end(script);
+  });
 }
 
 beforeAll(async () => {
@@ -3051,6 +3107,264 @@ describe('System API', () => {
         if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
         else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
       }
+    });
+
+    it('executes generated MVP readiness verdict/archive scripts against fixture evidence', async () => {
+      const res = await request.get('/api/system/gears-execution-worker-acceptance-kit');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      const commandById = new Map<string, string>(
+        res.body.data.commands.map((command: any) => [command.id, command.command]),
+      );
+      const mvpAuditCommand = commandById.get('audit_story_agent_mvp_status');
+      const verdictCommand = commandById.get('write_acceptance_verdict');
+      const archiveCommand = commandById.get('write_acceptance_archive');
+      expect(mvpAuditCommand).toBeTruthy();
+      expect(verdictCommand).toBeTruthy();
+      expect(archiveCommand).toBeTruthy();
+
+      const evidenceDir = await mkdtemp(resolve(tmpdir(), 'gears-acceptance-kit-script-'));
+      const outputUrl = 'https://media.story-agent.test/gears-worker-acceptance/readiness-shot-1.mp4';
+      const mvpSummary = {
+        blocker_count: 0,
+        warning_count: 0,
+        generated_ready_count: 1,
+        generated_interrupted_count: 0,
+        generated_production_gap_count: 0,
+        readiness_ready_count: 1,
+        readiness_blocked_count: 0,
+        ready_automation_step_count: 1,
+        real_gears_endpoint_configured: true,
+        real_gears_callback_secret_configured: true,
+        real_gears_callback_base_configured: true,
+        real_gears_callback_base_public: true,
+        real_gears_acceptance_ready_to_run: true,
+        real_gears_acceptance_blocker: 'gears_worker_signoff_evidence_pending',
+        local_acceptance_counts_as_real_external_callback: false,
+        seedance_provider_submit_adapter_configured: true,
+        seedance_provider_poll_adapter_configured: true,
+        seedance_provider_callback_base_configured: true,
+        seedance_provider_external_loop_ready: true,
+        seedance_placeholder_asset_count: 0,
+        seedance_production_asset_ready_count: 5,
+        knowledge_writeback_ready_count: 1,
+        knowledge_writeback_queued_count: 1,
+        knowledge_writeback_needs_revision_count: 0,
+      };
+      const mvpStatus = {
+        schema_version: 'story-agent-mvp-status/v1',
+        status: 'ready',
+        score: 96,
+        lanes: [{ id: 'gears_end_to_end_acceptance', status: 'ready' }],
+        summary: mvpSummary,
+      };
+      await writeJsonFixture(evidenceDir, 'story-agent-mvp-status-before.json', mvpStatus);
+      await writeJsonFixture(evidenceDir, 'story-agent-mvp-status-after.json', mvpStatus);
+
+      await runAcceptanceKitNodeCommand(mvpAuditCommand!, evidenceDir);
+
+      const mvpAudit = JSON.parse(await readFile(resolve(evidenceDir, 'story-agent-mvp-status-audit.json'), 'utf-8'));
+      expect(mvpAudit).toMatchObject({
+        schema_version: 'story-agent-mvp-status-audit/v1',
+        status: 'passed',
+        failed_checks: [],
+        real_external_callback_readiness: {
+          booleans: {
+            real_gears_acceptance_ready_to_run: { before: true, after: true, changed: false },
+            real_gears_callback_base_public: { before: true, after: true, changed: false },
+            local_acceptance_counts_as_real_external_callback: { before: false, after: false, changed: false },
+          },
+          blocker: {
+            before: 'gears_worker_signoff_evidence_pending',
+            after: 'gears_worker_signoff_evidence_pending',
+            changed: false,
+          },
+        },
+      });
+      expect(await readFile(resolve(evidenceDir, 'story-agent-mvp-status-audit.md'), 'utf-8'))
+        .toContain('local_acceptance_counts_as_real_external_callback_before/after/changed: false/false/false');
+
+      await writeFile(resolve(evidenceDir, 'gears-required-env-missing.txt'), '', 'utf-8');
+      await writeJsonFixture(evidenceDir, 'story-agent-callback-id-preflight.json', { warning_count: 0 });
+      await writeJsonFixture(evidenceDir, 'gears-worker-response-audit.json', {
+        totals: {
+          record_count: 1,
+          parse_error_count: 0,
+          transport_error_count: 0,
+          http_error_count: 0,
+          unknown_count: 0,
+          missing_worker_id_count: 0,
+          missing_source_id_count: 0,
+          missing_failure_context_count: 0,
+          missing_ready_artifact_count: 0,
+        },
+        recommended_actions: [],
+      });
+      await writeJsonFixture(evidenceDir, 'story-agent-callback-response-audit.json', {
+        totals: {
+          parse_error_count: 0,
+          transport_error_count: 0,
+          http_error_count: 0,
+          ok_false_count: 0,
+          failed_count: 0,
+          validation_error_count: 0,
+          auth_error_count: 0,
+          not_found_count: 0,
+          blocked_count: 0,
+          ledger_match_missing_count: 0,
+        },
+        recommended_actions: [],
+      });
+      await writeJsonFixture(evidenceDir, 'story-agent-system-external-output-url-source.json', {
+        schema_version: 'story-agent-system-external-output-url-source/v1',
+        source: 'worker_response',
+        output_url: outputUrl,
+        placeholder: false,
+        ready_for_external_import: true,
+      });
+      await writeJsonFixture(evidenceDir, 'story-agent-system-external-callback-preflight-response.json', {
+        ok: true,
+        data: {
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'preflight',
+          blocked: false,
+          received_count: 1,
+          resolved_count: 1,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 1,
+          updated_count: 0,
+          failed_count: 0,
+          blocking_count: 0,
+        },
+      });
+      await writeJsonFixture(evidenceDir, 'story-agent-system-external-callback-import-response.json', {
+        ok: true,
+        data: {
+          schema_version: 'system-gears-external-callback-batch-import/v1',
+          mode: 'import',
+          blocked: false,
+          received_count: 1,
+          resolved_count: 1,
+          unresolved_count: 0,
+          project_count: 1,
+          ready_to_import_count: 1,
+          updated_count: 1,
+          failed_count: 0,
+          blocking_count: 0,
+          project_results: [{
+            import_result: {
+              seedance_shot_ledger: {
+                items: [{ video_url: outputUrl }],
+              },
+            },
+          }],
+        },
+      });
+      await writeJsonFixture(evidenceDir, 'story-agent-generated-health-audit.json', {
+        status: 'passed',
+        before: { summary: { ready_count: 1 } },
+        after: { summary: { ready_count: 1 } },
+        deltas: { ready_count: 0 },
+        recommended_actions: [],
+      });
+      await writeJsonFixture(evidenceDir, 'production-material-pack-health-audit.json', {
+        status: 'passed',
+        before: { status: 'passed', issue_count: 0, core_ready_count: 4 },
+        after: { status: 'passed', issue_count: 0, core_ready_count: 4 },
+        deltas: { issue_count: 0, core_ready_count: 0 },
+        failed_checks: [],
+        warning_checks: [],
+        recommended_actions: [],
+      });
+      await writeJsonFixture(evidenceDir, 'domain-pack-production-health-audit.json', {
+        status: 'passed',
+        before: { status: 'passed', issue_count: 0, ready_pack_count: 8 },
+        after: { status: 'passed', issue_count: 0, ready_pack_count: 8 },
+        deltas: { issue_count: 0, ready_pack_count: 0 },
+        failed_checks: [],
+        warning_checks: [],
+        recommended_actions: [],
+      });
+      await writeJsonFixture(evidenceDir, 'gears-large-project-response-audit.json', {
+        totals: {
+          pressure_submitted: false,
+          pressure_skipped: true,
+          request_unit_count: 0,
+          source_echo_count: 0,
+          missing_requested_source_count: 0,
+          duplicate_source_id_count: 0,
+          unexpected_source_count: 0,
+          unknown_count: 0,
+        },
+        recommended_actions: [],
+      });
+      await writeJsonFixture(evidenceDir, 'manifest.json', { schema_version: 'gears-worker-acceptance-evidence-manifest/v1' });
+
+      await runAcceptanceKitNodeCommand(verdictCommand!, evidenceDir);
+
+      const verdict = JSON.parse(await readFile(resolve(evidenceDir, 'gears-worker-acceptance-verdict.json'), 'utf-8'));
+      expect(verdict).toMatchObject({
+        schema_version: 'gears-worker-acceptance-verdict/v1',
+        acceptance_passed: true,
+        mvp_real_external_callback_readiness: {
+          booleans: {
+            local_acceptance_counts_as_real_external_callback: { before: false, after: false, changed: false },
+          },
+        },
+      });
+      expect(verdict.gates.find((gate: any) => gate.id === 'story_agent_mvp_status_audit')?.evidence)
+        .toHaveProperty('real_external_callback_readiness');
+
+      const requiredArchiveAttachments = [
+        'env.template.sh',
+        'story-agent-smoke-targets.json',
+        'story-agent-smoke-env-selected.json',
+        'gears-submit-smoke.json',
+        'gears-submit-response.json',
+        'gears-worker-response-audit.md',
+        'story-agent-generated-health-before.json',
+        'story-agent-generated-health-after.json',
+        'story-agent-generated-health-audit.md',
+        'production-material-pack-health-before.json',
+        'production-material-pack-health-after.json',
+        'production-material-pack-health-audit.md',
+        'domain-pack-production-health-before.json',
+        'domain-pack-production-health-after.json',
+        'domain-pack-production-health-audit.md',
+        'gears-system-external-callback-smoke.json',
+        'story-agent-system-external-ledger-seed-selected.json',
+        'story-agent-callback-response-audit.md',
+        'gears-large-project-submit-pressure.json',
+        'gears-large-project-pressure-summary.json',
+        'gears-large-project-response-audit.md',
+      ];
+      for (const filename of requiredArchiveAttachments) {
+        await ensureEvidenceFixtureFile(evidenceDir, filename);
+      }
+
+      await runAcceptanceKitNodeCommand(archiveCommand!, evidenceDir);
+
+      const archive = JSON.parse(await readFile(resolve(evidenceDir, 'gears-worker-acceptance-archive.json'), 'utf-8'));
+      expect(archive).toMatchObject({
+        schema_version: 'gears-worker-acceptance-archive/v1',
+        signoff_ready: true,
+        audit_summaries: {
+          story_agent_mvp_status: {
+            real_external_callback_readiness: {
+              booleans: {
+                local_acceptance_counts_as_real_external_callback: { before: false, after: false, changed: false },
+              },
+            },
+          },
+        },
+      });
+      expect(await readFile(resolve(evidenceDir, 'gears-worker-acceptance-archive.md'), 'utf-8'))
+        .toContain('mvp_local_acceptance_counts_as_real_external_callback_before/after/changed: false/false/false');
+      expect(JSON.parse(await readFile(resolve(evidenceDir, 'gears-worker-acceptance-checksums.json'), 'utf-8'))).toMatchObject({
+        schema_version: 'gears-worker-acceptance-checksum-manifest/v1',
+        algorithm: 'sha256',
+      });
     });
   });
 
