@@ -3,7 +3,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import { timingSafeEqual } from 'node:crypto';
 import { mcpReadAllProvinceFiles, mcpParseEntries } from '../services/mcp-proxy.js';
-import { ErrorCodes, fail, success } from '@shared/types.js';
+import { ErrorCodes, fail, success, VIDEO_TYPE_CONFIG } from '@shared/types.js';
 import {
   DomainPackExpansionReviewStateBulkUpdateRequestSchema,
   DomainPackExpansionReviewStateUpdateRequestSchema,
@@ -58,9 +58,17 @@ import {
   runStoryAgentGeneratedGovernance,
 } from '../services/generated-governance-service.js';
 import { getStoryAgentGeneratedHealth } from '../services/generated-health-service.js';
+import { getKnowledgeWritebackQueueExportPackage } from '../services/knowledge-writeback-queue-service.js';
 import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
 
 export const systemRouter = Router();
+
+const SYSTEM_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
+  'draft_ready',
+  'queued',
+  'written_back',
+  'needs_revision',
+];
 
 function queryListValue(...values: unknown[]): string[] | undefined {
   const result = values.flatMap(value => {
@@ -69,6 +77,10 @@ function queryListValue(...values: unknown[]): string[] | undefined {
     return [];
   }).map(value => value.trim()).filter(Boolean);
   return result.length ? [...new Set(result)] : undefined;
+}
+
+function queryEnum<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
+  return typeof value === 'string' && allowed.includes(value as T) ? value as T : undefined;
 }
 
 function gearsCallbackSecretFromRequest(req: Request): string | undefined {
@@ -237,6 +249,56 @@ systemRouter.get('/domain-pack-expansion-writeback-draft', (req, res) => {
       req.query.writeback_statuses,
     ) as KnowledgeWritebackStatus[] | undefined,
   })));
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/system/knowledge-writeback-queue/export — unified reviewed writeback export
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/knowledge-writeback-queue/export', async (req, res, next) => {
+  try {
+    const projectId = typeof req.query.project_id === 'string' && req.query.project_id.trim()
+      ? req.query.project_id.trim()
+      : undefined;
+    const videoType = queryEnum(
+      req.query.video_type,
+      Object.keys(VIDEO_TYPE_CONFIG) as VideoType[],
+    );
+    const province = typeof req.query.province === 'string' && req.query.province.trim()
+      ? req.query.province.trim()
+      : undefined;
+    const knowledgeWritebackStatus = queryEnum(
+      req.query.knowledge_writeback_status ?? req.query.writeback_status,
+      SYSTEM_WRITEBACK_STATUSES,
+    );
+    const searchQuery = typeof req.query.search_query === 'string' && req.query.search_query.trim()
+      ? req.query.search_query.trim()
+      : undefined;
+    const projectTaskKeys = queryListValue(
+      req.query.project_task_key,
+      req.query.project_task_keys,
+      req.query.task_key,
+      req.query.task_keys,
+    );
+    const expansionReviewItemIds = queryListValue(
+      req.query.expansion_review_item_id,
+      req.query.expansion_review_item_ids,
+      req.query.review_item_id,
+      req.query.review_item_ids,
+    );
+    const result = await getKnowledgeWritebackQueueExportPackage({
+      projectId,
+      videoType,
+      province,
+      knowledgeWritebackStatus,
+      searchQuery,
+      projectTaskKeys,
+      expansionReviewItemIds,
+    });
+    res.json(success(result));
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ---------------------------------------------------------------------------

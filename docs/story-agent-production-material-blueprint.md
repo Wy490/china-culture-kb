@@ -89,6 +89,7 @@
 83. 建立筛选型扩库写回草案导出：Web `/api/system/domain-pack-expansion-writeback-draft` 与 MCP `kb_get_domain_pack_expansion_writeback_draft` 支持按 `review_item_id`、扩库包、片型标签、省份和写回状态筛选；前端扩库审稿页“复制筛选草案”会只导出当前筛选范围内的 approved 草案，包内保留 `filters`、`direct_writeback_to_province_markdown=false` 和状态计数，继续只作为人工 Patch 建议。
 84. 将扩库草案并入独立知识库写回队列视野：`/knowledge-writeback-queue` 现在同时加载项目候选写回草案和 Domain Pack 扩库 approved 草案，汇总草案总数、当前筛选数、项目草案数、扩库草案数和四类写回状态；扩库项可按片型标签、省份、写回状态和搜索词筛选，可在同页更新扩库写回状态或复制 scoped 扩库草案，但仍只写 `review-state.json`，不直接写正式省份 Markdown。
 85. 将双来源写回队列纳入 MVP 总控：Web/MCP `story-agent-mvp-status` 保留原有项目写回字段，同时新增 `knowledge_writeback_total_*` 与 `knowledge_writeback_expansion_*` summary/evidence，`knowledge_writeback` lane 的状态、score 和 next action 按项目草案 + 扩库草案总负载计算；GEARS 既有项目写回治理计数不被改语义，扩库补库压力也不会在总控中隐身。
+86. 建立双来源知识库写回统一导出包：新增 Web 系统级 `knowledge-writeback-queue-export/v1`，把当前筛选范围内已审通过的项目写回 Patch 与 Domain Pack 扩库写回草案合并为统一 Markdown/JSON 包；前端 `/knowledge-writeback-queue` 可复制“全量 MD/JSON”，包内保留项目/扩库拆分计数、总状态计数、目标文件和 `province_markdown_written=false`，仍只服务人工 PR/审稿工具，不直接写 `data/provinces/*.md`。
 
 ## 原始诊断必须并入路线
 
@@ -335,7 +336,7 @@
 - Web 扩库审稿页已支持按当前筛选结果批量通过、批量入队和批量退回重审；批量操作仍只更新审稿状态文件和草案队列，不写正式知识库。
 - MCP `kb_update_domain_pack_expansion_review_state_bulk` 已与 Web 批量流转对齐，可供外部编排批量推进候选审稿/写回队列，仍只写审稿状态文件，不直接写正式知识库。
 - Web/MCP 扩库写回草案导出已支持 scoped filters；前端复制草案会尊重当前筛选范围，避免把不属于本轮人工落库审稿的 approved 项混入 Patch 草案。
-- 独立知识库写回队列已能同时看到项目草案和扩库草案，并在同页更新扩库写回状态；项目 Patch 与扩库草案仍分开导出，避免混用 schema。
+- 独立知识库写回队列已能同时看到项目草案和扩库草案，并在同页更新扩库写回状态；同时支持双来源统一 Markdown/JSON 导出包，保留项目/扩库拆分和人工写回门禁，不直接写正式知识库。
 - Web/MCP MVP 总控的 `knowledge_writeback` lane 已按双来源总负载计算，同时输出项目/扩库拆分字段，便于 GEARS 签收和素材库扩充指挥层同时看到两类待人工落库压力。
 - `children_story` / `social_short` / `lecture_video` / `education_training` 相关 query 已有优先 Domain Pack 命中。
 - 所有 Domain Pack 只提供采集结构、生产提示和审稿边界，不自动写入 `data/provinces/*.md`，也不得替代具体来源核验。

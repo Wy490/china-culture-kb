@@ -56,6 +56,22 @@
         type="button"
         class="writeback-page__action"
         :disabled="Boolean(exportingFormat)"
+        @click="copyUnifiedExport('markdown')"
+      >
+        {{ exportingFormat === 'unified-markdown' ? '复制中…' : '复制统一 MD' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
+        @click="copyUnifiedExport('json')"
+      >
+        {{ exportingFormat === 'unified-json' ? '复制中…' : '复制统一 JSON' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
         @click="copyPatch('markdown')"
       >
         {{ exportingFormat === 'markdown' ? '复制中…' : '复制项目 Patch' }}
@@ -209,6 +225,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { exportKnowledgeWritebackQueuePatch, listSupplementTasks, updateProjectSupplementTask } from '@/api/projects'
 import {
+  exportKnowledgeWritebackQueuePackage,
   getDomainPackExpansionWritebackDraft,
   updateDomainPackExpansionReviewState,
 } from '@/api/system'
@@ -225,7 +242,7 @@ const expansionDraft = ref<DomainPackExpansionWritebackDraftPackage | null>(null
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | ''>('')
+const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | ''>('')
 const updatingTaskId = ref('')
 const searchQuery = ref('')
 const projectFilter = ref('')
@@ -443,6 +460,45 @@ async function copyPatch(format: 'markdown' | 'json') {
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '复制写回队列失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
+async function copyUnifiedExport(format: 'markdown' | 'json') {
+  const visibleProjectItems = filteredItems.value
+  const visibleExpansionItems = filteredExpansionItems.value
+  if (visibleProjectItems.length + visibleExpansionItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可导出的写回草案'
+    return
+  }
+
+  exportingFormat.value = format === 'json' ? 'unified-json' : 'unified-markdown'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePackage({
+      ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+      ...(videoTypeFilter.value ? { video_type: videoTypeFilter.value } : {}),
+      ...(provinceFilter.value ? { province: provinceFilter.value } : {}),
+      ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+      ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+      project_task_keys: visibleProjectItems.map(writebackItemKey),
+      expansion_review_item_ids: visibleExpansionItems.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      const clipboardText = format === 'json'
+        ? JSON.stringify(res.data, null, 2)
+        : res.data.markdown
+      await navigator.clipboard.writeText(clipboardText)
+      const exportLabel = format === 'json' ? '统一 JSON 导出包' : '统一 Markdown 导出包'
+      copyMessage.value = `已复制 ${exportLabel}：项目 ${res.data.project_approved_count} 条，扩库 ${res.data.expansion_approved_count} 条，目标文件 ${res.data.target_files.length} 个。`
+    } else {
+      error.value = res.error?.message ?? '导出统一写回队列失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制统一写回队列失败'
   } finally {
     exportingFormat.value = ''
   }

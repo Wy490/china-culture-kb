@@ -22,6 +22,7 @@ import type {
   DomainPackExpansionReviewStateUpdateRequest,
   DomainPackExpansionWritebackDraftFilter,
   DomainPackExpansionWritebackDraftPackage,
+  KnowledgeWritebackQueueExportPackage,
   NarrativePatternCatalog,
   ProductionReadinessPortfolioReport,
   ProductionReadinessPortfolioRunRequest,
@@ -139,6 +140,29 @@ export function getDomainPackExpansionWritebackDraft(options: DomainPackExpansio
   for (const status of options.writeback_statuses ?? []) params.append('writeback_status', status)
   const suffix = params.toString() ? `?${params.toString()}` : ''
   return apiGet<DomainPackExpansionWritebackDraftPackage>(`/system/domain-pack-expansion-writeback-draft${suffix}`)
+}
+
+export function exportKnowledgeWritebackQueuePackage(options: {
+  project_id?: string
+  video_type?: string
+  province?: string
+  knowledge_writeback_status?: string
+  search_query?: string
+  project_task_keys?: string[]
+  expansion_review_item_ids?: string[]
+} = {}) {
+  const params = new URLSearchParams()
+  if (options.project_id) params.set('project_id', options.project_id)
+  if (options.video_type) params.set('video_type', options.video_type)
+  if (options.province) params.set('province', options.province)
+  if (options.knowledge_writeback_status) params.set('knowledge_writeback_status', options.knowledge_writeback_status)
+  if (options.search_query) params.set('search_query', options.search_query)
+  for (const key of options.project_task_keys ?? []) params.append('project_task_key', key)
+  for (const reviewItemId of options.expansion_review_item_ids ?? []) {
+    params.append('expansion_review_item_id', reviewItemId)
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return apiGet<KnowledgeWritebackQueueExportPackage>(`/system/knowledge-writeback-queue/export${suffix}`)
 }
 
 export function getGearsExecutionConfig() {

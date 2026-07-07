@@ -859,6 +859,75 @@ describe('System API', () => {
       await rm(stateDir, { recursive: true, force: true });
     });
 
+    it('exports a unified knowledge writeback queue package for scoped expansion drafts', async () => {
+      const reviewItemId = 'short_video_hook_pack_expansion_20260707::target_01';
+      const stateDir = resolve(process.env.WEB_GENERATED_ROOT!, 'domain-pack-expansion');
+      await rm(stateDir, { recursive: true, force: true });
+
+      const updateRes = await request
+        .patch('/api/system/domain-pack-expansion-candidates/review-state')
+        .send({
+          review_item_id: reviewItemId,
+          review_status: 'approved',
+          review_note: 'API 审稿通过，进入统一写回队列导出。',
+          writeback_status: 'queued',
+          writeback_note: '统一导出测试入队。',
+        });
+      expect(updateRes.status).toBe(200);
+      expectSuccess(updateRes.body);
+
+      const exportRes = await request
+        .get('/api/system/knowledge-writeback-queue/export')
+        .query({
+          video_type: 'social_short',
+          province: '湖南',
+          knowledge_writeback_status: 'queued',
+          expansion_review_item_id: reviewItemId,
+        });
+
+      expect(exportRes.status).toBe(200);
+      expectSuccess(exportRes.body);
+      expect(exportRes.body.data).toMatchObject({
+        schema_version: 'knowledge-writeback-queue-export/v1',
+        direct_writeback_to_province_markdown: false,
+        province_markdown_written: false,
+        filters: {
+          video_type: 'social_short',
+          province: '湖南',
+          knowledge_writeback_status: 'queued',
+          expansion_review_item_count: 1,
+        },
+        approved_count: 1,
+        project_approved_count: 0,
+        expansion_approved_count: 1,
+        target_files: ['data/provinces/湖南.md'],
+        status_counts: {
+          project: expect.objectContaining({ queued: 0 }),
+          expansion: expect.objectContaining({ queued: 1 }),
+          total: expect.objectContaining({ queued: 1 }),
+        },
+        project_patch: {
+          schema_version: 'project-knowledge-writeback-patch/v1',
+          approved_count: 0,
+        },
+        expansion_draft: {
+          schema_version: 'domain-pack-expansion-writeback-draft/v1',
+          approved_count: 1,
+          filters: {
+            review_item_ids: [reviewItemId],
+            video_types: ['social_short'],
+            provinces: ['湖南'],
+            writeback_statuses: ['queued'],
+          },
+        },
+      });
+      expect(exportRes.body.data.markdown).toContain('Knowledge Writeback Queue Export');
+      expect(exportRes.body.data.markdown).toContain('province_markdown_written: false');
+      expect(exportRes.body.data.markdown).toContain('项目草案来源');
+      expect(exportRes.body.data.markdown).toContain('Domain Pack Expansion Writeback Draft');
+      await rm(stateDir, { recursive: true, force: true });
+    });
+
     it('rejects expansion review updates for unknown items', async () => {
       const res = await request
         .patch('/api/system/domain-pack-expansion-candidates/review-state')

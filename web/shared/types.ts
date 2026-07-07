@@ -6072,6 +6072,39 @@ export interface DomainPackExpansionWritebackDraftPackage {
   items: DomainPackExpansionWritebackDraftItem[];
 }
 
+export interface KnowledgeWritebackQueueExportFilters {
+  project_id?: string;
+  video_type?: VideoType;
+  province?: string;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+  search_query?: string;
+  project_task_key_count?: number;
+  expansion_review_item_count?: number;
+}
+
+export interface KnowledgeWritebackQueueExportStatusCounts {
+  project: Record<KnowledgeWritebackStatus, number>;
+  expansion: Record<KnowledgeWritebackStatus, number>;
+  total: Record<KnowledgeWritebackStatus, number>;
+}
+
+export interface KnowledgeWritebackQueueExportPackage {
+  schema_version: 'knowledge-writeback-queue-export/v1';
+  exported_at: string;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  filters: KnowledgeWritebackQueueExportFilters;
+  approved_count: number;
+  project_approved_count: number;
+  expansion_approved_count: number;
+  project_count: number;
+  target_files: string[];
+  status_counts: KnowledgeWritebackQueueExportStatusCounts;
+  project_patch: ProjectKnowledgeWritebackPatchPackage;
+  expansion_draft: DomainPackExpansionWritebackDraftPackage;
+  markdown: string;
+}
+
 export interface DomainPackExpansionCandidateReport {
   schema_version: 'domain-pack-expansion-candidates-report/v1';
   generated_at: string;
