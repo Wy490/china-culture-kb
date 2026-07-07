@@ -1493,7 +1493,20 @@ describe('System API', () => {
           domain_pack_expansion_batch_count: 8,
           domain_pack_expansion_seed_target_count: expect.any(Number),
           domain_pack_expansion_candidate_field_count: expect.any(Number),
+          domain_pack_expansion_pipeline_progress_percent: 75,
+          domain_pack_expansion_pipeline_stage: 'human_review',
+          domain_pack_expansion_field_workbench_item_count: expect.any(Number),
+          domain_pack_expansion_field_supplement_candidate_count: expect.any(Number),
+          domain_pack_expansion_field_missing_candidate_count: expect.any(Number),
+          domain_pack_expansion_field_candidate_completion_percent: expect.any(Number),
+          domain_pack_expansion_field_review_ready_count: expect.any(Number),
+          domain_pack_expansion_field_review_blocker_count: expect.any(Number),
+          domain_pack_expansion_field_review_ready_percent: expect.any(Number),
+          domain_pack_expansion_field_supplement_priority_target_count: expect.any(Number),
+          domain_pack_expansion_review_ready_priority_target_count: expect.any(Number),
           domain_pack_expansion_issue_count: 0,
+          domain_pack_expansion_review_ready_item_count: expect.any(Number),
+          domain_pack_expansion_review_blocked_item_count: expect.any(Number),
           domain_pack_expansion_review_candidate_count: expect.any(Number),
           domain_pack_expansion_review_approved_count: 0,
           domain_pack_expansion_review_rejected_count: 0,
@@ -1539,9 +1552,40 @@ describe('System API', () => {
       });
       expect(res.body.data.summary.generated_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.domain_pack_expansion_field_workbench_item_count)
+        .toBeGreaterThanOrEqual(res.body.data.summary.domain_pack_expansion_field_supplement_candidate_count);
+      expect(res.body.data.summary.domain_pack_expansion_field_supplement_candidate_count).toBeGreaterThanOrEqual(120);
+      expect(res.body.data.summary.domain_pack_expansion_field_missing_candidate_count).toBe(
+        res.body.data.summary.domain_pack_expansion_field_workbench_item_count
+        - res.body.data.summary.domain_pack_expansion_field_supplement_candidate_count,
+      );
+      expect(res.body.data.summary.domain_pack_expansion_field_supplement_priority_target_count)
+        .toBe(res.body.data.summary.domain_pack_expansion_field_missing_candidate_count);
+      expect(res.body.data.summary.domain_pack_expansion_field_candidate_completion_percent).toBeGreaterThanOrEqual(100);
+      expect(res.body.data.summary.domain_pack_expansion_field_review_ready_count)
+        .toBe(res.body.data.summary.domain_pack_expansion_field_workbench_item_count);
+      expect(res.body.data.summary.domain_pack_expansion_field_review_blocker_count).toBe(0);
+      expect(res.body.data.summary.domain_pack_expansion_field_review_ready_percent).toBe(100);
+      expect(res.body.data.summary.domain_pack_expansion_review_ready_item_count)
+        .toBe(res.body.data.summary.domain_pack_expansion_seed_target_count);
+      expect(res.body.data.summary.domain_pack_expansion_review_blocked_item_count).toBe(0);
+      expect(res.body.data.summary.domain_pack_expansion_review_ready_priority_target_count)
+        .toBe(res.body.data.summary.domain_pack_expansion_seed_target_count);
+      expect(res.body.data.summary.domain_pack_expansion_pipeline_progress_percent).toBe(75);
+      expect(res.body.data.summary.domain_pack_expansion_pipeline_stage).toBe('human_review');
       expect(res.body.data.markdown).toContain('Seedance placeholder assets');
       expect(res.body.data.markdown).toContain('local acceptance counts as real external callback: false');
       expect(res.body.data.markdown).toContain('knowledge writeback ready drafts');
+      expect(res.body.data.markdown).toContain('domain pack expansion field workbench items');
+      expect(res.body.data.markdown).toContain('domain pack expansion pipeline progress: 75%');
+      expect(res.body.data.markdown).toContain('domain pack expansion pipeline stage: human_review');
+      expect(res.body.data.markdown).toContain('domain pack expansion field supplement candidates');
+      expect(res.body.data.markdown).toContain('domain pack expansion field missing candidates');
+      expect(res.body.data.markdown).toContain('domain pack expansion field candidate completion');
+      expect(res.body.data.markdown).toContain('domain pack expansion field review ready');
+      expect(res.body.data.markdown).toContain('domain pack expansion field review blockers');
+      expect(res.body.data.markdown).toContain('domain pack expansion field supplement priority targets');
+      expect(res.body.data.markdown).toContain('domain pack expansion review ready priority targets');
       expect(res.body.data.markdown).toContain('domain pack expansion review approved: 0');
       expect(res.body.data.markdown).toContain('domain pack expansion approved writeback drafts: 0');
       expect(res.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
@@ -1605,6 +1649,19 @@ describe('System API', () => {
         'domain_pack_expansion_batches=8',
         expect.stringContaining('domain_pack_expansion_seed_targets='),
         expect.stringContaining('domain_pack_expansion_candidate_fields='),
+        'domain_pack_expansion_progress=75',
+        'domain_pack_expansion_stage=human_review',
+        expect.stringContaining('domain_pack_expansion_field_workbench_items='),
+        expect.stringContaining('domain_pack_expansion_field_samples='),
+        expect.stringContaining('domain_pack_expansion_field_missing='),
+        expect.stringContaining('domain_pack_expansion_field_completion='),
+        expect.stringContaining('domain_pack_expansion_field_review_ready='),
+        expect.stringContaining('domain_pack_expansion_field_review_blockers='),
+        expect.stringContaining('domain_pack_expansion_field_review_ready_percent='),
+        expect.stringContaining('domain_pack_expansion_field_priority_targets='),
+        expect.stringContaining('domain_pack_expansion_review_ready_priority_targets='),
+        expect.stringContaining('domain_pack_expansion_review_ready_items='),
+        expect.stringContaining('domain_pack_expansion_review_blocked_items='),
         'domain_pack_expansion_review_approved=0',
         'domain_pack_expansion_approved_writeback_drafts=0',
         'domain_pack_expansion_writeback_queued=0',
@@ -1655,6 +1712,19 @@ describe('System API', () => {
           status: 'ready',
           evidence: expect.arrayContaining([
             'candidate_status=passed',
+            'pipeline_progress_percent=75',
+            'pipeline_stage=human_review',
+            expect.stringContaining('field_workbench_item_count='),
+            expect.stringContaining('field_supplement_candidate_count='),
+            expect.stringContaining('field_missing_candidate_count='),
+            expect.stringContaining('field_candidate_completion_percent='),
+            expect.stringContaining('field_review_ready_count='),
+            expect.stringContaining('field_review_blocker_count='),
+            expect.stringContaining('field_review_ready_percent='),
+            expect.stringContaining('field_supplement_priority_target_count='),
+            expect.stringContaining('review_ready_priority_target_count='),
+            expect.stringContaining('review_ready_item_count='),
+            expect.stringContaining('review_blocked_item_count='),
             expect.stringContaining('review_candidate_count='),
             'review_approved_count=0',
             'approved_writeback_drafts=0',

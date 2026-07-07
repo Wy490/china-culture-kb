@@ -122,7 +122,7 @@
         <span>模板 {{ storyAgentMvpStatus.summary.production_material_pack_status }} {{ storyAgentMvpStatus.summary.production_material_pack_core_ready_count }}/{{ storyAgentMvpStatus.summary.production_material_pack_core_total_count }}</span>
         <span>Domain Pack {{ storyAgentMvpStatus.summary.domain_pack_status }} {{ storyAgentMvpStatus.summary.production_domain_pack_ready_count }}/{{ storyAgentMvpStatus.summary.production_domain_pack_required_count }}</span>
         <RouterLink class="projects-page__metric-link" to="/domain-pack-expansion-queue">
-          扩库候选 {{ storyAgentMvpStatus.summary.domain_pack_expansion_status }} {{ storyAgentMvpStatus.summary.domain_pack_expansion_batch_count }} 批 · 已通过 {{ storyAgentMvpStatus.summary.domain_pack_expansion_review_approved_count }} · 草案 {{ storyAgentMvpStatus.summary.domain_pack_expansion_approved_writeback_draft_count }}
+          扩库候选 {{ storyAgentMvpStatus.summary.domain_pack_expansion_status }} {{ storyAgentMvpStatus.summary.domain_pack_expansion_batch_count }} 批 · 进度 {{ storyAgentMvpStatus.summary.domain_pack_expansion_pipeline_progress_percent }}% · 阶段 {{ domainPackExpansionStageLabel(storyAgentMvpStatus.summary.domain_pack_expansion_pipeline_stage) }} · 字段样板 {{ storyAgentMvpStatus.summary.domain_pack_expansion_field_supplement_candidate_count }} · 送审 {{ storyAgentMvpStatus.summary.domain_pack_expansion_field_review_ready_count }} · 阻断 {{ storyAgentMvpStatus.summary.domain_pack_expansion_field_review_blocker_count }} · 补库目标 {{ storyAgentMvpStatus.summary.domain_pack_expansion_field_supplement_priority_target_count }} · 审稿目标 {{ storyAgentMvpStatus.summary.domain_pack_expansion_review_ready_priority_target_count }} · 完整度 {{ storyAgentMvpStatus.summary.domain_pack_expansion_field_candidate_completion_percent }}% · 已通过 {{ storyAgentMvpStatus.summary.domain_pack_expansion_review_approved_count }} · 草案 {{ storyAgentMvpStatus.summary.domain_pack_expansion_approved_writeback_draft_count }}
         </RouterLink>
       </div>
       <div class="projects-page__mvp-progress">
@@ -1044,6 +1044,18 @@ function storyAgentMvpProgressLabel(key: StoryAgentMvpStatusReport['progress'][n
 
 function storyAgentMvpProgressPercent(key: StoryAgentMvpStatusReport['progress'][number]['key']): number {
   return storyAgentMvpStatus.value?.progress.find(slice => slice.key === key)?.percent ?? storyAgentMvpStatus.value?.score ?? 0
+}
+
+function domainPackExpansionStageLabel(stage: string): string {
+  const map: Record<string, string> = {
+    candidate_setup: '候选建档',
+    field_supplement: '字段补库',
+    review_readiness: '送审校验',
+    human_review: '人工审稿',
+    writeback_queue: '写回草案',
+    complete: '扩库完成',
+  }
+  return map[stage] ?? stage
 }
 
 function formatDate(iso: string): string {

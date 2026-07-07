@@ -98,6 +98,8 @@ describe('production health reports', () => {
       batch_count: 0,
       seed_target_count: 0,
       candidate_field_count: 0,
+      pipeline_progress_percent: 0,
+      pipeline_stage: 'candidate_setup',
       video_type_coverage_count: 0,
       coverage_by_video_type: [],
       covered_required_pack_ids: [],
@@ -191,6 +193,14 @@ describe('production health reports', () => {
             recommended_fields: ['core_question'],
             candidate_status: 'candidate_review',
             forbidden_direct_claims: ['未经审稿不得写回正式知识库'],
+            field_supplement_candidates: [{
+              field_id: 'core_question',
+              candidate_value: `${packId} 的核心讲解问题候选`,
+              evidence_level: 'test_fixture',
+              source_refs: ['data/provinces/湖南.md#测试条目'],
+              writeback_hint: '仅用于 MCP 字段工作台测试。',
+              verification_note: '测试样板不写入省份 Markdown。',
+            }],
           }],
         })),
       }),
@@ -225,6 +235,28 @@ describe('production health reports', () => {
       batch_count: 8,
       seed_target_count: 8,
       candidate_field_count: 8,
+      pipeline_progress_percent: 78,
+      pipeline_stage: 'human_review',
+      field_workbench_item_count: 8,
+      field_supplement_candidate_count: 8,
+      field_missing_candidate_count: 0,
+      field_candidate_completion_percent: 100,
+      field_review_ready_count: 8,
+      field_review_blocker_count: 0,
+      field_review_ready_percent: 100,
+      review_ready_item_count: 8,
+      review_blocked_item_count: 0,
+      field_supplement_priority_target_count: 0,
+      field_supplement_priority_targets: [],
+      review_ready_priority_target_count: 7,
+      review_ready_priority_targets: expect.arrayContaining([
+        expect.objectContaining({
+          review_status: 'candidate_review',
+          field_review_blocker_count: 0,
+          field_review_ready_percent: 100,
+          recommended_action: expect.stringContaining('人工审阅'),
+        }),
+      ]),
       video_type_coverage_count: 1,
       coverage_by_video_type: [
         expect.objectContaining({
@@ -232,6 +264,13 @@ describe('production health reports', () => {
           batch_count: 8,
           seed_target_count: 8,
           candidate_field_count: 1,
+          field_workbench_item_count: 8,
+          field_supplement_candidate_count: 8,
+          field_missing_candidate_count: 0,
+          field_candidate_completion_percent: 100,
+          field_review_ready_count: 8,
+          field_review_blocker_count: 0,
+          field_review_ready_percent: 100,
           pack_ids: expect.arrayContaining([
             'heritage_process_pack',
             'explainer_knowledge_structure_pack',
@@ -256,6 +295,15 @@ describe('production health reports', () => {
         batch_count: 8,
         review_item_count: 8,
         candidate_field_count: 8,
+        field_workbench_item_count: 8,
+        field_supplement_candidate_count: 8,
+        field_missing_candidate_count: 0,
+        field_candidate_completion_percent: 100,
+        field_review_ready_count: 8,
+        field_review_blocker_count: 0,
+        field_review_ready_percent: 100,
+        review_ready_item_count: 8,
+        review_blocked_item_count: 0,
         review_status_counts: {
           candidate_review: 7,
           approved: 1,
@@ -285,6 +333,22 @@ describe('production health reports', () => {
             entry_name: 'heritage_process_pack target',
             review_status: 'approved',
             writeback_status: 'queued',
+            field_supplement_candidate_count: 1,
+            field_missing_candidate_count: 0,
+            field_candidate_completion_percent: 100,
+            field_review_ready_count: 1,
+            field_review_blocker_count: 0,
+            field_review_ready_percent: 100,
+            review_ready: true,
+            field_workbench: expect.arrayContaining([
+              expect.objectContaining({
+                field_id: 'core_question',
+                supplement_status: 'candidate_draft',
+                review_ready: true,
+                review_ready_missing: [],
+                candidate_value: 'heritage_process_pack 的核心讲解问题候选',
+              }),
+            ]),
             writeback_draft_markdown: expect.stringContaining('扩库候选审稿草案'),
             candidate_markdown: expect.stringContaining('candidate_draft_only: true'),
           }),
@@ -294,8 +358,21 @@ describe('production health reports', () => {
     const toolResult = getDomainPackExpansionCandidateToolResult();
     expect(toolResult.markdown).toContain('## Video Type Coverage');
     expect(toolResult.markdown).toContain('explainer_video: batches=8');
+    expect(toolResult.markdown).toContain('field_supplement_candidate_count: 8');
+    expect(toolResult.markdown).toContain('field_missing_candidate_count: 0');
+    expect(toolResult.markdown).toContain('field_candidate_completion_percent: 100');
+    expect(toolResult.markdown).toContain('pipeline_progress_percent: 78');
+    expect(toolResult.markdown).toContain('pipeline_stage: human_review');
+    expect(toolResult.markdown).toContain('field_review_ready_count: 8');
+    expect(toolResult.markdown).toContain('field_review_blocker_count: 0');
+    expect(toolResult.markdown).toContain('field_supplement_priority_target_count: 0');
+    expect(toolResult.markdown).toContain('review_ready_priority_target_count: 7');
+    expect(toolResult.markdown).toContain('Next Field Supplement Targets');
+    expect(toolResult.markdown).toContain('Next Review Ready Targets');
     expect(toolResult.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
     expect(toolResult.review_packet.markdown).toContain('heritage_process_pack target');
+    expect(toolResult.review_packet.markdown).toContain('Field supplement workbench');
+    expect(toolResult.review_packet.markdown).toContain('review_ready: true');
     expect(toolResult.review_packet.markdown).toContain('approved_writeback_draft_count: 1');
 
     const writebackDraft = getDomainPackExpansionWritebackDraftToolResult();
@@ -312,7 +389,16 @@ describe('production health reports', () => {
       review_item_id: 'heritage_process_pack_batch::target_01',
       suggested_file_path: 'data/provinces/湖南.md',
       writeback_status: 'queued',
+      field_supplement_candidate_count: 1,
+      field_missing_candidate_count: 0,
+      field_candidate_completion_percent: 100,
+      field_review_ready_count: 1,
+      field_review_blocker_count: 0,
+      field_review_ready_percent: 100,
+      review_ready: true,
     });
+    expect(writebackDraft.markdown).toContain('#### 字段候选值');
+    expect(writebackDraft.markdown).toContain('heritage_process_pack 的核心讲解问题候选');
     expect(writebackDraft.markdown).toContain('本草案只作为人工补库采集清单');
   });
 
@@ -348,6 +434,14 @@ describe('production health reports', () => {
             recommended_fields: ['process_steps'],
             candidate_status: 'candidate_review',
             forbidden_direct_claims: ['未经审稿不得写回正式知识库'],
+            field_supplement_candidates: [{
+              field_id: 'process_steps',
+              candidate_value: '刻版→上色→套印→开脸，作为候选流程样板。',
+              evidence_level: 'fixture_source',
+              source_refs: ['data/provinces/湖南.md#测试流程'],
+              writeback_hint: '只作为 MCP 审稿夹具写回草案，不直接改省份 Markdown。',
+              verification_note: '测试夹具已补齐来源、证据层级和核实备注。',
+            }],
           }],
         }],
       }),
@@ -421,6 +515,97 @@ describe('production health reports', () => {
     });
   });
 
+  it('blocks MCP approval when expansion fields are not review ready', () => {
+    fs.mkdirSync(path.join(dataRoot, 'domain-packs'), { recursive: true });
+    fs.writeFileSync(
+      path.join(dataRoot, 'domain-packs', 'china-culture-production-expansion-candidates.json'),
+      JSON.stringify({
+        schema_version: 'domain-pack-expansion-candidates/v1',
+        updated_at: '2026-07-08',
+        domain_id: 'china_culture',
+        review_policy: {
+          direct_writeback_to_province_markdown: false,
+          requires_candidate_markdown: true,
+          requires_human_review: true,
+          requires_source_level: true,
+        },
+        batches: [{
+          batch_id: 'heritage_process_pack_blocked_batch',
+          pack_id: 'heritage_process_pack',
+          entry_name: 'blocked entry',
+          priority: 'P0',
+          status: 'candidate_review',
+          target_video_types: ['explainer_video'],
+          field_groups: [{
+            group_id: 'source_gate',
+            candidate_fields: ['core_question'],
+            review_questions: ['是否补齐来源级证据？'],
+          }],
+          seed_targets: [{
+            entry_name: 'blocked target',
+            province: '湖南',
+            recommended_fields: ['core_question'],
+            candidate_status: 'candidate_review',
+            forbidden_direct_claims: ['未经审稿不得写回正式知识库'],
+            field_supplement_candidates: [{
+              field_id: 'core_question',
+              candidate_value: '缺少来源级证据的候选问题。',
+            }],
+          }],
+        }],
+      }),
+    );
+
+    const report = getDomainPackExpansionCandidateReport();
+    const reviewItem = report.review_packet.batches.flatMap(batch => batch.review_items)[0];
+    expect(reviewItem).toMatchObject({
+      review_ready: false,
+      field_review_blocker_count: 1,
+      field_workbench: [expect.objectContaining({
+        review_ready: false,
+        review_ready_missing: expect.arrayContaining([
+          'evidence_level',
+          'source_refs',
+          'writeback_hint',
+          'verification_note',
+        ]),
+      })],
+    });
+
+    const update = updateDomainPackExpansionReviewStateToolResult({
+      review_item_id: 'heritage_process_pack_blocked_batch::target_01',
+      review_status: 'approved',
+      writeback_status: 'queued',
+      include_markdown: false,
+    }, {
+      updated_at: '2026-07-08T02:00:00.000Z',
+    });
+    expect(update).toMatchObject({
+      schema_version: 'domain-pack-expansion-review-state-update/v1',
+      ok: false,
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      message: expect.stringContaining('字段审稿阻断'),
+    });
+    expect(update.message).toContain('evidence_level/source_refs/writeback_hint/verification_note');
+
+    const bulkUpdate = updateDomainPackExpansionReviewStateBulkToolResult({
+      review_item_ids: ['heritage_process_pack_blocked_batch::target_01'],
+      review_status: 'approved',
+      writeback_status: 'queued',
+      include_markdown: false,
+    }, {
+      updated_at: '2026-07-08T02:05:00.000Z',
+    });
+    expect(bulkUpdate).toMatchObject({
+      schema_version: 'domain-pack-expansion-review-state-bulk-update/v1',
+      ok: false,
+      updated_count: 0,
+      province_markdown_written: false,
+      message: expect.stringContaining('字段审稿阻断'),
+    });
+  });
+
   it('bulk updates expansion review state for MCP callers without writing province markdown', () => {
     fs.mkdirSync(path.join(dataRoot, 'domain-packs'), { recursive: true });
     fs.writeFileSync(
@@ -454,6 +639,14 @@ describe('production health reports', () => {
               recommended_fields: ['opening_hook'],
               candidate_status: 'candidate_review',
               forbidden_direct_claims: ['未经审稿不得写回正式知识库'],
+              field_supplement_candidates: [{
+                field_id: 'opening_hook',
+                candidate_value: '一个反差问题开场，引导观众进入事实边界。',
+                evidence_level: 'fixture_source',
+                source_refs: ['data/provinces/湖南.md#测试钩子1'],
+                writeback_hint: '只作为批量审稿夹具，不直接写回。',
+                verification_note: '测试夹具已补齐审稿字段。',
+              }],
             },
             {
               entry_name: 'short_video_hook_pack target 2',
@@ -461,6 +654,14 @@ describe('production health reports', () => {
               recommended_fields: ['fact_boundary_card'],
               candidate_status: 'candidate_review',
               forbidden_direct_claims: ['不得把候选钩子当成已核实事实'],
+              field_supplement_candidates: [{
+                field_id: 'fact_boundary_card',
+                candidate_value: '本片只说明可核实事实，传说和推测必须标注。',
+                evidence_level: 'fixture_source',
+                source_refs: ['data/provinces/湖南.md#测试钩子2'],
+                writeback_hint: '只作为批量审稿夹具，不直接写回。',
+                verification_note: '测试夹具已补齐审稿字段。',
+              }],
             },
           ],
         }],

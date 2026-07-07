@@ -160,6 +160,7 @@ interface DomainPackExpansionBatchSummary {
   target_video_types: string[];
   field_group_count: number;
   candidate_field_count: number;
+  field_supplement_candidate_count?: number;
   seed_target_count: number;
   provinces: string[];
 }
@@ -172,6 +173,13 @@ interface DomainPackExpansionVideoTypeCoverageSummary {
   pack_ids: string[];
   batch_ids: string[];
   provinces: string[];
+  field_workbench_item_count?: number;
+  field_supplement_candidate_count?: number;
+  field_missing_candidate_count?: number;
+  field_candidate_completion_percent?: number;
+  field_review_ready_count?: number;
+  field_review_blocker_count?: number;
+  field_review_ready_percent?: number;
   review_status_counts: Record<DomainPackExpansionReviewStatus, number>;
   approved_writeback_draft_count: number;
   writeback_status_counts: Record<KnowledgeWritebackStatus, number>;
@@ -181,6 +189,67 @@ interface DomainPackExpansionReviewFieldGroup {
   group_id: string;
   candidate_fields: string[];
   review_questions: string[];
+}
+
+type DomainPackExpansionFieldSupplementStatus =
+  | 'needs_candidate'
+  | 'candidate_draft';
+
+interface DomainPackExpansionFieldWorkbenchItem {
+  field_id: string;
+  supplement_status: DomainPackExpansionFieldSupplementStatus;
+  candidate_value?: string;
+  evidence_level?: string;
+  source_refs: string[];
+  review_questions: string[];
+  writeback_hint?: string;
+  verification_note?: string;
+  review_ready: boolean;
+  review_ready_missing: string[];
+}
+
+interface DomainPackExpansionFieldSupplementTarget {
+  review_item_id: string;
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  province: string;
+  priority: string;
+  target_video_types: string[];
+  review_status: DomainPackExpansionReviewStatus;
+  writeback_status?: KnowledgeWritebackStatus;
+  field_id: string;
+  priority_score: number;
+  priority_video_types: string[];
+  priority_video_type_count: number;
+  reason: string;
+  review_questions: string[];
+  forbidden_direct_claims: string[];
+  recommended_action: string;
+}
+
+interface DomainPackExpansionReviewReadyTarget {
+  review_item_id: string;
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  province: string;
+  priority: string;
+  target_video_types: string[];
+  review_status: DomainPackExpansionReviewStatus;
+  writeback_status?: KnowledgeWritebackStatus;
+  recommended_fields: string[];
+  priority_score: number;
+  priority_video_types: string[];
+  priority_video_type_count: number;
+  field_workbench_item_count: number;
+  field_review_ready_count: number;
+  field_review_blocker_count: number;
+  field_review_ready_percent: number;
+  review_questions: string[];
+  forbidden_direct_claims: string[];
+  reason: string;
+  recommended_action: string;
 }
 
 interface DomainPackExpansionReviewItem {
@@ -194,6 +263,14 @@ interface DomainPackExpansionReviewItem {
   candidate_status: string;
   recommended_fields: string[];
   forbidden_direct_claims: string[];
+  field_workbench: DomainPackExpansionFieldWorkbenchItem[];
+  field_supplement_candidate_count: number;
+  field_missing_candidate_count: number;
+  field_candidate_completion_percent: number;
+  field_review_ready_count: number;
+  field_review_blocker_count: number;
+  field_review_ready_percent: number;
+  review_ready: boolean;
   candidate_markdown: string;
   review_status?: DomainPackExpansionReviewStatus;
   review_note?: string;
@@ -231,6 +308,15 @@ interface DomainPackExpansionReviewPacket {
   batch_count: number;
   review_item_count: number;
   candidate_field_count: number;
+  field_workbench_item_count?: number;
+  field_supplement_candidate_count?: number;
+  field_missing_candidate_count?: number;
+  field_candidate_completion_percent?: number;
+  field_review_ready_count?: number;
+  field_review_blocker_count?: number;
+  field_review_ready_percent?: number;
+  review_ready_item_count?: number;
+  review_blocked_item_count?: number;
   batches: DomainPackExpansionReviewBatch[];
   review_status_counts?: Record<DomainPackExpansionReviewStatus, number>;
   approved_writeback_draft_count?: number;
@@ -242,6 +328,14 @@ export type DomainPackExpansionReviewStatus =
   | 'approved'
   | 'rejected'
   | 'needs_revision';
+
+type DomainPackExpansionPipelineStage =
+  | 'candidate_setup'
+  | 'field_supplement'
+  | 'review_readiness'
+  | 'human_review'
+  | 'writeback_queue'
+  | 'complete';
 
 export type KnowledgeWritebackStatus =
   | 'draft_ready'
@@ -278,6 +372,14 @@ interface DomainPackExpansionWritebackDraftItem {
   writeback_note?: string;
   suggested_file_path: string;
   suggested_section_heading: string;
+  field_workbench?: DomainPackExpansionFieldWorkbenchItem[];
+  field_supplement_candidate_count?: number;
+  field_missing_candidate_count?: number;
+  field_candidate_completion_percent?: number;
+  field_review_ready_count?: number;
+  field_review_blocker_count?: number;
+  field_review_ready_percent?: number;
+  review_ready?: boolean;
   append_markdown: string;
   writeback_draft_markdown: string;
 }
@@ -322,6 +424,21 @@ export interface DomainPackExpansionCandidateReport {
   batch_count: number;
   seed_target_count: number;
   candidate_field_count: number;
+  pipeline_progress_percent: number;
+  pipeline_stage: DomainPackExpansionPipelineStage;
+  field_workbench_item_count?: number;
+  field_supplement_candidate_count?: number;
+  field_missing_candidate_count?: number;
+  field_candidate_completion_percent?: number;
+  field_review_ready_count?: number;
+  field_review_blocker_count?: number;
+  field_review_ready_percent?: number;
+  review_ready_item_count?: number;
+  review_blocked_item_count?: number;
+  field_supplement_priority_target_count: number;
+  field_supplement_priority_targets: DomainPackExpansionFieldSupplementTarget[];
+  review_ready_priority_target_count: number;
+  review_ready_priority_targets: DomainPackExpansionReviewReadyTarget[];
   video_type_coverage_count: number;
   coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
   batches: DomainPackExpansionBatchSummary[];
@@ -1101,6 +1218,16 @@ interface ExpansionSeedTarget {
   recommended_fields: string[];
   candidate_status: string;
   forbidden_direct_claims: string[];
+  field_supplement_candidates: ExpansionFieldSupplementCandidate[];
+}
+
+interface ExpansionFieldSupplementCandidate {
+  field_id: string;
+  candidate_value: string;
+  evidence_level?: string;
+  source_refs: string[];
+  writeback_hint?: string;
+  verification_note?: string;
 }
 
 interface ExpansionBatch {
@@ -1116,7 +1243,15 @@ interface ExpansionBatch {
 
 type DomainPackExpansionCandidateReportDraft = Omit<
   DomainPackExpansionCandidateReport,
-  'review_packet' | 'video_type_coverage_count' | 'coverage_by_video_type'
+  'review_packet'
+  | 'video_type_coverage_count'
+  | 'coverage_by_video_type'
+  | 'field_supplement_priority_target_count'
+  | 'field_supplement_priority_targets'
+  | 'review_ready_priority_target_count'
+  | 'review_ready_priority_targets'
+  | 'pipeline_progress_percent'
+  | 'pipeline_stage'
 >;
 type DomainPackExpansionReviewItemDraft = Omit<DomainPackExpansionReviewItem, 'candidate_markdown'>;
 
@@ -1271,12 +1406,165 @@ function withExpansionReviewPacket(
 ): DomainPackExpansionCandidateReport {
   const reviewPacket = buildDomainPackExpansionReviewPacket(report, sourceBatches, includeMarkdown, reviewState);
   const coverageByVideoType = buildExpansionVideoTypeCoverage(sourceBatches, reviewPacket);
+  const fieldSupplementPriorityTargets = buildExpansionFieldSupplementPriorityTargets(reviewPacket);
+  const reviewReadyPriorityTargets = buildExpansionReviewReadyPriorityTargets(reviewPacket);
+  const pipelineProgress = buildExpansionPipelineProgress(report, reviewPacket);
   return {
     ...report,
+    pipeline_progress_percent: pipelineProgress.percent,
+    pipeline_stage: pipelineProgress.stage,
+    field_workbench_item_count: reviewPacket.field_workbench_item_count ?? 0,
+    field_supplement_candidate_count: reviewPacket.field_supplement_candidate_count ?? 0,
+    field_missing_candidate_count: reviewPacket.field_missing_candidate_count ?? 0,
+    field_candidate_completion_percent: reviewPacket.field_candidate_completion_percent ?? 100,
+    field_review_ready_count: reviewPacket.field_review_ready_count ?? 0,
+    field_review_blocker_count: reviewPacket.field_review_blocker_count ?? 0,
+    field_review_ready_percent: reviewPacket.field_review_ready_percent ?? 100,
+    review_ready_item_count: reviewPacket.review_ready_item_count ?? 0,
+    review_blocked_item_count: reviewPacket.review_blocked_item_count ?? 0,
+    field_supplement_priority_target_count: fieldSupplementPriorityTargets.length,
+    field_supplement_priority_targets: fieldSupplementPriorityTargets,
+    review_ready_priority_target_count: reviewReadyPriorityTargets.length,
+    review_ready_priority_targets: reviewReadyPriorityTargets,
     video_type_coverage_count: coverageByVideoType.length,
     coverage_by_video_type: coverageByVideoType,
     review_packet: reviewPacket,
   };
+}
+
+function buildExpansionFieldSupplementPriorityTargets(
+  reviewPacket: DomainPackExpansionReviewPacket,
+): DomainPackExpansionFieldSupplementTarget[] {
+  return reviewPacket.batches
+    .flatMap(batch => batch.review_items.flatMap(item =>
+      item.field_workbench
+        .filter(field => field.supplement_status === 'needs_candidate')
+        .map(field => {
+          const priorityScore = expansionFieldSupplementPriorityScore(item);
+          const priorityVideoTypes = matchedExpansionPriorityVideoTypes(item.target_video_types);
+          return {
+            review_item_id: item.review_item_id,
+            batch_id: item.batch_id,
+            pack_id: item.pack_id,
+            entry_name: item.entry_name,
+            province: item.province,
+            priority: item.priority,
+            target_video_types: item.target_video_types,
+            review_status: item.review_status ?? 'candidate_review',
+            writeback_status: item.writeback_status,
+            field_id: field.field_id,
+            priority_score: priorityScore,
+            priority_video_types: priorityVideoTypes,
+            priority_video_type_count: priorityVideoTypes.length,
+            reason: expansionFieldSupplementPriorityReason(item, field.field_id, priorityScore),
+            review_questions: field.review_questions,
+            forbidden_direct_claims: item.forbidden_direct_claims,
+            recommended_action: `补 ${field.field_id} 的 candidate_value、source_refs、writeback_hint 和 verification_note；保持候选稿审稿，不直接写回 data/provinces/*.md。`,
+          };
+        }),
+    ))
+    .sort((a, b) =>
+      b.priority_score - a.priority_score
+      || a.priority.localeCompare(b.priority)
+      || a.pack_id.localeCompare(b.pack_id)
+      || a.entry_name.localeCompare(b.entry_name, 'zh-CN')
+      || a.field_id.localeCompare(b.field_id),
+    );
+}
+
+function buildExpansionReviewReadyPriorityTargets(
+  reviewPacket: DomainPackExpansionReviewPacket,
+): DomainPackExpansionReviewReadyTarget[] {
+  return reviewPacket.batches
+    .flatMap(batch => batch.review_items
+      .filter(item => item.review_ready && (item.review_status ?? 'candidate_review') === 'candidate_review')
+      .map(item => {
+        const priorityScore = expansionReviewReadyPriorityScore(item);
+        const priorityVideoTypes = matchedExpansionPriorityVideoTypes(item.target_video_types);
+        const reviewQuestions = [...new Set(item.field_workbench.flatMap(field => field.review_questions))];
+        return {
+          review_item_id: item.review_item_id,
+          batch_id: item.batch_id,
+          pack_id: item.pack_id,
+          entry_name: item.entry_name,
+          province: item.province,
+          priority: item.priority,
+          target_video_types: item.target_video_types,
+          review_status: item.review_status ?? 'candidate_review',
+          writeback_status: item.writeback_status,
+          recommended_fields: item.recommended_fields,
+          priority_score: priorityScore,
+          priority_video_types: priorityVideoTypes,
+          priority_video_type_count: priorityVideoTypes.length,
+          field_workbench_item_count: item.field_workbench.length,
+          field_review_ready_count: item.field_review_ready_count,
+          field_review_blocker_count: item.field_review_blocker_count,
+          field_review_ready_percent: item.field_review_ready_percent,
+          review_questions: reviewQuestions,
+          forbidden_direct_claims: item.forbidden_direct_claims,
+          reason: expansionReviewReadyPriorityReason(item, priorityScore),
+          recommended_action: '人工审阅 candidate_markdown、source_refs、verification_note 和 forbidden_direct_claims；确认来源边界后再标记 approved 并进入写回草案，不直接写回 data/provinces/*.md。',
+        };
+      }))
+    .sort((a, b) =>
+      b.priority_score - a.priority_score
+      || a.priority.localeCompare(b.priority)
+      || a.pack_id.localeCompare(b.pack_id)
+      || a.entry_name.localeCompare(b.entry_name, 'zh-CN'),
+    );
+}
+
+function expansionFieldSupplementPriorityScore(item: DomainPackExpansionReviewItem): number {
+  const videoTypeScore = Math.max(0, ...item.target_video_types.map(expansionVideoTypePriorityScore));
+  const priorityVideoTypeCoverageScore = matchedExpansionPriorityVideoTypes(item.target_video_types).length * 4;
+  const packPriorityScore = item.priority === 'P0' ? 40 : item.priority === 'P1' ? 20 : 10;
+  const reviewScore = (item.review_status ?? 'candidate_review') === 'candidate_review' ? 6 : 0;
+  return videoTypeScore + priorityVideoTypeCoverageScore + packPriorityScore + reviewScore;
+}
+
+function expansionReviewReadyPriorityScore(item: DomainPackExpansionReviewItem): number {
+  const videoTypeScore = Math.max(0, ...item.target_video_types.map(expansionVideoTypePriorityScore));
+  const priorityVideoTypeCoverageScore = matchedExpansionPriorityVideoTypes(item.target_video_types).length * 4;
+  const packPriorityScore = item.priority === 'P0' ? 40 : item.priority === 'P1' ? 20 : 10;
+  const reviewStatusScore = (item.review_status ?? 'candidate_review') === 'candidate_review' ? 8 : 0;
+  const readinessScore = item.review_ready ? 12 : 0;
+  return videoTypeScore + priorityVideoTypeCoverageScore + packPriorityScore + reviewStatusScore + readinessScore;
+}
+
+function matchedExpansionPriorityVideoTypes(videoTypes: string[]): string[] {
+  const priorityVideoTypes = new Set(['explainer_video', 'heritage_promo', 'documentary_short', 'ai_comic_drama']);
+  return videoTypes.filter(videoType => priorityVideoTypes.has(videoType));
+}
+
+function expansionVideoTypePriorityScore(videoType: string): number {
+  const priorityScores: Record<string, number> = {
+    explainer_video: 50,
+    heritage_promo: 50,
+    documentary_short: 50,
+    ai_comic_drama: 50,
+    education_training: 24,
+    lecture_video: 20,
+    social_short: 18,
+    children_story: 16,
+  };
+  return priorityScores[videoType] ?? 8;
+}
+
+function expansionFieldSupplementPriorityReason(
+  item: DomainPackExpansionReviewItem,
+  fieldId: string,
+  priorityScore: number,
+): string {
+  const videoTypes = item.target_video_types.join('/');
+  return `${item.priority} · ${videoTypes} · ${item.entry_name} 缺 ${fieldId} 候选值，priority_score=${priorityScore}`;
+}
+
+function expansionReviewReadyPriorityReason(
+  item: DomainPackExpansionReviewItem,
+  priorityScore: number,
+): string {
+  const priorityVideoTypes = matchedExpansionPriorityVideoTypes(item.target_video_types).join('/') || 'none';
+  return `${item.priority} · priority_video_types=${priorityVideoTypes} · 字段送审 ${item.field_review_ready_count}/${item.field_workbench.length} · ${item.entry_name} 等待人工审稿，priority_score=${priorityScore}`;
 }
 
 function buildDomainPackExpansionReviewPacket(
@@ -1306,6 +1594,11 @@ function buildDomainPackExpansionReviewPacket(
     };
   });
   const reviewItems = reviewBatches.flatMap(batch => batch.review_items);
+  const fieldWorkbenchItemCount = reviewItems.reduce((sum, item) => sum + item.field_workbench.length, 0);
+  const fieldSupplementCandidateCount = reviewItems.reduce((sum, item) => sum + item.field_supplement_candidate_count, 0);
+  const fieldMissingCandidateCount = reviewItems.reduce((sum, item) => sum + item.field_missing_candidate_count, 0);
+  const fieldReviewReadyCount = reviewItems.reduce((sum, item) => sum + item.field_review_ready_count, 0);
+  const fieldReviewBlockerCount = reviewItems.reduce((sum, item) => sum + item.field_review_blocker_count, 0);
   const packet: Omit<DomainPackExpansionReviewPacket, 'markdown'> = {
     schema_version: 'domain-pack-expansion-review-packet/v1',
     generated_at: report.generated_at,
@@ -1316,6 +1609,15 @@ function buildDomainPackExpansionReviewPacket(
     batch_count: reviewBatches.length,
     review_item_count: reviewBatches.reduce((sum, batch) => sum + batch.review_item_count, 0),
     candidate_field_count: report.candidate_field_count,
+    field_workbench_item_count: fieldWorkbenchItemCount,
+    field_supplement_candidate_count: fieldSupplementCandidateCount,
+    field_missing_candidate_count: fieldMissingCandidateCount,
+    field_candidate_completion_percent: completionPercent(fieldSupplementCandidateCount, fieldWorkbenchItemCount),
+    field_review_ready_count: fieldReviewReadyCount,
+    field_review_blocker_count: fieldReviewBlockerCount,
+    field_review_ready_percent: completionPercent(fieldReviewReadyCount, fieldWorkbenchItemCount),
+    review_ready_item_count: reviewItems.filter(item => item.review_ready).length,
+    review_blocked_item_count: reviewItems.filter(item => !item.review_ready).length,
     batches: reviewBatches,
     review_status_counts: countExpansionReviewStatuses(reviewItems),
     approved_writeback_draft_count: reviewItems.filter(item =>
@@ -1337,6 +1639,11 @@ function buildExpansionReviewItem(
   const reviewItemId = `${batch.batch_id}::target_${String(index + 1).padStart(2, '0')}`;
   const stateItem = reviewState.get(reviewItemId);
   const reviewStatus = stateItem?.review_status ?? 'candidate_review';
+  const fieldWorkbench = buildExpansionFieldWorkbench(batch, target);
+  const fieldSupplementCandidateCount = fieldWorkbench.filter(field => field.supplement_status === 'candidate_draft').length;
+  const fieldMissingCandidateCount = Math.max(0, fieldWorkbench.length - fieldSupplementCandidateCount);
+  const fieldReviewReadyCount = fieldWorkbench.filter(field => field.review_ready).length;
+  const fieldReviewBlockerCount = Math.max(0, fieldWorkbench.length - fieldReviewReadyCount);
   const item: DomainPackExpansionReviewItemDraft = {
     review_item_id: reviewItemId,
     batch_id: batch.batch_id,
@@ -1348,6 +1655,14 @@ function buildExpansionReviewItem(
     candidate_status: target.candidate_status,
     recommended_fields: target.recommended_fields,
     forbidden_direct_claims: target.forbidden_direct_claims,
+    field_workbench: fieldWorkbench,
+    field_supplement_candidate_count: fieldSupplementCandidateCount,
+    field_missing_candidate_count: fieldMissingCandidateCount,
+    field_candidate_completion_percent: completionPercent(fieldSupplementCandidateCount, fieldWorkbench.length),
+    field_review_ready_count: fieldReviewReadyCount,
+    field_review_blocker_count: fieldReviewBlockerCount,
+    field_review_ready_percent: completionPercent(fieldReviewReadyCount, fieldWorkbench.length),
+    review_ready: fieldReviewBlockerCount === 0,
     review_status: reviewStatus,
     review_note: stateItem?.review_note,
     reviewed_at: stateItem?.reviewed_at,
@@ -1367,6 +1682,113 @@ function buildExpansionReviewItem(
   };
 }
 
+function completionPercent(completedCount: number, totalCount: number): number {
+  if (totalCount <= 0) return 100;
+  return Math.round((completedCount / totalCount) * 100);
+}
+
+function buildExpansionPipelineProgress(
+  report: DomainPackExpansionCandidateReportDraft,
+  reviewPacket: DomainPackExpansionReviewPacket,
+): { percent: number; stage: DomainPackExpansionPipelineStage } {
+  const hasReviewItems = reviewPacket.review_item_count > 0;
+  const requiredPackCoveragePercent = completionPercent(
+    report.covered_required_pack_ids.length,
+    report.required_pack_ids.length,
+  );
+  const fieldCandidatePercent = hasReviewItems ? (reviewPacket.field_candidate_completion_percent ?? 0) : 0;
+  const fieldReviewReadyPercent = hasReviewItems ? (reviewPacket.field_review_ready_percent ?? 0) : 0;
+  const reviewReadyItemPercent = hasReviewItems
+    ? completionPercent(reviewPacket.review_ready_item_count ?? 0, reviewPacket.review_item_count)
+    : 0;
+  const reviewApprovedPercent = hasReviewItems
+    ? completionPercent(reviewPacket.review_status_counts?.approved ?? 0, reviewPacket.review_item_count)
+    : 0;
+  const writebackDraftPercent = hasReviewItems
+    ? completionPercent(reviewPacket.approved_writeback_draft_count ?? 0, reviewPacket.review_item_count)
+    : 0;
+  const percent = Math.round(
+    requiredPackCoveragePercent * 0.2
+    + fieldCandidatePercent * 0.25
+    + fieldReviewReadyPercent * 0.2
+    + reviewReadyItemPercent * 0.1
+    + reviewApprovedPercent * 0.15
+    + writebackDraftPercent * 0.1,
+  );
+  const stage: DomainPackExpansionPipelineStage = requiredPackCoveragePercent < 100
+    ? 'candidate_setup'
+    : fieldCandidatePercent < 100
+      ? 'field_supplement'
+      : fieldReviewReadyPercent < 100 || reviewReadyItemPercent < 100
+        ? 'review_readiness'
+        : reviewApprovedPercent < 100
+          ? 'human_review'
+          : writebackDraftPercent < 100
+            ? 'writeback_queue'
+            : 'complete';
+  return { percent, stage };
+}
+
+type ExpansionFieldReviewReadyCandidate = Pick<
+  DomainPackExpansionFieldWorkbenchItem,
+  'supplement_status'
+  | 'candidate_value'
+  | 'evidence_level'
+  | 'source_refs'
+  | 'writeback_hint'
+  | 'verification_note'
+>;
+
+function expansionFieldReviewReadyMissing(field: ExpansionFieldReviewReadyCandidate): string[] {
+  const missing: string[] = [];
+  if (field.supplement_status !== 'candidate_draft') missing.push('candidate_draft');
+  if (!field.candidate_value?.trim()) missing.push('candidate_value');
+  if (!field.evidence_level?.trim()) missing.push('evidence_level');
+  if (field.source_refs.length === 0) missing.push('source_refs');
+  if (!field.writeback_hint?.trim()) missing.push('writeback_hint');
+  if (!field.verification_note?.trim()) missing.push('verification_note');
+  return missing;
+}
+
+function buildExpansionFieldWorkbench(
+  batch: ExpansionBatch,
+  target: ExpansionSeedTarget,
+): DomainPackExpansionFieldWorkbenchItem[] {
+  const supplementByField = new Map(target.field_supplement_candidates.map(candidate => [candidate.field_id, candidate]));
+  const fieldIds = [
+    ...target.recommended_fields,
+    ...target.field_supplement_candidates.map(candidate => candidate.field_id),
+  ];
+
+  return [...new Set(fieldIds)]
+    .filter(Boolean)
+    .map(fieldId => {
+      const supplement = supplementByField.get(fieldId);
+      const supplementStatus: DomainPackExpansionFieldWorkbenchItem['supplement_status'] = supplement
+        ? 'candidate_draft'
+        : 'needs_candidate';
+      const reviewQuestions = batch.field_groups
+        .filter(group => group.candidate_fields.includes(fieldId))
+        .flatMap(group => group.review_questions);
+      const field = {
+        field_id: fieldId,
+        supplement_status: supplementStatus,
+        candidate_value: supplement?.candidate_value,
+        evidence_level: supplement?.evidence_level,
+        source_refs: supplement?.source_refs ?? [],
+        review_questions: [...new Set(reviewQuestions)],
+        writeback_hint: supplement?.writeback_hint,
+        verification_note: supplement?.verification_note,
+      };
+      const reviewReadyMissing = expansionFieldReviewReadyMissing(field);
+      return {
+        ...field,
+        review_ready: reviewReadyMissing.length === 0,
+        review_ready_missing: reviewReadyMissing,
+      };
+    });
+}
+
 export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExpansionCandidateReport): string {
   const issueLines = report.issues.length
     ? report.issues.map(issue =>
@@ -1378,6 +1800,8 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
       `- ${batch.priority} · ${batch.pack_id} · ${batch.batch_id}: targets=${batch.seed_target_count}, fields=${batch.candidate_field_count}, status=${batch.status}`,
     )
     : ['- none'];
+  const priorityTargetLines = renderExpansionFieldSupplementPriorityTargetLines(report.field_supplement_priority_targets.slice(0, 24));
+  const reviewReadyTargetLines = renderExpansionReviewReadyPriorityTargetLines(report.review_ready_priority_targets.slice(0, 24));
 
   return [
     '# Domain Pack Expansion Candidates',
@@ -1403,6 +1827,19 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     `- batch_count: ${report.batch_count}`,
     `- seed_target_count: ${report.seed_target_count}`,
     `- candidate_field_count: ${report.candidate_field_count}`,
+    `- pipeline_progress_percent: ${report.pipeline_progress_percent}`,
+    `- pipeline_stage: ${report.pipeline_stage}`,
+    `- field_workbench_item_count: ${report.field_workbench_item_count ?? 0}`,
+    `- field_supplement_candidate_count: ${report.field_supplement_candidate_count ?? 0}`,
+    `- field_missing_candidate_count: ${report.field_missing_candidate_count ?? 0}`,
+    `- field_candidate_completion_percent: ${report.field_candidate_completion_percent ?? 100}`,
+    `- field_review_ready_count: ${report.field_review_ready_count ?? 0}`,
+    `- field_review_blocker_count: ${report.field_review_blocker_count ?? 0}`,
+    `- field_review_ready_percent: ${report.field_review_ready_percent ?? 100}`,
+    `- review_ready_item_count: ${report.review_ready_item_count ?? 0}`,
+    `- review_blocked_item_count: ${report.review_blocked_item_count ?? 0}`,
+    `- field_supplement_priority_target_count: ${report.field_supplement_priority_target_count}`,
+    `- review_ready_priority_target_count: ${report.review_ready_priority_target_count}`,
     `- video_type_coverage_count: ${report.video_type_coverage_count}`,
     `- review_packet_schema_version: ${report.review_packet.schema_version}`,
     `- review_packet_item_count: ${report.review_packet.review_item_count}`,
@@ -1414,6 +1851,16 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     '',
     ...renderExpansionVideoTypeCoverageLines(report.coverage_by_video_type),
     '',
+    '## Next Field Supplement Targets',
+    '',
+    `- shown: ${priorityTargetLines.length}/${report.field_supplement_priority_target_count}`,
+    ...priorityTargetLines,
+    '',
+    '## Next Review Ready Targets',
+    '',
+    `- shown: ${reviewReadyTargetLines.length}/${report.review_ready_priority_target_count}`,
+    ...reviewReadyTargetLines,
+    '',
     '## Batches',
     '',
     ...batchLines,
@@ -1422,6 +1869,24 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     '',
     ...issueLines,
   ].join('\n').trim() + '\n';
+}
+
+function renderExpansionFieldSupplementPriorityTargetLines(
+  targets: DomainPackExpansionFieldSupplementTarget[],
+): string[] {
+  if (targets.length === 0) return ['- none'];
+  return targets.map(target =>
+    `- score=${target.priority_score} · priority_video_types=${target.priority_video_type_count}(${target.priority_video_types.join('/') || 'none'}) · ${target.priority} · ${target.pack_id} · ${target.entry_name} · ${target.field_id} · ${target.province} · ${target.target_video_types.join('/')}`,
+  );
+}
+
+function renderExpansionReviewReadyPriorityTargetLines(
+  targets: DomainPackExpansionReviewReadyTarget[],
+): string[] {
+  if (targets.length === 0) return ['- none'];
+  return targets.map(target =>
+    `- score=${target.priority_score} · priority_video_types=${target.priority_video_type_count}(${target.priority_video_types.join('/') || 'none'}) · ${target.priority} · ${target.pack_id} · ${target.entry_name} · ${target.province} · fields=${target.field_review_ready_count}/${target.field_workbench_item_count} · ${target.target_video_types.join('/')}`,
+  );
 }
 
 function buildExpansionVideoTypeCoverage(
@@ -1476,6 +1941,19 @@ function buildExpansionVideoTypeCoverage(
         batch_count: item.batchIds.size,
         seed_target_count: item.seedTargetCount,
         candidate_field_count: item.candidateFields.size,
+        field_workbench_item_count: item.reviewItems.reduce((sum, reviewItem) => sum + reviewItem.field_workbench.length, 0),
+        field_supplement_candidate_count: item.reviewItems.reduce((sum, reviewItem) => sum + reviewItem.field_supplement_candidate_count, 0),
+        field_missing_candidate_count: item.reviewItems.reduce((sum, reviewItem) => sum + reviewItem.field_missing_candidate_count, 0),
+        field_candidate_completion_percent: completionPercent(
+          item.reviewItems.reduce((sum, reviewItem) => sum + reviewItem.field_supplement_candidate_count, 0),
+          item.reviewItems.reduce((sum, reviewItem) => sum + reviewItem.field_workbench.length, 0),
+        ),
+        field_review_ready_count: item.reviewItems.reduce((sum, reviewItem) => sum + reviewItem.field_review_ready_count, 0),
+        field_review_blocker_count: item.reviewItems.reduce((sum, reviewItem) => sum + reviewItem.field_review_blocker_count, 0),
+        field_review_ready_percent: completionPercent(
+          item.reviewItems.reduce((sum, reviewItem) => sum + reviewItem.field_review_ready_count, 0),
+          item.reviewItems.reduce((sum, reviewItem) => sum + reviewItem.field_workbench.length, 0),
+        ),
         pack_ids: [...item.packIds].sort((a, b) => a.localeCompare(b)),
         batch_ids: [...item.batchIds].sort((a, b) => a.localeCompare(b)),
         provinces: [...item.provinces].sort((a, b) => a.localeCompare(b, 'zh-CN')),
@@ -1494,7 +1972,7 @@ function renderExpansionVideoTypeCoverageLines(
 ): string[] {
   if (coverage.length === 0) return ['- none'];
   return coverage.map(item =>
-    `- ${item.video_type}: batches=${item.batch_count}, targets=${item.seed_target_count}, fields=${item.candidate_field_count}, approved=${item.review_status_counts.approved}, drafts=${item.approved_writeback_draft_count}, packs=${item.pack_ids.join(', ') || 'none'}, provinces=${item.provinces.join(', ') || 'none'}`,
+    `- ${item.video_type}: batches=${item.batch_count}, targets=${item.seed_target_count}, fields=${item.candidate_field_count}, field_workbench=${item.field_workbench_item_count ?? 0}, field_samples=${item.field_supplement_candidate_count ?? 0}, field_missing=${item.field_missing_candidate_count ?? 0}, field_completion=${item.field_candidate_completion_percent ?? 100}%, field_review_ready=${item.field_review_ready_count ?? 0}, field_review_blockers=${item.field_review_blocker_count ?? 0}, field_review_ready_percent=${item.field_review_ready_percent ?? 100}%, approved=${item.review_status_counts.approved}, drafts=${item.approved_writeback_draft_count}, packs=${item.pack_ids.join(', ') || 'none'}, provinces=${item.provinces.join(', ') || 'none'}`,
   );
 }
 
@@ -1549,6 +2027,15 @@ export function renderDomainPackExpansionReviewPacketMarkdown(
     `- batch_count: ${packet.batch_count}`,
     `- review_item_count: ${packet.review_item_count}`,
     `- candidate_field_count: ${packet.candidate_field_count}`,
+    `- field_workbench_item_count: ${packet.field_workbench_item_count ?? 0}`,
+    `- field_supplement_candidate_count: ${packet.field_supplement_candidate_count ?? 0}`,
+    `- field_missing_candidate_count: ${packet.field_missing_candidate_count ?? 0}`,
+    `- field_candidate_completion_percent: ${packet.field_candidate_completion_percent ?? 100}`,
+    `- field_review_ready_count: ${packet.field_review_ready_count ?? 0}`,
+    `- field_review_blocker_count: ${packet.field_review_blocker_count ?? 0}`,
+    `- field_review_ready_percent: ${packet.field_review_ready_percent ?? 100}`,
+    `- review_ready_item_count: ${packet.review_ready_item_count ?? 0}`,
+    `- review_blocked_item_count: ${packet.review_blocked_item_count ?? 0}`,
     `- candidate_review: ${packet.review_status_counts?.candidate_review ?? 0}`,
     `- approved: ${packet.review_status_counts?.approved ?? 0}`,
     `- rejected: ${packet.review_status_counts?.rejected ?? 0}`,
@@ -1562,6 +2049,9 @@ export function renderDomainPackExpansionReviewPacketMarkdown(
 function renderDomainPackExpansionReviewItemMarkdown(
   item: DomainPackExpansionReviewItemDraft,
 ): string {
+  const fieldWorkbenchLines = item.field_workbench.length
+    ? item.field_workbench.flatMap(renderExpansionFieldWorkbenchMarkdown)
+    : ['- none'];
   return [
     `#### Candidate: ${item.entry_name}`,
     '',
@@ -1580,6 +2070,12 @@ function renderDomainPackExpansionReviewItemMarkdown(
     'Recommended fields:',
     ...markdownList(item.recommended_fields),
     '',
+    'Field supplement workbench:',
+    `- completion: ${item.field_supplement_candidate_count}/${item.field_workbench.length} (${item.field_candidate_completion_percent}%), missing=${item.field_missing_candidate_count}`,
+    `- review_ready: ${item.review_ready}`,
+    `- review_ready_fields: ${item.field_review_ready_count}/${item.field_workbench.length} (${item.field_review_ready_percent}%), blockers=${item.field_review_blocker_count}`,
+    ...fieldWorkbenchLines,
+    '',
     'Forbidden direct claims:',
     ...markdownList(item.forbidden_direct_claims),
     '',
@@ -1588,6 +2084,20 @@ function renderDomainPackExpansionReviewItemMarkdown(
     '- 候选稿只记录待补字段、禁写断言和审稿问题，不得直接改写 data/provinces/*.md。',
     '- 进入正式知识库前必须补足来源级证据，并经人工审稿后进入写回队列。',
   ].join('\n');
+}
+
+function renderExpansionFieldWorkbenchMarkdown(item: DomainPackExpansionFieldWorkbenchItem): string[] {
+  return [
+    `- ${item.field_id}: ${item.supplement_status}`,
+    `  - review_ready: ${item.review_ready}`,
+    ...(item.review_ready_missing.length ? [`  - review_ready_missing: ${item.review_ready_missing.join('；')}`] : []),
+    ...(item.candidate_value ? [`  - 候选值：${item.candidate_value}`] : ['  - 候选值：待补']),
+    ...(item.evidence_level ? [`  - evidence_level: ${item.evidence_level}`] : []),
+    ...(item.source_refs.length ? [`  - source_refs: ${item.source_refs.join('；')}`] : []),
+    ...(item.review_questions.length ? [`  - review_questions: ${item.review_questions.join('；')}`] : []),
+    ...(item.writeback_hint ? [`  - writeback_hint: ${item.writeback_hint}`] : []),
+    ...(item.verification_note ? [`  - verification_note: ${item.verification_note}`] : []),
+  ];
 }
 
 export function getDomainPackExpansionCandidateToolResult(input: {
@@ -1645,6 +2155,14 @@ export function getDomainPackExpansionWritebackDraftToolResult(input: {
       writeback_note: item.writeback_note,
       suggested_file_path: suggestedProvinceFilePath(item.province),
       suggested_section_heading: `### ${item.entry_name}`,
+      field_workbench: item.field_workbench,
+      field_supplement_candidate_count: item.field_supplement_candidate_count,
+      field_missing_candidate_count: item.field_missing_candidate_count,
+      field_candidate_completion_percent: item.field_candidate_completion_percent,
+      field_review_ready_count: item.field_review_ready_count,
+      field_review_blocker_count: item.field_review_blocker_count,
+      field_review_ready_percent: item.field_review_ready_percent,
+      review_ready: item.review_ready,
       append_markdown: item.writeback_draft_markdown ?? renderDomainPackExpansionWritebackDraftMarkdown(item),
       writeback_draft_markdown: item.writeback_draft_markdown ?? renderDomainPackExpansionWritebackDraftMarkdown(item),
     }))
@@ -1734,6 +2252,18 @@ export function updateDomainPackExpansionReviewStateToolResult(
       message: `未找到扩库候选审稿项：${input.review_item_id}。`,
     };
   }
+  const approvalBlocker = expansionReviewApprovalBlockerMessage(input.review_status, [currentItem]);
+  if (approvalBlocker) {
+    return {
+      schema_version: 'domain-pack-expansion-review-state-update/v1',
+      updated_at: updatedAt,
+      ok: false,
+      review_item_id: input.review_item_id,
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      message: approvalBlocker,
+    };
+  }
 
   const currentItems = loadDomainPackExpansionReviewStateItems();
   const nextItems = new Map(currentItems.map(item => [item.review_item_id, item]));
@@ -1812,6 +2342,22 @@ export function updateDomainPackExpansionReviewStateBulkToolResult(
       direct_writeback_to_province_markdown: false,
       province_markdown_written: false,
       message: `未找到 ${missingReviewItemIds.length} 个扩库候选审稿项：${missingReviewItemIds.slice(0, 5).join(', ')}。`,
+    };
+  }
+  const approvalBlocker = expansionReviewApprovalBlockerMessage(
+    input.review_status,
+    uniqueReviewItemIds.map(reviewItemId => itemById.get(reviewItemId)).filter((item): item is DomainPackExpansionReviewItem => Boolean(item)),
+  );
+  if (approvalBlocker) {
+    return {
+      schema_version: 'domain-pack-expansion-review-state-bulk-update/v1',
+      updated_at: updatedAt,
+      ok: false,
+      updated_count: 0,
+      missing_review_item_ids: [],
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      message: approvalBlocker,
     };
   }
 
@@ -2329,6 +2875,15 @@ function emptyDomainPackExpansionWritebackDraftToolResult(
 function renderDomainPackExpansionWritebackDraftMarkdown(
   item: DomainPackExpansionReviewItemDraft,
 ): string {
+  const candidateFields = item.field_workbench.filter(field => field.supplement_status === 'candidate_draft');
+  const missingFields = item.field_workbench.filter(field => field.supplement_status !== 'candidate_draft');
+  const candidateFieldLines = candidateFields.length
+    ? candidateFields.flatMap(renderExpansionFieldWorkbenchMarkdown)
+    : ['- none'];
+  const missingFieldLines = missingFields.length
+    ? missingFields.map(field => `- ${field.field_id}`)
+    : ['- none'];
+
   return [
     `### ${item.entry_name}｜扩库候选审稿草案`,
     '',
@@ -2341,6 +2896,14 @@ function renderDomainPackExpansionWritebackDraftMarkdown(
     '',
     '#### 待补生产字段',
     ...markdownList(item.recommended_fields),
+    '',
+    '#### 字段候选值',
+    `- 完整度：${item.field_supplement_candidate_count}/${item.field_workbench.length}（${item.field_candidate_completion_percent}%）；缺口 ${item.field_missing_candidate_count} 个`,
+    `- 审稿就绪：${item.review_ready}；字段 ${item.field_review_ready_count}/${item.field_workbench.length}（${item.field_review_ready_percent}%）；阻断 ${item.field_review_blocker_count} 个`,
+    ...candidateFieldLines,
+    '',
+    '#### 仍需补候选值字段',
+    ...missingFieldLines,
     '',
     '#### 禁写断言',
     ...markdownList(item.forbidden_direct_claims),
@@ -2493,6 +3056,24 @@ function findDomainPackExpansionReviewItem(
     .find(item => item.review_item_id === reviewItemId);
 }
 
+function expansionReviewApprovalBlockerMessage(
+  reviewStatus: DomainPackExpansionReviewStatus,
+  items: DomainPackExpansionReviewItem[],
+): string | undefined {
+  if (reviewStatus !== 'approved') return undefined;
+  const blockedItems = items.filter(item => !item.review_ready);
+  if (blockedItems.length === 0) return undefined;
+  const sample = blockedItems.slice(0, 5).map(item => {
+    const blockerFields = item.field_workbench
+      .filter(field => !field.review_ready)
+      .slice(0, 3)
+      .map(field => `${field.field_id}[${field.review_ready_missing.join('/') || 'unknown'}]`)
+      .join('；');
+    return `${item.review_item_id}：${blockerFields || `${item.field_review_blocker_count} 个字段阻断`}`;
+  });
+  return `扩库候选仍有字段审稿阻断，不能标记为 approved 或进入写回草案：${sample.join('；')}。请先补齐 candidate_value、evidence_level、source_refs、writeback_hint 和 verification_note。`;
+}
+
 function loadDomainPackExpansionReviewStateItems(): DomainPackExpansionReviewStateItem[] {
   const file = loadDomainPackExpansionReviewStateFile();
   if (!file || file.schema_version !== 'domain-pack-expansion-review-state/v1' || !Array.isArray(file.items)) {
@@ -2613,6 +3194,28 @@ function normalizeExpansionSeedTarget(value: unknown): ExpansionSeedTarget | und
     recommended_fields: isStringArray(value.recommended_fields) ? value.recommended_fields : [],
     candidate_status: typeof value.candidate_status === 'string' ? value.candidate_status : 'missing',
     forbidden_direct_claims: isStringArray(value.forbidden_direct_claims) ? value.forbidden_direct_claims : [],
+    field_supplement_candidates: Array.isArray(value.field_supplement_candidates)
+      ? value.field_supplement_candidates
+        .map(normalizeExpansionFieldSupplementCandidate)
+        .filter((candidate): candidate is ExpansionFieldSupplementCandidate => Boolean(candidate))
+      : [],
+  };
+}
+
+function normalizeExpansionFieldSupplementCandidate(value: unknown): ExpansionFieldSupplementCandidate | undefined {
+  if (!isRecord(value) || typeof value.field_id !== 'string' || typeof value.candidate_value !== 'string') {
+    return undefined;
+  }
+  const fieldId = value.field_id.trim();
+  const candidateValue = value.candidate_value.trim();
+  if (!fieldId || !candidateValue) return undefined;
+  return {
+    field_id: fieldId,
+    candidate_value: candidateValue,
+    evidence_level: typeof value.evidence_level === 'string' ? value.evidence_level.trim() || undefined : undefined,
+    source_refs: isStringArray(value.source_refs) ? value.source_refs.map(ref => ref.trim()).filter(Boolean) : [],
+    writeback_hint: typeof value.writeback_hint === 'string' ? value.writeback_hint.trim() || undefined : undefined,
+    verification_note: typeof value.verification_note === 'string' ? value.verification_note.trim() || undefined : undefined,
   };
 }
 
@@ -2633,6 +3236,10 @@ function summarizeExpansionBatch(batch: ExpansionBatch): DomainPackExpansionBatc
     target_video_types: batch.target_video_types,
     field_group_count: batch.field_groups.length,
     candidate_field_count: candidateFields.size,
+    field_supplement_candidate_count: batch.seed_targets.reduce(
+      (sum, target) => sum + target.field_supplement_candidates.length,
+      0,
+    ),
     seed_target_count: batch.seed_targets.length,
     provinces: [...new Set(batch.seed_targets.map(target => target.province))].sort((a, b) => a.localeCompare(b, 'zh-CN')),
   };

@@ -35,10 +35,15 @@
         <option value="">全部审稿状态</option>
         <option v-for="status in statusOptions" :key="status" :value="status">{{ statusLabel(status) }}</option>
       </select>
+      <select v-model="fieldFilter" class="expansion-page__select">
+        <option value="">全部补字段</option>
+        <option v-for="field in fieldOptions" :key="field" :value="field">{{ field }}</option>
+      </select>
       <button
         type="button"
         class="expansion-page__action expansion-page__action--secondary"
-        :disabled="Boolean(bulkUpdatingKey) || filteredItems.length === 0"
+        :disabled="Boolean(bulkUpdatingKey) || filteredApprovalReadyItems.length === 0"
+        title="只批量通过字段审稿就绪的候选"
         @click="bulkUpdateFiltered('approved', 'draft_ready')"
       >
         {{ bulkUpdatingKey === 'approved:draft_ready' ? '更新中…' : '筛选通过' }}
@@ -46,7 +51,8 @@
       <button
         type="button"
         class="expansion-page__action expansion-page__action--secondary"
-        :disabled="Boolean(bulkUpdatingKey) || filteredItems.length === 0"
+        :disabled="Boolean(bulkUpdatingKey) || filteredApprovalReadyItems.length === 0"
+        title="只批量入队字段审稿就绪的候选"
         @click="bulkUpdateFiltered('approved', 'queued')"
       >
         {{ bulkUpdatingKey === 'approved:queued' ? '更新中…' : '筛选入队' }}
@@ -93,6 +99,30 @@
       </button>
       <button
         type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(copyingFormat)"
+        @click="copyFieldWorkbench"
+      >
+        {{ copyingFormat === 'field-workbench' ? '复制中…' : '复制字段台账' }}
+      </button>
+      <button
+        type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(copyingFormat) || priorityTargets.length === 0"
+        @click="copyFieldSupplementTargets"
+      >
+        {{ copyingFormat === 'field-targets' ? '复制中…' : '复制缺口清单' }}
+      </button>
+      <button
+        type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(copyingFormat) || reviewReadyTargets.length === 0"
+        @click="copyReviewReadyTargets"
+      >
+        {{ copyingFormat === 'review-targets' ? '复制中…' : '复制审稿清单' }}
+      </button>
+      <button
+        type="button"
         class="expansion-page__action expansion-page__action--ghost"
         :disabled="loading"
         @click="loadQueue"
@@ -121,8 +151,48 @@
         <strong>{{ filteredItems.length }}</strong>
       </div>
       <div>
+        <span>推进进度</span>
+        <strong>{{ report.pipeline_progress_percent }}%</strong>
+      </div>
+      <div>
+        <span>当前阶段</span>
+        <strong>{{ pipelineStageLabel(report.pipeline_stage) }}</strong>
+      </div>
+      <div>
         <span>候选字段</span>
         <strong>{{ report.review_packet.candidate_field_count }}</strong>
+      </div>
+      <div>
+        <span>字段样板</span>
+        <strong>{{ report.review_packet.field_supplement_candidate_count ?? 0 }}</strong>
+      </div>
+      <div>
+        <span>字段缺口</span>
+        <strong>{{ report.review_packet.field_missing_candidate_count ?? 0 }}</strong>
+      </div>
+      <div>
+        <span>补库目标</span>
+        <strong>{{ report.field_supplement_priority_target_count }}</strong>
+      </div>
+      <div>
+        <span>审稿目标</span>
+        <strong>{{ report.review_ready_priority_target_count }}</strong>
+      </div>
+      <div>
+        <span>字段完整度</span>
+        <strong>{{ report.review_packet.field_candidate_completion_percent ?? 100 }}%</strong>
+      </div>
+      <div>
+        <span>送审字段</span>
+        <strong>{{ report.review_packet.field_review_ready_count ?? 0 }}</strong>
+      </div>
+      <div>
+        <span>审稿阻断</span>
+        <strong>{{ report.review_packet.field_review_blocker_count ?? 0 }}</strong>
+      </div>
+      <div>
+        <span>送审率</span>
+        <strong>{{ report.review_packet.field_review_ready_percent ?? 100 }}%</strong>
       </div>
       <div>
         <span>片型覆盖</span>
@@ -158,9 +228,71 @@
             <span>{{ typeLabel(item.video_type) }}</span>
             <strong>{{ item.seed_target_count }}</strong>
             <small>{{ item.batch_count }} 批 · {{ item.candidate_field_count }} 字段</small>
+            <small>字段行 {{ item.field_workbench_item_count ?? 0 }} · 样板 {{ item.field_supplement_candidate_count ?? 0 }}</small>
+            <small>缺口 {{ item.field_missing_candidate_count ?? 0 }} · 完整度 {{ item.field_candidate_completion_percent ?? 100 }}%</small>
+            <small>送审 {{ item.field_review_ready_count ?? 0 }} · 阻断 {{ item.field_review_blocker_count ?? 0 }} · {{ item.field_review_ready_percent ?? 100 }}%</small>
             <small>通过 {{ item.review_status_counts.approved }} · 草案 {{ item.approved_writeback_draft_count }} · 入队 {{ item.writeback_status_counts.queued }}</small>
             <em>{{ item.pack_ids.map(packShortLabel).join(' / ') }}</em>
             <em>{{ item.provinces.join('、') || '待确认省份' }}</em>
+          </button>
+        </div>
+      </section>
+      <section v-else-if="report" class="expansion-page__priority">
+        <header class="expansion-page__coverage-head">
+          <h2>字段补库已完成</h2>
+          <span>
+            送审字段 {{ report.review_packet.field_review_ready_count ?? 0 }}/{{ report.review_packet.field_workbench_item_count ?? 0 }}
+            · 阻断 {{ report.review_packet.field_review_blocker_count ?? 0 }}
+          </span>
+        </header>
+      </section>
+
+      <section v-if="priorityTargets.length > 0" class="expansion-page__priority">
+        <header class="expansion-page__coverage-head">
+          <h2>下一批补字段目标</h2>
+          <span>{{ priorityTargets.length }} 个缺口 · 按 P0 与优先片型排序</span>
+        </header>
+        <div class="expansion-page__priority-list">
+          <button
+            v-for="target in priorityTargets.slice(0, 12)"
+            :key="`${target.review_item_id}:${target.field_id}`"
+            type="button"
+            class="expansion-page__priority-item"
+            @click="selectPriorityTarget(target)"
+          >
+            <span>
+              score {{ target.priority_score }} · 核心类型 {{ target.priority_video_type_count }} · {{ target.priority }} · {{ packShortLabel(target.pack_id) }}
+            </span>
+            <strong>{{ target.entry_name }}</strong>
+            <small>
+              {{ target.field_id }} · {{ target.province }} · {{ target.target_video_types.map(typeLabel).join(' / ') }}
+            </small>
+            <em>{{ target.reason }}</em>
+          </button>
+        </div>
+      </section>
+
+      <section v-if="reviewReadyTargets.length > 0" class="expansion-page__priority">
+        <header class="expansion-page__coverage-head">
+          <h2>下一批人工审稿目标</h2>
+          <span>{{ reviewReadyTargets.length }} 条就绪候选 · 按 P0 与优先片型排序</span>
+        </header>
+        <div class="expansion-page__priority-list">
+          <button
+            v-for="target in reviewReadyTargets.slice(0, 12)"
+            :key="target.review_item_id"
+            type="button"
+            class="expansion-page__priority-item"
+            @click="selectReviewReadyTarget(target)"
+          >
+            <span>
+              score {{ target.priority_score }} · 核心类型 {{ target.priority_video_type_count }} · {{ target.priority }} · {{ packShortLabel(target.pack_id) }}
+            </span>
+            <strong>{{ target.entry_name }}</strong>
+            <small>
+              送审 {{ target.field_review_ready_count }}/{{ target.field_workbench_item_count }} · {{ target.province }} · {{ target.target_video_types.map(typeLabel).join(' / ') }}
+            </small>
+            <em>{{ target.reason }}</em>
           </button>
         </div>
       </section>
@@ -172,6 +304,9 @@
               {{ statusLabel(effectiveReviewStatus(item)) }}
             </span>
             <span v-if="item.writeback_status">{{ writebackStatusLabel(item.writeback_status) }}</span>
+            <span :class="['expansion-page__status', item.review_ready ? 'expansion-page__status--ready' : 'expansion-page__status--needs_revision']">
+              {{ item.review_ready ? '审稿就绪' : `审稿阻断 ${item.field_review_blocker_count}` }}
+            </span>
             <span>{{ item.province }}</span>
             <span>{{ packShortLabel(item.pack_id) }}</span>
             <span v-for="type in item.target_video_types" :key="`${item.review_item_id}:${type}`">
@@ -199,6 +334,31 @@
               </ul>
             </div>
           </div>
+
+          <div class="expansion-page__field-workbench">
+            <h3>字段级补库工作台 · 样板 {{ item.field_supplement_candidate_count }}/{{ item.field_workbench.length }} · 送审 {{ item.field_review_ready_count }}/{{ item.field_workbench.length }} · 阻断 {{ item.field_review_blocker_count }}</h3>
+            <div
+              v-for="field in filteredFieldWorkbench(item)"
+              :key="`${item.review_item_id}:workbench:${field.field_id}`"
+              class="expansion-page__field-row"
+            >
+              <div class="expansion-page__field-row-head">
+                <strong>{{ field.field_id }}</strong>
+                <span :class="['expansion-page__field-status', `expansion-page__field-status--${field.supplement_status}`]">
+                  {{ fieldStatusLabel(field.supplement_status) }}
+                </span>
+                <span :class="['expansion-page__field-status', field.review_ready ? 'expansion-page__field-status--review_ready' : 'expansion-page__field-status--review_blocked']">
+                  {{ field.review_ready ? '审稿就绪' : `待补审稿 ${field.review_ready_missing.length}` }}
+                </span>
+              </div>
+              <p>{{ field.candidate_value || '待补候选值' }}</p>
+              <small v-if="field.review_ready_missing.length">待补审稿项：{{ field.review_ready_missing.join('、') }}</small>
+              <small v-if="field.source_refs.length">来源：{{ field.source_refs.join('；') }}</small>
+              <small v-if="field.evidence_level">证据层级：{{ field.evidence_level }}</small>
+              <small v-if="field.writeback_hint">写回提示：{{ field.writeback_hint }}</small>
+              <small v-if="field.verification_note">核实备注：{{ field.verification_note }}</small>
+            </div>
+          </div>
         </div>
 
         <aside class="expansion-page__side">
@@ -211,15 +371,15 @@
             @input="updateReviewNoteDraft(item.review_item_id, $event)"
           />
           <div class="expansion-page__status-actions">
-            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setReviewStatus(item, 'approved')">通过</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id || !item.review_ready" title="字段审稿就绪后才能通过" @click="setReviewStatus(item, 'approved')">通过</button>
             <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setReviewStatus(item, 'needs_revision')">重审</button>
             <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setReviewStatus(item, 'rejected')">驳回</button>
             <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setReviewStatus(item, 'candidate_review')">待审</button>
           </div>
           <div v-if="effectiveReviewStatus(item) === 'approved'" class="expansion-page__status-actions">
-            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setWritebackStatus(item, 'draft_ready')">草案</button>
-            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setWritebackStatus(item, 'queued')">入队</button>
-            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setWritebackStatus(item, 'written_back')">入库</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id || !item.review_ready" title="字段审稿就绪后才能生成草案" @click="setWritebackStatus(item, 'draft_ready')">草案</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id || !item.review_ready" title="字段审稿就绪后才能入队" @click="setWritebackStatus(item, 'queued')">入队</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id || !item.review_ready" title="字段审稿就绪后才能入库" @click="setWritebackStatus(item, 'written_back')">入库</button>
             <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setWritebackStatus(item, 'needs_revision')">退修</button>
           </div>
           <button type="button" @click="copySingleCandidate(item)">复制单条候选</button>
@@ -243,8 +403,11 @@ import {
 } from '@/api/system'
 import type {
   DomainPackExpansionCandidateReport,
+  DomainPackExpansionFieldSupplementTarget,
+  DomainPackExpansionFieldWorkbenchItem,
   DomainPackExpansionReviewBatch,
   DomainPackExpansionReviewItem,
+  DomainPackExpansionReviewReadyTarget,
   DomainPackExpansionReviewStatus,
   DomainPackProductionHealthStatus,
   KnowledgeWritebackStatus,
@@ -261,7 +424,7 @@ const report = ref<DomainPackExpansionCandidateReport | null>(null)
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const copyingFormat = ref<'markdown' | 'json' | 'writeback' | 'coverage' | ''>('')
+const copyingFormat = ref<'markdown' | 'json' | 'writeback' | 'coverage' | 'field-workbench' | 'field-targets' | 'review-targets' | ''>('')
 const updatingItemId = ref('')
 const bulkUpdatingKey = ref('')
 const searchQuery = ref('')
@@ -269,6 +432,7 @@ const packFilter = ref('')
 const videoTypeFilter = ref<VideoType | ''>('')
 const provinceFilter = ref('')
 const statusFilter = ref('')
+const fieldFilter = ref('')
 const reviewNoteDrafts = reactive<Record<string, string>>({})
 
 const batches = computed(() => report.value?.review_packet.batches ?? [])
@@ -278,6 +442,48 @@ const coverageTotals = computed(() => coverageItems.value.reduce((totals, item) 
   seedTargets: totals.seedTargets + item.seed_target_count,
   approvedDrafts: totals.approvedDrafts + item.approved_writeback_draft_count,
 }), { seedTargets: 0, approvedDrafts: 0 }))
+
+const priorityTargets = computed(() => (report.value?.field_supplement_priority_targets ?? []).filter(target =>
+  (!packFilter.value || target.pack_id === packFilter.value)
+  && (!videoTypeFilter.value || target.target_video_types.includes(videoTypeFilter.value))
+  && (!provinceFilter.value || target.province === provinceFilter.value)
+  && (!statusFilter.value || target.review_status === statusFilter.value)
+  && (!fieldFilter.value || target.field_id === fieldFilter.value)
+  && (!searchQuery.value.trim() || [
+    target.review_item_id,
+    target.batch_id,
+    target.pack_id,
+    target.entry_name,
+    target.province,
+    target.field_id,
+    target.reason,
+    target.recommended_action,
+    ...target.target_video_types,
+    ...target.review_questions,
+    ...target.forbidden_direct_claims,
+  ].join(' ').toLowerCase().includes(searchQuery.value.trim().toLowerCase()))
+))
+
+const reviewReadyTargets = computed(() => (report.value?.review_ready_priority_targets ?? []).filter(target =>
+  (!packFilter.value || target.pack_id === packFilter.value)
+  && (!videoTypeFilter.value || target.target_video_types.includes(videoTypeFilter.value))
+  && (!provinceFilter.value || target.province === provinceFilter.value)
+  && (!statusFilter.value || target.review_status === statusFilter.value)
+  && (!fieldFilter.value || target.recommended_fields.includes(fieldFilter.value))
+  && (!searchQuery.value.trim() || [
+    target.review_item_id,
+    target.batch_id,
+    target.pack_id,
+    target.entry_name,
+    target.province,
+    target.reason,
+    target.recommended_action,
+    ...target.target_video_types,
+    ...target.recommended_fields,
+    ...target.review_questions,
+    ...target.forbidden_direct_claims,
+  ].join(' ').toLowerCase().includes(searchQuery.value.trim().toLowerCase()))
+))
 
 const allItems = computed<ReviewQueueItem[]>(() => batches.value.flatMap(batch =>
   batch.review_items.map(item => ({
@@ -305,6 +511,18 @@ const filteredItems = computed(() => {
       ...item.target_video_types,
       ...item.recommended_fields,
       ...item.forbidden_direct_claims,
+      ...item.field_workbench.flatMap(field => [
+        field.field_id,
+        field.supplement_status,
+        field.review_ready ? 'review_ready 审稿就绪' : 'review_blocked 审稿阻断',
+        field.candidate_value ?? '',
+        field.evidence_level ?? '',
+        field.writeback_hint ?? '',
+        field.verification_note ?? '',
+        ...field.review_ready_missing,
+        ...field.source_refs,
+        ...field.review_questions,
+      ]),
       item.candidate_markdown,
     ].join(' ').toLowerCase()
 
@@ -312,9 +530,12 @@ const filteredItems = computed(() => {
       && (!videoTypeFilter.value || item.target_video_types.includes(videoTypeFilter.value))
       && (!provinceFilter.value || item.province === provinceFilter.value)
       && (!statusFilter.value || effectiveReviewStatus(item) === statusFilter.value)
+      && (!fieldFilter.value || item.field_workbench.some(field => field.field_id === fieldFilter.value))
       && (!query || text.includes(query))
   })
 })
+
+const filteredApprovalReadyItems = computed(() => filteredItems.value.filter(item => item.review_ready))
 
 const packOptions = computed(() => batches.value
   .map(batch => ({ pack_id: batch.pack_id, entry_name: batch.entry_name }))
@@ -328,6 +549,9 @@ const provinceOptions = computed(() => [...new Set(allItems.value.map(item => it
 
 const statusOptions = computed(() => [...new Set(allItems.value.map(item => effectiveReviewStatus(item)))]
   .sort((a, b) => statusLabel(a).localeCompare(statusLabel(b), 'zh-Hans-CN')))
+
+const fieldOptions = computed(() => [...new Set(allItems.value.flatMap(item => item.field_workbench.map(field => field.field_id)))]
+  .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN')))
 
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
@@ -355,11 +579,27 @@ function statusLabel(status: string | DomainPackProductionHealthStatus): string 
   return status || '未记录'
 }
 
+function pipelineStageLabel(stage: string): string {
+  const map: Record<string, string> = {
+    candidate_setup: '候选建档',
+    field_supplement: '字段补库',
+    review_readiness: '送审校验',
+    human_review: '人工审稿',
+    writeback_queue: '写回草案',
+    complete: '扩库完成',
+  }
+  return map[stage] ?? stage
+}
+
 function writebackStatusLabel(status: KnowledgeWritebackStatus): string {
   if (status === 'queued') return '已入队'
   if (status === 'written_back') return '已入库'
   if (status === 'needs_revision') return '退修'
   return '草案就绪'
+}
+
+function fieldStatusLabel(status: DomainPackExpansionFieldWorkbenchItem['supplement_status']): string {
+  return status === 'candidate_draft' ? '候选值' : '待补值'
 }
 
 function effectiveReviewStatus(item: DomainPackExpansionReviewItem): DomainPackExpansionReviewStatus {
@@ -382,6 +622,26 @@ function packShortLabel(packId: string): string {
 
 function selectCoverageVideoType(videoType: string) {
   videoTypeFilter.value = videoTypeFilter.value === videoType ? '' : videoType as VideoType
+}
+
+function selectPriorityTarget(target: DomainPackExpansionFieldSupplementTarget) {
+  packFilter.value = target.pack_id
+  provinceFilter.value = target.province
+  fieldFilter.value = target.field_id
+  videoTypeFilter.value = target.target_video_types[0] as VideoType
+}
+
+function selectReviewReadyTarget(target: DomainPackExpansionReviewReadyTarget) {
+  packFilter.value = target.pack_id
+  provinceFilter.value = target.province
+  fieldFilter.value = target.recommended_fields[0] ?? ''
+  videoTypeFilter.value = target.target_video_types[0] as VideoType
+}
+
+function filteredFieldWorkbench(item: ReviewQueueItem): DomainPackExpansionFieldWorkbenchItem[] {
+  return fieldFilter.value
+    ? item.field_workbench.filter(field => field.field_id === fieldFilter.value)
+    : item.field_workbench
 }
 
 async function loadQueue() {
@@ -482,6 +742,147 @@ async function copyCoverageMatrix() {
   }
 }
 
+async function copyFieldSupplementTargets() {
+  const targets = priorityTargets.value
+  if (targets.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有字段缺口目标'
+    return
+  }
+
+  copyingFormat.value = 'field-targets'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const payload = {
+      schema_version: 'domain-pack-expansion-field-supplement-targets-export/v1',
+      exported_at: new Date().toISOString(),
+      direct_writeback_to_province_markdown: false,
+      filters: {
+        pack_id: packFilter.value || undefined,
+        video_type: videoTypeFilter.value || undefined,
+        province: provinceFilter.value || undefined,
+        candidate_status: statusFilter.value || undefined,
+        field_id: fieldFilter.value || undefined,
+        search_query: searchQuery.value.trim() || undefined,
+      },
+      field_supplement_priority_target_count: targets.length,
+      targets,
+    }
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
+    copyMessage.value = `已复制缺口清单：${targets.length} 个字段目标。`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制缺口清单失败'
+  } finally {
+    copyingFormat.value = ''
+  }
+}
+
+async function copyReviewReadyTargets() {
+  const targets = reviewReadyTargets.value
+  if (targets.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有审稿就绪目标'
+    return
+  }
+
+  copyingFormat.value = 'review-targets'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const payload = {
+      schema_version: 'domain-pack-expansion-review-ready-targets-export/v1',
+      exported_at: new Date().toISOString(),
+      direct_writeback_to_province_markdown: false,
+      filters: {
+        pack_id: packFilter.value || undefined,
+        video_type: videoTypeFilter.value || undefined,
+        province: provinceFilter.value || undefined,
+        candidate_status: statusFilter.value || undefined,
+        field_id: fieldFilter.value || undefined,
+        search_query: searchQuery.value.trim() || undefined,
+      },
+      review_ready_priority_target_count: targets.length,
+      targets,
+    }
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
+    copyMessage.value = `已复制审稿清单：${targets.length} 条就绪候选。`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制审稿清单失败'
+  } finally {
+    copyingFormat.value = ''
+  }
+}
+
+async function copyFieldWorkbench() {
+  const rows = filteredItems.value.flatMap(item =>
+    filteredFieldWorkbench(item).map(field => ({
+      review_item_id: item.review_item_id,
+      batch_id: item.batch_id,
+      pack_id: item.pack_id,
+      entry_name: item.entry_name,
+      province: item.province,
+      target_video_types: item.target_video_types,
+      review_status: effectiveReviewStatus(item),
+      writeback_status: item.writeback_status,
+      forbidden_direct_claims: item.forbidden_direct_claims,
+      field,
+    })),
+  )
+  if (rows.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可复制的字段台账'
+    return
+  }
+  const fieldSupplementCandidateCount = rows.filter(row => row.field.supplement_status === 'candidate_draft').length
+  const fieldReviewReadyCount = rows.filter(row => row.field.review_ready).length
+
+  copyingFormat.value = 'field-workbench'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const payload = {
+      schema_version: 'domain-pack-expansion-field-workbench-export/v1',
+      exported_at: new Date().toISOString(),
+      direct_writeback_to_province_markdown: false,
+      filters: {
+        pack_id: packFilter.value || undefined,
+        video_type: videoTypeFilter.value || undefined,
+        province: provinceFilter.value || undefined,
+        candidate_status: statusFilter.value || undefined,
+        field_id: fieldFilter.value || undefined,
+        search_query: searchQuery.value.trim() || undefined,
+      },
+      review_item_count: filteredItems.value.length,
+      field_row_count: rows.length,
+      field_supplement_candidate_count: fieldSupplementCandidateCount,
+      field_missing_candidate_count: rows.length - fieldSupplementCandidateCount,
+      field_candidate_completion_percent: completionPercent(
+        fieldSupplementCandidateCount,
+        rows.length,
+      ),
+      field_review_ready_count: fieldReviewReadyCount,
+      field_review_blocker_count: rows.length - fieldReviewReadyCount,
+      field_review_ready_percent: completionPercent(
+        fieldReviewReadyCount,
+        rows.length,
+      ),
+      rows,
+    }
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
+    copyMessage.value = `已复制字段台账：${payload.field_row_count} 行，候选值 ${payload.field_supplement_candidate_count} 个，送审 ${payload.field_review_ready_count} 个，阻断 ${payload.field_review_blocker_count} 个。`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制字段台账失败'
+  } finally {
+    copyingFormat.value = ''
+  }
+}
+
+function completionPercent(completedCount: number, totalCount: number): number {
+  if (totalCount <= 0) return 100;
+  return Math.round((completedCount / totalCount) * 100);
+}
+
 async function copySingleCandidate(item: ReviewQueueItem) {
   error.value = ''
   copyMessage.value = ''
@@ -502,6 +903,11 @@ function updateReviewNoteDraft(reviewItemId: string, event: Event) {
 }
 
 async function setReviewStatus(item: ReviewQueueItem, reviewStatus: DomainPackExpansionReviewStatus) {
+  if (reviewStatus === 'approved' && !item.review_ready) {
+    copyMessage.value = ''
+    error.value = `字段审稿阻断 ${item.field_review_blocker_count} 个，不能标记通过。`
+    return
+  }
   updatingItemId.value = item.review_item_id
   error.value = ''
   copyMessage.value = ''
@@ -528,6 +934,11 @@ async function setReviewStatus(item: ReviewQueueItem, reviewStatus: DomainPackEx
 }
 
 async function setWritebackStatus(item: ReviewQueueItem, status: KnowledgeWritebackStatus) {
+  if (!item.review_ready) {
+    copyMessage.value = ''
+    error.value = `字段审稿阻断 ${item.field_review_blocker_count} 个，不能进入写回状态。`
+    return
+  }
   updatingItemId.value = item.review_item_id
   error.value = ''
   copyMessage.value = ''
@@ -556,14 +967,18 @@ async function bulkUpdateFiltered(
   reviewStatus: DomainPackExpansionReviewStatus,
   writebackStatus?: KnowledgeWritebackStatus,
 ) {
-  const items = filteredItems.value
+  const visibleItems = filteredItems.value
+  const items = reviewStatus === 'approved'
+    ? visibleItems.filter(item => item.review_ready)
+    : visibleItems
   if (items.length === 0) return
+  const skippedCount = reviewStatus === 'approved' ? visibleItems.length - items.length : 0
   const actionLabel = writebackStatus === 'queued'
     ? '标记为已入队'
     : reviewStatus === 'approved'
       ? '标记为已通过'
       : '标记为需重审'
-  const confirmed = window.confirm(`${actionLabel}当前筛选的 ${items.length} 条扩库候选？`)
+  const confirmed = window.confirm(`${actionLabel}当前筛选的 ${items.length} 条扩库候选${skippedCount > 0 ? `（跳过 ${skippedCount} 条字段阻断项）` : ''}？`)
   if (!confirmed) return
 
   bulkUpdatingKey.value = writebackStatus ? `${reviewStatus}:${writebackStatus}` : reviewStatus
@@ -579,7 +994,7 @@ async function bulkUpdateFiltered(
     })
     if (res.ok && res.data) {
       report.value = res.data.report
-      copyMessage.value = `已批量更新 ${res.data.updated_count} 条扩库候选：${actionLabel}。`
+      copyMessage.value = `已批量更新 ${res.data.updated_count} 条扩库候选：${actionLabel}${skippedCount > 0 ? `；跳过 ${skippedCount} 条字段阻断项` : ''}。`
     } else {
       error.value = res.error?.message ?? '批量更新扩库审稿状态失败'
     }
@@ -605,6 +1020,7 @@ function buildFilteredExportPackage() {
       video_type: videoTypeFilter.value || undefined,
       province: provinceFilter.value || undefined,
       candidate_status: statusFilter.value || undefined,
+      field_id: fieldFilter.value || undefined,
       search_query: searchQuery.value.trim() || undefined,
     },
     batch_count: batchIds.length,
@@ -877,6 +1293,54 @@ onMounted(async () => {
   overflow-wrap: anywhere;
 }
 
+.expansion-page__priority {
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+}
+
+.expansion-page__priority-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.expansion-page__priority-item {
+  display: grid;
+  gap: 5px;
+  min-height: 126px;
+  padding: 12px;
+  border: 1px solid #d7dee5;
+  border-radius: 8px;
+  background: #fbfcf8;
+  color: #33475b;
+  text-align: left;
+  cursor: pointer;
+}
+
+.expansion-page__priority-item span {
+  color: #7b4f00;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.expansion-page__priority-item strong {
+  color: #22313f;
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.expansion-page__priority-item small,
+.expansion-page__priority-item em {
+  color: #5b6b7a;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .expansion-page__list {
   display: grid;
   gap: 12px;
@@ -904,6 +1368,16 @@ onMounted(async () => {
 }
 
 .expansion-page__status--candidate_review {
+  background: #fff4de !important;
+  color: #7b4f00 !important;
+}
+
+.expansion-page__status--ready {
+  background: #eaf7ef !important;
+  color: #216e44 !important;
+}
+
+.expansion-page__status--needs_revision {
   background: #fff4de !important;
   color: #7b4f00 !important;
 }
@@ -937,6 +1411,81 @@ onMounted(async () => {
   padding-left: 18px;
   color: #4c5e6f;
   line-height: 1.6;
+}
+
+.expansion-page__field-workbench {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.expansion-page__field-workbench h3 {
+  margin: 0;
+  color: #33475b;
+  font-size: 14px;
+}
+
+.expansion-page__field-row {
+  display: grid;
+  gap: 5px;
+  padding-top: 8px;
+  border-top: 1px solid #edf1f5;
+}
+
+.expansion-page__field-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+  align-items: center;
+}
+
+.expansion-page__field-row-head strong {
+  margin-right: auto;
+  color: #22313f;
+  font-size: 13px;
+}
+
+.expansion-page__field-status {
+  flex: 0 0 auto;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: #eef3f7;
+  color: #465767;
+  font-size: 12px;
+}
+
+.expansion-page__field-status--candidate_draft {
+  background: #eaf7ef;
+  color: #216e44;
+}
+
+.expansion-page__field-status--needs_candidate {
+  background: #fff4de;
+  color: #7b4f00;
+}
+
+.expansion-page__field-status--review_ready {
+  background: #e8f4fb;
+  color: #1f618d;
+}
+
+.expansion-page__field-status--review_blocked {
+  background: #fdecea;
+  color: #a93226;
+}
+
+.expansion-page__field-row p,
+.expansion-page__field-row small {
+  margin: 0;
+  color: #4c5e6f;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.expansion-page__field-row small {
+  color: #66727f;
+  font-size: 12px;
 }
 
 .expansion-page__side {

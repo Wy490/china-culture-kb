@@ -1958,7 +1958,20 @@ export interface StoryAgentMvpStatusReport {
     domain_pack_expansion_batch_count: number;
     domain_pack_expansion_seed_target_count: number;
     domain_pack_expansion_candidate_field_count: number;
+    domain_pack_expansion_field_workbench_item_count: number;
+    domain_pack_expansion_field_supplement_candidate_count: number;
+    domain_pack_expansion_field_missing_candidate_count: number;
+    domain_pack_expansion_field_candidate_completion_percent: number;
+    domain_pack_expansion_field_review_ready_count: number;
+    domain_pack_expansion_field_review_blocker_count: number;
+    domain_pack_expansion_field_review_ready_percent: number;
+    domain_pack_expansion_field_supplement_priority_target_count: number;
+    domain_pack_expansion_review_ready_priority_target_count: number;
+    domain_pack_expansion_pipeline_progress_percent: number;
+    domain_pack_expansion_pipeline_stage: DomainPackExpansionPipelineStage;
     domain_pack_expansion_issue_count: number;
+    domain_pack_expansion_review_ready_item_count: number;
+    domain_pack_expansion_review_blocked_item_count: number;
     domain_pack_expansion_review_candidate_count: number;
     domain_pack_expansion_review_approved_count: number;
     domain_pack_expansion_review_rejected_count: number;
@@ -5964,6 +5977,7 @@ export interface DomainPackExpansionBatchSummary {
   target_video_types: string[];
   field_group_count: number;
   candidate_field_count: number;
+  field_supplement_candidate_count?: number;
   seed_target_count: number;
   provinces: string[];
 }
@@ -5976,15 +5990,83 @@ export interface DomainPackExpansionVideoTypeCoverageSummary {
   pack_ids: string[];
   batch_ids: string[];
   provinces: string[];
+  field_workbench_item_count?: number;
+  field_supplement_candidate_count?: number;
+  field_missing_candidate_count?: number;
+  field_candidate_completion_percent?: number;
+  field_review_ready_count?: number;
+  field_review_blocker_count?: number;
+  field_review_ready_percent?: number;
   review_status_counts: Record<DomainPackExpansionReviewStatus, number>;
   approved_writeback_draft_count: number;
   writeback_status_counts: Record<KnowledgeWritebackStatus, number>;
+}
+
+export interface DomainPackExpansionFieldSupplementTarget {
+  review_item_id: string;
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  province: string;
+  priority: string;
+  target_video_types: string[];
+  review_status: DomainPackExpansionReviewStatus;
+  writeback_status?: KnowledgeWritebackStatus;
+  field_id: string;
+  priority_score: number;
+  priority_video_types: string[];
+  priority_video_type_count: number;
+  reason: string;
+  review_questions: string[];
+  forbidden_direct_claims: string[];
+  recommended_action: string;
+}
+
+export interface DomainPackExpansionReviewReadyTarget {
+  review_item_id: string;
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  province: string;
+  priority: string;
+  target_video_types: string[];
+  review_status: DomainPackExpansionReviewStatus;
+  writeback_status?: KnowledgeWritebackStatus;
+  recommended_fields: string[];
+  priority_score: number;
+  priority_video_types: string[];
+  priority_video_type_count: number;
+  field_workbench_item_count: number;
+  field_review_ready_count: number;
+  field_review_blocker_count: number;
+  field_review_ready_percent: number;
+  review_questions: string[];
+  forbidden_direct_claims: string[];
+  reason: string;
+  recommended_action: string;
 }
 
 export interface DomainPackExpansionReviewFieldGroup {
   group_id: string;
   candidate_fields: string[];
   review_questions: string[];
+}
+
+export type DomainPackExpansionFieldSupplementStatus =
+  | 'needs_candidate'
+  | 'candidate_draft';
+
+export interface DomainPackExpansionFieldWorkbenchItem {
+  field_id: string;
+  supplement_status: DomainPackExpansionFieldSupplementStatus;
+  candidate_value?: string;
+  evidence_level?: string;
+  source_refs: string[];
+  review_questions: string[];
+  writeback_hint?: string;
+  verification_note?: string;
+  review_ready: boolean;
+  review_ready_missing: string[];
 }
 
 export interface DomainPackExpansionReviewItem {
@@ -5998,6 +6080,14 @@ export interface DomainPackExpansionReviewItem {
   candidate_status: string;
   recommended_fields: string[];
   forbidden_direct_claims: string[];
+  field_workbench: DomainPackExpansionFieldWorkbenchItem[];
+  field_supplement_candidate_count: number;
+  field_missing_candidate_count: number;
+  field_candidate_completion_percent: number;
+  field_review_ready_count: number;
+  field_review_blocker_count: number;
+  field_review_ready_percent: number;
+  review_ready: boolean;
   candidate_markdown: string;
   review_status?: DomainPackExpansionReviewStatus;
   review_note?: string;
@@ -6035,6 +6125,15 @@ export interface DomainPackExpansionReviewPacket {
   batch_count: number;
   review_item_count: number;
   candidate_field_count: number;
+  field_workbench_item_count?: number;
+  field_supplement_candidate_count?: number;
+  field_missing_candidate_count?: number;
+  field_candidate_completion_percent?: number;
+  field_review_ready_count?: number;
+  field_review_blocker_count?: number;
+  field_review_ready_percent?: number;
+  review_ready_item_count?: number;
+  review_blocked_item_count?: number;
   batches: DomainPackExpansionReviewBatch[];
   review_status_counts?: Record<DomainPackExpansionReviewStatus, number>;
   approved_writeback_draft_count?: number;
@@ -6046,6 +6145,14 @@ export type DomainPackExpansionReviewStatus =
   | 'approved'
   | 'rejected'
   | 'needs_revision';
+
+export type DomainPackExpansionPipelineStage =
+  | 'candidate_setup'
+  | 'field_supplement'
+  | 'review_readiness'
+  | 'human_review'
+  | 'writeback_queue'
+  | 'complete';
 
 export interface DomainPackExpansionReviewStateItem {
   review_item_id: string;
@@ -6096,6 +6203,14 @@ export interface DomainPackExpansionWritebackDraftItem {
   writeback_note?: string;
   suggested_file_path: string;
   suggested_section_heading: string;
+  field_workbench?: DomainPackExpansionFieldWorkbenchItem[];
+  field_supplement_candidate_count?: number;
+  field_missing_candidate_count?: number;
+  field_candidate_completion_percent?: number;
+  field_review_ready_count?: number;
+  field_review_blocker_count?: number;
+  field_review_ready_percent?: number;
+  review_ready?: boolean;
   append_markdown: string;
   writeback_draft_markdown: string;
 }
@@ -6173,6 +6288,21 @@ export interface DomainPackExpansionCandidateReport {
   batch_count: number;
   seed_target_count: number;
   candidate_field_count: number;
+  pipeline_progress_percent: number;
+  pipeline_stage: DomainPackExpansionPipelineStage;
+  field_workbench_item_count?: number;
+  field_supplement_candidate_count?: number;
+  field_missing_candidate_count?: number;
+  field_candidate_completion_percent?: number;
+  field_review_ready_count?: number;
+  field_review_blocker_count?: number;
+  field_review_ready_percent?: number;
+  review_ready_item_count?: number;
+  review_blocked_item_count?: number;
+  field_supplement_priority_target_count: number;
+  field_supplement_priority_targets: DomainPackExpansionFieldSupplementTarget[];
+  review_ready_priority_target_count: number;
+  review_ready_priority_targets: DomainPackExpansionReviewReadyTarget[];
   video_type_coverage_count: number;
   coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
   batches: DomainPackExpansionBatchSummary[];

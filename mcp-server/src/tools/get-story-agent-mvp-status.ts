@@ -160,7 +160,20 @@ export interface StoryAgentMvpStatusReport {
     domain_pack_expansion_batch_count: number;
     domain_pack_expansion_seed_target_count: number;
     domain_pack_expansion_candidate_field_count: number;
+    domain_pack_expansion_pipeline_progress_percent: number;
+    domain_pack_expansion_pipeline_stage: DomainPackExpansionCandidateReport['pipeline_stage'];
+    domain_pack_expansion_field_workbench_item_count: number;
+    domain_pack_expansion_field_supplement_candidate_count: number;
+    domain_pack_expansion_field_missing_candidate_count: number;
+    domain_pack_expansion_field_candidate_completion_percent: number;
+    domain_pack_expansion_field_review_ready_count: number;
+    domain_pack_expansion_field_review_blocker_count: number;
+    domain_pack_expansion_field_review_ready_percent: number;
+    domain_pack_expansion_field_supplement_priority_target_count: number;
+    domain_pack_expansion_review_ready_priority_target_count: number;
     domain_pack_expansion_issue_count: number;
+    domain_pack_expansion_review_ready_item_count: number;
+    domain_pack_expansion_review_blocked_item_count: number;
     domain_pack_expansion_review_candidate_count: number;
     domain_pack_expansion_review_approved_count: number;
     domain_pack_expansion_review_rejected_count: number;
@@ -310,6 +323,8 @@ interface DomainPackExpansionReviewMetrics {
   approved_count: number;
   rejected_count: number;
   needs_revision_count: number;
+  review_ready_item_count: number;
+  review_blocked_item_count: number;
   approved_writeback_draft_count: number;
   writeback_draft_ready_count: number;
   writeback_queued_count: number;
@@ -600,7 +615,7 @@ function domainPackExpansionLane(report: DomainPackExpansionCandidateReport): St
       - (report.review_policy.direct_writeback_to_province_markdown ? 35 : 0),
     ),
     detail: report.status === 'passed'
-      ? `${report.batch_count} review-gated Domain Pack expansion batches cover ${report.seed_target_count} seed targets, ${reviewMetrics.approved_count} approved items, and ${reviewMetrics.approved_writeback_draft_count} writeback drafts.`
+      ? `${report.batch_count} review-gated Domain Pack expansion batches cover ${report.seed_target_count} seed targets, ${report.field_supplement_candidate_count ?? 0} field-level supplement samples, ${report.field_review_ready_count ?? 0} review-ready fields, ${reviewMetrics.approved_count} approved items, ${reviewMetrics.approved_writeback_draft_count} writeback drafts, and ${report.pipeline_progress_percent}% pipeline progress.`
       : `${errorCount} errors and ${warningCount} warnings in review-gated Domain Pack expansion candidates.`,
     evidence: [
       `schema=${report.schema_version}`,
@@ -612,6 +627,19 @@ function domainPackExpansionLane(report: DomainPackExpansionCandidateReport): St
       `batch_count=${report.batch_count}`,
       `seed_target_count=${report.seed_target_count}`,
       `candidate_field_count=${report.candidate_field_count}`,
+      `pipeline_progress_percent=${report.pipeline_progress_percent}`,
+      `pipeline_stage=${report.pipeline_stage}`,
+      `field_workbench_item_count=${report.field_workbench_item_count ?? 0}`,
+      `field_supplement_candidate_count=${report.field_supplement_candidate_count ?? 0}`,
+      `field_missing_candidate_count=${report.field_missing_candidate_count ?? 0}`,
+      `field_candidate_completion_percent=${report.field_candidate_completion_percent ?? 100}`,
+      `field_review_ready_count=${report.field_review_ready_count ?? 0}`,
+      `field_review_blocker_count=${report.field_review_blocker_count ?? 0}`,
+      `field_review_ready_percent=${report.field_review_ready_percent ?? 100}`,
+      `field_supplement_priority_target_count=${report.field_supplement_priority_target_count ?? 0}`,
+      `review_ready_priority_target_count=${report.review_ready_priority_target_count ?? 0}`,
+      `review_ready_item_count=${reviewMetrics.review_ready_item_count}`,
+      `review_blocked_item_count=${reviewMetrics.review_blocked_item_count}`,
       `review_candidate_count=${reviewMetrics.candidate_review_count}`,
       `review_approved_count=${reviewMetrics.approved_count}`,
       `review_rejected_count=${reviewMetrics.rejected_count}`,
@@ -656,6 +684,8 @@ function domainPackExpansionReviewMetrics(report: DomainPackExpansionCandidateRe
     approved_count: reviewCounts.approved ?? 0,
     rejected_count: reviewCounts.rejected ?? 0,
     needs_revision_count: reviewCounts.needs_revision ?? 0,
+    review_ready_item_count: report.review_packet.review_ready_item_count ?? 0,
+    review_blocked_item_count: report.review_packet.review_blocked_item_count ?? 0,
     approved_writeback_draft_count: report.review_packet.approved_writeback_draft_count ?? 0,
     writeback_draft_ready_count: writebackCounts.draft_ready,
     writeback_queued_count: writebackCounts.queued,
@@ -1110,6 +1140,19 @@ function progressSlices(
         `domain_pack_expansion_batches=${domainPackExpansionCandidates.batch_count}`,
         `domain_pack_expansion_seed_targets=${domainPackExpansionCandidates.seed_target_count}`,
         `domain_pack_expansion_candidate_fields=${domainPackExpansionCandidates.candidate_field_count}`,
+        `domain_pack_expansion_progress=${domainPackExpansionCandidates.pipeline_progress_percent}`,
+        `domain_pack_expansion_stage=${domainPackExpansionCandidates.pipeline_stage}`,
+        `domain_pack_expansion_field_workbench_items=${domainPackExpansionCandidates.field_workbench_item_count ?? 0}`,
+        `domain_pack_expansion_field_samples=${domainPackExpansionCandidates.field_supplement_candidate_count ?? 0}`,
+        `domain_pack_expansion_field_missing=${domainPackExpansionCandidates.field_missing_candidate_count ?? 0}`,
+        `domain_pack_expansion_field_completion=${domainPackExpansionCandidates.field_candidate_completion_percent ?? 100}`,
+        `domain_pack_expansion_field_review_ready=${domainPackExpansionCandidates.field_review_ready_count ?? 0}`,
+        `domain_pack_expansion_field_review_blockers=${domainPackExpansionCandidates.field_review_blocker_count ?? 0}`,
+        `domain_pack_expansion_field_review_ready_percent=${domainPackExpansionCandidates.field_review_ready_percent ?? 100}`,
+        `domain_pack_expansion_field_priority_targets=${domainPackExpansionCandidates.field_supplement_priority_target_count ?? 0}`,
+        `domain_pack_expansion_review_ready_priority_targets=${domainPackExpansionCandidates.review_ready_priority_target_count ?? 0}`,
+        `domain_pack_expansion_review_ready_items=${domainPackExpansionReview.review_ready_item_count}`,
+        `domain_pack_expansion_review_blocked_items=${domainPackExpansionReview.review_blocked_item_count}`,
         `domain_pack_expansion_review_approved=${domainPackExpansionReview.approved_count}`,
         `domain_pack_expansion_approved_writeback_drafts=${domainPackExpansionReview.approved_writeback_draft_count}`,
         `domain_pack_expansion_writeback_queued=${domainPackExpansionReview.writeback_queued_count}`,
@@ -1228,7 +1271,20 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     `- domain pack expansion batches: ${report.summary.domain_pack_expansion_batch_count}`,
     `- domain pack expansion seed targets: ${report.summary.domain_pack_expansion_seed_target_count}`,
     `- domain pack expansion candidate fields: ${report.summary.domain_pack_expansion_candidate_field_count}`,
+    `- domain pack expansion pipeline progress: ${report.summary.domain_pack_expansion_pipeline_progress_percent}%`,
+    `- domain pack expansion pipeline stage: ${report.summary.domain_pack_expansion_pipeline_stage}`,
+    `- domain pack expansion field workbench items: ${report.summary.domain_pack_expansion_field_workbench_item_count}`,
+    `- domain pack expansion field supplement candidates: ${report.summary.domain_pack_expansion_field_supplement_candidate_count}`,
+    `- domain pack expansion field missing candidates: ${report.summary.domain_pack_expansion_field_missing_candidate_count}`,
+    `- domain pack expansion field candidate completion: ${report.summary.domain_pack_expansion_field_candidate_completion_percent}%`,
+    `- domain pack expansion field review ready: ${report.summary.domain_pack_expansion_field_review_ready_count}`,
+    `- domain pack expansion field review blockers: ${report.summary.domain_pack_expansion_field_review_blocker_count}`,
+    `- domain pack expansion field review ready percent: ${report.summary.domain_pack_expansion_field_review_ready_percent}%`,
+    `- domain pack expansion field supplement priority targets: ${report.summary.domain_pack_expansion_field_supplement_priority_target_count}`,
+    `- domain pack expansion review ready priority targets: ${report.summary.domain_pack_expansion_review_ready_priority_target_count}`,
     `- domain pack expansion issues: ${report.summary.domain_pack_expansion_issue_count}`,
+    `- domain pack expansion review ready items: ${report.summary.domain_pack_expansion_review_ready_item_count}`,
+    `- domain pack expansion review blocked items: ${report.summary.domain_pack_expansion_review_blocked_item_count}`,
     `- domain pack expansion review candidate: ${report.summary.domain_pack_expansion_review_candidate_count}`,
     `- domain pack expansion review approved: ${report.summary.domain_pack_expansion_review_approved_count}`,
     `- domain pack expansion review rejected: ${report.summary.domain_pack_expansion_review_rejected_count}`,
@@ -1387,7 +1443,20 @@ export async function getStoryAgentMvpStatus(
       domain_pack_expansion_batch_count: domainPackExpansionCandidates.batch_count,
       domain_pack_expansion_seed_target_count: domainPackExpansionCandidates.seed_target_count,
       domain_pack_expansion_candidate_field_count: domainPackExpansionCandidates.candidate_field_count,
+      domain_pack_expansion_pipeline_progress_percent: domainPackExpansionCandidates.pipeline_progress_percent,
+      domain_pack_expansion_pipeline_stage: domainPackExpansionCandidates.pipeline_stage,
+      domain_pack_expansion_field_workbench_item_count: domainPackExpansionCandidates.field_workbench_item_count ?? 0,
+      domain_pack_expansion_field_supplement_candidate_count: domainPackExpansionCandidates.field_supplement_candidate_count ?? 0,
+      domain_pack_expansion_field_missing_candidate_count: domainPackExpansionCandidates.field_missing_candidate_count ?? 0,
+      domain_pack_expansion_field_candidate_completion_percent: domainPackExpansionCandidates.field_candidate_completion_percent ?? 100,
+      domain_pack_expansion_field_review_ready_count: domainPackExpansionCandidates.field_review_ready_count ?? 0,
+      domain_pack_expansion_field_review_blocker_count: domainPackExpansionCandidates.field_review_blocker_count ?? 0,
+      domain_pack_expansion_field_review_ready_percent: domainPackExpansionCandidates.field_review_ready_percent ?? 100,
+      domain_pack_expansion_field_supplement_priority_target_count: domainPackExpansionCandidates.field_supplement_priority_target_count ?? 0,
+      domain_pack_expansion_review_ready_priority_target_count: domainPackExpansionCandidates.review_ready_priority_target_count ?? 0,
       domain_pack_expansion_issue_count: domainPackExpansionCandidates.issues.length,
+      domain_pack_expansion_review_ready_item_count: domainPackExpansionReview.review_ready_item_count,
+      domain_pack_expansion_review_blocked_item_count: domainPackExpansionReview.review_blocked_item_count,
       domain_pack_expansion_review_candidate_count: domainPackExpansionReview.candidate_review_count,
       domain_pack_expansion_review_approved_count: domainPackExpansionReview.approved_count,
       domain_pack_expansion_review_rejected_count: domainPackExpansionReview.rejected_count,

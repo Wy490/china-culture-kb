@@ -37,28 +37,164 @@
           "province": "湖南",
           "recommended_fields": ["process_steps", "tools", "visual_symbols", "documentation_assets"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["未核实传承谱系", "未核实唯一正宗表述", "未授权工坊身份"]
+          "forbidden_direct_claims": ["未核实传承谱系", "未核实唯一正宗表述", "未授权工坊身份"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "process_steps",
+              "candidate_value": "刻版→上色→套印→开脸（手工补绘五官）→晾干→装订；部分复杂年画可标注为多次套色候选，具体次数需按作品和工坊复核。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#滩头年画：工艺特色", "data/provinces/湖南.md#滩头年画：工艺要素"],
+              "writeback_hint": "作为 heritage_promo 流程镜头清单候选，入库前复核中国非遗网项目页和隆回县滩头年画博物馆展陈。",
+              "verification_note": "流程来自现有湖南条目；工序顺序和复杂作品套色次数仍需传承人或馆方确认。"
+            },
+            {
+              "field_id": "tools",
+              "candidate_value": "梨木雕版（线版与各色色版）、棕刷、印台、晾架；颜料调制工具可作为待采集子项，不公开推断配方比例。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#滩头年画：工艺要素"],
+              "writeback_hint": "工具字段可先写为拍摄/采集清单，不写成完整技法教程。",
+              "verification_note": "公开条目可支撑工具名；颜料配方比例属于待核和保护性信息。"
+            },
+            {
+              "field_id": "visual_symbols",
+              "candidate_value": "《老鼠娶亲》《和气致祥》《门神秦琼尉迟恭》、色彩浓烈、线条粗犷、春节门厅和乡村集市场景，可作为视觉锚点候选。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#滩头年画：代表作品", "data/provinces/湖南.md#滩头年画：场景"],
+              "writeback_hint": "视觉符号用于宣传片镜头和资产拆分，不把代表作流行度写成唯一正宗。",
+              "verification_note": "代表作品来自本地条目；授权拍摄需另行确认。"
+            },
+            {
+              "field_id": "documentation_assets",
+              "candidate_value": "中国非遗网首批国家级非遗名录、鲁迅《且介亭杂文·门外文谈》、上海鲁迅纪念馆藏品、隆回县滩头年画博物馆展陈。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#滩头年画：来源", "data/provinces/湖南.md#滩头年画：核实方法"],
+              "writeback_hint": "写回时拆成来源、核实方法和可拍资产三行，避免把候选资产视为已授权素材。",
+              "verification_note": "来源名来自现有条目；具体 URL、馆藏编号和授权状态待人工补齐。"
+            }
+          ]
         },
         {
           "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
           "province": "湖南",
           "recommended_fields": ["materials", "process_steps", "documentation_assets", "production_risks"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["未核实烧制温度", "未核实年代断言", "未核实海上丝路唯一性"]
+          "forbidden_direct_claims": ["未核实烧制温度", "未核实年代断言", "未核实海上丝路唯一性"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "materials",
+              "candidate_value": "陶泥与素胎、铁/铜等矿物颜料、透明釉、瓷片标本和釉色样板可作为材料资产；具体泥料配比、窑温和颜料工艺不得凭空补写。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：釉下多彩的开端", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：人物随身道具"],
+              "writeback_hint": "作为 heritage_promo 材料资产候选，写回前拆分为可拍材料、待核工艺参数和禁写技法三类。",
+              "verification_note": "材料线索来自本地条目；温度、配方、矿物颜料细项需以项目页、博物馆说明和传承人访谈复核。"
+            },
+            {
+              "field_id": "process_steps",
+              "candidate_value": "拉坯→修坯→釉下彩绘/题诗→施透明釉→装窑→烧制→出窑；镜头可聚焦手、轮、笔、釉、窑口和出土瓷片对照。",
+              "evidence_level": "local_entry_with_production_adaptation",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：场景", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：场景陈设"],
+              "writeback_hint": "流程字段先作为拍摄脚本候选，不写成完整工艺教程；实际工坊流程和可拍权限需复核。",
+              "verification_note": "工序顺序结合条目场景资产整理；细节和安全边界需由工坊或博物馆确认。"
+            },
+            {
+              "field_id": "documentation_assets",
+              "candidate_value": "中国非遗网第三批国家级项目索引、长沙铜官窑遗址/国家考古遗址公园资料、“黑石号”沉船考古资料、新加坡亚洲文明博物馆馆藏说明、传承人刘坤庭公开索引。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：来源", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：核实方法"],
+              "writeback_hint": "写回时作为来源采集清单，不把馆藏数量、现藏机构和授权状态写成已核定结论。",
+              "verification_note": "来源入口来自现有条目；项目页、馆藏目录和考古报告版本需人工补齐。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "“首创”“最早”“比某地早多少年”“黑石号出水数量”“海上丝路瓷都”等强断言需逐项补源；工坊拍摄需确认授权、安全动线和商业文创与传统工艺的边界。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：待核实点", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：核实方法"],
+              "writeback_hint": "作为审稿风险清单写入候选草案，优先保护事实边界和拍摄授权边界。",
+              "verification_note": "风险项直接来自待核实点；适合进入审稿问题而不是成片旁白。"
+            }
+          ]
         },
         {
           "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
           "province": "湖南",
           "recommended_fields": ["materials", "tools", "hand_actions", "modern_connection"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["未核实文人使用谱系", "未核实工艺级别", "未核实代表传承人"]
+          "forbidden_direct_claims": ["未核实文人使用谱系", "未核实工艺级别", "未核实代表传承人"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "materials",
+              "candidate_value": "湘竹扇骨、宣纸或绢帛扇面、铜/银扇钉、扇箍、扇坠、墨碟、题诗稿和印章，可作为工艺材料与文人扇面资产。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：工艺要素", "data/provinces/湖南.md#岳州扇：人物随身道具"],
+              "writeback_hint": "作为 heritage_promo 材料字段候选，材料来源和配件等级需工坊复核。",
+              "verification_note": "材料清单来自现有条目；代表传承人和工艺级别仍待核。"
+            },
+            {
+              "field_id": "tools",
+              "candidate_value": "小刀、砂纸、钻孔器、扇钉装配工具、毛笔、印章、墨碟，以及竹片架、晾扇绳、扇骨半成品，是制扇和扇面创作的可拍工具线。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：人物随身道具", "data/provinces/湖南.md#岳州扇：场景陈设"],
+              "writeback_hint": "工具字段写作拍摄清单候选，不推断未核实工序参数。",
+              "verification_note": "工具来自本地条目；实际工坊使用工具需现场确认。"
+            },
+            {
+              "field_id": "hand_actions",
+              "candidate_value": "选湘竹、开片、蒸煮去糖防蛀、晾干、反复打磨、定型、钻孔装扇钉，再在宣纸/绢帛扇面题诗作画、装裱和修整成品。",
+              "evidence_level": "local_entry_with_production_adaptation",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：扇骨制作", "data/provinces/湖南.md#岳州扇：扇面书画"],
+              "writeback_hint": "作为流程镜头候选，具体顺序和工艺细节需制扇师傅复核。",
+              "verification_note": "动作基于本地条目工艺描述整理；不写成完整技法教程。"
+            },
+            {
+              "field_id": "modern_connection",
+              "candidate_value": "岳州扇传承工坊、岳阳楼景区文化商店、洞庭湖畔/岳阳楼下空镜和文旅礼盒柜台，可连接省级非遗保护、文旅转化和当代消费场景。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：相关地点", "data/provinces/湖南.md#岳州扇：场景"],
+              "writeback_hint": "作为当代连接候选，传承工坊名称、开放情况和“三大名扇”说法需复核。",
+              "verification_note": "现代场景来自条目；商业销售与传统工艺边界需审稿确认。"
+            }
+          ]
         },
         {
           "entry_name": "踏虎剪纸——凿刀下的苗族阴阳世界",
           "province": "湖南",
           "recommended_fields": ["tools", "hand_actions", "visual_symbols", "community_or_practitioner_consent"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["未核实纹样寓意", "族群刻板化解释", "未授权仪式镜头"]
+          "forbidden_direct_claims": ["未核实纹样寓意", "族群刻板化解释", "未授权仪式镜头"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "tools",
+              "candidate_value": "凿刀、蜡板、多层彩纸、图案底稿、压纸板、刻垫，以及绣花样、针线、衣领/袖口布片，可作为非遗流程镜头的核心工具清单。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：人物随身道具", "data/provinces/湖南.md#踏虎剪纸：场景陈设"],
+              "writeback_hint": "作为 heritage_promo 工具字段候选，工坊开放和工具名称需地方非遗机构复核。",
+              "verification_note": "工具线索来自本地条目；具体传习点和可拍权限仍待核。"
+            },
+            {
+              "field_id": "hand_actions",
+              "candidate_value": "多层彩纸叠放在蜡板上，艺人以凿刀逐点凿刻、控制线条粗细和镂空，再把凿花样用于服饰刺绣描摹或独立装饰展示。",
+              "evidence_level": "local_entry_with_production_adaptation",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：凿而非剪", "data/provinces/湖南.md#踏虎剪纸：绣花样的前世"],
+              "writeback_hint": "作为手部动作候选，不公开推断未核实工序参数。",
+              "verification_note": "动作来自条目工艺描述；完整流程需传承人或田野访谈确认。"
+            },
+            {
+              "field_id": "visual_symbols",
+              "candidate_value": "蝴蝶妈妈、龙纹、石榴、莲花样张，多层彩纸镂空、灯下投影、苗族服饰围腰/鞋花样，形成“凿花—刺绣—服饰”的视觉链。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：图案与传承", "data/provinces/湖南.md#踏虎剪纸：场景陈设"],
+              "writeback_hint": "视觉符号只作为资产候选，纹样寓意不得单一化。",
+              "verification_note": "图案名来自本地条目；具体含义需传承人或非遗档案补证。"
+            },
+            {
+              "field_id": "community_or_practitioner_consent",
+              "candidate_value": "优先联系泸溪县合水镇踏虎村传习点、泸溪县文化馆/当地非遗保护机构和邓兴隆传承人线索；拍摄前确认工坊、作品、服饰应用和人物采访授权。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：相关地点", "data/provinces/湖南.md#踏虎剪纸：待核实点"],
+              "writeback_hint": "作为授权与同意清单候选，不写成已取得授权。",
+              "verification_note": "传习点、开放情况、家族传承谱系均在待核实范围内。"
+            }
+          ]
         }
       ]
     },
@@ -87,28 +223,164 @@
           "province": "湖南",
           "recommended_fields": ["documentary_question", "source_trail", "reconstruction_boundary", "what_must_not_be_claimed"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["后世评价冒充当时动机", "无来源心理独白", "单一立场盖过争议边界"]
+          "forbidden_direct_claims": ["后世评价冒充当时动机", "无来源心理独白", "单一立场盖过争议边界"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "documentary_question",
+              "candidate_value": "一个以理学修身的湘乡书生，如何在晚清战乱与近代化压力中，从家书、团练和军工选择里折射湖湘“经世致用”的复杂面？",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/湖南.md#曾国藩：简介", "data/provinces/湖南.md#曾国藩：文化意义"],
+              "writeback_hint": "作为 documentary_short 核心问题候选；不得把评价性问题写成定论。",
+              "verification_note": "问题来自人物条目的修身、湘军和洋务三条线索，属于纪录片提问。"
+            },
+            {
+              "field_id": "source_trail",
+              "candidate_value": "《曾国藩家书》、《清史稿·曾国藩传》、湘乡曾氏故居/富厚堂、安庆内军械所遗址线索、曾氏家族讲述者或故居讲解员。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#曾国藩：来源", "data/provinces/湖南.md#曾国藩：相关地点", "data/provinces/湖南.md#曾国藩：人物"],
+              "writeback_hint": "写回时拆成文献来源、地点线索和采访角色，遗址现状与授权需另核。",
+              "verification_note": "来源和地点来自本地条目；安庆遗址可拍范围需外部复核。"
+            },
+            {
+              "field_id": "reconstruction_boundary",
+              "candidate_value": "可克制再现书房案几、油灯、日记反省、军令地图和团练营帐；不得虚构无来源心理独白、具体战场对白或把“书生领山农”等后世概括写成当时原话。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#曾国藩：待核实点", "data/provinces/湖南.md#曾国藩：场景陈设"],
+              "writeback_hint": "作为再现边界进入审稿包，优先保护历史人物动机和战事细节。",
+              "verification_note": "再现资产来自条目；叙事边界来自待核实点和禁写断言。"
+            },
+            {
+              "field_id": "what_must_not_be_claimed",
+              "candidate_value": "不要声称曾国藩所有选择只有单一正面/负面解释；不要把后世“中兴名臣”“书生领山农”等概括等同当事人口吻；不要无来源补写湘军战斗细节、官职服饰或洋务设施运作细节。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#曾国藩：待核实点", "data/provinces/湖南.md#曾国藩：核实方法"],
+              "writeback_hint": "作为 documentary_short 禁写字段候选，供旁白和再现镜头审稿使用。",
+              "verification_note": "边界来自现有待核实点并结合纪录片再现风险整理。"
+            }
+          ]
         },
         {
           "entry_name": "新民学会——湖南共产党的前身",
           "province": "湖南",
           "recommended_fields": ["timeline", "present_day_trace", "witness_or_expert_roles", "b_roll_plan"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["成员关系未核实断言", "旧址空间误置", "后续组织沿革简化"]
+          "forbidden_direct_claims": ["成员关系未核实断言", "旧址空间误置", "后续组织沿革简化"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "timeline",
+              "candidate_value": "1918年4月14日新民学会在长沙岳麓山下刘家台子蔡和森家中成立；1920年蔡和森在法国致信毛泽东提出建党主张；1921年初学会停止活动，多数会员转入中国共产党。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#新民学会：简介", "data/provinces/湖南.md#新民学会：故事梗概"],
+              "writeback_hint": "作为 documentary_short 时间线候选；书信原文、停止活动节点和成员转入表述需再核。",
+              "verification_note": "时间线来自本地条目；具体通信原文和思想分化过程仍在待核实点中。"
+            },
+            {
+              "field_id": "present_day_trace",
+              "candidate_value": "新民学会成立旧址刘家台子、岳麓书院、湖南第一师范，以及旧址牌匾、展柜、会员名单墙、通信路线图等纪念展陈可作为当代寻访线索。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#新民学会：相关地点", "data/provinces/湖南.md#新民学会：场景陈设"],
+              "writeback_hint": "写回时区分真实旧址、关联求学空间和展陈复原空间，避免空间误置。",
+              "verification_note": "刘家台子保存状况仍需实地或馆方资料复核。"
+            },
+            {
+              "field_id": "witness_or_expert_roles",
+              "candidate_value": "旧址讲解员/党史研究者负责核实刘家台子位置、通信原文和思想分化节点；湖南第一师范/岳麓书院相关讲述者负责求学环境和长沙思想氛围。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#新民学会：人物", "data/provinces/湖南.md#新民学会：待核实点"],
+              "writeback_hint": "作为采访角色候选，不把专家口径预设为单一结论。",
+              "verification_note": "人物功能来自本地条目的纪录片资产拆分。"
+            },
+            {
+              "field_id": "b_roll_plan",
+              "candidate_value": "木桌、长凳、书架、油灯、社团章程、会议记录、通信复制件、报刊展页、岳麓书院石径和第一师范校舍，组成“青年读书—通信—组织转向”的克制 B-roll。",
+              "evidence_level": "local_entry_with_production_adaptation",
+              "source_refs": ["data/provinces/湖南.md#新民学会：人物随身道具", "data/provinces/湖南.md#新民学会：场景"],
+              "writeback_hint": "只作为纪录片镜头规划候选；再现镜头必须标明依据，不替代历史影像。",
+              "verification_note": "B-roll 组合为生产化整理，需按现场可拍条件和展陈授权调整。"
+            }
+          ]
         },
         {
           "entry_name": "九一八事变——东北沦陷的开端",
           "province": "辽宁",
           "recommended_fields": ["source_trail", "timeline", "reconstruction_boundary", "ambient_sound"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["灾难娱乐化", "无来源现场对白", "以再现画面冒充历史影像"]
+          "forbidden_direct_claims": ["灾难娱乐化", "无来源现场对白", "以再现画面冒充历史影像"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "source_trail",
+              "candidate_value": "九一八历史博物馆官方资料、《中国共产党历史》第一卷、柳条湖事件调查报告；现场线索包括九一八历史博物馆、柳条湖遗址和北大营旧址。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/辽宁.md#九一八事变：来源", "data/provinces/辽宁.md#九一八事变：相关地点"],
+              "writeback_hint": "作为 documentary_short 来源线候选，写回前补齐具体馆方页面、调查报告版本和现场可拍范围。",
+              "verification_note": "来源与地点来自现有辽宁条目；影像素材授权和馆内拍摄规则需人工确认。"
+            },
+            {
+              "field_id": "timeline",
+              "candidate_value": "1931年9月18日晚柳条湖事件和北大营遭攻；9月19日沈阳沦陷；1932年3月伪满洲国成立；1931—1945年东北沦陷十四年。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/辽宁.md#九一八事变：故事梗概"],
+              "writeback_hint": "时间线用于纪录片结构，不补写无来源战斗细节。",
+              "verification_note": "具体爆炸长度和方式在本地条目中仍列为待核点，不能写成定论。"
+            },
+            {
+              "field_id": "reconstruction_boundary",
+              "candidate_value": "再现镜头只可表现铁路、夜色、军营、城市和展馆空间的克制情境；不得把无来源现场对白、具体爆炸细节或模拟影像当作历史影像。",
+              "evidence_level": "boundary_from_local_entry",
+              "source_refs": ["data/provinces/辽宁.md#九一八事变：待核实点", "data/provinces/辽宁.md#九一八事变：文化意义"],
+              "writeback_hint": "写成再现边界卡，供纪录片脚本和审片使用。",
+              "verification_note": "边界由现有待核点和纪录片规则推导，需人工审稿确认。"
+            },
+            {
+              "field_id": "ambient_sound",
+              "candidate_value": "低频钟声、夜间铁轨风声、远处警报、展馆脚步声和残历碑前环境静音；避免娱乐化战争音效。",
+              "evidence_level": "production_candidate",
+              "source_refs": ["data/provinces/辽宁.md#九一八事变：相关地点", "data/provinces/辽宁.md#九一八事变：文化意义"],
+              "writeback_hint": "作为声音采集与后期提示候选，不作为历史事实写入。",
+              "verification_note": "声音设计为生产候选，需要现场采集或授权素材确认。"
+            }
+          ]
         },
         {
           "entry_name": "太行山八路军根据地——抗战的中流砥柱",
           "province": "山西",
           "recommended_fields": ["present_day_trace", "field_notes", "b_roll_plan", "interview_clip_selection"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["泛化根据地范围", "无来源战斗细节", "口号替代证据"]
+          "forbidden_direct_claims": ["泛化根据地范围", "无来源战斗细节", "口号替代证据"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "present_day_trace",
+              "candidate_value": "太行山八路军总部纪念馆/王家峪旧址、左权将军烈士陵园、十字岭左权殉国地、百团大战纪念馆/正太铁路线索，以及纪念馆战史展厅。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/山西.md#太行山八路军根据地：相关地点", "data/provinces/山西.md#太行山八路军根据地：场景"],
+              "writeback_hint": "作为 documentary_short 当代现场线索，具体开放状态和拍摄授权需逐点复核。",
+              "verification_note": "地点来自本地山西条目；驻地路线和十字岭经过仍属待详考。"
+            },
+            {
+              "field_id": "field_notes",
+              "candidate_value": "现场采集需记录王家峪总部旧址的窑洞/木桌/地图墙，十字岭纪念空间的山路与纪念碑，百团大战展厅的铁路破袭路线图，并标注数据差异来源。",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/山西.md#太行山八路军根据地：场景陈设", "data/provinces/山西.md#太行山八路军根据地：待核实点"],
+              "writeback_hint": "作为外拍笔记候选，不以现场展陈替代完整史料。",
+              "verification_note": "采集字段基于条目场景资产整理，数据口径需 A/B 级来源校验。"
+            },
+            {
+              "field_id": "b_roll_plan",
+              "candidate_value": "太行山沟谷、土窑洞、石墙院落、王家峪旧址油灯和地图墙、铁路/桥梁破袭示意、十字岭松柏与纪念碑，用克制镜头表现根据地空间和证据线索。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/山西.md#太行山八路军根据地：场景", "data/provinces/山西.md#太行山八路军根据地：场景陈设"],
+              "writeback_hint": "作为 B-roll 计划候选，战斗再现需明确依据，不把示意图当历史影像。",
+              "verification_note": "B-roll 组合为生产化整理；具体遗址画面需现场授权。"
+            },
+            {
+              "field_id": "interview_clip_selection",
+              "candidate_value": "武乡、左权县地方讲解员或军史研究者解释总部驻地路线、百团大战数据差异和十字岭经过；纪念馆资料员补充官方展陈口径与待核点。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/山西.md#太行山八路军根据地：人物", "data/provinces/山西.md#太行山八路军根据地：来源"],
+              "writeback_hint": "作为采访片段选择候选，不预设专家单一结论。",
+              "verification_note": "采访角色来自本地条目；战役数据应以党史、纪念馆和研究资料交叉核验。"
+            }
+          ]
         }
       ]
     },
@@ -137,21 +409,123 @@
           "province": "湖南",
           "recommended_fields": ["opening_hook", "character_anchor", "dialogue_bubbles", "reference_frames"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["文学传说写成史实", "水府设定无边界", "人物服饰跨朝代混用"]
+          "forbidden_direct_claims": ["文学传说写成史实", "水府设定无边界", "人物服饰跨朝代混用"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "雨夜洞庭湖边，龙女把一封湿透的求救信递给柳毅：你敢替我下井吗？",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#柳毅传书：故事梗概", "data/provinces/湖南.md#柳毅传书：相关地点"],
+              "writeback_hint": "只写入 AI 漫剧分镜候选，不写成传说原文或历史事实。",
+              "verification_note": "钩子是基于传书、龙女求救和君山井线索的改编候选。"
+            },
+            {
+              "field_id": "character_anchor",
+              "candidate_value": "柳毅是做出义举的书生；龙女是受困求援者；洞庭龙王和君山柳毅井只作为传说空间锚点。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#柳毅传书：简介", "data/provinces/湖南.md#柳毅传书：核实方法"],
+              "writeback_hint": "角色锚点需同时保留‘唐传奇/民间传说’边界。",
+              "verification_note": "人物关系来自传说条目；具体心理、台词和动作属于改编。"
+            },
+            {
+              "field_id": "dialogue_bubbles",
+              "candidate_value": "龙女：这封信只能交给洞庭。柳毅：若井下只是传说，我也替你走一趟。",
+              "evidence_level": "fictionalized_dialogue_candidate",
+              "source_refs": ["data/provinces/湖南.md#柳毅传书：故事梗概"],
+              "writeback_hint": "对白只进入漫剧候选稿；正式知识库不得写作原文引语。",
+              "verification_note": "对白为可分镜化改写，不是《柳毅传》原文。"
+            },
+            {
+              "field_id": "reference_frames",
+              "candidate_value": "君山柳毅井/传书亭、洞庭湖水面、唐传奇《柳毅传》文本页、湘剧《柳毅传书》舞台照；缺授权时只作为采集清单。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#柳毅传书：来源", "data/provinces/湖南.md#柳毅传书：相关地点"],
+              "writeback_hint": "拆成参考帧采集清单和授权待办，不直接生成真实图片承诺。",
+              "verification_note": "实物和剧目线索来自条目；图片、舞台照和文本页需另行授权。"
+            }
+          ]
         },
         {
           "entry_name": "狐仙报恩母题——湖南民间叙事与志异边界",
           "province": "湖南",
           "recommended_fields": ["opening_hook", "expression_beats", "forbidden_tone", "ending_question"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["灵异情节写成可证事实", "恐怖猎奇化", "报恩母题单一化"]
+          "forbidden_direct_claims": ["灵异情节写成可证事实", "恐怖猎奇化", "报恩母题单一化"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "山路夜雨里，樵夫把受伤白狐藏进柴棚；第二天，一个陌生女子提着柴担站在门口：昨夜欠你的，我来还。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#狐仙报恩母题：故事梗概", "data/provinces/湖南.md#狐仙报恩母题：湖南版本线索"],
+              "writeback_hint": "只作为 AI 漫剧开场钩子候选，不写成湖南固定县域版本或史实。",
+              "verification_note": "钩子来自母题结构和刘海砍樵/樵夫生活线索的改编。"
+            },
+            {
+              "field_id": "expression_beats",
+              "candidate_value": "凡人救助时的犹豫与怜悯→陌生女子报恩时的温和克制→身份被察觉时的惊愕与不舍→离别或守约时的留白。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#狐仙报恩母题：故事梗概", "data/provinces/湖南.md#狐仙报恩母题：场景"],
+              "writeback_hint": "作为表情节拍候选，用于分镜连续性；不得写作原始口述文本。",
+              "verification_note": "表情节拍是面向 AI 漫剧的生产拆解。"
+            },
+            {
+              "field_id": "forbidden_tone",
+              "candidate_value": "避免恐怖猎奇、狐仙妖魔化、把异象当史实、把《刘海砍樵》戏曲加工等同原始民间版本，避免声称湘西或湘中已有固定文本。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#狐仙报恩母题：版本使用规则", "data/provinces/湖南.md#狐仙报恩母题：核实方法"],
+              "writeback_hint": "写入审稿边界和禁用语气字段，优先保护传说/戏曲/母题层级差异。",
+              "verification_note": "边界来自本地条目的可信度和待核实点。"
+            },
+            {
+              "field_id": "ending_question",
+              "candidate_value": "如果报恩必须藏住真实身份，他该追问真相，还是替她守住这个山里的秘密？",
+              "evidence_level": "fictionalized_dialogue_candidate",
+              "source_refs": ["data/provinces/湖南.md#狐仙报恩母题：文化意义", "data/provinces/湖南.md#狐仙报恩母题：故事梗概"],
+              "writeback_hint": "作为集尾问题候选，不进入事实知识条目。",
+              "verification_note": "结尾问题服务漫剧悬念，属于明确改编。"
+            }
+          ]
         },
         {
           "entry_name": "洞庭湖与娥皇女英——湘妃竹传说",
           "province": "湖南",
           "recommended_fields": ["character_anchor", "visual_symbols", "transition_plan", "forbidden_tone"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["神话传说写成历史事件", "过度爱情化改写", "地域来源无边界"]
+          "forbidden_direct_claims": ["神话传说写成历史事件", "过度爱情化改写", "地域来源无边界"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "character_anchor",
+              "candidate_value": "娥皇、女英是追寻舜帝并与湘妃竹意象相连的神话人物；舜帝是传说背景人物；君山讲解员/神话研究者负责在当代线中提示古史传说和地方附会边界。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖与娥皇女英：人物", "data/provinces/湖南.md#洞庭湖与娥皇女英：核实方法"],
+              "writeback_hint": "作为 AI 漫剧角色锚点候选，必须同步保留神话传说边界。",
+              "verification_note": "人物关系来自本地条目；具体对白和情绪节拍属于改编。"
+            },
+            {
+              "field_id": "visual_symbols",
+              "candidate_value": "湘妃竹泪痕纹样、洞庭湖水面、君山石径、湖雾、湘妃祠牌匾、竹枝、帕巾、古籍摘录和传说关系图可作为连续分镜视觉符号。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖与娥皇女英：人物随身道具", "data/provinces/湖南.md#洞庭湖与娥皇女英：场景陈设"],
+              "writeback_hint": "视觉符号只用于分镜/资产采集，不把意象写成可证历史细节。",
+              "verification_note": "视觉资产来自本地条目，实景拍摄和图像授权另行确认。"
+            },
+            {
+              "field_id": "transition_plan",
+              "candidate_value": "从古籍摘录切到苍梧/南巡路线图，再叠到洞庭湖君山和湘妃竹林；当神话情绪升高时，用讲解员或展板画面拉回“民间传说衍生”的边界。",
+              "evidence_level": "production_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖与娥皇女英：场景", "data/provinces/湖南.md#洞庭湖与娥皇女英：来源"],
+              "writeback_hint": "作为 AI 漫剧转场候选，不进入事实知识条目。",
+              "verification_note": "转场方案服务连续性和边界提示，属于生产拆解。"
+            },
+            {
+              "field_id": "forbidden_tone",
+              "candidate_value": "避免把娥皇女英确至君山写成史实；避免过度爱情化、苦情猎奇化或把秦始皇封山、柳毅传书等相邻传说混成同一事实层；避免声称湘妃竹成因已被历史证实。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖与娥皇女英：待核实点", "data/provinces/湖南.md#洞庭湖与娥皇女英：可信度"],
+              "writeback_hint": "写入漫剧审稿边界，优先区分神话、地方附会和可拍景点。",
+              "verification_note": "边界来自本地条目的待核实点和可信度说明。"
+            }
+          ]
         }
       ]
     },
@@ -180,21 +554,123 @@
           "province": "湖南",
           "recommended_fields": ["era_layer", "clothing_silhouette", "character_props", "scene_props"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["衙署陈设混入岩洞", "现代书房物件", "未核实悟道现场细节"]
+          "forbidden_direct_claims": ["衙署陈设混入岩洞", "现代书房物件", "未核实悟道现场细节"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "era_layer",
+              "candidate_value": "分三层标注：北宋周敦颐人物史实层；道县月岩悟道的地方传说/后世阐释层；当代月岩景区或研学讲述层。镜头不得把“月岩启发《太极图说》”写成确证因果。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#月岩悟道传说：简介", "data/provinces/湖南.md#周敦颐：不可写成"],
+              "writeback_hint": "作为 era_and_costume_pack 的时代层候选，写回前应拆成史实、传说、当代阐释三栏。",
+              "verification_note": "周敦颐生平可靠，月岩悟道属于地方传说和后世解释。"
+            },
+            {
+              "field_id": "clothing_silhouette",
+              "candidate_value": "少年/青年周敦颐可用北宋士人常服合理复原：素色交领袍衫或直裰、幅巾/软脚幞头、布履，整体清简克制；不使用明清官帽、现代学生制服或夸张披风。",
+              "evidence_level": "local_entry_with_visual_adaptation",
+              "source_refs": ["data/provinces/湖南.md#宋代士人服饰与随身物：简介", "data/provinces/湖南.md#周敦颐：人物服装"],
+              "writeback_hint": "作为服饰轮廓候选，不写成周敦颐本人某日穿着的确证史实。",
+              "verification_note": "服饰形制为宋代士人常服合理复原层，需服制资料和图像材料复核。"
+            },
+            {
+              "field_id": "character_props",
+              "candidate_value": "书卷、手稿、毛笔、简朴书袋可作为少年读书/传说叙事随身物；太极图、判词、告身、端砚等官署或晚年叙事道具不混入月岩洞读书场景。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#宋代士人服饰与随身物：人物道具边界", "data/provinces/湖南.md#月岩悟道传说：GEARS边界"],
+              "writeback_hint": "作为人物随身物候选，需区分读书场景、官署场景和讲学场景。",
+              "verification_note": "道具来自本地资产边界；具体手稿内容不得虚构为原作。"
+            },
+            {
+              "field_id": "scene_props",
+              "candidate_value": "月岩洞场景优先使用洞口、岩壁、石阶、石质地面、洞内天光和观天位置；可用月影盈亏做视觉隐喻，但不摆放书房桌案、衙署案卷或现代展板进入传说再现场景。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#月岩洞：简介", "data/provinces/湖南.md#月岩悟道传说：GEARS边界"],
+              "writeback_hint": "作为场景器物候选，月岩洞自然空间与当代景区展陈需分镜标注。",
+              "verification_note": "月岩洞空间资产较可靠；具体洞内观月效果和读书位置待核。"
+            }
+          ]
         },
         {
           "entry_name": "岳麓书院——千年学府弦歌不绝",
           "province": "湖南",
           "recommended_fields": ["era_layer", "address_terms", "scene_props", "mixed_era_risk"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["跨朝代服饰同屏无说明", "后世书院制度误置", "现代校园称谓混入古代场景"]
+          "forbidden_direct_claims": ["跨朝代服饰同屏无说明", "后世书院制度误置", "现代校园称谓混入古代场景"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "era_layer",
+              "candidate_value": "至少分北宋开宝九年（976）创建层、南宋乾道三年（1167）朱张会讲层、清代/近现代书院建筑与湖南大学延续层；同一镜头若跨层必须用字幕说明。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：简介", "data/provinces/湖南.md#岳麓书院：故事梗概"],
+              "writeback_hint": "作为时代层候选，避免把现存建筑细节直接当作北宋原貌。",
+              "verification_note": "创建和会讲节点来自本地条目；现存建筑历代修建情况需书院志复核。"
+            },
+            {
+              "field_id": "address_terms",
+              "candidate_value": "历史再现中可用“先生”“生徒”“讲学者”“书院主教/主讲”作保守称谓；朱熹、张栻可称先生或学者，不使用现代“教授、校长、同学会”等校园称谓。",
+              "evidence_level": "local_entry_with_dialogue_boundary",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：人物", "data/provinces/湖南.md#岳麓书院：故事梗概"],
+              "writeback_hint": "作为称谓字段候选，正式脚本对白需按具体年代和文献语境审稿。",
+              "verification_note": "称谓为保守生产候选，需书院制度资料校核。"
+            },
+            {
+              "field_id": "scene_props",
+              "candidate_value": "讲堂匾额、门联、石碑、院墙、书案、木椅、香案、书架、书卷、讲义、毛笔和砚台可作为书院空间资产；现代校徽、研学证件只用于当代延续层。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：人物随身道具", "data/provinces/湖南.md#岳麓书院：场景陈设"],
+              "writeback_hint": "作为场景器物候选，需标注历史再现、现存参观和当代研学三类资产。",
+              "verification_note": "器物来自本地资产清单；实际建筑年代和摆设需现场资料复核。"
+            },
+            {
+              "field_id": "mixed_era_risk",
+              "candidate_value": "朱张会讲再现中不得出现现代学生、校徽、麦克风、投影屏；“惟楚有材，于斯为盛”门联、现存院落和湖南大学延续若入镜，应标注为后世/当代空间线索。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：待核实点", "data/provinces/湖南.md#岳麓书院：场景"],
+              "writeback_hint": "作为混代风险候选，优先进入 AI 漫剧和纪录片审稿清单。",
+              "verification_note": "风险来自书院历代延续和现存参观空间的混用可能。"
+            }
+          ]
         },
         {
           "entry_name": "曾国藩——湘军创立者与洋务先驱",
           "province": "湖南",
           "recommended_fields": ["status_or_role", "clothing_silhouette", "character_props", "forbidden_modern_objects"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["官职服饰未经核实", "军营器物时代错置", "现代政治词汇代替时代称谓"]
+          "forbidden_direct_claims": ["官职服饰未经核实", "军营器物时代错置", "现代政治词汇代替时代称谓"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "status_or_role",
+              "candidate_value": "按场景分为湘乡士人/翰林出身、回乡办团练者、湘军统帅、洋务运动推动者、晚清重臣；“中兴名臣”等评价性称谓需标注为后世评价。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#曾国藩：简介", "data/provinces/湖南.md#曾国藩：故事梗概"],
+              "writeback_hint": "作为身份角色字段候选，具体官职、年份和品级服饰需另行补源。",
+              "verification_note": "身份线索来自本地条目；不得用现代政治词汇替代晚清语境。"
+            },
+            {
+              "field_id": "clothing_silhouette",
+              "candidate_value": "候选造型以晚清士大夫克制轮廓为主：深色长袍/外褂、靴履、案头读书人气质；正式官服、补服、顶戴和军营服饰须按具体年份、官职和场景复核后再用。",
+              "evidence_level": "production_candidate_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#曾国藩：简介", "data/provinces/湖南.md#曾国藩：待核实点"],
+              "writeback_hint": "作为服饰轮廓候选，不写成曾国藩个人服饰定论。",
+              "verification_note": "服饰为晚清士大夫合理生产候选，缺少个人图像/制度细节时保持保守。"
+            },
+            {
+              "field_id": "character_props",
+              "candidate_value": "《曾国藩家书》、日记、奏稿、笔墨、书箱、军令、营规和地图可作为修身、家训、治军和战略推进的核心道具；军械模型只用于洋务/军工场景。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#曾国藩：人物随身道具", "data/provinces/湖南.md#曾国藩：场景陈设"],
+              "writeback_hint": "作为随身物候选，需区分书房、湘军营地和洋务军工空间。",
+              "verification_note": "道具来自本地条目；安庆内军械所具体运作和器物仍待考证。"
+            },
+            {
+              "field_id": "forbidden_modern_objects",
+              "candidate_value": "避免现代地图样式、钢笔/打字机、现代军装、民国式军帽、现代办公桌椅、投影屏和无来源蒸汽机模型混入湘军营帐；洋务工业镜头需与安庆内军械所、江南制造总局线索分开标注。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#曾国藩：待核实点", "data/provinces/湖南.md#曾国藩：场景"],
+              "writeback_hint": "作为禁用现代物件候选，优先用于 AI 漫剧/历史短片审稿。",
+              "verification_note": "边界基于本地条目的晚清、湘军和洋务空间差异。"
+            }
+          ]
         }
       ]
     },
@@ -223,28 +699,164 @@
           "province": "湖南",
           "recommended_fields": ["core_question", "knowledge_steps", "diagram_or_caption_plan", "recap_sentence"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["文人雅器来源未核实", "工艺流程顺序未核实", "审美评价冒充事实"]
+          "forbidden_direct_claims": ["文人雅器来源未核实", "工艺流程顺序未核实", "审美评价冒充事实"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "一把岳州扇如何把洞庭湖文人审美、湘竹工艺和岳阳楼诗文折在一起？",
+              "evidence_level": "explainer_candidate_from_local_entry",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：简介", "data/provinces/湖南.md#岳州扇：文化意义"],
+              "writeback_hint": "用于 explainer_video 开场问题候选，不作为事实结论单独写入。",
+              "verification_note": "问题由本地条目的材料、扇面和地域审美三组信息归纳。"
+            },
+            {
+              "field_id": "knowledge_steps",
+              "candidate_value": "先解释扇骨材料和选料、开片、蒸煮、晾干、打磨、定型；再说明宣纸或绢帛扇面上的诗书画印；最后回到岳阳楼和洞庭湖文人文化。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：扇骨制作", "data/provinces/湖南.md#岳州扇：扇面书画"],
+              "writeback_hint": "拆成三段讲解步骤，流程顺序写回前需按工坊核实。",
+              "verification_note": "工序来自现有条目；不同工坊细节可能有差异。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "三层图示：湘竹扇骨/宣纸或绢帛扇面/岳阳楼诗文；字幕标注“材料—工艺—文脉”，并提示“三大名扇”说法待复核。",
+              "evidence_level": "production_candidate",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：工艺要素", "data/provinces/湖南.md#岳州扇：待核实点"],
+              "writeback_hint": "作为图示字幕方案候选，不把待复核说法包装成权威定论。",
+              "verification_note": "图示结构为讲解生产候选，需设计审稿确认。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "岳州扇不是单纯纪念品，而是以竹骨、扇面和诗文承载洞庭文人文化的日常器物；并称“三大名扇”等说法仍需来源复核。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：文化意义", "data/provinces/湖南.md#岳州扇：待核实点"],
+              "writeback_hint": "复盘句保留事实边界，适合写入讲解脚本草案。",
+              "verification_note": "文化意义来自本地条目；评价性表达需保持克制。"
+            }
+          ]
         },
         {
           "entry_name": "常德会战与常德细菌战——湘北战场的血与疫",
           "province": "湖南",
           "recommended_fields": ["core_question", "argument_points", "misconception_or_boundary", "diagram_or_caption_plan"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["灾难简化成爽感反转", "医学细节无来源断言", "以类比替代证据"]
+          "forbidden_direct_claims": ["灾难简化成爽感反转", "医学细节无来源断言", "以类比替代证据"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "为什么讲常德抗战不能只讲一场城市攻防，还必须同时讲1941年细菌战、1943年会战和战后民间诉讼留下的证据边界？",
+              "evidence_level": "local_entry_with_explainer_adaptation",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：简介", "data/provinces/湖南.md#常德会战与常德细菌战：文化意义"],
+              "writeback_hint": "作为 explainer_video 核心问题候选；保持严肃叙事，不制造爽感反转。",
+              "verification_note": "问题来自条目中细菌战、会战和诉讼三条线索。"
+            },
+            {
+              "field_id": "argument_points",
+              "candidate_value": "一是1941年细菌战造成鼠疫伤害并留下诉讼证据；二是1943年57师守城体现城市战压力；三是二者关联程度需谨慎表达；四是纪念馆、法律文书和档案材料比戏剧化再现更重要。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：故事梗概", "data/provinces/湖南.md#常德会战与常德细菌战：来源"],
+              "writeback_hint": "作为讲解论点候选，关联程度必须保留“待进一步学术论证”。",
+              "verification_note": "论点来自本地条目，死亡数字和战斗过程仍需按待核实点复核。"
+            },
+            {
+              "field_id": "misconception_or_boundary",
+              "candidate_value": "不能把细菌战直接等同为会战唯一原因；不能用“东方斯大林格勒”等类比替代证据；不能无来源讲医学细节、战场对白或死亡人数精确扩展。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：待核实点", "data/provinces/湖南.md#常德会战与常德细菌战：核实方法"],
+              "writeback_hint": "作为讲解误区卡和审稿边界候选。",
+              "verification_note": "边界来自待核实点和禁写断言，适合置于字幕或脚注。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "双时间轴图示：1941年11月4日细菌战、1997年后民间诉讼线，与1943年11月2日—12月20日常德会战线并列；字幕标注“直接关联程度待论证”。",
+              "evidence_level": "production_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：故事梗概", "data/provinces/湖南.md#常德会战与常德细菌战：场景陈设"],
+              "writeback_hint": "作为图示字幕候选，不直接写入事实条目。",
+              "verification_note": "图示方案服务讲解结构，死亡数字和诉讼节点需法律文书复核。"
+            }
+          ]
         },
         {
           "entry_name": "踏虎剪纸——凿刀下的苗族阴阳世界",
           "province": "湖南",
           "recommended_fields": ["concept_definitions", "concrete_examples", "analogy_or_visual_metaphor", "misconception_or_boundary"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["纹样寓意单一化", "族群刻板化", "未核实禁忌写成事实"]
+          "forbidden_direct_claims": ["纹样寓意单一化", "族群刻板化", "未核实禁忌写成事实"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "concept_definitions",
+              "candidate_value": "踏虎凿花：湘西泸溪踏虎村苗族传统手工艺，以凿刀代剪刀、以蜡板为操作台，多层彩纸一次凿出多幅图案；最初常作苗族服饰刺绣底样。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：简介", "data/provinces/湖南.md#踏虎剪纸：故事梗概"],
+              "writeback_hint": "作为 explainer_video 概念定义候选，性别结构和传承谱系需保留待核。",
+              "verification_note": "定义来自本地条目，工艺细节需项目页和田野访谈复核。"
+            },
+            {
+              "field_id": "concrete_examples",
+              "candidate_value": "镜头例子可用凿刀、蜡板、多层彩纸、蝴蝶妈妈/龙纹/石榴/莲花样张、衣领花/袖口花/围腰花/鞋花底样，以及苗族服饰刺绣填色过程。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：人物随身道具", "data/provinces/湖南.md#踏虎剪纸：场景"],
+              "writeback_hint": "作为具体例子和镜头资产候选，图案寓意不得单一化。",
+              "verification_note": "素材来自本地条目；具体纹样含义需传承人或地方非遗机构确认。"
+            },
+            {
+              "field_id": "analogy_or_visual_metaphor",
+              "candidate_value": "可用“纸上的模具/服饰刺绣的蓝图”解释凿花样：凿花提供轮廓和秩序，刺绣填入色彩和身体记忆；避免把“阴阳”讲成玄学定论。",
+              "evidence_level": "explainer_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：绣花样的前世", "data/provinces/湖南.md#踏虎剪纸：文化意义"],
+              "writeback_hint": "作为视觉比喻候选，不进入事实知识条目。",
+              "verification_note": "比喻基于条目中的底样/刺绣关系，属于讲解表达。"
+            },
+            {
+              "field_id": "misconception_or_boundary",
+              "candidate_value": "不要说所有苗族剪纸都由男性完成；不要把蝴蝶妈妈、龙纹等纹样解释成唯一含义；不要把家族传承谱系、开放工坊和从业者性别结构写成已完全核定事实。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：待核实点", "data/provinces/湖南.md#踏虎剪纸：核实方法"],
+              "writeback_hint": "作为误区边界候选写入审稿问题，优先保护族群和工艺事实边界。",
+              "verification_note": "边界来自本地条目的待核实点。"
+            }
+          ]
         },
         {
           "entry_name": "岳麓书院——千年学府弦歌不绝",
           "province": "湖南",
           "recommended_fields": ["knowledge_outline", "concept_definitions", "diagram_or_caption_plan", "recap_sentence"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["千年学脉简化为单线传承", "后世影响误写成本人现场行为", "现代机构口径混入古代事实"]
+          "forbidden_direct_claims": ["千年学脉简化为单线传承", "后世影响误写成本人现场行为", "现代机构口径混入古代事实"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "knowledge_outline",
+              "candidate_value": "976年朱洞创建书院→1167年朱熹与张栻“朱张会讲”→“惟楚有材，于斯为盛”成为湖湘文化视觉锚点→1926年正式定名湖南大学，书院建筑延续于校园内。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：简介", "data/provinces/湖南.md#岳麓书院：故事梗概"],
+              "writeback_hint": "作为 explainer_video 知识骨架候选；“听者千余人”和延续关系需保留追述/现代表述边界。",
+              "verification_note": "关键节点来自本地条目；人数与后世影响仍需按待核实点审稿。"
+            },
+            {
+              "field_id": "concept_definitions",
+              "candidate_value": "书院：古代讲学、藏书和学术交流空间；朱张会讲：南宋朱熹、张栻在岳麓书院的学术对话事件；“惟楚有材”：门联形成的湖湘文化自信表达。",
+              "evidence_level": "local_entry_with_explainer_adaptation",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：文化意义", "data/provinces/湖南.md#岳麓书院：场景"],
+              "writeback_hint": "概念定义需短句化，避免把文化象征写成单一因果。",
+              "verification_note": "定义为讲解候选，需文史教师或书院资料复核措辞。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "一张“时间轴+空间轴”图：北宋创建、南宋会讲、门联/讲堂/院落、现代湖南大学；字幕用“创建—会讲—文脉—延续”，并标注人数说法为后世追述。",
+              "evidence_level": "production_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：场景陈设", "data/provinces/湖南.md#岳麓书院：待核实点"],
+              "writeback_hint": "作为图示字幕候选，不直接写入事实条目；待核边界必须随图出现。",
+              "verification_note": "图示方案服务知识讲解，需与现场导览和书院志口径对齐。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "岳麓书院的重点不是“古老”本身，而是从讲堂、会讲和门联里看见湖湘文教传统如何被一代代重新解释。",
+              "evidence_level": "explainer_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：文化意义", "data/provinces/湖南.md#岳麓书院：核实方法"],
+              "writeback_hint": "只作为讲解收束句候选；避免写成正式知识库结论前缺少出处的价值判断。",
+              "verification_note": "复盘句为面向视频的表达候选。"
+            }
+          ]
         }
       ]
     },
@@ -273,28 +885,164 @@
           "province": "湖南",
           "recommended_fields": ["audience_age_band", "child_safe_conflict", "fact_boundary_card", "emotional_resolution"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["传说写成历史事实", "恐怖化水府惩罚", "儿童观众无法分辨虚构边界"]
+          "forbidden_direct_claims": ["传说写成历史事实", "恐怖化水府惩罚", "儿童观众无法分辨虚构边界"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "audience_age_band",
+              "candidate_value": "建议 7-10 岁儿童故事/动画：保留“帮忙送信”的义举和洞庭湖地理想象，弱化受虐、惩罚和婚配结局，句子短、场景具体。",
+              "evidence_level": "children_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#柳毅传书：简介", "data/provinces/湖南.md#柳毅传书：故事梗概"],
+              "writeback_hint": "作为 children_story 年龄层候选，只进入改写规则，不写入事实条目。",
+              "verification_note": "年龄建议为生产候选；故事源自唐传奇和湖南地方传说，非史实。"
+            },
+            {
+              "field_id": "child_safe_conflict",
+              "candidate_value": "冲突改为“龙女需要一封信送到洞庭湖底，柳毅害怕但决定帮忙”；龙宫危险用雾、水纹和迷路表现，不出现恐怖惩罚、暴力细节或家庭虐待画面。",
+              "evidence_level": "local_entry_with_children_adaptation",
+              "source_refs": ["data/provinces/湖南.md#柳毅传书：故事梗概", "data/provinces/湖南.md#柳毅传书：人物"],
+              "writeback_hint": "作为善意冲突候选，保持儿童可理解的帮助与勇气主题。",
+              "verification_note": "冲突取自传书主线并儿童化处理，不代表原文完整情节。"
+            },
+            {
+              "field_id": "fact_boundary_card",
+              "candidate_value": "事实卡：柳毅传书是唐传奇和洞庭湖民间传说；君山柳毅井是地方传说地标，可实地参观；龙宫、龙女和水下通道属于故事想象。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#柳毅传书：来源", "data/provinces/湖南.md#柳毅传书：核实方法", "data/provinces/湖南.md#柳毅传书：相关地点"],
+              "writeback_hint": "作为儿童事实边界卡候选，必须和故事正文分屏呈现。",
+              "verification_note": "边界来自本地条目的传说/文学作品可信度说明。"
+            },
+            {
+              "field_id": "emotional_resolution",
+              "candidate_value": "结尾从“成婚”改为“信被送到，龙女得到帮助，柳毅学会在害怕时也可以做一件善良的小事”；最后回到君山井和湖面，留一个温柔的传说余味。",
+              "evidence_level": "children_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#柳毅传书：文化意义", "data/provinces/湖南.md#柳毅传书：场景"],
+              "writeback_hint": "作为儿童情绪收束候选，婚配结局不面向低龄观众展开。",
+              "verification_note": "情绪收束为改写候选，不替代原传说结局。"
+            }
+          ]
         },
         {
           "entry_name": "洞庭湖与娥皇女英——湘妃竹传说",
           "province": "湖南",
           "recommended_fields": ["audience_age_band", "wonder_or_cultural_symbol", "fact_boundary_card", "parent_teacher_note"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["神话传说写成历史事件", "过度悲情化儿童叙事", "地域来源无边界"]
+          "forbidden_direct_claims": ["神话传说写成历史事件", "过度悲情化儿童叙事", "地域来源无边界"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "audience_age_band",
+              "candidate_value": "建议 8-11 岁儿童讲解/动画：用“为什么竹子上会有斑纹”的自然观察问题进入，减少死亡和投水情节，重点讲传说如何给湘妃竹赋予哀思意象。",
+              "evidence_level": "children_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖与娥皇女英：简介", "data/provinces/湖南.md#洞庭湖与娥皇女英：文化意义"],
+              "writeback_hint": "作为年龄层候选，避免低龄内容过度悲情化。",
+              "verification_note": "年龄建议为生产候选；娥皇女英为神话传说层。"
+            },
+            {
+              "field_id": "wonder_or_cultural_symbol",
+              "candidate_value": "儿童可理解的奇妙符号：湘妃竹泪痕纹样、洞庭湖雾气、君山竹林、帕巾和竹枝；把“泪染竹斑”讲成传说里的想象，不讲成植物学事实。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖与娥皇女英：人物随身道具", "data/provinces/湖南.md#洞庭湖与娥皇女英：场景陈设"],
+              "writeback_hint": "作为儿童奇妙符号候选，视觉符号与事实解释分开。",
+              "verification_note": "符号来自本地条目；湘妃竹传说关联为民间附会。"
+            },
+            {
+              "field_id": "fact_boundary_card",
+              "candidate_value": "事实卡：舜帝南巡见于古史传说文本；娥皇女英到君山、泪洒成斑竹属于民间传说；君山、湘妃竹和湘妃祠是今天可见的地方文化空间。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖与娥皇女英：来源", "data/provinces/湖南.md#洞庭湖与娥皇女英：待核实点"],
+              "writeback_hint": "作为儿童事实边界卡候选，不把传说写成历史事件。",
+              "verification_note": "边界来自本地条目的待核实点和来源说明。"
+            },
+            {
+              "field_id": "parent_teacher_note",
+              "candidate_value": "家长/教师提示：可引导孩子区分“古史传说、地方口述、今天的景点”，并讨论人们为什么会用竹子、湖水和泪痕来表达思念。",
+              "evidence_level": "education_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖与娥皇女英：核实方法", "data/provinces/湖南.md#洞庭湖与娥皇女英：文化意义"],
+              "writeback_hint": "作为陪读提示候选，不进入故事正文事实段。",
+              "verification_note": "提示服务儿童理解传说层级和象征表达。"
+            }
+          ]
         },
         {
           "entry_name": "滩头年画——湘西南木版年画的最后守望",
           "province": "湖南",
           "recommended_fields": ["concrete_examples", "wonder_or_cultural_symbol", "parent_teacher_note", "assessment_check"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["未核实传承谱系", "工艺难度变成儿童操作教程", "唯一正宗表述"]
+          "forbidden_direct_claims": ["未核实传承谱系", "工艺难度变成儿童操作教程", "唯一正宗表述"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "concrete_examples",
+              "candidate_value": "儿童例子可选《老鼠娶亲》《和气致祥》《门神秦琼尉迟恭》、梨木雕版、棕刷、晾架和开脸画笔；只观察图案、颜色和工序，不教学颜料配方。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#滩头年画：代表作品", "data/provinces/湖南.md#滩头年画：工艺要素"],
+              "writeback_hint": "作为儿童具体例子候选，避免写成可操作工艺教程。",
+              "verification_note": "例子来自本地条目；作品图像和馆藏授权需复核。"
+            },
+            {
+              "field_id": "wonder_or_cultural_symbol",
+              "candidate_value": "奇妙符号：一块木版可以印出一张年画，最后“开脸”让人物表情有了不同；春节门神、红黄绿强色彩和《老鼠娶亲》的热闹队伍适合儿童观察。",
+              "evidence_level": "local_entry_with_children_adaptation",
+              "source_refs": ["data/provinces/湖南.md#滩头年画：工艺特色", "data/provinces/湖南.md#滩头年画：场景陈设"],
+              "writeback_hint": "作为儿童视觉符号候选，不夸张成唯一正宗年画。",
+              "verification_note": "符号来自条目工艺与作品资产；色彩配方为保护性待核信息。"
+            },
+            {
+              "field_id": "parent_teacher_note",
+              "candidate_value": "家长/教师提示：可让孩子比较“手工套印”和“机器印刷”的差异，讨论为什么老作坊需要传承人保护；不要要求儿童复制复杂刻版或颜料操作。",
+              "evidence_level": "education_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#滩头年画：当代守望", "data/provinces/湖南.md#滩头年画：待核实点"],
+              "writeback_hint": "作为陪读提示候选，强调非遗保护而非危险工艺模仿。",
+              "verification_note": "提示基于本地条目的濒临失传和保护边界。"
+            },
+            {
+              "field_id": "assessment_check",
+              "candidate_value": "儿童检查题：哪一句更准确？A“滩头年画都是机器印的”；B“滩头年画有刻版、套印、开脸等手工环节”；C“颜料配方可以随便公开学习”。正确引导选 B，并说明 A/C 的问题。",
+              "evidence_level": "children_assessment_candidate",
+              "source_refs": ["data/provinces/湖南.md#滩头年画：工艺要素", "data/provinces/湖南.md#滩头年画：核实方法"],
+              "writeback_hint": "作为儿童理解检查题候选，不进入正式知识正文。",
+              "verification_note": "检查题围绕手工工序和保护性信息设计。"
+            }
+          ]
         },
         {
           "entry_name": "岳麓书院——千年学府弦歌不绝",
           "province": "湖南",
           "recommended_fields": ["audience_level", "fact_boundary_card", "concrete_examples", "parent_teacher_note"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["千年学脉简化为单线传承", "古代书院生活过度童话化", "现代校园经验误置"]
+          "forbidden_direct_claims": ["千年学脉简化为单线传承", "古代书院生活过度童话化", "现代校园经验误置"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "audience_level",
+              "candidate_value": "建议 9-12 岁研学讲解：用“古代学生在哪里读书、怎样听讲、今天还能看到什么建筑”进入；时间线只保留 976 创建、1167 朱张会讲、1926 定名湖南大学三节点。",
+              "evidence_level": "children_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：简介", "data/provinces/湖南.md#岳麓书院：故事梗概"],
+              "writeback_hint": "作为儿童受众层级候选，避免把千年历史压成单线神话。",
+              "verification_note": "节点来自本地条目；会讲人数和延续关系需保留边界。"
+            },
+            {
+              "field_id": "fact_boundary_card",
+              "candidate_value": "事实卡：岳麓书院是现存可参观的历史空间；朱张会讲是南宋学术对话事件；“听者千余人”为后世追述口径；现代湖南大学场景属于当代延续层。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：核实方法", "data/provinces/湖南.md#岳麓书院：待核实点"],
+              "writeback_hint": "作为儿童事实边界卡候选，历史与当代延续需分开。",
+              "verification_note": "边界来自本地条目的待核实点和核实方法。"
+            },
+            {
+              "field_id": "concrete_examples",
+              "candidate_value": "可观察例子：讲堂匾额、门联、石碑、院墙、书案、木椅、书卷、毛笔、砚台、古树和石径；现代校徽/研学证件只放在“今天参观”段。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：人物随身道具", "data/provinces/湖南.md#岳麓书院：场景陈设"],
+              "writeback_hint": "作为儿童具体例子候选，帮助区分古代书院与现代校园。",
+              "verification_note": "例子来自本地资产清单；实物年代需现场导览复核。"
+            },
+            {
+              "field_id": "parent_teacher_note",
+              "candidate_value": "家长/教师提示：让孩子把“古代讲学空间、南宋学术对话、今天的大学校园”贴到三张卡上，讨论同一地点如何在不同时代承担不同功能。",
+              "evidence_level": "education_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：文化意义", "data/provinces/湖南.md#岳麓书院：场景"],
+              "writeback_hint": "作为陪读提示候选，不把现代校园经验套入古代书院生活。",
+              "verification_note": "提示服务儿童理解时代层，不替代正式历史说明。"
+            }
+          ]
         }
       ]
     },
@@ -323,28 +1071,164 @@
           "province": "湖南",
           "recommended_fields": ["opening_hook", "vertical_shot_plan", "visual_symbols", "production_risks"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["未核实海上丝路唯一性", "烧制参数无来源断言", "夸张成绝密技法"]
+          "forbidden_direct_claims": ["未核实海上丝路唯一性", "烧制参数无来源断言", "夸张成绝密技法"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "一只唐代小瓷壶，为什么会从长沙望城铜官镇一路漂到印度洋沉船里？",
+              "evidence_level": "local_entry_with_short_video_adaptation",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：简介", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：黑石号沉船的世界证据"],
+              "writeback_hint": "作为 social_short/heritage_promo 开场钩子候选，黑石号数量和现藏机构需复核。",
+              "verification_note": "钩子基于本地条目的铜官窑、外销瓷和黑石号线索。"
+            },
+            {
+              "field_id": "vertical_shot_plan",
+              "candidate_value": "竖屏三段：手拉坯和釉下彩笔尖特写→博物馆瓷片/执壶转场→海丝地图从湘江拉到印度洋；字幕只给“陶土、釉下彩、外销证据”三层信息。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：场景", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：人物随身道具"],
+              "writeback_hint": "作为竖屏镜头计划候选，博物馆和工坊画面需授权。",
+              "verification_note": "镜头资产来自本地条目；外销路线图需考古资料核验。"
+            },
+            {
+              "field_id": "visual_symbols",
+              "candidate_value": "素胎、釉下彩笔触、题诗执壶、瓷片标本、考古编号牌、湘江水运/海丝地图，可形成“手中泥—釉下色—海上证据”的视觉链。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：人物随身道具", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：场景陈设"],
+              "writeback_hint": "作为视觉符号候选，题诗归属和馆藏图像授权需审稿。",
+              "verification_note": "符号来自条目资产拆分；具体器物应按馆藏说明核对。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "避免把“首创”“最早”“比某地早多少年”“黑石号出水数量”“海上瓷都”等强断言做成标题党；不得公开推断烧制参数和颜料配方。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：待核实点", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：核实方法"],
+              "writeback_hint": "作为短视频审稿风险字段候选，优先限制强断言和技法泄露。",
+              "verification_note": "风险项来自本地条目的待核实点。"
+            }
+          ]
         },
         {
           "entry_name": "踏虎剪纸——凿刀下的苗族阴阳世界",
           "province": "湖南",
           "recommended_fields": ["opening_hook", "beat_interval", "sound_or_texture_details", "misconception_or_boundary"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["族群刻板化解释", "纹样寓意单一化", "猎奇化仪式空间"]
+          "forbidden_direct_claims": ["族群刻板化解释", "纹样寓意单一化", "猎奇化仪式空间"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "这不是剪纸：一把凿刀落在蜡板上，一次凿出好几幅苗族绣花样。",
+              "evidence_level": "local_entry_with_short_video_adaptation",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：简介", "data/provinces/湖南.md#踏虎剪纸：凿而非剪"],
+              "writeback_hint": "作为 heritage_promo/social_short 开场候选，性别结构和传承谱系需保留待核。",
+              "verification_note": "钩子来自本地条目的以凿代剪和多层彩纸线索。"
+            },
+            {
+              "field_id": "beat_interval",
+              "candidate_value": "0-3秒凿刀落下；3-8秒多层彩纸分开露出相同镂空；8-14秒切到衣领/围腰/鞋花底样；14-20秒字幕提示“绣花样到独立装饰艺术”。",
+              "evidence_level": "local_entry_with_production_adaptation",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：凿而非剪", "data/provinces/湖南.md#踏虎剪纸：绣花样的前世"],
+              "writeback_hint": "作为节奏拆分候选，不写成固定工艺流程标准。",
+              "verification_note": "节奏来自条目工艺关系，完整流程仍需传承人复核。"
+            },
+            {
+              "field_id": "sound_or_texture_details",
+              "candidate_value": "凿刀点触蜡板的短促声、彩纸摩擦声、纸屑落下、镂空纸样在灯下的轻响；配乐保持克制，突出手工质感和纸面纹理。",
+              "evidence_level": "production_candidate",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：场景", "data/provinces/湖南.md#踏虎剪纸：场景陈设"],
+              "writeback_hint": "作为声音/质感候选，不作为事实字段写入正式条目。",
+              "verification_note": "声音设计基于工作台和纸样资产推导，需现场采集确认。"
+            },
+            {
+              "field_id": "misconception_or_boundary",
+              "candidate_value": "不要把“苗族男性剪纸”写成所有地区通例；不要把蝴蝶妈妈、龙纹等纹样解释成唯一含义；不要用猎奇口吻解释“阴阳世界”。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#踏虎剪纸：待核实点", "data/provinces/湖南.md#踏虎剪纸：核实方法"],
+              "writeback_hint": "作为短视频误区边界候选，审稿时优先检查族群表达和纹样解释。",
+              "verification_note": "边界来自待核实点和项目文化表达规则。"
+            }
+          ]
         },
         {
           "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
           "province": "湖南",
           "recommended_fields": ["platform_context", "share_trigger", "visual_symbols", "comment_prompt"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["文人使用谱系未核实", "审美评价冒充事实", "工艺级别未核实"]
+          "forbidden_direct_claims": ["文人使用谱系未核实", "审美评价冒充事实", "工艺级别未核实"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "platform_context",
+              "candidate_value": "适合 20-45 秒竖屏非遗/文旅短片：用“开扇一瞬间”连接湘竹扇骨、洞庭湖风、岳阳楼诗文和景区文创柜台。",
+              "evidence_level": "local_entry_with_short_video_adaptation",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：简介", "data/provinces/湖南.md#岳州扇：场景"],
+              "writeback_hint": "作为平台语境候选，商业文创与传统工艺边界需复核。",
+              "verification_note": "语境基于本地条目的工艺、岳阳楼和文旅场景。"
+            },
+            {
+              "field_id": "share_trigger",
+              "candidate_value": "反差点可用“扇子不只是纳凉工具”：一面是打磨数十遍的湘竹扇骨，一面是岳阳楼诗文和洞庭山水审美。",
+              "evidence_level": "local_entry_with_production_adaptation",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：扇骨制作", "data/provinces/湖南.md#岳州扇：文化意义"],
+              "writeback_hint": "作为分享触发候选，不把审美评价写成唯一事实。",
+              "verification_note": "反差点来自条目工艺和文化意义，三大名扇说法仍需来源。"
+            },
+            {
+              "field_id": "visual_symbols",
+              "candidate_value": "湘竹扇骨半成品、砂纸打磨、扇钉装配、宣纸/绢帛扇面、毛笔题诗、岳阳楼栏杆与洞庭水面空镜，组成“竹骨—诗面—湖风”的视觉链。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：工艺要素", "data/provinces/湖南.md#岳州扇：人物随身道具", "data/provinces/湖南.md#岳州扇：场景陈设"],
+              "writeback_hint": "作为视觉资产候选，工坊、景区和书画作品画面需授权。",
+              "verification_note": "符号来自条目资产；实际工序和配件等级需工坊确认。"
+            },
+            {
+              "field_id": "comment_prompt",
+              "candidate_value": "评论引导：你觉得一把折扇最有记忆点的是竹骨手感、扇面诗文，还是它背后的洞庭湖风？欢迎补充可靠来源或岳州扇老照片线索。",
+              "evidence_level": "engagement_candidate",
+              "source_refs": ["data/provinces/湖南.md#岳州扇：文化意义", "data/provinces/湖南.md#岳州扇：待核实点"],
+              "writeback_hint": "作为互动候选，避免诱导争议化地域比较。",
+              "verification_note": "评论问题服务补源和互动，不进入正式知识正文。"
+            }
+          ]
         },
         {
           "entry_name": "常德会战与常德细菌战——湘北战场的血与疫",
           "province": "湖南",
           "recommended_fields": ["opening_hook", "misconception_or_boundary", "production_risks", "comment_prompt"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["灾难娱乐化", "以反转掩盖来源边界", "医学细节无来源断言"]
+          "forbidden_direct_claims": ["灾难娱乐化", "以反转掩盖来源边界", "医学细节无来源断言"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "同一座常德城，为什么既要记住16天守城，也要记住一场被法律文书确认的细菌战？",
+              "evidence_level": "local_entry_with_short_video_adaptation",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：简介", "data/provinces/湖南.md#常德会战与常德细菌战：故事梗概"],
+              "writeback_hint": "作为 documentary_short/social_short 开场候选，语气必须克制。",
+              "verification_note": "钩子基于本地条目的会战、细菌战和法律认定线索。"
+            },
+            {
+              "field_id": "misconception_or_boundary",
+              "candidate_value": "不要把常德会战和细菌战混成同一事件；不要用“东方斯大林格勒”遮蔽死亡数字、诉讼口径和史料差异；细菌战与1943年会战的直接关联需谨慎标注。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：待核实点", "data/provinces/湖南.md#常德会战与常德细菌战：核实方法"],
+              "writeback_hint": "作为误区边界候选，审稿时先查事件区分和数字口径。",
+              "verification_note": "边界来自本地条目的待核实点。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "禁止灾难娱乐化、血腥化和悬疑猎奇标题；死亡数字、57师人数、战后突围/反攻过程和诉讼结论都要标注来源口径，医学细节不得无来源展开。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：来源", "data/provinces/湖南.md#常德会战与常德细菌战：待核实点"],
+              "writeback_hint": "作为生产风险候选，进入审片清单而非成片标题。",
+              "verification_note": "风险由纪念馆资料、法律文书和待核点共同约束。"
+            },
+            {
+              "field_id": "comment_prompt",
+              "candidate_value": "评论引导：如果你去常德纪念空间，会先看会战路线图、遇难者名单，还是细菌战诉讼材料？请补充可靠史料线索，不做情绪化争论。",
+              "evidence_level": "engagement_candidate",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：场景", "data/provinces/湖南.md#常德会战与常德细菌战：场景陈设"],
+              "writeback_hint": "作为互动候选，避免引战和灾难消费。",
+              "verification_note": "互动问题服务补源与现场导览，不进入正式知识正文。"
+            }
+          ]
         }
       ]
     },
@@ -373,28 +1257,164 @@
           "province": "湖南",
           "recommended_fields": ["learning_objective", "case_examples", "slide_or_board_assets", "assessment_check"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["成员关系未核实断言", "组织沿革过度简化", "后见之明替代当时语境"]
+          "forbidden_direct_claims": ["成员关系未核实断言", "组织沿革过度简化", "后见之明替代当时语境"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "learning_objective",
+              "candidate_value": "学员能用三段时间线说明新民学会：1918年4月14日长沙成立与初旨，赴法勤工俭学和建党通信推动思想转向，1921年前后多数会员转入中国共产党；同时标出“前身”是历史评价而非单线因果。",
+              "evidence_level": "local_entry_with_training_adaptation",
+              "source_refs": ["data/provinces/湖南.md#新民学会：简介", "data/provinces/湖南.md#新民学会：故事梗概"],
+              "writeback_hint": "作为 education_training/explainer_video 学习目标候选，成员关系和通信原文需按来源复核。",
+              "verification_note": "时间线和人物来自本地条目；培训目标为生产化表达。"
+            },
+            {
+              "field_id": "case_examples",
+              "candidate_value": "案例板可选刘家台子成立会议、岳麓山下读书讨论、赴法勤工俭学、蔡和森致毛泽东建党通信、毛泽东留国内调查与《湘江评论》线索，用来讲“社团—思想—行动”的转化。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#新民学会：故事梗概", "data/provinces/湖南.md#新民学会：相关地点"],
+              "writeback_hint": "作为案例候选，不把所有成员路线合并成单一叙事。",
+              "verification_note": "案例来自条目；通信原文、旧址保存状况和分化节点需补源。"
+            },
+            {
+              "field_id": "slide_or_board_assets",
+              "candidate_value": "一张“长沙空间+思想时间线”板书：刘家台子、岳麓书院、湖南第一师范三点地图；1918成立、1920建党通信、1921停止活动三节点；旁列章程、会员名单、通信复制件和报刊图标。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#新民学会：场景", "data/provinces/湖南.md#新民学会：人物随身道具", "data/provinces/湖南.md#新民学会：场景陈设"],
+              "writeback_hint": "作为板书/幻灯资产候选，纪念馆展陈图片和旧址画面需授权。",
+              "verification_note": "资产来自本地条目；地图点位、展陈照片和通信复制件需人工核验。"
+            },
+            {
+              "field_id": "assessment_check",
+              "candidate_value": "练习：给三句话打标签——“1918年4月14日成立”可作核心事实；“湖南共产党的前身”需说明评价口径；“所有成员都直接转入共产党”应判为过度简化并要求补证。",
+              "evidence_level": "training_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#新民学会：可信度", "data/provinces/湖南.md#新民学会：待核实点"],
+              "writeback_hint": "作为课堂检查题候选，不写入事实正文。",
+              "verification_note": "检查题围绕本地条目的可信度与待核实边界设计。"
+            }
+          ]
         },
         {
           "entry_name": "岳麓书院——千年学府弦歌不绝",
           "province": "湖南",
           "recommended_fields": ["learner_profile", "step_sequence", "case_examples", "recap_sentence"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["现代教育概念直接套入古代书院", "千年学脉单线化", "后世影响误写成现场事实"]
+          "forbidden_direct_claims": ["现代教育概念直接套入古代书院", "千年学脉单线化", "后世影响误写成现场事实"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "learner_profile",
+              "candidate_value": "面向中高年级研学、文旅讲解员培训和校内传统文化课程；学习者需要会区分“古代书院制度、朱张会讲事件、现代湖南大学延续”三种层级。",
+              "evidence_level": "training_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：简介", "data/provinces/湖南.md#岳麓书院：故事梗概"],
+              "writeback_hint": "作为学习者画像候选，不写入正式知识条目。",
+              "verification_note": "画像服务宣讲培训结构，核心边界来自本地条目。"
+            },
+            {
+              "field_id": "step_sequence",
+              "candidate_value": "四步讲解：先看空间（门庭、讲堂、门联）→排时间线（976、1167、1926）→辨析边界（会讲人数、现存建筑与古代原貌）→让学习者用一张卡片复述书院的当代延续。",
+              "evidence_level": "local_entry_with_training_adaptation",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：场景", "data/provinces/湖南.md#岳麓书院：待核实点"],
+              "writeback_hint": "作为培训步骤候选，现场点位和导览口径需书院资料复核。",
+              "verification_note": "步骤基于本地条目的场景、时间线和待核实点。"
+            },
+            {
+              "field_id": "case_examples",
+              "candidate_value": "案例可用“惟楚有材，于斯为盛”门联、朱张会讲、讲堂匾额/书案/木椅、岳麓山和爱晚亭周边空间，以及湖南大学当代延续对照。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：人物", "data/provinces/湖南.md#岳麓书院：场景陈设"],
+              "writeback_hint": "作为案例板候选，门联和建筑资产需按现场说明标注时代层。",
+              "verification_note": "案例来自本地条目；人物对话和现场细节需文献或导览复核。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "岳麓书院培训收束句：同一个空间可以承载讲学、辩论、纪念和当代学习，但每一层都要说清时代和来源。",
+              "evidence_level": "training_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#岳麓书院：文化意义", "data/provinces/湖南.md#岳麓书院：核实方法"],
+              "writeback_hint": "作为复盘句候选，不把价值总结写成未经来源支撑的事实结论。",
+              "verification_note": "复盘句服务培训表达，强调时代层和来源边界。"
+            }
+          ]
         },
         {
           "entry_name": "周敦颐月岩悟道——理学源头的山洞想象",
           "province": "湖南",
           "recommended_fields": ["speaker_position", "communication_goal", "practice_task", "recap_sentence"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["悟道细节无来源断言", "哲学概念神秘化", "地点与事件关系未核实"]
+          "forbidden_direct_claims": ["悟道细节无来源断言", "哲学概念神秘化", "地点与事件关系未核实"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "speaker_position",
+              "candidate_value": "主讲人定位为“证据边界讲解者/地方传说导览者”，先确认周敦颐生平与理学地位，再把月岩悟道放入地方传说和后世阐释层。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#月岩悟道传说：简介", "data/provinces/湖南.md#月岩悟道传说：核实方法"],
+              "writeback_hint": "作为主讲立场候选，不允许把导览口吻写成史实定论。",
+              "verification_note": "人物史实可靠，月岩悟道为传说和后世解释。"
+            },
+            {
+              "field_id": "communication_goal",
+              "candidate_value": "沟通目标：让学习者能用“史料可证的人物—地方传说的场景—视觉隐喻的表达”三栏解释月岩悟道，避免把自然景观直接等同思想来源。",
+              "evidence_level": "training_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#月岩悟道传说：故事梗概", "data/provinces/湖南.md#月岩悟道传说：文化意义"],
+              "writeback_hint": "作为宣讲目标候选，哲学概念需通俗但不神秘化。",
+              "verification_note": "目标围绕本地条目的 GEARS 边界和文化意义设计。"
+            },
+            {
+              "field_id": "practice_task",
+              "candidate_value": "练习任务：给三张卡分类——“周敦颐是北宋哲学家”“月岩洞天光可作视觉隐喻”“月岩直接启发《太极图说》已被史料证明”；让学习者把第三句改成谨慎表述。",
+              "evidence_level": "training_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#月岩悟道传说：待核实点", "data/provinces/湖南.md#周敦颐：不可写成"],
+              "writeback_hint": "作为练习任务候选，只进入培训草案，不写入事实正文。",
+              "verification_note": "练习围绕史实、传说和不可写成边界设计。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "月岩悟道的培训收束句：好故事可以借洞口天光解释阴阳动静，但好知识必须告诉观众哪些来自史料、哪些来自地方传说。",
+              "evidence_level": "training_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#月岩悟道传说：可信度", "data/provinces/湖南.md#月岩悟道传说：文化意义"],
+              "writeback_hint": "作为复盘句候选，强调故事表达与知识边界并存。",
+              "verification_note": "复盘句服务培训表达，不替代周敦颐正式知识条目。"
+            }
+          ]
         },
         {
           "entry_name": "太行山八路军根据地——抗战的中流砥柱",
           "province": "山西",
           "recommended_fields": ["learning_objective", "case_examples", "slide_or_board_assets", "assessment_check"],
           "candidate_status": "candidate_review",
-          "forbidden_direct_claims": ["泛化根据地范围", "口号替代证据", "无来源战斗细节"]
+          "forbidden_direct_claims": ["泛化根据地范围", "口号替代证据", "无来源战斗细节"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "learning_objective",
+              "candidate_value": "学员能把太行山地理屏障、王家峪总部驻地、百团大战和左权十字岭殉国放入1937—1945年敌后抗战脉络，并说清哪些数据和细节需要来源交叉核验。",
+              "evidence_level": "local_entry_with_training_adaptation",
+              "source_refs": ["data/provinces/山西.md#太行山八路军根据地：简介", "data/provinces/山西.md#太行山八路军根据地：故事梗概"],
+              "writeback_hint": "作为 education_training/explainer_video 学习目标候选，避免口号替代证据。",
+              "verification_note": "目标来自本地条目的地理、总部、战役和人物线索。"
+            },
+            {
+              "field_id": "case_examples",
+              "candidate_value": "案例板可分为王家峪总部窑洞指挥空间、百团大战正太铁路破袭线索、十字岭左权殉国与辽县更名、根据地军民反扫荡生活资产四组。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/山西.md#太行山八路军根据地：相关地点", "data/provinces/山西.md#太行山八路军根据地：人物", "data/provinces/山西.md#太行山八路军根据地：场景"],
+              "writeback_hint": "作为案例字段候选，范围、战斗经过和数据口径需保留待核边界。",
+              "verification_note": "案例均来自本地条目；具体路线和战斗细节需 A/B 级来源交叉核验。"
+            },
+            {
+              "field_id": "slide_or_board_assets",
+              "candidate_value": "板书/幻灯可用“山脉—总部—铁路—十字岭”四点图：太行山沟谷、王家峪旧址、正太铁路/百团大战纪念馆、十字岭纪念碑；旁列1937、1940、1942三个时间节点和数据差异提示卡。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/山西.md#太行山八路军根据地：场景陈设", "data/provinces/山西.md#太行山八路军根据地：待核实点"],
+              "writeback_hint": "作为教学资产候选，纪念馆地图、照片和展陈数据需授权与复核。",
+              "verification_note": "图示资产来自本地场景陈设；数据差异卡来自待核实点。"
+            },
+            {
+              "field_id": "assessment_check",
+              "candidate_value": "练习：让学员给“105个团20余万兵力”“总部长期固定在一处”“左权县更名纪念”三类说法标注来源级别、可讲边界和需补证项，训练从口号回到证据。",
+              "evidence_level": "training_adaptation_candidate",
+              "source_refs": ["data/provinces/山西.md#太行山八路军根据地：来源", "data/provinces/山西.md#太行山八路军根据地：待核实点"],
+              "writeback_hint": "作为培训检查题候选，不进入事实正文。",
+              "verification_note": "检查题围绕条目中的来源等级和待核实点设计。"
+            }
+          ]
         }
       ]
     }

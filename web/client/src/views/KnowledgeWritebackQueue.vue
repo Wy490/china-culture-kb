@@ -122,6 +122,22 @@
         <strong>{{ expansionItems.length }}</strong>
       </div>
       <div>
+        <span>扩库字段候选</span>
+        <strong>{{ expansionFieldCandidateCount }}</strong>
+      </div>
+      <div>
+        <span>扩库字段缺口</span>
+        <strong>{{ expansionFieldMissingCount }}</strong>
+      </div>
+      <div>
+        <span>扩库送审字段</span>
+        <strong>{{ expansionFieldReviewReadyCount }}</strong>
+      </div>
+      <div>
+        <span>扩库审稿阻断</span>
+        <strong>{{ expansionFieldReviewBlockerCount }}</strong>
+      </div>
+      <div>
         <span>草案就绪</span>
         <strong>{{ countByStatus('draft_ready') }}</strong>
       </div>
@@ -188,6 +204,11 @@
             <span>扩库候选</span>
             <span>{{ item.province || '待确认省份' }}</span>
             <span>{{ packShortLabel(item.pack_id) }}</span>
+            <span>字段候选 {{ item.field_supplement_candidate_count ?? 0 }}</span>
+            <span>缺口 {{ item.field_missing_candidate_count ?? 0 }}</span>
+            <span>完整度 {{ item.field_candidate_completion_percent ?? 100 }}%</span>
+            <span>送审 {{ item.field_review_ready_count ?? 0 }}</span>
+            <span>阻断 {{ item.field_review_blocker_count ?? 0 }}</span>
             <span v-for="type in item.target_video_types" :key="`${item.review_item_id}:${type}`">
               {{ typeLabel(type) }}
             </span>
@@ -261,6 +282,18 @@ const expansionItems = computed(() => expansionDraft.value?.items ?? [])
 
 const totalQueueCount = computed(() => queueItems.value.length + expansionItems.value.length)
 const filteredTotalCount = computed(() => filteredItems.value.length + filteredExpansionItems.value.length)
+const expansionFieldCandidateCount = computed(() =>
+  expansionItems.value.reduce((sum, item) => sum + (item.field_supplement_candidate_count ?? 0), 0),
+)
+const expansionFieldMissingCount = computed(() =>
+  expansionItems.value.reduce((sum, item) => sum + (item.field_missing_candidate_count ?? 0), 0),
+)
+const expansionFieldReviewReadyCount = computed(() =>
+  expansionItems.value.reduce((sum, item) => sum + (item.field_review_ready_count ?? 0), 0),
+)
+const expansionFieldReviewBlockerCount = computed(() =>
+  expansionItems.value.reduce((sum, item) => sum + (item.field_review_blocker_count ?? 0), 0),
+)
 
 const projectOptions = computed(() => {
   const seen = new Set<string>()
@@ -322,6 +355,18 @@ const filteredExpansionItems = computed(() => {
       item.writeback_draft_markdown,
       item.append_markdown,
       ...item.target_video_types,
+      ...(item.field_workbench ?? []).flatMap(field => [
+        field.field_id,
+        field.supplement_status,
+        field.review_ready ? 'review_ready 审稿就绪' : 'review_blocked 审稿阻断',
+        field.candidate_value ?? '',
+        field.evidence_level ?? '',
+        field.writeback_hint ?? '',
+        field.verification_note ?? '',
+        ...field.review_ready_missing,
+        ...field.source_refs,
+        ...field.review_questions,
+      ]),
     ].join(' ').toLowerCase()
     return (!videoTypeFilter.value || item.target_video_types.includes(videoTypeFilter.value))
       && (!provinceFilter.value || item.province === provinceFilter.value)
@@ -525,7 +570,9 @@ async function copyExpansionDraft(format: 'markdown' | 'json') {
         : res.data.markdown
       await navigator.clipboard.writeText(clipboardText)
       const exportLabel = format === 'json' ? '扩库 JSON 导出包' : '扩库 Markdown 草案'
-      copyMessage.value = `已复制 ${exportLabel}：${res.data.approved_count}/${visibleItems.length} 条当前可见扩库草案，目标文件 ${res.data.target_files.length} 个。`
+      const fieldCandidateCount = res.data.items.reduce((sum, item) => sum + (item.field_supplement_candidate_count ?? 0), 0)
+      const fieldMissingCount = res.data.items.reduce((sum, item) => sum + (item.field_missing_candidate_count ?? 0), 0)
+      copyMessage.value = `已复制 ${exportLabel}：${res.data.approved_count}/${visibleItems.length} 条当前可见扩库草案，字段候选 ${fieldCandidateCount} 个，缺口 ${fieldMissingCount} 个，目标文件 ${res.data.target_files.length} 个。`
     } else {
       error.value = res.error?.message ?? '导出扩库写回草案失败'
     }

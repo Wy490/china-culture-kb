@@ -142,6 +142,15 @@ function makeDomainPackExpansionCandidateBatches() {
       entry_name: `${packId} 种子条目`,
       province: '湖南',
       recommended_fields: ['core_question'],
+      field_supplement_candidates: [{
+        field_id: 'core_question',
+        candidate_value: `${packId} 字段级测试候选值`,
+        evidence_level: 'source_cue',
+        source_refs: ['湖南.md#测试来源'],
+        review_questions: ['字段候选值是否可作为审稿草案？'],
+        writeback_hint: '作为字段级候选草案进入审稿，不直接写回。',
+        verification_note: '测试夹具仅验证字段工作台汇总链路。',
+      }],
       candidate_status: 'candidate_review',
       forbidden_direct_claims: ['未经审稿不得写回正式知识库'],
     }],
@@ -322,7 +331,20 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.domain_pack_expansion_batch_count).toBe(8);
     expect(result.summary.domain_pack_expansion_seed_target_count).toBe(8);
     expect(result.summary.domain_pack_expansion_candidate_field_count).toBe(8);
+    expect(result.summary.domain_pack_expansion_pipeline_progress_percent).toBe(75);
+    expect(result.summary.domain_pack_expansion_pipeline_stage).toBe('human_review');
+    expect(result.summary.domain_pack_expansion_field_workbench_item_count).toBe(8);
+    expect(result.summary.domain_pack_expansion_field_supplement_candidate_count).toBe(8);
+    expect(result.summary.domain_pack_expansion_field_missing_candidate_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_field_candidate_completion_percent).toBe(100);
+    expect(result.summary.domain_pack_expansion_field_review_ready_count).toBe(8);
+    expect(result.summary.domain_pack_expansion_field_review_blocker_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_field_review_ready_percent).toBe(100);
+    expect(result.summary.domain_pack_expansion_field_supplement_priority_target_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_review_ready_priority_target_count).toBe(8);
     expect(result.summary.domain_pack_expansion_issue_count).toBe(0);
+    expect(result.summary.domain_pack_expansion_review_ready_item_count).toBe(8);
+    expect(result.summary.domain_pack_expansion_review_blocked_item_count).toBe(0);
     expect(result.summary.domain_pack_expansion_review_candidate_count).toBe(8);
     expect(result.summary.domain_pack_expansion_review_approved_count).toBe(0);
     expect(result.summary.domain_pack_expansion_review_rejected_count).toBe(0);
@@ -415,6 +437,19 @@ describe('kb_get_story_agent_mvp_status', () => {
       'domain_pack_expansion_batches=8',
       'domain_pack_expansion_seed_targets=8',
       'domain_pack_expansion_candidate_fields=8',
+      'domain_pack_expansion_progress=75',
+      'domain_pack_expansion_stage=human_review',
+      'domain_pack_expansion_field_workbench_items=8',
+      'domain_pack_expansion_field_samples=8',
+      'domain_pack_expansion_field_missing=0',
+      'domain_pack_expansion_field_completion=100',
+      'domain_pack_expansion_field_review_ready=8',
+      'domain_pack_expansion_field_review_blockers=0',
+      'domain_pack_expansion_field_review_ready_percent=100',
+      'domain_pack_expansion_field_priority_targets=0',
+      'domain_pack_expansion_review_ready_priority_targets=8',
+      'domain_pack_expansion_review_ready_items=8',
+      'domain_pack_expansion_review_blocked_items=0',
       'domain_pack_expansion_review_approved=0',
       'domain_pack_expansion_approved_writeback_drafts=0',
       'domain_pack_expansion_writeback_queued=0',
@@ -461,6 +496,19 @@ describe('kb_get_story_agent_mvp_status', () => {
         key: 'domain_pack_expansion',
         status: 'ready',
         evidence: expect.arrayContaining([
+          'field_workbench_item_count=8',
+          'pipeline_progress_percent=75',
+          'pipeline_stage=human_review',
+          'field_supplement_candidate_count=8',
+          'field_missing_candidate_count=0',
+          'field_candidate_completion_percent=100',
+          'field_review_ready_count=8',
+          'field_review_blocker_count=0',
+          'field_review_ready_percent=100',
+          'field_supplement_priority_target_count=0',
+          'review_ready_priority_target_count=8',
+          'review_ready_item_count=8',
+          'review_blocked_item_count=0',
           'review_candidate_count=8',
           'review_approved_count=0',
           'approved_writeback_drafts=0',
@@ -492,6 +540,13 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.markdown).toContain('production material pack health: passed');
     expect(result.markdown).toContain('domain pack health: passed');
     expect(result.markdown).toContain('domain pack expansion candidates: passed');
+    expect(result.markdown).toContain('domain pack expansion pipeline progress: 75%');
+    expect(result.markdown).toContain('domain pack expansion pipeline stage: human_review');
+    expect(result.markdown).toContain('domain pack expansion field workbench items: 8');
+    expect(result.markdown).toContain('domain pack expansion field supplement candidates: 8');
+    expect(result.markdown).toContain('domain pack expansion field missing candidates: 0');
+    expect(result.markdown).toContain('domain pack expansion field candidate completion: 100%');
+    expect(result.markdown).toContain('domain pack expansion field supplement priority targets: 0');
     expect(result.markdown).toContain('domain pack expansion review approved: 0');
     expect(result.markdown).toContain('domain pack expansion approved writeback drafts: 0');
     expect(result.markdown).toContain('Seedance placeholder assets: 2');
