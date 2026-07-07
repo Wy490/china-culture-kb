@@ -1901,6 +1901,17 @@ export interface StoryAgentMvpStatusReport {
     readiness_blocked_count: number;
     ready_automation_step_count: number;
     external_or_manual_step_count: number;
+    real_gears_endpoint_configured: boolean;
+    real_gears_callback_secret_configured: boolean;
+    real_gears_callback_base_configured: boolean;
+    real_gears_callback_base_public: boolean;
+    real_gears_acceptance_ready_to_run: boolean;
+    real_gears_acceptance_blocker: string;
+    local_acceptance_counts_as_real_external_callback: false;
+    seedance_provider_submit_adapter_configured: boolean;
+    seedance_provider_poll_adapter_configured: boolean;
+    seedance_provider_callback_base_configured: boolean;
+    seedance_provider_external_loop_ready: boolean;
     seedance_placeholder_asset_count: number;
     seedance_production_asset_ready_count: number;
     knowledge_writeback_ready_count: number;

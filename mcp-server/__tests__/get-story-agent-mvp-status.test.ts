@@ -270,6 +270,17 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.seedance_placeholder_asset_count).toBe(2);
     expect(result.summary.seedance_production_asset_ready_count).toBe(1);
+    expect(typeof result.summary.real_gears_endpoint_configured).toBe('boolean');
+    expect(typeof result.summary.real_gears_callback_secret_configured).toBe('boolean');
+    expect(typeof result.summary.real_gears_callback_base_configured).toBe('boolean');
+    expect(typeof result.summary.real_gears_callback_base_public).toBe('boolean');
+    expect(typeof result.summary.real_gears_acceptance_ready_to_run).toBe('boolean');
+    expect(typeof result.summary.real_gears_acceptance_blocker).toBe('string');
+    expect(result.summary.local_acceptance_counts_as_real_external_callback).toBe(false);
+    expect(typeof result.summary.seedance_provider_submit_adapter_configured).toBe('boolean');
+    expect(typeof result.summary.seedance_provider_poll_adapter_configured).toBe('boolean');
+    expect(typeof result.summary.seedance_provider_callback_base_configured).toBe('boolean');
+    expect(typeof result.summary.seedance_provider_external_loop_ready).toBe('boolean');
     expect(result.summary.knowledge_writeback_ready_count).toBe(1);
     expect(result.summary.knowledge_writeback_project_ready_count).toBe(1);
     expect(result.summary.knowledge_writeback_expansion_ready_count).toBe(0);
@@ -427,6 +438,19 @@ describe('kb_get_story_agent_mvp_status', () => {
       'local_target_health_tracked_by=delivery_contract_lane',
       'real_media_execution=gears_v2',
     ]));
+    expect(result.progress.find(slice => slice.key === 'gears_end_to_end_acceptance')?.evidence).toEqual(expect.arrayContaining([
+      'acceptance_progress=95',
+      expect.stringContaining('gears_endpoint_configured='),
+      expect.stringContaining('gears_callback_secret_configured='),
+      expect.stringContaining('gears_callback_base_configured='),
+      expect.stringContaining('gears_callback_base_public='),
+      expect.stringContaining('ready_to_run_real_acceptance='),
+      'local_acceptance_counts_as_real_external_callback=false',
+      expect.stringContaining('seedance_provider_external_loop_ready='),
+      expect.stringContaining('external_or_manual_steps='),
+      'requires=run-gears-worker-acceptance.sh',
+      'requires=worker_evidence_signoff',
+    ]));
     expect(result.lanes).toEqual(expect.arrayContaining([
       expect.objectContaining({
         key: 'generated_governance',
@@ -471,11 +495,62 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.markdown).toContain('domain pack expansion review approved: 0');
     expect(result.markdown).toContain('domain pack expansion approved writeback drafts: 0');
     expect(result.markdown).toContain('Seedance placeholder assets: 2');
+    expect(result.markdown).toContain('local acceptance counts as real external callback: false');
     expect(result.markdown).toContain('knowledge writeback queued: 1');
     expect(result.markdown).toContain('knowledge writeback unified export: ready');
     expect(result.markdown).toContain('knowledge writeback unified export target files: 1');
     expect(result.markdown).toContain('production delivery contract: 100%');
     expect(result.markdown).toContain('Story Agent command surface: ready · 100%');
+  });
+
+  it('does not count local callback URLs as real external GEARS callback readiness', async () => {
+    const previous = {
+      apiBaseUrl: process.env.GEARS_API_BASE_URL,
+      callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+      callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+      publicApiBaseUrl: process.env.PUBLIC_API_BASE_URL,
+      appBaseUrl: process.env.APP_BASE_URL,
+    };
+    try {
+      process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+      process.env.GEARS_CALLBACK_SECRET = 'private-callback-token';
+      process.env.GEARS_CALLBACK_BASE_URL = 'http://127.0.0.1:3002';
+      delete process.env.PUBLIC_API_BASE_URL;
+      delete process.env.APP_BASE_URL;
+
+      const result = await getStoryAgentMvpStatus({ generated_limit: 10, portfolio_limit: 10 });
+
+      expect(result.summary.real_gears_endpoint_configured).toBe(true);
+      expect(result.summary.real_gears_callback_secret_configured).toBe(true);
+      expect(result.summary.real_gears_callback_base_configured).toBe(true);
+      expect(result.summary.real_gears_callback_base_public).toBe(false);
+      expect(result.summary.real_gears_acceptance_ready_to_run).toBe(false);
+      expect(result.summary.real_gears_acceptance_blocker).toBe('real_gears_callback_base_not_public');
+      expect(result.summary.local_acceptance_counts_as_real_external_callback).toBe(false);
+      const gearsAcceptance = result.progress.find(slice => slice.key === 'gears_end_to_end_acceptance');
+      expect(gearsAcceptance).toMatchObject({
+        blocker: 'real_gears_callback_base_not_public',
+      });
+      expect(gearsAcceptance?.evidence).toEqual(expect.arrayContaining([
+        'gears_endpoint_configured=true',
+        'gears_callback_secret_configured=true',
+        'gears_callback_base_configured=true',
+        'gears_callback_base_public=false',
+        'ready_to_run_real_acceptance=false',
+        'local_acceptance_counts_as_real_external_callback=false',
+      ]));
+    } finally {
+      if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+      else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+      if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+      else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+      if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+      else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+      if (previous.publicApiBaseUrl === undefined) delete process.env.PUBLIC_API_BASE_URL;
+      else process.env.PUBLIC_API_BASE_URL = previous.publicApiBaseUrl;
+      if (previous.appBaseUrl === undefined) delete process.env.APP_BASE_URL;
+      else process.env.APP_BASE_URL = previous.appBaseUrl;
+    }
   });
 
   it('can omit markdown for compact agent reads', async () => {

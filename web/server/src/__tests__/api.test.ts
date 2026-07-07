@@ -1382,6 +1382,17 @@ describe('System API', () => {
           readiness_target_count: expect.any(Number),
           ready_automation_step_count: expect.any(Number),
           external_or_manual_step_count: expect.any(Number),
+          real_gears_endpoint_configured: expect.any(Boolean),
+          real_gears_callback_secret_configured: expect.any(Boolean),
+          real_gears_callback_base_configured: expect.any(Boolean),
+          real_gears_callback_base_public: expect.any(Boolean),
+          real_gears_acceptance_ready_to_run: expect.any(Boolean),
+          real_gears_acceptance_blocker: expect.any(String),
+          local_acceptance_counts_as_real_external_callback: false,
+          seedance_provider_submit_adapter_configured: expect.any(Boolean),
+          seedance_provider_poll_adapter_configured: expect.any(Boolean),
+          seedance_provider_callback_base_configured: expect.any(Boolean),
+          seedance_provider_external_loop_ready: expect.any(Boolean),
           seedance_placeholder_asset_count: expect.any(Number),
           seedance_production_asset_ready_count: expect.any(Number),
           knowledge_writeback_ready_count: expect.any(Number),
@@ -1473,6 +1484,7 @@ describe('System API', () => {
       expect(res.body.data.summary.generated_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.markdown).toContain('Seedance placeholder assets');
+      expect(res.body.data.markdown).toContain('local acceptance counts as real external callback: false');
       expect(res.body.data.markdown).toContain('knowledge writeback ready drafts');
       expect(res.body.data.markdown).toContain('domain pack expansion review approved: 0');
       expect(res.body.data.markdown).toContain('domain pack expansion approved writeback drafts: 0');
@@ -1553,6 +1565,19 @@ describe('System API', () => {
         'local_target_health_tracked_by=delivery_contract_lane',
         'real_media_execution=gears_v2',
       ]));
+      expect(res.body.data.progress.find((slice: any) => slice.key === 'gears_end_to_end_acceptance')?.evidence).toEqual(expect.arrayContaining([
+        'acceptance_progress=95',
+        expect.stringContaining('gears_endpoint_configured='),
+        expect.stringContaining('gears_callback_secret_configured='),
+        expect.stringContaining('gears_callback_base_configured='),
+        expect.stringContaining('gears_callback_base_public='),
+        expect.stringContaining('ready_to_run_real_acceptance='),
+        'local_acceptance_counts_as_real_external_callback=false',
+        expect.stringContaining('seedance_provider_external_loop_ready='),
+        expect.stringContaining('external_or_manual_steps='),
+        'requires=run-gears-worker-acceptance.sh',
+        'requires=worker_evidence_signoff',
+      ]));
       expect(res.body.data.lanes).toEqual(expect.arrayContaining([
         expect.objectContaining({
           key: 'generated_governance',
@@ -1613,6 +1638,60 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('Domain pack expansion candidates');
       expect(res.body.data.markdown).toContain('Story Agent command surface: ready · 100%');
       expect(res.body.data.markdown).toContain('Delivery contract');
+    });
+
+    it('does not count local callback URLs as real external GEARS callback readiness', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_API_BASE_URL,
+        callbackSecret: process.env.GEARS_CALLBACK_SECRET,
+        callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
+        publicApiBaseUrl: process.env.PUBLIC_API_BASE_URL,
+        appBaseUrl: process.env.APP_BASE_URL,
+      };
+      try {
+        process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+        process.env.GEARS_CALLBACK_SECRET = 'private-callback-token';
+        process.env.GEARS_CALLBACK_BASE_URL = 'http://127.0.0.1:3002';
+        delete process.env.PUBLIC_API_BASE_URL;
+        delete process.env.APP_BASE_URL;
+
+        const res = await request.get('/api/system/story-agent-mvp-status?generatedLimit=10&portfolioLimit=10');
+
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data.summary).toMatchObject({
+          real_gears_endpoint_configured: true,
+          real_gears_callback_secret_configured: true,
+          real_gears_callback_base_configured: true,
+          real_gears_callback_base_public: false,
+          real_gears_acceptance_ready_to_run: false,
+          real_gears_acceptance_blocker: 'real_gears_callback_base_not_public',
+          local_acceptance_counts_as_real_external_callback: false,
+        });
+        const gearsAcceptance = res.body.data.progress.find((slice: any) => slice.key === 'gears_end_to_end_acceptance');
+        expect(gearsAcceptance).toMatchObject({
+          blocker: 'real_gears_callback_base_not_public',
+        });
+        expect(gearsAcceptance?.evidence).toEqual(expect.arrayContaining([
+          'gears_endpoint_configured=true',
+          'gears_callback_secret_configured=true',
+          'gears_callback_base_configured=true',
+          'gears_callback_base_public=false',
+          'ready_to_run_real_acceptance=false',
+          'local_acceptance_counts_as_real_external_callback=false',
+        ]));
+      } finally {
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
+        else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
+        else process.env.GEARS_CALLBACK_SECRET = previous.callbackSecret;
+        if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
+        else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
+        if (previous.publicApiBaseUrl === undefined) delete process.env.PUBLIC_API_BASE_URL;
+        else process.env.PUBLIC_API_BASE_URL = previous.publicApiBaseUrl;
+        if (previous.appBaseUrl === undefined) delete process.env.APP_BASE_URL;
+        else process.env.APP_BASE_URL = previous.appBaseUrl;
+      }
     });
   });
 

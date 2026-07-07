@@ -103,6 +103,17 @@ export interface StoryAgentMvpStatusReport {
     readiness_blocked_count: number;
     ready_automation_step_count: number;
     external_or_manual_step_count: number;
+    real_gears_endpoint_configured: boolean;
+    real_gears_callback_secret_configured: boolean;
+    real_gears_callback_base_configured: boolean;
+    real_gears_callback_base_public: boolean;
+    real_gears_acceptance_ready_to_run: boolean;
+    real_gears_acceptance_blocker: string;
+    local_acceptance_counts_as_real_external_callback: false;
+    seedance_provider_submit_adapter_configured: boolean;
+    seedance_provider_poll_adapter_configured: boolean;
+    seedance_provider_callback_base_configured: boolean;
+    seedance_provider_external_loop_ready: boolean;
     seedance_placeholder_asset_count: number;
     seedance_production_asset_ready_count: number;
     knowledge_writeback_ready_count: number;
@@ -238,6 +249,33 @@ const KNOWLEDGE_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'needs_revision',
 ];
 
+const GEARS_CALLBACK_BASE_ENVS = [
+  'GEARS_CALLBACK_BASE_URL',
+  'PUBLIC_API_BASE_URL',
+  'APP_BASE_URL',
+] as const;
+
+const SEEDANCE_PROVIDER_CALLBACK_BASE_ENVS = [
+  'SEEDANCE_PROVIDER_CALLBACK_BASE_URL',
+  'GEARS_CALLBACK_BASE_URL',
+  'PUBLIC_API_BASE_URL',
+  'APP_BASE_URL',
+] as const;
+
+interface RealExternalAcceptanceMetrics {
+  real_gears_endpoint_configured: boolean;
+  real_gears_callback_secret_configured: boolean;
+  real_gears_callback_base_configured: boolean;
+  real_gears_callback_base_public: boolean;
+  real_gears_acceptance_ready_to_run: boolean;
+  real_gears_acceptance_blocker: string;
+  local_acceptance_counts_as_real_external_callback: false;
+  seedance_provider_submit_adapter_configured: boolean;
+  seedance_provider_poll_adapter_configured: boolean;
+  seedance_provider_callback_base_configured: boolean;
+  seedance_provider_external_loop_ready: boolean;
+}
+
 interface KnowledgeWritebackQueueMetrics {
   ready_count: number;
   project_ready_count: number;
@@ -309,6 +347,75 @@ function asArray(value: unknown): unknown[] {
 
 function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function envConfigured(name: string): boolean {
+  return Boolean(process.env[name]?.trim());
+}
+
+function firstConfiguredEnvValue(envNames: readonly string[]): string | undefined {
+  for (const envName of envNames) {
+    const value = process.env[envName]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function isPublicCallbackBaseUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    return ['http:', 'https:'].includes(parsed.protocol)
+      && hostname !== 'localhost'
+      && hostname !== '0.0.0.0'
+      && hostname !== '::1'
+      && !hostname.startsWith('127.')
+      && !hostname.endsWith('.localhost')
+      && !hostname.endsWith('.local')
+      && !hostname.endsWith('.invalid');
+  } catch {
+    return false;
+  }
+}
+
+function getRealExternalAcceptanceMetrics(): RealExternalAcceptanceMetrics {
+  const realGearsEndpointConfigured = envConfigured('GEARS_API_BASE_URL');
+  const realGearsCallbackSecretConfigured = envConfigured('GEARS_CALLBACK_SECRET');
+  const gearsCallbackBase = firstConfiguredEnvValue(GEARS_CALLBACK_BASE_ENVS);
+  const realGearsCallbackBaseConfigured = Boolean(gearsCallbackBase);
+  const realGearsCallbackBasePublic = isPublicCallbackBaseUrl(gearsCallbackBase);
+  const realGearsAcceptanceReadyToRun = realGearsEndpointConfigured
+    && realGearsCallbackSecretConfigured
+    && realGearsCallbackBaseConfigured
+    && realGearsCallbackBasePublic;
+  const seedanceProviderSubmitAdapterConfigured = envConfigured('SEEDANCE_PROVIDER_SUBMIT_ENDPOINT');
+  const seedanceProviderPollAdapterConfigured = envConfigured('SEEDANCE_PROVIDER_POLL_ENDPOINT');
+  const seedanceProviderCallbackBaseConfigured = Boolean(firstConfiguredEnvValue(SEEDANCE_PROVIDER_CALLBACK_BASE_ENVS));
+
+  return {
+    real_gears_endpoint_configured: realGearsEndpointConfigured,
+    real_gears_callback_secret_configured: realGearsCallbackSecretConfigured,
+    real_gears_callback_base_configured: realGearsCallbackBaseConfigured,
+    real_gears_callback_base_public: realGearsCallbackBasePublic,
+    real_gears_acceptance_ready_to_run: realGearsAcceptanceReadyToRun,
+    real_gears_acceptance_blocker: realGearsAcceptanceReadyToRun
+      ? 'gears_worker_signoff_evidence_pending'
+      : !realGearsEndpointConfigured
+        ? 'real_gears_v2_endpoint_not_configured'
+        : !realGearsCallbackSecretConfigured
+          ? 'real_gears_callback_secret_not_configured'
+          : !realGearsCallbackBaseConfigured
+            ? 'real_gears_callback_base_not_configured'
+            : 'real_gears_callback_base_not_public',
+    local_acceptance_counts_as_real_external_callback: false,
+    seedance_provider_submit_adapter_configured: seedanceProviderSubmitAdapterConfigured,
+    seedance_provider_poll_adapter_configured: seedanceProviderPollAdapterConfigured,
+    seedance_provider_callback_base_configured: seedanceProviderCallbackBaseConfigured,
+    seedance_provider_external_loop_ready: seedanceProviderSubmitAdapterConfigured
+      && seedanceProviderPollAdapterConfigured
+      && seedanceProviderCallbackBaseConfigured,
+  };
 }
 
 async function readJson(filePath: string): Promise<JsonRecord | undefined> {
@@ -941,8 +1048,8 @@ function progressSlices(
   domainPackExpansionCandidates: DomainPackExpansionCandidateReport,
   writebackMetrics: KnowledgeWritebackQueueMetrics,
   portfolio: ProductionReadinessPortfolioReport,
+  realExternalAcceptanceMetrics: RealExternalAcceptanceMetrics,
 ): StoryAgentMvpProgressSlice[] {
-  const endpointConfigured = Boolean(process.env.GEARS_API_BASE_URL?.trim());
   const hasLocalContractBlocker = lanes.some(lane => lane.status === 'blocked');
   const externalOrManual = portfolio.summary.external_automation_step_count
     + portfolio.summary.manual_automation_step_count;
@@ -1045,11 +1152,20 @@ function progressSlices(
       label: 'GEARS v2 end-to-end acceptance',
       status: 'needs_action',
       percent: 95,
-      detail: 'The remaining work is reachable GEARS v2 submit/status/callback smoke plus large-project worker pressure sign-off with real worker responses.',
-      blocker: endpointConfigured ? 'gears_worker_signoff_evidence_pending' : 'real_gears_v2_endpoint_not_configured',
+      detail: 'The remaining work is reachable GEARS v2 submit/status/callback smoke plus large-project worker pressure sign-off with real worker responses; local acceptance does not count as real external callback evidence.',
+      blocker: realExternalAcceptanceMetrics.real_gears_acceptance_blocker,
       evidence: [
         'acceptance_progress=95',
-        `gears_endpoint_configured=${endpointConfigured}`,
+        `gears_endpoint_configured=${realExternalAcceptanceMetrics.real_gears_endpoint_configured}`,
+        `gears_callback_secret_configured=${realExternalAcceptanceMetrics.real_gears_callback_secret_configured}`,
+        `gears_callback_base_configured=${realExternalAcceptanceMetrics.real_gears_callback_base_configured}`,
+        `gears_callback_base_public=${realExternalAcceptanceMetrics.real_gears_callback_base_public}`,
+        `ready_to_run_real_acceptance=${realExternalAcceptanceMetrics.real_gears_acceptance_ready_to_run}`,
+        `local_acceptance_counts_as_real_external_callback=${realExternalAcceptanceMetrics.local_acceptance_counts_as_real_external_callback}`,
+        `seedance_provider_submit_adapter_configured=${realExternalAcceptanceMetrics.seedance_provider_submit_adapter_configured}`,
+        `seedance_provider_poll_adapter_configured=${realExternalAcceptanceMetrics.seedance_provider_poll_adapter_configured}`,
+        `seedance_provider_callback_base_configured=${realExternalAcceptanceMetrics.seedance_provider_callback_base_configured}`,
+        `seedance_provider_external_loop_ready=${realExternalAcceptanceMetrics.seedance_provider_external_loop_ready}`,
         `external_or_manual_steps=${externalOrManual}`,
         'requires=run-gears-worker-acceptance.sh',
         'requires=worker_evidence_signoff',
@@ -1090,6 +1206,13 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     `- knowledge writeback unified export province written: ${report.summary.knowledge_writeback_unified_export_province_markdown_written}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
+    `- real GEARS endpoint configured: ${report.summary.real_gears_endpoint_configured}`,
+    `- real GEARS callback secret configured: ${report.summary.real_gears_callback_secret_configured}`,
+    `- real GEARS callback base public: ${report.summary.real_gears_callback_base_public}`,
+    `- real GEARS acceptance ready to run: ${report.summary.real_gears_acceptance_ready_to_run}`,
+    `- real GEARS acceptance blocker: ${report.summary.real_gears_acceptance_blocker}`,
+    `- local acceptance counts as real external callback: ${report.summary.local_acceptance_counts_as_real_external_callback}`,
+    `- Seedance provider external loop ready: ${report.summary.seedance_provider_external_loop_ready}`,
     `- generated governance actions: ${report.summary.generated_governance_action_count}`,
     `- generated governance P0/P1 actions: ${report.summary.generated_governance_p0_p1_action_count}`,
     `- generated governance ready signoff candidates: ${report.summary.generated_governance_ready_signoff_candidate_count}`,
@@ -1178,6 +1301,7 @@ export async function getStoryAgentMvpStatus(
   const externalOrManual = productionPortfolio.summary.external_automation_step_count
     + productionPortfolio.summary.manual_automation_step_count;
   const domainPackExpansionReview = domainPackExpansionReviewMetrics(domainPackExpansionCandidates);
+  const realExternalAcceptanceMetrics = getRealExternalAcceptanceMetrics();
   const progress = progressSlices(
     lanes,
     generatedHealth,
@@ -1187,6 +1311,7 @@ export async function getStoryAgentMvpStatus(
     domainPackExpansionCandidates,
     writebackMetrics,
     productionPortfolio,
+    realExternalAcceptanceMetrics,
   );
   const base: Omit<StoryAgentMvpStatusReport, 'markdown'> = {
     schema_version: 'mcp-story-agent-mvp-status/v1',
@@ -1205,6 +1330,17 @@ export async function getStoryAgentMvpStatus(
       readiness_blocked_count: productionPortfolio.summary.blocked_count,
       ready_automation_step_count: productionPortfolio.summary.ready_automation_step_count,
       external_or_manual_step_count: externalOrManual,
+      real_gears_endpoint_configured: realExternalAcceptanceMetrics.real_gears_endpoint_configured,
+      real_gears_callback_secret_configured: realExternalAcceptanceMetrics.real_gears_callback_secret_configured,
+      real_gears_callback_base_configured: realExternalAcceptanceMetrics.real_gears_callback_base_configured,
+      real_gears_callback_base_public: realExternalAcceptanceMetrics.real_gears_callback_base_public,
+      real_gears_acceptance_ready_to_run: realExternalAcceptanceMetrics.real_gears_acceptance_ready_to_run,
+      real_gears_acceptance_blocker: realExternalAcceptanceMetrics.real_gears_acceptance_blocker,
+      local_acceptance_counts_as_real_external_callback: realExternalAcceptanceMetrics.local_acceptance_counts_as_real_external_callback,
+      seedance_provider_submit_adapter_configured: realExternalAcceptanceMetrics.seedance_provider_submit_adapter_configured,
+      seedance_provider_poll_adapter_configured: realExternalAcceptanceMetrics.seedance_provider_poll_adapter_configured,
+      seedance_provider_callback_base_configured: realExternalAcceptanceMetrics.seedance_provider_callback_base_configured,
+      seedance_provider_external_loop_ready: realExternalAcceptanceMetrics.seedance_provider_external_loop_ready,
       seedance_placeholder_asset_count: productionPortfolio.summary.seedance_placeholder_asset_count,
       seedance_production_asset_ready_count: productionPortfolio.summary.seedance_production_asset_ready_count,
       knowledge_writeback_ready_count: writebackMetrics.ready_count,

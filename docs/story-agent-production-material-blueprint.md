@@ -91,6 +91,7 @@
 85. 将双来源写回队列纳入 MVP 总控：Web/MCP `story-agent-mvp-status` 保留原有项目写回字段，同时新增 `knowledge_writeback_total_*` 与 `knowledge_writeback_expansion_*` summary/evidence，`knowledge_writeback` lane 的状态、score 和 next action 按项目草案 + 扩库草案总负载计算；GEARS 既有项目写回治理计数不被改语义，扩库补库压力也不会在总控中隐身。
 86. 建立双来源知识库写回统一导出包：新增 Web 系统级 `knowledge-writeback-queue-export/v1`，把当前筛选范围内已审通过的项目写回 Patch 与 Domain Pack 扩库写回草案合并为统一 Markdown/JSON 包；前端 `/knowledge-writeback-queue` 可复制“统一 MD/JSON”，包内保留项目/扩库拆分计数、总状态计数、目标文件和 `province_markdown_written=false`，仍只服务人工 PR/审稿工具，不直接写 `data/provinces/*.md`。
 87. 对齐 MCP 统一写回导出命令面：新增 `kb_get_knowledge_writeback_queue_export`，可离线扫描 `web/generated/projects` 中已通过审稿的项目写回草案，并与 Domain Pack 扩库 approved 草案合并输出同 schema 的统一导出包；支持按项目、片型、省份、写回状态、项目 task key 和扩库 review item ID 筛选，`project_id` 筛选时不会混入扩库草案，继续保持 `province_markdown_written=false`。
+88. 收紧 Story Agent MVP 总控的真实外部回片 gate：Web/MCP `story-agent-mvp-status` 新增 GEARS API、callback secret、callback base、callback base public、`ready_to_run_real_acceptance`、Seedance provider adapter 和 `local_acceptance_counts_as_real_external_callback=false` 字段；`gears_end_to_end_acceptance` 进度证据会在 callback base 是 localhost/127.0.0.1/`.local`/`.invalid` 等本地地址时阻断为 `real_gears_callback_base_not_public`，避免把本地 acceptance 或本地回环配置误报成真实 GEARS/Seedance 外部回片准备完成。
 
 ## 原始诊断必须并入路线
 
