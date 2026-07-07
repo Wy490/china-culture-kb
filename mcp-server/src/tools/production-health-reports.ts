@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
 
@@ -320,6 +320,97 @@ export type DomainPackExpansionCandidateToolResult = DomainPackExpansionCandidat
 export type DomainPackExpansionWritebackDraftToolResult =
   Omit<DomainPackExpansionWritebackDraftPackage, 'markdown'> & { markdown?: string };
 
+interface ProjectKnowledgeWritebackPatchItem {
+  task_key?: string;
+  project_id?: string;
+  project_title?: string;
+  video_type?: string;
+  target_province?: string;
+  task_id: string;
+  label: string;
+  source_entry: string;
+  suggested_file_path: string;
+  suggested_section_heading: string;
+  review_note?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
+  append_markdown: string;
+  writeback_draft_markdown: string;
+}
+
+interface ProjectKnowledgeWritebackPatchFilters {
+  project_id?: string;
+  video_type?: string;
+  province?: string;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+  search_query?: string;
+  task_key_count?: number;
+}
+
+interface ProjectKnowledgeWritebackPatchPackage {
+  schema_version: 'project-knowledge-writeback-patch/v1';
+  exported_at: string;
+  project_id: string;
+  project_title: string;
+  source_entry: string;
+  filters?: ProjectKnowledgeWritebackPatchFilters;
+  approved_count: number;
+  project_count?: number;
+  status_counts?: Record<KnowledgeWritebackStatus, number>;
+  target_files: string[];
+  pr_title: string;
+  pr_body: string;
+  markdown: string;
+  items: ProjectKnowledgeWritebackPatchItem[];
+}
+
+interface KnowledgeWritebackQueueExportFilters {
+  project_id?: string;
+  video_type?: string;
+  province?: string;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+  search_query?: string;
+  project_task_key_count?: number;
+  expansion_review_item_count?: number;
+}
+
+interface KnowledgeWritebackQueueExportStatusCounts {
+  project: Record<KnowledgeWritebackStatus, number>;
+  expansion: Record<KnowledgeWritebackStatus, number>;
+  total: Record<KnowledgeWritebackStatus, number>;
+}
+
+interface KnowledgeWritebackQueueExportPackage {
+  schema_version: 'knowledge-writeback-queue-export/v1';
+  exported_at: string;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  filters: KnowledgeWritebackQueueExportFilters;
+  approved_count: number;
+  project_approved_count: number;
+  expansion_approved_count: number;
+  project_count: number;
+  target_files: string[];
+  status_counts: KnowledgeWritebackQueueExportStatusCounts;
+  project_patch: ProjectKnowledgeWritebackPatchPackage;
+  expansion_draft: DomainPackExpansionWritebackDraftToolResult;
+  markdown: string;
+}
+
+export type KnowledgeWritebackQueueExportToolResult =
+  Omit<KnowledgeWritebackQueueExportPackage, 'markdown'> & { markdown?: string };
+
+export interface KnowledgeWritebackQueueExportToolInput {
+  include_markdown?: boolean;
+  project_id?: string;
+  video_type?: string;
+  province?: string;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+  search_query?: string;
+  project_task_keys?: string[];
+  expansion_review_item_ids?: string[];
+}
+
 export interface DomainPackExpansionReviewStateUpdateInput {
   review_item_id: string;
   review_status: DomainPackExpansionReviewStatus;
@@ -546,6 +637,19 @@ function isRecord(value: unknown): value is JsonRecord {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function readJsonRecordFile(filePath: string): JsonRecord | undefined {
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, 'utf8')) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function duplicateStrings(values: string[]): string[] {
@@ -1467,6 +1571,53 @@ export function getDomainPackExpansionWritebackDraftToolResult(input: {
     };
 }
 
+export function getKnowledgeWritebackQueueExportToolResult(
+  input: KnowledgeWritebackQueueExportToolInput = {},
+): KnowledgeWritebackQueueExportToolResult {
+  const exportedAt = new Date().toISOString();
+  const projectPatch = getProjectKnowledgeWritebackPatchPackage(input, exportedAt);
+  const expansionDraft = input.project_id
+    ? emptyDomainPackExpansionWritebackDraftToolResult(exportedAt, input.include_markdown)
+    : getDomainPackExpansionWritebackDraftToolResult({
+      include_markdown: input.include_markdown,
+      review_item_ids: input.expansion_review_item_ids,
+      video_types: input.video_type ? [input.video_type] : undefined,
+      provinces: input.province ? [input.province] : undefined,
+      writeback_statuses: input.knowledge_writeback_status ? [input.knowledge_writeback_status] : undefined,
+    });
+  const targetFiles = [...new Set([
+    ...projectPatch.target_files,
+    ...expansionDraft.target_files,
+  ])].sort((a, b) => a.localeCompare(b));
+  const statusCounts = {
+    project: normalizeKnowledgeWritebackStatusCounts(projectPatch.status_counts),
+    expansion: normalizeKnowledgeWritebackStatusCounts(expansionDraft.status_counts),
+    total: mergeKnowledgeWritebackStatusCounts(projectPatch.status_counts, expansionDraft.status_counts),
+  };
+  const packageWithoutMarkdown: Omit<KnowledgeWritebackQueueExportPackage, 'markdown'> = {
+    schema_version: 'knowledge-writeback-queue-export/v1',
+    exported_at: exportedAt,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    filters: buildKnowledgeWritebackQueueExportFilters(input),
+    approved_count: projectPatch.approved_count + expansionDraft.approved_count,
+    project_approved_count: projectPatch.approved_count,
+    expansion_approved_count: expansionDraft.approved_count,
+    project_count: projectPatch.project_count ?? 0,
+    target_files: targetFiles,
+    status_counts: statusCounts,
+    project_patch: projectPatch,
+    expansion_draft: expansionDraft,
+  };
+
+  return input.include_markdown === false
+    ? packageWithoutMarkdown
+    : {
+      ...packageWithoutMarkdown,
+      markdown: renderKnowledgeWritebackQueueExportMarkdown(packageWithoutMarkdown),
+    };
+}
+
 export function updateDomainPackExpansionReviewStateToolResult(
   input: DomainPackExpansionReviewStateUpdateInput,
   options: { updated_at?: string } = {},
@@ -1611,6 +1762,470 @@ export function updateDomainPackExpansionReviewStateBulkToolResult(
     report,
     writeback_draft: writebackDraft,
   };
+}
+
+function getProjectKnowledgeWritebackPatchPackage(
+  input: KnowledgeWritebackQueueExportToolInput,
+  exportedAt: string,
+): ProjectKnowledgeWritebackPatchPackage {
+  const projectTaskKeySet = new Set(normalizeFilterValues(input.project_task_keys));
+  const items: ProjectKnowledgeWritebackPatchItem[] = [];
+  const projectIds = new Set<string>();
+  const projectsDir = path.resolve(generatedRoot(), 'projects');
+
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(projectsDir, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name);
+  } catch {
+    entries = [];
+  }
+
+  for (const projectDirName of entries) {
+    const projectDir = path.resolve(projectsDir, projectDirName);
+    const project = readJsonRecordFile(path.resolve(projectDir, 'project.json'));
+    if (!project) continue;
+
+    const projectId = nonEmptyString(project.project_id) ?? projectDirName;
+    if (input.project_id && input.project_id !== projectId) continue;
+
+    const story = readCurrentProjectStoryRecord(projectDir, project);
+    if (!story) continue;
+
+    const videoType = nonEmptyString(story.video_type) ?? nonEmptyString(project.video_type);
+    if (input.video_type && input.video_type !== videoType) continue;
+
+    const sourceEntry = nonEmptyString(story.source_entry)
+      ?? nonEmptyString(project.source_entry)
+      ?? '未记录来源条目';
+    const target = inferProjectKnowledgeWritebackTarget(story, sourceEntry);
+    if (input.province && input.province !== target.province) continue;
+
+    const projectTitle = nonEmptyString(project.title)
+      ?? nonEmptyString(story.title)
+      ?? projectId;
+    const tasks = Array.isArray(story.supplement_tasks) ? story.supplement_tasks : [];
+    for (const rawTask of tasks) {
+      if (!isRecord(rawTask) || !isProjectKnowledgeWritebackReadyTask(rawTask)) continue;
+      const taskId = nonEmptyString(rawTask.task_id) ?? `task_${items.length + 1}`;
+      const taskKey = `${projectId}::${taskId}`;
+      if (projectTaskKeySet.size > 0 && !projectTaskKeySet.has(taskKey)) continue;
+      const writebackStatus = normalizeKnowledgeWritebackStatus(rawTask.knowledge_writeback_status);
+      if (input.knowledge_writeback_status && input.knowledge_writeback_status !== writebackStatus) continue;
+      if (input.search_query && !projectWritebackSearchText({
+        projectId,
+        projectTitle,
+        videoType,
+        sourceEntry,
+        target,
+        task: rawTask,
+      }).includes(input.search_query.trim().toLowerCase())) continue;
+
+      projectIds.add(projectId);
+      const label = nonEmptyString(rawTask.label) ?? taskId;
+      const writebackDraft = nonEmptyString(rawTask.knowledge_writeback_draft_markdown) ?? '';
+      items.push({
+        task_key: taskKey,
+        project_id: projectId,
+        project_title: projectTitle,
+        video_type: videoType,
+        target_province: target.province,
+        task_id: taskId,
+        label,
+        source_entry: sourceEntry,
+        suggested_file_path: target.filePath,
+        suggested_section_heading: target.sectionHeading,
+        review_note: nonEmptyString(rawTask.knowledge_candidate_review_note),
+        writeback_status: writebackStatus,
+        writeback_note: nonEmptyString(rawTask.knowledge_writeback_note),
+        append_markdown: renderProjectKnowledgeWritebackAppendMarkdown({
+          projectId,
+          projectTitle,
+          videoType,
+          sourceEntry,
+          target,
+          taskId,
+          label,
+          writebackStatus,
+          reviewNote: nonEmptyString(rawTask.knowledge_candidate_review_note),
+          writebackNote: nonEmptyString(rawTask.knowledge_writeback_note),
+          writebackDraft,
+          exportedAt,
+        }),
+        writeback_draft_markdown: writebackDraft,
+      });
+    }
+  }
+
+  items.sort((a, b) => [
+    a.suggested_file_path,
+    a.project_title ?? '',
+    a.label,
+  ].join('\u0000').localeCompare([
+    b.suggested_file_path,
+    b.project_title ?? '',
+    b.label,
+  ].join('\u0000'), 'zh-CN'));
+
+  const targetFiles = [...new Set(items.map(item => item.suggested_file_path))].sort((a, b) => a.localeCompare(b));
+  const filters = buildProjectKnowledgeWritebackPatchFilters(input, projectTaskKeySet.size);
+  const statusCounts = countProjectKnowledgeWritebackStatuses(items);
+  const prTitle = input.project_id
+    ? `补充 ${items[0]?.project_title ?? input.project_id} 写回队列候选稿`
+    : '批量补充 Story Agent 写回队列候选稿';
+  const prBody = [
+    '## 变更目的',
+    '',
+    '将 MCP 只读扫描到的 Story Agent 写回队列候选稿整理为省份知识库写入草案。',
+    '',
+    '## 导出范围',
+    '',
+    `- 项目筛选：${input.project_id ?? '全部项目'}`,
+    `- 片型筛选：${input.video_type ?? 'all'}`,
+    `- 省份筛选：${input.province ?? 'all'}`,
+    `- 写回状态：${input.knowledge_writeback_status ?? 'all'}`,
+    `- 搜索条件：${input.search_query?.trim() || '无'}`,
+    `- 可见任务键：${projectTaskKeySet.size ? `${projectTaskKeySet.size} 条` : '未指定'}`,
+    `- 涉及项目：${projectIds.size}`,
+    `- 状态汇总：${formatKnowledgeWritebackStatusCounts(statusCounts)}`,
+    '',
+    '## 待写入文件',
+    '',
+    ...(targetFiles.length ? targetFiles.map(file => `- ${file}`) : ['- 暂无可写入草案']),
+    '',
+    '## 人工核实要求',
+    '',
+    '- 补齐正式来源、地点、核实方法和待核点。',
+    '- 确认内容适用于原始文化条目，而不只是当前项目。',
+    '- 只在人工审稿后复制 append_markdown 到省份 Markdown。',
+  ].join('\n');
+
+  const packageWithoutMarkdown = {
+    schema_version: 'project-knowledge-writeback-patch/v1' as const,
+    exported_at: exportedAt,
+    project_id: input.project_id ?? 'multiple-projects',
+    project_title: input.project_id ? items[0]?.project_title ?? input.project_id : 'Story Agent 写回队列',
+    source_entry: input.project_id ? '项目写回队列' : '多个项目',
+    filters,
+    approved_count: items.length,
+    project_count: projectIds.size,
+    status_counts: statusCounts,
+    target_files: targetFiles,
+    pr_title: prTitle,
+    pr_body: prBody,
+    items,
+  };
+
+  return {
+    ...packageWithoutMarkdown,
+    markdown: renderProjectKnowledgeWritebackPatchMarkdown(packageWithoutMarkdown),
+  };
+}
+
+function readCurrentProjectStoryRecord(projectDir: string, project: JsonRecord): JsonRecord | undefined {
+  const currentVersionId = nonEmptyString(project.current_version_id);
+  if (currentVersionId) {
+    const version = readJsonRecordFile(path.resolve(projectDir, 'versions', `${currentVersionId}.json`));
+    const story = isRecord(version?.story) ? version.story : undefined;
+    if (story && Object.keys(story).length > 0) return story;
+  }
+  const embeddedStory = isRecord(project.current_story) ? project.current_story : undefined;
+  return embeddedStory && Object.keys(embeddedStory).length > 0 ? embeddedStory : undefined;
+}
+
+function isProjectKnowledgeWritebackReadyTask(task: JsonRecord): boolean {
+  return task.knowledge_candidate_review_status === 'approved'
+    && Boolean(nonEmptyString(task.knowledge_writeback_draft_markdown));
+}
+
+function inferProjectKnowledgeWritebackTarget(
+  story: JsonRecord,
+  sourceEntry: string,
+): { filePath: string; sectionHeading: string; province?: string } {
+  const province = nonEmptyString(story.province)
+    ?? firstKnowledgeEntryProvince(story.knowledge_pack);
+  return {
+    filePath: suggestedProvinceFilePath(province ?? '待确认'),
+    sectionHeading: `### ${sourceEntry}`,
+    province,
+  };
+}
+
+function firstKnowledgeEntryProvince(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined;
+  const primaryEntries = Array.isArray(value.primary_entries) ? value.primary_entries : [];
+  const supportingEntries = Array.isArray(value.supporting_entries) ? value.supporting_entries : [];
+  for (const entry of [...primaryEntries, ...supportingEntries]) {
+    if (isRecord(entry)) {
+      const province = nonEmptyString(entry.province);
+      if (province) return province;
+    }
+  }
+  return undefined;
+}
+
+function projectWritebackSearchText(params: {
+  projectId: string;
+  projectTitle: string;
+  videoType?: string;
+  sourceEntry: string;
+  target: { filePath: string; sectionHeading: string; province?: string };
+  task: JsonRecord;
+}): string {
+  return [
+    params.projectId,
+    params.projectTitle,
+    params.videoType ?? '',
+    params.sourceEntry,
+    params.target.province ?? '',
+    params.target.filePath,
+    nonEmptyString(params.task.label) ?? '',
+    nonEmptyString(params.task.description) ?? '',
+    nonEmptyString(params.task.knowledge_candidate_review_note) ?? '',
+    nonEmptyString(params.task.knowledge_writeback_note) ?? '',
+    nonEmptyString(params.task.knowledge_writeback_draft_markdown) ?? '',
+    ...(Array.isArray(params.task.recommended_fields) ? params.task.recommended_fields.filter((item): item is string => typeof item === 'string') : []),
+  ].join(' ').toLowerCase();
+}
+
+function renderProjectKnowledgeWritebackAppendMarkdown(params: {
+  projectId: string;
+  projectTitle: string;
+  videoType?: string;
+  sourceEntry: string;
+  target: { filePath: string; sectionHeading: string; province?: string };
+  taskId: string;
+  label: string;
+  writebackStatus: KnowledgeWritebackStatus;
+  reviewNote?: string;
+  writebackNote?: string;
+  writebackDraft: string;
+  exportedAt: string;
+}): string {
+  return [
+    `### 补录候选：${params.label}`,
+    '',
+    `> source: project-knowledge-writeback-patch/v1`,
+    `> project_id: ${params.projectId}`,
+    `> project_title: ${params.projectTitle}`,
+    `> task_id: ${params.taskId}`,
+    `> source_entry: ${params.sourceEntry}`,
+    `> video_type: ${params.videoType ?? '未记录'}`,
+    `> target_province: ${params.target.province ?? '待确认'}`,
+    `> suggested_file_path: ${params.target.filePath}`,
+    `> writeback_status: ${params.writebackStatus}`,
+    `> exported_at: ${params.exportedAt}`,
+    `> direct_writeback_to_province_markdown: false`,
+    '',
+    '#### 审稿备注',
+    params.reviewNote ? `- ${params.reviewNote}` : '- 未填写',
+    '',
+    '#### 入库备注',
+    params.writebackNote ? `- ${params.writebackNote}` : '- 未填写',
+    '',
+    '#### 正式知识库写入草案',
+    '',
+    params.writebackDraft,
+  ].join('\n');
+}
+
+function renderProjectKnowledgeWritebackPatchMarkdown(
+  pkg: Omit<ProjectKnowledgeWritebackPatchPackage, 'markdown'>,
+): string {
+  return [
+    '# Story Agent 写回队列 Patch 草案',
+    '',
+    `- 导出时间：${pkg.exported_at}`,
+    `- 项目筛选：${pkg.filters?.project_id ?? '全部项目'}`,
+    `- 片型筛选：${pkg.filters?.video_type ?? 'all'}`,
+    `- 省份筛选：${pkg.filters?.province ?? 'all'}`,
+    `- 写回状态：${pkg.filters?.knowledge_writeback_status ?? 'all'}`,
+    `- 搜索条件：${pkg.filters?.search_query ?? '无'}`,
+    `- 可见任务键：${pkg.filters?.task_key_count ? `${pkg.filters.task_key_count} 条` : '未指定'}`,
+    `- 涉及项目：${pkg.project_count ?? 0}`,
+    `- 状态汇总：${formatKnowledgeWritebackStatusCounts(pkg.status_counts ?? normalizeKnowledgeWritebackStatusCounts())}`,
+    `- 已通过候选稿：${pkg.approved_count}`,
+    `- 目标文件数：${pkg.target_files.length}`,
+    '',
+    '## PR 草案',
+    '',
+    '### Title',
+    '',
+    pkg.pr_title,
+    '',
+    '### Body',
+    '',
+    pkg.pr_body,
+    '',
+    '## 文件 Patch 草案',
+    '',
+    ...(pkg.items.length ? pkg.items.flatMap((item, index) => [
+      `### ${index + 1}. ${item.label}`,
+      '',
+      `- 项目：${item.project_title || item.project_id || '未记录'}`,
+      `- 成片类型：${item.video_type || '未记录'}`,
+      `- 来源条目：${item.source_entry}`,
+      `- 目标省份：${item.target_province || '待确认'}`,
+      `- 建议文件：${item.suggested_file_path}`,
+      `- 建议位置：${item.suggested_section_heading}`,
+      `- 审稿备注：${item.review_note || '未填写'}`,
+      `- 入库状态：${item.writeback_status || 'draft_ready'}`,
+      `- 入库备注：${item.writeback_note || '未填写'}`,
+      '',
+      '```markdown',
+      item.append_markdown,
+      '```',
+      '',
+    ]) : ['- none']),
+  ].join('\n').trim() + '\n';
+}
+
+function renderKnowledgeWritebackQueueExportMarkdown(
+  pkg: Omit<KnowledgeWritebackQueueExportPackage, 'markdown'>,
+): string {
+  return [
+    '# Knowledge Writeback Queue Export',
+    '',
+    `> schema_version: ${pkg.schema_version}`,
+    `> exported_at: ${pkg.exported_at}`,
+    `> direct_writeback_to_province_markdown: ${pkg.direct_writeback_to_province_markdown}`,
+    `> province_markdown_written: ${pkg.province_markdown_written}`,
+    '',
+    '## Summary',
+    '',
+    `- approved_count: ${pkg.approved_count}`,
+    `- project_approved_count: ${pkg.project_approved_count}`,
+    `- expansion_approved_count: ${pkg.expansion_approved_count}`,
+    `- project_count: ${pkg.project_count}`,
+    `- target_files: ${pkg.target_files.join(', ') || 'none'}`,
+    '',
+    '## Filters',
+    '',
+    ...renderKnowledgeWritebackQueueFilterLines(pkg.filters),
+    '',
+    '## Writeback Status Counts',
+    '',
+    ...KNOWLEDGE_WRITEBACK_STATUSES.map(status => (
+      `- ${status}: total=${pkg.status_counts.total[status]}; project=${pkg.status_counts.project[status]}; expansion=${pkg.status_counts.expansion[status]}`
+    )),
+    '',
+    '## Review Gate',
+    '',
+    '- 项目草案来源：仅包含候选稿已 approved 且生成正式写回草案的补充任务。',
+    '- 扩库草案来源：仅包含 Domain Pack 扩库候选已 approved 且生成写回草案的审稿项。',
+    '- 本导出只服务人工核实、PR 草案和外部审稿工具，不直接写入 data/provinces/*.md。',
+    '',
+    '## Project Writeback Patch',
+    '',
+    pkg.project_patch.approved_count > 0 ? pkg.project_patch.markdown.trim() : '- none',
+    '',
+    '## Domain Pack Expansion Writeback Draft',
+    '',
+    pkg.expansion_draft.approved_count > 0 ? pkg.expansion_draft.markdown?.trim() ?? '- markdown omitted' : '- none',
+  ].join('\n').trim() + '\n';
+}
+
+function buildProjectKnowledgeWritebackPatchFilters(
+  input: KnowledgeWritebackQueueExportToolInput,
+  taskKeyCount: number,
+): ProjectKnowledgeWritebackPatchFilters {
+  return {
+    ...(input.project_id ? { project_id: input.project_id } : {}),
+    ...(input.video_type ? { video_type: input.video_type } : {}),
+    ...(input.province ? { province: input.province } : {}),
+    ...(input.knowledge_writeback_status ? { knowledge_writeback_status: input.knowledge_writeback_status } : {}),
+    ...(input.search_query?.trim() ? { search_query: input.search_query.trim() } : {}),
+    ...(taskKeyCount > 0 ? { task_key_count: taskKeyCount } : {}),
+  };
+}
+
+function buildKnowledgeWritebackQueueExportFilters(
+  input: KnowledgeWritebackQueueExportToolInput,
+): KnowledgeWritebackQueueExportFilters {
+  return {
+    ...(input.project_id ? { project_id: input.project_id } : {}),
+    ...(input.video_type ? { video_type: input.video_type } : {}),
+    ...(input.province ? { province: input.province } : {}),
+    ...(input.knowledge_writeback_status ? { knowledge_writeback_status: input.knowledge_writeback_status } : {}),
+    ...(input.search_query?.trim() ? { search_query: input.search_query.trim() } : {}),
+    ...(input.project_task_keys?.length ? { project_task_key_count: input.project_task_keys.length } : {}),
+    ...(input.expansion_review_item_ids?.length ? { expansion_review_item_count: input.expansion_review_item_ids.length } : {}),
+  };
+}
+
+function renderKnowledgeWritebackQueueFilterLines(filters: KnowledgeWritebackQueueExportFilters): string[] {
+  const lines = [
+    filters.project_id ? `- project_id: ${filters.project_id}` : undefined,
+    filters.video_type ? `- video_type: ${filters.video_type}` : undefined,
+    filters.province ? `- province: ${filters.province}` : undefined,
+    filters.knowledge_writeback_status ? `- knowledge_writeback_status: ${filters.knowledge_writeback_status}` : undefined,
+    filters.search_query ? `- search_query: ${filters.search_query}` : undefined,
+    typeof filters.project_task_key_count === 'number' ? `- project_task_key_count: ${filters.project_task_key_count}` : undefined,
+    typeof filters.expansion_review_item_count === 'number' ? `- expansion_review_item_count: ${filters.expansion_review_item_count}` : undefined,
+  ].filter((line): line is string => Boolean(line));
+  return lines.length ? lines : ['- none'];
+}
+
+function countProjectKnowledgeWritebackStatuses(
+  items: ProjectKnowledgeWritebackPatchItem[],
+): Record<KnowledgeWritebackStatus, number> {
+  const counts = normalizeKnowledgeWritebackStatusCounts();
+  for (const item of items) {
+    counts[item.writeback_status ?? 'draft_ready'] += 1;
+  }
+  return counts;
+}
+
+function normalizeKnowledgeWritebackStatus(value: unknown): KnowledgeWritebackStatus {
+  return KNOWLEDGE_WRITEBACK_STATUSES.includes(value as KnowledgeWritebackStatus)
+    ? value as KnowledgeWritebackStatus
+    : 'draft_ready';
+}
+
+function normalizeKnowledgeWritebackStatusCounts(
+  counts?: Partial<Record<KnowledgeWritebackStatus, number>>,
+): Record<KnowledgeWritebackStatus, number> {
+  return Object.fromEntries(
+    KNOWLEDGE_WRITEBACK_STATUSES.map(status => [status, counts?.[status] ?? 0]),
+  ) as Record<KnowledgeWritebackStatus, number>;
+}
+
+function mergeKnowledgeWritebackStatusCounts(
+  projectCounts?: Partial<Record<KnowledgeWritebackStatus, number>>,
+  expansionCounts?: Partial<Record<KnowledgeWritebackStatus, number>>,
+): Record<KnowledgeWritebackStatus, number> {
+  return Object.fromEntries(KNOWLEDGE_WRITEBACK_STATUSES.map(status => [
+    status,
+    (projectCounts?.[status] ?? 0) + (expansionCounts?.[status] ?? 0),
+  ])) as Record<KnowledgeWritebackStatus, number>;
+}
+
+function formatKnowledgeWritebackStatusCounts(counts: Record<KnowledgeWritebackStatus, number>): string {
+  return KNOWLEDGE_WRITEBACK_STATUSES.map(status => `${status}=${counts[status] ?? 0}`).join(', ');
+}
+
+function emptyDomainPackExpansionWritebackDraftToolResult(
+  exportedAt: string,
+  includeMarkdown?: boolean,
+): DomainPackExpansionWritebackDraftToolResult {
+  const result: Omit<DomainPackExpansionWritebackDraftPackage, 'markdown'> = {
+    schema_version: 'domain-pack-expansion-writeback-draft/v1',
+    exported_at: exportedAt,
+    domain_id: 'china_culture',
+    direct_writeback_to_province_markdown: false,
+    filters: {},
+    approved_count: 0,
+    target_files: [],
+    status_counts: normalizeKnowledgeWritebackStatusCounts(),
+    items: [],
+  };
+  return includeMarkdown === false
+    ? result
+    : {
+      ...result,
+      markdown: renderDomainPackExpansionWritebackDraftPackageMarkdown(result),
+    };
 }
 
 function renderDomainPackExpansionWritebackDraftMarkdown(

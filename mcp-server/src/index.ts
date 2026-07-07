@@ -35,6 +35,7 @@ import {
   getDomainPackExpansionCandidateToolResult,
   getDomainPackExpansionWritebackDraftToolResult,
   getDomainPackProductionHealthToolResult,
+  getKnowledgeWritebackQueueExportToolResult,
   getProductionMaterialPackHealthToolResult,
   updateDomainPackExpansionReviewStateBulkToolResult,
   updateDomainPackExpansionReviewStateToolResult,
@@ -673,6 +674,31 @@ server.tool(
   },
   async (input) => {
     const result = getDomainPackExpansionWritebackDraftToolResult(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_knowledge_writeback_queue_export — unified reviewed writeback export
+server.tool(
+  'kb_get_knowledge_writeback_queue_export',
+  '只读导出统一知识库写回队列包。合并已审通过的项目候选写回草案与 Domain Pack 扩库写回草案，输出人工 PR/审稿工具可用的 Markdown/JSON，不写入 data/provinces/*.md。',
+  {
+    include_markdown: z.boolean().optional().describe('是否返回顶层 Markdown，默认 true'),
+    project_id: z.string().optional().describe('限定项目 ID；设置后扩库草案不会混入项目筛选结果'),
+    video_type: z.string().optional().describe('限定项目片型或扩库目标片型，例如 ai_comic_drama、explainer_video、social_short'),
+    province: z.string().optional().describe('限定目标省份'),
+    knowledge_writeback_status: z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision']).optional().describe('限定写回队列状态'),
+    search_query: z.string().optional().describe('限定项目草案搜索词；扩库草案请用 review_item_ids 精确限定'),
+    project_task_keys: z.array(z.string()).optional().describe('限定项目草案 task key，格式 project_id::task_id'),
+    expansion_review_item_ids: z.array(z.string()).optional().describe('限定扩库候选审稿项 ID 列表'),
+  },
+  async (input) => {
+    const result = getKnowledgeWritebackQueueExportToolResult(input);
     return {
       content: [{
         type: 'text',

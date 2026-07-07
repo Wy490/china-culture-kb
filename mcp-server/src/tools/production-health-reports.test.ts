@@ -8,6 +8,7 @@ import {
   getDomainPackExpansionWritebackDraftToolResult,
   getDomainPackProductionHealthReport,
   getDomainPackProductionHealthToolResult,
+  getKnowledgeWritebackQueueExportToolResult,
   getProductionMaterialPackHealthReport,
   getProductionMaterialPackHealthToolResult,
   updateDomainPackExpansionReviewStateBulkToolResult,
@@ -554,6 +555,175 @@ describe('production health reports', () => {
       missing_review_item_ids: ['short_video_hook_pack_batch::missing'],
       direct_writeback_to_province_markdown: false,
       province_markdown_written: false,
+    });
+    expect(fs.existsSync(path.join(dataRoot, 'provinces', '湖南.md'))).toBe(false);
+  });
+
+  it('exports unified project and expansion writeback drafts for MCP callers without writing province markdown', () => {
+    fs.mkdirSync(path.join(dataRoot, 'domain-packs'), { recursive: true });
+    fs.writeFileSync(
+      path.join(dataRoot, 'domain-packs', 'china-culture-production-expansion-candidates.json'),
+      JSON.stringify({
+        schema_version: 'domain-pack-expansion-candidates/v1',
+        updated_at: '2026-07-07',
+        domain_id: 'china_culture',
+        review_policy: {
+          direct_writeback_to_province_markdown: false,
+          requires_candidate_markdown: true,
+          requires_human_review: true,
+          requires_source_level: true,
+        },
+        batches: [{
+          batch_id: 'short_video_hook_pack_batch',
+          pack_id: 'short_video_hook_pack',
+          entry_name: 'short_video_hook_pack entry',
+          priority: 'P0',
+          status: 'candidate_review',
+          target_video_types: ['social_short'],
+          field_groups: [{
+            group_id: 'hook_structure',
+            candidate_fields: ['opening_hook', 'fact_boundary_card'],
+            review_questions: ['是否已确认只进入批量审稿队列？'],
+          }],
+          seed_targets: [{
+            entry_name: 'short_video_hook_pack target',
+            province: '湖南',
+            recommended_fields: ['opening_hook'],
+            candidate_status: 'candidate_review',
+            forbidden_direct_claims: ['未经审稿不得写回正式知识库'],
+          }],
+        }],
+      }),
+    );
+    fs.mkdirSync(path.join(process.env.WEB_GENERATED_ROOT!, 'domain-pack-expansion'), { recursive: true });
+    fs.writeFileSync(
+      path.join(process.env.WEB_GENERATED_ROOT!, 'domain-pack-expansion', 'review-state.json'),
+      JSON.stringify({
+        schema_version: 'domain-pack-expansion-review-state/v1',
+        updated_at: '2026-07-07T13:00:00.000Z',
+        direct_writeback_to_province_markdown: false,
+        items: [{
+          review_item_id: 'short_video_hook_pack_batch::target_01',
+          review_status: 'approved',
+          review_note: 'MCP 审稿通过，进入统一写回导出。',
+          reviewed_at: '2026-07-07T13:00:00.000Z',
+          writeback_status: 'queued',
+          writeback_note: '扩库入队。',
+          writeback_updated_at: '2026-07-07T13:00:00.000Z',
+        }],
+      }),
+    );
+
+    const projectId = '20260707-story-writeback--ai_comic_drama';
+    const versionId = `${projectId}-v1`;
+    const projectDir = path.join(process.env.WEB_GENERATED_ROOT!, 'projects', projectId);
+    fs.mkdirSync(path.join(projectDir, 'versions'), { recursive: true });
+    fs.writeFileSync(
+      path.join(projectDir, 'project.json'),
+      JSON.stringify({
+        project_id: projectId,
+        current_story_id: 'story-writeback',
+        title: '青石巷追问',
+        source_entry: '青石巷',
+        video_type: 'ai_comic_drama',
+        current_version_id: versionId,
+        updated_at: '2026-07-07T13:10:00.000Z',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(projectDir, 'versions', `${versionId}.json`),
+      JSON.stringify({
+        project_id: projectId,
+        version_id: versionId,
+        story: {
+          title: '青石巷追问',
+          source_entry: '青石巷',
+          video_type: 'ai_comic_drama',
+          knowledge_pack: {
+            primary_entries: [{
+              entry_name: '青石巷',
+              province: '湖南',
+            }],
+          },
+          supplement_tasks: [{
+            task_id: 'task-reference-frame',
+            label: '补录参考图或关键帧',
+            description: '补齐 AI 漫剧参考图。',
+            recommended_fields: ['reference_images_or_keyframes'],
+            knowledge_candidate_review_status: 'approved',
+            knowledge_candidate_review_note: '项目候选稿已通过。',
+            knowledge_writeback_draft_markdown: '### 正式知识库写入草案\n\n- 核实方法：人工补源后写入。\n- 待核实点：参考图版权与来源。',
+            knowledge_writeback_status: 'queued',
+            knowledge_writeback_note: '项目草案入队。',
+          }],
+        },
+      }),
+    );
+
+    const unified = getKnowledgeWritebackQueueExportToolResult({
+      province: '湖南',
+      knowledge_writeback_status: 'queued',
+    });
+
+    expect(unified).toMatchObject({
+      schema_version: 'knowledge-writeback-queue-export/v1',
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      filters: {
+        province: '湖南',
+        knowledge_writeback_status: 'queued',
+      },
+      approved_count: 2,
+      project_approved_count: 1,
+      expansion_approved_count: 1,
+      project_count: 1,
+      target_files: ['data/provinces/湖南.md'],
+      status_counts: {
+        project: expect.objectContaining({ queued: 1 }),
+        expansion: expect.objectContaining({ queued: 1 }),
+        total: expect.objectContaining({ queued: 2 }),
+      },
+      project_patch: {
+        schema_version: 'project-knowledge-writeback-patch/v1',
+        approved_count: 1,
+        project_count: 1,
+        status_counts: expect.objectContaining({ queued: 1 }),
+      },
+      expansion_draft: {
+        schema_version: 'domain-pack-expansion-writeback-draft/v1',
+        approved_count: 1,
+        status_counts: expect.objectContaining({ queued: 1 }),
+      },
+    });
+    expect(unified.project_patch.items[0]).toMatchObject({
+      task_key: `${projectId}::task-reference-frame`,
+      project_id: projectId,
+      video_type: 'ai_comic_drama',
+      target_province: '湖南',
+      writeback_status: 'queued',
+    });
+    expect(unified.expansion_draft.items[0]).toMatchObject({
+      review_item_id: 'short_video_hook_pack_batch::target_01',
+      province: '湖南',
+      writeback_status: 'queued',
+    });
+    expect(unified.markdown).toContain('Knowledge Writeback Queue Export');
+    expect(unified.markdown).toContain('province_markdown_written: false');
+    expect(unified.markdown).toContain('项目草案来源');
+    expect(fs.existsSync(path.join(dataRoot, 'provinces', '湖南.md'))).toBe(false);
+
+    const jsonOnly = getKnowledgeWritebackQueueExportToolResult({
+      include_markdown: false,
+      project_id: projectId,
+      project_task_keys: [`${projectId}::task-reference-frame`],
+    });
+    expect(jsonOnly.markdown).toBeUndefined();
+    expect(jsonOnly.project_approved_count).toBe(1);
+    expect(jsonOnly.expansion_approved_count).toBe(0);
+    expect(jsonOnly.expansion_draft.items).toHaveLength(0);
+    expect(jsonOnly.filters).toMatchObject({
+      project_id: projectId,
+      project_task_key_count: 1,
     });
     expect(fs.existsSync(path.join(dataRoot, 'provinces', '湖南.md'))).toBe(false);
   });
