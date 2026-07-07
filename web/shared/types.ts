@@ -1840,6 +1840,7 @@ export type StoryAgentMvpLaneKey =
   | 'generated_governance'
   | 'production_material_packs'
   | 'domain_packs'
+  | 'knowledge_writeback'
   | 'story_quality'
   | 'repair_loop'
   | 'delivery_contract'
@@ -1901,6 +1902,12 @@ export interface StoryAgentMvpStatusReport {
     external_or_manual_step_count: number;
     seedance_placeholder_asset_count: number;
     seedance_production_asset_ready_count: number;
+    knowledge_writeback_ready_count: number;
+    knowledge_writeback_project_count: number;
+    knowledge_writeback_draft_ready_count: number;
+    knowledge_writeback_queued_count: number;
+    knowledge_writeback_written_back_count: number;
+    knowledge_writeback_needs_revision_count: number;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;

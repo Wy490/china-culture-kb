@@ -1017,6 +1017,7 @@ function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number][
     generated_governance: 'Generated 治理',
     production_material_packs: '生产素材模板',
     domain_packs: 'Domain Pack',
+    knowledge_writeback: '写回队列',
     story_quality: '故事质量',
     repair_loop: '修复闭环',
     delivery_contract: 'GEARS 交付合同',

@@ -1,3 +1,6 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { getKbRoot } from '../lib/provinces.js';
 import {
   getStoryAgentGeneratedGovernancePlan,
   type StoryAgentGeneratedGovernancePlan,
@@ -25,6 +28,7 @@ type MvpLaneKey =
   | 'generated_governance'
   | 'production_material_packs'
   | 'domain_packs'
+  | 'knowledge_writeback'
   | 'story_quality'
   | 'repair_loop'
   | 'delivery_contract'
@@ -38,6 +42,8 @@ type MvpProgressKey =
 
 type PortfolioItem = ProductionReadinessPortfolioReport['items'][number];
 type HealthScope = StoryAgentGeneratedHealthItem['scope'];
+type JsonRecord = Record<string, unknown>;
+type KnowledgeWritebackStatus = 'draft_ready' | 'queued' | 'written_back' | 'needs_revision';
 
 export interface GetStoryAgentMvpStatusInput {
   generated_limit?: number;
@@ -94,6 +100,12 @@ export interface StoryAgentMvpStatusReport {
     external_or_manual_step_count: number;
     seedance_placeholder_asset_count: number;
     seedance_production_asset_ready_count: number;
+    knowledge_writeback_ready_count: number;
+    knowledge_writeback_project_count: number;
+    knowledge_writeback_draft_ready_count: number;
+    knowledge_writeback_queued_count: number;
+    knowledge_writeback_written_back_count: number;
+    knowledge_writeback_needs_revision_count: number;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;
@@ -176,6 +188,23 @@ const PRODUCTION_DELIVERY_CONTRACT_SURFACES = [
   'worker_evidence_signoff',
 ] as const;
 
+const KNOWLEDGE_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
+  'draft_ready',
+  'queued',
+  'written_back',
+  'needs_revision',
+];
+
+interface KnowledgeWritebackQueueMetrics {
+  ready_count: number;
+  project_count: number;
+  draft_ready_count: number;
+  queued_count: number;
+  written_back_count: number;
+  needs_revision_count: number;
+  read_error_count: number;
+}
+
 function uniqueStrings(values: Array<string | undefined>): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -186,6 +215,46 @@ function uniqueStrings(values: Array<string | undefined>): string[] {
     result.push(normalized);
   }
   return result;
+}
+
+function generatedRoot(): string {
+  return process.env.WEB_GENERATED_ROOT || path.resolve(getKbRoot(), '..', 'web', 'generated');
+}
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asRecord(value: unknown): JsonRecord {
+  return isRecord(value) ? value : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+async function readJson(filePath: string): Promise<JsonRecord | undefined> {
+  try {
+    const parsed = JSON.parse(await fs.readFile(filePath, 'utf-8')) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeWritebackStatus(value: unknown): KnowledgeWritebackStatus {
+  return KNOWLEDGE_WRITEBACK_STATUSES.includes(value as KnowledgeWritebackStatus)
+    ? value as KnowledgeWritebackStatus
+    : 'draft_ready';
+}
+
+function isKnowledgeWritebackReadyTask(task: JsonRecord): boolean {
+  return task.knowledge_candidate_review_status === 'approved'
+    && Boolean(asString(task.knowledge_writeback_draft_markdown));
 }
 
 function missingContractCount(health: StoryAgentGeneratedHealthReport, contract: string, scope?: HealthScope): number {
@@ -330,6 +399,105 @@ function domainPackLane(report: DomainPackProductionHealthReport): StoryAgentMvp
       : report.status === 'warning'
         ? 'Top up production_prompts, review_boundaries, trigger_words, or asset_usage coverage for production Domain Packs.'
         : undefined,
+  };
+}
+
+async function readCurrentStoryRecord(projectDir: string, project: JsonRecord): Promise<JsonRecord | undefined> {
+  const currentVersionId = asString(project.current_version_id);
+  if (currentVersionId) {
+    const version = await readJson(path.resolve(projectDir, 'versions', `${currentVersionId}.json`));
+    const story = asRecord(version?.story);
+    if (Object.keys(story).length > 0) return story;
+  }
+  const embeddedStory = asRecord(project.current_story);
+  return Object.keys(embeddedStory).length > 0 ? embeddedStory : undefined;
+}
+
+async function getKnowledgeWritebackQueueMetrics(): Promise<KnowledgeWritebackQueueMetrics> {
+  const counts = Object.fromEntries(KNOWLEDGE_WRITEBACK_STATUSES.map(status => [status, 0])) as Record<KnowledgeWritebackStatus, number>;
+  const projectIds = new Set<string>();
+  let readErrorCount = 0;
+
+  try {
+    const root = path.resolve(generatedRoot(), 'projects');
+    const entries = await fs.readdir(root, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const projectDir = path.resolve(root, entry.name);
+      const project = await readJson(path.resolve(projectDir, 'project.json'));
+      if (!project) {
+        readErrorCount += 1;
+        continue;
+      }
+      const projectId = asString(project.project_id) ?? entry.name;
+      const story = await readCurrentStoryRecord(projectDir, project);
+      const tasks = asArray(story?.supplement_tasks).map(asRecord).filter(isKnowledgeWritebackReadyTask);
+      if (tasks.length === 0) continue;
+      projectIds.add(projectId);
+      for (const task of tasks) {
+        counts[normalizeWritebackStatus(task.knowledge_writeback_status)] += 1;
+      }
+    }
+  } catch {
+    return {
+      ready_count: 0,
+      project_count: 0,
+      draft_ready_count: 0,
+      queued_count: 0,
+      written_back_count: 0,
+      needs_revision_count: 0,
+      read_error_count: 1,
+    };
+  }
+
+  return {
+    ready_count: KNOWLEDGE_WRITEBACK_STATUSES.reduce((sum, status) => sum + counts[status], 0),
+    project_count: projectIds.size,
+    draft_ready_count: counts.draft_ready,
+    queued_count: counts.queued,
+    written_back_count: counts.written_back,
+    needs_revision_count: counts.needs_revision,
+    read_error_count: readErrorCount,
+  };
+}
+
+function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryAgentMvpLane {
+  const activeQueueCount = metrics.draft_ready_count + metrics.queued_count + metrics.needs_revision_count;
+  const status: MvpStatus = metrics.read_error_count > 0
+    ? 'blocked'
+    : activeQueueCount > 0
+      ? 'needs_action'
+      : 'ready';
+  return {
+    key: 'knowledge_writeback',
+    label: 'Knowledge writeback queue',
+    status,
+    score: metrics.read_error_count > 0
+      ? 0
+      : clampScore(100 - metrics.draft_ready_count * 4 - metrics.queued_count * 2 - metrics.needs_revision_count * 12),
+    detail: metrics.read_error_count > 0
+      ? 'MCP could not read one or more generated project writeback records.'
+      : metrics.ready_count === 0
+        ? 'No reviewed knowledge writeback drafts are waiting in generated projects.'
+        : `${metrics.ready_count} reviewed writeback drafts across ${metrics.project_count} projects are visible to MCP.`,
+    evidence: [
+      `ready_writeback_drafts=${metrics.ready_count}`,
+      `projects=${metrics.project_count}`,
+      `draft_ready=${metrics.draft_ready_count}`,
+      `queued=${metrics.queued_count}`,
+      `written_back=${metrics.written_back_count}`,
+      `needs_revision=${metrics.needs_revision_count}`,
+      `read_errors=${metrics.read_error_count}`,
+      'candidate_review_required=true',
+      'direct_province_write=false',
+    ],
+    next_action: metrics.read_error_count > 0
+      ? 'Repair generated project writeback records before exporting patches.'
+      : metrics.needs_revision_count > 0
+        ? 'Revise rejected writeback drafts through candidate review before exporting patches.'
+        : metrics.draft_ready_count + metrics.queued_count > 0
+          ? 'Export reviewed Markdown/JSON writeback patches from the Web queue for manual province Markdown review.'
+          : undefined,
   };
 }
 
@@ -534,6 +702,7 @@ function progressSlices(
   governancePlan: StoryAgentGeneratedGovernancePlan,
   productionMaterialPackHealth: ProductionMaterialPackHealthReport,
   domainPackHealth: DomainPackProductionHealthReport,
+  writebackMetrics: KnowledgeWritebackQueueMetrics,
   portfolio: ProductionReadinessPortfolioReport,
 ): StoryAgentMvpProgressSlice[] {
   const endpointConfigured = Boolean(process.env.GEARS_API_BASE_URL?.trim());
@@ -592,6 +761,10 @@ function progressSlices(
         `domain_pack_status=${domainPackHealth.status}`,
         `domain_pack_ready=${domainPackHealth.production_ready_pack_ids.length}/${domainPackHealth.required_pack_ids.length}`,
         `domain_pack_issues=${domainPackHealth.issues.length}`,
+        `knowledge_writeback_ready=${writebackMetrics.ready_count}`,
+        `knowledge_writeback_draft_ready=${writebackMetrics.draft_ready_count}`,
+        `knowledge_writeback_queued=${writebackMetrics.queued_count}`,
+        `knowledge_writeback_needs_revision=${writebackMetrics.needs_revision_count}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
         `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
         `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
@@ -648,6 +821,12 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     `- readiness targets: ${report.summary.readiness_target_count}`,
     `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
     `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
+    `- knowledge writeback ready drafts: ${report.summary.knowledge_writeback_ready_count}`,
+    `- knowledge writeback projects: ${report.summary.knowledge_writeback_project_count}`,
+    `- knowledge writeback draft_ready: ${report.summary.knowledge_writeback_draft_ready_count}`,
+    `- knowledge writeback queued: ${report.summary.knowledge_writeback_queued_count}`,
+    `- knowledge writeback written_back: ${report.summary.knowledge_writeback_written_back_count}`,
+    `- knowledge writeback needs_revision: ${report.summary.knowledge_writeback_needs_revision_count}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
     `- generated governance actions: ${report.summary.generated_governance_action_count}`,
@@ -699,11 +878,12 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
 export async function getStoryAgentMvpStatus(
   input: GetStoryAgentMvpStatusInput = {},
 ): Promise<StoryAgentMvpStatusReport> {
-  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, productionPortfolio] = await Promise.all([
+  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, writebackMetrics, productionPortfolio] = await Promise.all([
     getStoryAgentGeneratedHealth({ limit: input.generated_limit ?? 100, include_markdown: false }),
     getStoryAgentGeneratedGovernancePlan({ limit: input.generated_limit ?? 100, include_markdown: false }),
     Promise.resolve(getProductionMaterialPackHealthReport()),
     Promise.resolve(getDomainPackProductionHealthReport()),
+    getKnowledgeWritebackQueueMetrics(),
     getProductionReadinessPortfolio({ limit: input.portfolio_limit ?? 100, include_markdown: false }),
   ]);
   const lanes = [
@@ -711,6 +891,7 @@ export async function getStoryAgentMvpStatus(
     generatedGovernanceLane(generatedGovernancePlan),
     productionMaterialPackLane(productionMaterialPackHealth),
     domainPackLane(domainPackHealth),
+    knowledgeWritebackLane(writebackMetrics),
     storyQualityLane(generatedHealth),
     repairLoopLane(productionPortfolio),
     deliveryContractLane(generatedHealth),
@@ -725,6 +906,7 @@ export async function getStoryAgentMvpStatus(
     generatedGovernancePlan,
     productionMaterialPackHealth,
     domainPackHealth,
+    writebackMetrics,
     productionPortfolio,
   );
   const base: Omit<StoryAgentMvpStatusReport, 'markdown'> = {
@@ -746,6 +928,12 @@ export async function getStoryAgentMvpStatus(
       external_or_manual_step_count: externalOrManual,
       seedance_placeholder_asset_count: productionPortfolio.summary.seedance_placeholder_asset_count,
       seedance_production_asset_ready_count: productionPortfolio.summary.seedance_production_asset_ready_count,
+      knowledge_writeback_ready_count: writebackMetrics.ready_count,
+      knowledge_writeback_project_count: writebackMetrics.project_count,
+      knowledge_writeback_draft_ready_count: writebackMetrics.draft_ready_count,
+      knowledge_writeback_queued_count: writebackMetrics.queued_count,
+      knowledge_writeback_written_back_count: writebackMetrics.written_back_count,
+      knowledge_writeback_needs_revision_count: writebackMetrics.needs_revision_count,
       blocker_count: productionPortfolio.summary.blocker_count,
       warning_count: productionPortfolio.summary.warning_count,
       generated_governance_action_count: generatedGovernancePlan.actions.length,
@@ -782,6 +970,7 @@ export async function getStoryAgentMvpStatus(
       'Generated governance command surface is complete at 100%: health scan, governance plan, dry-run manifest, project_id targeting, Web/MCP exports, and no-write safety gates are available.',
       'Production material pack health is now a MCP Story Agent MVP lane: core and high-frequency video types must keep mapped required_fields, prompt layers, gate items, supplement questions, and sample-entry coverage before production sign-off.',
       'Domain Pack production health is now a MCP Story Agent MVP lane: required production prompt packs must keep trigger words, production prompts, review boundaries, and asset usage coverage before prompt package sign-off.',
+      'Knowledge writeback queue governance is now a MCP Story Agent MVP lane: only approved candidates with writeback drafts are counted, and province Markdown changes remain manual review patches.',
       'MCP Story Agent loop is complete at 100%: read-only context, blueprint, validation, delivery, repair prompt, controlled versioning, generated governance, readiness automation, MVP status, and GEARS evidence signoff are all exposed as tools.',
       'Content and production command layer is complete at 100% inside china-culture-kb; generated target health and real GEARS endpoint acceptance remain separate status surfaces.',
       'Production Board / Delivery Contract command surface is complete at 100%; Seedance asset upload checklists now make external reference-material handoff explicit, and missing per-target exports remain tracked by the delivery_contract lane and generated governance plan.',

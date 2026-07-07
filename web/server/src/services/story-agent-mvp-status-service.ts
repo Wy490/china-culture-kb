@@ -1,8 +1,10 @@
 import type {
   DomainPackProductionHealthReport,
+  KnowledgeWritebackStatus,
   ProductionMaterialPackHealthReport,
   ProductionReadinessPortfolioItem,
   ProductionReadinessPortfolioReport,
+  ProjectSupplementTaskListItem,
   StoryAgentGeneratedHealthItem,
   StoryAgentGeneratedGovernancePlan,
   StoryAgentGeneratedHealthReport,
@@ -18,6 +20,7 @@ import { getStoryAgentGeneratedGovernancePlan } from './generated-governance-ser
 import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
 import { getProductionReadinessPortfolio } from './production-readiness-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
+import { listProjectSupplementTasks } from './project-service.js';
 
 interface StoryAgentMvpStatusOptions {
   generatedLimit?: number;
@@ -63,6 +66,23 @@ const PRODUCTION_DELIVERY_CONTRACT_SURFACES = [
   'retry_execution_plan',
   'worker_evidence_signoff',
 ] as const;
+
+const KNOWLEDGE_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
+  'draft_ready',
+  'queued',
+  'written_back',
+  'needs_revision',
+];
+
+interface KnowledgeWritebackQueueMetrics {
+  ready_count: number;
+  project_count: number;
+  draft_ready_count: number;
+  queued_count: number;
+  written_back_count: number;
+  needs_revision_count: number;
+  read_error?: string;
+}
 
 function clampScore(score: number): number {
   if (!Number.isFinite(score)) return 0;
@@ -229,6 +249,80 @@ function domainPackLane(report: DomainPackProductionHealthReport): StoryAgentMvp
       : report.status === 'warning'
         ? 'Top up production_prompts, review_boundaries, trigger_words, or asset_usage coverage for production Domain Packs.'
         : undefined,
+  };
+}
+
+function taskWritebackStatus(item: ProjectSupplementTaskListItem): KnowledgeWritebackStatus {
+  return item.task.knowledge_writeback_status ?? 'draft_ready';
+}
+
+async function getKnowledgeWritebackQueueMetrics(): Promise<KnowledgeWritebackQueueMetrics> {
+  const result = await listProjectSupplementTasks({ knowledge_writeback_ready: true });
+  if (!result.ok || !result.data) {
+    return {
+      ready_count: 0,
+      project_count: 0,
+      draft_ready_count: 0,
+      queued_count: 0,
+      written_back_count: 0,
+      needs_revision_count: 0,
+      read_error: result.error?.message ?? 'Failed to read knowledge writeback queue',
+    };
+  }
+
+  const counts = Object.fromEntries(KNOWLEDGE_WRITEBACK_STATUSES.map(status => [status, 0])) as Record<KnowledgeWritebackStatus, number>;
+  const projectIds = new Set<string>();
+  for (const item of result.data) {
+    projectIds.add(item.project_id);
+    counts[taskWritebackStatus(item)] += 1;
+  }
+  return {
+    ready_count: result.data.length,
+    project_count: projectIds.size,
+    draft_ready_count: counts.draft_ready,
+    queued_count: counts.queued,
+    written_back_count: counts.written_back,
+    needs_revision_count: counts.needs_revision,
+  };
+}
+
+function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryAgentMvpLane {
+  const activeQueueCount = metrics.draft_ready_count + metrics.queued_count + metrics.needs_revision_count;
+  const status: StoryAgentMvpStatus = metrics.read_error
+    ? 'blocked'
+    : activeQueueCount > 0
+      ? 'needs_action'
+      : 'ready';
+  return {
+    key: 'knowledge_writeback',
+    label: 'Knowledge writeback queue',
+    status,
+    score: metrics.read_error
+      ? 0
+      : clampScore(100 - metrics.draft_ready_count * 4 - metrics.queued_count * 2 - metrics.needs_revision_count * 12),
+    detail: metrics.read_error
+      ? 'Knowledge writeback queue could not be read.'
+      : metrics.ready_count === 0
+        ? 'No reviewed knowledge writeback drafts are waiting in the queue.'
+        : `${metrics.ready_count} reviewed writeback drafts across ${metrics.project_count} projects are tracked by candidate/review status.`,
+    evidence: [
+      `ready_writeback_drafts=${metrics.ready_count}`,
+      `projects=${metrics.project_count}`,
+      `draft_ready=${metrics.draft_ready_count}`,
+      `queued=${metrics.queued_count}`,
+      `written_back=${metrics.written_back_count}`,
+      `needs_revision=${metrics.needs_revision_count}`,
+      `read_error=${metrics.read_error ?? 'none'}`,
+      'candidate_review_required=true',
+      'direct_province_write=false',
+    ],
+    next_action: metrics.read_error
+      ? 'Restore project supplement task reads before exporting writeback patches.'
+      : metrics.needs_revision_count > 0
+        ? 'Revise rejected writeback drafts through candidate review before exporting patches.'
+        : metrics.draft_ready_count + metrics.queued_count > 0
+          ? 'Use the independent writeback queue to export reviewed Markdown/JSON patches for manual province Markdown review.'
+          : undefined,
   };
 }
 
@@ -468,6 +562,7 @@ function progressSlices(
   governancePlan: StoryAgentGeneratedGovernancePlan,
   productionMaterialPackHealth: ProductionMaterialPackHealthReport,
   domainPackHealth: DomainPackProductionHealthReport,
+  writebackMetrics: KnowledgeWritebackQueueMetrics,
   portfolio: ProductionReadinessPortfolioReport,
 ): StoryAgentMvpProgressSlice[] {
   const endpointConfigured = Boolean(process.env.GEARS_API_BASE_URL?.trim());
@@ -526,6 +621,10 @@ function progressSlices(
         `domain_pack_status=${domainPackHealth.status}`,
         `domain_pack_ready=${domainPackHealth.production_ready_pack_ids.length}/${domainPackHealth.required_pack_ids.length}`,
         `domain_pack_issues=${domainPackHealth.issues.length}`,
+        `knowledge_writeback_ready=${writebackMetrics.ready_count}`,
+        `knowledge_writeback_draft_ready=${writebackMetrics.draft_ready_count}`,
+        `knowledge_writeback_queued=${writebackMetrics.queued_count}`,
+        `knowledge_writeback_needs_revision=${writebackMetrics.needs_revision_count}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
         `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
         `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
@@ -589,6 +688,12 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- readiness blocked: ${report.summary.readiness_blocked_count}`,
     `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
     `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
+    `- knowledge writeback ready drafts: ${report.summary.knowledge_writeback_ready_count}`,
+    `- knowledge writeback projects: ${report.summary.knowledge_writeback_project_count}`,
+    `- knowledge writeback draft_ready: ${report.summary.knowledge_writeback_draft_ready_count}`,
+    `- knowledge writeback queued: ${report.summary.knowledge_writeback_queued_count}`,
+    `- knowledge writeback written_back: ${report.summary.knowledge_writeback_written_back_count}`,
+    `- knowledge writeback needs_revision: ${report.summary.knowledge_writeback_needs_revision_count}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
     `- generated governance actions: ${report.summary.generated_governance_action_count}`,
@@ -642,11 +747,12 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
 export async function getStoryAgentMvpStatus(
   options: StoryAgentMvpStatusOptions = {},
 ): Promise<StoryAgentMvpStatusReport> {
-  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, productionPortfolio] = await Promise.all([
+  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, writebackMetrics, productionPortfolio] = await Promise.all([
     getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 }),
     getStoryAgentGeneratedGovernancePlan({ limit: options.generatedLimit ?? 200 }),
     getProductionMaterialPackHealthReport(),
     getDomainPackProductionHealthReport(),
+    getKnowledgeWritebackQueueMetrics(),
     getProductionReadinessPortfolio({
       includeArchivedSeries: options.includeArchivedSeries,
       limit: options.portfolioLimit ?? 100,
@@ -657,6 +763,7 @@ export async function getStoryAgentMvpStatus(
     generatedGovernanceLane(generatedGovernancePlan),
     productionMaterialPackLane(productionMaterialPackHealth),
     domainPackLane(domainPackHealth),
+    knowledgeWritebackLane(writebackMetrics),
     storyQualityLane(generatedHealth),
     repairLoopLane(productionPortfolio),
     deliveryContractLane(generatedHealth),
@@ -665,7 +772,7 @@ export async function getStoryAgentMvpStatus(
   const status = overallStatus(lanes);
   const targets = priorityTargets(generatedHealth, productionPortfolio);
   const actions = nextActions(lanes, generatedHealth, productionPortfolio);
-  const progress = progressSlices(lanes, generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, productionPortfolio);
+  const progress = progressSlices(lanes, generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, writebackMetrics, productionPortfolio);
   const externalOrManual = productionPortfolio.summary.external_automation_step_count
     + productionPortfolio.summary.manual_automation_step_count;
   const base: Omit<StoryAgentMvpStatusReport, 'markdown'> = {
@@ -687,6 +794,12 @@ export async function getStoryAgentMvpStatus(
       external_or_manual_step_count: externalOrManual,
       seedance_placeholder_asset_count: productionPortfolio.summary.seedance_placeholder_asset_count,
       seedance_production_asset_ready_count: productionPortfolio.summary.seedance_production_asset_ready_count,
+      knowledge_writeback_ready_count: writebackMetrics.ready_count,
+      knowledge_writeback_project_count: writebackMetrics.project_count,
+      knowledge_writeback_draft_ready_count: writebackMetrics.draft_ready_count,
+      knowledge_writeback_queued_count: writebackMetrics.queued_count,
+      knowledge_writeback_written_back_count: writebackMetrics.written_back_count,
+      knowledge_writeback_needs_revision_count: writebackMetrics.needs_revision_count,
       blocker_count: productionPortfolio.summary.blocker_count,
       warning_count: productionPortfolio.summary.warning_count,
       generated_governance_action_count: generatedGovernancePlan.actions.length,
@@ -719,6 +832,7 @@ export async function getStoryAgentMvpStatus(
       'Generated governance command surface is complete at 100%: health scan, governance plan, dry-run manifest, project_id targeting, Web/MCP exports, and no-write safety gates are available.',
       'Production material pack health is now a Story Agent MVP lane: core and high-frequency video types must keep mapped required_fields, prompt layers, gate items, supplement questions, and sample-entry coverage before production sign-off.',
       'Domain Pack production health is now a Story Agent MVP lane: required production prompt packs must keep trigger words, production prompts, review boundaries, and asset usage coverage before prompt package sign-off.',
+      'Knowledge writeback queue governance is now a Story Agent MVP lane: only approved candidates with writeback drafts are counted, and province Markdown changes remain manual review patches.',
       'MCP Story Agent loop is complete at 100%: read-only context, blueprint, validation, delivery, repair prompt, controlled versioning, generated governance, readiness automation, MVP status, and GEARS evidence signoff are all exposed as tools.',
       'Content and production command layer is complete at 100% inside china-culture-kb; generated target health and real GEARS endpoint acceptance remain separate status surfaces.',
       'Production Board / Delivery Contract command surface is complete at 100%; Seedance asset upload checklists now make external reference-material handoff explicit, and missing per-target exports remain tracked by the delivery_contract lane and generated governance plan.',

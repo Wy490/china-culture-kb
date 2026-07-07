@@ -185,6 +185,20 @@ beforeEach(() => {
         { segment_id: 1, script_text: '开场文本' },
         { segment_id: 2, script_text: '选择文本' },
       ],
+      supplement_tasks: [{
+        task_id: 'mvp-writeback-task-1',
+        need_id: 'mvp-writeback-need-1',
+        label: 'MVP 写回队列测试草案',
+        description: '验证 MCP MVP 状态能看到已审稿写回草案。',
+        status: 'resolved',
+        source: 'production_material_missing_field',
+        created_at: '2026-06-23T09:01:00.000Z',
+        updated_at: '2026-06-23T09:03:00.000Z',
+        knowledge_candidate_review_status: 'approved',
+        knowledge_candidate_review_note: '已通过测试审稿。',
+        knowledge_writeback_draft_markdown: '## 正式知识库写入草案\n\n- 核实方法：人工复核后写入。',
+        knowledge_writeback_status: 'queued',
+      }],
     },
   }, null, 2));
   fs.mkdirSync(path.join(projectRoot, 'production-board'), { recursive: true });
@@ -212,6 +226,12 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.seedance_placeholder_asset_count).toBe(2);
     expect(result.summary.seedance_production_asset_ready_count).toBe(1);
+    expect(result.summary.knowledge_writeback_ready_count).toBe(1);
+    expect(result.summary.knowledge_writeback_project_count).toBe(1);
+    expect(result.summary.knowledge_writeback_draft_ready_count).toBe(0);
+    expect(result.summary.knowledge_writeback_queued_count).toBe(1);
+    expect(result.summary.knowledge_writeback_written_back_count).toBe(0);
+    expect(result.summary.knowledge_writeback_needs_revision_count).toBe(0);
     expect(result.summary.generated_governance_action_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.generated_governance_ready_signoff_candidate_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.production_material_pack_status).toBe('passed');
@@ -231,6 +251,8 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.content_command_layer_percent).toBe(100);
     expect(result.summary.production_delivery_contract_percent).toBe(100);
     expect(result.summary.production_delivery_contract_surface_count).toBe(13);
+    expect(result.lanes.map(lane => lane.key)).toContain('knowledge_writeback');
+    expect(result.lanes.find(lane => lane.key === 'knowledge_writeback')?.evidence).toContain('queued=1');
     expect(result.generated_health.schema_version).toBe('mcp-story-agent-generated-health/v1');
     expect(result.generated_governance_plan.schema_version).toBe('mcp-story-agent-generated-governance-plan/v1');
     expect(result.production_material_pack_health.schema_version).toBe('production-material-pack-health/v1');
@@ -335,6 +357,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.markdown).toContain('production material pack health: passed');
     expect(result.markdown).toContain('domain pack health: passed');
     expect(result.markdown).toContain('Seedance placeholder assets: 2');
+    expect(result.markdown).toContain('knowledge writeback queued: 1');
     expect(result.markdown).toContain('production delivery contract: 100%');
     expect(result.markdown).toContain('Story Agent command surface: ready · 100%');
   });
