@@ -382,6 +382,7 @@ function buildSeedanceAssetReport(input: {
     if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
     return a.label.localeCompare(b.label, 'zh-CN');
   });
+  const placeholderAssetCount = assetList.filter(asset => asset.is_placeholder).length;
   const basePackage: Omit<SeedanceAssetReportPackage, 'markdown'> = {
     schema_version: 'seedance-asset-report/v1',
     project_id: input.story.project_id,
@@ -391,6 +392,8 @@ function buildSeedanceAssetReport(input: {
     total_asset_count: assetList.length,
     missing_reference_slot_count: assetList.filter(asset => !asset.has_reference_slot).length,
     upload_required_count: assetList.filter(asset => asset.needs_upload).length,
+    placeholder_asset_count: placeholderAssetCount,
+    production_asset_ready_count: assetList.filter(asset => asset.is_bound && !asset.is_placeholder).length,
     shot_binding_count: shots.length,
     unbound_shot_count: shots.filter(shot => shot.missing_asset_ids.length > 0).length,
     upload_checklist: buildSeedanceAssetUploadChecklist(assetList),
@@ -568,7 +571,7 @@ export function seedanceShotProductionId(shotId: string): string {
 function seedanceBindingState(
   referenceSlot?: string,
   libraryItem?: SeedanceAssetLibraryItem,
-): Pick<SeedanceAssetBindingItem, 'has_reference_slot' | 'is_bound' | 'needs_upload' | 'status'> {
+): Pick<SeedanceAssetBindingItem, 'has_reference_slot' | 'is_bound' | 'is_placeholder' | 'needs_upload' | 'status'> {
   const hasReferenceSlot = Boolean(referenceSlot?.trim());
   const hasUploadedProviderAsset = libraryItem?.upload_status === 'uploaded' || libraryItem?.upload_status === 'external';
   const isBound = hasReferenceSlot && Boolean(
@@ -581,9 +584,21 @@ function seedanceBindingState(
   return {
     has_reference_slot: hasReferenceSlot,
     is_bound: isBound,
+    is_placeholder: isBound && isSeedancePlaceholderAsset(libraryItem),
     needs_upload: !isBound,
     status: isBound ? 'bound' : hasReferenceSlot ? 'missing_file' : 'missing_reference_slot',
   };
+}
+
+function isSeedancePlaceholderAsset(
+  asset?: Pick<SeedanceAssetLibraryItem | SeedanceAssetBindingItem, 'provider' | 'provider_asset_id' | 'local_path' | 'original_filename' | 'mime_type'>,
+): boolean {
+  if (!asset) return false;
+  return asset.provider === 'story_agent_placeholder'
+    || asset.provider_asset_id?.startsWith('story-agent-placeholder:') === true
+    || asset.local_path?.includes('/seedance-assets/placeholder-') === true
+    || asset.original_filename?.startsWith('placeholder-') === true
+    || (asset.mime_type === 'image/svg+xml' && asset.local_path?.includes('/seedance-assets/') === true);
 }
 
 function upsertSeedanceAssetBinding(
@@ -610,6 +625,13 @@ function upsertSeedanceAssetBinding(
   const providerAssetId = existing.provider_asset_id ?? next.provider_asset_id;
   const uploadStatus = existing.upload_status ?? next.upload_status;
   const uploadError = existing.upload_error ?? next.upload_error;
+  const isPlaceholder = isSeedancePlaceholderAsset({
+    provider,
+    provider_asset_id: providerAssetId,
+    local_path: localPath,
+    original_filename: originalFilename,
+    mime_type: mimeType,
+  });
   const hasReferenceSlot = existing.has_reference_slot || next.has_reference_slot;
   const isBound = hasReferenceSlot && Boolean(
     fileUrl
@@ -639,6 +661,7 @@ function upsertSeedanceAssetBinding(
     required_by_shot_count: sourceShotIds.length,
     has_reference_slot: hasReferenceSlot,
     is_bound: isBound,
+    is_placeholder: isBound && isPlaceholder,
     needs_upload: !isBound,
     status: isBound ? 'bound' : hasReferenceSlot ? 'missing_file' : 'missing_reference_slot',
   });
@@ -653,8 +676,13 @@ function renderSeedanceAssetReportMarkdown(pkg: Omit<SeedanceAssetReportPackage,
     `- 生成时间: ${pkg.generated_at}`,
     `- 素材总数: ${pkg.total_asset_count}`,
     `- 待上传文件: ${pkg.upload_required_count}`,
+    `- 占位参考图: ${pkg.placeholder_asset_count}`,
+    `- 正式素材 ready: ${pkg.production_asset_ready_count}`,
     `- 缺引用槽位: ${pkg.missing_reference_slot_count}`,
     `- 受影响镜头: ${pkg.unbound_shot_count}/${pkg.shot_binding_count}`,
+    ...(pkg.placeholder_asset_count > 0
+      ? [`- 注意: ${pkg.placeholder_asset_count} 个 story_agent_placeholder 只表示结构化绑定，正式投产前仍需替换为真实视觉素材。`]
+      : []),
     '',
     '## 上传清单',
     ...(pkg.upload_checklist.length ? pkg.upload_checklist.map(item => [
@@ -668,6 +696,7 @@ function renderSeedanceAssetReportMarkdown(pkg: Omit<SeedanceAssetReportPackage,
     ...(pkg.assets.length ? pkg.assets.map(asset => [
       `- [${seedanceAssetBindingStatusLabel(asset.status)}] ${asset.reference_slot ?? '未分配槽位'} · ${seedanceAssetKindLabel(asset.kind)}「${asset.label}」`,
       `  - 用途: ${seedanceAssetRoleLabel(asset.role)}；格式: ${asset.modality}；镜头: ${asset.source_shot_ids.join('、') || '无'}；使用次数: ${asset.required_by_shot_count}`,
+      asset.is_placeholder ? '  - 占位素材: 是；仅用于结构化链路验收，正式投产前需替换。' : '',
       asset.original_filename ? `  - 文件: ${asset.original_filename}${asset.size_bytes ? `；大小: ${asset.size_bytes} bytes` : ''}` : '',
       asset.provider_asset_id ? `  - Provider 素材: ${asset.provider ?? 'unknown'} / ${asset.provider_asset_id}` : '',
       asset.upload_status ? `  - 上传状态: ${asset.upload_status}${asset.upload_error ? `；错误: ${asset.upload_error}` : ''}` : '',
@@ -983,8 +1012,10 @@ function buildDeliveryManifest(
       artifact_id: 'seedance-asset-report',
       kind: 'seedance_asset_report',
       label: 'Seedance Asset Report',
-      status: seedanceAssetReport.unbound_shot_count > 0 ? 'needs_repair' : 'ready',
-      description: '按素材 slot 聚合人物、场景和道具引用，标记缺槽位、缺文件和待上传镜头。',
+      status: seedanceAssetReport.unbound_shot_count > 0 || seedanceAssetReport.placeholder_asset_count > 0 ? 'needs_repair' : 'ready',
+      description: seedanceAssetReport.placeholder_asset_count > 0
+        ? `按素材 slot 聚合人物、场景和道具引用；仍有 ${seedanceAssetReport.placeholder_asset_count} 个占位参考图需替换为正式视觉素材。`
+        : '按素材 slot 聚合人物、场景和道具引用，标记缺槽位、缺文件和待上传镜头。',
     },
     {
       artifact_id: 'seedance-shot-ledger',
@@ -1019,6 +1050,9 @@ function deliveryNextAction(
   if (stage === 'ready') {
     if (seedanceAssetReport.upload_required_count > 0 || seedanceAssetReport.missing_reference_slot_count > 0) {
       return `Story Agent 交付包可用；提交 Seedance 前请先按素材缺口报告上传/绑定 ${seedanceAssetReport.upload_required_count} 个参考素材文件。`;
+    }
+    if (seedanceAssetReport.placeholder_asset_count > 0) {
+      return `Story Agent 结构化交付包可用；正式投产前请把 ${seedanceAssetReport.placeholder_asset_count} 个占位参考图替换为真实视觉素材。`;
     }
     return '可以导出 Board Markdown/JSON，并按镜头提交 Seedance 提示词。';
   }
@@ -1396,6 +1430,8 @@ function renderProductionBoardMarkdown(pkg: Omit<StoryProductionBoard, 'markdown
     '## Seedance 素材缺口',
     `- 素材总数: ${pkg.seedance_asset_report.total_asset_count}`,
     `- 待上传文件: ${pkg.seedance_asset_report.upload_required_count}`,
+    `- 占位参考图: ${pkg.seedance_asset_report.placeholder_asset_count}`,
+    `- 正式素材 ready: ${pkg.seedance_asset_report.production_asset_ready_count}`,
     `- 缺引用槽位: ${pkg.seedance_asset_report.missing_reference_slot_count}`,
     `- 受影响镜头: ${pkg.seedance_asset_report.unbound_shot_count}/${pkg.seedance_asset_report.shot_binding_count}`,
     ...(pkg.seedance_asset_report.assets.slice(0, 12).map(asset =>

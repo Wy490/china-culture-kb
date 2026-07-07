@@ -3019,6 +3019,7 @@ export interface SeedanceAssetBindingItem {
   required_by_shot_count: number;
   has_reference_slot: boolean;
   is_bound: boolean;
+  is_placeholder?: boolean;
   needs_upload: boolean;
   status: SeedanceAssetBindingStatus;
 }
@@ -3822,6 +3823,8 @@ export interface SeedanceAssetReportPackage {
   total_asset_count: number;
   missing_reference_slot_count: number;
   upload_required_count: number;
+  placeholder_asset_count: number;
+  production_asset_ready_count: number;
   shot_binding_count: number;
   unbound_shot_count: number;
   upload_checklist: SeedanceAssetUploadChecklistItem[];

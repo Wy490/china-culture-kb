@@ -6247,6 +6247,7 @@ export async function getProjectProductionReadiness(
   const shotStatusCounts = seedanceShotProductionStatusCounts(board.seedance_shot_ledger.items);
   const activeShotCount = shotStatusCounts.submitted + shotStatusCounts.processing;
   const shotCount = board.seedance_shot_ledger.items.length || board.shot_units.length;
+  const seedancePlaceholderAssetCount = board.seedance_asset_report.placeholder_asset_count ?? 0;
   const currentVersion = detail.versions.find(version => version.version_id === detail.project.current_version_id)
     ?? detail.versions[0];
   const issues: ProductionReadinessIssue[] = [];
@@ -6360,6 +6361,16 @@ export async function getProjectProductionReadiness(
       detail: `当前有 ${board.seedance_asset_report.unbound_shot_count}/${board.seedance_asset_report.shot_binding_count} 个镜头缺少可交付的 @ 参考素材绑定。`,
       action_key: board.seedance_asset_report.upload_required_count > 0 ? 'draft_seedance_asset_placeholders' : 'export_production_board',
       action_label: board.seedance_asset_report.upload_required_count > 0 ? '生成占位参考图' : '刷新 Production Board',
+    });
+  }
+  if (seedancePlaceholderAssetCount > 0) {
+    addIssue({
+      issue_id: 'seedance-assets-placeholder-only',
+      severity: 'warning',
+      lane_key: 'delivery_contract',
+      label: `${seedancePlaceholderAssetCount} 个 Seedance 占位参考图待替换`,
+      detail: '占位参考图只说明 @ 槽位已结构化绑定，可用于链路验收；正式投产前仍需批量导入或上传真实视觉素材。',
+      action_label: '批量导入正式素材',
     });
   }
   if (board.seedance_asset_report.upload_required_count > 0) {
@@ -6557,15 +6568,22 @@ export async function getProjectProductionReadiness(
       key: 'delivery_contract',
       label: 'Delivery Contract',
       status: board.delivery_manifest.stage === 'ready'
-        ? currentVersion?.production_board_export ? 'ready' : 'needs_action'
+        ? currentVersion?.production_board_export && seedancePlaceholderAssetCount === 0 ? 'ready' : 'needs_action'
         : board.delivery_manifest.stage === 'blocked' ? 'blocked' : 'needs_action',
-      score: productionReadinessDeliveryScore(board.delivery_manifest.stage, Boolean(currentVersion?.production_board_export)),
+      score: Math.max(
+        0,
+        productionReadinessDeliveryScore(board.delivery_manifest.stage, Boolean(currentVersion?.production_board_export))
+          - (seedancePlaceholderAssetCount > 0 ? 10 : 0),
+      ),
       detail: currentVersion?.production_board_export
-        ? `最近交付包已落盘：${currentVersion.production_board_export.file_count} 个文件。`
+        ? seedancePlaceholderAssetCount > 0
+          ? `最近交付包已落盘：${currentVersion.production_board_export.file_count} 个文件；仍有 ${seedancePlaceholderAssetCount} 个占位参考图需替换。`
+          : `最近交付包已落盘：${currentVersion.production_board_export.file_count} 个文件。`
         : board.delivery_manifest.next_action,
       count_text: `${board.delivery_manifest.ready_artifact_count}/${board.delivery_manifest.artifacts.length} artifacts`,
       evidence: [
         `stage ${board.delivery_manifest.stage}`,
+        `placeholder_assets ${seedancePlaceholderAssetCount}`,
         currentVersion?.production_board_export ? `exported ${currentVersion.production_board_export.exported_at}` : 'not exported',
       ],
       action_key: currentVersion?.production_board_export ? undefined : 'export_production_board',

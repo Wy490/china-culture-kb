@@ -25,7 +25,7 @@
 19. 补齐写回队列筛选：补充任务列表 API 支持按 `knowledge_writeback_status` 查询；集中补充任务页新增写回状态筛选和写回草案、入库队列、已入库统计，方便人工入库队列从单项目操作进入集中处理。
 20. 建立集中写回队列导出：新增全局 `project-knowledge-writeback-patch/v1` 队列导出接口，支持按项目和写回状态导出多个项目的已通过候选稿；集中补充任务页可一键复制当前筛选范围的写回 Patch Markdown。
 21. 接入生产素材自动草拟：新增 `project-production-material-draft/v1` 项目动作，可从 `scene_breakdown`、`gears_segments`、对白和镜头提示中草拟 AI 漫剧生产字段（参考关键帧、一致性计划、单镜头测试、多分镜连续性、转场计划等），并接入制作 readiness 自动化和项目详情页按钮。
-22. 接入 Seedance 本地参考资产占位生成：新增 `project-seedance-asset-placeholders/v1` 项目动作，可从 Production Board 的 `seedance_asset_report` 为缺文件的 `@图片` 槽位生成 SVG 参考卡，写回 `seedance_asset_library`，刷新交付包，并接入制作 readiness 自动化和项目详情页按钮；已在真实项目 `20260702-story-5zhd4151f8c7--ai_comic_drama` 验证，Seedance 待上传素材 `5→0`、受影响镜头 `5→0`、交付清单 `6/7→7/7 ready`。
+22. 接入 Seedance 本地参考资产占位生成：新增 `project-seedance-asset-placeholders/v1` 项目动作，可从 Production Board 的 `seedance_asset_report` 为缺文件的 `@图片` 槽位生成 SVG 参考卡，写回 `seedance_asset_library`，刷新交付包，并接入制作 readiness 自动化和项目详情页按钮；已在真实项目 `20260702-story-5zhd4151f8c7--ai_comic_drama` 验证，Seedance 待上传素材 `5→0`、受影响镜头 `5→0`，但占位参考图只代表结构化绑定完成，不代表最终投产素材已补齐。
 23. 接入本地 GEARS 验收闭环：新增 `accept_local_gears_artifacts` / `project-gears-local-acceptance` 项目动作，可把 `local-gears-*` mocked job 写入 `local_acceptance` artifact，刷新 GEARS ledger、Seedance shot ledger、Production Board 和制作 readiness；已在真实项目 `20260702-story-5zhd4151f8c7--ai_comic_drama` 验证，GEARS active `5→0`、readiness `85→100`、lanes `5/7→7/7 ready`。该动作只代表本地验收占位产物，不代表外部 GEARS/Seedance 已真实回片。
 24. 补强交付来源透明度：制作 readiness summary、GEARS lane evidence 和项目详情页会区分 `external_ready` 与 `local_acceptance_ready`；当 ready job 只有本地验收 artifact 时，报告会生成 info 级 `gears-local-acceptance-only` 提示，保持 100 分 ready 的同时明确真实外部回片仍待验收。
 25. 补齐外部回片覆盖本地验收的回归保护：真实 GEARS callback 带外部 artifact URL 回来后，会替换对应 `local_acceptance` artifact，刷新 Seedance shot ledger 选用版本，并让 readiness 的 `external_ready` 增加、`local_acceptance_ready` 和 `ready_without_external` 下降。
@@ -64,6 +64,7 @@
 58. 抽出 MCP 共享生产健康模块：`production-health-reports.ts` 统一承载 ProductionMaterialPack 与 Domain Pack 只读健康扫描，MVP 状态页和两个独立 MCP 健康工具共用同一套通过/警告/阻断判定，避免后续新增片型或生产提示包时出现命令面口径漂移。
 59. 加硬 MCP 包健康 fail-closed 回归测试：`production-health-reports.test.ts` 覆盖生产素材包文件或 Domain Pack 文件缺失时必须返回 `failed`、列出 8 个必需片型/生产提示包缺口，防止独立 MCP 工具、MVP lane 或 worker signoff 在素材包缺失时误报为健康。
 60. 补强独立 MCP 健康工具的人机双读输出：`kb_get_production_material_pack_health` 与 `kb_get_domain_pack_production_health` 默认返回 Markdown 摘要，包含状态、覆盖数、ready 数、缺口和问题清单；同时支持 `include_markdown=false` 只返回结构化 JSON，方便 GEARS 签收、外部编排和人工审稿材料复用同一只读报告。
+61. 收紧 Seedance 占位素材生产语义：`seedance_asset_report` 新增 `placeholder_asset_count` 与 `production_asset_ready_count`，占位 SVG 绑定后仍会让 Seedance Asset Report artifact 保持 `needs_repair`，Production readiness 生成 `seedance-assets-placeholder-only` warning，项目详情页显示占位数与正式 ready 数，明确 exported/ready 只代表结构化交付，不等于可直接投产。
 
 ## 原始诊断必须并入路线
 

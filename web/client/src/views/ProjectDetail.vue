@@ -837,8 +837,13 @@
             <p>
               {{ productionBoard.seedance_asset_report.total_asset_count }} 个素材
               · 待上传 {{ productionBoard.seedance_asset_report.upload_required_count }}
+              · 占位 {{ productionBoard.seedance_asset_report.placeholder_asset_count }}
+              · 正式 ready {{ productionBoard.seedance_asset_report.production_asset_ready_count }}
               · 缺槽位 {{ productionBoard.seedance_asset_report.missing_reference_slot_count }}
               · 受影响镜头 {{ productionBoard.seedance_asset_report.unbound_shot_count }}/{{ productionBoard.seedance_asset_report.shot_binding_count }}
+            </p>
+            <p v-if="productionBoard.seedance_asset_report.placeholder_asset_count > 0">
+              占位参考图只用于结构化链路验收，正式投产前请批量导入或上传真实视觉素材。
             </p>
             <div class="project-detail-page__seedance-ledger-action-row">
               <button

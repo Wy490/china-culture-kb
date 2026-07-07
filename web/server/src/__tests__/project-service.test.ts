@@ -1116,6 +1116,15 @@ describe('project-service', () => {
     expect(draftRes.data?.after_upload_required_count).toBe(0);
     expect(draftRes.data?.after_unbound_shot_count).toBe(0);
     expect(draftRes.data?.board.seedance_asset_report.assets.every(asset => asset.status === 'bound')).toBe(true);
+    expect(draftRes.data?.board.seedance_asset_report.placeholder_asset_count).toBeGreaterThan(0);
+    expect(draftRes.data?.board.seedance_asset_report.production_asset_ready_count).toBe(0);
+    expect(draftRes.data?.board.seedance_asset_report.markdown).toContain('正式投产前仍需替换为真实视觉素材');
+    expect(draftRes.data?.board.delivery_manifest.artifacts.find(artifact =>
+      artifact.kind === 'seedance_asset_report'
+    )).toMatchObject({
+      status: 'needs_repair',
+      description: expect.stringContaining('占位参考图需替换为正式视觉素材'),
+    });
 
     const firstItem = draftRes.data!.items[0];
     const placeholderFilePath = resolve(root, 'web', 'generated', firstItem.local_path);
@@ -1142,13 +1151,21 @@ describe('project-service', () => {
     const exportedReport = JSON.parse(await readFile(
       resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'production-board', 'seedance-asset-report.json'),
       'utf-8',
-    )) as { upload_required_count: number; unbound_shot_count: number };
+    )) as {
+      upload_required_count: number;
+      unbound_shot_count: number;
+      placeholder_asset_count: number;
+      production_asset_ready_count: number;
+    };
     expect(exportedReport.upload_required_count).toBe(0);
     expect(exportedReport.unbound_shot_count).toBe(0);
+    expect(exportedReport.placeholder_asset_count).toBeGreaterThan(0);
+    expect(exportedReport.production_asset_ready_count).toBe(0);
 
     const afterReadiness = await getProjectProductionReadiness(enriched.project_id!);
     expect(afterReadiness.ok).toBe(true);
     expect(afterReadiness.data?.issues.map(issue => issue.issue_id)).not.toContain('seedance-assets-unbound');
+    expect(afterReadiness.data?.issues.map(issue => issue.issue_id)).toContain('seedance-assets-placeholder-only');
     expect(afterReadiness.data?.next_actions.map(action => action.action_key)).not.toContain('draft_seedance_asset_placeholders');
   });
 
@@ -3711,6 +3728,8 @@ describe('project-service', () => {
     expect(seedanceAssetReport.markdown).toContain('Seedance 素材缺口报告');
     expect(seedanceAssetReport.markdown).toContain('## 上传清单');
     expect(seedanceAssetReport.upload_required_count).toBeGreaterThan(0);
+    expect(seedanceAssetReport.placeholder_asset_count).toBe(0);
+    expect(seedanceAssetReport.production_asset_ready_count).toBe(0);
     expect(seedanceAssetReport.upload_checklist.length).toBe(seedanceAssetReport.upload_required_count);
     expect(seedanceAssetReport.upload_checklist[0]).toMatchObject({
       needs_upload: true,
