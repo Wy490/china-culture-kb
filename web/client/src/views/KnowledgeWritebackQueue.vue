@@ -3,9 +3,12 @@
     <header class="writeback-page__header">
       <div>
         <h1 class="writeback-page__title">知识库写回队列</h1>
-        <p class="writeback-page__desc">集中处理已通过审稿的项目候选稿，只导出人工核实后的省份 Markdown 写入草案。</p>
+        <p class="writeback-page__desc">集中处理已通过审稿的项目候选稿和扩库候选稿，只导出人工核实后的省份 Markdown 写入草案。</p>
       </div>
-      <RouterLink class="writeback-page__back" to="/supplement-tasks">素材补充任务</RouterLink>
+      <div class="writeback-page__header-actions">
+        <RouterLink class="writeback-page__back writeback-page__back--secondary" to="/domain-pack-expansion-queue">扩库审稿队列</RouterLink>
+        <RouterLink class="writeback-page__back" to="/supplement-tasks">素材补充任务</RouterLink>
+      </div>
     </header>
 
     <section class="writeback-page__toolbar">
@@ -55,7 +58,7 @@
         :disabled="Boolean(exportingFormat)"
         @click="copyPatch('markdown')"
       >
-        {{ exportingFormat === 'markdown' ? '复制中…' : '复制 Markdown Patch' }}
+        {{ exportingFormat === 'markdown' ? '复制中…' : '复制项目 Patch' }}
       </button>
       <button
         type="button"
@@ -65,6 +68,22 @@
       >
         {{ exportingFormat === 'json' ? '复制中…' : '复制 JSON 包' }}
       </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
+        @click="copyExpansionDraft('markdown')"
+      >
+        {{ exportingFormat === 'expansion-markdown' ? '复制中…' : '复制扩库草案' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
+        @click="copyExpansionDraft('json')"
+      >
+        {{ exportingFormat === 'expansion-json' ? '复制中…' : '复制扩库 JSON' }}
+      </button>
     </section>
 
     <div v-if="copyMessage" class="writeback-page__notice">{{ copyMessage }}</div>
@@ -72,11 +91,19 @@
     <section class="writeback-page__summary">
       <div>
         <span>草案总数</span>
-        <strong>{{ queueItems.length }}</strong>
+        <strong>{{ totalQueueCount }}</strong>
       </div>
       <div>
         <span>当前筛选</span>
-        <strong>{{ filteredItems.length }}</strong>
+        <strong>{{ filteredTotalCount }}</strong>
+      </div>
+      <div>
+        <span>项目草案</span>
+        <strong>{{ queueItems.length }}</strong>
+      </div>
+      <div>
+        <span>扩库草案</span>
+        <strong>{{ expansionItems.length }}</strong>
       </div>
       <div>
         <span>草案就绪</span>
@@ -136,7 +163,44 @@
         </aside>
       </article>
 
-      <div v-if="filteredItems.length === 0" class="writeback-page__state">没有匹配的写回草案。</div>
+      <article v-for="item in filteredExpansionItems" :key="item.review_item_id" class="writeback-page__item writeback-page__item--expansion">
+        <div class="writeback-page__main">
+          <div class="writeback-page__badges">
+            <span :class="['writeback-page__status', `writeback-page__status--${expansionWritebackStatus(item)}`]">
+              {{ writebackStatusLabel(expansionWritebackStatus(item)) }}
+            </span>
+            <span>扩库候选</span>
+            <span>{{ item.province || '待确认省份' }}</span>
+            <span>{{ packShortLabel(item.pack_id) }}</span>
+            <span v-for="type in item.target_video_types" :key="`${item.review_item_id}:${type}`">
+              {{ typeLabel(type) }}
+            </span>
+          </div>
+          <h2>{{ item.entry_name }}</h2>
+          <p>{{ item.pack_id }} · {{ item.review_item_id }}</p>
+          <p v-if="item.review_note" class="writeback-page__note">审稿备注：{{ item.review_note }}</p>
+          <pre>{{ item.writeback_draft_markdown }}</pre>
+        </div>
+
+        <aside class="writeback-page__side">
+          <strong>{{ item.suggested_file_path }}</strong>
+          <span>{{ item.writeback_note || '未填写入库备注' }}</span>
+          <RouterLink to="/domain-pack-expansion-queue">打开扩库队列</RouterLink>
+          <textarea
+            :value="expansionNoteDraft(item)"
+            placeholder="入库备注"
+            @input="updateExpansionNoteDraft(item.review_item_id, $event)"
+          />
+          <div class="writeback-page__status-actions">
+            <button type="button" :disabled="updatingTaskId === item.review_item_id" @click="setExpansionWritebackStatus(item, 'draft_ready')">草案</button>
+            <button type="button" :disabled="updatingTaskId === item.review_item_id" @click="setExpansionWritebackStatus(item, 'queued')">入队</button>
+            <button type="button" :disabled="updatingTaskId === item.review_item_id" @click="setExpansionWritebackStatus(item, 'written_back')">入库</button>
+            <button type="button" :disabled="updatingTaskId === item.review_item_id" @click="setExpansionWritebackStatus(item, 'needs_revision')">重审</button>
+          </div>
+        </aside>
+      </article>
+
+      <div v-if="filteredTotalCount === 0" class="writeback-page__state">没有匹配的写回草案。</div>
     </section>
   </div>
 </template>
@@ -144,13 +208,24 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { exportKnowledgeWritebackQueuePatch, listSupplementTasks, updateProjectSupplementTask } from '@/api/projects'
-import type { KnowledgeWritebackStatus, ProjectSupplementTaskListItem, VideoType } from '@shared/types'
+import {
+  getDomainPackExpansionWritebackDraft,
+  updateDomainPackExpansionReviewState,
+} from '@/api/system'
+import type {
+  DomainPackExpansionWritebackDraftItem,
+  DomainPackExpansionWritebackDraftPackage,
+  KnowledgeWritebackStatus,
+  ProjectSupplementTaskListItem,
+  VideoType,
+} from '@shared/types'
 
 const tasks = ref<ProjectSupplementTaskListItem[]>([])
+const expansionDraft = ref<DomainPackExpansionWritebackDraftPackage | null>(null)
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const exportingFormat = ref<'markdown' | 'json' | ''>('')
+const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | ''>('')
 const updatingTaskId = ref('')
 const searchQuery = ref('')
 const projectFilter = ref('')
@@ -158,11 +233,17 @@ const videoTypeFilter = ref<VideoType | ''>('')
 const provinceFilter = ref('')
 const writebackFilter = ref<KnowledgeWritebackStatus | ''>('')
 const noteDrafts = reactive<Record<string, string>>({})
+const expansionNoteDrafts = reactive<Record<string, string>>({})
 
 const queueItems = computed(() => tasks.value.filter(item =>
   item.task.knowledge_candidate_review_status === 'approved'
   && Boolean(item.task.knowledge_writeback_draft_markdown),
 ))
+
+const expansionItems = computed(() => expansionDraft.value?.items ?? [])
+
+const totalQueueCount = computed(() => queueItems.value.length + expansionItems.value.length)
+const filteredTotalCount = computed(() => filteredItems.value.length + filteredExpansionItems.value.length)
 
 const projectOptions = computed(() => {
   const seen = new Set<string>()
@@ -177,6 +258,8 @@ const projectOptions = computed(() => {
 })
 
 const provinceOptions = computed(() => [...new Set(queueItems.value.map(item => item.target_province).filter((item): item is string => Boolean(item)))]
+  .concat([...new Set(expansionItems.value.map(item => item.province).filter(Boolean))])
+  .filter((province, index, list) => list.indexOf(province) === index)
   .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN')))
 
 const filteredItems = computed(() => {
@@ -205,12 +288,42 @@ const filteredItems = computed(() => {
   })
 })
 
+const filteredExpansionItems = computed(() => {
+  if (projectFilter.value) return []
+  const query = searchQuery.value.trim().toLowerCase()
+  return expansionItems.value.filter(item => {
+    const status = expansionWritebackStatus(item)
+    const text = [
+      item.review_item_id,
+      item.batch_id,
+      item.pack_id,
+      item.entry_name,
+      item.province,
+      item.suggested_file_path,
+      item.review_note ?? '',
+      item.writeback_note ?? '',
+      item.writeback_draft_markdown,
+      item.append_markdown,
+      ...item.target_video_types,
+    ].join(' ').toLowerCase()
+    return (!videoTypeFilter.value || item.target_video_types.includes(videoTypeFilter.value))
+      && (!provinceFilter.value || item.province === provinceFilter.value)
+      && (!writebackFilter.value || status === writebackFilter.value)
+      && (!query || text.includes(query))
+  })
+})
+
 function taskWritebackStatus(item: ProjectSupplementTaskListItem): KnowledgeWritebackStatus {
   return item.task.knowledge_writeback_status ?? 'draft_ready'
 }
 
+function expansionWritebackStatus(item: DomainPackExpansionWritebackDraftItem): KnowledgeWritebackStatus {
+  return item.writeback_status ?? 'draft_ready'
+}
+
 function countByStatus(status: KnowledgeWritebackStatus): number {
   return queueItems.value.filter(item => taskWritebackStatus(item) === status).length
+    + expansionItems.value.filter(item => expansionWritebackStatus(item) === status).length
 }
 
 function writebackStatusLabel(status: KnowledgeWritebackStatus): string {
@@ -220,7 +333,7 @@ function writebackStatusLabel(status: KnowledgeWritebackStatus): string {
   return '草案就绪'
 }
 
-function typeLabel(type: VideoType): string {
+function typeLabel(type: string): string {
   const map: Record<string, string> = {
     heritage_promo: '非遗宣传',
     documentary_short: '微纪录',
@@ -241,6 +354,20 @@ function typeLabel(type: VideoType): string {
   return map[type] ?? type
 }
 
+function packShortLabel(packId: string): string {
+  const map: Record<string, string> = {
+    heritage_process_pack: '非遗流程',
+    documentary_source_pack: '纪录来源',
+    ai_comic_storyboard_pack: '漫剧分镜',
+    era_and_costume_pack: '服饰器物',
+    explainer_knowledge_structure_pack: '讲解结构',
+    children_adaptation_safety_pack: '儿童改写',
+    short_video_hook_pack: '短视频钩子',
+    education_training_structure_pack: '宣讲培训',
+  }
+  return map[packId] ?? packId
+}
+
 function formatDate(iso?: string): string {
   if (!iso) return '未记录'
   const d = new Date(iso)
@@ -255,14 +382,30 @@ function updateNoteDraft(taskId: string, event: Event) {
   noteDrafts[taskId] = (event.target as HTMLTextAreaElement).value
 }
 
+function expansionNoteDraft(item: DomainPackExpansionWritebackDraftItem): string {
+  return expansionNoteDrafts[item.review_item_id] ?? item.writeback_note ?? ''
+}
+
+function updateExpansionNoteDraft(reviewItemId: string, event: Event) {
+  expansionNoteDrafts[reviewItemId] = (event.target as HTMLTextAreaElement).value
+}
+
 async function loadTasks() {
   loading.value = true
   error.value = ''
-  const res = await listSupplementTasks({ knowledge_writeback_ready: true })
+  const [res, expansionRes] = await Promise.all([
+    listSupplementTasks({ knowledge_writeback_ready: true }),
+    getDomainPackExpansionWritebackDraft(),
+  ])
   if (res.ok && res.data) {
     tasks.value = res.data
   } else {
     error.value = res.error?.message ?? '加载写回队列失败'
+  }
+  if (expansionRes.ok && expansionRes.data) {
+    expansionDraft.value = expansionRes.data
+  } else if (!error.value) {
+    error.value = expansionRes.error?.message ?? '加载扩库写回草案失败'
   }
   loading.value = false
 }
@@ -305,6 +448,38 @@ async function copyPatch(format: 'markdown' | 'json') {
   }
 }
 
+async function copyExpansionDraft(format: 'markdown' | 'json') {
+  const visibleItems = filteredExpansionItems.value
+  if (visibleItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可导出的扩库写回草案'
+    return
+  }
+
+  exportingFormat.value = format === 'json' ? 'expansion-json' : 'expansion-markdown'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await getDomainPackExpansionWritebackDraft({
+      review_item_ids: visibleItems.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      const clipboardText = format === 'json'
+        ? JSON.stringify(res.data, null, 2)
+        : res.data.markdown
+      await navigator.clipboard.writeText(clipboardText)
+      const exportLabel = format === 'json' ? '扩库 JSON 导出包' : '扩库 Markdown 草案'
+      copyMessage.value = `已复制 ${exportLabel}：${res.data.approved_count}/${visibleItems.length} 条当前可见扩库草案，目标文件 ${res.data.target_files.length} 个。`
+    } else {
+      error.value = res.error?.message ?? '导出扩库写回草案失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制扩库写回草案失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
 async function setWritebackStatus(item: ProjectSupplementTaskListItem, status: KnowledgeWritebackStatus) {
   updatingTaskId.value = item.task.task_id
   error.value = ''
@@ -318,6 +493,28 @@ async function setWritebackStatus(item: ProjectSupplementTaskListItem, status: K
     await loadTasks()
   } else {
     error.value = res.error?.message ?? '更新写回状态失败'
+  }
+  updatingTaskId.value = ''
+}
+
+async function setExpansionWritebackStatus(
+  item: DomainPackExpansionWritebackDraftItem,
+  status: KnowledgeWritebackStatus,
+) {
+  updatingTaskId.value = item.review_item_id
+  error.value = ''
+  const res = await updateDomainPackExpansionReviewState({
+    review_item_id: item.review_item_id,
+    review_status: 'approved',
+    review_note: item.review_note,
+    writeback_status: status,
+    writeback_note: expansionNoteDraft(item).trim() || writebackStatusLabel(status),
+  })
+  if (res.ok) {
+    delete expansionNoteDrafts[item.review_item_id]
+    await loadTasks()
+  } else {
+    error.value = res.error?.message ?? '更新扩库写回状态失败'
   }
   updatingTaskId.value = ''
 }
@@ -354,6 +551,13 @@ onMounted(async () => {
   margin-bottom: 18px;
 }
 
+.writeback-page__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .writeback-page__title {
   margin: 0 0 6px;
   color: #22313f;
@@ -378,6 +582,10 @@ onMounted(async () => {
 .writeback-page__back {
   flex: 0 0 auto;
   padding: 10px 14px;
+}
+
+.writeback-page__back--secondary {
+  background: #506274;
 }
 
 .writeback-page__toolbar {
