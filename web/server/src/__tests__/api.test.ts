@@ -2668,6 +2668,7 @@ describe('System API', () => {
           'Domain Pack production health audit has status=passed before GEARS worker signoff.',
           'Story Agent MVP status audit has no status regression or blocker increase after worker smoke.',
           'Story Agent MVP governance counts for Seedance placeholders and knowledge writeback queue are preserved in verdict and archive evidence.',
+          'Story Agent MVP real external callback readiness is preserved in verdict and archive evidence with local_acceptance_counts_as_real_external_callback=false.',
           'Large project pressure payload is generated for at least 30 episodes and is submitted only when explicitly enabled.',
           'Large project response audit has no source_echo_gap after a real pressure submit.',
           'Final worker acceptance verdict has acceptance_passed=true before a GEARS v2 run is signed off.',
@@ -3401,6 +3402,11 @@ describe('System API', () => {
           generated_health_interrupted_count: expect.any(Number),
           story_agent_mvp_status: expect.stringMatching(/ready|needs_action|blocked/),
           story_agent_mvp_score: expect.any(Number),
+          real_gears_callback_base_public: expect.any(Boolean),
+          real_gears_acceptance_ready_to_run: expect.any(Boolean),
+          real_gears_acceptance_blocker: expect.any(String),
+          local_acceptance_counts_as_real_external_callback: false,
+          seedance_provider_external_loop_ready: expect.any(Boolean),
           production_material_pack_status: 'passed',
           production_material_pack_issue_count: 0,
           production_material_pack_core_ready_count: 4,
@@ -3464,6 +3470,8 @@ describe('System API', () => {
           'Attach gears-worker-evidence-signoff.json/.md as the final post-archive signoff snapshot.',
           'Attach story-agent-mvp-status-report.md to show Story Agent MVP lane status before GEARS worker sign-off.',
           'Attach story-agent-mvp-status-audit.json/.md and require status=passed or warning with no failed_checks before sign-off.',
+          'Confirm story-agent-mvp-status-audit.json records real_external_callback_readiness with local_acceptance_counts_as_real_external_callback=false before sign-off.',
+          'Confirm gears-worker-acceptance-verdict.json and gears-worker-acceptance-archive.json embed matching MVP real external callback readiness before sign-off.',
           'Attach domain-pack-production-health-report.md and domain-pack-production-health-audit.json/.md to prove production prompt packs are production-ready before GEARS worker sign-off.',
           'Attach story-agent-generated-health-audit.json/.md and require status=passed before sign-off.',
           'Run generated health audit before and after smoke to confirm the selected target is not planned-only or interrupted.',
@@ -3479,6 +3487,11 @@ describe('System API', () => {
         expect(res.body.data.markdown).toContain('Story Agent generated health report');
         expect(res.body.data.markdown).toContain('Story Agent MVP status report');
         expect(res.body.data.markdown).toContain('audit_story_agent_mvp_status');
+        expect(res.body.data.markdown).toContain('real_gears_acceptance_ready_to_run');
+        expect(res.body.data.markdown).toContain('local_acceptance_counts_as_real_external_callback: false');
+        expect(res.body.data.recommended_next_actions).toEqual(expect.arrayContaining([
+          'Keep local acceptance separate from real external callback evidence; require MVP real external callback readiness in audit, verdict, archive, and final signoff.',
+        ]));
       } finally {
         if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
         else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;

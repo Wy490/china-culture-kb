@@ -2861,6 +2861,11 @@ export interface GearsExecutionWorkerEvidenceBundle {
   generated_health_interrupted_count: number;
   story_agent_mvp_status: StoryAgentMvpStatus;
   story_agent_mvp_score: number;
+  real_gears_callback_base_public: boolean;
+  real_gears_acceptance_ready_to_run: boolean;
+  real_gears_acceptance_blocker: string;
+  local_acceptance_counts_as_real_external_callback: false;
+  seedance_provider_external_loop_ready: boolean;
   production_material_pack_status: ProductionMaterialPackHealthStatus;
   production_material_pack_issue_count: number;
   production_material_pack_core_ready_count: number;
