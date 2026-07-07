@@ -807,9 +807,54 @@ describe('System API', () => {
       expectSuccess(draftRes.body);
       expect(draftRes.body.data).toMatchObject({
         approved_count: 2,
+        direct_writeback_to_province_markdown: false,
+        filters: {},
         status_counts: expect.objectContaining({
           queued: 2,
         }),
+      });
+
+      const scopedDraftRes = await request
+        .get('/api/system/domain-pack-expansion-writeback-draft')
+        .query({
+          pack_id: 'short_video_hook_pack',
+          video_type: 'social_short',
+          province: '湖南',
+          writeback_status: 'queued',
+        });
+      expect(scopedDraftRes.status).toBe(200);
+      expectSuccess(scopedDraftRes.body);
+      expect(scopedDraftRes.body.data).toMatchObject({
+        approved_count: 2,
+        target_files: ['data/provinces/湖南.md'],
+        direct_writeback_to_province_markdown: false,
+        filters: {
+          pack_ids: ['short_video_hook_pack'],
+          video_types: ['social_short'],
+          provinces: ['湖南'],
+          writeback_statuses: ['queued'],
+        },
+        status_counts: expect.objectContaining({
+          queued: 2,
+        }),
+      });
+      expect(scopedDraftRes.body.data.markdown).toContain('pack_ids: short_video_hook_pack');
+
+      const emptyDraftRes = await request
+        .get('/api/system/domain-pack-expansion-writeback-draft')
+        .query({
+          pack_id: 'short_video_hook_pack',
+          writeback_status: 'draft_ready',
+        });
+      expect(emptyDraftRes.status).toBe(200);
+      expectSuccess(emptyDraftRes.body);
+      expect(emptyDraftRes.body.data).toMatchObject({
+        approved_count: 0,
+        target_files: [],
+        filters: {
+          pack_ids: ['short_video_hook_pack'],
+          writeback_statuses: ['draft_ready'],
+        },
       });
       await rm(stateDir, { recursive: true, force: true });
     });

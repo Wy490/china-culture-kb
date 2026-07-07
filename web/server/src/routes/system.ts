@@ -15,6 +15,7 @@ import {
 import { validateBody } from '../middleware/validate.js';
 import type {
   AIModelProfile,
+  KnowledgeWritebackStatus,
   ProvinceInfo,
   SeedanceProviderAdapterContractInfo,
   SeedanceProviderAdapterConfigInfo,
@@ -60,6 +61,15 @@ import { getStoryAgentGeneratedHealth } from '../services/generated-health-servi
 import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
 
 export const systemRouter = Router();
+
+function queryListValue(...values: unknown[]): string[] | undefined {
+  const result = values.flatMap(value => {
+    if (Array.isArray(value)) return value.flatMap(item => String(item).split(','));
+    if (typeof value === 'string') return value.split(',');
+    return [];
+  }).map(value => value.trim()).filter(Boolean);
+  return result.length ? [...new Set(result)] : undefined;
+}
 
 function gearsCallbackSecretFromRequest(req: Request): string | undefined {
   const explicit = req.header('x-gears-callback-secret')?.trim();
@@ -216,8 +226,17 @@ systemRouter.patch(
 // GET /api/system/domain-pack-expansion-writeback-draft — approved expansion drafts
 // ---------------------------------------------------------------------------
 
-systemRouter.get('/domain-pack-expansion-writeback-draft', (_req, res) => {
-  res.json(success(getDomainPackExpansionWritebackDraftPackage()));
+systemRouter.get('/domain-pack-expansion-writeback-draft', (req, res) => {
+  res.json(success(getDomainPackExpansionWritebackDraftPackage({
+    reviewItemIds: queryListValue(req.query.review_item_id, req.query.review_item_ids),
+    packIds: queryListValue(req.query.pack_id, req.query.pack_ids),
+    videoTypes: queryListValue(req.query.video_type, req.query.video_types),
+    provinces: queryListValue(req.query.province, req.query.provinces),
+    writebackStatuses: queryListValue(
+      req.query.writeback_status,
+      req.query.writeback_statuses,
+    ) as KnowledgeWritebackStatus[] | undefined,
+  })));
 });
 
 // ---------------------------------------------------------------------------

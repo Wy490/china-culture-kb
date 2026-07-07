@@ -269,10 +269,20 @@ interface DomainPackExpansionWritebackDraftItem {
   writeback_draft_markdown: string;
 }
 
+interface DomainPackExpansionWritebackDraftFilter {
+  review_item_ids?: string[];
+  pack_ids?: string[];
+  video_types?: string[];
+  provinces?: string[];
+  writeback_statuses?: KnowledgeWritebackStatus[];
+}
+
 export interface DomainPackExpansionWritebackDraftPackage {
   schema_version: 'domain-pack-expansion-writeback-draft/v1';
   exported_at: string;
   domain_id: string;
+  direct_writeback_to_province_markdown: false;
+  filters: DomainPackExpansionWritebackDraftFilter;
   approved_count: number;
   target_files: string[];
   status_counts: Record<KnowledgeWritebackStatus, number>;
@@ -1407,32 +1417,42 @@ function withExpansionCandidateMarkdown(
 
 export function getDomainPackExpansionWritebackDraftToolResult(input: {
   include_markdown?: boolean;
+  review_item_ids?: string[];
+  pack_ids?: string[];
+  video_types?: string[];
+  provinces?: string[];
+  writeback_statuses?: KnowledgeWritebackStatus[];
 } = {}): DomainPackExpansionWritebackDraftToolResult {
   const exportedAt = new Date().toISOString();
+  const filters = normalizeExpansionWritebackDraftFilters(input);
   const report = getDomainPackExpansionCandidateReport();
   const approvedItems = report.review_packet.batches.flatMap(batch =>
     batch.review_items.filter(item => item.review_status === 'approved' && Boolean(item.writeback_draft_markdown)),
   );
-  const items: DomainPackExpansionWritebackDraftItem[] = approvedItems.map(item => ({
-    review_item_id: item.review_item_id,
-    batch_id: item.batch_id,
-    pack_id: item.pack_id,
-    entry_name: item.entry_name,
-    province: item.province,
-    target_video_types: item.target_video_types,
-    review_status: item.review_status ?? 'approved',
-    review_note: item.review_note,
-    writeback_status: item.writeback_status ?? 'draft_ready',
-    writeback_note: item.writeback_note,
-    suggested_file_path: suggestedProvinceFilePath(item.province),
-    suggested_section_heading: `### ${item.entry_name}`,
-    append_markdown: item.writeback_draft_markdown ?? renderDomainPackExpansionWritebackDraftMarkdown(item),
-    writeback_draft_markdown: item.writeback_draft_markdown ?? renderDomainPackExpansionWritebackDraftMarkdown(item),
-  }));
+  const items: DomainPackExpansionWritebackDraftItem[] = approvedItems
+    .map(item => ({
+      review_item_id: item.review_item_id,
+      batch_id: item.batch_id,
+      pack_id: item.pack_id,
+      entry_name: item.entry_name,
+      province: item.province,
+      target_video_types: item.target_video_types,
+      review_status: item.review_status ?? 'approved',
+      review_note: item.review_note,
+      writeback_status: item.writeback_status ?? 'draft_ready',
+      writeback_note: item.writeback_note,
+      suggested_file_path: suggestedProvinceFilePath(item.province),
+      suggested_section_heading: `### ${item.entry_name}`,
+      append_markdown: item.writeback_draft_markdown ?? renderDomainPackExpansionWritebackDraftMarkdown(item),
+      writeback_draft_markdown: item.writeback_draft_markdown ?? renderDomainPackExpansionWritebackDraftMarkdown(item),
+    }))
+    .filter(item => matchesExpansionWritebackDraftFilters(item, filters));
   const packageWithoutMarkdown: Omit<DomainPackExpansionWritebackDraftPackage, 'markdown'> = {
     schema_version: 'domain-pack-expansion-writeback-draft/v1',
     exported_at: exportedAt,
     domain_id: report.domain_id,
+    direct_writeback_to_province_markdown: false,
+    filters,
     approved_count: items.length,
     target_files: [...new Set(items.map(item => item.suggested_file_path))].sort((a, b) => a.localeCompare(b)),
     status_counts: countExpansionWritebackStatuses(items),
@@ -1625,6 +1645,7 @@ function renderDomainPackExpansionWritebackDraftMarkdown(
 function renderDomainPackExpansionWritebackDraftPackageMarkdown(
   pkg: Omit<DomainPackExpansionWritebackDraftPackage, 'markdown'>,
 ): string {
+  const filterLines = renderExpansionWritebackDraftFilterLines(pkg.filters);
   const statusSummary = KNOWLEDGE_WRITEBACK_STATUSES.map(status => `- ${status}: ${pkg.status_counts[status] ?? 0}`);
   const itemSections = pkg.items.length
     ? pkg.items.flatMap(item => [
@@ -1644,12 +1665,16 @@ function renderDomainPackExpansionWritebackDraftPackageMarkdown(
     `> schema_version: ${pkg.schema_version}`,
     `> exported_at: ${pkg.exported_at}`,
     `> domain_id: ${pkg.domain_id}`,
-    `> direct_writeback_to_province_markdown: false`,
+    `> direct_writeback_to_province_markdown: ${pkg.direct_writeback_to_province_markdown}`,
     '',
     '## Summary',
     '',
     `- approved_count: ${pkg.approved_count}`,
     `- target_files: ${pkg.target_files.join(', ') || 'none'}`,
+    '',
+    '## Filters',
+    '',
+    ...filterLines,
     '',
     '## Writeback Status Counts',
     '',
@@ -1657,6 +1682,53 @@ function renderDomainPackExpansionWritebackDraftPackageMarkdown(
     '',
     ...itemSections,
   ].join('\n').trim() + '\n';
+}
+
+function normalizeExpansionWritebackDraftFilters(input: {
+  review_item_ids?: string[];
+  pack_ids?: string[];
+  video_types?: string[];
+  provinces?: string[];
+  writeback_statuses?: KnowledgeWritebackStatus[];
+}): DomainPackExpansionWritebackDraftFilter {
+  const filters: DomainPackExpansionWritebackDraftFilter = {};
+  const reviewItemIds = normalizeFilterValues(input.review_item_ids);
+  const packIds = normalizeFilterValues(input.pack_ids);
+  const videoTypes = normalizeFilterValues(input.video_types);
+  const provinces = normalizeFilterValues(input.provinces);
+  const writebackStatuses = normalizeFilterValues(input.writeback_statuses)
+    .filter((status): status is KnowledgeWritebackStatus =>
+      KNOWLEDGE_WRITEBACK_STATUSES.includes(status as KnowledgeWritebackStatus),
+    );
+
+  if (reviewItemIds.length > 0) filters.review_item_ids = reviewItemIds;
+  if (packIds.length > 0) filters.pack_ids = packIds;
+  if (videoTypes.length > 0) filters.video_types = videoTypes;
+  if (provinces.length > 0) filters.provinces = provinces;
+  if (writebackStatuses.length > 0) filters.writeback_statuses = writebackStatuses;
+  return filters;
+}
+
+function matchesExpansionWritebackDraftFilters(
+  item: DomainPackExpansionWritebackDraftItem,
+  filters: DomainPackExpansionWritebackDraftFilter,
+): boolean {
+  return (!filters.review_item_ids?.length || filters.review_item_ids.includes(item.review_item_id))
+    && (!filters.pack_ids?.length || filters.pack_ids.includes(item.pack_id))
+    && (!filters.video_types?.length || item.target_video_types.some(type => filters.video_types?.includes(type)))
+    && (!filters.provinces?.length || filters.provinces.includes(item.province))
+    && (!filters.writeback_statuses?.length || filters.writeback_statuses.includes(item.writeback_status ?? 'draft_ready'));
+}
+
+function renderExpansionWritebackDraftFilterLines(filters: DomainPackExpansionWritebackDraftFilter): string[] {
+  const lines = [
+    filters.review_item_ids?.length ? `- review_item_ids: ${filters.review_item_ids.join(', ')}` : undefined,
+    filters.pack_ids?.length ? `- pack_ids: ${filters.pack_ids.join(', ')}` : undefined,
+    filters.video_types?.length ? `- video_types: ${filters.video_types.join(', ')}` : undefined,
+    filters.provinces?.length ? `- provinces: ${filters.provinces.join(', ')}` : undefined,
+    filters.writeback_statuses?.length ? `- writeback_statuses: ${filters.writeback_statuses.join(', ')}` : undefined,
+  ].filter((line): line is string => Boolean(line));
+  return lines.length ? lines : ['- none'];
 }
 
 function countExpansionReviewStatuses(
@@ -1767,6 +1839,11 @@ function domainPackExpansionReviewStateFilePath(): string {
 
 function markdownList(items: string[]): string[] {
   return items.length ? items.map(item => `- ${item}`) : ['- none'];
+}
+
+function normalizeFilterValues(values: string[] | undefined): string[] {
+  if (!values) return [];
+  return [...new Set(values.map(value => value.trim()).filter(Boolean))];
 }
 
 function normalizeExpansionBatch(value: unknown): ExpansionBatch | undefined {

@@ -665,6 +665,11 @@ server.tool(
   '只读导出已审通过的 Domain Pack 扩库写回草案。仅输出人工补库采集清单和建议补丁片段，不写入 data/provinces/*.md。',
   {
     include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+    review_item_ids: z.array(z.string()).optional().describe('限定扩库候选审稿项 ID 列表'),
+    pack_ids: z.array(z.string()).optional().describe('限定扩库包 ID 列表'),
+    video_types: z.array(z.string()).optional().describe('限定目标片型或生产标签列表'),
+    provinces: z.array(z.string()).optional().describe('限定省份列表'),
+    writeback_statuses: z.array(z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision'])).optional().describe('限定写回队列状态列表'),
   },
   async (input) => {
     const result = getDomainPackExpansionWritebackDraftToolResult(input);

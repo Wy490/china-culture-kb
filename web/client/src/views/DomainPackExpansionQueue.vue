@@ -81,7 +81,7 @@
         :disabled="Boolean(copyingFormat)"
         @click="copyApprovedWritebackDraft"
       >
-        {{ copyingFormat === 'writeback' ? '复制中…' : '复制已通过草案' }}
+        {{ copyingFormat === 'writeback' ? '复制中…' : '复制筛选草案' }}
       </button>
       <button
         type="button"
@@ -374,17 +374,26 @@ async function copyReviewPacket(format: 'markdown' | 'json') {
 }
 
 async function copyApprovedWritebackDraft() {
+  const items = filteredItems.value
+  if (items.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可导出的扩库候选'
+    return
+  }
+
   copyingFormat.value = 'writeback'
   error.value = ''
   copyMessage.value = ''
   try {
-    const res = await getDomainPackExpansionWritebackDraft()
+    const res = await getDomainPackExpansionWritebackDraft({
+      review_item_ids: items.map(item => item.review_item_id),
+    })
     if (res.ok && res.data) {
       if (res.data.approved_count === 0) {
-        error.value = '还没有已通过的扩库写回草案'
+        error.value = '当前筛选还没有已通过的扩库写回草案'
       } else {
         await navigator.clipboard.writeText(res.data.markdown)
-        copyMessage.value = `已复制已通过草案：${res.data.approved_count} 条，目标文件 ${res.data.target_files.length} 个。`
+        copyMessage.value = `已复制筛选草案：${res.data.approved_count} 条，目标文件 ${res.data.target_files.length} 个。`
       }
     } else {
       error.value = res.error?.message ?? '导出已通过扩库草案失败'

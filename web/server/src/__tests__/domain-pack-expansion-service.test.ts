@@ -169,6 +169,8 @@ describe('domain-pack-expansion-service', () => {
     expect(draftPackage).toMatchObject({
       schema_version: 'domain-pack-expansion-writeback-draft/v1',
       exported_at: '2026-07-07T10:00:00.000Z',
+      direct_writeback_to_province_markdown: false,
+      filters: {},
       approved_count: 1,
       target_files: ['data/provinces/湖南.md'],
       status_counts: expect.objectContaining({
@@ -182,6 +184,7 @@ describe('domain-pack-expansion-service', () => {
       writeback_status: 'queued',
     });
     expect(draftPackage.markdown).toContain('Domain Pack Expansion Writeback Draft');
+    expect(draftPackage.markdown).toContain('## Filters');
     expect(draftPackage.markdown).toContain('本草案只作为人工补库采集清单');
   });
 
@@ -230,6 +233,49 @@ describe('domain-pack-expansion-service', () => {
       }),
     });
     expect(draftPackage.items.map(item => item.writeback_status)).toEqual(['queued', 'queued']);
+
+    const scopedPackage = getDomainPackExpansionWritebackDraftPackage({
+      exportedAt: '2026-07-07T11:20:00.000Z',
+      packIds: ['children_adaptation_safety_pack'],
+      videoTypes: ['children_story'],
+      provinces: ['湖南'],
+      writebackStatuses: ['queued'],
+    });
+    expect(scopedPackage).toMatchObject({
+      approved_count: 2,
+      target_files: ['data/provinces/湖南.md'],
+      filters: {
+        pack_ids: ['children_adaptation_safety_pack'],
+        video_types: ['children_story'],
+        provinces: ['湖南'],
+        writeback_statuses: ['queued'],
+      },
+      status_counts: expect.objectContaining({
+        queued: 2,
+      }),
+    });
+    expect(scopedPackage.markdown).toContain('pack_ids: children_adaptation_safety_pack');
+    expect(scopedPackage.markdown).toContain('writeback_statuses: queued');
+
+    const emptyPackage = getDomainPackExpansionWritebackDraftPackage({
+      exportedAt: '2026-07-07T11:30:00.000Z',
+      packIds: ['children_adaptation_safety_pack'],
+      writebackStatuses: ['draft_ready'],
+    });
+    expect(emptyPackage).toMatchObject({
+      approved_count: 0,
+      target_files: [],
+      filters: {
+        pack_ids: ['children_adaptation_safety_pack'],
+        writeback_statuses: ['draft_ready'],
+      },
+      status_counts: {
+        draft_ready: 0,
+        queued: 0,
+        written_back: 0,
+        needs_revision: 0,
+      },
+    });
   });
 
   it('rejects review updates for unknown candidate items', () => {

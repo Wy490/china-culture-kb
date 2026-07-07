@@ -482,6 +482,43 @@ describe('production health reports', () => {
     expect(update.writeback_draft?.markdown).toBeUndefined();
     expect(fs.existsSync(path.join(dataRoot, 'provinces', '湖南.md'))).toBe(false);
 
+    const scopedDraft = getDomainPackExpansionWritebackDraftToolResult({
+      include_markdown: false,
+      pack_ids: ['short_video_hook_pack'],
+      video_types: ['social_short'],
+      provinces: ['湖南'],
+      writeback_statuses: ['queued'],
+    });
+    expect(scopedDraft).toMatchObject({
+      approved_count: 2,
+      target_files: ['data/provinces/湖南.md'],
+      direct_writeback_to_province_markdown: false,
+      filters: {
+        pack_ids: ['short_video_hook_pack'],
+        video_types: ['social_short'],
+        provinces: ['湖南'],
+        writeback_statuses: ['queued'],
+      },
+      status_counts: expect.objectContaining({
+        queued: 2,
+      }),
+    });
+    expect(scopedDraft.items).toHaveLength(2);
+
+    const emptyDraft = getDomainPackExpansionWritebackDraftToolResult({
+      include_markdown: false,
+      pack_ids: ['short_video_hook_pack'],
+      writeback_statuses: ['draft_ready'],
+    });
+    expect(emptyDraft).toMatchObject({
+      approved_count: 0,
+      target_files: [],
+      filters: {
+        pack_ids: ['short_video_hook_pack'],
+        writeback_statuses: ['draft_ready'],
+      },
+    });
+
     const state = JSON.parse(
       fs.readFileSync(path.join(process.env.WEB_GENERATED_ROOT!, 'domain-pack-expansion', 'review-state.json'), 'utf8'),
     );

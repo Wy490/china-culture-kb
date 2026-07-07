@@ -20,6 +20,7 @@ import type {
   DomainPackExpansionReviewStateBulkUpdateRequest,
   DomainPackExpansionReviewStateBulkUpdateResult,
   DomainPackExpansionReviewStateUpdateRequest,
+  DomainPackExpansionWritebackDraftFilter,
   DomainPackExpansionWritebackDraftPackage,
   NarrativePatternCatalog,
   ProductionReadinessPortfolioReport,
@@ -129,8 +130,15 @@ export function updateDomainPackExpansionReviewStateBulk(req: DomainPackExpansio
   return apiPatch<DomainPackExpansionReviewStateBulkUpdateResult>('/system/domain-pack-expansion-candidates/review-state/bulk', req)
 }
 
-export function getDomainPackExpansionWritebackDraft() {
-  return apiGet<DomainPackExpansionWritebackDraftPackage>('/system/domain-pack-expansion-writeback-draft')
+export function getDomainPackExpansionWritebackDraft(options: DomainPackExpansionWritebackDraftFilter = {}) {
+  const params = new URLSearchParams()
+  for (const reviewItemId of options.review_item_ids ?? []) params.append('review_item_id', reviewItemId)
+  for (const packId of options.pack_ids ?? []) params.append('pack_id', packId)
+  for (const videoType of options.video_types ?? []) params.append('video_type', videoType)
+  for (const province of options.provinces ?? []) params.append('province', province)
+  for (const status of options.writeback_statuses ?? []) params.append('writeback_status', status)
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return apiGet<DomainPackExpansionWritebackDraftPackage>(`/system/domain-pack-expansion-writeback-draft${suffix}`)
 }
 
 export function getGearsExecutionConfig() {

@@ -6040,10 +6040,20 @@ export interface DomainPackExpansionWritebackDraftItem {
   writeback_draft_markdown: string;
 }
 
+export interface DomainPackExpansionWritebackDraftFilter {
+  review_item_ids?: string[];
+  pack_ids?: string[];
+  video_types?: string[];
+  provinces?: string[];
+  writeback_statuses?: KnowledgeWritebackStatus[];
+}
+
 export interface DomainPackExpansionWritebackDraftPackage {
   schema_version: 'domain-pack-expansion-writeback-draft/v1';
   exported_at: string;
   domain_id: string;
+  direct_writeback_to_province_markdown: false;
+  filters: DomainPackExpansionWritebackDraftFilter;
   approved_count: number;
   target_files: string[];
   status_counts: Record<KnowledgeWritebackStatus, number>;
