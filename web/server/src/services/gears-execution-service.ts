@@ -6730,6 +6730,70 @@ function evidenceNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+type MvpGovernanceCountMetric = 'before' | 'after' | 'delta';
+type MvpGovernanceCounts = Record<string, Record<MvpGovernanceCountMetric, number>>;
+
+const MVP_GOVERNANCE_COUNT_KEYS = [
+  'seedance_placeholder_asset_count',
+  'seedance_production_asset_ready_count',
+  'knowledge_writeback_ready_count',
+  'knowledge_writeback_queued_count',
+  'knowledge_writeback_needs_revision_count',
+] as const;
+
+const MVP_GOVERNANCE_COUNT_METRICS = ['before', 'after', 'delta'] as const satisfies readonly MvpGovernanceCountMetric[];
+
+function evidenceMvpGovernanceCountsFromAudit(
+  beforeSummary: Record<string, unknown>,
+  afterSummary: Record<string, unknown>,
+  deltas: Record<string, unknown>,
+): MvpGovernanceCounts {
+  return Object.fromEntries(MVP_GOVERNANCE_COUNT_KEYS.map(key => [
+    key,
+    {
+      before: evidenceNumber(beforeSummary[key]),
+      after: evidenceNumber(afterSummary[key]),
+      delta: evidenceNumber(deltas[key]),
+    },
+  ])) as MvpGovernanceCounts;
+}
+
+function evidenceMvpGovernanceCounts(value: unknown): MvpGovernanceCounts | undefined {
+  const root = evidenceObject(value);
+  const entries = MVP_GOVERNANCE_COUNT_KEYS.map(key => {
+    const record = evidenceObject(root[key]);
+    const hasAllMetrics = MVP_GOVERNANCE_COUNT_METRICS.every(metric => Object.prototype.hasOwnProperty.call(record, metric));
+    if (!hasAllMetrics) return undefined;
+    return [
+      key,
+      {
+        before: evidenceNumber(record.before),
+        after: evidenceNumber(record.after),
+        delta: evidenceNumber(record.delta),
+      },
+    ] as const;
+  });
+  if (entries.some(item => item === undefined)) return undefined;
+  return Object.fromEntries(entries as Array<readonly [string, Record<MvpGovernanceCountMetric, number>]>) as MvpGovernanceCounts;
+}
+
+function compareMvpGovernanceCounts(
+  source: 'verdict' | 'archive',
+  actual: MvpGovernanceCounts | undefined,
+  expected: MvpGovernanceCounts,
+): string[] {
+  if (!actual) return [`${source}.missing`];
+  const mismatches: string[] = [];
+  for (const key of MVP_GOVERNANCE_COUNT_KEYS) {
+    for (const metric of MVP_GOVERNANCE_COUNT_METRICS) {
+      if (actual[key]?.[metric] !== expected[key][metric]) {
+        mismatches.push(`${source}.${key}.${metric}`);
+      }
+    }
+  }
+  return mismatches;
+}
+
 function evidenceBool(value: unknown): boolean {
   return value === true;
 }
@@ -6846,6 +6910,9 @@ function renderGearsExecutionWorkerEvidenceSignoffMarkdown(
     `- production_material_pack_health_audit_passed: ${report.production_material_pack_health_audit_passed}`,
     `- domain_pack_production_health_audit_passed: ${report.domain_pack_production_health_audit_passed}`,
     `- mvp_status_audit_passed: ${report.mvp_status_audit_passed}`,
+    `- mvp_governance_counts_consistent: ${report.mvp_governance_counts_consistent}`,
+    `- mvp_governance_counts_embedded verdict/archive: ${report.mvp_governance_counts_verdict_embedded}/${report.mvp_governance_counts_archive_embedded}`,
+    `- mvp_governance_count_mismatch_ids: ${report.mvp_governance_count_mismatch_ids.join(', ') || 'none'}`,
     `- system_external_callback_passed: ${report.system_external_callback_passed}`,
     `- system_external_output_url_source: ${report.system_external_output_url_source}`,
     `- system_external_output_url_source_ready: ${report.system_external_output_url_source_ready}`,
@@ -6922,6 +6989,10 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
       production_material_pack_health_audit_passed: false,
       domain_pack_production_health_audit_passed: false,
       mvp_status_audit_passed: false,
+      mvp_governance_counts_consistent: false,
+      mvp_governance_counts_verdict_embedded: false,
+      mvp_governance_counts_archive_embedded: false,
+      mvp_governance_count_mismatch_ids: [],
       system_external_callback_passed: false,
       system_external_callback_ready_to_import_count: 0,
       system_external_callback_updated_count: 0,
@@ -7069,6 +7140,25 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
   const mvpBeforeSummary = evidenceObject(mvpBefore.summary);
   const mvpAfterSummary = evidenceObject(mvpAfter.summary);
   const mvpDeltas = evidenceObject(mvpRead.data?.deltas);
+  const verdictMvpGate = evidenceArray(verdict?.gates)
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    .find(item => item.id === 'story_agent_mvp_status_audit');
+  const expectedMvpGovernanceCounts = mvpRead.exists && mvpRead.parse_ok
+    ? evidenceMvpGovernanceCountsFromAudit(mvpBeforeSummary, mvpAfterSummary, mvpDeltas)
+    : undefined;
+  const verdictMvpGovernanceCounts = evidenceMvpGovernanceCounts(verdict?.mvp_governance_counts)
+    ?? evidenceMvpGovernanceCounts(evidenceObject(verdictMvpGate?.evidence).governance_counts);
+  const archiveMvpGovernanceCounts = evidenceMvpGovernanceCounts(
+    evidenceObject(evidenceObject(evidenceObject(archive?.audit_summaries).story_agent_mvp_status).governance_counts),
+  );
+  const mvpGovernanceCountMismatchIds = expectedMvpGovernanceCounts
+    ? [
+      ...compareMvpGovernanceCounts('verdict', verdictMvpGovernanceCounts, expectedMvpGovernanceCounts),
+      ...compareMvpGovernanceCounts('archive', archiveMvpGovernanceCounts, expectedMvpGovernanceCounts),
+    ]
+    : ['mvp_status_audit.missing_or_invalid'];
+  const mvpGovernanceCountsConsistent = Boolean(expectedMvpGovernanceCounts)
+    && mvpGovernanceCountMismatchIds.length === 0;
   const pressureTotals = evidenceObject(pressureRead.data?.totals);
   const archiveTotals = evidenceObject(archive?.totals);
   const gates = evidenceArray(verdict?.gates)
@@ -7133,6 +7223,18 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
         evidence: read.parse_error ?? 'missing_or_invalid_json',
         sample_files: [read.filename],
       })),
+    ...(!mvpGovernanceCountsConsistent ? [{
+      priority: 'P0',
+      owner: 'Story Agent evidence signoff',
+      action: 'Regenerate worker acceptance verdict/archive from the same story-agent-mvp-status-audit.json so embedded MVP governance counts match before GEARS worker signoff.',
+      evidence: 'mvp_governance_counts_inconsistent',
+      gate_id: 'story_agent_mvp_status_audit',
+      sample_files: [
+        'story-agent-mvp-status-audit.json',
+        'gears-worker-acceptance-verdict.json',
+        'gears-worker-acceptance-archive.json',
+      ],
+    }] : []),
   ];
   const coreEvidenceAvailable = verdictRead.exists
     && archiveRead.exists
@@ -7142,6 +7244,7 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     && productionMaterialPackHealthAuditPassed
     && domainPackProductionHealthAuditPassed
     && mvpStatusAuditPassed
+    && mvpGovernanceCountsConsistent
     && systemExternalCallbackPassed
     ? 'ready'
     : coreEvidenceAvailable
@@ -7161,6 +7264,10 @@ export async function getGearsExecutionWorkerEvidenceSignoffReport(
     production_material_pack_health_audit_passed: productionMaterialPackHealthAuditPassed,
     domain_pack_production_health_audit_passed: domainPackProductionHealthAuditPassed,
     mvp_status_audit_passed: mvpStatusAuditPassed,
+    mvp_governance_counts_consistent: mvpGovernanceCountsConsistent,
+    mvp_governance_counts_verdict_embedded: Boolean(verdictMvpGovernanceCounts),
+    mvp_governance_counts_archive_embedded: Boolean(archiveMvpGovernanceCounts),
+    mvp_governance_count_mismatch_ids: mvpGovernanceCountMismatchIds,
     system_external_callback_passed: systemExternalCallbackPassed,
     system_external_callback_ready_to_import_count: evidenceNumber(systemExternalPreflight.ready_to_import_count),
     system_external_callback_updated_count: evidenceNumber(systemExternalImport.updated_count),

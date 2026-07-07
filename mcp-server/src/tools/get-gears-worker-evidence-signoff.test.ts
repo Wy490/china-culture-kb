@@ -23,6 +23,13 @@ async function writeReadyEvidence(
   },
 ) {
   await fs.mkdir(evidenceDir, { recursive: true });
+  const mvpGovernanceCounts = {
+    seedance_placeholder_asset_count: { before: 0, after: 0, delta: 0 },
+    seedance_production_asset_ready_count: { before: 0, after: 0, delta: 0 },
+    knowledge_writeback_ready_count: { before: 0, after: 0, delta: 0 },
+    knowledge_writeback_queued_count: { before: 0, after: 0, delta: 0 },
+    knowledge_writeback_needs_revision_count: { before: 0, after: 0, delta: 0 },
+  };
   await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
     schema_version: 'gears-worker-acceptance-verdict/v1',
     status: 'passed',
@@ -31,6 +38,7 @@ async function writeReadyEvidence(
     gate_counts: { passed: 11, failed: 0, skipped: 0, total: 11 },
     failed_gate_ids: [],
     skipped_gate_ids: [],
+    mvp_governance_counts: mvpGovernanceCounts,
     gates: [
       {
         id: 'production_material_pack_health_audit',
@@ -74,6 +82,11 @@ async function writeReadyEvidence(
       'story-agent-mvp-status-audit.json',
     ],
     missing_required_files: [],
+    audit_summaries: {
+      story_agent_mvp_status: {
+        governance_counts: mvpGovernanceCounts,
+      },
+    },
     recommended_actions: [],
   });
   await writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-integrity.json', {
@@ -226,6 +239,10 @@ describe('getGearsWorkerEvidenceSignoff', () => {
       production_material_pack_health_audit_passed: true,
       domain_pack_production_health_audit_passed: true,
       mvp_status_audit_passed: true,
+      mvp_governance_counts_consistent: true,
+      mvp_governance_counts_verdict_embedded: true,
+      mvp_governance_counts_archive_embedded: true,
+      mvp_governance_count_mismatch_ids: [],
       system_external_callback_passed: true,
       system_external_callback_ready_to_import_count: 3,
       system_external_callback_updated_count: 3,

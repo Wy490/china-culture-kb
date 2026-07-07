@@ -2869,6 +2869,10 @@ export interface GearsExecutionWorkerEvidenceSignoffReport {
   production_material_pack_health_audit_passed: boolean;
   domain_pack_production_health_audit_passed: boolean;
   mvp_status_audit_passed: boolean;
+  mvp_governance_counts_consistent: boolean;
+  mvp_governance_counts_verdict_embedded: boolean;
+  mvp_governance_counts_archive_embedded: boolean;
+  mvp_governance_count_mismatch_ids: string[];
   system_external_callback_passed: boolean;
   system_external_callback_ready_to_import_count: number;
   system_external_callback_updated_count: number;

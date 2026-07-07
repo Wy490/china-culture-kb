@@ -17,6 +17,13 @@ function writeEvidenceJson(evidenceDir: string, filename: string, value: unknown
 
 function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[] = []): void {
   fs.mkdirSync(evidenceDir, { recursive: true });
+  const mvpGovernanceCounts = {
+    seedance_placeholder_asset_count: { before: 0, after: 0, delta: 0 },
+    seedance_production_asset_ready_count: { before: 5, after: 5, delta: 0 },
+    knowledge_writeback_ready_count: { before: 1, after: 1, delta: 0 },
+    knowledge_writeback_queued_count: { before: 1, after: 1, delta: 0 },
+    knowledge_writeback_needs_revision_count: { before: 0, after: 0, delta: 0 },
+  };
   writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', {
     schema_version: 'gears-worker-acceptance-verdict/v1',
     status: 'passed',
@@ -25,6 +32,7 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
     gate_counts: { passed: 11, failed: 0, skipped: 0, total: 11 },
     failed_gate_ids: [],
     skipped_gate_ids: [],
+    mvp_governance_counts: mvpGovernanceCounts,
     gates: [
       {
         id: 'production_material_pack_health_audit',
@@ -68,6 +76,11 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
       'story-agent-mvp-status-audit.json',
     ],
     missing_required_files: [],
+    audit_summaries: {
+      story_agent_mvp_status: {
+        governance_counts: mvpGovernanceCounts,
+      },
+    },
     recommended_actions: recommendedActions,
   });
   writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-integrity.json', {
@@ -297,6 +310,10 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.production_material_pack_health_audit_passed).toBe(true);
     expect(result.domain_pack_production_health_audit_passed).toBe(true);
     expect(result.mvp_status_audit_passed).toBe(true);
+    expect(result.mvp_governance_counts_consistent).toBe(true);
+    expect(result.mvp_governance_counts_verdict_embedded).toBe(true);
+    expect(result.mvp_governance_counts_archive_embedded).toBe(true);
+    expect(result.mvp_governance_count_mismatch_ids).toEqual([]);
     expect(result.system_external_callback_passed).toBe(true);
     expect(result.system_external_callback_ready_to_import_count).toBe(3);
     expect(result.system_external_callback_updated_count).toBe(3);
@@ -347,8 +364,41 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.markdown).toContain('system_external_output_url_source: worker_response');
     expect(result.markdown).toContain('large_project_source_echo: 120/120');
     expect(result.markdown).toContain('mvp_score_delta: 0');
+    expect(result.markdown).toContain('mvp_governance_counts_consistent: true');
+    expect(result.markdown).toContain('mvp_governance_counts_embedded verdict/archive: true/true');
     expect(result.markdown).toContain('mvp_seedance_placeholder_before/after/delta: 0/0/0');
     expect(result.markdown).toContain('mvp_knowledge_writeback_queued_before/after/delta: 1/1/0');
+  });
+
+  it('requires embedded MVP governance counts to match the source audit', async () => {
+    const evidenceDir = path.join(tmpRoot, 'gears-evidence-mvp-governance-mismatch');
+    writeCompleteEvidence(evidenceDir);
+    const verdictPath = path.join(evidenceDir, 'gears-worker-acceptance-verdict.json');
+    const verdict = JSON.parse(fs.readFileSync(verdictPath, 'utf-8'));
+    verdict.mvp_governance_counts.knowledge_writeback_queued_count.delta = 99;
+    writeEvidenceJson(evidenceDir, 'gears-worker-acceptance-verdict.json', verdict);
+
+    const result = await getGearsWorkerEvidenceSignoff({ evidence_dir: evidenceDir });
+
+    expect(result.status).toBe('attention');
+    expect(result.acceptance_passed).toBe(true);
+    expect(result.signoff_ready).toBe(true);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.mvp_status_audit_passed).toBe(true);
+    expect(result.mvp_governance_counts_consistent).toBe(false);
+    expect(result.mvp_governance_counts_verdict_embedded).toBe(true);
+    expect(result.mvp_governance_counts_archive_embedded).toBe(true);
+    expect(result.mvp_governance_count_mismatch_ids).toEqual([
+      'verdict.knowledge_writeback_queued_count.delta',
+    ]);
+    expect(result.recommended_actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        evidence: 'mvp_governance_counts_inconsistent',
+        gate_id: 'story_agent_mvp_status_audit',
+      }),
+    ]));
+    expect(result.markdown).toContain('mvp_governance_counts_consistent: false');
+    expect(result.markdown).toContain('mvp_governance_count_mismatch_ids: verdict.knowledge_writeback_queued_count.delta');
   });
 
   it('deduplicates repeated recommended actions', async () => {
