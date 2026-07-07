@@ -2148,6 +2148,7 @@ describe('System API', () => {
           'Duplicate callback replay increments duplicate_count without duplicate artifacts or versions.',
           'System external callback preflight reports blocked=false before batch import.',
           'System external callback import uses safe preflight/import and writes real external artifact URLs instead of local_acceptance placeholders.',
+          'Final worker acceptance verdict verifies system external import response contains the exact validated output_url.',
           'GEARS worker response audit records observed status aliases, id fields, error codes, and failure categories.',
           'story-agent-smoke-targets.json contains existing Story Agent project ids or explicit warnings before callback smoke.',
           'Story Agent callback id preflight has warning_count=0 before callback smoke is trusted.',
@@ -2159,7 +2160,7 @@ describe('System API', () => {
           'Large project pressure payload is generated for at least 30 episodes and is submitted only when explicitly enabled.',
           'Large project response audit has no source_echo_gap after a real pressure submit.',
           'Final worker acceptance verdict has acceptance_passed=true before a GEARS v2 run is signed off.',
-          'Final worker evidence signoff requires system_external_callback_passed=true with ready_to_import_count>0 and updated_count>0.',
+          'Final worker evidence signoff requires system_external_callback_passed=true with ready_to_import_count>0, updated_count>0, and an import response match for the validated output_url.',
           'Final worker acceptance archive has signoff_ready=true and no missing required attachments before handoff.',
           'Final worker acceptance integrity has integrity_passed=true and no checksum mismatches before handoff.',
           'Final worker evidence signoff snapshot is saved as gears-worker-evidence-signoff.json/.md after archive integrity is evaluated.',
@@ -2359,6 +2360,10 @@ describe('System API', () => {
         expect(res.body.data.shell_script).toContain('governance_counts: mvpGovernanceCounts');
         expect(res.body.data.shell_script).toContain('system_external_callback_batch');
         expect(res.body.data.shell_script).toContain('system_external_callback_passed');
+        expect(res.body.data.shell_script).toContain('stringMatchCount');
+        expect(res.body.data.shell_script).toContain('output_url_verification');
+        expect(res.body.data.shell_script).toContain('output_url_not_found_in_import_response');
+        expect(res.body.data.shell_script).toContain('verify the import response contains that same output_url');
         expect(res.body.data.shell_script).toContain('system-gears-external-callback-batch-import/v1');
         expect(res.body.data.shell_script).toContain('preflight_ready_to_import_count_zero');
         expect(res.body.data.shell_script).toContain('import_updated_count_zero');
@@ -2511,6 +2516,7 @@ describe('System API', () => {
         ).toEqual(expect.arrayContaining([
           expect.stringContaining('required envs'),
           expect.stringContaining('system external callback batch'),
+          expect.stringContaining('exact output_url'),
           expect.stringContaining('Seedance asset and knowledge writeback governance counts'),
           expect.stringContaining('acceptance_passed'),
           expect.stringContaining('GEARS_ACCEPTANCE_STRICT_AUDIT=1'),
