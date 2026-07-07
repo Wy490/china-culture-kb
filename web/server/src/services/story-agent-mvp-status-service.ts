@@ -23,6 +23,7 @@ import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
 import { getProductionReadinessPortfolio } from './production-readiness-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
 import { listProjectSupplementTasks } from './project-service.js';
+import { getKnowledgeWritebackQueueExportPackage } from './knowledge-writeback-queue-service.js';
 
 interface StoryAgentMvpStatusOptions {
   generatedLimit?: number;
@@ -100,6 +101,14 @@ interface KnowledgeWritebackQueueMetrics {
   total_queued_count: number;
   total_written_back_count: number;
   total_needs_revision_count: number;
+  unified_export_schema: 'knowledge-writeback-queue-export/v1';
+  unified_export_ready: boolean;
+  unified_export_approved_count: number;
+  unified_export_project_approved_count: number;
+  unified_export_expansion_approved_count: number;
+  unified_export_target_file_count: number;
+  unified_export_direct_writeback_to_province_markdown: false;
+  unified_export_province_markdown_written: false;
   read_error?: string;
 }
 
@@ -366,10 +375,48 @@ function taskWritebackStatus(item: ProjectSupplementTaskListItem): KnowledgeWrit
   return item.task.knowledge_writeback_status ?? 'draft_ready';
 }
 
+async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
+  KnowledgeWritebackQueueMetrics,
+  | 'unified_export_schema'
+  | 'unified_export_ready'
+  | 'unified_export_approved_count'
+  | 'unified_export_project_approved_count'
+  | 'unified_export_expansion_approved_count'
+  | 'unified_export_target_file_count'
+  | 'unified_export_direct_writeback_to_province_markdown'
+  | 'unified_export_province_markdown_written'
+>> {
+  try {
+    const exportPackage = await getKnowledgeWritebackQueueExportPackage();
+    return {
+      unified_export_schema: exportPackage.schema_version,
+      unified_export_ready: true,
+      unified_export_approved_count: exportPackage.approved_count,
+      unified_export_project_approved_count: exportPackage.project_approved_count,
+      unified_export_expansion_approved_count: exportPackage.expansion_approved_count,
+      unified_export_target_file_count: exportPackage.target_files.length,
+      unified_export_direct_writeback_to_province_markdown: exportPackage.direct_writeback_to_province_markdown,
+      unified_export_province_markdown_written: exportPackage.province_markdown_written,
+    };
+  } catch {
+    return {
+      unified_export_schema: 'knowledge-writeback-queue-export/v1',
+      unified_export_ready: false,
+      unified_export_approved_count: 0,
+      unified_export_project_approved_count: 0,
+      unified_export_expansion_approved_count: 0,
+      unified_export_target_file_count: 0,
+      unified_export_direct_writeback_to_province_markdown: false,
+      unified_export_province_markdown_written: false,
+    };
+  }
+}
+
 async function getKnowledgeWritebackQueueMetrics(): Promise<KnowledgeWritebackQueueMetrics> {
   const expansionReport = getDomainPackExpansionCandidateReport({ includeMarkdown: false });
   const expansionMetrics = domainPackExpansionReviewMetrics(expansionReport);
   const expansionReadyCount = expansionMetrics.approved_writeback_draft_count;
+  const unifiedExportMetrics = await getKnowledgeWritebackUnifiedExportMetrics();
   const result = await listProjectSupplementTasks({ knowledge_writeback_ready: true });
   if (!result.ok || !result.data) {
     return {
@@ -390,6 +437,7 @@ async function getKnowledgeWritebackQueueMetrics(): Promise<KnowledgeWritebackQu
       total_queued_count: expansionMetrics.writeback_queued_count,
       total_written_back_count: expansionMetrics.writeback_written_back_count,
       total_needs_revision_count: expansionMetrics.writeback_needs_revision_count,
+      ...unifiedExportMetrics,
       read_error: result.error?.message ?? 'Failed to read knowledge writeback queue',
     };
   }
@@ -419,6 +467,7 @@ async function getKnowledgeWritebackQueueMetrics(): Promise<KnowledgeWritebackQu
     total_queued_count: counts.queued + expansionMetrics.writeback_queued_count,
     total_written_back_count: counts.written_back + expansionMetrics.writeback_written_back_count,
     total_needs_revision_count: counts.needs_revision + expansionMetrics.writeback_needs_revision_count,
+    ...unifiedExportMetrics,
   };
 }
 
@@ -454,6 +503,14 @@ function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryA
       `project_queued=${metrics.queued_count}`,
       `expansion_draft_ready=${metrics.expansion_draft_ready_count}`,
       `expansion_queued=${metrics.expansion_queued_count}`,
+      `unified_export_schema=${metrics.unified_export_schema}`,
+      `unified_export_ready=${metrics.unified_export_ready}`,
+      `unified_export_approved=${metrics.unified_export_approved_count}`,
+      `unified_export_project_approved=${metrics.unified_export_project_approved_count}`,
+      `unified_export_expansion_approved=${metrics.unified_export_expansion_approved_count}`,
+      `unified_export_target_files=${metrics.unified_export_target_file_count}`,
+      `unified_export_direct_writeback=${metrics.unified_export_direct_writeback_to_province_markdown}`,
+      `unified_export_province_written=${metrics.unified_export_province_markdown_written}`,
       `read_error=${metrics.read_error ?? 'none'}`,
       'candidate_review_required=true',
       'direct_province_write=false',
@@ -779,6 +836,9 @@ function progressSlices(
         `knowledge_writeback_draft_ready=${writebackMetrics.total_draft_ready_count}`,
         `knowledge_writeback_queued=${writebackMetrics.total_queued_count}`,
         `knowledge_writeback_needs_revision=${writebackMetrics.total_needs_revision_count}`,
+        `knowledge_writeback_unified_export_ready=${writebackMetrics.unified_export_ready}`,
+        `knowledge_writeback_unified_export_target_files=${writebackMetrics.unified_export_target_file_count}`,
+        `knowledge_writeback_unified_export_province_written=${writebackMetrics.unified_export_province_markdown_written}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
         `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
         `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
@@ -854,6 +914,10 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- knowledge writeback expansion queued: ${report.summary.knowledge_writeback_expansion_queued_count}`,
     `- knowledge writeback expansion written_back: ${report.summary.knowledge_writeback_expansion_written_back_count}`,
     `- knowledge writeback expansion needs_revision: ${report.summary.knowledge_writeback_expansion_needs_revision_count}`,
+    `- knowledge writeback unified export: ${report.summary.knowledge_writeback_unified_export_ready ? 'ready' : 'unavailable'} (${report.summary.knowledge_writeback_unified_export_schema})`,
+    `- knowledge writeback unified export approved/project/expansion: ${report.summary.knowledge_writeback_unified_export_approved_count}/${report.summary.knowledge_writeback_unified_export_project_approved_count}/${report.summary.knowledge_writeback_unified_export_expansion_approved_count}`,
+    `- knowledge writeback unified export target files: ${report.summary.knowledge_writeback_unified_export_target_file_count}`,
+    `- knowledge writeback unified export province written: ${report.summary.knowledge_writeback_unified_export_province_markdown_written}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
     `- generated governance actions: ${report.summary.generated_governance_action_count}`,
@@ -997,6 +1061,14 @@ export async function getStoryAgentMvpStatus(
       knowledge_writeback_total_queued_count: writebackMetrics.total_queued_count,
       knowledge_writeback_total_written_back_count: writebackMetrics.total_written_back_count,
       knowledge_writeback_total_needs_revision_count: writebackMetrics.total_needs_revision_count,
+      knowledge_writeback_unified_export_schema: writebackMetrics.unified_export_schema,
+      knowledge_writeback_unified_export_ready: writebackMetrics.unified_export_ready,
+      knowledge_writeback_unified_export_approved_count: writebackMetrics.unified_export_approved_count,
+      knowledge_writeback_unified_export_project_approved_count: writebackMetrics.unified_export_project_approved_count,
+      knowledge_writeback_unified_export_expansion_approved_count: writebackMetrics.unified_export_expansion_approved_count,
+      knowledge_writeback_unified_export_target_file_count: writebackMetrics.unified_export_target_file_count,
+      knowledge_writeback_unified_export_direct_writeback_to_province_markdown: writebackMetrics.unified_export_direct_writeback_to_province_markdown,
+      knowledge_writeback_unified_export_province_markdown_written: writebackMetrics.unified_export_province_markdown_written,
       blocker_count: productionPortfolio.summary.blocker_count,
       warning_count: productionPortfolio.summary.warning_count,
       generated_governance_action_count: generatedGovernancePlan.actions.length,

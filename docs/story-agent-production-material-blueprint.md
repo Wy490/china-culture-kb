@@ -339,6 +339,7 @@
 - Web/MCP 扩库写回草案导出已支持 scoped filters；前端复制草案会尊重当前筛选范围，避免把不属于本轮人工落库审稿的 approved 项混入 Patch 草案。
 - 独立知识库写回队列已能同时看到项目草案和扩库草案，并在同页更新扩库写回状态；Web/MCP 均支持双来源统一 Markdown/JSON 导出包，保留项目/扩库拆分和人工写回门禁，不直接写正式知识库。
 - Web/MCP MVP 总控的 `knowledge_writeback` lane 已按双来源总负载计算，同时输出项目/扩库拆分字段，便于 GEARS 签收和素材库扩充指挥层同时看到两类待人工落库压力。
+- Web/MCP MVP 总控已把统一写回导出包纳入 summary/evidence/Markdown：输出 `knowledge-writeback-queue-export/v1` schema、approved/project/expansion 计数、目标文件数、`direct_writeback=false` 和 `province_markdown_written=false`，让 GEARS worker 证据包能区分“候选稿可导出”和“正式省份 Markdown 已写回”。
 - `children_story` / `social_short` / `lecture_video` / `education_training` 相关 query 已有优先 Domain Pack 命中。
 - 所有 Domain Pack 只提供采集结构、生产提示和审稿边界，不自动写入 `data/provinces/*.md`，也不得替代具体来源核验。
 

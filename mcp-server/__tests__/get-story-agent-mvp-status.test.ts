@@ -287,6 +287,14 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.knowledge_writeback_total_queued_count).toBe(1);
     expect(result.summary.knowledge_writeback_total_written_back_count).toBe(0);
     expect(result.summary.knowledge_writeback_total_needs_revision_count).toBe(0);
+    expect(result.summary.knowledge_writeback_unified_export_schema).toBe('knowledge-writeback-queue-export/v1');
+    expect(result.summary.knowledge_writeback_unified_export_ready).toBe(true);
+    expect(result.summary.knowledge_writeback_unified_export_approved_count).toBe(1);
+    expect(result.summary.knowledge_writeback_unified_export_project_approved_count).toBe(1);
+    expect(result.summary.knowledge_writeback_unified_export_expansion_approved_count).toBe(0);
+    expect(result.summary.knowledge_writeback_unified_export_target_file_count).toBe(1);
+    expect(result.summary.knowledge_writeback_unified_export_direct_writeback_to_province_markdown).toBe(false);
+    expect(result.summary.knowledge_writeback_unified_export_province_markdown_written).toBe(false);
     expect(result.summary.generated_governance_action_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.generated_governance_ready_signoff_candidate_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.production_material_pack_status).toBe('passed');
@@ -324,6 +332,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.lanes.find(lane => lane.key === 'knowledge_writeback')?.evidence).toContain('queued=1');
     expect(result.lanes.find(lane => lane.key === 'knowledge_writeback')?.evidence).toContain('project_writeback_drafts=1');
     expect(result.lanes.find(lane => lane.key === 'knowledge_writeback')?.evidence).toContain('expansion_writeback_drafts=0');
+    expect(result.lanes.find(lane => lane.key === 'knowledge_writeback')?.evidence).toContain('unified_export_ready=true');
     expect(result.generated_health.schema_version).toBe('mcp-story-agent-generated-health/v1');
     expect(result.generated_governance_plan.schema_version).toBe('mcp-story-agent-generated-governance-plan/v1');
     expect(result.production_material_pack_health.schema_version).toBe('production-material-pack-health/v1');
@@ -399,6 +408,9 @@ describe('kb_get_story_agent_mvp_status', () => {
       'domain_pack_expansion_approved_writeback_drafts=0',
       'domain_pack_expansion_writeback_queued=0',
       'domain_pack_expansion_direct_writeback=false',
+      'knowledge_writeback_unified_export_ready=true',
+      'knowledge_writeback_unified_export_target_files=1',
+      'knowledge_writeback_unified_export_province_written=false',
       'seedance_placeholder_assets=2',
       'seedance_production_assets_ready=1',
       'local_target_health_tracked_by=lanes',
@@ -460,6 +472,8 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.markdown).toContain('domain pack expansion approved writeback drafts: 0');
     expect(result.markdown).toContain('Seedance placeholder assets: 2');
     expect(result.markdown).toContain('knowledge writeback queued: 1');
+    expect(result.markdown).toContain('knowledge writeback unified export: ready');
+    expect(result.markdown).toContain('knowledge writeback unified export target files: 1');
     expect(result.markdown).toContain('production delivery contract: 100%');
     expect(result.markdown).toContain('Story Agent command surface: ready · 100%');
   });
