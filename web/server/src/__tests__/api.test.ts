@@ -2155,6 +2155,7 @@ describe('System API', () => {
           'Production material pack health audit has status=passed before GEARS worker signoff.',
           'Domain Pack production health audit has status=passed before GEARS worker signoff.',
           'Story Agent MVP status audit has no status regression or blocker increase after worker smoke.',
+          'Story Agent MVP governance counts for Seedance placeholders and knowledge writeback queue are preserved in verdict and archive evidence.',
           'Large project pressure payload is generated for at least 30 episodes and is submitted only when explicitly enabled.',
           'Large project response audit has no source_echo_gap after a real pressure submit.',
           'Final worker acceptance verdict has acceptance_passed=true before a GEARS v2 run is signed off.',
@@ -2353,6 +2354,9 @@ describe('System API', () => {
         expect(res.body.data.shell_script).toContain('story_agent_generated_health_audit');
         expect(res.body.data.shell_script).toContain('domain_pack_production_health_audit');
         expect(res.body.data.shell_script).toContain('story_agent_mvp_status_audit');
+        expect(res.body.data.shell_script).toContain('mvpGovernanceCountsFrom');
+        expect(res.body.data.shell_script).toContain('mvp_governance_counts');
+        expect(res.body.data.shell_script).toContain('governance_counts: mvpGovernanceCounts');
         expect(res.body.data.shell_script).toContain('system_external_callback_batch');
         expect(res.body.data.shell_script).toContain('system_external_callback_passed');
         expect(res.body.data.shell_script).toContain('system-gears-external-callback-batch-import/v1');
@@ -2441,6 +2445,8 @@ describe('System API', () => {
           expect.stringContaining('story-agent-mvp-status-before.json'),
           expect.stringContaining('MVP status regresses'),
           expect.stringContaining('MVP score decreases'),
+          expect.stringContaining('Seedance placeholder/production-ready asset counts'),
+          expect.stringContaining('knowledge writeback ready/queued/needs_revision counts'),
         ]));
         expect(
           res.body.data.commands.find((command: any) => command.id === 'write_payload_files')?.command,
@@ -2505,6 +2511,7 @@ describe('System API', () => {
         ).toEqual(expect.arrayContaining([
           expect.stringContaining('required envs'),
           expect.stringContaining('system external callback batch'),
+          expect.stringContaining('Seedance asset and knowledge writeback governance counts'),
           expect.stringContaining('acceptance_passed'),
           expect.stringContaining('GEARS_ACCEPTANCE_STRICT_AUDIT=1'),
         ]));
@@ -2515,6 +2522,7 @@ describe('System API', () => {
           res.body.data.commands.find((command: any) => command.id === 'write_acceptance_archive')?.expected_assertions,
         ).toEqual(expect.arrayContaining([
           expect.stringContaining('missing_required_files'),
+          expect.stringContaining('MVP Seedance asset and knowledge writeback governance counts'),
           expect.stringContaining('checksum_manifest'),
           expect.stringContaining('gears-worker-acceptance-checksums.json'),
           expect.stringContaining('sha256'),

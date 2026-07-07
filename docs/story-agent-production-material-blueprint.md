@@ -70,6 +70,7 @@
 64. 补强独立知识库写回队列的批量导出一致性：`/knowledge-writeback-queue` 的 Markdown/JSON 导出会把当前可见任务键传给服务端，搜索后的列表与导出范围一致；全局 `project-knowledge-writeback-patch/v1` 现在返回筛选摘要、可见任务键数量、项目数和写回状态汇总，继续只导出已通过候选稿审稿并生成正式写回草案的内容。
 65. 将知识库写回队列纳入 Story Agent MVP 状态：Web `story-agent-mvp-status/v1` 与 MCP `kb_get_story_agent_mvp_status` 新增 `knowledge_writeback` lane，summary/Markdown/evidence 输出已审稿写回草案、项目数、draft_ready/queued/written_back/needs_revision 计数；该 lane 只读统计候选稿与写回草案，不直接改写 `data/provinces/*.md`。
 66. 下沉 MVP 治理计数到 GEARS worker evidence 签收：worker acceptance kit 的 `story-agent-mvp-status-audit.json/.md` 会保留 Seedance 占位/正式素材和知识库写回队列计数；Web `gears-execution-worker-evidence-signoff` 与 MCP `kb_get_gears_worker_evidence_signoff` 会在最终签收报告中展示这些 before/after/delta，真实外部回片签收时不再只看 MVP status/score。
+67. 把 MVP 治理计数嵌入 worker acceptance verdict/archive：`gears-worker-acceptance-verdict.json/.md` 的 `story_agent_mvp_status_audit` gate evidence 新增 `governance_counts`，verdict 顶层同步输出 `mvp_governance_counts`，`gears-worker-acceptance-archive.json/.md` 的 `audit_summaries.story_agent_mvp_status` 保留 Seedance 占位/正式素材与知识库写回 ready/queued/needs_revision before/after/delta；外部 GEARS/Seedance 回片签收包不再需要单独展开 MVP audit 文件才能确认占位素材和写回队列没有被 smoke 扰动。
 
 ## 原始诊断必须并入路线
 
