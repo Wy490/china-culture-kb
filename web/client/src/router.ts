@@ -29,6 +29,11 @@ export const router = createRouter({
       component: () => import('./views/KnowledgeWritebackQueue.vue'),
     },
     {
+      path: '/domain-pack-expansion-queue',
+      name: 'DomainPackExpansionQueue',
+      component: () => import('./views/DomainPackExpansionQueue.vue'),
+    },
+    {
       path: '/projects/:projectId',
       name: 'ProjectDetail',
       component: () => import('./views/ProjectDetail.vue'),

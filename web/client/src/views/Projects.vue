@@ -6,6 +6,7 @@
         <p class="projects-page__desc">管理单片短片、漫剧系列、素材 gate 和最近更新时间。</p>
       </div>
       <div class="projects-page__header-actions">
+        <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/domain-pack-expansion-queue">扩库审稿队列</RouterLink>
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/knowledge-writeback-queue">知识库写回队列</RouterLink>
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建漫剧系列</RouterLink>
         <RouterLink class="projects-page__cta" to="/story/new">新建单片短片</RouterLink>
@@ -120,7 +121,9 @@
         <span>GEARS/人工 {{ storyAgentMvpStatus.summary.external_or_manual_step_count }}</span>
         <span>模板 {{ storyAgentMvpStatus.summary.production_material_pack_status }} {{ storyAgentMvpStatus.summary.production_material_pack_core_ready_count }}/{{ storyAgentMvpStatus.summary.production_material_pack_core_total_count }}</span>
         <span>Domain Pack {{ storyAgentMvpStatus.summary.domain_pack_status }} {{ storyAgentMvpStatus.summary.production_domain_pack_ready_count }}/{{ storyAgentMvpStatus.summary.production_domain_pack_required_count }}</span>
-        <span>扩库候选 {{ storyAgentMvpStatus.summary.domain_pack_expansion_status }} {{ storyAgentMvpStatus.summary.domain_pack_expansion_batch_count }} 批</span>
+        <RouterLink class="projects-page__metric-link" to="/domain-pack-expansion-queue">
+          扩库候选 {{ storyAgentMvpStatus.summary.domain_pack_expansion_status }} {{ storyAgentMvpStatus.summary.domain_pack_expansion_batch_count }} 批
+        </RouterLink>
       </div>
       <div class="projects-page__mvp-progress">
         <article
@@ -1692,8 +1695,10 @@ onMounted(async () => {
 .projects-page__header-actions {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .projects-page__title {
@@ -1776,6 +1781,7 @@ onMounted(async () => {
 }
 
 .projects-page__portfolio-metrics span,
+.projects-page__metric-link,
 .projects-page__portfolio-actions span {
   padding: 5px 8px;
   border: 1px solid #d7dee5;
@@ -1784,6 +1790,10 @@ onMounted(async () => {
   color: #33475b;
   font-size: 12px;
   font-weight: 700;
+}
+
+.projects-page__metric-link {
+  text-decoration: none;
 }
 
 .projects-page__mvp-lanes {

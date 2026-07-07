@@ -16,6 +16,7 @@ import type {
   GearsExecutionWorkerEvidenceBundle,
   GearsExecutionWorkerEvidenceSignoffReport,
   GearsJobCallbackRequest,
+  DomainPackExpansionCandidateReport,
   NarrativePatternCatalog,
   ProductionReadinessPortfolioReport,
   ProductionReadinessPortfolioRunRequest,
@@ -107,6 +108,13 @@ export function getStoryAgentMvpStatus(options: {
   if (options.includeArchivedSeries) params.set('includeArchivedSeries', '1')
   const suffix = params.toString() ? `?${params.toString()}` : ''
   return apiGet<StoryAgentMvpStatusReport>(`/system/story-agent-mvp-status${suffix}`)
+}
+
+export function getDomainPackExpansionCandidates(options: { includeMarkdown?: boolean } = {}) {
+  const params = new URLSearchParams()
+  if (options.includeMarkdown === false) params.set('include_markdown', 'false')
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return apiGet<DomainPackExpansionCandidateReport>(`/system/domain-pack-expansion-candidates${suffix}`)
 }
 
 export function getGearsExecutionConfig() {

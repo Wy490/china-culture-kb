@@ -79,6 +79,7 @@
 73. 正式启动 Domain Pack 素材扩库候选批次：`data/domain-packs/china-culture-production-expansion-candidates.json` 新增非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物和讲解知识结构 5 个首批候选批次，均保持 `candidate_review` 且禁止 direct writeback；Web `/api/system/domain-pack-expansion-candidates` 与 MCP `kb_get_domain_pack_expansion_candidates` 可只读导出覆盖率、候选条目、字段组和审稿门禁，后续只能通过候选稿、人工审稿和写回队列进入正式省份 Markdown。
 74. 将 Domain Pack 扩库候选纳入 Story Agent MVP 总控：Web/MCP `story-agent-mvp-status` 新增 `domain_pack_expansion` lane，summary/Markdown/progress evidence 会显示候选批次数、种子条目数、候选字段数、issue 数和 direct writeback=false；项目总览页同步展示“扩库候选”指标，便于把素材库补充进度纳入日常生产指挥。
 75. 补齐 Domain Pack 扩库候选审稿包：Web `/api/system/domain-pack-expansion-candidates` 与 MCP `kb_get_domain_pack_expansion_candidates` 新增 `domain-pack-expansion-review-packet/v1`，把 5 个候选批次展开为逐条 `review_item_id`、推荐补字段、禁写断言和候选 Markdown；默认 Markdown 输出可直接交给人工审稿或外部写回队列工具，`include_markdown=false` 仍保留结构化 JSON。该包只生成候选稿，不直接改写 `data/provinces/*.md`。
+76. 建立扩库审稿队列前端页：新增 `/domain-pack-expansion-queue`，从只读扩库候选报告加载 `domain-pack-expansion-review-packet/v1`，支持按扩库包、片型、省份、候选审稿状态和关键词筛选，并复制当前筛选范围的候选 Markdown 或 JSON。项目工作台已新增入口和扩库候选指标链接，页面仍只导出候选审稿材料，不写入正式知识库。
 
 ## 原始诊断必须并入路线
 
@@ -318,6 +319,7 @@
 - 非遗流程、纪录片来源、AI 漫剧分镜、朝代服饰器物、讲解知识结构、儿童改写、短视频钩子、宣讲培训结构包已带 `production_prompts` 和 `review_boundaries`，会进入 Story Agent prompt。
 - `china-culture-production-expansion-candidates.json` 已建立非遗流程、纪录片来源、AI 漫剧分镜、朝代服饰器物和讲解知识结构 5 个 `candidate_review` 批次，Web/MCP 均可只读导出并进入 MVP 总控，不允许 direct writeback。
 - Web/MCP 扩库候选报告已生成 `domain-pack-expansion-review-packet/v1`，将每个 seed target 展开为候选审稿项、禁写断言和 Markdown 候选稿，后续可接入批量审稿或写回队列，但仍不得直接写省份 Markdown。
+- Web 前端已新增扩库审稿队列页，可按包、片型、省份、状态和关键词筛选候选项，并复制当前筛选范围的 Markdown/JSON 审稿包。
 - `children_story` / `social_short` / `lecture_video` / `education_training` 相关 query 已有优先 Domain Pack 命中。
 - 所有 Domain Pack 只提供采集结构、生产提示和审稿边界，不自动写入 `data/provinces/*.md`，也不得替代具体来源核验。
 
