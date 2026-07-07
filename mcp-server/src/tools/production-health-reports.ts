@@ -164,6 +164,19 @@ interface DomainPackExpansionBatchSummary {
   provinces: string[];
 }
 
+interface DomainPackExpansionVideoTypeCoverageSummary {
+  video_type: string;
+  batch_count: number;
+  seed_target_count: number;
+  candidate_field_count: number;
+  pack_ids: string[];
+  batch_ids: string[];
+  provinces: string[];
+  review_status_counts: Record<DomainPackExpansionReviewStatus, number>;
+  approved_writeback_draft_count: number;
+  writeback_status_counts: Record<KnowledgeWritebackStatus, number>;
+}
+
 interface DomainPackExpansionReviewFieldGroup {
   group_id: string;
   candidate_fields: string[];
@@ -309,6 +322,8 @@ export interface DomainPackExpansionCandidateReport {
   batch_count: number;
   seed_target_count: number;
   candidate_field_count: number;
+  video_type_coverage_count: number;
+  coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];
   review_packet: DomainPackExpansionReviewPacket;
@@ -1101,7 +1116,7 @@ interface ExpansionBatch {
 
 type DomainPackExpansionCandidateReportDraft = Omit<
   DomainPackExpansionCandidateReport,
-  'review_packet'
+  'review_packet' | 'video_type_coverage_count' | 'coverage_by_video_type'
 >;
 type DomainPackExpansionReviewItemDraft = Omit<DomainPackExpansionReviewItem, 'candidate_markdown'>;
 
@@ -1254,9 +1269,13 @@ function withExpansionReviewPacket(
   includeMarkdown = false,
   reviewState: Map<string, DomainPackExpansionReviewStateItem> = new Map(),
 ): DomainPackExpansionCandidateReport {
+  const reviewPacket = buildDomainPackExpansionReviewPacket(report, sourceBatches, includeMarkdown, reviewState);
+  const coverageByVideoType = buildExpansionVideoTypeCoverage(sourceBatches, reviewPacket);
   return {
     ...report,
-    review_packet: buildDomainPackExpansionReviewPacket(report, sourceBatches, includeMarkdown, reviewState),
+    video_type_coverage_count: coverageByVideoType.length,
+    coverage_by_video_type: coverageByVideoType,
+    review_packet: reviewPacket,
   };
 }
 
@@ -1384,11 +1403,16 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     `- batch_count: ${report.batch_count}`,
     `- seed_target_count: ${report.seed_target_count}`,
     `- candidate_field_count: ${report.candidate_field_count}`,
+    `- video_type_coverage_count: ${report.video_type_coverage_count}`,
     `- review_packet_schema_version: ${report.review_packet.schema_version}`,
     `- review_packet_item_count: ${report.review_packet.review_item_count}`,
     `- review_packet_approved_count: ${report.review_packet.review_status_counts?.approved ?? 0}`,
     `- approved_writeback_draft_count: ${report.review_packet.approved_writeback_draft_count ?? 0}`,
     `- review_packet_markdown: ${report.review_packet.markdown ? 'included' : 'omitted'}`,
+    '',
+    '## Video Type Coverage',
+    '',
+    ...renderExpansionVideoTypeCoverageLines(report.coverage_by_video_type),
     '',
     '## Batches',
     '',
@@ -1398,6 +1422,80 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     '',
     ...issueLines,
   ].join('\n').trim() + '\n';
+}
+
+function buildExpansionVideoTypeCoverage(
+  batches: ExpansionBatch[],
+  reviewPacket: DomainPackExpansionReviewPacket,
+): DomainPackExpansionVideoTypeCoverageSummary[] {
+  const reviewBatchById = new Map(reviewPacket.batches.map(batch => [batch.batch_id, batch]));
+  const coverage = new Map<string, {
+    packIds: Set<string>;
+    batchIds: Set<string>;
+    provinces: Set<string>;
+    candidateFields: Set<string>;
+    seedTargetCount: number;
+    reviewItems: DomainPackExpansionReviewItem[];
+  }>();
+
+  for (const batch of batches) {
+    const videoTypes = [...new Set(batch.target_video_types.map(type => type.trim()).filter(Boolean))];
+    const batchCandidateFields = new Set<string>();
+    for (const group of batch.field_groups) {
+      for (const field of group.candidate_fields) batchCandidateFields.add(field);
+    }
+    for (const target of batch.seed_targets) {
+      for (const field of target.recommended_fields) batchCandidateFields.add(field);
+    }
+
+    const reviewItems = reviewBatchById.get(batch.batch_id)?.review_items ?? [];
+    for (const videoType of videoTypes) {
+      const item = coverage.get(videoType) ?? {
+        packIds: new Set<string>(),
+        batchIds: new Set<string>(),
+        provinces: new Set<string>(),
+        candidateFields: new Set<string>(),
+        seedTargetCount: 0,
+        reviewItems: [],
+      };
+      item.packIds.add(batch.pack_id);
+      item.batchIds.add(batch.batch_id);
+      for (const target of batch.seed_targets) item.provinces.add(target.province);
+      for (const field of batchCandidateFields) item.candidateFields.add(field);
+      item.seedTargetCount += batch.seed_targets.length;
+      item.reviewItems.push(...reviewItems);
+      coverage.set(videoType, item);
+    }
+  }
+
+  return [...coverage.entries()]
+    .map(([videoType, item]) => {
+      const approvedItems = item.reviewItems.filter(reviewItem => reviewItem.review_status === 'approved');
+      return {
+        video_type: videoType,
+        batch_count: item.batchIds.size,
+        seed_target_count: item.seedTargetCount,
+        candidate_field_count: item.candidateFields.size,
+        pack_ids: [...item.packIds].sort((a, b) => a.localeCompare(b)),
+        batch_ids: [...item.batchIds].sort((a, b) => a.localeCompare(b)),
+        provinces: [...item.provinces].sort((a, b) => a.localeCompare(b, 'zh-CN')),
+        review_status_counts: countExpansionReviewStatuses(item.reviewItems),
+        approved_writeback_draft_count: approvedItems.filter(reviewItem =>
+          Boolean(reviewItem.writeback_draft_markdown),
+        ).length,
+        writeback_status_counts: countExpansionReviewItemWritebackStatuses(approvedItems),
+      };
+    })
+    .sort((a, b) => a.video_type.localeCompare(b.video_type));
+}
+
+function renderExpansionVideoTypeCoverageLines(
+  coverage: DomainPackExpansionVideoTypeCoverageSummary[],
+): string[] {
+  if (coverage.length === 0) return ['- none'];
+  return coverage.map(item =>
+    `- ${item.video_type}: batches=${item.batch_count}, targets=${item.seed_target_count}, fields=${item.candidate_field_count}, approved=${item.review_status_counts.approved}, drafts=${item.approved_writeback_draft_count}, packs=${item.pack_ids.join(', ') || 'none'}, provinces=${item.provinces.join(', ') || 'none'}`,
+  );
 }
 
 export function renderDomainPackExpansionReviewPacketMarkdown(
@@ -2360,6 +2458,18 @@ function countExpansionReviewStatuses(
 
 function countExpansionWritebackStatuses(
   items: DomainPackExpansionWritebackDraftItem[],
+): Record<KnowledgeWritebackStatus, number> {
+  const counts = Object.fromEntries(
+    KNOWLEDGE_WRITEBACK_STATUSES.map(status => [status, 0]),
+  ) as Record<KnowledgeWritebackStatus, number>;
+  for (const item of items) {
+    counts[item.writeback_status ?? 'draft_ready'] += 1;
+  }
+  return counts;
+}
+
+function countExpansionReviewItemWritebackStatuses(
+  items: DomainPackExpansionReviewItem[],
 ): Record<KnowledgeWritebackStatus, number> {
   const counts = Object.fromEntries(
     KNOWLEDGE_WRITEBACK_STATUSES.map(status => [status, 0]),

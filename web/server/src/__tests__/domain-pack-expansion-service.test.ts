@@ -42,6 +42,7 @@ describe('domain-pack-expansion-service', () => {
       domain_id: 'china_culture',
       status: 'passed',
       missing_required_pack_ids: [],
+      video_type_coverage_count: expect.any(Number),
       review_policy: {
         direct_writeback_to_province_markdown: false,
         requires_candidate_markdown: true,
@@ -51,6 +52,31 @@ describe('domain-pack-expansion-service', () => {
       batch_count: 8,
       issues: [],
     });
+    expect(report.video_type_coverage_count).toBeGreaterThanOrEqual(10);
+    const explainerCoverage = report.coverage_by_video_type.find(item => item.video_type === 'explainer_video');
+    expect(explainerCoverage).toMatchObject({
+      video_type: 'explainer_video',
+      batch_count: expect.any(Number),
+      seed_target_count: expect.any(Number),
+      review_status_counts: expect.objectContaining({
+        candidate_review: expect.any(Number),
+        approved: 0,
+      }),
+      approved_writeback_draft_count: 0,
+      writeback_status_counts: expect.objectContaining({
+        draft_ready: 0,
+        queued: 0,
+      }),
+    });
+    expect(explainerCoverage?.batch_count).toBeGreaterThanOrEqual(7);
+    expect(explainerCoverage?.seed_target_count).toBeGreaterThanOrEqual(20);
+    expect(explainerCoverage?.pack_ids).toEqual(expect.arrayContaining([
+      'heritage_process_pack',
+      'documentary_source_pack',
+      'explainer_knowledge_structure_pack',
+      'education_training_structure_pack',
+    ]));
+    expect(explainerCoverage?.provinces).toEqual(expect.arrayContaining(['湖南']));
     expect(report.required_pack_ids).toEqual([
       'heritage_process_pack',
       'documentary_source_pack',
@@ -127,6 +153,8 @@ describe('domain-pack-expansion-service', () => {
     expect(report.markdown).toContain('Domain Pack Expansion Candidates');
     expect(report.markdown).toContain('direct_writeback_to_province_markdown: false');
     expect(report.markdown).toContain('review_packet_item_count');
+    expect(report.markdown).toContain('## Video Type Coverage');
+    expect(report.markdown).toContain('explainer_video');
   });
 
   it('can omit markdown for machine-only callers', () => {

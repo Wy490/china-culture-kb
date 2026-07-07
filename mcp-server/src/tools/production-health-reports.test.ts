@@ -98,6 +98,8 @@ describe('production health reports', () => {
       batch_count: 0,
       seed_target_count: 0,
       candidate_field_count: 0,
+      video_type_coverage_count: 0,
+      coverage_by_video_type: [],
       covered_required_pack_ids: [],
       review_packet: {
         schema_version: 'domain-pack-expansion-review-packet/v1',
@@ -139,6 +141,7 @@ describe('production health reports', () => {
     expect(domainPackExpansionCandidates.markdown).toContain('Domain Pack Expansion Candidates');
     expect(domainPackExpansionCandidates.markdown).toContain('missing_candidate_file');
     expect(domainPackExpansionCandidates.markdown).toContain('review_packet_item_count');
+    expect(domainPackExpansionCandidates.markdown).toContain('video_type_coverage_count');
     expect(domainPackExpansionCandidates.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
     expect(domainPackExpansionCandidates.review_packet.markdown).toContain('direct_writeback_to_province_markdown: true');
     expect(getDomainPackExpansionCandidateToolResult({ include_markdown: false }).markdown).toBeUndefined();
@@ -222,6 +225,30 @@ describe('production health reports', () => {
       batch_count: 8,
       seed_target_count: 8,
       candidate_field_count: 8,
+      video_type_coverage_count: 1,
+      coverage_by_video_type: [
+        expect.objectContaining({
+          video_type: 'explainer_video',
+          batch_count: 8,
+          seed_target_count: 8,
+          candidate_field_count: 1,
+          pack_ids: expect.arrayContaining([
+            'heritage_process_pack',
+            'explainer_knowledge_structure_pack',
+          ]),
+          provinces: ['湖南'],
+          review_status_counts: {
+            candidate_review: 7,
+            approved: 1,
+            rejected: 0,
+            needs_revision: 0,
+          },
+          approved_writeback_draft_count: 1,
+          writeback_status_counts: expect.objectContaining({
+            queued: 1,
+          }),
+        }),
+      ],
       issues: [],
       review_packet: {
         schema_version: 'domain-pack-expansion-review-packet/v1',
@@ -265,6 +292,8 @@ describe('production health reports', () => {
       }),
     ]));
     const toolResult = getDomainPackExpansionCandidateToolResult();
+    expect(toolResult.markdown).toContain('## Video Type Coverage');
+    expect(toolResult.markdown).toContain('explainer_video: batches=8');
     expect(toolResult.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
     expect(toolResult.review_packet.markdown).toContain('heritage_process_pack target');
     expect(toolResult.review_packet.markdown).toContain('approved_writeback_draft_count: 1');

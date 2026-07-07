@@ -5968,6 +5968,19 @@ export interface DomainPackExpansionBatchSummary {
   provinces: string[];
 }
 
+export interface DomainPackExpansionVideoTypeCoverageSummary {
+  video_type: string;
+  batch_count: number;
+  seed_target_count: number;
+  candidate_field_count: number;
+  pack_ids: string[];
+  batch_ids: string[];
+  provinces: string[];
+  review_status_counts: Record<DomainPackExpansionReviewStatus, number>;
+  approved_writeback_draft_count: number;
+  writeback_status_counts: Record<KnowledgeWritebackStatus, number>;
+}
+
 export interface DomainPackExpansionReviewFieldGroup {
   group_id: string;
   candidate_fields: string[];
@@ -6160,6 +6173,8 @@ export interface DomainPackExpansionCandidateReport {
   batch_count: number;
   seed_target_count: number;
   candidate_field_count: number;
+  video_type_coverage_count: number;
+  coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];
   review_packet: DomainPackExpansionReviewPacket;
