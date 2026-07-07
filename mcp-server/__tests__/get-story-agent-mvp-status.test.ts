@@ -304,7 +304,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.domain_pack_expansion_writeback_needs_revision_count).toBe(0);
     expect(result.summary.story_agent_command_surface_status).toBe('ready');
     expect(result.summary.story_agent_command_surface_percent).toBe(100);
-    expect(result.summary.mcp_story_agent_tool_count).toBe(25);
+    expect(result.summary.mcp_story_agent_tool_count).toBe(26);
     expect(result.summary.mcp_story_agent_loop_percent).toBe(100);
     expect(result.summary.content_command_layer_percent).toBe(100);
     expect(result.summary.production_delivery_contract_percent).toBe(100);
@@ -360,12 +360,13 @@ describe('kb_get_story_agent_mvp_status', () => {
     ]));
     expect(result.progress.find(slice => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
       'implementation_progress=100',
-      expect.stringContaining('tool_count=25'),
+      expect.stringContaining('tool_count=26'),
       expect.stringContaining('kb_get_production_material_pack_health'),
       expect.stringContaining('kb_get_domain_pack_production_health'),
       expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
       expect.stringContaining('kb_get_domain_pack_expansion_writeback_draft'),
       expect.stringContaining('kb_update_domain_pack_expansion_review_state'),
+      expect.stringContaining('kb_update_domain_pack_expansion_review_state_bulk'),
       expect.stringContaining('kb_generate_story_repair_prompt'),
       'media_execution=gears_v2',
     ]));

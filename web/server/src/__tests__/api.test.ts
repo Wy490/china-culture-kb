@@ -1384,10 +1384,11 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        expect.stringContaining('tool_count=25'),
+        expect.stringContaining('tool_count=26'),
         expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
         expect.stringContaining('kb_get_domain_pack_expansion_writeback_draft'),
         expect.stringContaining('kb_update_domain_pack_expansion_review_state'),
+        expect.stringContaining('kb_update_domain_pack_expansion_review_state_bulk'),
         expect.stringContaining('kb_generate_story_repair_prompt'),
         'media_execution=gears_v2',
       ]));

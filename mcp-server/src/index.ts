@@ -36,6 +36,7 @@ import {
   getDomainPackExpansionWritebackDraftToolResult,
   getDomainPackProductionHealthToolResult,
   getProductionMaterialPackHealthToolResult,
+  updateDomainPackExpansionReviewStateBulkToolResult,
   updateDomainPackExpansionReviewStateToolResult,
 } from './tools/production-health-reports.js';
 import { getGearsWorkerEvidenceSignoff } from './tools/get-gears-worker-evidence-signoff.js';
@@ -690,6 +691,29 @@ server.tool(
   },
   async (input) => {
     const result = updateDomainPackExpansionReviewStateToolResult(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_update_domain_pack_expansion_review_state_bulk — controlled bulk review-state update
+server.tool(
+  'kb_update_domain_pack_expansion_review_state_bulk',
+  '受控批量更新 Domain Pack 扩库候选审稿状态。仅写入 web/generated/domain-pack-expansion/review-state.json；approved 才生成写回草案，绝不写入 data/provinces/*.md。',
+  {
+    review_item_ids: z.array(z.string()).min(1).max(200).describe('扩库候选审稿项 ID 列表'),
+    review_status: z.enum(['candidate_review', 'approved', 'rejected', 'needs_revision']).describe('审稿状态'),
+    review_note: z.string().optional().describe('人工审稿备注'),
+    writeback_status: z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision']).optional().describe('approved 状态下的写回队列状态'),
+    writeback_note: z.string().optional().describe('approved 状态下的写回队列备注'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = updateDomainPackExpansionReviewStateBulkToolResult(input);
     return {
       content: [{
         type: 'text',
