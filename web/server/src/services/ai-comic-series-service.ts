@@ -8065,6 +8065,8 @@ function buildAiComicProductionReadinessSummary(
     external_ready_gears_job_count: extras.gearsSummary.external_ready,
     local_acceptance_ready_gears_job_count: extras.gearsSummary.local_acceptance_ready,
     ready_without_external_gears_artifact_count: extras.gearsSummary.ready_without_external_artifact,
+    seedance_placeholder_asset_count: 0,
+    seedance_production_asset_ready_count: 0,
   };
 }
 

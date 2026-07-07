@@ -1297,6 +1297,8 @@ export interface ProductionReadinessSummary {
   external_ready_gears_job_count: number;
   local_acceptance_ready_gears_job_count: number;
   ready_without_external_gears_artifact_count: number;
+  seedance_placeholder_asset_count: number;
+  seedance_production_asset_ready_count: number;
 }
 
 export interface ProductionReadinessLane {
@@ -1507,6 +1509,8 @@ export interface ProductionReadinessPortfolioItem {
   external_ready_gears_job_count: number;
   local_acceptance_ready_gears_job_count: number;
   ready_without_external_gears_artifact_count: number;
+  seedance_placeholder_asset_count: number;
+  seedance_production_asset_ready_count: number;
   ready_automation_step_count: number;
   blocked_automation_step_count: number;
   manual_automation_step_count: number;
@@ -1545,6 +1549,8 @@ export interface ProductionReadinessPortfolioReport {
     external_ready_gears_job_count: number;
     local_acceptance_ready_gears_job_count: number;
     ready_without_external_gears_artifact_count: number;
+    seedance_placeholder_asset_count: number;
+    seedance_production_asset_ready_count: number;
     latest_automation_run_count: number;
     portfolio_automation_run_count: number;
   };

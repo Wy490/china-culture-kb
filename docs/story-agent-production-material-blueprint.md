@@ -65,6 +65,7 @@
 59. 加硬 MCP 包健康 fail-closed 回归测试：`production-health-reports.test.ts` 覆盖生产素材包文件或 Domain Pack 文件缺失时必须返回 `failed`、列出 8 个必需片型/生产提示包缺口，防止独立 MCP 工具、MVP lane 或 worker signoff 在素材包缺失时误报为健康。
 60. 补强独立 MCP 健康工具的人机双读输出：`kb_get_production_material_pack_health` 与 `kb_get_domain_pack_production_health` 默认返回 Markdown 摘要，包含状态、覆盖数、ready 数、缺口和问题清单；同时支持 `include_markdown=false` 只返回结构化 JSON，方便 GEARS 签收、外部编排和人工审稿材料复用同一只读报告。
 61. 收紧 Seedance 占位素材生产语义：`seedance_asset_report` 新增 `placeholder_asset_count` 与 `production_asset_ready_count`，占位 SVG 绑定后仍会让 Seedance Asset Report artifact 保持 `needs_repair`，Production readiness 生成 `seedance-assets-placeholder-only` warning，项目详情页显示占位数与正式 ready 数，明确 exported/ready 只代表结构化交付，不等于可直接投产。
+62. 把 Seedance 占位素材计数上升到系统生产总览：`ProductionReadinessSummary`、`production-readiness-portfolio/v1` 和项目总览页新增 `seedance_placeholder_asset_count` / `seedance_production_asset_ready_count` 汇总，团队可在跨项目队列第一屏看到占位素材压力，而不必逐个进入项目详情排查。
 
 ## 原始诊断必须并入路线
 

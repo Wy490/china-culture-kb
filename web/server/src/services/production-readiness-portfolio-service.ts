@@ -381,6 +381,8 @@ function portfolioItem(report: ReadinessReport): ProductionReadinessPortfolioIte
     external_ready_gears_job_count: report.summary.external_ready_gears_job_count,
     local_acceptance_ready_gears_job_count: report.summary.local_acceptance_ready_gears_job_count,
     ready_without_external_gears_artifact_count: report.summary.ready_without_external_gears_artifact_count,
+    seedance_placeholder_asset_count: report.summary.seedance_placeholder_asset_count,
+    seedance_production_asset_ready_count: report.summary.seedance_production_asset_ready_count,
     ready_automation_step_count: report.automation_plan.ready_step_count,
     blocked_automation_step_count: report.automation_plan.blocked_step_count,
     manual_automation_step_count: report.automation_plan.manual_step_count,
@@ -439,6 +441,8 @@ function buildMarkdown(report: Omit<ProductionReadinessPortfolioReport, 'markdow
     `- GEARS external ready: ${report.summary.external_ready_gears_job_count}`,
     `- GEARS local acceptance ready: ${report.summary.local_acceptance_ready_gears_job_count}`,
     `- GEARS ready without external artifact: ${report.summary.ready_without_external_gears_artifact_count}`,
+    `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
+    `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
     `- portfolio automation runs: ${report.summary.portfolio_automation_run_count}`,
     ...(latestRun
       ? [`- latest portfolio run: ${latestRun.completed_at} · executed ${latestRun.executed_target_count} · failed ${latestRun.failed_target_count}`]
@@ -529,6 +533,8 @@ export async function getProductionReadinessPortfolio(
     external_ready_gears_job_count: reports.reduce((sum, report) => sum + report.summary.external_ready_gears_job_count, 0),
     local_acceptance_ready_gears_job_count: reports.reduce((sum, report) => sum + report.summary.local_acceptance_ready_gears_job_count, 0),
     ready_without_external_gears_artifact_count: reports.reduce((sum, report) => sum + report.summary.ready_without_external_gears_artifact_count, 0),
+    seedance_placeholder_asset_count: reports.reduce((sum, report) => sum + report.summary.seedance_placeholder_asset_count, 0),
+    seedance_production_asset_ready_count: reports.reduce((sum, report) => sum + report.summary.seedance_production_asset_ready_count, 0),
     latest_automation_run_count: reports.filter(report => Boolean(report.latest_automation_run)).length,
     portfolio_automation_run_count: 0,
   };

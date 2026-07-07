@@ -6682,6 +6682,8 @@ export async function getProjectProductionReadiness(
       totalShotCount: shotCount,
       readyShotCount: shotStatusCounts.ready,
       failedShotCount: shotStatusCounts.failed,
+      seedancePlaceholderAssetCount,
+      seedanceProductionAssetReadyCount: board.seedance_asset_report.production_asset_ready_count ?? 0,
       gearsSummary,
     }),
     lanes,
@@ -7059,6 +7061,8 @@ function buildProductionReadinessSummary(
     readyShotCount?: number;
     failedShotCount?: number;
     openReviewCount?: number;
+    seedancePlaceholderAssetCount?: number;
+    seedanceProductionAssetReadyCount?: number;
     gearsSummary: ProductionReadinessGearsSummary;
   },
 ): StoryProjectProductionReadinessReport['summary'] {
@@ -7088,6 +7092,8 @@ function buildProductionReadinessSummary(
     external_ready_gears_job_count: extras.gearsSummary.external_ready,
     local_acceptance_ready_gears_job_count: extras.gearsSummary.local_acceptance_ready,
     ready_without_external_gears_artifact_count: extras.gearsSummary.ready_without_external_artifact,
+    seedance_placeholder_asset_count: extras.seedancePlaceholderAssetCount ?? 0,
+    seedance_production_asset_ready_count: extras.seedanceProductionAssetReadyCount ?? 0,
   };
 }
 
@@ -7119,6 +7125,8 @@ function buildStoryProjectProductionReadinessMarkdown(
     `- blockers: ${report.summary.blocker_count}`,
     `- warnings: ${report.summary.warning_count}`,
     `- next actions: ${report.summary.next_action_count}`,
+    `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
+    `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
     '',
     '## Lanes',
     '',

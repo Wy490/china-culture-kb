@@ -480,6 +480,8 @@ describe('System API', () => {
           external_ready_gears_job_count: expect.any(Number),
           local_acceptance_ready_gears_job_count: expect.any(Number),
           ready_without_external_gears_artifact_count: expect.any(Number),
+          seedance_placeholder_asset_count: expect.any(Number),
+          seedance_production_asset_ready_count: expect.any(Number),
         },
       });
       expect(res.body.data.summary.total_target_count).toBeGreaterThanOrEqual(2);
@@ -493,10 +495,13 @@ describe('System API', () => {
         status: expect.stringMatching(/ready|needs_action|blocked/),
         local_acceptance_ready_gears_job_count: expect.any(Number),
         ready_without_external_gears_artifact_count: expect.any(Number),
+        seedance_placeholder_asset_count: expect.any(Number),
+        seedance_production_asset_ready_count: expect.any(Number),
       });
       expect(res.body.data.action_buckets.length).toBeGreaterThan(0);
       expect(res.body.data.markdown).toContain('Production Readiness Portfolio');
       expect(res.body.data.markdown).toContain('GEARS local acceptance ready');
+      expect(res.body.data.markdown).toContain('Seedance placeholder assets');
 
       const runRes = await request
         .post('/api/system/production-readiness-portfolio/run-automation')
@@ -1108,6 +1113,10 @@ describe('System API', () => {
         },
         production_portfolio: {
           schema_version: 'production-readiness-portfolio/v1',
+          summary: {
+            seedance_placeholder_asset_count: expect.any(Number),
+            seedance_production_asset_ready_count: expect.any(Number),
+          },
         },
       });
       expect(res.body.data.summary.generated_target_count).toBeGreaterThanOrEqual(1);

@@ -233,6 +233,10 @@
         <span v-if="productionPortfolio.summary.ready_without_external_gears_artifact_count > 0">
           待外部回片 {{ productionPortfolio.summary.ready_without_external_gears_artifact_count }}
         </span>
+        <span v-if="productionPortfolio.summary.seedance_placeholder_asset_count > 0">
+          Seedance 占位 {{ productionPortfolio.summary.seedance_placeholder_asset_count }}
+        </span>
+        <span>正式素材 ready {{ productionPortfolio.summary.seedance_production_asset_ready_count }}</span>
         <span>GEARS/人工外部步骤 {{ productionPortfolio.summary.external_automation_step_count + productionPortfolio.summary.manual_automation_step_count }}</span>
         <span>已有自动化记录 {{ productionPortfolio.summary.latest_automation_run_count }}</span>
         <span>队列运行 {{ productionPortfolio.summary.portfolio_automation_run_count }}</span>
@@ -260,6 +264,9 @@
           <p>{{ item.scope === 'story_project' ? '单片短片' : '漫剧系列' }} · {{ item.score }}/100</p>
           <p v-if="item.ready_without_external_gears_artifact_count > 0">
             待外部回片 {{ item.ready_without_external_gears_artifact_count }} · 外部 ready {{ item.external_ready_gears_job_count }} · 本地验收 {{ item.local_acceptance_ready_gears_job_count }}
+          </p>
+          <p v-if="item.seedance_placeholder_asset_count > 0">
+            Seedance 占位 {{ item.seedance_placeholder_asset_count }} · 正式素材 ready {{ item.seedance_production_asset_ready_count }}
           </p>
           <p v-if="item.primary_issue_label">阻断：{{ item.primary_issue_label }}</p>
           <p v-if="item.primary_action_label">下一步：{{ item.primary_action_label }}</p>
