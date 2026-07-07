@@ -105,6 +105,21 @@ export interface GearsWorkerEvidenceSignoffReport {
   mvp_score_before: number;
   mvp_score_after: number;
   mvp_score_delta: number;
+  mvp_seedance_placeholder_asset_count_before: number;
+  mvp_seedance_placeholder_asset_count_after: number;
+  mvp_seedance_placeholder_asset_count_delta: number;
+  mvp_seedance_production_asset_ready_count_before: number;
+  mvp_seedance_production_asset_ready_count_after: number;
+  mvp_seedance_production_asset_ready_count_delta: number;
+  mvp_knowledge_writeback_ready_count_before: number;
+  mvp_knowledge_writeback_ready_count_after: number;
+  mvp_knowledge_writeback_ready_count_delta: number;
+  mvp_knowledge_writeback_queued_count_before: number;
+  mvp_knowledge_writeback_queued_count_after: number;
+  mvp_knowledge_writeback_queued_count_delta: number;
+  mvp_knowledge_writeback_needs_revision_count_before: number;
+  mvp_knowledge_writeback_needs_revision_count_after: number;
+  mvp_knowledge_writeback_needs_revision_count_delta: number;
   large_project_request_unit_count: number;
   large_project_response_record_count: number;
   large_project_accepted_count: number;
@@ -396,6 +411,11 @@ function renderMarkdown(report: Omit<GearsWorkerEvidenceSignoffReport, 'markdown
     `- domain_pack_ready_before/after: ${report.domain_pack_ready_count_before}/${report.domain_pack_ready_count_after}`,
     `- mvp_status_before/after: ${report.mvp_status_before ?? 'n/a'}/${report.mvp_status_after ?? 'n/a'}`,
     `- mvp_score_delta: ${report.mvp_score_delta}`,
+    `- mvp_seedance_placeholder_before/after/delta: ${report.mvp_seedance_placeholder_asset_count_before}/${report.mvp_seedance_placeholder_asset_count_after}/${report.mvp_seedance_placeholder_asset_count_delta}`,
+    `- mvp_seedance_production_ready_before/after/delta: ${report.mvp_seedance_production_asset_ready_count_before}/${report.mvp_seedance_production_asset_ready_count_after}/${report.mvp_seedance_production_asset_ready_count_delta}`,
+    `- mvp_knowledge_writeback_ready_before/after/delta: ${report.mvp_knowledge_writeback_ready_count_before}/${report.mvp_knowledge_writeback_ready_count_after}/${report.mvp_knowledge_writeback_ready_count_delta}`,
+    `- mvp_knowledge_writeback_queued_before/after/delta: ${report.mvp_knowledge_writeback_queued_count_before}/${report.mvp_knowledge_writeback_queued_count_after}/${report.mvp_knowledge_writeback_queued_count_delta}`,
+    `- mvp_knowledge_writeback_needs_revision_before/after/delta: ${report.mvp_knowledge_writeback_needs_revision_count_before}/${report.mvp_knowledge_writeback_needs_revision_count_after}/${report.mvp_knowledge_writeback_needs_revision_count_delta}`,
     `- large_project_source_echo: ${report.large_project_source_echo_count}/${report.large_project_request_unit_count}`,
     `- large_project_records/accepted/rejected/failed: ${report.large_project_response_record_count}/${report.large_project_accepted_count}/${report.large_project_rejected_count}/${report.large_project_failed_count}`,
     '',
@@ -487,6 +507,21 @@ export async function getGearsWorkerEvidenceSignoff(
       mvp_score_before: 0,
       mvp_score_after: 0,
       mvp_score_delta: 0,
+      mvp_seedance_placeholder_asset_count_before: 0,
+      mvp_seedance_placeholder_asset_count_after: 0,
+      mvp_seedance_placeholder_asset_count_delta: 0,
+      mvp_seedance_production_asset_ready_count_before: 0,
+      mvp_seedance_production_asset_ready_count_after: 0,
+      mvp_seedance_production_asset_ready_count_delta: 0,
+      mvp_knowledge_writeback_ready_count_before: 0,
+      mvp_knowledge_writeback_ready_count_after: 0,
+      mvp_knowledge_writeback_ready_count_delta: 0,
+      mvp_knowledge_writeback_queued_count_before: 0,
+      mvp_knowledge_writeback_queued_count_after: 0,
+      mvp_knowledge_writeback_queued_count_delta: 0,
+      mvp_knowledge_writeback_needs_revision_count_before: 0,
+      mvp_knowledge_writeback_needs_revision_count_after: 0,
+      mvp_knowledge_writeback_needs_revision_count_delta: 0,
       large_project_request_unit_count: 0,
       large_project_response_record_count: 0,
       large_project_accepted_count: 0,
@@ -566,6 +601,8 @@ export async function getGearsWorkerEvidenceSignoff(
   const domainPackDeltas = asRecord(domainPackProductionHealthRead.data?.deltas);
   const mvpBefore = asRecord(mvpRead.data?.before);
   const mvpAfter = asRecord(mvpRead.data?.after);
+  const mvpBeforeSummary = asRecord(mvpBefore.summary);
+  const mvpAfterSummary = asRecord(mvpAfter.summary);
   const mvpDeltas = asRecord(mvpRead.data?.deltas);
   const pressureTotals = asRecord(pressureRead.data?.totals);
   const archiveTotals = asRecord(archive?.totals);
@@ -728,6 +765,21 @@ export async function getGearsWorkerEvidenceSignoff(
     mvp_score_before: asNumber(mvpBefore.score),
     mvp_score_after: asNumber(mvpAfter.score),
     mvp_score_delta: asNumber(mvpDeltas.score),
+    mvp_seedance_placeholder_asset_count_before: asNumber(mvpBeforeSummary.seedance_placeholder_asset_count),
+    mvp_seedance_placeholder_asset_count_after: asNumber(mvpAfterSummary.seedance_placeholder_asset_count),
+    mvp_seedance_placeholder_asset_count_delta: asNumber(mvpDeltas.seedance_placeholder_asset_count),
+    mvp_seedance_production_asset_ready_count_before: asNumber(mvpBeforeSummary.seedance_production_asset_ready_count),
+    mvp_seedance_production_asset_ready_count_after: asNumber(mvpAfterSummary.seedance_production_asset_ready_count),
+    mvp_seedance_production_asset_ready_count_delta: asNumber(mvpDeltas.seedance_production_asset_ready_count),
+    mvp_knowledge_writeback_ready_count_before: asNumber(mvpBeforeSummary.knowledge_writeback_ready_count),
+    mvp_knowledge_writeback_ready_count_after: asNumber(mvpAfterSummary.knowledge_writeback_ready_count),
+    mvp_knowledge_writeback_ready_count_delta: asNumber(mvpDeltas.knowledge_writeback_ready_count),
+    mvp_knowledge_writeback_queued_count_before: asNumber(mvpBeforeSummary.knowledge_writeback_queued_count),
+    mvp_knowledge_writeback_queued_count_after: asNumber(mvpAfterSummary.knowledge_writeback_queued_count),
+    mvp_knowledge_writeback_queued_count_delta: asNumber(mvpDeltas.knowledge_writeback_queued_count),
+    mvp_knowledge_writeback_needs_revision_count_before: asNumber(mvpBeforeSummary.knowledge_writeback_needs_revision_count),
+    mvp_knowledge_writeback_needs_revision_count_after: asNumber(mvpAfterSummary.knowledge_writeback_needs_revision_count),
+    mvp_knowledge_writeback_needs_revision_count_delta: asNumber(mvpDeltas.knowledge_writeback_needs_revision_count),
     large_project_request_unit_count: asNumber(pressureTotals.request_unit_count),
     large_project_response_record_count: asNumber(pressureTotals.response_record_count),
     large_project_accepted_count: asNumber(pressureTotals.accepted_count),

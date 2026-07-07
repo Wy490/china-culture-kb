@@ -181,9 +181,38 @@ function writeCompleteEvidence(evidenceDir: string, recommendedActions: unknown[
   writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
     schema_version: 'story-agent-mvp-status-audit/v1',
     status: 'passed',
-    before: { status: 'ready', score: 96 },
-    after: { status: 'ready', score: 96 },
-    deltas: { score: 0, status_rank: 0, blocker_count: 0 },
+    before: {
+      status: 'ready',
+      score: 96,
+      summary: {
+        seedance_placeholder_asset_count: 0,
+        seedance_production_asset_ready_count: 5,
+        knowledge_writeback_ready_count: 1,
+        knowledge_writeback_queued_count: 1,
+        knowledge_writeback_needs_revision_count: 0,
+      },
+    },
+    after: {
+      status: 'ready',
+      score: 96,
+      summary: {
+        seedance_placeholder_asset_count: 0,
+        seedance_production_asset_ready_count: 5,
+        knowledge_writeback_ready_count: 1,
+        knowledge_writeback_queued_count: 1,
+        knowledge_writeback_needs_revision_count: 0,
+      },
+    },
+    deltas: {
+      score: 0,
+      status_rank: 0,
+      blocker_count: 0,
+      seedance_placeholder_asset_count: 0,
+      seedance_production_asset_ready_count: 0,
+      knowledge_writeback_ready_count: 0,
+      knowledge_writeback_queued_count: 0,
+      knowledge_writeback_needs_revision_count: 0,
+    },
     failed_checks: [],
     warning_checks: [],
     recommended_actions: [],
@@ -292,6 +321,11 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.mvp_status_before).toBe('ready');
     expect(result.mvp_status_after).toBe('ready');
     expect(result.mvp_score_delta).toBe(0);
+    expect(result.mvp_seedance_placeholder_asset_count_after).toBe(0);
+    expect(result.mvp_seedance_production_asset_ready_count_after).toBe(5);
+    expect(result.mvp_knowledge_writeback_ready_count_after).toBe(1);
+    expect(result.mvp_knowledge_writeback_queued_count_after).toBe(1);
+    expect(result.mvp_knowledge_writeback_needs_revision_count_after).toBe(0);
     expect(result.missing_required_files).toEqual([]);
     expect(result.gates).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -313,6 +347,8 @@ describe('kb_get_gears_worker_evidence_signoff', () => {
     expect(result.markdown).toContain('system_external_output_url_source: worker_response');
     expect(result.markdown).toContain('large_project_source_echo: 120/120');
     expect(result.markdown).toContain('mvp_score_delta: 0');
+    expect(result.markdown).toContain('mvp_seedance_placeholder_before/after/delta: 0/0/0');
+    expect(result.markdown).toContain('mvp_knowledge_writeback_queued_before/after/delta: 1/1/0');
   });
 
   it('deduplicates repeated recommended actions', async () => {

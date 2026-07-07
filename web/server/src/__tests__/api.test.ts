@@ -2843,9 +2843,38 @@ describe('System API', () => {
       await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
         schema_version: 'story-agent-mvp-status-audit/v1',
         status: 'passed',
-        before: { status: 'ready', score: 95 },
-        after: { status: 'ready', score: 95 },
-        deltas: { score: 0, status_rank: 0, blocker_count: 0 },
+        before: {
+          status: 'ready',
+          score: 95,
+          summary: {
+            seedance_placeholder_asset_count: 0,
+            seedance_production_asset_ready_count: 5,
+            knowledge_writeback_ready_count: 1,
+            knowledge_writeback_queued_count: 1,
+            knowledge_writeback_needs_revision_count: 0,
+          },
+        },
+        after: {
+          status: 'ready',
+          score: 95,
+          summary: {
+            seedance_placeholder_asset_count: 0,
+            seedance_production_asset_ready_count: 5,
+            knowledge_writeback_ready_count: 1,
+            knowledge_writeback_queued_count: 1,
+            knowledge_writeback_needs_revision_count: 0,
+          },
+        },
+        deltas: {
+          score: 0,
+          status_rank: 0,
+          blocker_count: 0,
+          seedance_placeholder_asset_count: 0,
+          seedance_production_asset_ready_count: 0,
+          knowledge_writeback_ready_count: 0,
+          knowledge_writeback_queued_count: 0,
+          knowledge_writeback_needs_revision_count: 0,
+        },
         failed_checks: [],
         warning_checks: [],
         recommended_actions: [],
@@ -3120,9 +3149,38 @@ describe('System API', () => {
       await writeEvidenceJson(evidenceDir, 'story-agent-mvp-status-audit.json', {
         schema_version: 'story-agent-mvp-status-audit/v1',
         status: 'passed',
-        before: { status: 'ready', score: 96 },
-        after: { status: 'ready', score: 96 },
-        deltas: { score: 0, status_rank: 0, blocker_count: 0 },
+        before: {
+          status: 'ready',
+          score: 96,
+          summary: {
+            seedance_placeholder_asset_count: 0,
+            seedance_production_asset_ready_count: 5,
+            knowledge_writeback_ready_count: 1,
+            knowledge_writeback_queued_count: 1,
+            knowledge_writeback_needs_revision_count: 0,
+          },
+        },
+        after: {
+          status: 'ready',
+          score: 96,
+          summary: {
+            seedance_placeholder_asset_count: 0,
+            seedance_production_asset_ready_count: 5,
+            knowledge_writeback_ready_count: 1,
+            knowledge_writeback_queued_count: 1,
+            knowledge_writeback_needs_revision_count: 0,
+          },
+        },
+        deltas: {
+          score: 0,
+          status_rank: 0,
+          blocker_count: 0,
+          seedance_placeholder_asset_count: 0,
+          seedance_production_asset_ready_count: 0,
+          knowledge_writeback_ready_count: 0,
+          knowledge_writeback_queued_count: 0,
+          knowledge_writeback_needs_revision_count: 0,
+        },
         failed_checks: [],
         warning_checks: [],
         recommended_actions: [],
@@ -3206,6 +3264,21 @@ describe('System API', () => {
         mvp_score_before: 96,
         mvp_score_after: 96,
         mvp_score_delta: 0,
+        mvp_seedance_placeholder_asset_count_before: 0,
+        mvp_seedance_placeholder_asset_count_after: 0,
+        mvp_seedance_placeholder_asset_count_delta: 0,
+        mvp_seedance_production_asset_ready_count_before: 5,
+        mvp_seedance_production_asset_ready_count_after: 5,
+        mvp_seedance_production_asset_ready_count_delta: 0,
+        mvp_knowledge_writeback_ready_count_before: 1,
+        mvp_knowledge_writeback_ready_count_after: 1,
+        mvp_knowledge_writeback_ready_count_delta: 0,
+        mvp_knowledge_writeback_queued_count_before: 1,
+        mvp_knowledge_writeback_queued_count_after: 1,
+        mvp_knowledge_writeback_queued_count_delta: 0,
+        mvp_knowledge_writeback_needs_revision_count_before: 0,
+        mvp_knowledge_writeback_needs_revision_count_after: 0,
+        mvp_knowledge_writeback_needs_revision_count_delta: 0,
         large_project_request_unit_count: 120,
         large_project_response_record_count: 120,
         large_project_accepted_count: 120,
@@ -3262,6 +3335,8 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('domain_pack_status_before/after: passed/passed');
       expect(res.body.data.markdown).toContain('large_project_source_echo: 120/120');
       expect(res.body.data.markdown).toContain('mvp_score_delta: 0');
+      expect(res.body.data.markdown).toContain('mvp_seedance_placeholder_before/after/delta: 0/0/0');
+      expect(res.body.data.markdown).toContain('mvp_knowledge_writeback_queued_before/after/delta: 1/1/0');
     });
 
     it('rejects localhost system external output URLs even when evidence claims ready', async () => {

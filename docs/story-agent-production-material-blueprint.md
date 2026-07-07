@@ -69,6 +69,7 @@
 63. 同步 Web/MCP Story Agent MVP 状态的占位素材口径：Web `story-agent-mvp-status/v1` 与 MCP `kb_get_story_agent_mvp_status` 的 summary、Markdown、lane evidence 和 priority target evidence 均输出 Seedance 占位/正式素材计数；MCP 本地 `kb_get_production_readiness` 会读取导出的 `seedance-asset-report.json` 或项目资产库 fallback，离线扫描也能识别 `story_agent_placeholder` 不是正式投产素材。
 64. 补强独立知识库写回队列的批量导出一致性：`/knowledge-writeback-queue` 的 Markdown/JSON 导出会把当前可见任务键传给服务端，搜索后的列表与导出范围一致；全局 `project-knowledge-writeback-patch/v1` 现在返回筛选摘要、可见任务键数量、项目数和写回状态汇总，继续只导出已通过候选稿审稿并生成正式写回草案的内容。
 65. 将知识库写回队列纳入 Story Agent MVP 状态：Web `story-agent-mvp-status/v1` 与 MCP `kb_get_story_agent_mvp_status` 新增 `knowledge_writeback` lane，summary/Markdown/evidence 输出已审稿写回草案、项目数、draft_ready/queued/written_back/needs_revision 计数；该 lane 只读统计候选稿与写回草案，不直接改写 `data/provinces/*.md`。
+66. 下沉 MVP 治理计数到 GEARS worker evidence 签收：worker acceptance kit 的 `story-agent-mvp-status-audit.json/.md` 会保留 Seedance 占位/正式素材和知识库写回队列计数；Web `gears-execution-worker-evidence-signoff` 与 MCP `kb_get_gears_worker_evidence_signoff` 会在最终签收报告中展示这些 before/after/delta，真实外部回片签收时不再只看 MVP status/score。
 
 ## 原始诊断必须并入路线
 
