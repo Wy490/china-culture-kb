@@ -1,11 +1,31 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { resolve } from 'node:path';
-import { getDomainPackExpansionCandidateReport } from '../services/domain-pack-expansion-service.js';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import {
+  getDomainPackExpansionCandidateReport,
+  getDomainPackExpansionWritebackDraftPackage,
+  updateDomainPackExpansionReviewState,
+} from '../services/domain-pack-expansion-service.js';
+
+const previousGeneratedRoot = process.env.WEB_GENERATED_ROOT;
+let generatedRoot = '';
 
 beforeAll(() => {
   if (!process.env.KB_ROOT) {
     process.env.KB_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
   }
+});
+
+beforeEach(() => {
+  generatedRoot = mkdtempSync(resolve(tmpdir(), 'domain-pack-expansion-service-'));
+  process.env.WEB_GENERATED_ROOT = generatedRoot;
+});
+
+afterEach(() => {
+  if (previousGeneratedRoot === undefined) delete process.env.WEB_GENERATED_ROOT;
+  else process.env.WEB_GENERATED_ROOT = previousGeneratedRoot;
+  rmSync(generatedRoot, { recursive: true, force: true });
 });
 
 describe('domain-pack-expansion-service', () => {
@@ -54,6 +74,8 @@ describe('domain-pack-expansion-service', () => {
         requires_source_level: true,
       },
     });
+    expect(report.review_packet.review_status_counts?.candidate_review).toBe(report.seed_target_count);
+    expect(report.review_packet.approved_writeback_draft_count).toBe(0);
     expect(report.review_packet.batches).toEqual(expect.arrayContaining([
       expect.objectContaining({
         pack_id: 'heritage_process_pack',
@@ -98,5 +120,62 @@ describe('domain-pack-expansion-service', () => {
     expect(report.markdown).toBeUndefined();
     expect(report.review_packet.review_item_count).toBe(report.seed_target_count);
     expect(report.review_packet.markdown).toBeUndefined();
+  });
+
+  it('stores review state separately and exports approved writeback drafts', () => {
+    const reviewItemId = 'heritage_process_pack_expansion_20260707::target_01';
+    const update = updateDomainPackExpansionReviewState({
+      review_item_id: reviewItemId,
+      review_status: 'approved',
+      review_note: '已确认可进入人工补源清单，仍需补来源级证据。',
+      writeback_status: 'queued',
+      writeback_note: '先排入湖南非遗流程补录批次。',
+    }, {
+      updatedAt: '2026-07-07T09:00:00.000Z',
+    });
+
+    expect(update.ok).toBe(true);
+    const updatedItem = update.report?.review_packet.batches
+      .flatMap(batch => batch.review_items)
+      .find(item => item.review_item_id === reviewItemId);
+    expect(updatedItem).toMatchObject({
+      review_status: 'approved',
+      review_note: '已确认可进入人工补源清单，仍需补来源级证据。',
+      writeback_status: 'queued',
+      writeback_note: '先排入湖南非遗流程补录批次。',
+      writeback_draft_markdown: expect.stringContaining('扩库候选审稿草案'),
+    });
+    expect(updatedItem?.writeback_draft_markdown).toContain('direct_writeback_to_province_markdown: false');
+
+    const draftPackage = getDomainPackExpansionWritebackDraftPackage({
+      exportedAt: '2026-07-07T10:00:00.000Z',
+    });
+    expect(draftPackage).toMatchObject({
+      schema_version: 'domain-pack-expansion-writeback-draft/v1',
+      exported_at: '2026-07-07T10:00:00.000Z',
+      approved_count: 1,
+      target_files: ['data/provinces/湖南.md'],
+      status_counts: expect.objectContaining({
+        queued: 1,
+      }),
+    });
+    expect(draftPackage.items[0]).toMatchObject({
+      review_item_id: reviewItemId,
+      province: '湖南',
+      suggested_file_path: 'data/provinces/湖南.md',
+      writeback_status: 'queued',
+    });
+    expect(draftPackage.markdown).toContain('Domain Pack Expansion Writeback Draft');
+    expect(draftPackage.markdown).toContain('本草案只作为人工补库采集清单');
+  });
+
+  it('rejects review updates for unknown candidate items', () => {
+    const update = updateDomainPackExpansionReviewState({
+      review_item_id: 'missing-review-item',
+      review_status: 'approved',
+    });
+
+    expect(update.ok).toBe(false);
+    expect(update.message).toContain('未找到扩库候选审稿项');
   });
 });

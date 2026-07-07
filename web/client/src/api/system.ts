@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './client'
+import { apiGet, apiPatch, apiPost } from './client'
 import type {
   AIModelProfile,
   GearsExecutionAcceptanceReport,
@@ -17,6 +17,8 @@ import type {
   GearsExecutionWorkerEvidenceSignoffReport,
   GearsJobCallbackRequest,
   DomainPackExpansionCandidateReport,
+  DomainPackExpansionReviewStateUpdateRequest,
+  DomainPackExpansionWritebackDraftPackage,
   NarrativePatternCatalog,
   ProductionReadinessPortfolioReport,
   ProductionReadinessPortfolioRunRequest,
@@ -115,6 +117,14 @@ export function getDomainPackExpansionCandidates(options: { includeMarkdown?: bo
   if (options.includeMarkdown === false) params.set('include_markdown', 'false')
   const suffix = params.toString() ? `?${params.toString()}` : ''
   return apiGet<DomainPackExpansionCandidateReport>(`/system/domain-pack-expansion-candidates${suffix}`)
+}
+
+export function updateDomainPackExpansionReviewState(req: DomainPackExpansionReviewStateUpdateRequest) {
+  return apiPatch<DomainPackExpansionCandidateReport>('/system/domain-pack-expansion-candidates/review-state', req)
+}
+
+export function getDomainPackExpansionWritebackDraft() {
+  return apiGet<DomainPackExpansionWritebackDraftPackage>('/system/domain-pack-expansion-writeback-draft')
 }
 
 export function getGearsExecutionConfig() {

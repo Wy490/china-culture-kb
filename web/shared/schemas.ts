@@ -1315,6 +1315,14 @@ export const KnowledgeSupplementTaskUpdateRequestSchema = z.object({
   knowledge_writeback_note: z.string().trim().max(2000, 'knowledge_writeback_note is too long').optional(),
 });
 
+export const DomainPackExpansionReviewStateUpdateRequestSchema = z.object({
+  review_item_id: z.string().trim().min(1, 'review_item_id is required').max(240),
+  review_status: z.enum(['candidate_review', 'approved', 'rejected', 'needs_revision']),
+  review_note: z.string().trim().max(4000, 'review_note is too long').optional(),
+  writeback_status: z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision']).optional(),
+  writeback_note: z.string().trim().max(2000, 'writeback_note is too long').optional(),
+});
+
 // ---------------------------------------------------------------------------
 // Story outline analyze request
 // ---------------------------------------------------------------------------

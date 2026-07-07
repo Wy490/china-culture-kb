@@ -705,6 +705,65 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('direct_writeback_to_province_markdown: false');
       expect(res.body.data.markdown).toContain('review_packet_item_count');
     });
+
+    it('stores expansion review state and exports approved writeback drafts without writing provinces', async () => {
+      const reviewItemId = 'heritage_process_pack_expansion_20260707::target_01';
+      const stateDir = resolve(process.env.WEB_GENERATED_ROOT!, 'domain-pack-expansion');
+      await rm(stateDir, { recursive: true, force: true });
+
+      const updateRes = await request
+        .patch('/api/system/domain-pack-expansion-candidates/review-state')
+        .send({
+          review_item_id: reviewItemId,
+          review_status: 'approved',
+          review_note: 'API 审稿通过，进入人工补源草案。',
+          writeback_status: 'draft_ready',
+        });
+
+      expect(updateRes.status).toBe(200);
+      expectSuccess(updateRes.body);
+      const updatedItem = updateRes.body.data.review_packet.batches
+        .flatMap((batch: any) => batch.review_items)
+        .find((item: any) => item.review_item_id === reviewItemId);
+      expect(updatedItem).toMatchObject({
+        review_status: 'approved',
+        review_note: 'API 审稿通过，进入人工补源草案。',
+        writeback_status: 'draft_ready',
+        writeback_draft_markdown: expect.stringContaining('扩库候选审稿草案'),
+      });
+      expect(updatedItem.writeback_draft_markdown).toContain('direct_writeback_to_province_markdown: false');
+
+      const draftRes = await request.get('/api/system/domain-pack-expansion-writeback-draft');
+
+      expect(draftRes.status).toBe(200);
+      expectSuccess(draftRes.body);
+      expect(draftRes.body.data).toMatchObject({
+        schema_version: 'domain-pack-expansion-writeback-draft/v1',
+        approved_count: 1,
+        target_files: ['data/provinces/湖南.md'],
+        status_counts: {
+          draft_ready: 1,
+          queued: 0,
+          written_back: 0,
+          needs_revision: 0,
+        },
+      });
+      expect(draftRes.body.data.markdown).toContain('本草案只作为人工补库采集清单');
+      await rm(stateDir, { recursive: true, force: true });
+    });
+
+    it('rejects expansion review updates for unknown items', async () => {
+      const res = await request
+        .patch('/api/system/domain-pack-expansion-candidates/review-state')
+        .send({
+          review_item_id: 'missing-review-item',
+          review_status: 'approved',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.ok).toBe(false);
+      expect(res.body.error.message).toContain('未找到扩库候选审稿项');
+    });
   });
 
   describe('GET /api/system/gears-external-callback-handoff-queue', () => {

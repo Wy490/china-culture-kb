@@ -5930,6 +5930,13 @@ export interface DomainPackExpansionReviewItem {
   recommended_fields: string[];
   forbidden_direct_claims: string[];
   candidate_markdown: string;
+  review_status?: DomainPackExpansionReviewStatus;
+  review_note?: string;
+  reviewed_at?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
+  writeback_updated_at?: string;
+  writeback_draft_markdown?: string;
 }
 
 export interface DomainPackExpansionReviewBatch {
@@ -5960,7 +5967,61 @@ export interface DomainPackExpansionReviewPacket {
   review_item_count: number;
   candidate_field_count: number;
   batches: DomainPackExpansionReviewBatch[];
+  review_status_counts?: Record<DomainPackExpansionReviewStatus, number>;
+  approved_writeback_draft_count?: number;
   markdown?: string;
+}
+
+export type DomainPackExpansionReviewStatus =
+  | 'candidate_review'
+  | 'approved'
+  | 'rejected'
+  | 'needs_revision';
+
+export interface DomainPackExpansionReviewStateItem {
+  review_item_id: string;
+  review_status: DomainPackExpansionReviewStatus;
+  review_note?: string;
+  reviewed_at?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
+  writeback_updated_at?: string;
+}
+
+export interface DomainPackExpansionReviewStateUpdateRequest {
+  review_item_id: string;
+  review_status: DomainPackExpansionReviewStatus;
+  review_note?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
+}
+
+export interface DomainPackExpansionWritebackDraftItem {
+  review_item_id: string;
+  batch_id: string;
+  pack_id: string;
+  entry_name: string;
+  province: string;
+  target_video_types: string[];
+  review_status: DomainPackExpansionReviewStatus;
+  review_note?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
+  suggested_file_path: string;
+  suggested_section_heading: string;
+  append_markdown: string;
+  writeback_draft_markdown: string;
+}
+
+export interface DomainPackExpansionWritebackDraftPackage {
+  schema_version: 'domain-pack-expansion-writeback-draft/v1';
+  exported_at: string;
+  domain_id: string;
+  approved_count: number;
+  target_files: string[];
+  status_counts: Record<KnowledgeWritebackStatus, number>;
+  markdown: string;
+  items: DomainPackExpansionWritebackDraftItem[];
 }
 
 export interface DomainPackExpansionCandidateReport {

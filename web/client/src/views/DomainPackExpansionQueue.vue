@@ -53,6 +53,14 @@
       </button>
       <button
         type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(copyingFormat)"
+        @click="copyApprovedWritebackDraft"
+      >
+        {{ copyingFormat === 'writeback' ? '复制中…' : '复制已通过草案' }}
+      </button>
+      <button
+        type="button"
         class="expansion-page__action expansion-page__action--ghost"
         :disabled="loading"
         @click="loadQueue"
@@ -85,6 +93,10 @@
         <strong>{{ report.review_packet.candidate_field_count }}</strong>
       </div>
       <div>
+        <span>已通过草案</span>
+        <strong>{{ report.review_packet.approved_writeback_draft_count ?? 0 }}</strong>
+      </div>
+      <div>
         <span>直接写回</span>
         <strong>{{ report.review_policy.direct_writeback_to_province_markdown ? '阻断' : '关闭' }}</strong>
       </div>
@@ -97,9 +109,10 @@
       <article v-for="item in filteredItems" :key="item.review_item_id" class="expansion-page__item">
         <div class="expansion-page__main">
           <div class="expansion-page__badges">
-            <span :class="['expansion-page__status', `expansion-page__status--${item.candidate_status}`]">
-              {{ statusLabel(item.candidate_status) }}
+            <span :class="['expansion-page__status', `expansion-page__status--${effectiveReviewStatus(item)}`]">
+              {{ statusLabel(effectiveReviewStatus(item)) }}
             </span>
+            <span v-if="item.writeback_status">{{ writebackStatusLabel(item.writeback_status) }}</span>
             <span>{{ item.province }}</span>
             <span>{{ packShortLabel(item.pack_id) }}</span>
             <span v-for="type in item.target_video_types" :key="`${item.review_item_id}:${type}`">
@@ -133,6 +146,23 @@
           <strong>{{ item.pack_id }}</strong>
           <span>优先级 {{ item.priority }}</span>
           <span>{{ item.target_video_types.length }} 个目标片型</span>
+          <textarea
+            :value="reviewNoteDraft(item)"
+            placeholder="审稿备注"
+            @input="updateReviewNoteDraft(item.review_item_id, $event)"
+          />
+          <div class="expansion-page__status-actions">
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setReviewStatus(item, 'approved')">通过</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setReviewStatus(item, 'needs_revision')">重审</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setReviewStatus(item, 'rejected')">驳回</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setReviewStatus(item, 'candidate_review')">待审</button>
+          </div>
+          <div v-if="effectiveReviewStatus(item) === 'approved'" class="expansion-page__status-actions">
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setWritebackStatus(item, 'draft_ready')">草案</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setWritebackStatus(item, 'queued')">入队</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setWritebackStatus(item, 'written_back')">入库</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setWritebackStatus(item, 'needs_revision')">退修</button>
+          </div>
           <button type="button" @click="copySingleCandidate(item)">复制单条候选</button>
         </aside>
 
@@ -145,13 +175,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { getDomainPackExpansionCandidates } from '@/api/system'
+import { computed, onMounted, reactive, ref } from 'vue'
+import {
+  getDomainPackExpansionCandidates,
+  getDomainPackExpansionWritebackDraft,
+  updateDomainPackExpansionReviewState,
+} from '@/api/system'
 import type {
   DomainPackExpansionCandidateReport,
   DomainPackExpansionReviewBatch,
   DomainPackExpansionReviewItem,
+  DomainPackExpansionReviewStatus,
   DomainPackProductionHealthStatus,
+  KnowledgeWritebackStatus,
   VideoType,
 } from '@shared/types'
 
@@ -165,12 +201,14 @@ const report = ref<DomainPackExpansionCandidateReport | null>(null)
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const copyingFormat = ref<'markdown' | 'json' | ''>('')
+const copyingFormat = ref<'markdown' | 'json' | 'writeback' | ''>('')
+const updatingItemId = ref('')
 const searchQuery = ref('')
 const packFilter = ref('')
 const videoTypeFilter = ref<VideoType | ''>('')
 const provinceFilter = ref('')
 const statusFilter = ref('')
+const reviewNoteDrafts = reactive<Record<string, string>>({})
 
 const batches = computed(() => report.value?.review_packet.batches ?? [])
 
@@ -193,7 +231,10 @@ const filteredItems = computed(() => {
       item.batch_entry_name,
       item.entry_name,
       item.province,
-      item.candidate_status,
+      effectiveReviewStatus(item),
+      item.review_note ?? '',
+      item.writeback_status ?? '',
+      item.writeback_note ?? '',
       ...item.target_video_types,
       ...item.recommended_fields,
       ...item.forbidden_direct_claims,
@@ -203,7 +244,7 @@ const filteredItems = computed(() => {
     return (!packFilter.value || item.pack_id === packFilter.value)
       && (!videoTypeFilter.value || item.target_video_types.includes(videoTypeFilter.value))
       && (!provinceFilter.value || item.province === provinceFilter.value)
-      && (!statusFilter.value || item.candidate_status === statusFilter.value)
+      && (!statusFilter.value || effectiveReviewStatus(item) === statusFilter.value)
       && (!query || text.includes(query))
   })
 })
@@ -218,7 +259,7 @@ const videoTypeOptions = computed(() => [...new Set(allItems.value.flatMap(item 
 const provinceOptions = computed(() => [...new Set(allItems.value.map(item => item.province))]
   .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN')))
 
-const statusOptions = computed(() => [...new Set(allItems.value.map(item => item.candidate_status))]
+const statusOptions = computed(() => [...new Set(allItems.value.map(item => effectiveReviewStatus(item)))]
   .sort((a, b) => statusLabel(a).localeCompare(statusLabel(b), 'zh-Hans-CN')))
 
 function typeLabel(type: string): string {
@@ -238,10 +279,24 @@ function typeLabel(type: string): string {
 
 function statusLabel(status: string | DomainPackProductionHealthStatus): string {
   if (status === 'candidate_review') return '候选审稿'
+  if (status === 'approved') return '已通过'
+  if (status === 'rejected') return '已驳回'
+  if (status === 'needs_revision') return '需重审'
   if (status === 'passed') return '通过'
   if (status === 'warning') return '需关注'
   if (status === 'failed') return '阻断'
   return status || '未记录'
+}
+
+function writebackStatusLabel(status: KnowledgeWritebackStatus): string {
+  if (status === 'queued') return '已入队'
+  if (status === 'written_back') return '已入库'
+  if (status === 'needs_revision') return '退修'
+  return '草案就绪'
+}
+
+function effectiveReviewStatus(item: DomainPackExpansionReviewItem): DomainPackExpansionReviewStatus {
+  return item.review_status ?? 'candidate_review'
 }
 
 function packShortLabel(packId: string): string {
@@ -292,6 +347,29 @@ async function copyReviewPacket(format: 'markdown' | 'json') {
   }
 }
 
+async function copyApprovedWritebackDraft() {
+  copyingFormat.value = 'writeback'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await getDomainPackExpansionWritebackDraft()
+    if (res.ok && res.data) {
+      if (res.data.approved_count === 0) {
+        error.value = '还没有已通过的扩库写回草案'
+      } else {
+        await navigator.clipboard.writeText(res.data.markdown)
+        copyMessage.value = `已复制已通过草案：${res.data.approved_count} 条，目标文件 ${res.data.target_files.length} 个。`
+      }
+    } else {
+      error.value = res.error?.message ?? '导出已通过扩库草案失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制已通过扩库草案失败'
+  } finally {
+    copyingFormat.value = ''
+  }
+}
+
 async function copySingleCandidate(item: ReviewQueueItem) {
   error.value = ''
   copyMessage.value = ''
@@ -300,6 +378,65 @@ async function copySingleCandidate(item: ReviewQueueItem) {
     copyMessage.value = `已复制候选稿：${item.entry_name}`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '复制单条候选失败'
+  }
+}
+
+function reviewNoteDraft(item: ReviewQueueItem): string {
+  return reviewNoteDrafts[item.review_item_id] ?? item.review_note ?? ''
+}
+
+function updateReviewNoteDraft(reviewItemId: string, event: Event) {
+  reviewNoteDrafts[reviewItemId] = (event.target as HTMLTextAreaElement).value
+}
+
+async function setReviewStatus(item: ReviewQueueItem, reviewStatus: DomainPackExpansionReviewStatus) {
+  updatingItemId.value = item.review_item_id
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await updateDomainPackExpansionReviewState({
+      review_item_id: item.review_item_id,
+      review_status: reviewStatus,
+      review_note: reviewNoteDraft(item).trim() || undefined,
+      writeback_status: reviewStatus === 'approved' ? (item.writeback_status ?? 'draft_ready') : undefined,
+      writeback_note: reviewStatus === 'approved' ? item.writeback_note : undefined,
+    })
+    if (res.ok && res.data) {
+      report.value = res.data
+      delete reviewNoteDrafts[item.review_item_id]
+      copyMessage.value = `已更新审稿状态：${item.entry_name} · ${statusLabel(reviewStatus)}`
+    } else {
+      error.value = res.error?.message ?? '更新扩库审稿状态失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '更新扩库审稿状态失败'
+  } finally {
+    updatingItemId.value = ''
+  }
+}
+
+async function setWritebackStatus(item: ReviewQueueItem, status: KnowledgeWritebackStatus) {
+  updatingItemId.value = item.review_item_id
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await updateDomainPackExpansionReviewState({
+      review_item_id: item.review_item_id,
+      review_status: 'approved',
+      review_note: reviewNoteDraft(item).trim() || item.review_note,
+      writeback_status: status,
+      writeback_note: item.writeback_note,
+    })
+    if (res.ok && res.data) {
+      report.value = res.data
+      copyMessage.value = `已更新写回状态：${item.entry_name} · ${writebackStatusLabel(status)}`
+    } else {
+      error.value = res.error?.message ?? '更新扩库写回状态失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '更新扩库写回状态失败'
+  } finally {
+    updatingItemId.value = ''
   }
 }
 
@@ -593,6 +730,24 @@ onMounted(async () => {
 .expansion-page__side strong {
   color: #22313f;
   overflow-wrap: anywhere;
+}
+
+.expansion-page__side textarea {
+  min-height: 72px;
+  padding: 9px 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  resize: vertical;
+  color: #2f4358;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.expansion-page__status-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
 }
 
 .expansion-page__side button {

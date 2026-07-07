@@ -5,6 +5,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { mcpReadAllProvinceFiles, mcpParseEntries } from '../services/mcp-proxy.js';
 import { ErrorCodes, fail, success } from '@shared/types.js';
 import {
+  DomainPackExpansionReviewStateUpdateRequestSchema,
   GearsJobCallbackRequestSchema,
   GearsExecutionLiveSmokeRunRequestSchema,
   ProductionReadinessPortfolioRunRequestSchema,
@@ -43,7 +44,11 @@ import {
   runProductionReadinessPortfolioAutomation,
 } from '../services/production-readiness-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from '../services/production-material-pack-service.js';
-import { getDomainPackExpansionCandidateReport } from '../services/domain-pack-expansion-service.js';
+import {
+  getDomainPackExpansionCandidateReport,
+  getDomainPackExpansionWritebackDraftPackage,
+  updateDomainPackExpansionReviewState,
+} from '../services/domain-pack-expansion-service.js';
 import { getDomainPackProductionHealthReport } from '../services/domain-pack-service.js';
 import {
   getStoryAgentGeneratedGovernancePlan,
@@ -171,6 +176,30 @@ systemRouter.get('/domain-pack-production-health', (_req, res) => {
 systemRouter.get('/domain-pack-expansion-candidates', (req, res) => {
   const includeMarkdown = req.query.include_markdown !== 'false' && req.query.include_markdown !== '0';
   res.json(success(getDomainPackExpansionCandidateReport({ includeMarkdown })));
+});
+
+systemRouter.patch(
+  '/domain-pack-expansion-candidates/review-state',
+  validateBody(DomainPackExpansionReviewStateUpdateRequestSchema),
+  (req, res) => {
+    const result = updateDomainPackExpansionReviewState(req.body);
+    if (!result.ok || !result.report) {
+      res.status(400).json(fail(
+        ErrorCodes.VALIDATION_ERROR,
+        result.message ?? 'Domain Pack expansion review state update failed',
+      ));
+      return;
+    }
+    res.json(success(result.report));
+  },
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/system/domain-pack-expansion-writeback-draft — approved expansion drafts
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/domain-pack-expansion-writeback-draft', (_req, res) => {
+  res.json(success(getDomainPackExpansionWritebackDraftPackage()));
 });
 
 // ---------------------------------------------------------------------------

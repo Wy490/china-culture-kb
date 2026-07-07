@@ -1,6 +1,14 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { DomainPackProductionHealthStatus } from '@shared/types.js';
+import type {
+  DomainPackExpansionReviewStateItem,
+  DomainPackExpansionReviewStateUpdateRequest,
+  DomainPackExpansionReviewStatus,
+  DomainPackExpansionWritebackDraftItem,
+  DomainPackExpansionWritebackDraftPackage,
+  DomainPackProductionHealthStatus,
+  KnowledgeWritebackStatus,
+} from '@shared/types.js';
 
 type IssueSeverity = 'warning' | 'error';
 type JsonRecord = Record<string, unknown>;
@@ -86,6 +94,13 @@ export interface DomainPackExpansionReviewItem {
   recommended_fields: string[];
   forbidden_direct_claims: string[];
   candidate_markdown: string;
+  review_status?: DomainPackExpansionReviewStatus;
+  review_note?: string;
+  reviewed_at?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
+  writeback_updated_at?: string;
+  writeback_draft_markdown?: string;
 }
 
 export interface DomainPackExpansionReviewBatch {
@@ -116,6 +131,8 @@ export interface DomainPackExpansionReviewPacket {
   review_item_count: number;
   candidate_field_count: number;
   batches: DomainPackExpansionReviewBatch[];
+  review_status_counts?: Record<DomainPackExpansionReviewStatus, number>;
+  approved_writeback_draft_count?: number;
   markdown?: string;
 }
 
@@ -150,6 +167,18 @@ type DomainPackExpansionCandidateReportDraft = Omit<
 >;
 type DomainPackExpansionReviewItemDraft = Omit<DomainPackExpansionReviewItem, 'candidate_markdown'>;
 
+interface DomainPackExpansionReviewStateFile {
+  schema_version?: string;
+  updated_at?: string;
+  items?: unknown[];
+}
+
+interface DomainPackExpansionReviewStateUpdateResult {
+  ok: boolean;
+  message?: string;
+  report?: DomainPackExpansionCandidateReport;
+}
+
 const REQUIRED_EXPANSION_PACK_IDS = [
   'heritage_process_pack',
   'documentary_source_pack',
@@ -159,6 +188,9 @@ const REQUIRED_EXPANSION_PACK_IDS = [
 ];
 
 const CANDIDATE_FILE_NAME = 'china-culture-production-expansion-candidates.json';
+const REVIEW_STATE_FILE_NAME = 'review-state.json';
+const REVIEW_STATUSES: DomainPackExpansionReviewStatus[] = ['candidate_review', 'approved', 'rejected', 'needs_revision'];
+const WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = ['draft_ready', 'queued', 'written_back', 'needs_revision'];
 
 export function getDomainPackExpansionCandidateReport(input: {
   includeMarkdown?: boolean;
@@ -166,6 +198,7 @@ export function getDomainPackExpansionCandidateReport(input: {
 } = {}): DomainPackExpansionCandidateReport {
   const loaded = loadExpansionCandidateFile();
   const issues: DomainPackExpansionCandidateIssue[] = [];
+  const reviewState = loadDomainPackExpansionReviewStateMap();
 
   if (!loaded.file) {
     issues.push({
@@ -194,7 +227,7 @@ export function getDomainPackExpansionCandidateReport(input: {
       candidate_field_count: 0,
       batches: [],
       issues,
-    }, [], input.includeMarkdown);
+    }, [], input.includeMarkdown, reviewState);
   }
 
   const file = loaded.file;
@@ -306,15 +339,16 @@ export function getDomainPackExpansionCandidateReport(input: {
     candidate_field_count: batchSummaries.reduce((sum, batch) => sum + batch.candidate_field_count, 0),
     batches: batchSummaries,
     issues,
-  }, batches, input.includeMarkdown);
+  }, batches, input.includeMarkdown, reviewState);
 }
 
 function withOptionalMarkdown(
   report: DomainPackExpansionCandidateReportDraft,
   sourceBatches: ExpansionBatch[],
   includeMarkdown = true,
+  reviewState: Map<string, DomainPackExpansionReviewStateItem> = new Map(),
 ): DomainPackExpansionCandidateReport {
-  const reviewPacket = buildDomainPackExpansionReviewPacket(report, sourceBatches, includeMarkdown);
+  const reviewPacket = buildDomainPackExpansionReviewPacket(report, sourceBatches, includeMarkdown, reviewState);
   const reportWithPacket: Omit<DomainPackExpansionCandidateReport, 'markdown'> = {
     ...report,
     review_packet: reviewPacket,
@@ -329,9 +363,10 @@ function buildDomainPackExpansionReviewPacket(
   report: DomainPackExpansionCandidateReportDraft,
   sourceBatches: ExpansionBatch[],
   includeMarkdown: boolean,
+  reviewState: Map<string, DomainPackExpansionReviewStateItem>,
 ): DomainPackExpansionReviewPacket {
   const reviewBatches = sourceBatches.map(batch => {
-    const reviewItems = batch.seed_targets.map((target, index) => buildReviewItem(batch, target, index));
+    const reviewItems = batch.seed_targets.map((target, index) => buildReviewItem(batch, target, index, reviewState));
     return {
       batch_id: batch.batch_id,
       pack_id: batch.pack_id,
@@ -349,6 +384,7 @@ function buildDomainPackExpansionReviewPacket(
     };
   });
 
+  const reviewItems = reviewBatches.flatMap(batch => batch.review_items);
   const packet: Omit<DomainPackExpansionReviewPacket, 'markdown'> = {
     schema_version: 'domain-pack-expansion-review-packet/v1',
     generated_at: report.generated_at,
@@ -360,6 +396,10 @@ function buildDomainPackExpansionReviewPacket(
     review_item_count: reviewBatches.reduce((sum, batch) => sum + batch.review_item_count, 0),
     candidate_field_count: report.candidate_field_count,
     batches: reviewBatches,
+    review_status_counts: countReviewStatuses(reviewItems),
+    approved_writeback_draft_count: reviewItems.filter(item =>
+      item.review_status === 'approved' && Boolean(item.writeback_draft_markdown),
+    ).length,
   };
 
   return includeMarkdown
@@ -371,9 +411,13 @@ function buildReviewItem(
   batch: ExpansionBatch,
   target: ExpansionSeedTarget,
   index: number,
+  reviewState: Map<string, DomainPackExpansionReviewStateItem>,
 ): DomainPackExpansionReviewItem {
+  const reviewItemId = `${batch.batch_id}::target_${String(index + 1).padStart(2, '0')}`;
+  const stateItem = reviewState.get(reviewItemId);
+  const reviewStatus = stateItem?.review_status ?? 'candidate_review';
   const item: DomainPackExpansionReviewItemDraft = {
-    review_item_id: `${batch.batch_id}::target_${String(index + 1).padStart(2, '0')}`,
+    review_item_id: reviewItemId,
     batch_id: batch.batch_id,
     pack_id: batch.pack_id,
     entry_name: target.entry_name,
@@ -383,10 +427,21 @@ function buildReviewItem(
     candidate_status: target.candidate_status,
     recommended_fields: target.recommended_fields,
     forbidden_direct_claims: target.forbidden_direct_claims,
+    review_status: reviewStatus,
+    review_note: stateItem?.review_note,
+    reviewed_at: stateItem?.reviewed_at,
+    writeback_status: reviewStatus === 'approved'
+      ? (stateItem?.writeback_status ?? 'draft_ready')
+      : undefined,
+    writeback_note: reviewStatus === 'approved' ? stateItem?.writeback_note : undefined,
+    writeback_updated_at: reviewStatus === 'approved' ? stateItem?.writeback_updated_at : undefined,
   };
 
   return {
     ...item,
+    writeback_draft_markdown: reviewStatus === 'approved'
+      ? renderDomainPackExpansionWritebackDraftMarkdown(item)
+      : undefined,
     candidate_markdown: renderDomainPackExpansionReviewItemMarkdown(item),
   };
 }
@@ -511,8 +566,11 @@ function renderDomainPackExpansionReviewItemMarkdown(
     `- batch_id: ${item.batch_id}`,
     `- target_video_types: ${item.target_video_types.join(', ') || 'none'}`,
     `- candidate_status: ${item.candidate_status}`,
+    `- review_status: ${item.review_status ?? 'candidate_review'}`,
     `- candidate_draft_only: true`,
     `- direct_writeback_to_province_markdown: false`,
+    ...(item.reviewed_at ? [`- reviewed_at: ${item.reviewed_at}`] : []),
+    ...(item.writeback_status ? [`- writeback_status: ${item.writeback_status}`] : []),
     '',
     'Recommended fields:',
     ...markdownList(item.recommended_fields),
@@ -521,9 +579,256 @@ function renderDomainPackExpansionReviewItemMarkdown(
     ...markdownList(item.forbidden_direct_claims),
     '',
     'Review notes:',
+    ...(item.review_note ? [`- 审稿备注：${item.review_note}`] : []),
     '- 候选稿只记录待补字段、禁写断言和审稿问题，不得直接改写 data/provinces/*.md。',
     '- 进入正式知识库前必须补足来源级证据，并经人工审稿后进入写回队列。',
   ].join('\n');
+}
+
+export function updateDomainPackExpansionReviewState(
+  input: DomainPackExpansionReviewStateUpdateRequest,
+  options: { updatedAt?: string } = {},
+): DomainPackExpansionReviewStateUpdateResult {
+  const baseReport = getDomainPackExpansionCandidateReport({ includeMarkdown: false });
+  const currentItem = findReviewPacketItem(baseReport, input.review_item_id);
+  if (!currentItem) {
+    return {
+      ok: false,
+      message: `未找到扩库候选审稿项：${input.review_item_id}。`,
+    };
+  }
+
+  const updatedAt = options.updatedAt ?? new Date().toISOString();
+  const currentItems = loadDomainPackExpansionReviewStateItems();
+  const nextItems = new Map(currentItems.map(item => [item.review_item_id, item]));
+  const existing = nextItems.get(input.review_item_id);
+  const reviewStatus = input.review_status;
+  const reviewNote = input.review_note?.trim() || undefined;
+  const writebackStatus = reviewStatus === 'approved'
+    ? (input.writeback_status ?? existing?.writeback_status ?? 'draft_ready')
+    : undefined;
+  const writebackNote = reviewStatus === 'approved'
+    ? (input.writeback_note?.trim() || existing?.writeback_note)
+    : undefined;
+
+  nextItems.set(input.review_item_id, {
+    review_item_id: input.review_item_id,
+    review_status: reviewStatus,
+    review_note: reviewNote,
+    reviewed_at: updatedAt,
+    writeback_status: writebackStatus,
+    writeback_note: writebackNote,
+    writeback_updated_at: writebackStatus ? updatedAt : undefined,
+  });
+
+  saveDomainPackExpansionReviewStateItems([...nextItems.values()], updatedAt);
+
+  return {
+    ok: true,
+    report: getDomainPackExpansionCandidateReport({
+      includeMarkdown: true,
+      generatedAt: updatedAt,
+    }),
+  };
+}
+
+export function getDomainPackExpansionWritebackDraftPackage(input: {
+  exportedAt?: string;
+} = {}): DomainPackExpansionWritebackDraftPackage {
+  const exportedAt = input.exportedAt ?? new Date().toISOString();
+  const report = getDomainPackExpansionCandidateReport({
+    includeMarkdown: false,
+    generatedAt: exportedAt,
+  });
+  const approvedItems = report.review_packet.batches.flatMap(batch =>
+    batch.review_items.filter(item => item.review_status === 'approved' && Boolean(item.writeback_draft_markdown)),
+  );
+  const items: DomainPackExpansionWritebackDraftItem[] = approvedItems.map(item => ({
+    review_item_id: item.review_item_id,
+    batch_id: item.batch_id,
+    pack_id: item.pack_id,
+    entry_name: item.entry_name,
+    province: item.province,
+    target_video_types: item.target_video_types,
+    review_status: item.review_status ?? 'approved',
+    review_note: item.review_note,
+    writeback_status: item.writeback_status ?? 'draft_ready',
+    writeback_note: item.writeback_note,
+    suggested_file_path: suggestedProvinceFilePath(item.province),
+    suggested_section_heading: `### ${item.entry_name}`,
+    append_markdown: item.writeback_draft_markdown ?? renderDomainPackExpansionWritebackDraftMarkdown(item),
+    writeback_draft_markdown: item.writeback_draft_markdown ?? renderDomainPackExpansionWritebackDraftMarkdown(item),
+  }));
+  const statusCounts = countWritebackStatuses(items);
+
+  const packageWithoutMarkdown: Omit<DomainPackExpansionWritebackDraftPackage, 'markdown'> = {
+    schema_version: 'domain-pack-expansion-writeback-draft/v1',
+    exported_at: exportedAt,
+    domain_id: report.domain_id,
+    approved_count: items.length,
+    target_files: [...new Set(items.map(item => item.suggested_file_path))].sort((a, b) => a.localeCompare(b)),
+    status_counts: statusCounts,
+    items,
+  };
+
+  return {
+    ...packageWithoutMarkdown,
+    markdown: renderDomainPackExpansionWritebackDraftPackageMarkdown(packageWithoutMarkdown),
+  };
+}
+
+function renderDomainPackExpansionWritebackDraftMarkdown(
+  item: DomainPackExpansionReviewItemDraft,
+): string {
+  return [
+    `### ${item.entry_name}｜扩库候选审稿草案`,
+    '',
+    `> source: domain-pack-expansion-review-packet/v1`,
+    `> review_item_id: ${item.review_item_id}`,
+    `> pack_id: ${item.pack_id}`,
+    `> province: ${item.province}`,
+    `> review_status: ${item.review_status ?? 'candidate_review'}`,
+    `> direct_writeback_to_province_markdown: false`,
+    '',
+    '#### 待补生产字段',
+    ...markdownList(item.recommended_fields),
+    '',
+    '#### 禁写断言',
+    ...markdownList(item.forbidden_direct_claims),
+    '',
+    '#### 审稿备注',
+    item.review_note ? `- ${item.review_note}` : '- 待人工补充来源级证据和审稿意见。',
+    '',
+    '#### 写回边界',
+    '- 本草案只作为人工补库采集清单，不是已核实事实内容。',
+    '- 写入正式省份 Markdown 前必须补齐来源、核实方法和人工审稿记录。',
+    '- 不得把禁写断言改写成事实，不得用候选字段替代来源证据。',
+  ].join('\n');
+}
+
+function renderDomainPackExpansionWritebackDraftPackageMarkdown(
+  pkg: Omit<DomainPackExpansionWritebackDraftPackage, 'markdown'>,
+): string {
+  const statusSummary = WRITEBACK_STATUSES.map(status => `- ${status}: ${pkg.status_counts[status] ?? 0}`);
+  const itemSections = pkg.items.length
+    ? pkg.items.flatMap(item => [
+      `## ${item.suggested_file_path}`,
+      '',
+      `- review_item_id: ${item.review_item_id}`,
+      `- writeback_status: ${item.writeback_status ?? 'draft_ready'}`,
+      '',
+      item.append_markdown,
+      '',
+    ])
+    : ['## Items', '', '- none'];
+
+  return [
+    '# Domain Pack Expansion Writeback Draft',
+    '',
+    `> schema_version: ${pkg.schema_version}`,
+    `> exported_at: ${pkg.exported_at}`,
+    `> domain_id: ${pkg.domain_id}`,
+    `> direct_writeback_to_province_markdown: false`,
+    '',
+    '## Summary',
+    '',
+    `- approved_count: ${pkg.approved_count}`,
+    `- target_files: ${pkg.target_files.join(', ') || 'none'}`,
+    '',
+    '## Writeback Status Counts',
+    '',
+    ...statusSummary,
+    '',
+    ...itemSections,
+  ].join('\n').trim() + '\n';
+}
+
+function findReviewPacketItem(
+  report: DomainPackExpansionCandidateReport,
+  reviewItemId: string,
+): DomainPackExpansionReviewItem | undefined {
+  return report.review_packet.batches
+    .flatMap(batch => batch.review_items)
+    .find(item => item.review_item_id === reviewItemId);
+}
+
+function countReviewStatuses(items: DomainPackExpansionReviewItem[]): Record<DomainPackExpansionReviewStatus, number> {
+  const counts = Object.fromEntries(REVIEW_STATUSES.map(status => [status, 0])) as Record<DomainPackExpansionReviewStatus, number>;
+  for (const item of items) {
+    counts[item.review_status ?? 'candidate_review'] += 1;
+  }
+  return counts;
+}
+
+function countWritebackStatuses(items: DomainPackExpansionWritebackDraftItem[]): Record<KnowledgeWritebackStatus, number> {
+  const counts = Object.fromEntries(WRITEBACK_STATUSES.map(status => [status, 0])) as Record<KnowledgeWritebackStatus, number>;
+  for (const item of items) {
+    counts[item.writeback_status ?? 'draft_ready'] += 1;
+  }
+  return counts;
+}
+
+function loadDomainPackExpansionReviewStateMap(): Map<string, DomainPackExpansionReviewStateItem> {
+  return new Map(loadDomainPackExpansionReviewStateItems().map(item => [item.review_item_id, item]));
+}
+
+function loadDomainPackExpansionReviewStateItems(): DomainPackExpansionReviewStateItem[] {
+  const file = loadDomainPackExpansionReviewStateFile();
+  if (!file || file.schema_version !== 'domain-pack-expansion-review-state/v1' || !Array.isArray(file.items)) {
+    return [];
+  }
+  return file.items
+    .map(normalizeReviewStateItem)
+    .filter((item): item is DomainPackExpansionReviewStateItem => Boolean(item));
+}
+
+function loadDomainPackExpansionReviewStateFile(): DomainPackExpansionReviewStateFile | undefined {
+  const filePath = reviewStateFilePath();
+  if (!existsSync(filePath)) return undefined;
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf8')) as DomainPackExpansionReviewStateFile;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveDomainPackExpansionReviewStateItems(
+  items: DomainPackExpansionReviewStateItem[],
+  updatedAt: string,
+): void {
+  const filePath = reviewStateFilePath();
+  mkdirSync(resolve(filePath, '..'), { recursive: true });
+  const sortedItems = [...items].sort((a, b) => a.review_item_id.localeCompare(b.review_item_id));
+  writeFileSync(filePath, `${JSON.stringify({
+    schema_version: 'domain-pack-expansion-review-state/v1',
+    updated_at: updatedAt,
+    direct_writeback_to_province_markdown: false,
+    items: sortedItems,
+  }, null, 2)}\n`);
+}
+
+function normalizeReviewStateItem(value: unknown): DomainPackExpansionReviewStateItem | undefined {
+  if (!isRecord(value) || typeof value.review_item_id !== 'string' || typeof value.review_status !== 'string') {
+    return undefined;
+  }
+  if (!REVIEW_STATUSES.includes(value.review_status as DomainPackExpansionReviewStatus)) return undefined;
+  const writebackStatus = typeof value.writeback_status === 'string' && WRITEBACK_STATUSES.includes(value.writeback_status as KnowledgeWritebackStatus)
+    ? value.writeback_status as KnowledgeWritebackStatus
+    : undefined;
+
+  return {
+    review_item_id: value.review_item_id,
+    review_status: value.review_status as DomainPackExpansionReviewStatus,
+    review_note: typeof value.review_note === 'string' ? value.review_note : undefined,
+    reviewed_at: typeof value.reviewed_at === 'string' ? value.reviewed_at : undefined,
+    writeback_status: writebackStatus,
+    writeback_note: typeof value.writeback_note === 'string' ? value.writeback_note : undefined,
+    writeback_updated_at: typeof value.writeback_updated_at === 'string' ? value.writeback_updated_at : undefined,
+  };
+}
+
+function suggestedProvinceFilePath(province: string): string {
+  return `data/provinces/${province || '待确认'}.md`;
 }
 
 function markdownList(items: string[]): string[] {
@@ -636,4 +941,12 @@ function statusFromIssues(issues: DomainPackExpansionCandidateIssue[]): DomainPa
 
 function kbRoot(): string {
   return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+}
+
+function generatedRoot(): string {
+  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
+}
+
+function reviewStateFilePath(): string {
+  return resolve(generatedRoot(), 'domain-pack-expansion', REVIEW_STATE_FILE_NAME);
 }
