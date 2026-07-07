@@ -82,6 +82,7 @@
 76. 建立扩库审稿队列前端页：新增 `/domain-pack-expansion-queue`，从只读扩库候选报告加载 `domain-pack-expansion-review-packet/v1`，支持按扩库包、片型、省份、候选审稿状态和关键词筛选，并复制当前筛选范围的候选 Markdown 或 JSON。项目工作台已新增入口和扩库候选指标链接，页面仍只导出候选审稿材料，不写入正式知识库。
 77. 打通扩库候选审稿状态和写回草案：新增 `domain-pack-expansion-review-state/v1` 状态文件，保存在 `web/generated/domain-pack-expansion/review-state.json`，支持把候选项标记为待审、通过、驳回或需重审；通过审稿后才生成 `domain-pack-expansion-writeback-draft/v1` 草案包，并按 `draft_ready/queued/written_back/needs_revision` 维护写回状态。Web 队列页可直接更新状态和复制已通过草案，但仍只生成省份 Markdown Patch 建议，不直接改写 `data/provinces/*.md`。
 78. 将扩库审稿/写回草案纳入 Web/MCP 总控：`story-agent-mvp-status` 现在输出扩库候选待审、通过、驳回、需重审，以及 approved 写回草案、draft_ready/queued/written_back/needs_revision 计数；项目总览扩库指标显示已通过与草案数。MCP 新增只读工具 `kb_get_domain_pack_expansion_writeback_draft`，与 Web 共享 `review-state.json` 状态，只导出人工补库草案，不直接写省份 Markdown。
+79. 打通 MCP 扩库审稿状态更新：新增 `kb_update_domain_pack_expansion_review_state`，允许外部编排在人工确认后受控更新扩库候选审稿状态和写回队列状态；工具只写 `web/generated/domain-pack-expansion/review-state.json`，approved 才生成草案包，返回结果显式声明 `province_markdown_written=false`，继续禁止直接改写 `data/provinces/*.md`。
 
 ## 原始诊断必须并入路线
 
@@ -324,6 +325,7 @@
 - Web 前端已新增扩库审稿队列页，可按包、片型、省份、状态和关键词筛选候选项，并复制当前筛选范围的 Markdown/JSON 审稿包。
 - 扩库队列已支持独立审稿状态和 approved 写回草案导出；状态存于 `web/generated`，写回草案只作为人工 Patch 建议，不直接写正式知识库。
 - Web/MCP MVP 总控已同步扩库审稿状态和写回草案计数；MCP `kb_get_domain_pack_expansion_writeback_draft` 可只读导出已通过审稿项的人工补库草案，仍不直接改写 `data/provinces/*.md`。
+- MCP `kb_update_domain_pack_expansion_review_state` 已支持受控更新扩库审稿/写回队列状态，写入范围限定在 `web/generated/domain-pack-expansion/review-state.json`，正式知识库仍必须走人工 Patch。
 - `children_story` / `social_short` / `lecture_video` / `education_training` 相关 query 已有优先 Domain Pack 命中。
 - 所有 Domain Pack 只提供采集结构、生产提示和审稿边界，不自动写入 `data/provinces/*.md`，也不得替代具体来源核验。
 

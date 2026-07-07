@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
 
@@ -224,13 +224,13 @@ interface DomainPackExpansionReviewPacket {
   markdown?: string;
 }
 
-type DomainPackExpansionReviewStatus =
+export type DomainPackExpansionReviewStatus =
   | 'candidate_review'
   | 'approved'
   | 'rejected'
   | 'needs_revision';
 
-type KnowledgeWritebackStatus =
+export type KnowledgeWritebackStatus =
   | 'draft_ready'
   | 'queued'
   | 'written_back'
@@ -309,6 +309,29 @@ export type DomainPackProductionHealthToolResult = DomainPackProductionHealthRep
 export type DomainPackExpansionCandidateToolResult = DomainPackExpansionCandidateReport & { markdown?: string };
 export type DomainPackExpansionWritebackDraftToolResult =
   Omit<DomainPackExpansionWritebackDraftPackage, 'markdown'> & { markdown?: string };
+
+export interface DomainPackExpansionReviewStateUpdateInput {
+  review_item_id: string;
+  review_status: DomainPackExpansionReviewStatus;
+  review_note?: string;
+  writeback_status?: KnowledgeWritebackStatus;
+  writeback_note?: string;
+  include_markdown?: boolean;
+}
+
+export interface DomainPackExpansionReviewStateUpdateToolResult {
+  schema_version: 'domain-pack-expansion-review-state-update/v1';
+  updated_at: string;
+  ok: boolean;
+  review_item_id: string;
+  review_status?: DomainPackExpansionReviewStatus;
+  writeback_status?: KnowledgeWritebackStatus;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  message: string;
+  report?: DomainPackExpansionCandidateToolResult;
+  writeback_draft?: DomainPackExpansionWritebackDraftToolResult;
+}
 
 const CORE_PRODUCTION_READY_VIDEO_TYPES = [
   'heritage_promo',
@@ -1397,6 +1420,68 @@ export function getDomainPackExpansionWritebackDraftToolResult(input: {
     };
 }
 
+export function updateDomainPackExpansionReviewStateToolResult(
+  input: DomainPackExpansionReviewStateUpdateInput,
+  options: { updated_at?: string } = {},
+): DomainPackExpansionReviewStateUpdateToolResult {
+  const updatedAt = options.updated_at ?? new Date().toISOString();
+  const baseReport = getDomainPackExpansionCandidateReport();
+  const currentItem = findDomainPackExpansionReviewItem(baseReport, input.review_item_id);
+  if (!currentItem) {
+    return {
+      schema_version: 'domain-pack-expansion-review-state-update/v1',
+      updated_at: updatedAt,
+      ok: false,
+      review_item_id: input.review_item_id,
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      message: `未找到扩库候选审稿项：${input.review_item_id}。`,
+    };
+  }
+
+  const currentItems = loadDomainPackExpansionReviewStateItems();
+  const nextItems = new Map(currentItems.map(item => [item.review_item_id, item]));
+  const existing = nextItems.get(input.review_item_id);
+  const reviewNote = input.review_note?.trim() || undefined;
+  const writebackStatus = input.review_status === 'approved'
+    ? (input.writeback_status ?? existing?.writeback_status ?? 'draft_ready')
+    : undefined;
+  const writebackNote = input.review_status === 'approved'
+    ? (input.writeback_note?.trim() || existing?.writeback_note)
+    : undefined;
+
+  nextItems.set(input.review_item_id, {
+    review_item_id: input.review_item_id,
+    review_status: input.review_status,
+    review_note: reviewNote,
+    reviewed_at: updatedAt,
+    writeback_status: writebackStatus,
+    writeback_note: writebackNote,
+    writeback_updated_at: writebackStatus ? updatedAt : undefined,
+  });
+  saveDomainPackExpansionReviewStateItems([...nextItems.values()], updatedAt);
+
+  const report = getDomainPackExpansionCandidateToolResult({
+    include_markdown: input.include_markdown,
+  });
+
+  return {
+    schema_version: 'domain-pack-expansion-review-state-update/v1',
+    updated_at: updatedAt,
+    ok: true,
+    review_item_id: input.review_item_id,
+    review_status: input.review_status,
+    writeback_status: writebackStatus,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    message: '扩库候选审稿状态已更新；正式省份 Markdown 未被写入。',
+    report,
+    writeback_draft: input.review_status === 'approved'
+      ? getDomainPackExpansionWritebackDraftToolResult({ include_markdown: input.include_markdown })
+      : undefined,
+  };
+}
+
 function renderDomainPackExpansionWritebackDraftMarkdown(
   item: DomainPackExpansionReviewItemDraft,
 ): string {
@@ -1491,6 +1576,15 @@ function loadDomainPackExpansionReviewStateMap(): Map<string, DomainPackExpansio
   return new Map(loadDomainPackExpansionReviewStateItems().map(item => [item.review_item_id, item]));
 }
 
+function findDomainPackExpansionReviewItem(
+  report: DomainPackExpansionCandidateReport,
+  reviewItemId: string,
+): DomainPackExpansionReviewItem | undefined {
+  return report.review_packet.batches
+    .flatMap(batch => batch.review_items)
+    .find(item => item.review_item_id === reviewItemId);
+}
+
 function loadDomainPackExpansionReviewStateItems(): DomainPackExpansionReviewStateItem[] {
   const file = loadDomainPackExpansionReviewStateFile();
   if (!file || file.schema_version !== 'domain-pack-expansion-review-state/v1' || !Array.isArray(file.items)) {
@@ -1508,6 +1602,21 @@ function loadDomainPackExpansionReviewStateFile(): DomainPackExpansionReviewStat
   } catch {
     return undefined;
   }
+}
+
+function saveDomainPackExpansionReviewStateItems(
+  items: DomainPackExpansionReviewStateItem[],
+  updatedAt: string,
+): void {
+  const filePath = domainPackExpansionReviewStateFilePath();
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  const sortedItems = [...items].sort((a, b) => a.review_item_id.localeCompare(b.review_item_id));
+  writeFileSync(filePath, `${JSON.stringify({
+    schema_version: 'domain-pack-expansion-review-state/v1',
+    updated_at: updatedAt,
+    direct_writeback_to_province_markdown: false,
+    items: sortedItems,
+  }, null, 2)}\n`);
 }
 
 function normalizeExpansionReviewStateItem(value: unknown): DomainPackExpansionReviewStateItem | undefined {

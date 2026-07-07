@@ -184,6 +184,7 @@ const MCP_STORY_AGENT_LOOP_TOOLS = [
   'kb_get_domain_pack_production_health',
   'kb_get_domain_pack_expansion_candidates',
   'kb_get_domain_pack_expansion_writeback_draft',
+  'kb_update_domain_pack_expansion_review_state',
   'kb_get_story_agent_mvp_status',
   'kb_get_production_readiness',
   'kb_get_production_readiness_portfolio',

@@ -10,6 +10,7 @@ import {
   getDomainPackProductionHealthToolResult,
   getProductionMaterialPackHealthReport,
   getProductionMaterialPackHealthToolResult,
+  updateDomainPackExpansionReviewStateToolResult,
 } from './production-health-reports.js';
 
 let tmpRoot = '';
@@ -279,5 +280,110 @@ describe('production health reports', () => {
       writeback_status: 'queued',
     });
     expect(writebackDraft.markdown).toContain('本草案只作为人工补库采集清单');
+  });
+
+  it('updates expansion review state for MCP callers without writing province markdown', () => {
+    fs.mkdirSync(path.join(dataRoot, 'domain-packs'), { recursive: true });
+    fs.writeFileSync(
+      path.join(dataRoot, 'domain-packs', 'china-culture-production-expansion-candidates.json'),
+      JSON.stringify({
+        schema_version: 'domain-pack-expansion-candidates/v1',
+        updated_at: '2026-07-07',
+        domain_id: 'china_culture',
+        review_policy: {
+          direct_writeback_to_province_markdown: false,
+          requires_candidate_markdown: true,
+          requires_human_review: true,
+          requires_source_level: true,
+        },
+        batches: [{
+          batch_id: 'heritage_process_pack_batch',
+          pack_id: 'heritage_process_pack',
+          entry_name: 'heritage_process_pack entry',
+          priority: 'P0',
+          status: 'candidate_review',
+          target_video_types: ['heritage_promo'],
+          field_groups: [{
+            group_id: 'core',
+            candidate_fields: ['process_steps'],
+            review_questions: ['是否已进入人工审稿？'],
+          }],
+          seed_targets: [{
+            entry_name: 'heritage_process_pack target',
+            province: '湖南',
+            recommended_fields: ['process_steps'],
+            candidate_status: 'candidate_review',
+            forbidden_direct_claims: ['未经审稿不得写回正式知识库'],
+          }],
+        }],
+      }),
+    );
+
+    const update = updateDomainPackExpansionReviewStateToolResult({
+      review_item_id: 'heritage_process_pack_batch::target_01',
+      review_status: 'approved',
+      review_note: 'MCP 工具确认进入人工补源队列。',
+      writeback_status: 'queued',
+      writeback_note: '先排入湖南非遗流程补录批次。',
+      include_markdown: false,
+    }, {
+      updated_at: '2026-07-07T11:00:00.000Z',
+    });
+
+    expect(update).toMatchObject({
+      schema_version: 'domain-pack-expansion-review-state-update/v1',
+      updated_at: '2026-07-07T11:00:00.000Z',
+      ok: true,
+      review_item_id: 'heritage_process_pack_batch::target_01',
+      review_status: 'approved',
+      writeback_status: 'queued',
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      report: {
+        review_packet: {
+          review_status_counts: expect.objectContaining({
+            approved: 1,
+          }),
+          approved_writeback_draft_count: 1,
+        },
+      },
+      writeback_draft: {
+        approved_count: 1,
+        target_files: ['data/provinces/湖南.md'],
+      },
+    });
+    expect(update.report?.markdown).toBeUndefined();
+    expect(update.writeback_draft?.markdown).toBeUndefined();
+    expect(fs.existsSync(path.join(dataRoot, 'provinces', '湖南.md'))).toBe(false);
+
+    const state = JSON.parse(
+      fs.readFileSync(path.join(process.env.WEB_GENERATED_ROOT!, 'domain-pack-expansion', 'review-state.json'), 'utf8'),
+    );
+    expect(state).toMatchObject({
+      schema_version: 'domain-pack-expansion-review-state/v1',
+      direct_writeback_to_province_markdown: false,
+      items: [expect.objectContaining({
+        review_item_id: 'heritage_process_pack_batch::target_01',
+        review_status: 'approved',
+        writeback_status: 'queued',
+      })],
+    });
+
+    const revision = updateDomainPackExpansionReviewStateToolResult({
+      review_item_id: 'heritage_process_pack_batch::target_01',
+      review_status: 'needs_revision',
+      review_note: '来源级证据不足，退回补充。',
+      include_markdown: false,
+    }, {
+      updated_at: '2026-07-07T11:30:00.000Z',
+    });
+
+    expect(revision.ok).toBe(true);
+    expect(revision.writeback_status).toBeUndefined();
+    expect(revision.writeback_draft).toBeUndefined();
+    expect(revision.report?.review_packet.review_status_counts).toMatchObject({
+      needs_revision: 1,
+      approved: 0,
+    });
   });
 });
