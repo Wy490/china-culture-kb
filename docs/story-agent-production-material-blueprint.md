@@ -97,6 +97,7 @@
 91. 将真实外部回片 readiness 纳入 worker evidence bundle：`gears-execution-worker-evidence-bundle/v1` 新增结构化输出 `real_gears_callback_base_public`、`real_gears_acceptance_ready_to_run`、`real_gears_acceptance_blocker`、`local_acceptance_counts_as_real_external_callback=false` 和 Seedance provider external loop readiness；bundle Markdown、operator checklist、recommended next actions 和 acceptance kit verification checklist 均要求 audit/verdict/archive/signoff 保留同一份 readiness 证据，避免交接包层面遗漏真实外部回片边界。
 92. 将真实外部回片 readiness before/after 摘要写入最终签收：Web `gears-execution-worker-evidence-signoff` 与 MCP `kb_get_gears_worker_evidence_signoff` 新增 `mvp_real_gears_acceptance_ready_*`、`mvp_real_gears_callback_base_public_*`、`mvp_local_acceptance_counts_as_real_external_callback_*` 和 `mvp_real_gears_acceptance_blocker_*` 字段，并在 Markdown 直接展示 before/after；签收人无需展开 MVP audit JSON 即可确认 local acceptance 没有被计入真实外部 GEARS/Seedance 回片。
 93. 建立 Domain Pack 扩库片型覆盖矩阵：Web `/api/system/domain-pack-expansion-candidates` 与 MCP `kb_get_domain_pack_expansion_candidates` 新增 `coverage_by_video_type`，按片型汇总覆盖批次数、seed target、候选字段、pack/province、审稿状态和写回状态；`explainer_video`、三类核心片型与第二批高频片型的素材扩库覆盖面可直接从报告中核对，仍只读候选稿/审稿状态，不直接写 `data/provinces/*.md`。
+94. 将片型覆盖矩阵接入扩库审稿队列前端：`/domain-pack-expansion-queue` 新增片型覆盖面板，可查看每个片型的候选条目、字段、pack、省份、通过/草案/入队计数，点击片型即可筛选对应候选，并可复制覆盖矩阵 JSON；素材库补充可以从覆盖不足或草案积压的片型直接进入候选审稿和写回队列。
 
 ## 原始诊断必须并入路线
 

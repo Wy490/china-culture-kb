@@ -85,6 +85,14 @@
       </button>
       <button
         type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(copyingFormat) || coverageItems.length === 0"
+        @click="copyCoverageMatrix"
+      >
+        {{ copyingFormat === 'coverage' ? '复制中…' : '复制覆盖矩阵' }}
+      </button>
+      <button
+        type="button"
         class="expansion-page__action expansion-page__action--ghost"
         :disabled="loading"
         @click="loadQueue"
@@ -117,6 +125,10 @@
         <strong>{{ report.review_packet.candidate_field_count }}</strong>
       </div>
       <div>
+        <span>片型覆盖</span>
+        <strong>{{ report.video_type_coverage_count }}</strong>
+      </div>
+      <div>
         <span>已通过草案</span>
         <strong>{{ report.review_packet.approved_writeback_draft_count ?? 0 }}</strong>
       </div>
@@ -130,6 +142,29 @@
     <div v-else-if="error" class="expansion-page__error">{{ error }}</div>
 
     <section v-else class="expansion-page__list">
+      <section v-if="coverageItems.length > 0" class="expansion-page__coverage">
+        <header class="expansion-page__coverage-head">
+          <h2>片型覆盖矩阵</h2>
+          <span>{{ coverageItems.length }} 个片型 · {{ coverageTotals.seedTargets }} 条候选 · {{ coverageTotals.approvedDrafts }} 条草案</span>
+        </header>
+        <div class="expansion-page__coverage-grid">
+          <button
+            v-for="item in coverageItems"
+            :key="item.video_type"
+            type="button"
+            :class="['expansion-page__coverage-item', { 'expansion-page__coverage-item--active': videoTypeFilter === item.video_type }]"
+            @click="selectCoverageVideoType(item.video_type)"
+          >
+            <span>{{ typeLabel(item.video_type) }}</span>
+            <strong>{{ item.seed_target_count }}</strong>
+            <small>{{ item.batch_count }} 批 · {{ item.candidate_field_count }} 字段</small>
+            <small>通过 {{ item.review_status_counts.approved }} · 草案 {{ item.approved_writeback_draft_count }} · 入队 {{ item.writeback_status_counts.queued }}</small>
+            <em>{{ item.pack_ids.map(packShortLabel).join(' / ') }}</em>
+            <em>{{ item.provinces.join('、') || '待确认省份' }}</em>
+          </button>
+        </div>
+      </section>
+
       <article v-for="item in filteredItems" :key="item.review_item_id" class="expansion-page__item">
         <div class="expansion-page__main">
           <div class="expansion-page__badges">
@@ -226,7 +261,7 @@ const report = ref<DomainPackExpansionCandidateReport | null>(null)
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const copyingFormat = ref<'markdown' | 'json' | 'writeback' | ''>('')
+const copyingFormat = ref<'markdown' | 'json' | 'writeback' | 'coverage' | ''>('')
 const updatingItemId = ref('')
 const bulkUpdatingKey = ref('')
 const searchQuery = ref('')
@@ -237,6 +272,12 @@ const statusFilter = ref('')
 const reviewNoteDrafts = reactive<Record<string, string>>({})
 
 const batches = computed(() => report.value?.review_packet.batches ?? [])
+const coverageItems = computed(() => [...(report.value?.coverage_by_video_type ?? [])]
+  .sort((a, b) => b.seed_target_count - a.seed_target_count || typeLabel(a.video_type).localeCompare(typeLabel(b.video_type), 'zh-Hans-CN')))
+const coverageTotals = computed(() => coverageItems.value.reduce((totals, item) => ({
+  seedTargets: totals.seedTargets + item.seed_target_count,
+  approvedDrafts: totals.approvedDrafts + item.approved_writeback_draft_count,
+}), { seedTargets: 0, approvedDrafts: 0 }))
 
 const allItems = computed<ReviewQueueItem[]>(() => batches.value.flatMap(batch =>
   batch.review_items.map(item => ({
@@ -332,8 +373,15 @@ function packShortLabel(packId: string): string {
     ai_comic_storyboard_pack: '漫剧分镜',
     era_and_costume_pack: '服饰器物',
     explainer_knowledge_structure_pack: '讲解结构',
+    children_adaptation_safety_pack: '儿童安全',
+    short_video_hook_pack: '短视频钩子',
+    education_training_structure_pack: '宣讲培训',
   }
   return map[packId] ?? packId
+}
+
+function selectCoverageVideoType(videoType: string) {
+  videoTypeFilter.value = videoTypeFilter.value === videoType ? '' : videoType as VideoType
 }
 
 async function loadQueue() {
@@ -400,6 +448,35 @@ async function copyApprovedWritebackDraft() {
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '复制已通过扩库草案失败'
+  } finally {
+    copyingFormat.value = ''
+  }
+}
+
+async function copyCoverageMatrix() {
+  if (!report.value || coverageItems.value.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前没有可复制的片型覆盖矩阵'
+    return
+  }
+
+  copyingFormat.value = 'coverage'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const payload = {
+      schema_version: 'domain-pack-expansion-video-type-coverage-export/v1',
+      exported_at: new Date().toISOString(),
+      source_schema_version: report.value.source_schema_version,
+      domain_id: report.value.domain_id,
+      direct_writeback_to_province_markdown: false,
+      video_type_coverage_count: report.value.video_type_coverage_count,
+      coverage_by_video_type: coverageItems.value,
+    }
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
+    copyMessage.value = `已复制片型覆盖矩阵：${payload.video_type_coverage_count} 个片型，${coverageTotals.value.seedTargets} 条候选。`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制片型覆盖矩阵失败'
   } finally {
     copyingFormat.value = ''
   }
@@ -730,6 +807,76 @@ onMounted(async () => {
   font-size: 22px;
 }
 
+.expansion-page__coverage {
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+}
+
+.expansion-page__coverage-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.expansion-page__coverage-head h2 {
+  margin: 0;
+  color: #22313f;
+  font-size: 18px;
+}
+
+.expansion-page__coverage-head span {
+  color: #66727f;
+  font-size: 13px;
+}
+
+.expansion-page__coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.expansion-page__coverage-item {
+  display: grid;
+  gap: 5px;
+  min-height: 158px;
+  padding: 12px;
+  border: 1px solid #d7dee5;
+  border-radius: 8px;
+  background: #f8fbfd;
+  color: #33475b;
+  text-align: left;
+  cursor: pointer;
+}
+
+.expansion-page__coverage-item--active {
+  border-color: #2980b9;
+  background: #edf7fd;
+}
+
+.expansion-page__coverage-item span {
+  color: #22313f;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.expansion-page__coverage-item strong {
+  color: #1f618d;
+  font-size: 24px;
+}
+
+.expansion-page__coverage-item small,
+.expansion-page__coverage-item em {
+  color: #5b6b7a;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .expansion-page__list {
   display: grid;
   gap: 12px;
@@ -854,6 +1001,7 @@ onMounted(async () => {
 
 @media (max-width: 760px) {
   .expansion-page__header,
+  .expansion-page__coverage-head,
   .expansion-page__toolbar,
   .expansion-page__item,
   .expansion-page__columns {
