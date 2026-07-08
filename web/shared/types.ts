@@ -1957,12 +1957,20 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_manual_patch_package_schema: 'knowledge-writeback-manual-patch-package/v1' | '';
     knowledge_writeback_manual_patch_ready: boolean;
     knowledge_writeback_manual_patch_target_file_count: number;
+    knowledge_writeback_manual_patch_ready_target_file_count: number;
+    knowledge_writeback_manual_patch_blocked_target_file_count: number;
+    knowledge_writeback_manual_patch_manifest_id: string;
+    knowledge_writeback_manual_patch_manifest_sha256: string;
     knowledge_writeback_manual_patch_total_patch_count: number;
     knowledge_writeback_manual_patch_project_patch_count: number;
     knowledge_writeback_manual_patch_expansion_patch_count: number;
     knowledge_writeback_source_ref_coverage_percent: number;
     knowledge_writeback_source_ref_blocker_item_count: number;
     knowledge_writeback_source_ref_warning_item_count: number;
+    knowledge_writeback_source_ref_check_warning_count: number;
+    knowledge_writeback_source_ref_check_blocker_count: number;
+    knowledge_writeback_file_missing_source_ref_count: number;
+    knowledge_writeback_anchor_missing_source_ref_count: number;
     knowledge_writeback_missing_source_ref_field_count: number;
     knowledge_writeback_missing_verification_note_field_count: number;
     knowledge_writeback_missing_writeback_hint_field_count: number;
@@ -6439,6 +6447,30 @@ export interface KnowledgeWritebackQueueExportTargetFilePreflight {
 }
 
 export type KnowledgeWritebackSourceRefQualityLevel = 'pass' | 'warning' | 'blocker';
+export type KnowledgeWritebackSourceRefCheckStatus = 'pass' | 'warning' | 'blocker';
+export type KnowledgeWritebackSourceRefCheckReason =
+  | 'local_file_exists'
+  | 'local_file_exists_no_anchor'
+  | 'local_file_missing'
+  | 'anchor_found'
+  | 'anchor_missing_manual_review'
+  | 'external_source_ref'
+  | 'project_markdown_reference'
+  | 'unparsed_source_ref';
+
+export interface KnowledgeWritebackSourceRefCheck {
+  source_ref: string;
+  source_kind: 'project' | 'domain_pack_expansion';
+  item_id: string;
+  target_file: string;
+  local_path?: string;
+  anchor?: string;
+  file_exists: boolean;
+  anchor_checked: boolean;
+  anchor_found: boolean;
+  status: KnowledgeWritebackSourceRefCheckStatus;
+  reason: KnowledgeWritebackSourceRefCheckReason;
+}
 
 export interface KnowledgeWritebackSourceRefQualityItem {
   item_id: string;
@@ -6473,6 +6505,14 @@ export interface KnowledgeWritebackSourceRefQualitySummary {
   pass_item_count: number;
   warning_item_count: number;
   blocker_item_count: number;
+  source_ref_check_count: number;
+  source_ref_check_pass_count: number;
+  source_ref_check_warning_count: number;
+  source_ref_check_blocker_count: number;
+  local_source_ref_count: number;
+  file_missing_source_ref_count: number;
+  anchor_missing_source_ref_count: number;
+  source_ref_checks: KnowledgeWritebackSourceRefCheck[];
   items: KnowledgeWritebackSourceRefQualityItem[];
 }
 
@@ -6593,6 +6633,24 @@ export interface KnowledgeWritebackManualPatchTarget {
   safety_checks: string[];
 }
 
+export interface KnowledgeWritebackManualPatchManifest {
+  schema_version: 'knowledge-writeback-manual-patch-manifest/v1';
+  manifest_id: string;
+  generated_at: string;
+  sha256: string;
+  target_file_count: number;
+  ready_target_file_count: number;
+  blocked_target_file_count: number;
+  total_patch_count: number;
+  source_ref_check_warning_count: number;
+  source_ref_check_blocker_count: number;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  patch_applyable: false;
+  manual_apply_only: true;
+  target_files: string[];
+}
+
 export interface KnowledgeWritebackManualPatchPackage {
   schema_version: 'knowledge-writeback-manual-patch-package/v1';
   exported_at: string;
@@ -6603,12 +6661,15 @@ export interface KnowledgeWritebackManualPatchPackage {
   ready_for_manual_apply: boolean;
   target_file_count: number;
   target_files: string[];
+  ready_target_file_count: number;
+  blocked_target_file_count: number;
   total_patch_count: number;
   project_patch_count: number;
   expansion_patch_count: number;
   source_ref_count: number;
   candidate_field_count: number;
   source_ref_quality: KnowledgeWritebackSourceRefQualitySummary;
+  manual_patch_manifest: KnowledgeWritebackManualPatchManifest;
   ready_reasons: string[];
   blocker_reasons: string[];
   warning_reasons: string[];

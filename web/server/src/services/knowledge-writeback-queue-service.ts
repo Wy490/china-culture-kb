@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type {
   DomainPackExpansionWritebackDraftItem,
   DomainPackExpansionWritebackDraftPackage,
@@ -12,6 +14,7 @@ import type {
   KnowledgeWritebackQueueReviewSignoffManifest,
   KnowledgeWritebackQueueSignoffBatchSummary,
   KnowledgeWritebackQueueSignoffPackage,
+  KnowledgeWritebackSourceRefCheck,
   KnowledgeWritebackSourceRefQualityItem,
   KnowledgeWritebackSourceRefQualityLevel,
   KnowledgeWritebackSourceRefQualitySummary,
@@ -195,6 +198,8 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     };
   });
   const totalPatchCount = targetPatches.reduce((sum, item) => sum + item.total_patch_count, 0);
+  const readyTargetFileCount = targetPatches.filter(item => item.ready_for_manual_apply).length;
+  const blockedTargetFileCount = targetPatches.length - readyTargetFileCount;
   const readyForSignoffCount = input.preflight.review_handoff.signoff_batch_summaries
     .reduce((sum, item) => sum + item.ready_for_signoff_count, 0);
   const blockerReasons = manualPatchPackageBlockerReasons({
@@ -204,6 +209,13 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
   });
   const warningReasons = manualPatchPackageWarningReasons(input.preflight.source_ref_quality);
   const readyForManualApply = blockerReasons.length === 0;
+  const manualPatchManifest = buildManualPatchManifest({
+    exportedAt: input.exportedAt,
+    targetPatches,
+    sourceRefQuality: input.preflight.source_ref_quality,
+    readyTargetFileCount,
+    blockedTargetFileCount,
+  });
   const readyReasons = readyForManualApply
     ? [
       'manual_patch_has_target_patches',
@@ -223,6 +235,8 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     ready_for_manual_apply: readyForManualApply,
     target_file_count: targetPatches.length,
     target_files: input.targetFiles,
+    ready_target_file_count: readyTargetFileCount,
+    blocked_target_file_count: blockedTargetFileCount,
     total_patch_count: totalPatchCount,
     project_patch_count: input.projectItems.length,
     expansion_patch_count: input.expansionItems.length,
@@ -230,6 +244,7 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     candidate_field_count: input.expansionItems.reduce((sum, item) =>
       sum + (item.field_supplement_candidate_count ?? candidateFieldCount(item)), 0),
     source_ref_quality: input.preflight.source_ref_quality,
+    manual_patch_manifest: manualPatchManifest,
     ready_reasons: readyReasons,
     blocker_reasons: blockerReasons,
     warning_reasons: warningReasons,
@@ -242,10 +257,16 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
       `ready_blockers=${blockerReasons.length}`,
       `ready_warnings=${warningReasons.length}`,
       `target_files=${targetPatches.length}`,
+      `ready_target_files=${readyTargetFileCount}`,
+      `blocked_target_files=${blockedTargetFileCount}`,
       `total_patch_count=${totalPatchCount}`,
+      `manual_patch_manifest_id=${manualPatchManifest.manifest_id}`,
+      `manual_patch_manifest_sha256=${manualPatchManifest.sha256}`,
       `review_handoff_ready_for_signoff=${readyForSignoffCount}/${input.preflight.review_handoff.total_handoff_count}`,
       `source_ref_coverage=${input.preflight.source_ref_quality.coverage_percent}%`,
       `source_ref_blocker_items=${input.preflight.source_ref_quality.blocker_item_count}`,
+      `source_ref_check_warnings=${input.preflight.source_ref_quality.source_ref_check_warning_count}`,
+      `source_ref_check_blockers=${input.preflight.source_ref_quality.source_ref_check_blocker_count}`,
     ],
     operator_checklist: [
       '先核对 signoff manifest、review_note、reviewer_identity 和 signoff_batch_id。',
@@ -341,7 +362,8 @@ function buildUnifiedWritebackExportPreflight(input: {
     ready_for_manual_export: totalDraftCount > 0
       && input.targetFiles.length > 0
       && expansionFieldMissingCount === 0
-      && sourceRefQuality.blocker_item_count === 0,
+      && sourceRefQuality.blocker_item_count === 0
+      && sourceRefQuality.source_ref_check_blocker_count === 0,
     target_file_preflight: targetFilePreflight,
     review_handoff: reviewHandoff,
     safety_checks: [
@@ -355,6 +377,8 @@ function buildUnifiedWritebackExportPreflight(input: {
       `source_ref_coverage=${sourceRefQuality.coverage_percent}%`,
       `source_ref_blocker_items=${sourceRefQuality.blocker_item_count}`,
       `source_ref_warning_items=${sourceRefQuality.warning_item_count}`,
+      `source_ref_check_warnings=${sourceRefQuality.source_ref_check_warning_count}`,
+      `source_ref_check_blockers=${sourceRefQuality.source_ref_check_blocker_count}`,
       `review_handoff_items=${reviewHandoff.total_handoff_count}`,
       `review_handoff_requires_signoff=${reviewHandoff.requires_manual_signoff_count}`,
       `signoff_batch_summaries=${reviewHandoff.signoff_batch_summaries.length}`,
@@ -603,6 +627,56 @@ function reviewHandoffRequiredAction(
   return '草案就绪，等待人工签收或批量入队。';
 }
 
+function buildManualPatchManifest(input: {
+  exportedAt: string;
+  targetPatches: Array<Pick<
+    KnowledgeWritebackManualPatchPackage['target_patches'][number],
+    'target_file' | 'ready_for_manual_apply' | 'total_patch_count' | 'review_diff' | 'blocker_reasons' | 'warning_reasons'
+  >>;
+  sourceRefQuality: KnowledgeWritebackSourceRefQualitySummary;
+  readyTargetFileCount: number;
+  blockedTargetFileCount: number;
+}): KnowledgeWritebackManualPatchPackage['manual_patch_manifest'] {
+  const targetFiles = input.targetPatches.map(item => item.target_file);
+  const payload = {
+    schema_version: 'knowledge-writeback-manual-patch-manifest/v1',
+    generated_at: input.exportedAt,
+    target_files: targetFiles,
+    targets: input.targetPatches.map(item => ({
+      target_file: item.target_file,
+      ready_for_manual_apply: item.ready_for_manual_apply,
+      total_patch_count: item.total_patch_count,
+      blocker_reasons: item.blocker_reasons,
+      warning_reasons: item.warning_reasons,
+      review_diff_sha256: createHash('sha256').update(item.review_diff).digest('hex'),
+    })),
+    source_ref_check_warning_count: input.sourceRefQuality.source_ref_check_warning_count,
+    source_ref_check_blocker_count: input.sourceRefQuality.source_ref_check_blocker_count,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    patch_applyable: false,
+    manual_apply_only: true,
+  };
+  const sha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  return {
+    schema_version: 'knowledge-writeback-manual-patch-manifest/v1',
+    manifest_id: `kwb-manual-patch-${sha256.slice(0, 12)}`,
+    generated_at: input.exportedAt,
+    sha256,
+    target_file_count: targetFiles.length,
+    ready_target_file_count: input.readyTargetFileCount,
+    blocked_target_file_count: input.blockedTargetFileCount,
+    total_patch_count: input.targetPatches.reduce((sum, item) => sum + item.total_patch_count, 0),
+    source_ref_check_warning_count: input.sourceRefQuality.source_ref_check_warning_count,
+    source_ref_check_blocker_count: input.sourceRefQuality.source_ref_check_blocker_count,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    patch_applyable: false,
+    manual_apply_only: true,
+    target_files: targetFiles,
+  };
+}
+
 function buildSourceRefQualitySummary(
   projectItems: ProjectKnowledgeWritebackPatchItem[],
   expansionItems: DomainPackExpansionWritebackDraftItem[],
@@ -617,6 +691,7 @@ function buildSourceRefQualitySummary(
     ...projectItems.flatMap(projectStructuredSourceRefs),
     ...expansionItems.flatMap(item => (item.field_workbench ?? []).flatMap(field => field.source_refs)),
   ]).size;
+  const sourceRefChecks = buildSourceRefChecks(projectItems, expansionItems);
   return {
     schema_version: 'knowledge-writeback-source-ref-quality/v1',
     total_item_count: items.length,
@@ -632,8 +707,141 @@ function buildSourceRefQualitySummary(
     pass_item_count: items.filter(item => item.quality_level === 'pass').length,
     warning_item_count: items.filter(item => item.quality_level === 'warning').length,
     blocker_item_count: items.filter(item => item.quality_level === 'blocker').length,
+    source_ref_check_count: sourceRefChecks.length,
+    source_ref_check_pass_count: sourceRefChecks.filter(item => item.status === 'pass').length,
+    source_ref_check_warning_count: sourceRefChecks.filter(item => item.status === 'warning').length,
+    source_ref_check_blocker_count: sourceRefChecks.filter(item => item.status === 'blocker').length,
+    local_source_ref_count: sourceRefChecks.filter(item => item.local_path).length,
+    file_missing_source_ref_count: sourceRefChecks.filter(item => item.reason === 'local_file_missing').length,
+    anchor_missing_source_ref_count: sourceRefChecks.filter(item => item.reason === 'anchor_missing_manual_review').length,
+    source_ref_checks: sourceRefChecks,
     items,
   };
+}
+
+function buildSourceRefChecks(
+  projectItems: ProjectKnowledgeWritebackPatchItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+): KnowledgeWritebackSourceRefCheck[] {
+  return [
+    ...projectItems.flatMap(item => projectStructuredSourceRefs(item).map(sourceRef => resolveSourceRefCheck({
+      sourceRef,
+      sourceKind: 'project',
+      itemId: item.task_key ?? `${item.project_id ?? 'project'}::${item.task_id}`,
+      targetFile: item.suggested_file_path,
+    }))),
+    ...expansionItems.flatMap(item => (item.field_workbench ?? [])
+      .flatMap(field => field.source_refs)
+      .map(sourceRef => resolveSourceRefCheck({
+        sourceRef,
+        sourceKind: 'domain_pack_expansion',
+        itemId: item.review_item_id,
+        targetFile: item.suggested_file_path,
+      }))),
+  ];
+}
+
+function resolveSourceRefCheck(input: {
+  sourceRef: string;
+  sourceKind: KnowledgeWritebackSourceRefCheck['source_kind'];
+  itemId: string;
+  targetFile: string;
+}): KnowledgeWritebackSourceRefCheck {
+  if (input.sourceKind === 'project') {
+    return {
+      source_ref: input.sourceRef,
+      source_kind: input.sourceKind,
+      item_id: input.itemId,
+      target_file: input.targetFile,
+      file_exists: false,
+      anchor_checked: false,
+      anchor_found: false,
+      status: 'warning',
+      reason: 'project_markdown_reference',
+    };
+  }
+
+  const parsed = parseLocalSourceRef(input.sourceRef);
+  if (!parsed) {
+    return {
+      source_ref: input.sourceRef,
+      source_kind: input.sourceKind,
+      item_id: input.itemId,
+      target_file: input.targetFile,
+      file_exists: false,
+      anchor_checked: false,
+      anchor_found: false,
+      status: /^https?:\/\//.test(input.sourceRef) ? 'pass' : 'warning',
+      reason: /^https?:\/\//.test(input.sourceRef) ? 'external_source_ref' : 'unparsed_source_ref',
+    };
+  }
+
+  const localPath = resolve(kbRoot(), parsed.localPath.replace(/^data\//, ''));
+  if (!existsSync(localPath)) {
+    return {
+      source_ref: input.sourceRef,
+      source_kind: input.sourceKind,
+      item_id: input.itemId,
+      target_file: input.targetFile,
+      local_path: parsed.localPath,
+      anchor: parsed.anchor,
+      file_exists: false,
+      anchor_checked: Boolean(parsed.anchor),
+      anchor_found: false,
+      status: 'blocker',
+      reason: 'local_file_missing',
+    };
+  }
+
+  if (!parsed.anchor) {
+    return {
+      source_ref: input.sourceRef,
+      source_kind: input.sourceKind,
+      item_id: input.itemId,
+      target_file: input.targetFile,
+      local_path: parsed.localPath,
+      file_exists: true,
+      anchor_checked: false,
+      anchor_found: false,
+      status: 'pass',
+      reason: 'local_file_exists_no_anchor',
+    };
+  }
+
+  const anchorFound = sourceAnchorExists(localPath, parsed.anchor);
+  return {
+    source_ref: input.sourceRef,
+    source_kind: input.sourceKind,
+    item_id: input.itemId,
+    target_file: input.targetFile,
+    local_path: parsed.localPath,
+    anchor: parsed.anchor,
+    file_exists: true,
+    anchor_checked: true,
+    anchor_found: anchorFound,
+    status: anchorFound ? 'pass' : 'warning',
+    reason: anchorFound ? 'anchor_found' : 'anchor_missing_manual_review',
+  };
+}
+
+function parseLocalSourceRef(sourceRef: string): { localPath: string; anchor?: string } | undefined {
+  const [rawPath, rawAnchor] = sourceRef.split('#');
+  if (!rawPath.startsWith('data/')) return undefined;
+  return {
+    localPath: rawPath,
+    anchor: rawAnchor ? decodeURIComponent(rawAnchor).trim() : undefined,
+  };
+}
+
+function sourceAnchorExists(localPath: string, anchor: string): boolean {
+  try {
+    const content = readFileSync(localPath, 'utf8');
+    return content.includes(anchor)
+      || content.includes(anchor.replace(/：/g, ':'))
+      || content.includes(anchor.replace(/:/g, '：'));
+  } catch {
+    return false;
+  }
 }
 
 function projectSourceRefQualityItem(item: ProjectKnowledgeWritebackPatchItem): KnowledgeWritebackSourceRefQualityItem {
@@ -736,6 +944,9 @@ function manualPatchPackageBlockerReasons(input: {
     input.preflight.source_ref_quality.blocker_item_count > 0
       ? `source_ref_quality_blockers=${input.preflight.source_ref_quality.blocker_item_count}`
       : undefined,
+    input.preflight.source_ref_quality.source_ref_check_blocker_count > 0
+      ? `source_ref_check_blockers=${input.preflight.source_ref_quality.source_ref_check_blocker_count}`
+      : undefined,
   ].filter((reason): reason is string => Boolean(reason));
 }
 
@@ -744,6 +955,9 @@ function manualPatchPackageWarningReasons(
 ): string[] {
   return [
     sourceRefQuality.warning_item_count > 0 ? `source_ref_quality_warnings=${sourceRefQuality.warning_item_count}` : undefined,
+    sourceRefQuality.source_ref_check_warning_count > 0
+      ? `source_ref_check_warnings=${sourceRefQuality.source_ref_check_warning_count}`
+      : undefined,
     sourceRefQuality.missing_verification_note_field_count > 0
       ? `missing_verification_notes=${sourceRefQuality.missing_verification_note_field_count}`
       : undefined,
@@ -763,6 +977,9 @@ function targetManualPatchBlockerReasons(
     projectItems.length + expansionItems.length === 0 ? `no_patch_items_for_target=${targetFile}` : undefined,
     sourceRefQuality.blocker_item_count > 0
       ? `target_source_ref_blockers=${sourceRefQuality.blocker_item_count}`
+      : undefined,
+    sourceRefQuality.source_ref_check_blocker_count > 0
+      ? `target_source_ref_check_blockers=${sourceRefQuality.source_ref_check_blocker_count}`
       : undefined,
   ].filter((reason): reason is string => Boolean(reason));
 }
@@ -875,8 +1092,11 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- preflight_source_ref_coverage: ${pkg.preflight.source_ref_quality.coverage_percent}%`,
     `- preflight_source_ref_blockers: ${pkg.preflight.source_ref_quality.blocker_item_count}`,
     `- preflight_source_ref_warnings: ${pkg.preflight.source_ref_quality.warning_item_count}`,
+    `- preflight_source_ref_check_warnings: ${pkg.preflight.source_ref_quality.source_ref_check_warning_count}`,
+    `- preflight_source_ref_check_blockers: ${pkg.preflight.source_ref_quality.source_ref_check_blocker_count}`,
     `- preflight_manual_review_required: ${pkg.preflight.manual_review_required_count}`,
     `- manual_patch_package: ${pkg.manual_patch_package.schema_version}`,
+    `- manual_patch_manifest_id: ${pkg.manual_patch_package.manual_patch_manifest.manifest_id}`,
     `- manual_patch_ready: ${pkg.manual_patch_package.ready_for_manual_apply}`,
     `- manual_patch_target_files: ${pkg.manual_patch_package.target_file_count}`,
     `- manual_patch_total_patches: ${pkg.manual_patch_package.total_patch_count}`,
@@ -910,6 +1130,12 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- missing_source_ref_fields: ${pkg.preflight.source_ref_quality.missing_source_ref_field_count}`,
     `- missing_verification_note_fields: ${pkg.preflight.source_ref_quality.missing_verification_note_field_count}`,
     `- missing_writeback_hint_fields: ${pkg.preflight.source_ref_quality.missing_writeback_hint_field_count}`,
+    `- source_ref_check_count: ${pkg.preflight.source_ref_quality.source_ref_check_count}`,
+    `- source_ref_check_pass_count: ${pkg.preflight.source_ref_quality.source_ref_check_pass_count}`,
+    `- source_ref_check_warning_count: ${pkg.preflight.source_ref_quality.source_ref_check_warning_count}`,
+    `- source_ref_check_blocker_count: ${pkg.preflight.source_ref_quality.source_ref_check_blocker_count}`,
+    `- file_missing_source_ref_count: ${pkg.preflight.source_ref_quality.file_missing_source_ref_count}`,
+    `- anchor_missing_source_ref_count: ${pkg.preflight.source_ref_quality.anchor_missing_source_ref_count}`,
     `- blocked_direct_writeback_count: ${pkg.preflight.blocked_direct_writeback_count}`,
     ...pkg.preflight.safety_checks.map(check => `- ${check}`),
     '',
@@ -956,6 +1182,8 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- manual_apply_only: ${pkg.manual_patch_package.manual_apply_only}`,
     `- ready_for_manual_apply: ${pkg.manual_patch_package.ready_for_manual_apply}`,
     `- target_file_count: ${pkg.manual_patch_package.target_file_count}`,
+    `- ready_target_file_count: ${pkg.manual_patch_package.ready_target_file_count}`,
+    `- blocked_target_file_count: ${pkg.manual_patch_package.blocked_target_file_count}`,
     `- total_patch_count: ${pkg.manual_patch_package.total_patch_count}`,
     `- project_patch_count: ${pkg.manual_patch_package.project_patch_count}`,
     `- expansion_patch_count: ${pkg.manual_patch_package.expansion_patch_count}`,
@@ -964,6 +1192,10 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- source_ref_coverage_percent: ${pkg.manual_patch_package.source_ref_quality.coverage_percent}`,
     `- source_ref_blocker_items: ${pkg.manual_patch_package.source_ref_quality.blocker_item_count}`,
     `- source_ref_warning_items: ${pkg.manual_patch_package.source_ref_quality.warning_item_count}`,
+    `- source_ref_check_warning_count: ${pkg.manual_patch_package.source_ref_quality.source_ref_check_warning_count}`,
+    `- source_ref_check_blocker_count: ${pkg.manual_patch_package.source_ref_quality.source_ref_check_blocker_count}`,
+    `- manual_patch_manifest_id: ${pkg.manual_patch_package.manual_patch_manifest.manifest_id}`,
+    `- manual_patch_manifest_sha256: ${pkg.manual_patch_package.manual_patch_manifest.sha256}`,
     ...pkg.manual_patch_package.ready_reasons.map(reason => `- ready_reason: ${reason}`),
     ...pkg.manual_patch_package.blocker_reasons.map(reason => `- blocker_reason: ${reason}`),
     ...pkg.manual_patch_package.warning_reasons.map(reason => `- warning_reason: ${reason}`),
@@ -1109,4 +1341,8 @@ function renderFilterLines(filters: KnowledgeWritebackQueueExportFilters): strin
     typeof filters.expansion_review_item_count === 'number' ? `- expansion_review_item_count: ${filters.expansion_review_item_count}` : undefined,
   ].filter((line): line is string => Boolean(line));
   return lines.length ? lines : ['- none'];
+}
+
+function kbRoot(): string {
+  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
 }

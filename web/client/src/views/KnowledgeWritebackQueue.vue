@@ -311,7 +311,8 @@
         <strong>人工 Patch 预览</strong>
         <span>
           目标文件 {{ manualPatchPreviewSummary.targetFileCount }} 个 · patch {{ manualPatchPreviewSummary.totalPatchCount }} 条 ·
-          来源覆盖 {{ manualPatchPreviewSummary.sourceRefCoveragePercent }}% · 阻塞 {{ manualPatchPreviewSummary.blockerCount }} · 警告 {{ manualPatchPreviewSummary.warningCount }}
+          来源覆盖 {{ manualPatchPreviewSummary.sourceRefCoveragePercent }}% · 本地引用 {{ manualPatchPreviewSummary.localSourceRefCount }} ·
+          锚点待核验 {{ manualPatchPreviewSummary.anchorReviewCount }} · 阻塞 {{ manualPatchPreviewSummary.blockerCount }} · 警告 {{ manualPatchPreviewSummary.warningCount }}
         </span>
       </div>
       <div class="writeback-page__manual-preview-grid">
@@ -324,6 +325,7 @@
           </header>
           <span>patch {{ target.total_patch_count }} 条 · 项目 {{ target.project_patch_count }} · 扩库 {{ target.expansion_patch_count }}</span>
           <span>字段 {{ target.candidate_field_count }} 个 · 来源 {{ target.source_ref_count }} 条 · 覆盖 {{ target.source_ref_coverage_percent }}%</span>
+          <span>本地引用 {{ target.local_source_ref_count }} 条 · 带锚点 {{ target.anchored_source_ref_count }} 条 · 待导出核验 {{ target.source_ref_anchor_review_count }} 条</span>
           <span v-if="target.blocker_reasons.length">阻塞：{{ target.blocker_reasons.join('；') }}</span>
           <span v-if="target.warning_reasons.length">警告：{{ target.warning_reasons.join('；') }}</span>
           <details>
@@ -390,6 +392,10 @@
       <div>
         <span>Patch 阻塞</span>
         <strong>{{ manualPatchPreviewSummary.blockerCount }}</strong>
+      </div>
+      <div>
+        <span>锚点待核验</span>
+        <strong>{{ manualPatchPreviewSummary.anchorReviewCount }}</strong>
       </div>
       <div>
         <span>草案就绪</span>
@@ -618,6 +624,9 @@ interface ManualPatchPreviewTarget {
   checked_field_count: number;
   covered_field_count: number;
   source_ref_count: number;
+  local_source_ref_count: number;
+  anchored_source_ref_count: number;
+  source_ref_anchor_review_count: number;
   missing_source_ref_field_count: number;
   missing_verification_note_field_count: number;
   missing_writeback_hint_field_count: number;
@@ -983,6 +992,9 @@ const manualPatchPreviewTargets = computed<ManualPatchPreviewTarget[]>(() => {
       checked_field_count: quality.checkedFieldCount,
       covered_field_count: quality.coveredFieldCount,
       source_ref_count: quality.sourceRefCount,
+      local_source_ref_count: quality.localSourceRefCount,
+      anchored_source_ref_count: quality.anchoredSourceRefCount,
+      source_ref_anchor_review_count: quality.anchorReviewCount,
       missing_source_ref_field_count: quality.missingSourceRefFieldCount,
       missing_verification_note_field_count: quality.missingVerificationNoteFieldCount,
       missing_writeback_hint_field_count: quality.missingWritebackHintFieldCount,
@@ -1005,6 +1017,10 @@ const manualPatchPreviewSummary = computed(() => {
     blockerCount: manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.blocker_reasons.length, 0),
     warningCount: manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.warning_reasons.length, 0),
     sourceRefCoveragePercent: completionPercent(coveredFieldCount, checkedFieldCount),
+    localSourceRefCount: manualPatchPreviewTargets.value
+      .reduce((sum, item) => sum + item.local_source_ref_count, 0),
+    anchorReviewCount: manualPatchPreviewTargets.value
+      .reduce((sum, item) => sum + item.source_ref_anchor_review_count, 0),
     missingSourceFieldCount: manualPatchPreviewTargets.value
       .reduce((sum, item) => sum + item.missing_source_ref_field_count, 0),
   }
@@ -1227,6 +1243,8 @@ function combinedSourceQuality(
   let candidateFieldCount = 0
   let checkedFieldCount = 0
   let coveredFieldCount = 0
+  let localSourceRefCount = 0
+  let anchoredSourceRefCount = 0
   let missingSourceRefFieldCount = 0
   let missingVerificationNoteFieldCount = 0
   let missingWritebackHintFieldCount = 0
@@ -1239,7 +1257,11 @@ function combinedSourceQuality(
     missingSourceRefFieldCount += quality.missingSourceRefFieldCount
     missingVerificationNoteFieldCount += quality.missingVerificationNoteFieldCount
     missingWritebackHintFieldCount += quality.missingWritebackHintFieldCount
-    for (const ref of (item.field_workbench ?? []).flatMap(field => field.source_refs)) sourceRefs.add(ref)
+    for (const ref of (item.field_workbench ?? []).flatMap(field => field.source_refs)) {
+      sourceRefs.add(ref)
+      if (isLocalSourceRef(ref)) localSourceRefCount += 1
+      if (hasSourceRefAnchor(ref)) anchoredSourceRefCount += 1
+    }
   }
 
   for (const item of projectItems) {
@@ -1255,10 +1277,21 @@ function combinedSourceQuality(
     checkedFieldCount,
     coveredFieldCount,
     sourceRefCount: sourceRefs.size,
+    localSourceRefCount,
+    anchoredSourceRefCount,
+    anchorReviewCount: anchoredSourceRefCount,
     missingSourceRefFieldCount,
     missingVerificationNoteFieldCount,
     missingWritebackHintFieldCount,
   }
+}
+
+function isLocalSourceRef(sourceRef: string): boolean {
+  return sourceRef.startsWith('data/')
+}
+
+function hasSourceRefAnchor(sourceRef: string): boolean {
+  return sourceRef.includes('#') && sourceRef.split('#')[1]?.trim().length > 0
 }
 
 function renderLocalManualReviewDiff(
@@ -1825,9 +1858,17 @@ function renderManualPatchDiffBundle(pkg: KnowledgeWritebackQueueExportPackage):
     `# patch_applyable: ${manualPatch.patch_applyable}`,
     `# manual_apply_only: ${manualPatch.manual_apply_only}`,
     `# ready_for_manual_apply: ${manualPatch.ready_for_manual_apply}`,
+    `# manual_patch_manifest_id: ${manualPatch.manual_patch_manifest.manifest_id}`,
+    `# manual_patch_manifest_sha256: ${manualPatch.manual_patch_manifest.sha256}`,
     `# target_file_count: ${manualPatch.target_file_count}`,
+    `# ready_target_file_count: ${manualPatch.ready_target_file_count}`,
+    `# blocked_target_file_count: ${manualPatch.blocked_target_file_count}`,
     `# total_patch_count: ${manualPatch.total_patch_count}`,
     `# source_ref_coverage_percent: ${manualPatch.source_ref_quality.coverage_percent}`,
+    `# source_ref_check_warning_count: ${manualPatch.source_ref_quality.source_ref_check_warning_count}`,
+    `# source_ref_check_blocker_count: ${manualPatch.source_ref_quality.source_ref_check_blocker_count}`,
+    `# file_missing_source_ref_count: ${manualPatch.source_ref_quality.file_missing_source_ref_count}`,
+    `# anchor_missing_source_ref_count: ${manualPatch.source_ref_quality.anchor_missing_source_ref_count}`,
     ...manualPatch.ready_reasons.map(reason => `# ready_reason: ${reason}`),
     ...manualPatch.blocker_reasons.map(reason => `# blocker_reason: ${reason}`),
     ...manualPatch.warning_reasons.map(reason => `# warning_reason: ${reason}`),

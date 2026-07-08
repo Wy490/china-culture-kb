@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
 
@@ -751,6 +751,30 @@ interface KnowledgeWritebackQueueSignoffPackage {
 }
 
 type KnowledgeWritebackSourceRefQualityLevel = 'pass' | 'warning' | 'blocker';
+type KnowledgeWritebackSourceRefCheckStatus = 'pass' | 'warning' | 'blocker';
+type KnowledgeWritebackSourceRefCheckReason =
+  | 'local_file_exists'
+  | 'local_file_exists_no_anchor'
+  | 'local_file_missing'
+  | 'anchor_found'
+  | 'anchor_missing_manual_review'
+  | 'external_source_ref'
+  | 'project_markdown_reference'
+  | 'unparsed_source_ref';
+
+interface KnowledgeWritebackSourceRefCheck {
+  source_ref: string;
+  source_kind: 'project' | 'domain_pack_expansion';
+  item_id: string;
+  target_file: string;
+  local_path?: string;
+  anchor?: string;
+  file_exists: boolean;
+  anchor_checked: boolean;
+  anchor_found: boolean;
+  status: KnowledgeWritebackSourceRefCheckStatus;
+  reason: KnowledgeWritebackSourceRefCheckReason;
+}
 
 interface KnowledgeWritebackSourceRefQualityItem {
   item_id: string;
@@ -785,6 +809,14 @@ interface KnowledgeWritebackSourceRefQualitySummary {
   pass_item_count: number;
   warning_item_count: number;
   blocker_item_count: number;
+  source_ref_check_count: number;
+  source_ref_check_pass_count: number;
+  source_ref_check_warning_count: number;
+  source_ref_check_blocker_count: number;
+  local_source_ref_count: number;
+  file_missing_source_ref_count: number;
+  anchor_missing_source_ref_count: number;
+  source_ref_checks: KnowledgeWritebackSourceRefCheck[];
   items: KnowledgeWritebackSourceRefQualityItem[];
 }
 
@@ -809,6 +841,24 @@ interface KnowledgeWritebackManualPatchTarget {
   safety_checks: string[];
 }
 
+interface KnowledgeWritebackManualPatchManifest {
+  schema_version: 'knowledge-writeback-manual-patch-manifest/v1';
+  manifest_id: string;
+  generated_at: string;
+  sha256: string;
+  target_file_count: number;
+  ready_target_file_count: number;
+  blocked_target_file_count: number;
+  total_patch_count: number;
+  source_ref_check_warning_count: number;
+  source_ref_check_blocker_count: number;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  patch_applyable: false;
+  manual_apply_only: true;
+  target_files: string[];
+}
+
 interface KnowledgeWritebackManualPatchPackage {
   schema_version: 'knowledge-writeback-manual-patch-package/v1';
   exported_at: string;
@@ -819,12 +869,15 @@ interface KnowledgeWritebackManualPatchPackage {
   ready_for_manual_apply: boolean;
   target_file_count: number;
   target_files: string[];
+  ready_target_file_count: number;
+  blocked_target_file_count: number;
   total_patch_count: number;
   project_patch_count: number;
   expansion_patch_count: number;
   source_ref_count: number;
   candidate_field_count: number;
   source_ref_quality: KnowledgeWritebackSourceRefQualitySummary;
+  manual_patch_manifest: KnowledgeWritebackManualPatchManifest;
   ready_reasons: string[];
   blocker_reasons: string[];
   warning_reasons: string[];
@@ -1984,7 +2037,7 @@ function buildExpansionNextDevelopmentTasks(
   reviewClosure: DomainPackExpansionReviewClosureSummary,
 ): DomainPackExpansionNextDevelopmentTask[] {
   const coreVideoTypes = ['explainer_video', 'heritage_promo', 'documentary_short', 'ai_comic_drama'];
-  const thirdBatchComplete = (report.review_packet.approved_writeback_draft_count ?? 0) >= 70;
+  const thirdBatchComplete = (report.review_packet.approved_writeback_draft_count ?? 0) >= 80;
   const mvpSurfaceComplete = report.pipeline_stage === 'complete' && reviewClosure.ready_for_human_handoff;
   return [
     {
@@ -1996,7 +2049,7 @@ function buildExpansionNextDevelopmentTasks(
       progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、复核人身份、审签批次归档、批次完成率汇总、批量写回状态操作、导出预检、签收清单、canonical signoff package 和前端下载归档。',
       related_plan_items: [1],
       target_video_types: coreVideoTypes,
-      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 70 条草案可被人工高效复核。',
+      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 80 条草案可被人工高效复核。',
       acceptance_checks: [
         '支持 pack/video_type/province/review_status/writeback_status/field/search 联合筛选。',
         '单条候选展示字段级候选值、来源引用、核实备注和安全预检。',
@@ -2028,7 +2081,7 @@ function buildExpansionNextDevelopmentTasks(
       priority: 'P0',
       status: preflight.ready_for_unified_export ? 'complete' : 'blocked',
       progress_percent: 100,
-      progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用、人工交接、复核人身份覆盖率、审签批次归档、签收 manifest/sha256、canonical signoff package、signoff safety checks 和不可直写提示。',
+      progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用、source_ref check 分级、人工交接、复核人身份覆盖率、审签批次归档、签收 manifest/sha256、canonical signoff package、manual patch manifest、signoff safety checks 和不可直写提示。',
       related_plan_items: [3],
       target_video_types: coreVideoTypes,
       description: '在导出前展示目标省份文件、状态计数和禁止直写检查，统一接入 Knowledge Writeback Queue。',
@@ -2045,7 +2098,7 @@ function buildExpansionNextDevelopmentTasks(
       priority: 'P1',
       status: thirdBatchComplete ? 'complete' : 'ready',
       progress_percent: thirdBatchComplete ? 100 : 99,
-      progress_note: '当前 70 条已形成 approved 草案并进入人工交接闭环；第三批继续覆盖非遗宣传、微纪录、AI 漫剧和知识讲解，正式落库仍保持人工写回边界。',
+      progress_note: '当前 80 条已形成 approved 草案并进入人工交接闭环；第三批续包继续覆盖非遗宣传、微纪录、AI 漫剧和知识讲解，正式落库仍保持人工写回边界。',
       related_plan_items: [4],
       target_video_types: coreVideoTypes,
       description: '继续扩展真实条目，优先讲解、非遗宣传、微纪录和 AI 漫剧，不跳过候选稿/审稿/草案流程。',
@@ -2062,7 +2115,7 @@ function buildExpansionNextDevelopmentTasks(
       priority: 'P1',
       status: mvpSurfaceComplete ? 'complete' : 'blocked',
       progress_percent: mvpSurfaceComplete ? 100 : 99,
-      progress_note: 'MVP 已接入扩库 complete、70 条写回草案计数、review_closure 结案摘要、复核交接签收 manifest/canonical signoff package、复核人身份覆盖率、审签批次归档、批次 ready/blocked 汇总、下载归档证据、runtime 覆盖证据和 1-5 项百分比；明确显示“完成候选但待人工写回”。',
+      progress_note: 'MVP 已接入扩库 complete、80 条写回草案计数、review_closure 结案摘要、复核交接签收 manifest/canonical signoff package、manual patch manifest、source_ref check 分级、复核人身份覆盖率、审签批次归档、批次 ready/blocked 汇总、下载归档证据、runtime 覆盖证据和 1-5 项百分比；明确显示“完成候选但待人工写回”。',
       related_plan_items: [5],
       target_video_types: coreVideoTypes,
       description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
@@ -3535,8 +3588,11 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- preflight_source_ref_coverage: ${pkg.preflight.source_ref_quality.coverage_percent}%`,
     `- preflight_source_ref_blockers: ${pkg.preflight.source_ref_quality.blocker_item_count}`,
     `- preflight_source_ref_warnings: ${pkg.preflight.source_ref_quality.warning_item_count}`,
+    `- preflight_source_ref_check_warnings: ${pkg.preflight.source_ref_quality.source_ref_check_warning_count}`,
+    `- preflight_source_ref_check_blockers: ${pkg.preflight.source_ref_quality.source_ref_check_blocker_count}`,
     `- preflight_manual_review_required: ${pkg.preflight.manual_review_required_count}`,
     `- manual_patch_package: ${pkg.manual_patch_package.schema_version}`,
+    `- manual_patch_manifest_id: ${pkg.manual_patch_package.manual_patch_manifest.manifest_id}`,
     `- manual_patch_ready: ${pkg.manual_patch_package.ready_for_manual_apply}`,
     `- manual_patch_target_files: ${pkg.manual_patch_package.target_file_count}`,
     `- manual_patch_total_patches: ${pkg.manual_patch_package.total_patch_count}`,
@@ -3570,6 +3626,12 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- missing_source_ref_fields: ${pkg.preflight.source_ref_quality.missing_source_ref_field_count}`,
     `- missing_verification_note_fields: ${pkg.preflight.source_ref_quality.missing_verification_note_field_count}`,
     `- missing_writeback_hint_fields: ${pkg.preflight.source_ref_quality.missing_writeback_hint_field_count}`,
+    `- source_ref_check_count: ${pkg.preflight.source_ref_quality.source_ref_check_count}`,
+    `- source_ref_check_pass_count: ${pkg.preflight.source_ref_quality.source_ref_check_pass_count}`,
+    `- source_ref_check_warning_count: ${pkg.preflight.source_ref_quality.source_ref_check_warning_count}`,
+    `- source_ref_check_blocker_count: ${pkg.preflight.source_ref_quality.source_ref_check_blocker_count}`,
+    `- file_missing_source_ref_count: ${pkg.preflight.source_ref_quality.file_missing_source_ref_count}`,
+    `- anchor_missing_source_ref_count: ${pkg.preflight.source_ref_quality.anchor_missing_source_ref_count}`,
     `- blocked_direct_writeback_count: ${pkg.preflight.blocked_direct_writeback_count}`,
     ...pkg.preflight.safety_checks.map(check => `- ${check}`),
     '',
@@ -3616,6 +3678,8 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- manual_apply_only: ${pkg.manual_patch_package.manual_apply_only}`,
     `- ready_for_manual_apply: ${pkg.manual_patch_package.ready_for_manual_apply}`,
     `- target_file_count: ${pkg.manual_patch_package.target_file_count}`,
+    `- ready_target_file_count: ${pkg.manual_patch_package.ready_target_file_count}`,
+    `- blocked_target_file_count: ${pkg.manual_patch_package.blocked_target_file_count}`,
     `- total_patch_count: ${pkg.manual_patch_package.total_patch_count}`,
     `- project_patch_count: ${pkg.manual_patch_package.project_patch_count}`,
     `- expansion_patch_count: ${pkg.manual_patch_package.expansion_patch_count}`,
@@ -3624,6 +3688,10 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- source_ref_coverage_percent: ${pkg.manual_patch_package.source_ref_quality.coverage_percent}`,
     `- source_ref_blocker_items: ${pkg.manual_patch_package.source_ref_quality.blocker_item_count}`,
     `- source_ref_warning_items: ${pkg.manual_patch_package.source_ref_quality.warning_item_count}`,
+    `- source_ref_check_warning_count: ${pkg.manual_patch_package.source_ref_quality.source_ref_check_warning_count}`,
+    `- source_ref_check_blocker_count: ${pkg.manual_patch_package.source_ref_quality.source_ref_check_blocker_count}`,
+    `- manual_patch_manifest_id: ${pkg.manual_patch_package.manual_patch_manifest.manifest_id}`,
+    `- manual_patch_manifest_sha256: ${pkg.manual_patch_package.manual_patch_manifest.sha256}`,
     ...pkg.manual_patch_package.ready_reasons.map(reason => `- ready_reason: ${reason}`),
     ...pkg.manual_patch_package.blocker_reasons.map(reason => `- blocker_reason: ${reason}`),
     ...pkg.manual_patch_package.warning_reasons.map(reason => `- warning_reason: ${reason}`),
@@ -3761,6 +3829,8 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     };
   });
   const totalPatchCount = targetPatches.reduce((sum, item) => sum + item.total_patch_count, 0);
+  const readyTargetFileCount = targetPatches.filter(item => item.ready_for_manual_apply).length;
+  const blockedTargetFileCount = targetPatches.length - readyTargetFileCount;
   const readyForSignoffCount = input.preflight.review_handoff.signoff_batch_summaries
     .reduce((sum, item) => sum + item.ready_for_signoff_count, 0);
   const blockerReasons = knowledgeWritebackManualPatchPackageBlockerReasons({
@@ -3770,6 +3840,13 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
   });
   const warningReasons = knowledgeWritebackManualPatchPackageWarningReasons(input.preflight.source_ref_quality);
   const readyForManualApply = blockerReasons.length === 0;
+  const manualPatchManifest = buildKnowledgeWritebackManualPatchManifest({
+    exportedAt: input.exportedAt,
+    targetPatches,
+    sourceRefQuality: input.preflight.source_ref_quality,
+    readyTargetFileCount,
+    blockedTargetFileCount,
+  });
   const readyReasons = readyForManualApply
     ? [
       'manual_patch_has_target_patches',
@@ -3789,6 +3866,8 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     ready_for_manual_apply: readyForManualApply,
     target_file_count: targetPatches.length,
     target_files: input.targetFiles,
+    ready_target_file_count: readyTargetFileCount,
+    blocked_target_file_count: blockedTargetFileCount,
     total_patch_count: totalPatchCount,
     project_patch_count: input.projectItems.length,
     expansion_patch_count: input.expansionItems.length,
@@ -3796,6 +3875,7 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     candidate_field_count: input.expansionItems.reduce((sum, item) =>
       sum + (item.field_supplement_candidate_count ?? domainPackExpansionCandidateFieldCount(item)), 0),
     source_ref_quality: input.preflight.source_ref_quality,
+    manual_patch_manifest: manualPatchManifest,
     ready_reasons: readyReasons,
     blocker_reasons: blockerReasons,
     warning_reasons: warningReasons,
@@ -3808,10 +3888,16 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
       `ready_blockers=${blockerReasons.length}`,
       `ready_warnings=${warningReasons.length}`,
       `target_files=${targetPatches.length}`,
+      `ready_target_files=${readyTargetFileCount}`,
+      `blocked_target_files=${blockedTargetFileCount}`,
       `total_patch_count=${totalPatchCount}`,
+      `manual_patch_manifest_id=${manualPatchManifest.manifest_id}`,
+      `manual_patch_manifest_sha256=${manualPatchManifest.sha256}`,
       `review_handoff_ready_for_signoff=${readyForSignoffCount}/${input.preflight.review_handoff.total_handoff_count}`,
       `source_ref_coverage=${input.preflight.source_ref_quality.coverage_percent}%`,
       `source_ref_blocker_items=${input.preflight.source_ref_quality.blocker_item_count}`,
+      `source_ref_check_warnings=${input.preflight.source_ref_quality.source_ref_check_warning_count}`,
+      `source_ref_check_blockers=${input.preflight.source_ref_quality.source_ref_check_blocker_count}`,
     ],
     operator_checklist: [
       '先核对 signoff manifest、review_note、reviewer_identity 和 signoff_batch_id。',
@@ -3821,6 +3907,56 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
       '人工写回完成后再单独把对应任务标记为 written_back。',
     ],
     target_patches: targetPatches,
+  };
+}
+
+function buildKnowledgeWritebackManualPatchManifest(input: {
+  exportedAt: string;
+  targetPatches: Array<Pick<
+    KnowledgeWritebackManualPatchTarget,
+    'target_file' | 'ready_for_manual_apply' | 'total_patch_count' | 'review_diff' | 'blocker_reasons' | 'warning_reasons'
+  >>;
+  sourceRefQuality: KnowledgeWritebackSourceRefQualitySummary;
+  readyTargetFileCount: number;
+  blockedTargetFileCount: number;
+}): KnowledgeWritebackManualPatchManifest {
+  const targetFiles = input.targetPatches.map(item => item.target_file);
+  const payload = {
+    schema_version: 'knowledge-writeback-manual-patch-manifest/v1',
+    generated_at: input.exportedAt,
+    target_files: targetFiles,
+    targets: input.targetPatches.map(item => ({
+      target_file: item.target_file,
+      ready_for_manual_apply: item.ready_for_manual_apply,
+      total_patch_count: item.total_patch_count,
+      blocker_reasons: item.blocker_reasons,
+      warning_reasons: item.warning_reasons,
+      review_diff_sha256: createHash('sha256').update(item.review_diff).digest('hex'),
+    })),
+    source_ref_check_warning_count: input.sourceRefQuality.source_ref_check_warning_count,
+    source_ref_check_blocker_count: input.sourceRefQuality.source_ref_check_blocker_count,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    patch_applyable: false,
+    manual_apply_only: true,
+  };
+  const sha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  return {
+    schema_version: 'knowledge-writeback-manual-patch-manifest/v1',
+    manifest_id: `kwb-manual-patch-${sha256.slice(0, 12)}`,
+    generated_at: input.exportedAt,
+    sha256,
+    target_file_count: targetFiles.length,
+    ready_target_file_count: input.readyTargetFileCount,
+    blocked_target_file_count: input.blockedTargetFileCount,
+    total_patch_count: input.targetPatches.reduce((sum, item) => sum + item.total_patch_count, 0),
+    source_ref_check_warning_count: input.sourceRefQuality.source_ref_check_warning_count,
+    source_ref_check_blocker_count: input.sourceRefQuality.source_ref_check_blocker_count,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    patch_applyable: false,
+    manual_apply_only: true,
+    target_files: targetFiles,
   };
 }
 
@@ -4001,7 +4137,8 @@ function buildKnowledgeWritebackQueueExportPreflight(input: {
     ready_for_manual_export: totalDraftCount > 0
       && input.targetFiles.length > 0
       && expansionFieldMissingCount === 0
-      && sourceRefQuality.blocker_item_count === 0,
+      && sourceRefQuality.blocker_item_count === 0
+      && sourceRefQuality.source_ref_check_blocker_count === 0,
     target_file_preflight: targetFilePreflight,
     review_handoff: reviewHandoff,
     safety_checks: [
@@ -4015,6 +4152,8 @@ function buildKnowledgeWritebackQueueExportPreflight(input: {
       `source_ref_coverage=${sourceRefQuality.coverage_percent}%`,
       `source_ref_blocker_items=${sourceRefQuality.blocker_item_count}`,
       `source_ref_warning_items=${sourceRefQuality.warning_item_count}`,
+      `source_ref_check_warnings=${sourceRefQuality.source_ref_check_warning_count}`,
+      `source_ref_check_blockers=${sourceRefQuality.source_ref_check_blocker_count}`,
       `review_handoff_items=${reviewHandoff.total_handoff_count}`,
       `review_handoff_requires_signoff=${reviewHandoff.requires_manual_signoff_count}`,
       `signoff_batch_summaries=${reviewHandoff.signoff_batch_summaries.length}`,
@@ -4277,6 +4416,7 @@ function buildKnowledgeWritebackSourceRefQualitySummary(
     ...projectItems.flatMap(knowledgeWritebackProjectStructuredSourceRefs),
     ...expansionItems.flatMap(item => (item.field_workbench ?? []).flatMap(field => field.source_refs)),
   ]).size;
+  const sourceRefChecks = buildKnowledgeWritebackSourceRefChecks(projectItems, expansionItems);
   return {
     schema_version: 'knowledge-writeback-source-ref-quality/v1',
     total_item_count: items.length,
@@ -4292,8 +4432,143 @@ function buildKnowledgeWritebackSourceRefQualitySummary(
     pass_item_count: items.filter(item => item.quality_level === 'pass').length,
     warning_item_count: items.filter(item => item.quality_level === 'warning').length,
     blocker_item_count: items.filter(item => item.quality_level === 'blocker').length,
+    source_ref_check_count: sourceRefChecks.length,
+    source_ref_check_pass_count: sourceRefChecks.filter(item => item.status === 'pass').length,
+    source_ref_check_warning_count: sourceRefChecks.filter(item => item.status === 'warning').length,
+    source_ref_check_blocker_count: sourceRefChecks.filter(item => item.status === 'blocker').length,
+    local_source_ref_count: sourceRefChecks.filter(item => item.local_path).length,
+    file_missing_source_ref_count: sourceRefChecks.filter(item => item.reason === 'local_file_missing').length,
+    anchor_missing_source_ref_count: sourceRefChecks.filter(item => item.reason === 'anchor_missing_manual_review').length,
+    source_ref_checks: sourceRefChecks,
     items,
   };
+}
+
+function buildKnowledgeWritebackSourceRefChecks(
+  projectItems: ProjectKnowledgeWritebackPatchItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+): KnowledgeWritebackSourceRefCheck[] {
+  return [
+    ...projectItems.flatMap(item => knowledgeWritebackProjectStructuredSourceRefs(item).map(sourceRef =>
+      resolveKnowledgeWritebackSourceRefCheck({
+        sourceRef,
+        sourceKind: 'project',
+        itemId: item.task_key ?? `${item.project_id ?? 'project'}::${item.task_id}`,
+        targetFile: item.suggested_file_path,
+      }),
+    )),
+    ...expansionItems.flatMap(item => (item.field_workbench ?? [])
+      .flatMap(field => field.source_refs)
+      .map(sourceRef => resolveKnowledgeWritebackSourceRefCheck({
+        sourceRef,
+        sourceKind: 'domain_pack_expansion',
+        itemId: item.review_item_id,
+        targetFile: item.suggested_file_path,
+      }))),
+  ];
+}
+
+function resolveKnowledgeWritebackSourceRefCheck(input: {
+  sourceRef: string;
+  sourceKind: KnowledgeWritebackSourceRefCheck['source_kind'];
+  itemId: string;
+  targetFile: string;
+}): KnowledgeWritebackSourceRefCheck {
+  if (input.sourceKind === 'project') {
+    return {
+      source_ref: input.sourceRef,
+      source_kind: input.sourceKind,
+      item_id: input.itemId,
+      target_file: input.targetFile,
+      file_exists: false,
+      anchor_checked: false,
+      anchor_found: false,
+      status: 'warning',
+      reason: 'project_markdown_reference',
+    };
+  }
+
+  const parsed = parseKnowledgeWritebackLocalSourceRef(input.sourceRef);
+  if (!parsed) {
+    return {
+      source_ref: input.sourceRef,
+      source_kind: input.sourceKind,
+      item_id: input.itemId,
+      target_file: input.targetFile,
+      file_exists: false,
+      anchor_checked: false,
+      anchor_found: false,
+      status: /^https?:\/\//.test(input.sourceRef) ? 'pass' : 'warning',
+      reason: /^https?:\/\//.test(input.sourceRef) ? 'external_source_ref' : 'unparsed_source_ref',
+    };
+  }
+
+  const localPath = path.resolve(getKbRoot(), parsed.localPath.replace(/^data\//, ''));
+  if (!existsSync(localPath)) {
+    return {
+      source_ref: input.sourceRef,
+      source_kind: input.sourceKind,
+      item_id: input.itemId,
+      target_file: input.targetFile,
+      local_path: parsed.localPath,
+      anchor: parsed.anchor,
+      file_exists: false,
+      anchor_checked: Boolean(parsed.anchor),
+      anchor_found: false,
+      status: 'blocker',
+      reason: 'local_file_missing',
+    };
+  }
+
+  if (!parsed.anchor) {
+    return {
+      source_ref: input.sourceRef,
+      source_kind: input.sourceKind,
+      item_id: input.itemId,
+      target_file: input.targetFile,
+      local_path: parsed.localPath,
+      file_exists: true,
+      anchor_checked: false,
+      anchor_found: false,
+      status: 'pass',
+      reason: 'local_file_exists_no_anchor',
+    };
+  }
+
+  const anchorFound = knowledgeWritebackSourceAnchorExists(localPath, parsed.anchor);
+  return {
+    source_ref: input.sourceRef,
+    source_kind: input.sourceKind,
+    item_id: input.itemId,
+    target_file: input.targetFile,
+    local_path: parsed.localPath,
+    anchor: parsed.anchor,
+    file_exists: true,
+    anchor_checked: true,
+    anchor_found: anchorFound,
+    status: anchorFound ? 'pass' : 'warning',
+    reason: anchorFound ? 'anchor_found' : 'anchor_missing_manual_review',
+  };
+}
+
+function parseKnowledgeWritebackLocalSourceRef(sourceRef: string): { localPath: string; anchor?: string } | undefined {
+  const [rawPath, rawAnchor] = sourceRef.split('#');
+  if (!rawPath.startsWith('data/')) return undefined;
+  return {
+    localPath: rawPath,
+    anchor: rawAnchor ? decodeURIComponent(rawAnchor).trim() : undefined,
+  };
+}
+
+function knowledgeWritebackSourceAnchorExists(localPath: string, anchor: string): boolean {
+  try {
+    const content = readFileSync(localPath, 'utf8');
+    return content.includes(anchor)
+      || content.includes(anchor.replace(/：/g, ':'))
+      || content.includes(anchor.replace(/:/g, '：'));
+  } catch {
+    return false;
+  }
 }
 
 function knowledgeWritebackProjectSourceRefQualityItem(
@@ -4397,6 +4672,9 @@ function knowledgeWritebackManualPatchPackageBlockerReasons(input: {
     input.preflight.source_ref_quality.blocker_item_count > 0
       ? `source_ref_quality_blockers=${input.preflight.source_ref_quality.blocker_item_count}`
       : undefined,
+    input.preflight.source_ref_quality.source_ref_check_blocker_count > 0
+      ? `source_ref_check_blockers=${input.preflight.source_ref_quality.source_ref_check_blocker_count}`
+      : undefined,
   ].filter((reason): reason is string => Boolean(reason));
 }
 
@@ -4405,6 +4683,9 @@ function knowledgeWritebackManualPatchPackageWarningReasons(
 ): string[] {
   return [
     sourceRefQuality.warning_item_count > 0 ? `source_ref_quality_warnings=${sourceRefQuality.warning_item_count}` : undefined,
+    sourceRefQuality.source_ref_check_warning_count > 0
+      ? `source_ref_check_warnings=${sourceRefQuality.source_ref_check_warning_count}`
+      : undefined,
     sourceRefQuality.missing_verification_note_field_count > 0
       ? `missing_verification_notes=${sourceRefQuality.missing_verification_note_field_count}`
       : undefined,
@@ -4424,6 +4705,9 @@ function knowledgeWritebackTargetManualPatchBlockerReasons(
     projectItems.length + expansionItems.length === 0 ? `no_patch_items_for_target=${targetFile}` : undefined,
     sourceRefQuality.blocker_item_count > 0
       ? `target_source_ref_blockers=${sourceRefQuality.blocker_item_count}`
+      : undefined,
+    sourceRefQuality.source_ref_check_blocker_count > 0
+      ? `target_source_ref_check_blockers=${sourceRefQuality.source_ref_check_blocker_count}`
       : undefined,
   ].filter((reason): reason is string => Boolean(reason));
 }

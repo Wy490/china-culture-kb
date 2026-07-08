@@ -3079,6 +3079,646 @@
           ]
         }
       ]
+    },
+    {
+      "batch_id": "third_batch_real_candidates_followup_20260708",
+      "pack_id": "third_batch_real_candidate_followup_pack",
+      "entry_name": "第三批真实候选续包——戏曲、民歌、银饰与红色微纪录补源",
+      "priority": "P1",
+      "status": "candidate_review",
+      "target_video_types": [
+        "explainer_video",
+        "heritage_promo",
+        "documentary_short",
+        "ai_comic_drama"
+      ],
+      "field_groups": [
+        {
+          "group_id": "source_verification_and_boundary",
+          "candidate_fields": [
+            "core_question",
+            "source_line",
+            "manual_patch_note"
+          ],
+          "review_questions": [
+            "来源锚点是否可解析？",
+            "事实/评价/改编边界是否清楚？",
+            "是否仍保持人工写回边界？"
+          ]
+        },
+        {
+          "group_id": "production_asset_handoff",
+          "candidate_fields": [
+            "visual_or_scene_assets"
+          ],
+          "review_questions": [
+            "资产是否可拍/可画/可授权？",
+            "是否能服务讲解、非遗宣传、纪录和 AI 漫剧？"
+          ]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "湖南花鼓戏——湖南人的戏",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "湖南花鼓戏如何把地方小戏、生活口语和舞台喜剧节奏讲成一条知识线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#湖南花鼓戏——湖南人的戏"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《湖南花鼓戏——湖南人的戏》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《湖南花鼓戏——湖南人的戏》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#湖南花鼓戏——湖南人的戏",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "花鼓戏舞台、扇子、手帕、锣鼓点、乡场戏台和唱腔示意卡。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#湖南花鼓戏——湖南人的戏"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：剧种源流、代表剧目和流派归属需以本地条目和权威戏曲资料复核。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#湖南花鼓戏——湖南人的戏"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "苗族鼓舞——湘西大山的节奏",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "苗族鼓舞为什么能在非遗宣传和 AI 漫剧中承担“节奏主角”？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#苗族鼓舞——湘西大山的节奏"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《苗族鼓舞——湘西大山的节奏》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《苗族鼓舞——湘西大山的节奏》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#苗族鼓舞——湘西大山的节奏",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "鼓场、鼓架、银饰、苗寨广场、集体舞步和鼓点分镜。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#苗族鼓舞——湘西大山的节奏"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：祭祀、节庆与舞台展演语境需分开说明，避免把所有苗族鼓舞合并为一种固定程式。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#苗族鼓舞——湘西大山的节奏"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "桑植民歌——长征路上的歌声与守望",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "桑植民歌如何把山地生活、红色记忆和口传旋律连接成纪录短片主线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#桑植民歌——长征路上的歌声与守望"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《桑植民歌——长征路上的歌声与守望》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《桑植民歌——长征路上的歌声与守望》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#桑植民歌——长征路上的歌声与守望",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "山路、吊脚楼、对歌场景、老歌手手势、歌词板和长征路线图。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#桑植民歌——长征路上的歌声与守望"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：歌词版本、采集人和红色叙事关联需逐条核验。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#桑植民歌——长征路上的歌声与守望"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "湘西苗族银饰——穿在身上的迁徙史诗",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "苗族银饰为什么适合作为 heritage_promo 的“可视化知识入口”？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#湘西苗族银饰——穿在身上的迁徙史诗"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《湘西苗族银饰——穿在身上的迁徙史诗》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《湘西苗族银饰——穿在身上的迁徙史诗》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#湘西苗族银饰——穿在身上的迁徙史诗",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "银冠、银项圈、锻打工具、纹样局部、佩戴礼仪和迁徙纹样图。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#湘西苗族银饰——穿在身上的迁徙史诗"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：纹样阐释、族群支系和仪式含义必须标注来源边界。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#湘西苗族银饰——穿在身上的迁徙史诗"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "衡山皮影戏——湘南光影的千年传奇",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "衡山皮影戏如何把光、幕、唱腔和影偶操纵讲成一条短视频知识链？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#衡山皮影戏——湘南光影的千年传奇"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《衡山皮影戏——湘南光影的千年传奇》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《衡山皮影戏——湘南光影的千年传奇》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#衡山皮影戏——湘南光影的千年传奇",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "白幕、油灯或灯箱、影偶关节、操纵杆、后台乐队和光影特写。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#衡山皮影戏——湘南光影的千年传奇"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：历史年代、传承谱系和剧目名称需保留人工复核。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#衡山皮影戏——湘南光影的千年传奇"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "辰河高腔——沅水中上游的中国戏曲活化石",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "辰河高腔的“高腔”怎样从声腔概念转化成可听、可看的 explainer_video？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#辰河高腔——沅水中上游的中国戏曲活化石"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《辰河高腔——沅水中上游的中国戏曲活化石》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《辰河高腔——沅水中上游的中国戏曲活化石》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#辰河高腔——沅水中上游的中国戏曲活化石",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "沅水码头、古戏台、帮腔示意、锣鼓场面、剧本文字和声腔波形卡。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#辰河高腔——沅水中上游的中国戏曲活化石"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：“活化石”等评价性表述需绑定出处，声腔源流不做绝对断言。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#辰河高腔——沅水中上游的中国戏曲活化石"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "平型关大捷——抗战以来中国军队首次大胜",
+          "province": "山西",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "平型关大捷如何用地形、伏击路线和战役意义做成微纪录？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/山西.md#平型关大捷——抗战以来中国军队首次大胜"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《平型关大捷——抗战以来中国军队首次大胜》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《平型关大捷——抗战以来中国军队首次大胜》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/山西.md#平型关大捷——抗战以来中国军队首次大胜",
+                "data/provinces/山西.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "平型关地形图、山口道路、伏击线、纪念馆展陈、老照片和战斗时间轴。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/山西.md#平型关大捷——抗战以来中国军队首次大胜"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：战果数字、部队番号和“首次大胜”表述需按本地条目及权威史料核验。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/山西.md#平型关大捷——抗战以来中国军队首次大胜"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "太行山八路军根据地——抗战的中流砥柱",
+          "province": "山西",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "太行山根据地怎样把山地交通、群众动员和敌后抗战组织成知识讲解？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/山西.md#太行山八路军根据地——抗战的中流砥柱"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《太行山八路军根据地——抗战的中流砥柱》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《太行山八路军根据地——抗战的中流砥柱》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/山西.md#太行山八路军根据地——抗战的中流砥柱",
+                "data/provinces/山西.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "太行山路、根据地旧址、交通线示意、军民生产场景和地图动画。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/山西.md#太行山八路军根据地——抗战的中流砥柱"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：根据地范围、组织系统和具体事件时间需避免混写。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/山西.md#太行山八路军根据地——抗战的中流砥柱"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "九一八事变——东北沦陷的开端",
+          "province": "辽宁",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "九一八事变如何以“一个夜晚的铁路爆炸”讲清东北沦陷的开端？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/辽宁.md#九一八事变——东北沦陷的开端"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《九一八事变——东北沦陷的开端》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《九一八事变——东北沦陷的开端》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/辽宁.md#九一八事变——东北沦陷的开端",
+                "data/provinces/辽宁.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "柳条湖地图、沈阳城夜景、铁路示意、纪念馆展陈和时间轴字幕。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/辽宁.md#九一八事变——东北沦陷的开端"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：历史事件呈现需庄重克制，避免娱乐化、阴谋化或未经核验的细节复原。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/辽宁.md#九一八事变——东北沦陷的开端"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "辽沈战役——解放东北的决定性一战",
+          "province": "辽宁",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "辽沈战役如何通过锦州、长春、沈阳三段结构讲清战略决战？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/辽宁.md#辽沈战役——解放东北的决定性一战"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《辽沈战役——解放东北的决定性一战》，正式写回前复核标题锚点与来源索引。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《辽沈战役——解放东北的决定性一战》，再补充官方名录、纪念馆/保护单位资料、地方志或研究论文；口述与传说只作素材线索。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/辽宁.md#辽沈战役——解放东北的决定性一战",
+                "data/provinces/辽宁.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "东北地图、三城关系图、战役时间轴、纪念馆展陈和行军路线。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/辽宁.md#辽沈战役——解放东北的决定性一战"
+              ],
+              "writeback_hint": "作为前端验收和 GEARS/Seedance 生产资产提示候选，需人工确认版权和真实可拍性。",
+              "verification_note": "资产清单从本地条目语境抽取；图片、影像和场馆素材需另行授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：兵力数字、伤亡数字、战役评价和城市攻防细节需以权威史料复核。 本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/辽宁.md#辽沈战役——解放东北的决定性一战"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、改编和生产资产之间的边界。"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

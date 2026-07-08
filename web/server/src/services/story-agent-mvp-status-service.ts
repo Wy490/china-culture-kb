@@ -154,12 +154,20 @@ interface KnowledgeWritebackQueueMetrics {
   manual_patch_package_schema: 'knowledge-writeback-manual-patch-package/v1' | '';
   manual_patch_ready: boolean;
   manual_patch_target_file_count: number;
+  manual_patch_ready_target_file_count: number;
+  manual_patch_blocked_target_file_count: number;
+  manual_patch_manifest_id: string;
+  manual_patch_manifest_sha256: string;
   manual_patch_total_patch_count: number;
   manual_patch_project_patch_count: number;
   manual_patch_expansion_patch_count: number;
   source_ref_coverage_percent: number;
   source_ref_blocker_item_count: number;
   source_ref_warning_item_count: number;
+  source_ref_check_warning_count: number;
+  source_ref_check_blocker_count: number;
+  file_missing_source_ref_count: number;
+  anchor_missing_source_ref_count: number;
   missing_source_ref_field_count: number;
   missing_verification_note_field_count: number;
   missing_writeback_hint_field_count: number;
@@ -590,12 +598,20 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
   | 'manual_patch_package_schema'
   | 'manual_patch_ready'
   | 'manual_patch_target_file_count'
+  | 'manual_patch_ready_target_file_count'
+  | 'manual_patch_blocked_target_file_count'
+  | 'manual_patch_manifest_id'
+  | 'manual_patch_manifest_sha256'
   | 'manual_patch_total_patch_count'
   | 'manual_patch_project_patch_count'
   | 'manual_patch_expansion_patch_count'
   | 'source_ref_coverage_percent'
   | 'source_ref_blocker_item_count'
   | 'source_ref_warning_item_count'
+  | 'source_ref_check_warning_count'
+  | 'source_ref_check_blocker_count'
+  | 'file_missing_source_ref_count'
+  | 'anchor_missing_source_ref_count'
   | 'missing_source_ref_field_count'
   | 'missing_verification_note_field_count'
   | 'missing_writeback_hint_field_count'
@@ -637,12 +653,20 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       manual_patch_package_schema: exportPackage.manual_patch_package.schema_version,
       manual_patch_ready: exportPackage.manual_patch_package.ready_for_manual_apply,
       manual_patch_target_file_count: exportPackage.manual_patch_package.target_file_count,
+      manual_patch_ready_target_file_count: exportPackage.manual_patch_package.ready_target_file_count,
+      manual_patch_blocked_target_file_count: exportPackage.manual_patch_package.blocked_target_file_count,
+      manual_patch_manifest_id: exportPackage.manual_patch_package.manual_patch_manifest.manifest_id,
+      manual_patch_manifest_sha256: exportPackage.manual_patch_package.manual_patch_manifest.sha256,
       manual_patch_total_patch_count: exportPackage.manual_patch_package.total_patch_count,
       manual_patch_project_patch_count: exportPackage.manual_patch_package.project_patch_count,
       manual_patch_expansion_patch_count: exportPackage.manual_patch_package.expansion_patch_count,
       source_ref_coverage_percent: sourceRefQuality.coverage_percent,
       source_ref_blocker_item_count: sourceRefQuality.blocker_item_count,
       source_ref_warning_item_count: sourceRefQuality.warning_item_count,
+      source_ref_check_warning_count: sourceRefQuality.source_ref_check_warning_count,
+      source_ref_check_blocker_count: sourceRefQuality.source_ref_check_blocker_count,
+      file_missing_source_ref_count: sourceRefQuality.file_missing_source_ref_count,
+      anchor_missing_source_ref_count: sourceRefQuality.anchor_missing_source_ref_count,
       missing_source_ref_field_count: sourceRefQuality.missing_source_ref_field_count,
       missing_verification_note_field_count: sourceRefQuality.missing_verification_note_field_count,
       missing_writeback_hint_field_count: sourceRefQuality.missing_writeback_hint_field_count,
@@ -677,12 +701,20 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       manual_patch_package_schema: '',
       manual_patch_ready: false,
       manual_patch_target_file_count: 0,
+      manual_patch_ready_target_file_count: 0,
+      manual_patch_blocked_target_file_count: 0,
+      manual_patch_manifest_id: '',
+      manual_patch_manifest_sha256: '',
       manual_patch_total_patch_count: 0,
       manual_patch_project_patch_count: 0,
       manual_patch_expansion_patch_count: 0,
       source_ref_coverage_percent: 0,
       source_ref_blocker_item_count: 0,
       source_ref_warning_item_count: 0,
+      source_ref_check_warning_count: 0,
+      source_ref_check_blocker_count: 0,
+      file_missing_source_ref_count: 0,
+      anchor_missing_source_ref_count: 0,
       missing_source_ref_field_count: 0,
       missing_verification_note_field_count: 0,
       missing_writeback_hint_field_count: 0,
@@ -806,12 +838,19 @@ function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryA
       `manual_patch_schema=${metrics.manual_patch_package_schema || 'none'}`,
       `manual_patch_ready=${metrics.manual_patch_ready}`,
       `manual_patch_targets=${metrics.manual_patch_target_file_count}`,
+      `manual_patch_ready_targets=${metrics.manual_patch_ready_target_file_count}`,
+      `manual_patch_blocked_targets=${metrics.manual_patch_blocked_target_file_count}`,
+      `manual_patch_manifest=${metrics.manual_patch_manifest_id || 'none'}`,
       `manual_patch_total=${metrics.manual_patch_total_patch_count}`,
       `manual_patch_project=${metrics.manual_patch_project_patch_count}`,
       `manual_patch_expansion=${metrics.manual_patch_expansion_patch_count}`,
       `source_ref_coverage=${metrics.source_ref_coverage_percent}%`,
       `source_ref_blocker_items=${metrics.source_ref_blocker_item_count}`,
       `source_ref_warning_items=${metrics.source_ref_warning_item_count}`,
+      `source_ref_check_warnings=${metrics.source_ref_check_warning_count}`,
+      `source_ref_check_blockers=${metrics.source_ref_check_blocker_count}`,
+      `file_missing_source_refs=${metrics.file_missing_source_ref_count}`,
+      `anchor_missing_source_refs=${metrics.anchor_missing_source_ref_count}`,
       `missing_source_ref_fields=${metrics.missing_source_ref_field_count}`,
       `missing_verification_note_fields=${metrics.missing_verification_note_field_count}`,
       `missing_writeback_hint_fields=${metrics.missing_writeback_hint_field_count}`,
@@ -1188,10 +1227,17 @@ function progressSlices(
         `knowledge_writeback_manual_patch_schema=${writebackMetrics.manual_patch_package_schema || 'none'}`,
         `knowledge_writeback_manual_patch_ready=${writebackMetrics.manual_patch_ready}`,
         `knowledge_writeback_manual_patch_targets=${writebackMetrics.manual_patch_target_file_count}`,
+        `knowledge_writeback_manual_patch_ready_targets=${writebackMetrics.manual_patch_ready_target_file_count}`,
+        `knowledge_writeback_manual_patch_blocked_targets=${writebackMetrics.manual_patch_blocked_target_file_count}`,
+        `knowledge_writeback_manual_patch_manifest=${writebackMetrics.manual_patch_manifest_id || 'none'}`,
         `knowledge_writeback_manual_patch_total=${writebackMetrics.manual_patch_total_patch_count}`,
         `knowledge_writeback_source_ref_coverage=${writebackMetrics.source_ref_coverage_percent}%`,
         `knowledge_writeback_source_ref_blockers=${writebackMetrics.source_ref_blocker_item_count}`,
         `knowledge_writeback_source_ref_warnings=${writebackMetrics.source_ref_warning_item_count}`,
+        `knowledge_writeback_source_ref_check_warnings=${writebackMetrics.source_ref_check_warning_count}`,
+        `knowledge_writeback_source_ref_check_blockers=${writebackMetrics.source_ref_check_blocker_count}`,
+        `knowledge_writeback_file_missing_source_refs=${writebackMetrics.file_missing_source_ref_count}`,
+        `knowledge_writeback_anchor_missing_source_refs=${writebackMetrics.anchor_missing_source_ref_count}`,
         `knowledge_writeback_missing_source_ref_fields=${writebackMetrics.missing_source_ref_field_count}`,
         `knowledge_writeback_missing_verification_note_fields=${writebackMetrics.missing_verification_note_field_count}`,
         `knowledge_writeback_missing_writeback_hint_fields=${writebackMetrics.missing_writeback_hint_field_count}`,
@@ -1302,8 +1348,12 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- knowledge writeback signoff package: ${report.summary.knowledge_writeback_signoff_package_schema || 'none'} (${report.summary.knowledge_writeback_signoff_package_item_count} items, ${report.summary.knowledge_writeback_signoff_package_batch_summary_count} batches)`,
     `- knowledge writeback manual patch package: ${report.summary.knowledge_writeback_manual_patch_package_schema || 'none'} (${report.summary.knowledge_writeback_manual_patch_total_patch_count} patches, ready=${report.summary.knowledge_writeback_manual_patch_ready})`,
     `- knowledge writeback manual patch targets: ${report.summary.knowledge_writeback_manual_patch_target_file_count} files; project=${report.summary.knowledge_writeback_manual_patch_project_patch_count}; expansion=${report.summary.knowledge_writeback_manual_patch_expansion_patch_count}`,
+    `- knowledge writeback manual patch target readiness: ${report.summary.knowledge_writeback_manual_patch_ready_target_file_count}/${report.summary.knowledge_writeback_manual_patch_target_file_count} ready; blocked=${report.summary.knowledge_writeback_manual_patch_blocked_target_file_count}`,
+    `- knowledge writeback manual patch manifest: ${report.summary.knowledge_writeback_manual_patch_manifest_id || 'none'}`,
     `- knowledge writeback source ref coverage: ${report.summary.knowledge_writeback_source_ref_coverage_percent}%`,
     `- knowledge writeback source ref blockers/warnings: ${report.summary.knowledge_writeback_source_ref_blocker_item_count}/${report.summary.knowledge_writeback_source_ref_warning_item_count}`,
+    `- knowledge writeback source ref check warnings/blockers: ${report.summary.knowledge_writeback_source_ref_check_warning_count}/${report.summary.knowledge_writeback_source_ref_check_blocker_count}`,
+    `- knowledge writeback file/anchor source ref issues: ${report.summary.knowledge_writeback_file_missing_source_ref_count}/${report.summary.knowledge_writeback_anchor_missing_source_ref_count}`,
     `- knowledge writeback missing source/verifications/hints: ${report.summary.knowledge_writeback_missing_source_ref_field_count}/${report.summary.knowledge_writeback_missing_verification_note_field_count}/${report.summary.knowledge_writeback_missing_writeback_hint_field_count}`,
     `- knowledge writeback manual patch blocker/warning reasons: ${report.summary.knowledge_writeback_manual_patch_blocker_reason_count}/${report.summary.knowledge_writeback_manual_patch_warning_reason_count}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
@@ -1525,12 +1575,20 @@ export async function getStoryAgentMvpStatus(
       knowledge_writeback_manual_patch_package_schema: writebackMetrics.manual_patch_package_schema,
       knowledge_writeback_manual_patch_ready: writebackMetrics.manual_patch_ready,
       knowledge_writeback_manual_patch_target_file_count: writebackMetrics.manual_patch_target_file_count,
+      knowledge_writeback_manual_patch_ready_target_file_count: writebackMetrics.manual_patch_ready_target_file_count,
+      knowledge_writeback_manual_patch_blocked_target_file_count: writebackMetrics.manual_patch_blocked_target_file_count,
+      knowledge_writeback_manual_patch_manifest_id: writebackMetrics.manual_patch_manifest_id,
+      knowledge_writeback_manual_patch_manifest_sha256: writebackMetrics.manual_patch_manifest_sha256,
       knowledge_writeback_manual_patch_total_patch_count: writebackMetrics.manual_patch_total_patch_count,
       knowledge_writeback_manual_patch_project_patch_count: writebackMetrics.manual_patch_project_patch_count,
       knowledge_writeback_manual_patch_expansion_patch_count: writebackMetrics.manual_patch_expansion_patch_count,
       knowledge_writeback_source_ref_coverage_percent: writebackMetrics.source_ref_coverage_percent,
       knowledge_writeback_source_ref_blocker_item_count: writebackMetrics.source_ref_blocker_item_count,
       knowledge_writeback_source_ref_warning_item_count: writebackMetrics.source_ref_warning_item_count,
+      knowledge_writeback_source_ref_check_warning_count: writebackMetrics.source_ref_check_warning_count,
+      knowledge_writeback_source_ref_check_blocker_count: writebackMetrics.source_ref_check_blocker_count,
+      knowledge_writeback_file_missing_source_ref_count: writebackMetrics.file_missing_source_ref_count,
+      knowledge_writeback_anchor_missing_source_ref_count: writebackMetrics.anchor_missing_source_ref_count,
       knowledge_writeback_missing_source_ref_field_count: writebackMetrics.missing_source_ref_field_count,
       knowledge_writeback_missing_verification_note_field_count: writebackMetrics.missing_verification_note_field_count,
       knowledge_writeback_missing_writeback_hint_field_count: writebackMetrics.missing_writeback_hint_field_count,
