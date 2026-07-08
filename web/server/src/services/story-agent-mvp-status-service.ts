@@ -158,6 +158,9 @@ interface KnowledgeWritebackQueueMetrics {
   manual_patch_blocked_target_file_count: number;
   manual_patch_manifest_id: string;
   manual_patch_manifest_sha256: string;
+  manual_patch_closure_certificate_id: string;
+  manual_patch_closure_certificate_sha256: string;
+  manual_patch_closure_certificate_ready: boolean;
   manual_patch_total_patch_count: number;
   manual_patch_project_patch_count: number;
   manual_patch_expansion_patch_count: number;
@@ -602,6 +605,9 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
   | 'manual_patch_blocked_target_file_count'
   | 'manual_patch_manifest_id'
   | 'manual_patch_manifest_sha256'
+  | 'manual_patch_closure_certificate_id'
+  | 'manual_patch_closure_certificate_sha256'
+  | 'manual_patch_closure_certificate_ready'
   | 'manual_patch_total_patch_count'
   | 'manual_patch_project_patch_count'
   | 'manual_patch_expansion_patch_count'
@@ -657,6 +663,12 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       manual_patch_blocked_target_file_count: exportPackage.manual_patch_package.blocked_target_file_count,
       manual_patch_manifest_id: exportPackage.manual_patch_package.manual_patch_manifest.manifest_id,
       manual_patch_manifest_sha256: exportPackage.manual_patch_package.manual_patch_manifest.sha256,
+      manual_patch_closure_certificate_id:
+        exportPackage.manual_patch_package.manual_patch_closure_certificate.certificate_id,
+      manual_patch_closure_certificate_sha256:
+        exportPackage.manual_patch_package.manual_patch_closure_certificate.sha256,
+      manual_patch_closure_certificate_ready:
+        exportPackage.manual_patch_package.manual_patch_closure_certificate.ready_for_operator_apply,
       manual_patch_total_patch_count: exportPackage.manual_patch_package.total_patch_count,
       manual_patch_project_patch_count: exportPackage.manual_patch_package.project_patch_count,
       manual_patch_expansion_patch_count: exportPackage.manual_patch_package.expansion_patch_count,
@@ -705,6 +717,9 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       manual_patch_blocked_target_file_count: 0,
       manual_patch_manifest_id: '',
       manual_patch_manifest_sha256: '',
+      manual_patch_closure_certificate_id: '',
+      manual_patch_closure_certificate_sha256: '',
+      manual_patch_closure_certificate_ready: false,
       manual_patch_total_patch_count: 0,
       manual_patch_project_patch_count: 0,
       manual_patch_expansion_patch_count: 0,
@@ -841,6 +856,8 @@ function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryA
       `manual_patch_ready_targets=${metrics.manual_patch_ready_target_file_count}`,
       `manual_patch_blocked_targets=${metrics.manual_patch_blocked_target_file_count}`,
       `manual_patch_manifest=${metrics.manual_patch_manifest_id || 'none'}`,
+      `manual_patch_closure_certificate=${metrics.manual_patch_closure_certificate_id || 'none'}`,
+      `manual_patch_closure_certificate_ready=${metrics.manual_patch_closure_certificate_ready}`,
       `manual_patch_total=${metrics.manual_patch_total_patch_count}`,
       `manual_patch_project=${metrics.manual_patch_project_patch_count}`,
       `manual_patch_expansion=${metrics.manual_patch_expansion_patch_count}`,
@@ -1230,6 +1247,8 @@ function progressSlices(
         `knowledge_writeback_manual_patch_ready_targets=${writebackMetrics.manual_patch_ready_target_file_count}`,
         `knowledge_writeback_manual_patch_blocked_targets=${writebackMetrics.manual_patch_blocked_target_file_count}`,
         `knowledge_writeback_manual_patch_manifest=${writebackMetrics.manual_patch_manifest_id || 'none'}`,
+        `knowledge_writeback_manual_patch_closure_certificate=${writebackMetrics.manual_patch_closure_certificate_id || 'none'}`,
+        `knowledge_writeback_manual_patch_closure_ready=${writebackMetrics.manual_patch_closure_certificate_ready}`,
         `knowledge_writeback_manual_patch_total=${writebackMetrics.manual_patch_total_patch_count}`,
         `knowledge_writeback_source_ref_coverage=${writebackMetrics.source_ref_coverage_percent}%`,
         `knowledge_writeback_source_ref_blockers=${writebackMetrics.source_ref_blocker_item_count}`,
@@ -1350,6 +1369,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- knowledge writeback manual patch targets: ${report.summary.knowledge_writeback_manual_patch_target_file_count} files; project=${report.summary.knowledge_writeback_manual_patch_project_patch_count}; expansion=${report.summary.knowledge_writeback_manual_patch_expansion_patch_count}`,
     `- knowledge writeback manual patch target readiness: ${report.summary.knowledge_writeback_manual_patch_ready_target_file_count}/${report.summary.knowledge_writeback_manual_patch_target_file_count} ready; blocked=${report.summary.knowledge_writeback_manual_patch_blocked_target_file_count}`,
     `- knowledge writeback manual patch manifest: ${report.summary.knowledge_writeback_manual_patch_manifest_id || 'none'}`,
+    `- knowledge writeback manual patch closure certificate: ${report.summary.knowledge_writeback_manual_patch_closure_certificate_id || 'none'} (ready=${report.summary.knowledge_writeback_manual_patch_closure_certificate_ready})`,
     `- knowledge writeback source ref coverage: ${report.summary.knowledge_writeback_source_ref_coverage_percent}%`,
     `- knowledge writeback source ref blockers/warnings: ${report.summary.knowledge_writeback_source_ref_blocker_item_count}/${report.summary.knowledge_writeback_source_ref_warning_item_count}`,
     `- knowledge writeback source ref check warnings/blockers: ${report.summary.knowledge_writeback_source_ref_check_warning_count}/${report.summary.knowledge_writeback_source_ref_check_blocker_count}`,
@@ -1579,6 +1599,9 @@ export async function getStoryAgentMvpStatus(
       knowledge_writeback_manual_patch_blocked_target_file_count: writebackMetrics.manual_patch_blocked_target_file_count,
       knowledge_writeback_manual_patch_manifest_id: writebackMetrics.manual_patch_manifest_id,
       knowledge_writeback_manual_patch_manifest_sha256: writebackMetrics.manual_patch_manifest_sha256,
+      knowledge_writeback_manual_patch_closure_certificate_id: writebackMetrics.manual_patch_closure_certificate_id,
+      knowledge_writeback_manual_patch_closure_certificate_sha256: writebackMetrics.manual_patch_closure_certificate_sha256,
+      knowledge_writeback_manual_patch_closure_certificate_ready: writebackMetrics.manual_patch_closure_certificate_ready,
       knowledge_writeback_manual_patch_total_patch_count: writebackMetrics.manual_patch_total_patch_count,
       knowledge_writeback_manual_patch_project_patch_count: writebackMetrics.manual_patch_project_patch_count,
       knowledge_writeback_manual_patch_expansion_patch_count: writebackMetrics.manual_patch_expansion_patch_count,

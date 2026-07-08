@@ -1077,6 +1077,19 @@ describe('production health reports', () => {
           patch_applyable: false,
           manual_apply_only: true,
         }),
+        manual_patch_closure_certificate: expect.objectContaining({
+          schema_version: 'knowledge-writeback-manual-patch-closure-certificate/v1',
+          certificate_id: expect.stringMatching(/^kwb-manual-closure-/),
+          sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+          status: 'blocked',
+          ready_for_operator_apply: false,
+          target_file_count: 1,
+          ready_target_file_count: 0,
+          blocked_target_file_count: 1,
+          patch_applyable: false,
+          manual_apply_only: true,
+          operator_required_actions: expect.any(Array),
+        }),
         target_patches: [expect.objectContaining({
           target_file: 'data/provinces/湖南.md',
           patch_applyable: false,
@@ -1136,6 +1149,8 @@ describe('production health reports', () => {
     expect(unified.markdown).toContain('Signoff Package');
     expect(unified.markdown).toContain('Manual Writeback Patch Package');
     expect(unified.markdown).toContain('knowledge-writeback-manual-patch-package/v1');
+    expect(unified.markdown).toContain('knowledge-writeback-manual-patch-closure-certificate/v1');
+    expect(unified.markdown).toContain('closure_certificate_ready: false');
     expect(unified.markdown).toContain('manual_patch_ready: false');
     expect(unified.markdown).toContain('patch_applyable: false');
     expect(unified.markdown).toContain('@@ manual_append_review_only @@');

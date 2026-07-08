@@ -3719,6 +3719,1246 @@
           ]
         }
       ]
+    },
+    {
+      "batch_id": "third_batch_real_candidates_closure_20260708",
+      "pack_id": "third_batch_real_candidate_closure_pack",
+      "entry_name": "第三批真实候选闭环包——百条草案人工写回验收",
+      "priority": "P1",
+      "status": "candidate_review",
+      "target_video_types": [
+        "explainer_video",
+        "heritage_promo",
+        "documentary_short",
+        "ai_comic_drama"
+      ],
+      "field_groups": [
+        {
+          "group_id": "source_verification_closure",
+          "candidate_fields": [
+            "core_question",
+            "source_line",
+            "manual_patch_note"
+          ],
+          "review_questions": [
+            "来源锚点是否可解析？",
+            "缺失来源是否已分级？",
+            "人工写回 ready/blocker 原因是否清楚？"
+          ]
+        },
+        {
+          "group_id": "manual_patch_preview_assets",
+          "candidate_fields": [
+            "visual_or_scene_assets"
+          ],
+          "review_questions": [
+            "目标文件 diff 预览是否足够人工复核？",
+            "资产是否可拍、可画、可授权？"
+          ]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "岳州扇——洞庭湖畔的文人雅扇 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#岳州扇——洞庭湖畔的文人雅扇"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《岳州扇——洞庭湖畔的文人雅扇》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《岳州扇——洞庭湖畔的文人雅扇》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#岳州扇——洞庭湖畔的文人雅扇",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括岳州扇、洞庭湖、折扇纹样、制扇工具、雅集桌面与题字扇面；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#岳州扇——洞庭湖畔的文人雅扇"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：岳州扇——洞庭湖畔的文人雅扇 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#岳州扇——洞庭湖畔的文人雅扇"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "湘潭龙舞——纸扎龙灯的火光与鼓声",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "湘潭龙舞——纸扎龙灯的火光与鼓声 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#湘潭龙舞——纸扎龙灯的火光与鼓声"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《湘潭龙舞——纸扎龙灯的火光与鼓声》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《湘潭龙舞——纸扎龙灯的火光与鼓声》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#湘潭龙舞——纸扎龙灯的火光与鼓声",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括纸扎龙灯、鼓点、火光队列、街巷巡游、龙头龙尾分镜；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#湘潭龙舞——纸扎龙灯的火光与鼓声"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：湘潭龙舞——纸扎龙灯的火光与鼓声 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#湘潭龙舞——纸扎龙灯的火光与鼓声"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "嘉禾伴嫁歌——千年湘南女性的歌堂之夜",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "嘉禾伴嫁歌——千年湘南女性的歌堂之夜 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#嘉禾伴嫁歌——千年湘南女性的歌堂之夜"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《嘉禾伴嫁歌——千年湘南女性的歌堂之夜》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《嘉禾伴嫁歌——千年湘南女性的歌堂之夜》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#嘉禾伴嫁歌——千年湘南女性的歌堂之夜",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括歌堂、嫁衣、长辈围坐、对唱节拍、婚俗空间；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#嘉禾伴嫁歌——千年湘南女性的歌堂之夜"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：嘉禾伴嫁歌——千年湘南女性的歌堂之夜 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#嘉禾伴嫁歌——千年湘南女性的歌堂之夜"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "安仁赶分社——春分时节的神农药市",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "安仁赶分社——春分时节的神农药市 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#安仁赶分社——春分时节的神农药市"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《安仁赶分社——春分时节的神农药市》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《安仁赶分社——春分时节的神农药市》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#安仁赶分社——春分时节的神农药市",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括药市摊棚、草药束、春分人流、神农叙事牌、交易手势；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#安仁赶分社——春分时节的神农药市"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：安仁赶分社——春分时节的神农药市 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#安仁赶分社——春分时节的神农药市"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "武冈卤菜制作技艺——雪峰山下的药食同源御膳",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "武冈卤菜制作技艺——雪峰山下的药食同源御膳 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#武冈卤菜制作技艺——雪峰山下的药食同源御膳"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《武冈卤菜制作技艺——雪峰山下的药食同源御膳》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《武冈卤菜制作技艺——雪峰山下的药食同源御膳》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#武冈卤菜制作技艺——雪峰山下的药食同源御膳",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括卤锅、香料包、切片台、雪峰山地理牌、店铺烟火气；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#武冈卤菜制作技艺——雪峰山下的药食同源御膳"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：武冈卤菜制作技艺——雪峰山下的药食同源御膳 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#武冈卤菜制作技艺——雪峰山下的药食同源御膳"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "宝庆竹刻——湘西南竹簧雕刻的明清贡品传承",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "宝庆竹刻——湘西南竹簧雕刻的明清贡品传承 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#宝庆竹刻——湘西南竹簧雕刻的明清贡品传承"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《宝庆竹刻——湘西南竹簧雕刻的明清贡品传承》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《宝庆竹刻——湘西南竹簧雕刻的明清贡品传承》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#宝庆竹刻——湘西南竹簧雕刻的明清贡品传承",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括竹簧片、刻刀、纹样拓片、明清器物参照、工坊手部特写；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#宝庆竹刻——湘西南竹簧雕刻的明清贡品传承"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：宝庆竹刻——湘西南竹簧雕刻的明清贡品传承 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#宝庆竹刻——湘西南竹簧雕刻的明清贡品传承"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "洞口墨晶石雕——雪峰山黑玉的楚湘遗韵",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "洞口墨晶石雕——雪峰山黑玉的楚湘遗韵 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#洞口墨晶石雕——雪峰山黑玉的楚湘遗韵"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《洞口墨晶石雕——雪峰山黑玉的楚湘遗韵》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《洞口墨晶石雕——雪峰山黑玉的楚湘遗韵》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#洞口墨晶石雕——雪峰山黑玉的楚湘遗韵",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括墨晶石料、石雕刀具、黑玉质感、楚湘纹样、展示台；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#洞口墨晶石雕——雪峰山黑玉的楚湘遗韵"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：洞口墨晶石雕——雪峰山黑玉的楚湘遗韵 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#洞口墨晶石雕——雪峰山黑玉的楚湘遗韵"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "花瑶挑花——穿在身上的花瑶密码",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "花瑶挑花——穿在身上的花瑶密码 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#花瑶挑花——穿在身上的花瑶密码"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《花瑶挑花——穿在身上的花瑶密码》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《花瑶挑花——穿在身上的花瑶密码》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#花瑶挑花——穿在身上的花瑶密码",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括挑花纹样、衣襟局部、绣线、山地村寨、图案解码卡；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#花瑶挑花——穿在身上的花瑶密码"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：花瑶挑花——穿在身上的花瑶密码 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#花瑶挑花——穿在身上的花瑶密码"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "凤凰纸扎——边城千年彩扎的湘西风骨",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "凤凰纸扎——边城千年彩扎的湘西风骨 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#凤凰纸扎——边城千年彩扎的湘西风骨"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《凤凰纸扎——边城千年彩扎的湘西风骨》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《凤凰纸扎——边城千年彩扎的湘西风骨》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#凤凰纸扎——边城千年彩扎的湘西风骨",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括纸扎骨架、彩纸、边城街巷、祭仪边界提示、工艺手部镜头；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#凤凰纸扎——边城千年彩扎的湘西风骨"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：凤凰纸扎——边城千年彩扎的湘西风骨 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#凤凰纸扎——边城千年彩扎的湘西风骨"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "土家族打溜子——湘西山村的节奏密码",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "土家族打溜子——湘西山村的节奏密码 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#土家族打溜子——湘西山村的节奏密码"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《土家族打溜子——湘西山村的节奏密码》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《土家族打溜子——湘西山村的节奏密码》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#土家族打溜子——湘西山村的节奏密码",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括打击乐器、山村场地、节奏图谱、多人合奏、节庆队列；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#土家族打溜子——湘西山村的节奏密码"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：土家族打溜子——湘西山村的节奏密码 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#土家族打溜子——湘西山村的节奏密码"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "湘西苗医苗药——武陵山中的民族医药体系 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#湘西苗医苗药——武陵山中的民族医药体系"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《湘西苗医苗药——武陵山中的民族医药体系》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《湘西苗医苗药——武陵山中的民族医药体系》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#湘西苗医苗药——武陵山中的民族医药体系",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括药材标本、山林采集线索、诊疗空间、民族医药展陈、风险提示牌；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#湘西苗医苗药——武陵山中的民族医药体系"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：湘西苗医苗药——武陵山中的民族医药体系 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#湘西苗医苗药——武陵山中的民族医药体系"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "土家族吊脚楼营造技艺——武陵山地的木构智慧",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "土家族吊脚楼营造技艺——武陵山地的木构智慧 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#土家族吊脚楼营造技艺——武陵山地的木构智慧"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《土家族吊脚楼营造技艺——武陵山地的木构智慧》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《土家族吊脚楼营造技艺——武陵山地的木构智慧》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#土家族吊脚楼营造技艺——武陵山地的木构智慧",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括吊脚楼木构、榫卯节点、山地坡面、匠人尺具、剖面示意；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#土家族吊脚楼营造技艺——武陵山地的木构智慧"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：土家族吊脚楼营造技艺——武陵山地的木构智慧 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#土家族吊脚楼营造技艺——武陵山地的木构智慧"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "祁剧——湘南山野的戏曲长河",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "祁剧——湘南山野的戏曲长河 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#祁剧——湘南山野的戏曲长河"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《祁剧——湘南山野的戏曲长河》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《祁剧——湘南山野的戏曲长河》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#祁剧——湘南山野的戏曲长河",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括戏台、脸谱、唱腔提示卡、锣鼓、山野集镇舞台；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#祁剧——湘南山野的戏曲长河"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：祁剧——湘南山野的戏曲长河 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#祁剧——湘南山野的戏曲长河"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "长沙弹词——月琴敲响的湘中市井",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "长沙弹词——月琴敲响的湘中市井 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#长沙弹词——月琴敲响的湘中市井"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《长沙弹词——月琴敲响的湘中市井》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《长沙弹词——月琴敲响的湘中市井》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#长沙弹词——月琴敲响的湘中市井",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括月琴、说唱桌案、市井茶馆、唱本页、听众围坐；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#长沙弹词——月琴敲响的湘中市井"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：长沙弹词——月琴敲响的湘中市井 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#长沙弹词——月琴敲响的湘中市井"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "靖州苗族歌鼟——三锹大山的多声部和声",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "靖州苗族歌鼟——三锹大山的多声部和声 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#靖州苗族歌鼟——三锹大山的多声部和声"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《靖州苗族歌鼟——三锹大山的多声部和声》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《靖州苗族歌鼟——三锹大山的多声部和声》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#靖州苗族歌鼟——三锹大山的多声部和声",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括多声部合唱队形、山地村寨、歌师提示牌、声部图、节庆空间；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#靖州苗族歌鼟——三锹大山的多声部和声"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：靖州苗族歌鼟——三锹大山的多声部和声 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#靖州苗族歌鼟——三锹大山的多声部和声"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "通道侗锦——湘西南侗寨的指尖花雨 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#通道侗锦——湘西南侗寨的指尖花雨"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《通道侗锦——湘西南侗寨的指尖花雨》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《通道侗锦——湘西南侗寨的指尖花雨》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#通道侗锦——湘西南侗寨的指尖花雨",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括织机、侗锦纹样、鼓楼空间、指尖穿梭、色线样本；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#通道侗锦——湘西南侗寨的指尖花雨"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：通道侗锦——湘西南侗寨的指尖花雨 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#通道侗锦——湘西南侗寨的指尖花雨"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "沅州石雕——沅水中游的青石艺术",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "沅州石雕——沅水中游的青石艺术 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#沅州石雕——沅水中游的青石艺术"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《沅州石雕——沅水中游的青石艺术》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《沅州石雕——沅水中游的青石艺术》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#沅州石雕——沅水中游的青石艺术",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括青石料、雕刻工具、沅水码头、纹样局部、石构件展示；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#沅州石雕——沅水中游的青石艺术"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：沅州石雕——沅水中游的青石艺术 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#沅州石雕——沅水中游的青石艺术"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "澧水船工号子——湘北水路百年船歌",
+          "province": "湖南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "澧水船工号子——湘北水路百年船歌 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/湖南.md#澧水船工号子——湘北水路百年船歌"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《澧水船工号子——湘北水路百年船歌》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《澧水船工号子——湘北水路百年船歌》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/湖南.md#澧水船工号子——湘北水路百年船歌",
+                "data/provinces/湖南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括澧水航道、船桨、号子领唱、船工队列、水路地图；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/湖南.md#澧水船工号子——湘北水路百年船歌"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：澧水船工号子——湘北水路百年船歌 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/湖南.md#澧水船工号子——湘北水路百年船歌"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "滇西抗战——中国远征军的血与火",
+          "province": "云南",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "滇西抗战——中国远征军的血与火 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/云南.md#滇西抗战——中国远征军的血与火"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《滇西抗战——中国远征军的血与火》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《滇西抗战——中国远征军的血与火》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/云南.md#滇西抗战——中国远征军的血与火",
+                "data/provinces/云南.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括滇西战场地图、远征军纪念地、山地道路、档案照片待授权位、口述访谈席；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/云南.md#滇西抗战——中国远征军的血与火"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：滇西抗战——中国远征军的血与火 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/云南.md#滇西抗战——中国远征军的血与火"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "于都——长征出发的渡口",
+          "province": "江西",
+          "recommended_fields": [
+            "core_question",
+            "source_line",
+            "visual_or_scene_assets",
+            "manual_patch_note"
+          ],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": [
+            "未经核验的年代数字",
+            "未经授权的影像资产",
+            "宣传化唯一结论",
+            "把改编桥段写成史实"
+          ],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "于都——长征出发的渡口 如何在知识讲解、非遗宣传、微纪录和 AI 漫剧之间建立“事实锚点、场景资产、改编边界”三层生产线？",
+              "evidence_level": "local_entry_plus_manual_review",
+              "source_refs": [
+                "data/provinces/江西.md#于都——长征出发的渡口"
+              ],
+              "writeback_hint": "作为 explainer_video/documentary_short 的核心问题候选，只进入人工写回草案。",
+              "verification_note": "核心问题来自本地条目《于都——长征出发的渡口》，正式写回前复核标题锚点、来源索引和事实边界。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议先核本地条目《于都——长征出发的渡口》，再补官方名录、保护单位/纪念馆资料、地方志、研究论文或展陈说明；口述与传说只作素材线索，不写成定论。",
+              "evidence_level": "source_verification_plan",
+              "source_refs": [
+                "data/provinces/江西.md#于都——长征出发的渡口",
+                "data/provinces/江西.md#来源索引"
+              ],
+              "writeback_hint": "作为 source verification 预检字段候选，缺公开来源或锚点失效时阻塞人工写回。",
+              "verification_note": "来源线只列核验路径，不把待核材料写成事实。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括于都河渡口、长征出发路线、渡船、纪念馆展陈、夜渡队列；用于前端验收、GEARS/Seedance 提示和人工采集清单时需标注版权、授权和真实可拍性。",
+              "evidence_level": "production_asset_candidate",
+              "source_refs": [
+                "data/provinces/江西.md#于都——长征出发的渡口"
+              ],
+              "writeback_hint": "作为生产资产候选，图片、影像、场馆和人物肖像授权另行人工确认。",
+              "verification_note": "资产清单从本地条目语境抽取，不能替代正式素材授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回注意：于都——长征出发的渡口 的年代、谱系、名录级别、代表人物、价值评价和改编桥段均需附来源或保留待核标记。本候选只生成 review draft/manual patch，不直接写 data/provinces/*.md。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": [
+                "data/provinces/江西.md#于都——长征出发的渡口"
+              ],
+              "writeback_hint": "作为 manual patch ready/blocker 原因候选，人工复核通过后再决定是否落库。",
+              "verification_note": "保留事实、评价、传说、口述和创作改编之间的边界。"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

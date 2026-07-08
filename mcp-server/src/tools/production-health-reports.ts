@@ -859,6 +859,32 @@ interface KnowledgeWritebackManualPatchManifest {
   target_files: string[];
 }
 
+interface KnowledgeWritebackManualPatchClosureCertificate {
+  schema_version: 'knowledge-writeback-manual-patch-closure-certificate/v1';
+  certificate_id: string;
+  generated_at: string;
+  sha256: string;
+  status: 'ready_for_operator_apply' | 'blocked';
+  ready_for_operator_apply: boolean;
+  manual_patch_manifest_id: string;
+  manual_patch_manifest_sha256: string;
+  signoff_manifest_id: string;
+  signoff_manifest_sha256: string;
+  target_file_count: number;
+  ready_target_file_count: number;
+  blocked_target_file_count: number;
+  total_patch_count: number;
+  source_ref_check_warning_count: number;
+  source_ref_check_blocker_count: number;
+  blocker_reason_count: number;
+  warning_reason_count: number;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  patch_applyable: false;
+  manual_apply_only: true;
+  operator_required_actions: string[];
+}
+
 interface KnowledgeWritebackManualPatchPackage {
   schema_version: 'knowledge-writeback-manual-patch-package/v1';
   exported_at: string;
@@ -878,6 +904,7 @@ interface KnowledgeWritebackManualPatchPackage {
   candidate_field_count: number;
   source_ref_quality: KnowledgeWritebackSourceRefQualitySummary;
   manual_patch_manifest: KnowledgeWritebackManualPatchManifest;
+  manual_patch_closure_certificate: KnowledgeWritebackManualPatchClosureCertificate;
   ready_reasons: string[];
   blocker_reasons: string[];
   warning_reasons: string[];
@@ -2037,7 +2064,7 @@ function buildExpansionNextDevelopmentTasks(
   reviewClosure: DomainPackExpansionReviewClosureSummary,
 ): DomainPackExpansionNextDevelopmentTask[] {
   const coreVideoTypes = ['explainer_video', 'heritage_promo', 'documentary_short', 'ai_comic_drama'];
-  const thirdBatchComplete = (report.review_packet.approved_writeback_draft_count ?? 0) >= 80;
+  const thirdBatchComplete = (report.review_packet.approved_writeback_draft_count ?? 0) >= 100;
   const mvpSurfaceComplete = report.pipeline_stage === 'complete' && reviewClosure.ready_for_human_handoff;
   return [
     {
@@ -2049,7 +2076,7 @@ function buildExpansionNextDevelopmentTasks(
       progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、复核人身份、审签批次归档、批次完成率汇总、批量写回状态操作、导出预检、签收清单、canonical signoff package 和前端下载归档。',
       related_plan_items: [1],
       target_video_types: coreVideoTypes,
-      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 80 条草案可被人工高效复核。',
+      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 100 条草案可被人工高效复核。',
       acceptance_checks: [
         '支持 pack/video_type/province/review_status/writeback_status/field/search 联合筛选。',
         '单条候选展示字段级候选值、来源引用、核实备注和安全预检。',
@@ -2098,7 +2125,7 @@ function buildExpansionNextDevelopmentTasks(
       priority: 'P1',
       status: thirdBatchComplete ? 'complete' : 'ready',
       progress_percent: thirdBatchComplete ? 100 : 99,
-      progress_note: '当前 80 条已形成 approved 草案并进入人工交接闭环；第三批续包继续覆盖非遗宣传、微纪录、AI 漫剧和知识讲解，正式落库仍保持人工写回边界。',
+      progress_note: '当前 100 条已形成 approved 草案并进入人工交接闭环；第三批闭环包继续覆盖非遗宣传、微纪录、AI 漫剧和知识讲解，正式落库仍保持人工写回边界。',
       related_plan_items: [4],
       target_video_types: coreVideoTypes,
       description: '继续扩展真实条目，优先讲解、非遗宣传、微纪录和 AI 漫剧，不跳过候选稿/审稿/草案流程。',
@@ -2115,7 +2142,7 @@ function buildExpansionNextDevelopmentTasks(
       priority: 'P1',
       status: mvpSurfaceComplete ? 'complete' : 'blocked',
       progress_percent: mvpSurfaceComplete ? 100 : 99,
-      progress_note: 'MVP 已接入扩库 complete、80 条写回草案计数、review_closure 结案摘要、复核交接签收 manifest/canonical signoff package、manual patch manifest、source_ref check 分级、复核人身份覆盖率、审签批次归档、批次 ready/blocked 汇总、下载归档证据、runtime 覆盖证据和 1-5 项百分比；明确显示“完成候选但待人工写回”。',
+      progress_note: 'MVP 已接入扩库 complete、100 条写回草案计数、review_closure 结案摘要、复核交接签收 manifest/canonical signoff package、manual patch manifest、manual patch closure certificate、source_ref check 分级、复核人身份覆盖率、审签批次归档、批次 ready/blocked 汇总、下载归档证据、runtime 覆盖证据和 1-5 项百分比；明确显示“完成候选但待人工写回”。',
       related_plan_items: [5],
       target_video_types: coreVideoTypes,
       description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
@@ -3593,6 +3620,7 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- preflight_manual_review_required: ${pkg.preflight.manual_review_required_count}`,
     `- manual_patch_package: ${pkg.manual_patch_package.schema_version}`,
     `- manual_patch_manifest_id: ${pkg.manual_patch_package.manual_patch_manifest.manifest_id}`,
+    `- manual_patch_closure_certificate_id: ${pkg.manual_patch_package.manual_patch_closure_certificate.certificate_id}`,
     `- manual_patch_ready: ${pkg.manual_patch_package.ready_for_manual_apply}`,
     `- manual_patch_target_files: ${pkg.manual_patch_package.target_file_count}`,
     `- manual_patch_total_patches: ${pkg.manual_patch_package.total_patch_count}`,
@@ -3692,6 +3720,13 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- source_ref_check_blocker_count: ${pkg.manual_patch_package.source_ref_quality.source_ref_check_blocker_count}`,
     `- manual_patch_manifest_id: ${pkg.manual_patch_package.manual_patch_manifest.manifest_id}`,
     `- manual_patch_manifest_sha256: ${pkg.manual_patch_package.manual_patch_manifest.sha256}`,
+    `- closure_certificate_schema: ${pkg.manual_patch_package.manual_patch_closure_certificate.schema_version}`,
+    `- closure_certificate_id: ${pkg.manual_patch_package.manual_patch_closure_certificate.certificate_id}`,
+    `- closure_certificate_sha256: ${pkg.manual_patch_package.manual_patch_closure_certificate.sha256}`,
+    `- closure_certificate_status: ${pkg.manual_patch_package.manual_patch_closure_certificate.status}`,
+    `- closure_certificate_ready: ${pkg.manual_patch_package.manual_patch_closure_certificate.ready_for_operator_apply}`,
+    `- closure_certificate_signoff_manifest_id: ${pkg.manual_patch_package.manual_patch_closure_certificate.signoff_manifest_id}`,
+    `- closure_certificate_manual_patch_manifest_id: ${pkg.manual_patch_package.manual_patch_closure_certificate.manual_patch_manifest_id}`,
     ...pkg.manual_patch_package.ready_reasons.map(reason => `- ready_reason: ${reason}`),
     ...pkg.manual_patch_package.blocker_reasons.map(reason => `- blocker_reason: ${reason}`),
     ...pkg.manual_patch_package.warning_reasons.map(reason => `- warning_reason: ${reason}`),
@@ -3700,6 +3735,10 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     '### Manual Patch Operator Checklist',
     '',
     ...pkg.manual_patch_package.operator_checklist.map(item => `- ${item}`),
+    '',
+    '### Manual Patch Closure Certificate',
+    '',
+    ...pkg.manual_patch_package.manual_patch_closure_certificate.operator_required_actions.map(item => `- ${item}`),
     '',
     '### Target Review Diffs',
     '',
@@ -3847,6 +3886,19 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     readyTargetFileCount,
     blockedTargetFileCount,
   });
+  const manualPatchClosureCertificate = buildKnowledgeWritebackManualPatchClosureCertificate({
+    exportedAt: input.exportedAt,
+    manualPatchManifest,
+    signoffManifest: input.preflight.review_handoff.signoff_manifest,
+    readyForManualApply,
+    readyTargetFileCount,
+    blockedTargetFileCount,
+    targetFileCount: targetPatches.length,
+    totalPatchCount,
+    sourceRefQuality: input.preflight.source_ref_quality,
+    blockerReasons,
+    warningReasons,
+  });
   const readyReasons = readyForManualApply
     ? [
       'manual_patch_has_target_patches',
@@ -3859,10 +3911,10 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
   return {
     schema_version: 'knowledge-writeback-manual-patch-package/v1',
     exported_at: input.exportedAt,
-    direct_writeback_to_province_markdown: false,
-    province_markdown_written: false,
-    patch_applyable: false,
-    manual_apply_only: true,
+    direct_writeback_to_province_markdown: false as const,
+    province_markdown_written: false as const,
+    patch_applyable: false as const,
+    manual_apply_only: true as const,
     ready_for_manual_apply: readyForManualApply,
     target_file_count: targetPatches.length,
     target_files: input.targetFiles,
@@ -3876,6 +3928,7 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
       sum + (item.field_supplement_candidate_count ?? domainPackExpansionCandidateFieldCount(item)), 0),
     source_ref_quality: input.preflight.source_ref_quality,
     manual_patch_manifest: manualPatchManifest,
+    manual_patch_closure_certificate: manualPatchClosureCertificate,
     ready_reasons: readyReasons,
     blocker_reasons: blockerReasons,
     warning_reasons: warningReasons,
@@ -3893,6 +3946,9 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
       `total_patch_count=${totalPatchCount}`,
       `manual_patch_manifest_id=${manualPatchManifest.manifest_id}`,
       `manual_patch_manifest_sha256=${manualPatchManifest.sha256}`,
+      `manual_patch_closure_certificate_id=${manualPatchClosureCertificate.certificate_id}`,
+      `manual_patch_closure_certificate_sha256=${manualPatchClosureCertificate.sha256}`,
+      `manual_patch_closure_certificate_ready=${manualPatchClosureCertificate.ready_for_operator_apply}`,
       `review_handoff_ready_for_signoff=${readyForSignoffCount}/${input.preflight.review_handoff.total_handoff_count}`,
       `source_ref_coverage=${input.preflight.source_ref_quality.coverage_percent}%`,
       `source_ref_blocker_items=${input.preflight.source_ref_quality.blocker_item_count}`,
@@ -3901,6 +3957,7 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     ],
     operator_checklist: [
       '先核对 signoff manifest、review_note、reviewer_identity 和 signoff_batch_id。',
+      '保存 manual_patch_closure_certificate，用 certificate_id/sha256 对齐 signoff manifest 与 manual patch manifest。',
       '逐个打开 target_file，对照 append_markdown 与 review_diff 人工合并。',
       '合并前再次核对 source_refs、字段边界和 forbidden_direct_claims。',
       '本包不是 git apply 补丁；patch_applyable=false，只作为人工写回审阅材料。',
@@ -3935,10 +3992,10 @@ function buildKnowledgeWritebackManualPatchManifest(input: {
     })),
     source_ref_check_warning_count: input.sourceRefQuality.source_ref_check_warning_count,
     source_ref_check_blocker_count: input.sourceRefQuality.source_ref_check_blocker_count,
-    direct_writeback_to_province_markdown: false,
-    province_markdown_written: false,
-    patch_applyable: false,
-    manual_apply_only: true,
+    direct_writeback_to_province_markdown: false as const,
+    province_markdown_written: false as const,
+    patch_applyable: false as const,
+    manual_apply_only: true as const,
   };
   const sha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
   return {
@@ -3957,6 +4014,62 @@ function buildKnowledgeWritebackManualPatchManifest(input: {
     patch_applyable: false,
     manual_apply_only: true,
     target_files: targetFiles,
+  };
+}
+
+function buildKnowledgeWritebackManualPatchClosureCertificate(input: {
+  exportedAt: string;
+  manualPatchManifest: KnowledgeWritebackManualPatchManifest;
+  signoffManifest: KnowledgeWritebackQueueReviewSignoffManifest;
+  readyForManualApply: boolean;
+  targetFileCount: number;
+  readyTargetFileCount: number;
+  blockedTargetFileCount: number;
+  totalPatchCount: number;
+  sourceRefQuality: KnowledgeWritebackSourceRefQualitySummary;
+  blockerReasons: string[];
+  warningReasons: string[];
+}): KnowledgeWritebackManualPatchClosureCertificate {
+  const operatorRequiredActions = [
+    input.readyForManualApply
+      ? 'ready_for_operator_apply=true：可进入人工合并前最终复核。'
+      : 'ready_for_operator_apply=false：先处理 blocker_reasons 后再人工写回。',
+    '核对 signoff_manifest_id/sha256 与人工签收包一致。',
+    '核对 manual_patch_manifest_id/sha256 与人工 patch 包一致。',
+    '逐项复核 source_ref_check warning/blocker 后再人工编辑目标 Markdown。',
+    '保持 patch_applyable=false，不使用 git apply 或自动写入 data/provinces/*.md。',
+  ];
+  const status: KnowledgeWritebackManualPatchClosureCertificate['status'] = input.readyForManualApply
+    ? 'ready_for_operator_apply'
+    : 'blocked';
+  const payload = {
+    schema_version: 'knowledge-writeback-manual-patch-closure-certificate/v1' as const,
+    generated_at: input.exportedAt,
+    status,
+    ready_for_operator_apply: input.readyForManualApply,
+    manual_patch_manifest_id: input.manualPatchManifest.manifest_id,
+    manual_patch_manifest_sha256: input.manualPatchManifest.sha256,
+    signoff_manifest_id: input.signoffManifest.manifest_id,
+    signoff_manifest_sha256: input.signoffManifest.sha256,
+    target_file_count: input.targetFileCount,
+    ready_target_file_count: input.readyTargetFileCount,
+    blocked_target_file_count: input.blockedTargetFileCount,
+    total_patch_count: input.totalPatchCount,
+    source_ref_check_warning_count: input.sourceRefQuality.source_ref_check_warning_count,
+    source_ref_check_blocker_count: input.sourceRefQuality.source_ref_check_blocker_count,
+    blocker_reason_count: input.blockerReasons.length,
+    warning_reason_count: input.warningReasons.length,
+    direct_writeback_to_province_markdown: false as const,
+    province_markdown_written: false as const,
+    patch_applyable: false as const,
+    manual_apply_only: true as const,
+    operator_required_actions: operatorRequiredActions,
+  };
+  const sha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  return {
+    ...payload,
+    certificate_id: `kwb-manual-closure-${sha256.slice(0, 12)}`,
+    sha256,
   };
 }
 

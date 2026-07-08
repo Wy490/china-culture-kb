@@ -312,6 +312,8 @@
         <span>
           目标文件 {{ manualPatchPreviewSummary.targetFileCount }} 个 · patch {{ manualPatchPreviewSummary.totalPatchCount }} 条 ·
           来源覆盖 {{ manualPatchPreviewSummary.sourceRefCoveragePercent }}% · 本地引用 {{ manualPatchPreviewSummary.localSourceRefCount }} ·
+          ready {{ manualPatchPreviewSummary.readyTargetFileCount }} · blocked {{ manualPatchPreviewSummary.blockedTargetFileCount }} ·
+          闭环 {{ manualPatchPreviewSummary.localClosureCertificateId }}（{{ manualPatchPreviewSummary.localClosureReady ? 'ready' : 'blocked' }}）·
           锚点待核验 {{ manualPatchPreviewSummary.anchorReviewCount }} · 阻塞 {{ manualPatchPreviewSummary.blockerCount }} · 警告 {{ manualPatchPreviewSummary.warningCount }}
         </span>
       </div>
@@ -323,6 +325,7 @@
               {{ sourceQualityLabel(target.source_ref_quality_level) }}
             </span>
           </header>
+          <span>人工执行：{{ target.ready_for_manual_apply ? 'ready' : 'blocked' }}</span>
           <span>patch {{ target.total_patch_count }} 条 · 项目 {{ target.project_patch_count }} · 扩库 {{ target.expansion_patch_count }}</span>
           <span>字段 {{ target.candidate_field_count }} 个 · 来源 {{ target.source_ref_count }} 条 · 覆盖 {{ target.source_ref_coverage_percent }}%</span>
           <span>本地引用 {{ target.local_source_ref_count }} 条 · 带锚点 {{ target.anchored_source_ref_count }} 条 · 待导出核验 {{ target.source_ref_anchor_review_count }} 条</span>
@@ -620,6 +623,7 @@ interface ManualPatchPreviewTarget {
   project_patch_count: number;
   expansion_patch_count: number;
   total_patch_count: number;
+  ready_for_manual_apply: boolean;
   candidate_field_count: number;
   checked_field_count: number;
   covered_field_count: number;
@@ -983,11 +987,13 @@ const manualPatchPreviewTargets = computed<ManualPatchPreviewTarget[]>(() => {
       : warningReasons.length > 0
         ? 'warning'
         : 'pass'
+    const readyForManualApply = blockerReasons.length === 0
     return {
       target_file: row.target_file,
       project_patch_count: row.projectItems.length,
       expansion_patch_count: row.expansionItems.length,
       total_patch_count: row.projectItems.length + row.expansionItems.length,
+      ready_for_manual_apply: readyForManualApply,
       candidate_field_count: quality.candidateFieldCount,
       checked_field_count: quality.checkedFieldCount,
       covered_field_count: quality.coveredFieldCount,
@@ -1009,19 +1015,39 @@ const manualPatchPreviewTargets = computed<ManualPatchPreviewTarget[]>(() => {
 })
 
 const manualPatchPreviewSummary = computed(() => {
+  const targets = manualPatchPreviewTargets.value
   const checkedFieldCount = manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.checked_field_count, 0)
   const coveredFieldCount = manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.covered_field_count, 0)
+  const readyTargetFileCount = targets.filter(item => item.ready_for_manual_apply).length
+  const blockedTargetFileCount = targets.length - readyTargetFileCount
+  const closurePayload = JSON.stringify({
+    target_files: targets.map(item => item.target_file),
+    ready_target_file_count: readyTargetFileCount,
+    blocked_target_file_count: blockedTargetFileCount,
+    total_patch_count: targets.reduce((sum, item) => sum + item.total_patch_count, 0),
+    blocker_reason_count: targets.reduce((sum, item) => sum + item.blocker_reasons.length, 0),
+    warning_reason_count: targets.reduce((sum, item) => sum + item.warning_reasons.length, 0),
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    patch_applyable: false,
+    manual_apply_only: true,
+  })
+  const closureFingerprint = localManifestFingerprint(closurePayload)
   return {
-    targetFileCount: manualPatchPreviewTargets.value.length,
-    totalPatchCount: manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.total_patch_count, 0),
-    blockerCount: manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.blocker_reasons.length, 0),
-    warningCount: manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.warning_reasons.length, 0),
+    targetFileCount: targets.length,
+    totalPatchCount: targets.reduce((sum, item) => sum + item.total_patch_count, 0),
+    readyTargetFileCount,
+    blockedTargetFileCount,
+    localClosureCertificateId: `kwb-local-closure-${closureFingerprint.slice(0, 10)}`,
+    localClosureReady: targets.length > 0 && blockedTargetFileCount === 0,
+    blockerCount: targets.reduce((sum, item) => sum + item.blocker_reasons.length, 0),
+    warningCount: targets.reduce((sum, item) => sum + item.warning_reasons.length, 0),
     sourceRefCoveragePercent: completionPercent(coveredFieldCount, checkedFieldCount),
-    localSourceRefCount: manualPatchPreviewTargets.value
+    localSourceRefCount: targets
       .reduce((sum, item) => sum + item.local_source_ref_count, 0),
-    anchorReviewCount: manualPatchPreviewTargets.value
+    anchorReviewCount: targets
       .reduce((sum, item) => sum + item.source_ref_anchor_review_count, 0),
-    missingSourceFieldCount: manualPatchPreviewTargets.value
+    missingSourceFieldCount: targets
       .reduce((sum, item) => sum + item.missing_source_ref_field_count, 0),
   }
 })
@@ -1679,7 +1705,7 @@ async function copyManualPatchPackage() {
     if (res.ok && res.data) {
       const patchPackage = res.data.manual_patch_package
       await navigator.clipboard.writeText(JSON.stringify(patchPackage, null, 2))
-      copyMessage.value = `已复制人工 patch 包：目标文件 ${patchPackage.target_file_count} 个，patch ${patchPackage.total_patch_count} 条，ready ${patchPackage.ready_for_manual_apply ? 'yes' : 'no'}；省份 Markdown 未写入。`
+      copyMessage.value = `已复制人工 patch 包：目标文件 ${patchPackage.target_file_count} 个，patch ${patchPackage.total_patch_count} 条，closure ${patchPackage.manual_patch_closure_certificate.certificate_id}，ready ${patchPackage.ready_for_manual_apply ? 'yes' : 'no'}；省份 Markdown 未写入。`
     } else {
       error.value = res.error?.message ?? '导出人工 patch 包失败'
     }
@@ -1717,7 +1743,7 @@ async function downloadManualPatchPackage() {
       const manifest = res.data.signoff_package.signoff_manifest
       const filename = `${safeDownloadName(`knowledge-manual-patch-${manifest.manifest_id}-${manifest.sha256.slice(0, 12)}`)}.json`
       downloadTextFile(filename, JSON.stringify(patchPackage, null, 2), 'application/json;charset=utf-8')
-      copyMessage.value = `已下载人工 patch 包：${patchPackage.target_file_count} 个目标文件，${patchPackage.total_patch_count} 条 patch；patch_applyable=false。`
+      copyMessage.value = `已下载人工 patch 包：${patchPackage.target_file_count} 个目标文件，${patchPackage.total_patch_count} 条 patch，closure ${patchPackage.manual_patch_closure_certificate.certificate_id}；patch_applyable=false。`
     } else {
       error.value = res.error?.message ?? '下载人工 patch 包失败'
     }
@@ -1754,7 +1780,7 @@ async function copyManualPatchDiffBundle() {
       const bundle = renderManualPatchDiffBundle(res.data)
       await navigator.clipboard.writeText(bundle)
       const patchPackage = res.data.manual_patch_package
-      copyMessage.value = `已复制人工 patch diff：目标文件 ${patchPackage.target_file_count} 个，patch ${patchPackage.total_patch_count} 条，来源覆盖 ${patchPackage.source_ref_quality.coverage_percent}%。`
+      copyMessage.value = `已复制人工 patch diff：目标文件 ${patchPackage.target_file_count} 个，patch ${patchPackage.total_patch_count} 条，closure ${patchPackage.manual_patch_closure_certificate.certificate_id}，来源覆盖 ${patchPackage.source_ref_quality.coverage_percent}%。`
     } else {
       error.value = res.error?.message ?? '导出人工 patch diff 失败'
     }
@@ -1791,7 +1817,7 @@ async function downloadManualPatchDiffBundle() {
       const manifest = res.data.signoff_package.signoff_manifest
       const filename = `${safeDownloadName(`knowledge-manual-patch-diff-${manifest.manifest_id}-${manifest.sha256.slice(0, 12)}`)}.diff`
       downloadTextFile(filename, renderManualPatchDiffBundle(res.data), 'text/x-diff;charset=utf-8')
-      copyMessage.value = `已下载人工 patch diff：${res.data.manual_patch_package.target_file_count} 个目标文件；patch_applyable=false。`
+      copyMessage.value = `已下载人工 patch diff：${res.data.manual_patch_package.target_file_count} 个目标文件，closure ${res.data.manual_patch_package.manual_patch_closure_certificate.certificate_id}；patch_applyable=false。`
     } else {
       error.value = res.error?.message ?? '下载人工 patch diff 失败'
     }
@@ -1850,6 +1876,7 @@ function renderReviewHandoffChecklist(): string {
 
 function renderManualPatchDiffBundle(pkg: KnowledgeWritebackQueueExportPackage): string {
   const manualPatch = pkg.manual_patch_package
+  const closureCertificate = manualPatch.manual_patch_closure_certificate
   return [
     '# Knowledge Manual Patch Diff Bundle',
     '',
@@ -1860,6 +1887,12 @@ function renderManualPatchDiffBundle(pkg: KnowledgeWritebackQueueExportPackage):
     `# ready_for_manual_apply: ${manualPatch.ready_for_manual_apply}`,
     `# manual_patch_manifest_id: ${manualPatch.manual_patch_manifest.manifest_id}`,
     `# manual_patch_manifest_sha256: ${manualPatch.manual_patch_manifest.sha256}`,
+    `# closure_certificate_id: ${closureCertificate.certificate_id}`,
+    `# closure_certificate_sha256: ${closureCertificate.sha256}`,
+    `# closure_certificate_status: ${closureCertificate.status}`,
+    `# closure_certificate_ready: ${closureCertificate.ready_for_operator_apply}`,
+    `# closure_certificate_signoff_manifest_id: ${closureCertificate.signoff_manifest_id}`,
+    `# closure_certificate_manual_patch_manifest_id: ${closureCertificate.manual_patch_manifest_id}`,
     `# target_file_count: ${manualPatch.target_file_count}`,
     `# ready_target_file_count: ${manualPatch.ready_target_file_count}`,
     `# blocked_target_file_count: ${manualPatch.blocked_target_file_count}`,
@@ -1872,6 +1905,7 @@ function renderManualPatchDiffBundle(pkg: KnowledgeWritebackQueueExportPackage):
     ...manualPatch.ready_reasons.map(reason => `# ready_reason: ${reason}`),
     ...manualPatch.blocker_reasons.map(reason => `# blocker_reason: ${reason}`),
     ...manualPatch.warning_reasons.map(reason => `# warning_reason: ${reason}`),
+    ...closureCertificate.operator_required_actions.map(action => `# closure_action: ${action}`),
     '',
     ...manualPatch.target_patches.flatMap(target => [
       `# target_file: ${target.target_file}`,

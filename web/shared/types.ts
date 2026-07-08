@@ -1961,6 +1961,9 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_manual_patch_blocked_target_file_count: number;
     knowledge_writeback_manual_patch_manifest_id: string;
     knowledge_writeback_manual_patch_manifest_sha256: string;
+    knowledge_writeback_manual_patch_closure_certificate_id: string;
+    knowledge_writeback_manual_patch_closure_certificate_sha256: string;
+    knowledge_writeback_manual_patch_closure_certificate_ready: boolean;
     knowledge_writeback_manual_patch_total_patch_count: number;
     knowledge_writeback_manual_patch_project_patch_count: number;
     knowledge_writeback_manual_patch_expansion_patch_count: number;
@@ -6651,6 +6654,32 @@ export interface KnowledgeWritebackManualPatchManifest {
   target_files: string[];
 }
 
+export interface KnowledgeWritebackManualPatchClosureCertificate {
+  schema_version: 'knowledge-writeback-manual-patch-closure-certificate/v1';
+  certificate_id: string;
+  generated_at: string;
+  sha256: string;
+  status: 'ready_for_operator_apply' | 'blocked';
+  ready_for_operator_apply: boolean;
+  manual_patch_manifest_id: string;
+  manual_patch_manifest_sha256: string;
+  signoff_manifest_id: string;
+  signoff_manifest_sha256: string;
+  target_file_count: number;
+  ready_target_file_count: number;
+  blocked_target_file_count: number;
+  total_patch_count: number;
+  source_ref_check_warning_count: number;
+  source_ref_check_blocker_count: number;
+  blocker_reason_count: number;
+  warning_reason_count: number;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  patch_applyable: false;
+  manual_apply_only: true;
+  operator_required_actions: string[];
+}
+
 export interface KnowledgeWritebackManualPatchPackage {
   schema_version: 'knowledge-writeback-manual-patch-package/v1';
   exported_at: string;
@@ -6670,6 +6699,7 @@ export interface KnowledgeWritebackManualPatchPackage {
   candidate_field_count: number;
   source_ref_quality: KnowledgeWritebackSourceRefQualitySummary;
   manual_patch_manifest: KnowledgeWritebackManualPatchManifest;
+  manual_patch_closure_certificate: KnowledgeWritebackManualPatchClosureCertificate;
   ready_reasons: string[];
   blocker_reasons: string[];
   warning_reasons: string[];

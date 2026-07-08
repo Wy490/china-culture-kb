@@ -148,6 +148,9 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_review_handoff_source_ref_count: number;
     knowledge_writeback_review_handoff_signoff_manifest_id: string;
     knowledge_writeback_review_handoff_signoff_manifest_sha256: string;
+    knowledge_writeback_manual_patch_closure_certificate_id: string;
+    knowledge_writeback_manual_patch_closure_certificate_sha256: string;
+    knowledge_writeback_manual_patch_closure_certificate_ready: boolean;
     knowledge_writeback_source_ref_coverage_percent: number;
     knowledge_writeback_source_ref_blocker_item_count: number;
     knowledge_writeback_source_ref_warning_item_count: number;
@@ -339,6 +342,9 @@ interface KnowledgeWritebackQueueMetrics {
   review_handoff_source_ref_count: number;
   review_handoff_signoff_manifest_id: string;
   review_handoff_signoff_manifest_sha256: string;
+  manual_patch_closure_certificate_id: string;
+  manual_patch_closure_certificate_sha256: string;
+  manual_patch_closure_certificate_ready: boolean;
   source_ref_coverage_percent: number;
   source_ref_blocker_item_count: number;
   source_ref_warning_item_count: number;
@@ -761,6 +767,9 @@ function knowledgeWritebackUnifiedExportMetrics(): Pick<
   | 'review_handoff_source_ref_count'
   | 'review_handoff_signoff_manifest_id'
   | 'review_handoff_signoff_manifest_sha256'
+  | 'manual_patch_closure_certificate_id'
+  | 'manual_patch_closure_certificate_sha256'
+  | 'manual_patch_closure_certificate_ready'
   | 'source_ref_coverage_percent'
   | 'source_ref_blocker_item_count'
   | 'source_ref_warning_item_count'
@@ -778,6 +787,7 @@ function knowledgeWritebackUnifiedExportMetrics(): Pick<
     });
     const reviewHandoff = exportPackage.preflight.review_handoff;
     const sourceRefQuality = exportPackage.preflight.source_ref_quality;
+    const closureCertificate = exportPackage.manual_patch_package.manual_patch_closure_certificate;
     return {
       unified_export_schema: exportPackage.schema_version,
       unified_export_ready: true,
@@ -794,6 +804,9 @@ function knowledgeWritebackUnifiedExportMetrics(): Pick<
       review_handoff_source_ref_count: reviewHandoff.source_ref_count,
       review_handoff_signoff_manifest_id: reviewHandoff.signoff_manifest.manifest_id,
       review_handoff_signoff_manifest_sha256: reviewHandoff.signoff_manifest.sha256,
+      manual_patch_closure_certificate_id: closureCertificate.certificate_id,
+      manual_patch_closure_certificate_sha256: closureCertificate.sha256,
+      manual_patch_closure_certificate_ready: closureCertificate.ready_for_operator_apply,
       source_ref_coverage_percent: sourceRefQuality.coverage_percent,
       source_ref_blocker_item_count: sourceRefQuality.blocker_item_count,
       source_ref_warning_item_count: sourceRefQuality.warning_item_count,
@@ -822,6 +835,9 @@ function knowledgeWritebackUnifiedExportMetrics(): Pick<
       review_handoff_source_ref_count: 0,
       review_handoff_signoff_manifest_id: '',
       review_handoff_signoff_manifest_sha256: '',
+      manual_patch_closure_certificate_id: '',
+      manual_patch_closure_certificate_sha256: '',
+      manual_patch_closure_certificate_ready: false,
       source_ref_coverage_percent: 0,
       source_ref_blocker_item_count: 0,
       source_ref_warning_item_count: 0,
@@ -1283,6 +1299,8 @@ function progressSlices(
         `knowledge_writeback_review_handoff_runtime_overrides=${writebackMetrics.review_handoff_runtime_override_count}`,
         `knowledge_writeback_review_handoff_missing_notes=${writebackMetrics.review_handoff_missing_review_note_count}`,
         `knowledge_writeback_review_handoff_manifest=${writebackMetrics.review_handoff_signoff_manifest_id || 'none'}`,
+        `knowledge_writeback_manual_patch_closure_certificate=${writebackMetrics.manual_patch_closure_certificate_id || 'none'}`,
+        `knowledge_writeback_manual_patch_closure_ready=${writebackMetrics.manual_patch_closure_certificate_ready}`,
         `knowledge_writeback_source_ref_coverage=${writebackMetrics.source_ref_coverage_percent}%`,
         `knowledge_writeback_source_ref_blockers=${writebackMetrics.source_ref_blocker_item_count}`,
         `knowledge_writeback_source_ref_warnings=${writebackMetrics.source_ref_warning_item_count}`,
@@ -1384,6 +1402,7 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     `- knowledge writeback review handoff missing notes: ${report.summary.knowledge_writeback_review_handoff_missing_review_note_count}`,
     `- knowledge writeback review handoff source refs: ${report.summary.knowledge_writeback_review_handoff_source_ref_count}`,
     `- knowledge writeback review handoff signoff manifest: ${report.summary.knowledge_writeback_review_handoff_signoff_manifest_id || 'none'}`,
+    `- knowledge writeback manual patch closure certificate: ${report.summary.knowledge_writeback_manual_patch_closure_certificate_id || 'none'} (ready=${report.summary.knowledge_writeback_manual_patch_closure_certificate_ready})`,
     `- knowledge writeback source ref coverage: ${report.summary.knowledge_writeback_source_ref_coverage_percent}%`,
     `- knowledge writeback source ref blockers/warnings: ${report.summary.knowledge_writeback_source_ref_blocker_item_count}/${report.summary.knowledge_writeback_source_ref_warning_item_count}`,
     `- knowledge writeback source ref check warnings/blockers: ${report.summary.knowledge_writeback_source_ref_check_warning_count}/${report.summary.knowledge_writeback_source_ref_check_blocker_count}`,
@@ -1578,6 +1597,9 @@ export async function getStoryAgentMvpStatus(
       knowledge_writeback_review_handoff_source_ref_count: writebackMetrics.review_handoff_source_ref_count,
       knowledge_writeback_review_handoff_signoff_manifest_id: writebackMetrics.review_handoff_signoff_manifest_id,
       knowledge_writeback_review_handoff_signoff_manifest_sha256: writebackMetrics.review_handoff_signoff_manifest_sha256,
+      knowledge_writeback_manual_patch_closure_certificate_id: writebackMetrics.manual_patch_closure_certificate_id,
+      knowledge_writeback_manual_patch_closure_certificate_sha256: writebackMetrics.manual_patch_closure_certificate_sha256,
+      knowledge_writeback_manual_patch_closure_certificate_ready: writebackMetrics.manual_patch_closure_certificate_ready,
       knowledge_writeback_source_ref_coverage_percent: writebackMetrics.source_ref_coverage_percent,
       knowledge_writeback_source_ref_blocker_item_count: writebackMetrics.source_ref_blocker_item_count,
       knowledge_writeback_source_ref_warning_item_count: writebackMetrics.source_ref_warning_item_count,
