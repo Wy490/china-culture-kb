@@ -136,6 +136,11 @@ interface KnowledgeWritebackQueueMetrics {
   unified_export_target_file_count: number;
   unified_export_direct_writeback_to_province_markdown: false;
   unified_export_province_markdown_written: false;
+  review_handoff_count: number;
+  review_handoff_requires_signoff_count: number;
+  review_handoff_runtime_override_count: number;
+  review_handoff_missing_review_note_count: number;
+  review_handoff_source_ref_count: number;
   read_error?: string;
 }
 
@@ -527,9 +532,15 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
   | 'unified_export_target_file_count'
   | 'unified_export_direct_writeback_to_province_markdown'
   | 'unified_export_province_markdown_written'
+  | 'review_handoff_count'
+  | 'review_handoff_requires_signoff_count'
+  | 'review_handoff_runtime_override_count'
+  | 'review_handoff_missing_review_note_count'
+  | 'review_handoff_source_ref_count'
 >> {
   try {
     const exportPackage = await getKnowledgeWritebackQueueExportPackage();
+    const reviewHandoff = exportPackage.preflight.review_handoff;
     return {
       unified_export_schema: exportPackage.schema_version,
       unified_export_ready: true,
@@ -539,6 +550,11 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       unified_export_target_file_count: exportPackage.target_files.length,
       unified_export_direct_writeback_to_province_markdown: exportPackage.direct_writeback_to_province_markdown,
       unified_export_province_markdown_written: exportPackage.province_markdown_written,
+      review_handoff_count: reviewHandoff.total_handoff_count,
+      review_handoff_requires_signoff_count: reviewHandoff.requires_manual_signoff_count,
+      review_handoff_runtime_override_count: reviewHandoff.runtime_override_count,
+      review_handoff_missing_review_note_count: reviewHandoff.missing_review_note_count,
+      review_handoff_source_ref_count: reviewHandoff.source_ref_count,
     };
   } catch {
     return {
@@ -550,6 +566,11 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       unified_export_target_file_count: 0,
       unified_export_direct_writeback_to_province_markdown: false,
       unified_export_province_markdown_written: false,
+      review_handoff_count: 0,
+      review_handoff_requires_signoff_count: 0,
+      review_handoff_runtime_override_count: 0,
+      review_handoff_missing_review_note_count: 0,
+      review_handoff_source_ref_count: 0,
     };
   }
 }
@@ -653,6 +674,11 @@ function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryA
       `unified_export_target_files=${metrics.unified_export_target_file_count}`,
       `unified_export_direct_writeback=${metrics.unified_export_direct_writeback_to_province_markdown}`,
       `unified_export_province_written=${metrics.unified_export_province_markdown_written}`,
+      `review_handoff_count=${metrics.review_handoff_count}`,
+      `review_handoff_requires_signoff=${metrics.review_handoff_requires_signoff_count}`,
+      `review_handoff_runtime_overrides=${metrics.review_handoff_runtime_override_count}`,
+      `review_handoff_missing_review_notes=${metrics.review_handoff_missing_review_note_count}`,
+      `review_handoff_source_refs=${metrics.review_handoff_source_ref_count}`,
       `read_error=${metrics.read_error ?? 'none'}`,
       'candidate_review_required=true',
       'direct_province_write=false',
@@ -1001,6 +1027,10 @@ function progressSlices(
         `knowledge_writeback_unified_export_ready=${writebackMetrics.unified_export_ready}`,
         `knowledge_writeback_unified_export_target_files=${writebackMetrics.unified_export_target_file_count}`,
         `knowledge_writeback_unified_export_province_written=${writebackMetrics.unified_export_province_markdown_written}`,
+        `knowledge_writeback_review_handoff=${writebackMetrics.review_handoff_count}`,
+        `knowledge_writeback_review_handoff_signoff=${writebackMetrics.review_handoff_requires_signoff_count}`,
+        `knowledge_writeback_review_handoff_runtime_overrides=${writebackMetrics.review_handoff_runtime_override_count}`,
+        `knowledge_writeback_review_handoff_missing_notes=${writebackMetrics.review_handoff_missing_review_note_count}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
         `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
         `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
@@ -1093,6 +1123,11 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- knowledge writeback unified export approved/project/expansion: ${report.summary.knowledge_writeback_unified_export_approved_count}/${report.summary.knowledge_writeback_unified_export_project_approved_count}/${report.summary.knowledge_writeback_unified_export_expansion_approved_count}`,
     `- knowledge writeback unified export target files: ${report.summary.knowledge_writeback_unified_export_target_file_count}`,
     `- knowledge writeback unified export province written: ${report.summary.knowledge_writeback_unified_export_province_markdown_written}`,
+    `- knowledge writeback review handoff: ${report.summary.knowledge_writeback_review_handoff_count}`,
+    `- knowledge writeback review handoff signoff: ${report.summary.knowledge_writeback_review_handoff_requires_signoff_count}`,
+    `- knowledge writeback review handoff runtime overrides: ${report.summary.knowledge_writeback_review_handoff_runtime_override_count}`,
+    `- knowledge writeback review handoff missing notes: ${report.summary.knowledge_writeback_review_handoff_missing_review_note_count}`,
+    `- knowledge writeback review handoff source refs: ${report.summary.knowledge_writeback_review_handoff_source_ref_count}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
     `- real GEARS endpoint configured: ${report.summary.real_gears_endpoint_configured}`,
@@ -1289,6 +1324,11 @@ export async function getStoryAgentMvpStatus(
       knowledge_writeback_unified_export_target_file_count: writebackMetrics.unified_export_target_file_count,
       knowledge_writeback_unified_export_direct_writeback_to_province_markdown: writebackMetrics.unified_export_direct_writeback_to_province_markdown,
       knowledge_writeback_unified_export_province_markdown_written: writebackMetrics.unified_export_province_markdown_written,
+      knowledge_writeback_review_handoff_count: writebackMetrics.review_handoff_count,
+      knowledge_writeback_review_handoff_requires_signoff_count: writebackMetrics.review_handoff_requires_signoff_count,
+      knowledge_writeback_review_handoff_runtime_override_count: writebackMetrics.review_handoff_runtime_override_count,
+      knowledge_writeback_review_handoff_missing_review_note_count: writebackMetrics.review_handoff_missing_review_note_count,
+      knowledge_writeback_review_handoff_source_ref_count: writebackMetrics.review_handoff_source_ref_count,
       blocker_count: productionPortfolio.summary.blocker_count,
       warning_count: productionPortfolio.summary.warning_count,
       generated_governance_action_count: generatedGovernancePlan.actions.length,

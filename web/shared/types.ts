@@ -1939,6 +1939,11 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_unified_export_target_file_count: number;
     knowledge_writeback_unified_export_direct_writeback_to_province_markdown: false;
     knowledge_writeback_unified_export_province_markdown_written: false;
+    knowledge_writeback_review_handoff_count: number;
+    knowledge_writeback_review_handoff_requires_signoff_count: number;
+    knowledge_writeback_review_handoff_runtime_override_count: number;
+    knowledge_writeback_review_handoff_missing_review_note_count: number;
+    knowledge_writeback_review_handoff_source_ref_count: number;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;

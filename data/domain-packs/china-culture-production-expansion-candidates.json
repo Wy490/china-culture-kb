@@ -318,6 +318,47 @@
               "verification_note": "风险来自本地条目可信度和待核范围；适合人工复核，不直接入事实正文。"
             }
           ]
+        },
+        {
+          "entry_name": "湖南花鼓戏——湖南人的戏",
+          "province": "湖南",
+          "recommended_fields": ["materials", "process_steps", "documentation_assets", "production_risks"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["国家级非遗口径无来源泛化", "各地分支唱腔混写", "《刘海砍樵》版本差异未核实断言"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "materials",
+              "candidate_value": "戏服、头饰、手帕、扇子、剧本、曲谱、湖南方言唱词本、花鼓、大筒和唢呐可作为 heritage_promo 的人物道具与声画材料；具体剧目服装制式和乐器编制需按剧团版本复核。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#湖南花鼓戏：人物随身道具", "data/provinces/湖南.md#湖南花鼓戏：场景陈设"],
+              "writeback_hint": "作为非遗宣传材料字段候选，正式写回前复核国家级非遗名录、湖南省花鼓戏剧院资料和剧目授权。",
+              "verification_note": "材料来自本地湖南花鼓戏条目；不同分支、剧目版本和舞台资产授权需人工补源。"
+            },
+            {
+              "field_id": "process_steps",
+              "candidate_value": "候选流程为剧目版本确认→角色行当和方言唱白排练→花鼓/大筒/唢呐伴奏合排→三小角色身段与手帕扇子动作校准→舞台片段拍摄→剧院或传承人复核字幕口径。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#湖南花鼓戏：故事梗概", "data/provinces/湖南.md#湖南花鼓戏：人物"],
+              "writeback_hint": "作为宣传片流程镜头候选，不写成固定教学流程；分支唱腔和《刘海砍樵》版本差异需另核。",
+              "verification_note": "流程由本地条目的唱腔、伴奏、三小角色和排练场景归纳，仍需剧团或戏曲研究者确认。"
+            },
+            {
+              "field_id": "documentation_assets",
+              "candidate_value": "中国非遗网第二批国家级非遗入口、湖南省花鼓戏剧院资料、剧目海报、剧照墙、排练厅访谈、剧本曲谱和方言唱词本可组成来源与授权清单。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#湖南花鼓戏：来源", "data/provinces/湖南.md#湖南花鼓戏：核实方法"],
+              "writeback_hint": "写回时拆成来源入口、可拍资产和授权待办，不把剧院展陈或演出片段默认视为可商用素材。",
+              "verification_note": "来源入口来自现有条目；项目页、剧目版权、演员肖像和排练厅拍摄许可需人工确认。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "“湖南人的戏”“国家级非遗”“三小角色”“川调和打调”“《刘海砍樵》代表性”等表述需按官方名录、剧院资料和具体剧种分支核验；不得把旅游演出、影视改编或单一剧团版本写成全部花鼓戏传统。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#湖南花鼓戏：待核实点", "data/provinces/湖南.md#湖南花鼓戏：可信度"],
+              "writeback_hint": "作为审稿风险清单进入草案，优先保护非遗口径、剧目版本、分支唱腔和演出授权边界。",
+              "verification_note": "风险来自条目的待核范围，适合人工复核，不适合直接做成旁白事实。"
+            }
+          ]
         }
       ]
     },
@@ -627,6 +668,47 @@
               "verification_note": "边界来自本地待核实点和纪录片规则，适合人工审稿。"
             }
           ]
+        },
+        {
+          "entry_name": "岳阳楼——先忧后乐的精神地标",
+          "province": "湖南",
+          "recommended_fields": ["documentary_question", "source_trail", "present_day_trace", "reconstruction_boundary"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["范仲淹亲临岳阳楼无来源断言", "鲁肃阅军楼年份绝对化", "吕洞宾传说写成史实"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "documentary_question",
+              "candidate_value": "为什么一座屡毁屡建的湖畔楼阁，会从军事阅军楼变成“先天下之忧而忧”的精神地标？微纪录可从建筑、文本和洞庭湖现场三层展开。",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/湖南.md#岳阳楼：简介", "data/provinces/湖南.md#岳阳楼：文化意义"],
+              "writeback_hint": "作为 documentary_short 核心问题候选，保持文献和现场双线，不把价值判断直接写成已落库事实。",
+              "verification_note": "问题来自岳阳楼条目的建筑演变、范仲淹文本和忧乐精神线索。"
+            },
+            {
+              "field_id": "source_trail",
+              "candidate_value": "范仲淹《岳阳楼记》、杜甫《登岳阳楼》、岳阳楼景区官方资料、文保资料、楼内雕屏碑刻、滕子京重修线索和文史研究者采访可组成来源线。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#岳阳楼：来源", "data/provinces/湖南.md#岳阳楼：人物"],
+              "writeback_hint": "写回时拆成原文、景区资料、文保资料、采访对象和待核争议，不混用诗文、传说和建筑史口径。",
+              "verification_note": "来源入口来自现有条目；鲁肃阅军楼、张说重修和范仲淹是否到过岳阳需交叉核验。"
+            },
+            {
+              "field_id": "present_day_trace",
+              "candidate_value": "岳阳楼主楼、洞庭湖湖面、楼内《岳阳楼记》雕屏、历代碑刻、三醉亭、仙梅亭、吕仙祠线索、导览图和录音采访可作为现实回访与文献转场资产。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#岳阳楼：场景", "data/provinces/湖南.md#岳阳楼：场景陈设"],
+              "writeback_hint": "作为现地痕迹和 B-roll 采集清单，景区拍摄、碑刻图像和讲解录音授权需确认。",
+              "verification_note": "地点和展陈线索来自本地条目；附属建筑和传说线索需标注层级。"
+            },
+            {
+              "field_id": "reconstruction_boundary",
+              "candidate_value": "可以使用文本摘页、湖面空镜、建筑细节、地图和碑刻说明；再现镜头只做求记书、洞庭图和登楼视角的克制情境，不虚构范仲淹亲临、鲁肃阅军具体对白或吕洞宾神迹。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#岳阳楼：待核实点", "data/provinces/湖南.md#岳阳楼：核实方法"],
+              "writeback_hint": "写入纪录片再现边界，明确文献原文、建筑史推断和民间传说三层。",
+              "verification_note": "边界来自条目待核实点；适合人工审稿，不能把再现画面当历史影像。"
+            }
+          ]
         }
       ]
     },
@@ -893,6 +975,47 @@
               "source_refs": ["data/provinces/湖南.md#屈原投江汨罗：待核实点", "data/provinces/湖南.md#屈原投江汨罗：可信度"],
               "writeback_hint": "写入漫剧审稿边界，优先保护历史文献、民俗传说和当代非遗活动的层级差异。",
               "verification_note": "边界来自本地条目的核实方法和待核实点。"
+            }
+          ]
+        },
+        {
+          "entry_name": "洞庭湖君山——传说叠加的洞庭明珠",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "character_anchor", "expression_beats", "forbidden_tone"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["湘妃墓写成确证墓葬", "柳毅井传说写成史实", "秦始皇封山印遗迹真伪无来源断言"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "第一格：少年讲解员在君山岛地图上圈出三个点——湘妃祠、柳毅井、封山印；湖雾散开，旁白说“一座小岛，为什么能同时住进正史、传奇和神话？”",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖君山：简介", "data/provinces/湖南.md#洞庭湖君山：故事梗概"],
+              "writeback_hint": "只作为 AI 漫剧开场钩子候选，不写成历史现场；画面需明确是当代寻访进入传说层。",
+              "verification_note": "钩子基于君山多重传说叠加和景区地理锚点改编。"
+            },
+            {
+              "field_id": "character_anchor",
+              "candidate_value": "当代讲解员/寻访者负责串联路线；文史研究者提示《史记》、唐传奇、民间传说和景区附会边界；茶园制茶人承接君山银针线索，湘妃、柳毅、秦始皇只进入传说或历史文本层。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖君山：人物", "data/provinces/湖南.md#洞庭湖君山：来源"],
+              "writeback_hint": "作为角色锚点候选，明确当代人物、文本人物和传说人物分层。",
+              "verification_note": "人物层级来自本地条目；漫剧原创少年角色和对话需标注改编。"
+            },
+            {
+              "field_id": "expression_beats",
+              "candidate_value": "少年初听湘妃泪竹时好奇→看到《史记》摘页时认真→听柳毅井龙宫故事时惊讶→研究者提醒遗迹真伪待核时收住兴奋→最后把三个标签贴成“正史/传奇/传说”三色图。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖君山：文化意义", "data/provinces/湖南.md#洞庭湖君山：待核实点"],
+              "writeback_hint": "作为表情节拍候选，用于分镜连续性；不得替代真实导览或学术结论。",
+              "verification_note": "情绪节拍服务漫剧理解门槛，事实边界仍是条目待核内容。"
+            },
+            {
+              "field_id": "forbidden_tone",
+              "candidate_value": "避免把湘妃墓、柳毅井和封山印都说成确证古迹；避免把龙宫、湘君神话和贡茶传说混成单一历史；避免用玄幻惊奇替代《史记》文本、唐传奇和景区实物的分层说明。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#洞庭湖君山：待核实点", "data/provinces/湖南.md#洞庭湖君山：可信度"],
+              "writeback_hint": "写入漫剧审稿边界，优先保护正史、传奇、神话和当代景区展陈的层级差异。",
+              "verification_note": "边界来自本地条目的混合可信度说明和待核范围。"
             }
           ]
         }
@@ -1347,6 +1470,47 @@
               "source_refs": ["data/provinces/湖南.md#马王堆汉墓：文化意义", "data/provinces/湖南.md#马王堆汉墓：可信度"],
               "writeback_hint": "复盘句可进入讲解草案，正式写回前补齐展陈和研究资料口径。",
               "verification_note": "句子服务视频收束，避免神秘化、防腐奇观化或过度医学化。"
+            }
+          ]
+        },
+        {
+          "entry_name": "张家界武陵源——3.8亿年雕琢的世界自然遗产",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "concept_definitions", "diagram_or_caption_plan", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["石英砂岩峰林成因简化成单一奇观", "张万守山和张良隐居传说写成史实", "景区画面和世界遗产资料默认可商用"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "为什么张家界武陵源的山峰不是普通“石柱”，而是3.8亿年岩层、节理、流水侵蚀和重力崩塌共同形成的石英砂岩峰林？讲解片可把地质、命名和传说分成三层。",
+              "evidence_level": "explainer_candidate_from_local_entry",
+              "source_refs": ["data/provinces/湖南.md#张家界武陵源：简介", "data/provinces/湖南.md#张家界武陵源：故事梗概"],
+              "writeback_hint": "作为 explainer_video 开场问题候选，保持自然遗产科学解释优先，不把民间命名传说当科学依据。",
+              "verification_note": "问题来自本地条目的石英砂岩峰林、命名由来和地质演化线索。"
+            },
+            {
+              "field_id": "concept_definitions",
+              "candidate_value": "“石英砂岩峰林”指石英砂岩在构造节理、流水切割和重力崩塌作用下形成的柱状、塔状、针状岩峰群；“世界自然遗产”指联合国教科文组织名录认定；“地方传说”需与地质成因分层。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#张家界武陵源：来源", "data/provinces/湖南.md#张家界武陵源：核实方法"],
+              "writeback_hint": "概念定义先作为讲解候选，正式写回时需核对世界遗产中心、景区和地质科普资料。",
+              "verification_note": "定义用于讲解结构，避免把传说、行政命名和自然科学解释混为一层。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "三层图示：3.8亿年前沉积岩层→垂直节理与流水切割→孤立峰林和溪谷；旁边附小标签“张家界命名/武陵源文学意象/向王天子传说为人文层，需分层引用”。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#张家界武陵源：场景", "data/provinces/湖南.md#张家界武陵源：人物随身道具"],
+              "writeback_hint": "作为图示字幕候选，地质剖面、景区地图和无人机画面需授权和科学复核。",
+              "verification_note": "图示基于本地条目的地貌、地图和场景资产，不替代正式地质图。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "张家界武陵源的魅力不只是“山长得奇”，而是自然地质把时间雕成峰林，人文叙事又把这些峰林连接到地名、族群记忆和红色线索；每一层都要说清来源。",
+              "evidence_level": "explainer_candidate_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#张家界武陵源：文化意义", "data/provinces/湖南.md#张家界武陵源：待核实点"],
+              "writeback_hint": "复盘句可进入讲解草案，正式写回前删除或补证过强价值判断。",
+              "verification_note": "句子服务视频收束，需保留张万、张良、向王天子和天门翻水等传说待核边界。"
             }
           ]
         }

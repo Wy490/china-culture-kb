@@ -56,6 +56,21 @@
         <option value="written_back">已入库</option>
         <option value="needs_revision">需重审</option>
       </select>
+      <select v-model="reviewSourceFilter" class="writeback-page__select">
+        <option value="">全部复核来源</option>
+        <option value="seed">Seed 审稿</option>
+        <option value="runtime">运行态审稿</option>
+        <option value="overrides_seed">运行态覆盖 Seed</option>
+      </select>
+      <select v-model="handoffFilter" class="writeback-page__select">
+        <option value="">全部交接状态</option>
+        <option value="requires_signoff">待人工签收</option>
+        <option value="missing_review_note">缺复核备注</option>
+        <option value="ready_to_queue">可入队草案</option>
+        <option value="queued_for_writeback">已入队待写回</option>
+        <option value="needs_revision_handoff">退回补证</option>
+        <option value="runtime_override">运行态覆盖</option>
+      </select>
       <button
         type="button"
         class="writeback-page__action"
@@ -71,6 +86,14 @@
         @click="copyUnifiedExport('json')"
       >
         {{ exportingFormat === 'unified-json' ? '复制中…' : '复制统一 JSON' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
+        @click="copyReviewHandoffChecklist"
+      >
+        {{ exportingFormat === 'handoff-markdown' ? '复制中…' : '复制签收清单' }}
       </button>
       <button
         type="button"
@@ -406,7 +429,7 @@ const expansionDraft = ref<DomainPackExpansionWritebackDraftPackage | null>(null
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | ''>('')
+const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | 'handoff-markdown' | ''>('')
 const updatingTaskId = ref('')
 const searchQuery = ref('')
 const projectFilter = ref('')
@@ -414,6 +437,8 @@ const packFilter = ref('')
 const videoTypeFilter = ref<VideoType | ''>('')
 const provinceFilter = ref('')
 const writebackFilter = ref<KnowledgeWritebackStatus | ''>('')
+const reviewSourceFilter = ref<DomainPackExpansionReviewStateSource | 'overrides_seed' | ''>('')
+const handoffFilter = ref<'requires_signoff' | 'missing_review_note' | 'ready_to_queue' | 'queued_for_writeback' | 'needs_revision_handoff' | 'runtime_override' | ''>('')
 const bulkUpdatingKey = ref('')
 const bulkExpansionNote = ref('')
 const selectedExpansionIds = ref<string[]>([])
@@ -641,6 +666,8 @@ const filteredItems = computed(() => {
       && (!videoTypeFilter.value || item.video_type === videoTypeFilter.value)
       && (!provinceFilter.value || item.target_province === provinceFilter.value)
       && (!writebackFilter.value || status === writebackFilter.value)
+      && !reviewSourceFilter.value
+      && matchesHandoffFilter(status, Boolean(item.task.knowledge_candidate_review_note?.trim()), 0)
       && (!query || text.includes(query))
   })
 })
@@ -679,6 +706,14 @@ const filteredExpansionItems = computed(() => {
       && (!videoTypeFilter.value || item.target_video_types.includes(videoTypeFilter.value))
       && (!provinceFilter.value || item.province === provinceFilter.value)
       && (!writebackFilter.value || status === writebackFilter.value)
+      && matchesReviewSourceFilter(item)
+      && matchesHandoffFilter(
+        status,
+        Boolean(item.review_note?.trim()),
+        itemSourceRefCount(item),
+        item.review_state_source,
+        item.review_state_overrides_seed,
+      )
       && (!query || text.includes(query))
   })
 })
@@ -782,6 +817,31 @@ function reviewStateSourceLabel(source: DomainPackExpansionReviewStateSource): s
   if (source === 'runtime') return '运行态'
   if (source === 'seed') return 'Seed'
   return '未记录'
+}
+
+function matchesReviewSourceFilter(item: DomainPackExpansionWritebackDraftItem): boolean {
+  if (!reviewSourceFilter.value) return true
+  if (reviewSourceFilter.value === 'overrides_seed') return item.review_state_overrides_seed
+  return item.review_state_source === reviewSourceFilter.value
+}
+
+function matchesHandoffFilter(
+  status: KnowledgeWritebackStatus,
+  hasReviewNote: boolean,
+  sourceRefCount: number,
+  reviewStateSource?: DomainPackExpansionReviewStateSource,
+  reviewStateOverridesSeed?: boolean,
+): boolean {
+  if (!handoffFilter.value) return true
+  if (handoffFilter.value === 'requires_signoff') return status !== 'written_back'
+  if (handoffFilter.value === 'missing_review_note') return !hasReviewNote
+  if (handoffFilter.value === 'ready_to_queue') return status === 'draft_ready' && hasReviewNote && sourceRefCount > 0
+  if (handoffFilter.value === 'queued_for_writeback') return status === 'queued'
+  if (handoffFilter.value === 'needs_revision_handoff') return status === 'needs_revision'
+  if (handoffFilter.value === 'runtime_override') {
+    return reviewStateSource === 'runtime' || Boolean(reviewStateOverridesSeed)
+  }
+  return true
 }
 
 function reviewHandoffRequiredAction(
@@ -924,6 +984,70 @@ async function copyUnifiedExport(format: 'markdown' | 'json') {
   } finally {
     exportingFormat.value = ''
   }
+}
+
+async function copyReviewHandoffChecklist() {
+  if (reviewHandoffItems.value.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可复制的复核交接项'
+    return
+  }
+
+  exportingFormat.value = 'handoff-markdown'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    await navigator.clipboard.writeText(renderReviewHandoffChecklist())
+    copyMessage.value = `已复制复核签收清单：${reviewHandoffItems.value.length} 条，待签收 ${reviewHandoffSummary.value.requiresManualSignoffCount} 条；省份 Markdown 未写入。`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制复核签收清单失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
+function renderReviewHandoffChecklist(): string {
+  const statusText = statusCountSummary(reviewHandoffItems.value.reduce((counts, item) => {
+    counts[item.writeback_status] += 1
+    return counts
+  }, {
+    draft_ready: 0,
+    queued: 0,
+    written_back: 0,
+    needs_revision: 0,
+  } as Record<KnowledgeWritebackStatus, number>))
+
+  return [
+    '# Knowledge Writeback Review Handoff',
+    '',
+    '- direct_writeback_to_province_markdown: false',
+    '- province_markdown_written: false',
+    `- visible_handoff_count: ${reviewHandoffItems.value.length}`,
+    `- requires_manual_signoff_count: ${reviewHandoffSummary.value.requiresManualSignoffCount}`,
+    `- runtime_override_count: ${reviewHandoffSummary.value.runtimeOverrideCount}`,
+    `- missing_review_note_count: ${reviewHandoffSummary.value.missingReviewNoteCount}`,
+    `- source_ref_count: ${reviewHandoffSummary.value.sourceRefCount}`,
+    `- writeback_status_counts: ${statusText}`,
+    '',
+    '## Operator Checklist',
+    '',
+    '- 核对 target_file 是否匹配省份条目。',
+    '- 核对 review_note、writeback_note、source_refs 和字段差异。',
+    '- runtime 覆盖 seed 时优先确认退回原因和复核备注。',
+    '- 本清单只用于人工写回签收，不直接修改 data/provinces/*.md。',
+    '',
+    '## Handoff Items',
+    '',
+    ...reviewHandoffItems.value.flatMap(item => [
+      `- [ ] ${item.handoff_id}｜${item.title}`,
+      `  - source: ${item.source_label}`,
+      `  - target_file: ${item.target_file}`,
+      `  - writeback_status: ${item.writeback_status}`,
+      `  - candidate_fields: ${item.candidate_field_count}`,
+      `  - source_refs: ${item.source_ref_count}`,
+      `  - action: ${item.required_action}`,
+    ]),
+  ].join('\n')
 }
 
 async function copyExpansionDraft(format: 'markdown' | 'json') {

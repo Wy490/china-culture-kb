@@ -366,8 +366,8 @@ describe('production health reports', () => {
     expect(toolResult.markdown).toContain('field_candidate_completion_percent: 100');
     expect(toolResult.markdown).toContain('pipeline_progress_percent: 78');
     expect(toolResult.markdown).toContain('pipeline_stage: human_review');
-    expect(toolResult.markdown).toContain('progress_percent: 89');
-    expect(toolResult.markdown).toContain('progress_note: 扩库审稿页和统一写回队列已有 pack 筛选');
+    expect(toolResult.markdown).toContain('progress_percent: 91');
+    expect(toolResult.markdown).toContain('progress_note: 扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选');
     expect(toolResult.markdown).toContain('field_review_ready_count: 8');
     expect(toolResult.markdown).toContain('field_review_blocker_count: 0');
     expect(toolResult.markdown).toContain('field_supplement_priority_target_count: 0');
@@ -946,6 +946,23 @@ describe('production health reports', () => {
           expansion_field_missing_count: 1,
           direct_writeback_to_province_markdown: false,
         })],
+        review_handoff: expect.objectContaining({
+          schema_version: 'knowledge-writeback-queue-review-handoff/v1',
+          total_handoff_count: 2,
+          project_handoff_count: 1,
+          expansion_handoff_count: 1,
+          requires_manual_signoff_count: 2,
+          items: expect.arrayContaining([
+            expect.objectContaining({
+              source_kind: 'project',
+              writeback_status: 'queued',
+            }),
+            expect.objectContaining({
+              source_kind: 'domain_pack_expansion',
+              writeback_status: 'queued',
+            }),
+          ]),
+        }),
       },
       project_patch: {
         schema_version: 'project-knowledge-writeback-patch/v1',
@@ -974,6 +991,7 @@ describe('production health reports', () => {
     expect(unified.markdown).toContain('Knowledge Writeback Queue Export');
     expect(unified.markdown).toContain('province_markdown_written: false');
     expect(unified.markdown).toContain('Export Preflight');
+    expect(unified.markdown).toContain('Review Handoff');
     expect(unified.markdown).toContain('expansion_field_diff');
     expect(unified.markdown).toContain('项目草案来源');
     expect(fs.existsSync(path.join(dataRoot, 'provinces', '湖南.md'))).toBe(false);
