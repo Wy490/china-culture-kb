@@ -618,6 +618,38 @@ interface ReviewHandoffSignoffBatchSummary {
 
 type SourceRefQualityLevel = 'pass' | 'warning' | 'blocker'
 
+interface UnifiedTargetFilePreflightRow extends KnowledgeWritebackQueueExportTargetFilePreflight {
+  sourceRefSet: Set<string>;
+  checkedFieldCount: number;
+  coveredFieldCount: number;
+  missingSourceRefFieldCount: number;
+  missingVerificationNoteFieldCount: number;
+  missingWritebackHintFieldCount: number;
+  projectWarningCount: number;
+}
+
+interface ExpansionItemSourceQuality {
+  candidateFieldCount: number;
+  checkedFieldCount: number;
+  coveredFieldCount: number;
+  sourceRefCount: number;
+  missingSourceRefFieldCount: number;
+  missingVerificationNoteFieldCount: number;
+  missingWritebackHintFieldCount: number;
+}
+
+interface CombinedSourceQuality extends ExpansionItemSourceQuality {
+  localSourceRefCount: number;
+  anchoredSourceRefCount: number;
+  anchorReviewCount: number;
+}
+
+interface ManualPatchPreviewRow {
+  target_file: string;
+  projectItems: ProjectSupplementTaskListItem[];
+  expansionItems: DomainPackExpansionWritebackDraftItem[];
+}
+
 interface ManualPatchPreviewTarget {
   target_file: string;
   project_patch_count: number;
@@ -644,6 +676,12 @@ interface ManualPatchPreviewTarget {
 
 const UNASSIGNED_SIGNOFF_BATCH_ID = 'unassigned_signoff_batch'
 const DIFF_PREVIEW_LINE_LIMIT = 32
+const WRITEBACK_STATUS_VALUES: readonly KnowledgeWritebackStatus[] = [
+  'draft_ready',
+  'queued',
+  'written_back',
+  'needs_revision',
+]
 
 const revisionTemplates = [
   {
@@ -700,27 +738,11 @@ const expansionSourceRefTotalCount = computed(() =>
   expansionItems.value.reduce((sum, item) => sum + itemSourceRefCount(item), 0),
 )
 const unifiedTargetFilePreflight = computed<KnowledgeWritebackQueueExportTargetFilePreflight[]>(() => {
-  const rows = new Map<string, KnowledgeWritebackQueueExportTargetFilePreflight & {
-    sourceRefSet: Set<string>;
-    checkedFieldCount: number;
-    coveredFieldCount: number;
-    missingSourceRefFieldCount: number;
-    missingVerificationNoteFieldCount: number;
-    missingWritebackHintFieldCount: number;
-    projectWarningCount: number;
-  }>()
-  const ensureRow = (targetFile: string) => {
+  const rows = new Map<string, UnifiedTargetFilePreflightRow>()
+  const ensureRow = (targetFile: string): UnifiedTargetFilePreflightRow => {
     const current = rows.get(targetFile)
     if (current) return current
-    const next: KnowledgeWritebackQueueExportTargetFilePreflight & {
-      sourceRefSet: Set<string>;
-      checkedFieldCount: number;
-      coveredFieldCount: number;
-      missingSourceRefFieldCount: number;
-      missingVerificationNoteFieldCount: number;
-      missingWritebackHintFieldCount: number;
-      projectWarningCount: number;
-    } = {
+    const next: UnifiedTargetFilePreflightRow = {
       target_file: targetFile,
       project_draft_count: 0,
       expansion_draft_count: 0,
@@ -753,29 +775,33 @@ const unifiedTargetFilePreflight = computed<KnowledgeWritebackQueueExportTargetF
     return next
   }
 
-  for (const item of filteredItems.value) {
+  for (const item of filteredItems.value as ProjectSupplementTaskListItem[]) {
     const targetFile = item.suggested_file_path || `data/provinces/${item.target_province || '待确认'}.md`
     const row = ensureRow(targetFile)
+    const status: KnowledgeWritebackStatus = taskWritebackStatus(item)
     row.project_draft_count += 1
     row.total_draft_count += 1
-    row.writeback_status_counts[taskWritebackStatus(item)] += 1
+    row.writeback_status_counts[status] += 1
     row.projectWarningCount += 1
   }
 
-  for (const item of filteredExpansionItems.value) {
+  for (const item of filteredExpansionItems.value as DomainPackExpansionWritebackDraftItem[]) {
     const row = ensureRow(item.suggested_file_path)
     const quality = expansionItemSourceQuality(item)
+    const status: KnowledgeWritebackStatus = expansionWritebackStatus(item)
     row.expansion_draft_count += 1
     row.total_draft_count += 1
     row.expansion_candidate_field_count += item.field_supplement_candidate_count ?? 0
     row.expansion_field_missing_count += item.field_missing_candidate_count ?? 0
-    row.writeback_status_counts[expansionWritebackStatus(item)] += 1
+    row.writeback_status_counts[status] += 1
     row.checkedFieldCount += quality.checkedFieldCount
     row.coveredFieldCount += quality.coveredFieldCount
     row.missingSourceRefFieldCount += quality.missingSourceRefFieldCount
     row.missingVerificationNoteFieldCount += quality.missingVerificationNoteFieldCount
     row.missingWritebackHintFieldCount += quality.missingWritebackHintFieldCount
-    for (const sourceRef of (item.field_workbench ?? []).flatMap(field => field.source_refs)) {
+    const sourceRefs: string[] = (item.field_workbench ?? [])
+      .flatMap((field: DomainPackExpansionFieldWorkbenchItem): string[] => field.source_refs)
+    for (const sourceRef of sourceRefs) {
       row.sourceRefSet.add(sourceRef)
     }
   }
@@ -790,7 +816,7 @@ const unifiedTargetFilePreflight = computed<KnowledgeWritebackQueueExportTargetF
       missingWritebackHintFieldCount,
       projectWarningCount,
       ...item
-    }) => {
+    }: UnifiedTargetFilePreflightRow): KnowledgeWritebackQueueExportTargetFilePreflight => {
       const sourceRefQualityLevel: SourceRefQualityLevel = missingSourceRefFieldCount > 0
         ? 'blocker'
         : (projectWarningCount + missingVerificationNoteFieldCount + missingWritebackHintFieldCount) > 0
@@ -805,71 +831,92 @@ const unifiedTargetFilePreflight = computed<KnowledgeWritebackQueueExportTargetF
         source_ref_warning_count: projectWarningCount + missingVerificationNoteFieldCount + missingWritebackHintFieldCount,
       }
     })
-    .sort((a, b) => a.target_file.localeCompare(b.target_file, 'zh-Hans-CN'))
+    .sort((a: KnowledgeWritebackQueueExportTargetFilePreflight, b: KnowledgeWritebackQueueExportTargetFilePreflight) =>
+      a.target_file.localeCompare(b.target_file, 'zh-Hans-CN'))
 })
 const unifiedPreflightSummary = computed(() => ({
   targetFileCount: unifiedTargetFilePreflight.value.length,
-  totalDraftCount: unifiedTargetFilePreflight.value.reduce((sum, item) => sum + item.total_draft_count, 0),
+  totalDraftCount: unifiedTargetFilePreflight.value.reduce((sum: number, item: KnowledgeWritebackQueueExportTargetFilePreflight) =>
+    sum + item.total_draft_count, 0),
   expansionCandidateFieldCount: unifiedTargetFilePreflight.value
-    .reduce((sum, item) => sum + item.expansion_candidate_field_count, 0),
+    .reduce((sum: number, item: KnowledgeWritebackQueueExportTargetFilePreflight) =>
+      sum + item.expansion_candidate_field_count, 0),
   expansionFieldMissingCount: unifiedTargetFilePreflight.value
-    .reduce((sum, item) => sum + item.expansion_field_missing_count, 0),
+    .reduce((sum: number, item: KnowledgeWritebackQueueExportTargetFilePreflight) =>
+      sum + item.expansion_field_missing_count, 0),
   expansionSourceRefCount: unifiedTargetFilePreflight.value
-    .reduce((sum, item) => sum + item.expansion_source_ref_count, 0),
+    .reduce((sum: number, item: KnowledgeWritebackQueueExportTargetFilePreflight) =>
+      sum + item.expansion_source_ref_count, 0),
   sourceRefCoveragePercent: completionPercent(
-    manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.covered_field_count, 0),
-    manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.checked_field_count, 0),
+    manualPatchPreviewTargets.value.reduce((sum: number, item: ManualPatchPreviewTarget) =>
+      sum + item.covered_field_count, 0),
+    manualPatchPreviewTargets.value.reduce((sum: number, item: ManualPatchPreviewTarget) =>
+      sum + item.checked_field_count, 0),
   ),
 }))
-const reviewHandoffItems = computed<ReviewHandoffPreviewItem[]>(() => [
-  ...filteredItems.value.map(item => {
-    const status = taskWritebackStatus(item)
-    const hasReviewNote = Boolean(item.task.knowledge_candidate_review_note?.trim())
-    return {
-      handoff_id: writebackItemKey(item),
-      source_label: '项目草案',
-      title: item.task.label,
-      target_file: item.suggested_file_path || `data/provinces/${item.target_province || '待确认'}.md`,
-      writeback_status: status,
-      candidate_field_count: 0,
-      source_ref_count: 0,
-      has_review_note: hasReviewNote,
-      has_reviewer_identity: false,
-      required_action: reviewHandoffRequiredAction(status, hasReviewNote, 0),
-    }
-  }),
-  ...filteredExpansionItems.value.map(item => {
-    const status = expansionWritebackStatus(item)
-    const sourceRefCount = itemSourceRefCount(item)
-    const hasReviewNote = Boolean(item.review_note?.trim())
-    return {
-      handoff_id: item.review_item_id,
-      source_label: reviewStateSourceLabel(item.review_state_source),
-      title: item.entry_name,
-      target_file: item.suggested_file_path,
-      writeback_status: status,
-      candidate_field_count: item.field_supplement_candidate_count ?? candidateFields(item).length,
-      source_ref_count: sourceRefCount,
-      has_review_note: hasReviewNote,
-      has_reviewer_identity: hasExpansionReviewerIdentity(item),
-      review_state_source: item.review_state_source,
-      review_state_overrides_seed: item.review_state_overrides_seed,
-      signoff_batch_id: item.signoff_batch_id,
-      signoff_batch_note: item.signoff_batch_note,
-      required_action: reviewHandoffRequiredAction(status, hasReviewNote, sourceRefCount),
-    }
-  }),
-])
-const reviewHandoffSummary = computed(() => ({
-  requiresManualSignoffCount: reviewHandoffItems.value.filter(item => item.writeback_status !== 'written_back').length,
-  runtimeOverrideCount: reviewHandoffItems.value.filter(item =>
-    item.review_state_source === 'runtime' || item.review_state_overrides_seed,
-  ).length,
-  missingReviewNoteCount: reviewHandoffItems.value.filter(item => !item.has_review_note).length,
-  missingSignoffBatchCount: reviewHandoffItems.value.filter(item => !item.signoff_batch_id?.trim()).length,
-  signoffBatchIds: [...new Set(reviewHandoffItems.value.map(item => item.signoff_batch_id?.trim()).filter((id): id is string => Boolean(id)))].sort((a, b) => a.localeCompare(b)),
-  sourceRefCount: reviewHandoffItems.value.reduce((sum, item) => sum + item.source_ref_count, 0),
-}))
+const reviewHandoffItems = computed<ReviewHandoffPreviewItem[]>(() => {
+  const projectHandoffItems: ReviewHandoffPreviewItem[] = filteredItems.value
+    .map((item: ProjectSupplementTaskListItem): ReviewHandoffPreviewItem => {
+      const status: KnowledgeWritebackStatus = taskWritebackStatus(item)
+      const hasReviewNote = Boolean(item.task.knowledge_candidate_review_note?.trim())
+      return {
+        handoff_id: writebackItemKey(item),
+        source_label: '项目草案',
+        title: item.task.label,
+        target_file: item.suggested_file_path || `data/provinces/${item.target_province || '待确认'}.md`,
+        writeback_status: status,
+        candidate_field_count: 0,
+        source_ref_count: 0,
+        has_review_note: hasReviewNote,
+        has_reviewer_identity: false,
+        required_action: reviewHandoffRequiredAction(status, hasReviewNote, 0),
+      }
+    })
+
+  const expansionHandoffItems: ReviewHandoffPreviewItem[] = filteredExpansionItems.value
+    .map((item: DomainPackExpansionWritebackDraftItem): ReviewHandoffPreviewItem => {
+      const status: KnowledgeWritebackStatus = expansionWritebackStatus(item)
+      const sourceRefCount = itemSourceRefCount(item)
+      const hasReviewNote = Boolean(item.review_note?.trim())
+      return {
+        handoff_id: item.review_item_id,
+        source_label: reviewStateSourceLabel(item.review_state_source),
+        title: item.entry_name,
+        target_file: item.suggested_file_path,
+        writeback_status: status,
+        candidate_field_count: item.field_supplement_candidate_count ?? candidateFields(item).length,
+        source_ref_count: sourceRefCount,
+        has_review_note: hasReviewNote,
+        has_reviewer_identity: hasExpansionReviewerIdentity(item),
+        review_state_source: item.review_state_source,
+        review_state_overrides_seed: item.review_state_overrides_seed,
+        signoff_batch_id: item.signoff_batch_id,
+        signoff_batch_note: item.signoff_batch_note,
+        required_action: reviewHandoffRequiredAction(status, hasReviewNote, sourceRefCount),
+      }
+    })
+
+  const items: ReviewHandoffPreviewItem[] = [...projectHandoffItems, ...expansionHandoffItems]
+  return items
+})
+const reviewHandoffSummary = computed(() => {
+  const items: ReviewHandoffPreviewItem[] = reviewHandoffItems.value
+  const signoffBatchIds: string[] = [...new Set<string>(
+    items
+      .map((item: ReviewHandoffPreviewItem): string => item.signoff_batch_id?.trim() ?? '')
+      .filter((id: string): id is string => Boolean(id)),
+  )].sort((a: string, b: string) => a.localeCompare(b))
+  return {
+    requiresManualSignoffCount: items.filter((item: ReviewHandoffPreviewItem) => item.writeback_status !== 'written_back').length,
+    runtimeOverrideCount: items.filter((item: ReviewHandoffPreviewItem) =>
+      item.review_state_source === 'runtime' || item.review_state_overrides_seed,
+    ).length,
+    missingReviewNoteCount: items.filter((item: ReviewHandoffPreviewItem) => !item.has_review_note).length,
+    missingSignoffBatchCount: items.filter((item: ReviewHandoffPreviewItem) => !item.signoff_batch_id?.trim()).length,
+    signoffBatchIds,
+    sourceRefCount: items.reduce((sum: number, item: ReviewHandoffPreviewItem) => sum + item.source_ref_count, 0),
+  }
+})
 const reviewHandoffBatchSummaries = computed<ReviewHandoffSignoffBatchSummary[]>(() => {
   const summaries = new Map<string, ReviewHandoffSignoffBatchSummary>()
   const ensureSummary = (item: ReviewHandoffPreviewItem) => {
@@ -906,8 +953,10 @@ const reviewHandoffBatchSummaries = computed<ReviewHandoffSignoffBatchSummary[]>
     return next
   }
 
-  for (const item of reviewHandoffItems.value) {
+  const items: ReviewHandoffPreviewItem[] = reviewHandoffItems.value
+  for (const item of items) {
     const summary = ensureSummary(item)
+    const status: KnowledgeWritebackStatus = normalizeWritebackStatus(item.writeback_status)
     summary.item_count += 1
     if (item.source_label === '项目草案') summary.project_handoff_count += 1
     else summary.expansion_handoff_count += 1
@@ -918,7 +967,7 @@ const reviewHandoffBatchSummaries = computed<ReviewHandoffSignoffBatchSummary[]>
     else summary.missing_reviewer_identity_count += 1
     summary.source_ref_count += item.source_ref_count
     summary.candidate_field_count += item.candidate_field_count
-    summary.status_counts[item.writeback_status] += 1
+    summary.status_counts[status] += 1
     if (isReviewHandoffItemReadyForSignoff(item)) summary.ready_for_signoff_count += 1
     else summary.blocked_for_signoff_count += 1
   }
@@ -930,7 +979,8 @@ const reviewHandoffBatchSummaries = computed<ReviewHandoffSignoffBatchSummary[]>
   })
 })
 const reviewHandoffManifest = computed(() => {
-  const payload = JSON.stringify(reviewHandoffItems.value.map(item => ({
+  const items: ReviewHandoffPreviewItem[] = reviewHandoffItems.value
+  const payload = JSON.stringify(items.map((item: ReviewHandoffPreviewItem) => ({
     handoff_id: item.handoff_id,
     source_label: item.source_label,
     target_file: item.target_file,
@@ -950,34 +1000,30 @@ const reviewHandoffManifest = computed(() => {
 const reviewHandoffSamples = computed(() => reviewHandoffItems.value.slice(0, 6))
 
 const manualPatchPreviewTargets = computed<ManualPatchPreviewTarget[]>(() => {
-  const rows = new Map<string, {
-    target_file: string;
-    projectItems: ProjectSupplementTaskListItem[];
-    expansionItems: DomainPackExpansionWritebackDraftItem[];
-  }>()
-  const ensureRow = (targetFile: string) => {
+  const rows = new Map<string, ManualPatchPreviewRow>()
+  const ensureRow = (targetFile: string): ManualPatchPreviewRow => {
     const current = rows.get(targetFile)
     if (current) return current
-    const next = { target_file: targetFile, projectItems: [], expansionItems: [] }
+    const next: ManualPatchPreviewRow = { target_file: targetFile, projectItems: [], expansionItems: [] }
     rows.set(targetFile, next)
     return next
   }
 
-  for (const item of filteredItems.value) {
+  for (const item of filteredItems.value as ProjectSupplementTaskListItem[]) {
     ensureRow(item.suggested_file_path || `data/provinces/${item.target_province || '待确认'}.md`).projectItems.push(item)
   }
-  for (const item of filteredExpansionItems.value) {
+  for (const item of filteredExpansionItems.value as DomainPackExpansionWritebackDraftItem[]) {
     ensureRow(item.suggested_file_path).expansionItems.push(item)
   }
 
-  return [...rows.values()].map(row => {
+  return [...rows.values()].map((row: ManualPatchPreviewRow): ManualPatchPreviewTarget => {
     const quality = combinedSourceQuality(row.projectItems, row.expansionItems)
     const diffLines = renderLocalManualReviewDiff(row.target_file, row.projectItems, row.expansionItems)
-    const blockerReasons = [
+    const blockerReasons: string[] = [
       row.projectItems.length + row.expansionItems.length === 0 ? `no_patch_items_for_target=${row.target_file}` : '',
       quality.missingSourceRefFieldCount > 0 ? `missing_source_refs=${quality.missingSourceRefFieldCount}` : '',
     ].filter((reason): reason is string => Boolean(reason))
-    const warningReasons = [
+    const warningReasons: string[] = [
       row.projectItems.length > 0 ? `project_writeback_structured_source_refs_pending=${row.projectItems.length}` : '',
       quality.missingVerificationNoteFieldCount > 0 ? `missing_verification_notes=${quality.missingVerificationNoteFieldCount}` : '',
       quality.missingWritebackHintFieldCount > 0 ? `missing_writeback_hints=${quality.missingWritebackHintFieldCount}` : '',
@@ -1011,22 +1057,24 @@ const manualPatchPreviewTargets = computed<ManualPatchPreviewTarget[]>(() => {
       diff_preview_lines: diffLines.slice(0, DIFF_PREVIEW_LINE_LIMIT),
       diff_preview_truncated: diffLines.length > DIFF_PREVIEW_LINE_LIMIT,
     }
-  }).sort((a, b) => a.target_file.localeCompare(b.target_file, 'zh-Hans-CN'))
+  }).sort((a: ManualPatchPreviewTarget, b: ManualPatchPreviewTarget) =>
+    a.target_file.localeCompare(b.target_file, 'zh-Hans-CN'))
 })
 
 const manualPatchPreviewSummary = computed(() => {
-  const targets = manualPatchPreviewTargets.value
-  const checkedFieldCount = manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.checked_field_count, 0)
-  const coveredFieldCount = manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.covered_field_count, 0)
-  const readyTargetFileCount = targets.filter(item => item.ready_for_manual_apply).length
+  const targets: ManualPatchPreviewTarget[] = manualPatchPreviewTargets.value
+  const checkedFieldCount = targets.reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.checked_field_count, 0)
+  const coveredFieldCount = targets.reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.covered_field_count, 0)
+  const readyTargetFileCount = targets.filter((item: ManualPatchPreviewTarget) => item.ready_for_manual_apply).length
   const blockedTargetFileCount = targets.length - readyTargetFileCount
+  const targetFiles: string[] = targets.map((item: ManualPatchPreviewTarget): string => item.target_file)
   const closurePayload = JSON.stringify({
-    target_files: targets.map(item => item.target_file),
+    target_files: targetFiles,
     ready_target_file_count: readyTargetFileCount,
     blocked_target_file_count: blockedTargetFileCount,
-    total_patch_count: targets.reduce((sum, item) => sum + item.total_patch_count, 0),
-    blocker_reason_count: targets.reduce((sum, item) => sum + item.blocker_reasons.length, 0),
-    warning_reason_count: targets.reduce((sum, item) => sum + item.warning_reasons.length, 0),
+    total_patch_count: targets.reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.total_patch_count, 0),
+    blocker_reason_count: targets.reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.blocker_reasons.length, 0),
+    warning_reason_count: targets.reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.warning_reasons.length, 0),
     direct_writeback_to_province_markdown: false,
     province_markdown_written: false,
     patch_applyable: false,
@@ -1035,20 +1083,20 @@ const manualPatchPreviewSummary = computed(() => {
   const closureFingerprint = localManifestFingerprint(closurePayload)
   return {
     targetFileCount: targets.length,
-    totalPatchCount: targets.reduce((sum, item) => sum + item.total_patch_count, 0),
+    totalPatchCount: targets.reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.total_patch_count, 0),
     readyTargetFileCount,
     blockedTargetFileCount,
     localClosureCertificateId: `kwb-local-closure-${closureFingerprint.slice(0, 10)}`,
     localClosureReady: targets.length > 0 && blockedTargetFileCount === 0,
-    blockerCount: targets.reduce((sum, item) => sum + item.blocker_reasons.length, 0),
-    warningCount: targets.reduce((sum, item) => sum + item.warning_reasons.length, 0),
+    blockerCount: targets.reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.blocker_reasons.length, 0),
+    warningCount: targets.reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.warning_reasons.length, 0),
     sourceRefCoveragePercent: completionPercent(coveredFieldCount, checkedFieldCount),
     localSourceRefCount: targets
-      .reduce((sum, item) => sum + item.local_source_ref_count, 0),
+      .reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.local_source_ref_count, 0),
     anchorReviewCount: targets
-      .reduce((sum, item) => sum + item.source_ref_anchor_review_count, 0),
+      .reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.source_ref_anchor_review_count, 0),
     missingSourceFieldCount: targets
-      .reduce((sum, item) => sum + item.missing_source_ref_field_count, 0),
+      .reduce((sum: number, item: ManualPatchPreviewTarget) => sum + item.missing_source_ref_field_count, 0),
   }
 })
 
@@ -1064,10 +1112,16 @@ const projectOptions = computed(() => {
     .sort((a, b) => a.project_title.localeCompare(b.project_title, 'zh-Hans-CN'))
 })
 
-const provinceOptions = computed(() => [...new Set(queueItems.value.map(item => item.target_province).filter((item): item is string => Boolean(item)))]
-  .concat([...new Set(expansionItems.value.map(item => item.province).filter(Boolean))])
-  .filter((province, index, list) => list.indexOf(province) === index)
-  .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN')))
+const provinceOptions = computed<string[]>(() => {
+  const projectProvinces: string[] = queueItems.value
+    .map((item: ProjectSupplementTaskListItem): string | undefined => item.target_province)
+    .filter((province: string | undefined): province is string => Boolean(province))
+  const expansionProvinces: string[] = expansionItems.value
+    .map((item: DomainPackExpansionWritebackDraftItem): string => item.province)
+    .filter((province: string): boolean => Boolean(province))
+  return [...new Set<string>([...projectProvinces, ...expansionProvinces])]
+    .sort((a: string, b: string) => a.localeCompare(b, 'zh-Hans-CN'))
+})
 
 const packOptions = computed(() => [...new Set(expansionItems.value.map(item => item.pack_id))]
   .sort((a, b) => packShortLabel(a).localeCompare(packShortLabel(b), 'zh-Hans-CN')))
@@ -1159,12 +1213,16 @@ const allFilteredExpansionSelected = computed(() =>
   && filteredExpansionItems.value.every(item => selectedExpansionIds.value.includes(item.review_item_id)),
 )
 
+function normalizeWritebackStatus(status: KnowledgeWritebackStatus | undefined): KnowledgeWritebackStatus {
+  return status && WRITEBACK_STATUS_VALUES.includes(status) ? status : 'draft_ready'
+}
+
 function taskWritebackStatus(item: ProjectSupplementTaskListItem): KnowledgeWritebackStatus {
-  return item.task.knowledge_writeback_status ?? 'draft_ready'
+  return normalizeWritebackStatus(item.task.knowledge_writeback_status)
 }
 
 function expansionWritebackStatus(item: DomainPackExpansionWritebackDraftItem): KnowledgeWritebackStatus {
-  return item.writeback_status ?? 'draft_ready'
+  return normalizeWritebackStatus(item.writeback_status)
 }
 
 function countByStatus(status: KnowledgeWritebackStatus): number {
@@ -1241,30 +1299,34 @@ function updateExpansionNoteDraft(reviewItemId: string, event: Event) {
 }
 
 function candidateFields(item: DomainPackExpansionWritebackDraftItem): DomainPackExpansionFieldWorkbenchItem[] {
-  return (item.field_workbench ?? []).filter(field => field.supplement_status === 'candidate_draft')
+  return (item.field_workbench ?? [])
+    .filter((field: DomainPackExpansionFieldWorkbenchItem): boolean => field.supplement_status === 'candidate_draft')
 }
 
 function itemSourceRefCount(item: DomainPackExpansionWritebackDraftItem): number {
-  return new Set((item.field_workbench ?? []).flatMap(field => field.source_refs)).size
+  const sourceRefs: string[] = (item.field_workbench ?? [])
+    .flatMap((field: DomainPackExpansionFieldWorkbenchItem): string[] => field.source_refs)
+  return new Set<string>(sourceRefs).size
 }
 
-function expansionItemSourceQuality(item: DomainPackExpansionWritebackDraftItem) {
+function expansionItemSourceQuality(item: DomainPackExpansionWritebackDraftItem): ExpansionItemSourceQuality {
   const fields = candidateFields(item)
+  const sourceRefs: string[] = fields.flatMap((field: DomainPackExpansionFieldWorkbenchItem): string[] => field.source_refs)
   return {
     candidateFieldCount: item.field_supplement_candidate_count ?? fields.length,
     checkedFieldCount: fields.length,
-    coveredFieldCount: fields.filter(field => field.source_refs.length > 0).length,
-    sourceRefCount: new Set(fields.flatMap(field => field.source_refs)).size,
-    missingSourceRefFieldCount: fields.filter(field => field.source_refs.length === 0).length,
-    missingVerificationNoteFieldCount: fields.filter(field => !field.verification_note?.trim()).length,
-    missingWritebackHintFieldCount: fields.filter(field => !field.writeback_hint?.trim()).length,
+    coveredFieldCount: fields.filter((field: DomainPackExpansionFieldWorkbenchItem): boolean => field.source_refs.length > 0).length,
+    sourceRefCount: new Set<string>(sourceRefs).size,
+    missingSourceRefFieldCount: fields.filter((field: DomainPackExpansionFieldWorkbenchItem): boolean => field.source_refs.length === 0).length,
+    missingVerificationNoteFieldCount: fields.filter((field: DomainPackExpansionFieldWorkbenchItem): boolean => !field.verification_note?.trim()).length,
+    missingWritebackHintFieldCount: fields.filter((field: DomainPackExpansionFieldWorkbenchItem): boolean => !field.writeback_hint?.trim()).length,
   }
 }
 
 function combinedSourceQuality(
   projectItems: ProjectSupplementTaskListItem[],
   expansionItems: DomainPackExpansionWritebackDraftItem[],
-) {
+): CombinedSourceQuality {
   const sourceRefs = new Set<string>()
   let candidateFieldCount = 0
   let checkedFieldCount = 0
@@ -1283,7 +1345,9 @@ function combinedSourceQuality(
     missingSourceRefFieldCount += quality.missingSourceRefFieldCount
     missingVerificationNoteFieldCount += quality.missingVerificationNoteFieldCount
     missingWritebackHintFieldCount += quality.missingWritebackHintFieldCount
-    for (const ref of (item.field_workbench ?? []).flatMap(field => field.source_refs)) {
+    const itemSourceRefs: string[] = (item.field_workbench ?? [])
+      .flatMap((field: DomainPackExpansionFieldWorkbenchItem): string[] => field.source_refs)
+    for (const ref of itemSourceRefs) {
       sourceRefs.add(ref)
       if (isLocalSourceRef(ref)) localSourceRefCount += 1
       if (hasSourceRefAnchor(ref)) anchoredSourceRefCount += 1
@@ -1291,9 +1355,10 @@ function combinedSourceQuality(
   }
 
   for (const item of projectItems) {
-    for (const line of (item.task.knowledge_writeback_draft_markdown ?? '')
+    const markdownSourceLines: string[] = (item.task.knowledge_writeback_draft_markdown ?? '')
       .split('\n')
-      .filter(line => /source_refs?|来源|参考|出处/i.test(line))) {
+      .filter((line: string): boolean => /source_refs?|来源|参考|出处/i.test(line))
+    for (const line of markdownSourceLines) {
       sourceRefs.add(line.trim())
     }
   }
