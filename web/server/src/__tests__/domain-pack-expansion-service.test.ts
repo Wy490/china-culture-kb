@@ -71,9 +71,9 @@ describe('domain-pack-expansion-service', () => {
       seed_target_count: expect.any(Number),
       review_status_counts: expect.objectContaining({
         candidate_review: 0,
-        approved: 30,
+        approved: 33,
       }),
-      approved_writeback_draft_count: 30,
+      approved_writeback_draft_count: 33,
       field_supplement_candidate_count: expect.any(Number),
       field_missing_candidate_count: expect.any(Number),
       field_candidate_completion_percent: expect.any(Number),
@@ -81,7 +81,7 @@ describe('domain-pack-expansion-service', () => {
       field_review_blocker_count: expect.any(Number),
       field_review_ready_percent: expect.any(Number),
       writeback_status_counts: expect.objectContaining({
-        draft_ready: 30,
+        draft_ready: 33,
         queued: 0,
       }),
     });
@@ -149,14 +149,14 @@ describe('domain-pack-expansion-service', () => {
       },
     });
     expect(report.review_packet.review_status_counts?.candidate_review).toBe(0);
-    expect(report.review_packet.review_status_counts?.approved).toBe(34);
-    expect(report.review_packet.approved_writeback_draft_count).toBe(34);
+    expect(report.review_packet.review_status_counts?.approved).toBe(38);
+    expect(report.review_packet.approved_writeback_draft_count).toBe(38);
     expect(report.writeback_preflight).toMatchObject({
       schema_version: 'domain-pack-expansion-writeback-preflight/v1',
       direct_writeback_to_province_markdown: false,
       province_markdown_written: false,
-      approved_draft_count: 34,
-      draft_ready_count: 34,
+      approved_draft_count: 38,
+      draft_ready_count: 38,
       queued_count: 0,
       written_back_count: 0,
       needs_revision_count: 0,
@@ -166,13 +166,13 @@ describe('domain-pack-expansion-service', () => {
         'data/provinces/湖南.md',
         'data/provinces/辽宁.md',
       ]),
-      manual_review_required_count: 34,
+      manual_review_required_count: 38,
       blocked_direct_writeback_count: 0,
       ready_for_unified_export: true,
       safety_checks: expect.arrayContaining([
         'direct_writeback_to_province_markdown=false',
         'province_markdown_written=false',
-        'approved_writeback_drafts=34',
+        'approved_writeback_drafts=38',
         'requires_human_review_before_province_markdown=true',
       ]),
     });
@@ -180,7 +180,7 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         task_id: 'field_workbench_controls',
         status: 'in_progress',
-        progress_percent: 82,
+        progress_percent: 87,
         progress_note: expect.stringContaining('统一写回队列'),
         related_plan_items: [1],
         direct_writeback_to_province_markdown: false,
@@ -188,31 +188,31 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         task_id: 'manual_review_closure',
         status: 'ready',
-        progress_percent: 65,
+        progress_percent: 72,
         related_plan_items: [2],
       }),
       expect.objectContaining({
         task_id: 'writeback_safety_export',
         status: 'in_progress',
-        progress_percent: 75,
+        progress_percent: 84,
         related_plan_items: [3],
       }),
       expect.objectContaining({
         task_id: 'second_batch_real_candidates',
         status: 'ready',
-        progress_percent: 50,
+        progress_percent: 62,
         related_plan_items: [4],
         target_video_types: expect.arrayContaining(['explainer_video', 'heritage_promo', 'documentary_short', 'ai_comic_drama']),
       }),
       expect.objectContaining({
         task_id: 'mvp_completion_surface',
         status: 'ready',
-        progress_percent: 70,
+        progress_percent: 78,
         related_plan_items: [5],
       }),
     ]));
     expect(report.markdown).toContain('field_workbench_controls');
-    expect(report.markdown).toContain('progress_percent: 82');
+    expect(report.markdown).toContain('progress_percent: 87');
     const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
     expect(reviewItems.every(item => item.review_ready)).toBe(true);
     expect(reviewItems.every(item => item.review_state_source === 'seed')).toBe(true);
@@ -508,7 +508,7 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         pack_id: 'heritage_process_pack',
         priority: 'P0',
-        seed_target_count: 5,
+        seed_target_count: 6,
         provinces: expect.arrayContaining(['湖南']),
       }),
       expect.objectContaining({
@@ -543,7 +543,7 @@ describe('domain-pack-expansion-service', () => {
     expect(report.markdown).toContain('pipeline_progress_percent: 100');
     expect(report.markdown).toContain('pipeline_stage: complete');
     expect(report.markdown).toContain('Writeback Safety Preflight');
-    expect(report.markdown).toContain('approved_draft_count: 34');
+    expect(report.markdown).toContain('approved_draft_count: 38');
     expect(report.markdown).toContain('Next Development Tasks');
     expect(report.markdown).toContain('field_workbench_controls');
     expect(report.markdown).toContain('second_batch_real_candidates');
@@ -587,10 +587,10 @@ describe('domain-pack-expansion-service', () => {
 
     expect(report.review_packet.review_status_counts).toMatchObject({
       candidate_review: 0,
-      approved: 33,
+      approved: 37,
       needs_revision: 1,
     });
-    expect(report.review_packet.approved_writeback_draft_count).toBe(33);
+    expect(report.review_packet.approved_writeback_draft_count).toBe(37);
     expect(overridden).toMatchObject({
       review_status: 'needs_revision',
       review_note: '运行态覆盖 seed：退回补充传承人口述授权确认。',
@@ -731,7 +731,7 @@ describe('domain-pack-expansion-service', () => {
       exported_at: '2026-07-07T10:00:00.000Z',
       direct_writeback_to_province_markdown: false,
       filters: {},
-      approved_count: 34,
+      approved_count: 38,
       target_files: [
         'data/provinces/山西.md',
         'data/provinces/湖南.md',
@@ -739,7 +739,7 @@ describe('domain-pack-expansion-service', () => {
       ],
       status_counts: expect.objectContaining({
         queued: 1,
-        draft_ready: 33,
+        draft_ready: 37,
       }),
     });
     const draftItem = draftPackage.items.find(item => item.review_item_id === reviewItemId);
@@ -793,29 +793,29 @@ describe('domain-pack-expansion-service', () => {
       province_markdown_written: false,
       report: {
         review_packet: {
-          approved_writeback_draft_count: 34,
+          approved_writeback_draft_count: 38,
         },
       },
     });
     expect(update.result?.report.review_packet.review_status_counts).toMatchObject({
-      approved: 34,
+      approved: 38,
     });
     expect(update.result?.report.review_packet.batches
       .flatMap(batch => batch.review_items)
-      .filter(item => item.review_status === 'approved')).toHaveLength(34);
+      .filter(item => item.review_status === 'approved')).toHaveLength(38);
 
     const draftPackage = getDomainPackExpansionWritebackDraftPackage({
       exportedAt: '2026-07-07T11:10:00.000Z',
     });
     expect(draftPackage).toMatchObject({
-      approved_count: 34,
+      approved_count: 38,
       status_counts: expect.objectContaining({
         queued: 2,
-        draft_ready: 32,
+        draft_ready: 36,
       }),
     });
     expect(draftPackage.items.filter(item => item.writeback_status === 'queued')).toHaveLength(2);
-    expect(draftPackage.items.filter(item => item.writeback_status === 'draft_ready')).toHaveLength(32);
+    expect(draftPackage.items.filter(item => item.writeback_status === 'draft_ready')).toHaveLength(36);
 
     const scopedPackage = getDomainPackExpansionWritebackDraftPackage({
       exportedAt: '2026-07-07T11:20:00.000Z',

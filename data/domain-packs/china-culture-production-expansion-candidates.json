@@ -236,6 +236,47 @@
               "verification_note": "风险项来自条目待核实点，适合提醒人工复核，不适合直接做成事实旁白。"
             }
           ]
+        },
+        {
+          "entry_name": "衡山皮影戏——湘南光影的千年传奇",
+          "province": "湖南",
+          "recommended_fields": ["materials", "process_steps", "documentation_assets", "production_risks"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["未核实清顺治起源说", "未核实代表性传承人最新口径", "不公开推断影戏腔音乐结构"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "materials",
+              "candidate_value": "牛皮、刻刀、颜料、铆钉、影杆、白幕、灯源、影箱和剧本箱可作为衡山皮影 heritage_promo 材料与演出资产；具体皮料处理、颜料配方和灯具配置不得凭空补写。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#衡山皮影戏：牛皮雕镂", "data/provinces/湖南.md#衡山皮影戏：人物随身道具"],
+              "writeback_hint": "作为非遗流程材料字段候选，入库前复核皮影戏（衡山影子戏）项目页、衡山县文化馆资料和可拍授权。",
+              "verification_note": "材料来自本地条目；具体制作参数、传习点和授权状态仍需人工补源。"
+            },
+            {
+              "field_id": "process_steps",
+              "candidate_value": "候选流程为刮薄牛皮→雕镂纹样→着色→熨平→铆接组装→装杆试影→白幕灯源下操偶演唱；唱腔训练和剧目排演需单独作为表演流程复核。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#衡山皮影戏：牛皮雕镂", "data/provinces/湖南.md#衡山皮影戏：影戏腔"],
+              "writeback_hint": "作为流程镜头候选，不写成完整技法教程；音乐结构、剧目谱本和班社数量需另核。",
+              "verification_note": "制作和演出流程由本地条目归纳，影戏腔细节仍在待核实范围。"
+            },
+            {
+              "field_id": "documentation_assets",
+              "candidate_value": "国家级非遗名录传统戏剧类入口、皮影戏（衡山影子戏）项目公开索引、衡山县文化馆/非遗保护中心档案、影人实物、剧本、唱腔资料和非遗进校园记录。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#衡山皮影戏：来源", "data/provinces/湖南.md#衡山皮影戏：核实方法"],
+              "writeback_hint": "写回时拆成来源采集清单、可拍资产和授权待办，不把公开索引等同影像素材授权。",
+              "verification_note": "来源入口来自现有条目；项目编号、代表性传承人页和机构开放情况需人工复核。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "“清顺治年间传入”“数十个戏班”“一口叙说千古事，双手对舞百万兵”“欧阳时忠等传承人”均需逐条补源；儿童观看、校园传习和庙会演出画面需确认人物授权。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#衡山皮影戏：待核实点", "data/provinces/湖南.md#衡山皮影戏：相关地点"],
+              "writeback_hint": "作为审稿风险清单进入草案，优先保护起源、传承人、音乐学和拍摄授权边界。",
+              "verification_note": "风险项来自条目待核实点，适合提醒人工复核，不适合直接做成事实旁白。"
+            }
+          ]
         }
       ]
     },
@@ -463,6 +504,47 @@
               "verification_note": "边界服务纪录片审稿；人物对白和心理动机需明确禁止无来源复原。"
             }
           ]
+        },
+        {
+          "entry_name": "常德会战与常德细菌战——湘北战场的血与疫",
+          "province": "湖南",
+          "recommended_fields": ["documentary_question", "source_trail", "present_day_trace", "reconstruction_boundary"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["灾难简化成爽感反转", "医学细节无来源断言", "以再现画面替代法律文书和纪念馆资料"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "documentary_question",
+              "candidate_value": "一座城市为什么要同时记住1941年的细菌战、1943年的常德会战和战后民间诉讼？微纪录可从城市记忆、证据链和再现边界三层讲述常德。",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：简介", "data/provinces/湖南.md#常德会战与常德细菌战：文化意义"],
+              "writeback_hint": "作为 documentary_short 核心问题候选，保持严肃克制，不把苦难叙事做成情绪反转。",
+              "verification_note": "问题来自条目中的细菌战、会战和法律诉讼三条线索。"
+            },
+            {
+              "field_id": "source_trail",
+              "candidate_value": "常德会战阵亡将士纪念公墓、常德细菌战纪念馆、常德细菌战受害者对日诉讼法律文书、《常德会战》相关史料和纪念馆讲解员/抗战史研究者采访。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：来源", "data/provinces/湖南.md#常德会战与常德细菌战：人物"],
+              "writeback_hint": "写回时拆成法律文书、纪念馆资料、研究资料和采访角色，死亡数字与战斗过程需分开核验。",
+              "verification_note": "来源入口来自本地条目；法律文书、纪念馆展陈和史料版本需人工补齐。"
+            },
+            {
+              "field_id": "present_day_trace",
+              "candidate_value": "会战阵亡将士纪念公墓、细菌战纪念馆、遇难者名单、战线图、诉讼材料展柜、常德城防记忆空间，可组成现实回访与档案证据转场。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：相关地点", "data/provinces/湖南.md#常德会战与常德细菌战：场景陈设"],
+              "writeback_hint": "作为现地痕迹和 B-roll 采集清单，开放状态、馆内拍摄和资料影像授权需确认。",
+              "verification_note": "地点与展陈线索来自本地条目；影像采集要区分公共纪念空间与档案材料。"
+            },
+            {
+              "field_id": "reconstruction_boundary",
+              "candidate_value": "可以使用地图、纪念馆展陈、法律文书和环境空镜说明；再现镜头只做街巷、病床、档案、城防空间的克制情境，不虚构医护对白、战场细节或鼠疫医学过程。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#常德会战与常德细菌战：待核实点", "data/provinces/湖南.md#常德会战与常德细菌战：核实方法"],
+              "writeback_hint": "写入纪录片再现边界，避免灾难消费、医学细节误导和战斗过程单一化。",
+              "verification_note": "边界来自待核实点和纪录片规则，死亡数字、关联程度和战斗过程必须人工审稿。"
+            }
+          ]
         }
       ]
     },
@@ -647,6 +729,47 @@
               "source_refs": ["data/provinces/湖南.md#炎帝神农氏：文化意义", "data/provinces/湖南.md#炎帝神农氏：待核实点"],
               "writeback_hint": "作为集尾问题候选，不进入事实知识库正文。",
               "verification_note": "问题为漫剧化悬念，事实边界仍是神话传说与祭祀文化。"
+            }
+          ]
+        },
+        {
+          "entry_name": "凤凰纸扎——边城千年彩扎的湘西风骨",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "character_anchor", "expression_beats", "forbidden_tone"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["唐代起源说写成确证史实", "丧葬民俗猎奇化", "获奖馆藏记录未核实即写成定论"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "第一格：边城雨夜，学徒扶着一个未上色的青狮头，师傅只说一句——先别画眼睛，骨架还没学会站稳。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#凤凰纸扎：简介", "data/provinces/湖南.md#凤凰纸扎：故事梗概"],
+              "writeback_hint": "只作为 AI 漫剧开场钩子候选，不写成传承人口述原文或历史事实。",
+              "verification_note": "钩子基于青狮头、骨架扎制和边城作坊意象改编。"
+            },
+            {
+              "field_id": "character_anchor",
+              "candidate_value": "师傅代表凤凰纸扎传承人/扎制匠人线索，学徒承担当代传承压力，青狮头和巨龙作品只作视觉锚点；旁白或展板负责提示获奖、馆藏和起源说均需复核。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#凤凰纸扎：人物", "data/provinces/湖南.md#凤凰纸扎：核实方法"],
+              "writeback_hint": "角色锚点必须保留项目页、传承人身份和作品记录的复核边界。",
+              "verification_note": "人物类型来自本地条目；师徒对白和具体事件为明确改编。"
+            },
+            {
+              "field_id": "expression_beats",
+              "candidate_value": "学徒初见巨竹时茫然→扎骨架失败时急躁→青狮头稳住时惊喜→听到唐代起源和馆藏记录需补证时转为谨慎→最后把未完工纸扎放回架上。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#凤凰纸扎：14道工序——以扎制骨架为核心", "data/provinces/湖南.md#凤凰纸扎：待核实点"],
+              "writeback_hint": "作为表情节拍候选，用于分镜连续性；不能替代真实传承人经历。",
+              "verification_note": "情绪节拍服务漫剧表达，事实边界仍是工序、传承与资料复核。"
+            },
+            {
+              "field_id": "forbidden_tone",
+              "candidate_value": "避免把丧葬民俗恐怖化、猎奇化；避免把唐渭阳县起源、清嘉庆鼎盛、山花奖和馆藏记录写成已核实定论；避免用“神秘湘西”替代工艺流程与来源核验。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#凤凰纸扎：待核实点", "data/provinces/湖南.md#凤凰纸扎：可信度"],
+              "writeback_hint": "写入漫剧审稿边界，优先保护民俗尊重、工艺事实和获奖馆藏证据边界。",
+              "verification_note": "边界来自本地条目的待核实点和可信度说明。"
             }
           ]
         }
@@ -1019,6 +1142,47 @@
               "source_refs": ["data/provinces/湖南.md#湘昆：文化意义", "data/provinces/湖南.md#湘昆：核实方法"],
               "writeback_hint": "复盘句可进入讲解草案，正式写回前删除价值排序式表述。",
               "verification_note": "句子服务讲解片收束，需保留院团史和文物资料复核边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "安仁赶分社——春分时节的神农药市",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "concept_definitions", "diagram_or_caption_plan", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["唯一性表述未核实", "神农传说写成史实", "交易规模和清代银两数据未补源"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "为什么一个春分药材集市，会同时牵动节气、神农祭祀、中医药贸易和地方产业？一支讲解片可把安仁赶分社拆成四层结构。",
+              "evidence_level": "explainer_candidate_from_local_entry",
+              "source_refs": ["data/provinces/湖南.md#安仁赶分社：简介", "data/provinces/湖南.md#安仁赶分社：文化意义"],
+              "writeback_hint": "作为 explainer_video 开场问题候选，不把“唯一”或交易规模写成未经复核的权威结论。",
+              "verification_note": "问题由本地条目的春分、神农、药市和产业四条线索归纳。"
+            },
+            {
+              "field_id": "concept_definitions",
+              "candidate_value": "“分”指春分节气，“社”指祭社传统；赶分社可解释为以春分为时间坐标、以神农祭祀为仪式入口、以中药材交易为现实活动的民俗集市。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#安仁赶分社：故事梗概", "data/provinces/湖南.md#安仁赶分社：核实方法"],
+              "writeback_hint": "概念定义先作为讲解候选，正式写回时需注明神农传说和现行活动的层级差异。",
+              "verification_note": "定义来自现有条目；神农氏在安仁尝百草制耒耜属于口头传统，需保留边界。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "四象限图示：春分节气/神农殿祭祀/药材摊位交易/非遗与文旅组织；字幕标注“现行节庆活动、神农传说、药材交易数据需分层核验”。",
+              "evidence_level": "production_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#安仁赶分社：相关地点", "data/provinces/湖南.md#安仁赶分社：待核实点"],
+              "writeback_hint": "作为图示字幕候选，不直接写入事实条目；活动街区、流程和交易数据需按年度公告复核。",
+              "verification_note": "图示基于条目场景与待核边界，不能替代正式民俗学考证。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "安仁赶分社的看点不是“热闹集市”本身，而是春分这一天如何把农时、信仰、药材和当代产业组织在同一个公共空间里；每一层都要说清来源。",
+              "evidence_level": "explainer_candidate_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#安仁赶分社：文化意义", "data/provinces/湖南.md#安仁赶分社：核实方法"],
+              "writeback_hint": "复盘句可进入讲解草案，正式写回前应删除或补证过强价值判断。",
+              "verification_note": "句子服务讲解片收束，需保留年度活动公告、神农殿资料和交易数据复核边界。"
             }
           ]
         }

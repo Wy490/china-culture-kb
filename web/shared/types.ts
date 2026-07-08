@@ -6312,6 +6312,39 @@ export interface KnowledgeWritebackQueueExportStatusCounts {
   total: Record<KnowledgeWritebackStatus, number>;
 }
 
+export interface KnowledgeWritebackQueueExportTargetFilePreflight {
+  target_file: string;
+  project_draft_count: number;
+  expansion_draft_count: number;
+  total_draft_count: number;
+  expansion_candidate_field_count: number;
+  expansion_field_missing_count: number;
+  expansion_source_ref_count: number;
+  writeback_status_counts: Record<KnowledgeWritebackStatus, number>;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  safety_note: string;
+}
+
+export interface KnowledgeWritebackQueueExportPreflight {
+  schema_version: 'knowledge-writeback-queue-export-preflight/v1';
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  target_file_count: number;
+  target_files: string[];
+  total_draft_count: number;
+  project_draft_count: number;
+  expansion_draft_count: number;
+  expansion_candidate_field_count: number;
+  expansion_field_missing_count: number;
+  expansion_source_ref_count: number;
+  manual_review_required_count: number;
+  blocked_direct_writeback_count: number;
+  ready_for_manual_export: boolean;
+  target_file_preflight: KnowledgeWritebackQueueExportTargetFilePreflight[];
+  safety_checks: string[];
+}
+
 export interface KnowledgeWritebackQueueExportPackage {
   schema_version: 'knowledge-writeback-queue-export/v1';
   exported_at: string;
@@ -6324,6 +6357,7 @@ export interface KnowledgeWritebackQueueExportPackage {
   project_count: number;
   target_files: string[];
   status_counts: KnowledgeWritebackQueueExportStatusCounts;
+  preflight: KnowledgeWritebackQueueExportPreflight;
   project_patch: ProjectKnowledgeWritebackPatchPackage;
   expansion_draft: DomainPackExpansionWritebackDraftPackage;
   markdown: string;

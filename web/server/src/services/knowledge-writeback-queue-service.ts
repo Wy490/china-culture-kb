@@ -1,8 +1,12 @@
 import type {
+  DomainPackExpansionWritebackDraftItem,
   DomainPackExpansionWritebackDraftPackage,
   KnowledgeWritebackQueueExportFilters,
   KnowledgeWritebackQueueExportPackage,
+  KnowledgeWritebackQueueExportPreflight,
+  KnowledgeWritebackQueueExportTargetFilePreflight,
   KnowledgeWritebackStatus,
+  ProjectKnowledgeWritebackPatchItem,
   ProjectSupplementTaskListFilters,
   VideoType,
 } from '@shared/types.js';
@@ -64,6 +68,12 @@ export async function getKnowledgeWritebackQueueExportPackage(
     expansion: normalizeStatusCounts(expansionDraft.status_counts),
     total: mergeStatusCounts(projectPatchResult.data.status_counts, expansionDraft.status_counts),
   };
+  const preflight = buildUnifiedWritebackExportPreflight({
+    targetFiles,
+    projectItems: projectPatchResult.data.items,
+    expansionItems: expansionDraft.items,
+    statusCounts: statusCounts.total,
+  });
 
   const packageWithoutMarkdown: Omit<KnowledgeWritebackQueueExportPackage, 'markdown'> = {
     schema_version: 'knowledge-writeback-queue-export/v1',
@@ -77,6 +87,7 @@ export async function getKnowledgeWritebackQueueExportPackage(
     project_count: projectCount,
     target_files: targetFiles,
     status_counts: statusCounts,
+    preflight,
     project_patch: projectPatchResult.data,
     expansion_draft: expansionDraft,
   };
@@ -97,6 +108,94 @@ function buildFilters(input: KnowledgeWritebackQueueExportInput): KnowledgeWrite
     ...(input.projectTaskKeys?.length ? { project_task_key_count: input.projectTaskKeys.length } : {}),
     ...(input.expansionReviewItemIds?.length ? { expansion_review_item_count: input.expansionReviewItemIds.length } : {}),
   };
+}
+
+function buildUnifiedWritebackExportPreflight(input: {
+  targetFiles: string[];
+  projectItems: ProjectKnowledgeWritebackPatchItem[];
+  expansionItems: DomainPackExpansionWritebackDraftItem[];
+  statusCounts: Record<KnowledgeWritebackStatus, number>;
+}): KnowledgeWritebackQueueExportPreflight {
+  const targetFilePreflight = input.targetFiles.map(targetFile =>
+    buildTargetFilePreflight(targetFile, input.projectItems, input.expansionItems),
+  );
+  const expansionCandidateFieldCount = input.expansionItems
+    .reduce((sum, item) => sum + (item.field_supplement_candidate_count ?? 0), 0);
+  const expansionFieldMissingCount = input.expansionItems
+    .reduce((sum, item) => sum + (item.field_missing_candidate_count ?? 0), 0);
+  const expansionSourceRefCount = countExpansionSourceRefs(input.expansionItems);
+  const totalDraftCount = input.projectItems.length + input.expansionItems.length;
+  const manualReviewRequiredCount = totalDraftCount - (input.statusCounts.written_back ?? 0);
+  const blockedDirectWritebackCount = totalDraftCount;
+
+  return {
+    schema_version: 'knowledge-writeback-queue-export-preflight/v1',
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    target_file_count: input.targetFiles.length,
+    target_files: input.targetFiles,
+    total_draft_count: totalDraftCount,
+    project_draft_count: input.projectItems.length,
+    expansion_draft_count: input.expansionItems.length,
+    expansion_candidate_field_count: expansionCandidateFieldCount,
+    expansion_field_missing_count: expansionFieldMissingCount,
+    expansion_source_ref_count: expansionSourceRefCount,
+    manual_review_required_count: manualReviewRequiredCount,
+    blocked_direct_writeback_count: blockedDirectWritebackCount,
+    ready_for_manual_export: totalDraftCount > 0
+      && input.targetFiles.length > 0
+      && expansionFieldMissingCount === 0,
+    target_file_preflight: targetFilePreflight,
+    safety_checks: [
+      'direct_writeback_to_province_markdown=false',
+      'province_markdown_written=false',
+      `target_files=${input.targetFiles.length}`,
+      `project_drafts=${input.projectItems.length}`,
+      `expansion_drafts=${input.expansionItems.length}`,
+      `expansion_candidate_fields=${expansionCandidateFieldCount}`,
+      `expansion_source_refs=${expansionSourceRefCount}`,
+      `manual_review_required=${manualReviewRequiredCount}`,
+      'default_action=export_only_no_file_write',
+    ],
+  };
+}
+
+function buildTargetFilePreflight(
+  targetFile: string,
+  projectItems: ProjectKnowledgeWritebackPatchItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+): KnowledgeWritebackQueueExportTargetFilePreflight {
+  const projectFileItems = projectItems.filter(item => item.suggested_file_path === targetFile);
+  const expansionFileItems = expansionItems.filter(item => item.suggested_file_path === targetFile);
+  const statusCounts = normalizeStatusCounts();
+  for (const item of [...projectFileItems, ...expansionFileItems]) {
+    const status = item.writeback_status ?? 'draft_ready';
+    statusCounts[status] += 1;
+  }
+  const expansionCandidateFieldCount = expansionFileItems
+    .reduce((sum, item) => sum + (item.field_supplement_candidate_count ?? 0), 0);
+  const expansionFieldMissingCount = expansionFileItems
+    .reduce((sum, item) => sum + (item.field_missing_candidate_count ?? 0), 0);
+
+  return {
+    target_file: targetFile,
+    project_draft_count: projectFileItems.length,
+    expansion_draft_count: expansionFileItems.length,
+    total_draft_count: projectFileItems.length + expansionFileItems.length,
+    expansion_candidate_field_count: expansionCandidateFieldCount,
+    expansion_field_missing_count: expansionFieldMissingCount,
+    expansion_source_ref_count: countExpansionSourceRefs(expansionFileItems),
+    writeback_status_counts: statusCounts,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    safety_note: '仅导出人工写回草案和字段差异，不直接修改省份 Markdown。',
+  };
+}
+
+function countExpansionSourceRefs(items: DomainPackExpansionWritebackDraftItem[]): number {
+  return new Set(items.flatMap(item =>
+    (item.field_workbench ?? []).flatMap(field => field.source_refs),
+  )).size;
 }
 
 function normalizeStatusCounts(
@@ -133,6 +232,11 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- expansion_approved_count: ${pkg.expansion_approved_count}`,
     `- project_count: ${pkg.project_count}`,
     `- target_files: ${pkg.target_files.join(', ') || 'none'}`,
+    `- preflight_target_files: ${pkg.preflight.target_file_count}`,
+    `- preflight_total_drafts: ${pkg.preflight.total_draft_count}`,
+    `- preflight_expansion_candidate_fields: ${pkg.preflight.expansion_candidate_field_count}`,
+    `- preflight_expansion_source_refs: ${pkg.preflight.expansion_source_ref_count}`,
+    `- preflight_manual_review_required: ${pkg.preflight.manual_review_required_count}`,
     '',
     '## Filters',
     '',
@@ -150,6 +254,19 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     '- 扩库草案来源：仅包含 Domain Pack 扩库候选已 approved 且生成写回草案的审稿项。',
     '- 本导出只服务人工核实、PR 草案和外部审稿工具，不直接写入 data/provinces/*.md。',
     '',
+    '## Export Preflight',
+    '',
+    `- schema_version: ${pkg.preflight.schema_version}`,
+    `- direct_writeback_to_province_markdown: ${pkg.preflight.direct_writeback_to_province_markdown}`,
+    `- province_markdown_written: ${pkg.preflight.province_markdown_written}`,
+    `- ready_for_manual_export: ${pkg.preflight.ready_for_manual_export}`,
+    `- blocked_direct_writeback_count: ${pkg.preflight.blocked_direct_writeback_count}`,
+    ...pkg.preflight.safety_checks.map(check => `- ${check}`),
+    '',
+    '### Target File Preflight',
+    '',
+    ...renderTargetFilePreflightLines(pkg.preflight.target_file_preflight),
+    '',
     '## Project Writeback Patch',
     '',
     pkg.project_patch.approved_count > 0 ? pkg.project_patch.markdown.trim() : '- none',
@@ -158,6 +275,18 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     '',
     pkg.expansion_draft.approved_count > 0 ? pkg.expansion_draft.markdown.trim() : '- none',
   ].join('\n').trim() + '\n';
+}
+
+function renderTargetFilePreflightLines(items: KnowledgeWritebackQueueExportTargetFilePreflight[]): string[] {
+  if (items.length === 0) return ['- none'];
+  return items.flatMap(item => [
+    `- ${item.target_file}`,
+    `  - drafts: total=${item.total_draft_count}; project=${item.project_draft_count}; expansion=${item.expansion_draft_count}`,
+    `  - expansion_field_diff: candidates=${item.expansion_candidate_field_count}; missing=${item.expansion_field_missing_count}`,
+    `  - expansion_source_refs: ${item.expansion_source_ref_count}`,
+    `  - direct_writeback_to_province_markdown: ${item.direct_writeback_to_province_markdown}`,
+    `  - safety_note: ${item.safety_note}`,
+  ]);
 }
 
 function emptyExpansionDraftPackage(exportedAt: string): DomainPackExpansionWritebackDraftPackage {

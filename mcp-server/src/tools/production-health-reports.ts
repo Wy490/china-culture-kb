@@ -573,6 +573,39 @@ interface KnowledgeWritebackQueueExportStatusCounts {
   total: Record<KnowledgeWritebackStatus, number>;
 }
 
+interface KnowledgeWritebackQueueExportTargetFilePreflight {
+  target_file: string;
+  project_draft_count: number;
+  expansion_draft_count: number;
+  total_draft_count: number;
+  expansion_candidate_field_count: number;
+  expansion_field_missing_count: number;
+  expansion_source_ref_count: number;
+  writeback_status_counts: Record<KnowledgeWritebackStatus, number>;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  safety_note: string;
+}
+
+interface KnowledgeWritebackQueueExportPreflight {
+  schema_version: 'knowledge-writeback-queue-export-preflight/v1';
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  target_file_count: number;
+  target_files: string[];
+  total_draft_count: number;
+  project_draft_count: number;
+  expansion_draft_count: number;
+  expansion_candidate_field_count: number;
+  expansion_field_missing_count: number;
+  expansion_source_ref_count: number;
+  manual_review_required_count: number;
+  blocked_direct_writeback_count: number;
+  ready_for_manual_export: boolean;
+  target_file_preflight: KnowledgeWritebackQueueExportTargetFilePreflight[];
+  safety_checks: string[];
+}
+
 interface KnowledgeWritebackQueueExportPackage {
   schema_version: 'knowledge-writeback-queue-export/v1';
   exported_at: string;
@@ -585,6 +618,7 @@ interface KnowledgeWritebackQueueExportPackage {
   project_count: number;
   target_files: string[];
   status_counts: KnowledgeWritebackQueueExportStatusCounts;
+  preflight: KnowledgeWritebackQueueExportPreflight;
   project_patch: ProjectKnowledgeWritebackPatchPackage;
   expansion_draft: DomainPackExpansionWritebackDraftToolResult;
   markdown: string;
@@ -1554,11 +1588,11 @@ function buildExpansionNextDevelopmentTasks(
       title: '字段级补库工作台增强',
       priority: 'P0',
       status: report.pipeline_stage === 'complete' ? 'in_progress' : 'ready',
-      progress_percent: 82,
-      progress_note: '扩库审稿页已有联合筛选、字段工作台和批量审稿；统一写回队列继续补 pack 筛选、字段级预览和批量写回状态操作。',
+      progress_percent: 87,
+      progress_note: '扩库审稿页和统一写回队列已有 pack 筛选、字段级预览、批量写回状态操作和导出预检面板。',
       related_plan_items: [1],
       target_video_types: coreVideoTypes,
-      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 34 条草案可被人工高效复核。',
+      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 38 条草案可被人工高效复核。',
       acceptance_checks: [
         '支持 pack/video_type/province/review_status/writeback_status/field/search 联合筛选。',
         '单条候选展示字段级候选值、来源引用、核实备注和安全预检。',
@@ -1571,8 +1605,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '人工复核闭环',
       priority: 'P0',
       status: 'ready',
-      progress_percent: 65,
-      progress_note: '运行态 review-state 覆盖 seed 已可见；继续补退回原因模板、复核备注汇总和透明覆盖说明。',
+      progress_percent: 72,
+      progress_note: '运行态 review-state 覆盖 seed、退回原因模板和复核备注汇总已可见；继续补审稿批注追踪和复核人交接。',
       related_plan_items: [2],
       target_video_types: coreVideoTypes,
       description: '把退回原因、运行态覆盖和复核备注显性化，方便人工把 seed 审稿结果退回、入队或标注需补证。',
@@ -1588,8 +1622,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '写回导出安全预检',
       priority: 'P0',
       status: preflight.ready_for_unified_export ? 'in_progress' : 'blocked',
-      progress_percent: 75,
-      progress_note: '统一导出和 target_files/status counts 已接入；继续增强字段差异、来源引用和不可直写提示。',
+      progress_percent: 84,
+      progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用和不可直写提示；继续补下载归档与审稿签收。',
       related_plan_items: [3],
       target_video_types: coreVideoTypes,
       description: '在导出前展示目标省份文件、状态计数和禁止直写检查，统一接入 Knowledge Writeback Queue。',
@@ -1605,8 +1639,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '第二批真实补库候选',
       priority: 'P1',
       status: 'ready',
-      progress_percent: 50,
-      progress_note: '当前 34 条已形成 approved 草案；第二批继续优先 explainer_video、heritage_promo、documentary_short、ai_comic_drama。',
+      progress_percent: 62,
+      progress_note: '当前 38 条已形成 approved 草案；第二批继续优先 explainer_video、heritage_promo、documentary_short、ai_comic_drama。',
       related_plan_items: [4],
       target_video_types: coreVideoTypes,
       description: '继续扩展真实条目，优先讲解、非遗宣传、微纪录和 AI 漫剧，不跳过候选稿/审稿/草案流程。',
@@ -1622,8 +1656,8 @@ function buildExpansionNextDevelopmentTasks(
       title: 'MVP 与生产健康完成态',
       priority: 'P1',
       status: report.pipeline_stage === 'complete' ? 'ready' : 'blocked',
-      progress_percent: 70,
-      progress_note: 'MVP 已接入扩库 complete 与写回草案计数；继续强调“完成候选但待人工写回”，避免误报为正式知识库已落库。',
+      progress_percent: 78,
+      progress_note: 'MVP 已接入扩库 complete、写回草案计数和 1-5 项百分比；继续强调“完成候选但待人工写回”，避免误报为正式知识库已落库。',
       related_plan_items: [5],
       target_video_types: coreVideoTypes,
       description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
@@ -2468,6 +2502,12 @@ export function getKnowledgeWritebackQueueExportToolResult(
     expansion: normalizeKnowledgeWritebackStatusCounts(expansionDraft.status_counts),
     total: mergeKnowledgeWritebackStatusCounts(projectPatch.status_counts, expansionDraft.status_counts),
   };
+  const preflight = buildKnowledgeWritebackQueueExportPreflight({
+    targetFiles,
+    projectItems: projectPatch.items,
+    expansionItems: expansionDraft.items,
+    statusCounts: statusCounts.total,
+  });
   const packageWithoutMarkdown: Omit<KnowledgeWritebackQueueExportPackage, 'markdown'> = {
     schema_version: 'knowledge-writeback-queue-export/v1',
     exported_at: exportedAt,
@@ -2480,6 +2520,7 @@ export function getKnowledgeWritebackQueueExportToolResult(
     project_count: projectPatch.project_count ?? 0,
     target_files: targetFiles,
     status_counts: statusCounts,
+    preflight,
     project_patch: projectPatch,
     expansion_draft: expansionDraft,
   };
@@ -3001,6 +3042,11 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- expansion_approved_count: ${pkg.expansion_approved_count}`,
     `- project_count: ${pkg.project_count}`,
     `- target_files: ${pkg.target_files.join(', ') || 'none'}`,
+    `- preflight_target_files: ${pkg.preflight.target_file_count}`,
+    `- preflight_total_drafts: ${pkg.preflight.total_draft_count}`,
+    `- preflight_expansion_candidate_fields: ${pkg.preflight.expansion_candidate_field_count}`,
+    `- preflight_expansion_source_refs: ${pkg.preflight.expansion_source_ref_count}`,
+    `- preflight_manual_review_required: ${pkg.preflight.manual_review_required_count}`,
     '',
     '## Filters',
     '',
@@ -3018,6 +3064,19 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     '- 扩库草案来源：仅包含 Domain Pack 扩库候选已 approved 且生成写回草案的审稿项。',
     '- 本导出只服务人工核实、PR 草案和外部审稿工具，不直接写入 data/provinces/*.md。',
     '',
+    '## Export Preflight',
+    '',
+    `- schema_version: ${pkg.preflight.schema_version}`,
+    `- direct_writeback_to_province_markdown: ${pkg.preflight.direct_writeback_to_province_markdown}`,
+    `- province_markdown_written: ${pkg.preflight.province_markdown_written}`,
+    `- ready_for_manual_export: ${pkg.preflight.ready_for_manual_export}`,
+    `- blocked_direct_writeback_count: ${pkg.preflight.blocked_direct_writeback_count}`,
+    ...pkg.preflight.safety_checks.map(check => `- ${check}`),
+    '',
+    '### Target File Preflight',
+    '',
+    ...renderKnowledgeWritebackTargetFilePreflightLines(pkg.preflight.target_file_preflight),
+    '',
     '## Project Writeback Patch',
     '',
     pkg.project_patch.approved_count > 0 ? pkg.project_patch.markdown.trim() : '- none',
@@ -3026,6 +3085,20 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     '',
     pkg.expansion_draft.approved_count > 0 ? pkg.expansion_draft.markdown?.trim() ?? '- markdown omitted' : '- none',
   ].join('\n').trim() + '\n';
+}
+
+function renderKnowledgeWritebackTargetFilePreflightLines(
+  items: KnowledgeWritebackQueueExportTargetFilePreflight[],
+): string[] {
+  if (items.length === 0) return ['- none'];
+  return items.flatMap(item => [
+    `- ${item.target_file}`,
+    `  - drafts: total=${item.total_draft_count}; project=${item.project_draft_count}; expansion=${item.expansion_draft_count}`,
+    `  - expansion_field_diff: candidates=${item.expansion_candidate_field_count}; missing=${item.expansion_field_missing_count}`,
+    `  - expansion_source_refs: ${item.expansion_source_ref_count}`,
+    `  - direct_writeback_to_province_markdown: ${item.direct_writeback_to_province_markdown}`,
+    `  - safety_note: ${item.safety_note}`,
+  ]);
 }
 
 function buildProjectKnowledgeWritebackPatchFilters(
@@ -3077,6 +3150,92 @@ function countProjectKnowledgeWritebackStatuses(
     counts[item.writeback_status ?? 'draft_ready'] += 1;
   }
   return counts;
+}
+
+function buildKnowledgeWritebackQueueExportPreflight(input: {
+  targetFiles: string[];
+  projectItems: ProjectKnowledgeWritebackPatchItem[];
+  expansionItems: DomainPackExpansionWritebackDraftItem[];
+  statusCounts: Record<KnowledgeWritebackStatus, number>;
+}): KnowledgeWritebackQueueExportPreflight {
+  const targetFilePreflight = input.targetFiles.map(targetFile =>
+    buildKnowledgeWritebackTargetFilePreflight(targetFile, input.projectItems, input.expansionItems),
+  );
+  const expansionCandidateFieldCount = input.expansionItems
+    .reduce((sum, item) => sum + (item.field_supplement_candidate_count ?? 0), 0);
+  const expansionFieldMissingCount = input.expansionItems
+    .reduce((sum, item) => sum + (item.field_missing_candidate_count ?? 0), 0);
+  const expansionSourceRefCount = countDomainPackExpansionSourceRefs(input.expansionItems);
+  const totalDraftCount = input.projectItems.length + input.expansionItems.length;
+  const manualReviewRequiredCount = totalDraftCount - (input.statusCounts.written_back ?? 0);
+
+  return {
+    schema_version: 'knowledge-writeback-queue-export-preflight/v1',
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    target_file_count: input.targetFiles.length,
+    target_files: input.targetFiles,
+    total_draft_count: totalDraftCount,
+    project_draft_count: input.projectItems.length,
+    expansion_draft_count: input.expansionItems.length,
+    expansion_candidate_field_count: expansionCandidateFieldCount,
+    expansion_field_missing_count: expansionFieldMissingCount,
+    expansion_source_ref_count: expansionSourceRefCount,
+    manual_review_required_count: manualReviewRequiredCount,
+    blocked_direct_writeback_count: totalDraftCount,
+    ready_for_manual_export: totalDraftCount > 0
+      && input.targetFiles.length > 0
+      && expansionFieldMissingCount === 0,
+    target_file_preflight: targetFilePreflight,
+    safety_checks: [
+      'direct_writeback_to_province_markdown=false',
+      'province_markdown_written=false',
+      `target_files=${input.targetFiles.length}`,
+      `project_drafts=${input.projectItems.length}`,
+      `expansion_drafts=${input.expansionItems.length}`,
+      `expansion_candidate_fields=${expansionCandidateFieldCount}`,
+      `expansion_source_refs=${expansionSourceRefCount}`,
+      `manual_review_required=${manualReviewRequiredCount}`,
+      'default_action=export_only_no_file_write',
+    ],
+  };
+}
+
+function buildKnowledgeWritebackTargetFilePreflight(
+  targetFile: string,
+  projectItems: ProjectKnowledgeWritebackPatchItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+): KnowledgeWritebackQueueExportTargetFilePreflight {
+  const projectFileItems = projectItems.filter(item => item.suggested_file_path === targetFile);
+  const expansionFileItems = expansionItems.filter(item => item.suggested_file_path === targetFile);
+  const statusCounts = normalizeKnowledgeWritebackStatusCounts();
+  for (const item of [...projectFileItems, ...expansionFileItems]) {
+    statusCounts[item.writeback_status ?? 'draft_ready'] += 1;
+  }
+  const expansionCandidateFieldCount = expansionFileItems
+    .reduce((sum, item) => sum + (item.field_supplement_candidate_count ?? 0), 0);
+  const expansionFieldMissingCount = expansionFileItems
+    .reduce((sum, item) => sum + (item.field_missing_candidate_count ?? 0), 0);
+
+  return {
+    target_file: targetFile,
+    project_draft_count: projectFileItems.length,
+    expansion_draft_count: expansionFileItems.length,
+    total_draft_count: projectFileItems.length + expansionFileItems.length,
+    expansion_candidate_field_count: expansionCandidateFieldCount,
+    expansion_field_missing_count: expansionFieldMissingCount,
+    expansion_source_ref_count: countDomainPackExpansionSourceRefs(expansionFileItems),
+    writeback_status_counts: statusCounts,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    safety_note: '仅导出人工写回草案和字段差异，不直接修改省份 Markdown。',
+  };
+}
+
+function countDomainPackExpansionSourceRefs(items: DomainPackExpansionWritebackDraftItem[]): number {
+  return new Set(items.flatMap(item =>
+    (item.field_workbench ?? []).flatMap(field => field.source_refs),
+  )).size;
 }
 
 function normalizeKnowledgeWritebackStatus(value: unknown): KnowledgeWritebackStatus {

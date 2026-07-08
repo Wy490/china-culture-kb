@@ -366,8 +366,8 @@ describe('production health reports', () => {
     expect(toolResult.markdown).toContain('field_candidate_completion_percent: 100');
     expect(toolResult.markdown).toContain('pipeline_progress_percent: 78');
     expect(toolResult.markdown).toContain('pipeline_stage: human_review');
-    expect(toolResult.markdown).toContain('progress_percent: 82');
-    expect(toolResult.markdown).toContain('progress_note: 扩库审稿页已有联合筛选');
+    expect(toolResult.markdown).toContain('progress_percent: 87');
+    expect(toolResult.markdown).toContain('progress_note: 扩库审稿页和统一写回队列已有 pack 筛选');
     expect(toolResult.markdown).toContain('field_review_ready_count: 8');
     expect(toolResult.markdown).toContain('field_review_blocker_count: 0');
     expect(toolResult.markdown).toContain('field_supplement_priority_target_count: 0');
@@ -924,6 +924,29 @@ describe('production health reports', () => {
         expansion: expect.objectContaining({ queued: 1 }),
         total: expect.objectContaining({ queued: 2 }),
       },
+      preflight: {
+        schema_version: 'knowledge-writeback-queue-export-preflight/v1',
+        direct_writeback_to_province_markdown: false,
+        province_markdown_written: false,
+        target_file_count: 1,
+        target_files: ['data/provinces/湖南.md'],
+        total_draft_count: 2,
+        project_draft_count: 1,
+        expansion_draft_count: 1,
+        expansion_candidate_field_count: 0,
+        expansion_field_missing_count: 1,
+        manual_review_required_count: 2,
+        blocked_direct_writeback_count: 2,
+        ready_for_manual_export: false,
+        target_file_preflight: [expect.objectContaining({
+          target_file: 'data/provinces/湖南.md',
+          project_draft_count: 1,
+          expansion_draft_count: 1,
+          expansion_candidate_field_count: 0,
+          expansion_field_missing_count: 1,
+          direct_writeback_to_province_markdown: false,
+        })],
+      },
       project_patch: {
         schema_version: 'project-knowledge-writeback-patch/v1',
         approved_count: 1,
@@ -950,6 +973,8 @@ describe('production health reports', () => {
     });
     expect(unified.markdown).toContain('Knowledge Writeback Queue Export');
     expect(unified.markdown).toContain('province_markdown_written: false');
+    expect(unified.markdown).toContain('Export Preflight');
+    expect(unified.markdown).toContain('expansion_field_diff');
     expect(unified.markdown).toContain('项目草案来源');
     expect(fs.existsSync(path.join(dataRoot, 'provinces', '湖南.md'))).toBe(false);
 

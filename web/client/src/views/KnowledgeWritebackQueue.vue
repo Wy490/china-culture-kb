@@ -161,6 +161,25 @@
       </ul>
     </section>
 
+    <section v-if="filteredTotalCount" class="writeback-page__export-preflight">
+      <div>
+        <strong>统一导出预检</strong>
+        <span>
+          目标文件 {{ unifiedPreflightSummary.targetFileCount }} 个 · 当前草案 {{ unifiedPreflightSummary.totalDraftCount }} 条 ·
+          扩库字段候选 {{ unifiedPreflightSummary.expansionCandidateFieldCount }} 个 · 来源引用 {{ unifiedPreflightSummary.expansionSourceRefCount }} 条
+        </span>
+      </div>
+      <div class="writeback-page__export-preflight-grid">
+        <article v-for="item in unifiedTargetFilePreflight" :key="item.target_file">
+          <strong>{{ item.target_file }}</strong>
+          <span>草案 {{ item.total_draft_count }} 条（项目 {{ item.project_draft_count }} / 扩库 {{ item.expansion_draft_count }}）</span>
+          <span>字段差异：候选 {{ item.expansion_candidate_field_count }} 个，缺口 {{ item.expansion_field_missing_count }} 个</span>
+          <span>来源引用：{{ item.expansion_source_ref_count }} 条</span>
+          <span>直写省份 Markdown：关闭</span>
+        </article>
+      </div>
+    </section>
+
     <section class="writeback-page__summary">
       <div>
         <span>草案总数</span>
@@ -356,6 +375,7 @@ import type {
   DomainPackExpansionWritebackDraftItem,
   DomainPackExpansionWritebackDraftPackage,
   DomainPackExpansionReviewStateSource,
+  KnowledgeWritebackQueueExportTargetFilePreflight,
   KnowledgeWritebackStatus,
   ProjectSupplementTaskListItem,
   VideoType,
@@ -434,6 +454,71 @@ const expansionReviewNoteSamples = computed(() =>
 const expansionSourceRefTotalCount = computed(() =>
   expansionItems.value.reduce((sum, item) => sum + itemSourceRefCount(item), 0),
 )
+const unifiedTargetFilePreflight = computed<KnowledgeWritebackQueueExportTargetFilePreflight[]>(() => {
+  const rows = new Map<string, KnowledgeWritebackQueueExportTargetFilePreflight & { sourceRefSet: Set<string> }>()
+  const ensureRow = (targetFile: string) => {
+    const current = rows.get(targetFile)
+    if (current) return current
+    const next: KnowledgeWritebackQueueExportTargetFilePreflight & { sourceRefSet: Set<string> } = {
+      target_file: targetFile,
+      project_draft_count: 0,
+      expansion_draft_count: 0,
+      total_draft_count: 0,
+      expansion_candidate_field_count: 0,
+      expansion_field_missing_count: 0,
+      expansion_source_ref_count: 0,
+      writeback_status_counts: {
+        draft_ready: 0,
+        queued: 0,
+        written_back: 0,
+        needs_revision: 0,
+      },
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      safety_note: '仅导出人工写回草案和字段差异，不直接修改省份 Markdown。',
+      sourceRefSet: new Set<string>(),
+    }
+    rows.set(targetFile, next)
+    return next
+  }
+
+  for (const item of filteredItems.value) {
+    const targetFile = item.suggested_file_path || `data/provinces/${item.target_province || '待确认'}.md`
+    const row = ensureRow(targetFile)
+    row.project_draft_count += 1
+    row.total_draft_count += 1
+    row.writeback_status_counts[taskWritebackStatus(item)] += 1
+  }
+
+  for (const item of filteredExpansionItems.value) {
+    const row = ensureRow(item.suggested_file_path)
+    row.expansion_draft_count += 1
+    row.total_draft_count += 1
+    row.expansion_candidate_field_count += item.field_supplement_candidate_count ?? 0
+    row.expansion_field_missing_count += item.field_missing_candidate_count ?? 0
+    row.writeback_status_counts[expansionWritebackStatus(item)] += 1
+    for (const sourceRef of (item.field_workbench ?? []).flatMap(field => field.source_refs)) {
+      row.sourceRefSet.add(sourceRef)
+    }
+  }
+
+  return [...rows.values()]
+    .map(({ sourceRefSet, ...item }) => ({
+      ...item,
+      expansion_source_ref_count: sourceRefSet.size,
+    }))
+    .sort((a, b) => a.target_file.localeCompare(b.target_file, 'zh-Hans-CN'))
+})
+const unifiedPreflightSummary = computed(() => ({
+  targetFileCount: unifiedTargetFilePreflight.value.length,
+  totalDraftCount: unifiedTargetFilePreflight.value.reduce((sum, item) => sum + item.total_draft_count, 0),
+  expansionCandidateFieldCount: unifiedTargetFilePreflight.value
+    .reduce((sum, item) => sum + item.expansion_candidate_field_count, 0),
+  expansionFieldMissingCount: unifiedTargetFilePreflight.value
+    .reduce((sum, item) => sum + item.expansion_field_missing_count, 0),
+  expansionSourceRefCount: unifiedTargetFilePreflight.value
+    .reduce((sum, item) => sum + item.expansion_source_ref_count, 0),
+}))
 
 const projectOptions = computed(() => {
   const seen = new Set<string>()
@@ -739,7 +824,7 @@ async function copyUnifiedExport(format: 'markdown' | 'json') {
         : res.data.markdown
       await navigator.clipboard.writeText(clipboardText)
       const exportLabel = format === 'json' ? '统一 JSON 导出包' : '统一 Markdown 导出包'
-      copyMessage.value = `已复制 ${exportLabel}：项目 ${res.data.project_approved_count} 条，扩库 ${res.data.expansion_approved_count} 条，目标文件 ${res.data.target_files.length} 个。`
+      copyMessage.value = `已复制 ${exportLabel}：项目 ${res.data.project_approved_count} 条，扩库 ${res.data.expansion_approved_count} 条，目标文件 ${res.data.preflight.target_file_count} 个，字段候选 ${res.data.preflight.expansion_candidate_field_count} 个，来源引用 ${res.data.preflight.expansion_source_ref_count} 条；省份 Markdown 未写入。`
     } else {
       error.value = res.error?.message ?? '导出统一写回队列失败'
     }
@@ -1052,6 +1137,55 @@ onMounted(async () => {
 .writeback-page__review-summary ul {
   margin: 6px 0 0;
   padding-left: 18px;
+}
+
+.writeback-page__export-preflight {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fbfd;
+}
+
+.writeback-page__export-preflight > div:first-child strong,
+.writeback-page__export-preflight > div:first-child span {
+  display: block;
+}
+
+.writeback-page__export-preflight > div:first-child strong {
+  color: #22313f;
+  font-size: 14px;
+}
+
+.writeback-page__export-preflight > div:first-child span {
+  color: #465767;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.writeback-page__export-preflight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.writeback-page__export-preflight-grid article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e4ebf1;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff;
+  color: #465767;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.writeback-page__export-preflight-grid strong {
+  color: #22313f;
+  overflow-wrap: anywhere;
 }
 
 .writeback-page__summary {
