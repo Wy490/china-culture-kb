@@ -434,7 +434,7 @@ function buildReviewHandoff(
     };
   });
 
-  const expansionHandoffItems = expansionItems.map<KnowledgeWritebackQueueReviewHandoffItem>(item => {
+  const expansionHandoffItems: KnowledgeWritebackQueueReviewHandoffItem[] = expansionItems.map(item => {
     const status = item.writeback_status ?? 'draft_ready';
     const sourceRefCount = itemSourceRefCount(item);
     return {
@@ -467,7 +467,7 @@ function buildReviewHandoff(
     };
   });
 
-  const items = [...projectHandoffItems, ...expansionHandoffItems];
+  const items: KnowledgeWritebackQueueReviewHandoffItem[] = [...projectHandoffItems, ...expansionHandoffItems];
   const statusCounts = normalizeStatusCounts();
   for (const item of items) {
     statusCounts[item.writeback_status] += 1;
@@ -478,7 +478,7 @@ function buildReviewHandoff(
   const signoffBatchIds = [...new Set(items.map(item => item.signoff_batch_id?.trim()).filter((id): id is string => Boolean(id)))].sort((a, b) => a.localeCompare(b));
   const signoffBatchCount = items.filter(item => Boolean(item.signoff_batch_id?.trim())).length;
   const sourceRefCount = items.reduce((sum, item) => sum + item.source_ref_count, 0);
-  const candidateFieldCount = items.reduce((sum, item) => sum + item.candidate_field_count, 0);
+  const candidateFieldTotal = items.reduce((sum, item) => sum + item.candidate_field_count, 0);
   const requiresManualSignoffCount = items.filter(item => item.writeback_status !== 'written_back').length;
   const signoffBatchSummaries = buildSignoffBatchSummaries(items);
   const signoffManifest = buildReviewSignoffManifest({
@@ -508,7 +508,7 @@ function buildReviewHandoff(
     signoff_batch_ids: signoffBatchIds,
     signoff_batch_summaries: signoffBatchSummaries,
     source_ref_count: sourceRefCount,
-    candidate_field_count: candidateFieldCount,
+    candidate_field_count: candidateFieldTotal,
     requires_manual_signoff_count: requiresManualSignoffCount,
     status_counts: statusCounts,
     operator_checklist: [
