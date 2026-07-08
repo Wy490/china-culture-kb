@@ -775,11 +775,15 @@ describe('System API', () => {
           review_items: expect.arrayContaining([
             expect.objectContaining({
               candidate_status: 'candidate_review',
-              candidate_markdown: expect.stringContaining('不得直接改写 data/provinces/*.md'),
+              review_state_source: 'seed',
+              review_state_overrides_seed: false,
+              candidate_markdown: expect.stringContaining('review_state_source: seed'),
             }),
           ]),
         }),
       ]));
+      expect(res.body.data.review_packet.markdown).toContain('review_state_source: seed');
+      expect(res.body.data.review_packet.markdown).toContain('review_state_overrides_seed: false');
       expect(res.body.data.batches).toEqual(expect.arrayContaining([
         expect.objectContaining({
           pack_id: 'heritage_process_pack',

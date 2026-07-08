@@ -207,6 +207,10 @@ describe('domain-pack-expansion-service', () => {
     ]));
     const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
     expect(reviewItems.every(item => item.review_ready)).toBe(true);
+    expect(reviewItems.every(item => item.review_state_source === 'seed')).toBe(true);
+    expect(reviewItems.every(item => item.review_state_overrides_seed === false)).toBe(true);
+    expect(reviewItems.every(item => item.review_state_seed_status === item.review_status)).toBe(true);
+    expect(reviewItems.every(item => item.review_state_runtime_status === undefined)).toBe(true);
     expect(reviewItems.every(item => item.field_review_blocker_count === 0)).toBe(true);
     expect(reviewItems.flatMap(item => item.field_workbench).every(field =>
       field.review_ready && field.review_ready_missing.length === 0,
@@ -463,6 +467,8 @@ describe('domain-pack-expansion-service', () => {
             entry_name: '滩头年画——湘西南木版年画的最后守望',
             province: '湖南',
             candidate_status: 'candidate_review',
+            review_state_source: 'seed',
+            review_state_overrides_seed: false,
             field_supplement_candidate_count: 4,
             field_missing_candidate_count: 0,
             field_candidate_completion_percent: 100,
@@ -486,6 +492,8 @@ describe('domain-pack-expansion-service', () => {
     expect(report.review_packet.markdown).toContain('Field supplement workbench');
     expect(report.review_packet.markdown).toContain('field_review_ready_count');
     expect(report.review_packet.markdown).toContain('review_ready: true');
+    expect(report.review_packet.markdown).toContain('review_state_source: seed');
+    expect(report.review_packet.markdown).toContain('review_state_overrides_seed: false');
     expect(report.review_packet.markdown).toContain('刻版→上色→套印→开脸');
     expect(report.review_packet.markdown).toContain('候选稿只记录待补字段');
     expect(report.batches).toEqual(expect.arrayContaining([
@@ -578,6 +586,12 @@ describe('domain-pack-expansion-service', () => {
     expect(overridden).toMatchObject({
       review_status: 'needs_revision',
       review_note: '运行态覆盖 seed：退回补充传承人口述授权确认。',
+      review_state_source: 'runtime',
+      review_state_overrides_seed: true,
+      review_state_seed_status: 'approved',
+      review_state_seed_writeback_status: 'draft_ready',
+      review_state_runtime_status: 'needs_revision',
+      review_state_runtime_writeback_status: undefined,
       writeback_status: undefined,
     });
   });

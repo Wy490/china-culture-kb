@@ -364,6 +364,9 @@
             <span :class="['expansion-page__status', `expansion-page__status--${effectiveReviewStatus(item)}`]">
               {{ statusLabel(effectiveReviewStatus(item)) }}
             </span>
+            <span :class="['expansion-page__status', item.review_state_source === 'runtime' ? 'expansion-page__status--runtime' : 'expansion-page__status--seed']">
+              {{ reviewStateSourceLabel(item.review_state_source) }}{{ item.review_state_overrides_seed ? '覆盖' : '' }}
+            </span>
             <span v-if="item.writeback_status">{{ writebackStatusLabel(item.writeback_status) }}</span>
             <span :class="['expansion-page__status', item.review_ready ? 'expansion-page__status--ready' : 'expansion-page__status--needs_revision']">
               {{ item.review_ready ? '审稿就绪' : `审稿阻断 ${item.field_review_blocker_count}` }}
@@ -438,6 +441,7 @@
           </div>
           <div class="expansion-page__item-preflight">
             <span>目标：{{ itemTargetFile(item) }}</span>
+            <span>状态来源：{{ reviewStateSourceLabel(item.review_state_source) }}{{ item.review_state_overrides_seed ? `；seed=${statusLabel(item.review_state_seed_status || 'candidate_review')} → runtime=${statusLabel(item.review_state_runtime_status || effectiveReviewStatus(item))}` : '' }}</span>
             <span>来源引用 {{ itemSourceRefCount(item) }} 条 · 字段阻断 {{ item.field_review_blocker_count }}</span>
             <span>直写省份 Markdown：关闭</span>
             <span>{{ itemNeedsManualWriteback(item) ? '仍需人工写回复核' : '已标注人工写回完成' }}</span>
@@ -482,6 +486,7 @@ import type {
   DomainPackExpansionReviewBatch,
   DomainPackExpansionReviewItem,
   DomainPackExpansionReviewReadyTarget,
+  DomainPackExpansionReviewStateSource,
   DomainPackExpansionReviewStatus,
   DomainPackProductionHealthStatus,
   KnowledgeWritebackStatus,
@@ -702,6 +707,12 @@ function effectiveReviewStatus(item: DomainPackExpansionReviewItem): DomainPackE
 function effectiveWritebackStatus(item: DomainPackExpansionReviewItem): KnowledgeWritebackStatus | '' {
   if (item.writeback_status) return item.writeback_status
   return effectiveReviewStatus(item) === 'approved' ? 'draft_ready' : ''
+}
+
+function reviewStateSourceLabel(source: DomainPackExpansionReviewStateSource): string {
+  if (source === 'runtime') return '运行态'
+  if (source === 'seed') return 'Seed'
+  return '未记录'
 }
 
 function packShortLabel(packId: string): string {
@@ -1604,6 +1615,16 @@ onMounted(async () => {
 .expansion-page__status--ready {
   background: #eaf7ef !important;
   color: #216e44 !important;
+}
+
+.expansion-page__status--seed {
+  background: #eef3f7 !important;
+  color: #465767 !important;
+}
+
+.expansion-page__status--runtime {
+  background: #e8f4fb !important;
+  color: #1f618d !important;
 }
 
 .expansion-page__status--needs_revision {

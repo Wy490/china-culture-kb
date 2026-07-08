@@ -333,6 +333,9 @@ describe('production health reports', () => {
             entry_name: 'heritage_process_pack target',
             review_status: 'approved',
             writeback_status: 'queued',
+            review_state_source: 'runtime',
+            review_state_overrides_seed: false,
+            review_state_runtime_status: 'approved',
             field_supplement_candidate_count: 1,
             field_missing_candidate_count: 0,
             field_candidate_completion_percent: 100,
@@ -350,7 +353,7 @@ describe('production health reports', () => {
               }),
             ]),
             writeback_draft_markdown: expect.stringContaining('扩库候选审稿草案'),
-            candidate_markdown: expect.stringContaining('candidate_draft_only: true'),
+            candidate_markdown: expect.stringContaining('review_state_source: runtime'),
           }),
         ]),
       }),
@@ -373,6 +376,8 @@ describe('production health reports', () => {
     expect(toolResult.review_packet.markdown).toContain('heritage_process_pack target');
     expect(toolResult.review_packet.markdown).toContain('Field supplement workbench');
     expect(toolResult.review_packet.markdown).toContain('review_ready: true');
+    expect(toolResult.review_packet.markdown).toContain('review_state_source: runtime');
+    expect(toolResult.review_packet.markdown).toContain('review_state_overrides_seed: false');
     expect(toolResult.review_packet.markdown).toContain('approved_writeback_draft_count: 1');
 
     const writebackDraft = getDomainPackExpansionWritebackDraftToolResult();
@@ -398,6 +403,7 @@ describe('production health reports', () => {
       review_ready: true,
     });
     expect(writebackDraft.markdown).toContain('#### 字段候选值');
+    expect(writebackDraft.markdown).toContain('review_state_source: runtime');
     expect(writebackDraft.markdown).toContain('heritage_process_pack 的核心讲解问题候选');
     expect(writebackDraft.markdown).toContain('本草案只作为人工补库采集清单');
   });

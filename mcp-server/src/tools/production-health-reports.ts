@@ -275,6 +275,12 @@ interface DomainPackExpansionReviewItem {
   review_status?: DomainPackExpansionReviewStatus;
   review_note?: string;
   reviewed_at?: string;
+  review_state_source: DomainPackExpansionReviewStateSource;
+  review_state_overrides_seed: boolean;
+  review_state_seed_status?: DomainPackExpansionReviewStatus;
+  review_state_seed_writeback_status?: KnowledgeWritebackStatus;
+  review_state_runtime_status?: DomainPackExpansionReviewStatus;
+  review_state_runtime_writeback_status?: KnowledgeWritebackStatus;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
   writeback_updated_at?: string;
@@ -329,6 +335,11 @@ export type DomainPackExpansionReviewStatus =
   | 'rejected'
   | 'needs_revision';
 
+type DomainPackExpansionReviewStateSource =
+  | 'none'
+  | 'seed'
+  | 'runtime';
+
 type DomainPackExpansionPipelineStage =
   | 'candidate_setup'
   | 'field_supplement'
@@ -351,6 +362,15 @@ interface DomainPackExpansionReviewStateItem {
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
   writeback_updated_at?: string;
+}
+
+interface DomainPackExpansionResolvedReviewStateItem extends DomainPackExpansionReviewStateItem {
+  review_state_source: DomainPackExpansionReviewStateSource;
+  review_state_overrides_seed: boolean;
+  review_state_seed_status?: DomainPackExpansionReviewStatus;
+  review_state_seed_writeback_status?: KnowledgeWritebackStatus;
+  review_state_runtime_status?: DomainPackExpansionReviewStatus;
+  review_state_runtime_writeback_status?: KnowledgeWritebackStatus;
 }
 
 interface DomainPackExpansionReviewStateFile {
@@ -1438,7 +1458,7 @@ function withExpansionReviewPacket(
   report: DomainPackExpansionCandidateReportDraft,
   sourceBatches: ExpansionBatch[],
   includeMarkdown = false,
-  reviewState: Map<string, DomainPackExpansionReviewStateItem> = new Map(),
+  reviewState: Map<string, DomainPackExpansionResolvedReviewStateItem> = new Map(),
 ): DomainPackExpansionCandidateReport {
   const reviewPacket = buildDomainPackExpansionReviewPacket(report, sourceBatches, includeMarkdown, reviewState);
   const coverageByVideoType = buildExpansionVideoTypeCoverage(sourceBatches, reviewPacket);
@@ -1738,7 +1758,7 @@ function buildDomainPackExpansionReviewPacket(
   report: DomainPackExpansionCandidateReportDraft,
   sourceBatches: ExpansionBatch[],
   includeMarkdown: boolean,
-  reviewState: Map<string, DomainPackExpansionReviewStateItem>,
+  reviewState: Map<string, DomainPackExpansionResolvedReviewStateItem>,
 ): DomainPackExpansionReviewPacket {
   const reviewBatches = sourceBatches.map(batch => {
     const reviewItems = batch.seed_targets.map((target, index) =>
@@ -1801,7 +1821,7 @@ function buildExpansionReviewItem(
   batch: ExpansionBatch,
   target: ExpansionSeedTarget,
   index: number,
-  reviewState: Map<string, DomainPackExpansionReviewStateItem>,
+  reviewState: Map<string, DomainPackExpansionResolvedReviewStateItem>,
 ): DomainPackExpansionReviewItem {
   const reviewItemId = `${batch.batch_id}::target_${String(index + 1).padStart(2, '0')}`;
   const stateItem = reviewState.get(reviewItemId);
@@ -1833,6 +1853,12 @@ function buildExpansionReviewItem(
     review_status: reviewStatus,
     review_note: stateItem?.review_note,
     reviewed_at: stateItem?.reviewed_at,
+    review_state_source: stateItem?.review_state_source ?? 'none',
+    review_state_overrides_seed: stateItem?.review_state_overrides_seed ?? false,
+    review_state_seed_status: stateItem?.review_state_seed_status,
+    review_state_seed_writeback_status: stateItem?.review_state_seed_writeback_status,
+    review_state_runtime_status: stateItem?.review_state_runtime_status,
+    review_state_runtime_writeback_status: stateItem?.review_state_runtime_writeback_status,
     writeback_status: reviewStatus === 'approved'
       ? (stateItem?.writeback_status ?? 'draft_ready')
       : undefined,
@@ -2264,6 +2290,10 @@ function renderDomainPackExpansionReviewItemMarkdown(
     `- target_video_types: ${item.target_video_types.join(', ') || 'none'}`,
     `- candidate_status: ${item.candidate_status}`,
     `- review_status: ${item.review_status ?? 'candidate_review'}`,
+    `- review_state_source: ${item.review_state_source}`,
+    `- review_state_overrides_seed: ${item.review_state_overrides_seed}`,
+    ...(item.review_state_seed_status ? [`- review_state_seed_status: ${item.review_state_seed_status}`] : []),
+    ...(item.review_state_runtime_status ? [`- review_state_runtime_status: ${item.review_state_runtime_status}`] : []),
     `- candidate_draft_only: true`,
     `- direct_writeback_to_province_markdown: false`,
     ...(item.reviewed_at ? [`- reviewed_at: ${item.reviewed_at}`] : []),
@@ -3094,6 +3124,8 @@ function renderDomainPackExpansionWritebackDraftMarkdown(
     `> pack_id: ${item.pack_id}`,
     `> province: ${item.province}`,
     `> review_status: ${item.review_status ?? 'candidate_review'}`,
+    `> review_state_source: ${item.review_state_source}`,
+    `> review_state_overrides_seed: ${item.review_state_overrides_seed}`,
     `> direct_writeback_to_province_markdown: false`,
     '',
     '#### 待补生产字段',
@@ -3245,8 +3277,8 @@ function countExpansionReviewItemWritebackStatuses(
   return counts;
 }
 
-function loadDomainPackExpansionReviewStateMap(): Map<string, DomainPackExpansionReviewStateItem> {
-  return new Map(loadDomainPackExpansionReviewStateItems().map(item => [item.review_item_id, item]));
+function loadDomainPackExpansionReviewStateMap(): Map<string, DomainPackExpansionResolvedReviewStateItem> {
+  return new Map(loadDomainPackExpansionResolvedReviewStateItems().map(item => [item.review_item_id, item]));
 }
 
 function findDomainPackExpansionReviewItem(
@@ -3277,21 +3309,61 @@ function expansionReviewApprovalBlockerMessage(
 }
 
 function loadDomainPackExpansionReviewStateItems(): DomainPackExpansionReviewStateItem[] {
+  return loadDomainPackExpansionResolvedReviewStateItems().map(stripResolvedExpansionReviewStateMetadata);
+}
+
+function loadDomainPackExpansionResolvedReviewStateItems(): DomainPackExpansionResolvedReviewStateItem[] {
   const mergedItems = new Map<string, DomainPackExpansionReviewStateItem>();
-  for (const filePath of [
-    domainPackExpansionReviewStateSeedFilePath(),
-    domainPackExpansionReviewStateFilePath(),
-  ]) {
+  const seedItems = new Map<string, DomainPackExpansionReviewStateItem>();
+  const runtimeItems = new Map<string, DomainPackExpansionReviewStateItem>();
+  for (const [source, filePath] of [
+    ['seed', domainPackExpansionReviewStateSeedFilePath()],
+    ['runtime', domainPackExpansionReviewStateFilePath()],
+  ] as const) {
     const file = loadDomainPackExpansionReviewStateFile(filePath);
     if (!file || file.schema_version !== 'domain-pack-expansion-review-state/v1' || !Array.isArray(file.items)) {
       continue;
     }
     for (const item of file.items) {
       const normalized = normalizeExpansionReviewStateItem(item);
-      if (normalized) mergedItems.set(normalized.review_item_id, normalized);
+      if (!normalized) continue;
+      if (source === 'seed') seedItems.set(normalized.review_item_id, normalized);
+      else runtimeItems.set(normalized.review_item_id, normalized);
+      mergedItems.set(normalized.review_item_id, normalized);
     }
   }
-  return [...mergedItems.values()];
+  return [...mergedItems.values()].map(item => {
+    const seedItem = seedItems.get(item.review_item_id);
+    const runtimeItem = runtimeItems.get(item.review_item_id);
+    const source: DomainPackExpansionReviewStateSource = runtimeItem
+      ? 'runtime'
+      : seedItem
+        ? 'seed'
+        : 'none';
+    return {
+      ...item,
+      review_state_source: source,
+      review_state_overrides_seed: Boolean(seedItem && runtimeItem),
+      review_state_seed_status: seedItem?.review_status,
+      review_state_seed_writeback_status: seedItem?.writeback_status,
+      review_state_runtime_status: runtimeItem?.review_status,
+      review_state_runtime_writeback_status: runtimeItem?.writeback_status,
+    };
+  });
+}
+
+function stripResolvedExpansionReviewStateMetadata(
+  item: DomainPackExpansionResolvedReviewStateItem,
+): DomainPackExpansionReviewStateItem {
+  return {
+    review_item_id: item.review_item_id,
+    review_status: item.review_status,
+    review_note: item.review_note,
+    reviewed_at: item.reviewed_at,
+    writeback_status: item.writeback_status,
+    writeback_note: item.writeback_note,
+    writeback_updated_at: item.writeback_updated_at,
+  };
 }
 
 function loadDomainPackExpansionReviewStateFile(filePath: string): DomainPackExpansionReviewStateFile | undefined {

@@ -6092,6 +6092,12 @@ export interface DomainPackExpansionReviewItem {
   review_status?: DomainPackExpansionReviewStatus;
   review_note?: string;
   reviewed_at?: string;
+  review_state_source: DomainPackExpansionReviewStateSource;
+  review_state_overrides_seed: boolean;
+  review_state_seed_status?: DomainPackExpansionReviewStatus;
+  review_state_seed_writeback_status?: KnowledgeWritebackStatus;
+  review_state_runtime_status?: DomainPackExpansionReviewStatus;
+  review_state_runtime_writeback_status?: KnowledgeWritebackStatus;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
   writeback_updated_at?: string;
@@ -6145,6 +6151,11 @@ export type DomainPackExpansionReviewStatus =
   | 'approved'
   | 'rejected'
   | 'needs_revision';
+
+export type DomainPackExpansionReviewStateSource =
+  | 'none'
+  | 'seed'
+  | 'runtime';
 
 export type DomainPackExpansionPipelineStage =
   | 'candidate_setup'
