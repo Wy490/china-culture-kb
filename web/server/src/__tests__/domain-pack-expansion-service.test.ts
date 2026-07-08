@@ -181,7 +181,7 @@ describe('domain-pack-expansion-service', () => {
     expect(report.next_development_tasks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         task_id: 'field_workbench_controls',
-        status: 'in_progress',
+        status: 'complete',
         progress_percent: 100,
         progress_note: expect.stringContaining('统一写回队列'),
         related_plan_items: [1],
@@ -189,32 +189,54 @@ describe('domain-pack-expansion-service', () => {
       }),
       expect.objectContaining({
         task_id: 'manual_review_closure',
-        status: 'ready',
-        progress_percent: 99,
+        status: 'complete',
+        progress_percent: 100,
         related_plan_items: [2],
       }),
       expect.objectContaining({
         task_id: 'writeback_safety_export',
-        status: 'in_progress',
+        status: 'complete',
         progress_percent: 100,
         related_plan_items: [3],
       }),
       expect.objectContaining({
         task_id: 'second_batch_real_candidates',
-        status: 'ready',
-        progress_percent: 99,
+        status: 'complete',
+        progress_percent: 100,
         related_plan_items: [4],
         target_video_types: expect.arrayContaining(['explainer_video', 'heritage_promo', 'documentary_short', 'ai_comic_drama']),
       }),
       expect.objectContaining({
         task_id: 'mvp_completion_surface',
-        status: 'ready',
-        progress_percent: 99,
+        status: 'complete',
+        progress_percent: 100,
         related_plan_items: [5],
       }),
     ]));
+    expect(report.review_closure).toMatchObject({
+      schema_version: 'domain-pack-expansion-review-closure/v1',
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      ready_for_human_handoff: true,
+      review_item_count: 66,
+      approved_count: 66,
+      review_note_count: 66,
+      missing_review_note_count: 0,
+      reviewer_identity_count: 66,
+      missing_reviewer_identity_count: 0,
+      signoff_batch_count: 3,
+      missing_signoff_batch_count: 0,
+      ready_for_signoff_count: 66,
+      blocked_for_signoff_count: 0,
+      manual_writeback_required_count: 66,
+    });
+    expect(report.review_closure.closure_checks).toEqual(expect.arrayContaining([
+      'ready_for_human_handoff=true',
+      'province_markdown_waits_for_manual_writeback=true',
+    ]));
     expect(report.markdown).toContain('field_workbench_controls');
-    expect(report.markdown).toContain('progress_percent: 99');
+    expect(report.markdown).toContain('Review Closure');
+    expect(report.markdown).toContain('progress_percent: 100');
     const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
     expect(reviewItems.every(item => item.review_ready)).toBe(true);
     expect(reviewItems.every(item => item.review_state_source === 'seed')).toBe(true);

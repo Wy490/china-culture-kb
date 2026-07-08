@@ -150,6 +150,14 @@
       </button>
       <button
         type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(copyingFormat) || !report"
+        @click="copyReviewClosure"
+      >
+        {{ copyingFormat === 'review-closure' ? '复制中…' : '复制闭环摘要' }}
+      </button>
+      <button
+        type="button"
         class="expansion-page__action expansion-page__action--ghost"
         :disabled="loading"
         @click="loadQueue"
@@ -264,6 +272,59 @@
         目标文件：{{ report.writeback_preflight.target_files.join('、') || '无' }}。安全检查：
         {{ report.writeback_preflight.safety_checks.join('；') }}。
       </p>
+    </section>
+
+    <section v-if="report" class="expansion-page__closure">
+      <header class="expansion-page__coverage-head">
+        <h2>人工复核闭环</h2>
+        <span>
+          {{ report.review_closure.ready_for_human_handoff ? '人工交接就绪' : '待补闭环' }}
+          · {{ report.review_closure.signoff_batch_count }} 个审签批次
+          · 省份 Markdown 未写入
+        </span>
+      </header>
+      <div class="expansion-page__preflight-grid">
+        <div>
+          <span>交接就绪</span>
+          <strong>{{ report.review_closure.ready_for_signoff_count }}</strong>
+        </div>
+        <div>
+          <span>交接阻断</span>
+          <strong>{{ report.review_closure.blocked_for_signoff_count }}</strong>
+        </div>
+        <div>
+          <span>复核备注</span>
+          <strong>{{ report.review_closure.review_note_count }}/{{ report.review_closure.review_item_count }}</strong>
+        </div>
+        <div>
+          <span>复核身份</span>
+          <strong>{{ report.review_closure.reviewer_identity_count }}/{{ report.review_closure.review_item_count }}</strong>
+        </div>
+        <div>
+          <span>缺批次</span>
+          <strong>{{ report.review_closure.missing_signoff_batch_count }}</strong>
+        </div>
+        <div>
+          <span>待人工写回</span>
+          <strong>{{ report.review_closure.manual_writeback_required_count }}</strong>
+        </div>
+      </div>
+      <p>
+        闭环检查：{{ report.review_closure.closure_checks.join('；') }}。
+      </p>
+      <div class="expansion-page__closure-batches">
+        <article
+          v-for="summary in report.review_closure.signoff_batch_summaries"
+          :key="summary.signoff_batch_id"
+          class="expansion-page__closure-batch"
+        >
+          <span>{{ summary.signoff_batch_id }}</span>
+          <strong>{{ summary.ready_for_signoff_count }}/{{ summary.item_count }} 就绪</strong>
+          <small>阻断 {{ summary.blocked_for_signoff_count }} · 来源 {{ summary.source_ref_count }} · 字段 {{ summary.candidate_field_count }}</small>
+          <small>备注 {{ summary.review_note_count }}/{{ summary.item_count }} · 复核人 {{ summary.reviewer_identity_count }}/{{ summary.item_count }}</small>
+          <em v-if="summary.signoff_batch_note">{{ summary.signoff_batch_note }}</em>
+        </article>
+      </div>
     </section>
 
     <section v-if="report?.next_development_tasks.length" class="expansion-page__development">
@@ -527,7 +588,7 @@ const report = ref<DomainPackExpansionCandidateReport | null>(null)
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const copyingFormat = ref<'markdown' | 'json' | 'writeback' | 'unified-writeback' | 'coverage' | 'field-workbench' | 'field-targets' | 'review-targets' | ''>('')
+const copyingFormat = ref<'markdown' | 'json' | 'writeback' | 'unified-writeback' | 'coverage' | 'field-workbench' | 'field-targets' | 'review-targets' | 'review-closure' | ''>('')
 const updatingItemId = ref('')
 const bulkUpdatingKey = ref('')
 const searchQuery = ref('')
@@ -983,6 +1044,34 @@ async function copyReviewReadyTargets() {
     copyMessage.value = `已复制审稿清单：${targets.length} 条就绪候选。`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '复制审稿清单失败'
+  } finally {
+    copyingFormat.value = ''
+  }
+}
+
+async function copyReviewClosure() {
+  if (!report.value) {
+    copyMessage.value = ''
+    error.value = '当前没有可复制的人工复核闭环摘要'
+    return
+  }
+
+  copyingFormat.value = 'review-closure'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const payload = {
+      schema_version: 'domain-pack-expansion-review-closure-export/v1',
+      exported_at: new Date().toISOString(),
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      review_closure: report.value.review_closure,
+      next_development_tasks: report.value.next_development_tasks,
+    }
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
+    copyMessage.value = `已复制闭环摘要：${payload.review_closure.ready_for_signoff_count}/${payload.review_closure.review_item_count} 条交接就绪，审签批次 ${payload.review_closure.signoff_batch_count} 个；省份 Markdown 未写入。`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制人工复核闭环摘要失败'
   } finally {
     copyingFormat.value = ''
   }
@@ -1459,6 +1548,7 @@ onMounted(async () => {
 }
 
 .expansion-page__preflight,
+.expansion-page__closure,
 .expansion-page__development {
   margin-bottom: 16px;
   border: 1px solid #d9e2ea;
@@ -1496,6 +1586,41 @@ onMounted(async () => {
   margin-top: 3px;
   color: #1f618d;
   font-size: 22px;
+}
+
+.expansion-page__closure-batches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.expansion-page__closure-batch {
+  border: 1px solid #edf1f5;
+  border-radius: 6px;
+  background: #f8fbfd;
+  padding: 10px;
+}
+
+.expansion-page__closure-batch span,
+.expansion-page__closure-batch small,
+.expansion-page__closure-batch em {
+  display: block;
+  color: #66727f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.expansion-page__closure-batch strong {
+  display: block;
+  margin: 3px 0;
+  color: #22313f;
+  font-size: 16px;
+}
+
+.expansion-page__closure-batch em {
+  margin-top: 4px;
+  font-style: normal;
 }
 
 .expansion-page__preflight p,

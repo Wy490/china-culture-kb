@@ -1,6 +1,6 @@
 {
   "schema_version": "domain-pack-expansion-review-state/v1",
-  "updated_at": "2026-07-08T18:20:00.000+08:00",
+  "updated_at": "2026-07-08T18:35:00.000+08:00",
   "direct_writeback_to_province_markdown": false,
   "seed_policy": {
     "purpose": "Tracked first-pass human review samples for Domain Pack expansion candidates.",
@@ -16,7 +16,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_02",
@@ -25,7 +29,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_03",
@@ -34,7 +42,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_04",
@@ -43,7 +55,11 @@
       "reviewed_at": "2026-07-08T12:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "第二批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_05",
@@ -52,7 +68,11 @@
       "reviewed_at": "2026-07-08T13:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T13:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T13:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_06",
@@ -61,7 +81,11 @@
       "reviewed_at": "2026-07-08T14:20:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T14:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T14:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_07",
@@ -70,7 +94,11 @@
       "reviewed_at": "2026-07-08T15:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T15:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T15:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_08",
@@ -79,7 +107,11 @@
       "reviewed_at": "2026-07-08T15:40:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T15:40:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T15:40:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "children_adaptation_safety_pack_expansion_20260707::target_01",
@@ -88,7 +120,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "children_adaptation_safety_pack_expansion_20260707::target_02",
@@ -97,7 +133,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "children_adaptation_safety_pack_expansion_20260707::target_03",
@@ -106,7 +146,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "children_adaptation_safety_pack_expansion_20260707::target_04",
@@ -115,7 +159,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_01",
@@ -124,7 +172,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_02",
@@ -133,7 +185,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_03",
@@ -142,7 +198,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_04",
@@ -151,7 +211,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_05",
@@ -160,7 +224,11 @@
       "reviewed_at": "2026-07-08T12:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "第二批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_06",
@@ -169,7 +237,11 @@
       "reviewed_at": "2026-07-08T13:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T13:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T13:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_07",
@@ -178,7 +250,11 @@
       "reviewed_at": "2026-07-08T14:20:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T14:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T14:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_08",
@@ -187,7 +263,11 @@
       "reviewed_at": "2026-07-08T15:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T15:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T15:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_09",
@@ -196,7 +276,11 @@
       "reviewed_at": "2026-07-08T15:40:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T15:40:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T15:40:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "education_training_structure_pack_expansion_20260707::target_01",
@@ -205,7 +289,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "education_training_structure_pack_expansion_20260707::target_02",
@@ -214,7 +302,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "education_training_structure_pack_expansion_20260707::target_03",
@@ -223,7 +315,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "education_training_structure_pack_expansion_20260707::target_04",
@@ -232,7 +328,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "era_and_costume_pack_expansion_20260707::target_01",
@@ -241,7 +341,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "era_and_costume_pack_expansion_20260707::target_02",
@@ -250,7 +354,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "era_and_costume_pack_expansion_20260707::target_03",
@@ -259,7 +367,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_01",
@@ -268,7 +380,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_02",
@@ -277,7 +393,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_03",
@@ -286,7 +406,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_04",
@@ -295,7 +419,11 @@
       "reviewed_at": "2026-07-08T10:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_05",
@@ -304,7 +432,11 @@
       "reviewed_at": "2026-07-08T12:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "第二批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_06",
@@ -313,7 +445,11 @@
       "reviewed_at": "2026-07-08T13:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T13:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T13:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_07",
@@ -322,7 +458,11 @@
       "reviewed_at": "2026-07-08T14:20:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T14:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T14:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_08",
@@ -331,7 +471,11 @@
       "reviewed_at": "2026-07-08T15:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T15:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T15:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_09",
@@ -340,7 +484,11 @@
       "reviewed_at": "2026-07-08T15:40:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T15:40:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T15:40:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_01",
@@ -349,7 +497,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_02",
@@ -358,7 +510,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_03",
@@ -367,7 +523,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_04",
@@ -376,7 +536,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_05",
@@ -385,7 +549,11 @@
       "reviewed_at": "2026-07-08T12:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "第二批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_06",
@@ -394,7 +562,11 @@
       "reviewed_at": "2026-07-08T13:30:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T13:30:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T13:30:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_07",
@@ -403,7 +575,11 @@
       "reviewed_at": "2026-07-08T14:20:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T14:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T14:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_08",
@@ -412,7 +588,11 @@
       "reviewed_at": "2026-07-08T15:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T15:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T15:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_09",
@@ -421,7 +601,11 @@
       "reviewed_at": "2026-07-08T15:40:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T15:40:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T15:40:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "short_video_hook_pack_expansion_20260707::target_01",
@@ -430,7 +614,11 @@
       "reviewed_at": "2026-07-08T09:45:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "short_video_hook_pack_expansion_20260707::target_02",
@@ -439,7 +627,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "short_video_hook_pack_expansion_20260707::target_03",
@@ -448,7 +640,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "short_video_hook_pack_expansion_20260707::target_04",
@@ -457,7 +653,11 @@
       "reviewed_at": "2026-07-08T11:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_10",
@@ -466,7 +666,11 @@
       "reviewed_at": "2026-07-08T16:20:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_10",
@@ -475,7 +679,11 @@
       "reviewed_at": "2026-07-08T16:20:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_09",
@@ -484,7 +692,11 @@
       "reviewed_at": "2026-07-08T16:20:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_10",
@@ -493,7 +705,11 @@
       "reviewed_at": "2026-07-08T16:20:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_11",
@@ -502,7 +718,11 @@
       "reviewed_at": "2026-07-08T17:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_11",
@@ -511,7 +731,11 @@
       "reviewed_at": "2026-07-08T17:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_10",
@@ -520,7 +744,11 @@
       "reviewed_at": "2026-07-08T17:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_11",
@@ -529,7 +757,11 @@
       "reviewed_at": "2026-07-08T17:00:00.000+08:00",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-seed-ledger",
+      "signoff_batch_note": "历史 seed 审稿结果结案归档：首批至第三波真实候选补齐复核身份、审签批次和人工写回交接边界。"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_12",
@@ -540,7 +772,9 @@
       "signoff_batch_note": "第三波真实候选审签归档：非遗宣传、纪录短片、AI漫剧和讲解片各一条。",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T17:40:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T17:40:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_12",
@@ -551,7 +785,9 @@
       "signoff_batch_note": "第三波真实候选审签归档：非遗宣传、纪录短片、AI漫剧和讲解片各一条。",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T17:40:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T17:40:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_11",
@@ -562,7 +798,9 @@
       "signoff_batch_note": "第三波真实候选审签归档：非遗宣传、纪录短片、AI漫剧和讲解片各一条。",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T17:40:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T17:40:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_12",
@@ -573,7 +811,9 @@
       "signoff_batch_note": "第三波真实候选审签归档：非遗宣传、纪录短片、AI漫剧和讲解片各一条。",
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T17:40:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T17:40:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
     },
     {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_13",
@@ -584,7 +824,9 @@
       "signoff_batch_note": "第四波跨省真实候选审签归档：辰州傩戏、遵义会议、飞夺泸定桥和四渡赤水。",
       "writeback_status": "draft_ready",
       "writeback_note": "第四波真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T18:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T18:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
     },
     {
       "review_item_id": "documentary_source_pack_expansion_20260707::target_13",
@@ -595,7 +837,9 @@
       "signoff_batch_note": "第四波跨省真实候选审签归档：辰州傩戏、遵义会议、飞夺泸定桥和四渡赤水。",
       "writeback_status": "draft_ready",
       "writeback_note": "第四波真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T18:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T18:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
     },
     {
       "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_12",
@@ -606,7 +850,9 @@
       "signoff_batch_note": "第四波跨省真实候选审签归档：辰州傩戏、遵义会议、飞夺泸定桥和四渡赤水。",
       "writeback_status": "draft_ready",
       "writeback_note": "第四波真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T18:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T18:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
     },
     {
       "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_13",
@@ -617,7 +863,9 @@
       "signoff_batch_note": "第四波跨省真实候选审签归档：辰州傩戏、遵义会议、飞夺泸定桥和四渡赤水。",
       "writeback_status": "draft_ready",
       "writeback_note": "第四波真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
-      "writeback_updated_at": "2026-07-08T18:20:00.000+08:00"
+      "writeback_updated_at": "2026-07-08T18:20:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
     }
   ]
 }

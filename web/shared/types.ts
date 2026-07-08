@@ -1992,6 +1992,14 @@ export interface StoryAgentMvpStatusReport {
     domain_pack_expansion_writeback_queued_count: number;
     domain_pack_expansion_writeback_written_back_count: number;
     domain_pack_expansion_writeback_needs_revision_count: number;
+    domain_pack_expansion_review_closure_ready: boolean;
+    domain_pack_expansion_review_closure_signoff_batch_count: number;
+    domain_pack_expansion_review_closure_ready_for_signoff_count: number;
+    domain_pack_expansion_review_closure_blocked_for_signoff_count: number;
+    domain_pack_expansion_review_closure_missing_review_note_count: number;
+    domain_pack_expansion_review_closure_missing_reviewer_identity_count: number;
+    domain_pack_expansion_review_closure_missing_signoff_batch_count: number;
+    domain_pack_expansion_review_closure_runtime_override_count: number;
     domain_pack_expansion_development_progress_average_percent: number;
     domain_pack_expansion_field_workbench_controls_percent: number;
     domain_pack_expansion_manual_review_closure_percent: number;
@@ -6332,6 +6340,52 @@ export interface DomainPackExpansionWritebackPreflightSummary {
   safety_checks: string[];
 }
 
+export interface DomainPackExpansionReviewClosureBatchSummary {
+  signoff_batch_id: string;
+  signoff_batch_note?: string;
+  item_count: number;
+  ready_for_signoff_count: number;
+  blocked_for_signoff_count: number;
+  review_note_count: number;
+  missing_review_note_count: number;
+  reviewer_identity_count: number;
+  missing_reviewer_identity_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  review_status_counts: Record<DomainPackExpansionReviewStatus, number>;
+  writeback_status_counts: Record<KnowledgeWritebackStatus, number>;
+}
+
+export interface DomainPackExpansionReviewClosureSummary {
+  schema_version: 'domain-pack-expansion-review-closure/v1';
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  ready_for_human_handoff: boolean;
+  review_item_count: number;
+  approved_count: number;
+  draft_ready_count: number;
+  queued_count: number;
+  written_back_count: number;
+  needs_revision_count: number;
+  review_ready_item_count: number;
+  review_blocked_item_count: number;
+  review_note_count: number;
+  missing_review_note_count: number;
+  reviewer_identity_count: number;
+  missing_reviewer_identity_count: number;
+  signoff_batch_count: number;
+  missing_signoff_batch_count: number;
+  runtime_override_count: number;
+  seed_sourced_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  manual_writeback_required_count: number;
+  ready_for_signoff_count: number;
+  blocked_for_signoff_count: number;
+  signoff_batch_summaries: DomainPackExpansionReviewClosureBatchSummary[];
+  closure_checks: string[];
+}
+
 export interface KnowledgeWritebackQueueExportFilters {
   project_id?: string;
   video_type?: VideoType;
@@ -6534,6 +6588,7 @@ export interface DomainPackExpansionCandidateReport {
   video_type_coverage_count: number;
   coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
   writeback_preflight: DomainPackExpansionWritebackPreflightSummary;
+  review_closure: DomainPackExpansionReviewClosureSummary;
   next_development_tasks: DomainPackExpansionNextDevelopmentTask[];
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];

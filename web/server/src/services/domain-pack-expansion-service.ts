@@ -12,6 +12,8 @@ import type {
   DomainPackExpansionFieldWorkbenchItem,
   DomainPackExpansionPipelineStage,
   DomainPackExpansionReviewReadyTarget,
+  DomainPackExpansionReviewClosureBatchSummary,
+  DomainPackExpansionReviewClosureSummary,
   DomainPackExpansionVideoTypeCoverageSummary,
   DomainPackExpansionWritebackDraftFilter,
   DomainPackExpansionWritebackDraftItem,
@@ -132,6 +134,12 @@ export interface DomainPackExpansionReviewItem {
   reviewed_by?: string;
   signoff_batch_id?: string;
   signoff_batch_note?: string;
+  review_state_source: DomainPackExpansionReviewStateSource;
+  review_state_overrides_seed: boolean;
+  review_state_seed_status?: DomainPackExpansionReviewStatus;
+  review_state_seed_writeback_status?: KnowledgeWritebackStatus;
+  review_state_runtime_status?: DomainPackExpansionReviewStatus;
+  review_state_runtime_writeback_status?: KnowledgeWritebackStatus;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
   writeback_updated_at?: string;
@@ -217,6 +225,7 @@ export interface DomainPackExpansionCandidateReport {
   video_type_coverage_count: number;
   coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
   writeback_preflight: DomainPackExpansionWritebackPreflightSummary;
+  review_closure: DomainPackExpansionReviewClosureSummary;
   next_development_tasks: DomainPackExpansionNextDevelopmentTask[];
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];
@@ -231,6 +240,7 @@ type DomainPackExpansionCandidateReportDraft = Omit<
   | 'video_type_coverage_count'
   | 'coverage_by_video_type'
   | 'writeback_preflight'
+  | 'review_closure'
   | 'next_development_tasks'
   | 'field_supplement_priority_target_count'
   | 'field_supplement_priority_targets'
@@ -477,10 +487,12 @@ function withOptionalMarkdown(
     review_packet: reviewPacket,
   };
   const writebackPreflight = buildWritebackPreflightSummary(reportCore);
+  const reviewClosure = buildReviewClosureSummary(reportCore, writebackPreflight);
   const reportWithPacket: Omit<DomainPackExpansionCandidateReport, 'markdown'> = {
     ...reportCore,
     writeback_preflight: writebackPreflight,
-    next_development_tasks: buildNextDevelopmentTasks(reportCore, writebackPreflight),
+    review_closure: reviewClosure,
+    next_development_tasks: buildNextDevelopmentTasks(reportCore, writebackPreflight, reviewClosure),
   };
 
   return includeMarkdown
@@ -489,7 +501,7 @@ function withOptionalMarkdown(
 }
 
 function buildWritebackPreflightSummary(
-  report: Omit<DomainPackExpansionCandidateReport, 'markdown' | 'writeback_preflight' | 'next_development_tasks'>,
+  report: Omit<DomainPackExpansionCandidateReport, 'markdown' | 'writeback_preflight' | 'review_closure' | 'next_development_tasks'>,
 ): DomainPackExpansionWritebackPreflightSummary {
   const approvedItems = report.review_packet.batches.flatMap(batch =>
     batch.review_items.filter(item => item.review_status === 'approved' && Boolean(item.writeback_draft_markdown)),
@@ -529,17 +541,155 @@ function buildWritebackPreflightSummary(
   };
 }
 
-function buildNextDevelopmentTasks(
-  report: Omit<DomainPackExpansionCandidateReport, 'markdown' | 'writeback_preflight' | 'next_development_tasks'>,
+function buildReviewClosureSummary(
+  report: Omit<DomainPackExpansionCandidateReport, 'markdown' | 'writeback_preflight' | 'review_closure' | 'next_development_tasks'>,
   preflight: DomainPackExpansionWritebackPreflightSummary,
+): DomainPackExpansionReviewClosureSummary {
+  const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
+  const approvedItems = reviewItems.filter(item => item.review_status === 'approved');
+  const writebackCounts = countApprovedReviewItemWritebackStatuses(approvedItems);
+  const reviewNoteCount = reviewItems.filter(item => Boolean(item.review_note?.trim())).length;
+  const reviewerIdentityCount = reviewItems.filter(item => Boolean(reviewerDisplayName(item))).length;
+  const signoffBatchCount = new Set(reviewItems
+    .map(item => item.signoff_batch_id?.trim())
+    .filter((id): id is string => Boolean(id))).size;
+  const missingSignoffBatchCount = reviewItems.filter(item => !item.signoff_batch_id?.trim()).length;
+  const runtimeOverrideCount = reviewItems.filter(item =>
+    item.review_state_source === 'runtime' || item.review_state_overrides_seed,
+  ).length;
+  const seedSourcedCount = reviewItems.filter(item => item.review_state_source === 'seed').length;
+  const sourceRefCount = reviewItems.reduce((sum, item) =>
+    sum + item.field_workbench.reduce((fieldSum, field) => fieldSum + field.source_refs.length, 0), 0);
+  const candidateFieldCount = reviewItems.reduce((sum, item) => sum + item.field_workbench.length, 0);
+  const readyForSignoffCount = reviewItems.filter(isReviewClosureItemReadyForSignoff).length;
+  const blockedForSignoffCount = reviewItems.length - readyForSignoffCount;
+  const missingReviewNoteCount = reviewItems.length - reviewNoteCount;
+  const missingReviewerIdentityCount = reviewItems.length - reviewerIdentityCount;
+  const readyForHumanHandoff = reviewItems.length > 0
+    && preflight.ready_for_unified_export
+    && preflight.blocked_direct_writeback_count === 0
+    && report.review_packet.field_review_blocker_count === 0
+    && readyForSignoffCount === reviewItems.length
+    && missingReviewNoteCount === 0
+    && missingReviewerIdentityCount === 0
+    && missingSignoffBatchCount === 0;
+
+  return {
+    schema_version: 'domain-pack-expansion-review-closure/v1',
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    ready_for_human_handoff: readyForHumanHandoff,
+    review_item_count: reviewItems.length,
+    approved_count: approvedItems.length,
+    draft_ready_count: writebackCounts.draft_ready,
+    queued_count: writebackCounts.queued,
+    written_back_count: writebackCounts.written_back,
+    needs_revision_count: writebackCounts.needs_revision,
+    review_ready_item_count: report.review_packet.review_ready_item_count ?? 0,
+    review_blocked_item_count: report.review_packet.review_blocked_item_count ?? 0,
+    review_note_count: reviewNoteCount,
+    missing_review_note_count: missingReviewNoteCount,
+    reviewer_identity_count: reviewerIdentityCount,
+    missing_reviewer_identity_count: missingReviewerIdentityCount,
+    signoff_batch_count: signoffBatchCount,
+    missing_signoff_batch_count: missingSignoffBatchCount,
+    runtime_override_count: runtimeOverrideCount,
+    seed_sourced_count: seedSourcedCount,
+    source_ref_count: sourceRefCount,
+    candidate_field_count: candidateFieldCount,
+    manual_writeback_required_count: preflight.manual_review_required_count,
+    ready_for_signoff_count: readyForSignoffCount,
+    blocked_for_signoff_count: blockedForSignoffCount,
+    signoff_batch_summaries: buildReviewClosureBatchSummaries(reviewItems),
+    closure_checks: [
+      'direct_writeback_to_province_markdown=false',
+      'province_markdown_written=false',
+      `ready_for_human_handoff=${readyForHumanHandoff}`,
+      `review_notes_covered=${reviewNoteCount}/${reviewItems.length}`,
+      `reviewer_identities_covered=${reviewerIdentityCount}/${reviewItems.length}`,
+      `signoff_batches_covered=${reviewItems.length - missingSignoffBatchCount}/${reviewItems.length}`,
+      `ready_for_signoff=${readyForSignoffCount}/${reviewItems.length}`,
+      `manual_writeback_required=${preflight.manual_review_required_count}`,
+      'province_markdown_waits_for_manual_writeback=true',
+    ],
+  };
+}
+
+function buildReviewClosureBatchSummaries(
+  reviewItems: DomainPackExpansionReviewItem[],
+): DomainPackExpansionReviewClosureBatchSummary[] {
+  const batches = new Map<string, {
+    signoffBatchNote?: string;
+    items: DomainPackExpansionReviewItem[];
+  }>();
+  for (const item of reviewItems) {
+    const signoffBatchId = item.signoff_batch_id?.trim() || 'unassigned_signoff_batch';
+    const current = batches.get(signoffBatchId) ?? { items: [] };
+    if (!current.signoffBatchNote && item.signoff_batch_note?.trim()) {
+      current.signoffBatchNote = item.signoff_batch_note.trim();
+    }
+    current.items.push(item);
+    batches.set(signoffBatchId, current);
+  }
+
+  return [...batches.entries()]
+    .map(([signoffBatchId, summary]) => {
+      const items = summary.items;
+      const reviewNoteCount = items.filter(item => Boolean(item.review_note?.trim())).length;
+      const reviewerIdentityCount = items.filter(item => Boolean(reviewerDisplayName(item))).length;
+      const sourceRefCount = items.reduce((sum, item) =>
+        sum + item.field_workbench.reduce((fieldSum, field) => fieldSum + field.source_refs.length, 0), 0);
+      const candidateFieldCount = items.reduce((sum, item) => sum + item.field_workbench.length, 0);
+      const readyForSignoffCount = items.filter(isReviewClosureItemReadyForSignoff).length;
+      return {
+        signoff_batch_id: signoffBatchId,
+        ...(summary.signoffBatchNote ? { signoff_batch_note: summary.signoffBatchNote } : {}),
+        item_count: items.length,
+        ready_for_signoff_count: readyForSignoffCount,
+        blocked_for_signoff_count: items.length - readyForSignoffCount,
+        review_note_count: reviewNoteCount,
+        missing_review_note_count: items.length - reviewNoteCount,
+        reviewer_identity_count: reviewerIdentityCount,
+        missing_reviewer_identity_count: items.length - reviewerIdentityCount,
+        source_ref_count: sourceRefCount,
+        candidate_field_count: candidateFieldCount,
+        review_status_counts: countReviewStatuses(items),
+        writeback_status_counts: countApprovedReviewItemWritebackStatuses(items.filter(item =>
+          item.review_status === 'approved',
+        )),
+      };
+    })
+    .sort((a, b) => {
+      if (a.signoff_batch_id === 'unassigned_signoff_batch') return 1;
+      if (b.signoff_batch_id === 'unassigned_signoff_batch') return -1;
+      return a.signoff_batch_id.localeCompare(b.signoff_batch_id);
+    });
+}
+
+function isReviewClosureItemReadyForSignoff(item: DomainPackExpansionReviewItem): boolean {
+  return item.review_status === 'approved'
+    && item.review_ready
+    && item.field_review_blocker_count === 0
+    && Boolean(item.review_note?.trim())
+    && Boolean(reviewerDisplayName(item))
+    && Boolean(item.signoff_batch_id?.trim())
+    && (item.writeback_status ?? 'draft_ready') !== 'needs_revision';
+}
+
+function buildNextDevelopmentTasks(
+  report: Omit<DomainPackExpansionCandidateReport, 'markdown' | 'writeback_preflight' | 'review_closure' | 'next_development_tasks'>,
+  preflight: DomainPackExpansionWritebackPreflightSummary,
+  reviewClosure: DomainPackExpansionReviewClosureSummary,
 ): DomainPackExpansionNextDevelopmentTask[] {
   const coreVideoTypes = ['explainer_video', 'heritage_promo', 'documentary_short', 'ai_comic_drama'];
+  const secondBatchComplete = (report.review_packet.approved_writeback_draft_count ?? 0) >= 66;
+  const mvpSurfaceComplete = report.pipeline_stage === 'complete' && reviewClosure.ready_for_human_handoff;
   return [
     {
       task_id: 'field_workbench_controls',
       title: '字段级补库工作台增强',
       priority: 'P0',
-      status: report.pipeline_stage === 'complete' ? 'in_progress' : 'ready',
+      status: report.pipeline_stage === 'complete' ? 'complete' : 'ready',
       progress_percent: 100,
       progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、复核人身份、审签批次归档、批次完成率汇总、批量写回状态操作、导出预检、签收清单、canonical signoff package 和前端下载归档。',
       related_plan_items: [1],
@@ -556,9 +706,9 @@ function buildNextDevelopmentTasks(
       task_id: 'manual_review_closure',
       title: '人工复核闭环',
       priority: 'P0',
-      status: 'ready',
-      progress_percent: 99,
-      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、复核人身份归档、审签批次 ID/备注、批次 ready/blocked 汇总、source 筛选、人工签收 manifest、canonical signoff package 和下载归档已可见；剩余主要是实际人工落库执行。',
+      status: reviewClosure.ready_for_human_handoff ? 'complete' : 'ready',
+      progress_percent: reviewClosure.ready_for_human_handoff ? 100 : 99,
+      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、复核人身份归档、审签批次 ID/备注、批次 ready/blocked 汇总、source 筛选、人工签收 manifest、canonical signoff package、下载归档和 review_closure 结案摘要已可见；正式省份 Markdown 仍等待人工写回。',
       related_plan_items: [2],
       target_video_types: coreVideoTypes,
       description: '把退回原因、运行态覆盖和复核备注显性化，方便人工把 seed 审稿结果退回、入队或标注需补证。',
@@ -574,7 +724,7 @@ function buildNextDevelopmentTasks(
       task_id: 'writeback_safety_export',
       title: '写回导出安全预检',
       priority: 'P0',
-      status: preflight.ready_for_unified_export ? 'in_progress' : 'blocked',
+      status: preflight.ready_for_unified_export ? 'complete' : 'blocked',
       progress_percent: 100,
       progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用、人工交接、复核人身份覆盖率、审签批次归档、签收 manifest/sha256、canonical signoff package、signoff safety checks 和不可直写提示。',
       related_plan_items: [3],
@@ -591,9 +741,9 @@ function buildNextDevelopmentTasks(
       task_id: 'second_batch_real_candidates',
       title: '第二批真实补库候选',
       priority: 'P1',
-      status: 'ready',
-      progress_percent: 99,
-      progress_note: '当前 66 条已形成 approved 草案；本轮继续补入辰州傩戏、遵义会议、飞夺泸定桥和四渡赤水候选，覆盖 heritage_promo/documentary_short/ai_comic_drama/explainer_video。',
+      status: secondBatchComplete ? 'complete' : 'ready',
+      progress_percent: secondBatchComplete ? 100 : 99,
+      progress_note: '当前 66 条已形成 approved 草案并进入人工交接闭环；真实候选已覆盖非遗宣传、微纪录、AI 漫剧和知识讲解的多轮样板，正式落库仍保持人工写回边界。',
       related_plan_items: [4],
       target_video_types: coreVideoTypes,
       description: '继续扩展真实条目，优先讲解、非遗宣传、微纪录和 AI 漫剧，不跳过候选稿/审稿/草案流程。',
@@ -608,9 +758,9 @@ function buildNextDevelopmentTasks(
       task_id: 'mvp_completion_surface',
       title: 'MVP 与生产健康完成态',
       priority: 'P1',
-      status: report.pipeline_stage === 'complete' ? 'ready' : 'blocked',
-      progress_percent: 99,
-      progress_note: 'MVP 已接入扩库 complete、66 条写回草案计数、复核交接签收 manifest/canonical signoff package、复核人身份覆盖率、审签批次归档、批次 ready/blocked 汇总、下载归档证据、runtime 覆盖证据和 1-5 项百分比；继续强调“完成候选但待人工写回”。',
+      status: mvpSurfaceComplete ? 'complete' : 'blocked',
+      progress_percent: mvpSurfaceComplete ? 100 : 99,
+      progress_note: 'MVP 已接入扩库 complete、66 条写回草案计数、review_closure 结案摘要、复核交接签收 manifest/canonical signoff package、复核人身份覆盖率、审签批次归档、批次 ready/blocked 汇总、下载归档证据、runtime 覆盖证据和 1-5 项百分比；明确显示“完成候选但待人工写回”。',
       related_plan_items: [5],
       target_video_types: coreVideoTypes,
       description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
@@ -1005,6 +1155,7 @@ function renderDomainPackExpansionCandidateMarkdown(
     )
     : ['- none'];
   const preflight = report.writeback_preflight;
+  const reviewClosure = report.review_closure;
   const priorityTargetLines = renderFieldSupplementPriorityTargetLines(report.field_supplement_priority_targets.slice(0, 24));
   const reviewReadyTargetLines = renderReviewReadyPriorityTargetLines(report.review_ready_priority_targets.slice(0, 24));
   const nextDevelopmentTaskLines = renderNextDevelopmentTaskLines(report.next_development_tasks);
@@ -1068,6 +1219,32 @@ function renderDomainPackExpansionCandidateMarkdown(
     `- ready_for_unified_export: ${preflight.ready_for_unified_export}`,
     ...preflight.safety_checks.map(check => `- safety_check: ${check}`),
     '',
+    '## Review Closure',
+    '',
+    `- schema_version: ${reviewClosure.schema_version}`,
+    `- ready_for_human_handoff: ${reviewClosure.ready_for_human_handoff}`,
+    `- review_item_count: ${reviewClosure.review_item_count}`,
+    `- approved_count: ${reviewClosure.approved_count}`,
+    `- draft_ready_count: ${reviewClosure.draft_ready_count}`,
+    `- queued_count: ${reviewClosure.queued_count}`,
+    `- written_back_count: ${reviewClosure.written_back_count}`,
+    `- needs_revision_count: ${reviewClosure.needs_revision_count}`,
+    `- review_note_count: ${reviewClosure.review_note_count}`,
+    `- missing_review_note_count: ${reviewClosure.missing_review_note_count}`,
+    `- reviewer_identity_count: ${reviewClosure.reviewer_identity_count}`,
+    `- missing_reviewer_identity_count: ${reviewClosure.missing_reviewer_identity_count}`,
+    `- signoff_batch_count: ${reviewClosure.signoff_batch_count}`,
+    `- missing_signoff_batch_count: ${reviewClosure.missing_signoff_batch_count}`,
+    `- ready_for_signoff_count: ${reviewClosure.ready_for_signoff_count}`,
+    `- blocked_for_signoff_count: ${reviewClosure.blocked_for_signoff_count}`,
+    `- runtime_override_count: ${reviewClosure.runtime_override_count}`,
+    `- seed_sourced_count: ${reviewClosure.seed_sourced_count}`,
+    `- source_ref_count: ${reviewClosure.source_ref_count}`,
+    `- candidate_field_count: ${reviewClosure.candidate_field_count}`,
+    `- manual_writeback_required_count: ${reviewClosure.manual_writeback_required_count}`,
+    ...reviewClosure.closure_checks.map(check => `- closure_check: ${check}`),
+    ...renderReviewClosureBatchSummaryLines(reviewClosure.signoff_batch_summaries),
+    '',
     '## Next Development Tasks',
     '',
     ...nextDevelopmentTaskLines,
@@ -1094,6 +1271,15 @@ function renderDomainPackExpansionCandidateMarkdown(
     '',
     ...issueLines,
   ].join('\n');
+}
+
+function renderReviewClosureBatchSummaryLines(
+  summaries: DomainPackExpansionReviewClosureBatchSummary[],
+): string[] {
+  if (summaries.length === 0) return ['- signoff_batch: none'];
+  return summaries.map(summary =>
+    `- signoff_batch: ${summary.signoff_batch_id}, items=${summary.item_count}, ready=${summary.ready_for_signoff_count}, blocked=${summary.blocked_for_signoff_count}, notes=${summary.review_note_count}/${summary.item_count}, reviewers=${summary.reviewer_identity_count}/${summary.item_count}, source_refs=${summary.source_ref_count}`,
+  );
 }
 
 function renderNextDevelopmentTaskLines(tasks: DomainPackExpansionNextDevelopmentTask[]): string[] {

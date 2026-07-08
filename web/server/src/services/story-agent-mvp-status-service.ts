@@ -166,6 +166,14 @@ interface DomainPackExpansionReviewMetrics {
   writeback_queued_count: number;
   writeback_written_back_count: number;
   writeback_needs_revision_count: number;
+  review_closure_ready: boolean;
+  review_closure_signoff_batch_count: number;
+  review_closure_ready_for_signoff_count: number;
+  review_closure_blocked_for_signoff_count: number;
+  review_closure_missing_review_note_count: number;
+  review_closure_missing_reviewer_identity_count: number;
+  review_closure_missing_signoff_batch_count: number;
+  review_closure_runtime_override_count: number;
 }
 
 interface DomainPackExpansionDevelopmentProgress {
@@ -441,6 +449,14 @@ function domainPackExpansionReviewMetrics(report: DomainPackExpansionCandidateRe
     writeback_queued_count: writebackCounts.queued,
     writeback_written_back_count: writebackCounts.written_back,
     writeback_needs_revision_count: writebackCounts.needs_revision,
+    review_closure_ready: report.review_closure.ready_for_human_handoff,
+    review_closure_signoff_batch_count: report.review_closure.signoff_batch_count,
+    review_closure_ready_for_signoff_count: report.review_closure.ready_for_signoff_count,
+    review_closure_blocked_for_signoff_count: report.review_closure.blocked_for_signoff_count,
+    review_closure_missing_review_note_count: report.review_closure.missing_review_note_count,
+    review_closure_missing_reviewer_identity_count: report.review_closure.missing_reviewer_identity_count,
+    review_closure_missing_signoff_batch_count: report.review_closure.missing_signoff_batch_count,
+    review_closure_runtime_override_count: report.review_closure.runtime_override_count,
   };
 }
 
@@ -1061,6 +1077,13 @@ function progressSlices(
         `domain_pack_expansion_review_approved=${domainPackExpansionReview.approved_count}`,
         `domain_pack_expansion_approved_writeback_drafts=${domainPackExpansionReview.approved_writeback_draft_count}`,
         `domain_pack_expansion_writeback_queued=${domainPackExpansionReview.writeback_queued_count}`,
+        `domain_pack_expansion_review_closure_ready=${domainPackExpansionReview.review_closure_ready}`,
+        `domain_pack_expansion_review_closure_signoff_batches=${domainPackExpansionReview.review_closure_signoff_batch_count}`,
+        `domain_pack_expansion_review_closure_ready_for_signoff=${domainPackExpansionReview.review_closure_ready_for_signoff_count}`,
+        `domain_pack_expansion_review_closure_blocked_for_signoff=${domainPackExpansionReview.review_closure_blocked_for_signoff_count}`,
+        `domain_pack_expansion_review_closure_missing_notes=${domainPackExpansionReview.review_closure_missing_review_note_count}`,
+        `domain_pack_expansion_review_closure_missing_reviewers=${domainPackExpansionReview.review_closure_missing_reviewer_identity_count}`,
+        `domain_pack_expansion_review_closure_missing_batches=${domainPackExpansionReview.review_closure_missing_signoff_batch_count}`,
         `domain_pack_expansion_writeback_preflight_ready=${domainPackExpansionCandidates.writeback_preflight.ready_for_unified_export}`,
         `domain_pack_expansion_writeback_target_files=${domainPackExpansionCandidates.writeback_preflight.target_file_count}`,
         `domain_pack_expansion_manual_writeback_required=${domainPackExpansionCandidates.writeback_preflight.manual_review_required_count}`,
@@ -1241,6 +1264,11 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- domain pack expansion writeback queued: ${report.summary.domain_pack_expansion_writeback_queued_count}`,
     `- domain pack expansion writeback written_back: ${report.summary.domain_pack_expansion_writeback_written_back_count}`,
     `- domain pack expansion writeback needs_revision: ${report.summary.domain_pack_expansion_writeback_needs_revision_count}`,
+    `- domain pack expansion review closure ready: ${report.summary.domain_pack_expansion_review_closure_ready}`,
+    `- domain pack expansion review closure signoff batches: ${report.summary.domain_pack_expansion_review_closure_signoff_batch_count}`,
+    `- domain pack expansion review closure ready/blocked: ${report.summary.domain_pack_expansion_review_closure_ready_for_signoff_count}/${report.summary.domain_pack_expansion_review_closure_blocked_for_signoff_count}`,
+    `- domain pack expansion review closure missing notes/reviewers/batches: ${report.summary.domain_pack_expansion_review_closure_missing_review_note_count}/${report.summary.domain_pack_expansion_review_closure_missing_reviewer_identity_count}/${report.summary.domain_pack_expansion_review_closure_missing_signoff_batch_count}`,
+    `- domain pack expansion review closure runtime overrides: ${report.summary.domain_pack_expansion_review_closure_runtime_override_count}`,
     `- domain pack expansion writeback preflight ready: ${expansionPreflight.ready_for_unified_export}`,
     `- domain pack expansion writeback target files: ${expansionPreflight.target_file_count}`,
     `- domain pack expansion manual writeback required: ${expansionPreflight.manual_review_required_count}`,
@@ -1447,6 +1475,14 @@ export async function getStoryAgentMvpStatus(
       domain_pack_expansion_writeback_queued_count: domainPackExpansionReview.writeback_queued_count,
       domain_pack_expansion_writeback_written_back_count: domainPackExpansionReview.writeback_written_back_count,
       domain_pack_expansion_writeback_needs_revision_count: domainPackExpansionReview.writeback_needs_revision_count,
+      domain_pack_expansion_review_closure_ready: domainPackExpansionReview.review_closure_ready,
+      domain_pack_expansion_review_closure_signoff_batch_count: domainPackExpansionReview.review_closure_signoff_batch_count,
+      domain_pack_expansion_review_closure_ready_for_signoff_count: domainPackExpansionReview.review_closure_ready_for_signoff_count,
+      domain_pack_expansion_review_closure_blocked_for_signoff_count: domainPackExpansionReview.review_closure_blocked_for_signoff_count,
+      domain_pack_expansion_review_closure_missing_review_note_count: domainPackExpansionReview.review_closure_missing_review_note_count,
+      domain_pack_expansion_review_closure_missing_reviewer_identity_count: domainPackExpansionReview.review_closure_missing_reviewer_identity_count,
+      domain_pack_expansion_review_closure_missing_signoff_batch_count: domainPackExpansionReview.review_closure_missing_signoff_batch_count,
+      domain_pack_expansion_review_closure_runtime_override_count: domainPackExpansionReview.review_closure_runtime_override_count,
       domain_pack_expansion_development_progress_average_percent: domainPackExpansionDevelopment.average_percent,
       domain_pack_expansion_field_workbench_controls_percent: domainPackExpansionDevelopment.field_workbench_controls_percent,
       domain_pack_expansion_manual_review_closure_percent: domainPackExpansionDevelopment.manual_review_closure_percent,
