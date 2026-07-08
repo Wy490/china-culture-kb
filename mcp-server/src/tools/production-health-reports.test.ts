@@ -217,6 +217,8 @@ describe('production health reports', () => {
           review_status: 'approved',
           review_note: 'MCP 审稿通过，进入人工补源清单。',
           reviewed_at: '2026-07-07T09:00:00.000Z',
+          reviewer_name: 'MCP复核人',
+          reviewed_by: 'MCP复核人',
           writeback_status: 'queued',
           writeback_note: '先排入湖南非遗流程补录批次。',
           writeback_updated_at: '2026-07-07T09:00:00.000Z',
@@ -366,7 +368,7 @@ describe('production health reports', () => {
     expect(toolResult.markdown).toContain('field_candidate_completion_percent: 100');
     expect(toolResult.markdown).toContain('pipeline_progress_percent: 78');
     expect(toolResult.markdown).toContain('pipeline_stage: human_review');
-    expect(toolResult.markdown).toContain('progress_percent: 96');
+    expect(toolResult.markdown).toContain('progress_percent: 97');
     expect(toolResult.markdown).toContain('progress_note: 扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选');
     expect(toolResult.markdown).toContain('field_review_ready_count: 8');
     expect(toolResult.markdown).toContain('field_review_blocker_count: 0');
@@ -848,6 +850,8 @@ describe('production health reports', () => {
           review_status: 'approved',
           review_note: 'MCP 审稿通过，进入统一写回导出。',
           reviewed_at: '2026-07-07T13:00:00.000Z',
+          reviewer_name: 'MCP统一导出复核人',
+          reviewed_by: 'MCP统一导出复核人',
           writeback_status: 'queued',
           writeback_note: '扩库入队。',
           writeback_updated_at: '2026-07-07T13:00:00.000Z',
@@ -962,6 +966,8 @@ describe('production health reports', () => {
           project_handoff_count: 1,
           expansion_handoff_count: 1,
           requires_manual_signoff_count: 2,
+          reviewer_identity_count: 1,
+          missing_reviewer_identity_count: 1,
           items: expect.arrayContaining([
             expect.objectContaining({
               source_kind: 'project',
@@ -970,6 +976,7 @@ describe('production health reports', () => {
             expect.objectContaining({
               source_kind: 'domain_pack_expansion',
               writeback_status: 'queued',
+              reviewed_by: 'MCP统一导出复核人',
             }),
           ]),
         }),

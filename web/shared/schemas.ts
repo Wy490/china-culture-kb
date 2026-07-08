@@ -1319,6 +1319,9 @@ export const DomainPackExpansionReviewStateUpdateRequestSchema = z.object({
   review_item_id: z.string().trim().min(1, 'review_item_id is required').max(240),
   review_status: z.enum(['candidate_review', 'approved', 'rejected', 'needs_revision']),
   review_note: z.string().trim().max(4000, 'review_note is too long').optional(),
+  reviewer_id: z.string().trim().max(120, 'reviewer_id is too long').optional(),
+  reviewer_name: z.string().trim().max(120, 'reviewer_name is too long').optional(),
+  reviewed_by: z.string().trim().max(120, 'reviewed_by is too long').optional(),
   writeback_status: z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision']).optional(),
   writeback_note: z.string().trim().max(2000, 'writeback_note is too long').optional(),
 });
@@ -1329,6 +1332,9 @@ export const DomainPackExpansionReviewStateBulkUpdateRequestSchema = z.object({
   ).min(1, 'review_item_ids cannot be empty').max(200, 'review_item_ids is too large'),
   review_status: z.enum(['candidate_review', 'approved', 'rejected', 'needs_revision']),
   review_note: z.string().trim().max(4000, 'review_note is too long').optional(),
+  reviewer_id: z.string().trim().max(120, 'reviewer_id is too long').optional(),
+  reviewer_name: z.string().trim().max(120, 'reviewer_name is too long').optional(),
+  reviewed_by: z.string().trim().max(120, 'reviewed_by is too long').optional(),
   writeback_status: z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision']).optional(),
   writeback_note: z.string().trim().max(2000, 'writeback_note is too long').optional(),
 });

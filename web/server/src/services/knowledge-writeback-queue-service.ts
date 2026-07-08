@@ -235,10 +235,18 @@ function buildReviewHandoff(
       review_state_source: item.review_state_source,
       review_state_overrides_seed: item.review_state_overrides_seed,
       review_note: item.review_note,
+      reviewer_id: item.reviewer_id,
+      reviewer_name: item.reviewer_name,
+      reviewed_by: item.reviewed_by,
       writeback_note: item.writeback_note,
       candidate_field_count: item.field_supplement_candidate_count ?? candidateFieldCount(item),
       source_ref_count: sourceRefCount,
-      required_action: reviewHandoffRequiredAction(status, Boolean(item.review_note?.trim()), sourceRefCount),
+      required_action: reviewHandoffRequiredAction(
+        status,
+        Boolean(item.review_note?.trim()),
+        sourceRefCount,
+        Boolean(reviewerDisplayName(item)),
+      ),
     };
   });
 
@@ -249,6 +257,7 @@ function buildReviewHandoff(
   }
 
   const reviewNoteCount = items.filter(item => Boolean(item.review_note?.trim())).length;
+  const reviewerIdentityCount = items.filter(item => Boolean(reviewerDisplayName(item))).length;
   const sourceRefCount = items.reduce((sum, item) => sum + item.source_ref_count, 0);
   const candidateFieldCount = items.reduce((sum, item) => sum + item.candidate_field_count, 0);
   const requiresManualSignoffCount = items.filter(item => item.writeback_status !== 'written_back').length;
@@ -272,13 +281,15 @@ function buildReviewHandoff(
     seed_sourced_count: expansionHandoffItems.filter(item => item.review_state_source === 'seed').length,
     review_note_count: reviewNoteCount,
     missing_review_note_count: items.length - reviewNoteCount,
+    reviewer_identity_count: reviewerIdentityCount,
+    missing_reviewer_identity_count: items.length - reviewerIdentityCount,
     source_ref_count: sourceRefCount,
     candidate_field_count: candidateFieldCount,
     requires_manual_signoff_count: requiresManualSignoffCount,
     status_counts: statusCounts,
     operator_checklist: [
       '逐条确认 target_file 与省份条目匹配。',
-      '逐条核对 review_note、writeback_note 和字段级 source_refs。',
+      '逐条核对 reviewer_identity、review_note、writeback_note 和字段级 source_refs。',
       'runtime review-state 覆盖 seed 时，优先查看退回原因和复核备注。',
       '只把导出包作为人工写回草案；默认不直接写 data/provinces/*.md。',
     ],
@@ -308,6 +319,7 @@ function buildReviewSignoffManifest(input: {
       source_ref_count: item.source_ref_count,
       review_state_source: item.review_state_source,
       review_state_overrides_seed: item.review_state_overrides_seed,
+      reviewed_by: reviewerDisplayName(item),
     })),
   };
   const sha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
@@ -329,13 +341,23 @@ function reviewHandoffRequiredAction(
   status: KnowledgeWritebackStatus,
   hasReviewNote: boolean,
   sourceRefCount: number,
+  hasReviewerIdentity = true,
 ): string {
   if (status === 'written_back') return '已标记写回，仍需人工确认省份 Markdown diff。';
   if (status === 'needs_revision') return '退回复核：按退回原因补来源、边界或写回范围。';
   if (!hasReviewNote) return '补充复核备注后再签收。';
+  if (!hasReviewerIdentity) return '补充复核人身份后再签收。';
   if (sourceRefCount === 0) return '补充来源引用或人工证据链接后再签收。';
   if (status === 'queued') return '已入队，等待人工核对字段差异并执行外部写回。';
   return '草案就绪，等待人工签收或批量入队。';
+}
+
+function reviewerDisplayName(item: {
+  reviewed_by?: string;
+  reviewer_name?: string;
+  reviewer_id?: string;
+}): string | undefined {
+  return item.reviewed_by?.trim() || item.reviewer_name?.trim() || item.reviewer_id?.trim() || undefined;
 }
 
 function candidateFieldCount(item: DomainPackExpansionWritebackDraftItem): number {
@@ -464,6 +486,8 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- runtime_override_count: ${pkg.preflight.review_handoff.runtime_override_count}`,
     `- review_note_count: ${pkg.preflight.review_handoff.review_note_count}`,
     `- missing_review_note_count: ${pkg.preflight.review_handoff.missing_review_note_count}`,
+    `- reviewer_identity_count: ${pkg.preflight.review_handoff.reviewer_identity_count}`,
+    `- missing_reviewer_identity_count: ${pkg.preflight.review_handoff.missing_reviewer_identity_count}`,
     `- requires_manual_signoff_count: ${pkg.preflight.review_handoff.requires_manual_signoff_count}`,
     '',
     '## Signoff Package',
@@ -516,6 +540,7 @@ function renderReviewHandoffLines(items: KnowledgeWritebackQueueReviewHandoffIte
     `  - source_refs: ${item.source_ref_count}`,
     ...(item.review_state_source ? [`  - review_state_source: ${item.review_state_source}`] : []),
     ...(typeof item.review_state_overrides_seed === 'boolean' ? [`  - review_state_overrides_seed: ${item.review_state_overrides_seed}`] : []),
+    ...(reviewerDisplayName(item) ? [`  - reviewed_by: ${reviewerDisplayName(item)}`] : []),
     `  - required_action: ${item.required_action}`,
   ]);
 }

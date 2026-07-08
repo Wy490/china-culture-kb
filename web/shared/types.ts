@@ -1943,6 +1943,8 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_review_handoff_requires_signoff_count: number;
     knowledge_writeback_review_handoff_runtime_override_count: number;
     knowledge_writeback_review_handoff_missing_review_note_count: number;
+    knowledge_writeback_review_handoff_reviewer_identity_count: number;
+    knowledge_writeback_review_handoff_missing_reviewer_identity_count: number;
     knowledge_writeback_review_handoff_source_ref_count: number;
     knowledge_writeback_review_handoff_signoff_manifest_id: string;
     knowledge_writeback_review_handoff_signoff_manifest_sha256: string;
@@ -6107,6 +6109,9 @@ export interface DomainPackExpansionReviewItem {
   review_status?: DomainPackExpansionReviewStatus;
   review_note?: string;
   reviewed_at?: string;
+  reviewer_id?: string;
+  reviewer_name?: string;
+  reviewed_by?: string;
   review_state_source: DomainPackExpansionReviewStateSource;
   review_state_overrides_seed: boolean;
   review_state_seed_status?: DomainPackExpansionReviewStatus;
@@ -6185,6 +6190,9 @@ export interface DomainPackExpansionReviewStateItem {
   review_status: DomainPackExpansionReviewStatus;
   review_note?: string;
   reviewed_at?: string;
+  reviewer_id?: string;
+  reviewer_name?: string;
+  reviewed_by?: string;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
   writeback_updated_at?: string;
@@ -6194,6 +6202,9 @@ export interface DomainPackExpansionReviewStateUpdateRequest {
   review_item_id: string;
   review_status: DomainPackExpansionReviewStatus;
   review_note?: string;
+  reviewer_id?: string;
+  reviewer_name?: string;
+  reviewed_by?: string;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
 }
@@ -6202,6 +6213,9 @@ export interface DomainPackExpansionReviewStateBulkUpdateRequest {
   review_item_ids: string[];
   review_status: DomainPackExpansionReviewStatus;
   review_note?: string;
+  reviewer_id?: string;
+  reviewer_name?: string;
+  reviewed_by?: string;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
 }
@@ -6225,6 +6239,9 @@ export interface DomainPackExpansionWritebackDraftItem {
   target_video_types: string[];
   review_status: DomainPackExpansionReviewStatus;
   review_note?: string;
+  reviewer_id?: string;
+  reviewer_name?: string;
+  reviewed_by?: string;
   review_state_source: DomainPackExpansionReviewStateSource;
   review_state_overrides_seed: boolean;
   review_state_seed_status?: DomainPackExpansionReviewStatus;
@@ -6350,6 +6367,9 @@ export interface KnowledgeWritebackQueueReviewHandoffItem {
   review_state_source?: DomainPackExpansionReviewStateSource;
   review_state_overrides_seed?: boolean;
   review_note?: string;
+  reviewer_id?: string;
+  reviewer_name?: string;
+  reviewed_by?: string;
   writeback_note?: string;
   candidate_field_count: number;
   source_ref_count: number;
@@ -6379,6 +6399,8 @@ export interface KnowledgeWritebackQueueReviewHandoff {
   seed_sourced_count: number;
   review_note_count: number;
   missing_review_note_count: number;
+  reviewer_identity_count: number;
+  missing_reviewer_identity_count: number;
   source_ref_count: number;
   candidate_field_count: number;
   requires_manual_signoff_count: number;

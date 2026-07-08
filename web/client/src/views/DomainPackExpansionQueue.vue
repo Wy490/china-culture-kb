@@ -17,6 +17,11 @@
         class="expansion-page__search"
         placeholder="搜索条目、包、字段、禁写断言…"
       />
+      <input
+        v-model="reviewerName"
+        class="expansion-page__select"
+        placeholder="本轮复核人"
+      />
       <select v-model="packFilter" class="expansion-page__select">
         <option value="">全部扩库包</option>
         <option v-for="pack in packOptions" :key="pack.pack_id" :value="pack.pack_id">
@@ -447,6 +452,7 @@
           <div class="expansion-page__item-preflight">
             <span>目标：{{ itemTargetFile(item) }}</span>
             <span>状态来源：{{ reviewStateSourceLabel(item.review_state_source) }}{{ item.review_state_overrides_seed ? `；seed=${statusLabel(item.review_state_seed_status || 'candidate_review')} → runtime=${statusLabel(item.review_state_runtime_status || effectiveReviewStatus(item))}` : '' }}</span>
+            <span>复核人：{{ reviewerIdentity(item) || '待填写' }}</span>
             <span>来源引用 {{ itemSourceRefCount(item) }} 条 · 字段阻断 {{ item.field_review_blocker_count }}</span>
             <span>直写省份 Markdown：关闭</span>
             <span>{{ itemNeedsManualWriteback(item) ? '仍需人工写回复核' : '已标注人工写回完成' }}</span>
@@ -518,6 +524,7 @@ const provinceFilter = ref('')
 const statusFilter = ref('')
 const writebackStatusFilter = ref<KnowledgeWritebackStatus | ''>('')
 const fieldFilter = ref('')
+const reviewerName = ref('')
 const reviewNoteDrafts = reactive<Record<string, string>>({})
 
 const batches = computed(() => report.value?.review_packet.batches ?? [])
@@ -593,6 +600,7 @@ const filteredItems = computed(() => {
       item.province,
       effectiveReviewStatus(item),
       item.review_note ?? '',
+      reviewerIdentity(item),
       effectiveWritebackStatus(item),
       item.writeback_note ?? '',
       ...item.target_video_types,
@@ -1052,6 +1060,14 @@ function updateReviewNoteDraft(reviewItemId: string, event: Event) {
   reviewNoteDrafts[reviewItemId] = (event.target as HTMLTextAreaElement).value
 }
 
+function reviewerIdentity(item: ReviewQueueItem): string {
+  return item.reviewed_by?.trim() || item.reviewer_name?.trim() || item.reviewer_id?.trim() || ''
+}
+
+function reviewerNameForSubmit(item?: ReviewQueueItem): string | undefined {
+  return reviewerName.value.trim() || (item ? reviewerIdentity(item) : '') || undefined
+}
+
 function applyReviewTemplate(item: ReviewQueueItem, template: 'source_boundary' | 'visual_rights' | 'tone_risk') {
   const templates: Record<typeof template, string> = {
     source_boundary: '需补来源边界：请复核 source_refs、evidence_level 与 verification_note，明确事实/传说/改编候选层级后再入队。',
@@ -1090,6 +1106,8 @@ async function setReviewStatus(item: ReviewQueueItem, reviewStatus: DomainPackEx
       review_item_id: item.review_item_id,
       review_status: reviewStatus,
       review_note: reviewNoteDraft(item).trim() || undefined,
+      reviewer_name: reviewerNameForSubmit(item),
+      reviewed_by: reviewerNameForSubmit(item),
       writeback_status: reviewStatus === 'approved' ? (item.writeback_status ?? 'draft_ready') : undefined,
       writeback_note: reviewStatus === 'approved' ? item.writeback_note : undefined,
     })
@@ -1121,6 +1139,8 @@ async function setWritebackStatus(item: ReviewQueueItem, status: KnowledgeWriteb
       review_item_id: item.review_item_id,
       review_status: 'approved',
       review_note: reviewNoteDraft(item).trim() || item.review_note,
+      reviewer_name: reviewerNameForSubmit(item),
+      reviewed_by: reviewerNameForSubmit(item),
       writeback_status: status,
       writeback_note: item.writeback_note,
     })
@@ -1163,6 +1183,8 @@ async function bulkUpdateFiltered(
       review_item_ids: items.map(item => item.review_item_id),
       review_status: reviewStatus,
       review_note: `批量操作：${actionLabel}`,
+      reviewer_name: reviewerNameForSubmit(),
+      reviewed_by: reviewerNameForSubmit(),
       writeback_status: reviewStatus === 'approved' ? writebackStatus : undefined,
       writeback_note: writebackStatus ? `批量操作：${writebackStatusLabel(writebackStatus)}` : undefined,
     })
