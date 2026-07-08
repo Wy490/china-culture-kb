@@ -629,6 +629,24 @@ interface KnowledgeWritebackQueueReviewHandoffItem {
   required_action: string;
 }
 
+interface KnowledgeWritebackQueueSignoffBatchSummary {
+  signoff_batch_id: string;
+  signoff_batch_note?: string;
+  item_count: number;
+  project_handoff_count: number;
+  expansion_handoff_count: number;
+  requires_manual_signoff_count: number;
+  review_note_count: number;
+  missing_review_note_count: number;
+  reviewer_identity_count: number;
+  missing_reviewer_identity_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  status_counts: Record<KnowledgeWritebackStatus, number>;
+  ready_for_signoff_count: number;
+  blocked_for_signoff_count: number;
+}
+
 interface KnowledgeWritebackQueueReviewSignoffManifest {
   schema_version: 'knowledge-writeback-queue-signoff-manifest/v1';
   manifest_id: string;
@@ -658,6 +676,7 @@ interface KnowledgeWritebackQueueReviewHandoff {
   signoff_batch_count: number;
   missing_signoff_batch_count: number;
   signoff_batch_ids: string[];
+  signoff_batch_summaries: KnowledgeWritebackQueueSignoffBatchSummary[];
   source_ref_count: number;
   candidate_field_count: number;
   requires_manual_signoff_count: number;
@@ -674,6 +693,7 @@ interface KnowledgeWritebackQueueSignoffPackage {
   filters: KnowledgeWritebackQueueExportFilters;
   signoff_manifest: KnowledgeWritebackQueueReviewSignoffManifest;
   status_counts: Record<KnowledgeWritebackStatus, number>;
+  signoff_batch_summaries: KnowledgeWritebackQueueSignoffBatchSummary[];
   operator_checklist: string[];
   handoff_item_count: number;
   handoff_items: KnowledgeWritebackQueueReviewHandoffItem[];
@@ -962,6 +982,8 @@ const KNOWLEDGE_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'written_back',
   'needs_revision',
 ];
+
+const UNASSIGNED_SIGNOFF_BATCH_ID = 'unassigned_signoff_batch';
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1692,8 +1714,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '字段级补库工作台增强',
       priority: 'P0',
       status: report.pipeline_stage === 'complete' ? 'in_progress' : 'ready',
-      progress_percent: 98,
-      progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、复核人身份、审签批次归档、批量写回状态操作、导出预检、签收清单和 canonical signoff package。',
+      progress_percent: 99,
+      progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、复核人身份、审签批次归档、批次完成率汇总、批量写回状态操作、导出预检、签收清单和 canonical signoff package。',
       related_plan_items: [1],
       target_video_types: coreVideoTypes,
       description: '增强筛选、字段预览、批量审稿和写回状态操作，让 62 条草案可被人工高效复核。',
@@ -1709,8 +1731,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '人工复核闭环',
       priority: 'P0',
       status: 'ready',
-      progress_percent: 97,
-      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、复核人身份归档、审签批次 ID/备注、source 筛选、人工签收 manifest 和 canonical signoff package 已可见；继续补批次完成率和下载归档。',
+      progress_percent: 98,
+      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、复核人身份归档、审签批次 ID/备注、批次 ready/blocked 汇总、source 筛选、人工签收 manifest 和 canonical signoff package 已可见；继续补下载归档。',
       related_plan_items: [2],
       target_video_types: coreVideoTypes,
       description: '把退回原因、运行态覆盖和复核备注显性化，方便人工把 seed 审稿结果退回、入队或标注需补证。',
@@ -1761,8 +1783,8 @@ function buildExpansionNextDevelopmentTasks(
       title: 'MVP 与生产健康完成态',
       priority: 'P1',
       status: report.pipeline_stage === 'complete' ? 'ready' : 'blocked',
-      progress_percent: 97,
-      progress_note: 'MVP 已接入扩库 complete、62 条写回草案计数、复核交接签收 manifest/canonical signoff package、复核人身份覆盖率、审签批次归档、runtime 覆盖证据和 1-5 项百分比；继续强调“完成候选但待人工写回”。',
+      progress_percent: 98,
+      progress_note: 'MVP 已接入扩库 complete、62 条写回草案计数、复核交接签收 manifest/canonical signoff package、复核人身份覆盖率、审签批次归档、批次 ready/blocked 汇总、runtime 覆盖证据和 1-5 项百分比；继续强调“完成候选但待人工写回”。',
       related_plan_items: [5],
       target_video_types: coreVideoTypes,
       description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
@@ -3234,6 +3256,7 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- signoff_batch_count: ${pkg.preflight.review_handoff.signoff_batch_count}`,
     `- missing_signoff_batch_count: ${pkg.preflight.review_handoff.missing_signoff_batch_count}`,
     `- signoff_batch_ids: ${pkg.preflight.review_handoff.signoff_batch_ids.join(', ') || 'none'}`,
+    `- signoff_batch_summary_count: ${pkg.preflight.review_handoff.signoff_batch_summaries.length}`,
     `- requires_manual_signoff_count: ${pkg.preflight.review_handoff.requires_manual_signoff_count}`,
     '',
     '## Signoff Package',
@@ -3243,12 +3266,17 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- signoff_manifest_id: ${pkg.signoff_package.signoff_manifest.manifest_id}`,
     `- signoff_manifest_sha256: ${pkg.signoff_package.signoff_manifest.sha256}`,
     `- signoff_manifest_batches: ${pkg.signoff_package.signoff_manifest.signoff_batch_ids.join(', ') || 'none'}`,
+    `- signoff_batch_summary_count: ${pkg.signoff_package.signoff_batch_summaries.length}`,
     `- direct_writeback_to_province_markdown: ${pkg.signoff_package.direct_writeback_to_province_markdown}`,
     `- province_markdown_written: ${pkg.signoff_package.province_markdown_written}`,
     '',
     '### Operator Checklist',
     '',
     ...pkg.preflight.review_handoff.operator_checklist.map(item => `- ${item}`),
+    '',
+    '### Signoff Batch Summaries',
+    '',
+    ...renderKnowledgeWritebackSignoffBatchSummaryLines(pkg.preflight.review_handoff.signoff_batch_summaries),
     '',
     '### Handoff Items',
     '',
@@ -3277,6 +3305,7 @@ function buildKnowledgeWritebackQueueSignoffPackage(
     filters,
     signoff_manifest: handoff.signoff_manifest,
     status_counts: handoff.status_counts,
+    signoff_batch_summaries: handoff.signoff_batch_summaries,
     operator_checklist: handoff.operator_checklist,
     handoff_item_count: handoff.items.length,
     handoff_items: handoff.items,
@@ -3294,6 +3323,22 @@ function renderKnowledgeWritebackTargetFilePreflightLines(
     `  - expansion_source_refs: ${item.expansion_source_ref_count}`,
     `  - direct_writeback_to_province_markdown: ${item.direct_writeback_to_province_markdown}`,
     `  - safety_note: ${item.safety_note}`,
+  ]);
+}
+
+function renderKnowledgeWritebackSignoffBatchSummaryLines(
+  items: KnowledgeWritebackQueueSignoffBatchSummary[],
+): string[] {
+  if (items.length === 0) return ['- none'];
+  return items.flatMap(item => [
+    `- ${item.signoff_batch_id}`,
+    ...(item.signoff_batch_note ? [`  - signoff_batch_note: ${item.signoff_batch_note}`] : []),
+    `  - items: total=${item.item_count}; project=${item.project_handoff_count}; expansion=${item.expansion_handoff_count}`,
+    `  - manual_signoff: required=${item.requires_manual_signoff_count}; ready=${item.ready_for_signoff_count}; blocked=${item.blocked_for_signoff_count}`,
+    `  - review_notes: present=${item.review_note_count}; missing=${item.missing_review_note_count}`,
+    `  - reviewer_identities: present=${item.reviewer_identity_count}; missing=${item.missing_reviewer_identity_count}`,
+    `  - field_evidence: candidate_fields=${item.candidate_field_count}; source_refs=${item.source_ref_count}`,
+    `  - status_counts: draft_ready=${item.status_counts.draft_ready}; queued=${item.status_counts.queued}; written_back=${item.status_counts.written_back}; needs_revision=${item.status_counts.needs_revision}`,
   ]);
 }
 
@@ -3421,6 +3466,7 @@ function buildKnowledgeWritebackQueueExportPreflight(input: {
       `expansion_source_refs=${expansionSourceRefCount}`,
       `review_handoff_items=${reviewHandoff.total_handoff_count}`,
       `review_handoff_requires_signoff=${reviewHandoff.requires_manual_signoff_count}`,
+      `signoff_batch_summaries=${reviewHandoff.signoff_batch_summaries.length}`,
       `signoff_manifest_id=${reviewHandoff.signoff_manifest.manifest_id}`,
       `signoff_manifest_sha256=${reviewHandoff.signoff_manifest.sha256}`,
       `manual_review_required=${manualReviewRequiredCount}`,
@@ -3501,6 +3547,7 @@ function buildKnowledgeWritebackReviewHandoff(
   const sourceRefCount = items.reduce((sum, item) => sum + item.source_ref_count, 0);
   const candidateFieldCount = items.reduce((sum, item) => sum + item.candidate_field_count, 0);
   const requiresManualSignoffCount = items.filter(item => item.writeback_status !== 'written_back').length;
+  const signoffBatchSummaries = buildKnowledgeWritebackSignoffBatchSummaries(items);
   const signoffManifest = buildKnowledgeWritebackReviewSignoffManifest({
     exportedAt,
     items,
@@ -3526,6 +3573,7 @@ function buildKnowledgeWritebackReviewHandoff(
     signoff_batch_count: signoffBatchCount,
     missing_signoff_batch_count: items.length - signoffBatchCount,
     signoff_batch_ids: signoffBatchIds,
+    signoff_batch_summaries: signoffBatchSummaries,
     source_ref_count: sourceRefCount,
     candidate_field_count: candidateFieldCount,
     requires_manual_signoff_count: requiresManualSignoffCount,
@@ -3538,6 +3586,71 @@ function buildKnowledgeWritebackReviewHandoff(
     ],
     items,
   };
+}
+
+function buildKnowledgeWritebackSignoffBatchSummaries(
+  items: KnowledgeWritebackQueueReviewHandoffItem[],
+): KnowledgeWritebackQueueSignoffBatchSummary[] {
+  const summaries = new Map<string, KnowledgeWritebackQueueSignoffBatchSummary>();
+  const ensureSummary = (item: KnowledgeWritebackQueueReviewHandoffItem) => {
+    const signoffBatchId = item.signoff_batch_id?.trim() || UNASSIGNED_SIGNOFF_BATCH_ID;
+    const signoffBatchNote = item.signoff_batch_note?.trim();
+    const current = summaries.get(signoffBatchId);
+    if (current) {
+      if (!current.signoff_batch_note && signoffBatchNote) current.signoff_batch_note = signoffBatchNote;
+      return current;
+    }
+    const next: KnowledgeWritebackQueueSignoffBatchSummary = {
+      signoff_batch_id: signoffBatchId,
+      ...(signoffBatchNote ? { signoff_batch_note: signoffBatchNote } : {}),
+      item_count: 0,
+      project_handoff_count: 0,
+      expansion_handoff_count: 0,
+      requires_manual_signoff_count: 0,
+      review_note_count: 0,
+      missing_review_note_count: 0,
+      reviewer_identity_count: 0,
+      missing_reviewer_identity_count: 0,
+      source_ref_count: 0,
+      candidate_field_count: 0,
+      status_counts: normalizeKnowledgeWritebackStatusCounts(),
+      ready_for_signoff_count: 0,
+      blocked_for_signoff_count: 0,
+    };
+    summaries.set(signoffBatchId, next);
+    return next;
+  };
+
+  for (const item of items) {
+    const summary = ensureSummary(item);
+    summary.item_count += 1;
+    if (item.source_kind === 'project') summary.project_handoff_count += 1;
+    if (item.source_kind === 'domain_pack_expansion') summary.expansion_handoff_count += 1;
+    if (item.writeback_status !== 'written_back') summary.requires_manual_signoff_count += 1;
+    if (item.review_note?.trim()) summary.review_note_count += 1;
+    else summary.missing_review_note_count += 1;
+    if (reviewerDisplayName(item)) summary.reviewer_identity_count += 1;
+    else summary.missing_reviewer_identity_count += 1;
+    summary.source_ref_count += item.source_ref_count;
+    summary.candidate_field_count += item.candidate_field_count;
+    summary.status_counts[item.writeback_status] += 1;
+    if (isKnowledgeWritebackHandoffItemReadyForSignoff(item)) summary.ready_for_signoff_count += 1;
+    else summary.blocked_for_signoff_count += 1;
+  }
+
+  return [...summaries.values()].sort((a, b) => {
+    if (a.signoff_batch_id === UNASSIGNED_SIGNOFF_BATCH_ID) return 1;
+    if (b.signoff_batch_id === UNASSIGNED_SIGNOFF_BATCH_ID) return -1;
+    return a.signoff_batch_id.localeCompare(b.signoff_batch_id);
+  });
+}
+
+function isKnowledgeWritebackHandoffItemReadyForSignoff(item: KnowledgeWritebackQueueReviewHandoffItem): boolean {
+  return Boolean(item.signoff_batch_id?.trim())
+    && item.writeback_status !== 'needs_revision'
+    && Boolean(item.review_note?.trim())
+    && Boolean(reviewerDisplayName(item))
+    && (item.source_kind === 'project' || item.source_ref_count > 0);
 }
 
 function buildKnowledgeWritebackReviewSignoffManifest(input: {

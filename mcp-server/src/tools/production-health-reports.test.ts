@@ -980,6 +980,26 @@ describe('production health reports', () => {
           signoff_batch_count: 1,
           missing_signoff_batch_count: 1,
           signoff_batch_ids: ['mcp-unified-signoff-001'],
+          signoff_batch_summaries: expect.arrayContaining([
+            expect.objectContaining({
+              signoff_batch_id: 'mcp-unified-signoff-001',
+              signoff_batch_note: 'MCP 统一写回导出审签批次归档测试。',
+              item_count: 1,
+              expansion_handoff_count: 1,
+              ready_for_signoff_count: 0,
+              blocked_for_signoff_count: 1,
+              status_counts: expect.objectContaining({
+                queued: 1,
+              }),
+            }),
+            expect.objectContaining({
+              signoff_batch_id: 'unassigned_signoff_batch',
+              item_count: 1,
+              project_handoff_count: 1,
+              ready_for_signoff_count: 0,
+              blocked_for_signoff_count: 1,
+            }),
+          ]),
           items: expect.arrayContaining([
             expect.objectContaining({
               source_kind: 'project',
@@ -1004,6 +1024,16 @@ describe('production health reports', () => {
           sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
           signoff_batch_ids: ['mcp-unified-signoff-001'],
         }),
+        signoff_batch_summaries: expect.arrayContaining([
+          expect.objectContaining({
+            signoff_batch_id: 'mcp-unified-signoff-001',
+            blocked_for_signoff_count: 1,
+          }),
+          expect.objectContaining({
+            signoff_batch_id: 'unassigned_signoff_batch',
+            blocked_for_signoff_count: 1,
+          }),
+        ]),
       }),
       project_patch: {
         schema_version: 'project-knowledge-writeback-patch/v1',
@@ -1034,6 +1064,8 @@ describe('production health reports', () => {
     expect(unified.markdown).toContain('Export Preflight');
     expect(unified.markdown).toContain('Review Handoff');
     expect(unified.markdown).toContain('Signoff Package');
+    expect(unified.markdown).toContain('Signoff Batch Summaries');
+    expect(unified.markdown).toContain('signoff_batch_summary_count: 2');
     expect(unified.markdown).toContain('signoff_manifest_id: kwb-signoff-');
     expect(unified.markdown).toContain('expansion_field_diff');
     expect(unified.markdown).toContain('项目草案来源');

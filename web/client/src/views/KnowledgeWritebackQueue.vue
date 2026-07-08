@@ -205,6 +205,18 @@
           清单 {{ reviewHandoffManifest.manifestId }}
         </span>
       </div>
+      <div v-if="reviewHandoffBatchSummaries.length" class="writeback-page__handoff-batches">
+        <article v-for="batch in reviewHandoffBatchSummaries" :key="batch.signoff_batch_id">
+          <strong>{{ signoffBatchLabel(batch.signoff_batch_id) }}</strong>
+          <span v-if="batch.signoff_batch_note">{{ batch.signoff_batch_note }}</span>
+          <span>条目 {{ batch.item_count }} 条 · 扩库 {{ batch.expansion_handoff_count }} · 项目 {{ batch.project_handoff_count }}</span>
+          <span>签收就绪 {{ batch.ready_for_signoff_count }} · 阻塞 {{ batch.blocked_for_signoff_count }} · 待签收 {{ batch.requires_manual_signoff_count }}</span>
+          <span>缺备注 {{ batch.missing_review_note_count }} · 缺复核人 {{ batch.missing_reviewer_identity_count }} · 来源 {{ batch.source_ref_count }} 条</span>
+          <span>
+            草案 {{ batch.status_counts.draft_ready }} · 入队 {{ batch.status_counts.queued }} · 已入库 {{ batch.status_counts.written_back }} · 重审 {{ batch.status_counts.needs_revision }}
+          </span>
+        </article>
+      </div>
       <div class="writeback-page__handoff-grid">
         <article v-for="item in reviewHandoffSamples" :key="item.handoff_id">
           <strong>{{ item.title }}</strong>
@@ -469,12 +481,33 @@ interface ReviewHandoffPreviewItem {
   candidate_field_count: number;
   source_ref_count: number;
   has_review_note: boolean;
+  has_reviewer_identity: boolean;
   review_state_source?: DomainPackExpansionReviewStateSource;
   review_state_overrides_seed?: boolean;
   signoff_batch_id?: string;
   signoff_batch_note?: string;
   required_action: string;
 }
+
+interface ReviewHandoffSignoffBatchSummary {
+  signoff_batch_id: string;
+  signoff_batch_note?: string;
+  item_count: number;
+  project_handoff_count: number;
+  expansion_handoff_count: number;
+  requires_manual_signoff_count: number;
+  review_note_count: number;
+  missing_review_note_count: number;
+  reviewer_identity_count: number;
+  missing_reviewer_identity_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  status_counts: Record<KnowledgeWritebackStatus, number>;
+  ready_for_signoff_count: number;
+  blocked_for_signoff_count: number;
+}
+
+const UNASSIGNED_SIGNOFF_BATCH_ID = 'unassigned_signoff_batch'
 
 const revisionTemplates = [
   {
@@ -608,6 +641,7 @@ const reviewHandoffItems = computed<ReviewHandoffPreviewItem[]>(() => [
       candidate_field_count: 0,
       source_ref_count: 0,
       has_review_note: hasReviewNote,
+      has_reviewer_identity: false,
       required_action: reviewHandoffRequiredAction(status, hasReviewNote, 0),
     }
   }),
@@ -624,6 +658,7 @@ const reviewHandoffItems = computed<ReviewHandoffPreviewItem[]>(() => [
       candidate_field_count: item.field_supplement_candidate_count ?? candidateFields(item).length,
       source_ref_count: sourceRefCount,
       has_review_note: hasReviewNote,
+      has_reviewer_identity: hasExpansionReviewerIdentity(item),
       review_state_source: item.review_state_source,
       review_state_overrides_seed: item.review_state_overrides_seed,
       signoff_batch_id: item.signoff_batch_id,
@@ -642,6 +677,65 @@ const reviewHandoffSummary = computed(() => ({
   signoffBatchIds: [...new Set(reviewHandoffItems.value.map(item => item.signoff_batch_id?.trim()).filter((id): id is string => Boolean(id)))].sort((a, b) => a.localeCompare(b)),
   sourceRefCount: reviewHandoffItems.value.reduce((sum, item) => sum + item.source_ref_count, 0),
 }))
+const reviewHandoffBatchSummaries = computed<ReviewHandoffSignoffBatchSummary[]>(() => {
+  const summaries = new Map<string, ReviewHandoffSignoffBatchSummary>()
+  const ensureSummary = (item: ReviewHandoffPreviewItem) => {
+    const signoffBatchId = item.signoff_batch_id?.trim() || UNASSIGNED_SIGNOFF_BATCH_ID
+    const signoffBatchNote = item.signoff_batch_note?.trim()
+    const current = summaries.get(signoffBatchId)
+    if (current) {
+      if (!current.signoff_batch_note && signoffBatchNote) current.signoff_batch_note = signoffBatchNote
+      return current
+    }
+    const next: ReviewHandoffSignoffBatchSummary = {
+      signoff_batch_id: signoffBatchId,
+      ...(signoffBatchNote ? { signoff_batch_note: signoffBatchNote } : {}),
+      item_count: 0,
+      project_handoff_count: 0,
+      expansion_handoff_count: 0,
+      requires_manual_signoff_count: 0,
+      review_note_count: 0,
+      missing_review_note_count: 0,
+      reviewer_identity_count: 0,
+      missing_reviewer_identity_count: 0,
+      source_ref_count: 0,
+      candidate_field_count: 0,
+      status_counts: {
+        draft_ready: 0,
+        queued: 0,
+        written_back: 0,
+        needs_revision: 0,
+      },
+      ready_for_signoff_count: 0,
+      blocked_for_signoff_count: 0,
+    }
+    summaries.set(signoffBatchId, next)
+    return next
+  }
+
+  for (const item of reviewHandoffItems.value) {
+    const summary = ensureSummary(item)
+    summary.item_count += 1
+    if (item.source_label === '项目草案') summary.project_handoff_count += 1
+    else summary.expansion_handoff_count += 1
+    if (item.writeback_status !== 'written_back') summary.requires_manual_signoff_count += 1
+    if (item.has_review_note) summary.review_note_count += 1
+    else summary.missing_review_note_count += 1
+    if (item.has_reviewer_identity) summary.reviewer_identity_count += 1
+    else summary.missing_reviewer_identity_count += 1
+    summary.source_ref_count += item.source_ref_count
+    summary.candidate_field_count += item.candidate_field_count
+    summary.status_counts[item.writeback_status] += 1
+    if (isReviewHandoffItemReadyForSignoff(item)) summary.ready_for_signoff_count += 1
+    else summary.blocked_for_signoff_count += 1
+  }
+
+  return [...summaries.values()].sort((a, b) => {
+    if (a.signoff_batch_id === UNASSIGNED_SIGNOFF_BATCH_ID) return 1
+    if (b.signoff_batch_id === UNASSIGNED_SIGNOFF_BATCH_ID) return -1
+    return a.signoff_batch_id.localeCompare(b.signoff_batch_id, 'zh-Hans-CN')
+  })
+})
 const reviewHandoffManifest = computed(() => {
   const payload = JSON.stringify(reviewHandoffItems.value.map(item => ({
     handoff_id: item.handoff_id,
@@ -789,6 +883,10 @@ function writebackStatusLabel(status: KnowledgeWritebackStatus): string {
   return '草案就绪'
 }
 
+function signoffBatchLabel(signoffBatchId: string): string {
+  return signoffBatchId === UNASSIGNED_SIGNOFF_BATCH_ID ? '未归档审签批次' : signoffBatchId
+}
+
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
     heritage_promo: '非遗宣传',
@@ -852,6 +950,18 @@ function candidateFields(item: DomainPackExpansionWritebackDraftItem): DomainPac
 
 function itemSourceRefCount(item: DomainPackExpansionWritebackDraftItem): number {
   return new Set((item.field_workbench ?? []).flatMap(field => field.source_refs)).size
+}
+
+function hasExpansionReviewerIdentity(item: DomainPackExpansionWritebackDraftItem): boolean {
+  return Boolean(item.reviewed_by?.trim() || item.reviewer_name?.trim() || item.reviewer_id?.trim())
+}
+
+function isReviewHandoffItemReadyForSignoff(item: ReviewHandoffPreviewItem): boolean {
+  return Boolean(item.signoff_batch_id?.trim())
+    && item.writeback_status !== 'needs_revision'
+    && item.has_review_note
+    && item.has_reviewer_identity
+    && (item.source_label === '项目草案' || item.source_ref_count > 0)
 }
 
 function reviewStateSourceLabel(source: DomainPackExpansionReviewStateSource): string {
@@ -1473,6 +1583,34 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 8px;
+}
+
+.writeback-page__handoff-batches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.writeback-page__handoff-batches article {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #d8e6e0;
+  border-radius: 6px;
+  padding: 8px;
+  background: #f6fbf7;
+}
+
+.writeback-page__handoff-batches strong {
+  color: #22313f;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.writeback-page__handoff-batches span {
+  color: #536273;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .writeback-page__handoff-grid article {

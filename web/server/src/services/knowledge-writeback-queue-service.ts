@@ -9,6 +9,7 @@ import type {
   KnowledgeWritebackQueueReviewHandoff,
   KnowledgeWritebackQueueReviewHandoffItem,
   KnowledgeWritebackQueueReviewSignoffManifest,
+  KnowledgeWritebackQueueSignoffBatchSummary,
   KnowledgeWritebackQueueSignoffPackage,
   KnowledgeWritebackStatus,
   ProjectKnowledgeWritebackPatchItem,
@@ -24,6 +25,8 @@ const WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'written_back',
   'needs_revision',
 ];
+
+const UNASSIGNED_SIGNOFF_BATCH_ID = 'unassigned_signoff_batch';
 
 export interface KnowledgeWritebackQueueExportInput {
   projectId?: string;
@@ -118,6 +121,7 @@ function buildKnowledgeWritebackQueueSignoffPackage(
     filters,
     signoff_manifest: handoff.signoff_manifest,
     status_counts: handoff.status_counts,
+    signoff_batch_summaries: handoff.signoff_batch_summaries,
     operator_checklist: handoff.operator_checklist,
     handoff_item_count: handoff.items.length,
     handoff_items: handoff.items,
@@ -185,6 +189,7 @@ function buildUnifiedWritebackExportPreflight(input: {
       `expansion_source_refs=${expansionSourceRefCount}`,
       `review_handoff_items=${reviewHandoff.total_handoff_count}`,
       `review_handoff_requires_signoff=${reviewHandoff.requires_manual_signoff_count}`,
+      `signoff_batch_summaries=${reviewHandoff.signoff_batch_summaries.length}`,
       `signoff_manifest_id=${reviewHandoff.signoff_manifest.manifest_id}`,
       `signoff_manifest_sha256=${reviewHandoff.signoff_manifest.sha256}`,
       `manual_review_required=${manualReviewRequiredCount}`,
@@ -265,6 +270,7 @@ function buildReviewHandoff(
   const sourceRefCount = items.reduce((sum, item) => sum + item.source_ref_count, 0);
   const candidateFieldCount = items.reduce((sum, item) => sum + item.candidate_field_count, 0);
   const requiresManualSignoffCount = items.filter(item => item.writeback_status !== 'written_back').length;
+  const signoffBatchSummaries = buildSignoffBatchSummaries(items);
   const signoffManifest = buildReviewSignoffManifest({
     exportedAt,
     items,
@@ -290,6 +296,7 @@ function buildReviewHandoff(
     signoff_batch_count: signoffBatchCount,
     missing_signoff_batch_count: items.length - signoffBatchCount,
     signoff_batch_ids: signoffBatchIds,
+    signoff_batch_summaries: signoffBatchSummaries,
     source_ref_count: sourceRefCount,
     candidate_field_count: candidateFieldCount,
     requires_manual_signoff_count: requiresManualSignoffCount,
@@ -302,6 +309,71 @@ function buildReviewHandoff(
     ],
     items,
   };
+}
+
+function buildSignoffBatchSummaries(
+  items: KnowledgeWritebackQueueReviewHandoffItem[],
+): KnowledgeWritebackQueueSignoffBatchSummary[] {
+  const summaries = new Map<string, KnowledgeWritebackQueueSignoffBatchSummary>();
+  const ensureSummary = (item: KnowledgeWritebackQueueReviewHandoffItem) => {
+    const signoffBatchId = item.signoff_batch_id?.trim() || UNASSIGNED_SIGNOFF_BATCH_ID;
+    const signoffBatchNote = item.signoff_batch_note?.trim();
+    const current = summaries.get(signoffBatchId);
+    if (current) {
+      if (!current.signoff_batch_note && signoffBatchNote) current.signoff_batch_note = signoffBatchNote;
+      return current;
+    }
+    const next: KnowledgeWritebackQueueSignoffBatchSummary = {
+      signoff_batch_id: signoffBatchId,
+      ...(signoffBatchNote ? { signoff_batch_note: signoffBatchNote } : {}),
+      item_count: 0,
+      project_handoff_count: 0,
+      expansion_handoff_count: 0,
+      requires_manual_signoff_count: 0,
+      review_note_count: 0,
+      missing_review_note_count: 0,
+      reviewer_identity_count: 0,
+      missing_reviewer_identity_count: 0,
+      source_ref_count: 0,
+      candidate_field_count: 0,
+      status_counts: normalizeStatusCounts(),
+      ready_for_signoff_count: 0,
+      blocked_for_signoff_count: 0,
+    };
+    summaries.set(signoffBatchId, next);
+    return next;
+  };
+
+  for (const item of items) {
+    const summary = ensureSummary(item);
+    summary.item_count += 1;
+    if (item.source_kind === 'project') summary.project_handoff_count += 1;
+    if (item.source_kind === 'domain_pack_expansion') summary.expansion_handoff_count += 1;
+    if (item.writeback_status !== 'written_back') summary.requires_manual_signoff_count += 1;
+    if (item.review_note?.trim()) summary.review_note_count += 1;
+    else summary.missing_review_note_count += 1;
+    if (reviewerDisplayName(item)) summary.reviewer_identity_count += 1;
+    else summary.missing_reviewer_identity_count += 1;
+    summary.source_ref_count += item.source_ref_count;
+    summary.candidate_field_count += item.candidate_field_count;
+    summary.status_counts[item.writeback_status] += 1;
+    if (isHandoffItemReadyForSignoff(item)) summary.ready_for_signoff_count += 1;
+    else summary.blocked_for_signoff_count += 1;
+  }
+
+  return [...summaries.values()].sort((a, b) => {
+    if (a.signoff_batch_id === UNASSIGNED_SIGNOFF_BATCH_ID) return 1;
+    if (b.signoff_batch_id === UNASSIGNED_SIGNOFF_BATCH_ID) return -1;
+    return a.signoff_batch_id.localeCompare(b.signoff_batch_id);
+  });
+}
+
+function isHandoffItemReadyForSignoff(item: KnowledgeWritebackQueueReviewHandoffItem): boolean {
+  return Boolean(item.signoff_batch_id?.trim())
+    && item.writeback_status !== 'needs_revision'
+    && Boolean(item.review_note?.trim())
+    && Boolean(reviewerDisplayName(item))
+    && (item.source_kind === 'project' || item.source_ref_count > 0);
 }
 
 function buildReviewSignoffManifest(input: {
@@ -504,6 +576,7 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- signoff_batch_count: ${pkg.preflight.review_handoff.signoff_batch_count}`,
     `- missing_signoff_batch_count: ${pkg.preflight.review_handoff.missing_signoff_batch_count}`,
     `- signoff_batch_ids: ${pkg.preflight.review_handoff.signoff_batch_ids.join(', ') || 'none'}`,
+    `- signoff_batch_summary_count: ${pkg.preflight.review_handoff.signoff_batch_summaries.length}`,
     `- requires_manual_signoff_count: ${pkg.preflight.review_handoff.requires_manual_signoff_count}`,
     '',
     '## Signoff Package',
@@ -513,12 +586,17 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- signoff_manifest_id: ${pkg.signoff_package.signoff_manifest.manifest_id}`,
     `- signoff_manifest_sha256: ${pkg.signoff_package.signoff_manifest.sha256}`,
     `- signoff_manifest_batches: ${pkg.signoff_package.signoff_manifest.signoff_batch_ids.join(', ') || 'none'}`,
+    `- signoff_batch_summary_count: ${pkg.signoff_package.signoff_batch_summaries.length}`,
     `- direct_writeback_to_province_markdown: ${pkg.signoff_package.direct_writeback_to_province_markdown}`,
     `- province_markdown_written: ${pkg.signoff_package.province_markdown_written}`,
     '',
     '### Operator Checklist',
     '',
     ...pkg.preflight.review_handoff.operator_checklist.map(item => `- ${item}`),
+    '',
+    '### Signoff Batch Summaries',
+    '',
+    ...renderSignoffBatchSummaryLines(pkg.preflight.review_handoff.signoff_batch_summaries),
     '',
     '### Handoff Items',
     '',
@@ -543,6 +621,20 @@ function renderTargetFilePreflightLines(items: KnowledgeWritebackQueueExportTarg
     `  - expansion_source_refs: ${item.expansion_source_ref_count}`,
     `  - direct_writeback_to_province_markdown: ${item.direct_writeback_to_province_markdown}`,
     `  - safety_note: ${item.safety_note}`,
+  ]);
+}
+
+function renderSignoffBatchSummaryLines(items: KnowledgeWritebackQueueSignoffBatchSummary[]): string[] {
+  if (items.length === 0) return ['- none'];
+  return items.flatMap(item => [
+    `- ${item.signoff_batch_id}`,
+    ...(item.signoff_batch_note ? [`  - signoff_batch_note: ${item.signoff_batch_note}`] : []),
+    `  - items: total=${item.item_count}; project=${item.project_handoff_count}; expansion=${item.expansion_handoff_count}`,
+    `  - manual_signoff: required=${item.requires_manual_signoff_count}; ready=${item.ready_for_signoff_count}; blocked=${item.blocked_for_signoff_count}`,
+    `  - review_notes: present=${item.review_note_count}; missing=${item.missing_review_note_count}`,
+    `  - reviewer_identities: present=${item.reviewer_identity_count}; missing=${item.missing_reviewer_identity_count}`,
+    `  - field_evidence: candidate_fields=${item.candidate_field_count}; source_refs=${item.source_ref_count}`,
+    `  - status_counts: draft_ready=${item.status_counts.draft_ready}; queued=${item.status_counts.queued}; written_back=${item.status_counts.written_back}; needs_revision=${item.status_counts.needs_revision}`,
   ]);
 }
 

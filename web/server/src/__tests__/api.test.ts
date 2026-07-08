@@ -745,12 +745,12 @@ describe('System API', () => {
       expect(res.body.data.next_development_tasks).toEqual(expect.arrayContaining([
         expect.objectContaining({
           task_id: 'field_workbench_controls',
-          progress_percent: 98,
+          progress_percent: 99,
           related_plan_items: [1],
         }),
         expect.objectContaining({
           task_id: 'manual_review_closure',
-          progress_percent: 97,
+          progress_percent: 98,
           related_plan_items: [2],
         }),
         expect.objectContaining({
@@ -765,7 +765,7 @@ describe('System API', () => {
         }),
         expect.objectContaining({
           task_id: 'mvp_completion_surface',
-          progress_percent: 97,
+          progress_percent: 98,
           related_plan_items: [5],
         }),
       ]));
@@ -1069,6 +1069,17 @@ describe('System API', () => {
             signoff_batch_count: 1,
             missing_signoff_batch_count: 0,
             signoff_batch_ids: ['api-unified-signoff-001'],
+            signoff_batch_summaries: [expect.objectContaining({
+              signoff_batch_id: 'api-unified-signoff-001',
+              signoff_batch_note: '统一写回导出审签批次归档测试。',
+              item_count: 1,
+              expansion_handoff_count: 1,
+              ready_for_signoff_count: 1,
+              blocked_for_signoff_count: 0,
+              status_counts: expect.objectContaining({
+                queued: 1,
+              }),
+            })],
             source_ref_count: expect.any(Number),
             candidate_field_count: 4,
             items: [expect.objectContaining({
@@ -1087,6 +1098,7 @@ describe('System API', () => {
             'province_markdown_written=false',
             'review_handoff_items=1',
             'review_handoff_requires_signoff=1',
+            'signoff_batch_summaries=1',
             expect.stringMatching(/^signoff_manifest_id=kwb-signoff-/),
             expect.stringMatching(/^signoff_manifest_sha256=[a-f0-9]{64}$/),
             'default_action=export_only_no_file_write',
@@ -1102,6 +1114,10 @@ describe('System API', () => {
             sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
             signoff_batch_ids: ['api-unified-signoff-001'],
           }),
+          signoff_batch_summaries: [expect.objectContaining({
+            signoff_batch_id: 'api-unified-signoff-001',
+            ready_for_signoff_count: 1,
+          })],
         }),
         project_patch: {
           schema_version: 'project-knowledge-writeback-patch/v1',
@@ -1122,6 +1138,8 @@ describe('System API', () => {
       expect(exportRes.body.data.markdown).toContain('province_markdown_written: false');
       expect(exportRes.body.data.markdown).toContain('Export Preflight');
       expect(exportRes.body.data.markdown).toContain('Signoff Package');
+      expect(exportRes.body.data.markdown).toContain('Signoff Batch Summaries');
+      expect(exportRes.body.data.markdown).toContain('signoff_batch_summary_count: 1');
       expect(exportRes.body.data.markdown).toContain('signoff_manifest_id: kwb-signoff-');
       expect(exportRes.body.data.markdown).toContain('expansion_field_diff');
       expect(exportRes.body.data.markdown).toContain('项目草案来源');
@@ -1673,11 +1691,11 @@ describe('System API', () => {
           domain_pack_expansion_writeback_written_back_count: 0,
           domain_pack_expansion_writeback_needs_revision_count: 0,
           domain_pack_expansion_development_progress_average_percent: 98,
-          domain_pack_expansion_field_workbench_controls_percent: 98,
-          domain_pack_expansion_manual_review_closure_percent: 97,
+          domain_pack_expansion_field_workbench_controls_percent: 99,
+          domain_pack_expansion_manual_review_closure_percent: 98,
           domain_pack_expansion_writeback_safety_export_percent: 100,
           domain_pack_expansion_second_batch_real_candidates_percent: 96,
-          domain_pack_expansion_mvp_completion_surface_percent: 97,
+          domain_pack_expansion_mvp_completion_surface_percent: 98,
           story_agent_command_surface_status: 'ready',
           story_agent_command_surface_percent: 100,
           mcp_story_agent_tool_count: expect.any(Number),
@@ -1836,11 +1854,11 @@ describe('System API', () => {
         'domain_pack_expansion_writeback_target_files=3',
         'domain_pack_expansion_manual_writeback_required=62',
         'domain_pack_expansion_next_development_tasks=5',
-        'domain_pack_expansion_plan_1_field_workbench_controls_percent=98',
-        'domain_pack_expansion_plan_2_manual_review_closure_percent=97',
+        'domain_pack_expansion_plan_1_field_workbench_controls_percent=99',
+        'domain_pack_expansion_plan_2_manual_review_closure_percent=98',
         'domain_pack_expansion_plan_3_writeback_safety_export_percent=100',
         'domain_pack_expansion_plan_4_second_batch_real_candidates_percent=96',
-        'domain_pack_expansion_plan_5_mvp_completion_surface_percent=97',
+        'domain_pack_expansion_plan_5_mvp_completion_surface_percent=98',
         expect.stringContaining('knowledge_writeback_review_handoff='),
         expect.stringContaining('knowledge_writeback_review_handoff_signoff='),
         expect.stringContaining('knowledge_writeback_review_handoff_reviewer_identities='),

@@ -6388,6 +6388,24 @@ export interface KnowledgeWritebackQueueReviewHandoffItem {
   required_action: string;
 }
 
+export interface KnowledgeWritebackQueueSignoffBatchSummary {
+  signoff_batch_id: string;
+  signoff_batch_note?: string;
+  item_count: number;
+  project_handoff_count: number;
+  expansion_handoff_count: number;
+  requires_manual_signoff_count: number;
+  review_note_count: number;
+  missing_review_note_count: number;
+  reviewer_identity_count: number;
+  missing_reviewer_identity_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  status_counts: Record<KnowledgeWritebackStatus, number>;
+  ready_for_signoff_count: number;
+  blocked_for_signoff_count: number;
+}
+
 export interface KnowledgeWritebackQueueReviewSignoffManifest {
   schema_version: 'knowledge-writeback-queue-signoff-manifest/v1';
   manifest_id: string;
@@ -6417,6 +6435,7 @@ export interface KnowledgeWritebackQueueReviewHandoff {
   signoff_batch_count: number;
   missing_signoff_batch_count: number;
   signoff_batch_ids: string[];
+  signoff_batch_summaries: KnowledgeWritebackQueueSignoffBatchSummary[];
   source_ref_count: number;
   candidate_field_count: number;
   requires_manual_signoff_count: number;
@@ -6433,6 +6452,7 @@ export interface KnowledgeWritebackQueueSignoffPackage {
   filters: KnowledgeWritebackQueueExportFilters;
   signoff_manifest: KnowledgeWritebackQueueReviewSignoffManifest;
   status_counts: Record<KnowledgeWritebackStatus, number>;
+  signoff_batch_summaries: KnowledgeWritebackQueueSignoffBatchSummary[];
   operator_checklist: string[];
   handoff_item_count: number;
   handoff_items: KnowledgeWritebackQueueReviewHandoffItem[];

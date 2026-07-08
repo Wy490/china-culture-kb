@@ -180,7 +180,7 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         task_id: 'field_workbench_controls',
         status: 'in_progress',
-        progress_percent: 98,
+        progress_percent: 99,
         progress_note: expect.stringContaining('统一写回队列'),
         related_plan_items: [1],
         direct_writeback_to_province_markdown: false,
@@ -188,7 +188,7 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         task_id: 'manual_review_closure',
         status: 'ready',
-        progress_percent: 97,
+        progress_percent: 98,
         related_plan_items: [2],
       }),
       expect.objectContaining({
@@ -207,7 +207,7 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         task_id: 'mvp_completion_surface',
         status: 'ready',
-        progress_percent: 97,
+        progress_percent: 98,
         related_plan_items: [5],
       }),
     ]));
