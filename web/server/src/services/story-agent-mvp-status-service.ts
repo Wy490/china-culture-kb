@@ -143,10 +143,14 @@ interface KnowledgeWritebackQueueMetrics {
   review_handoff_reviewer_identity_count: number;
   review_handoff_missing_reviewer_identity_count: number;
   review_handoff_source_ref_count: number;
+  review_handoff_signoff_batch_summary_count: number;
+  review_handoff_signoff_ready_count: number;
+  review_handoff_signoff_blocked_count: number;
   review_handoff_signoff_manifest_id: string;
   review_handoff_signoff_manifest_sha256: string;
   signoff_package_schema: 'knowledge-writeback-queue-signoff-package/v1' | '';
   signoff_package_item_count: number;
+  signoff_package_batch_summary_count: number;
   read_error?: string;
 }
 
@@ -545,14 +549,22 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
   | 'review_handoff_reviewer_identity_count'
   | 'review_handoff_missing_reviewer_identity_count'
   | 'review_handoff_source_ref_count'
+  | 'review_handoff_signoff_batch_summary_count'
+  | 'review_handoff_signoff_ready_count'
+  | 'review_handoff_signoff_blocked_count'
   | 'review_handoff_signoff_manifest_id'
   | 'review_handoff_signoff_manifest_sha256'
   | 'signoff_package_schema'
   | 'signoff_package_item_count'
+  | 'signoff_package_batch_summary_count'
 >> {
   try {
     const exportPackage = await getKnowledgeWritebackQueueExportPackage();
     const reviewHandoff = exportPackage.preflight.review_handoff;
+    const signoffReadyCount = reviewHandoff.signoff_batch_summaries
+      .reduce((sum, item) => sum + item.ready_for_signoff_count, 0);
+    const signoffBlockedCount = reviewHandoff.signoff_batch_summaries
+      .reduce((sum, item) => sum + item.blocked_for_signoff_count, 0);
     return {
       unified_export_schema: exportPackage.schema_version,
       unified_export_ready: true,
@@ -569,10 +581,14 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       review_handoff_reviewer_identity_count: reviewHandoff.reviewer_identity_count,
       review_handoff_missing_reviewer_identity_count: reviewHandoff.missing_reviewer_identity_count,
       review_handoff_source_ref_count: reviewHandoff.source_ref_count,
+      review_handoff_signoff_batch_summary_count: reviewHandoff.signoff_batch_summaries.length,
+      review_handoff_signoff_ready_count: signoffReadyCount,
+      review_handoff_signoff_blocked_count: signoffBlockedCount,
       review_handoff_signoff_manifest_id: reviewHandoff.signoff_manifest.manifest_id,
       review_handoff_signoff_manifest_sha256: reviewHandoff.signoff_manifest.sha256,
       signoff_package_schema: exportPackage.signoff_package.schema_version,
       signoff_package_item_count: exportPackage.signoff_package.handoff_item_count,
+      signoff_package_batch_summary_count: exportPackage.signoff_package.signoff_batch_summaries.length,
     };
   } catch {
     return {
@@ -591,10 +607,14 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       review_handoff_reviewer_identity_count: 0,
       review_handoff_missing_reviewer_identity_count: 0,
       review_handoff_source_ref_count: 0,
+      review_handoff_signoff_batch_summary_count: 0,
+      review_handoff_signoff_ready_count: 0,
+      review_handoff_signoff_blocked_count: 0,
       review_handoff_signoff_manifest_id: '',
       review_handoff_signoff_manifest_sha256: '',
       signoff_package_schema: '',
       signoff_package_item_count: 0,
+      signoff_package_batch_summary_count: 0,
     };
   }
 }
@@ -705,7 +725,11 @@ function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryA
       `review_handoff_reviewer_identities=${metrics.review_handoff_reviewer_identity_count}`,
       `review_handoff_missing_reviewer_identities=${metrics.review_handoff_missing_reviewer_identity_count}`,
       `review_handoff_source_refs=${metrics.review_handoff_source_ref_count}`,
+      `review_handoff_signoff_batches=${metrics.review_handoff_signoff_batch_summary_count}`,
+      `review_handoff_signoff_ready=${metrics.review_handoff_signoff_ready_count}`,
+      `review_handoff_signoff_blocked=${metrics.review_handoff_signoff_blocked_count}`,
       `review_handoff_signoff_manifest_id=${metrics.review_handoff_signoff_manifest_id || 'none'}`,
+      `signoff_package_batches=${metrics.signoff_package_batch_summary_count}`,
       `read_error=${metrics.read_error ?? 'none'}`,
       'candidate_review_required=true',
       'direct_province_write=false',
@@ -1060,9 +1084,13 @@ function progressSlices(
         `knowledge_writeback_review_handoff_missing_notes=${writebackMetrics.review_handoff_missing_review_note_count}`,
         `knowledge_writeback_review_handoff_reviewer_identities=${writebackMetrics.review_handoff_reviewer_identity_count}`,
         `knowledge_writeback_review_handoff_missing_reviewer_identities=${writebackMetrics.review_handoff_missing_reviewer_identity_count}`,
+        `knowledge_writeback_review_handoff_signoff_batches=${writebackMetrics.review_handoff_signoff_batch_summary_count}`,
+        `knowledge_writeback_review_handoff_signoff_ready=${writebackMetrics.review_handoff_signoff_ready_count}`,
+        `knowledge_writeback_review_handoff_signoff_blocked=${writebackMetrics.review_handoff_signoff_blocked_count}`,
         `knowledge_writeback_review_handoff_manifest=${writebackMetrics.review_handoff_signoff_manifest_id || 'none'}`,
         `knowledge_writeback_signoff_package_schema=${writebackMetrics.signoff_package_schema || 'none'}`,
         `knowledge_writeback_signoff_package_items=${writebackMetrics.signoff_package_item_count}`,
+        `knowledge_writeback_signoff_package_batches=${writebackMetrics.signoff_package_batch_summary_count}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
         `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
         `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
@@ -1162,8 +1190,10 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- knowledge writeback review handoff reviewer identities: ${report.summary.knowledge_writeback_review_handoff_reviewer_identity_count}`,
     `- knowledge writeback review handoff missing reviewer identities: ${report.summary.knowledge_writeback_review_handoff_missing_reviewer_identity_count}`,
     `- knowledge writeback review handoff source refs: ${report.summary.knowledge_writeback_review_handoff_source_ref_count}`,
+    `- knowledge writeback review handoff signoff batches: ${report.summary.knowledge_writeback_review_handoff_signoff_batch_summary_count}`,
+    `- knowledge writeback review handoff signoff ready/blocked: ${report.summary.knowledge_writeback_review_handoff_signoff_ready_count}/${report.summary.knowledge_writeback_review_handoff_signoff_blocked_count}`,
     `- knowledge writeback review handoff signoff manifest: ${report.summary.knowledge_writeback_review_handoff_signoff_manifest_id || 'none'}`,
-    `- knowledge writeback signoff package: ${report.summary.knowledge_writeback_signoff_package_schema || 'none'} (${report.summary.knowledge_writeback_signoff_package_item_count} items)`,
+    `- knowledge writeback signoff package: ${report.summary.knowledge_writeback_signoff_package_schema || 'none'} (${report.summary.knowledge_writeback_signoff_package_item_count} items, ${report.summary.knowledge_writeback_signoff_package_batch_summary_count} batches)`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
     `- real GEARS endpoint configured: ${report.summary.real_gears_endpoint_configured}`,
@@ -1367,10 +1397,14 @@ export async function getStoryAgentMvpStatus(
       knowledge_writeback_review_handoff_reviewer_identity_count: writebackMetrics.review_handoff_reviewer_identity_count,
       knowledge_writeback_review_handoff_missing_reviewer_identity_count: writebackMetrics.review_handoff_missing_reviewer_identity_count,
       knowledge_writeback_review_handoff_source_ref_count: writebackMetrics.review_handoff_source_ref_count,
+      knowledge_writeback_review_handoff_signoff_batch_summary_count: writebackMetrics.review_handoff_signoff_batch_summary_count,
+      knowledge_writeback_review_handoff_signoff_ready_count: writebackMetrics.review_handoff_signoff_ready_count,
+      knowledge_writeback_review_handoff_signoff_blocked_count: writebackMetrics.review_handoff_signoff_blocked_count,
       knowledge_writeback_review_handoff_signoff_manifest_id: writebackMetrics.review_handoff_signoff_manifest_id,
       knowledge_writeback_review_handoff_signoff_manifest_sha256: writebackMetrics.review_handoff_signoff_manifest_sha256,
       knowledge_writeback_signoff_package_schema: writebackMetrics.signoff_package_schema,
       knowledge_writeback_signoff_package_item_count: writebackMetrics.signoff_package_item_count,
+      knowledge_writeback_signoff_package_batch_summary_count: writebackMetrics.signoff_package_batch_summary_count,
       blocker_count: productionPortfolio.summary.blocker_count,
       warning_count: productionPortfolio.summary.warning_count,
       generated_governance_action_count: generatedGovernancePlan.actions.length,

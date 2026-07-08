@@ -91,6 +91,22 @@
         type="button"
         class="writeback-page__action writeback-page__action--secondary"
         :disabled="Boolean(exportingFormat)"
+        @click="downloadUnifiedExport('markdown')"
+      >
+        {{ exportingFormat === 'download-unified-markdown' ? '下载中…' : '下载统一 MD' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
+        @click="downloadUnifiedExport('json')"
+      >
+        {{ exportingFormat === 'download-unified-json' ? '下载中…' : '下载统一 JSON' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
         @click="copyReviewHandoffChecklist"
       >
         {{ exportingFormat === 'handoff-markdown' ? '复制中…' : '复制签收清单' }}
@@ -102,6 +118,14 @@
         @click="copySignoffManifestPackage"
       >
         {{ exportingFormat === 'signoff-json' ? '复制中…' : '复制签收 Manifest' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
+        @click="downloadSignoffManifestPackage"
+      >
+        {{ exportingFormat === 'download-signoff-json' ? '下载中…' : '下载签收包' }}
       </button>
       <button
         type="button"
@@ -456,7 +480,7 @@ const expansionDraft = ref<DomainPackExpansionWritebackDraftPackage | null>(null
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | 'handoff-markdown' | 'signoff-json' | ''>('')
+const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | 'download-unified-markdown' | 'download-unified-json' | 'handoff-markdown' | 'signoff-json' | 'download-signoff-json' | ''>('')
 const updatingTaskId = ref('')
 const searchQuery = ref('')
 const projectFilter = ref('')
@@ -1137,6 +1161,49 @@ async function copyUnifiedExport(format: 'markdown' | 'json') {
   }
 }
 
+async function downloadUnifiedExport(format: 'markdown' | 'json') {
+  const visibleProjectItems = filteredItems.value
+  const visibleExpansionItems = filteredExpansionItems.value
+  if (visibleProjectItems.length + visibleExpansionItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可下载归档的写回草案'
+    return
+  }
+
+  exportingFormat.value = format === 'json' ? 'download-unified-json' : 'download-unified-markdown'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePackage({
+      ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+      ...(videoTypeFilter.value ? { video_type: videoTypeFilter.value } : {}),
+      ...(provinceFilter.value ? { province: provinceFilter.value } : {}),
+      ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+      ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+      project_task_keys: visibleProjectItems.map(writebackItemKey),
+      expansion_review_item_ids: visibleExpansionItems.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      const manifest = res.data.signoff_package.signoff_manifest
+      const baseName = safeDownloadName(`knowledge-writeback-${manifest.manifest_id}-${manifest.sha256.slice(0, 12)}`)
+      const content = format === 'json'
+        ? JSON.stringify(res.data, null, 2)
+        : res.data.markdown
+      const extension = format === 'json' ? 'json' : 'md'
+      const mime = format === 'json' ? 'application/json;charset=utf-8' : 'text/markdown;charset=utf-8'
+      downloadTextFile(`${baseName}.${extension}`, content, mime)
+      const exportLabel = format === 'json' ? '统一 JSON 归档' : '统一 Markdown 归档'
+      copyMessage.value = `已下载 ${exportLabel}：${manifest.manifest_id}，项目 ${res.data.project_approved_count} 条，扩库 ${res.data.expansion_approved_count} 条，待人工签收 ${res.data.preflight.review_handoff.requires_manual_signoff_count} 条；省份 Markdown 未写入。`
+    } else {
+      error.value = res.error?.message ?? '下载统一写回归档失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '下载统一写回归档失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
 async function copyReviewHandoffChecklist() {
   if (reviewHandoffItems.value.length === 0) {
     copyMessage.value = ''
@@ -1193,6 +1260,44 @@ async function copySignoffManifestPackage() {
   }
 }
 
+async function downloadSignoffManifestPackage() {
+  const visibleProjectItems = filteredItems.value
+  const visibleExpansionItems = filteredExpansionItems.value
+  if (visibleProjectItems.length + visibleExpansionItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可下载归档的签收包'
+    return
+  }
+
+  exportingFormat.value = 'download-signoff-json'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePackage({
+      ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+      ...(videoTypeFilter.value ? { video_type: videoTypeFilter.value } : {}),
+      ...(provinceFilter.value ? { province: provinceFilter.value } : {}),
+      ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+      ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+      project_task_keys: visibleProjectItems.map(writebackItemKey),
+      expansion_review_item_ids: visibleExpansionItems.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      const signoffPackage = res.data.signoff_package
+      const manifest = signoffPackage.signoff_manifest
+      const filename = `${safeDownloadName(`knowledge-signoff-package-${manifest.manifest_id}-${manifest.sha256.slice(0, 12)}`)}.json`
+      downloadTextFile(filename, JSON.stringify(signoffPackage, null, 2), 'application/json;charset=utf-8')
+      copyMessage.value = `已下载签收包：${manifest.manifest_id}，${signoffPackage.handoff_item_count} 条交接项，批次 ${signoffPackage.signoff_batch_summaries.length} 个；省份 Markdown 未写入。`
+    } else {
+      error.value = res.error?.message ?? '下载签收包失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '下载签收包失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
 function renderReviewHandoffChecklist(): string {
   const statusText = statusCountSummary(reviewHandoffItems.value.reduce((counts, item) => {
     counts[item.writeback_status] += 1
@@ -1237,6 +1342,22 @@ function renderReviewHandoffChecklist(): string {
       `  - action: ${item.required_action}`,
     ]),
   ].join('\n')
+}
+
+function safeDownloadName(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'knowledge-writeback-export'
+}
+
+function downloadTextFile(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
 }
 
 function localManifestFingerprint(input: string): string {
