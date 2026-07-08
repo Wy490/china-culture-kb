@@ -298,6 +298,55 @@ describe('story blueprint and genre quality', () => {
     expect(story.full_text).not.toMatch(/目标明确|质量信号|名场面可拍/);
   });
 
+  it('does not apply Mao youth outline drift checks to Zhou Dunyi youth outlines', () => {
+    const story = {
+      ...makeStory(),
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      original_user_query: '系列名：濂溪少年志。周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。本集主冲突：主角第一次面对“拒签”带来的选择。',
+      logline: '少年周敦颐第一次意识到拒签不是旁观问题，而是必须亲自选择。',
+      theme: '拒签不是逞强，而是在疑案前守住良知。',
+      full_text: [
+        '雨夜，周敦颐在濂溪旧书旁停住笔，发现案卷里的证词前后不合。',
+        '若照旧签字，囚犯可能含冤而死；若坚持重查，他就要得罪上官、承担代价。',
+        '他推开判词说：我不能签字，先重问证人、重看现场。',
+        '清晨，他退回的不是一纸文书，而是守住人命面前的良知。',
+      ].join('\n\n'),
+    } as StoryGenerateResult;
+
+    const report = validateGenreStoryQuality({
+      story,
+      baseReport: makeBaseReport(),
+      narrativePatternIds: ['hero_choice', 'cinematic_setpiece_adaptation', 'source_fidelity_adaptation'],
+    });
+
+    expect(report.issues.filter(issue => issue.includes('用户大纲偏离'))).toEqual([]);
+    expect(report.issues.filter(issue => issue.includes('流派质量信号偏弱'))).toEqual([]);
+    expect(report.issues.join('\n')).not.toContain('韶山');
+  });
+
+  it('keeps Mao youth outline drift checks for Mao-specific outlines', () => {
+    const story = {
+      ...makeStory(),
+      source_entry: '毛泽东——从韶山冲走向天安门的农家革命者',
+      video_type: 'character_story',
+      original_user_query: '少年毛泽东从韶山私塾到长沙求学，在第一师范接触新思想。',
+      full_text: '少年毛泽东离开家乡，故事直接跳到北京和天安门的历史余响。',
+      scene_breakdown: makeStory().scene_breakdown.map(scene => ({
+        ...scene,
+        characters: ['毛泽东'],
+        plot: '少年毛泽东离开家乡，故事直接跳到北京和天安门的历史余响。',
+      })),
+    } as StoryGenerateResult;
+
+    const report = validateGenreStoryQuality({
+      story,
+      baseReport: makeBaseReport(),
+    });
+
+    expect(report.issues.some(issue => issue.includes('用户大纲偏离') && issue.includes('韶山'))).toBe(true);
+  });
+
   it('flags adaptation drift when user novel characters disappear', () => {
     const source = '少年阿青在书院门口等雨停，师友误会他偷走旧书。阿青决定留下来查清真相。夜里，阿青举着油灯穿过藏书楼。';
     const story = {

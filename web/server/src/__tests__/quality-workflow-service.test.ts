@@ -148,6 +148,70 @@ describe('quality-workflow-service', () => {
     expect(report.issues.some(issue => issue.includes('大纲覆盖不足'))).toBe(false);
   });
 
+  it('scores episode-focused serial outlines without requiring meta-only instructions', () => {
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      original_user_query: [
+        '系列《濂溪少年志》第1集《第1集：未签的案卷》',
+        '本集只写第1集，不展开其他集。',
+        '系列梗概：周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。',
+        '本集目标：90秒左右，约15格。',
+        '本集阶段：phase-1：建立主角目标、世界规则和核心问题。',
+        '阶段目标：建立主角目标、世界规则和核心问题。',
+        '本集开场：用周敦颐的视觉细节开场，让主角第一次碰到“拒签”的问题。',
+        '本集主冲突：主角第一次面对“拒签”带来的选择。',
+        '中段反转：主角发现“拒签”不是旁观问题，而是必须亲自选择。',
+        '人物变化：第1集后，周敦颐对“拒签”的理解推进一层。',
+        '结尾钩子：主角得到新信息，也失去一种原本确定的判断。',
+        '关键角色：周敦颐、少年。',
+        '承接：建立主角初始状态、核心问题和第一条长期线索。',
+      ].join('\n'),
+      full_text: [
+        '雨夜，周敦颐停住笔，案卷首页压着未签文书，只等他画押。',
+        '若照旧签字，囚犯可能含冤而死；若坚持重查，他就要得罪上官。',
+        '少年站在门外看见他推回判词，第一次明白拒签不是旁观问题。',
+        '门外又传来证人改口的消息，下一步必须追到现场。',
+      ].join('\n\n'),
+      scene_breakdown: [
+        {
+          ...makeStory().scene_breakdown[0],
+          title: '未签案卷',
+          plot: '周敦颐停住笔，案卷首页压着未签文书，只等他画押。',
+          key_action: '停住笔、翻开案卷',
+          characters: ['周敦颐', '少年'],
+          visual_prompt: '县衙雨夜，未签文书，烛火，少年门外侧影',
+        },
+        {
+          ...makeStory().scene_breakdown[1],
+          title: '拒签选择',
+          plot: '若照旧签字，囚犯可能含冤而死；若坚持重查，他就要得罪上官。',
+          key_action: '推回判词',
+          characters: ['周敦颐', '上官', '少年'],
+          visual_prompt: '上官推笔，周敦颐按住案卷，少年屏息',
+        },
+        {
+          ...makeStory().scene_breakdown[2],
+          title: '证人改口',
+          plot: '少年站在门外看见他推回判词，门外又传来证人改口的消息，下一步必须追到现场。',
+          key_action: '追向现场',
+          characters: ['周敦颐', '少年', '证人'],
+          visual_prompt: '清晨县衙门口，证人回头，未签文书定格',
+        },
+      ],
+    };
+
+    const report = enrichStoryQualityReport({
+      story,
+      qualityReport: makeBaseReport(),
+    });
+
+    expect(report.outline_coverage_report?.nodes.some(node => node.text.includes('本集只写'))).toBe(false);
+    expect(report.outline_coverage_report?.nodes.some(node => node.text.includes('90秒'))).toBe(false);
+    expect(report.outline_coverage_report?.nodes.some(node => node.text.includes('phase-1'))).toBe(false);
+    expect(report.outline_coverage_report?.coverage_score).toBeGreaterThanOrEqual(70);
+    expect(report.issues.some(issue => issue.includes('大纲覆盖不足'))).toBe(false);
+  });
+
   it('builds P0 reports and repair actions for outline, pattern, and GEARS gaps', () => {
     const report = enrichStoryQualityReport({
       story: {

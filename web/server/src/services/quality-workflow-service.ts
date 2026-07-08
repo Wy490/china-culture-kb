@@ -152,7 +152,8 @@ function buildOutlineCoverageReport(story: StoryGenerateResult): OutlineCoverage
   const coveredNodes = nodes.filter(node => node.status === 'covered').length;
   const partialNodes = nodes.filter(node => node.status === 'partial').length;
   const missingNodes = nodes.filter(node => node.status === 'missing').length;
-  const coverageScore = Math.max(0, Math.round(((coveredNodes + partialNodes * 0.5) / nodes.length) * 100));
+  const partialWeight = isEpisodeFocusedOutline(nodes.map(node => node.text)) ? 0.75 : 0.5;
+  const coverageScore = Math.max(0, Math.round(((coveredNodes + partialNodes * partialWeight) / nodes.length) * 100));
   const outlineTokens = new Set(sourceNodes.flatMap(extractMeaningfulTokens));
   const driftItems = story.scene_breakdown
     .filter(scene => outlineTokens.size > 0 && extractMeaningfulTokens(storySceneText(scene)).filter(token => outlineTokens.has(token)).length === 0)
@@ -605,12 +606,27 @@ function extractOutlineNodes(story: StoryGenerateResult): string[] {
     .split(/\n+|[；;。！？!?]/)
     .map(item => item.replace(/^\s*[-*0-9一二三四五六七八九十、.）)]+/, '').trim())
     .filter(item => item.length >= 6)
-    .slice(0, 10);
-  const nodes = adaptationNodes.length > 0 ? adaptationNodes : rawNodes;
+    .filter(item => !isOutlineMetaInstruction(item));
+  const episodeNodes = rawNodes.filter(isEpisodeOutlineNode);
+  const nodes = adaptationNodes.length > 0
+    ? adaptationNodes
+    : (episodeNodes.length >= 4 ? episodeNodes : rawNodes).slice(0, 10);
   return nodes
     .map(item => item.trim())
     .filter((item, index, arr) => item && arr.indexOf(item) === index)
     .slice(0, 10);
+}
+
+function isOutlineMetaInstruction(text: string): boolean {
+  return /^(只生成|本集只写|不生成其他集|本集目标：\d+秒|本集目标：\d+.*格|本集阶段：phase-|阶段目标：建立主角目标|连续性账本|制作约束审计|系列记忆精准召回|召回-|连续性：|文化边界：|叙事流派机制：|知识库使用规则：|长期线索：|角色弧线：|输出要求：|全系列：|承接：建立主角初始状态)/.test(text);
+}
+
+function isEpisodeOutlineNode(text: string): boolean {
+  return /^(系列《|系列梗概|系列主题|本集标题|本集目标|本集阶段|阶段目标|本集蓝图|本集目标场景功能|本集主冲突|关键角色|本集新增信息|本集伏笔|本集回收|本集结尾钩子|本集后连续性状态|下一集需要承接|开场钩子|冲突升级|中段反转|人物变化|结尾钩子)/.test(text);
+}
+
+function isEpisodeFocusedOutline(nodes: string[]): boolean {
+  return nodes.some(node => /^(系列《|本集标题|本集目标|本集阶段|本集主冲突|本集结尾钩子|下一集需要承接)/.test(node));
 }
 
 function isLikelyStructuredOutline(text: string): boolean {

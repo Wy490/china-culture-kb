@@ -206,4 +206,62 @@ describe('quality-repair-service', () => {
     expect(story.full_text).not.toMatch(/目标明确|质量信号|名场面可拍/);
     expect(story.scene_breakdown[0].visual_prompt).toContain('镜头推近定格');
   });
+
+  it('recognizes backlog quality wording when applying local AI comic repair', async () => {
+    const baseStory = makeAiComicStory();
+    const pollutedScenes = baseStory.scene_breakdown.map(scene => ({
+      ...scene,
+      visual_prompt: `${scene.visual_prompt}——核心画面是第1集的紧张开场，连续漫剧第1集，保持人物状态、线索开合和结尾钩子前后一致。\n生成优先级：剧情推进与资料完整保持均衡，关键知识点必须进入可观看的场景行动。氛围`,
+    }));
+    const backlogStory = {
+      ...baseStory,
+      original_user_query: '系列名：濂溪少年志。周敦颐少年在濂溪读书，面对南安军拒签冤案，坚持良知。本集主冲突：主角第一次面对“拒签”带来的选择。',
+      scene_breakdown: pollutedScenes,
+      gears_segments: pollutedScenes.map(scene => ({
+        segment_id: scene.scene_id,
+        source_scene_id: scene.scene_id,
+        duration_sec: scene.duration_sec,
+        panel_count: 6,
+        script_text: scene.plot,
+        purpose: scene.dramatic_function,
+        visual_focus: [],
+        cultural_constraints: [],
+        video_type: 'ai_comic_drama' as const,
+        presentation_style: 'ai_comic' as const,
+        segment_prompt_hint: scene.visual_prompt,
+      })),
+      quality_report: {
+        ...makeAiComicQualityReport(),
+        issues: [
+          '缺少主角选择——没有明确的选择行为',
+          '用户大纲偏离：用户大纲强调少年求学与思想形成，正文没有覆盖韶山、私塾、长沙求学等核心阶段。',
+          '流派质量信号偏弱：人物不丢失',
+          '流派质量信号偏弱：关系不改写',
+          '流派质量信号偏弱：主线不换题',
+          '流派质量信号偏弱：新增内容不抢戏',
+        ],
+        repair_actions: [
+          '补出主角明确选择行为。',
+          '回到用户大纲，围绕濂溪少年志、周敦颐知识线和拒签主线推进。',
+          '对齐样片信号：人物不丢失。',
+          '对齐样片信号：关系不改写。',
+        ],
+        repair_action_items: [],
+      },
+      _request_meta: {
+        narrative_pattern_ids: ['hero_choice', 'cinematic_setpiece_adaptation', 'source_fidelity_adaptation'],
+      },
+    } as StoryGenerateResult & { _request_meta: { narrative_pattern_ids: string[] } };
+
+    const { story, trace } = await repairStoryWithQualityWorkflow(backlogStory, {});
+
+    expect(trace.applied).toBe(true);
+    expect(trace.reason).toBe('local_ai_comic_quality_repair_applied');
+    expect(story.quality_report?.issues.join('\n')).not.toContain('韶山');
+    expect(story.quality_report?.issues.filter(issue => issue.includes('流派质量信号偏弱'))).toEqual([]);
+    expect(story.full_text).toContain('我不能签字');
+    expect(story.full_text).toContain('先重问证人、重看现场');
+    expect(story.quality_report?.audience_text_report?.polluted_terms ?? []).toEqual([]);
+    expect(story.gears_segments.map(segment => segment.segment_prompt_hint ?? '').join('\n')).not.toMatch(/生成优先级|核心画面是/);
+  });
 });

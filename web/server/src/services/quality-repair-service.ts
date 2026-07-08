@@ -364,12 +364,20 @@ function applyLocalAiComicQualityRepair(
     ...(story.quality_report?.issues ?? []),
     ...actions.flatMap(action => [action.label, action.prompt, action.expected_effect]),
   ].join('\n');
-  if (!/(目标明确|两难成立|精神落点来自选择|名场面可拍|视听动作具体|情绪高点清楚|不靠长解释)/.test(actionText)) {
+  if (!/(目标明确|两难成立|精神落点来自选择|名场面可拍|视听动作具体|情绪高点清楚|不靠长解释|缺少主角选择|没有明确的选择行为|用户大纲偏离|人物不丢失|关系不改写|主线不换题|新增内容不抢戏)/.test(actionText)) {
     return { story, applied: false };
   }
 
   let changed = false;
-  const scenes = story.scene_breakdown.map(scene => ({ ...scene }));
+  const scenes = story.scene_breakdown.map(scene => {
+    const nextScene = { ...scene };
+    const visualPrompt = sanitizeAudiencePromptText(scene.visual_prompt);
+    const cameraSuggestion = sanitizeAudiencePromptText(scene.camera_suggestion);
+    changed = changed || visualPrompt !== scene.visual_prompt || cameraSuggestion !== scene.camera_suggestion;
+    nextScene.visual_prompt = visualPrompt;
+    nextScene.camera_suggestion = cameraSuggestion;
+    return nextScene;
+  });
   const first = scenes[0];
   const middle = scenes.find(scene => /对白|交锋|冲突|选择/.test(`${scene.title}${scene.dramatic_function}`))
     ?? scenes[Math.max(0, Math.floor(scenes.length / 2))];
@@ -433,7 +441,9 @@ function applyLocalAiComicQualityRepair(
   return {
     story: {
       ...story,
-      full_text: scenes.map(scene => scene.plot).join('\n\n'),
+      full_text: scenes
+        .map(scene => [scene.plot, scene.dialogue_or_narration].filter((item): item is string => Boolean(item)).join('\n'))
+        .join('\n\n'),
       scene_breakdown: scenes,
       gears_segments: story.gears_segments.length > 0
         ? buildGearsSegments(scenes, story.video_type, story.presentation_style)
@@ -454,6 +464,24 @@ function appendNaturalPhrase(value: string, phrase: string): string {
   if (!current) return phrase;
   if (phrase.split(/[、，,]/).some(item => item && current.includes(item))) return current;
   return `${current}，${phrase}`;
+}
+
+function sanitizeAudiencePromptText(value: string | undefined): string {
+  const current = value?.trim() ?? '';
+  if (!current) return '';
+  const cleaned = current
+    .replace(/生成优先级：.*?。/g, '')
+    .replace(/核心画面是[^，。；;\n]*(?:[，。；;]|\n|$)/g, '')
+    .replace(/连续漫剧第[0-9一二三四五六七八九十]+集[^，。；;\n]*(?:[，。；;]|\n|$)/g, '')
+    .replace(/保持人物状态、线索开合和结尾钩子前后一致[，。；;]?/g, '')
+    .replace(/\s*\n+\s*/g, '，')
+    .replace(/，{2,}/g, '，')
+    .replace(/^[，。；;\s]+|[，。；;\s]+$/g, '')
+    .trim();
+  return cleaned || current
+    .replace(/生成优先级|核心画面是/g, '')
+    .replace(/\s*\n+\s*/g, '，')
+    .trim();
 }
 
 function appendDialogueLine(value: string | undefined, line: string, evidencePattern: RegExp): string {

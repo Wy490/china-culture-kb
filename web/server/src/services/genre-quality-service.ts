@@ -180,11 +180,19 @@ function findOutlineDriftIssues(story: StoryGenerateResult): string[] {
   const text = normalizeForMatch(storyText(story));
   const issues: string[] = [];
 
-  if (/(少年|韶山|私塾|求学|长沙|第一师范|新思想)/.test(outlineText)) {
-    const expected = ['韶山', '私塾', '求学', '长沙', '思想'];
-    const matchedCount = expected.filter(word => text.includes(word)).length;
-    if (matchedCount < 3) {
-      issues.push('用户大纲强调少年求学与思想形成，正文没有覆盖韶山、私塾、长沙求学等核心阶段。');
+  const maoYouthAnchors = ['毛泽东', '韶山', '长沙', '第一师范', '湘江评论', '驱张运动'];
+  const maoYouthAnchorCount = maoYouthAnchors.filter(word => outlineText.includes(word)).length;
+  const isMaoYouthOutline = maoYouthAnchorCount >= 2
+    || (outlineText.includes('毛泽东') && /(少年|求学|思想|新思想)/.test(outlineText));
+
+  if (isMaoYouthOutline) {
+    const expected = ['韶山', '私塾', '求学', '长沙', '思想'].filter(word => (
+      outlineText.includes(word) || (word === '思想' && outlineText.includes('新思想'))
+    ));
+    const requiredExpected = expected.length > 0 ? expected : ['韶山', '私塾', '求学', '长沙', '思想'];
+    const matchedCount = requiredExpected.filter(word => text.includes(word)).length;
+    if (matchedCount < Math.min(3, requiredExpected.length)) {
+      issues.push(`用户大纲强调少年求学与思想形成，正文没有覆盖${requiredExpected.join('、')}等核心阶段。`);
     }
     if (/湘江评论|驱张运动|井冈山|延安|北京|天安门/.test(text) && !/湘江评论|驱张运动|井冈山|延安|北京|天安门/.test(outlineText)) {
       issues.push('正文把后期政治运动或革命地点推成主线，应压缩为结尾历史余响。');
@@ -231,7 +239,10 @@ function hasSemanticSignalEvidence(text: string, signal: string): boolean {
     [/前3秒有局|开场有强画面/, [/停住了笔/, /疑难案卷/, /门外脚步逼近/, /案卷上的一个疑点/, /江边.{0,12}衣袂/]],
     [/关系冲突强/, [/上官.{0,12}推/, /照旧签了/, /若有冤情/, /这一笔就是人命/, /旁人：活下去/]],
     [/反转可承接|钩子可承接/, [/重新打开/, /冤案还没有结束/, /重看现场/, /下一步/, /继续追问/]],
-    [/不牺牲原作|保留原作主线/, [/良知/, /人命面前/, /据《史记》/, /传统叙述/, /可考线索/]],
+    [/人物不丢失/, [/周敦颐/, /少年/, /屈原/, /主角/, /见证者/]],
+    [/关系不改写/, [/上官/, /少年/, /见证者/, /对照角色/, /师兄/, /关系/, /对峙/, /催签/]],
+    [/主线不换题|不牺牲原作|保留原作主线/, [/拒签/, /未签/, /案卷/, /不能签字/, /良知/, /人命面前/, /据《史记》/, /传统叙述/, /可考线索/]],
+    [/新增内容不抢戏/, [/周敦颐/, /拒签/, /未签/, /良知/, /人命面前/, /屈原/, /汨罗江/]],
     [/现场明确|现实现场/, [/镜头从/, /现场/, /匾额/, /台基/, /展陈/, /游客/, /讲解员/]],
     [/来源提示存在|来源提示|线索物明确/, [/可考线索/, /文献/, /旧地图/, /展陈文字/, /匾额/, /台基/, /据《史记》/]],
     [/版本差异可见/, [/可考事实.{0,20}后世讲述/, /事实梳理/, /后世解释/, /历史再现/]],
