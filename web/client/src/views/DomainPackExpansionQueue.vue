@@ -327,6 +327,49 @@
       </div>
     </section>
 
+    <section v-if="writebackHandoffSummary" class="expansion-page__handoff">
+      <header class="expansion-page__coverage-head">
+        <h2>统一写回交接</h2>
+        <span>
+          {{ writebackHandoffSummary.ready_for_unified_export ? '统一导出就绪' : '统一导出待处理' }}
+          · {{ writebackHandoffSummary.target_file_count }} 个目标文件
+          · {{ writebackHandoffSummary.signoff_batch_count }} 个审签批次
+        </span>
+      </header>
+      <div class="expansion-page__preflight-grid">
+        <div>
+          <span>扩库草案</span>
+          <strong>{{ writebackHandoffSummary.approved_draft_count }}</strong>
+        </div>
+        <div>
+          <span>签收就绪</span>
+          <strong>{{ writebackHandoffSummary.ready_for_signoff_count }}</strong>
+        </div>
+        <div>
+          <span>签收阻断</span>
+          <strong>{{ writebackHandoffSummary.blocked_for_signoff_count }}</strong>
+        </div>
+        <div>
+          <span>来源引用</span>
+          <strong>{{ writebackHandoffSummary.source_ref_count }}</strong>
+        </div>
+      </div>
+      <p>
+        交接目标：{{ writebackHandoffSummary.target_files.join('、') || '无' }}。下一站使用统一写回队列导出 signoff package、manual patch package 和 closure certificate；省份 Markdown 仍未写入。
+      </p>
+      <div class="expansion-page__handoff-actions">
+        <RouterLink class="expansion-page__handoff-link" to="/knowledge-writeback-queue">打开统一写回队列</RouterLink>
+        <button
+          type="button"
+          class="expansion-page__action expansion-page__action--secondary"
+          :disabled="Boolean(copyingFormat) || filteredItems.length === 0"
+          @click="copyUnifiedWritebackExport"
+        >
+          {{ copyingFormat === 'unified-writeback' ? '复制中…' : '复制统一预检' }}
+        </button>
+      </div>
+    </section>
+
     <section v-if="report?.next_development_tasks.length" class="expansion-page__development">
       <header class="expansion-page__coverage-head">
         <h2>下一步开发任务</h2>
@@ -604,6 +647,24 @@ const signoffBatchNote = ref('')
 const reviewNoteDrafts = reactive<Record<string, string>>({})
 
 const batches = computed(() => report.value?.review_packet.batches ?? [])
+const writebackHandoffSummary = computed(() => {
+  const current = report.value
+  if (!current) return null
+  return {
+    schema_version: 'domain-pack-expansion-writeback-handoff-summary/v1' as const,
+    ready_for_unified_export: current.writeback_preflight.ready_for_unified_export,
+    target_file_count: current.writeback_preflight.target_file_count,
+    target_files: current.writeback_preflight.target_files,
+    approved_draft_count: current.writeback_preflight.approved_draft_count,
+    signoff_batch_count: current.review_closure.signoff_batch_count,
+    ready_for_signoff_count: current.review_closure.ready_for_signoff_count,
+    blocked_for_signoff_count: current.review_closure.blocked_for_signoff_count,
+    source_ref_count: current.review_closure.source_ref_count,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    writeback_queue_path: '/knowledge-writeback-queue',
+  }
+})
 const coverageItems = computed(() => [...(report.value?.coverage_by_video_type ?? [])]
   .sort((a, b) => b.seed_target_count - a.seed_target_count || typeLabel(a.video_type).localeCompare(typeLabel(b.video_type), 'zh-Hans-CN')))
 const coverageTotals = computed(() => coverageItems.value.reduce((totals, item) => ({
@@ -1066,10 +1127,11 @@ async function copyReviewClosure() {
       direct_writeback_to_province_markdown: false,
       province_markdown_written: false,
       review_closure: report.value.review_closure,
+      writeback_handoff: writebackHandoffSummary.value,
       next_development_tasks: report.value.next_development_tasks,
     }
     await navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
-    copyMessage.value = `已复制闭环摘要：${payload.review_closure.ready_for_signoff_count}/${payload.review_closure.review_item_count} 条交接就绪，审签批次 ${payload.review_closure.signoff_batch_count} 个；省份 Markdown 未写入。`
+    copyMessage.value = `已复制闭环摘要：${payload.review_closure.ready_for_signoff_count}/${payload.review_closure.review_item_count} 条交接就绪，审签批次 ${payload.review_closure.signoff_batch_count} 个，目标文件 ${payload.writeback_handoff?.target_file_count ?? 0} 个；省份 Markdown 未写入。`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '复制人工复核闭环摘要失败'
   } finally {
@@ -1549,6 +1611,7 @@ onMounted(async () => {
 
 .expansion-page__preflight,
 .expansion-page__closure,
+.expansion-page__handoff,
 .expansion-page__development {
   margin-bottom: 16px;
   border: 1px solid #d9e2ea;
@@ -1624,10 +1687,31 @@ onMounted(async () => {
 }
 
 .expansion-page__preflight p,
+.expansion-page__handoff p,
 .expansion-page__development-item p {
   margin: 10px 0 0;
   color: #4c5e6f;
   line-height: 1.55;
+}
+
+.expansion-page__handoff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.expansion-page__handoff-link {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #2980b9;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #2980b9;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .expansion-page__development-item {
