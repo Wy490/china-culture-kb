@@ -1035,6 +1035,36 @@ describe('production health reports', () => {
           }),
         ]),
       }),
+      manual_patch_package: expect.objectContaining({
+        schema_version: 'knowledge-writeback-manual-patch-package/v1',
+        direct_writeback_to_province_markdown: false,
+        province_markdown_written: false,
+        patch_applyable: false,
+        manual_apply_only: true,
+        ready_for_manual_apply: false,
+        target_file_count: 1,
+        target_files: ['data/provinces/湖南.md'],
+        total_patch_count: 2,
+        project_patch_count: 1,
+        expansion_patch_count: 1,
+        candidate_field_count: 0,
+        target_patches: [expect.objectContaining({
+          target_file: 'data/provinces/湖南.md',
+          patch_applyable: false,
+          manual_apply_only: true,
+          total_patch_count: 2,
+          project_patch_count: 1,
+          expansion_patch_count: 1,
+          append_markdown: expect.stringContaining('short_video_hook_pack_batch::target_01'),
+          review_diff: expect.stringContaining('@@ manual_append_review_only @@'),
+          safety_checks: expect.arrayContaining([
+            'direct_writeback_to_province_markdown=false',
+            'province_markdown_written=false',
+            'patch_applyable=false',
+            'manual_apply_only=true',
+          ]),
+        })],
+      }),
       project_patch: {
         schema_version: 'project-knowledge-writeback-patch/v1',
         approved_count: 1,
@@ -1064,6 +1094,11 @@ describe('production health reports', () => {
     expect(unified.markdown).toContain('Export Preflight');
     expect(unified.markdown).toContain('Review Handoff');
     expect(unified.markdown).toContain('Signoff Package');
+    expect(unified.markdown).toContain('Manual Writeback Patch Package');
+    expect(unified.markdown).toContain('knowledge-writeback-manual-patch-package/v1');
+    expect(unified.markdown).toContain('manual_patch_ready: false');
+    expect(unified.markdown).toContain('patch_applyable: false');
+    expect(unified.markdown).toContain('@@ manual_append_review_only @@');
     expect(unified.markdown).toContain('Signoff Batch Summaries');
     expect(unified.markdown).toContain('signoff_batch_summary_count: 2');
     expect(unified.markdown).toContain('signoff_manifest_id: kwb-signoff-');

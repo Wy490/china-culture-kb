@@ -131,6 +131,22 @@
         type="button"
         class="writeback-page__action writeback-page__action--secondary"
         :disabled="Boolean(exportingFormat)"
+        @click="copyManualPatchPackage"
+      >
+        {{ exportingFormat === 'manual-patch-json' ? '复制中…' : '复制人工 Patch' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
+        @click="downloadManualPatchPackage"
+      >
+        {{ exportingFormat === 'download-manual-patch-json' ? '下载中…' : '下载人工 Patch' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
         @click="copyPatch('markdown')"
       >
         {{ exportingFormat === 'markdown' ? '复制中…' : '复制项目 Patch' }}
@@ -480,7 +496,7 @@ const expansionDraft = ref<DomainPackExpansionWritebackDraftPackage | null>(null
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | 'download-unified-markdown' | 'download-unified-json' | 'handoff-markdown' | 'signoff-json' | 'download-signoff-json' | ''>('')
+const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | 'download-unified-markdown' | 'download-unified-json' | 'handoff-markdown' | 'signoff-json' | 'download-signoff-json' | 'manual-patch-json' | 'download-manual-patch-json' | ''>('')
 const updatingTaskId = ref('')
 const searchQuery = ref('')
 const projectFilter = ref('')
@@ -1293,6 +1309,80 @@ async function downloadSignoffManifestPackage() {
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '下载签收包失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
+async function copyManualPatchPackage() {
+  const visibleProjectItems = filteredItems.value
+  const visibleExpansionItems = filteredExpansionItems.value
+  if (visibleProjectItems.length + visibleExpansionItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可复制的人工 patch 包'
+    return
+  }
+
+  exportingFormat.value = 'manual-patch-json'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePackage({
+      ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+      ...(videoTypeFilter.value ? { video_type: videoTypeFilter.value } : {}),
+      ...(provinceFilter.value ? { province: provinceFilter.value } : {}),
+      ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+      ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+      project_task_keys: visibleProjectItems.map(writebackItemKey),
+      expansion_review_item_ids: visibleExpansionItems.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      const patchPackage = res.data.manual_patch_package
+      await navigator.clipboard.writeText(JSON.stringify(patchPackage, null, 2))
+      copyMessage.value = `已复制人工 patch 包：目标文件 ${patchPackage.target_file_count} 个，patch ${patchPackage.total_patch_count} 条，ready ${patchPackage.ready_for_manual_apply ? 'yes' : 'no'}；省份 Markdown 未写入。`
+    } else {
+      error.value = res.error?.message ?? '导出人工 patch 包失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制人工 patch 包失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
+async function downloadManualPatchPackage() {
+  const visibleProjectItems = filteredItems.value
+  const visibleExpansionItems = filteredExpansionItems.value
+  if (visibleProjectItems.length + visibleExpansionItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可下载的人工 patch 包'
+    return
+  }
+
+  exportingFormat.value = 'download-manual-patch-json'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePackage({
+      ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+      ...(videoTypeFilter.value ? { video_type: videoTypeFilter.value } : {}),
+      ...(provinceFilter.value ? { province: provinceFilter.value } : {}),
+      ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+      ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+      project_task_keys: visibleProjectItems.map(writebackItemKey),
+      expansion_review_item_ids: visibleExpansionItems.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      const patchPackage = res.data.manual_patch_package
+      const manifest = res.data.signoff_package.signoff_manifest
+      const filename = `${safeDownloadName(`knowledge-manual-patch-${manifest.manifest_id}-${manifest.sha256.slice(0, 12)}`)}.json`
+      downloadTextFile(filename, JSON.stringify(patchPackage, null, 2), 'application/json;charset=utf-8')
+      copyMessage.value = `已下载人工 patch 包：${patchPackage.target_file_count} 个目标文件，${patchPackage.total_patch_count} 条 patch；patch_applyable=false。`
+    } else {
+      error.value = res.error?.message ?? '下载人工 patch 包失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '下载人工 patch 包失败'
   } finally {
     exportingFormat.value = ''
   }

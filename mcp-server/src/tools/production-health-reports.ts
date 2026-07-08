@@ -746,6 +746,40 @@ interface KnowledgeWritebackQueueSignoffPackage {
   handoff_items: KnowledgeWritebackQueueReviewHandoffItem[];
 }
 
+interface KnowledgeWritebackManualPatchTarget {
+  target_file: string;
+  patch_applyable: false;
+  manual_apply_only: true;
+  project_patch_count: number;
+  expansion_patch_count: number;
+  total_patch_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  append_markdown: string;
+  review_diff: string;
+  safety_checks: string[];
+}
+
+interface KnowledgeWritebackManualPatchPackage {
+  schema_version: 'knowledge-writeback-manual-patch-package/v1';
+  exported_at: string;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  patch_applyable: false;
+  manual_apply_only: true;
+  ready_for_manual_apply: boolean;
+  target_file_count: number;
+  target_files: string[];
+  total_patch_count: number;
+  project_patch_count: number;
+  expansion_patch_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  safety_checks: string[];
+  operator_checklist: string[];
+  target_patches: KnowledgeWritebackManualPatchTarget[];
+}
+
 interface KnowledgeWritebackQueueExportPreflight {
   schema_version: 'knowledge-writeback-queue-export-preflight/v1';
   direct_writeback_to_province_markdown: false;
@@ -780,6 +814,7 @@ interface KnowledgeWritebackQueueExportPackage {
   status_counts: KnowledgeWritebackQueueExportStatusCounts;
   preflight: KnowledgeWritebackQueueExportPreflight;
   signoff_package: KnowledgeWritebackQueueSignoffPackage;
+  manual_patch_package: KnowledgeWritebackManualPatchPackage;
   project_patch: ProjectKnowledgeWritebackPatchPackage;
   expansion_draft: DomainPackExpansionWritebackDraftToolResult;
   markdown: string;
@@ -2874,6 +2909,14 @@ export function getKnowledgeWritebackQueueExportToolResult(
     statusCounts: statusCounts.total,
   });
   const filters = buildKnowledgeWritebackQueueExportFilters(input);
+  const signoffPackage = buildKnowledgeWritebackQueueSignoffPackage(exportedAt, filters, preflight.review_handoff);
+  const manualPatchPackage = buildKnowledgeWritebackManualPatchPackage({
+    exportedAt,
+    targetFiles,
+    projectItems: projectPatch.items,
+    expansionItems: expansionDraft.items,
+    preflight,
+  });
   const packageWithoutMarkdown: Omit<KnowledgeWritebackQueueExportPackage, 'markdown'> = {
     schema_version: 'knowledge-writeback-queue-export/v1',
     exported_at: exportedAt,
@@ -2887,7 +2930,8 @@ export function getKnowledgeWritebackQueueExportToolResult(
     target_files: targetFiles,
     status_counts: statusCounts,
     preflight,
-    signoff_package: buildKnowledgeWritebackQueueSignoffPackage(exportedAt, filters, preflight.review_handoff),
+    signoff_package: signoffPackage,
+    manual_patch_package: manualPatchPackage,
     project_patch: projectPatch,
     expansion_draft: expansionDraft,
   };
@@ -3434,6 +3478,10 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- preflight_expansion_candidate_fields: ${pkg.preflight.expansion_candidate_field_count}`,
     `- preflight_expansion_source_refs: ${pkg.preflight.expansion_source_ref_count}`,
     `- preflight_manual_review_required: ${pkg.preflight.manual_review_required_count}`,
+    `- manual_patch_package: ${pkg.manual_patch_package.schema_version}`,
+    `- manual_patch_ready: ${pkg.manual_patch_package.ready_for_manual_apply}`,
+    `- manual_patch_target_files: ${pkg.manual_patch_package.target_file_count}`,
+    `- manual_patch_total_patches: ${pkg.manual_patch_package.total_patch_count}`,
     '',
     '## Filters',
     '',
@@ -3494,6 +3542,30 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- direct_writeback_to_province_markdown: ${pkg.signoff_package.direct_writeback_to_province_markdown}`,
     `- province_markdown_written: ${pkg.signoff_package.province_markdown_written}`,
     '',
+    '## Manual Writeback Patch Package',
+    '',
+    `- schema_version: ${pkg.manual_patch_package.schema_version}`,
+    `- direct_writeback_to_province_markdown: ${pkg.manual_patch_package.direct_writeback_to_province_markdown}`,
+    `- province_markdown_written: ${pkg.manual_patch_package.province_markdown_written}`,
+    `- patch_applyable: ${pkg.manual_patch_package.patch_applyable}`,
+    `- manual_apply_only: ${pkg.manual_patch_package.manual_apply_only}`,
+    `- ready_for_manual_apply: ${pkg.manual_patch_package.ready_for_manual_apply}`,
+    `- target_file_count: ${pkg.manual_patch_package.target_file_count}`,
+    `- total_patch_count: ${pkg.manual_patch_package.total_patch_count}`,
+    `- project_patch_count: ${pkg.manual_patch_package.project_patch_count}`,
+    `- expansion_patch_count: ${pkg.manual_patch_package.expansion_patch_count}`,
+    `- source_ref_count: ${pkg.manual_patch_package.source_ref_count}`,
+    `- candidate_field_count: ${pkg.manual_patch_package.candidate_field_count}`,
+    ...pkg.manual_patch_package.safety_checks.map(check => `- safety_check: ${check}`),
+    '',
+    '### Manual Patch Operator Checklist',
+    '',
+    ...pkg.manual_patch_package.operator_checklist.map(item => `- ${item}`),
+    '',
+    '### Target Review Diffs',
+    '',
+    ...renderKnowledgeWritebackManualPatchTargetLines(pkg.manual_patch_package.target_patches),
+    '',
     '### Operator Checklist',
     '',
     ...pkg.preflight.review_handoff.operator_checklist.map(item => `- ${item}`),
@@ -3516,6 +3588,29 @@ function renderKnowledgeWritebackQueueExportMarkdown(
   ].join('\n').trim() + '\n';
 }
 
+function renderKnowledgeWritebackManualPatchTargetLines(
+  targets: KnowledgeWritebackManualPatchPackage['target_patches'],
+): string[] {
+  if (targets.length === 0) return ['- none'];
+  return targets.flatMap(target => [
+    `#### ${target.target_file}`,
+    '',
+    `- patch_applyable: ${target.patch_applyable}`,
+    `- manual_apply_only: ${target.manual_apply_only}`,
+    `- total_patch_count: ${target.total_patch_count}`,
+    `- project_patch_count: ${target.project_patch_count}`,
+    `- expansion_patch_count: ${target.expansion_patch_count}`,
+    `- source_ref_count: ${target.source_ref_count}`,
+    `- candidate_field_count: ${target.candidate_field_count}`,
+    ...target.safety_checks.map(check => `- safety_check: ${check}`),
+    '',
+    '```diff',
+    ...target.review_diff.trimEnd().split('\n').slice(0, 80),
+    '```',
+    '',
+  ]);
+}
+
 function buildKnowledgeWritebackQueueSignoffPackage(
   exportedAt: string,
   filters: KnowledgeWritebackQueueExportFilters,
@@ -3534,6 +3629,122 @@ function buildKnowledgeWritebackQueueSignoffPackage(
     handoff_item_count: handoff.items.length,
     handoff_items: handoff.items,
   };
+}
+
+function buildKnowledgeWritebackManualPatchPackage(input: {
+  exportedAt: string;
+  targetFiles: string[];
+  projectItems: ProjectKnowledgeWritebackPatchItem[];
+  expansionItems: DomainPackExpansionWritebackDraftItem[];
+  preflight: KnowledgeWritebackQueueExportPreflight;
+}): KnowledgeWritebackManualPatchPackage {
+  const targetPatches = input.targetFiles.map(targetFile => {
+    const projectItems = input.projectItems.filter(item => item.suggested_file_path === targetFile);
+    const expansionItems = input.expansionItems.filter(item => item.suggested_file_path === targetFile);
+    const appendMarkdown = renderKnowledgeWritebackManualPatchAppendMarkdown(targetFile, projectItems, expansionItems);
+    const sourceRefCount = countDomainPackExpansionSourceRefs(expansionItems);
+    const candidateFieldTotal = expansionItems.reduce((sum, item) =>
+      sum + (item.field_supplement_candidate_count ?? domainPackExpansionCandidateFieldCount(item)), 0);
+
+    return {
+      target_file: targetFile,
+      patch_applyable: false as const,
+      manual_apply_only: true as const,
+      project_patch_count: projectItems.length,
+      expansion_patch_count: expansionItems.length,
+      total_patch_count: projectItems.length + expansionItems.length,
+      source_ref_count: sourceRefCount,
+      candidate_field_count: candidateFieldTotal,
+      append_markdown: appendMarkdown,
+      review_diff: renderKnowledgeWritebackManualReviewDiff(targetFile, appendMarkdown),
+      safety_checks: [
+        'direct_writeback_to_province_markdown=false',
+        'province_markdown_written=false',
+        'patch_applyable=false',
+        'manual_apply_only=true',
+        `project_patch_count=${projectItems.length}`,
+        `expansion_patch_count=${expansionItems.length}`,
+        `source_refs=${sourceRefCount}`,
+      ],
+    };
+  });
+  const totalPatchCount = targetPatches.reduce((sum, item) => sum + item.total_patch_count, 0);
+  const readyForSignoffCount = input.preflight.review_handoff.signoff_batch_summaries
+    .reduce((sum, item) => sum + item.ready_for_signoff_count, 0);
+  const readyForManualApply = totalPatchCount > 0
+    && input.preflight.ready_for_manual_export
+    && readyForSignoffCount === input.preflight.review_handoff.total_handoff_count
+    && input.preflight.review_handoff.missing_review_note_count === 0
+    && input.preflight.review_handoff.missing_reviewer_identity_count === 0
+    && input.preflight.review_handoff.missing_signoff_batch_count === 0;
+
+  return {
+    schema_version: 'knowledge-writeback-manual-patch-package/v1',
+    exported_at: input.exportedAt,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    patch_applyable: false,
+    manual_apply_only: true,
+    ready_for_manual_apply: readyForManualApply,
+    target_file_count: targetPatches.length,
+    target_files: input.targetFiles,
+    total_patch_count: totalPatchCount,
+    project_patch_count: input.projectItems.length,
+    expansion_patch_count: input.expansionItems.length,
+    source_ref_count: countDomainPackExpansionSourceRefs(input.expansionItems),
+    candidate_field_count: input.expansionItems.reduce((sum, item) =>
+      sum + (item.field_supplement_candidate_count ?? domainPackExpansionCandidateFieldCount(item)), 0),
+    safety_checks: [
+      'direct_writeback_to_province_markdown=false',
+      'province_markdown_written=false',
+      'patch_applyable=false',
+      'manual_apply_only=true',
+      `ready_for_manual_apply=${readyForManualApply}`,
+      `target_files=${targetPatches.length}`,
+      `total_patch_count=${totalPatchCount}`,
+      `review_handoff_ready_for_signoff=${readyForSignoffCount}/${input.preflight.review_handoff.total_handoff_count}`,
+    ],
+    operator_checklist: [
+      '先核对 signoff manifest、review_note、reviewer_identity 和 signoff_batch_id。',
+      '逐个打开 target_file，对照 append_markdown 与 review_diff 人工合并。',
+      '合并前再次核对 source_refs、字段边界和 forbidden_direct_claims。',
+      '本包不是 git apply 补丁；patch_applyable=false，只作为人工写回审阅材料。',
+      '人工写回完成后再单独把对应任务标记为 written_back。',
+    ],
+    target_patches: targetPatches,
+  };
+}
+
+function renderKnowledgeWritebackManualPatchAppendMarkdown(
+  targetFile: string,
+  projectItems: ProjectKnowledgeWritebackPatchItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+): string {
+  const sections = [
+    `<!-- knowledge_writeback_manual_patch target_file="${targetFile}" direct_writeback_to_province_markdown="false" -->`,
+    ...projectItems.flatMap(item => [
+      '',
+      `<!-- project_writeback task="${item.task_key ?? item.task_id}" status="${item.writeback_status ?? 'draft_ready'}" -->`,
+      item.append_markdown.trim(),
+    ]),
+    ...expansionItems.flatMap(item => [
+      '',
+      `<!-- domain_pack_expansion_writeback review_item_id="${item.review_item_id}" status="${item.writeback_status ?? 'draft_ready'}" -->`,
+      item.append_markdown.trim(),
+    ]),
+  ];
+  return sections.join('\n').trim() + '\n';
+}
+
+function renderKnowledgeWritebackManualReviewDiff(targetFile: string, appendMarkdown: string): string {
+  const diffLines = appendMarkdown.trimEnd().split('\n').map(line => `+${line}`);
+  return [
+    `diff --git a/${targetFile} b/${targetFile}`,
+    `--- a/${targetFile}`,
+    `+++ b/${targetFile}`,
+    '@@ manual_append_review_only @@',
+    ...diffLines,
+  ].join('\n') + '\n';
 }
 
 function renderKnowledgeWritebackTargetFilePreflightLines(

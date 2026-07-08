@@ -1946,10 +1946,20 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_review_handoff_reviewer_identity_count: number;
     knowledge_writeback_review_handoff_missing_reviewer_identity_count: number;
     knowledge_writeback_review_handoff_source_ref_count: number;
+    knowledge_writeback_review_handoff_signoff_batch_summary_count: number;
+    knowledge_writeback_review_handoff_signoff_ready_count: number;
+    knowledge_writeback_review_handoff_signoff_blocked_count: number;
     knowledge_writeback_review_handoff_signoff_manifest_id: string;
     knowledge_writeback_review_handoff_signoff_manifest_sha256: string;
     knowledge_writeback_signoff_package_schema: 'knowledge-writeback-queue-signoff-package/v1' | '';
     knowledge_writeback_signoff_package_item_count: number;
+    knowledge_writeback_signoff_package_batch_summary_count: number;
+    knowledge_writeback_manual_patch_package_schema: 'knowledge-writeback-manual-patch-package/v1' | '';
+    knowledge_writeback_manual_patch_ready: boolean;
+    knowledge_writeback_manual_patch_target_file_count: number;
+    knowledge_writeback_manual_patch_total_patch_count: number;
+    knowledge_writeback_manual_patch_project_patch_count: number;
+    knowledge_writeback_manual_patch_expansion_patch_count: number;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;
@@ -6512,6 +6522,40 @@ export interface KnowledgeWritebackQueueSignoffPackage {
   handoff_items: KnowledgeWritebackQueueReviewHandoffItem[];
 }
 
+export interface KnowledgeWritebackManualPatchTarget {
+  target_file: string;
+  patch_applyable: false;
+  manual_apply_only: true;
+  project_patch_count: number;
+  expansion_patch_count: number;
+  total_patch_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  append_markdown: string;
+  review_diff: string;
+  safety_checks: string[];
+}
+
+export interface KnowledgeWritebackManualPatchPackage {
+  schema_version: 'knowledge-writeback-manual-patch-package/v1';
+  exported_at: string;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  patch_applyable: false;
+  manual_apply_only: true;
+  ready_for_manual_apply: boolean;
+  target_file_count: number;
+  target_files: string[];
+  total_patch_count: number;
+  project_patch_count: number;
+  expansion_patch_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  safety_checks: string[];
+  operator_checklist: string[];
+  target_patches: KnowledgeWritebackManualPatchTarget[];
+}
+
 export interface KnowledgeWritebackQueueExportPreflight {
   schema_version: 'knowledge-writeback-queue-export-preflight/v1';
   direct_writeback_to_province_markdown: false;
@@ -6546,6 +6590,7 @@ export interface KnowledgeWritebackQueueExportPackage {
   status_counts: KnowledgeWritebackQueueExportStatusCounts;
   preflight: KnowledgeWritebackQueueExportPreflight;
   signoff_package: KnowledgeWritebackQueueSignoffPackage;
+  manual_patch_package: KnowledgeWritebackManualPatchPackage;
   project_patch: ProjectKnowledgeWritebackPatchPackage;
   expansion_draft: DomainPackExpansionWritebackDraftPackage;
   markdown: string;

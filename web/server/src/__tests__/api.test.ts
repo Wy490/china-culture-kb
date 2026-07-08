@@ -1136,6 +1136,37 @@ describe('System API', () => {
             ready_for_signoff_count: 1,
           })],
         }),
+        manual_patch_package: expect.objectContaining({
+          schema_version: 'knowledge-writeback-manual-patch-package/v1',
+          direct_writeback_to_province_markdown: false,
+          province_markdown_written: false,
+          patch_applyable: false,
+          manual_apply_only: true,
+          ready_for_manual_apply: true,
+          target_file_count: 1,
+          target_files: ['data/provinces/湖南.md'],
+          total_patch_count: 1,
+          project_patch_count: 0,
+          expansion_patch_count: 1,
+          candidate_field_count: 4,
+          target_patches: [expect.objectContaining({
+            target_file: 'data/provinces/湖南.md',
+            patch_applyable: false,
+            manual_apply_only: true,
+            total_patch_count: 1,
+            project_patch_count: 0,
+            expansion_patch_count: 1,
+            candidate_field_count: 4,
+            append_markdown: expect.stringContaining(reviewItemId),
+            review_diff: expect.stringContaining('@@ manual_append_review_only @@'),
+            safety_checks: expect.arrayContaining([
+              'direct_writeback_to_province_markdown=false',
+              'province_markdown_written=false',
+              'patch_applyable=false',
+              'manual_apply_only=true',
+            ]),
+          })],
+        }),
         project_patch: {
           schema_version: 'project-knowledge-writeback-patch/v1',
           approved_count: 0,
@@ -1155,6 +1186,11 @@ describe('System API', () => {
       expect(exportRes.body.data.markdown).toContain('province_markdown_written: false');
       expect(exportRes.body.data.markdown).toContain('Export Preflight');
       expect(exportRes.body.data.markdown).toContain('Signoff Package');
+      expect(exportRes.body.data.markdown).toContain('Manual Writeback Patch Package');
+      expect(exportRes.body.data.markdown).toContain('knowledge-writeback-manual-patch-package/v1');
+      expect(exportRes.body.data.markdown).toContain('manual_patch_ready: true');
+      expect(exportRes.body.data.markdown).toContain('patch_applyable: false');
+      expect(exportRes.body.data.markdown).toContain('@@ manual_append_review_only @@');
       expect(exportRes.body.data.markdown).toContain('Signoff Batch Summaries');
       expect(exportRes.body.data.markdown).toContain('signoff_batch_summary_count: 1');
       expect(exportRes.body.data.markdown).toContain('signoff_manifest_id: kwb-signoff-');
@@ -1671,6 +1707,12 @@ describe('System API', () => {
           knowledge_writeback_signoff_package_schema: 'knowledge-writeback-queue-signoff-package/v1',
           knowledge_writeback_signoff_package_item_count: expect.any(Number),
           knowledge_writeback_signoff_package_batch_summary_count: expect.any(Number),
+          knowledge_writeback_manual_patch_package_schema: 'knowledge-writeback-manual-patch-package/v1',
+          knowledge_writeback_manual_patch_ready: expect.any(Boolean),
+          knowledge_writeback_manual_patch_target_file_count: expect.any(Number),
+          knowledge_writeback_manual_patch_total_patch_count: expect.any(Number),
+          knowledge_writeback_manual_patch_project_patch_count: expect.any(Number),
+          knowledge_writeback_manual_patch_expansion_patch_count: expect.any(Number),
           generated_governance_action_count: expect.any(Number),
           generated_governance_p0_p1_action_count: expect.any(Number),
           generated_governance_ready_signoff_candidate_count: expect.any(Number),
@@ -1800,6 +1842,7 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('domain pack expansion review closure ready/blocked: 66/0');
       expect(res.body.data.markdown).toContain('knowledge writeback review handoff');
       expect(res.body.data.markdown).toContain('knowledge writeback signoff package');
+      expect(res.body.data.markdown).toContain('knowledge writeback manual patch package');
       expect(res.body.data.markdown).toContain('knowledge writeback review handoff reviewer identities');
       expect(res.body.data.markdown).toContain('domain pack expansion writeback preflight ready: true');
       expect(res.body.data.markdown).toContain('domain pack expansion manual writeback required: 66');

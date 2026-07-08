@@ -151,6 +151,12 @@ interface KnowledgeWritebackQueueMetrics {
   signoff_package_schema: 'knowledge-writeback-queue-signoff-package/v1' | '';
   signoff_package_item_count: number;
   signoff_package_batch_summary_count: number;
+  manual_patch_package_schema: 'knowledge-writeback-manual-patch-package/v1' | '';
+  manual_patch_ready: boolean;
+  manual_patch_target_file_count: number;
+  manual_patch_total_patch_count: number;
+  manual_patch_project_patch_count: number;
+  manual_patch_expansion_patch_count: number;
   read_error?: string;
 }
 
@@ -573,6 +579,12 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
   | 'signoff_package_schema'
   | 'signoff_package_item_count'
   | 'signoff_package_batch_summary_count'
+  | 'manual_patch_package_schema'
+  | 'manual_patch_ready'
+  | 'manual_patch_target_file_count'
+  | 'manual_patch_total_patch_count'
+  | 'manual_patch_project_patch_count'
+  | 'manual_patch_expansion_patch_count'
 >> {
   try {
     const exportPackage = await getKnowledgeWritebackQueueExportPackage();
@@ -605,6 +617,12 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       signoff_package_schema: exportPackage.signoff_package.schema_version,
       signoff_package_item_count: exportPackage.signoff_package.handoff_item_count,
       signoff_package_batch_summary_count: exportPackage.signoff_package.signoff_batch_summaries.length,
+      manual_patch_package_schema: exportPackage.manual_patch_package.schema_version,
+      manual_patch_ready: exportPackage.manual_patch_package.ready_for_manual_apply,
+      manual_patch_target_file_count: exportPackage.manual_patch_package.target_file_count,
+      manual_patch_total_patch_count: exportPackage.manual_patch_package.total_patch_count,
+      manual_patch_project_patch_count: exportPackage.manual_patch_package.project_patch_count,
+      manual_patch_expansion_patch_count: exportPackage.manual_patch_package.expansion_patch_count,
     };
   } catch {
     return {
@@ -631,6 +649,12 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       signoff_package_schema: '',
       signoff_package_item_count: 0,
       signoff_package_batch_summary_count: 0,
+      manual_patch_package_schema: '',
+      manual_patch_ready: false,
+      manual_patch_target_file_count: 0,
+      manual_patch_total_patch_count: 0,
+      manual_patch_project_patch_count: 0,
+      manual_patch_expansion_patch_count: 0,
     };
   }
 }
@@ -746,6 +770,12 @@ function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryA
       `review_handoff_signoff_blocked=${metrics.review_handoff_signoff_blocked_count}`,
       `review_handoff_signoff_manifest_id=${metrics.review_handoff_signoff_manifest_id || 'none'}`,
       `signoff_package_batches=${metrics.signoff_package_batch_summary_count}`,
+      `manual_patch_schema=${metrics.manual_patch_package_schema || 'none'}`,
+      `manual_patch_ready=${metrics.manual_patch_ready}`,
+      `manual_patch_targets=${metrics.manual_patch_target_file_count}`,
+      `manual_patch_total=${metrics.manual_patch_total_patch_count}`,
+      `manual_patch_project=${metrics.manual_patch_project_patch_count}`,
+      `manual_patch_expansion=${metrics.manual_patch_expansion_patch_count}`,
       `read_error=${metrics.read_error ?? 'none'}`,
       'candidate_review_required=true',
       'direct_province_write=false',
@@ -1114,6 +1144,10 @@ function progressSlices(
         `knowledge_writeback_signoff_package_schema=${writebackMetrics.signoff_package_schema || 'none'}`,
         `knowledge_writeback_signoff_package_items=${writebackMetrics.signoff_package_item_count}`,
         `knowledge_writeback_signoff_package_batches=${writebackMetrics.signoff_package_batch_summary_count}`,
+        `knowledge_writeback_manual_patch_schema=${writebackMetrics.manual_patch_package_schema || 'none'}`,
+        `knowledge_writeback_manual_patch_ready=${writebackMetrics.manual_patch_ready}`,
+        `knowledge_writeback_manual_patch_targets=${writebackMetrics.manual_patch_target_file_count}`,
+        `knowledge_writeback_manual_patch_total=${writebackMetrics.manual_patch_total_patch_count}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
         `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
         `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
@@ -1217,6 +1251,8 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- knowledge writeback review handoff signoff ready/blocked: ${report.summary.knowledge_writeback_review_handoff_signoff_ready_count}/${report.summary.knowledge_writeback_review_handoff_signoff_blocked_count}`,
     `- knowledge writeback review handoff signoff manifest: ${report.summary.knowledge_writeback_review_handoff_signoff_manifest_id || 'none'}`,
     `- knowledge writeback signoff package: ${report.summary.knowledge_writeback_signoff_package_schema || 'none'} (${report.summary.knowledge_writeback_signoff_package_item_count} items, ${report.summary.knowledge_writeback_signoff_package_batch_summary_count} batches)`,
+    `- knowledge writeback manual patch package: ${report.summary.knowledge_writeback_manual_patch_package_schema || 'none'} (${report.summary.knowledge_writeback_manual_patch_total_patch_count} patches, ready=${report.summary.knowledge_writeback_manual_patch_ready})`,
+    `- knowledge writeback manual patch targets: ${report.summary.knowledge_writeback_manual_patch_target_file_count} files; project=${report.summary.knowledge_writeback_manual_patch_project_patch_count}; expansion=${report.summary.knowledge_writeback_manual_patch_expansion_patch_count}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
     `- real GEARS endpoint configured: ${report.summary.real_gears_endpoint_configured}`,
@@ -1433,6 +1469,12 @@ export async function getStoryAgentMvpStatus(
       knowledge_writeback_signoff_package_schema: writebackMetrics.signoff_package_schema,
       knowledge_writeback_signoff_package_item_count: writebackMetrics.signoff_package_item_count,
       knowledge_writeback_signoff_package_batch_summary_count: writebackMetrics.signoff_package_batch_summary_count,
+      knowledge_writeback_manual_patch_package_schema: writebackMetrics.manual_patch_package_schema,
+      knowledge_writeback_manual_patch_ready: writebackMetrics.manual_patch_ready,
+      knowledge_writeback_manual_patch_target_file_count: writebackMetrics.manual_patch_target_file_count,
+      knowledge_writeback_manual_patch_total_patch_count: writebackMetrics.manual_patch_total_patch_count,
+      knowledge_writeback_manual_patch_project_patch_count: writebackMetrics.manual_patch_project_patch_count,
+      knowledge_writeback_manual_patch_expansion_patch_count: writebackMetrics.manual_patch_expansion_patch_count,
       blocker_count: productionPortfolio.summary.blocker_count,
       warning_count: productionPortfolio.summary.warning_count,
       generated_governance_action_count: generatedGovernancePlan.actions.length,
