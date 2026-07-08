@@ -523,6 +523,47 @@
               "verification_note": "风险来自本地条目的可信度、待核实点和文化意义说明。"
             }
           ]
+        },
+        {
+          "entry_name": "辰州傩戏——沅水中游的中国戏剧活化石",
+          "province": "湖南",
+          "recommended_fields": ["materials", "process_steps", "documentation_assets", "production_risks"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["上刀梯下油锅写成可模仿教程", "傩面具神圣性娱乐化", "屈原《九歌》源头说写成定论"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "materials",
+              "candidate_value": "傩面具、法器、符箓、锣鼓、傩坛布置、端公服饰和村寨仪式空间可作为非遗宣传材料资产；面具可按神祇、英雄、丑角和动物角色分组拍摄，但不把数量、谱系和神圣含义写成未核定论。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#辰州傩戏：人物随身道具", "data/provinces/湖南.md#辰州傩戏：场景陈设"],
+              "writeback_hint": "作为 heritage_promo 材料与道具字段候选，拍摄面具、法器和傩坛前需确认村寨、传承人和仪式禁忌授权。",
+              "verification_note": "材料来自本地条目；百余种面具、端公家族和具体法器名目需项目页、地方非遗档案和田野资料复核。"
+            },
+            {
+              "field_id": "process_steps",
+              "candidate_value": "开坛/请神→傩坛祭祀→傩戏表演→剧目讲述→送神/收场可作为宣传片流程骨架；镜头应突出“傩坛+傩戏”的两段式结构，而不是复刻危险绝技或仪式细节教程。",
+              "evidence_level": "local_entry_process",
+              "source_refs": ["data/provinces/湖南.md#辰州傩戏：简介", "data/provinces/湖南.md#辰州傩戏：故事梗概"],
+              "writeback_hint": "作为流程候选写入草案，正式写回时需把学术解释、现场观察和民俗禁忌分层。",
+              "verification_note": "两段式结构来自本地条目；具体活动周期、端公流程和村寨差异需地方非遗机构确认。"
+            },
+            {
+              "field_id": "documentation_assets",
+              "candidate_value": "中国非遗网传统戏剧类名录入口、国务院第一批国家级名录通知、沅陵辰州傩戏项目索引、代表性传承人页、沅陵县文化馆/非遗保护机构档案和傩戏研究专著可组成来源与授权清单。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#辰州傩戏：来源", "data/provinces/湖南.md#辰州傩戏：核实方法"],
+              "writeback_hint": "写回时拆成制度来源、地方档案、传承人页、田野调查和可拍资产，不把候选资产视为已授权素材。",
+              "verification_note": "来源入口来自本地条目；项目页、传承人名单、保护单位和活动开放状态需人工补齐最新口径。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "避免把“神附人身”、上刀梯、下油锅、踩火砖等内容猎奇化或教程化；避免把《水浒传》辰州符、屈原《九歌》源头说和百余种面具数量写成无争议事实；活态仪式需尊重禁忌、肖像权和社区解释权。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#辰州傩戏：待核实点", "data/provinces/湖南.md#辰州傩戏：可信度"],
+              "writeback_hint": "作为 production_risks 字段候选，保护宗教民俗、危险表演、学术争议和拍摄授权边界。",
+              "verification_note": "风险来自本地条目的待核实点、可信度和核实方法说明。"
+            }
+          ]
         }
       ]
     },
@@ -1037,6 +1078,47 @@
               "verification_note": "边界来自待核实点；会议发言、各团细节和损失数据需保守处理。"
             }
           ]
+        },
+        {
+          "entry_name": "遵义会议——长征生死攸关的转折点",
+          "province": "贵州",
+          "recommended_fields": ["documentary_question", "source_trail", "present_day_trace", "reconstruction_boundary"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["会议逐字发言无来源复原", "三人军事小组权限绝对化", "纪念馆展陈替代党史文献"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "documentary_question",
+              "candidate_value": "遵义会议为什么能在缺少完整逐字会议记录的情况下，仍成为“生死攸关转折点”？微纪录可从湘江惨败后的危机、柏辉章公馆会议空间、路线纠错和独立自主四层展开。",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/贵州.md#遵义会议：简介", "data/provinces/贵州.md#遵义会议：文化意义"],
+              "writeback_hint": "作为 documentary_short 核心问题候选，保留会议事实、精神阐释和记录缺口边界。",
+              "verification_note": "问题来自本地条目的会议时间、路线纠错、历史意义和文化意义说明。"
+            },
+            {
+              "field_id": "source_trail",
+              "candidate_value": "遵义会议纪念馆官方资料、《中国共产党历史》第一卷、《遵义会议文献》、柏辉章公馆旧址、参会人物关系图和党史研究者/纪念馆讲解员采访可组成来源线。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/贵州.md#遵义会议：来源", "data/provinces/贵州.md#遵义会议：人物"],
+              "writeback_hint": "写回时拆成纪念馆资料、党史文献、会议文献和采访角色，会议争论过程需单独标注追述材料。",
+              "verification_note": "来源入口来自本地条目；发言原文、三人军事小组成立时间和权限范围需文献复核。"
+            },
+            {
+              "field_id": "present_day_trace",
+              "candidate_value": "遵义会议旧址柏辉章公馆二楼会议室、遵义会议纪念馆、遵义红军街、会议文献展厅、决议摘页、参会名单卡和三人军事小组示意图可组成现实回访与 B-roll 清单。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/贵州.md#遵义会议：相关地点", "data/provinces/贵州.md#遵义会议：场景", "data/provinces/贵州.md#遵义会议：人物随身道具"],
+              "writeback_hint": "作为现地痕迹候选，镜头优先使用旧址、展陈、文献复制件和讲解员说明，不虚构会议现场细节。",
+              "verification_note": "地点、场景和道具来自本地条目；展陈拍摄与文献版权需人工确认。"
+            },
+            {
+              "field_id": "reconstruction_boundary",
+              "candidate_value": "可以用空镜、地图、文献摘页、人物关系卡和纪念馆讲述呈现转折；会议争论、毛泽东长篇发言、博古李德反应和三人军事小组权限只做资料分层，不用演员对白替代档案。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/贵州.md#遵义会议：待核实点", "data/provinces/贵州.md#遵义会议：核实方法"],
+              "writeback_hint": "写入纪录片再现边界，保护会议记录缺口、党史表述和纪念馆资料层级。",
+              "verification_note": "边界来自本地条目的待核实点；缺少完整会议记录是成片必须显性提示的事实边界。"
+            }
+          ]
         }
       ]
     },
@@ -1507,6 +1589,47 @@
               "evidence_level": "local_entry_boundary",
               "source_refs": ["data/provinces/湖南.md#橘子洲：待核实点", "data/provinces/湖南.md#橘子洲：来源"],
               "writeback_hint": "写入 AI 漫剧审稿边界，保护诗词版权/引用长度、历史事实和地理推断边界。",
+              "verification_note": "边界来自本地条目的来源、核实方法和待核实点。"
+            }
+          ]
+        },
+        {
+          "entry_name": "飞夺泸定桥——长征路上的惊险夺桥",
+          "province": "四川",
+          "recommended_fields": ["opening_hook", "character_anchor", "expression_beats", "forbidden_tone"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["22名勇士完整名单无来源补全", "桥板抽去细节写成唯一版本", "战斗镜头血腥化或游戏化"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "第一格：研学少年站在泸定桥边，雨雾里只看见十三根铁索和奔腾大渡河；他低声问：“如果桥板不见了，队伍还要过河吗？”画面切到战役沙盘而非血腥冲锋。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/四川.md#飞夺泸定桥：简介", "data/provinces/四川.md#飞夺泸定桥：场景"],
+              "writeback_hint": "只作为 AI 漫剧开场钩子候选，用当代研学视角承接历史压力，不复原不可核实细节。",
+              "verification_note": "钩子基于泸定桥、十三根铁索、大渡河和纪念空间线索改编。"
+            },
+            {
+              "field_id": "character_anchor",
+              "candidate_value": "当代研学少年/纪念馆讲解员负责发问和说明；红4团22名勇士以群像剪影呈现，不补写争议姓名；红4团指挥员、守桥敌军、安顺场船工线索只作为压力与路线转折角色。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/四川.md#飞夺泸定桥：人物", "data/provinces/四川.md#飞夺泸定桥：人物随身道具"],
+              "writeback_hint": "作为角色锚点候选，明确当代讲述者、历史群像和待核姓名边界。",
+              "verification_note": "人物层级来自本地条目；少年角色和剪影调度为漫剧改编候选。"
+            },
+            {
+              "field_id": "expression_beats",
+              "candidate_value": "少年看见铁索时后退半步→听到“不做石达开第二”时理解战略压力→看到路线图从安顺场转向泸定桥时急切追问→在勇士名单墙前停下，给“仍有姓名待确认”贴上边界标签。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/四川.md#飞夺泸定桥：故事梗概", "data/provinces/四川.md#飞夺泸定桥：待核实点"],
+              "writeback_hint": "作为表情节拍候选，用于 AI 漫剧连续性；结尾要回到史料边界和纪念空间。",
+              "verification_note": "情绪节拍服务漫剧表达，名单争议、桥板描述和行军距离仍按本地待核内容保留。"
+            },
+            {
+              "field_id": "forbidden_tone",
+              "candidate_value": "避免把飞夺泸定桥拍成血腥闯关或夸张爽文；避免补写22名勇士完整姓名、敌军火力布置和桥板细节；避免把红色题材角色做成嬉笑表情包，暴力画面以地图、铁索、雨声和纪念馆展陈替代。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/四川.md#飞夺泸定桥：待核实点", "data/provinces/四川.md#飞夺泸定桥：来源"],
+              "writeback_hint": "写入 AI 漫剧审稿边界，保护红色题材严肃性、史料争议和未成年人观看安全。",
               "verification_note": "边界来自本地条目的来源、核实方法和待核实点。"
             }
           ]
@@ -2167,6 +2290,47 @@
               "source_refs": ["data/provinces/湖南.md#巴陵戏：待核实点", "data/provinces/湖南.md#巴陵戏：核实方法"],
               "writeback_hint": "复盘句可进入讲解草案，正式写回前补齐三腔形成时间、弋阳腔路径和民国戏园资料。",
               "verification_note": "句子服务视频收束，需保留剧种源流和地方志细节待核边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "四渡赤水——毛泽东军事生涯的\"得意之笔\"",
+          "province": "贵州",
+          "recommended_fields": ["core_question", "concept_definitions", "diagram_or_caption_plan", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["渡河点和时间表无来源绝对化", "遵义大捷战果数字无口径说明", "茅台镇关系写成未核定论"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "四渡赤水为什么不是“同一条河来回绕路”，而是把被动追堵变成主动调动的运动战？讲解片可从一渡调整、二渡回师、三渡佯动、四渡突围四个问题展开。",
+              "evidence_level": "explainer_candidate_from_local_entry",
+              "source_refs": ["data/provinces/贵州.md#四渡赤水：简介", "data/provinces/贵州.md#四渡赤水：文化意义"],
+              "writeback_hint": "作为 explainer_video 核心问题候选，保持战役路线、运动战概念和数字口径边界。",
+              "verification_note": "问题来自本地条目的四次渡河、从被动到主动和军事思想检验线索。"
+            },
+            {
+              "field_id": "concept_definitions",
+              "candidate_value": "“一渡”是土城战斗后西渡转移，“二渡”是东渡回师贵州并取得遵义大捷，“三渡”是西进佯动作北渡长江之势，“四渡”是东渡后南渡乌江、巧渡金沙江跳出包围；“运动战”指通过机动调动敌军、避实击虚。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/贵州.md#四渡赤水：故事梗概", "data/provinces/贵州.md#四渡赤水：关键词"],
+              "writeback_hint": "概念定义先作为讲解候选，正式写回需核对纪念馆路线图、党史文献和各渡口时间口径。",
+              "verification_note": "定义用于讲解结构，渡河点、具体日期和战果数字需保留不同史料差异。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "用“赤水河折返地图+红蓝箭头+四格时间轴”呈现：土城战斗→扎西整编→回师遵义→西进佯动→南渡乌江/金沙江；每格加“目的、敌军反应、待核数字”三行字幕。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/贵州.md#四渡赤水：场景", "data/provinces/贵州.md#四渡赤水：人物随身道具", "data/provinces/贵州.md#四渡赤水：场景陈设"],
+              "writeback_hint": "作为图示字幕候选，路线墙、战役沙盘、作战地图和渡口空镜需按授权和史料口径确认。",
+              "verification_note": "图示基于本地条目的赤水河渡口、战役沙盘、路线墙和作战地图道具。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "理解四渡赤水，不是背四次渡河顺序，而是看见一支被围追的队伍如何用路线、时间和假动作重新夺回主动；越具体的渡口、战果和地名关系越要补足来源。",
+              "evidence_level": "explainer_candidate_with_boundary",
+              "source_refs": ["data/provinces/贵州.md#四渡赤水：待核实点", "data/provinces/贵州.md#四渡赤水：核实方法"],
+              "writeback_hint": "复盘句可进入讲解草案，正式写回前补齐渡河点、遵义大捷统计和茅台镇关系口径。",
+              "verification_note": "句子服务视频收束，需保留时间表、战果数字和地方关系待核边界。"
             }
           ]
         }
