@@ -748,6 +748,7 @@ const REQUIRED_EXPANSION_PACK_IDS = [
 ] as const;
 
 const DOMAIN_PACK_EXPANSION_REVIEW_STATE_FILE_NAME = 'review-state.json';
+const DOMAIN_PACK_EXPANSION_REVIEW_STATE_SEED_FILE_NAME = 'china-culture-production-expansion-review-state.seed.json';
 
 const DOMAIN_PACK_EXPANSION_REVIEW_STATUSES: DomainPackExpansionReviewStatus[] = [
   'candidate_review',
@@ -3075,18 +3076,26 @@ function expansionReviewApprovalBlockerMessage(
 }
 
 function loadDomainPackExpansionReviewStateItems(): DomainPackExpansionReviewStateItem[] {
-  const file = loadDomainPackExpansionReviewStateFile();
-  if (!file || file.schema_version !== 'domain-pack-expansion-review-state/v1' || !Array.isArray(file.items)) {
-    return [];
+  const mergedItems = new Map<string, DomainPackExpansionReviewStateItem>();
+  for (const filePath of [
+    domainPackExpansionReviewStateSeedFilePath(),
+    domainPackExpansionReviewStateFilePath(),
+  ]) {
+    const file = loadDomainPackExpansionReviewStateFile(filePath);
+    if (!file || file.schema_version !== 'domain-pack-expansion-review-state/v1' || !Array.isArray(file.items)) {
+      continue;
+    }
+    for (const item of file.items) {
+      const normalized = normalizeExpansionReviewStateItem(item);
+      if (normalized) mergedItems.set(normalized.review_item_id, normalized);
+    }
   }
-  return file.items
-    .map(normalizeExpansionReviewStateItem)
-    .filter((item): item is DomainPackExpansionReviewStateItem => Boolean(item));
+  return [...mergedItems.values()];
 }
 
-function loadDomainPackExpansionReviewStateFile(): DomainPackExpansionReviewStateFile | undefined {
+function loadDomainPackExpansionReviewStateFile(filePath: string): DomainPackExpansionReviewStateFile | undefined {
   try {
-    const parsed = JSON.parse(readFileSync(domainPackExpansionReviewStateFilePath(), 'utf8')) as unknown;
+    const parsed = JSON.parse(readFileSync(filePath, 'utf8')) as unknown;
     return isRecord(parsed) ? parsed as DomainPackExpansionReviewStateFile : undefined;
   } catch {
     return undefined;
@@ -3141,6 +3150,10 @@ function generatedRoot(): string {
 
 function domainPackExpansionReviewStateFilePath(): string {
   return path.resolve(generatedRoot(), 'domain-pack-expansion', DOMAIN_PACK_EXPANSION_REVIEW_STATE_FILE_NAME);
+}
+
+function domainPackExpansionReviewStateSeedFilePath(): string {
+  return path.resolve(getKbRoot(), 'domain-packs', DOMAIN_PACK_EXPANSION_REVIEW_STATE_SEED_FILE_NAME);
 }
 
 function markdownList(items: string[]): string[] {

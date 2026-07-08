@@ -269,6 +269,7 @@ const REQUIRED_EXPANSION_PACK_IDS = [
 
 const CANDIDATE_FILE_NAME = 'china-culture-production-expansion-candidates.json';
 const REVIEW_STATE_FILE_NAME = 'review-state.json';
+const REVIEW_STATE_SEED_FILE_NAME = 'china-culture-production-expansion-review-state.seed.json';
 const REVIEW_STATUSES: DomainPackExpansionReviewStatus[] = ['candidate_review', 'approved', 'rejected', 'needs_revision'];
 const WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = ['draft_ready', 'queued', 'written_back', 'needs_revision'];
 
@@ -1497,17 +1498,21 @@ function loadDomainPackExpansionReviewStateMap(): Map<string, DomainPackExpansio
 }
 
 function loadDomainPackExpansionReviewStateItems(): DomainPackExpansionReviewStateItem[] {
-  const file = loadDomainPackExpansionReviewStateFile();
-  if (!file || file.schema_version !== 'domain-pack-expansion-review-state/v1' || !Array.isArray(file.items)) {
-    return [];
+  const mergedItems = new Map<string, DomainPackExpansionReviewStateItem>();
+  for (const filePath of [reviewStateSeedFilePath(), reviewStateFilePath()]) {
+    const file = loadDomainPackExpansionReviewStateFile(filePath);
+    if (!file || file.schema_version !== 'domain-pack-expansion-review-state/v1' || !Array.isArray(file.items)) {
+      continue;
+    }
+    for (const item of file.items) {
+      const normalized = normalizeReviewStateItem(item);
+      if (normalized) mergedItems.set(normalized.review_item_id, normalized);
+    }
   }
-  return file.items
-    .map(normalizeReviewStateItem)
-    .filter((item): item is DomainPackExpansionReviewStateItem => Boolean(item));
+  return [...mergedItems.values()];
 }
 
-function loadDomainPackExpansionReviewStateFile(): DomainPackExpansionReviewStateFile | undefined {
-  const filePath = reviewStateFilePath();
+function loadDomainPackExpansionReviewStateFile(filePath: string): DomainPackExpansionReviewStateFile | undefined {
   if (!existsSync(filePath)) return undefined;
   try {
     return JSON.parse(readFileSync(filePath, 'utf8')) as DomainPackExpansionReviewStateFile;
@@ -1704,4 +1709,8 @@ function generatedRoot(): string {
 
 function reviewStateFilePath(): string {
   return resolve(generatedRoot(), 'domain-pack-expansion', REVIEW_STATE_FILE_NAME);
+}
+
+function reviewStateSeedFilePath(): string {
+  return resolve(kbRoot(), 'domain-packs', REVIEW_STATE_SEED_FILE_NAME);
 }

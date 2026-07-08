@@ -43,8 +43,8 @@ describe('domain-pack-expansion-service', () => {
       status: 'passed',
       missing_required_pack_ids: [],
       video_type_coverage_count: expect.any(Number),
-      pipeline_progress_percent: 75,
-      pipeline_stage: 'human_review',
+      pipeline_progress_percent: 100,
+      pipeline_stage: 'complete',
       review_policy: {
         direct_writeback_to_province_markdown: false,
         requires_candidate_markdown: true,
@@ -70,10 +70,10 @@ describe('domain-pack-expansion-service', () => {
       batch_count: expect.any(Number),
       seed_target_count: expect.any(Number),
       review_status_counts: expect.objectContaining({
-        candidate_review: expect.any(Number),
-        approved: 0,
+        candidate_review: 0,
+        approved: 27,
       }),
-      approved_writeback_draft_count: 0,
+      approved_writeback_draft_count: 27,
       field_supplement_candidate_count: expect.any(Number),
       field_missing_candidate_count: expect.any(Number),
       field_candidate_completion_percent: expect.any(Number),
@@ -81,7 +81,7 @@ describe('domain-pack-expansion-service', () => {
       field_review_blocker_count: expect.any(Number),
       field_review_ready_percent: expect.any(Number),
       writeback_status_counts: expect.objectContaining({
-        draft_ready: 0,
+        draft_ready: 27,
         queued: 0,
       }),
     });
@@ -114,22 +114,14 @@ describe('domain-pack-expansion-service', () => {
     expect(report.field_supplement_priority_target_count).toBe(report.field_missing_candidate_count);
     expect(report.field_supplement_priority_target_count).toBe(0);
     expect(report.field_supplement_priority_targets).toEqual([]);
-    expect(report.review_ready_priority_target_count).toBe(report.seed_target_count);
-    expect(report.review_ready_priority_targets).toHaveLength(report.seed_target_count);
-    expect(report.review_ready_priority_targets[0]).toMatchObject({
-      review_status: 'candidate_review',
-      field_review_blocker_count: 0,
-      field_review_ready_percent: 100,
-      priority_score: expect.any(Number),
-      priority_video_type_count: expect.any(Number),
-      recommended_action: expect.stringContaining('人工审阅'),
-    });
+    expect(report.review_ready_priority_target_count).toBe(0);
+    expect(report.review_ready_priority_targets).toEqual([]);
     expect(report.field_candidate_completion_percent).toBeGreaterThanOrEqual(100);
     expect(report.field_review_ready_count).toBe(report.field_workbench_item_count);
     expect(report.field_review_blocker_count).toBe(0);
     expect(report.field_review_ready_percent).toBe(100);
-    expect(report.pipeline_progress_percent).toBe(75);
-    expect(report.pipeline_stage).toBe('human_review');
+    expect(report.pipeline_progress_percent).toBe(100);
+    expect(report.pipeline_stage).toBe('complete');
     expect(report.review_ready_item_count).toBe(report.seed_target_count);
     expect(report.review_blocked_item_count).toBe(0);
     expect(report.review_packet).toMatchObject({
@@ -156,8 +148,9 @@ describe('domain-pack-expansion-service', () => {
         requires_source_level: true,
       },
     });
-    expect(report.review_packet.review_status_counts?.candidate_review).toBe(report.seed_target_count);
-    expect(report.review_packet.approved_writeback_draft_count).toBe(0);
+    expect(report.review_packet.review_status_counts?.candidate_review).toBe(0);
+    expect(report.review_packet.review_status_counts?.approved).toBe(30);
+    expect(report.review_packet.approved_writeback_draft_count).toBe(30);
     const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
     expect(reviewItems.every(item => item.review_ready)).toBe(true);
     expect(reviewItems.every(item => item.field_review_blocker_count === 0)).toBe(true);
@@ -477,8 +470,8 @@ describe('domain-pack-expansion-service', () => {
     expect(report.markdown).toContain('field_candidate_completion_percent');
     expect(report.markdown).toContain('field_review_ready_count');
     expect(report.markdown).toContain('field_review_blocker_count');
-    expect(report.markdown).toContain('pipeline_progress_percent: 75');
-    expect(report.markdown).toContain('pipeline_stage: human_review');
+    expect(report.markdown).toContain('pipeline_progress_percent: 100');
+    expect(report.markdown).toContain('pipeline_stage: complete');
     expect(report.markdown).toContain('field_supplement_priority_target_count');
     expect(report.markdown).toContain('review_ready_priority_target_count');
     expect(report.markdown).toContain('Next Field Supplement Targets');
@@ -494,6 +487,40 @@ describe('domain-pack-expansion-service', () => {
     expect(report.markdown).toBeUndefined();
     expect(report.review_packet.review_item_count).toBe(report.seed_target_count);
     expect(report.review_packet.markdown).toBeUndefined();
+  });
+
+  it('loads tracked review seeds and lets runtime review state override them', () => {
+    const runtimeReviewDir = resolve(generatedRoot, 'domain-pack-expansion');
+    mkdirSync(runtimeReviewDir, { recursive: true });
+    writeFileSync(resolve(runtimeReviewDir, 'review-state.json'), `${JSON.stringify({
+      schema_version: 'domain-pack-expansion-review-state/v1',
+      updated_at: '2026-07-08T10:00:00.000+08:00',
+      direct_writeback_to_province_markdown: false,
+      items: [{
+        review_item_id: 'heritage_process_pack_expansion_20260707::target_01',
+        review_status: 'needs_revision',
+        review_note: '运行态覆盖 seed：退回补充传承人口述授权确认。',
+        reviewed_at: '2026-07-08T10:00:00.000+08:00',
+      }],
+    }, null, 2)}\n`);
+
+    const report = getDomainPackExpansionCandidateReport({ includeMarkdown: false });
+    const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
+    const overridden = reviewItems.find(item =>
+      item.review_item_id === 'heritage_process_pack_expansion_20260707::target_01',
+    );
+
+    expect(report.review_packet.review_status_counts).toMatchObject({
+      candidate_review: 0,
+      approved: 29,
+      needs_revision: 1,
+    });
+    expect(report.review_packet.approved_writeback_draft_count).toBe(29);
+    expect(overridden).toMatchObject({
+      review_status: 'needs_revision',
+      review_note: '运行态覆盖 seed：退回补充传承人口述授权确认。',
+      writeback_status: undefined,
+    });
   });
 
   it('blocks approval when field-level review readiness is incomplete', () => {
@@ -623,13 +650,19 @@ describe('domain-pack-expansion-service', () => {
       exported_at: '2026-07-07T10:00:00.000Z',
       direct_writeback_to_province_markdown: false,
       filters: {},
-      approved_count: 1,
-      target_files: ['data/provinces/湖南.md'],
+      approved_count: 30,
+      target_files: [
+        'data/provinces/山西.md',
+        'data/provinces/湖南.md',
+        'data/provinces/辽宁.md',
+      ],
       status_counts: expect.objectContaining({
         queued: 1,
+        draft_ready: 29,
       }),
     });
-    expect(draftPackage.items[0]).toMatchObject({
+    const draftItem = draftPackage.items.find(item => item.review_item_id === reviewItemId);
+    expect(draftItem).toMatchObject({
       review_item_id: reviewItemId,
       province: '湖南',
       suggested_file_path: 'data/provinces/湖南.md',
@@ -642,7 +675,7 @@ describe('domain-pack-expansion-service', () => {
       field_review_ready_percent: 100,
       review_ready: true,
     });
-    expect(draftPackage.items[0].field_workbench?.[0]).toMatchObject({
+    expect(draftItem?.field_workbench?.[0]).toMatchObject({
       field_id: 'process_steps',
       supplement_status: 'candidate_draft',
     });
@@ -675,27 +708,29 @@ describe('domain-pack-expansion-service', () => {
       province_markdown_written: false,
       report: {
         review_packet: {
-          approved_writeback_draft_count: 2,
+          approved_writeback_draft_count: 30,
         },
       },
     });
     expect(update.result?.report.review_packet.review_status_counts).toMatchObject({
-      approved: 2,
+      approved: 30,
     });
     expect(update.result?.report.review_packet.batches
       .flatMap(batch => batch.review_items)
-      .filter(item => item.review_status === 'approved')).toHaveLength(2);
+      .filter(item => item.review_status === 'approved')).toHaveLength(30);
 
     const draftPackage = getDomainPackExpansionWritebackDraftPackage({
       exportedAt: '2026-07-07T11:10:00.000Z',
     });
     expect(draftPackage).toMatchObject({
-      approved_count: 2,
+      approved_count: 30,
       status_counts: expect.objectContaining({
         queued: 2,
+        draft_ready: 28,
       }),
     });
-    expect(draftPackage.items.map(item => item.writeback_status)).toEqual(['queued', 'queued']);
+    expect(draftPackage.items.filter(item => item.writeback_status === 'queued')).toHaveLength(2);
+    expect(draftPackage.items.filter(item => item.writeback_status === 'draft_ready')).toHaveLength(28);
 
     const scopedPackage = getDomainPackExpansionWritebackDraftPackage({
       exportedAt: '2026-07-07T11:20:00.000Z',
@@ -720,24 +755,22 @@ describe('domain-pack-expansion-service', () => {
     expect(scopedPackage.markdown).toContain('pack_ids: children_adaptation_safety_pack');
     expect(scopedPackage.markdown).toContain('writeback_statuses: queued');
 
-    const emptyPackage = getDomainPackExpansionWritebackDraftPackage({
+    const remainingDraftPackage = getDomainPackExpansionWritebackDraftPackage({
       exportedAt: '2026-07-07T11:30:00.000Z',
       packIds: ['children_adaptation_safety_pack'],
       writebackStatuses: ['draft_ready'],
     });
-    expect(emptyPackage).toMatchObject({
-      approved_count: 0,
-      target_files: [],
+    expect(remainingDraftPackage).toMatchObject({
+      approved_count: 2,
+      target_files: ['data/provinces/湖南.md'],
       filters: {
         pack_ids: ['children_adaptation_safety_pack'],
         writeback_statuses: ['draft_ready'],
       },
-      status_counts: {
-        draft_ready: 0,
+      status_counts: expect.objectContaining({
+        draft_ready: 2,
         queued: 0,
-        written_back: 0,
-        needs_revision: 0,
-      },
+      }),
     });
   });
 

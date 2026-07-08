@@ -1,0 +1,283 @@
+{
+  "schema_version": "domain-pack-expansion-review-state/v1",
+  "updated_at": "2026-07-08T11:00:00.000+08:00",
+  "direct_writeback_to_province_markdown": false,
+  "seed_policy": {
+    "purpose": "Tracked first-pass human review samples for Domain Pack expansion candidates.",
+    "direct_writeback_to_province_markdown": false,
+    "runtime_override_path": "web/generated/domain-pack-expansion/review-state.json",
+    "note": "Seed items only mark candidate review and writeback draft readiness; they never write data/provinces/*.md."
+  },
+  "items": [
+    {
+      "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_01",
+      "review_status": "approved",
+      "review_note": "首批真实扩库候选审稿样板：字段候选值、来源引用、证据层级和核实备注齐备；仅进入写回草案，不直接写 data/provinces。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_02",
+      "review_status": "approved",
+      "review_note": "第二批真实扩库候选审稿样板：AI 漫剧钩子、表情节拍、禁用语气和结尾问题齐备；对白与情节均标注为改编候选。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_03",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：湘妃竹传说角色锚点、视觉符号、转场方案和禁用语气齐备；神话与地方附会边界清楚。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "children_adaptation_safety_pack_expansion_20260707::target_01",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：柳毅传书儿童年龄层、安全冲突、事实边界卡和情绪收束齐备；低龄改写不替代原传说结局。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "children_adaptation_safety_pack_expansion_20260707::target_02",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：湘妃竹传说儿童年龄层、奇妙符号、事实边界卡和陪读提示齐备；古史传说、地方口述与当代景点层级清楚。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "children_adaptation_safety_pack_expansion_20260707::target_03",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：滩头年画儿童作品例子、视觉符号、陪读提示和检查题齐备；保护性配方与危险工艺边界清楚。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "children_adaptation_safety_pack_expansion_20260707::target_04",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：岳麓书院儿童研学层级、事实边界、可观察例子和教师提示齐备；古代书院与现代校园分层明确。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "documentary_source_pack_expansion_20260707::target_01",
+      "review_status": "approved",
+      "review_note": "首批真实扩库候选审稿样板：字段候选值、来源引用、证据层级和核实备注齐备；仅进入写回草案，不直接写 data/provinces。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "documentary_source_pack_expansion_20260707::target_02",
+      "review_status": "approved",
+      "review_note": "第二批真实扩库候选审稿样板：时间线、现地痕迹、讲述者角色和 B-roll 计划齐备；纪录短片边界清楚。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "documentary_source_pack_expansion_20260707::target_03",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：九一八事变来源线、时间线、再现边界和环境声音齐备；纪录短片需克制使用战争再现。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "documentary_source_pack_expansion_20260707::target_04",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：太行山根据地现地痕迹、外拍笔记、B-roll 和采访角色齐备；战役数据口径保留复核边界。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "education_training_structure_pack_expansion_20260707::target_01",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：新民学会学习目标、案例板、板书资产和练习题齐备；“前身”表述与成员转向保留评价口径。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "education_training_structure_pack_expansion_20260707::target_02",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：岳麓书院学习者画像、讲解步骤、案例板和复盘句齐备；书院制度、会讲事件与当代延续分层清楚。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "education_training_structure_pack_expansion_20260707::target_03",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：周敦颐月岩悟道主讲立场、沟通目标、练习任务和复盘句齐备；史实、传说与视觉隐喻边界明确。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "education_training_structure_pack_expansion_20260707::target_04",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：太行山根据地学习目标、案例板、教学资产和检查题齐备；战役数据与纪念空间口径保留交叉核验边界。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "era_and_costume_pack_expansion_20260707::target_01",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：周敦颐月岩悟道的时代层、服饰轮廓、人物道具和场景器物齐备；史实/传说/当代阐释分层明确。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "era_and_costume_pack_expansion_20260707::target_02",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：岳麓书院时代层、称谓、场景器物和混代风险齐备；古代书院与当代校园边界明确。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "era_and_costume_pack_expansion_20260707::target_03",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：曾国藩身份角色、晚清服饰轮廓、人物道具和禁用现代物件齐备；具体官职服饰仍保留复核边界。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_01",
+      "review_status": "approved",
+      "review_note": "第二批真实扩库候选审稿样板：核心问题、知识步骤、图解字幕计划和回扣句齐备；适合讲解视频草案。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_02",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：常德会战与细菌战核心问题、论点、误区边界和图示计划齐备；严肃讲解边界明确。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_03",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：踏虎剪纸概念定义、具体例子、视觉比喻和误区边界齐备；族群与工艺事实边界明确。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_04",
+      "review_status": "approved",
+      "review_note": "第三批真实扩库候选审稿样板：岳麓书院知识骨架、概念定义、图示字幕和复盘句齐备；讲解表达与事实条目区分明确。",
+      "reviewed_at": "2026-07-08T10:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "heritage_process_pack_expansion_20260707::target_01",
+      "review_status": "approved",
+      "review_note": "首批真实扩库候选审稿样板：字段候选值、来源引用、证据层级和核实备注齐备；仅进入写回草案，不直接写 data/provinces。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "heritage_process_pack_expansion_20260707::target_02",
+      "review_status": "approved",
+      "review_note": "首批真实扩库候选审稿样板：字段候选值、来源引用、证据层级和核实备注齐备；仅进入写回草案，不直接写 data/provinces。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "heritage_process_pack_expansion_20260707::target_03",
+      "review_status": "approved",
+      "review_note": "首批真实扩库候选审稿样板：字段候选值、来源引用、证据层级和核实备注齐备；仅进入写回草案，不直接写 data/provinces。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "heritage_process_pack_expansion_20260707::target_04",
+      "review_status": "approved",
+      "review_note": "第二批真实扩库候选审稿样板：工具、手部动作、视觉符号和社区授权提示齐备；适合非遗宣传草案。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "short_video_hook_pack_expansion_20260707::target_01",
+      "review_status": "approved",
+      "review_note": "第二批真实扩库候选审稿样板：竖屏开场钩子、镜头节奏、视觉符号和风险边界齐备；同时支撑 heritage_promo、documentary_short 和 explainer_video。",
+      "reviewed_at": "2026-07-08T09:45:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "short_video_hook_pack_expansion_20260707::target_02",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：踏虎剪纸短视频开场、节奏拆分、声音质感和误区边界齐备；族群表达与纹样解释保持谨慎。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "short_video_hook_pack_expansion_20260707::target_03",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：岳州扇平台语境、分享触发、视觉符号和评论引导齐备；文创、工艺和授权边界明确。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "short_video_hook_pack_expansion_20260707::target_04",
+      "review_status": "approved",
+      "review_note": "第四批真实扩库候选审稿样板：常德会战与细菌战开场钩子、事件边界、生产风险和评论引导齐备；严肃题材避免灾难娱乐化。",
+      "reviewed_at": "2026-07-08T11:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    }
+  ]
+}
