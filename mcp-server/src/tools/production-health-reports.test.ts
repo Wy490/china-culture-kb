@@ -368,7 +368,7 @@ describe('production health reports', () => {
     expect(toolResult.markdown).toContain('field_candidate_completion_percent: 100');
     expect(toolResult.markdown).toContain('pipeline_progress_percent: 78');
     expect(toolResult.markdown).toContain('pipeline_stage: human_review');
-    expect(toolResult.markdown).toContain('progress_percent: 97');
+    expect(toolResult.markdown).toContain('progress_percent: 98');
     expect(toolResult.markdown).toContain('progress_note: 扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选');
     expect(toolResult.markdown).toContain('field_review_ready_count: 8');
     expect(toolResult.markdown).toContain('field_review_blocker_count: 0');
@@ -464,6 +464,10 @@ describe('production health reports', () => {
       review_item_id: 'heritage_process_pack_batch::target_01',
       review_status: 'approved',
       review_note: 'MCP 工具确认进入人工补源队列。',
+      reviewer_name: 'MCP复核人',
+      reviewed_by: 'MCP复核人',
+      signoff_batch_id: 'mcp-signoff-batch-001',
+      signoff_batch_note: 'MCP 单条审签批次归档测试。',
       writeback_status: 'queued',
       writeback_note: '先排入湖南非遗流程补录批次。',
       include_markdown: false,
@@ -506,6 +510,8 @@ describe('production health reports', () => {
       items: [expect.objectContaining({
         review_item_id: 'heritage_process_pack_batch::target_01',
         review_status: 'approved',
+        signoff_batch_id: 'mcp-signoff-batch-001',
+        signoff_batch_note: 'MCP 单条审签批次归档测试。',
         writeback_status: 'queued',
       })],
     });
@@ -852,6 +858,8 @@ describe('production health reports', () => {
           reviewed_at: '2026-07-07T13:00:00.000Z',
           reviewer_name: 'MCP统一导出复核人',
           reviewed_by: 'MCP统一导出复核人',
+          signoff_batch_id: 'mcp-unified-signoff-001',
+          signoff_batch_note: 'MCP 统一写回导出审签批次归档测试。',
           writeback_status: 'queued',
           writeback_note: '扩库入队。',
           writeback_updated_at: '2026-07-07T13:00:00.000Z',
@@ -959,6 +967,7 @@ describe('production health reports', () => {
             item_count: 2,
             target_file_count: 1,
             requires_manual_signoff_count: 2,
+            signoff_batch_ids: ['mcp-unified-signoff-001'],
             direct_writeback_to_province_markdown: false,
             province_markdown_written: false,
           }),
@@ -968,6 +977,9 @@ describe('production health reports', () => {
           requires_manual_signoff_count: 2,
           reviewer_identity_count: 1,
           missing_reviewer_identity_count: 1,
+          signoff_batch_count: 1,
+          missing_signoff_batch_count: 1,
+          signoff_batch_ids: ['mcp-unified-signoff-001'],
           items: expect.arrayContaining([
             expect.objectContaining({
               source_kind: 'project',
@@ -977,6 +989,7 @@ describe('production health reports', () => {
               source_kind: 'domain_pack_expansion',
               writeback_status: 'queued',
               reviewed_by: 'MCP统一导出复核人',
+              signoff_batch_id: 'mcp-unified-signoff-001',
             }),
           ]),
         }),
@@ -989,6 +1002,7 @@ describe('production health reports', () => {
         signoff_manifest: expect.objectContaining({
           manifest_id: expect.stringMatching(/^kwb-signoff-/),
           sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+          signoff_batch_ids: ['mcp-unified-signoff-001'],
         }),
       }),
       project_patch: {

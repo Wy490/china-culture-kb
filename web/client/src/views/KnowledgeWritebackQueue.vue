@@ -199,6 +199,8 @@
           待签收 {{ reviewHandoffSummary.requiresManualSignoffCount }} 条 ·
           运行态覆盖 {{ reviewHandoffSummary.runtimeOverrideCount }} 条 ·
           缺复核备注 {{ reviewHandoffSummary.missingReviewNoteCount }} 条 ·
+          审签批次 {{ reviewHandoffSummary.signoffBatchIds.length }} 个 ·
+          缺批次 {{ reviewHandoffSummary.missingSignoffBatchCount }} 条 ·
           来源引用 {{ reviewHandoffSummary.sourceRefCount }} 条 ·
           清单 {{ reviewHandoffManifest.manifestId }}
         </span>
@@ -207,6 +209,7 @@
         <article v-for="item in reviewHandoffSamples" :key="item.handoff_id">
           <strong>{{ item.title }}</strong>
           <span>{{ item.source_label }} · {{ writebackStatusLabel(item.writeback_status) }} · {{ item.target_file }}</span>
+          <span>审签批次 {{ item.signoff_batch_id || '待归档' }}</span>
           <span>字段 {{ item.candidate_field_count }} 个 · 来源 {{ item.source_ref_count }} 条</span>
           <span>{{ item.required_action }}</span>
         </article>
@@ -358,6 +361,7 @@
             <span>完整度 {{ item.field_candidate_completion_percent ?? 100 }}%</span>
             <span>送审 {{ item.field_review_ready_count ?? 0 }}</span>
             <span>阻断 {{ item.field_review_blocker_count ?? 0 }}</span>
+            <span v-if="item.signoff_batch_id">审签 {{ item.signoff_batch_id }}</span>
             <span v-for="type in item.target_video_types" :key="`${item.review_item_id}:${type}`">
               {{ typeLabel(type) }}
             </span>
@@ -369,6 +373,8 @@
             <span>目标文件：{{ item.suggested_file_path }}</span>
             <span>字段差异：候选 {{ item.field_supplement_candidate_count ?? candidateFields(item).length }} 个，缺口 {{ item.field_missing_candidate_count ?? 0 }} 个</span>
             <span>来源引用：{{ itemSourceRefCount(item) }} 条</span>
+            <span>审签批次：{{ item.signoff_batch_id || '待归档' }}</span>
+            <span v-if="item.signoff_batch_note">批次备注：{{ item.signoff_batch_note }}</span>
             <span>直写省份 Markdown：关闭</span>
           </div>
           <details class="writeback-page__field-preview">
@@ -465,6 +471,8 @@ interface ReviewHandoffPreviewItem {
   has_review_note: boolean;
   review_state_source?: DomainPackExpansionReviewStateSource;
   review_state_overrides_seed?: boolean;
+  signoff_batch_id?: string;
+  signoff_batch_note?: string;
   required_action: string;
 }
 
@@ -618,6 +626,8 @@ const reviewHandoffItems = computed<ReviewHandoffPreviewItem[]>(() => [
       has_review_note: hasReviewNote,
       review_state_source: item.review_state_source,
       review_state_overrides_seed: item.review_state_overrides_seed,
+      signoff_batch_id: item.signoff_batch_id,
+      signoff_batch_note: item.signoff_batch_note,
       required_action: reviewHandoffRequiredAction(status, hasReviewNote, sourceRefCount),
     }
   }),
@@ -628,6 +638,8 @@ const reviewHandoffSummary = computed(() => ({
     item.review_state_source === 'runtime' || item.review_state_overrides_seed,
   ).length,
   missingReviewNoteCount: reviewHandoffItems.value.filter(item => !item.has_review_note).length,
+  missingSignoffBatchCount: reviewHandoffItems.value.filter(item => !item.signoff_batch_id?.trim()).length,
+  signoffBatchIds: [...new Set(reviewHandoffItems.value.map(item => item.signoff_batch_id?.trim()).filter((id): id is string => Boolean(id)))].sort((a, b) => a.localeCompare(b)),
   sourceRefCount: reviewHandoffItems.value.reduce((sum, item) => sum + item.source_ref_count, 0),
 }))
 const reviewHandoffManifest = computed(() => {
@@ -640,6 +652,7 @@ const reviewHandoffManifest = computed(() => {
     source_ref_count: item.source_ref_count,
     review_state_source: item.review_state_source,
     review_state_overrides_seed: item.review_state_overrides_seed,
+    signoff_batch_id: item.signoff_batch_id,
   })))
   const fingerprint = localManifestFingerprint(payload)
   return {
@@ -712,6 +725,8 @@ const filteredExpansionItems = computed(() => {
       item.suggested_file_path,
       item.review_note ?? '',
       item.writeback_note ?? '',
+      item.signoff_batch_id ?? '',
+      item.signoff_batch_note ?? '',
       item.writeback_draft_markdown,
       item.append_markdown,
       ...item.target_video_types,

@@ -1322,6 +1322,8 @@ export const DomainPackExpansionReviewStateUpdateRequestSchema = z.object({
   reviewer_id: z.string().trim().max(120, 'reviewer_id is too long').optional(),
   reviewer_name: z.string().trim().max(120, 'reviewer_name is too long').optional(),
   reviewed_by: z.string().trim().max(120, 'reviewed_by is too long').optional(),
+  signoff_batch_id: z.string().trim().max(160, 'signoff_batch_id is too long').optional(),
+  signoff_batch_note: z.string().trim().max(500, 'signoff_batch_note is too long').optional(),
   writeback_status: z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision']).optional(),
   writeback_note: z.string().trim().max(2000, 'writeback_note is too long').optional(),
 });
@@ -1335,6 +1337,8 @@ export const DomainPackExpansionReviewStateBulkUpdateRequestSchema = z.object({
   reviewer_id: z.string().trim().max(120, 'reviewer_id is too long').optional(),
   reviewer_name: z.string().trim().max(120, 'reviewer_name is too long').optional(),
   reviewed_by: z.string().trim().max(120, 'reviewed_by is too long').optional(),
+  signoff_batch_id: z.string().trim().max(160, 'signoff_batch_id is too long').optional(),
+  signoff_batch_note: z.string().trim().max(500, 'signoff_batch_note is too long').optional(),
   writeback_status: z.enum(['draft_ready', 'queued', 'written_back', 'needs_revision']).optional(),
   writeback_note: z.string().trim().max(2000, 'writeback_note is too long').optional(),
 });

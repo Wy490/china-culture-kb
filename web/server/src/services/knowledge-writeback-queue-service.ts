@@ -238,6 +238,8 @@ function buildReviewHandoff(
       reviewer_id: item.reviewer_id,
       reviewer_name: item.reviewer_name,
       reviewed_by: item.reviewed_by,
+      signoff_batch_id: item.signoff_batch_id,
+      signoff_batch_note: item.signoff_batch_note,
       writeback_note: item.writeback_note,
       candidate_field_count: item.field_supplement_candidate_count ?? candidateFieldCount(item),
       source_ref_count: sourceRefCount,
@@ -258,6 +260,8 @@ function buildReviewHandoff(
 
   const reviewNoteCount = items.filter(item => Boolean(item.review_note?.trim())).length;
   const reviewerIdentityCount = items.filter(item => Boolean(reviewerDisplayName(item))).length;
+  const signoffBatchIds = [...new Set(items.map(item => item.signoff_batch_id?.trim()).filter((id): id is string => Boolean(id)))].sort((a, b) => a.localeCompare(b));
+  const signoffBatchCount = items.filter(item => Boolean(item.signoff_batch_id?.trim())).length;
   const sourceRefCount = items.reduce((sum, item) => sum + item.source_ref_count, 0);
   const candidateFieldCount = items.reduce((sum, item) => sum + item.candidate_field_count, 0);
   const requiresManualSignoffCount = items.filter(item => item.writeback_status !== 'written_back').length;
@@ -283,13 +287,16 @@ function buildReviewHandoff(
     missing_review_note_count: items.length - reviewNoteCount,
     reviewer_identity_count: reviewerIdentityCount,
     missing_reviewer_identity_count: items.length - reviewerIdentityCount,
+    signoff_batch_count: signoffBatchCount,
+    missing_signoff_batch_count: items.length - signoffBatchCount,
+    signoff_batch_ids: signoffBatchIds,
     source_ref_count: sourceRefCount,
     candidate_field_count: candidateFieldCount,
     requires_manual_signoff_count: requiresManualSignoffCount,
     status_counts: statusCounts,
     operator_checklist: [
       '逐条确认 target_file 与省份条目匹配。',
-      '逐条核对 reviewer_identity、review_note、writeback_note 和字段级 source_refs。',
+      '逐条核对 reviewer_identity、signoff_batch_id、review_note、writeback_note 和字段级 source_refs。',
       'runtime review-state 覆盖 seed 时，优先查看退回原因和复核备注。',
       '只把导出包作为人工写回草案；默认不直接写 data/provinces/*.md。',
     ],
@@ -304,12 +311,14 @@ function buildReviewSignoffManifest(input: {
   sourceRefCount: number;
   requiresManualSignoffCount: number;
 }): KnowledgeWritebackQueueReviewSignoffManifest {
+  const signoffBatchIds = [...new Set(input.items.map(item => item.signoff_batch_id?.trim()).filter((id): id is string => Boolean(id)))].sort((a, b) => a.localeCompare(b));
   const payload = {
     schema_version: 'knowledge-writeback-queue-signoff-manifest/v1',
     generated_at: input.exportedAt,
     direct_writeback_to_province_markdown: false,
     province_markdown_written: false,
     target_files: input.targetFiles,
+    signoff_batch_ids: signoffBatchIds,
     items: input.items.map(item => ({
       handoff_id: item.handoff_id,
       source_kind: item.source_kind,
@@ -320,6 +329,7 @@ function buildReviewSignoffManifest(input: {
       review_state_source: item.review_state_source,
       review_state_overrides_seed: item.review_state_overrides_seed,
       reviewed_by: reviewerDisplayName(item),
+      signoff_batch_id: item.signoff_batch_id,
     })),
   };
   const sha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
@@ -332,6 +342,7 @@ function buildReviewSignoffManifest(input: {
     target_file_count: input.targetFiles.length,
     source_ref_count: input.sourceRefCount,
     requires_manual_signoff_count: input.requiresManualSignoffCount,
+    signoff_batch_ids: signoffBatchIds,
     direct_writeback_to_province_markdown: false,
     province_markdown_written: false,
   };
@@ -356,6 +367,8 @@ function reviewerDisplayName(item: {
   reviewed_by?: string;
   reviewer_name?: string;
   reviewer_id?: string;
+  signoff_batch_id?: string;
+  signoff_batch_note?: string;
 }): string | undefined {
   return item.reviewed_by?.trim() || item.reviewer_name?.trim() || item.reviewer_id?.trim() || undefined;
 }
@@ -488,6 +501,9 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- missing_review_note_count: ${pkg.preflight.review_handoff.missing_review_note_count}`,
     `- reviewer_identity_count: ${pkg.preflight.review_handoff.reviewer_identity_count}`,
     `- missing_reviewer_identity_count: ${pkg.preflight.review_handoff.missing_reviewer_identity_count}`,
+    `- signoff_batch_count: ${pkg.preflight.review_handoff.signoff_batch_count}`,
+    `- missing_signoff_batch_count: ${pkg.preflight.review_handoff.missing_signoff_batch_count}`,
+    `- signoff_batch_ids: ${pkg.preflight.review_handoff.signoff_batch_ids.join(', ') || 'none'}`,
     `- requires_manual_signoff_count: ${pkg.preflight.review_handoff.requires_manual_signoff_count}`,
     '',
     '## Signoff Package',
@@ -496,6 +512,7 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- handoff_item_count: ${pkg.signoff_package.handoff_item_count}`,
     `- signoff_manifest_id: ${pkg.signoff_package.signoff_manifest.manifest_id}`,
     `- signoff_manifest_sha256: ${pkg.signoff_package.signoff_manifest.sha256}`,
+    `- signoff_manifest_batches: ${pkg.signoff_package.signoff_manifest.signoff_batch_ids.join(', ') || 'none'}`,
     `- direct_writeback_to_province_markdown: ${pkg.signoff_package.direct_writeback_to_province_markdown}`,
     `- province_markdown_written: ${pkg.signoff_package.province_markdown_written}`,
     '',
@@ -541,6 +558,8 @@ function renderReviewHandoffLines(items: KnowledgeWritebackQueueReviewHandoffIte
     ...(item.review_state_source ? [`  - review_state_source: ${item.review_state_source}`] : []),
     ...(typeof item.review_state_overrides_seed === 'boolean' ? [`  - review_state_overrides_seed: ${item.review_state_overrides_seed}`] : []),
     ...(reviewerDisplayName(item) ? [`  - reviewed_by: ${reviewerDisplayName(item)}`] : []),
+    ...(item.signoff_batch_id ? [`  - signoff_batch_id: ${item.signoff_batch_id}`] : []),
+    ...(item.signoff_batch_note ? [`  - signoff_batch_note: ${item.signoff_batch_note}`] : []),
     `  - required_action: ${item.required_action}`,
   ]);
 }

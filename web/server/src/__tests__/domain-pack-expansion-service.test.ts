@@ -180,7 +180,7 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         task_id: 'field_workbench_controls',
         status: 'in_progress',
-        progress_percent: 97,
+        progress_percent: 98,
         progress_note: expect.stringContaining('统一写回队列'),
         related_plan_items: [1],
         direct_writeback_to_province_markdown: false,
@@ -188,13 +188,13 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         task_id: 'manual_review_closure',
         status: 'ready',
-        progress_percent: 94,
+        progress_percent: 97,
         related_plan_items: [2],
       }),
       expect.objectContaining({
         task_id: 'writeback_safety_export',
         status: 'in_progress',
-        progress_percent: 99,
+        progress_percent: 100,
         related_plan_items: [3],
       }),
       expect.objectContaining({
@@ -207,12 +207,12 @@ describe('domain-pack-expansion-service', () => {
       expect.objectContaining({
         task_id: 'mvp_completion_surface',
         status: 'ready',
-        progress_percent: 96,
+        progress_percent: 97,
         related_plan_items: [5],
       }),
     ]));
     expect(report.markdown).toContain('field_workbench_controls');
-    expect(report.markdown).toContain('progress_percent: 97');
+    expect(report.markdown).toContain('progress_percent: 98');
     const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
     expect(reviewItems.every(item => item.review_ready)).toBe(true);
     expect(reviewItems.every(item => item.review_state_source === 'seed')).toBe(true);
@@ -704,6 +704,8 @@ describe('domain-pack-expansion-service', () => {
       review_note: '已确认可进入人工补源清单，仍需补来源级证据。',
       reviewer_name: '王复核',
       reviewed_by: '王复核',
+      signoff_batch_id: 'dp-signoff-test-001',
+      signoff_batch_note: '单条审签批次归档测试。',
       writeback_status: 'queued',
       writeback_note: '先排入湖南非遗流程补录批次。',
     }, {
@@ -719,12 +721,15 @@ describe('domain-pack-expansion-service', () => {
       review_note: '已确认可进入人工补源清单，仍需补来源级证据。',
       reviewer_name: '王复核',
       reviewed_by: '王复核',
+      signoff_batch_id: 'dp-signoff-test-001',
+      signoff_batch_note: '单条审签批次归档测试。',
       writeback_status: 'queued',
       writeback_note: '先排入湖南非遗流程补录批次。',
       writeback_draft_markdown: expect.stringContaining('扩库候选审稿草案'),
     });
     expect(updatedItem?.writeback_draft_markdown).toContain('direct_writeback_to_province_markdown: false');
     expect(updatedItem?.writeback_draft_markdown).toContain('reviewed_by: 王复核');
+    expect(updatedItem?.writeback_draft_markdown).toContain('signoff_batch_id: dp-signoff-test-001');
     expect(updatedItem?.writeback_draft_markdown).toContain('#### 字段候选值');
     expect(updatedItem?.writeback_draft_markdown).toContain('刻版→上色→套印→开脸');
 
@@ -755,6 +760,8 @@ describe('domain-pack-expansion-service', () => {
       writeback_status: 'queued',
       reviewer_name: '王复核',
       reviewed_by: '王复核',
+      signoff_batch_id: 'dp-signoff-test-001',
+      signoff_batch_note: '单条审签批次归档测试。',
       review_state_source: 'runtime',
       review_state_overrides_seed: true,
       review_state_seed_status: 'approved',

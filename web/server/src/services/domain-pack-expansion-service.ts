@@ -130,6 +130,8 @@ export interface DomainPackExpansionReviewItem {
   reviewer_id?: string;
   reviewer_name?: string;
   reviewed_by?: string;
+  signoff_batch_id?: string;
+  signoff_batch_note?: string;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
   writeback_updated_at?: string;
@@ -538,8 +540,8 @@ function buildNextDevelopmentTasks(
       title: '字段级补库工作台增强',
       priority: 'P0',
       status: report.pipeline_stage === 'complete' ? 'in_progress' : 'ready',
-      progress_percent: 97,
-      progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、复核人身份、批量写回状态操作、导出预检、签收清单和 canonical signoff package。',
+      progress_percent: 98,
+      progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、复核人身份、审签批次归档、批量写回状态操作、导出预检、签收清单和 canonical signoff package。',
       related_plan_items: [1],
       target_video_types: coreVideoTypes,
       description: '增强筛选、字段预览、批量审稿和写回状态操作，让 62 条草案可被人工高效复核。',
@@ -555,8 +557,8 @@ function buildNextDevelopmentTasks(
       title: '人工复核闭环',
       priority: 'P0',
       status: 'ready',
-      progress_percent: 94,
-      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、复核人身份归档、source 筛选、人工签收 manifest 和 canonical signoff package 已可见；继续补审签批次归档。',
+      progress_percent: 97,
+      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、复核人身份归档、审签批次 ID/备注、source 筛选、人工签收 manifest 和 canonical signoff package 已可见；继续补批次完成率和下载归档。',
       related_plan_items: [2],
       target_video_types: coreVideoTypes,
       description: '把退回原因、运行态覆盖和复核备注显性化，方便人工把 seed 审稿结果退回、入队或标注需补证。',
@@ -573,8 +575,8 @@ function buildNextDevelopmentTasks(
       title: '写回导出安全预检',
       priority: 'P0',
       status: preflight.ready_for_unified_export ? 'in_progress' : 'blocked',
-      progress_percent: 99,
-      progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用、人工交接、复核人身份覆盖率、签收 manifest/sha256、canonical signoff package、signoff safety checks 和不可直写提示；继续补下载归档。',
+      progress_percent: 100,
+      progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用、人工交接、复核人身份覆盖率、审签批次归档、签收 manifest/sha256、canonical signoff package、signoff safety checks 和不可直写提示。',
       related_plan_items: [3],
       target_video_types: coreVideoTypes,
       description: '在导出前展示目标省份文件、状态计数和禁止直写检查，统一接入 Knowledge Writeback Queue。',
@@ -607,8 +609,8 @@ function buildNextDevelopmentTasks(
       title: 'MVP 与生产健康完成态',
       priority: 'P1',
       status: report.pipeline_stage === 'complete' ? 'ready' : 'blocked',
-      progress_percent: 96,
-      progress_note: 'MVP 已接入扩库 complete、62 条写回草案计数、复核交接签收 manifest/canonical signoff package、复核人身份覆盖率、runtime 覆盖证据和 1-5 项百分比；继续强调“完成候选但待人工写回”。',
+      progress_percent: 97,
+      progress_note: 'MVP 已接入扩库 complete、62 条写回草案计数、复核交接签收 manifest/canonical signoff package、复核人身份覆盖率、审签批次归档、runtime 覆盖证据和 1-5 项百分比；继续强调“完成候选但待人工写回”。',
       related_plan_items: [5],
       target_video_types: coreVideoTypes,
       description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
@@ -858,6 +860,8 @@ function buildReviewItem(
     reviewer_id: stateItem?.reviewer_id,
     reviewer_name: stateItem?.reviewer_name,
     reviewed_by: stateItem?.reviewed_by,
+    signoff_batch_id: stateItem?.signoff_batch_id,
+    signoff_batch_note: stateItem?.signoff_batch_note,
     review_state_source: stateItem?.review_state_source ?? 'none',
     review_state_overrides_seed: stateItem?.review_state_overrides_seed ?? false,
     review_state_seed_status: stateItem?.review_state_seed_status,
@@ -1298,6 +1302,8 @@ function renderDomainPackExpansionReviewItemMarkdown(
     `- direct_writeback_to_province_markdown: false`,
     ...(item.reviewed_at ? [`- reviewed_at: ${item.reviewed_at}`] : []),
     ...(reviewerDisplayName(item) ? [`- reviewed_by: ${reviewerDisplayName(item)}`] : []),
+    ...(item.signoff_batch_id ? [`- signoff_batch_id: ${item.signoff_batch_id}`] : []),
+    ...(item.signoff_batch_note ? [`- signoff_batch_note: ${item.signoff_batch_note}`] : []),
     ...(item.writeback_status ? [`- writeback_status: ${item.writeback_status}`] : []),
     '',
     'Recommended fields:',
@@ -1370,6 +1376,8 @@ export function updateDomainPackExpansionReviewState(
   const reviewerId = input.reviewer_id?.trim() || existing?.reviewer_id;
   const reviewerName = input.reviewer_name?.trim() || existing?.reviewer_name;
   const reviewedBy = input.reviewed_by?.trim() || reviewerName || existing?.reviewed_by || reviewerId;
+  const signoffBatchId = input.signoff_batch_id?.trim() || existing?.signoff_batch_id;
+  const signoffBatchNote = input.signoff_batch_note?.trim() || existing?.signoff_batch_note;
   const writebackStatus = reviewStatus === 'approved'
     ? (input.writeback_status ?? existing?.writeback_status ?? 'draft_ready')
     : undefined;
@@ -1385,6 +1393,8 @@ export function updateDomainPackExpansionReviewState(
     reviewer_id: reviewerId,
     reviewer_name: reviewerName,
     reviewed_by: reviewedBy,
+    signoff_batch_id: signoffBatchId,
+    signoff_batch_note: signoffBatchNote,
     writeback_status: writebackStatus,
     writeback_note: writebackNote,
     writeback_updated_at: writebackStatus ? updatedAt : undefined,
@@ -1442,6 +1452,8 @@ export function updateDomainPackExpansionReviewStateBulk(
   const reviewerId = input.reviewer_id?.trim() || undefined;
   const reviewerName = input.reviewer_name?.trim() || undefined;
   const reviewedBy = input.reviewed_by?.trim() || reviewerName || reviewerId;
+  const signoffBatchId = input.signoff_batch_id?.trim() || undefined;
+  const signoffBatchNote = input.signoff_batch_note?.trim() || undefined;
   const writebackNote = input.review_status === 'approved'
     ? (input.writeback_note?.trim() || undefined)
     : undefined;
@@ -1459,6 +1471,8 @@ export function updateDomainPackExpansionReviewStateBulk(
       reviewer_id: reviewerId ?? existing?.reviewer_id,
       reviewer_name: reviewerName ?? existing?.reviewer_name,
       reviewed_by: reviewedBy ?? existing?.reviewed_by,
+      signoff_batch_id: signoffBatchId ?? existing?.signoff_batch_id,
+      signoff_batch_note: signoffBatchNote ?? existing?.signoff_batch_note,
       writeback_status: writebackStatus,
       writeback_note: writebackStatus ? (writebackNote ?? existing?.writeback_note) : undefined,
       writeback_updated_at: writebackStatus ? updatedAt : undefined,
@@ -1510,6 +1524,8 @@ export function getDomainPackExpansionWritebackDraftPackage(
       reviewer_id: item.reviewer_id,
       reviewer_name: item.reviewer_name,
       reviewed_by: item.reviewed_by,
+      signoff_batch_id: item.signoff_batch_id,
+      signoff_batch_note: item.signoff_batch_note,
       review_state_source: item.review_state_source,
       review_state_overrides_seed: item.review_state_overrides_seed,
       review_state_seed_status: item.review_state_seed_status,
@@ -1575,6 +1591,8 @@ function renderDomainPackExpansionWritebackDraftMarkdown(
     `> review_state_source: ${item.review_state_source}`,
     `> review_state_overrides_seed: ${item.review_state_overrides_seed}`,
     ...(reviewerDisplayName(item) ? [`> reviewed_by: ${reviewerDisplayName(item)}`] : []),
+    ...(item.signoff_batch_id ? [`> signoff_batch_id: ${item.signoff_batch_id}`] : []),
+    ...(item.signoff_batch_note ? [`> signoff_batch_note: ${item.signoff_batch_note}`] : []),
     `> direct_writeback_to_province_markdown: false`,
     '',
     '#### 待补生产字段',
@@ -1796,6 +1814,8 @@ function stripResolvedReviewStateMetadata(
     reviewer_id: item.reviewer_id,
     reviewer_name: item.reviewer_name,
     reviewed_by: item.reviewed_by,
+    signoff_batch_id: item.signoff_batch_id,
+    signoff_batch_note: item.signoff_batch_note,
     writeback_status: item.writeback_status,
     writeback_note: item.writeback_note,
     writeback_updated_at: item.writeback_updated_at,
@@ -1843,6 +1863,8 @@ function normalizeReviewStateItem(value: unknown): DomainPackExpansionReviewStat
     reviewer_id: typeof value.reviewer_id === 'string' ? value.reviewer_id : undefined,
     reviewer_name: typeof value.reviewer_name === 'string' ? value.reviewer_name : undefined,
     reviewed_by: typeof value.reviewed_by === 'string' ? value.reviewed_by : undefined,
+    signoff_batch_id: typeof value.signoff_batch_id === 'string' ? value.signoff_batch_id : undefined,
+    signoff_batch_note: typeof value.signoff_batch_note === 'string' ? value.signoff_batch_note : undefined,
     writeback_status: writebackStatus,
     writeback_note: typeof value.writeback_note === 'string' ? value.writeback_note : undefined,
     writeback_updated_at: typeof value.writeback_updated_at === 'string' ? value.writeback_updated_at : undefined,

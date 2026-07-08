@@ -6112,6 +6112,8 @@ export interface DomainPackExpansionReviewItem {
   reviewer_id?: string;
   reviewer_name?: string;
   reviewed_by?: string;
+  signoff_batch_id?: string;
+  signoff_batch_note?: string;
   review_state_source: DomainPackExpansionReviewStateSource;
   review_state_overrides_seed: boolean;
   review_state_seed_status?: DomainPackExpansionReviewStatus;
@@ -6193,6 +6195,8 @@ export interface DomainPackExpansionReviewStateItem {
   reviewer_id?: string;
   reviewer_name?: string;
   reviewed_by?: string;
+  signoff_batch_id?: string;
+  signoff_batch_note?: string;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
   writeback_updated_at?: string;
@@ -6205,6 +6209,8 @@ export interface DomainPackExpansionReviewStateUpdateRequest {
   reviewer_id?: string;
   reviewer_name?: string;
   reviewed_by?: string;
+  signoff_batch_id?: string;
+  signoff_batch_note?: string;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
 }
@@ -6216,6 +6222,8 @@ export interface DomainPackExpansionReviewStateBulkUpdateRequest {
   reviewer_id?: string;
   reviewer_name?: string;
   reviewed_by?: string;
+  signoff_batch_id?: string;
+  signoff_batch_note?: string;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
 }
@@ -6242,6 +6250,8 @@ export interface DomainPackExpansionWritebackDraftItem {
   reviewer_id?: string;
   reviewer_name?: string;
   reviewed_by?: string;
+  signoff_batch_id?: string;
+  signoff_batch_note?: string;
   review_state_source: DomainPackExpansionReviewStateSource;
   review_state_overrides_seed: boolean;
   review_state_seed_status?: DomainPackExpansionReviewStatus;
@@ -6370,6 +6380,8 @@ export interface KnowledgeWritebackQueueReviewHandoffItem {
   reviewer_id?: string;
   reviewer_name?: string;
   reviewed_by?: string;
+  signoff_batch_id?: string;
+  signoff_batch_note?: string;
   writeback_note?: string;
   candidate_field_count: number;
   source_ref_count: number;
@@ -6385,6 +6397,7 @@ export interface KnowledgeWritebackQueueReviewSignoffManifest {
   target_file_count: number;
   source_ref_count: number;
   requires_manual_signoff_count: number;
+  signoff_batch_ids: string[];
   direct_writeback_to_province_markdown: false;
   province_markdown_written: false;
 }
@@ -6401,6 +6414,9 @@ export interface KnowledgeWritebackQueueReviewHandoff {
   missing_review_note_count: number;
   reviewer_identity_count: number;
   missing_reviewer_identity_count: number;
+  signoff_batch_count: number;
+  missing_signoff_batch_count: number;
+  signoff_batch_ids: string[];
   source_ref_count: number;
   candidate_field_count: number;
   requires_manual_signoff_count: number;
