@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
   DomainPackExpansionWritebackDraftItem,
   DomainPackExpansionWritebackDraftPackage,
@@ -7,6 +8,7 @@ import type {
   KnowledgeWritebackQueueExportTargetFilePreflight,
   KnowledgeWritebackQueueReviewHandoff,
   KnowledgeWritebackQueueReviewHandoffItem,
+  KnowledgeWritebackQueueReviewSignoffManifest,
   KnowledgeWritebackStatus,
   ProjectKnowledgeWritebackPatchItem,
   ProjectSupplementTaskListFilters,
@@ -71,6 +73,7 @@ export async function getKnowledgeWritebackQueueExportPackage(
     total: mergeStatusCounts(projectPatchResult.data.status_counts, expansionDraft.status_counts),
   };
   const preflight = buildUnifiedWritebackExportPreflight({
+    exportedAt,
     targetFiles,
     projectItems: projectPatchResult.data.items,
     expansionItems: expansionDraft.items,
@@ -113,6 +116,7 @@ function buildFilters(input: KnowledgeWritebackQueueExportInput): KnowledgeWrite
 }
 
 function buildUnifiedWritebackExportPreflight(input: {
+  exportedAt: string;
   targetFiles: string[];
   projectItems: ProjectKnowledgeWritebackPatchItem[];
   expansionItems: DomainPackExpansionWritebackDraftItem[];
@@ -129,7 +133,7 @@ function buildUnifiedWritebackExportPreflight(input: {
   const totalDraftCount = input.projectItems.length + input.expansionItems.length;
   const manualReviewRequiredCount = totalDraftCount - (input.statusCounts.written_back ?? 0);
   const blockedDirectWritebackCount = totalDraftCount;
-  const reviewHandoff = buildReviewHandoff(input.projectItems, input.expansionItems);
+  const reviewHandoff = buildReviewHandoff(input.projectItems, input.expansionItems, input.exportedAt, input.targetFiles);
 
   return {
     schema_version: 'knowledge-writeback-queue-export-preflight/v1',
@@ -169,6 +173,8 @@ function buildUnifiedWritebackExportPreflight(input: {
 function buildReviewHandoff(
   projectItems: ProjectKnowledgeWritebackPatchItem[],
   expansionItems: DomainPackExpansionWritebackDraftItem[],
+  exportedAt: string,
+  targetFiles: string[],
 ): KnowledgeWritebackQueueReviewHandoff {
   const projectHandoffItems = projectItems.map<KnowledgeWritebackQueueReviewHandoffItem>(item => {
     const status = item.writeback_status ?? 'draft_ready';
@@ -222,9 +228,18 @@ function buildReviewHandoff(
   const reviewNoteCount = items.filter(item => Boolean(item.review_note?.trim())).length;
   const sourceRefCount = items.reduce((sum, item) => sum + item.source_ref_count, 0);
   const candidateFieldCount = items.reduce((sum, item) => sum + item.candidate_field_count, 0);
+  const requiresManualSignoffCount = items.filter(item => item.writeback_status !== 'written_back').length;
+  const signoffManifest = buildReviewSignoffManifest({
+    exportedAt,
+    items,
+    targetFiles,
+    sourceRefCount,
+    requiresManualSignoffCount,
+  });
 
   return {
     schema_version: 'knowledge-writeback-queue-review-handoff/v1',
+    signoff_manifest: signoffManifest,
     total_handoff_count: items.length,
     project_handoff_count: projectHandoffItems.length,
     expansion_handoff_count: expansionHandoffItems.length,
@@ -236,7 +251,7 @@ function buildReviewHandoff(
     missing_review_note_count: items.length - reviewNoteCount,
     source_ref_count: sourceRefCount,
     candidate_field_count: candidateFieldCount,
-    requires_manual_signoff_count: items.filter(item => item.writeback_status !== 'written_back').length,
+    requires_manual_signoff_count: requiresManualSignoffCount,
     status_counts: statusCounts,
     operator_checklist: [
       '逐条确认 target_file 与省份条目匹配。',
@@ -245,6 +260,45 @@ function buildReviewHandoff(
       '只把导出包作为人工写回草案；默认不直接写 data/provinces/*.md。',
     ],
     items,
+  };
+}
+
+function buildReviewSignoffManifest(input: {
+  exportedAt: string;
+  items: KnowledgeWritebackQueueReviewHandoffItem[];
+  targetFiles: string[];
+  sourceRefCount: number;
+  requiresManualSignoffCount: number;
+}): KnowledgeWritebackQueueReviewSignoffManifest {
+  const payload = {
+    schema_version: 'knowledge-writeback-queue-signoff-manifest/v1',
+    generated_at: input.exportedAt,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    target_files: input.targetFiles,
+    items: input.items.map(item => ({
+      handoff_id: item.handoff_id,
+      source_kind: item.source_kind,
+      target_file: item.target_file,
+      writeback_status: item.writeback_status,
+      candidate_field_count: item.candidate_field_count,
+      source_ref_count: item.source_ref_count,
+      review_state_source: item.review_state_source,
+      review_state_overrides_seed: item.review_state_overrides_seed,
+    })),
+  };
+  const sha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  return {
+    schema_version: 'knowledge-writeback-queue-signoff-manifest/v1',
+    manifest_id: `kwb-signoff-${sha256.slice(0, 12)}`,
+    generated_at: input.exportedAt,
+    sha256,
+    item_count: input.items.length,
+    target_file_count: input.targetFiles.length,
+    source_ref_count: input.sourceRefCount,
+    requires_manual_signoff_count: input.requiresManualSignoffCount,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
   };
 }
 
@@ -379,6 +433,8 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     '## Review Handoff',
     '',
     `- schema_version: ${pkg.preflight.review_handoff.schema_version}`,
+    `- signoff_manifest_id: ${pkg.preflight.review_handoff.signoff_manifest.manifest_id}`,
+    `- signoff_manifest_sha256: ${pkg.preflight.review_handoff.signoff_manifest.sha256}`,
     `- total_handoff_count: ${pkg.preflight.review_handoff.total_handoff_count}`,
     `- project_handoff_count: ${pkg.preflight.review_handoff.project_handoff_count}`,
     `- expansion_handoff_count: ${pkg.preflight.review_handoff.expansion_handoff_count}`,

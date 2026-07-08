@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
@@ -608,8 +609,22 @@ interface KnowledgeWritebackQueueReviewHandoffItem {
   required_action: string;
 }
 
+interface KnowledgeWritebackQueueReviewSignoffManifest {
+  schema_version: 'knowledge-writeback-queue-signoff-manifest/v1';
+  manifest_id: string;
+  generated_at: string;
+  sha256: string;
+  item_count: number;
+  target_file_count: number;
+  source_ref_count: number;
+  requires_manual_signoff_count: number;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+}
+
 interface KnowledgeWritebackQueueReviewHandoff {
   schema_version: 'knowledge-writeback-queue-review-handoff/v1';
+  signoff_manifest: KnowledgeWritebackQueueReviewSignoffManifest;
   total_handoff_count: number;
   project_handoff_count: number;
   expansion_handoff_count: number;
@@ -1627,11 +1642,11 @@ function buildExpansionNextDevelopmentTasks(
       title: '字段级补库工作台增强',
       priority: 'P0',
       status: report.pipeline_stage === 'complete' ? 'in_progress' : 'ready',
-      progress_percent: 91,
-      progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、批量写回状态操作、导出预检和签收清单。',
+      progress_percent: 93,
+      progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、批量写回状态操作、导出预检和带 manifest 的签收清单。',
       related_plan_items: [1],
       target_video_types: coreVideoTypes,
-      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 46 条草案可被人工高效复核。',
+      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 50 条草案可被人工高效复核。',
       acceptance_checks: [
         '支持 pack/video_type/province/review_status/writeback_status/field/search 联合筛选。',
         '单条候选展示字段级候选值、来源引用、核实备注和安全预检。',
@@ -1644,8 +1659,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '人工复核闭环',
       priority: 'P0',
       status: 'ready',
-      progress_percent: 83,
-      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、source 筛选和人工签收交接已可见；继续补复核人身份与签收归档。',
+      progress_percent: 86,
+      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、source 筛选和人工签收 manifest 已可见；继续补复核人身份归档。',
       related_plan_items: [2],
       target_video_types: coreVideoTypes,
       description: '把退回原因、运行态覆盖和复核备注显性化，方便人工把 seed 审稿结果退回、入队或标注需补证。',
@@ -1661,8 +1676,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '写回导出安全预检',
       priority: 'P0',
       status: preflight.ready_for_unified_export ? 'in_progress' : 'blocked',
-      progress_percent: 91,
-      progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用、人工交接、签收清单和不可直写提示；继续补下载归档。',
+      progress_percent: 94,
+      progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用、人工交接、签收 manifest/sha256 和不可直写提示；继续补下载归档。',
       related_plan_items: [3],
       target_video_types: coreVideoTypes,
       description: '在导出前展示目标省份文件、状态计数和禁止直写检查，统一接入 Knowledge Writeback Queue。',
@@ -1678,8 +1693,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '第二批真实补库候选',
       priority: 'P1',
       status: 'ready',
-      progress_percent: 77,
-      progress_note: '当前 46 条已形成 approved 草案；本轮补入湖南花鼓戏、岳阳楼、洞庭君山和张家界武陵源候选。',
+      progress_percent: 83,
+      progress_note: '当前 50 条已形成 approved 草案；本轮补入醴陵釉下五彩瓷、贺龙、凤凰古城和韶山候选。',
       related_plan_items: [4],
       target_video_types: coreVideoTypes,
       description: '继续扩展真实条目，优先讲解、非遗宣传、微纪录和 AI 漫剧，不跳过候选稿/审稿/草案流程。',
@@ -1695,8 +1710,8 @@ function buildExpansionNextDevelopmentTasks(
       title: 'MVP 与生产健康完成态',
       priority: 'P1',
       status: report.pipeline_stage === 'complete' ? 'ready' : 'blocked',
-      progress_percent: 87,
-      progress_note: 'MVP 已接入扩库 complete、写回草案计数、复核交接签收证据、runtime 覆盖证据和 1-5 项百分比；继续强调“完成候选但待人工写回”。',
+      progress_percent: 90,
+      progress_note: 'MVP 已接入扩库 complete、写回草案计数、复核交接签收 manifest、runtime 覆盖证据和 1-5 项百分比；继续强调“完成候选但待人工写回”。',
       related_plan_items: [5],
       target_video_types: coreVideoTypes,
       description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
@@ -2542,6 +2557,7 @@ export function getKnowledgeWritebackQueueExportToolResult(
     total: mergeKnowledgeWritebackStatusCounts(projectPatch.status_counts, expansionDraft.status_counts),
   };
   const preflight = buildKnowledgeWritebackQueueExportPreflight({
+    exportedAt,
     targetFiles,
     projectItems: projectPatch.items,
     expansionItems: expansionDraft.items,
@@ -3119,6 +3135,8 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     '## Review Handoff',
     '',
     `- schema_version: ${pkg.preflight.review_handoff.schema_version}`,
+    `- signoff_manifest_id: ${pkg.preflight.review_handoff.signoff_manifest.manifest_id}`,
+    `- signoff_manifest_sha256: ${pkg.preflight.review_handoff.signoff_manifest.sha256}`,
     `- total_handoff_count: ${pkg.preflight.review_handoff.total_handoff_count}`,
     `- project_handoff_count: ${pkg.preflight.review_handoff.project_handoff_count}`,
     `- expansion_handoff_count: ${pkg.preflight.review_handoff.expansion_handoff_count}`,
@@ -3228,6 +3246,7 @@ function countProjectKnowledgeWritebackStatuses(
 }
 
 function buildKnowledgeWritebackQueueExportPreflight(input: {
+  exportedAt: string;
   targetFiles: string[];
   projectItems: ProjectKnowledgeWritebackPatchItem[];
   expansionItems: DomainPackExpansionWritebackDraftItem[];
@@ -3243,7 +3262,12 @@ function buildKnowledgeWritebackQueueExportPreflight(input: {
   const expansionSourceRefCount = countDomainPackExpansionSourceRefs(input.expansionItems);
   const totalDraftCount = input.projectItems.length + input.expansionItems.length;
   const manualReviewRequiredCount = totalDraftCount - (input.statusCounts.written_back ?? 0);
-  const reviewHandoff = buildKnowledgeWritebackReviewHandoff(input.projectItems, input.expansionItems);
+  const reviewHandoff = buildKnowledgeWritebackReviewHandoff(
+    input.projectItems,
+    input.expansionItems,
+    input.exportedAt,
+    input.targetFiles,
+  );
 
   return {
     schema_version: 'knowledge-writeback-queue-export-preflight/v1',
@@ -3283,6 +3307,8 @@ function buildKnowledgeWritebackQueueExportPreflight(input: {
 function buildKnowledgeWritebackReviewHandoff(
   projectItems: ProjectKnowledgeWritebackPatchItem[],
   expansionItems: DomainPackExpansionWritebackDraftItem[],
+  exportedAt: string,
+  targetFiles: string[],
 ): KnowledgeWritebackQueueReviewHandoff {
   const projectHandoffItems = projectItems.map<KnowledgeWritebackQueueReviewHandoffItem>(item => {
     const status = item.writeback_status ?? 'draft_ready';
@@ -3336,9 +3362,18 @@ function buildKnowledgeWritebackReviewHandoff(
   const reviewNoteCount = items.filter(item => Boolean(item.review_note?.trim())).length;
   const sourceRefCount = items.reduce((sum, item) => sum + item.source_ref_count, 0);
   const candidateFieldCount = items.reduce((sum, item) => sum + item.candidate_field_count, 0);
+  const requiresManualSignoffCount = items.filter(item => item.writeback_status !== 'written_back').length;
+  const signoffManifest = buildKnowledgeWritebackReviewSignoffManifest({
+    exportedAt,
+    items,
+    targetFiles,
+    sourceRefCount,
+    requiresManualSignoffCount,
+  });
 
   return {
     schema_version: 'knowledge-writeback-queue-review-handoff/v1',
+    signoff_manifest: signoffManifest,
     total_handoff_count: items.length,
     project_handoff_count: projectHandoffItems.length,
     expansion_handoff_count: expansionHandoffItems.length,
@@ -3350,7 +3385,7 @@ function buildKnowledgeWritebackReviewHandoff(
     missing_review_note_count: items.length - reviewNoteCount,
     source_ref_count: sourceRefCount,
     candidate_field_count: candidateFieldCount,
-    requires_manual_signoff_count: items.filter(item => item.writeback_status !== 'written_back').length,
+    requires_manual_signoff_count: requiresManualSignoffCount,
     status_counts: statusCounts,
     operator_checklist: [
       '逐条确认 target_file 与省份条目匹配。',
@@ -3359,6 +3394,45 @@ function buildKnowledgeWritebackReviewHandoff(
       '只把导出包作为人工写回草案；默认不直接写 data/provinces/*.md。',
     ],
     items,
+  };
+}
+
+function buildKnowledgeWritebackReviewSignoffManifest(input: {
+  exportedAt: string;
+  items: KnowledgeWritebackQueueReviewHandoffItem[];
+  targetFiles: string[];
+  sourceRefCount: number;
+  requiresManualSignoffCount: number;
+}): KnowledgeWritebackQueueReviewSignoffManifest {
+  const payload = {
+    schema_version: 'knowledge-writeback-queue-signoff-manifest/v1',
+    generated_at: input.exportedAt,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    target_files: input.targetFiles,
+    items: input.items.map(item => ({
+      handoff_id: item.handoff_id,
+      source_kind: item.source_kind,
+      target_file: item.target_file,
+      writeback_status: item.writeback_status,
+      candidate_field_count: item.candidate_field_count,
+      source_ref_count: item.source_ref_count,
+      review_state_source: item.review_state_source,
+      review_state_overrides_seed: item.review_state_overrides_seed,
+    })),
+  };
+  const sha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  return {
+    schema_version: 'knowledge-writeback-queue-signoff-manifest/v1',
+    manifest_id: `kwb-signoff-${sha256.slice(0, 12)}`,
+    generated_at: input.exportedAt,
+    sha256,
+    item_count: input.items.length,
+    target_file_count: input.targetFiles.length,
+    source_ref_count: input.sourceRefCount,
+    requires_manual_signoff_count: input.requiresManualSignoffCount,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
   };
 }
 

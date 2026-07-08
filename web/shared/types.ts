@@ -1944,6 +1944,8 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_review_handoff_runtime_override_count: number;
     knowledge_writeback_review_handoff_missing_review_note_count: number;
     knowledge_writeback_review_handoff_source_ref_count: number;
+    knowledge_writeback_review_handoff_signoff_manifest_id: string;
+    knowledge_writeback_review_handoff_signoff_manifest_sha256: string;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;
@@ -6352,8 +6354,22 @@ export interface KnowledgeWritebackQueueReviewHandoffItem {
   required_action: string;
 }
 
+export interface KnowledgeWritebackQueueReviewSignoffManifest {
+  schema_version: 'knowledge-writeback-queue-signoff-manifest/v1';
+  manifest_id: string;
+  generated_at: string;
+  sha256: string;
+  item_count: number;
+  target_file_count: number;
+  source_ref_count: number;
+  requires_manual_signoff_count: number;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+}
+
 export interface KnowledgeWritebackQueueReviewHandoff {
   schema_version: 'knowledge-writeback-queue-review-handoff/v1';
+  signoff_manifest: KnowledgeWritebackQueueReviewSignoffManifest;
   total_handoff_count: number;
   project_handoff_count: number;
   expansion_handoff_count: number;

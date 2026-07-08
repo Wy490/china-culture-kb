@@ -191,7 +191,8 @@
           待签收 {{ reviewHandoffSummary.requiresManualSignoffCount }} 条 ·
           运行态覆盖 {{ reviewHandoffSummary.runtimeOverrideCount }} 条 ·
           缺复核备注 {{ reviewHandoffSummary.missingReviewNoteCount }} 条 ·
-          来源引用 {{ reviewHandoffSummary.sourceRefCount }} 条
+          来源引用 {{ reviewHandoffSummary.sourceRefCount }} 条 ·
+          清单 {{ reviewHandoffManifest.manifestId }}
         </span>
       </div>
       <div class="writeback-page__handoff-grid">
@@ -621,6 +622,23 @@ const reviewHandoffSummary = computed(() => ({
   missingReviewNoteCount: reviewHandoffItems.value.filter(item => !item.has_review_note).length,
   sourceRefCount: reviewHandoffItems.value.reduce((sum, item) => sum + item.source_ref_count, 0),
 }))
+const reviewHandoffManifest = computed(() => {
+  const payload = JSON.stringify(reviewHandoffItems.value.map(item => ({
+    handoff_id: item.handoff_id,
+    source_label: item.source_label,
+    target_file: item.target_file,
+    writeback_status: item.writeback_status,
+    candidate_field_count: item.candidate_field_count,
+    source_ref_count: item.source_ref_count,
+    review_state_source: item.review_state_source,
+    review_state_overrides_seed: item.review_state_overrides_seed,
+  })))
+  const fingerprint = localManifestFingerprint(payload)
+  return {
+    manifestId: `kwb-local-${fingerprint.slice(0, 10)}`,
+    fingerprint,
+  }
+})
 const reviewHandoffSamples = computed(() => reviewHandoffItems.value.slice(0, 6))
 
 const projectOptions = computed(() => {
@@ -1022,6 +1040,8 @@ function renderReviewHandoffChecklist(): string {
     '',
     '- direct_writeback_to_province_markdown: false',
     '- province_markdown_written: false',
+    `- local_signoff_manifest_id: ${reviewHandoffManifest.value.manifestId}`,
+    `- local_signoff_manifest_fingerprint: ${reviewHandoffManifest.value.fingerprint}`,
     `- visible_handoff_count: ${reviewHandoffItems.value.length}`,
     `- requires_manual_signoff_count: ${reviewHandoffSummary.value.requiresManualSignoffCount}`,
     `- runtime_override_count: ${reviewHandoffSummary.value.runtimeOverrideCount}`,
@@ -1048,6 +1068,15 @@ function renderReviewHandoffChecklist(): string {
       `  - action: ${item.required_action}`,
     ]),
   ].join('\n')
+}
+
+function localManifestFingerprint(input: string): string {
+  let hash = 2166136261
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
 async function copyExpansionDraft(format: 'markdown' | 'json') {
