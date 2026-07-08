@@ -148,6 +148,12 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_review_handoff_source_ref_count: number;
     knowledge_writeback_review_handoff_signoff_manifest_id: string;
     knowledge_writeback_review_handoff_signoff_manifest_sha256: string;
+    knowledge_writeback_source_ref_coverage_percent: number;
+    knowledge_writeback_source_ref_blocker_item_count: number;
+    knowledge_writeback_source_ref_warning_item_count: number;
+    knowledge_writeback_missing_source_ref_field_count: number;
+    knowledge_writeback_missing_verification_note_field_count: number;
+    knowledge_writeback_missing_writeback_hint_field_count: number;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;
@@ -329,6 +335,12 @@ interface KnowledgeWritebackQueueMetrics {
   review_handoff_source_ref_count: number;
   review_handoff_signoff_manifest_id: string;
   review_handoff_signoff_manifest_sha256: string;
+  source_ref_coverage_percent: number;
+  source_ref_blocker_item_count: number;
+  source_ref_warning_item_count: number;
+  missing_source_ref_field_count: number;
+  missing_verification_note_field_count: number;
+  missing_writeback_hint_field_count: number;
   read_error_count: number;
 }
 
@@ -741,12 +753,19 @@ function knowledgeWritebackUnifiedExportMetrics(): Pick<
   | 'review_handoff_source_ref_count'
   | 'review_handoff_signoff_manifest_id'
   | 'review_handoff_signoff_manifest_sha256'
+  | 'source_ref_coverage_percent'
+  | 'source_ref_blocker_item_count'
+  | 'source_ref_warning_item_count'
+  | 'missing_source_ref_field_count'
+  | 'missing_verification_note_field_count'
+  | 'missing_writeback_hint_field_count'
 > {
   try {
     const exportPackage: KnowledgeWritebackQueueExportToolResult = getKnowledgeWritebackQueueExportToolResult({
       include_markdown: false,
     });
     const reviewHandoff = exportPackage.preflight.review_handoff;
+    const sourceRefQuality = exportPackage.preflight.source_ref_quality;
     return {
       unified_export_schema: exportPackage.schema_version,
       unified_export_ready: true,
@@ -763,6 +782,12 @@ function knowledgeWritebackUnifiedExportMetrics(): Pick<
       review_handoff_source_ref_count: reviewHandoff.source_ref_count,
       review_handoff_signoff_manifest_id: reviewHandoff.signoff_manifest.manifest_id,
       review_handoff_signoff_manifest_sha256: reviewHandoff.signoff_manifest.sha256,
+      source_ref_coverage_percent: sourceRefQuality.coverage_percent,
+      source_ref_blocker_item_count: sourceRefQuality.blocker_item_count,
+      source_ref_warning_item_count: sourceRefQuality.warning_item_count,
+      missing_source_ref_field_count: sourceRefQuality.missing_source_ref_field_count,
+      missing_verification_note_field_count: sourceRefQuality.missing_verification_note_field_count,
+      missing_writeback_hint_field_count: sourceRefQuality.missing_writeback_hint_field_count,
     };
   } catch {
     return {
@@ -781,6 +806,12 @@ function knowledgeWritebackUnifiedExportMetrics(): Pick<
       review_handoff_source_ref_count: 0,
       review_handoff_signoff_manifest_id: '',
       review_handoff_signoff_manifest_sha256: '',
+      source_ref_coverage_percent: 0,
+      source_ref_blocker_item_count: 0,
+      source_ref_warning_item_count: 0,
+      missing_source_ref_field_count: 0,
+      missing_verification_note_field_count: 0,
+      missing_writeback_hint_field_count: 0,
     };
   }
 }
@@ -907,6 +938,12 @@ function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryA
       `review_handoff_missing_review_notes=${metrics.review_handoff_missing_review_note_count}`,
       `review_handoff_source_refs=${metrics.review_handoff_source_ref_count}`,
       `review_handoff_signoff_manifest_id=${metrics.review_handoff_signoff_manifest_id || 'none'}`,
+      `source_ref_coverage=${metrics.source_ref_coverage_percent}%`,
+      `source_ref_blocker_items=${metrics.source_ref_blocker_item_count}`,
+      `source_ref_warning_items=${metrics.source_ref_warning_item_count}`,
+      `missing_source_ref_fields=${metrics.missing_source_ref_field_count}`,
+      `missing_verification_note_fields=${metrics.missing_verification_note_field_count}`,
+      `missing_writeback_hint_fields=${metrics.missing_writeback_hint_field_count}`,
       `read_errors=${metrics.read_error_count}`,
       'candidate_review_required=true',
       'direct_province_write=false',
@@ -1222,6 +1259,12 @@ function progressSlices(
         `knowledge_writeback_review_handoff_runtime_overrides=${writebackMetrics.review_handoff_runtime_override_count}`,
         `knowledge_writeback_review_handoff_missing_notes=${writebackMetrics.review_handoff_missing_review_note_count}`,
         `knowledge_writeback_review_handoff_manifest=${writebackMetrics.review_handoff_signoff_manifest_id || 'none'}`,
+        `knowledge_writeback_source_ref_coverage=${writebackMetrics.source_ref_coverage_percent}%`,
+        `knowledge_writeback_source_ref_blockers=${writebackMetrics.source_ref_blocker_item_count}`,
+        `knowledge_writeback_source_ref_warnings=${writebackMetrics.source_ref_warning_item_count}`,
+        `knowledge_writeback_missing_source_ref_fields=${writebackMetrics.missing_source_ref_field_count}`,
+        `knowledge_writeback_missing_verification_note_fields=${writebackMetrics.missing_verification_note_field_count}`,
+        `knowledge_writeback_missing_writeback_hint_fields=${writebackMetrics.missing_writeback_hint_field_count}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
         `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
         `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
@@ -1313,6 +1356,9 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     `- knowledge writeback review handoff missing notes: ${report.summary.knowledge_writeback_review_handoff_missing_review_note_count}`,
     `- knowledge writeback review handoff source refs: ${report.summary.knowledge_writeback_review_handoff_source_ref_count}`,
     `- knowledge writeback review handoff signoff manifest: ${report.summary.knowledge_writeback_review_handoff_signoff_manifest_id || 'none'}`,
+    `- knowledge writeback source ref coverage: ${report.summary.knowledge_writeback_source_ref_coverage_percent}%`,
+    `- knowledge writeback source ref blockers/warnings: ${report.summary.knowledge_writeback_source_ref_blocker_item_count}/${report.summary.knowledge_writeback_source_ref_warning_item_count}`,
+    `- knowledge writeback missing source/verifications/hints: ${report.summary.knowledge_writeback_missing_source_ref_field_count}/${report.summary.knowledge_writeback_missing_verification_note_field_count}/${report.summary.knowledge_writeback_missing_writeback_hint_field_count}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
     `- real GEARS endpoint configured: ${report.summary.real_gears_endpoint_configured}`,
@@ -1502,6 +1548,12 @@ export async function getStoryAgentMvpStatus(
       knowledge_writeback_review_handoff_source_ref_count: writebackMetrics.review_handoff_source_ref_count,
       knowledge_writeback_review_handoff_signoff_manifest_id: writebackMetrics.review_handoff_signoff_manifest_id,
       knowledge_writeback_review_handoff_signoff_manifest_sha256: writebackMetrics.review_handoff_signoff_manifest_sha256,
+      knowledge_writeback_source_ref_coverage_percent: writebackMetrics.source_ref_coverage_percent,
+      knowledge_writeback_source_ref_blocker_item_count: writebackMetrics.source_ref_blocker_item_count,
+      knowledge_writeback_source_ref_warning_item_count: writebackMetrics.source_ref_warning_item_count,
+      knowledge_writeback_missing_source_ref_field_count: writebackMetrics.missing_source_ref_field_count,
+      knowledge_writeback_missing_verification_note_field_count: writebackMetrics.missing_verification_note_field_count,
+      knowledge_writeback_missing_writeback_hint_field_count: writebackMetrics.missing_writeback_hint_field_count,
       blocker_count: productionPortfolio.summary.blocker_count,
       warning_count: productionPortfolio.summary.warning_count,
       generated_governance_action_count: generatedGovernancePlan.actions.length,

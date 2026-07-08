@@ -644,6 +644,10 @@ interface KnowledgeWritebackQueueExportTargetFilePreflight {
   expansion_candidate_field_count: number;
   expansion_field_missing_count: number;
   expansion_source_ref_count: number;
+  source_ref_coverage_percent: number;
+  source_ref_quality_level: KnowledgeWritebackSourceRefQualityLevel;
+  source_ref_blocker_count: number;
+  source_ref_warning_count: number;
   writeback_status_counts: Record<KnowledgeWritebackStatus, number>;
   direct_writeback_to_province_markdown: false;
   province_markdown_written: false;
@@ -746,17 +750,62 @@ interface KnowledgeWritebackQueueSignoffPackage {
   handoff_items: KnowledgeWritebackQueueReviewHandoffItem[];
 }
 
+type KnowledgeWritebackSourceRefQualityLevel = 'pass' | 'warning' | 'blocker';
+
+interface KnowledgeWritebackSourceRefQualityItem {
+  item_id: string;
+  source_kind: 'project' | 'domain_pack_expansion';
+  title: string;
+  target_file: string;
+  candidate_field_count: number;
+  checked_field_count: number;
+  covered_field_count: number;
+  source_ref_count: number;
+  missing_source_ref_field_count: number;
+  missing_verification_note_field_count: number;
+  missing_writeback_hint_field_count: number;
+  coverage_percent: number;
+  quality_level: KnowledgeWritebackSourceRefQualityLevel;
+  blocker_reasons: string[];
+  warning_reasons: string[];
+}
+
+interface KnowledgeWritebackSourceRefQualitySummary {
+  schema_version: 'knowledge-writeback-source-ref-quality/v1';
+  total_item_count: number;
+  project_item_count: number;
+  expansion_item_count: number;
+  checked_field_count: number;
+  covered_field_count: number;
+  source_ref_count: number;
+  missing_source_ref_field_count: number;
+  missing_verification_note_field_count: number;
+  missing_writeback_hint_field_count: number;
+  coverage_percent: number;
+  pass_item_count: number;
+  warning_item_count: number;
+  blocker_item_count: number;
+  items: KnowledgeWritebackSourceRefQualityItem[];
+}
+
 interface KnowledgeWritebackManualPatchTarget {
   target_file: string;
   patch_applyable: false;
   manual_apply_only: true;
+  ready_for_manual_apply: boolean;
   project_patch_count: number;
   expansion_patch_count: number;
   total_patch_count: number;
   source_ref_count: number;
   candidate_field_count: number;
+  source_ref_coverage_percent: number;
+  source_ref_quality_level: KnowledgeWritebackSourceRefQualityLevel;
+  blocker_reasons: string[];
+  warning_reasons: string[];
   append_markdown: string;
   review_diff: string;
+  diff_preview_lines: string[];
+  diff_preview_truncated: boolean;
   safety_checks: string[];
 }
 
@@ -775,6 +824,10 @@ interface KnowledgeWritebackManualPatchPackage {
   expansion_patch_count: number;
   source_ref_count: number;
   candidate_field_count: number;
+  source_ref_quality: KnowledgeWritebackSourceRefQualitySummary;
+  ready_reasons: string[];
+  blocker_reasons: string[];
+  warning_reasons: string[];
   safety_checks: string[];
   operator_checklist: string[];
   target_patches: KnowledgeWritebackManualPatchTarget[];
@@ -792,6 +845,7 @@ interface KnowledgeWritebackQueueExportPreflight {
   expansion_candidate_field_count: number;
   expansion_field_missing_count: number;
   expansion_source_ref_count: number;
+  source_ref_quality: KnowledgeWritebackSourceRefQualitySummary;
   manual_review_required_count: number;
   blocked_direct_writeback_count: number;
   ready_for_manual_export: boolean;
@@ -1066,6 +1120,7 @@ const KNOWLEDGE_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
 ];
 
 const UNASSIGNED_SIGNOFF_BATCH_ID = 'unassigned_signoff_batch';
+const MANUAL_DIFF_PREVIEW_LINE_LIMIT = 80;
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1929,7 +1984,7 @@ function buildExpansionNextDevelopmentTasks(
   reviewClosure: DomainPackExpansionReviewClosureSummary,
 ): DomainPackExpansionNextDevelopmentTask[] {
   const coreVideoTypes = ['explainer_video', 'heritage_promo', 'documentary_short', 'ai_comic_drama'];
-  const secondBatchComplete = (report.review_packet.approved_writeback_draft_count ?? 0) >= 66;
+  const thirdBatchComplete = (report.review_packet.approved_writeback_draft_count ?? 0) >= 70;
   const mvpSurfaceComplete = report.pipeline_stage === 'complete' && reviewClosure.ready_for_human_handoff;
   return [
     {
@@ -1941,7 +1996,7 @@ function buildExpansionNextDevelopmentTasks(
       progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、复核人身份、审签批次归档、批次完成率汇总、批量写回状态操作、导出预检、签收清单、canonical signoff package 和前端下载归档。',
       related_plan_items: [1],
       target_video_types: coreVideoTypes,
-      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 66 条草案可被人工高效复核。',
+      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 70 条草案可被人工高效复核。',
       acceptance_checks: [
         '支持 pack/video_type/province/review_status/writeback_status/field/search 联合筛选。',
         '单条候选展示字段级候选值、来源引用、核实备注和安全预检。',
@@ -1985,12 +2040,12 @@ function buildExpansionNextDevelopmentTasks(
       direct_writeback_to_province_markdown: false,
     },
     {
-      task_id: 'second_batch_real_candidates',
-      title: '第二批真实补库候选',
+      task_id: 'third_batch_real_candidates',
+      title: '第三批真实补库候选',
       priority: 'P1',
-      status: secondBatchComplete ? 'complete' : 'ready',
-      progress_percent: secondBatchComplete ? 100 : 99,
-      progress_note: '当前 66 条已形成 approved 草案并进入人工交接闭环；真实候选已覆盖非遗宣传、微纪录、AI 漫剧和知识讲解的多轮样板，正式落库仍保持人工写回边界。',
+      status: thirdBatchComplete ? 'complete' : 'ready',
+      progress_percent: thirdBatchComplete ? 100 : 99,
+      progress_note: '当前 70 条已形成 approved 草案并进入人工交接闭环；第三批继续覆盖非遗宣传、微纪录、AI 漫剧和知识讲解，正式落库仍保持人工写回边界。',
       related_plan_items: [4],
       target_video_types: coreVideoTypes,
       description: '继续扩展真实条目，优先讲解、非遗宣传、微纪录和 AI 漫剧，不跳过候选稿/审稿/草案流程。',
@@ -2007,7 +2062,7 @@ function buildExpansionNextDevelopmentTasks(
       priority: 'P1',
       status: mvpSurfaceComplete ? 'complete' : 'blocked',
       progress_percent: mvpSurfaceComplete ? 100 : 99,
-      progress_note: 'MVP 已接入扩库 complete、66 条写回草案计数、review_closure 结案摘要、复核交接签收 manifest/canonical signoff package、复核人身份覆盖率、审签批次归档、批次 ready/blocked 汇总、下载归档证据、runtime 覆盖证据和 1-5 项百分比；明确显示“完成候选但待人工写回”。',
+      progress_note: 'MVP 已接入扩库 complete、70 条写回草案计数、review_closure 结案摘要、复核交接签收 manifest/canonical signoff package、复核人身份覆盖率、审签批次归档、批次 ready/blocked 汇总、下载归档证据、runtime 覆盖证据和 1-5 项百分比；明确显示“完成候选但待人工写回”。',
       related_plan_items: [5],
       target_video_types: coreVideoTypes,
       description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
@@ -3477,6 +3532,9 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- preflight_total_drafts: ${pkg.preflight.total_draft_count}`,
     `- preflight_expansion_candidate_fields: ${pkg.preflight.expansion_candidate_field_count}`,
     `- preflight_expansion_source_refs: ${pkg.preflight.expansion_source_ref_count}`,
+    `- preflight_source_ref_coverage: ${pkg.preflight.source_ref_quality.coverage_percent}%`,
+    `- preflight_source_ref_blockers: ${pkg.preflight.source_ref_quality.blocker_item_count}`,
+    `- preflight_source_ref_warnings: ${pkg.preflight.source_ref_quality.warning_item_count}`,
     `- preflight_manual_review_required: ${pkg.preflight.manual_review_required_count}`,
     `- manual_patch_package: ${pkg.manual_patch_package.schema_version}`,
     `- manual_patch_ready: ${pkg.manual_patch_package.ready_for_manual_apply}`,
@@ -3505,6 +3563,13 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- direct_writeback_to_province_markdown: ${pkg.preflight.direct_writeback_to_province_markdown}`,
     `- province_markdown_written: ${pkg.preflight.province_markdown_written}`,
     `- ready_for_manual_export: ${pkg.preflight.ready_for_manual_export}`,
+    `- source_ref_quality_schema: ${pkg.preflight.source_ref_quality.schema_version}`,
+    `- source_ref_coverage_percent: ${pkg.preflight.source_ref_quality.coverage_percent}`,
+    `- source_ref_blocker_items: ${pkg.preflight.source_ref_quality.blocker_item_count}`,
+    `- source_ref_warning_items: ${pkg.preflight.source_ref_quality.warning_item_count}`,
+    `- missing_source_ref_fields: ${pkg.preflight.source_ref_quality.missing_source_ref_field_count}`,
+    `- missing_verification_note_fields: ${pkg.preflight.source_ref_quality.missing_verification_note_field_count}`,
+    `- missing_writeback_hint_fields: ${pkg.preflight.source_ref_quality.missing_writeback_hint_field_count}`,
     `- blocked_direct_writeback_count: ${pkg.preflight.blocked_direct_writeback_count}`,
     ...pkg.preflight.safety_checks.map(check => `- ${check}`),
     '',
@@ -3556,6 +3621,12 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- expansion_patch_count: ${pkg.manual_patch_package.expansion_patch_count}`,
     `- source_ref_count: ${pkg.manual_patch_package.source_ref_count}`,
     `- candidate_field_count: ${pkg.manual_patch_package.candidate_field_count}`,
+    `- source_ref_coverage_percent: ${pkg.manual_patch_package.source_ref_quality.coverage_percent}`,
+    `- source_ref_blocker_items: ${pkg.manual_patch_package.source_ref_quality.blocker_item_count}`,
+    `- source_ref_warning_items: ${pkg.manual_patch_package.source_ref_quality.warning_item_count}`,
+    ...pkg.manual_patch_package.ready_reasons.map(reason => `- ready_reason: ${reason}`),
+    ...pkg.manual_patch_package.blocker_reasons.map(reason => `- blocker_reason: ${reason}`),
+    ...pkg.manual_patch_package.warning_reasons.map(reason => `- warning_reason: ${reason}`),
     ...pkg.manual_patch_package.safety_checks.map(check => `- safety_check: ${check}`),
     '',
     '### Manual Patch Operator Checklist',
@@ -3597,15 +3668,20 @@ function renderKnowledgeWritebackManualPatchTargetLines(
     '',
     `- patch_applyable: ${target.patch_applyable}`,
     `- manual_apply_only: ${target.manual_apply_only}`,
+    `- ready_for_manual_apply: ${target.ready_for_manual_apply}`,
     `- total_patch_count: ${target.total_patch_count}`,
     `- project_patch_count: ${target.project_patch_count}`,
     `- expansion_patch_count: ${target.expansion_patch_count}`,
     `- source_ref_count: ${target.source_ref_count}`,
     `- candidate_field_count: ${target.candidate_field_count}`,
+    `- source_ref_quality: ${target.source_ref_quality_level}; coverage=${target.source_ref_coverage_percent}%`,
+    ...target.blocker_reasons.map(reason => `- blocker_reason: ${reason}`),
+    ...target.warning_reasons.map(reason => `- warning_reason: ${reason}`),
     ...target.safety_checks.map(check => `- safety_check: ${check}`),
     '',
     '```diff',
-    ...target.review_diff.trimEnd().split('\n').slice(0, 80),
+    ...target.diff_preview_lines,
+    ...(target.diff_preview_truncated ? ['# diff preview truncated; use review_diff for full manual patch body'] : []),
     '```',
     '',
   ]);
@@ -3642,41 +3718,66 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     const projectItems = input.projectItems.filter(item => item.suggested_file_path === targetFile);
     const expansionItems = input.expansionItems.filter(item => item.suggested_file_path === targetFile);
     const appendMarkdown = renderKnowledgeWritebackManualPatchAppendMarkdown(targetFile, projectItems, expansionItems);
+    const reviewDiff = renderKnowledgeWritebackManualReviewDiff(targetFile, appendMarkdown);
+    const sourceRefQuality = buildKnowledgeWritebackSourceRefQualitySummary(projectItems, expansionItems);
+    const blockerReasons = knowledgeWritebackTargetManualPatchBlockerReasons(targetFile, projectItems, expansionItems, sourceRefQuality);
+    const warningReasons = knowledgeWritebackTargetManualPatchWarningReasons(sourceRefQuality);
     const sourceRefCount = countDomainPackExpansionSourceRefs(expansionItems);
     const candidateFieldTotal = expansionItems.reduce((sum, item) =>
       sum + (item.field_supplement_candidate_count ?? domainPackExpansionCandidateFieldCount(item)), 0);
+    const diffPreviewLines = reviewDiff.trimEnd().split('\n').slice(0, MANUAL_DIFF_PREVIEW_LINE_LIMIT);
 
     return {
       target_file: targetFile,
       patch_applyable: false as const,
       manual_apply_only: true as const,
+      ready_for_manual_apply: blockerReasons.length === 0,
       project_patch_count: projectItems.length,
       expansion_patch_count: expansionItems.length,
       total_patch_count: projectItems.length + expansionItems.length,
       source_ref_count: sourceRefCount,
       candidate_field_count: candidateFieldTotal,
+      source_ref_coverage_percent: sourceRefQuality.coverage_percent,
+      source_ref_quality_level: knowledgeWritebackSourceRefQualityLevel(sourceRefQuality),
+      blocker_reasons: blockerReasons,
+      warning_reasons: warningReasons,
       append_markdown: appendMarkdown,
-      review_diff: renderKnowledgeWritebackManualReviewDiff(targetFile, appendMarkdown),
+      review_diff: reviewDiff,
+      diff_preview_lines: diffPreviewLines,
+      diff_preview_truncated: reviewDiff.trimEnd().split('\n').length > MANUAL_DIFF_PREVIEW_LINE_LIMIT,
       safety_checks: [
         'direct_writeback_to_province_markdown=false',
         'province_markdown_written=false',
         'patch_applyable=false',
         'manual_apply_only=true',
+        `target_ready_for_manual_apply=${blockerReasons.length === 0}`,
         `project_patch_count=${projectItems.length}`,
         `expansion_patch_count=${expansionItems.length}`,
         `source_refs=${sourceRefCount}`,
+        `source_ref_coverage=${sourceRefQuality.coverage_percent}%`,
+        `source_ref_blockers=${sourceRefQuality.blocker_item_count}`,
+        `source_ref_warnings=${sourceRefQuality.warning_item_count}`,
       ],
     };
   });
   const totalPatchCount = targetPatches.reduce((sum, item) => sum + item.total_patch_count, 0);
   const readyForSignoffCount = input.preflight.review_handoff.signoff_batch_summaries
     .reduce((sum, item) => sum + item.ready_for_signoff_count, 0);
-  const readyForManualApply = totalPatchCount > 0
-    && input.preflight.ready_for_manual_export
-    && readyForSignoffCount === input.preflight.review_handoff.total_handoff_count
-    && input.preflight.review_handoff.missing_review_note_count === 0
-    && input.preflight.review_handoff.missing_reviewer_identity_count === 0
-    && input.preflight.review_handoff.missing_signoff_batch_count === 0;
+  const blockerReasons = knowledgeWritebackManualPatchPackageBlockerReasons({
+    totalPatchCount,
+    preflight: input.preflight,
+    readyForSignoffCount,
+  });
+  const warningReasons = knowledgeWritebackManualPatchPackageWarningReasons(input.preflight.source_ref_quality);
+  const readyForManualApply = blockerReasons.length === 0;
+  const readyReasons = readyForManualApply
+    ? [
+      'manual_patch_has_target_patches',
+      'preflight_ready_for_manual_export=true',
+      'review_handoff_ready_for_signoff=all',
+      'source_ref_quality_blockers=0',
+    ]
+    : [];
 
   return {
     schema_version: 'knowledge-writeback-manual-patch-package/v1',
@@ -3694,15 +3795,23 @@ function buildKnowledgeWritebackManualPatchPackage(input: {
     source_ref_count: countDomainPackExpansionSourceRefs(input.expansionItems),
     candidate_field_count: input.expansionItems.reduce((sum, item) =>
       sum + (item.field_supplement_candidate_count ?? domainPackExpansionCandidateFieldCount(item)), 0),
+    source_ref_quality: input.preflight.source_ref_quality,
+    ready_reasons: readyReasons,
+    blocker_reasons: blockerReasons,
+    warning_reasons: warningReasons,
     safety_checks: [
       'direct_writeback_to_province_markdown=false',
       'province_markdown_written=false',
       'patch_applyable=false',
       'manual_apply_only=true',
       `ready_for_manual_apply=${readyForManualApply}`,
+      `ready_blockers=${blockerReasons.length}`,
+      `ready_warnings=${warningReasons.length}`,
       `target_files=${targetPatches.length}`,
       `total_patch_count=${totalPatchCount}`,
       `review_handoff_ready_for_signoff=${readyForSignoffCount}/${input.preflight.review_handoff.total_handoff_count}`,
+      `source_ref_coverage=${input.preflight.source_ref_quality.coverage_percent}%`,
+      `source_ref_blocker_items=${input.preflight.source_ref_quality.blocker_item_count}`,
     ],
     operator_checklist: [
       '先核对 signoff manifest、review_note、reviewer_identity 和 signoff_batch_id。',
@@ -3756,6 +3865,7 @@ function renderKnowledgeWritebackTargetFilePreflightLines(
     `  - drafts: total=${item.total_draft_count}; project=${item.project_draft_count}; expansion=${item.expansion_draft_count}`,
     `  - expansion_field_diff: candidates=${item.expansion_candidate_field_count}; missing=${item.expansion_field_missing_count}`,
     `  - expansion_source_refs: ${item.expansion_source_ref_count}`,
+    `  - source_ref_quality: ${item.source_ref_quality_level}; coverage=${item.source_ref_coverage_percent}%; blockers=${item.source_ref_blocker_count}; warnings=${item.source_ref_warning_count}`,
     `  - direct_writeback_to_province_markdown: ${item.direct_writeback_to_province_markdown}`,
     `  - safety_note: ${item.safety_note}`,
   ]);
@@ -3871,6 +3981,7 @@ function buildKnowledgeWritebackQueueExportPreflight(input: {
     input.exportedAt,
     input.targetFiles,
   );
+  const sourceRefQuality = buildKnowledgeWritebackSourceRefQualitySummary(input.projectItems, input.expansionItems);
 
   return {
     schema_version: 'knowledge-writeback-queue-export-preflight/v1',
@@ -3884,11 +3995,13 @@ function buildKnowledgeWritebackQueueExportPreflight(input: {
     expansion_candidate_field_count: expansionCandidateFieldCount,
     expansion_field_missing_count: expansionFieldMissingCount,
     expansion_source_ref_count: expansionSourceRefCount,
+    source_ref_quality: sourceRefQuality,
     manual_review_required_count: manualReviewRequiredCount,
     blocked_direct_writeback_count: totalDraftCount,
     ready_for_manual_export: totalDraftCount > 0
       && input.targetFiles.length > 0
-      && expansionFieldMissingCount === 0,
+      && expansionFieldMissingCount === 0
+      && sourceRefQuality.blocker_item_count === 0,
     target_file_preflight: targetFilePreflight,
     review_handoff: reviewHandoff,
     safety_checks: [
@@ -3899,6 +4012,9 @@ function buildKnowledgeWritebackQueueExportPreflight(input: {
       `expansion_drafts=${input.expansionItems.length}`,
       `expansion_candidate_fields=${expansionCandidateFieldCount}`,
       `expansion_source_refs=${expansionSourceRefCount}`,
+      `source_ref_coverage=${sourceRefQuality.coverage_percent}%`,
+      `source_ref_blocker_items=${sourceRefQuality.blocker_item_count}`,
+      `source_ref_warning_items=${sourceRefQuality.warning_item_count}`,
       `review_handoff_items=${reviewHandoff.total_handoff_count}`,
       `review_handoff_requires_signoff=${reviewHandoff.requires_manual_signoff_count}`,
       `signoff_batch_summaries=${reviewHandoff.signoff_batch_summaries.length}`,
@@ -4147,6 +4263,177 @@ function knowledgeWritebackReviewHandoffRequiredAction(
   return '草案就绪，等待人工签收或批量入队。';
 }
 
+function buildKnowledgeWritebackSourceRefQualitySummary(
+  projectItems: ProjectKnowledgeWritebackPatchItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+): KnowledgeWritebackSourceRefQualitySummary {
+  const items = [
+    ...projectItems.map(knowledgeWritebackProjectSourceRefQualityItem),
+    ...expansionItems.map(knowledgeWritebackExpansionSourceRefQualityItem),
+  ];
+  const checkedFieldCount = items.reduce((sum, item) => sum + item.checked_field_count, 0);
+  const coveredFieldCount = items.reduce((sum, item) => sum + item.covered_field_count, 0);
+  const sourceRefCount = new Set([
+    ...projectItems.flatMap(knowledgeWritebackProjectStructuredSourceRefs),
+    ...expansionItems.flatMap(item => (item.field_workbench ?? []).flatMap(field => field.source_refs)),
+  ]).size;
+  return {
+    schema_version: 'knowledge-writeback-source-ref-quality/v1',
+    total_item_count: items.length,
+    project_item_count: projectItems.length,
+    expansion_item_count: expansionItems.length,
+    checked_field_count: checkedFieldCount,
+    covered_field_count: coveredFieldCount,
+    source_ref_count: sourceRefCount,
+    missing_source_ref_field_count: items.reduce((sum, item) => sum + item.missing_source_ref_field_count, 0),
+    missing_verification_note_field_count: items.reduce((sum, item) => sum + item.missing_verification_note_field_count, 0),
+    missing_writeback_hint_field_count: items.reduce((sum, item) => sum + item.missing_writeback_hint_field_count, 0),
+    coverage_percent: completionPercent(coveredFieldCount, checkedFieldCount),
+    pass_item_count: items.filter(item => item.quality_level === 'pass').length,
+    warning_item_count: items.filter(item => item.quality_level === 'warning').length,
+    blocker_item_count: items.filter(item => item.quality_level === 'blocker').length,
+    items,
+  };
+}
+
+function knowledgeWritebackProjectSourceRefQualityItem(
+  item: ProjectKnowledgeWritebackPatchItem,
+): KnowledgeWritebackSourceRefQualityItem {
+  const sourceRefs = knowledgeWritebackProjectStructuredSourceRefs(item);
+  const warningReasons = sourceRefs.length > 0
+    ? ['project_writeback_source_refs_extracted_from_markdown']
+    : ['project_writeback_has_no_structured_source_refs'];
+  return {
+    item_id: item.task_key ?? `${item.project_id ?? 'project'}::${item.task_id}`,
+    source_kind: 'project',
+    title: item.label,
+    target_file: item.suggested_file_path,
+    candidate_field_count: 0,
+    checked_field_count: 0,
+    covered_field_count: 0,
+    source_ref_count: sourceRefs.length,
+    missing_source_ref_field_count: 0,
+    missing_verification_note_field_count: 0,
+    missing_writeback_hint_field_count: 0,
+    coverage_percent: 100,
+    quality_level: 'warning',
+    blocker_reasons: [],
+    warning_reasons: warningReasons,
+  };
+}
+
+function knowledgeWritebackExpansionSourceRefQualityItem(
+  item: DomainPackExpansionWritebackDraftItem,
+): KnowledgeWritebackSourceRefQualityItem {
+  const fields = (item.field_workbench ?? []).filter(field => field.supplement_status === 'candidate_draft');
+  const checkedFieldCount = fields.length;
+  const coveredFieldCount = fields.filter(field => field.source_refs.length > 0).length;
+  const missingSourceRefFieldCount = fields.filter(field => field.source_refs.length === 0).length;
+  const missingVerificationNoteFieldCount = fields.filter(field => !field.verification_note?.trim()).length;
+  const missingWritebackHintFieldCount = fields.filter(field => !field.writeback_hint?.trim()).length;
+  const sourceRefCount = new Set(fields.flatMap(field => field.source_refs)).size;
+  const blockerReasons = [
+    checkedFieldCount === 0 ? 'no_candidate_fields_to_verify' : undefined,
+    missingSourceRefFieldCount > 0 ? `missing_source_refs=${missingSourceRefFieldCount}` : undefined,
+  ].filter((reason): reason is string => Boolean(reason));
+  const warningReasons = [
+    missingVerificationNoteFieldCount > 0 ? `missing_verification_notes=${missingVerificationNoteFieldCount}` : undefined,
+    missingWritebackHintFieldCount > 0 ? `missing_writeback_hints=${missingWritebackHintFieldCount}` : undefined,
+  ].filter((reason): reason is string => Boolean(reason));
+  return {
+    item_id: item.review_item_id,
+    source_kind: 'domain_pack_expansion',
+    title: item.entry_name,
+    target_file: item.suggested_file_path,
+    candidate_field_count: item.field_supplement_candidate_count ?? fields.length,
+    checked_field_count: checkedFieldCount,
+    covered_field_count: coveredFieldCount,
+    source_ref_count: sourceRefCount,
+    missing_source_ref_field_count: missingSourceRefFieldCount,
+    missing_verification_note_field_count: missingVerificationNoteFieldCount,
+    missing_writeback_hint_field_count: missingWritebackHintFieldCount,
+    coverage_percent: completionPercent(coveredFieldCount, checkedFieldCount),
+    quality_level: blockerReasons.length > 0 ? 'blocker' : warningReasons.length > 0 ? 'warning' : 'pass',
+    blocker_reasons: blockerReasons,
+    warning_reasons: warningReasons,
+  };
+}
+
+function knowledgeWritebackProjectStructuredSourceRefs(item: ProjectKnowledgeWritebackPatchItem): string[] {
+  const sourceLines = item.append_markdown
+    .split('\n')
+    .filter(line => /source_refs?|来源|参考|出处/i.test(line));
+  return [...new Set(sourceLines.map(line => line.trim()).filter(Boolean))];
+}
+
+function knowledgeWritebackSourceRefQualityLevel(
+  summary: KnowledgeWritebackSourceRefQualitySummary,
+): KnowledgeWritebackSourceRefQualityLevel {
+  if (summary.blocker_item_count > 0) return 'blocker';
+  if (summary.warning_item_count > 0) return 'warning';
+  return 'pass';
+}
+
+function knowledgeWritebackManualPatchPackageBlockerReasons(input: {
+  totalPatchCount: number;
+  preflight: KnowledgeWritebackQueueExportPreflight;
+  readyForSignoffCount: number;
+}): string[] {
+  return [
+    input.totalPatchCount === 0 ? 'no_manual_patch_items' : undefined,
+    !input.preflight.ready_for_manual_export ? 'preflight_not_ready_for_manual_export' : undefined,
+    input.readyForSignoffCount !== input.preflight.review_handoff.total_handoff_count
+      ? `review_handoff_not_fully_ready=${input.readyForSignoffCount}/${input.preflight.review_handoff.total_handoff_count}`
+      : undefined,
+    input.preflight.review_handoff.missing_review_note_count > 0
+      ? `missing_review_notes=${input.preflight.review_handoff.missing_review_note_count}`
+      : undefined,
+    input.preflight.review_handoff.missing_reviewer_identity_count > 0
+      ? `missing_reviewer_identities=${input.preflight.review_handoff.missing_reviewer_identity_count}`
+      : undefined,
+    input.preflight.review_handoff.missing_signoff_batch_count > 0
+      ? `missing_signoff_batches=${input.preflight.review_handoff.missing_signoff_batch_count}`
+      : undefined,
+    input.preflight.source_ref_quality.blocker_item_count > 0
+      ? `source_ref_quality_blockers=${input.preflight.source_ref_quality.blocker_item_count}`
+      : undefined,
+  ].filter((reason): reason is string => Boolean(reason));
+}
+
+function knowledgeWritebackManualPatchPackageWarningReasons(
+  sourceRefQuality: KnowledgeWritebackSourceRefQualitySummary,
+): string[] {
+  return [
+    sourceRefQuality.warning_item_count > 0 ? `source_ref_quality_warnings=${sourceRefQuality.warning_item_count}` : undefined,
+    sourceRefQuality.missing_verification_note_field_count > 0
+      ? `missing_verification_notes=${sourceRefQuality.missing_verification_note_field_count}`
+      : undefined,
+    sourceRefQuality.missing_writeback_hint_field_count > 0
+      ? `missing_writeback_hints=${sourceRefQuality.missing_writeback_hint_field_count}`
+      : undefined,
+  ].filter((reason): reason is string => Boolean(reason));
+}
+
+function knowledgeWritebackTargetManualPatchBlockerReasons(
+  targetFile: string,
+  projectItems: ProjectKnowledgeWritebackPatchItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+  sourceRefQuality: KnowledgeWritebackSourceRefQualitySummary,
+): string[] {
+  return [
+    projectItems.length + expansionItems.length === 0 ? `no_patch_items_for_target=${targetFile}` : undefined,
+    sourceRefQuality.blocker_item_count > 0
+      ? `target_source_ref_blockers=${sourceRefQuality.blocker_item_count}`
+      : undefined,
+  ].filter((reason): reason is string => Boolean(reason));
+}
+
+function knowledgeWritebackTargetManualPatchWarningReasons(
+  sourceRefQuality: KnowledgeWritebackSourceRefQualitySummary,
+): string[] {
+  return knowledgeWritebackManualPatchPackageWarningReasons(sourceRefQuality);
+}
+
 function reviewerDisplayName(item: {
   reviewed_by?: string;
   reviewer_name?: string;
@@ -4178,6 +4465,7 @@ function buildKnowledgeWritebackTargetFilePreflight(
     .reduce((sum, item) => sum + (item.field_supplement_candidate_count ?? 0), 0);
   const expansionFieldMissingCount = expansionFileItems
     .reduce((sum, item) => sum + (item.field_missing_candidate_count ?? 0), 0);
+  const sourceRefQuality = buildKnowledgeWritebackSourceRefQualitySummary(projectFileItems, expansionFileItems);
 
   return {
     target_file: targetFile,
@@ -4187,6 +4475,10 @@ function buildKnowledgeWritebackTargetFilePreflight(
     expansion_candidate_field_count: expansionCandidateFieldCount,
     expansion_field_missing_count: expansionFieldMissingCount,
     expansion_source_ref_count: countDomainPackExpansionSourceRefs(expansionFileItems),
+    source_ref_coverage_percent: sourceRefQuality.coverage_percent,
+    source_ref_quality_level: knowledgeWritebackSourceRefQualityLevel(sourceRefQuality),
+    source_ref_blocker_count: sourceRefQuality.blocker_item_count,
+    source_ref_warning_count: sourceRefQuality.warning_item_count,
     writeback_status_counts: statusCounts,
     direct_writeback_to_province_markdown: false,
     province_markdown_written: false,

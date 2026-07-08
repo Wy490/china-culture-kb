@@ -147,6 +147,22 @@
         type="button"
         class="writeback-page__action writeback-page__action--secondary"
         :disabled="Boolean(exportingFormat)"
+        @click="copyManualPatchDiffBundle"
+      >
+        {{ exportingFormat === 'manual-patch-diff' ? '复制中…' : '复制 Patch Diff' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
+        @click="downloadManualPatchDiffBundle"
+      >
+        {{ exportingFormat === 'download-manual-patch-diff' ? '下载中…' : '下载 Patch Diff' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
         @click="copyPatch('markdown')"
       >
         {{ exportingFormat === 'markdown' ? '复制中…' : '复制项目 Patch' }}
@@ -273,7 +289,8 @@
         <strong>统一导出预检</strong>
         <span>
           目标文件 {{ unifiedPreflightSummary.targetFileCount }} 个 · 当前草案 {{ unifiedPreflightSummary.totalDraftCount }} 条 ·
-          扩库字段候选 {{ unifiedPreflightSummary.expansionCandidateFieldCount }} 个 · 来源引用 {{ unifiedPreflightSummary.expansionSourceRefCount }} 条
+          扩库字段候选 {{ unifiedPreflightSummary.expansionCandidateFieldCount }} 个 · 来源引用 {{ unifiedPreflightSummary.expansionSourceRefCount }} 条 ·
+          来源覆盖 {{ unifiedPreflightSummary.sourceRefCoveragePercent }}%
         </span>
       </div>
       <div class="writeback-page__export-preflight-grid">
@@ -282,7 +299,37 @@
           <span>草案 {{ item.total_draft_count }} 条（项目 {{ item.project_draft_count }} / 扩库 {{ item.expansion_draft_count }}）</span>
           <span>字段差异：候选 {{ item.expansion_candidate_field_count }} 个，缺口 {{ item.expansion_field_missing_count }} 个</span>
           <span>来源引用：{{ item.expansion_source_ref_count }} 条</span>
+          <span>来源覆盖：{{ item.source_ref_coverage_percent }}% · {{ sourceQualityLabel(item.source_ref_quality_level) }}</span>
+          <span>缺源阻塞 {{ item.source_ref_blocker_count }} · 核验警告 {{ item.source_ref_warning_count }}</span>
           <span>直写省份 Markdown：关闭</span>
+        </article>
+      </div>
+    </section>
+
+    <section v-if="filteredTotalCount" class="writeback-page__manual-preview">
+      <div>
+        <strong>人工 Patch 预览</strong>
+        <span>
+          目标文件 {{ manualPatchPreviewSummary.targetFileCount }} 个 · patch {{ manualPatchPreviewSummary.totalPatchCount }} 条 ·
+          来源覆盖 {{ manualPatchPreviewSummary.sourceRefCoveragePercent }}% · 阻塞 {{ manualPatchPreviewSummary.blockerCount }} · 警告 {{ manualPatchPreviewSummary.warningCount }}
+        </span>
+      </div>
+      <div class="writeback-page__manual-preview-grid">
+        <article v-for="target in manualPatchPreviewTargets" :key="target.target_file">
+          <header>
+            <strong>{{ target.target_file }}</strong>
+            <span :class="['writeback-page__quality', `writeback-page__quality--${target.source_ref_quality_level}`]">
+              {{ sourceQualityLabel(target.source_ref_quality_level) }}
+            </span>
+          </header>
+          <span>patch {{ target.total_patch_count }} 条 · 项目 {{ target.project_patch_count }} · 扩库 {{ target.expansion_patch_count }}</span>
+          <span>字段 {{ target.candidate_field_count }} 个 · 来源 {{ target.source_ref_count }} 条 · 覆盖 {{ target.source_ref_coverage_percent }}%</span>
+          <span v-if="target.blocker_reasons.length">阻塞：{{ target.blocker_reasons.join('；') }}</span>
+          <span v-if="target.warning_reasons.length">警告：{{ target.warning_reasons.join('；') }}</span>
+          <details>
+            <summary>目标文件 diff 预览</summary>
+            <pre>{{ target.diff_preview_lines.join('\n') }}{{ target.diff_preview_truncated ? '\n# diff 预览已截断，导出包内含完整 review_diff' : '' }}</pre>
+          </details>
         </article>
       </div>
     </section>
@@ -331,6 +378,18 @@
       <div>
         <span>来源引用</span>
         <strong>{{ expansionSourceRefTotalCount }}</strong>
+      </div>
+      <div>
+        <span>来源覆盖率</span>
+        <strong>{{ manualPatchPreviewSummary.sourceRefCoveragePercent }}%</strong>
+      </div>
+      <div>
+        <span>缺来源字段</span>
+        <strong>{{ manualPatchPreviewSummary.missingSourceFieldCount }}</strong>
+      </div>
+      <div>
+        <span>Patch 阻塞</span>
+        <strong>{{ manualPatchPreviewSummary.blockerCount }}</strong>
       </div>
       <div>
         <span>草案就绪</span>
@@ -485,6 +544,7 @@ import type {
   DomainPackExpansionWritebackDraftItem,
   DomainPackExpansionWritebackDraftPackage,
   DomainPackExpansionReviewStateSource,
+  KnowledgeWritebackQueueExportPackage,
   KnowledgeWritebackQueueExportTargetFilePreflight,
   KnowledgeWritebackStatus,
   ProjectSupplementTaskListItem,
@@ -496,7 +556,7 @@ const expansionDraft = ref<DomainPackExpansionWritebackDraftPackage | null>(null
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | 'download-unified-markdown' | 'download-unified-json' | 'handoff-markdown' | 'signoff-json' | 'download-signoff-json' | 'manual-patch-json' | 'download-manual-patch-json' | ''>('')
+const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | 'download-unified-markdown' | 'download-unified-json' | 'handoff-markdown' | 'signoff-json' | 'download-signoff-json' | 'manual-patch-json' | 'download-manual-patch-json' | 'manual-patch-diff' | 'download-manual-patch-diff' | ''>('')
 const updatingTaskId = ref('')
 const searchQuery = ref('')
 const projectFilter = ref('')
@@ -547,7 +607,30 @@ interface ReviewHandoffSignoffBatchSummary {
   blocked_for_signoff_count: number;
 }
 
+type SourceRefQualityLevel = 'pass' | 'warning' | 'blocker'
+
+interface ManualPatchPreviewTarget {
+  target_file: string;
+  project_patch_count: number;
+  expansion_patch_count: number;
+  total_patch_count: number;
+  candidate_field_count: number;
+  checked_field_count: number;
+  covered_field_count: number;
+  source_ref_count: number;
+  missing_source_ref_field_count: number;
+  missing_verification_note_field_count: number;
+  missing_writeback_hint_field_count: number;
+  source_ref_coverage_percent: number;
+  source_ref_quality_level: SourceRefQualityLevel;
+  blocker_reasons: string[];
+  warning_reasons: string[];
+  diff_preview_lines: string[];
+  diff_preview_truncated: boolean;
+}
+
 const UNASSIGNED_SIGNOFF_BATCH_ID = 'unassigned_signoff_batch'
+const DIFF_PREVIEW_LINE_LIMIT = 32
 
 const revisionTemplates = [
   {
@@ -604,11 +687,27 @@ const expansionSourceRefTotalCount = computed(() =>
   expansionItems.value.reduce((sum, item) => sum + itemSourceRefCount(item), 0),
 )
 const unifiedTargetFilePreflight = computed<KnowledgeWritebackQueueExportTargetFilePreflight[]>(() => {
-  const rows = new Map<string, KnowledgeWritebackQueueExportTargetFilePreflight & { sourceRefSet: Set<string> }>()
+  const rows = new Map<string, KnowledgeWritebackQueueExportTargetFilePreflight & {
+    sourceRefSet: Set<string>;
+    checkedFieldCount: number;
+    coveredFieldCount: number;
+    missingSourceRefFieldCount: number;
+    missingVerificationNoteFieldCount: number;
+    missingWritebackHintFieldCount: number;
+    projectWarningCount: number;
+  }>()
   const ensureRow = (targetFile: string) => {
     const current = rows.get(targetFile)
     if (current) return current
-    const next: KnowledgeWritebackQueueExportTargetFilePreflight & { sourceRefSet: Set<string> } = {
+    const next: KnowledgeWritebackQueueExportTargetFilePreflight & {
+      sourceRefSet: Set<string>;
+      checkedFieldCount: number;
+      coveredFieldCount: number;
+      missingSourceRefFieldCount: number;
+      missingVerificationNoteFieldCount: number;
+      missingWritebackHintFieldCount: number;
+      projectWarningCount: number;
+    } = {
       target_file: targetFile,
       project_draft_count: 0,
       expansion_draft_count: 0,
@@ -616,6 +715,10 @@ const unifiedTargetFilePreflight = computed<KnowledgeWritebackQueueExportTargetF
       expansion_candidate_field_count: 0,
       expansion_field_missing_count: 0,
       expansion_source_ref_count: 0,
+      source_ref_coverage_percent: 100,
+      source_ref_quality_level: 'pass',
+      source_ref_blocker_count: 0,
+      source_ref_warning_count: 0,
       writeback_status_counts: {
         draft_ready: 0,
         queued: 0,
@@ -626,6 +729,12 @@ const unifiedTargetFilePreflight = computed<KnowledgeWritebackQueueExportTargetF
       province_markdown_written: false,
       safety_note: '仅导出人工写回草案和字段差异，不直接修改省份 Markdown。',
       sourceRefSet: new Set<string>(),
+      checkedFieldCount: 0,
+      coveredFieldCount: 0,
+      missingSourceRefFieldCount: 0,
+      missingVerificationNoteFieldCount: 0,
+      missingWritebackHintFieldCount: 0,
+      projectWarningCount: 0,
     }
     rows.set(targetFile, next)
     return next
@@ -637,25 +746,52 @@ const unifiedTargetFilePreflight = computed<KnowledgeWritebackQueueExportTargetF
     row.project_draft_count += 1
     row.total_draft_count += 1
     row.writeback_status_counts[taskWritebackStatus(item)] += 1
+    row.projectWarningCount += 1
   }
 
   for (const item of filteredExpansionItems.value) {
     const row = ensureRow(item.suggested_file_path)
+    const quality = expansionItemSourceQuality(item)
     row.expansion_draft_count += 1
     row.total_draft_count += 1
     row.expansion_candidate_field_count += item.field_supplement_candidate_count ?? 0
     row.expansion_field_missing_count += item.field_missing_candidate_count ?? 0
     row.writeback_status_counts[expansionWritebackStatus(item)] += 1
+    row.checkedFieldCount += quality.checkedFieldCount
+    row.coveredFieldCount += quality.coveredFieldCount
+    row.missingSourceRefFieldCount += quality.missingSourceRefFieldCount
+    row.missingVerificationNoteFieldCount += quality.missingVerificationNoteFieldCount
+    row.missingWritebackHintFieldCount += quality.missingWritebackHintFieldCount
     for (const sourceRef of (item.field_workbench ?? []).flatMap(field => field.source_refs)) {
       row.sourceRefSet.add(sourceRef)
     }
   }
 
   return [...rows.values()]
-    .map(({ sourceRefSet, ...item }) => ({
-      ...item,
-      expansion_source_ref_count: sourceRefSet.size,
-    }))
+    .map(({
+      sourceRefSet,
+      checkedFieldCount,
+      coveredFieldCount,
+      missingSourceRefFieldCount,
+      missingVerificationNoteFieldCount,
+      missingWritebackHintFieldCount,
+      projectWarningCount,
+      ...item
+    }) => {
+      const sourceRefQualityLevel: SourceRefQualityLevel = missingSourceRefFieldCount > 0
+        ? 'blocker'
+        : (projectWarningCount + missingVerificationNoteFieldCount + missingWritebackHintFieldCount) > 0
+          ? 'warning'
+          : 'pass'
+      return {
+        ...item,
+        expansion_source_ref_count: sourceRefSet.size,
+        source_ref_coverage_percent: completionPercent(coveredFieldCount, checkedFieldCount),
+        source_ref_quality_level: sourceRefQualityLevel,
+        source_ref_blocker_count: missingSourceRefFieldCount > 0 ? 1 : 0,
+        source_ref_warning_count: projectWarningCount + missingVerificationNoteFieldCount + missingWritebackHintFieldCount,
+      }
+    })
     .sort((a, b) => a.target_file.localeCompare(b.target_file, 'zh-Hans-CN'))
 })
 const unifiedPreflightSummary = computed(() => ({
@@ -667,6 +803,10 @@ const unifiedPreflightSummary = computed(() => ({
     .reduce((sum, item) => sum + item.expansion_field_missing_count, 0),
   expansionSourceRefCount: unifiedTargetFilePreflight.value
     .reduce((sum, item) => sum + item.expansion_source_ref_count, 0),
+  sourceRefCoveragePercent: completionPercent(
+    manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.covered_field_count, 0),
+    manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.checked_field_count, 0),
+  ),
 }))
 const reviewHandoffItems = computed<ReviewHandoffPreviewItem[]>(() => [
   ...filteredItems.value.map(item => {
@@ -795,6 +935,80 @@ const reviewHandoffManifest = computed(() => {
   }
 })
 const reviewHandoffSamples = computed(() => reviewHandoffItems.value.slice(0, 6))
+
+const manualPatchPreviewTargets = computed<ManualPatchPreviewTarget[]>(() => {
+  const rows = new Map<string, {
+    target_file: string;
+    projectItems: ProjectSupplementTaskListItem[];
+    expansionItems: DomainPackExpansionWritebackDraftItem[];
+  }>()
+  const ensureRow = (targetFile: string) => {
+    const current = rows.get(targetFile)
+    if (current) return current
+    const next = { target_file: targetFile, projectItems: [], expansionItems: [] }
+    rows.set(targetFile, next)
+    return next
+  }
+
+  for (const item of filteredItems.value) {
+    ensureRow(item.suggested_file_path || `data/provinces/${item.target_province || '待确认'}.md`).projectItems.push(item)
+  }
+  for (const item of filteredExpansionItems.value) {
+    ensureRow(item.suggested_file_path).expansionItems.push(item)
+  }
+
+  return [...rows.values()].map(row => {
+    const quality = combinedSourceQuality(row.projectItems, row.expansionItems)
+    const diffLines = renderLocalManualReviewDiff(row.target_file, row.projectItems, row.expansionItems)
+    const blockerReasons = [
+      row.projectItems.length + row.expansionItems.length === 0 ? `no_patch_items_for_target=${row.target_file}` : '',
+      quality.missingSourceRefFieldCount > 0 ? `missing_source_refs=${quality.missingSourceRefFieldCount}` : '',
+    ].filter((reason): reason is string => Boolean(reason))
+    const warningReasons = [
+      row.projectItems.length > 0 ? `project_writeback_structured_source_refs_pending=${row.projectItems.length}` : '',
+      quality.missingVerificationNoteFieldCount > 0 ? `missing_verification_notes=${quality.missingVerificationNoteFieldCount}` : '',
+      quality.missingWritebackHintFieldCount > 0 ? `missing_writeback_hints=${quality.missingWritebackHintFieldCount}` : '',
+    ].filter((reason): reason is string => Boolean(reason))
+    const sourceRefQualityLevel: SourceRefQualityLevel = blockerReasons.length > 0
+      ? 'blocker'
+      : warningReasons.length > 0
+        ? 'warning'
+        : 'pass'
+    return {
+      target_file: row.target_file,
+      project_patch_count: row.projectItems.length,
+      expansion_patch_count: row.expansionItems.length,
+      total_patch_count: row.projectItems.length + row.expansionItems.length,
+      candidate_field_count: quality.candidateFieldCount,
+      checked_field_count: quality.checkedFieldCount,
+      covered_field_count: quality.coveredFieldCount,
+      source_ref_count: quality.sourceRefCount,
+      missing_source_ref_field_count: quality.missingSourceRefFieldCount,
+      missing_verification_note_field_count: quality.missingVerificationNoteFieldCount,
+      missing_writeback_hint_field_count: quality.missingWritebackHintFieldCount,
+      source_ref_coverage_percent: completionPercent(quality.coveredFieldCount, quality.checkedFieldCount),
+      source_ref_quality_level: sourceRefQualityLevel,
+      blocker_reasons: blockerReasons,
+      warning_reasons: warningReasons,
+      diff_preview_lines: diffLines.slice(0, DIFF_PREVIEW_LINE_LIMIT),
+      diff_preview_truncated: diffLines.length > DIFF_PREVIEW_LINE_LIMIT,
+    }
+  }).sort((a, b) => a.target_file.localeCompare(b.target_file, 'zh-Hans-CN'))
+})
+
+const manualPatchPreviewSummary = computed(() => {
+  const checkedFieldCount = manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.checked_field_count, 0)
+  const coveredFieldCount = manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.covered_field_count, 0)
+  return {
+    targetFileCount: manualPatchPreviewTargets.value.length,
+    totalPatchCount: manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.total_patch_count, 0),
+    blockerCount: manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.blocker_reasons.length, 0),
+    warningCount: manualPatchPreviewTargets.value.reduce((sum, item) => sum + item.warning_reasons.length, 0),
+    sourceRefCoveragePercent: completionPercent(coveredFieldCount, checkedFieldCount),
+    missingSourceFieldCount: manualPatchPreviewTargets.value
+      .reduce((sum, item) => sum + item.missing_source_ref_field_count, 0),
+  }
+})
 
 const projectOptions = computed(() => {
   const seen = new Set<string>()
@@ -990,6 +1204,99 @@ function candidateFields(item: DomainPackExpansionWritebackDraftItem): DomainPac
 
 function itemSourceRefCount(item: DomainPackExpansionWritebackDraftItem): number {
   return new Set((item.field_workbench ?? []).flatMap(field => field.source_refs)).size
+}
+
+function expansionItemSourceQuality(item: DomainPackExpansionWritebackDraftItem) {
+  const fields = candidateFields(item)
+  return {
+    candidateFieldCount: item.field_supplement_candidate_count ?? fields.length,
+    checkedFieldCount: fields.length,
+    coveredFieldCount: fields.filter(field => field.source_refs.length > 0).length,
+    sourceRefCount: new Set(fields.flatMap(field => field.source_refs)).size,
+    missingSourceRefFieldCount: fields.filter(field => field.source_refs.length === 0).length,
+    missingVerificationNoteFieldCount: fields.filter(field => !field.verification_note?.trim()).length,
+    missingWritebackHintFieldCount: fields.filter(field => !field.writeback_hint?.trim()).length,
+  }
+}
+
+function combinedSourceQuality(
+  projectItems: ProjectSupplementTaskListItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+) {
+  const sourceRefs = new Set<string>()
+  let candidateFieldCount = 0
+  let checkedFieldCount = 0
+  let coveredFieldCount = 0
+  let missingSourceRefFieldCount = 0
+  let missingVerificationNoteFieldCount = 0
+  let missingWritebackHintFieldCount = 0
+
+  for (const item of expansionItems) {
+    const quality = expansionItemSourceQuality(item)
+    candidateFieldCount += quality.candidateFieldCount
+    checkedFieldCount += quality.checkedFieldCount
+    coveredFieldCount += quality.coveredFieldCount
+    missingSourceRefFieldCount += quality.missingSourceRefFieldCount
+    missingVerificationNoteFieldCount += quality.missingVerificationNoteFieldCount
+    missingWritebackHintFieldCount += quality.missingWritebackHintFieldCount
+    for (const ref of (item.field_workbench ?? []).flatMap(field => field.source_refs)) sourceRefs.add(ref)
+  }
+
+  for (const item of projectItems) {
+    for (const line of (item.task.knowledge_writeback_draft_markdown ?? '')
+      .split('\n')
+      .filter(line => /source_refs?|来源|参考|出处/i.test(line))) {
+      sourceRefs.add(line.trim())
+    }
+  }
+
+  return {
+    candidateFieldCount,
+    checkedFieldCount,
+    coveredFieldCount,
+    sourceRefCount: sourceRefs.size,
+    missingSourceRefFieldCount,
+    missingVerificationNoteFieldCount,
+    missingWritebackHintFieldCount,
+  }
+}
+
+function renderLocalManualReviewDiff(
+  targetFile: string,
+  projectItems: ProjectSupplementTaskListItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+): string[] {
+  const appendLines = [
+    `<!-- knowledge_writeback_manual_patch target_file="${targetFile}" direct_writeback_to_province_markdown="false" -->`,
+    ...projectItems.flatMap(item => [
+      '',
+      `<!-- project_writeback task="${writebackItemKey(item)}" status="${taskWritebackStatus(item)}" -->`,
+      (item.task.knowledge_writeback_draft_markdown ?? '').trim(),
+    ]),
+    ...expansionItems.flatMap(item => [
+      '',
+      `<!-- domain_pack_expansion_writeback review_item_id="${item.review_item_id}" status="${expansionWritebackStatus(item)}" -->`,
+      (item.append_markdown || item.writeback_draft_markdown).trim(),
+    ]),
+  ].join('\n').trim().split('\n')
+  return [
+    `diff --git a/${targetFile} b/${targetFile}`,
+    `--- a/${targetFile}`,
+    `+++ b/${targetFile}`,
+    '@@ manual_append_review_only @@',
+    ...appendLines.map(line => `+${line}`),
+  ]
+}
+
+function sourceQualityLabel(level: SourceRefQualityLevel): string {
+  if (level === 'blocker') return '来源阻塞'
+  if (level === 'warning') return '需人工核对'
+  return '来源就绪'
+}
+
+function completionPercent(completedCount: number, totalCount: number): number {
+  if (totalCount <= 0) return 100
+  return Math.round((completedCount / totalCount) * 100)
 }
 
 function hasExpansionReviewerIdentity(item: DomainPackExpansionWritebackDraftItem): boolean {
@@ -1388,6 +1695,80 @@ async function downloadManualPatchPackage() {
   }
 }
 
+async function copyManualPatchDiffBundle() {
+  const visibleProjectItems = filteredItems.value
+  const visibleExpansionItems = filteredExpansionItems.value
+  if (visibleProjectItems.length + visibleExpansionItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可复制的人工 patch diff'
+    return
+  }
+
+  exportingFormat.value = 'manual-patch-diff'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePackage({
+      ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+      ...(videoTypeFilter.value ? { video_type: videoTypeFilter.value } : {}),
+      ...(provinceFilter.value ? { province: provinceFilter.value } : {}),
+      ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+      ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+      project_task_keys: visibleProjectItems.map(writebackItemKey),
+      expansion_review_item_ids: visibleExpansionItems.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      const bundle = renderManualPatchDiffBundle(res.data)
+      await navigator.clipboard.writeText(bundle)
+      const patchPackage = res.data.manual_patch_package
+      copyMessage.value = `已复制人工 patch diff：目标文件 ${patchPackage.target_file_count} 个，patch ${patchPackage.total_patch_count} 条，来源覆盖 ${patchPackage.source_ref_quality.coverage_percent}%。`
+    } else {
+      error.value = res.error?.message ?? '导出人工 patch diff 失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制人工 patch diff 失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
+async function downloadManualPatchDiffBundle() {
+  const visibleProjectItems = filteredItems.value
+  const visibleExpansionItems = filteredExpansionItems.value
+  if (visibleProjectItems.length + visibleExpansionItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可下载的人工 patch diff'
+    return
+  }
+
+  exportingFormat.value = 'download-manual-patch-diff'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePackage({
+      ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+      ...(videoTypeFilter.value ? { video_type: videoTypeFilter.value } : {}),
+      ...(provinceFilter.value ? { province: provinceFilter.value } : {}),
+      ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+      ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+      project_task_keys: visibleProjectItems.map(writebackItemKey),
+      expansion_review_item_ids: visibleExpansionItems.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      const manifest = res.data.signoff_package.signoff_manifest
+      const filename = `${safeDownloadName(`knowledge-manual-patch-diff-${manifest.manifest_id}-${manifest.sha256.slice(0, 12)}`)}.diff`
+      downloadTextFile(filename, renderManualPatchDiffBundle(res.data), 'text/x-diff;charset=utf-8')
+      copyMessage.value = `已下载人工 patch diff：${res.data.manual_patch_package.target_file_count} 个目标文件；patch_applyable=false。`
+    } else {
+      error.value = res.error?.message ?? '下载人工 patch diff 失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '下载人工 patch diff 失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
 function renderReviewHandoffChecklist(): string {
   const statusText = statusCountSummary(reviewHandoffItems.value.reduce((counts, item) => {
     counts[item.writeback_status] += 1
@@ -1432,6 +1813,35 @@ function renderReviewHandoffChecklist(): string {
       `  - action: ${item.required_action}`,
     ]),
   ].join('\n')
+}
+
+function renderManualPatchDiffBundle(pkg: KnowledgeWritebackQueueExportPackage): string {
+  const manualPatch = pkg.manual_patch_package
+  return [
+    '# Knowledge Manual Patch Diff Bundle',
+    '',
+    `# schema_version: ${manualPatch.schema_version}`,
+    `# exported_at: ${manualPatch.exported_at}`,
+    `# patch_applyable: ${manualPatch.patch_applyable}`,
+    `# manual_apply_only: ${manualPatch.manual_apply_only}`,
+    `# ready_for_manual_apply: ${manualPatch.ready_for_manual_apply}`,
+    `# target_file_count: ${manualPatch.target_file_count}`,
+    `# total_patch_count: ${manualPatch.total_patch_count}`,
+    `# source_ref_coverage_percent: ${manualPatch.source_ref_quality.coverage_percent}`,
+    ...manualPatch.ready_reasons.map(reason => `# ready_reason: ${reason}`),
+    ...manualPatch.blocker_reasons.map(reason => `# blocker_reason: ${reason}`),
+    ...manualPatch.warning_reasons.map(reason => `# warning_reason: ${reason}`),
+    '',
+    ...manualPatch.target_patches.flatMap(target => [
+      `# target_file: ${target.target_file}`,
+      `# ready_for_manual_apply: ${target.ready_for_manual_apply}`,
+      `# source_ref_quality: ${target.source_ref_quality_level}; coverage=${target.source_ref_coverage_percent}%`,
+      ...target.blocker_reasons.map(reason => `# target_blocker_reason: ${reason}`),
+      ...target.warning_reasons.map(reason => `# target_warning_reason: ${reason}`),
+      target.review_diff.trimEnd(),
+      '',
+    ]),
+  ].join('\n').trim() + '\n'
 }
 
 function safeDownloadName(value: string): string {
@@ -1763,7 +2173,8 @@ onMounted(async () => {
   padding-left: 18px;
 }
 
-.writeback-page__handoff {
+.writeback-page__handoff,
+.writeback-page__manual-preview {
   display: grid;
   gap: 10px;
   margin-bottom: 14px;
@@ -1774,18 +2185,26 @@ onMounted(async () => {
   color: #465767;
 }
 
+.writeback-page__manual-preview {
+  background: #fbfcfe;
+}
+
 .writeback-page__handoff > div:first-child strong,
-.writeback-page__handoff > div:first-child span {
+.writeback-page__handoff > div:first-child span,
+.writeback-page__manual-preview > div:first-child strong,
+.writeback-page__manual-preview > div:first-child span {
   display: block;
 }
 
-.writeback-page__handoff > div:first-child strong {
+.writeback-page__handoff > div:first-child strong,
+.writeback-page__manual-preview > div:first-child strong {
   color: #22313f;
   font-size: 14px;
 }
 
 .writeback-page__handoff > div:first-child span,
-.writeback-page__handoff-grid span {
+.writeback-page__handoff-grid span,
+.writeback-page__manual-preview > div:first-child span {
   font-size: 12px;
   line-height: 1.5;
 }
@@ -1794,6 +2213,79 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 8px;
+}
+
+.writeback-page__manual-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.writeback-page__manual-preview-grid article {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #e1e8ef;
+  border-radius: 6px;
+  padding: 9px;
+  background: #fff;
+  color: #465767;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.writeback-page__manual-preview-grid header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.writeback-page__manual-preview-grid strong {
+  min-width: 0;
+  color: #22313f;
+  overflow-wrap: anywhere;
+}
+
+.writeback-page__manual-preview-grid details {
+  min-width: 0;
+}
+
+.writeback-page__manual-preview-grid summary {
+  cursor: pointer;
+  color: #22313f;
+  font-weight: 700;
+}
+
+.writeback-page__manual-preview-grid pre {
+  max-height: 220px;
+  margin: 6px 0 0;
+  overflow: auto;
+  white-space: pre;
+  color: #405468;
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.writeback-page__quality {
+  flex: 0 0 auto;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.writeback-page__quality--pass {
+  background: #e2f5e9;
+  color: #1e7d43;
+}
+
+.writeback-page__quality--warning {
+  background: #fff4d8;
+  color: #8a5a00;
+}
+
+.writeback-page__quality--blocker {
+  background: #fdecea;
+  color: #a93226;
 }
 
 .writeback-page__handoff-batches {

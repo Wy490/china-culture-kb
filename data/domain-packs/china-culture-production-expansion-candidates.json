@@ -2893,6 +2893,192 @@
           ]
         }
       ]
+    },
+    {
+      "batch_id": "third_batch_real_candidates_20260708",
+      "pack_id": "third_batch_real_candidate_pack",
+      "entry_name": "第三批真实候选包——讲解、非遗、纪录与 AI 漫剧交叉补源",
+      "priority": "P1",
+      "status": "candidate_review",
+      "target_video_types": ["explainer_video", "heritage_promo", "documentary_short", "ai_comic_drama"],
+      "field_groups": [
+        {
+          "group_id": "source_and_boundary",
+          "candidate_fields": ["core_question", "source_line", "verification_boundary", "writeback_scope"],
+          "review_questions": ["核心问题是否能回到已有本地条目来源，而不是新造事实？", "事实、传说、表演传统和生产改编边界是否清楚？"]
+        },
+        {
+          "group_id": "production_and_story",
+          "candidate_fields": ["visual_or_scene_assets", "story_or_sequence_hook", "risk_control", "manual_patch_note"],
+          "review_questions": ["候选资产是否适合进入讲解/非遗/纪录/AI 漫剧生产草案？", "写回提示是否仍保持 manual_apply_only，不直接改 data/provinces/*.md？"]
+        }
+      ],
+      "seed_targets": [
+        {
+          "entry_name": "祁剧——湘南山野的戏曲长河",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "source_line", "visual_or_scene_assets", "risk_control"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["流布范围绝对化", "脸谱数量无来源定论", "声腔源流单线化"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "祁剧为什么能把湘南山地、三腔体系、目连戏传统和跨省流布讲成一条清晰的知识讲解线？可从“声腔结构—地理流布—代表剧目—待核数字”四层展开。",
+              "evidence_level": "local_entry_with_explainer_adaptation",
+              "source_refs": ["data/provinces/湖南.md#祁剧：简介", "data/provinces/湖南.md#祁剧：文化意义"],
+              "writeback_hint": "作为 explainer_video 核心问题候选，流布范围和脸谱数量需复核后再人工写回。",
+              "verification_note": "问题来自本地祁剧条目的声腔、地域和剧目线索；不把地方评价写成唯一事实。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议由国家级非遗名录、地方戏曲志、永州祁阳剧团/保护机构资料、代表剧目影像和研究者访谈组成，先确认项目身份，再核对声腔、流布和脸谱口径。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#祁剧：来源", "data/provinces/湖南.md#祁剧：核实方法"],
+              "writeback_hint": "作为 documentary_short/heritage_promo 来源线候选，正式入库前补 URL、书目信息和授权状态。",
+              "verification_note": "来源类型来自本地条目的来源与核实方法，具体资料编号仍需人工补齐。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍资产包括祁阳老戏台、剧团排练厅、脸谱样本、锣鼓点、三腔切换字幕板、永河/宝河流派地图和《目连传》剧目卡；镜头只做资产清单，不宣称已获授权。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#祁剧：场景", "data/provinces/湖南.md#祁剧：场景陈设"],
+              "writeback_hint": "作为生产资产候选，可进入人工 patch 预览，不直接写正式资产字段。",
+              "verification_note": "资产来自本地场景和陈设线索；实际拍摄需剧团和场地方授权。"
+            },
+            {
+              "field_id": "risk_control",
+              "candidate_value": "避免把“流布最广”“七十二变脸谱”“湖南三大地方戏”等表述做成无来源定论；讲声腔源流时标注高、昆、弹的本地化过程和学术分歧。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#祁剧：待核实点", "data/provinces/湖南.md#祁剧：可信度"],
+              "writeback_hint": "作为 source verification 风险字段候选，缺来源时应阻塞 ready_for_manual_apply。",
+              "verification_note": "风险来自待核点和可信度说明，用于写回队列缺失来源分级。"
+            }
+          ]
+        },
+        {
+          "entry_name": "常德武陵戏——沅澧流域的湖南五大剧种之一",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "source_line", "story_or_sequence_hook", "manual_patch_note"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["四大名班年代表述未核实", "声腔融合过程过度简化", "汉剧系统关系无来源定论"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "常德武陵戏为什么像一座沅澧戏曲“熔炉”？微纪录可从沅澧水路、四大名班、声腔融合和内外八块表演体系四条线索进入。",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/湖南.md#常德武陵戏：简介", "data/provinces/湖南.md#常德武陵戏：文化意义"],
+              "writeback_hint": "作为 documentary_short 核心问题候选，班社年代和声腔来源需人工复核。",
+              "verification_note": "问题来自本地条目的剧种身份、声腔融合和文化意义，不新增史实。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线可由常德汉剧/武陵戏保护单位资料、地方戏曲志、四大名班档案、剧目影像、传承人口述和常德地方文化馆资料组成，先核剧种名称口径，再核班社谱系。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#常德武陵戏：来源", "data/provinces/湖南.md#常德武陵戏：核实方法"],
+              "writeback_hint": "作为来源核验字段候选，缺 URL/档案号时只保留草案，不进入正式条目。",
+              "verification_note": "来源组合来自本地条目的来源与核实方法，适合进入写回队列预检。"
+            },
+            {
+              "field_id": "story_or_sequence_hook",
+              "candidate_value": "纪录片顺序可用“河港听戏声→老班社名牌→演员示范外八块→研究者解释声腔迁徙→回到常德舞台”的五段结构，突出资料核验而不是传奇化班史。",
+              "evidence_level": "production_candidate",
+              "source_refs": ["data/provinces/湖南.md#常德武陵戏：场景", "data/provinces/湖南.md#常德武陵戏：人物"],
+              "writeback_hint": "作为纪录结构候选，不把镜头设计写成知识库事实。",
+              "verification_note": "结构基于本地人物和场景资产推导，班史细节需地方档案复核。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工 patch 应优先补“来源线、待核点、可拍资产”三类字段；任何关于四大名班起源年代、400余年班史和汉剧系统关系的强断言都必须先补来源。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": ["data/provinces/湖南.md#常德武陵戏：待核实点", "data/provinces/湖南.md#常德武陵戏：可信度"],
+              "writeback_hint": "作为 manual_apply_only 检查项，供 Knowledge Writeback Queue 显示 blocker/warning。",
+              "verification_note": "说明服务人工写回执行层，保持 data/provinces/*.md 不被自动改写。"
+            }
+          ]
+        },
+        {
+          "entry_name": "张家界阳戏——大庸土家族的金线吊葫芦",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "visual_or_scene_assets", "story_or_sequence_hook", "risk_control"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["金线吊葫芦唯一性无来源定论", "傩阳关系神秘化", "土家族表达刻板化"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "张家界阳戏的“金线吊葫芦”为什么能成为 AI 漫剧里的声音线索？故事可让少年从真假嗓拖腔听见土家阳戏与傩戏同班传统的边界。",
+              "evidence_level": "local_entry_with_ai_comic_adaptation",
+              "source_refs": ["data/provinces/湖南.md#张家界阳戏：简介", "data/provinces/湖南.md#张家界阳戏：艺术特色"],
+              "writeback_hint": "作为 ai_comic_drama 钩子候选，声音技法和傩阳关系需标注来源层级。",
+              "verification_note": "钩子基于本地条目的唱腔特色和傩阳二元结构，保留改编边界。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "AI 漫剧资产可用山地戏台、土家服饰、锣鼓、木凳、手写唱词牌、真假嗓声波示意和“阳戏/傩戏”双色卡；避免把宗教仪式画成猎奇奇观。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#张家界阳戏：场景", "data/provinces/湖南.md#张家界阳戏：场景陈设"],
+              "writeback_hint": "作为视觉资产候选，只进入草案和 storyboard，不写正式事实字段。",
+              "verification_note": "资产来自本地场景与陈设线索；服饰和仪式细节需传承人/保护机构复核。"
+            },
+            {
+              "field_id": "story_or_sequence_hook",
+              "candidate_value": "四格漫剧节拍：少年误以为“阳戏就是喜剧”→老艺人示范真假嗓拖腔→讲解员用两张卡区分娱人与娱神→少年把“好听”和“来源边界”同时写进分镜单。",
+              "evidence_level": "ai_comic_adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#张家界阳戏：故事梗概", "data/provinces/湖南.md#张家界阳戏：文化意义"],
+              "writeback_hint": "作为 AI 漫剧分镜候选，人物对白是创作改编，不直接写入知识条目。",
+              "verification_note": "节拍服务漫剧表达，核心知识点仍来自本地条目。"
+            },
+            {
+              "field_id": "risk_control",
+              "candidate_value": "不得把“中华戏剧中绝无仅有”“金线吊葫芦”做成无来源宣传语；不得把土家族仪式、傩戏和阳戏混写成神秘民俗奇观。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#张家界阳戏：待核实点", "data/provinces/湖南.md#张家界阳戏：核实方法"],
+              "writeback_hint": "作为 AI 漫剧和非遗宣传共用风险字段候选，缺来源时阻塞人工写回。",
+              "verification_note": "风险来自待核点和核实方法，强调族群表达与来源边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "湘剧——湖南戏曲的中州遗韵",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "source_line", "visual_or_scene_assets", "manual_patch_note"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["湘剧地位宣传化", "高低昆乱源流无来源断言", "名家谱系未经核验"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "湘剧为什么能作为湖南戏曲讲解片的“中州韵入口”？可从长沙舞台、四大声腔、代表剧目和湖南五大剧种关系四层解释。",
+              "evidence_level": "local_entry_with_explainer_adaptation",
+              "source_refs": ["data/provinces/湖南.md#湘剧：简介", "data/provinces/湖南.md#湘剧：文化意义"],
+              "writeback_hint": "作为 explainer_video 核心问题候选，剧种地位和声腔源流需复核。",
+              "verification_note": "问题来自本地湘剧条目的声腔、剧目和文化意义。"
+            },
+            {
+              "field_id": "source_line",
+              "candidate_value": "来源线建议包含国家级非遗名录、湖南省湘剧院/保护单位资料、地方戏曲志、代表剧目影像、名家资料和剧种研究论文；先核项目名录，再核名家谱系。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#湘剧：来源", "data/provinces/湖南.md#湘剧：核实方法"],
+              "writeback_hint": "作为来源线候选，正式写回前补来源等级、链接和授权情况。",
+              "verification_note": "来源清单来自本地来源字段；具体机构资料需人工核验。"
+            },
+            {
+              "field_id": "visual_or_scene_assets",
+              "candidate_value": "可拍/可画资产包括长沙剧场、湘剧服饰、髯口、水袖、锣鼓、剧本页、声腔四分图和湖南五大剧种关系板；用于讲解和 AI 漫剧时标注为生产资产。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#湘剧：场景", "data/provinces/湖南.md#湘剧：人物随身道具", "data/provinces/湖南.md#湘剧：场景陈设"],
+              "writeback_hint": "作为视觉资产候选，授权与剧目截图另行复核。",
+              "verification_note": "资产来自本地条目，具体服饰和剧照需剧院授权。"
+            },
+            {
+              "field_id": "manual_patch_note",
+              "candidate_value": "人工写回时建议只补“来源线、资产清单、禁写断言”三段；涉及“湖南戏曲双璧”“湖南五大剧种”“高腔源流”等表达时必须附来源或留待核。",
+              "evidence_level": "manual_patch_governance",
+              "source_refs": ["data/provinces/湖南.md#湘剧：待核实点", "data/provinces/湖南.md#湘剧：可信度"],
+              "writeback_hint": "作为 manual patch 包 ready/blocker 原因候选，不直接改 data/provinces/*.md。",
+              "verification_note": "说明服务人工写回执行层和来源核验强化。"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

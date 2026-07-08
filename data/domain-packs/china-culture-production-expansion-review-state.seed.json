@@ -866,6 +866,58 @@
       "writeback_updated_at": "2026-07-08T18:20:00.000+08:00",
       "reviewer_name": "Codex seed review ledger",
       "reviewed_by": "Codex seed review ledger"
+    },
+    {
+      "review_item_id": "third_batch_real_candidates_20260708::target_01",
+      "review_status": "approved",
+      "review_note": "祁剧讲解、非遗宣传、纪录短片和 AI 漫剧候选字段齐备；声腔体系、目连戏传统、跨省流布和待核数字保留来源复核边界。",
+      "reviewed_at": "2026-07-08T19:00:00.000+08:00",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-p1-third-plan",
+      "signoff_batch_note": "第三批真实候选审签归档：讲解、非遗宣传、微纪录和 AI 漫剧交叉补源。",
+      "writeback_status": "draft_ready",
+      "writeback_note": "第三批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T19:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
+    },
+    {
+      "review_item_id": "third_batch_real_candidates_20260708::target_02",
+      "review_status": "approved",
+      "review_note": "常德武陵戏候选字段覆盖沅澧水路、四大名班、声腔融合和内外八块表演体系；剧种命名、代表剧目和保护单位留待人工核验。",
+      "reviewed_at": "2026-07-08T19:00:00.000+08:00",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-p1-third-plan",
+      "signoff_batch_note": "第三批真实候选审签归档：讲解、非遗宣传、微纪录和 AI 漫剧交叉补源。",
+      "writeback_status": "draft_ready",
+      "writeback_note": "第三批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T19:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
+    },
+    {
+      "review_item_id": "third_batch_real_candidates_20260708::target_03",
+      "review_status": "approved",
+      "review_note": "张家界阳戏候选字段覆盖金线吊葫芦声腔、土家阳戏边界、舞台资产和改编伦理；非遗级别、流布区域和绝技描述保留来源复核。",
+      "reviewed_at": "2026-07-08T19:00:00.000+08:00",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-p1-third-plan",
+      "signoff_batch_note": "第三批真实候选审签归档：讲解、非遗宣传、微纪录和 AI 漫剧交叉补源。",
+      "writeback_status": "draft_ready",
+      "writeback_note": "第三批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T19:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
+    },
+    {
+      "review_item_id": "third_batch_real_candidates_20260708::target_04",
+      "review_status": "approved",
+      "review_note": "湘剧候选字段覆盖中州韵讲解入口、长沙舞台资产、四大声腔和五大剧种关系；名家谱系、高低昆乱源流和地位表述保留人工核验。",
+      "reviewed_at": "2026-07-08T19:00:00.000+08:00",
+      "signoff_batch_id": "dp-expansion-signoff-20260708-p1-third-plan",
+      "signoff_batch_note": "第三批真实候选审签归档：讲解、非遗宣传、微纪录和 AI 漫剧交叉补源。",
+      "writeback_status": "draft_ready",
+      "writeback_note": "第三批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T19:00:00.000+08:00",
+      "reviewer_name": "Codex seed review ledger",
+      "reviewed_by": "Codex seed review ledger"
     }
   ]
 }

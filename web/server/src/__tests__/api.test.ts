@@ -720,7 +720,7 @@ describe('System API', () => {
           requires_human_review: true,
           requires_source_level: true,
         },
-        batch_count: 8,
+        batch_count: 9,
         issues: [],
         review_packet: {
           schema_version: 'domain-pack-expansion-review-packet/v1',
@@ -736,8 +736,8 @@ describe('System API', () => {
           schema_version: 'domain-pack-expansion-writeback-preflight/v1',
           direct_writeback_to_province_markdown: false,
           province_markdown_written: false,
-          approved_draft_count: 66,
-          draft_ready_count: 66,
+          approved_draft_count: 70,
+          draft_ready_count: 70,
           target_file_count: 5,
           ready_for_unified_export: true,
         },
@@ -759,7 +759,7 @@ describe('System API', () => {
           related_plan_items: [3],
         }),
         expect.objectContaining({
-          task_id: 'second_batch_real_candidates',
+          task_id: 'third_batch_real_candidates',
           progress_percent: 100,
           related_plan_items: [4],
         }),
@@ -772,17 +772,17 @@ describe('System API', () => {
       expect(res.body.data.review_closure).toMatchObject({
         schema_version: 'domain-pack-expansion-review-closure/v1',
         ready_for_human_handoff: true,
-        review_item_count: 66,
-        approved_count: 66,
-        review_note_count: 66,
+        review_item_count: 70,
+        approved_count: 70,
+        review_note_count: 70,
         missing_review_note_count: 0,
-        reviewer_identity_count: 66,
+        reviewer_identity_count: 70,
         missing_reviewer_identity_count: 0,
-        signoff_batch_count: 3,
+        signoff_batch_count: 4,
         missing_signoff_batch_count: 0,
-        ready_for_signoff_count: 66,
+        ready_for_signoff_count: 70,
         blocked_for_signoff_count: 0,
-        manual_writeback_required_count: 66,
+        manual_writeback_required_count: 70,
       });
       expect(res.body.data.seed_target_count).toBeGreaterThanOrEqual(30);
       expect(res.body.data.candidate_field_count).toBeGreaterThanOrEqual(80);
@@ -877,7 +877,7 @@ describe('System API', () => {
       expectSuccess(draftRes.body);
       expect(draftRes.body.data).toMatchObject({
         schema_version: 'domain-pack-expansion-writeback-draft/v1',
-        approved_count: 66,
+        approved_count: 70,
         target_files: [
           'data/provinces/四川.md',
           'data/provinces/山西.md',
@@ -886,7 +886,7 @@ describe('System API', () => {
           'data/provinces/辽宁.md',
         ],
         status_counts: {
-          draft_ready: 66,
+          draft_ready: 70,
           queued: 0,
           written_back: 0,
           needs_revision: 0,
@@ -923,24 +923,24 @@ describe('System API', () => {
         province_markdown_written: false,
         report: {
           review_packet: {
-            approved_writeback_draft_count: 66,
+            approved_writeback_draft_count: 70,
           },
         },
       });
       expect(bulkRes.body.data.report.review_packet.review_status_counts).toMatchObject({
-        approved: 66,
+        approved: 70,
       });
 
       const draftRes = await request.get('/api/system/domain-pack-expansion-writeback-draft');
       expect(draftRes.status).toBe(200);
       expectSuccess(draftRes.body);
       expect(draftRes.body.data).toMatchObject({
-        approved_count: 66,
+        approved_count: 70,
         direct_writeback_to_province_markdown: false,
         filters: {},
         status_counts: expect.objectContaining({
           queued: 2,
-          draft_ready: 64,
+          draft_ready: 68,
         }),
       });
 
@@ -1058,11 +1058,24 @@ describe('System API', () => {
           manual_review_required_count: 1,
           blocked_direct_writeback_count: 1,
           ready_for_manual_export: true,
+          source_ref_quality: expect.objectContaining({
+            schema_version: 'knowledge-writeback-source-ref-quality/v1',
+            coverage_percent: 100,
+            blocker_item_count: 0,
+            warning_item_count: 0,
+            missing_source_ref_field_count: 0,
+            missing_verification_note_field_count: 0,
+            missing_writeback_hint_field_count: 0,
+          }),
           target_file_preflight: [expect.objectContaining({
             target_file: 'data/provinces/湖南.md',
             expansion_draft_count: 1,
             expansion_candidate_field_count: 4,
             expansion_field_missing_count: 0,
+            source_ref_coverage_percent: 100,
+            source_ref_quality_level: 'pass',
+            source_ref_blocker_count: 0,
+            source_ref_warning_count: 0,
             direct_writeback_to_province_markdown: false,
           })],
           review_handoff: expect.objectContaining({
@@ -1149,14 +1162,34 @@ describe('System API', () => {
           project_patch_count: 0,
           expansion_patch_count: 1,
           candidate_field_count: 4,
+          source_ref_quality: expect.objectContaining({
+            coverage_percent: 100,
+            blocker_item_count: 0,
+            warning_item_count: 0,
+          }),
+          ready_reasons: expect.arrayContaining([
+            'manual_patch_has_target_patches',
+            'source_ref_quality_blockers=0',
+          ]),
+          blocker_reasons: [],
+          warning_reasons: [],
           target_patches: [expect.objectContaining({
             target_file: 'data/provinces/湖南.md',
             patch_applyable: false,
             manual_apply_only: true,
+            ready_for_manual_apply: true,
             total_patch_count: 1,
             project_patch_count: 0,
             expansion_patch_count: 1,
             candidate_field_count: 4,
+            source_ref_coverage_percent: 100,
+            source_ref_quality_level: 'pass',
+            blocker_reasons: [],
+            warning_reasons: [],
+            diff_preview_lines: expect.arrayContaining([
+              expect.stringContaining('@@ manual_append_review_only @@'),
+            ]),
+            diff_preview_truncated: false,
             append_markdown: expect.stringContaining(reviewItemId),
             review_diff: expect.stringContaining('@@ manual_append_review_only @@'),
             safety_checks: expect.arrayContaining([
@@ -1727,7 +1760,7 @@ describe('System API', () => {
           production_domain_pack_ready_count: 8,
           production_domain_pack_required_count: 8,
           domain_pack_expansion_status: 'passed',
-          domain_pack_expansion_batch_count: 8,
+          domain_pack_expansion_batch_count: 9,
           domain_pack_expansion_seed_target_count: expect.any(Number),
           domain_pack_expansion_candidate_field_count: expect.any(Number),
           domain_pack_expansion_pipeline_progress_percent: 100,
@@ -1745,17 +1778,17 @@ describe('System API', () => {
           domain_pack_expansion_review_ready_item_count: expect.any(Number),
           domain_pack_expansion_review_blocked_item_count: expect.any(Number),
           domain_pack_expansion_review_candidate_count: expect.any(Number),
-          domain_pack_expansion_review_approved_count: 66,
+          domain_pack_expansion_review_approved_count: 70,
           domain_pack_expansion_review_rejected_count: 0,
           domain_pack_expansion_review_needs_revision_count: 0,
-          domain_pack_expansion_approved_writeback_draft_count: 66,
-          domain_pack_expansion_writeback_draft_ready_count: 66,
+          domain_pack_expansion_approved_writeback_draft_count: 70,
+          domain_pack_expansion_writeback_draft_ready_count: 70,
           domain_pack_expansion_writeback_queued_count: 0,
           domain_pack_expansion_writeback_written_back_count: 0,
           domain_pack_expansion_writeback_needs_revision_count: 0,
           domain_pack_expansion_review_closure_ready: true,
-          domain_pack_expansion_review_closure_signoff_batch_count: 3,
-          domain_pack_expansion_review_closure_ready_for_signoff_count: 66,
+          domain_pack_expansion_review_closure_signoff_batch_count: 4,
+          domain_pack_expansion_review_closure_ready_for_signoff_count: 70,
           domain_pack_expansion_review_closure_blocked_for_signoff_count: 0,
           domain_pack_expansion_review_closure_missing_review_note_count: 0,
           domain_pack_expansion_review_closure_missing_reviewer_identity_count: 0,
@@ -1765,7 +1798,7 @@ describe('System API', () => {
           domain_pack_expansion_field_workbench_controls_percent: 100,
           domain_pack_expansion_manual_review_closure_percent: 100,
           domain_pack_expansion_writeback_safety_export_percent: 100,
-          domain_pack_expansion_second_batch_real_candidates_percent: 100,
+          domain_pack_expansion_third_batch_real_candidates_percent: 100,
           domain_pack_expansion_mvp_completion_surface_percent: 100,
           story_agent_command_surface_status: 'ready',
           story_agent_command_surface_percent: 100,
@@ -1836,16 +1869,16 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('domain pack expansion field review blockers');
       expect(res.body.data.markdown).toContain('domain pack expansion field supplement priority targets');
       expect(res.body.data.markdown).toContain('domain pack expansion review ready priority targets');
-      expect(res.body.data.markdown).toContain('domain pack expansion review approved: 66');
-      expect(res.body.data.markdown).toContain('domain pack expansion approved writeback drafts: 66');
+      expect(res.body.data.markdown).toContain('domain pack expansion review approved: 70');
+      expect(res.body.data.markdown).toContain('domain pack expansion approved writeback drafts: 70');
       expect(res.body.data.markdown).toContain('domain pack expansion review closure ready: true');
-      expect(res.body.data.markdown).toContain('domain pack expansion review closure ready/blocked: 66/0');
+      expect(res.body.data.markdown).toContain('domain pack expansion review closure ready/blocked: 70/0');
       expect(res.body.data.markdown).toContain('knowledge writeback review handoff');
       expect(res.body.data.markdown).toContain('knowledge writeback signoff package');
       expect(res.body.data.markdown).toContain('knowledge writeback manual patch package');
       expect(res.body.data.markdown).toContain('knowledge writeback review handoff reviewer identities');
       expect(res.body.data.markdown).toContain('domain pack expansion writeback preflight ready: true');
-      expect(res.body.data.markdown).toContain('domain pack expansion manual writeback required: 66');
+      expect(res.body.data.markdown).toContain('domain pack expansion manual writeback required: 70');
       expect(res.body.data.markdown).toContain('domain pack expansion next development tasks: 5');
       expect(res.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
         'generated_artifacts',
@@ -1905,7 +1938,7 @@ describe('System API', () => {
         'domain_pack_ready=8/8',
         'domain_pack_issues=0',
         'domain_pack_expansion_status=passed',
-        'domain_pack_expansion_batches=8',
+        'domain_pack_expansion_batches=9',
         expect.stringContaining('domain_pack_expansion_seed_targets='),
         expect.stringContaining('domain_pack_expansion_candidate_fields='),
         'domain_pack_expansion_progress=100',
@@ -1921,24 +1954,24 @@ describe('System API', () => {
         expect.stringContaining('domain_pack_expansion_review_ready_priority_targets='),
         expect.stringContaining('domain_pack_expansion_review_ready_items='),
         expect.stringContaining('domain_pack_expansion_review_blocked_items='),
-        'domain_pack_expansion_review_approved=66',
-        'domain_pack_expansion_approved_writeback_drafts=66',
+        'domain_pack_expansion_review_approved=70',
+        'domain_pack_expansion_approved_writeback_drafts=70',
         'domain_pack_expansion_writeback_queued=0',
         'domain_pack_expansion_review_closure_ready=true',
-        'domain_pack_expansion_review_closure_signoff_batches=3',
-        'domain_pack_expansion_review_closure_ready_for_signoff=66',
+        'domain_pack_expansion_review_closure_signoff_batches=4',
+        'domain_pack_expansion_review_closure_ready_for_signoff=70',
         'domain_pack_expansion_review_closure_blocked_for_signoff=0',
         'domain_pack_expansion_review_closure_missing_notes=0',
         'domain_pack_expansion_review_closure_missing_reviewers=0',
         'domain_pack_expansion_review_closure_missing_batches=0',
         'domain_pack_expansion_writeback_preflight_ready=true',
         'domain_pack_expansion_writeback_target_files=5',
-        'domain_pack_expansion_manual_writeback_required=66',
+        'domain_pack_expansion_manual_writeback_required=70',
         'domain_pack_expansion_next_development_tasks=5',
         'domain_pack_expansion_plan_1_field_workbench_controls_percent=100',
         'domain_pack_expansion_plan_2_manual_review_closure_percent=100',
         'domain_pack_expansion_plan_3_writeback_safety_export_percent=100',
-        'domain_pack_expansion_plan_4_second_batch_real_candidates_percent=100',
+        'domain_pack_expansion_plan_4_third_batch_real_candidates_percent=100',
         'domain_pack_expansion_plan_5_mvp_completion_surface_percent=100',
         expect.stringContaining('knowledge_writeback_review_handoff='),
         expect.stringContaining('knowledge_writeback_review_handoff_signoff='),
@@ -2011,12 +2044,12 @@ describe('System API', () => {
             expect.stringContaining('review_ready_item_count='),
             expect.stringContaining('review_blocked_item_count='),
             expect.stringContaining('review_candidate_count='),
-            'review_approved_count=66',
-            'approved_writeback_drafts=66',
+            'review_approved_count=70',
+            'approved_writeback_drafts=70',
             'writeback_queued=0',
             'writeback_preflight_ready=true',
             'writeback_preflight_target_files=5',
-            'manual_writeback_required=66',
+            'manual_writeback_required=70',
             'next_development_tasks=5',
             expect.stringContaining('next_development_task_ids=field_workbench_controls'),
             'direct_writeback=false',

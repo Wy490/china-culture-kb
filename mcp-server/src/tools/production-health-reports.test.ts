@@ -950,12 +950,22 @@ describe('production health reports', () => {
         manual_review_required_count: 2,
         blocked_direct_writeback_count: 2,
         ready_for_manual_export: false,
+        source_ref_quality: expect.objectContaining({
+          schema_version: 'knowledge-writeback-source-ref-quality/v1',
+          blocker_item_count: expect.any(Number),
+          warning_item_count: expect.any(Number),
+          missing_source_ref_field_count: expect.any(Number),
+        }),
         target_file_preflight: [expect.objectContaining({
           target_file: 'data/provinces/湖南.md',
           project_draft_count: 1,
           expansion_draft_count: 1,
           expansion_candidate_field_count: 0,
           expansion_field_missing_count: 1,
+          source_ref_coverage_percent: expect.any(Number),
+          source_ref_quality_level: expect.stringMatching(/pass|warning|blocker/),
+          source_ref_blocker_count: expect.any(Number),
+          source_ref_warning_count: expect.any(Number),
           direct_writeback_to_province_markdown: false,
         })],
         review_handoff: expect.objectContaining({
@@ -1048,13 +1058,25 @@ describe('production health reports', () => {
         project_patch_count: 1,
         expansion_patch_count: 1,
         candidate_field_count: 0,
+        source_ref_quality: expect.objectContaining({
+          schema_version: 'knowledge-writeback-source-ref-quality/v1',
+          blocker_item_count: expect.any(Number),
+          warning_item_count: expect.any(Number),
+        }),
         target_patches: [expect.objectContaining({
           target_file: 'data/provinces/湖南.md',
           patch_applyable: false,
           manual_apply_only: true,
+          ready_for_manual_apply: false,
           total_patch_count: 2,
           project_patch_count: 1,
           expansion_patch_count: 1,
+          source_ref_quality_level: expect.stringMatching(/warning|blocker/),
+          blocker_reasons: expect.any(Array),
+          warning_reasons: expect.any(Array),
+          diff_preview_lines: expect.arrayContaining([
+            expect.stringContaining('@@ manual_append_review_only @@'),
+          ]),
           append_markdown: expect.stringContaining('short_video_hook_pack_batch::target_01'),
           review_diff: expect.stringContaining('@@ manual_append_review_only @@'),
           safety_checks: expect.arrayContaining([
@@ -1089,6 +1111,10 @@ describe('production health reports', () => {
       province: '湖南',
       writeback_status: 'queued',
     });
+    expect(unified.preflight.source_ref_quality.blocker_item_count).toBeGreaterThanOrEqual(1);
+    expect(unified.manual_patch_package.blocker_reasons).toEqual(expect.arrayContaining([
+      expect.stringContaining('source_ref_quality_blockers='),
+    ]));
     expect(unified.markdown).toContain('Knowledge Writeback Queue Export');
     expect(unified.markdown).toContain('province_markdown_written: false');
     expect(unified.markdown).toContain('Export Preflight');

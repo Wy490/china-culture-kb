@@ -1960,6 +1960,14 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_manual_patch_total_patch_count: number;
     knowledge_writeback_manual_patch_project_patch_count: number;
     knowledge_writeback_manual_patch_expansion_patch_count: number;
+    knowledge_writeback_source_ref_coverage_percent: number;
+    knowledge_writeback_source_ref_blocker_item_count: number;
+    knowledge_writeback_source_ref_warning_item_count: number;
+    knowledge_writeback_missing_source_ref_field_count: number;
+    knowledge_writeback_missing_verification_note_field_count: number;
+    knowledge_writeback_missing_writeback_hint_field_count: number;
+    knowledge_writeback_manual_patch_blocker_reason_count: number;
+    knowledge_writeback_manual_patch_warning_reason_count: number;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;
@@ -2014,7 +2022,7 @@ export interface StoryAgentMvpStatusReport {
     domain_pack_expansion_field_workbench_controls_percent: number;
     domain_pack_expansion_manual_review_closure_percent: number;
     domain_pack_expansion_writeback_safety_export_percent: number;
-    domain_pack_expansion_second_batch_real_candidates_percent: number;
+    domain_pack_expansion_third_batch_real_candidates_percent: number;
     domain_pack_expansion_mvp_completion_surface_percent: number;
     story_agent_command_surface_status: StoryAgentMvpStatus;
     story_agent_command_surface_percent: number;
@@ -6420,10 +6428,52 @@ export interface KnowledgeWritebackQueueExportTargetFilePreflight {
   expansion_candidate_field_count: number;
   expansion_field_missing_count: number;
   expansion_source_ref_count: number;
+  source_ref_coverage_percent: number;
+  source_ref_quality_level: KnowledgeWritebackSourceRefQualityLevel;
+  source_ref_blocker_count: number;
+  source_ref_warning_count: number;
   writeback_status_counts: Record<KnowledgeWritebackStatus, number>;
   direct_writeback_to_province_markdown: false;
   province_markdown_written: false;
   safety_note: string;
+}
+
+export type KnowledgeWritebackSourceRefQualityLevel = 'pass' | 'warning' | 'blocker';
+
+export interface KnowledgeWritebackSourceRefQualityItem {
+  item_id: string;
+  source_kind: 'project' | 'domain_pack_expansion';
+  title: string;
+  target_file: string;
+  candidate_field_count: number;
+  checked_field_count: number;
+  covered_field_count: number;
+  source_ref_count: number;
+  missing_source_ref_field_count: number;
+  missing_verification_note_field_count: number;
+  missing_writeback_hint_field_count: number;
+  coverage_percent: number;
+  quality_level: KnowledgeWritebackSourceRefQualityLevel;
+  blocker_reasons: string[];
+  warning_reasons: string[];
+}
+
+export interface KnowledgeWritebackSourceRefQualitySummary {
+  schema_version: 'knowledge-writeback-source-ref-quality/v1';
+  total_item_count: number;
+  project_item_count: number;
+  expansion_item_count: number;
+  checked_field_count: number;
+  covered_field_count: number;
+  source_ref_count: number;
+  missing_source_ref_field_count: number;
+  missing_verification_note_field_count: number;
+  missing_writeback_hint_field_count: number;
+  coverage_percent: number;
+  pass_item_count: number;
+  warning_item_count: number;
+  blocker_item_count: number;
+  items: KnowledgeWritebackSourceRefQualityItem[];
 }
 
 export interface KnowledgeWritebackQueueReviewHandoffItem {
@@ -6526,13 +6576,20 @@ export interface KnowledgeWritebackManualPatchTarget {
   target_file: string;
   patch_applyable: false;
   manual_apply_only: true;
+  ready_for_manual_apply: boolean;
   project_patch_count: number;
   expansion_patch_count: number;
   total_patch_count: number;
   source_ref_count: number;
   candidate_field_count: number;
+  source_ref_coverage_percent: number;
+  source_ref_quality_level: KnowledgeWritebackSourceRefQualityLevel;
+  blocker_reasons: string[];
+  warning_reasons: string[];
   append_markdown: string;
   review_diff: string;
+  diff_preview_lines: string[];
+  diff_preview_truncated: boolean;
   safety_checks: string[];
 }
 
@@ -6551,6 +6608,10 @@ export interface KnowledgeWritebackManualPatchPackage {
   expansion_patch_count: number;
   source_ref_count: number;
   candidate_field_count: number;
+  source_ref_quality: KnowledgeWritebackSourceRefQualitySummary;
+  ready_reasons: string[];
+  blocker_reasons: string[];
+  warning_reasons: string[];
   safety_checks: string[];
   operator_checklist: string[];
   target_patches: KnowledgeWritebackManualPatchTarget[];
@@ -6568,6 +6629,7 @@ export interface KnowledgeWritebackQueueExportPreflight {
   expansion_candidate_field_count: number;
   expansion_field_missing_count: number;
   expansion_source_ref_count: number;
+  source_ref_quality: KnowledgeWritebackSourceRefQualitySummary;
   manual_review_required_count: number;
   blocked_direct_writeback_count: number;
   ready_for_manual_export: boolean;
