@@ -260,7 +260,12 @@
         <article v-for="task in report.next_development_tasks" :key="task.task_id" class="expansion-page__development-item">
           <span>{{ task.priority }} · {{ developmentStatusLabel(task.status) }} · 计划 {{ task.related_plan_items.join(' / ') }}</span>
           <strong>{{ task.title }}</strong>
+          <div class="expansion-page__development-progress">
+            <span>{{ task.progress_percent }}%</span>
+            <meter min="0" max="100" :value="task.progress_percent"></meter>
+          </div>
           <p>{{ task.description }}</p>
+          <p class="expansion-page__development-note">{{ task.progress_note }}</p>
           <small>{{ task.target_video_types.map(typeLabel).join(' / ') }}</small>
           <ul>
             <li v-for="check in task.acceptance_checks" :key="`${task.task_id}:${check}`">{{ check }}</li>
@@ -1458,8 +1463,25 @@ onMounted(async () => {
   line-height: 1.35;
 }
 
+.expansion-page__development-progress {
+  display: grid;
+  grid-template-columns: auto minmax(90px, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.expansion-page__development-progress meter {
+  width: 100%;
+  height: 8px;
+}
+
 .expansion-page__development-item p {
   margin: 0;
+}
+
+.expansion-page__development-note {
+  color: #66727f !important;
+  font-size: 12px;
 }
 
 .expansion-page__development-item ul {

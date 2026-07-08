@@ -195,6 +195,47 @@
               "verification_note": "传习点、开放情况、家族传承谱系均在待核实范围内。"
             }
           ]
+        },
+        {
+          "entry_name": "安化千两茶——36公斤的世界茶王",
+          "province": "湖南",
+          "recommended_fields": ["materials", "process_steps", "documentation_assets", "production_risks"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["未核实清道光起源细节", "未核实世界茶王宣传口径", "不公开推断发酵工艺参数"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "materials",
+              "candidate_value": "黑毛茶原料、竹篾、蓼叶、棕片、捆压工具和柱形花卷茶成品，可作为 heritage_promo 材料与包装资产；具体配比和发酵参数不得凭空补写。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#安化千两茶：简介", "data/provinces/湖南.md#安化千两茶：场景陈设"],
+              "writeback_hint": "作为非遗流程材料字段候选，入库前复核中国非遗网项目页、安化县文旅资料和工坊可拍权限。",
+              "verification_note": "材料和包装线索来自现有湖南条目；配方、工艺参数和授权状态仍需人工补源。"
+            },
+            {
+              "field_id": "process_steps",
+              "candidate_value": "候选流程为晒青/初制黑毛茶→蒸软→装篓压制定型→竹篾蓼叶棕片包裹→日晒夜露→陈化；49天等时长表述需以项目页或工坊资料复核。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#安化千两茶：故事梗概", "data/provinces/湖南.md#安化千两茶：待核实点"],
+              "writeback_hint": "作为流程镜头候选，不写成完整工艺教程；涉及时长、重量和历史起源的强断言需单独补源。",
+              "verification_note": "流程由本地条目归纳，关键数字和清代起源细节仍在待核实范围。"
+            },
+            {
+              "field_id": "documentation_assets",
+              "candidate_value": "国家级非遗名录公开索引、黑茶制作技艺（千两茶制作技艺）项目页、代表性传承人李胜夫公开信息、安化黑茶博物馆或工坊展陈。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#安化千两茶：来源", "data/provinces/湖南.md#安化千两茶：核实方法"],
+              "writeback_hint": "写回时拆成来源采集清单、核实方法和可拍资产，不把公开索引等同授权素材。",
+              "verification_note": "来源入口来自现有条目；项目编号、传承人页和馆方资料需人工复核。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "“世界茶王”“清道光年间由山西商人定制”“49天日晒夜露”“单支36.25公斤”等宣传句均需逐条补源；拍摄工坊需确认商业展示与传统技艺边界。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#安化千两茶：待核实点", "data/provinces/湖南.md#安化千两茶：核实方法"],
+              "writeback_hint": "作为审稿风险清单进入草案，优先保护事实边界和商业授权边界。",
+              "verification_note": "风险项来自条目待核实点，适合提醒人工复核，不适合直接做成事实旁白。"
+            }
+          ]
         }
       ]
     },
@@ -381,6 +422,47 @@
               "verification_note": "采访角色来自本地条目；战役数据应以党史、纪念馆和研究资料交叉核验。"
             }
           ]
+        },
+        {
+          "entry_name": "辽沈战役——解放东北的决定性一战",
+          "province": "辽宁",
+          "recommended_fields": ["documentary_question", "timeline", "present_day_trace", "reconstruction_boundary"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["战损数字口径未核实", "单一战术解释替代复杂史实", "无依据复原个人心理"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "documentary_question",
+              "candidate_value": "为什么锦州之战会成为“关上东北大门”的关键？一支微纪录可从纪念馆、战役时间线和战略选择三层解释辽沈战役。",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/辽宁.md#辽沈战役：简介", "data/provinces/辽宁.md#辽沈战役：文化意义"],
+              "writeback_hint": "作为 documentary_short 核心问题候选，不把提问写成单因单果结论。",
+              "verification_note": "问题来自辽宁条目中的锦州、战略决战和东北全境解放三条主线。"
+            },
+            {
+              "field_id": "timeline",
+              "candidate_value": "1948年9月12日战役发起→10月锦州攻坚→10月26日至28日辽西会战→11月2日沈阳解放；各阶段兵力与歼敌数字需按党史和纪念馆口径复核。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/辽宁.md#辽沈战役：故事梗概", "data/provinces/辽宁.md#辽沈战役：待核实点"],
+              "writeback_hint": "时间线可作为字幕卡候选，统计数字必须保留口径说明。",
+              "verification_note": "日期和阶段来自现有条目；精确统计分类仍待详考。"
+            },
+            {
+              "field_id": "present_day_trace",
+              "candidate_value": "辽沈战役纪念馆、锦州战役旧址线索、沈阳解放城市空间、辽西黑山大虎山地名，可组成现实回访和地图转场。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/辽宁.md#辽沈战役：相关地点", "data/provinces/辽宁.md#辽沈战役：场景"],
+              "writeback_hint": "作为现地痕迹和 B-roll 采集清单，开放情况与拍摄许可需现场确认。",
+              "verification_note": "地点来自辽宁条目；纪念馆开放、旧址范围和外拍许可需人工核实。"
+            },
+            {
+              "field_id": "reconstruction_boundary",
+              "candidate_value": "可以使用地图、纪念馆展陈和档案照片做说明；战场再现镜头只做抽象运动线和环境氛围，不虚构指挥员私密对白或未证实战斗细节。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/辽宁.md#辽沈战役：核实方法", "data/provinces/辽宁.md#辽沈战役：人物"],
+              "writeback_hint": "写入纪录短片再现边界，避免戏剧化镜头越过资料依据。",
+              "verification_note": "边界服务纪录片审稿；人物对白和心理动机需明确禁止无来源复原。"
+            }
+          ]
         }
       ]
     },
@@ -524,6 +606,47 @@
               "source_refs": ["data/provinces/湖南.md#洞庭湖与娥皇女英：待核实点", "data/provinces/湖南.md#洞庭湖与娥皇女英：可信度"],
               "writeback_hint": "写入漫剧审稿边界，优先区分神话、地方附会和可拍景点。",
               "verification_note": "边界来自本地条目的待核实点和可信度说明。"
+            }
+          ]
+        },
+        {
+          "entry_name": "炎帝神农氏——炎陵传说",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "character_anchor", "expression_beats", "ending_question"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["上古传说写成可证历史", "神农尝百草细节过度医学化", "炎陵传说替代全国多源叙事"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "第一格：少年神农把一片陌生草叶放到唇边，身旁白鹿突然跺地示警；远处炎陵山雾里，有人等着他的药草。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#炎帝神农氏：简介", "data/provinces/湖南.md#炎帝神农氏：故事梗概"],
+              "writeback_hint": "只作为 AI 漫剧开场钩子候选，不写成史实或医药知识。",
+              "verification_note": "钩子基于尝百草、白鹿守陵和炎陵传说意象改编。"
+            },
+            {
+              "field_id": "character_anchor",
+              "candidate_value": "炎帝神农氏是传说中的农耕与医药文明象征；白鹿是炎陵地方传说符号；当代讲解员负责提示“传说/祭祀/地方文化”三层边界。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#炎帝神农氏：人物", "data/provinces/湖南.md#炎帝神农氏：可信度"],
+              "writeback_hint": "角色锚点必须保留神话传说边界，不把地方传说当作可证人物传记。",
+              "verification_note": "人物和白鹿线索来自本地条目；对白与桥段为明确改编。"
+            },
+            {
+              "field_id": "expression_beats",
+              "candidate_value": "好奇试草→中毒痛苦但克制→发现可救人的草药时松一口气→面对断肠草传说时留下牺牲与敬畏的停顿。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#炎帝神农氏：故事梗概", "data/provinces/湖南.md#炎帝神农氏：文化意义"],
+              "writeback_hint": "作为表情节拍候选，用于分镜连续性；不得生成危险尝草教程。",
+              "verification_note": "情绪节拍服务漫剧表达，必须避免把草药试验拍成可模仿行为。"
+            },
+            {
+              "field_id": "ending_question",
+              "candidate_value": "如果每一种草都可能救人，也可能伤人，他还要不要继续走进下一片山林？",
+              "evidence_level": "fictionalized_dialogue_candidate",
+              "source_refs": ["data/provinces/湖南.md#炎帝神农氏：文化意义", "data/provinces/湖南.md#炎帝神农氏：待核实点"],
+              "writeback_hint": "作为集尾问题候选，不进入事实知识库正文。",
+              "verification_note": "问题为漫剧化悬念，事实边界仍是神话传说与祭祀文化。"
             }
           ]
         }
@@ -855,6 +978,47 @@
               "source_refs": ["data/provinces/湖南.md#岳麓书院：文化意义", "data/provinces/湖南.md#岳麓书院：核实方法"],
               "writeback_hint": "只作为讲解收束句候选；避免写成正式知识库结论前缺少出处的价值判断。",
               "verification_note": "复盘句为面向视频的表达候选。"
+            }
+          ]
+        },
+        {
+          "entry_name": "湘昆——山野昆曲的南岭遗音",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "concept_definitions", "diagram_or_caption_plan", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["三昆说法未核实权威来源", "把风格评价写成绝对排名", "院团现址和开放情况未核实"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "同样是昆曲，为什么湘昆会被称为“山野昆曲”？一支讲解片可从地域、声腔、武戏和古戏台四层拆开。",
+              "evidence_level": "explainer_candidate_from_local_entry",
+              "source_refs": ["data/provinces/湖南.md#湘昆：简介", "data/provinces/湖南.md#湘昆：文化意义"],
+              "writeback_hint": "作为 explainer_video 开场问题候选，不把风格评价写成学界定论。",
+              "verification_note": "问题由本地条目的湘南地域、本土化和表演风格归纳。"
+            },
+            {
+              "field_id": "concept_definitions",
+              "candidate_value": "苏昆偏文人雅韵、永昆强调古朴保留、湘昆突出湘南山地本土化和武戏力度；“三昆”并称需补学术或院团来源。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#湘昆：故事梗概", "data/provinces/湖南.md#湘昆：待核实点"],
+              "writeback_hint": "概念定义先作为讲解候选，正式写回时需注明说法来源和争议边界。",
+              "verification_note": "定义来自现有条目的对照叙述；权威性仍需复核。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "图示一：昆曲南下路线（江浙→湘南郴州/桂阳/嘉禾）；图示二：苏昆/永昆/湘昆三列对照；图示三：古戏台—排练厅—舞台动作的现实链。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#湘昆：相关地点", "data/provinces/湖南.md#湘昆：场景"],
+              "writeback_hint": "作为图示字幕候选，路线和古戏台信息需按院团史、地方志和文物公告复核。",
+              "verification_note": "图示基于条目场景与地点线索，不能替代正式地图考证。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "湘昆不是“粗糙版昆曲”，而是昆曲在湘南山地、方言、民俗和舞台空间中长出的地方分支；它的价值在差异，也在可复核的传承现场。",
+              "evidence_level": "explainer_candidate_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#湘昆：文化意义", "data/provinces/湖南.md#湘昆：核实方法"],
+              "writeback_hint": "复盘句可进入讲解草案，正式写回前删除价值排序式表述。",
+              "verification_note": "句子服务讲解片收束，需保留院团史和文物资料复核边界。"
             }
           ]
         }

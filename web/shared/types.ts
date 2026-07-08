@@ -1981,6 +1981,12 @@ export interface StoryAgentMvpStatusReport {
     domain_pack_expansion_writeback_queued_count: number;
     domain_pack_expansion_writeback_written_back_count: number;
     domain_pack_expansion_writeback_needs_revision_count: number;
+    domain_pack_expansion_development_progress_average_percent: number;
+    domain_pack_expansion_field_workbench_controls_percent: number;
+    domain_pack_expansion_manual_review_closure_percent: number;
+    domain_pack_expansion_writeback_safety_export_percent: number;
+    domain_pack_expansion_second_batch_real_candidates_percent: number;
+    domain_pack_expansion_mvp_completion_surface_percent: number;
     story_agent_command_surface_status: StoryAgentMvpStatus;
     story_agent_command_surface_percent: number;
     mcp_story_agent_tool_count: number;
@@ -6210,6 +6216,12 @@ export interface DomainPackExpansionWritebackDraftItem {
   target_video_types: string[];
   review_status: DomainPackExpansionReviewStatus;
   review_note?: string;
+  review_state_source: DomainPackExpansionReviewStateSource;
+  review_state_overrides_seed: boolean;
+  review_state_seed_status?: DomainPackExpansionReviewStatus;
+  review_state_seed_writeback_status?: KnowledgeWritebackStatus;
+  review_state_runtime_status?: DomainPackExpansionReviewStatus;
+  review_state_runtime_writeback_status?: KnowledgeWritebackStatus;
   writeback_status?: KnowledgeWritebackStatus;
   writeback_note?: string;
   suggested_file_path: string;
@@ -6258,6 +6270,8 @@ export interface DomainPackExpansionNextDevelopmentTask {
   title: string;
   priority: 'P0' | 'P1' | 'P2';
   status: DomainPackExpansionDevelopmentTaskStatus;
+  progress_percent: number;
+  progress_note: string;
   related_plan_items: number[];
   target_video_types: string[];
   description: string;

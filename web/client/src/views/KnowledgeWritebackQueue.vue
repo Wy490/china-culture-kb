@@ -23,6 +23,10 @@
           {{ project.project_title }}
         </option>
       </select>
+      <select v-model="packFilter" class="writeback-page__select">
+        <option value="">全部扩库 Pack</option>
+        <option v-for="pack in packOptions" :key="pack" :value="pack">{{ packShortLabel(pack) }}</option>
+      </select>
       <select v-model="videoTypeFilter" class="writeback-page__select">
         <option value="">全部片型</option>
         <option value="character_story">人物故事</option>
@@ -104,6 +108,59 @@
 
     <div v-if="copyMessage" class="writeback-page__notice">{{ copyMessage }}</div>
 
+    <section v-if="filteredExpansionItems.length" class="writeback-page__bulk">
+      <label>
+        <input
+          type="checkbox"
+          :checked="allFilteredExpansionSelected"
+          @change="toggleAllFilteredExpansion($event)"
+        />
+        选择当前扩库草案 {{ selectedExpansionItems.length }}/{{ filteredExpansionItems.length }}
+      </label>
+      <select class="writeback-page__select" @change="applyBulkRevisionTemplate($event)">
+        <option value="">退回原因模板</option>
+        <option v-for="template in revisionTemplates" :key="template.id" :value="template.note">
+          {{ template.label }}
+        </option>
+      </select>
+      <textarea
+        v-model="bulkExpansionNote"
+        placeholder="批量备注；需重审时会写入 runtime review-state"
+      />
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(bulkUpdatingKey) || selectedExpansionItems.length === 0"
+        @click="bulkSetExpansionWritebackStatus('queued')"
+      >
+        {{ bulkUpdatingKey === 'queued' ? '更新中…' : '批量入队' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(bulkUpdatingKey) || selectedExpansionItems.length === 0"
+        @click="bulkSetExpansionWritebackStatus('written_back')"
+      >
+        {{ bulkUpdatingKey === 'written_back' ? '更新中…' : '批量已入库' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--danger"
+        :disabled="Boolean(bulkUpdatingKey) || selectedExpansionItems.length === 0"
+        @click="bulkSetExpansionWritebackStatus('needs_revision')"
+      >
+        {{ bulkUpdatingKey === 'needs_revision' ? '更新中…' : '批量需重审' }}
+      </button>
+    </section>
+
+    <section v-if="expansionReviewNoteSamples.length" class="writeback-page__review-summary">
+      <strong>扩库复核备注汇总</strong>
+      <span>备注 {{ expansionReviewNoteCount }} 条 · 运行态覆盖 {{ expansionRuntimeOverrideCount }} 条 · 当前筛选 {{ filteredExpansionItems.length }} 条</span>
+      <ul>
+        <li v-for="sample in expansionReviewNoteSamples" :key="sample">{{ sample }}</li>
+      </ul>
+    </section>
+
     <section class="writeback-page__summary">
       <div>
         <span>草案总数</span>
@@ -136,6 +193,18 @@
       <div>
         <span>扩库审稿阻断</span>
         <strong>{{ expansionFieldReviewBlockerCount }}</strong>
+      </div>
+      <div>
+        <span>运行态覆盖</span>
+        <strong>{{ expansionRuntimeOverrideCount }}</strong>
+      </div>
+      <div>
+        <span>复核备注</span>
+        <strong>{{ expansionReviewNoteCount }}</strong>
+      </div>
+      <div>
+        <span>来源引用</span>
+        <strong>{{ expansionSourceRefTotalCount }}</strong>
       </div>
       <div>
         <span>草案就绪</span>
@@ -197,11 +266,20 @@
 
       <article v-for="item in filteredExpansionItems" :key="item.review_item_id" class="writeback-page__item writeback-page__item--expansion">
         <div class="writeback-page__main">
+          <label class="writeback-page__select-row">
+            <input
+              type="checkbox"
+              :checked="selectedExpansionIds.includes(item.review_item_id)"
+              @change="toggleExpansionSelection(item, $event)"
+            />
+            纳入批量操作
+          </label>
           <div class="writeback-page__badges">
             <span :class="['writeback-page__status', `writeback-page__status--${expansionWritebackStatus(item)}`]">
               {{ writebackStatusLabel(expansionWritebackStatus(item)) }}
             </span>
             <span>扩库候选</span>
+            <span>{{ reviewStateSourceLabel(item.review_state_source) }}{{ item.review_state_overrides_seed ? '覆盖' : '' }}</span>
             <span>{{ item.province || '待确认省份' }}</span>
             <span>{{ packShortLabel(item.pack_id) }}</span>
             <span>字段候选 {{ item.field_supplement_candidate_count ?? 0 }}</span>
@@ -216,6 +294,22 @@
           <h2>{{ item.entry_name }}</h2>
           <p>{{ item.pack_id }} · {{ item.review_item_id }}</p>
           <p v-if="item.review_note" class="writeback-page__note">审稿备注：{{ item.review_note }}</p>
+          <div class="writeback-page__preflight-panel">
+            <span>目标文件：{{ item.suggested_file_path }}</span>
+            <span>字段差异：候选 {{ item.field_supplement_candidate_count ?? candidateFields(item).length }} 个，缺口 {{ item.field_missing_candidate_count ?? 0 }} 个</span>
+            <span>来源引用：{{ itemSourceRefCount(item) }} 条</span>
+            <span>直写省份 Markdown：关闭</span>
+          </div>
+          <details class="writeback-page__field-preview">
+            <summary>字段级草案预览 · {{ candidateFields(item).length }} 个字段</summary>
+            <div v-for="field in candidateFields(item)" :key="`${item.review_item_id}:${field.field_id}`">
+              <strong>{{ field.field_id }}</strong>
+              <p>{{ field.candidate_value || '待补候选值' }}</p>
+              <small>来源：{{ field.source_refs.join('；') || '待补' }}</small>
+              <small>核实：{{ field.verification_note || '待补' }}</small>
+              <small>写回提示：{{ field.writeback_hint || '待补' }}</small>
+            </div>
+          </details>
           <pre>{{ item.writeback_draft_markdown }}</pre>
         </div>
 
@@ -228,6 +322,12 @@
             placeholder="入库备注"
             @input="updateExpansionNoteDraft(item.review_item_id, $event)"
           />
+          <select class="writeback-page__select" @change="applyExpansionRevisionTemplate(item, $event)">
+            <option value="">退回原因模板</option>
+            <option v-for="template in revisionTemplates" :key="`${item.review_item_id}:${template.id}`" :value="template.note">
+              {{ template.label }}
+            </option>
+          </select>
           <div class="writeback-page__status-actions">
             <button type="button" :disabled="updatingTaskId === item.review_item_id" @click="setExpansionWritebackStatus(item, 'draft_ready')">草案</button>
             <button type="button" :disabled="updatingTaskId === item.review_item_id" @click="setExpansionWritebackStatus(item, 'queued')">入队</button>
@@ -249,10 +349,13 @@ import {
   exportKnowledgeWritebackQueuePackage,
   getDomainPackExpansionWritebackDraft,
   updateDomainPackExpansionReviewState,
+  updateDomainPackExpansionReviewStateBulk,
 } from '@/api/system'
 import type {
+  DomainPackExpansionFieldWorkbenchItem,
   DomainPackExpansionWritebackDraftItem,
   DomainPackExpansionWritebackDraftPackage,
+  DomainPackExpansionReviewStateSource,
   KnowledgeWritebackStatus,
   ProjectSupplementTaskListItem,
   VideoType,
@@ -267,11 +370,33 @@ const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expans
 const updatingTaskId = ref('')
 const searchQuery = ref('')
 const projectFilter = ref('')
+const packFilter = ref('')
 const videoTypeFilter = ref<VideoType | ''>('')
 const provinceFilter = ref('')
 const writebackFilter = ref<KnowledgeWritebackStatus | ''>('')
+const bulkUpdatingKey = ref('')
+const bulkExpansionNote = ref('')
+const selectedExpansionIds = ref<string[]>([])
 const noteDrafts = reactive<Record<string, string>>({})
 const expansionNoteDrafts = reactive<Record<string, string>>({})
+
+const revisionTemplates = [
+  {
+    id: 'missing_source',
+    label: '来源不足',
+    note: '退回补充：来源引用不足，需补齐可核验出处、页码/展陈/采访记录或公开资料链接后再进入写回。',
+  },
+  {
+    id: 'boundary_unclear',
+    label: '边界不清',
+    note: '退回补充：事实、传说、口述和创作改编边界不够清晰，需重写核实备注和禁写断言。',
+  },
+  {
+    id: 'writeback_scope',
+    label: '写回范围',
+    note: '退回补充：建议写回字段范围过宽，需拆成更小字段并标明只作为人工补库草案。',
+  },
+]
 
 const queueItems = computed(() => tasks.value.filter(item =>
   item.task.knowledge_candidate_review_status === 'approved'
@@ -294,6 +419,21 @@ const expansionFieldReviewReadyCount = computed(() =>
 const expansionFieldReviewBlockerCount = computed(() =>
   expansionItems.value.reduce((sum, item) => sum + (item.field_review_blocker_count ?? 0), 0),
 )
+const expansionRuntimeOverrideCount = computed(() =>
+  expansionItems.value.filter(item => item.review_state_source === 'runtime' || item.review_state_overrides_seed).length,
+)
+const expansionReviewNoteCount = computed(() =>
+  expansionItems.value.filter(item => Boolean(item.review_note?.trim())).length,
+)
+const expansionReviewNoteSamples = computed(() =>
+  filteredExpansionItems.value
+    .filter(item => Boolean(item.review_note?.trim()))
+    .slice(0, 5)
+    .map(item => `${item.entry_name}：${item.review_note}`),
+)
+const expansionSourceRefTotalCount = computed(() =>
+  expansionItems.value.reduce((sum, item) => sum + itemSourceRefCount(item), 0),
+)
 
 const projectOptions = computed(() => {
   const seen = new Set<string>()
@@ -311,6 +451,9 @@ const provinceOptions = computed(() => [...new Set(queueItems.value.map(item => 
   .concat([...new Set(expansionItems.value.map(item => item.province).filter(Boolean))])
   .filter((province, index, list) => list.indexOf(province) === index)
   .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN')))
+
+const packOptions = computed(() => [...new Set(expansionItems.value.map(item => item.pack_id))]
+  .sort((a, b) => packShortLabel(a).localeCompare(packShortLabel(b), 'zh-Hans-CN')))
 
 const filteredItems = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -330,7 +473,8 @@ const filteredItems = computed(() => {
       item.task.knowledge_writeback_draft_markdown ?? '',
       ...(item.task.recommended_fields ?? []),
     ].join(' ').toLowerCase()
-    return (!projectFilter.value || item.project_id === projectFilter.value)
+    return !packFilter.value
+      && (!projectFilter.value || item.project_id === projectFilter.value)
       && (!videoTypeFilter.value || item.video_type === videoTypeFilter.value)
       && (!provinceFilter.value || item.target_province === provinceFilter.value)
       && (!writebackFilter.value || status === writebackFilter.value)
@@ -368,12 +512,23 @@ const filteredExpansionItems = computed(() => {
         ...field.review_questions,
       ]),
     ].join(' ').toLowerCase()
-    return (!videoTypeFilter.value || item.target_video_types.includes(videoTypeFilter.value))
+    return (!packFilter.value || item.pack_id === packFilter.value)
+      && (!videoTypeFilter.value || item.target_video_types.includes(videoTypeFilter.value))
       && (!provinceFilter.value || item.province === provinceFilter.value)
       && (!writebackFilter.value || status === writebackFilter.value)
       && (!query || text.includes(query))
   })
 })
+
+const selectedExpansionItems = computed(() => {
+  const selected = new Set(selectedExpansionIds.value)
+  return filteredExpansionItems.value.filter(item => selected.has(item.review_item_id))
+})
+
+const allFilteredExpansionSelected = computed(() =>
+  filteredExpansionItems.value.length > 0
+  && filteredExpansionItems.value.every(item => selectedExpansionIds.value.includes(item.review_item_id)),
+)
 
 function taskWritebackStatus(item: ProjectSupplementTaskListItem): KnowledgeWritebackStatus {
   return item.task.knowledge_writeback_status ?? 'draft_ready'
@@ -450,6 +605,52 @@ function expansionNoteDraft(item: DomainPackExpansionWritebackDraftItem): string
 
 function updateExpansionNoteDraft(reviewItemId: string, event: Event) {
   expansionNoteDrafts[reviewItemId] = (event.target as HTMLTextAreaElement).value
+}
+
+function candidateFields(item: DomainPackExpansionWritebackDraftItem): DomainPackExpansionFieldWorkbenchItem[] {
+  return (item.field_workbench ?? []).filter(field => field.supplement_status === 'candidate_draft')
+}
+
+function itemSourceRefCount(item: DomainPackExpansionWritebackDraftItem): number {
+  return new Set((item.field_workbench ?? []).flatMap(field => field.source_refs)).size
+}
+
+function reviewStateSourceLabel(source: DomainPackExpansionReviewStateSource): string {
+  if (source === 'runtime') return '运行态'
+  if (source === 'seed') return 'Seed'
+  return '未记录'
+}
+
+function toggleExpansionSelection(item: DomainPackExpansionWritebackDraftItem, event: Event) {
+  const checked = (event.target as HTMLInputElement).checked
+  const selected = new Set(selectedExpansionIds.value)
+  if (checked) selected.add(item.review_item_id)
+  else selected.delete(item.review_item_id)
+  selectedExpansionIds.value = [...selected]
+}
+
+function toggleAllFilteredExpansion(event: Event) {
+  const checked = (event.target as HTMLInputElement).checked
+  const selected = new Set(selectedExpansionIds.value)
+  for (const item of filteredExpansionItems.value) {
+    if (checked) selected.add(item.review_item_id)
+    else selected.delete(item.review_item_id)
+  }
+  selectedExpansionIds.value = [...selected]
+}
+
+function applyExpansionRevisionTemplate(item: DomainPackExpansionWritebackDraftItem, event: Event) {
+  const target = event.target as HTMLSelectElement
+  const value = target.value
+  if (value) expansionNoteDrafts[item.review_item_id] = value
+  target.value = ''
+}
+
+function applyBulkRevisionTemplate(event: Event) {
+  const target = event.target as HTMLSelectElement
+  const value = target.value
+  if (value) bulkExpansionNote.value = value
+  target.value = ''
 }
 
 async function loadTasks() {
@@ -608,10 +809,14 @@ async function setExpansionWritebackStatus(
   error.value = ''
   const res = await updateDomainPackExpansionReviewState({
     review_item_id: item.review_item_id,
-    review_status: 'approved',
-    review_note: item.review_note,
-    writeback_status: status,
-    writeback_note: expansionNoteDraft(item).trim() || writebackStatusLabel(status),
+    review_status: status === 'needs_revision' ? 'needs_revision' : 'approved',
+    review_note: status === 'needs_revision'
+      ? (expansionNoteDraft(item).trim() || '退回补充：需补充来源证据、边界说明或写回范围后再审。')
+      : item.review_note,
+    writeback_status: status === 'needs_revision' ? undefined : status,
+    writeback_note: status === 'needs_revision'
+      ? undefined
+      : (expansionNoteDraft(item).trim() || writebackStatusLabel(status)),
   })
   if (res.ok) {
     delete expansionNoteDrafts[item.review_item_id]
@@ -620,6 +825,43 @@ async function setExpansionWritebackStatus(
     error.value = res.error?.message ?? '更新扩库写回状态失败'
   }
   updatingTaskId.value = ''
+}
+
+async function bulkSetExpansionWritebackStatus(status: KnowledgeWritebackStatus) {
+  const items = selectedExpansionItems.value
+  if (items.length === 0) return
+  const actionLabel = writebackStatusLabel(status)
+  const note = bulkExpansionNote.value.trim()
+  const confirmed = window.confirm(`将当前选择的 ${items.length} 条扩库草案批量标记为${actionLabel}？`)
+  if (!confirmed) return
+
+  bulkUpdatingKey.value = status
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await updateDomainPackExpansionReviewStateBulk({
+      review_item_ids: items.map(item => item.review_item_id),
+      review_status: status === 'needs_revision' ? 'needs_revision' : 'approved',
+      review_note: status === 'needs_revision'
+        ? (note || '批量退回：需补充来源证据、边界说明或写回范围后再审。')
+        : undefined,
+      writeback_status: status === 'needs_revision' ? undefined : status,
+      writeback_note: status === 'needs_revision' ? undefined : (note || `批量标记：${actionLabel}`),
+    })
+    if (res.ok && res.data) {
+      selectedExpansionIds.value = selectedExpansionIds.value
+        .filter(id => !items.some(item => item.review_item_id === id))
+      bulkExpansionNote.value = ''
+      await loadTasks()
+      copyMessage.value = `已批量更新 ${res.data.updated_count} 条扩库草案为${actionLabel}；省份 Markdown 未写入。`
+    } else {
+      error.value = res.error?.message ?? '批量更新扩库写回状态失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '批量更新扩库写回状态失败'
+  } finally {
+    bulkUpdatingKey.value = ''
+  }
 }
 
 function writebackItemKey(item: ProjectSupplementTaskListItem): string {
@@ -731,6 +973,12 @@ onMounted(async () => {
   color: #2f3f4f;
 }
 
+.writeback-page__action--danger {
+  border-color: #c0392b;
+  background: #fff;
+  color: #a93226;
+}
+
 .writeback-page__action:disabled,
 .writeback-page__status-actions button:disabled {
   cursor: not-allowed;
@@ -745,6 +993,65 @@ onMounted(async () => {
   background: #f0f8f4;
   color: #216e44;
   font-size: 13px;
+}
+
+.writeback-page__bulk {
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(150px, auto) minmax(220px, 1fr) repeat(3, auto);
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fbfd;
+}
+
+.writeback-page__bulk label {
+  color: #33475b;
+  font-size: 13px;
+}
+
+.writeback-page__bulk textarea {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  resize: vertical;
+  color: #2f4358;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.writeback-page__review-summary {
+  margin-bottom: 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  color: #465767;
+}
+
+.writeback-page__review-summary strong,
+.writeback-page__review-summary span {
+  display: block;
+}
+
+.writeback-page__review-summary strong {
+  color: #22313f;
+  font-size: 14px;
+}
+
+.writeback-page__review-summary span,
+.writeback-page__review-summary li {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.writeback-page__review-summary ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
 }
 
 .writeback-page__summary {
@@ -795,6 +1102,15 @@ onMounted(async () => {
   gap: 6px;
 }
 
+.writeback-page__select-row {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  width: fit-content;
+  color: #465767;
+  font-size: 13px;
+}
+
 .writeback-page__badges span {
   padding: 3px 7px;
   border-radius: 4px;
@@ -839,6 +1155,53 @@ onMounted(async () => {
   padding: 8px 10px;
   border-radius: 6px;
   background: #fffaf0;
+}
+
+.writeback-page__preflight-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+  margin: 8px 0;
+  border: 1px solid #e4ebf1;
+  border-radius: 6px;
+  padding: 8px;
+  background: #f8fbfd;
+  color: #465767;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.writeback-page__field-preview {
+  margin: 8px 0;
+  border: 1px solid #e4ebf1;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #465767;
+  font-size: 13px;
+}
+
+.writeback-page__field-preview summary {
+  cursor: pointer;
+  color: #22313f;
+  font-weight: 700;
+}
+
+.writeback-page__field-preview div {
+  margin-top: 8px;
+  border-top: 1px solid #edf1f5;
+  padding-top: 8px;
+}
+
+.writeback-page__field-preview p {
+  margin: 4px 0;
+}
+
+.writeback-page__field-preview small {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #66727f;
+  line-height: 1.45;
 }
 
 .writeback-page__main pre {
@@ -914,6 +1277,7 @@ onMounted(async () => {
 @media (max-width: 760px) {
   .writeback-page__header,
   .writeback-page__toolbar,
+  .writeback-page__bulk,
   .writeback-page__item {
     grid-template-columns: 1fr;
     flex-direction: column;

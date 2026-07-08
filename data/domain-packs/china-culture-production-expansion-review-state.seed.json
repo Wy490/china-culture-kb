@@ -1,6 +1,6 @@
 {
   "schema_version": "domain-pack-expansion-review-state/v1",
-  "updated_at": "2026-07-08T11:00:00.000+08:00",
+  "updated_at": "2026-07-08T12:30:00.000+08:00",
   "direct_writeback_to_province_markdown": false,
   "seed_policy": {
     "purpose": "Tracked first-pass human review samples for Domain Pack expansion candidates.",
@@ -35,6 +35,15 @@
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
       "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_04",
+      "review_status": "approved",
+      "review_note": "第二批真实扩库候选审稿样板：炎帝神农氏漫剧钩子、角色锚点、表情节拍和结尾问题齐备；神话传说与医学安全边界清楚。",
+      "reviewed_at": "2026-07-08T12:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "第二批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00"
     },
     {
       "review_item_id": "children_adaptation_safety_pack_expansion_20260707::target_01",
@@ -107,6 +116,15 @@
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
       "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
+    },
+    {
+      "review_item_id": "documentary_source_pack_expansion_20260707::target_05",
+      "review_status": "approved",
+      "review_note": "第二批真实扩库候选审稿样板：辽沈战役纪录问题、时间线、现地痕迹和再现边界齐备；战损数字和战场复原保持克制。",
+      "reviewed_at": "2026-07-08T12:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "第二批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00"
     },
     {
       "review_item_id": "education_training_structure_pack_expansion_20260707::target_01",
@@ -208,6 +226,15 @@
       "writeback_updated_at": "2026-07-08T10:30:00.000+08:00"
     },
     {
+      "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_05",
+      "review_status": "approved",
+      "review_note": "第二批真实扩库候选审稿样板：湘昆核心问题、概念定义、图示字幕和复盘句齐备；三昆说法和院团资料保留复核边界。",
+      "reviewed_at": "2026-07-08T12:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "第二批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00"
+    },
+    {
       "review_item_id": "heritage_process_pack_expansion_20260707::target_01",
       "review_status": "approved",
       "review_note": "首批真实扩库候选审稿样板：字段候选值、来源引用、证据层级和核实备注齐备；仅进入写回草案，不直接写 data/provinces。",
@@ -242,6 +269,15 @@
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
       "writeback_updated_at": "2026-07-08T09:45:00.000+08:00"
+    },
+    {
+      "review_item_id": "heritage_process_pack_expansion_20260707::target_05",
+      "review_status": "approved",
+      "review_note": "第二批真实扩库候选审稿样板：安化千两茶材料、流程、来源资产和生产风险齐备；重量、时长、清代起源等强断言保留复核边界。",
+      "reviewed_at": "2026-07-08T12:30:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "第二批真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T12:30:00.000+08:00"
     },
     {
       "review_item_id": "short_video_hook_pack_expansion_20260707::target_01",

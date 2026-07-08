@@ -366,6 +366,8 @@ describe('production health reports', () => {
     expect(toolResult.markdown).toContain('field_candidate_completion_percent: 100');
     expect(toolResult.markdown).toContain('pipeline_progress_percent: 78');
     expect(toolResult.markdown).toContain('pipeline_stage: human_review');
+    expect(toolResult.markdown).toContain('progress_percent: 82');
+    expect(toolResult.markdown).toContain('progress_note: 扩库审稿页已有联合筛选');
     expect(toolResult.markdown).toContain('field_review_ready_count: 8');
     expect(toolResult.markdown).toContain('field_review_blocker_count: 0');
     expect(toolResult.markdown).toContain('field_supplement_priority_target_count: 0');
@@ -394,6 +396,9 @@ describe('production health reports', () => {
       review_item_id: 'heritage_process_pack_batch::target_01',
       suggested_file_path: 'data/provinces/湖南.md',
       writeback_status: 'queued',
+      review_state_source: 'runtime',
+      review_state_overrides_seed: false,
+      review_state_runtime_status: 'approved',
       field_supplement_candidate_count: 1,
       field_missing_candidate_count: 0,
       field_candidate_completion_percent: 100,
