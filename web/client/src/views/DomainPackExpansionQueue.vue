@@ -35,6 +35,10 @@
         <option value="">全部审稿状态</option>
         <option v-for="status in statusOptions" :key="status" :value="status">{{ statusLabel(status) }}</option>
       </select>
+      <select v-model="writebackStatusFilter" class="expansion-page__select">
+        <option value="">全部写回状态</option>
+        <option v-for="status in writebackStatusOptions" :key="status" :value="status">{{ writebackStatusLabel(status) }}</option>
+      </select>
       <select v-model="fieldFilter" class="expansion-page__select">
         <option value="">全部补字段</option>
         <option v-for="field in fieldOptions" :key="field" :value="field">{{ field }}</option>
@@ -88,6 +92,14 @@
         @click="copyApprovedWritebackDraft"
       >
         {{ copyingFormat === 'writeback' ? '复制中…' : '复制筛选草案' }}
+      </button>
+      <button
+        type="button"
+        class="expansion-page__action expansion-page__action--secondary"
+        :disabled="Boolean(copyingFormat) || filteredItems.length === 0"
+        @click="copyUnifiedWritebackExport"
+      >
+        {{ copyingFormat === 'unified-writeback' ? '复制中…' : '复制统一预检' }}
       </button>
       <button
         type="button"
@@ -205,6 +217,55 @@
       <div>
         <span>直接写回</span>
         <strong>{{ report.review_policy.direct_writeback_to_province_markdown ? '阻断' : '关闭' }}</strong>
+      </div>
+    </section>
+
+    <section v-if="report" class="expansion-page__preflight">
+      <header class="expansion-page__coverage-head">
+        <h2>写回安全预检</h2>
+        <span>
+          {{ report.writeback_preflight.target_file_count }} 个目标文件 · {{ report.writeback_preflight.approved_draft_count }} 条草案 · 统一导出 {{ report.writeback_preflight.ready_for_unified_export ? '就绪' : '待处理' }}
+        </span>
+      </header>
+      <div class="expansion-page__preflight-grid">
+        <div>
+          <span>草案就绪</span>
+          <strong>{{ report.writeback_preflight.draft_ready_count }}</strong>
+        </div>
+        <div>
+          <span>已入队</span>
+          <strong>{{ report.writeback_preflight.queued_count }}</strong>
+        </div>
+        <div>
+          <span>退修</span>
+          <strong>{{ report.writeback_preflight.needs_revision_count }}</strong>
+        </div>
+        <div>
+          <span>需人工复核</span>
+          <strong>{{ report.writeback_preflight.manual_review_required_count }}</strong>
+        </div>
+      </div>
+      <p>
+        目标文件：{{ report.writeback_preflight.target_files.join('、') || '无' }}。安全检查：
+        {{ report.writeback_preflight.safety_checks.join('；') }}。
+      </p>
+    </section>
+
+    <section v-if="report?.next_development_tasks.length" class="expansion-page__development">
+      <header class="expansion-page__coverage-head">
+        <h2>下一步开发任务</h2>
+        <span>已纳入 1-5 项推进轨道 · {{ report.next_development_tasks.length }} 项</span>
+      </header>
+      <div class="expansion-page__development-grid">
+        <article v-for="task in report.next_development_tasks" :key="task.task_id" class="expansion-page__development-item">
+          <span>{{ task.priority }} · {{ developmentStatusLabel(task.status) }} · 计划 {{ task.related_plan_items.join(' / ') }}</span>
+          <strong>{{ task.title }}</strong>
+          <p>{{ task.description }}</p>
+          <small>{{ task.target_video_types.map(typeLabel).join(' / ') }}</small>
+          <ul>
+            <li v-for="check in task.acceptance_checks" :key="`${task.task_id}:${check}`">{{ check }}</li>
+          </ul>
+        </article>
       </div>
     </section>
 
@@ -370,6 +431,17 @@
             placeholder="审稿备注"
             @input="updateReviewNoteDraft(item.review_item_id, $event)"
           />
+          <div class="expansion-page__review-templates">
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="applyReviewTemplate(item, 'source_boundary')">补来源</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="applyReviewTemplate(item, 'visual_rights')">补授权</button>
+            <button type="button" :disabled="updatingItemId === item.review_item_id" @click="applyReviewTemplate(item, 'tone_risk')">语气风险</button>
+          </div>
+          <div class="expansion-page__item-preflight">
+            <span>目标：{{ itemTargetFile(item) }}</span>
+            <span>来源引用 {{ itemSourceRefCount(item) }} 条 · 字段阻断 {{ item.field_review_blocker_count }}</span>
+            <span>直写省份 Markdown：关闭</span>
+            <span>{{ itemNeedsManualWriteback(item) ? '仍需人工写回复核' : '已标注人工写回完成' }}</span>
+          </div>
           <div class="expansion-page__status-actions">
             <button type="button" :disabled="updatingItemId === item.review_item_id || !item.review_ready" title="字段审稿就绪后才能通过" @click="setReviewStatus(item, 'approved')">通过</button>
             <button type="button" :disabled="updatingItemId === item.review_item_id" @click="setReviewStatus(item, 'needs_revision')">重审</button>
@@ -396,6 +468,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
+  exportKnowledgeWritebackQueuePackage,
   getDomainPackExpansionCandidates,
   getDomainPackExpansionWritebackDraft,
   updateDomainPackExpansionReviewState,
@@ -403,6 +476,7 @@ import {
 } from '@/api/system'
 import type {
   DomainPackExpansionCandidateReport,
+  DomainPackExpansionDevelopmentTaskStatus,
   DomainPackExpansionFieldSupplementTarget,
   DomainPackExpansionFieldWorkbenchItem,
   DomainPackExpansionReviewBatch,
@@ -424,7 +498,7 @@ const report = ref<DomainPackExpansionCandidateReport | null>(null)
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const copyingFormat = ref<'markdown' | 'json' | 'writeback' | 'coverage' | 'field-workbench' | 'field-targets' | 'review-targets' | ''>('')
+const copyingFormat = ref<'markdown' | 'json' | 'writeback' | 'unified-writeback' | 'coverage' | 'field-workbench' | 'field-targets' | 'review-targets' | ''>('')
 const updatingItemId = ref('')
 const bulkUpdatingKey = ref('')
 const searchQuery = ref('')
@@ -432,6 +506,7 @@ const packFilter = ref('')
 const videoTypeFilter = ref<VideoType | ''>('')
 const provinceFilter = ref('')
 const statusFilter = ref('')
+const writebackStatusFilter = ref<KnowledgeWritebackStatus | ''>('')
 const fieldFilter = ref('')
 const reviewNoteDrafts = reactive<Record<string, string>>({})
 
@@ -448,6 +523,7 @@ const priorityTargets = computed(() => (report.value?.field_supplement_priority_
   && (!videoTypeFilter.value || target.target_video_types.includes(videoTypeFilter.value))
   && (!provinceFilter.value || target.province === provinceFilter.value)
   && (!statusFilter.value || target.review_status === statusFilter.value)
+  && (!writebackStatusFilter.value || (target.writeback_status ?? '') === writebackStatusFilter.value)
   && (!fieldFilter.value || target.field_id === fieldFilter.value)
   && (!searchQuery.value.trim() || [
     target.review_item_id,
@@ -469,6 +545,7 @@ const reviewReadyTargets = computed(() => (report.value?.review_ready_priority_t
   && (!videoTypeFilter.value || target.target_video_types.includes(videoTypeFilter.value))
   && (!provinceFilter.value || target.province === provinceFilter.value)
   && (!statusFilter.value || target.review_status === statusFilter.value)
+  && (!writebackStatusFilter.value || (target.writeback_status ?? '') === writebackStatusFilter.value)
   && (!fieldFilter.value || target.recommended_fields.includes(fieldFilter.value))
   && (!searchQuery.value.trim() || [
     target.review_item_id,
@@ -506,7 +583,7 @@ const filteredItems = computed(() => {
       item.province,
       effectiveReviewStatus(item),
       item.review_note ?? '',
-      item.writeback_status ?? '',
+      effectiveWritebackStatus(item),
       item.writeback_note ?? '',
       ...item.target_video_types,
       ...item.recommended_fields,
@@ -530,6 +607,7 @@ const filteredItems = computed(() => {
       && (!videoTypeFilter.value || item.target_video_types.includes(videoTypeFilter.value))
       && (!provinceFilter.value || item.province === provinceFilter.value)
       && (!statusFilter.value || effectiveReviewStatus(item) === statusFilter.value)
+      && (!writebackStatusFilter.value || effectiveWritebackStatus(item) === writebackStatusFilter.value)
       && (!fieldFilter.value || item.field_workbench.some(field => field.field_id === fieldFilter.value))
       && (!query || text.includes(query))
   })
@@ -549,6 +627,14 @@ const provinceOptions = computed(() => [...new Set(allItems.value.map(item => it
 
 const statusOptions = computed(() => [...new Set(allItems.value.map(item => effectiveReviewStatus(item)))]
   .sort((a, b) => statusLabel(a).localeCompare(statusLabel(b), 'zh-Hans-CN')))
+
+const writebackStatusOptions = computed<KnowledgeWritebackStatus[]>(() => {
+  const statuses = new Set<KnowledgeWritebackStatus>(['draft_ready', 'queued', 'written_back', 'needs_revision'])
+  for (const item of allItems.value) {
+    if (item.writeback_status) statuses.add(item.writeback_status)
+  }
+  return [...statuses].sort((a, b) => writebackStatusLabel(a).localeCompare(writebackStatusLabel(b), 'zh-Hans-CN'))
+})
 
 const fieldOptions = computed(() => [...new Set(allItems.value.flatMap(item => item.field_workbench.map(field => field.field_id)))]
   .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN')))
@@ -598,12 +684,24 @@ function writebackStatusLabel(status: KnowledgeWritebackStatus): string {
   return '草案就绪'
 }
 
+function developmentStatusLabel(status: DomainPackExpansionDevelopmentTaskStatus): string {
+  if (status === 'in_progress') return '推进中'
+  if (status === 'blocked') return '阻断'
+  if (status === 'complete') return '完成'
+  return '待推进'
+}
+
 function fieldStatusLabel(status: DomainPackExpansionFieldWorkbenchItem['supplement_status']): string {
   return status === 'candidate_draft' ? '候选值' : '待补值'
 }
 
 function effectiveReviewStatus(item: DomainPackExpansionReviewItem): DomainPackExpansionReviewStatus {
   return item.review_status ?? 'candidate_review'
+}
+
+function effectiveWritebackStatus(item: DomainPackExpansionReviewItem): KnowledgeWritebackStatus | '' {
+  if (item.writeback_status) return item.writeback_status
+  return effectiveReviewStatus(item) === 'approved' ? 'draft_ready' : ''
 }
 
 function packShortLabel(packId: string): string {
@@ -695,6 +793,7 @@ async function copyApprovedWritebackDraft() {
   try {
     const res = await getDomainPackExpansionWritebackDraft({
       review_item_ids: items.map(item => item.review_item_id),
+      writeback_statuses: writebackStatusFilter.value ? [writebackStatusFilter.value] : undefined,
     })
     if (res.ok && res.data) {
       if (res.data.approved_count === 0) {
@@ -708,6 +807,38 @@ async function copyApprovedWritebackDraft() {
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '复制已通过扩库草案失败'
+  } finally {
+    copyingFormat.value = ''
+  }
+}
+
+async function copyUnifiedWritebackExport() {
+  const items = filteredItems.value
+  if (items.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可导出的统一写回预检'
+    return
+  }
+
+  copyingFormat.value = 'unified-writeback'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePackage({
+      video_type: videoTypeFilter.value || undefined,
+      province: provinceFilter.value || undefined,
+      knowledge_writeback_status: writebackStatusFilter.value || undefined,
+      search_query: searchQuery.value.trim() || undefined,
+      expansion_review_item_ids: items.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      await navigator.clipboard.writeText(res.data.markdown)
+      copyMessage.value = `已复制统一写回预检：扩库草案 ${res.data.expansion_approved_count} 条，目标文件 ${res.data.target_files.length} 个，省份 Markdown 写入 ${res.data.province_markdown_written ? '已发生' : '未发生'}。`
+    } else {
+      error.value = res.error?.message ?? '导出统一写回预检失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制统一写回预检失败'
   } finally {
     copyingFormat.value = ''
   }
@@ -763,6 +894,7 @@ async function copyFieldSupplementTargets() {
         video_type: videoTypeFilter.value || undefined,
         province: provinceFilter.value || undefined,
         candidate_status: statusFilter.value || undefined,
+        writeback_status: writebackStatusFilter.value || undefined,
         field_id: fieldFilter.value || undefined,
         search_query: searchQuery.value.trim() || undefined,
       },
@@ -799,6 +931,7 @@ async function copyReviewReadyTargets() {
         video_type: videoTypeFilter.value || undefined,
         province: provinceFilter.value || undefined,
         candidate_status: statusFilter.value || undefined,
+        writeback_status: writebackStatusFilter.value || undefined,
         field_id: fieldFilter.value || undefined,
         search_query: searchQuery.value.trim() || undefined,
       },
@@ -850,6 +983,7 @@ async function copyFieldWorkbench() {
         video_type: videoTypeFilter.value || undefined,
         province: provinceFilter.value || undefined,
         candidate_status: statusFilter.value || undefined,
+        writeback_status: writebackStatusFilter.value || undefined,
         field_id: fieldFilter.value || undefined,
         search_query: searchQuery.value.trim() || undefined,
       },
@@ -900,6 +1034,30 @@ function reviewNoteDraft(item: ReviewQueueItem): string {
 
 function updateReviewNoteDraft(reviewItemId: string, event: Event) {
   reviewNoteDrafts[reviewItemId] = (event.target as HTMLTextAreaElement).value
+}
+
+function applyReviewTemplate(item: ReviewQueueItem, template: 'source_boundary' | 'visual_rights' | 'tone_risk') {
+  const templates: Record<typeof template, string> = {
+    source_boundary: '需补来源边界：请复核 source_refs、evidence_level 与 verification_note，明确事实/传说/改编候选层级后再入队。',
+    visual_rights: '需补授权边界：请确认实拍、馆藏、传承人、景区或旧址画面授权，未确认前只保留为写回草案。',
+    tone_risk: '需复核表达语气：请检查是否存在猎奇化、灾难娱乐化、族群刻板化或把候选改编写成事实的问题。',
+  }
+  const current = reviewNoteDraft(item).trim()
+  reviewNoteDrafts[item.review_item_id] = current
+    ? `${current}\n${templates[template]}`
+    : templates[template]
+}
+
+function itemTargetFile(item: ReviewQueueItem): string {
+  return `data/provinces/${item.province || '待确认'}.md`
+}
+
+function itemSourceRefCount(item: ReviewQueueItem): number {
+  return item.field_workbench.reduce((sum, field) => sum + field.source_refs.length, 0)
+}
+
+function itemNeedsManualWriteback(item: ReviewQueueItem): boolean {
+  return effectiveWritebackStatus(item) !== 'written_back'
 }
 
 async function setReviewStatus(item: ReviewQueueItem, reviewStatus: DomainPackExpansionReviewStatus) {
@@ -1020,6 +1178,7 @@ function buildFilteredExportPackage() {
       video_type: videoTypeFilter.value || undefined,
       province: provinceFilter.value || undefined,
       candidate_status: statusFilter.value || undefined,
+      writeback_status: writebackStatusFilter.value || undefined,
       field_id: fieldFilter.value || undefined,
       search_query: searchQuery.value.trim() || undefined,
     },
@@ -1228,6 +1387,76 @@ onMounted(async () => {
   border-radius: 8px;
   background: #fff;
   padding: 16px;
+}
+
+.expansion-page__preflight,
+.expansion-page__development {
+  margin-bottom: 16px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+}
+
+.expansion-page__preflight-grid,
+.expansion-page__development-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.expansion-page__preflight-grid div,
+.expansion-page__development-item {
+  border: 1px solid #edf1f5;
+  border-radius: 6px;
+  background: #f8fbfd;
+  padding: 10px;
+}
+
+.expansion-page__preflight-grid span,
+.expansion-page__development-item span,
+.expansion-page__development-item small {
+  display: block;
+  color: #66727f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.expansion-page__preflight-grid strong {
+  display: block;
+  margin-top: 3px;
+  color: #1f618d;
+  font-size: 22px;
+}
+
+.expansion-page__preflight p,
+.expansion-page__development-item p {
+  margin: 10px 0 0;
+  color: #4c5e6f;
+  line-height: 1.55;
+}
+
+.expansion-page__development-item {
+  display: grid;
+  gap: 6px;
+}
+
+.expansion-page__development-item strong {
+  color: #22313f;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.expansion-page__development-item p {
+  margin: 0;
+}
+
+.expansion-page__development-item ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #4c5e6f;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .expansion-page__coverage-head {
@@ -1513,10 +1742,31 @@ onMounted(async () => {
   line-height: 1.5;
 }
 
+.expansion-page__review-templates,
 .expansion-page__status-actions {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 6px;
+}
+
+.expansion-page__review-templates {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.expansion-page__item-preflight {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #edf1f5;
+  border-radius: 6px;
+  background: #f8fbfd;
+  padding: 8px;
+  color: #5b6b7a;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.expansion-page__item-preflight span {
+  overflow-wrap: anywhere;
 }
 
 .expansion-page__side button {

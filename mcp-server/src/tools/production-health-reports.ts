@@ -405,6 +405,37 @@ export interface DomainPackExpansionWritebackDraftPackage {
   items: DomainPackExpansionWritebackDraftItem[];
 }
 
+type DomainPackExpansionDevelopmentTaskStatus = 'ready' | 'in_progress' | 'blocked' | 'complete';
+
+interface DomainPackExpansionNextDevelopmentTask {
+  task_id: string;
+  title: string;
+  priority: 'P0' | 'P1' | 'P2';
+  status: DomainPackExpansionDevelopmentTaskStatus;
+  related_plan_items: number[];
+  target_video_types: string[];
+  description: string;
+  acceptance_checks: string[];
+  direct_writeback_to_province_markdown: false;
+}
+
+interface DomainPackExpansionWritebackPreflightSummary {
+  schema_version: 'domain-pack-expansion-writeback-preflight/v1';
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  approved_draft_count: number;
+  draft_ready_count: number;
+  queued_count: number;
+  written_back_count: number;
+  needs_revision_count: number;
+  target_file_count: number;
+  target_files: string[];
+  manual_review_required_count: number;
+  blocked_direct_writeback_count: number;
+  ready_for_unified_export: boolean;
+  safety_checks: string[];
+}
+
 export interface DomainPackExpansionCandidateReport {
   schema_version: 'domain-pack-expansion-candidates-report/v1';
   generated_at: string;
@@ -441,6 +472,8 @@ export interface DomainPackExpansionCandidateReport {
   review_ready_priority_targets: DomainPackExpansionReviewReadyTarget[];
   video_type_coverage_count: number;
   coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
+  writeback_preflight: DomainPackExpansionWritebackPreflightSummary;
+  next_development_tasks: DomainPackExpansionNextDevelopmentTask[];
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];
   review_packet: DomainPackExpansionReviewPacket;
@@ -1247,6 +1280,8 @@ type DomainPackExpansionCandidateReportDraft = Omit<
   'review_packet'
   | 'video_type_coverage_count'
   | 'coverage_by_video_type'
+  | 'writeback_preflight'
+  | 'next_development_tasks'
   | 'field_supplement_priority_target_count'
   | 'field_supplement_priority_targets'
   | 'review_ready_priority_target_count'
@@ -1410,7 +1445,7 @@ function withExpansionReviewPacket(
   const fieldSupplementPriorityTargets = buildExpansionFieldSupplementPriorityTargets(reviewPacket);
   const reviewReadyPriorityTargets = buildExpansionReviewReadyPriorityTargets(reviewPacket);
   const pipelineProgress = buildExpansionPipelineProgress(report, reviewPacket);
-  return {
+  const reportCore = {
     ...report,
     pipeline_progress_percent: pipelineProgress.percent,
     pipeline_stage: pipelineProgress.stage,
@@ -1431,6 +1466,137 @@ function withExpansionReviewPacket(
     coverage_by_video_type: coverageByVideoType,
     review_packet: reviewPacket,
   };
+  const writebackPreflight = buildExpansionWritebackPreflightSummary(reportCore);
+  return {
+    ...reportCore,
+    writeback_preflight: writebackPreflight,
+    next_development_tasks: buildExpansionNextDevelopmentTasks(reportCore, writebackPreflight),
+  };
+}
+
+function buildExpansionWritebackPreflightSummary(
+  report: Omit<DomainPackExpansionCandidateReport, 'writeback_preflight' | 'next_development_tasks'>,
+): DomainPackExpansionWritebackPreflightSummary {
+  const approvedItems = report.review_packet.batches.flatMap(batch =>
+    batch.review_items.filter(item => item.review_status === 'approved' && Boolean(item.writeback_draft_markdown)),
+  );
+  const writebackCounts = countExpansionReviewItemWritebackStatuses(approvedItems);
+  const targetFiles = [...new Set(approvedItems.map(item => suggestedProvinceFilePath(item.province)))]
+    .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+  const manualReviewRequiredCount = approvedItems.filter(item => (item.writeback_status ?? 'draft_ready') !== 'written_back').length;
+  const blockedDirectWritebackCount = report.review_policy.direct_writeback_to_province_markdown
+    ? approvedItems.length
+    : 0;
+
+  return {
+    schema_version: 'domain-pack-expansion-writeback-preflight/v1',
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    approved_draft_count: approvedItems.length,
+    draft_ready_count: writebackCounts.draft_ready,
+    queued_count: writebackCounts.queued,
+    written_back_count: writebackCounts.written_back,
+    needs_revision_count: writebackCounts.needs_revision,
+    target_file_count: targetFiles.length,
+    target_files: targetFiles,
+    manual_review_required_count: manualReviewRequiredCount,
+    blocked_direct_writeback_count: blockedDirectWritebackCount,
+    ready_for_unified_export: approvedItems.length > 0
+      && blockedDirectWritebackCount === 0
+      && report.review_packet.field_review_blocker_count === 0,
+    safety_checks: [
+      'direct_writeback_to_province_markdown=false',
+      'province_markdown_written=false',
+      `approved_writeback_drafts=${approvedItems.length}`,
+      `target_files=${targetFiles.length}`,
+      `manual_review_required=${manualReviewRequiredCount}`,
+      'requires_human_review_before_province_markdown=true',
+    ],
+  };
+}
+
+function buildExpansionNextDevelopmentTasks(
+  report: Omit<DomainPackExpansionCandidateReport, 'writeback_preflight' | 'next_development_tasks'>,
+  preflight: DomainPackExpansionWritebackPreflightSummary,
+): DomainPackExpansionNextDevelopmentTask[] {
+  const coreVideoTypes = ['explainer_video', 'heritage_promo', 'documentary_short', 'ai_comic_drama'];
+  return [
+    {
+      task_id: 'field_workbench_controls',
+      title: '字段级补库工作台增强',
+      priority: 'P0',
+      status: report.pipeline_stage === 'complete' ? 'in_progress' : 'ready',
+      related_plan_items: [1],
+      target_video_types: coreVideoTypes,
+      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 30 条草案可被人工高效复核。',
+      acceptance_checks: [
+        '支持 pack/video_type/province/review_status/writeback_status/field/search 联合筛选。',
+        '单条候选展示字段级候选值、来源引用、核实备注和安全预检。',
+        '批量操作仍只更新 review-state，不直接写 data/provinces/*.md。',
+      ],
+      direct_writeback_to_province_markdown: false,
+    },
+    {
+      task_id: 'manual_review_closure',
+      title: '人工复核闭环',
+      priority: 'P0',
+      status: 'ready',
+      related_plan_items: [2],
+      target_video_types: coreVideoTypes,
+      description: '把退回原因、运行态覆盖和复核备注显性化，方便人工把 seed 审稿结果退回、入队或标注需补证。',
+      acceptance_checks: [
+        '提供退回原因模板并写入 review_note。',
+        '运行态 review-state 覆盖 seed 时在工作台可见。',
+        'needs_revision/rejected 不生成写回草案。',
+      ],
+      direct_writeback_to_province_markdown: false,
+    },
+    {
+      task_id: 'writeback_safety_export',
+      title: '写回导出安全预检',
+      priority: 'P0',
+      status: preflight.ready_for_unified_export ? 'in_progress' : 'blocked',
+      related_plan_items: [3],
+      target_video_types: coreVideoTypes,
+      description: '在导出前展示目标省份文件、状态计数和禁止直写检查，统一接入 Knowledge Writeback Queue。',
+      acceptance_checks: [
+        '导出包必须包含 direct_writeback_to_province_markdown=false。',
+        '显示 target_files 和 writeback status counts。',
+        '统一导出只产生人工补库采集清单，不写正式省份 Markdown。',
+      ],
+      direct_writeback_to_province_markdown: false,
+    },
+    {
+      task_id: 'second_batch_real_candidates',
+      title: '第二批真实补库候选',
+      priority: 'P1',
+      status: 'ready',
+      related_plan_items: [4],
+      target_video_types: coreVideoTypes,
+      description: '继续扩展真实条目，优先讲解、非遗宣传、微纪录和 AI 漫剧，不跳过候选稿/审稿/草案流程。',
+      acceptance_checks: [
+        '新增候选必须包含 candidate_value、source_refs、writeback_hint 和 verification_note。',
+        '每条候选必须标注事实/传说/改编边界。',
+        '新增样板不得直接改写 data/provinces/*.md。',
+      ],
+      direct_writeback_to_province_markdown: false,
+    },
+    {
+      task_id: 'mvp_completion_surface',
+      title: 'MVP 与生产健康完成态',
+      priority: 'P1',
+      status: report.pipeline_stage === 'complete' ? 'ready' : 'blocked',
+      related_plan_items: [5],
+      target_video_types: coreVideoTypes,
+      description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
+      acceptance_checks: [
+        'MVP 证据显示 pipeline complete 与 approved writeback drafts。',
+        '同时提示正式知识库仍需人工写回。',
+        '生产健康报告保留只读写回草案边界。',
+      ],
+      direct_writeback_to_province_markdown: false,
+    },
+  ];
 }
 
 function buildExpansionFieldSupplementPriorityTargets(
@@ -1801,8 +1967,10 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
       `- ${batch.priority} · ${batch.pack_id} · ${batch.batch_id}: targets=${batch.seed_target_count}, fields=${batch.candidate_field_count}, status=${batch.status}`,
     )
     : ['- none'];
+  const preflight = report.writeback_preflight;
   const priorityTargetLines = renderExpansionFieldSupplementPriorityTargetLines(report.field_supplement_priority_targets.slice(0, 24));
   const reviewReadyTargetLines = renderExpansionReviewReadyPriorityTargetLines(report.review_ready_priority_targets.slice(0, 24));
+  const nextDevelopmentTaskLines = renderExpansionNextDevelopmentTaskLines(report.next_development_tasks);
 
   return [
     '# Domain Pack Expansion Candidates',
@@ -1848,6 +2016,27 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     `- approved_writeback_draft_count: ${report.review_packet.approved_writeback_draft_count ?? 0}`,
     `- review_packet_markdown: ${report.review_packet.markdown ? 'included' : 'omitted'}`,
     '',
+    '## Writeback Safety Preflight',
+    '',
+    `- schema_version: ${preflight.schema_version}`,
+    `- direct_writeback_to_province_markdown: ${preflight.direct_writeback_to_province_markdown}`,
+    `- province_markdown_written: ${preflight.province_markdown_written}`,
+    `- approved_draft_count: ${preflight.approved_draft_count}`,
+    `- draft_ready_count: ${preflight.draft_ready_count}`,
+    `- queued_count: ${preflight.queued_count}`,
+    `- written_back_count: ${preflight.written_back_count}`,
+    `- needs_revision_count: ${preflight.needs_revision_count}`,
+    `- target_file_count: ${preflight.target_file_count}`,
+    `- target_files: ${preflight.target_files.join(', ') || 'none'}`,
+    `- manual_review_required_count: ${preflight.manual_review_required_count}`,
+    `- blocked_direct_writeback_count: ${preflight.blocked_direct_writeback_count}`,
+    `- ready_for_unified_export: ${preflight.ready_for_unified_export}`,
+    ...preflight.safety_checks.map(check => `- safety_check: ${check}`),
+    '',
+    '## Next Development Tasks',
+    '',
+    ...nextDevelopmentTaskLines,
+    '',
     '## Video Type Coverage',
     '',
     ...renderExpansionVideoTypeCoverageLines(report.coverage_by_video_type),
@@ -1870,6 +2059,18 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     '',
     ...issueLines,
   ].join('\n').trim() + '\n';
+}
+
+function renderExpansionNextDevelopmentTaskLines(tasks: DomainPackExpansionNextDevelopmentTask[]): string[] {
+  if (tasks.length === 0) return ['- none'];
+  return tasks.flatMap(task => [
+    `- ${task.priority} · ${task.status} · ${task.task_id}: ${task.title}`,
+    `  - related_plan_items: ${task.related_plan_items.join(', ')}`,
+    `  - target_video_types: ${task.target_video_types.join(', ') || 'none'}`,
+    `  - direct_writeback_to_province_markdown: ${task.direct_writeback_to_province_markdown}`,
+    `  - description: ${task.description}`,
+    ...task.acceptance_checks.map(check => `  - acceptance: ${check}`),
+  ]);
 }
 
 function renderExpansionFieldSupplementPriorityTargetLines(

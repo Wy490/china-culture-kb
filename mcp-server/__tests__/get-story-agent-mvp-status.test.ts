@@ -453,6 +453,10 @@ describe('kb_get_story_agent_mvp_status', () => {
       'domain_pack_expansion_review_approved=0',
       'domain_pack_expansion_approved_writeback_drafts=0',
       'domain_pack_expansion_writeback_queued=0',
+      'domain_pack_expansion_writeback_preflight_ready=false',
+      'domain_pack_expansion_writeback_target_files=0',
+      'domain_pack_expansion_manual_writeback_required=0',
+      'domain_pack_expansion_next_development_tasks=5',
       'domain_pack_expansion_direct_writeback=false',
       'knowledge_writeback_unified_export_ready=true',
       'knowledge_writeback_unified_export_target_files=1',
@@ -513,6 +517,11 @@ describe('kb_get_story_agent_mvp_status', () => {
           'review_approved_count=0',
           'approved_writeback_drafts=0',
           'writeback_queued=0',
+          'writeback_preflight_ready=false',
+          'writeback_preflight_target_files=0',
+          'manual_writeback_required=0',
+          'next_development_tasks=5',
+          expect.stringContaining('next_development_task_ids=field_workbench_controls'),
           'direct_writeback=false',
         ]),
       }),
@@ -549,6 +558,8 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.markdown).toContain('domain pack expansion field supplement priority targets: 0');
     expect(result.markdown).toContain('domain pack expansion review approved: 0');
     expect(result.markdown).toContain('domain pack expansion approved writeback drafts: 0');
+    expect(result.markdown).toContain('domain pack expansion writeback preflight ready: false');
+    expect(result.markdown).toContain('domain pack expansion next development tasks: 5');
     expect(result.markdown).toContain('Seedance placeholder assets: 2');
     expect(result.markdown).toContain('local acceptance counts as real external callback: false');
     expect(result.markdown).toContain('knowledge writeback queued: 1');

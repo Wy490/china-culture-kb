@@ -6236,6 +6236,41 @@ export interface DomainPackExpansionWritebackDraftPackage {
   items: DomainPackExpansionWritebackDraftItem[];
 }
 
+export type DomainPackExpansionDevelopmentTaskStatus =
+  | 'ready'
+  | 'in_progress'
+  | 'blocked'
+  | 'complete';
+
+export interface DomainPackExpansionNextDevelopmentTask {
+  task_id: string;
+  title: string;
+  priority: 'P0' | 'P1' | 'P2';
+  status: DomainPackExpansionDevelopmentTaskStatus;
+  related_plan_items: number[];
+  target_video_types: string[];
+  description: string;
+  acceptance_checks: string[];
+  direct_writeback_to_province_markdown: false;
+}
+
+export interface DomainPackExpansionWritebackPreflightSummary {
+  schema_version: 'domain-pack-expansion-writeback-preflight/v1';
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  approved_draft_count: number;
+  draft_ready_count: number;
+  queued_count: number;
+  written_back_count: number;
+  needs_revision_count: number;
+  target_file_count: number;
+  target_files: string[];
+  manual_review_required_count: number;
+  blocked_direct_writeback_count: number;
+  ready_for_unified_export: boolean;
+  safety_checks: string[];
+}
+
 export interface KnowledgeWritebackQueueExportFilters {
   project_id?: string;
   video_type?: VideoType;
@@ -6305,6 +6340,8 @@ export interface DomainPackExpansionCandidateReport {
   review_ready_priority_targets: DomainPackExpansionReviewReadyTarget[];
   video_type_coverage_count: number;
   coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
+  writeback_preflight: DomainPackExpansionWritebackPreflightSummary;
+  next_development_tasks: DomainPackExpansionNextDevelopmentTask[];
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];
   review_packet: DomainPackExpansionReviewPacket;

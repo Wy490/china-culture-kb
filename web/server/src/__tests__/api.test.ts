@@ -732,7 +732,38 @@ describe('System API', () => {
             requires_source_level: true,
           },
         },
+        writeback_preflight: {
+          schema_version: 'domain-pack-expansion-writeback-preflight/v1',
+          direct_writeback_to_province_markdown: false,
+          province_markdown_written: false,
+          approved_draft_count: 30,
+          draft_ready_count: 30,
+          target_file_count: 3,
+          ready_for_unified_export: true,
+        },
       });
+      expect(res.body.data.next_development_tasks).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          task_id: 'field_workbench_controls',
+          related_plan_items: [1],
+        }),
+        expect.objectContaining({
+          task_id: 'manual_review_closure',
+          related_plan_items: [2],
+        }),
+        expect.objectContaining({
+          task_id: 'writeback_safety_export',
+          related_plan_items: [3],
+        }),
+        expect.objectContaining({
+          task_id: 'second_batch_real_candidates',
+          related_plan_items: [4],
+        }),
+        expect.objectContaining({
+          task_id: 'mvp_completion_surface',
+          related_plan_items: [5],
+        }),
+      ]));
       expect(res.body.data.seed_target_count).toBeGreaterThanOrEqual(30);
       expect(res.body.data.candidate_field_count).toBeGreaterThanOrEqual(80);
       expect(res.body.data.review_packet.review_item_count).toBe(res.body.data.seed_target_count);
@@ -774,6 +805,8 @@ describe('System API', () => {
       ]));
       expect(res.body.data.markdown).toContain('Domain Pack Expansion Candidates');
       expect(res.body.data.markdown).toContain('direct_writeback_to_province_markdown: false');
+      expect(res.body.data.markdown).toContain('Writeback Safety Preflight');
+      expect(res.body.data.markdown).toContain('Next Development Tasks');
       expect(res.body.data.markdown).toContain('review_packet_item_count');
     });
 
@@ -1596,6 +1629,9 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('domain pack expansion review ready priority targets');
       expect(res.body.data.markdown).toContain('domain pack expansion review approved: 30');
       expect(res.body.data.markdown).toContain('domain pack expansion approved writeback drafts: 30');
+      expect(res.body.data.markdown).toContain('domain pack expansion writeback preflight ready: true');
+      expect(res.body.data.markdown).toContain('domain pack expansion manual writeback required: 30');
+      expect(res.body.data.markdown).toContain('domain pack expansion next development tasks: 5');
       expect(res.body.data.lanes.map((lane: any) => lane.key)).toEqual(expect.arrayContaining([
         'generated_artifacts',
         'generated_governance',
@@ -1673,6 +1709,10 @@ describe('System API', () => {
         'domain_pack_expansion_review_approved=30',
         'domain_pack_expansion_approved_writeback_drafts=30',
         'domain_pack_expansion_writeback_queued=0',
+        'domain_pack_expansion_writeback_preflight_ready=true',
+        'domain_pack_expansion_writeback_target_files=3',
+        'domain_pack_expansion_manual_writeback_required=30',
+        'domain_pack_expansion_next_development_tasks=5',
         'domain_pack_expansion_direct_writeback=false',
         'local_target_health_tracked_by=lanes',
         'real_media_execution=gears_v2',
@@ -1737,6 +1777,11 @@ describe('System API', () => {
             'review_approved_count=30',
             'approved_writeback_drafts=30',
             'writeback_queued=0',
+            'writeback_preflight_ready=true',
+            'writeback_preflight_target_files=3',
+            'manual_writeback_required=30',
+            'next_development_tasks=5',
+            expect.stringContaining('next_development_task_ids=field_workbench_controls'),
             'direct_writeback=false',
             'requires_candidate_markdown=true',
             'requires_human_review=true',

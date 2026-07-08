@@ -649,6 +649,11 @@ function domainPackExpansionLane(report: DomainPackExpansionCandidateReport): St
       `writeback_queued=${reviewMetrics.writeback_queued_count}`,
       `writeback_written_back=${reviewMetrics.writeback_written_back_count}`,
       `writeback_needs_revision=${reviewMetrics.writeback_needs_revision_count}`,
+      `writeback_preflight_ready=${report.writeback_preflight.ready_for_unified_export}`,
+      `writeback_preflight_target_files=${report.writeback_preflight.target_file_count}`,
+      `manual_writeback_required=${report.writeback_preflight.manual_review_required_count}`,
+      `next_development_tasks=${report.next_development_tasks.length}`,
+      `next_development_task_ids=${report.next_development_tasks.map(task => task.task_id).join(',')}`,
       `direct_writeback=${report.review_policy.direct_writeback_to_province_markdown}`,
       `requires_candidate_markdown=${report.review_policy.requires_candidate_markdown}`,
       `requires_human_review=${report.review_policy.requires_human_review}`,
@@ -1156,6 +1161,10 @@ function progressSlices(
         `domain_pack_expansion_review_approved=${domainPackExpansionReview.approved_count}`,
         `domain_pack_expansion_approved_writeback_drafts=${domainPackExpansionReview.approved_writeback_draft_count}`,
         `domain_pack_expansion_writeback_queued=${domainPackExpansionReview.writeback_queued_count}`,
+        `domain_pack_expansion_writeback_preflight_ready=${domainPackExpansionCandidates.writeback_preflight.ready_for_unified_export}`,
+        `domain_pack_expansion_writeback_target_files=${domainPackExpansionCandidates.writeback_preflight.target_file_count}`,
+        `domain_pack_expansion_manual_writeback_required=${domainPackExpansionCandidates.writeback_preflight.manual_review_required_count}`,
+        `domain_pack_expansion_next_development_tasks=${domainPackExpansionCandidates.next_development_tasks.length}`,
         `domain_pack_expansion_direct_writeback=${domainPackExpansionCandidates.review_policy.direct_writeback_to_province_markdown}`,
         `knowledge_writeback_ready=${writebackMetrics.total_ready_count}`,
         `knowledge_writeback_project_ready=${writebackMetrics.ready_count}`,
@@ -1218,6 +1227,10 @@ function progressSlices(
 }
 
 function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): string {
+  const expansionPreflight = report.domain_pack_expansion_candidates.writeback_preflight;
+  const expansionTaskIds = report.domain_pack_expansion_candidates.next_development_tasks
+    .map(task => task.task_id)
+    .join(', ') || 'none';
   return [
     '# MCP Story Agent MVP Status',
     '',
@@ -1294,6 +1307,11 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     `- domain pack expansion writeback queued: ${report.summary.domain_pack_expansion_writeback_queued_count}`,
     `- domain pack expansion writeback written_back: ${report.summary.domain_pack_expansion_writeback_written_back_count}`,
     `- domain pack expansion writeback needs_revision: ${report.summary.domain_pack_expansion_writeback_needs_revision_count}`,
+    `- domain pack expansion writeback preflight ready: ${expansionPreflight.ready_for_unified_export}`,
+    `- domain pack expansion writeback target files: ${expansionPreflight.target_file_count}`,
+    `- domain pack expansion manual writeback required: ${expansionPreflight.manual_review_required_count}`,
+    `- domain pack expansion next development tasks: ${report.domain_pack_expansion_candidates.next_development_tasks.length}`,
+    `- domain pack expansion next development task ids: ${expansionTaskIds}`,
     `- Story Agent command surface: ${report.summary.story_agent_command_surface_status} · ${report.summary.story_agent_command_surface_percent}%`,
     `- MCP Story Agent tools: ${report.summary.mcp_story_agent_tool_count}`,
     `- MCP Story Agent loop: ${report.summary.mcp_story_agent_loop_percent}%`,

@@ -151,6 +151,60 @@ describe('domain-pack-expansion-service', () => {
     expect(report.review_packet.review_status_counts?.candidate_review).toBe(0);
     expect(report.review_packet.review_status_counts?.approved).toBe(30);
     expect(report.review_packet.approved_writeback_draft_count).toBe(30);
+    expect(report.writeback_preflight).toMatchObject({
+      schema_version: 'domain-pack-expansion-writeback-preflight/v1',
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      approved_draft_count: 30,
+      draft_ready_count: 30,
+      queued_count: 0,
+      written_back_count: 0,
+      needs_revision_count: 0,
+      target_file_count: 3,
+      target_files: expect.arrayContaining([
+        'data/provinces/山西.md',
+        'data/provinces/湖南.md',
+        'data/provinces/辽宁.md',
+      ]),
+      manual_review_required_count: 30,
+      blocked_direct_writeback_count: 0,
+      ready_for_unified_export: true,
+      safety_checks: expect.arrayContaining([
+        'direct_writeback_to_province_markdown=false',
+        'province_markdown_written=false',
+        'approved_writeback_drafts=30',
+        'requires_human_review_before_province_markdown=true',
+      ]),
+    });
+    expect(report.next_development_tasks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        task_id: 'field_workbench_controls',
+        status: 'in_progress',
+        related_plan_items: [1],
+        direct_writeback_to_province_markdown: false,
+      }),
+      expect.objectContaining({
+        task_id: 'manual_review_closure',
+        status: 'ready',
+        related_plan_items: [2],
+      }),
+      expect.objectContaining({
+        task_id: 'writeback_safety_export',
+        status: 'in_progress',
+        related_plan_items: [3],
+      }),
+      expect.objectContaining({
+        task_id: 'second_batch_real_candidates',
+        status: 'ready',
+        related_plan_items: [4],
+        target_video_types: expect.arrayContaining(['explainer_video', 'heritage_promo', 'documentary_short', 'ai_comic_drama']),
+      }),
+      expect.objectContaining({
+        task_id: 'mvp_completion_surface',
+        status: 'ready',
+        related_plan_items: [5],
+      }),
+    ]));
     const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
     expect(reviewItems.every(item => item.review_ready)).toBe(true);
     expect(reviewItems.every(item => item.field_review_blocker_count === 0)).toBe(true);
@@ -472,6 +526,11 @@ describe('domain-pack-expansion-service', () => {
     expect(report.markdown).toContain('field_review_blocker_count');
     expect(report.markdown).toContain('pipeline_progress_percent: 100');
     expect(report.markdown).toContain('pipeline_stage: complete');
+    expect(report.markdown).toContain('Writeback Safety Preflight');
+    expect(report.markdown).toContain('approved_draft_count: 30');
+    expect(report.markdown).toContain('Next Development Tasks');
+    expect(report.markdown).toContain('field_workbench_controls');
+    expect(report.markdown).toContain('second_batch_real_candidates');
     expect(report.markdown).toContain('field_supplement_priority_target_count');
     expect(report.markdown).toContain('review_ready_priority_target_count');
     expect(report.markdown).toContain('Next Field Supplement Targets');
