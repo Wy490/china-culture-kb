@@ -366,7 +366,7 @@ describe('production health reports', () => {
     expect(toolResult.markdown).toContain('field_candidate_completion_percent: 100');
     expect(toolResult.markdown).toContain('pipeline_progress_percent: 78');
     expect(toolResult.markdown).toContain('pipeline_stage: human_review');
-    expect(toolResult.markdown).toContain('progress_percent: 95');
+    expect(toolResult.markdown).toContain('progress_percent: 96');
     expect(toolResult.markdown).toContain('progress_note: 扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选');
     expect(toolResult.markdown).toContain('field_review_ready_count: 8');
     expect(toolResult.markdown).toContain('field_review_blocker_count: 0');
@@ -974,6 +974,16 @@ describe('production health reports', () => {
           ]),
         }),
       },
+      signoff_package: expect.objectContaining({
+        schema_version: 'knowledge-writeback-queue-signoff-package/v1',
+        handoff_item_count: 2,
+        direct_writeback_to_province_markdown: false,
+        province_markdown_written: false,
+        signoff_manifest: expect.objectContaining({
+          manifest_id: expect.stringMatching(/^kwb-signoff-/),
+          sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
+      }),
       project_patch: {
         schema_version: 'project-knowledge-writeback-patch/v1',
         approved_count: 1,
@@ -1002,6 +1012,7 @@ describe('production health reports', () => {
     expect(unified.markdown).toContain('province_markdown_written: false');
     expect(unified.markdown).toContain('Export Preflight');
     expect(unified.markdown).toContain('Review Handoff');
+    expect(unified.markdown).toContain('Signoff Package');
     expect(unified.markdown).toContain('signoff_manifest_id: kwb-signoff-');
     expect(unified.markdown).toContain('expansion_field_diff');
     expect(unified.markdown).toContain('项目草案来源');

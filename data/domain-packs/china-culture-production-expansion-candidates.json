@@ -441,6 +441,47 @@
               "verification_note": "风险来自条目待核实点和涉火场景；适合人工复核，不适合直接做成旁白事实。"
             }
           ]
+        },
+        {
+          "entry_name": "土家族吊脚楼营造技艺——武陵山地的木构智慧",
+          "province": "湖南",
+          "recommended_fields": ["materials", "process_steps", "documentation_assets", "production_risks"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["项目申报地区未复核泛化", "鲁班崇拜和上梁仪式一概而论", "榫卯营造写成操作教程"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "materials",
+              "candidate_value": "梁柱木料、榫卯样件、青瓦、墨斗、鲁班尺、木槌、凿子、红布、上梁文和糯米团可作为 heritage_promo 材料与仪式道具；具体木材规格、结构参数和施工方法不做教程化展开。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#土家族吊脚楼营造技艺：人物随身道具", "data/provinces/湖南.md#土家族吊脚楼营造技艺：场景陈设"],
+              "writeback_hint": "作为非遗流程材料字段候选，正式写回前复核中国非遗网项目页、湘西州非遗档案和传统村落拍摄授权。",
+              "verification_note": "材料和道具来自本地吊脚楼条目；木构参数、仪式版本和产权授权需人工补证。"
+            },
+            {
+              "field_id": "process_steps",
+              "candidate_value": "候选流程为选址/量尺→立柱和榫卯连接→搭建半干栏式落地吊脚结构→铺设挑廊和青瓦屋面→上梁仪式→测绘建档与保护说明；具体工序顺序、上梁流程和村寨版本需田野复核。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#土家族吊脚楼营造技艺：结构智慧", "data/provinces/湖南.md#土家族吊脚楼营造技艺：鲁班大师崇拜"],
+              "writeback_hint": "作为流程镜头候选，只写可拍节点和审稿边界，不公开施工细节或替代专业营造指导。",
+              "verification_note": "流程由本地条目归纳；掌墨师、上梁仪式和半干栏式结构仍需项目页、建筑史资料和传承人确认。"
+            },
+            {
+              "field_id": "documentation_assets",
+              "candidate_value": "中国非遗网第三批国家级项目索引、永顺老司城遗址资料、湘西州/永顺/龙山非遗保护机构档案、传统村落测绘资料、掌墨师访谈和建筑保护标识可组成来源与授权清单。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#土家族吊脚楼营造技艺：来源", "data/provinces/湖南.md#土家族吊脚楼营造技艺：核实方法"],
+              "writeback_hint": "写回时拆成官方名录、世界遗产/遗址资料、测绘档案、传承人访谈和授权待办。",
+              "verification_note": "来源入口来自现有条目；保护单位、代表性传承人和可拍建筑点位需人工核实。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "“无钉子全靠榫卯”“鲁班崇拜”“上梁仪式”“土家/苗族吊脚楼差异”“沈从文边城原型”等表述需分层补源；不得把旅游展陈、文学联想或单一村寨版本写成全部土家族建筑传统。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#土家族吊脚楼营造技艺：待核实点", "data/provinces/湖南.md#土家族吊脚楼营造技艺：可信度"],
+              "writeback_hint": "作为审稿风险清单进入草案，优先保护建筑史、民俗仪式、文学联想和现场授权边界。",
+              "verification_note": "风险来自条目待核实点，适合人工复核，不适合直接做成定论旁白。"
+            }
+          ]
         }
       ]
     },
@@ -873,6 +914,47 @@
               "verification_note": "边界来自本地待核实点；适合人工审稿，不能把复原画面当历史影像。"
             }
           ]
+        },
+        {
+          "entry_name": "通道转兵与侗族百姓——红军长征的关键转折与地方传说",
+          "province": "湖南",
+          "recommended_fields": ["documentary_question", "source_trail", "present_day_trace", "reconstruction_boundary"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["口述人物写成档案确证", "通道会议细节无来源复原", "民族援助故事过度戏剧化"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "documentary_question",
+              "candidate_value": "通道转兵如何在长征正史、通道会议旧址和侗族百姓援助记忆之间形成一条可拍的证据链？微纪录可从战略转折、遗址回访和口述传说三层展开。",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/湖南.md#通道转兵与侗族百姓：简介", "data/provinces/湖南.md#通道转兵与侗族百姓：文化意义"],
+              "writeback_hint": "作为 documentary_short 核心问题候选，保持正史、遗址和民间口述分层，不把口述故事直接写成档案事实。",
+              "verification_note": "问题来自本地条目的通道会议、红军井/桥和侗族百姓援助线索。"
+            },
+            {
+              "field_id": "source_trail",
+              "candidate_value": "通道转兵纪念馆展陈资料、通道侗族自治县地方志、湖南长征故事民间口述整理、通道会议旧址、红军井/红军桥遗址和地方志研究者采访可组成来源线。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#通道转兵与侗族百姓：来源", "data/provinces/湖南.md#通道转兵与侗族百姓：人物"],
+              "writeback_hint": "写回时拆成正史资料、纪念馆展陈、地方志、遗址线索和口述材料，不混用不同证据等级。",
+              "verification_note": "来源入口来自本地条目；通道会议参会名单、吴老四和侗族阿婆故事需人工交叉核验。"
+            },
+            {
+              "field_id": "present_day_trace",
+              "candidate_value": "通道会议旧址、通道转兵纪念馆、红军井、红军桥、侗寨鼓楼/风雨桥、禾仓/吊脚楼和纪念馆展柜老照片，可组成现实回访与 B-roll 采集清单。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#通道转兵与侗族百姓：相关地点", "data/provinces/湖南.md#通道转兵与侗族百姓：场景"],
+              "writeback_hint": "作为现地痕迹候选，纪念馆拍摄、遗址开放状态、侗寨人物采访和民俗空间授权需确认。",
+              "verification_note": "地点和展陈线索来自本地条目；具体开放状态和拍摄许可需复核。"
+            },
+            {
+              "field_id": "reconstruction_boundary",
+              "candidate_value": "可以使用会议旧址空镜、路线图、风雨桥、井桥遗址和采访说明；再现镜头只做行军、递盐、搭桥、藏伤员等克制情境，不虚构通道会议对白、口述人物姓名细节或搜查冲突过程。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#通道转兵与侗族百姓：待核实点", "data/provinces/湖南.md#通道转兵与侗族百姓：核实方法"],
+              "writeback_hint": "写入纪录片再现边界，明确长征正史、侗族地方记忆和口述传说三层。",
+              "verification_note": "边界来自本地待核实点；复原画面只能作为情境补充，不能冒充历史影像。"
+            }
+          ]
         }
       ]
     },
@@ -1262,6 +1344,47 @@
               "source_refs": ["data/provinces/湖南.md#贺龙：待核实点", "data/provinces/湖南.md#贺龙：核实方法"],
               "writeback_hint": "写入 AI 漫剧审稿边界，优先保护红色题材严肃性、人物传记口径和版本争议。",
               "verification_note": "边界来自本地条目的待核实点和核实方法。"
+            }
+          ]
+        },
+        {
+          "entry_name": "刘海砍樵——人仙之恋的湖南民间传说",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "character_anchor", "expression_beats", "forbidden_tone"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["民间传说写成史实", "花鼓戏对白写成原始传说原文", "狐仙题材猎奇化"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "第一格：武陵山林里，少年樵夫刘海举起柴担，忽然听见戏台锣鼓声从竹林外传来；一位女子递来花篮，旁白问：“一个砍樵故事，为什么能从山路唱到花鼓戏舞台？”",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#刘海砍樵：简介", "data/provinces/湖南.md#刘海砍樵：场景"],
+              "writeback_hint": "只作为 AI 漫剧开场钩子候选，不写成传说原文或史实。",
+              "verification_note": "钩子基于武陵砍樵、胡大姐和花鼓戏传播线索改编。"
+            },
+            {
+              "field_id": "character_anchor",
+              "candidate_value": "刘海作为勤劳善良的武陵樵夫；胡大姐/狐仙作为神异身份与爱情冲突中心；花鼓戏演员/民间故事讲述者负责提示舞台改编和口述版本差异。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#刘海砍樵：人物", "data/provinces/湖南.md#刘海砍樵：来源"],
+              "writeback_hint": "作为角色锚点候选，明确民间传说、戏曲改编和原创漫剧角色分层。",
+              "verification_note": "人物来自本地条目；具体对白、表情和转场属于改编候选。"
+            },
+            {
+              "field_id": "expression_beats",
+              "candidate_value": "刘海初遇胡大姐时憨厚惊讶→听见狐仙身份时退半步但没有逃走→花鼓戏锣鼓切入时变成舞台化喜悦→讲述者提醒版本差异时两人看向“传说/戏曲/改编”三栏卡。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#刘海砍樵：故事梗概", "data/provinces/湖南.md#刘海砍樵：待核实点"],
+              "writeback_hint": "作为表情节拍候选，用于分镜连续性；不得替代花鼓戏正式剧本或口述版本。",
+              "verification_note": "情绪节拍服务漫剧表达，事实边界仍按待核内容保留。"
+            },
+            {
+              "field_id": "forbidden_tone",
+              "candidate_value": "避免把刘海写成确证历史人物；避免把狐仙题材恐怖化、猎奇化或低俗化；避免把花鼓戏经典唱段、电影电视改编和常德武陵口述版本混成同一原始故事。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#刘海砍樵：待核实点", "data/provinces/湖南.md#刘海砍樵：可信度"],
+              "writeback_hint": "写入 AI 漫剧审稿边界，优先保护民间传说、戏曲改编和版本差异。",
+              "verification_note": "边界来自本地条目的待核实点和可信度说明。"
             }
           ]
         }
@@ -1839,6 +1962,47 @@
               "source_refs": ["data/provinces/湖南.md#醴陵釉下五彩瓷：文化意义", "data/provinces/湖南.md#醴陵釉下五彩瓷：核实方法"],
               "writeback_hint": "复盘句可进入讲解草案，正式写回前删除或补证过强价值判断。",
               "verification_note": "句子服务视频收束，需保留获奖作品、毛瓷档案和旧址保存状态待核边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "concept_definitions", "diagram_or_caption_plan", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["首创和最早断言未逐项补证", "黑石号数量口径未核实", "陶瓷工艺写成公开教程"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "长沙窑为什么能把唐代民窑、釉下彩绘、瓷器题诗和海上丝绸之路外销证据连成一条讲解线？讲解片可从窑址、工艺、文字和黑石号四层展开。",
+              "evidence_level": "explainer_candidate_from_local_entry",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：简介", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：文化意义"],
+              "writeback_hint": "作为 explainer_video 开场问题候选，保持考古证据、工艺评价和贸易史口径分层。",
+              "verification_note": "问题来自本地条目的铜官窑、釉下彩、瓷器题诗和黑石号线索。"
+            },
+            {
+              "field_id": "concept_definitions",
+              "candidate_value": "“釉下彩绘”指在素胎上用矿物颜料绘画后施透明釉烧制；“黑石号”是唐代沉船考古线索；“以诗书画入瓷”是瓷器装饰和文学结合的讲解概念，相关“首创/最早”需逐项补源。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：釉下多彩的开端", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：待核实点"],
+              "writeback_hint": "概念定义先作为讲解候选，正式写回时需核对中国非遗网、考古报告和博物馆资料。",
+              "verification_note": "定义用于讲解结构，避免把陶瓷史评价、考古数量和工艺参数写成无来源定论。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "四格图示：铜官镇窑址→素胎釉下彩绘→诗文/图案装饰→黑石号外销证据；字幕旁加“国家级项目身份、唐代窑址事实、外销瓷证据、陶瓷史评价需分层引用”。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：相关地点", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：场景陈设"],
+              "writeback_hint": "作为图示字幕候选，窑址博物馆、瓷片标本、路线图和馆藏图录需授权与事实复核。",
+              "verification_note": "图示基于本地条目的地点、工艺和展陈资产，不替代正式考古图。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "理解长沙窑，不只是看一件唐代瓷器，而是看一个地方窑口如何把泥、釉、诗句和远洋贸易证据连在一起；越精彩的“最早”表述，越要说清来源。",
+              "evidence_level": "explainer_candidate_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：核实方法", "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺：待核实点"],
+              "writeback_hint": "复盘句可进入讲解草案，正式写回前补齐“黑石号”数量、首创口径和技术承继关系。",
+              "verification_note": "句子服务视频收束，需保留考古数量、首创表述和技术史讨论边界。"
             }
           ]
         }

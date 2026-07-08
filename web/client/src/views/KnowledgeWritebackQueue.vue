@@ -1055,20 +1055,9 @@ async function copySignoffManifestPackage() {
       expansion_review_item_ids: visibleExpansionItems.map(item => item.review_item_id),
     })
     if (res.ok && res.data) {
-      const handoff = res.data.preflight.review_handoff
-      const signoffPackage = {
-        schema_version: 'knowledge-writeback-queue-signoff-package/v1',
-        exported_at: res.data.exported_at,
-        direct_writeback_to_province_markdown: res.data.direct_writeback_to_province_markdown,
-        province_markdown_written: res.data.province_markdown_written,
-        filters: res.data.filters,
-        signoff_manifest: handoff.signoff_manifest,
-        status_counts: handoff.status_counts,
-        operator_checklist: handoff.operator_checklist,
-        handoff_items: handoff.items,
-      }
+      const signoffPackage = res.data.signoff_package
       await navigator.clipboard.writeText(JSON.stringify(signoffPackage, null, 2))
-      copyMessage.value = `已复制签收 Manifest：${handoff.signoff_manifest.manifest_id}，${handoff.total_handoff_count} 条交接项，sha256 ${handoff.signoff_manifest.sha256.slice(0, 12)}…；省份 Markdown 未写入。`
+      copyMessage.value = `已复制签收 Manifest：${signoffPackage.signoff_manifest.manifest_id}，${signoffPackage.handoff_item_count} 条交接项，sha256 ${signoffPackage.signoff_manifest.sha256.slice(0, 12)}…；省份 Markdown 未写入。`
     } else {
       error.value = res.error?.message ?? '导出签收 Manifest 失败'
     }

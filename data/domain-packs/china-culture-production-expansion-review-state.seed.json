@@ -1,6 +1,6 @@
 {
   "schema_version": "domain-pack-expansion-review-state/v1",
-  "updated_at": "2026-07-08T16:20:00.000+08:00",
+  "updated_at": "2026-07-08T17:00:00.000+08:00",
   "direct_writeback_to_province_markdown": false,
   "seed_policy": {
     "purpose": "Tracked first-pass human review samples for Domain Pack expansion candidates.",
@@ -494,6 +494,42 @@
       "writeback_status": "draft_ready",
       "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
       "writeback_updated_at": "2026-07-08T16:20:00.000+08:00"
+    },
+    {
+      "review_item_id": "heritage_process_pack_expansion_20260707::target_11",
+      "review_status": "approved",
+      "review_note": "土家族吊脚楼材料、流程、来源资产和生产风险齐备；项目口径、上梁仪式、榫卯营造和建筑授权保留复核边界。",
+      "reviewed_at": "2026-07-08T17:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "documentary_source_pack_expansion_20260707::target_11",
+      "review_status": "approved",
+      "review_note": "通道转兵纪录问题、来源线、现地痕迹和再现边界齐备；正史、纪念馆展陈和侗族口述传说边界清楚。",
+      "reviewed_at": "2026-07-08T17:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_10",
+      "review_status": "approved",
+      "review_note": "刘海砍樵 AI 漫剧钩子、角色锚点、表情节拍和禁用语气齐备；民间传说、花鼓戏改编和狐仙题材边界清楚。",
+      "reviewed_at": "2026-07-08T17:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_11",
+      "review_status": "approved",
+      "review_note": "长沙窑讲解核心问题、概念定义、图示字幕和复盘句齐备；首创口径、黑石号数量和工艺教程边界清楚。",
+      "reviewed_at": "2026-07-08T17:00:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T17:00:00.000+08:00"
     }
   ]
 }

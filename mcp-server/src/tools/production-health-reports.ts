@@ -640,6 +640,19 @@ interface KnowledgeWritebackQueueReviewHandoff {
   items: KnowledgeWritebackQueueReviewHandoffItem[];
 }
 
+interface KnowledgeWritebackQueueSignoffPackage {
+  schema_version: 'knowledge-writeback-queue-signoff-package/v1';
+  exported_at: string;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  filters: KnowledgeWritebackQueueExportFilters;
+  signoff_manifest: KnowledgeWritebackQueueReviewSignoffManifest;
+  status_counts: Record<KnowledgeWritebackStatus, number>;
+  operator_checklist: string[];
+  handoff_item_count: number;
+  handoff_items: KnowledgeWritebackQueueReviewHandoffItem[];
+}
+
 interface KnowledgeWritebackQueueExportPreflight {
   schema_version: 'knowledge-writeback-queue-export-preflight/v1';
   direct_writeback_to_province_markdown: false;
@@ -673,6 +686,7 @@ interface KnowledgeWritebackQueueExportPackage {
   target_files: string[];
   status_counts: KnowledgeWritebackQueueExportStatusCounts;
   preflight: KnowledgeWritebackQueueExportPreflight;
+  signoff_package: KnowledgeWritebackQueueSignoffPackage;
   project_patch: ProjectKnowledgeWritebackPatchPackage;
   expansion_draft: DomainPackExpansionWritebackDraftToolResult;
   markdown: string;
@@ -1642,11 +1656,11 @@ function buildExpansionNextDevelopmentTasks(
       title: '字段级补库工作台增强',
       priority: 'P0',
       status: report.pipeline_stage === 'complete' ? 'in_progress' : 'ready',
-      progress_percent: 95,
-      progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、批量写回状态操作、导出预检、签收清单和可复制 signoff package。',
+      progress_percent: 96,
+      progress_note: '扩库审稿页和统一写回队列已有 pack/video/province/status/source/handoff 筛选、字段级预览、批量写回状态操作、导出预检、签收清单和 canonical signoff package。',
       related_plan_items: [1],
       target_video_types: coreVideoTypes,
-      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 54 条草案可被人工高效复核。',
+      description: '增强筛选、字段预览、批量审稿和写回状态操作，让 58 条草案可被人工高效复核。',
       acceptance_checks: [
         '支持 pack/video_type/province/review_status/writeback_status/field/search 联合筛选。',
         '单条候选展示字段级候选值、来源引用、核实备注和安全预检。',
@@ -1659,8 +1673,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '人工复核闭环',
       priority: 'P0',
       status: 'ready',
-      progress_percent: 89,
-      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、source 筛选、人工签收 manifest 和 signoff package 已可见；继续补复核人身份归档。',
+      progress_percent: 91,
+      progress_note: '运行态 review-state 覆盖 seed、退回原因模板、复核备注汇总、source 筛选、人工签收 manifest 和 canonical signoff package 已可见；继续补复核人身份归档。',
       related_plan_items: [2],
       target_video_types: coreVideoTypes,
       description: '把退回原因、运行态覆盖和复核备注显性化，方便人工把 seed 审稿结果退回、入队或标注需补证。',
@@ -1676,8 +1690,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '写回导出安全预检',
       priority: 'P0',
       status: preflight.ready_for_unified_export ? 'in_progress' : 'blocked',
-      progress_percent: 96,
-      progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用、人工交接、签收 manifest/sha256、signoff safety checks 和不可直写提示；继续补下载归档。',
+      progress_percent: 98,
+      progress_note: '统一导出 preflight 已结构化展示目标文件、字段差异、来源引用、人工交接、签收 manifest/sha256、canonical signoff package、signoff safety checks 和不可直写提示；继续补下载归档。',
       related_plan_items: [3],
       target_video_types: coreVideoTypes,
       description: '在导出前展示目标省份文件、状态计数和禁止直写检查，统一接入 Knowledge Writeback Queue。',
@@ -1693,8 +1707,8 @@ function buildExpansionNextDevelopmentTasks(
       title: '第二批真实补库候选',
       priority: 'P1',
       status: 'ready',
-      progress_percent: 88,
-      progress_note: '当前 54 条已形成 approved 草案；本轮补入湘潭龙舞、韶山、贺龙和醴陵釉下五彩瓷候选，覆盖 heritage_promo/documentary_short/ai_comic_drama/explainer_video。',
+      progress_percent: 92,
+      progress_note: '当前 58 条已形成 approved 草案；本轮补入土家族吊脚楼、通道转兵、刘海砍樵和长沙窑讲解候选，覆盖 heritage_promo/documentary_short/ai_comic_drama/explainer_video。',
       related_plan_items: [4],
       target_video_types: coreVideoTypes,
       description: '继续扩展真实条目，优先讲解、非遗宣传、微纪录和 AI 漫剧，不跳过候选稿/审稿/草案流程。',
@@ -1710,8 +1724,8 @@ function buildExpansionNextDevelopmentTasks(
       title: 'MVP 与生产健康完成态',
       priority: 'P1',
       status: report.pipeline_stage === 'complete' ? 'ready' : 'blocked',
-      progress_percent: 92,
-      progress_note: 'MVP 已接入扩库 complete、写回草案计数、复核交接签收 manifest/signoff package、runtime 覆盖证据和 1-5 项百分比；继续强调“完成候选但待人工写回”。',
+      progress_percent: 94,
+      progress_note: 'MVP 已接入扩库 complete、写回草案计数、复核交接签收 manifest/canonical signoff package、runtime 覆盖证据和 1-5 项百分比；继续强调“完成候选但待人工写回”。',
       related_plan_items: [5],
       target_video_types: coreVideoTypes,
       description: '把“扩库候选完成但未写入正式知识库”的真实状态接入 Story Agent MVP 与生产健康面板。',
@@ -2563,12 +2577,13 @@ export function getKnowledgeWritebackQueueExportToolResult(
     expansionItems: expansionDraft.items,
     statusCounts: statusCounts.total,
   });
+  const filters = buildKnowledgeWritebackQueueExportFilters(input);
   const packageWithoutMarkdown: Omit<KnowledgeWritebackQueueExportPackage, 'markdown'> = {
     schema_version: 'knowledge-writeback-queue-export/v1',
     exported_at: exportedAt,
     direct_writeback_to_province_markdown: false,
     province_markdown_written: false,
-    filters: buildKnowledgeWritebackQueueExportFilters(input),
+    filters,
     approved_count: projectPatch.approved_count + expansionDraft.approved_count,
     project_approved_count: projectPatch.approved_count,
     expansion_approved_count: expansionDraft.approved_count,
@@ -2576,6 +2591,7 @@ export function getKnowledgeWritebackQueueExportToolResult(
     target_files: targetFiles,
     status_counts: statusCounts,
     preflight,
+    signoff_package: buildKnowledgeWritebackQueueSignoffPackage(exportedAt, filters, preflight.review_handoff),
     project_patch: projectPatch,
     expansion_draft: expansionDraft,
   };
@@ -3145,6 +3161,15 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- missing_review_note_count: ${pkg.preflight.review_handoff.missing_review_note_count}`,
     `- requires_manual_signoff_count: ${pkg.preflight.review_handoff.requires_manual_signoff_count}`,
     '',
+    '## Signoff Package',
+    '',
+    `- schema_version: ${pkg.signoff_package.schema_version}`,
+    `- handoff_item_count: ${pkg.signoff_package.handoff_item_count}`,
+    `- signoff_manifest_id: ${pkg.signoff_package.signoff_manifest.manifest_id}`,
+    `- signoff_manifest_sha256: ${pkg.signoff_package.signoff_manifest.sha256}`,
+    `- direct_writeback_to_province_markdown: ${pkg.signoff_package.direct_writeback_to_province_markdown}`,
+    `- province_markdown_written: ${pkg.signoff_package.province_markdown_written}`,
+    '',
     '### Operator Checklist',
     '',
     ...pkg.preflight.review_handoff.operator_checklist.map(item => `- ${item}`),
@@ -3161,6 +3186,25 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     '',
     pkg.expansion_draft.approved_count > 0 ? pkg.expansion_draft.markdown?.trim() ?? '- markdown omitted' : '- none',
   ].join('\n').trim() + '\n';
+}
+
+function buildKnowledgeWritebackQueueSignoffPackage(
+  exportedAt: string,
+  filters: KnowledgeWritebackQueueExportFilters,
+  handoff: KnowledgeWritebackQueueReviewHandoff,
+): KnowledgeWritebackQueueSignoffPackage {
+  return {
+    schema_version: 'knowledge-writeback-queue-signoff-package/v1',
+    exported_at: exportedAt,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    filters,
+    signoff_manifest: handoff.signoff_manifest,
+    status_counts: handoff.status_counts,
+    operator_checklist: handoff.operator_checklist,
+    handoff_item_count: handoff.items.length,
+    handoff_items: handoff.items,
+  };
 }
 
 function renderKnowledgeWritebackTargetFilePreflightLines(

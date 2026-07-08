@@ -1946,6 +1946,8 @@ export interface StoryAgentMvpStatusReport {
     knowledge_writeback_review_handoff_source_ref_count: number;
     knowledge_writeback_review_handoff_signoff_manifest_id: string;
     knowledge_writeback_review_handoff_signoff_manifest_sha256: string;
+    knowledge_writeback_signoff_package_schema: 'knowledge-writeback-queue-signoff-package/v1' | '';
+    knowledge_writeback_signoff_package_item_count: number;
     blocker_count: number;
     warning_count: number;
     generated_governance_action_count: number;
@@ -6385,6 +6387,19 @@ export interface KnowledgeWritebackQueueReviewHandoff {
   items: KnowledgeWritebackQueueReviewHandoffItem[];
 }
 
+export interface KnowledgeWritebackQueueSignoffPackage {
+  schema_version: 'knowledge-writeback-queue-signoff-package/v1';
+  exported_at: string;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  filters: KnowledgeWritebackQueueExportFilters;
+  signoff_manifest: KnowledgeWritebackQueueReviewSignoffManifest;
+  status_counts: Record<KnowledgeWritebackStatus, number>;
+  operator_checklist: string[];
+  handoff_item_count: number;
+  handoff_items: KnowledgeWritebackQueueReviewHandoffItem[];
+}
+
 export interface KnowledgeWritebackQueueExportPreflight {
   schema_version: 'knowledge-writeback-queue-export-preflight/v1';
   direct_writeback_to_province_markdown: false;
@@ -6418,6 +6433,7 @@ export interface KnowledgeWritebackQueueExportPackage {
   target_files: string[];
   status_counts: KnowledgeWritebackQueueExportStatusCounts;
   preflight: KnowledgeWritebackQueueExportPreflight;
+  signoff_package: KnowledgeWritebackQueueSignoffPackage;
   project_patch: ProjectKnowledgeWritebackPatchPackage;
   expansion_draft: DomainPackExpansionWritebackDraftPackage;
   markdown: string;

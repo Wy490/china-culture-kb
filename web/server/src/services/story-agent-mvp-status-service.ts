@@ -143,6 +143,8 @@ interface KnowledgeWritebackQueueMetrics {
   review_handoff_source_ref_count: number;
   review_handoff_signoff_manifest_id: string;
   review_handoff_signoff_manifest_sha256: string;
+  signoff_package_schema: 'knowledge-writeback-queue-signoff-package/v1' | '';
+  signoff_package_item_count: number;
   read_error?: string;
 }
 
@@ -541,6 +543,8 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
   | 'review_handoff_source_ref_count'
   | 'review_handoff_signoff_manifest_id'
   | 'review_handoff_signoff_manifest_sha256'
+  | 'signoff_package_schema'
+  | 'signoff_package_item_count'
 >> {
   try {
     const exportPackage = await getKnowledgeWritebackQueueExportPackage();
@@ -561,6 +565,8 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       review_handoff_source_ref_count: reviewHandoff.source_ref_count,
       review_handoff_signoff_manifest_id: reviewHandoff.signoff_manifest.manifest_id,
       review_handoff_signoff_manifest_sha256: reviewHandoff.signoff_manifest.sha256,
+      signoff_package_schema: exportPackage.signoff_package.schema_version,
+      signoff_package_item_count: exportPackage.signoff_package.handoff_item_count,
     };
   } catch {
     return {
@@ -579,6 +585,8 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       review_handoff_source_ref_count: 0,
       review_handoff_signoff_manifest_id: '',
       review_handoff_signoff_manifest_sha256: '',
+      signoff_package_schema: '',
+      signoff_package_item_count: 0,
     };
   }
 }
@@ -1041,6 +1049,8 @@ function progressSlices(
         `knowledge_writeback_review_handoff_runtime_overrides=${writebackMetrics.review_handoff_runtime_override_count}`,
         `knowledge_writeback_review_handoff_missing_notes=${writebackMetrics.review_handoff_missing_review_note_count}`,
         `knowledge_writeback_review_handoff_manifest=${writebackMetrics.review_handoff_signoff_manifest_id || 'none'}`,
+        `knowledge_writeback_signoff_package_schema=${writebackMetrics.signoff_package_schema || 'none'}`,
+        `knowledge_writeback_signoff_package_items=${writebackMetrics.signoff_package_item_count}`,
         `readiness_targets=${portfolio.summary.total_target_count}`,
         `seedance_placeholder_assets=${portfolio.summary.seedance_placeholder_asset_count}`,
         `seedance_production_assets_ready=${portfolio.summary.seedance_production_asset_ready_count}`,
@@ -1139,6 +1149,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- knowledge writeback review handoff missing notes: ${report.summary.knowledge_writeback_review_handoff_missing_review_note_count}`,
     `- knowledge writeback review handoff source refs: ${report.summary.knowledge_writeback_review_handoff_source_ref_count}`,
     `- knowledge writeback review handoff signoff manifest: ${report.summary.knowledge_writeback_review_handoff_signoff_manifest_id || 'none'}`,
+    `- knowledge writeback signoff package: ${report.summary.knowledge_writeback_signoff_package_schema || 'none'} (${report.summary.knowledge_writeback_signoff_package_item_count} items)`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
     `- real GEARS endpoint configured: ${report.summary.real_gears_endpoint_configured}`,
@@ -1342,6 +1353,8 @@ export async function getStoryAgentMvpStatus(
       knowledge_writeback_review_handoff_source_ref_count: writebackMetrics.review_handoff_source_ref_count,
       knowledge_writeback_review_handoff_signoff_manifest_id: writebackMetrics.review_handoff_signoff_manifest_id,
       knowledge_writeback_review_handoff_signoff_manifest_sha256: writebackMetrics.review_handoff_signoff_manifest_sha256,
+      knowledge_writeback_signoff_package_schema: writebackMetrics.signoff_package_schema,
+      knowledge_writeback_signoff_package_item_count: writebackMetrics.signoff_package_item_count,
       blocker_count: productionPortfolio.summary.blocker_count,
       warning_count: productionPortfolio.summary.warning_count,
       generated_governance_action_count: generatedGovernancePlan.actions.length,

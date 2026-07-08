@@ -9,6 +9,7 @@ import type {
   KnowledgeWritebackQueueReviewHandoff,
   KnowledgeWritebackQueueReviewHandoffItem,
   KnowledgeWritebackQueueReviewSignoffManifest,
+  KnowledgeWritebackQueueSignoffPackage,
   KnowledgeWritebackStatus,
   ProjectKnowledgeWritebackPatchItem,
   ProjectSupplementTaskListFilters,
@@ -93,6 +94,7 @@ export async function getKnowledgeWritebackQueueExportPackage(
     target_files: targetFiles,
     status_counts: statusCounts,
     preflight,
+    signoff_package: buildKnowledgeWritebackQueueSignoffPackage(exportedAt, filters, preflight.review_handoff),
     project_patch: projectPatchResult.data,
     expansion_draft: expansionDraft,
   };
@@ -100,6 +102,25 @@ export async function getKnowledgeWritebackQueueExportPackage(
   return {
     ...packageWithoutMarkdown,
     markdown: renderKnowledgeWritebackQueueExportMarkdown(packageWithoutMarkdown),
+  };
+}
+
+function buildKnowledgeWritebackQueueSignoffPackage(
+  exportedAt: string,
+  filters: KnowledgeWritebackQueueExportFilters,
+  handoff: KnowledgeWritebackQueueReviewHandoff,
+): KnowledgeWritebackQueueSignoffPackage {
+  return {
+    schema_version: 'knowledge-writeback-queue-signoff-package/v1',
+    exported_at: exportedAt,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    filters,
+    signoff_manifest: handoff.signoff_manifest,
+    status_counts: handoff.status_counts,
+    operator_checklist: handoff.operator_checklist,
+    handoff_item_count: handoff.items.length,
+    handoff_items: handoff.items,
   };
 }
 
@@ -444,6 +465,15 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     `- review_note_count: ${pkg.preflight.review_handoff.review_note_count}`,
     `- missing_review_note_count: ${pkg.preflight.review_handoff.missing_review_note_count}`,
     `- requires_manual_signoff_count: ${pkg.preflight.review_handoff.requires_manual_signoff_count}`,
+    '',
+    '## Signoff Package',
+    '',
+    `- schema_version: ${pkg.signoff_package.schema_version}`,
+    `- handoff_item_count: ${pkg.signoff_package.handoff_item_count}`,
+    `- signoff_manifest_id: ${pkg.signoff_package.signoff_manifest.manifest_id}`,
+    `- signoff_manifest_sha256: ${pkg.signoff_package.signoff_manifest.sha256}`,
+    `- direct_writeback_to_province_markdown: ${pkg.signoff_package.direct_writeback_to_province_markdown}`,
+    `- province_markdown_written: ${pkg.signoff_package.province_markdown_written}`,
     '',
     '### Operator Checklist',
     '',
