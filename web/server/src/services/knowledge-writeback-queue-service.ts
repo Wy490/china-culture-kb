@@ -164,6 +164,8 @@ function buildUnifiedWritebackExportPreflight(input: {
       `expansion_source_refs=${expansionSourceRefCount}`,
       `review_handoff_items=${reviewHandoff.total_handoff_count}`,
       `review_handoff_requires_signoff=${reviewHandoff.requires_manual_signoff_count}`,
+      `signoff_manifest_id=${reviewHandoff.signoff_manifest.manifest_id}`,
+      `signoff_manifest_sha256=${reviewHandoff.signoff_manifest.sha256}`,
       `manual_review_required=${manualReviewRequiredCount}`,
       'default_action=export_only_no_file_write',
     ],

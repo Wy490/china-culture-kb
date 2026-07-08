@@ -99,6 +99,14 @@
         type="button"
         class="writeback-page__action writeback-page__action--secondary"
         :disabled="Boolean(exportingFormat)"
+        @click="copySignoffManifestPackage"
+      >
+        {{ exportingFormat === 'signoff-json' ? '复制中…' : '复制签收 Manifest' }}
+      </button>
+      <button
+        type="button"
+        class="writeback-page__action writeback-page__action--secondary"
+        :disabled="Boolean(exportingFormat)"
         @click="copyPatch('markdown')"
       >
         {{ exportingFormat === 'markdown' ? '复制中…' : '复制项目 Patch' }}
@@ -430,7 +438,7 @@ const expansionDraft = ref<DomainPackExpansionWritebackDraftPackage | null>(null
 const loading = ref(false)
 const error = ref('')
 const copyMessage = ref('')
-const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | 'handoff-markdown' | ''>('')
+const exportingFormat = ref<'markdown' | 'json' | 'expansion-markdown' | 'expansion-json' | 'unified-markdown' | 'unified-json' | 'handoff-markdown' | 'signoff-json' | ''>('')
 const updatingTaskId = ref('')
 const searchQuery = ref('')
 const projectFilter = ref('')
@@ -1019,6 +1027,53 @@ async function copyReviewHandoffChecklist() {
     copyMessage.value = `已复制复核签收清单：${reviewHandoffItems.value.length} 条，待签收 ${reviewHandoffSummary.value.requiresManualSignoffCount} 条；省份 Markdown 未写入。`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '复制复核签收清单失败'
+  } finally {
+    exportingFormat.value = ''
+  }
+}
+
+async function copySignoffManifestPackage() {
+  const visibleProjectItems = filteredItems.value
+  const visibleExpansionItems = filteredExpansionItems.value
+  if (visibleProjectItems.length + visibleExpansionItems.length === 0) {
+    copyMessage.value = ''
+    error.value = '当前筛选没有可复制的签收 Manifest'
+    return
+  }
+
+  exportingFormat.value = 'signoff-json'
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await exportKnowledgeWritebackQueuePackage({
+      ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+      ...(videoTypeFilter.value ? { video_type: videoTypeFilter.value } : {}),
+      ...(provinceFilter.value ? { province: provinceFilter.value } : {}),
+      ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+      ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+      project_task_keys: visibleProjectItems.map(writebackItemKey),
+      expansion_review_item_ids: visibleExpansionItems.map(item => item.review_item_id),
+    })
+    if (res.ok && res.data) {
+      const handoff = res.data.preflight.review_handoff
+      const signoffPackage = {
+        schema_version: 'knowledge-writeback-queue-signoff-package/v1',
+        exported_at: res.data.exported_at,
+        direct_writeback_to_province_markdown: res.data.direct_writeback_to_province_markdown,
+        province_markdown_written: res.data.province_markdown_written,
+        filters: res.data.filters,
+        signoff_manifest: handoff.signoff_manifest,
+        status_counts: handoff.status_counts,
+        operator_checklist: handoff.operator_checklist,
+        handoff_items: handoff.items,
+      }
+      await navigator.clipboard.writeText(JSON.stringify(signoffPackage, null, 2))
+      copyMessage.value = `已复制签收 Manifest：${handoff.signoff_manifest.manifest_id}，${handoff.total_handoff_count} 条交接项，sha256 ${handoff.signoff_manifest.sha256.slice(0, 12)}…；省份 Markdown 未写入。`
+    } else {
+      error.value = res.error?.message ?? '导出签收 Manifest 失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制签收 Manifest 失败'
   } finally {
     exportingFormat.value = ''
   }

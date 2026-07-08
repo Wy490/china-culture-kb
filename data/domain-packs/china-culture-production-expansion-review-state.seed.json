@@ -1,6 +1,6 @@
 {
   "schema_version": "domain-pack-expansion-review-state/v1",
-  "updated_at": "2026-07-08T15:40:00.000+08:00",
+  "updated_at": "2026-07-08T16:20:00.000+08:00",
   "direct_writeback_to_province_markdown": false,
   "seed_policy": {
     "purpose": "Tracked first-pass human review samples for Domain Pack expansion candidates.",
@@ -458,6 +458,42 @@
       "writeback_status": "draft_ready",
       "writeback_note": "生成只读写回草案，等待人工复核后再决定是否入队。",
       "writeback_updated_at": "2026-07-08T11:00:00.000+08:00"
+    },
+    {
+      "review_item_id": "heritage_process_pack_expansion_20260707::target_10",
+      "review_status": "approved",
+      "review_note": "本轮真实扩库候选审稿样板：湘潭龙舞材料、流程、来源资产和生产风险齐备；明清起源、地方版本、涉火安全和节庆授权保留复核边界。",
+      "reviewed_at": "2026-07-08T16:20:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00"
+    },
+    {
+      "review_item_id": "documentary_source_pack_expansion_20260707::target_10",
+      "review_status": "approved",
+      "review_note": "本轮真实扩库候选审稿样板：韶山纪录问题、来源线、现地痕迹和再现边界齐备；1925年农民协会细节、纪念馆展陈和景区授权保留复核边界。",
+      "reviewed_at": "2026-07-08T16:20:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00"
+    },
+    {
+      "review_item_id": "ai_comic_storyboard_pack_expansion_20260707::target_09",
+      "review_status": "approved",
+      "review_note": "本轮真实扩库候选审稿样板：贺龙 AI 漫剧钩子、角色锚点、表情节拍和禁用语气齐备；红色题材严肃性、版本争议和暴力动作边界清楚。",
+      "reviewed_at": "2026-07-08T16:20:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00"
+    },
+    {
+      "review_item_id": "explainer_knowledge_structure_pack_expansion_20260707::target_10",
+      "review_status": "approved",
+      "review_note": "本轮真实扩库候选审稿样板：醴陵釉下五彩瓷讲解核心问题、概念定义、图示字幕和复盘句齐备；巴拿马金奖、毛瓷档案和工艺教程边界清楚。",
+      "reviewed_at": "2026-07-08T16:20:00.000+08:00",
+      "writeback_status": "draft_ready",
+      "writeback_note": "本轮真实扩库候选只生成只读写回草案，等待人工复核后再决定是否入队。",
+      "writeback_updated_at": "2026-07-08T16:20:00.000+08:00"
     }
   ]
 }

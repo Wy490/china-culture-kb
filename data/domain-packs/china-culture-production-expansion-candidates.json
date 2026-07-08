@@ -400,6 +400,47 @@
               "verification_note": "风险来自条目的待核范围和误传提示，适合人工复核。"
             }
           ]
+        },
+        {
+          "entry_name": "湘潭龙舞——纸扎龙灯的火光与鼓声",
+          "province": "湖南",
+          "recommended_fields": ["materials", "process_steps", "documentation_assets", "production_risks"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["明清起源无一手文献断言", "纸扎龙灯工序数量绝对化", "烟花鞭炮操作教程化"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "materials",
+              "candidate_value": "南竹竹篾、纸绸、彩纸、浆糊刷、颜料碗、龙头/龙身杆/龙尾、灯烛、锣鼓钹和香烛祭品可作为 heritage_promo 材料与道具资产；涉火材料只作为民俗现场元素，不公开操作方法。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#湘潭龙舞：简介", "data/provinces/湖南.md#湘潭龙舞：人物随身道具"],
+              "writeback_hint": "作为非遗宣传材料字段候选，正式写回前复核湖南省非遗保护中心、湘潭市文化局资料和现场安全授权。",
+              "verification_note": "材料清单来自本地湘潭龙舞条目；灯烛、鞭炮、焰火和祭龙场景需按当地活动规则复核。"
+            },
+            {
+              "field_id": "process_steps",
+              "candidate_value": "候选流程为劈竹扎骨架→纸绸糊龙身→彩绘龙鳞龙纹→装配龙头龙尾和灯烛→祭龙开光→元宵夜游街舞龙→送龙归海；具体工序数量、舞龙路线和送龙方式按乡镇版本复核。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#湘潭龙舞：纸扎龙灯工艺", "data/provinces/湖南.md#湘潭龙舞：元宵龙舞习俗"],
+              "writeback_hint": "作为流程镜头候选，只写可拍节点和审稿边界，不写成纸扎、灯烛或燃放教学。",
+              "verification_note": "流程由本地条目归纳，乡镇版本、火龙形态和送龙归海仪式仍需地方志与传承人确认。"
+            },
+            {
+              "field_id": "documentation_assets",
+              "candidate_value": "湖南省非遗保护中心湘潭龙舞资料、湘潭市文化局资料、湘潭地方志元宵习俗记载、湘潭市非遗展示馆、元宵文化节活动资料和舞龙队访谈可组成来源与授权清单。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#湘潭龙舞：来源", "data/provinces/湖南.md#湘潭龙舞：核实方法"],
+              "writeback_hint": "写回时拆成来源入口、现地采集、可拍资产和授权待办，不把节庆现场默认视为可商用素材。",
+              "verification_note": "来源入口来自现有条目；非遗级别、开放场次、活动组织方和肖像授权需人工补源。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "“始于明清”“省级非遗”“布龙/纸龙/火龙/板龙分类”“送龙归海与汝城香火龙相似性”等表述需逐项补源；涉灯烛、鞭炮、焰火镜头需加入安全围栏、消防和当地许可检查，不做操作教程。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#湘潭龙舞：待核实点", "data/provinces/湖南.md#湘潭龙舞：场景陈设"],
+              "writeback_hint": "作为审稿风险清单进入草案，优先保护民俗版本差异、火光安全和授权边界。",
+              "verification_note": "风险来自条目待核实点和涉火场景；适合人工复核，不适合直接做成旁白事实。"
+            }
+          ]
         }
       ]
     },
@@ -791,6 +832,47 @@
               "verification_note": "边界来自本地待核实点，适合人工审稿，不能把复原镜头当历史影像。"
             }
           ]
+        },
+        {
+          "entry_name": "韶山——红色文化圣地",
+          "province": "湖南",
+          "recommended_fields": ["documentary_question", "source_trail", "present_day_trace", "reconstruction_boundary"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["1925年农民协会组织细节无来源扩写", "纪念仪式画面替代史料", "少年/青年人物言行虚构成史实"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "documentary_question",
+              "candidate_value": "韶山如何从一个具体的出生与成长地，转化为由故居、纪念馆、农民协会线索和当代研学共同构成的红色文化现场？微纪录可从“空间、档案、公共记忆”三层展开。",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/湖南.md#韶山：简介", "data/provinces/湖南.md#韶山：文化意义"],
+              "writeback_hint": "作为 documentary_short 核心问题候选，保持红色旅游现场、纪念馆资料和党史线索分层，不把纪念仪式直接当作历史证据。",
+              "verification_note": "问题来自韶山条目的故居、1925年农民协会、纪念馆和当代红色旅游线索。"
+            },
+            {
+              "field_id": "source_trail",
+              "candidate_value": "韶山毛泽东纪念馆官方资料、全国重点文物保护单位名录、毛泽东故居展陈、1925年韶山农民协会党史资料、铜像广场/诗词碑林/烈士陵园导览和地方党史研究者采访可组成来源线。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#韶山：来源", "data/provinces/湖南.md#韶山：人物"],
+              "writeback_hint": "写回时拆成纪念馆资料、文保名录、党史线索、现地采访和待核组织细节，不混用参观口径与历史细节。",
+              "verification_note": "来源入口来自本地条目；1925年组织细节和展陈口径需人工交叉核验。"
+            },
+            {
+              "field_id": "present_day_trace",
+              "candidate_value": "毛泽东故居、毛泽东纪念馆、铜像广场、滴水洞、诗词碑林、韶山烈士陵园、导览图、研学手册、献花仪式和纪念馆照片墙，可组成现实回访与 B-roll 采集清单。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#韶山：相关地点", "data/provinces/湖南.md#韶山：场景陈设"],
+              "writeback_hint": "作为现地痕迹候选，景区拍摄、馆内展陈、献花仪式和研学群像需确认授权与现场规则。",
+              "verification_note": "地点和展陈线索来自本地条目；具体开放状态、拍摄许可和导览口径需复核。"
+            },
+            {
+              "field_id": "reconstruction_boundary",
+              "candidate_value": "可以使用故居空镜、展柜、时间线、文保名录、导览图和采访说明；再现镜头只做农舍生活、书本农具和参观动线的克制情境，不虚构少年/青年具体对白、1925年组织会议细节或纪念馆未公开档案。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#韶山：待核实点", "data/provinces/湖南.md#韶山：核实方法"],
+              "writeback_hint": "写入纪录片再现边界，明确故居生活、农民协会线索和当代纪念空间三层。",
+              "verification_note": "边界来自本地待核实点；适合人工审稿，不能把复原画面当历史影像。"
+            }
+          ]
         }
       ]
     },
@@ -1139,6 +1221,47 @@
               "source_refs": ["data/provinces/湖南.md#凤凰古城：待核实点", "data/provinces/湖南.md#凤凰古城：可信度"],
               "writeback_hint": "写入漫剧审稿边界，优先保护文学作品、真实古城、民族文化和口述传统的层级差异。",
               "verification_note": "边界来自本地条目的可信度说明和待核范围。"
+            }
+          ]
+        },
+        {
+          "entry_name": "贺龙——两把菜刀闹革命",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "character_anchor", "expression_beats", "forbidden_tone"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["两把菜刀事件细节无来源戏剧化", "1916/1917 日期争议绝对化", "暴力动作娱乐化"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "第一格：纪念馆玻璃展柜前，少年导览员看见“菜刀复制件”标签，脱口而出：“这不是厨房里的东西吗？”镜头切到桑植山路和一张待核时间卡，旁白问：“一个传奇起点，怎样才能讲得有画面又有边界？”",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#贺龙：简介", "data/provinces/湖南.md#贺龙：人物随身道具"],
+              "writeback_hint": "只作为 AI 漫剧开场钩子候选，不把展柜道具或少年对白写成史实。",
+              "verification_note": "钩子基于贺龙条目的菜刀复制件、桑植和版本争议线索改编。"
+            },
+            {
+              "field_id": "character_anchor",
+              "candidate_value": "当代少年导览员负责发问；贺龙纪念馆讲解员/地方党史研究者负责史料边界；贺龙作为历史人物只进入克制再现层；周逸群和桑植起义同伴若出场需单独补源，不随意虚构对白。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#贺龙：人物", "data/provinces/湖南.md#贺龙：来源"],
+              "writeback_hint": "作为角色锚点候选，明确当代讲述者、历史人物和待核同伴关系分层。",
+              "verification_note": "人物层级来自本地条目；漫剧原创少年角色和对话需标注改编。"
+            },
+            {
+              "field_id": "expression_beats",
+              "candidate_value": "少年看见菜刀复制件时惊讶→听到1916/1917日期争议时收住兴奋→在桑植故居照片前变得认真→研究者指出夺枪数量待核时点头→最后把“传奇、传记、纪念馆资料”贴成三栏。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#贺龙：文化意义", "data/provinces/湖南.md#贺龙：待核实点"],
+              "writeback_hint": "作为表情节拍候选，用于分镜连续性；不得替代正式传记和纪念馆口径。",
+              "verification_note": "情绪节拍服务漫剧理解门槛，事实边界仍按条目待核内容保留。"
+            },
+            {
+              "field_id": "forbidden_tone",
+              "candidate_value": "避免把暴力动作拍成爽感桥段；避免断言砍伤人数、夺枪数量和确切日期；避免用戏剧对白替代《贺龙传》、桑植贺龙纪念馆资料和《大地苍茫》文本；复原镜头必须标注为改编候选。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#贺龙：待核实点", "data/provinces/湖南.md#贺龙：核实方法"],
+              "writeback_hint": "写入 AI 漫剧审稿边界，优先保护红色题材严肃性、人物传记口径和版本争议。",
+              "verification_note": "边界来自本地条目的待核实点和核实方法。"
             }
           ]
         }
@@ -1675,6 +1798,47 @@
               "source_refs": ["data/provinces/湖南.md#韶山：文化意义", "data/provinces/湖南.md#韶山：待核实点"],
               "writeback_hint": "复盘句可进入讲解草案，正式写回前补齐农民协会组织细节和纪念馆资料口径。",
               "verification_note": "句子服务视频收束，需保留1925年组织细节待核边界，避免虚构具体言行。"
+            }
+          ]
+        },
+        {
+          "entry_name": "醴陵釉下五彩瓷——东方陶瓷巅峰的百年传奇",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "concept_definitions", "diagram_or_caption_plan", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["巴拿马金奖误写巴黎博览会", "毛瓷数量和品类无档案断言", "釉下五彩工艺写成公开教程"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "醴陵釉下五彩瓷为什么能同时连接清末实业救国、釉下彩工艺、1915年巴拿马获奖和新中国国瓷国礼叙事？讲解片可从“人、工艺、荣誉、边界”四层展开。",
+              "evidence_level": "explainer_candidate_from_local_entry",
+              "source_refs": ["data/provinces/湖南.md#醴陵釉下五彩瓷：简介", "data/provinces/湖南.md#醴陵釉下五彩瓷：文化意义"],
+              "writeback_hint": "作为 explainer_video 开场问题候选，保持工艺、历史荣誉和待核档案分层。",
+              "verification_note": "问题来自本地条目的熊希龄、釉下五彩工艺、巴拿马金奖和毛瓷国礼线索。"
+            },
+            {
+              "field_id": "concept_definitions",
+              "candidate_value": "“釉下五彩”指素坯彩绘后覆盖釉层再高温烧成的工艺类别；“巴拿马金奖”需标注为1915年巴拿马太平洋万国博览会；“毛瓷/国礼”属于新中国之后的档案和展陈线索，数量品类需复核。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#醴陵釉下五彩瓷：故事梗概", "data/provinces/湖南.md#醴陵釉下五彩瓷：待核实点"],
+              "writeback_hint": "概念定义先作为讲解候选，正式写回时需核对非遗项目资料、醴陵陶瓷博物馆和博览会档案。",
+              "verification_note": "定义用于讲解结构，避免误写巴黎博览会或把展陈称谓扩写成无来源事实。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "四格图示：1905年湖南瓷业公司→素坯彩绘/覆盖釉层/高温烧成→1915年巴拿马太平洋万国博览会→当代非遗传承基地与博物馆；字幕旁加“旧址、获奖作品、毛瓷数量待核”标签。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#醴陵釉下五彩瓷：相关地点", "data/provinces/湖南.md#醴陵釉下五彩瓷：场景"],
+              "writeback_hint": "作为图示字幕候选，博物馆展柜、旧址线索、传承基地和国礼照片需授权与事实复核。",
+              "verification_note": "图示基于本地条目的地点、工序和历史节点，不替代正式年表或工艺规范。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "理解醴陵釉下五彩瓷，不能只看一件漂亮瓷器；要看清末工业化尝试怎样进入工艺现场，釉下彩怎样形成视觉特点，以及哪些荣誉和档案还需要逐项补证。",
+              "evidence_level": "explainer_candidate_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#醴陵釉下五彩瓷：文化意义", "data/provinces/湖南.md#醴陵釉下五彩瓷：核实方法"],
+              "writeback_hint": "复盘句可进入讲解草案，正式写回前删除或补证过强价值判断。",
+              "verification_note": "句子服务视频收束，需保留获奖作品、毛瓷档案和旧址保存状态待核边界。"
             }
           ]
         }
