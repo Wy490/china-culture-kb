@@ -1802,6 +1802,10 @@ describe('System API', () => {
           generated_governance_action_count: expect.any(Number),
           generated_governance_p0_p1_action_count: expect.any(Number),
           generated_governance_ready_signoff_candidate_count: expect.any(Number),
+          story_quality_passed_count: expect.any(Number),
+          story_quality_failed_count: expect.any(Number),
+          story_open_supplement_task_count: expect.any(Number),
+          story_material_sufficiency_blocked_count: expect.any(Number),
           production_material_pack_status: 'passed',
           production_material_pack_count: expect.any(Number),
           production_material_pack_issue_count: 0,
@@ -1944,6 +1948,13 @@ describe('System API', () => {
         'repair_loop',
         'delivery_contract',
         'production_command',
+      ]));
+      const storyQualityLane = res.body.data.lanes.find((lane: any) => lane.key === 'story_quality');
+      expect(storyQualityLane.evidence).toEqual(expect.arrayContaining([
+        expect.stringMatching(/^quality_passed=\d+/),
+        expect.stringMatching(/^quality_failed=\d+/),
+        expect.stringMatching(/^open_supplement_tasks=\d+/),
+        expect.stringMatching(/^material_sufficiency_blocked=\d+/),
       ]));
       expect(res.body.data.progress).toEqual(expect.arrayContaining([
         expect.objectContaining({

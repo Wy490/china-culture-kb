@@ -1685,6 +1685,10 @@ export interface StoryAgentGeneratedHealthItem {
   scene_count?: number;
   gears_segment_count?: number;
   quality_score?: number;
+  quality_passed?: boolean;
+  quality_issue_count?: number;
+  open_supplement_task_count?: number;
+  material_sufficiency_blocked?: boolean;
   episode_count?: number;
   generated_episode_count?: number;
   generated_episode_story_id_count?: number;
@@ -1714,6 +1718,10 @@ export interface StoryAgentGeneratedHealthReport {
     missing_scene_breakdown_count: number;
     missing_gears_segments_count: number;
     missing_quality_count: number;
+    story_quality_passed_count?: number;
+    story_quality_failed_count?: number;
+    story_open_supplement_task_count?: number;
+    story_material_sufficiency_blocked_count?: number;
     missing_episode_story_id_count: number;
     series_missing_delivery_count: number;
     series_missing_postproduction_count: number;
@@ -1895,6 +1903,10 @@ export interface StoryAgentMvpStatusReport {
     generated_planned_count: number;
     generated_production_gap_count: number;
     generated_interrupted_count: number;
+    story_quality_passed_count: number;
+    story_quality_failed_count: number;
+    story_open_supplement_task_count: number;
+    story_material_sufficiency_blocked_count: number;
     readiness_target_count: number;
     readiness_ready_count: number;
     readiness_needs_action_count: number;

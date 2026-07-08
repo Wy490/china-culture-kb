@@ -899,9 +899,13 @@ function storyQualityLane(health: StoryAgentGeneratedHealthReport): StoryAgentMv
   const missingCurrent = summary.missing_current_story_count;
   const missingScene = summary.missing_scene_breakdown_count;
   const missingQuality = summary.missing_quality_count;
+  const qualityPassed = summary.story_quality_passed_count ?? 0;
+  const qualityFailed = summary.story_quality_failed_count ?? 0;
+  const openSupplementTasks = summary.story_open_supplement_task_count ?? 0;
+  const materialBlocked = summary.story_material_sufficiency_blocked_count ?? 0;
   const status: StoryAgentMvpStatus = missingCurrent > 0
     ? 'blocked'
-    : missingScene > 0 || missingQuality > 0 || storyCount === 0
+    : missingScene > 0 || missingQuality > 0 || qualityFailed > 0 || storyCount === 0
       ? 'needs_action'
       : 'ready';
   return {
@@ -910,22 +914,30 @@ function storyQualityLane(health: StoryAgentGeneratedHealthReport): StoryAgentMv
     status,
     score: storyCount === 0
       ? 35
-      : clampScore(100 - missingCurrent * 40 - missingScene * 25 - missingQuality * 20),
+      : clampScore(100 - missingCurrent * 40 - missingScene * 25 - missingQuality * 20 - qualityFailed * 15 - materialBlocked * 5),
     detail: storyCount === 0
       ? 'No standalone story project has a measurable scene and quality contract yet.'
-      : `${storyCount - Math.min(storyCount, missingScene + missingQuality)}/${storyCount} story projects have scene and quality evidence.`,
+      : `${storyCount - Math.min(storyCount, missingScene + missingQuality)}/${storyCount} story projects have scene and quality evidence; ${qualityPassed}/${storyCount} pass quality, ${qualityFailed} fail quality, ${openSupplementTasks} open supplement tasks, ${materialBlocked} material gates blocked.`,
     evidence: [
       `story_projects=${storyCount}`,
       `missing_current_story=${missingCurrent}`,
       `missing_scene_breakdown=${missingScene}`,
       `missing_quality=${missingQuality}`,
+      `quality_passed=${qualityPassed}`,
+      `quality_failed=${qualityFailed}`,
+      `open_supplement_tasks=${openSupplementTasks}`,
+      `material_sufficiency_blocked=${materialBlocked}`,
     ],
     next_action: missingCurrent > 0
       ? 'Restore interrupted story project pointers before repair automation.'
       : missingScene > 0 || missingQuality > 0
         ? 'Run Story Agent validation/repair to regenerate scene_breakdown and quality_report.'
+        : qualityFailed > 0
+          ? 'Run Story Agent quality repair on failed story projects; keep optional supplement tasks separate from quality gates.'
         : storyCount === 0
           ? 'Generate the first measurable story project for quality validation.'
+          : openSupplementTasks > 0
+            ? 'Review open supplement tasks separately; optional knowledge gaps should not be reported as failed story quality.'
           : undefined,
   };
 }
@@ -1338,6 +1350,9 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- generated ready: ${report.summary.generated_ready_count}`,
     `- generated production_gap: ${report.summary.generated_production_gap_count}`,
     `- generated interrupted: ${report.summary.generated_interrupted_count}`,
+    `- story quality passed/failed: ${report.summary.story_quality_passed_count}/${report.summary.story_quality_failed_count}`,
+    `- story open supplement tasks: ${report.summary.story_open_supplement_task_count}`,
+    `- story material gates blocked: ${report.summary.story_material_sufficiency_blocked_count}`,
     `- readiness targets: ${report.summary.readiness_target_count}`,
     `- readiness ready: ${report.summary.readiness_ready_count}`,
     `- readiness needs_action: ${report.summary.readiness_needs_action_count}`,
@@ -1539,6 +1554,10 @@ export async function getStoryAgentMvpStatus(
       generated_planned_count: generatedHealth.summary.planned_count,
       generated_production_gap_count: generatedHealth.summary.production_gap_count,
       generated_interrupted_count: generatedHealth.summary.interrupted_count,
+      story_quality_passed_count: generatedHealth.summary.story_quality_passed_count ?? 0,
+      story_quality_failed_count: generatedHealth.summary.story_quality_failed_count ?? 0,
+      story_open_supplement_task_count: generatedHealth.summary.story_open_supplement_task_count ?? 0,
+      story_material_sufficiency_blocked_count: generatedHealth.summary.story_material_sufficiency_blocked_count ?? 0,
       readiness_target_count: productionPortfolio.summary.total_target_count,
       readiness_ready_count: productionPortfolio.summary.ready_count,
       readiness_needs_action_count: productionPortfolio.summary.needs_action_count,

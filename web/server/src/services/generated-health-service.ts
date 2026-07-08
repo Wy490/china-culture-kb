@@ -62,6 +62,10 @@ function numberField(value: unknown): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function booleanField(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
@@ -236,6 +240,19 @@ async function buildStoryHealthItem(input: GeneratedProjectRecord): Promise<Stor
   const sceneCount = asArray(story?.scene_breakdown).length;
   const gearsSegmentCount = asArray(story?.gears_segments).length;
   const hasDeliveryContract = Boolean(isObjectRecord(story?.gears_delivery) || isObjectRecord(currentVersion?.record.production_board_export));
+  const qualityPassed = booleanField(project.quality_passed) ?? booleanField(qualityReport?.passed);
+  const qualityIssueCount = numberField(project.quality_issue_count)
+    ?? (qualityReport ? asArray(qualityReport.issues).length : undefined);
+  const openSupplementTaskCount = numberField(project.open_supplement_task_count)
+    ?? asArray(story?.supplement_tasks).filter(item =>
+      isObjectRecord(item) && stringField(item.status) !== 'resolved',
+    ).length;
+  const materialSufficiency = isObjectRecord(project.material_sufficiency)
+    ? project.material_sufficiency
+    : isObjectRecord(story?.material_sufficiency)
+      ? story.material_sufficiency
+      : undefined;
+  const materialSufficiencyBlocked = booleanField(materialSufficiency?.blocked);
   const missingContracts: string[] = [];
   const evidence: string[] = [];
 
@@ -254,6 +271,10 @@ async function buildStoryHealthItem(input: GeneratedProjectRecord): Promise<Stor
   if (currentVersionId) evidence.push(`current_version_id=${currentVersionId}`);
   if (currentStoryId) evidence.push(`current_story_id=${currentStoryId}`);
   if (story) evidence.push(`scenes=${sceneCount}, gears_segments=${gearsSegmentCount}`);
+  if (qualityPassed !== undefined) evidence.push(`quality_passed=${qualityPassed}`);
+  if (qualityIssueCount !== undefined) evidence.push(`quality_issues=${qualityIssueCount}`);
+  evidence.push(`open_supplement_tasks=${openSupplementTaskCount}`);
+  if (materialSufficiencyBlocked !== undefined) evidence.push(`material_sufficiency_blocked=${materialSufficiencyBlocked}`);
 
   const status: StoryAgentGeneratedHealthStatus = missingContracts.includes('current_version') || missingContracts.includes('current_story')
     ? 'interrupted'
@@ -279,6 +300,10 @@ async function buildStoryHealthItem(input: GeneratedProjectRecord): Promise<Stor
     scene_count: story ? sceneCount : undefined,
     gears_segment_count: story ? gearsSegmentCount : undefined,
     quality_score: qualityScore(qualityReport),
+    quality_passed: qualityPassed,
+    quality_issue_count: qualityIssueCount,
+    open_supplement_task_count: openSupplementTaskCount,
+    material_sufficiency_blocked: materialSufficiencyBlocked,
   };
 }
 
@@ -446,6 +471,10 @@ function renderMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'
     `- missing_scene_breakdown: ${report.summary.missing_scene_breakdown_count}`,
     `- missing_gears_segments: ${report.summary.missing_gears_segments_count}`,
     `- missing_quality: ${report.summary.missing_quality_count}`,
+    `- story_quality_passed: ${report.summary.story_quality_passed_count ?? 0}`,
+    `- story_quality_failed: ${report.summary.story_quality_failed_count ?? 0}`,
+    `- story_open_supplement_tasks: ${report.summary.story_open_supplement_task_count ?? 0}`,
+    `- story_material_sufficiency_blocked: ${report.summary.story_material_sufficiency_blocked_count ?? 0}`,
     `- missing_episode_story_refs: ${report.summary.missing_episode_story_id_count}`,
     `- series_missing_delivery: ${report.summary.series_missing_delivery_count}`,
     `- series_missing_postproduction: ${report.summary.series_missing_postproduction_count}`,
@@ -520,6 +549,10 @@ export async function getStoryAgentGeneratedHealth(
   const seriesMissingStoryRefProjectCount = seriesItems.filter(item => (item.missing_episode_story_id_count ?? 0) > 0).length;
   const seriesContractEvidenceCount = seriesItems.filter(item => (item.contract_evidence_count ?? 0) > 0).length;
   const seriesRelinkCandidateCount = seriesItems.filter(item => item.relink_candidate).length;
+  const storyQualityPassedCount = storyItems.filter(item => item.quality_passed === true).length;
+  const storyQualityFailedCount = storyItems.filter(item => item.quality_passed === false).length;
+  const storyOpenSupplementTaskCount = storyItems.reduce((sum, item) => sum + (item.open_supplement_task_count ?? 0), 0);
+  const storyMaterialSufficiencyBlockedCount = storyItems.filter(item => item.material_sufficiency_blocked === true).length;
   const report: Omit<StoryAgentGeneratedHealthReport, 'markdown'> = {
     schema_version: 'story-agent-generated-health/v1',
     generated_at: new Date().toISOString(),
@@ -535,6 +568,10 @@ export async function getStoryAgentGeneratedHealth(
       missing_scene_breakdown_count: countMissing(allItems, 'scene_breakdown', 'story_project'),
       missing_gears_segments_count: countMissing(allItems, 'gears_segments', 'story_project'),
       missing_quality_count: countMissing(allItems, 'quality_report', 'story_project'),
+      story_quality_passed_count: storyQualityPassedCount,
+      story_quality_failed_count: storyQualityFailedCount,
+      story_open_supplement_task_count: storyOpenSupplementTaskCount,
+      story_material_sufficiency_blocked_count: storyMaterialSufficiencyBlockedCount,
       missing_episode_story_id_count: seriesItems.reduce((sum, item) => sum + (item.missing_episode_story_id_count ?? 0), 0),
       series_missing_delivery_count: countMissing(allItems, 'series_delivery', 'ai_comic_series_project')
         + countMissing(allItems, 'shot_production_ledger', 'ai_comic_series_project'),
