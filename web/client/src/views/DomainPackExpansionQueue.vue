@@ -647,24 +647,7 @@ const signoffBatchNote = ref('')
 const reviewNoteDrafts = reactive<Record<string, string>>({})
 
 const batches = computed(() => report.value?.review_packet.batches ?? [])
-const writebackHandoffSummary = computed(() => {
-  const current = report.value
-  if (!current) return null
-  return {
-    schema_version: 'domain-pack-expansion-writeback-handoff-summary/v1' as const,
-    ready_for_unified_export: current.writeback_preflight.ready_for_unified_export,
-    target_file_count: current.writeback_preflight.target_file_count,
-    target_files: current.writeback_preflight.target_files,
-    approved_draft_count: current.writeback_preflight.approved_draft_count,
-    signoff_batch_count: current.review_closure.signoff_batch_count,
-    ready_for_signoff_count: current.review_closure.ready_for_signoff_count,
-    blocked_for_signoff_count: current.review_closure.blocked_for_signoff_count,
-    source_ref_count: current.review_closure.source_ref_count,
-    direct_writeback_to_province_markdown: false,
-    province_markdown_written: false,
-    writeback_queue_path: '/knowledge-writeback-queue',
-  }
-})
+const writebackHandoffSummary = computed(() => report.value?.writeback_handoff ?? null)
 const coverageItems = computed(() => [...(report.value?.coverage_by_video_type ?? [])]
   .sort((a, b) => b.seed_target_count - a.seed_target_count || typeLabel(a.video_type).localeCompare(typeLabel(b.video_type), 'zh-Hans-CN')))
 const coverageTotals = computed(() => coverageItems.value.reduce((totals, item) => ({

@@ -144,6 +144,8 @@ describe('production health reports', () => {
     expect(domainPackExpansionCandidates.markdown).toContain('missing_candidate_file');
     expect(domainPackExpansionCandidates.markdown).toContain('review_packet_item_count');
     expect(domainPackExpansionCandidates.markdown).toContain('video_type_coverage_count');
+    expect(domainPackExpansionCandidates.markdown).toContain('Writeback Handoff');
+    expect(domainPackExpansionCandidates.markdown).toContain('writeback_handoff_queue_path: /knowledge-writeback-queue');
     expect(domainPackExpansionCandidates.review_packet.markdown).toContain('Domain Pack Expansion Review Packet');
     expect(domainPackExpansionCandidates.review_packet.markdown).toContain('direct_writeback_to_province_markdown: true');
     expect(getDomainPackExpansionCandidateToolResult({ include_markdown: false }).markdown).toBeUndefined();
@@ -319,6 +321,20 @@ describe('production health reports', () => {
         requires_candidate_markdown: true,
         requires_human_review: true,
         requires_source_level: true,
+      },
+      writeback_handoff: {
+        schema_version: 'domain-pack-expansion-writeback-handoff-summary/v1',
+        ready_for_unified_export: true,
+        target_file_count: 1,
+        target_files: ['data/provinces/湖南.md'],
+        approved_draft_count: 1,
+        signoff_batch_count: 0,
+        ready_for_signoff_count: 0,
+        blocked_for_signoff_count: 8,
+        source_ref_count: expect.any(Number),
+        direct_writeback_to_province_markdown: false,
+        province_markdown_written: false,
+        writeback_queue_path: '/knowledge-writeback-queue',
       },
     });
     expect(report.batches).toEqual(expect.arrayContaining([

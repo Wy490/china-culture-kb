@@ -180,6 +180,28 @@ describe('domain-pack-expansion-service', () => {
         'requires_human_review_before_province_markdown=true',
       ]),
     });
+    expect(report.writeback_handoff).toMatchObject({
+      schema_version: 'domain-pack-expansion-writeback-handoff-summary/v1',
+      ready_for_unified_export: true,
+      target_file_count: 7,
+      approved_draft_count: 100,
+      signoff_batch_count: 6,
+      ready_for_signoff_count: 100,
+      blocked_for_signoff_count: 0,
+      source_ref_count: expect.any(Number),
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      writeback_queue_path: '/knowledge-writeback-queue',
+    });
+    expect(report.writeback_handoff.target_files).toEqual(expect.arrayContaining([
+      'data/provinces/云南.md',
+      'data/provinces/四川.md',
+      'data/provinces/山西.md',
+      'data/provinces/江西.md',
+      'data/provinces/湖南.md',
+      'data/provinces/贵州.md',
+      'data/provinces/辽宁.md',
+    ]));
     expect(report.next_development_tasks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         task_id: 'field_workbench_controls',
@@ -238,6 +260,8 @@ describe('domain-pack-expansion-service', () => {
     ]));
     expect(report.markdown).toContain('field_workbench_controls');
     expect(report.markdown).toContain('Review Closure');
+    expect(report.markdown).toContain('Writeback Handoff');
+    expect(report.markdown).toContain('writeback_handoff_queue_path: /knowledge-writeback-queue');
     expect(report.markdown).toContain('progress_percent: 100');
     const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
     expect(reviewItems.every(item => item.review_ready)).toBe(true);

@@ -526,6 +526,21 @@ interface DomainPackExpansionReviewClosureSummary {
   closure_checks: string[];
 }
 
+interface DomainPackExpansionWritebackHandoffSummary {
+  schema_version: 'domain-pack-expansion-writeback-handoff-summary/v1';
+  ready_for_unified_export: boolean;
+  target_file_count: number;
+  target_files: string[];
+  approved_draft_count: number;
+  signoff_batch_count: number;
+  ready_for_signoff_count: number;
+  blocked_for_signoff_count: number;
+  source_ref_count: number;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  writeback_queue_path: '/knowledge-writeback-queue';
+}
+
 export interface DomainPackExpansionCandidateReport {
   schema_version: 'domain-pack-expansion-candidates-report/v1';
   generated_at: string;
@@ -564,6 +579,7 @@ export interface DomainPackExpansionCandidateReport {
   coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
   writeback_preflight: DomainPackExpansionWritebackPreflightSummary;
   review_closure: DomainPackExpansionReviewClosureSummary;
+  writeback_handoff: DomainPackExpansionWritebackHandoffSummary;
   next_development_tasks: DomainPackExpansionNextDevelopmentTask[];
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];
@@ -1687,6 +1703,7 @@ type DomainPackExpansionCandidateReportDraft = Omit<
   | 'coverage_by_video_type'
   | 'writeback_preflight'
   | 'review_closure'
+  | 'writeback_handoff'
   | 'next_development_tasks'
   | 'field_supplement_priority_target_count'
   | 'field_supplement_priority_targets'
@@ -1874,16 +1891,18 @@ function withExpansionReviewPacket(
   };
   const writebackPreflight = buildExpansionWritebackPreflightSummary(reportCore);
   const reviewClosure = buildExpansionReviewClosureSummary(reportCore, writebackPreflight);
+  const writebackHandoff = buildExpansionWritebackHandoffSummary(writebackPreflight, reviewClosure);
   return {
     ...reportCore,
     writeback_preflight: writebackPreflight,
     review_closure: reviewClosure,
+    writeback_handoff: writebackHandoff,
     next_development_tasks: buildExpansionNextDevelopmentTasks(reportCore, writebackPreflight, reviewClosure),
   };
 }
 
 function buildExpansionWritebackPreflightSummary(
-  report: Omit<DomainPackExpansionCandidateReport, 'writeback_preflight' | 'review_closure' | 'next_development_tasks'>,
+  report: Omit<DomainPackExpansionCandidateReport, 'writeback_preflight' | 'review_closure' | 'writeback_handoff' | 'next_development_tasks'>,
 ): DomainPackExpansionWritebackPreflightSummary {
   const approvedItems = report.review_packet.batches.flatMap(batch =>
     batch.review_items.filter(item => item.review_status === 'approved' && Boolean(item.writeback_draft_markdown)),
@@ -1924,7 +1943,7 @@ function buildExpansionWritebackPreflightSummary(
 }
 
 function buildExpansionReviewClosureSummary(
-  report: Omit<DomainPackExpansionCandidateReport, 'writeback_preflight' | 'review_closure' | 'next_development_tasks'>,
+  report: Omit<DomainPackExpansionCandidateReport, 'writeback_preflight' | 'review_closure' | 'writeback_handoff' | 'next_development_tasks'>,
   preflight: DomainPackExpansionWritebackPreflightSummary,
 ): DomainPackExpansionReviewClosureSummary {
   const reviewItems = report.review_packet.batches.flatMap(batch => batch.review_items);
@@ -2048,6 +2067,26 @@ function buildExpansionReviewClosureBatchSummaries(
     });
 }
 
+function buildExpansionWritebackHandoffSummary(
+  preflight: DomainPackExpansionWritebackPreflightSummary,
+  reviewClosure: DomainPackExpansionReviewClosureSummary,
+): DomainPackExpansionWritebackHandoffSummary {
+  return {
+    schema_version: 'domain-pack-expansion-writeback-handoff-summary/v1',
+    ready_for_unified_export: preflight.ready_for_unified_export,
+    target_file_count: preflight.target_file_count,
+    target_files: preflight.target_files,
+    approved_draft_count: preflight.approved_draft_count,
+    signoff_batch_count: reviewClosure.signoff_batch_count,
+    ready_for_signoff_count: reviewClosure.ready_for_signoff_count,
+    blocked_for_signoff_count: reviewClosure.blocked_for_signoff_count,
+    source_ref_count: reviewClosure.source_ref_count,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    writeback_queue_path: '/knowledge-writeback-queue',
+  };
+}
+
 function isExpansionReviewClosureItemReadyForSignoff(item: DomainPackExpansionReviewItem): boolean {
   return item.review_status === 'approved'
     && item.review_ready
@@ -2059,7 +2098,7 @@ function isExpansionReviewClosureItemReadyForSignoff(item: DomainPackExpansionRe
 }
 
 function buildExpansionNextDevelopmentTasks(
-  report: Omit<DomainPackExpansionCandidateReport, 'writeback_preflight' | 'review_closure' | 'next_development_tasks'>,
+  report: Omit<DomainPackExpansionCandidateReport, 'writeback_preflight' | 'review_closure' | 'writeback_handoff' | 'next_development_tasks'>,
   preflight: DomainPackExpansionWritebackPreflightSummary,
   reviewClosure: DomainPackExpansionReviewClosureSummary,
 ): DomainPackExpansionNextDevelopmentTask[] {
@@ -2537,6 +2576,7 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     : ['- none'];
   const preflight = report.writeback_preflight;
   const reviewClosure = report.review_closure;
+  const writebackHandoff = report.writeback_handoff;
   const priorityTargetLines = renderExpansionFieldSupplementPriorityTargetLines(report.field_supplement_priority_targets.slice(0, 24));
   const reviewReadyTargetLines = renderExpansionReviewReadyPriorityTargetLines(report.review_ready_priority_targets.slice(0, 24));
   const nextDevelopmentTaskLines = renderExpansionNextDevelopmentTaskLines(report.next_development_tasks);
@@ -2627,6 +2667,21 @@ export function renderDomainPackExpansionCandidateMarkdown(report: DomainPackExp
     `- manual_writeback_required_count: ${reviewClosure.manual_writeback_required_count}`,
     ...reviewClosure.closure_checks.map(check => `- closure_check: ${check}`),
     ...renderExpansionReviewClosureBatchSummaryLines(reviewClosure.signoff_batch_summaries),
+    '',
+    '## Writeback Handoff',
+    '',
+    `- writeback_handoff_schema: ${writebackHandoff.schema_version}`,
+    `- writeback_handoff_ready_for_unified_export: ${writebackHandoff.ready_for_unified_export}`,
+    `- writeback_handoff_target_file_count: ${writebackHandoff.target_file_count}`,
+    `- writeback_handoff_target_files: ${writebackHandoff.target_files.join(', ') || 'none'}`,
+    `- writeback_handoff_approved_draft_count: ${writebackHandoff.approved_draft_count}`,
+    `- writeback_handoff_signoff_batch_count: ${writebackHandoff.signoff_batch_count}`,
+    `- writeback_handoff_ready_for_signoff_count: ${writebackHandoff.ready_for_signoff_count}`,
+    `- writeback_handoff_blocked_for_signoff_count: ${writebackHandoff.blocked_for_signoff_count}`,
+    `- writeback_handoff_source_ref_count: ${writebackHandoff.source_ref_count}`,
+    `- writeback_handoff_direct_writeback_to_province_markdown: ${writebackHandoff.direct_writeback_to_province_markdown}`,
+    `- writeback_handoff_province_markdown_written: ${writebackHandoff.province_markdown_written}`,
+    `- writeback_handoff_queue_path: ${writebackHandoff.writeback_queue_path}`,
     '',
     '## Next Development Tasks',
     '',

@@ -741,6 +741,18 @@ describe('System API', () => {
           target_file_count: 7,
           ready_for_unified_export: true,
         },
+        writeback_handoff: {
+          schema_version: 'domain-pack-expansion-writeback-handoff-summary/v1',
+          ready_for_unified_export: true,
+          target_file_count: 7,
+          approved_draft_count: 100,
+          signoff_batch_count: 6,
+          ready_for_signoff_count: 100,
+          blocked_for_signoff_count: 0,
+          direct_writeback_to_province_markdown: false,
+          province_markdown_written: false,
+          writeback_queue_path: '/knowledge-writeback-queue',
+        },
       });
       expect(res.body.data.next_development_tasks).toEqual(expect.arrayContaining([
         expect.objectContaining({
@@ -2090,6 +2102,12 @@ describe('System API', () => {
             'writeback_queued=0',
             'writeback_preflight_ready=true',
             'writeback_preflight_target_files=7',
+            'writeback_handoff_ready=true',
+            'writeback_handoff_target_files=7',
+            'writeback_handoff_signoff_batches=6',
+            'writeback_handoff_ready_for_signoff=100',
+            'writeback_handoff_blocked_for_signoff=0',
+            expect.stringContaining('writeback_handoff_source_refs='),
             'manual_writeback_required=100',
             'next_development_tasks=5',
             expect.stringContaining('next_development_task_ids=field_workbench_controls'),

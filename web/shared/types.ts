@@ -6415,6 +6415,21 @@ export interface DomainPackExpansionReviewClosureSummary {
   closure_checks: string[];
 }
 
+export interface DomainPackExpansionWritebackHandoffSummary {
+  schema_version: 'domain-pack-expansion-writeback-handoff-summary/v1';
+  ready_for_unified_export: boolean;
+  target_file_count: number;
+  target_files: string[];
+  approved_draft_count: number;
+  signoff_batch_count: number;
+  ready_for_signoff_count: number;
+  blocked_for_signoff_count: number;
+  source_ref_count: number;
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  writeback_queue_path: '/knowledge-writeback-queue';
+}
+
 export interface KnowledgeWritebackQueueExportFilters {
   project_id?: string;
   video_type?: VideoType;
@@ -6787,6 +6802,7 @@ export interface DomainPackExpansionCandidateReport {
   coverage_by_video_type: DomainPackExpansionVideoTypeCoverageSummary[];
   writeback_preflight: DomainPackExpansionWritebackPreflightSummary;
   review_closure: DomainPackExpansionReviewClosureSummary;
+  writeback_handoff: DomainPackExpansionWritebackHandoffSummary;
   next_development_tasks: DomainPackExpansionNextDevelopmentTask[];
   batches: DomainPackExpansionBatchSummary[];
   issues: DomainPackExpansionCandidateIssue[];
