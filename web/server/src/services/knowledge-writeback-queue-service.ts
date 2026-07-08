@@ -5,6 +5,8 @@ import type {
   KnowledgeWritebackQueueExportPackage,
   KnowledgeWritebackQueueExportPreflight,
   KnowledgeWritebackQueueExportTargetFilePreflight,
+  KnowledgeWritebackQueueReviewHandoff,
+  KnowledgeWritebackQueueReviewHandoffItem,
   KnowledgeWritebackStatus,
   ProjectKnowledgeWritebackPatchItem,
   ProjectSupplementTaskListFilters,
@@ -127,6 +129,7 @@ function buildUnifiedWritebackExportPreflight(input: {
   const totalDraftCount = input.projectItems.length + input.expansionItems.length;
   const manualReviewRequiredCount = totalDraftCount - (input.statusCounts.written_back ?? 0);
   const blockedDirectWritebackCount = totalDraftCount;
+  const reviewHandoff = buildReviewHandoff(input.projectItems, input.expansionItems);
 
   return {
     schema_version: 'knowledge-writeback-queue-export-preflight/v1',
@@ -146,6 +149,7 @@ function buildUnifiedWritebackExportPreflight(input: {
       && input.targetFiles.length > 0
       && expansionFieldMissingCount === 0,
     target_file_preflight: targetFilePreflight,
+    review_handoff: reviewHandoff,
     safety_checks: [
       'direct_writeback_to_province_markdown=false',
       'province_markdown_written=false',
@@ -154,10 +158,115 @@ function buildUnifiedWritebackExportPreflight(input: {
       `expansion_drafts=${input.expansionItems.length}`,
       `expansion_candidate_fields=${expansionCandidateFieldCount}`,
       `expansion_source_refs=${expansionSourceRefCount}`,
+      `review_handoff_items=${reviewHandoff.total_handoff_count}`,
+      `review_handoff_requires_signoff=${reviewHandoff.requires_manual_signoff_count}`,
       `manual_review_required=${manualReviewRequiredCount}`,
       'default_action=export_only_no_file_write',
     ],
   };
+}
+
+function buildReviewHandoff(
+  projectItems: ProjectKnowledgeWritebackPatchItem[],
+  expansionItems: DomainPackExpansionWritebackDraftItem[],
+): KnowledgeWritebackQueueReviewHandoff {
+  const projectHandoffItems = projectItems.map<KnowledgeWritebackQueueReviewHandoffItem>(item => {
+    const status = item.writeback_status ?? 'draft_ready';
+    return {
+      handoff_id: item.task_key ?? `${item.project_id ?? 'project'}::${item.task_id}`,
+      source_kind: 'project',
+      title: item.label,
+      target_file: item.suggested_file_path,
+      writeback_status: status,
+      province: item.target_province,
+      project_id: item.project_id,
+      task_id: item.task_id,
+      target_video_types: item.video_type ? [item.video_type] : [],
+      review_note: item.review_note,
+      writeback_note: item.writeback_note,
+      candidate_field_count: 0,
+      source_ref_count: 0,
+      required_action: reviewHandoffRequiredAction(status, Boolean(item.review_note?.trim()), 0),
+    };
+  });
+
+  const expansionHandoffItems = expansionItems.map<KnowledgeWritebackQueueReviewHandoffItem>(item => {
+    const status = item.writeback_status ?? 'draft_ready';
+    const sourceRefCount = itemSourceRefCount(item);
+    return {
+      handoff_id: item.review_item_id,
+      source_kind: 'domain_pack_expansion',
+      title: item.entry_name,
+      target_file: item.suggested_file_path,
+      writeback_status: status,
+      province: item.province,
+      review_item_id: item.review_item_id,
+      pack_id: item.pack_id,
+      target_video_types: item.target_video_types,
+      review_state_source: item.review_state_source,
+      review_state_overrides_seed: item.review_state_overrides_seed,
+      review_note: item.review_note,
+      writeback_note: item.writeback_note,
+      candidate_field_count: item.field_supplement_candidate_count ?? candidateFieldCount(item),
+      source_ref_count: sourceRefCount,
+      required_action: reviewHandoffRequiredAction(status, Boolean(item.review_note?.trim()), sourceRefCount),
+    };
+  });
+
+  const items = [...projectHandoffItems, ...expansionHandoffItems];
+  const statusCounts = normalizeStatusCounts();
+  for (const item of items) {
+    statusCounts[item.writeback_status] += 1;
+  }
+
+  const reviewNoteCount = items.filter(item => Boolean(item.review_note?.trim())).length;
+  const sourceRefCount = items.reduce((sum, item) => sum + item.source_ref_count, 0);
+  const candidateFieldCount = items.reduce((sum, item) => sum + item.candidate_field_count, 0);
+
+  return {
+    schema_version: 'knowledge-writeback-queue-review-handoff/v1',
+    total_handoff_count: items.length,
+    project_handoff_count: projectHandoffItems.length,
+    expansion_handoff_count: expansionHandoffItems.length,
+    runtime_override_count: expansionHandoffItems.filter(item =>
+      item.review_state_source === 'runtime' || item.review_state_overrides_seed,
+    ).length,
+    seed_sourced_count: expansionHandoffItems.filter(item => item.review_state_source === 'seed').length,
+    review_note_count: reviewNoteCount,
+    missing_review_note_count: items.length - reviewNoteCount,
+    source_ref_count: sourceRefCount,
+    candidate_field_count: candidateFieldCount,
+    requires_manual_signoff_count: items.filter(item => item.writeback_status !== 'written_back').length,
+    status_counts: statusCounts,
+    operator_checklist: [
+      '逐条确认 target_file 与省份条目匹配。',
+      '逐条核对 review_note、writeback_note 和字段级 source_refs。',
+      'runtime review-state 覆盖 seed 时，优先查看退回原因和复核备注。',
+      '只把导出包作为人工写回草案；默认不直接写 data/provinces/*.md。',
+    ],
+    items,
+  };
+}
+
+function reviewHandoffRequiredAction(
+  status: KnowledgeWritebackStatus,
+  hasReviewNote: boolean,
+  sourceRefCount: number,
+): string {
+  if (status === 'written_back') return '已标记写回，仍需人工确认省份 Markdown diff。';
+  if (status === 'needs_revision') return '退回复核：按退回原因补来源、边界或写回范围。';
+  if (!hasReviewNote) return '补充复核备注后再签收。';
+  if (sourceRefCount === 0) return '补充来源引用或人工证据链接后再签收。';
+  if (status === 'queued') return '已入队，等待人工核对字段差异并执行外部写回。';
+  return '草案就绪，等待人工签收或批量入队。';
+}
+
+function candidateFieldCount(item: DomainPackExpansionWritebackDraftItem): number {
+  return (item.field_workbench ?? []).filter(field => field.supplement_status === 'candidate_draft').length;
+}
+
+function itemSourceRefCount(item: DomainPackExpansionWritebackDraftItem): number {
+  return new Set((item.field_workbench ?? []).flatMap(field => field.source_refs)).size;
 }
 
 function buildTargetFilePreflight(
@@ -267,6 +376,25 @@ function renderKnowledgeWritebackQueueExportMarkdown(
     '',
     ...renderTargetFilePreflightLines(pkg.preflight.target_file_preflight),
     '',
+    '## Review Handoff',
+    '',
+    `- schema_version: ${pkg.preflight.review_handoff.schema_version}`,
+    `- total_handoff_count: ${pkg.preflight.review_handoff.total_handoff_count}`,
+    `- project_handoff_count: ${pkg.preflight.review_handoff.project_handoff_count}`,
+    `- expansion_handoff_count: ${pkg.preflight.review_handoff.expansion_handoff_count}`,
+    `- runtime_override_count: ${pkg.preflight.review_handoff.runtime_override_count}`,
+    `- review_note_count: ${pkg.preflight.review_handoff.review_note_count}`,
+    `- missing_review_note_count: ${pkg.preflight.review_handoff.missing_review_note_count}`,
+    `- requires_manual_signoff_count: ${pkg.preflight.review_handoff.requires_manual_signoff_count}`,
+    '',
+    '### Operator Checklist',
+    '',
+    ...pkg.preflight.review_handoff.operator_checklist.map(item => `- ${item}`),
+    '',
+    '### Handoff Items',
+    '',
+    ...renderReviewHandoffLines(pkg.preflight.review_handoff.items),
+    '',
     '## Project Writeback Patch',
     '',
     pkg.project_patch.approved_count > 0 ? pkg.project_patch.markdown.trim() : '- none',
@@ -286,6 +414,21 @@ function renderTargetFilePreflightLines(items: KnowledgeWritebackQueueExportTarg
     `  - expansion_source_refs: ${item.expansion_source_ref_count}`,
     `  - direct_writeback_to_province_markdown: ${item.direct_writeback_to_province_markdown}`,
     `  - safety_note: ${item.safety_note}`,
+  ]);
+}
+
+function renderReviewHandoffLines(items: KnowledgeWritebackQueueReviewHandoffItem[]): string[] {
+  if (items.length === 0) return ['- none'];
+  return items.flatMap(item => [
+    `- ${item.handoff_id}｜${item.title}`,
+    `  - source_kind: ${item.source_kind}`,
+    `  - target_file: ${item.target_file}`,
+    `  - writeback_status: ${item.writeback_status}`,
+    `  - candidate_fields: ${item.candidate_field_count}`,
+    `  - source_refs: ${item.source_ref_count}`,
+    ...(item.review_state_source ? [`  - review_state_source: ${item.review_state_source}`] : []),
+    ...(typeof item.review_state_overrides_seed === 'boolean' ? [`  - review_state_overrides_seed: ${item.review_state_overrides_seed}`] : []),
+    `  - required_action: ${item.required_action}`,
   ]);
 }
 

@@ -161,6 +161,26 @@
       </ul>
     </section>
 
+    <section v-if="filteredTotalCount" class="writeback-page__handoff">
+      <div>
+        <strong>人工复核交接</strong>
+        <span>
+          待签收 {{ reviewHandoffSummary.requiresManualSignoffCount }} 条 ·
+          运行态覆盖 {{ reviewHandoffSummary.runtimeOverrideCount }} 条 ·
+          缺复核备注 {{ reviewHandoffSummary.missingReviewNoteCount }} 条 ·
+          来源引用 {{ reviewHandoffSummary.sourceRefCount }} 条
+        </span>
+      </div>
+      <div class="writeback-page__handoff-grid">
+        <article v-for="item in reviewHandoffSamples" :key="item.handoff_id">
+          <strong>{{ item.title }}</strong>
+          <span>{{ item.source_label }} · {{ writebackStatusLabel(item.writeback_status) }} · {{ item.target_file }}</span>
+          <span>字段 {{ item.candidate_field_count }} 个 · 来源 {{ item.source_ref_count }} 条</span>
+          <span>{{ item.required_action }}</span>
+        </article>
+      </div>
+    </section>
+
     <section v-if="filteredTotalCount" class="writeback-page__export-preflight">
       <div>
         <strong>统一导出预检</strong>
@@ -400,6 +420,20 @@ const selectedExpansionIds = ref<string[]>([])
 const noteDrafts = reactive<Record<string, string>>({})
 const expansionNoteDrafts = reactive<Record<string, string>>({})
 
+interface ReviewHandoffPreviewItem {
+  handoff_id: string;
+  source_label: string;
+  title: string;
+  target_file: string;
+  writeback_status: KnowledgeWritebackStatus;
+  candidate_field_count: number;
+  source_ref_count: number;
+  has_review_note: boolean;
+  review_state_source?: DomainPackExpansionReviewStateSource;
+  review_state_overrides_seed?: boolean;
+  required_action: string;
+}
+
 const revisionTemplates = [
   {
     id: 'missing_source',
@@ -519,6 +553,50 @@ const unifiedPreflightSummary = computed(() => ({
   expansionSourceRefCount: unifiedTargetFilePreflight.value
     .reduce((sum, item) => sum + item.expansion_source_ref_count, 0),
 }))
+const reviewHandoffItems = computed<ReviewHandoffPreviewItem[]>(() => [
+  ...filteredItems.value.map(item => {
+    const status = taskWritebackStatus(item)
+    const hasReviewNote = Boolean(item.task.knowledge_candidate_review_note?.trim())
+    return {
+      handoff_id: writebackItemKey(item),
+      source_label: '项目草案',
+      title: item.task.label,
+      target_file: item.suggested_file_path || `data/provinces/${item.target_province || '待确认'}.md`,
+      writeback_status: status,
+      candidate_field_count: 0,
+      source_ref_count: 0,
+      has_review_note: hasReviewNote,
+      required_action: reviewHandoffRequiredAction(status, hasReviewNote, 0),
+    }
+  }),
+  ...filteredExpansionItems.value.map(item => {
+    const status = expansionWritebackStatus(item)
+    const sourceRefCount = itemSourceRefCount(item)
+    const hasReviewNote = Boolean(item.review_note?.trim())
+    return {
+      handoff_id: item.review_item_id,
+      source_label: reviewStateSourceLabel(item.review_state_source),
+      title: item.entry_name,
+      target_file: item.suggested_file_path,
+      writeback_status: status,
+      candidate_field_count: item.field_supplement_candidate_count ?? candidateFields(item).length,
+      source_ref_count: sourceRefCount,
+      has_review_note: hasReviewNote,
+      review_state_source: item.review_state_source,
+      review_state_overrides_seed: item.review_state_overrides_seed,
+      required_action: reviewHandoffRequiredAction(status, hasReviewNote, sourceRefCount),
+    }
+  }),
+])
+const reviewHandoffSummary = computed(() => ({
+  requiresManualSignoffCount: reviewHandoffItems.value.filter(item => item.writeback_status !== 'written_back').length,
+  runtimeOverrideCount: reviewHandoffItems.value.filter(item =>
+    item.review_state_source === 'runtime' || item.review_state_overrides_seed,
+  ).length,
+  missingReviewNoteCount: reviewHandoffItems.value.filter(item => !item.has_review_note).length,
+  sourceRefCount: reviewHandoffItems.value.reduce((sum, item) => sum + item.source_ref_count, 0),
+}))
+const reviewHandoffSamples = computed(() => reviewHandoffItems.value.slice(0, 6))
 
 const projectOptions = computed(() => {
   const seen = new Set<string>()
@@ -706,6 +784,19 @@ function reviewStateSourceLabel(source: DomainPackExpansionReviewStateSource): s
   return '未记录'
 }
 
+function reviewHandoffRequiredAction(
+  status: KnowledgeWritebackStatus,
+  hasReviewNote: boolean,
+  sourceRefCount: number,
+): string {
+  if (status === 'written_back') return '已标记写回，仍需核对省份 Markdown diff'
+  if (status === 'needs_revision') return '按退回原因补来源、边界或写回范围'
+  if (!hasReviewNote) return '补充复核备注后再签收'
+  if (sourceRefCount === 0) return '补充来源引用或人工证据链接后再签收'
+  if (status === 'queued') return '已入队，等待人工核对字段差异'
+  return '草案就绪，等待人工签收或批量入队'
+}
+
 function toggleExpansionSelection(item: DomainPackExpansionWritebackDraftItem, event: Event) {
   const checked = (event.target as HTMLInputElement).checked
   const selected = new Set(selectedExpansionIds.value)
@@ -824,7 +915,7 @@ async function copyUnifiedExport(format: 'markdown' | 'json') {
         : res.data.markdown
       await navigator.clipboard.writeText(clipboardText)
       const exportLabel = format === 'json' ? '统一 JSON 导出包' : '统一 Markdown 导出包'
-      copyMessage.value = `已复制 ${exportLabel}：项目 ${res.data.project_approved_count} 条，扩库 ${res.data.expansion_approved_count} 条，目标文件 ${res.data.preflight.target_file_count} 个，字段候选 ${res.data.preflight.expansion_candidate_field_count} 个，来源引用 ${res.data.preflight.expansion_source_ref_count} 条；省份 Markdown 未写入。`
+      copyMessage.value = `已复制 ${exportLabel}：项目 ${res.data.project_approved_count} 条，扩库 ${res.data.expansion_approved_count} 条，目标文件 ${res.data.preflight.target_file_count} 个，字段候选 ${res.data.preflight.expansion_candidate_field_count} 个，来源引用 ${res.data.preflight.expansion_source_ref_count} 条，待人工签收 ${res.data.preflight.review_handoff.requires_manual_signoff_count} 条；省份 Markdown 未写入。`
     } else {
       error.value = res.error?.message ?? '导出统一写回队列失败'
     }
@@ -1137,6 +1228,53 @@ onMounted(async () => {
 .writeback-page__review-summary ul {
   margin: 6px 0 0;
   padding-left: 18px;
+}
+
+.writeback-page__handoff {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  color: #465767;
+}
+
+.writeback-page__handoff > div:first-child strong,
+.writeback-page__handoff > div:first-child span {
+  display: block;
+}
+
+.writeback-page__handoff > div:first-child strong {
+  color: #22313f;
+  font-size: 14px;
+}
+
+.writeback-page__handoff > div:first-child span,
+.writeback-page__handoff-grid span {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.writeback-page__handoff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.writeback-page__handoff-grid article {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #e4eaf0;
+  border-radius: 6px;
+  padding: 8px;
+  background: #f8fbfd;
+}
+
+.writeback-page__handoff-grid strong {
+  color: #22313f;
+  font-size: 13px;
 }
 
 .writeback-page__export-preflight {

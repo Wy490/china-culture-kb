@@ -6326,6 +6326,44 @@ export interface KnowledgeWritebackQueueExportTargetFilePreflight {
   safety_note: string;
 }
 
+export interface KnowledgeWritebackQueueReviewHandoffItem {
+  handoff_id: string;
+  source_kind: 'project' | 'domain_pack_expansion';
+  title: string;
+  target_file: string;
+  writeback_status: KnowledgeWritebackStatus;
+  province?: string;
+  project_id?: string;
+  task_id?: string;
+  review_item_id?: string;
+  pack_id?: string;
+  target_video_types: string[];
+  review_state_source?: DomainPackExpansionReviewStateSource;
+  review_state_overrides_seed?: boolean;
+  review_note?: string;
+  writeback_note?: string;
+  candidate_field_count: number;
+  source_ref_count: number;
+  required_action: string;
+}
+
+export interface KnowledgeWritebackQueueReviewHandoff {
+  schema_version: 'knowledge-writeback-queue-review-handoff/v1';
+  total_handoff_count: number;
+  project_handoff_count: number;
+  expansion_handoff_count: number;
+  runtime_override_count: number;
+  seed_sourced_count: number;
+  review_note_count: number;
+  missing_review_note_count: number;
+  source_ref_count: number;
+  candidate_field_count: number;
+  requires_manual_signoff_count: number;
+  status_counts: Record<KnowledgeWritebackStatus, number>;
+  operator_checklist: string[];
+  items: KnowledgeWritebackQueueReviewHandoffItem[];
+}
+
 export interface KnowledgeWritebackQueueExportPreflight {
   schema_version: 'knowledge-writeback-queue-export-preflight/v1';
   direct_writeback_to_province_markdown: false;
@@ -6342,6 +6380,7 @@ export interface KnowledgeWritebackQueueExportPreflight {
   blocked_direct_writeback_count: number;
   ready_for_manual_export: boolean;
   target_file_preflight: KnowledgeWritebackQueueExportTargetFilePreflight[];
+  review_handoff: KnowledgeWritebackQueueReviewHandoff;
   safety_checks: string[];
 }
 

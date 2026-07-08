@@ -277,6 +277,47 @@
               "verification_note": "风险项来自条目待核实点，适合提醒人工复核，不适合直接做成事实旁白。"
             }
           ]
+        },
+        {
+          "entry_name": "湘绣——中国四大名绣之一",
+          "province": "湖南",
+          "recommended_fields": ["materials", "process_steps", "documentation_assets", "production_risks"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["四大名绣地位无来源泛化", "鬅毛针和掺针写成可公开教程", "具体作品年代和作者未核实断言"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "materials",
+              "candidate_value": "绣针、绣线、绷架、底料、剪线剪、图样稿、绣房灯光和作品标签可作为湘绣 heritage_promo 材料与现场资产；劈丝规格、染线配方和名作复制流程不得凭空展开。",
+              "evidence_level": "local_entry",
+              "source_refs": ["data/provinces/湖南.md#湘绣：人物随身道具", "data/provinces/湖南.md#湘绣：场景"],
+              "writeback_hint": "作为非遗材料字段候选，正式写回前复核国家级非遗名录、湘绣展示馆资料和可拍授权。",
+              "verification_note": "材料来自本地湘绣条目；具体工具规格、传承人和展品授权需人工补源。"
+            },
+            {
+              "field_id": "process_steps",
+              "candidate_value": "候选流程为选图定稿→上绷定位→劈丝配线→按针法分区刺绣→鬅毛针/掺针表现毛发和过渡→整理整熨→装裱入展；只拍手部动作和工序节点，不写成教学教程。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#湘绣：简介", "data/provinces/湖南.md#湘绣：故事梗概"],
+              "writeback_hint": "作为流程镜头候选，针法术语、步骤顺序和示范作品需由传承机构确认。",
+              "verification_note": "流程由本地条目的鬅毛针、掺针、劈丝和绣房场景归纳，仍需工艺师复核。"
+            },
+            {
+              "field_id": "documentation_assets",
+              "candidate_value": "中国非遗网湘绣项目页、长沙湘绣非遗传承基地/展示馆资料、作品标签、传承人口述、针法样本、绣稿和展柜说明可组成来源与授权清单。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/湖南.md#湘绣：来源", "data/provinces/湖南.md#湘绣：核实方法"],
+              "writeback_hint": "写回时拆成来源入口、可拍资产和授权待办，不把展品画面默认视为可商用素材。",
+              "verification_note": "来源入口来自本地条目；项目页、代表性传承人和展品版权需人工确认。"
+            },
+            {
+              "field_id": "production_risks",
+              "candidate_value": "“2000多年历史”“四大名绣之一”“绣线可劈至1/64根”“鬅毛针专绣狮虎毛发”等强表述需逐条补源；不能把保护性针法细节做成公开教程，也不能把单件展品作者、年代或馆藏状态写成未经核实事实。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#湘绣：待核实点", "data/provinces/湖南.md#湘绣：可信度"],
+              "writeback_hint": "作为审稿风险清单进入草案，优先保护名录口径、工艺细节、展品版权和传承人身份边界。",
+              "verification_note": "风险来自本地条目可信度和待核范围；适合人工复核，不直接入事实正文。"
+            }
+          ]
         }
       ]
     },
@@ -545,6 +586,47 @@
               "verification_note": "边界来自待核实点和纪录片规则，死亡数字、关联程度和战斗过程必须人工审稿。"
             }
           ]
+        },
+        {
+          "entry_name": "平型关大捷——抗战以来中国军队首次大胜",
+          "province": "山西",
+          "recommended_fields": ["documentary_question", "source_trail", "present_day_trace", "reconstruction_boundary"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["战斗细节无来源对白", "歼敌和缴获数字口径绝对化", "以再现画面冒充历史影像"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "documentary_question",
+              "candidate_value": "为什么一场发生在乔沟山路的伏击战，会被记住为打破“日军不可战胜”神话的关键节点？微纪录可从地形、战术和社会动员三层讲述平型关。",
+              "evidence_level": "local_entry_with_documentary_adaptation",
+              "source_refs": ["data/provinces/山西.md#平型关大捷：简介", "data/provinces/山西.md#平型关大捷：文化意义"],
+              "writeback_hint": "作为 documentary_short 核心问题候选，保持战史讲述克制，避免口号替代证据。",
+              "verification_note": "问题来自本地条目的战斗定位、乔沟伏击和全国抗战信心线索。"
+            },
+            {
+              "field_id": "source_trail",
+              "candidate_value": "平型关大捷纪念馆官方资料、战斗路线图、纪念馆展柜、缴获物资模型、军史研究者采访和115师相关战史资料可组成来源线。",
+              "evidence_level": "local_entry_source_list",
+              "source_refs": ["data/provinces/山西.md#平型关大捷：来源", "data/provinces/山西.md#平型关大捷：人物"],
+              "writeback_hint": "写回时拆成纪念馆资料、战史文本、采访角色和影像授权，不混用不同统计口径。",
+              "verification_note": "来源入口来自山西条目；战斗报告、展陈资料和数字口径需人工交叉核验。"
+            },
+            {
+              "field_id": "present_day_trace",
+              "candidate_value": "平型关大捷纪念馆、乔沟地形线索、战斗路线图、缴获物资模型、抗战宣传报和青年参军海报，可组成现实回访与历史影响转场。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/山西.md#平型关大捷：相关地点", "data/provinces/山西.md#平型关大捷：场景陈设"],
+              "writeback_hint": "作为现地痕迹和 B-roll 采集清单，纪念馆拍摄、模型版权和乔沟实地路线需授权复核。",
+              "verification_note": "地点和展陈来自本地条目；现场可拍范围与交通安全另行确认。"
+            },
+            {
+              "field_id": "reconstruction_boundary",
+              "candidate_value": "可以用地图、地形空镜、纪念馆展陈和物资模型说明伏击过程；不得虚构战士对白、日军指挥对话、具体伤亡瞬间或把再现镜头剪成历史影像。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/山西.md#平型关大捷：待核实点", "data/provinces/山西.md#平型关大捷：核实方法"],
+              "writeback_hint": "写入纪录片再现边界，歼敌数、缴获数和部署图缺口必须标注来源。",
+              "verification_note": "边界来自本地待核实点和纪录片规则，适合人工审稿。"
+            }
+          ]
         }
       ]
     },
@@ -770,6 +852,47 @@
               "source_refs": ["data/provinces/湖南.md#凤凰纸扎：待核实点", "data/provinces/湖南.md#凤凰纸扎：可信度"],
               "writeback_hint": "写入漫剧审稿边界，优先保护民俗尊重、工艺事实和获奖馆藏证据边界。",
               "verification_note": "边界来自本地条目的待核实点和可信度说明。"
+            }
+          ]
+        },
+        {
+          "entry_name": "屈原投江汨罗——端午节起源",
+          "province": "湖南",
+          "recommended_fields": ["opening_hook", "character_anchor", "expression_beats", "forbidden_tone"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["托梦和五彩线传说写成史实", "端午起源单一化", "屈原心理独白无来源断言"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "opening_hook",
+              "candidate_value": "第一格：汨罗江边鼓声未起，少年龙舟手捡到一枚粽叶，江风里传来一句旁白——有些节日，是从一次寻找开始的。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#屈原投江汨罗：简介", "data/provinces/湖南.md#屈原投江汨罗：故事梗概"],
+              "writeback_hint": "只作为 AI 漫剧开场钩子候选，不写成历史现场或《史记》原文。",
+              "verification_note": "钩子基于汨罗江、龙舟竞渡和粽子习俗意象改编。"
+            },
+            {
+              "field_id": "character_anchor",
+              "candidate_value": "屈原是楚辞诗人和端午纪念中心人物；汨罗江畔百姓/渔夫承接寻找与祭祀传说；当代龙舟队员或屈原纪念馆讲解员负责提示史实、民俗和传说边界。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#屈原投江汨罗：人物", "data/provinces/湖南.md#屈原投江汨罗：核实方法"],
+              "writeback_hint": "作为角色锚点候选，历史人物、民间习俗和当代活动需分层。",
+              "verification_note": "人物层级来自本地条目；具体对白、少年龙舟手和转场为明确改编。"
+            },
+            {
+              "field_id": "expression_beats",
+              "candidate_value": "少年疑惑节日由来→听见投江传说时沉默→看到龙舟入水时被群体情绪带动→听到托梦、五彩线等民间细节需标注传说时点头→最后把粽叶系在船头。",
+              "evidence_level": "adaptation_candidate",
+              "source_refs": ["data/provinces/湖南.md#屈原投江汨罗：文化意义", "data/provinces/湖南.md#屈原投江汨罗：待核实点"],
+              "writeback_hint": "作为表情节拍候选，用于漫剧连续性；不得替代真实端午仪式流程。",
+              "verification_note": "情绪节拍服务低门槛漫剧表达，事实边界仍需保留。"
+            },
+            {
+              "field_id": "forbidden_tone",
+              "candidate_value": "避免把屈原托梦、楝叶五彩线、十二疑冢等民间说法写成正史；避免把端午起源简化为唯一来源；避免用悲情煽动替代《史记》人物、汨罗端午习俗和非遗线索。",
+              "evidence_level": "local_entry_boundary",
+              "source_refs": ["data/provinces/湖南.md#屈原投江汨罗：待核实点", "data/provinces/湖南.md#屈原投江汨罗：可信度"],
+              "writeback_hint": "写入漫剧审稿边界，优先保护历史文献、民俗传说和当代非遗活动的层级差异。",
+              "verification_note": "边界来自本地条目的核实方法和待核实点。"
             }
           ]
         }
@@ -1183,6 +1306,47 @@
               "source_refs": ["data/provinces/湖南.md#安仁赶分社：文化意义", "data/provinces/湖南.md#安仁赶分社：核实方法"],
               "writeback_hint": "复盘句可进入讲解草案，正式写回前应删除或补证过强价值判断。",
               "verification_note": "句子服务讲解片收束，需保留年度活动公告、神农殿资料和交易数据复核边界。"
+            }
+          ]
+        },
+        {
+          "entry_name": "马王堆汉墓——西汉文明的地下宝库",
+          "province": "湖南",
+          "recommended_fields": ["core_question", "concept_definitions", "diagram_or_caption_plan", "recap_sentence"],
+          "candidate_status": "candidate_review",
+          "forbidden_direct_claims": ["墓主身份和随葬品细节无来源扩写", "医学和防腐技术神秘化", "展陈文物画面默认可商用"],
+          "field_supplement_candidates": [
+            {
+              "field_id": "core_question",
+              "candidate_value": "为什么一座西汉墓葬能让观众同时看见家族身份、生活器物、医学想象和考古证据？讲解片可把马王堆拆成墓葬结构、出土文物和展陈口径三层。",
+              "evidence_level": "explainer_candidate_from_local_entry",
+              "source_refs": ["data/provinces/湖南.md#马王堆汉墓：简介", "data/provinces/湖南.md#马王堆汉墓：文化意义"],
+              "writeback_hint": "作为 explainer_video 开场问题候选，不把提问写成考古定论。",
+              "verification_note": "问题来自本地条目的墓葬、出土文物和湖南省博物馆展陈线索。"
+            },
+            {
+              "field_id": "concept_definitions",
+              "candidate_value": "“考古发现”指由发掘报告、出土文物和展陈说明支撑的事实；“生活复原”指从漆器、帛书、服饰、饮食器具推导的西汉生活图景；“医学想象”需严格区分帛书内容、研究解释和大众传播说法。",
+              "evidence_level": "local_entry_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#马王堆汉墓：来源", "data/provinces/湖南.md#马王堆汉墓：核实方法"],
+              "writeback_hint": "概念定义先作为讲解候选，正式写回时需按博物馆和发掘报告口径复核。",
+              "verification_note": "定义用于讲解结构，避免把展陈解释和学术结论混为一层。"
+            },
+            {
+              "field_id": "diagram_or_caption_plan",
+              "candidate_value": "三层图示：墓葬空间剖面/核心文物类别/展厅证据链；字幕可标注“墓主与家族、帛书与器物、博物馆展陈和发掘报告需分层引用”。",
+              "evidence_level": "local_entry_asset_lead",
+              "source_refs": ["data/provinces/湖南.md#马王堆汉墓：场景", "data/provinces/湖南.md#马王堆汉墓：场景陈设"],
+              "writeback_hint": "作为图示字幕候选，馆藏文物图像、展厅拍摄和剖面图需授权。",
+              "verification_note": "图示基于本地条目的展厅、文物和考古记录卡资产，不能替代正式发掘图。"
+            },
+            {
+              "field_id": "recap_sentence",
+              "candidate_value": "马王堆的价值不只是“保存得惊人”，而是让我们用一件件可核验的文物，重新理解西汉人的身体、器物、书写和生活秩序。",
+              "evidence_level": "explainer_candidate_with_boundary",
+              "source_refs": ["data/provinces/湖南.md#马王堆汉墓：文化意义", "data/provinces/湖南.md#马王堆汉墓：可信度"],
+              "writeback_hint": "复盘句可进入讲解草案，正式写回前补齐展陈和研究资料口径。",
+              "verification_note": "句子服务视频收束，避免神秘化、防腐奇观化或过度医学化。"
             }
           ]
         }
