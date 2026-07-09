@@ -201,6 +201,14 @@ interface DomainPackExpansionReviewMetrics {
   review_closure_runtime_override_count: number;
 }
 
+interface StorySupplementBacklogMetrics {
+  open_count: number;
+  optional_open_count: number;
+  risk_open_count: number;
+  blocking_open_count: number;
+  read_error?: string;
+}
+
 interface DomainPackExpansionDevelopmentProgress {
   average_percent: number;
   field_workbench_controls_percent: number;
@@ -508,6 +516,34 @@ function domainPackExpansionDevelopmentProgress(
 
 function taskWritebackStatus(item: ProjectSupplementTaskListItem): KnowledgeWritebackStatus {
   return item.task.knowledge_writeback_status ?? 'draft_ready';
+}
+
+async function getStorySupplementBacklogMetrics(
+  health: StoryAgentGeneratedHealthReport,
+): Promise<StorySupplementBacklogMetrics> {
+  const fallbackOpenCount = health.summary.story_open_supplement_task_count ?? 0;
+  const result = await listProjectSupplementTasks({ status: 'open' });
+  if (!result.ok || !result.data) {
+    return {
+      open_count: fallbackOpenCount,
+      optional_open_count: 0,
+      risk_open_count: 0,
+      blocking_open_count: 0,
+      read_error: result.error?.message ?? 'Failed to read open supplement tasks',
+    };
+  }
+  const counts: StorySupplementBacklogMetrics = {
+    open_count: result.data.length,
+    optional_open_count: 0,
+    risk_open_count: 0,
+    blocking_open_count: 0,
+  };
+  for (const item of result.data) {
+    if (item.task.blocking_level === 'blocking') counts.blocking_open_count += 1;
+    else if (item.task.blocking_level === 'risk') counts.risk_open_count += 1;
+    else counts.optional_open_count += 1;
+  }
+  return counts;
 }
 
 function envConfigured(name: string): boolean {
@@ -893,7 +929,10 @@ function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryA
   };
 }
 
-function storyQualityLane(health: StoryAgentGeneratedHealthReport): StoryAgentMvpLane {
+function storyQualityLane(
+  health: StoryAgentGeneratedHealthReport,
+  supplementMetrics: StorySupplementBacklogMetrics,
+): StoryAgentMvpLane {
   const summary = health.summary;
   const storyCount = summary.scanned_story_project_count;
   const missingCurrent = summary.missing_current_story_count;
@@ -901,11 +940,14 @@ function storyQualityLane(health: StoryAgentGeneratedHealthReport): StoryAgentMv
   const missingQuality = summary.missing_quality_count;
   const qualityPassed = summary.story_quality_passed_count ?? 0;
   const qualityFailed = summary.story_quality_failed_count ?? 0;
-  const openSupplementTasks = summary.story_open_supplement_task_count ?? 0;
+  const openSupplementTasks = supplementMetrics.open_count;
+  const optionalSupplementTasks = supplementMetrics.optional_open_count;
+  const riskSupplementTasks = supplementMetrics.risk_open_count;
+  const blockingSupplementTasks = supplementMetrics.blocking_open_count;
   const materialBlocked = summary.story_material_sufficiency_blocked_count ?? 0;
   const status: StoryAgentMvpStatus = missingCurrent > 0
     ? 'blocked'
-    : missingScene > 0 || missingQuality > 0 || qualityFailed > 0 || storyCount === 0
+    : missingScene > 0 || missingQuality > 0 || qualityFailed > 0 || riskSupplementTasks > 0 || blockingSupplementTasks > 0 || storyCount === 0
       ? 'needs_action'
       : 'ready';
   return {
@@ -914,10 +956,10 @@ function storyQualityLane(health: StoryAgentGeneratedHealthReport): StoryAgentMv
     status,
     score: storyCount === 0
       ? 35
-      : clampScore(100 - missingCurrent * 40 - missingScene * 25 - missingQuality * 20 - qualityFailed * 15 - materialBlocked * 5),
+      : clampScore(100 - missingCurrent * 40 - missingScene * 25 - missingQuality * 20 - qualityFailed * 15 - blockingSupplementTasks * 12 - riskSupplementTasks * 6 - materialBlocked * 5),
     detail: storyCount === 0
       ? 'No standalone story project has a measurable scene and quality contract yet.'
-      : `${storyCount - Math.min(storyCount, missingScene + missingQuality)}/${storyCount} story projects have scene and quality evidence; ${qualityPassed}/${storyCount} pass quality, ${qualityFailed} fail quality, ${openSupplementTasks} open supplement tasks, ${materialBlocked} material gates blocked.`,
+      : `${storyCount - Math.min(storyCount, missingScene + missingQuality)}/${storyCount} story projects have scene and quality evidence; ${qualityPassed}/${storyCount} pass quality, ${qualityFailed} fail quality, ${openSupplementTasks} open supplement tasks (${blockingSupplementTasks} blocking, ${riskSupplementTasks} risk, ${optionalSupplementTasks} optional), ${materialBlocked} material gates blocked.`,
     evidence: [
       `story_projects=${storyCount}`,
       `missing_current_story=${missingCurrent}`,
@@ -926,7 +968,11 @@ function storyQualityLane(health: StoryAgentGeneratedHealthReport): StoryAgentMv
       `quality_passed=${qualityPassed}`,
       `quality_failed=${qualityFailed}`,
       `open_supplement_tasks=${openSupplementTasks}`,
+      `supplement_blocking=${blockingSupplementTasks}`,
+      `supplement_risk=${riskSupplementTasks}`,
+      `supplement_optional=${optionalSupplementTasks}`,
       `material_sufficiency_blocked=${materialBlocked}`,
+      `supplement_read_error=${supplementMetrics.read_error ?? 'none'}`,
     ],
     next_action: missingCurrent > 0
       ? 'Restore interrupted story project pointers before repair automation.'
@@ -934,6 +980,8 @@ function storyQualityLane(health: StoryAgentGeneratedHealthReport): StoryAgentMv
         ? 'Run Story Agent validation/repair to regenerate scene_breakdown and quality_report.'
         : qualityFailed > 0
           ? 'Run Story Agent quality repair on failed story projects; keep optional supplement tasks separate from quality gates.'
+          : blockingSupplementTasks > 0 || riskSupplementTasks > 0
+            ? 'Resolve blocking or risk-level supplement tasks before treating Story Agent quality backlog as closed.'
         : storyCount === 0
           ? 'Generate the first measurable story project for quality validation.'
           : openSupplementTasks > 0
@@ -1352,6 +1400,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- generated interrupted: ${report.summary.generated_interrupted_count}`,
     `- story quality passed/failed: ${report.summary.story_quality_passed_count}/${report.summary.story_quality_failed_count}`,
     `- story open supplement tasks: ${report.summary.story_open_supplement_task_count}`,
+    `- story supplement backlog: ${report.summary.story_supplement_open_count} open (${report.summary.story_supplement_blocking_open_count} blocking / ${report.summary.story_supplement_risk_open_count} risk / ${report.summary.story_supplement_optional_open_count} optional)`,
     `- story material gates blocked: ${report.summary.story_material_sufficiency_blocked_count}`,
     `- readiness targets: ${report.summary.readiness_target_count}`,
     `- readiness ready: ${report.summary.readiness_ready_count}`,
@@ -1500,8 +1549,8 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
 export async function getStoryAgentMvpStatus(
   options: StoryAgentMvpStatusOptions = {},
 ): Promise<StoryAgentMvpStatusReport> {
-  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio] = await Promise.all([
-    getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 }),
+  const generatedHealth = await getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 });
+  const [generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio, supplementBacklogMetrics] = await Promise.all([
     getStoryAgentGeneratedGovernancePlan({ limit: options.generatedLimit ?? 200 }),
     getProductionMaterialPackHealthReport(),
     getDomainPackProductionHealthReport(),
@@ -1511,6 +1560,7 @@ export async function getStoryAgentMvpStatus(
       includeArchivedSeries: options.includeArchivedSeries,
       limit: options.portfolioLimit ?? 100,
     }),
+    getStorySupplementBacklogMetrics(generatedHealth),
   ]);
   const lanes = [
     generatedArtifactsLane(generatedHealth),
@@ -1519,7 +1569,7 @@ export async function getStoryAgentMvpStatus(
     domainPackLane(domainPackHealth),
     domainPackExpansionLane(domainPackExpansionCandidates),
     knowledgeWritebackLane(writebackMetrics),
-    storyQualityLane(generatedHealth),
+    storyQualityLane(generatedHealth, supplementBacklogMetrics),
     repairLoopLane(productionPortfolio),
     deliveryContractLane(generatedHealth),
     productionCommandLane(productionPortfolio),
@@ -1557,6 +1607,10 @@ export async function getStoryAgentMvpStatus(
       story_quality_passed_count: generatedHealth.summary.story_quality_passed_count ?? 0,
       story_quality_failed_count: generatedHealth.summary.story_quality_failed_count ?? 0,
       story_open_supplement_task_count: generatedHealth.summary.story_open_supplement_task_count ?? 0,
+      story_supplement_open_count: supplementBacklogMetrics.open_count,
+      story_supplement_optional_open_count: supplementBacklogMetrics.optional_open_count,
+      story_supplement_risk_open_count: supplementBacklogMetrics.risk_open_count,
+      story_supplement_blocking_open_count: supplementBacklogMetrics.blocking_open_count,
       story_material_sufficiency_blocked_count: generatedHealth.summary.story_material_sufficiency_blocked_count ?? 0,
       readiness_target_count: productionPortfolio.summary.total_target_count,
       readiness_ready_count: productionPortfolio.summary.ready_count,

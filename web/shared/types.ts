@@ -1906,6 +1906,10 @@ export interface StoryAgentMvpStatusReport {
     story_quality_passed_count: number;
     story_quality_failed_count: number;
     story_open_supplement_task_count: number;
+    story_supplement_open_count: number;
+    story_supplement_optional_open_count: number;
+    story_supplement_risk_open_count: number;
+    story_supplement_blocking_open_count: number;
     story_material_sufficiency_blocked_count: number;
     readiness_target_count: number;
     readiness_ready_count: number;
