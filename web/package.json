@@ -16,6 +16,7 @@
     "build:client": "npm run build -w client",
     "lint": "npm run lint --workspaces",
     "audit:copy": "npm run audit:copy -w client",
+    "audit:writeback-acceptance": "npm run audit:writeback-acceptance -w client",
     "check": "npm run audit:copy && npm run lint"
   },
   "devDependencies": {
