@@ -360,6 +360,20 @@ export type KnowledgeWritebackStatus =
   | 'written_back'
   | 'needs_revision';
 
+type KnowledgeSupplementTaskStatus =
+  | 'open'
+  | 'resolved';
+
+type KnowledgeSupplementTaskSource =
+  | 'knowledge_pack_missing_need'
+  | 'material_sufficiency_missing_item'
+  | 'production_material_missing_field';
+
+type MaterialBlockingLevel =
+  | 'blocking'
+  | 'risk'
+  | 'optional';
+
 interface DomainPackExpansionReviewStateItem {
   review_item_id: string;
   review_status: DomainPackExpansionReviewStatus;
@@ -634,6 +648,74 @@ interface ProjectKnowledgeWritebackPatchPackage {
   pr_body: string;
   markdown: string;
   items: ProjectKnowledgeWritebackPatchItem[];
+}
+
+interface StorySupplementCandidateTask {
+  task_id: string;
+  label: string;
+  description?: string;
+  category?: string;
+  stage?: MaterialSufficiencyStage;
+  blocking_level: MaterialBlockingLevel;
+  affects?: string[];
+  recommended_question?: string;
+  recommended_fields?: string[];
+  intake_prompt?: string;
+  status: KnowledgeSupplementTaskStatus;
+  source: KnowledgeSupplementTaskSource;
+  created_at?: string;
+  updated_at?: string;
+  resolved_at?: string;
+  supplement_note?: string;
+  supplement_field_values?: Record<string, string>;
+  knowledge_candidate_markdown?: string;
+  knowledge_candidate_review_status?: string;
+  knowledge_candidate_review_note?: string;
+  knowledge_writeback_draft_markdown?: string;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+  knowledge_writeback_note?: string;
+}
+
+interface StorySupplementCandidatePackageItem {
+  task_key: string;
+  project_id: string;
+  current_story_id?: string;
+  project_title: string;
+  source_entry: string;
+  video_type?: string;
+  target_province?: string;
+  suggested_file_path: string;
+  updated_at?: string;
+  task: StorySupplementCandidateTask;
+}
+
+interface StorySupplementCandidatePackageFilters {
+  project_id?: string;
+  video_type?: string;
+  province?: string;
+  status?: KnowledgeSupplementTaskStatus;
+  stage?: MaterialSufficiencyStage;
+  blocking_level?: MaterialBlockingLevel;
+  source?: KnowledgeSupplementTaskSource;
+  search_query?: string;
+  task_key_count?: number;
+}
+
+interface StorySupplementCandidatePackage {
+  schema_version: 'project-supplement-candidate-package/v1';
+  exported_at: string;
+  filters: StorySupplementCandidatePackageFilters;
+  task_count: number;
+  open_task_count: number;
+  blocking_open_count: number;
+  risk_open_count: number;
+  optional_open_count: number;
+  project_count: number;
+  target_files: string[];
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  items: StorySupplementCandidatePackageItem[];
+  markdown: string;
 }
 
 interface KnowledgeWritebackQueueExportFilters {
@@ -973,6 +1055,9 @@ interface KnowledgeWritebackQueueExportPackage {
 export type KnowledgeWritebackQueueExportToolResult =
   Omit<KnowledgeWritebackQueueExportPackage, 'markdown'> & { markdown?: string };
 
+export type StorySupplementCandidatePackageToolResult =
+  Omit<StorySupplementCandidatePackage, 'markdown'> & { markdown?: string };
+
 export interface KnowledgeWritebackQueueExportToolInput {
   include_markdown?: boolean;
   project_id?: string;
@@ -982,6 +1067,19 @@ export interface KnowledgeWritebackQueueExportToolInput {
   search_query?: string;
   project_task_keys?: string[];
   expansion_review_item_ids?: string[];
+}
+
+export interface StorySupplementCandidatePackageToolInput {
+  include_markdown?: boolean;
+  project_id?: string;
+  video_type?: string;
+  province?: string;
+  status?: KnowledgeSupplementTaskStatus;
+  stage?: MaterialSufficiencyStage;
+  blocking_level?: MaterialBlockingLevel;
+  source?: KnowledgeSupplementTaskSource;
+  search_query?: string;
+  project_task_keys?: string[];
 }
 
 export interface DomainPackExpansionReviewStateUpdateInput {
@@ -1213,6 +1311,23 @@ const KNOWLEDGE_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'queued',
   'written_back',
   'needs_revision',
+];
+
+const KNOWLEDGE_SUPPLEMENT_TASK_STATUSES: KnowledgeSupplementTaskStatus[] = [
+  'open',
+  'resolved',
+];
+
+const KNOWLEDGE_SUPPLEMENT_TASK_SOURCES: KnowledgeSupplementTaskSource[] = [
+  'knowledge_pack_missing_need',
+  'material_sufficiency_missing_item',
+  'production_material_missing_field',
+];
+
+const MATERIAL_BLOCKING_LEVELS: MaterialBlockingLevel[] = [
+  'blocking',
+  'risk',
+  'optional',
 ];
 
 const UNASSIGNED_SIGNOFF_BATCH_ID = 'unassigned_signoff_batch';
@@ -3135,6 +3250,134 @@ export function getKnowledgeWritebackQueueExportToolResult(
     };
 }
 
+export function getStorySupplementCandidatePackageToolResult(
+  input: StorySupplementCandidatePackageToolInput = {},
+): StorySupplementCandidatePackageToolResult {
+  const exportedAt = new Date().toISOString();
+  const projectTaskKeySet = new Set(normalizeFilterValues(input.project_task_keys));
+  const statusFilter = input.status ?? 'open';
+  const searchQuery = input.search_query?.trim().toLowerCase();
+  const items: StorySupplementCandidatePackageItem[] = [];
+  const projectIds = new Set<string>();
+  const projectsDir = path.resolve(generatedRoot(), 'projects');
+
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(projectsDir, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name);
+  } catch {
+    entries = [];
+  }
+
+  for (const projectDirName of entries) {
+    const projectDir = path.resolve(projectsDir, projectDirName);
+    const project = readJsonRecordFile(path.resolve(projectDir, 'project.json'));
+    if (!project) continue;
+
+    const projectId = nonEmptyString(project.project_id) ?? projectDirName;
+    if (input.project_id && input.project_id !== projectId) continue;
+
+    const story = readCurrentProjectStoryRecord(projectDir, project);
+    if (!story) continue;
+
+    const videoType = nonEmptyString(story.video_type) ?? nonEmptyString(project.video_type);
+    if (input.video_type && input.video_type !== videoType) continue;
+
+    const sourceEntry = nonEmptyString(story.source_entry)
+      ?? nonEmptyString(project.source_entry)
+      ?? '未记录来源条目';
+    const target = inferProjectKnowledgeWritebackTarget(story, sourceEntry);
+    if (input.province && input.province !== target.province) continue;
+
+    const projectTitle = nonEmptyString(project.title)
+      ?? nonEmptyString(story.title)
+      ?? projectId;
+    const currentStoryId = nonEmptyString(project.current_story_id) ?? nonEmptyString(story.story_id);
+    const projectUpdatedAt = nonEmptyString(project.updated_at) ?? nonEmptyString(story.updated_at);
+    const tasks = Array.isArray(story.supplement_tasks) ? story.supplement_tasks : [];
+
+    for (const rawTask of tasks) {
+      if (!isRecord(rawTask)) continue;
+
+      const taskStatus = normalizeSupplementTaskStatus(rawTask.status);
+      if (taskStatus !== statusFilter) continue;
+
+      const stage = normalizeSupplementStage(rawTask.stage);
+      if (input.stage && input.stage !== stage) continue;
+
+      const blockingLevel = normalizeSupplementBlockingLevel(rawTask.blocking_level);
+      if (input.blocking_level && input.blocking_level !== blockingLevel) continue;
+
+      const source = normalizeSupplementSource(rawTask.source);
+      if (input.source && input.source !== source) continue;
+
+      const taskId = nonEmptyString(rawTask.task_id) ?? `task_${items.length + 1}`;
+      const taskKey = `${projectId}::${taskId}`;
+      if (projectTaskKeySet.size > 0 && !projectTaskKeySet.has(taskKey)) continue;
+
+      const task = normalizeStorySupplementCandidateTask(rawTask, {
+        taskId,
+        taskStatus,
+        stage,
+        blockingLevel,
+        source,
+      });
+      const item: StorySupplementCandidatePackageItem = {
+        task_key: taskKey,
+        project_id: projectId,
+        current_story_id: currentStoryId,
+        project_title: projectTitle,
+        source_entry: sourceEntry,
+        video_type: videoType,
+        target_province: target.province,
+        suggested_file_path: target.filePath,
+        updated_at: task.updated_at ?? projectUpdatedAt,
+        task,
+      };
+      if (searchQuery && !storySupplementCandidateSearchText(item).includes(searchQuery)) continue;
+
+      projectIds.add(projectId);
+      items.push(item);
+    }
+  }
+
+  items.sort((a, b) => [
+    a.suggested_file_path,
+    a.project_title,
+    a.task.label,
+  ].join('\u0000').localeCompare([
+    b.suggested_file_path,
+    b.project_title,
+    b.task.label,
+  ].join('\u0000'), 'zh-CN'));
+
+  const targetFiles = [...new Set(items.map(item => item.suggested_file_path))].sort((a, b) => a.localeCompare(b));
+  const openItems = items.filter(item => item.task.status === 'open');
+  const packageWithoutMarkdown: Omit<StorySupplementCandidatePackage, 'markdown'> = {
+    schema_version: 'project-supplement-candidate-package/v1',
+    exported_at: exportedAt,
+    filters: buildStorySupplementCandidatePackageFilters(input, projectTaskKeySet.size, statusFilter),
+    task_count: items.length,
+    open_task_count: openItems.length,
+    blocking_open_count: openItems.filter(item => item.task.blocking_level === 'blocking').length,
+    risk_open_count: openItems.filter(item => item.task.blocking_level === 'risk').length,
+    optional_open_count: openItems.filter(item => item.task.blocking_level === 'optional').length,
+    project_count: projectIds.size,
+    target_files: targetFiles,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    items,
+  };
+
+  return input.include_markdown === false
+    ? packageWithoutMarkdown
+    : {
+      ...packageWithoutMarkdown,
+      markdown: renderStorySupplementCandidatePackageMarkdown(packageWithoutMarkdown),
+    };
+}
+
 export function updateDomainPackExpansionReviewStateToolResult(
   input: DomainPackExpansionReviewStateUpdateInput,
   options: { updated_at?: string } = {},
@@ -3552,6 +3795,241 @@ function projectWritebackSearchText(params: {
     nonEmptyString(params.task.knowledge_writeback_draft_markdown) ?? '',
     ...(Array.isArray(params.task.recommended_fields) ? params.task.recommended_fields.filter((item): item is string => typeof item === 'string') : []),
   ].join(' ').toLowerCase();
+}
+
+function normalizeSupplementTaskStatus(value: unknown): KnowledgeSupplementTaskStatus {
+  return KNOWLEDGE_SUPPLEMENT_TASK_STATUSES.includes(value as KnowledgeSupplementTaskStatus)
+    ? value as KnowledgeSupplementTaskStatus
+    : 'open';
+}
+
+function normalizeSupplementStage(value: unknown): MaterialSufficiencyStage | undefined {
+  return PACK_HEALTH_GATE_STAGES.includes(value as MaterialSufficiencyStage)
+    ? value as MaterialSufficiencyStage
+    : undefined;
+}
+
+function normalizeSupplementBlockingLevel(value: unknown): MaterialBlockingLevel {
+  return MATERIAL_BLOCKING_LEVELS.includes(value as MaterialBlockingLevel)
+    ? value as MaterialBlockingLevel
+    : 'optional';
+}
+
+function normalizeSupplementSource(value: unknown): KnowledgeSupplementTaskSource {
+  return KNOWLEDGE_SUPPLEMENT_TASK_SOURCES.includes(value as KnowledgeSupplementTaskSource)
+    ? value as KnowledgeSupplementTaskSource
+    : 'knowledge_pack_missing_need';
+}
+
+function normalizeStorySupplementCandidateTask(
+  task: JsonRecord,
+  normalized: {
+    taskId: string;
+    taskStatus: KnowledgeSupplementTaskStatus;
+    stage?: MaterialSufficiencyStage;
+    blockingLevel: MaterialBlockingLevel;
+    source: KnowledgeSupplementTaskSource;
+  },
+): StorySupplementCandidateTask {
+  const writebackStatusText = nonEmptyString(task.knowledge_writeback_status);
+  return {
+    task_id: normalized.taskId,
+    label: nonEmptyString(task.label) ?? normalized.taskId,
+    description: nonEmptyString(task.description),
+    category: nonEmptyString(task.category),
+    stage: normalized.stage,
+    blocking_level: normalized.blockingLevel,
+    affects: storySupplementStringArray(task.affects),
+    recommended_question: nonEmptyString(task.recommended_question),
+    recommended_fields: storySupplementStringArray(task.recommended_fields),
+    intake_prompt: nonEmptyString(task.intake_prompt),
+    status: normalized.taskStatus,
+    source: normalized.source,
+    created_at: nonEmptyString(task.created_at),
+    updated_at: nonEmptyString(task.updated_at),
+    resolved_at: nonEmptyString(task.resolved_at),
+    supplement_note: nonEmptyString(task.supplement_note),
+    supplement_field_values: storySupplementFieldValues(task.supplement_field_values),
+    knowledge_candidate_markdown: nonEmptyString(task.knowledge_candidate_markdown),
+    knowledge_candidate_review_status: nonEmptyString(task.knowledge_candidate_review_status),
+    knowledge_candidate_review_note: nonEmptyString(task.knowledge_candidate_review_note),
+    knowledge_writeback_draft_markdown: nonEmptyString(task.knowledge_writeback_draft_markdown),
+    knowledge_writeback_status: writebackStatusText ? normalizeKnowledgeWritebackStatus(writebackStatusText) : undefined,
+    knowledge_writeback_note: nonEmptyString(task.knowledge_writeback_note),
+  };
+}
+
+function storySupplementStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const values = value
+    .filter((item): item is string => typeof item === 'string')
+    .map(item => item.trim())
+    .filter(Boolean);
+  return values.length ? [...new Set(values)] : undefined;
+}
+
+function storySupplementFieldValues(value: unknown): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined;
+  const entries = Object.entries(value)
+    .map(([field, fieldValue]) => [
+      field.trim(),
+      typeof fieldValue === 'string' ? fieldValue.trim() : '',
+    ] as const)
+    .filter(([field, fieldValue]) => Boolean(field && fieldValue));
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
+function storySupplementCandidateSearchText(item: StorySupplementCandidatePackageItem): string {
+  return [
+    item.task_key,
+    item.project_id,
+    item.current_story_id ?? '',
+    item.project_title,
+    item.source_entry,
+    item.video_type ?? '',
+    item.target_province ?? '',
+    item.suggested_file_path,
+    item.task.task_id,
+    item.task.label,
+    item.task.description ?? '',
+    item.task.category ?? '',
+    item.task.stage ?? '',
+    item.task.blocking_level,
+    item.task.source,
+    item.task.recommended_question ?? '',
+    ...(item.task.affects ?? []),
+    ...(item.task.recommended_fields ?? []),
+    item.task.intake_prompt ?? '',
+    item.task.supplement_note ?? '',
+    ...Object.entries(item.task.supplement_field_values ?? {}).flatMap(([field, value]) => [field, value]),
+    item.task.knowledge_candidate_markdown ?? '',
+    item.task.knowledge_candidate_review_status ?? '',
+    item.task.knowledge_candidate_review_note ?? '',
+    item.task.knowledge_writeback_draft_markdown ?? '',
+    item.task.knowledge_writeback_status ?? '',
+    item.task.knowledge_writeback_note ?? '',
+  ].join(' ').toLowerCase();
+}
+
+function buildStorySupplementCandidatePackageFilters(
+  input: StorySupplementCandidatePackageToolInput,
+  taskKeyCount: number,
+  statusFilter: KnowledgeSupplementTaskStatus,
+): StorySupplementCandidatePackageFilters {
+  return {
+    ...(input.project_id ? { project_id: input.project_id } : {}),
+    ...(input.video_type ? { video_type: input.video_type } : {}),
+    ...(input.province ? { province: input.province } : {}),
+    status: statusFilter,
+    ...(input.stage ? { stage: input.stage } : {}),
+    ...(input.blocking_level ? { blocking_level: input.blocking_level } : {}),
+    ...(input.source ? { source: input.source } : {}),
+    ...(input.search_query?.trim() ? { search_query: input.search_query.trim() } : {}),
+    ...(taskKeyCount > 0 ? { task_key_count: taskKeyCount } : {}),
+  };
+}
+
+function renderStorySupplementCandidatePackageMarkdown(
+  pkg: Omit<StorySupplementCandidatePackage, 'markdown'>,
+): string {
+  return [
+    '# Story Agent 素材补库候选包',
+    '',
+    `> schema_version: ${pkg.schema_version}`,
+    `> exported_at: ${pkg.exported_at}`,
+    `> direct_writeback_to_province_markdown: ${pkg.direct_writeback_to_province_markdown}`,
+    `> province_markdown_written: ${pkg.province_markdown_written}`,
+    '',
+    '## 筛选与统计',
+    '',
+    `- 项目筛选：${pkg.filters.project_id ?? '全部项目'}`,
+    `- 片型筛选：${pkg.filters.video_type ?? 'all'}`,
+    `- 省份筛选：${pkg.filters.province ?? 'all'}`,
+    `- 任务状态：${pkg.filters.status ?? 'open'}`,
+    `- 阶段筛选：${pkg.filters.stage ?? 'all'}`,
+    `- 分级筛选：${pkg.filters.blocking_level ?? 'all'}`,
+    `- 来源筛选：${pkg.filters.source ?? 'all'}`,
+    `- 搜索条件：${pkg.filters.search_query ?? '无'}`,
+    `- 可见任务键：${pkg.filters.task_key_count ? `${pkg.filters.task_key_count} 条` : '未指定'}`,
+    `- 候选任务：${pkg.task_count}`,
+    `- open 任务：${pkg.open_task_count}`,
+    `- blocking/risk/optional：${pkg.blocking_open_count}/${pkg.risk_open_count}/${pkg.optional_open_count}`,
+    `- 涉及项目：${pkg.project_count}`,
+    `- 目标文件：${pkg.target_files.length}`,
+    '',
+    '## 只读写回策略',
+    '',
+    '- 只生成候选稿、审稿材料和人工写回草案。',
+    '- 不直接修改 data/provinces/*.md。',
+    '- 进入正式素材库前必须人工核源、补齐来源与版权边界。',
+    '',
+    '## 目标文件',
+    '',
+    ...markdownList(pkg.target_files),
+    '',
+    '## 候选任务',
+    '',
+    ...(pkg.items.length ? pkg.items.flatMap(renderStorySupplementCandidateItemMarkdown) : ['- none']),
+  ].join('\n').trim() + '\n';
+}
+
+function renderStorySupplementCandidateItemMarkdown(
+  item: StorySupplementCandidatePackageItem,
+  index: number,
+): string[] {
+  const fieldValueLines = Object.entries(item.task.supplement_field_values ?? {})
+    .map(([field, value]) => `- ${field}: ${value}`);
+  return [
+    `### ${index + 1}. ${item.task.label}`,
+    '',
+    `- task_key: ${item.task_key}`,
+    `- project_id: ${item.project_id}`,
+    `- current_story_id: ${item.current_story_id ?? '未记录'}`,
+    `- project_title: ${item.project_title}`,
+    `- source_entry: ${item.source_entry}`,
+    `- video_type: ${item.video_type ?? '未记录'}`,
+    `- target_province: ${item.target_province ?? '待确认'}`,
+    `- suggested_file_path: ${item.suggested_file_path}`,
+    `- status: ${item.task.status}`,
+    `- source: ${item.task.source}`,
+    `- stage: ${item.task.stage ?? '未记录'}`,
+    `- blocking_level: ${item.task.blocking_level}`,
+    `- updated_at: ${item.updated_at ?? '未记录'}`,
+    '',
+    '#### 缺口说明',
+    '',
+    item.task.description ?? '- 未填写',
+    '',
+    '#### 建议采集',
+    '',
+    item.task.recommended_question ? `- 问题：${item.task.recommended_question}` : '- 问题：未填写',
+    ...(item.task.recommended_fields?.length
+      ? item.task.recommended_fields.map(field => `- 字段：${field}`)
+      : ['- 字段：未填写']),
+    ...(item.task.affects?.length
+      ? item.task.affects.map(field => `- 影响：${field}`)
+      : []),
+    ...(item.task.intake_prompt ? [`- 采集提示：${item.task.intake_prompt}`] : []),
+    '',
+    '#### 已补材料',
+    '',
+    item.task.supplement_note ? `- 备注：${item.task.supplement_note}` : '- 备注：未填写',
+    ...(fieldValueLines.length ? fieldValueLines : ['- 字段值：未填写']),
+    '',
+    '#### 审稿与写回草案',
+    '',
+    `- candidate_review_status: ${item.task.knowledge_candidate_review_status ?? '未提交'}`,
+    `- candidate_review_note: ${item.task.knowledge_candidate_review_note ?? '未填写'}`,
+    `- writeback_status: ${item.task.knowledge_writeback_status ?? '未入队'}`,
+    `- writeback_note: ${item.task.knowledge_writeback_note ?? '未填写'}`,
+    '',
+    ...(item.task.knowledge_candidate_markdown
+      ? ['```markdown', item.task.knowledge_candidate_markdown, '```', '']
+      : []),
+    ...(item.task.knowledge_writeback_draft_markdown
+      ? ['```markdown', item.task.knowledge_writeback_draft_markdown, '```', '']
+      : []),
+  ];
 }
 
 function renderProjectKnowledgeWritebackAppendMarkdown(params: {

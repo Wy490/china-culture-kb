@@ -11,6 +11,7 @@ import {
   getKnowledgeWritebackQueueExportToolResult,
   getProductionMaterialPackHealthReport,
   getProductionMaterialPackHealthToolResult,
+  getStorySupplementCandidatePackageToolResult,
   updateDomainPackExpansionReviewStateBulkToolResult,
   updateDomainPackExpansionReviewStateToolResult,
 } from './production-health-reports.js';
@@ -1191,5 +1192,146 @@ describe('production health reports', () => {
       project_task_key_count: 1,
     });
     expect(fs.existsSync(path.join(dataRoot, 'provinces', '湖南.md'))).toBe(false);
+  });
+
+  it('exports Story Agent supplement candidate packages without writing province markdown', () => {
+    const projectId = '20260708-story-supplement--documentary_short';
+    const versionId = `${projectId}-v1`;
+    const projectDir = path.join(process.env.WEB_GENERATED_ROOT!, 'projects', projectId);
+    fs.mkdirSync(path.join(projectDir, 'versions'), { recursive: true });
+    fs.writeFileSync(
+      path.join(projectDir, 'project.json'),
+      JSON.stringify({
+        project_id: projectId,
+        current_story_id: 'story-supplement',
+        title: '侗寨鼓楼的夜谈',
+        source_entry: '侗寨鼓楼',
+        video_type: 'documentary_short',
+        current_version_id: versionId,
+        updated_at: '2026-07-08T10:00:00.000Z',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(projectDir, 'versions', `${versionId}.json`),
+      JSON.stringify({
+        project_id: projectId,
+        version_id: versionId,
+        story: {
+          story_id: 'story-supplement',
+          title: '侗寨鼓楼的夜谈',
+          source_entry: '侗寨鼓楼',
+          video_type: 'documentary_short',
+          knowledge_pack: {
+            primary_entries: [{
+              entry_name: '侗寨鼓楼',
+              province: '贵州',
+            }],
+          },
+          supplement_tasks: [
+            {
+              task_id: 'task-source-refs',
+              label: '补齐口述来源与拍摄许可',
+              description: '纪录短片需要补齐口述对象、引用出处和拍摄许可边界。',
+              category: 'source_grounding',
+              stage: 'production_ready',
+              blocking_level: 'blocking',
+              affects: ['source_refs', 'release_boundary'],
+              recommended_question: '是否有可公开引用的访谈对象、出版物或地方志来源？',
+              recommended_fields: ['source_refs', 'permission_boundary'],
+              intake_prompt: '补充访谈对象、引用来源、许可边界和待核实点。',
+              status: 'open',
+              source: 'production_material_missing_field',
+              updated_at: '2026-07-08T10:10:00.000Z',
+              supplement_note: '已收集一条地方志线索，仍需人工核验。',
+              supplement_field_values: {
+                source_refs: '县志条目待人工核对；访谈对象待确认授权。',
+                permission_boundary: '不可直接使用人物肖像，需另取授权。',
+              },
+              knowledge_candidate_markdown: '### 候选补库稿\n\n- 来源：县志与访谈授权待核。',
+              knowledge_candidate_review_status: 'candidate_review',
+              knowledge_candidate_review_note: '需要补齐正式页码或访谈记录。',
+              knowledge_writeback_draft_markdown: '### 正式知识库写入草案\n\n- 待核实点：来源页码、授权记录。',
+              knowledge_writeback_status: 'needs_revision',
+              knowledge_writeback_note: '来源未达写回标准。',
+            },
+            {
+              task_id: 'task-resolved-context',
+              label: '已解决背景补充',
+              description: '已补齐背景信息。',
+              status: 'resolved',
+              source: 'knowledge_pack_missing_need',
+              blocking_level: 'optional',
+            },
+          ],
+        },
+      }),
+    );
+
+    const candidatePackage = getStorySupplementCandidatePackageToolResult({
+      province: '贵州',
+      status: 'open',
+      stage: 'production_ready',
+      blocking_level: 'blocking',
+      source: 'production_material_missing_field',
+      search_query: '拍摄许可',
+      project_task_keys: [`${projectId}::task-source-refs`],
+    });
+
+    expect(candidatePackage).toMatchObject({
+      schema_version: 'project-supplement-candidate-package/v1',
+      direct_writeback_to_province_markdown: false,
+      province_markdown_written: false,
+      filters: {
+        province: '贵州',
+        status: 'open',
+        stage: 'production_ready',
+        blocking_level: 'blocking',
+        source: 'production_material_missing_field',
+        search_query: '拍摄许可',
+        task_key_count: 1,
+      },
+      task_count: 1,
+      open_task_count: 1,
+      blocking_open_count: 1,
+      risk_open_count: 0,
+      optional_open_count: 0,
+      project_count: 1,
+      target_files: ['data/provinces/贵州.md'],
+    });
+    expect(candidatePackage.items[0]).toMatchObject({
+      task_key: `${projectId}::task-source-refs`,
+      project_id: projectId,
+      current_story_id: 'story-supplement',
+      project_title: '侗寨鼓楼的夜谈',
+      source_entry: '侗寨鼓楼',
+      video_type: 'documentary_short',
+      target_province: '贵州',
+      suggested_file_path: 'data/provinces/贵州.md',
+      task: expect.objectContaining({
+        task_id: 'task-source-refs',
+        status: 'open',
+        stage: 'production_ready',
+        blocking_level: 'blocking',
+        source: 'production_material_missing_field',
+        recommended_fields: ['source_refs', 'permission_boundary'],
+        knowledge_writeback_status: 'needs_revision',
+      }),
+    });
+    expect(candidatePackage.markdown).toContain('Story Agent 素材补库候选包');
+    expect(candidatePackage.markdown).toContain('不直接修改 data/provinces/*.md');
+    expect(candidatePackage.markdown).toContain('source_refs: 县志条目待人工核对；访谈对象待确认授权。');
+    expect(candidatePackage.markdown).toContain('candidate_review_status: candidate_review');
+    expect(fs.existsSync(path.join(dataRoot, 'provinces', '贵州.md'))).toBe(false);
+
+    const jsonOnly = getStorySupplementCandidatePackageToolResult({
+      include_markdown: false,
+      project_id: projectId,
+      status: 'resolved',
+    });
+    expect(jsonOnly.markdown).toBeUndefined();
+    expect(jsonOnly.task_count).toBe(1);
+    expect(jsonOnly.open_task_count).toBe(0);
+    expect(jsonOnly.items[0].task.task_id).toBe('task-resolved-context');
+    expect(fs.existsSync(path.join(dataRoot, 'provinces', '贵州.md'))).toBe(false);
   });
 });

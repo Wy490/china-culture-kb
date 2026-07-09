@@ -37,6 +37,7 @@ import {
   getDomainPackProductionHealthToolResult,
   getKnowledgeWritebackQueueExportToolResult,
   getProductionMaterialPackHealthToolResult,
+  getStorySupplementCandidatePackageToolResult,
   updateDomainPackExpansionReviewStateBulkToolResult,
   updateDomainPackExpansionReviewStateToolResult,
 } from './tools/production-health-reports.js';
@@ -699,6 +700,37 @@ server.tool(
   },
   async (input) => {
     const result = getKnowledgeWritebackQueueExportToolResult(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_story_supplement_candidate_package — read-only project supplement handoff
+server.tool(
+  'kb_get_story_supplement_candidate_package',
+  '只读导出 Story Agent 素材补库候选包。扫描 generated projects 的 supplement_tasks，输出人工补库/审稿 Markdown，不写入 data/provinces/*.md。',
+  {
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+    project_id: z.string().optional().describe('限定项目 ID'),
+    video_type: z.string().optional().describe('限定项目片型，例如 ai_comic_drama、explainer_video、documentary_short'),
+    province: z.string().optional().describe('限定目标省份'),
+    status: z.enum(['open', 'resolved']).optional().describe('限定补库任务状态，默认 open'),
+    stage: z.enum(['minimum_viable_story', 'script_ready', 'production_ready']).optional().describe('限定素材充分性阶段'),
+    blocking_level: z.enum(['blocking', 'risk', 'optional']).optional().describe('限定缺口分级'),
+    source: z.enum([
+      'knowledge_pack_missing_need',
+      'material_sufficiency_missing_item',
+      'production_material_missing_field',
+    ]).optional().describe('限定补库任务来源'),
+    search_query: z.string().optional().describe('限定项目、来源条目、字段、候选稿或草案搜索词'),
+    project_task_keys: z.array(z.string()).optional().describe('限定项目补库 task key，格式 project_id::task_id'),
+  },
+  async (input) => {
+    const result = getStorySupplementCandidatePackageToolResult(input);
     return {
       content: [{
         type: 'text',
