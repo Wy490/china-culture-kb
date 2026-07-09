@@ -34,6 +34,7 @@ import type {
   StoryAgentGeneratedGovernanceRunRequest,
   StoryAgentGeneratedGovernanceRunResult,
   StoryAgentGeneratedHealthReport,
+  StoryAgentBacklogHandoffPackage,
   StoryAgentMvpStatusReport,
   TypeInfo,
 } from '@shared/types'
@@ -90,6 +91,13 @@ export function getStoryAgentGeneratedHealth(options: { limit?: number } = {}) {
   if (typeof options.limit === 'number') params.set('limit', String(options.limit))
   const suffix = params.toString() ? `?${params.toString()}` : ''
   return apiGet<StoryAgentGeneratedHealthReport>(`/system/story-agent-generated-health${suffix}`)
+}
+
+export function getStoryAgentBacklogHandoff(options: { limit?: number } = {}) {
+  const params = new URLSearchParams()
+  if (typeof options.limit === 'number') params.set('limit', String(options.limit))
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return apiGet<StoryAgentBacklogHandoffPackage>(`/system/story-agent-backlog-handoff${suffix}`)
 }
 
 export function getStoryAgentGeneratedGovernancePlan(options: { limit?: number } = {}) {

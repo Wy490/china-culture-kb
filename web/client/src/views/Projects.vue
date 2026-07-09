@@ -189,6 +189,68 @@
       </div>
     </section>
 
+    <section v-if="storyAgentBacklogHandoff" class="projects-page__portfolio projects-page__backlog-handoff">
+      <div class="projects-page__portfolio-head">
+        <div>
+          <h2>Story Agent Backlog Handoff</h2>
+          <p>
+            {{ storyAgentBacklogHandoff.summary.total_item_count }} 个交接项
+            · P0 {{ storyAgentBacklogHandoff.summary.p0_count }}
+            · P1 {{ storyAgentBacklogHandoff.summary.p1_count }}
+            · generated {{ storyAgentBacklogHandoff.summary.generated_health_item_count }}
+            · 素材补库 {{ storyAgentBacklogHandoff.summary.supplement_candidate_item_count }}
+            · 省份写回 {{ writebackFlagLabel(storyAgentBacklogHandoff.province_markdown_written) }}
+          </p>
+        </div>
+        <div class="projects-page__portfolio-head-actions">
+          <button class="projects-page__muted-btn" :disabled="!storyAgentBacklogHandoff.markdown" @click="exportStoryAgentBacklogHandoffMarkdown">
+            导出 MD
+          </button>
+          <button class="projects-page__muted-btn" @click="exportStoryAgentBacklogHandoffJson">
+            导出 JSON
+          </button>
+          <button class="projects-page__muted-btn" :disabled="loadingBacklogHandoff" @click="loadStoryAgentBacklogHandoff">
+            {{ loadingBacklogHandoff ? '刷新中…' : '刷新交接' }}
+          </button>
+        </div>
+      </div>
+      <div class="projects-page__portfolio-metrics">
+        <span>production gap {{ storyAgentBacklogHandoff.summary.production_gap_count }}</span>
+        <span>interrupted {{ storyAgentBacklogHandoff.summary.interrupted_count }}</span>
+        <span>质量失败 {{ storyAgentBacklogHandoff.summary.quality_failed_count }}</span>
+        <span>素材阻断 {{ storyAgentBacklogHandoff.summary.material_blocked_count }}</span>
+        <RouterLink class="projects-page__metric-link" :to="{ name: 'SupplementTasks', query: { status: 'open' } }">
+          open supplement {{ storyAgentBacklogHandoff.summary.open_supplement_candidate_count }}
+          · blocking {{ storyAgentBacklogHandoff.summary.supplement_blocking_open_count }}
+          · risk {{ storyAgentBacklogHandoff.summary.supplement_risk_open_count }}
+          · optional {{ storyAgentBacklogHandoff.summary.supplement_optional_open_count }}
+        </RouterLink>
+        <span>direct writeback {{ writebackFlagLabel(storyAgentBacklogHandoff.direct_writeback_to_province_markdown) }}</span>
+      </div>
+      <div class="projects-page__portfolio-grid projects-page__backlog-grid">
+        <article
+          v-for="item in storyAgentBacklogHandoff.items.slice(0, 8)"
+          :key="item.backlog_id"
+          class="projects-page__portfolio-item projects-page__backlog-item"
+        >
+          <div class="projects-page__portfolio-item-head">
+            <span :class="['projects-page__priority-badge', `projects-page__priority-badge--${item.priority.toLowerCase()}`]">
+              {{ item.priority }}
+            </span>
+            <strong>{{ backlogActionLabel(item.action_type) }}</strong>
+          </div>
+          <RouterLink class="projects-page__portfolio-title" :to="storyAgentBacklogItemLink(item)">
+            {{ item.title || item.project_id }}
+          </RouterLink>
+          <p>{{ backlogSourceLabel(item.source_kind) }} · {{ item.project_id }}</p>
+          <p v-if="item.target_file">目标：{{ item.target_file }}</p>
+          <p v-if="item.missing_contracts.length">缺口：{{ item.missing_contracts.slice(0, 3).join(' / ') }}</p>
+          <p>下一步：{{ item.recommended_action }}</p>
+          <small>{{ item.reason }}</small>
+        </article>
+      </div>
+    </section>
+
     <section v-if="productionPortfolio" class="projects-page__portfolio">
       <div class="projects-page__portfolio-head">
         <div>
@@ -734,6 +796,7 @@ import { deleteProject, deleteProjects, listProjects, retainRecentProjects } fro
 import {
   getGearsExternalCallbackHandoffQueue,
   getProductionReadinessPortfolio,
+  getStoryAgentBacklogHandoff,
   getStoryAgentGeneratedGovernancePlan,
   getStoryAgentGeneratedHealth,
   getStoryAgentMvpStatus,
@@ -761,6 +824,8 @@ import type {
   ProductionReadinessPortfolioItem,
   ProductionReadinessPortfolioReport,
   ProductionReadinessStatus,
+  StoryAgentBacklogHandoffItem,
+  StoryAgentBacklogHandoffPackage,
   StoryAgentGeneratedGovernanceActionKey,
   StoryAgentGeneratedGovernancePlan,
   StoryAgentGeneratedGovernanceRunResult,
@@ -783,12 +848,14 @@ type MaterialGateStatus = 'ready' | 'risk' | 'blocked' | 'unknown'
 const projects = ref<StoryProjectListItem[]>([])
 const seriesProjects = ref<AiComicSeriesProjectMeta[]>([])
 const storyAgentMvpStatus = ref<StoryAgentMvpStatusReport | null>(null)
+const storyAgentBacklogHandoff = ref<StoryAgentBacklogHandoffPackage | null>(null)
 const productionPortfolio = ref<ProductionReadinessPortfolioReport | null>(null)
 const generatedGovernancePlan = ref<StoryAgentGeneratedGovernancePlan | null>(null)
 const generatedGovernanceRun = ref<StoryAgentGeneratedGovernanceRunResult | null>(null)
 const generatedHealth = ref<StoryAgentGeneratedHealthReport | null>(null)
 const loading = ref(false)
 const loadingMvpStatus = ref(false)
+const loadingBacklogHandoff = ref(false)
 const loadingPortfolio = ref(false)
 const loadingGeneratedGovernance = ref(false)
 const runningGeneratedGovernance = ref(false)
@@ -1007,6 +1074,29 @@ function generatedHealthStatusLabel(status: StoryAgentGeneratedHealthStatus): st
   return '缺生产合同'
 }
 
+function writebackFlagLabel(value: boolean): string {
+  return value ? 'yes' : 'no'
+}
+
+function backlogActionLabel(action: StoryAgentBacklogHandoffItem['action_type']): string {
+  const map: Record<StoryAgentBacklogHandoffItem['action_type'], string> = {
+    repair_story_project_refs: '修复项目引用',
+    repair_quality: '修复质量',
+    repair_delivery_contract: '补交付合同',
+    resolve_material_gate: '解除素材门禁',
+    complete_supplement_task: '补素材任务',
+    restore_series_story_refs: '恢复分集引用',
+    continue_series_generation: '继续系列生成',
+    repair_series_delivery: '补系列交付',
+  }
+  return map[action]
+}
+
+function backlogSourceLabel(source: StoryAgentBacklogHandoffItem['source_kind']): string {
+  if (source === 'generated_health') return 'generated health'
+  return '素材补库候选'
+}
+
 function generatedGovernanceActionLabel(key: StoryAgentGeneratedGovernanceActionKey): string {
   const map: Record<StoryAgentGeneratedGovernanceActionKey, string> = {
     restore_or_relink_series_story_refs: '恢复/重连分集故事',
@@ -1104,6 +1194,20 @@ function storyAgentMvpTargetLink(target: StoryAgentMvpStatusReport['priority_tar
   return {
     path: '/ai-comic-series/new',
     query: { seriesProjectId: target.project_id },
+  }
+}
+
+function storyAgentBacklogItemLink(item: StoryAgentBacklogHandoffItem) {
+  if (item.source_kind === 'supplement_candidate') {
+    return {
+      name: 'SupplementTasks',
+      query: { status: 'open', project_id: item.project_id },
+    }
+  }
+  if (item.scope === 'story_project') return `/projects/${item.project_id}`
+  return {
+    path: '/ai-comic-series/new',
+    query: { seriesProjectId: item.project_id },
   }
 }
 
@@ -1395,6 +1499,24 @@ function exportStoryAgentMvpStatusJson() {
   )
 }
 
+function exportStoryAgentBacklogHandoffMarkdown() {
+  if (!storyAgentBacklogHandoff.value?.markdown) return
+  downloadText(
+    'story-agent-backlog-handoff.md',
+    storyAgentBacklogHandoff.value.markdown,
+    'text/markdown;charset=utf-8',
+  )
+}
+
+function exportStoryAgentBacklogHandoffJson() {
+  if (!storyAgentBacklogHandoff.value) return
+  downloadText(
+    'story-agent-backlog-handoff.json',
+    JSON.stringify(storyAgentBacklogHandoff.value, null, 2),
+    'application/json;charset=utf-8',
+  )
+}
+
 function exportGeneratedGovernanceMarkdown() {
   if (!generatedGovernancePlan.value?.markdown) return
   downloadText(
@@ -1522,10 +1644,11 @@ async function loadProjects() {
   loading.value = true
   error.value = ''
   projectMessage.value = ''
-  const [storyRes, seriesRes, mvpStatusRes, portfolioRes, generatedGovernanceRes, generatedHealthRes] = await Promise.all([
+  const [storyRes, seriesRes, mvpStatusRes, backlogHandoffRes, portfolioRes, generatedGovernanceRes, generatedHealthRes] = await Promise.all([
     listProjects(),
     listAiComicSeriesProjects(showArchivedSeries.value),
     getStoryAgentMvpStatus({ includeArchivedSeries: showArchivedSeries.value, generatedLimit: 12, portfolioLimit: 12 }),
+    getStoryAgentBacklogHandoff({ limit: 12 }),
     getProductionReadinessPortfolio({ includeArchivedSeries: showArchivedSeries.value, limit: 12 }),
     getStoryAgentGeneratedGovernancePlan({ limit: 12 }),
     getStoryAgentGeneratedHealth({ limit: 12 }),
@@ -1533,12 +1656,14 @@ async function loadProjects() {
   if (storyRes.ok && storyRes.data) projects.value = storyRes.data
   if (seriesRes.ok && seriesRes.data) seriesProjects.value = seriesRes.data
   if (mvpStatusRes.ok && mvpStatusRes.data) storyAgentMvpStatus.value = mvpStatusRes.data
+  if (backlogHandoffRes.ok && backlogHandoffRes.data) storyAgentBacklogHandoff.value = backlogHandoffRes.data
   if (portfolioRes.ok && portfolioRes.data) productionPortfolio.value = portfolioRes.data
   if (generatedGovernanceRes.ok && generatedGovernanceRes.data) generatedGovernancePlan.value = generatedGovernanceRes.data
   if (generatedHealthRes.ok && generatedHealthRes.data) generatedHealth.value = generatedHealthRes.data
   if (!storyRes.ok) error.value = storyRes.error?.message ?? '加载单片项目失败'
   if (!seriesRes.ok) error.value = seriesRes.error?.message ?? '加载漫剧系列失败'
   if (!mvpStatusRes.ok) error.value = mvpStatusRes.error?.message ?? '加载 Story Agent MVP 状态失败'
+  if (!backlogHandoffRes.ok) error.value = backlogHandoffRes.error?.message ?? '加载 Story Agent backlog handoff 失败'
   if (!portfolioRes.ok) error.value = portfolioRes.error?.message ?? '加载生产指挥总览失败'
   if (!generatedGovernanceRes.ok) error.value = generatedGovernanceRes.error?.message ?? '加载 generated 治理计划失败'
   if (!generatedHealthRes.ok) error.value = generatedHealthRes.error?.message ?? '加载生成项目体检失败'
@@ -1554,6 +1679,17 @@ async function loadStoryAgentMvpStatus() {
     error.value = res.error?.message ?? '刷新 Story Agent MVP 状态失败'
   }
   loadingMvpStatus.value = false
+}
+
+async function loadStoryAgentBacklogHandoff() {
+  loadingBacklogHandoff.value = true
+  const res = await getStoryAgentBacklogHandoff({ limit: 12 })
+  if (res.ok && res.data) {
+    storyAgentBacklogHandoff.value = res.data
+  } else {
+    error.value = res.error?.message ?? '刷新 Story Agent backlog handoff 失败'
+  }
+  loadingBacklogHandoff.value = false
 }
 
 async function loadProductionPortfolio() {
@@ -2064,6 +2200,36 @@ onMounted(async () => {
 .projects-page__readiness-badge--interrupted {
   background: #fdecec;
   color: #b42318;
+}
+
+.projects-page__priority-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.projects-page__priority-badge--p0 {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.projects-page__priority-badge--p1 {
+  background: #fff7e6;
+  color: #9a6700;
+}
+
+.projects-page__priority-badge--p2 {
+  background: #eaf4fb;
+  color: #236192;
+}
+
+.projects-page__priority-badge--p3 {
+  background: #eaf7ef;
+  color: #1e7e45;
 }
 
 .projects-page__bulkbar {
