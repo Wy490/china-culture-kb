@@ -1755,6 +1755,9 @@ export interface StoryAgentGeneratedHealthReport {
     story_quality_passed_count?: number;
     story_quality_failed_count?: number;
     story_open_supplement_task_count?: number;
+    story_quality_passed_with_issue_count?: number;
+    story_quality_passed_with_open_supplement_count?: number;
+    story_quality_passed_with_issue_and_open_supplement_count?: number;
     story_material_sufficiency_blocked_count?: number;
     missing_episode_story_id_count: number;
     series_missing_delivery_count: number;
@@ -2001,6 +2004,9 @@ export interface StoryAgentMvpStatusReport {
     story_quality_passed_count: number;
     story_quality_failed_count: number;
     story_open_supplement_task_count: number;
+    story_quality_passed_with_issue_count: number;
+    story_quality_passed_with_open_supplement_count: number;
+    story_quality_passed_with_issue_and_open_supplement_count: number;
     story_supplement_open_count: number;
     story_supplement_optional_open_count: number;
     story_supplement_risk_open_count: number;

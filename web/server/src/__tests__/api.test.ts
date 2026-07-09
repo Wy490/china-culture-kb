@@ -1554,8 +1554,12 @@ describe('System API', () => {
           series_missing_story_ref_project_count: expect.any(Number),
           series_contract_evidence_count: expect.any(Number),
           series_relink_candidate_count: expect.any(Number),
+          story_quality_passed_with_issue_count: expect.any(Number),
+          story_quality_passed_with_open_supplement_count: expect.any(Number),
+          story_quality_passed_with_issue_and_open_supplement_count: expect.any(Number),
         }),
       });
+      expect(res.body.data.markdown).toContain('story_quality_passed_with_issues_and_open_supplement');
       expect(res.body.data.summary.scanned_story_project_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.scanned_series_project_count).toBeGreaterThanOrEqual(2);
       expect(res.body.data.summary.series_planned_only_count).toBeGreaterThanOrEqual(1);
@@ -1841,6 +1845,9 @@ describe('System API', () => {
           story_quality_passed_count: expect.any(Number),
           story_quality_failed_count: expect.any(Number),
           story_open_supplement_task_count: expect.any(Number),
+          story_quality_passed_with_issue_count: expect.any(Number),
+          story_quality_passed_with_open_supplement_count: expect.any(Number),
+          story_quality_passed_with_issue_and_open_supplement_count: expect.any(Number),
           story_supplement_open_count: expect.any(Number),
           story_supplement_optional_open_count: expect.any(Number),
           story_supplement_risk_open_count: expect.any(Number),
@@ -1982,6 +1989,7 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('Seedance placeholder assets');
       expect(res.body.data.markdown).toContain('local acceptance counts as real external callback: false');
       expect(res.body.data.markdown).toContain('story supplement candidate package');
+      expect(res.body.data.markdown).toContain('story quality passed with followups');
       expect(res.body.data.markdown).toContain('story agent backlog handoff');
       expect(res.body.data.markdown).toContain('knowledge writeback ready drafts');
       expect(res.body.data.markdown).toContain('domain pack expansion field workbench items');
@@ -2021,6 +2029,10 @@ describe('System API', () => {
       expect(storyQualityLane.evidence).toEqual(expect.arrayContaining([
         expect.stringMatching(/^quality_passed=\d+/),
         expect.stringMatching(/^quality_failed=\d+/),
+        expect.stringMatching(/^quality_passed_with_issues=\d+/),
+        expect.stringMatching(/^quality_passed_with_open_supplement=\d+/),
+        expect.stringMatching(/^quality_passed_with_issues_and_open_supplement=\d+/),
+        'quality_followup_semantics=passed_main_gate_not_hidden_failure',
         expect.stringMatching(/^open_supplement_tasks=\d+/),
         expect.stringMatching(/^supplement_optional=\d+/),
         expect.stringMatching(/^supplement_risk=\d+/),

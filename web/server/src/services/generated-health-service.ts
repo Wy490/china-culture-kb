@@ -485,6 +485,9 @@ function renderMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'
     `- story_quality_passed: ${report.summary.story_quality_passed_count ?? 0}`,
     `- story_quality_failed: ${report.summary.story_quality_failed_count ?? 0}`,
     `- story_open_supplement_tasks: ${report.summary.story_open_supplement_task_count ?? 0}`,
+    `- story_quality_passed_with_issues: ${report.summary.story_quality_passed_with_issue_count ?? 0}`,
+    `- story_quality_passed_with_open_supplement: ${report.summary.story_quality_passed_with_open_supplement_count ?? 0}`,
+    `- story_quality_passed_with_issues_and_open_supplement: ${report.summary.story_quality_passed_with_issue_and_open_supplement_count ?? 0}`,
     `- story_material_sufficiency_blocked: ${report.summary.story_material_sufficiency_blocked_count ?? 0}`,
     `- missing_episode_story_refs: ${report.summary.missing_episode_story_id_count}`,
     `- series_missing_delivery: ${report.summary.series_missing_delivery_count}`,
@@ -573,6 +576,9 @@ function backlogReasonForHealthItem(item: StoryAgentGeneratedHealthItem): string
   if (item.status === 'interrupted') return 'Generated project current refs or linked story artifacts are interrupted.';
   if (item.quality_passed === false) return 'Latest story version has failed quality validation.';
   if (item.material_sufficiency_blocked) return 'Material sufficiency gate is blocking production readiness.';
+  if (item.quality_passed === true && (item.open_supplement_task_count ?? 0) > 0) {
+    return 'Main quality gate passed; open supplement tasks are operator follow-up backlog, not hidden quality failures.';
+  }
   if ((item.open_supplement_task_count ?? 0) > 0) return 'Open supplement tasks still need candidate drafting or human review.';
   if (item.status === 'production_gap') return 'Generated artifact is missing command-layer delivery contracts.';
   if (item.status === 'planned') return 'Series target is planned but has not generated episode story artifacts.';
@@ -750,6 +756,17 @@ export async function getStoryAgentGeneratedHealth(
   const storyQualityPassedCount = storyItems.filter(item => item.quality_passed === true).length;
   const storyQualityFailedCount = storyItems.filter(item => item.quality_passed === false).length;
   const storyOpenSupplementTaskCount = storyItems.reduce((sum, item) => sum + (item.open_supplement_task_count ?? 0), 0);
+  const storyQualityPassedWithIssueCount = storyItems.filter(item =>
+    item.quality_passed === true && (item.quality_issue_count ?? 0) > 0,
+  ).length;
+  const storyQualityPassedWithOpenSupplementCount = storyItems.filter(item =>
+    item.quality_passed === true && (item.open_supplement_task_count ?? 0) > 0,
+  ).length;
+  const storyQualityPassedWithIssueAndOpenSupplementCount = storyItems.filter(item =>
+    item.quality_passed === true
+    && (item.quality_issue_count ?? 0) > 0
+    && (item.open_supplement_task_count ?? 0) > 0,
+  ).length;
   const storyMaterialSufficiencyBlockedCount = storyItems.filter(item => item.material_sufficiency_blocked === true).length;
   const report: Omit<StoryAgentGeneratedHealthReport, 'markdown'> = {
     schema_version: 'story-agent-generated-health/v1',
@@ -769,6 +786,9 @@ export async function getStoryAgentGeneratedHealth(
       story_quality_passed_count: storyQualityPassedCount,
       story_quality_failed_count: storyQualityFailedCount,
       story_open_supplement_task_count: storyOpenSupplementTaskCount,
+      story_quality_passed_with_issue_count: storyQualityPassedWithIssueCount,
+      story_quality_passed_with_open_supplement_count: storyQualityPassedWithOpenSupplementCount,
+      story_quality_passed_with_issue_and_open_supplement_count: storyQualityPassedWithIssueAndOpenSupplementCount,
       story_material_sufficiency_blocked_count: storyMaterialSufficiencyBlockedCount,
       missing_episode_story_id_count: seriesItems.reduce((sum, item) => sum + (item.missing_episode_story_id_count ?? 0), 0),
       series_missing_delivery_count: countMissing(allItems, 'series_delivery', 'ai_comic_series_project')
@@ -793,6 +813,9 @@ export async function getStoryAgentGeneratedHealth(
         : 'Series governance: all scanned AI comic series targets are command-layer ready.',
       seriesRelinkCandidateCount > 0
         ? `Series relink candidates: ${seriesRelinkCandidateCount} interrupted series already have production or postproduction contract evidence; restore missing episode story JSON or update refs before judging GEARS readiness.`
+        : '',
+      storyQualityPassedWithIssueAndOpenSupplementCount > 0
+        ? `Quality follow-up semantics: ${storyQualityPassedWithIssueAndOpenSupplementCount} story projects pass the main quality gate while retaining advisory issues and open supplement tasks; treat these as operator follow-up backlog, not hidden quality failures.`
         : '',
       limit && reportItems.length < allItems.length ? `items limited to ${reportItems.length} of ${allItems.length}; summary covers all scanned targets.` : '',
     ].filter(Boolean),

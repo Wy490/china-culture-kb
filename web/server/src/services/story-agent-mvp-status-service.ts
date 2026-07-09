@@ -992,6 +992,9 @@ function storyQualityLane(
   const missingQuality = summary.missing_quality_count;
   const qualityPassed = summary.story_quality_passed_count ?? 0;
   const qualityFailed = summary.story_quality_failed_count ?? 0;
+  const qualityPassedWithIssues = summary.story_quality_passed_with_issue_count ?? 0;
+  const qualityPassedWithOpenSupplement = summary.story_quality_passed_with_open_supplement_count ?? 0;
+  const qualityPassedWithIssueAndOpenSupplement = summary.story_quality_passed_with_issue_and_open_supplement_count ?? 0;
   const openSupplementTasks = supplementMetrics.open_count;
   const optionalSupplementTasks = supplementMetrics.optional_open_count;
   const riskSupplementTasks = supplementMetrics.risk_open_count;
@@ -1011,7 +1014,7 @@ function storyQualityLane(
       : clampScore(100 - missingCurrent * 40 - missingScene * 25 - missingQuality * 20 - qualityFailed * 15 - blockingSupplementTasks * 12 - riskSupplementTasks * 6 - materialBlocked * 5),
     detail: storyCount === 0
       ? 'No standalone story project has a measurable scene and quality contract yet.'
-      : `${storyCount - Math.min(storyCount, missingScene + missingQuality)}/${storyCount} story projects have scene and quality evidence; ${qualityPassed}/${storyCount} pass quality, ${qualityFailed} fail quality, ${openSupplementTasks} open supplement tasks (${blockingSupplementTasks} blocking, ${riskSupplementTasks} risk, ${optionalSupplementTasks} optional), ${materialBlocked} material gates blocked.`,
+      : `${storyCount - Math.min(storyCount, missingScene + missingQuality)}/${storyCount} story projects have scene and quality evidence; ${qualityPassed}/${storyCount} pass quality, ${qualityFailed} fail quality, ${qualityPassedWithIssueAndOpenSupplement} pass quality but still carry advisory issues plus open supplement tasks, ${openSupplementTasks} open supplement tasks (${blockingSupplementTasks} blocking, ${riskSupplementTasks} risk, ${optionalSupplementTasks} optional), ${materialBlocked} material gates blocked.`,
     evidence: [
       `story_projects=${storyCount}`,
       `missing_current_story=${missingCurrent}`,
@@ -1019,6 +1022,10 @@ function storyQualityLane(
       `missing_quality=${missingQuality}`,
       `quality_passed=${qualityPassed}`,
       `quality_failed=${qualityFailed}`,
+      `quality_passed_with_issues=${qualityPassedWithIssues}`,
+      `quality_passed_with_open_supplement=${qualityPassedWithOpenSupplement}`,
+      `quality_passed_with_issues_and_open_supplement=${qualityPassedWithIssueAndOpenSupplement}`,
+      'quality_followup_semantics=passed_main_gate_not_hidden_failure',
       `open_supplement_tasks=${openSupplementTasks}`,
       `supplement_blocking=${blockingSupplementTasks}`,
       `supplement_risk=${riskSupplementTasks}`,
@@ -1048,7 +1055,7 @@ function storyQualityLane(
         : storyCount === 0
           ? 'Generate the first measurable story project for quality validation.'
           : openSupplementTasks > 0
-            ? 'Review open supplement tasks separately; optional knowledge gaps should not be reported as failed story quality.'
+            ? 'Review open supplement tasks as follow-up backlog; quality-passed projects with advisory issues are not hidden failures unless blocking or risk supplement tasks remain.'
           : undefined,
   };
 }
@@ -1463,6 +1470,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- generated interrupted: ${report.summary.generated_interrupted_count}`,
     `- story quality passed/failed: ${report.summary.story_quality_passed_count}/${report.summary.story_quality_failed_count}`,
     `- story open supplement tasks: ${report.summary.story_open_supplement_task_count}`,
+    `- story quality passed with followups: issues ${report.summary.story_quality_passed_with_issue_count}, open supplement ${report.summary.story_quality_passed_with_open_supplement_count}, both ${report.summary.story_quality_passed_with_issue_and_open_supplement_count}`,
     `- story supplement backlog: ${report.summary.story_supplement_open_count} open (${report.summary.story_supplement_blocking_open_count} blocking / ${report.summary.story_supplement_risk_open_count} risk / ${report.summary.story_supplement_optional_open_count} optional)`,
     `- story supplement candidate package: ${report.summary.story_supplement_candidate_package_ready ? 'ready' : 'unavailable'} (${report.summary.story_supplement_candidate_package_schema || 'none'}), ${report.summary.story_supplement_candidate_package_task_count} tasks, ${report.summary.story_supplement_candidate_package_open_task_count} open (${report.summary.story_supplement_candidate_package_blocking_open_count} blocking / ${report.summary.story_supplement_candidate_package_risk_open_count} risk / ${report.summary.story_supplement_candidate_package_optional_open_count} optional), ${report.summary.story_supplement_candidate_package_project_count} projects, ${report.summary.story_supplement_candidate_package_target_file_count} target files`,
     `- story supplement candidate package province written: ${report.summary.story_supplement_candidate_package_province_markdown_written}`,
@@ -1675,6 +1683,9 @@ export async function getStoryAgentMvpStatus(
       story_quality_passed_count: generatedHealth.summary.story_quality_passed_count ?? 0,
       story_quality_failed_count: generatedHealth.summary.story_quality_failed_count ?? 0,
       story_open_supplement_task_count: generatedHealth.summary.story_open_supplement_task_count ?? 0,
+      story_quality_passed_with_issue_count: generatedHealth.summary.story_quality_passed_with_issue_count ?? 0,
+      story_quality_passed_with_open_supplement_count: generatedHealth.summary.story_quality_passed_with_open_supplement_count ?? 0,
+      story_quality_passed_with_issue_and_open_supplement_count: generatedHealth.summary.story_quality_passed_with_issue_and_open_supplement_count ?? 0,
       story_supplement_open_count: supplementBacklogMetrics.open_count,
       story_supplement_optional_open_count: supplementBacklogMetrics.optional_open_count,
       story_supplement_risk_open_count: supplementBacklogMetrics.risk_open_count,
@@ -1868,6 +1879,7 @@ export async function getStoryAgentMvpStatus(
       'Domain Pack expansion candidates are tracked as a Story Agent MVP lane: first-wave material expansion must stay in candidate_review with candidate Markdown, human review, source-level checks, and no direct province Markdown writeback.',
       'Knowledge writeback queue governance is now a Story Agent MVP lane: only approved candidates with writeback drafts are counted, and province Markdown changes remain manual review patches.',
       'Story Agent backlog handoff is embedded in MVP evidence: generated health gaps and supplement candidates share one P0/P1 operator queue without province Markdown writeback.',
+      'Quality passed with follow-ups is expected: quality_report.passed is the main gate, while quality_issue_count and open supplement tasks remain advisory/operator backlog until cleared.',
       'MCP Story Agent loop is complete at 100%: read-only context, blueprint, validation, delivery, repair prompt, controlled versioning, generated governance, readiness automation, MVP status, and GEARS evidence signoff are all exposed as tools.',
       'Content and production command layer is complete at 100% inside china-culture-kb; generated target health and real GEARS endpoint acceptance remain separate status surfaces.',
       'Production Board / Delivery Contract command surface is complete at 100%; Seedance asset upload checklists now make external reference-material handoff explicit, and missing per-target exports remain tracked by the delivery_contract lane and generated governance plan.',

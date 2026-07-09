@@ -68,7 +68,7 @@
           </label>
           <label class="projects-page__toggle">
             <input v-model="qualityFilter" type="checkbox" />
-            <span>仅看质量问题</span>
+            <span>仅看质量跟进项</span>
           </label>
           <label class="projects-page__toggle">
             <input v-model="showArchivedSeries" type="checkbox" @change="loadProjects" />
@@ -121,7 +121,7 @@
         <span>安全自动化 {{ storyAgentMvpStatus.summary.ready_automation_step_count }}</span>
         <span>GEARS/人工 {{ storyAgentMvpStatus.summary.external_or_manual_step_count }}</span>
         <RouterLink class="projects-page__metric-link" :to="{ name: 'SupplementTasks', query: { status: 'open' } }">
-          素材补充 {{ storyAgentMvpStatus.summary.story_supplement_open_count }} 待补 · 阻断 {{ storyAgentMvpStatus.summary.story_supplement_blocking_open_count }} · 风险 {{ storyAgentMvpStatus.summary.story_supplement_risk_open_count }} · 生产前 {{ storyAgentMvpStatus.summary.story_supplement_optional_open_count }} · 候选包 {{ storyAgentMvpStatus.summary.story_supplement_candidate_package_task_count }} 条/{{ storyAgentMvpStatus.summary.story_supplement_candidate_package_target_file_count }} 文件 · 质量 {{ storyAgentMvpStatus.summary.story_quality_passed_count }}/{{ storyAgentMvpStatus.summary.story_quality_failed_count }}
+          素材补充 {{ storyAgentMvpStatus.summary.story_supplement_open_count }} 待补 · 阻断 {{ storyAgentMvpStatus.summary.story_supplement_blocking_open_count }} · 风险 {{ storyAgentMvpStatus.summary.story_supplement_risk_open_count }} · 生产前 {{ storyAgentMvpStatus.summary.story_supplement_optional_open_count }} · 候选包 {{ storyAgentMvpStatus.summary.story_supplement_candidate_package_task_count }} 条/{{ storyAgentMvpStatus.summary.story_supplement_candidate_package_target_file_count }} 文件 · 质量 {{ storyAgentMvpStatus.summary.story_quality_passed_count }}/{{ storyAgentMvpStatus.summary.story_quality_failed_count }} · 通过后跟进 {{ storyAgentMvpStatus.summary.story_quality_passed_with_issue_and_open_supplement_count }}
         </RouterLink>
         <span>模板 {{ storyAgentMvpStatus.summary.production_material_pack_status }} {{ storyAgentMvpStatus.summary.production_material_pack_core_ready_count }}/{{ storyAgentMvpStatus.summary.production_material_pack_core_total_count }}</span>
         <span>Domain Pack {{ storyAgentMvpStatus.summary.domain_pack_status }} {{ storyAgentMvpStatus.summary.production_domain_pack_ready_count }}/{{ storyAgentMvpStatus.summary.production_domain_pack_required_count }}</span>
@@ -447,6 +447,9 @@
         <span>缺当前故事 {{ generatedHealth.summary.missing_current_story_count }}</span>
         <span>缺分镜 {{ generatedHealth.summary.missing_scene_breakdown_count }}</span>
         <span>缺 GEARS 段 {{ generatedHealth.summary.missing_gears_segments_count }}</span>
+        <span>通过后建议 {{ generatedHealth.summary.story_quality_passed_with_issue_count ?? 0 }}</span>
+        <span>通过后待补 {{ generatedHealth.summary.story_quality_passed_with_open_supplement_count ?? 0 }}</span>
+        <span>通过后双跟进 {{ generatedHealth.summary.story_quality_passed_with_issue_and_open_supplement_count ?? 0 }}</span>
         <span>缺分集引用 {{ generatedHealth.summary.missing_episode_story_id_count }}</span>
         <span>系列缺交付 {{ generatedHealth.summary.series_missing_delivery_count }}</span>
         <span>系列缺后期指令 {{ generatedHealth.summary.series_missing_postproduction_count }}</span>
@@ -754,11 +757,14 @@
                       类型分 {{ project.genre_score }}
                     </span>
                     <span v-else>未评分</span>
-                    <span v-if="(project.quality_issue_count ?? 0) > 0" class="projects-page__meta-warning">
-                      质量问题 {{ project.quality_issue_count }}
+                    <span v-if="qualityFollowupLabel(project)" class="projects-page__meta-warning">
+                      {{ qualityFollowupLabel(project) }}
                     </span>
-                    <span v-if="(project.open_supplement_task_count ?? 0) > 0" class="projects-page__meta-warning">
-                      待补素材 {{ project.open_supplement_task_count }}
+                    <span v-if="supplementFollowupLabel(project)" class="projects-page__meta-warning">
+                      {{ supplementFollowupLabel(project) }}
+                    </span>
+                    <span v-if="qualityPassedWithFollowups(project)" class="projects-page__meta-note">
+                      主质量门已过，剩余为跟进项
                     </span>
                     <span v-if="project.gears_video_status" :class="['projects-page__meta-video', `projects-page__meta-video--${project.gears_video_status}`]">
                       {{ gearsVideoStatusLabel(project.gears_video_status) }}
@@ -905,7 +911,10 @@ const filteredProjects = computed(() => {
     const matchesMaterialGate = !materialGateFilter.value
       || materialGateStatus(project) === materialGateFilter.value
     const matchesSupplement = !supplementFilter.value || (project.open_supplement_task_count ?? 0) > 0
-    const matchesQuality = !qualityFilter.value || project.quality_passed === false || (project.quality_issue_count ?? 0) > 0
+    const matchesQuality = !qualityFilter.value
+      || project.quality_passed === false
+      || (project.quality_issue_count ?? 0) > 0
+      || qualityPassedWithFollowups(project)
     const matchesQuery = !query
       || project.title.toLowerCase().includes(query)
       || project.source_entry.toLowerCase().includes(query)
@@ -1050,6 +1059,23 @@ function materialGateLabel(status: MaterialGateStatus, score?: number): string {
   if (status === 'risk') return `需核验${suffix}`
   if (status === 'blocked') return `素材阻断${suffix}`
   return '未标注素材'
+}
+
+function qualityPassedWithFollowups(project: StoryProjectListItem): boolean {
+  return project.quality_passed === true
+    && ((project.quality_issue_count ?? 0) > 0 || (project.open_supplement_task_count ?? 0) > 0)
+}
+
+function qualityFollowupLabel(project: StoryProjectListItem): string {
+  const count = project.quality_issue_count ?? 0
+  if (count <= 0) return ''
+  return project.quality_passed ? `质量建议 ${count}` : `质量问题 ${count}`
+}
+
+function supplementFollowupLabel(project: StoryProjectListItem): string {
+  const count = project.open_supplement_task_count ?? 0
+  if (count <= 0) return ''
+  return project.quality_passed ? `通过后待补素材 ${count}` : `待补素材 ${count}`
 }
 
 function gearsVideoStatusLabel(status: GearsVideoStatus): string {
@@ -2795,6 +2821,11 @@ onMounted(async () => {
 
 .projects-page__meta-warning {
   color: #a05f00;
+  font-weight: 700;
+}
+
+.projects-page__meta-note {
+  color: #1b7f4a;
   font-weight: 700;
 }
 
