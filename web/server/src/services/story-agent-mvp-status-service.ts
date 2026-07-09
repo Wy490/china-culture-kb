@@ -50,6 +50,7 @@ const MCP_STORY_AGENT_LOOP_TOOLS = [
   'kb_get_domain_pack_production_health',
   'kb_get_domain_pack_expansion_candidates',
   'kb_get_domain_pack_expansion_writeback_draft',
+  'kb_get_story_supplement_candidate_package',
   'kb_update_domain_pack_expansion_review_state',
   'kb_update_domain_pack_expansion_review_state_bulk',
   'kb_get_story_agent_mvp_status',
@@ -209,6 +210,10 @@ interface StorySupplementBacklogMetrics {
   candidate_package_schema: 'project-supplement-candidate-package/v1' | '';
   candidate_package_ready: boolean;
   candidate_package_task_count: number;
+  candidate_package_open_task_count: number;
+  candidate_package_blocking_open_count: number;
+  candidate_package_risk_open_count: number;
+  candidate_package_optional_open_count: number;
   candidate_package_project_count: number;
   candidate_package_target_file_count: number;
   candidate_package_direct_writeback_to_province_markdown: false;
@@ -533,6 +538,10 @@ async function getStorySupplementBacklogMetrics(
     candidate_package_schema: '' as const,
     candidate_package_ready: false,
     candidate_package_task_count: 0,
+    candidate_package_open_task_count: 0,
+    candidate_package_blocking_open_count: 0,
+    candidate_package_risk_open_count: 0,
+    candidate_package_optional_open_count: 0,
     candidate_package_project_count: 0,
     candidate_package_target_file_count: 0,
     candidate_package_direct_writeback_to_province_markdown: false as const,
@@ -555,6 +564,10 @@ async function getStorySupplementBacklogMetrics(
         candidate_package_schema: candidatePackageResult.data.schema_version,
         candidate_package_ready: true,
         candidate_package_task_count: candidatePackageResult.data.task_count,
+        candidate_package_open_task_count: candidatePackageResult.data.open_task_count,
+        candidate_package_blocking_open_count: candidatePackageResult.data.blocking_open_count,
+        candidate_package_risk_open_count: candidatePackageResult.data.risk_open_count,
+        candidate_package_optional_open_count: candidatePackageResult.data.optional_open_count,
         candidate_package_project_count: candidatePackageResult.data.project_count,
         candidate_package_target_file_count: candidatePackageResult.data.target_files.length,
         candidate_package_direct_writeback_to_province_markdown:
@@ -1009,6 +1022,10 @@ function storyQualityLane(
       `supplement_candidate_package_schema=${supplementMetrics.candidate_package_schema || 'none'}`,
       `supplement_candidate_package_ready=${supplementMetrics.candidate_package_ready}`,
       `supplement_candidate_package_tasks=${supplementMetrics.candidate_package_task_count}`,
+      `supplement_candidate_package_open=${supplementMetrics.candidate_package_open_task_count}`,
+      `supplement_candidate_package_blocking=${supplementMetrics.candidate_package_blocking_open_count}`,
+      `supplement_candidate_package_risk=${supplementMetrics.candidate_package_risk_open_count}`,
+      `supplement_candidate_package_optional=${supplementMetrics.candidate_package_optional_open_count}`,
       `supplement_candidate_package_projects=${supplementMetrics.candidate_package_project_count}`,
       `supplement_candidate_package_target_files=${supplementMetrics.candidate_package_target_file_count}`,
       `supplement_candidate_package_direct_writeback=${supplementMetrics.candidate_package_direct_writeback_to_province_markdown}`,
@@ -1443,7 +1460,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- story quality passed/failed: ${report.summary.story_quality_passed_count}/${report.summary.story_quality_failed_count}`,
     `- story open supplement tasks: ${report.summary.story_open_supplement_task_count}`,
     `- story supplement backlog: ${report.summary.story_supplement_open_count} open (${report.summary.story_supplement_blocking_open_count} blocking / ${report.summary.story_supplement_risk_open_count} risk / ${report.summary.story_supplement_optional_open_count} optional)`,
-    `- story supplement candidate package: ${report.summary.story_supplement_candidate_package_ready ? 'ready' : 'unavailable'} (${report.summary.story_supplement_candidate_package_schema || 'none'}), ${report.summary.story_supplement_candidate_package_task_count} tasks, ${report.summary.story_supplement_candidate_package_project_count} projects, ${report.summary.story_supplement_candidate_package_target_file_count} target files`,
+    `- story supplement candidate package: ${report.summary.story_supplement_candidate_package_ready ? 'ready' : 'unavailable'} (${report.summary.story_supplement_candidate_package_schema || 'none'}), ${report.summary.story_supplement_candidate_package_task_count} tasks, ${report.summary.story_supplement_candidate_package_open_task_count} open (${report.summary.story_supplement_candidate_package_blocking_open_count} blocking / ${report.summary.story_supplement_candidate_package_risk_open_count} risk / ${report.summary.story_supplement_candidate_package_optional_open_count} optional), ${report.summary.story_supplement_candidate_package_project_count} projects, ${report.summary.story_supplement_candidate_package_target_file_count} target files`,
     `- story supplement candidate package province written: ${report.summary.story_supplement_candidate_package_province_markdown_written}`,
     `- story material gates blocked: ${report.summary.story_material_sufficiency_blocked_count}`,
     `- readiness targets: ${report.summary.readiness_target_count}`,
@@ -1658,6 +1675,12 @@ export async function getStoryAgentMvpStatus(
       story_supplement_candidate_package_schema: supplementBacklogMetrics.candidate_package_schema,
       story_supplement_candidate_package_ready: supplementBacklogMetrics.candidate_package_ready,
       story_supplement_candidate_package_task_count: supplementBacklogMetrics.candidate_package_task_count,
+      story_supplement_candidate_package_open_task_count: supplementBacklogMetrics.candidate_package_open_task_count,
+      story_supplement_candidate_package_blocking_open_count:
+        supplementBacklogMetrics.candidate_package_blocking_open_count,
+      story_supplement_candidate_package_risk_open_count: supplementBacklogMetrics.candidate_package_risk_open_count,
+      story_supplement_candidate_package_optional_open_count:
+        supplementBacklogMetrics.candidate_package_optional_open_count,
       story_supplement_candidate_package_project_count: supplementBacklogMetrics.candidate_package_project_count,
       story_supplement_candidate_package_target_file_count: supplementBacklogMetrics.candidate_package_target_file_count,
       story_supplement_candidate_package_direct_writeback_to_province_markdown:

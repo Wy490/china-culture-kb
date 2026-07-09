@@ -1812,6 +1812,10 @@ describe('System API', () => {
           story_supplement_candidate_package_schema: 'project-supplement-candidate-package/v1',
           story_supplement_candidate_package_ready: true,
           story_supplement_candidate_package_task_count: expect.any(Number),
+          story_supplement_candidate_package_open_task_count: expect.any(Number),
+          story_supplement_candidate_package_blocking_open_count: expect.any(Number),
+          story_supplement_candidate_package_risk_open_count: expect.any(Number),
+          story_supplement_candidate_package_optional_open_count: expect.any(Number),
           story_supplement_candidate_package_project_count: expect.any(Number),
           story_supplement_candidate_package_target_file_count: expect.any(Number),
           story_supplement_candidate_package_direct_writeback_to_province_markdown: false,
@@ -1971,6 +1975,10 @@ describe('System API', () => {
         expect.stringMatching(/^supplement_blocking=\d+/),
         expect.stringMatching(/^supplement_candidate_package_ready=(true|false)$/),
         expect.stringMatching(/^supplement_candidate_package_tasks=\d+/),
+        expect.stringMatching(/^supplement_candidate_package_open=\d+/),
+        expect.stringMatching(/^supplement_candidate_package_blocking=\d+/),
+        expect.stringMatching(/^supplement_candidate_package_risk=\d+/),
+        expect.stringMatching(/^supplement_candidate_package_optional=\d+/),
         expect.stringMatching(/^supplement_candidate_package_target_files=\d+/),
         expect.stringMatching(/^material_sufficiency_blocked=\d+/),
       ]));
@@ -2003,7 +2011,7 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        expect.stringContaining('tool_count=26'),
+        expect.stringContaining('tool_count=27'),
         expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
         expect.stringContaining('kb_get_domain_pack_expansion_writeback_draft'),
         expect.stringContaining('kb_update_domain_pack_expansion_review_state'),

@@ -307,6 +307,17 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.knowledge_writeback_total_queued_count).toBe(1);
     expect(result.summary.knowledge_writeback_total_written_back_count).toBe(0);
     expect(result.summary.knowledge_writeback_total_needs_revision_count).toBe(0);
+    expect(result.summary.story_supplement_candidate_package_schema).toBe('project-supplement-candidate-package/v1');
+    expect(result.summary.story_supplement_candidate_package_ready).toBe(true);
+    expect(result.summary.story_supplement_candidate_package_task_count).toBe(0);
+    expect(result.summary.story_supplement_candidate_package_open_task_count).toBe(0);
+    expect(result.summary.story_supplement_candidate_package_blocking_open_count).toBe(0);
+    expect(result.summary.story_supplement_candidate_package_risk_open_count).toBe(0);
+    expect(result.summary.story_supplement_candidate_package_optional_open_count).toBe(0);
+    expect(result.summary.story_supplement_candidate_package_project_count).toBe(0);
+    expect(result.summary.story_supplement_candidate_package_target_file_count).toBe(0);
+    expect(result.summary.story_supplement_candidate_package_direct_writeback_to_province_markdown).toBe(false);
+    expect(result.summary.story_supplement_candidate_package_province_markdown_written).toBe(false);
     expect(result.summary.knowledge_writeback_unified_export_schema).toBe('knowledge-writeback-queue-export/v1');
     expect(result.summary.knowledge_writeback_unified_export_ready).toBe(true);
     expect(result.summary.knowledge_writeback_unified_export_approved_count).toBe(1);
@@ -356,7 +367,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.domain_pack_expansion_writeback_needs_revision_count).toBe(0);
     expect(result.summary.story_agent_command_surface_status).toBe('ready');
     expect(result.summary.story_agent_command_surface_percent).toBe(100);
-    expect(result.summary.mcp_story_agent_tool_count).toBe(26);
+    expect(result.summary.mcp_story_agent_tool_count).toBe(27);
     expect(result.summary.mcp_story_agent_loop_percent).toBe(100);
     expect(result.summary.content_command_layer_percent).toBe(100);
     expect(result.summary.production_delivery_contract_percent).toBe(100);
@@ -366,6 +377,14 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.lanes.find(lane => lane.key === 'knowledge_writeback')?.evidence).toContain('project_writeback_drafts=1');
     expect(result.lanes.find(lane => lane.key === 'knowledge_writeback')?.evidence).toContain('expansion_writeback_drafts=0');
     expect(result.lanes.find(lane => lane.key === 'knowledge_writeback')?.evidence).toContain('unified_export_ready=true');
+    expect(result.lanes.find(lane => lane.key === 'story_quality')?.evidence).toEqual(expect.arrayContaining([
+      'supplement_candidate_package_ready=true',
+      'supplement_candidate_package_tasks=0',
+      'supplement_candidate_package_open=0',
+      'supplement_candidate_package_blocking=0',
+      'supplement_candidate_package_risk=0',
+      'supplement_candidate_package_optional=0',
+    ]));
     expect(result.generated_health.schema_version).toBe('mcp-story-agent-generated-health/v1');
     expect(result.generated_governance_plan.schema_version).toBe('mcp-story-agent-generated-governance-plan/v1');
     expect(result.production_material_pack_health.schema_version).toBe('production-material-pack-health/v1');
@@ -415,11 +434,12 @@ describe('kb_get_story_agent_mvp_status', () => {
     ]));
     expect(result.progress.find(slice => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
       'implementation_progress=100',
-      expect.stringContaining('tool_count=26'),
+      expect.stringContaining('tool_count=27'),
       expect.stringContaining('kb_get_production_material_pack_health'),
       expect.stringContaining('kb_get_domain_pack_production_health'),
       expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
       expect.stringContaining('kb_get_domain_pack_expansion_writeback_draft'),
+      expect.stringContaining('kb_get_story_supplement_candidate_package'),
       expect.stringContaining('kb_update_domain_pack_expansion_review_state'),
       expect.stringContaining('kb_update_domain_pack_expansion_review_state_bulk'),
       expect.stringContaining('kb_generate_story_repair_prompt'),
