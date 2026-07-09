@@ -24,6 +24,7 @@ import {
   exportProjectKnowledgeCandidates,
   exportProjectKnowledgeWritebackPatch,
   exportProjectKnowledgeWritebackQueuePatch,
+  exportProjectSupplementCandidatePackage,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   getProject,
@@ -4587,6 +4588,27 @@ describe('project-service', () => {
     expect(candidateExport.data?.items[0].review_status).toBe('approved');
     expect(candidateExport.data?.items[0].writeback_draft_markdown).toContain('正式知识库写入草案');
     expect(candidateExport.data?.items[0].writeback_status).toBe('queued');
+
+    const supplementCandidatePackage = await exportProjectSupplementCandidatePackage({
+      project_id: enriched.project_id,
+      status: 'resolved',
+      search_query: '青石巷',
+      task_keys: [`${enriched.project_id}::${taskId}`],
+    });
+    expect(supplementCandidatePackage.ok).toBe(true);
+    expect(supplementCandidatePackage.data?.schema_version).toBe('project-supplement-candidate-package/v1');
+    expect(supplementCandidatePackage.data?.task_count).toBe(1);
+    expect(supplementCandidatePackage.data?.project_count).toBe(1);
+    expect(supplementCandidatePackage.data?.target_files).toContain('data/provinces/湖南.md');
+    expect(supplementCandidatePackage.data?.direct_writeback_to_province_markdown).toBe(false);
+    expect(supplementCandidatePackage.data?.province_markdown_written).toBe(false);
+    expect(supplementCandidatePackage.data?.filters.search_query).toBe('青石巷');
+    expect(supplementCandidatePackage.data?.filters.task_key_count).toBe(1);
+    expect(supplementCandidatePackage.data?.items[0].task_key).toBe(`${enriched.project_id}::${taskId}`);
+    expect(supplementCandidatePackage.data?.markdown).toContain('Story Agent 素材补库候选包');
+    expect(supplementCandidatePackage.data?.markdown).toContain('不直接修改 data/provinces/*.md');
+    expect(supplementCandidatePackage.data?.markdown).toContain('项目：青石巷追问');
+    expect(supplementCandidatePackage.data?.markdown).toContain('知识库候选稿：参考图或关键帧');
 
     const writebackPatch = await exportProjectKnowledgeWritebackPatch(enriched.project_id!);
     expect(writebackPatch.ok).toBe(true);

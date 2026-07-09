@@ -55,18 +55,18 @@
       <button
         type="button"
         class="supplement-page__toolbar-action supplement-page__toolbar-action--secondary"
-        :disabled="candidateExportItems.length === 0"
+        :disabled="exportingCandidatePackage || candidateExportItems.length === 0"
         @click="copySupplementCandidatePackage"
       >
-        复制补库候选包
+        {{ exportingCandidatePackage ? '复制中…' : '复制补库候选包' }}
       </button>
       <button
         type="button"
         class="supplement-page__toolbar-action supplement-page__toolbar-action--secondary"
-        :disabled="candidateExportItems.length === 0"
+        :disabled="exportingCandidatePackage || candidateExportItems.length === 0"
         @click="downloadSupplementCandidatePackage"
       >
-        下载补库候选包
+        {{ exportingCandidatePackage ? '导出中…' : '下载补库候选包' }}
       </button>
     </section>
 
@@ -233,6 +233,7 @@ import { useRoute } from 'vue-router'
 import {
   draftProjectProductionMaterialFields,
   exportKnowledgeWritebackQueuePatch,
+  exportSupplementCandidatePackage,
   listSupplementTasks,
   updateProjectSupplementTask,
 } from '@/api/projects'
@@ -272,6 +273,7 @@ const projectFilter = ref(queryString(route.query.project_id))
 const updatingTaskId = ref('')
 const draftingProjectId = ref('')
 const exportingWritebackPatch = ref(false)
+const exportingCandidatePackage = ref(false)
 const copyMessage = ref('')
 const drafts = reactive<Record<string, string>>({})
 const fieldDrafts = reactive<Record<string, Record<string, string>>>({})
@@ -414,12 +416,6 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function formatDateTime(iso: string): string {
-  if (!iso) return '未记录'
-  const d = new Date(iso)
-  return `${formatDate(iso)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
 function updateDraft(taskId: string, event: Event) {
   drafts[taskId] = (event.target as HTMLTextAreaElement).value
 }
@@ -490,76 +486,6 @@ async function copyWritebackQueuePatch() {
   }
 }
 
-function buildSupplementCandidatePackage(items: ProjectSupplementTaskListItem[]): string {
-  const generatedAt = new Date().toISOString()
-  const blockingCount = items.filter(item => item.task.blocking_level === 'blocking').length
-  const riskCount = items.filter(item => item.task.blocking_level === 'risk').length
-  const optionalCount = items.filter(item => item.task.blocking_level === 'optional').length
-  const targetFiles = [...new Set(items.map(item => item.suggested_file_path).filter((value): value is string => Boolean(value)))]
-  const lines = [
-    '# 素材补库候选包',
-    '',
-    `- 生成时间：${generatedAt}`,
-    `- 当前筛选待补任务：${items.length}`,
-    `- 分级：当前阻断 ${blockingCount} / 需核验 ${riskCount} / 生产前补充 ${optionalCount}`,
-    `- 涉及目标文件：${targetFiles.length > 0 ? targetFiles.join('、') : '待人工判定'}`,
-    '- 写回策略：只生成候选稿、审稿材料和人工写回草案；不直接修改 data/provinces/*.md。',
-    '',
-  ]
-
-  for (const [index, item] of items.entries()) {
-    const task = item.task
-    lines.push(
-      `## ${index + 1}. ${task.label}`,
-      '',
-      `- project_id：${item.project_id}`,
-      `- 项目：${item.project_title}`,
-      `- 来源条目：${item.source_entry}`,
-      `- 类型：${typeLabel(item.video_type)}`,
-      `- 目标省份：${item.target_province ?? '待人工判定'}`,
-      `- 建议目标文件：${item.suggested_file_path ?? '待人工判定'}`,
-      `- 来源类型：${sourceLabel(task.source)}`,
-      `- 阶段：${task.stage ? stageLabel(task.stage) : '未标注'}`,
-      `- 分级：${task.blocking_level ? blockingLabel(task.blocking_level) : '未标注'}`,
-      `- 类别：${task.category ? categoryLabel(task.category) : '通用资料'}`,
-      `- 更新时间：${formatDateTime(item.updated_at)}`,
-      '',
-      '### 缺口说明',
-      '',
-      task.description,
-      '',
-    )
-    if (task.recommended_fields?.length) {
-      lines.push('### 建议补充字段', '', ...task.recommended_fields.map(field => `- ${fieldLabel(field)}`), '')
-    }
-    if (task.affects?.length) {
-      lines.push('### 影响范围', '', ...task.affects.map(affect => `- ${affect}`), '')
-    }
-    if (task.intake_prompt) {
-      lines.push('### 采集提示', '', task.intake_prompt, '')
-    }
-    if (task.supplement_note) {
-      lines.push('### 已记录补充说明', '', task.supplement_note, '')
-    }
-    if (task.supplement_field_values && Object.keys(task.supplement_field_values).length > 0) {
-      lines.push(
-        '### 已填写字段',
-        '',
-        ...Object.entries(task.supplement_field_values).map(([field, value]) => `- ${fieldLabel(field)}：${value}`),
-        '',
-      )
-    }
-    if (task.knowledge_candidate_markdown) {
-      lines.push('### 现有知识库候选稿', '', task.knowledge_candidate_markdown, '')
-    }
-    if (task.knowledge_writeback_draft_markdown) {
-      lines.push('### 现有正式写入草案', '', task.knowledge_writeback_draft_markdown, '')
-    }
-  }
-
-  return `${lines.join('\n')}\n`
-}
-
 function downloadText(filename: string, text: string, type: string) {
   const blob = new Blob([text], { type })
   const url = URL.createObjectURL(blob)
@@ -570,28 +496,60 @@ function downloadText(filename: string, text: string, type: string) {
   URL.revokeObjectURL(url)
 }
 
+function candidatePackageFilters() {
+  return {
+    ...(projectFilter.value ? { project_id: projectFilter.value } : {}),
+    status: 'open' as const,
+    ...(stageFilter.value ? { stage: stageFilter.value } : {}),
+    ...(blockingFilter.value ? { blocking_level: blockingFilter.value } : {}),
+    ...(sourceFilter.value ? { source: sourceFilter.value } : {}),
+    ...(writebackFilter.value ? { knowledge_writeback_status: writebackFilter.value } : {}),
+    ...(searchQuery.value.trim() ? { search_query: searchQuery.value.trim() } : {}),
+  }
+}
+
 async function copySupplementCandidatePackage() {
   const items = candidateExportItems.value
   if (items.length === 0) return
   error.value = ''
+  exportingCandidatePackage.value = true
   try {
-    const markdown = buildSupplementCandidatePackage(items)
-    await navigator.clipboard.writeText(markdown)
-    copyMessage.value = `已复制 ${items.length} 条素材补库候选任务。`
+    const res = await exportSupplementCandidatePackage(candidatePackageFilters())
+    if (res.ok && res.data) {
+      await navigator.clipboard.writeText(res.data.markdown)
+      copyMessage.value = `已复制 ${res.data.task_count} 条素材补库候选任务。`
+    } else {
+      error.value = res.error?.message ?? '导出补库候选包失败'
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '复制补库候选包失败'
+  } finally {
+    exportingCandidatePackage.value = false
   }
 }
 
-function downloadSupplementCandidatePackage() {
+async function downloadSupplementCandidatePackage() {
   const items = candidateExportItems.value
   if (items.length === 0) return
-  downloadText(
-    `knowledge-supplement-candidates-${new Date().toISOString().slice(0, 10)}.md`,
-    buildSupplementCandidatePackage(items),
-    'text/markdown;charset=utf-8',
-  )
-  copyMessage.value = `已下载 ${items.length} 条素材补库候选任务。`
+  error.value = ''
+  exportingCandidatePackage.value = true
+  try {
+    const res = await exportSupplementCandidatePackage(candidatePackageFilters())
+    if (res.ok && res.data) {
+      downloadText(
+        `knowledge-supplement-candidates-${new Date().toISOString().slice(0, 10)}.md`,
+        res.data.markdown,
+        'text/markdown;charset=utf-8',
+      )
+      copyMessage.value = `已下载 ${res.data.task_count} 条素材补库候选任务。`
+    } else {
+      error.value = res.error?.message ?? '导出补库候选包失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '下载补库候选包失败'
+  } finally {
+    exportingCandidatePackage.value = false
+  }
 }
 
 async function draftProductionFieldsForTask(item: ProjectSupplementTaskListItem) {

@@ -972,6 +972,40 @@ export interface ProjectSupplementTaskListFilters {
   search_query?: string;
 }
 
+export interface ProjectSupplementCandidateExportFilters {
+  project_id?: string;
+  video_type?: VideoType;
+  province?: string;
+  status?: KnowledgeSupplementTaskStatus;
+  stage?: MaterialSufficiencyStage;
+  blocking_level?: MaterialBlockingLevel;
+  source?: KnowledgeSupplementTaskSource;
+  knowledge_writeback_status?: KnowledgeWritebackStatus;
+  search_query?: string;
+  task_key_count?: number;
+}
+
+export interface ProjectSupplementCandidateExportItem extends ProjectSupplementTaskListItem {
+  task_key: string;
+}
+
+export interface ProjectSupplementCandidateExportPackage {
+  schema_version: 'project-supplement-candidate-package/v1';
+  exported_at: string;
+  filters: ProjectSupplementCandidateExportFilters;
+  task_count: number;
+  open_task_count: number;
+  blocking_open_count: number;
+  risk_open_count: number;
+  optional_open_count: number;
+  project_count: number;
+  target_files: string[];
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  markdown: string;
+  items: ProjectSupplementCandidateExportItem[];
+}
+
 export interface ProjectDraftProductionMaterialTaskResult {
   task_id: string;
   label: string;

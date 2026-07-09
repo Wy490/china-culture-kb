@@ -6285,6 +6285,57 @@ describe('Projects API', () => {
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
     });
+
+    it('exports a filtered supplement candidate package without province markdown writeback', async () => {
+      const taskId = '20260617-story-api1--production-template--reference_images_or_keyframes';
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260617-story-supplement-export',
+        title: '补库候选包 API 测试故事',
+        video_type: 'ai_comic_drama',
+        source_entry: '湖南青石巷追问',
+        supplement_tasks: [{
+          task_id: taskId,
+          need_id: 'production_template_reference_images_or_keyframes',
+          label: '参考图或关键帧',
+          description: '补齐青石巷追问的参考图、关键帧和来源核验说明。',
+          stage: 'production_ready',
+          blocking_level: 'risk',
+          affects: ['production_material_readiness', 'gears_delivery'],
+          recommended_fields: ['reference_images_or_keyframes'],
+          recommended_question: '请补充可核验的青石巷参考图或关键帧。',
+          intake_prompt: '记录画面来源、可用镜头和待核点。',
+          status: 'open',
+          source: 'production_material_missing_field',
+          created_at: '2026-06-17T10:40:00.000Z',
+        }],
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:40:00.000Z');
+
+      const res = await request
+        .get('/api/projects/supplement-tasks/candidate-package/export')
+        .query({
+          project_id: enriched.project_id,
+          status: 'open',
+          search_query: '青石巷',
+          task_keys: `${enriched.project_id}::${taskId}`,
+        });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.schema_version).toBe('project-supplement-candidate-package/v1');
+      expect(res.body.data.task_count).toBe(1);
+      expect(res.body.data.open_task_count).toBe(1);
+      expect(res.body.data.risk_open_count).toBe(1);
+      expect(res.body.data.direct_writeback_to_province_markdown).toBe(false);
+      expect(res.body.data.province_markdown_written).toBe(false);
+      expect(res.body.data.filters.search_query).toBe('青石巷');
+      expect(res.body.data.filters.task_key_count).toBe(1);
+      expect(res.body.data.items[0].task_key).toBe(`${enriched.project_id}::${taskId}`);
+      expect(res.body.data.markdown).toContain('Story Agent 素材补库候选包');
+      expect(res.body.data.markdown).toContain('不直接修改 data/provinces/*.md');
+      expect(res.body.data.markdown).toContain('青石巷追问');
+    });
   });
 
   describe('DELETE /api/projects/:projectId', () => {

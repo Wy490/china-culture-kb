@@ -8,6 +8,7 @@ import type {
   KnowledgeWritebackStatus,
   MaterialBlockingLevel,
   MaterialSufficiencyStage,
+  ProjectSupplementTaskListFilters,
   VideoType,
 } from '@shared/types.js';
 import { VIDEO_TYPE_CONFIG } from '@shared/types.js';
@@ -55,6 +56,7 @@ import {
   exportProjectKnowledgeCandidates,
   exportProjectKnowledgeWritebackPatch,
   exportProjectKnowledgeWritebackQueuePatch,
+  exportProjectSupplementCandidatePackage,
   exportProjectGearsExternalCallbackHandoff,
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
@@ -151,6 +153,38 @@ function queryStringList(value: unknown, maxItems = 500): string[] {
     .map(item => item.trim())
     .filter(Boolean))]
     .slice(0, maxItems);
+}
+
+function supplementTaskFiltersFromRequest(req: Request): ProjectSupplementTaskListFilters {
+  const status = req.query.status === 'open' || req.query.status === 'resolved'
+    ? req.query.status
+    : undefined;
+  const projectId = typeof req.query.project_id === 'string' && req.query.project_id.trim()
+    ? req.query.project_id.trim()
+    : undefined;
+  const province = typeof req.query.province === 'string' && req.query.province.trim()
+    ? req.query.province.trim()
+    : undefined;
+  const searchQuery = typeof req.query.search_query === 'string' && req.query.search_query.trim()
+    ? req.query.search_query.trim()
+    : undefined;
+  return {
+    project_id: projectId,
+    video_type: queryEnum(req.query.video_type, SUPPLEMENT_TASK_VIDEO_TYPES),
+    province,
+    status,
+    stage: queryEnum(req.query.stage, SUPPLEMENT_TASK_STAGES),
+    blocking_level: queryEnum(req.query.blocking_level, SUPPLEMENT_TASK_BLOCKING_LEVELS),
+    source: queryEnum(req.query.source, SUPPLEMENT_TASK_SOURCES),
+    knowledge_writeback_status: queryEnum(
+      req.query.knowledge_writeback_status,
+      SUPPLEMENT_TASK_WRITEBACK_STATUSES,
+    ),
+    knowledge_writeback_ready: req.query.knowledge_writeback_ready === '1'
+      || req.query.knowledge_writeback_ready === 'true',
+    task_keys: queryStringList(req.query.task_keys),
+    search_query: searchQuery,
+  };
 }
 
 function validateSeedanceProviderCallbackSecret(req: Request, res: Response, next: NextFunction): void {
@@ -275,36 +309,16 @@ projectsRouter.get('/', async (_req, res, next) => {
 
 projectsRouter.get('/supplement-tasks', async (req, res, next) => {
   try {
-    const status = req.query.status === 'open' || req.query.status === 'resolved'
-      ? req.query.status
-      : undefined;
-    const stage = queryEnum(req.query.stage, SUPPLEMENT_TASK_STAGES);
-    const blockingLevel = queryEnum(req.query.blocking_level, SUPPLEMENT_TASK_BLOCKING_LEVELS);
-    const source = queryEnum(req.query.source, SUPPLEMENT_TASK_SOURCES);
-    const knowledgeWritebackStatus = queryEnum(
-      req.query.knowledge_writeback_status,
-      SUPPLEMENT_TASK_WRITEBACK_STATUSES,
-    );
-    const knowledgeWritebackReady = req.query.knowledge_writeback_ready === '1'
-      || req.query.knowledge_writeback_ready === 'true';
-    const projectId = typeof req.query.project_id === 'string' && req.query.project_id.trim()
-      ? req.query.project_id.trim()
-      : undefined;
-    const videoType = queryEnum(req.query.video_type, SUPPLEMENT_TASK_VIDEO_TYPES);
-    const province = typeof req.query.province === 'string' && req.query.province.trim()
-      ? req.query.province.trim()
-      : undefined;
-    const result = await listProjectSupplementTasks({
-      project_id: projectId,
-      video_type: videoType,
-      province,
-      status,
-      stage,
-      blocking_level: blockingLevel,
-      source,
-      knowledge_writeback_status: knowledgeWritebackStatus,
-      knowledge_writeback_ready: knowledgeWritebackReady,
-    });
+    const result = await listProjectSupplementTasks(supplementTaskFiltersFromRequest(req));
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+projectsRouter.get('/supplement-tasks/candidate-package/export', async (req, res, next) => {
+  try {
+    const result = await exportProjectSupplementCandidatePackage(supplementTaskFiltersFromRequest(req));
     res.json(result);
   } catch (err) {
     next(err);

@@ -23,6 +23,7 @@ import type {
   StoryProjectExportPackage,
   ProjectKnowledgeCandidateExportPackage,
   ProjectKnowledgeWritebackPatchPackage,
+  ProjectSupplementCandidateExportPackage,
   StoryProjectListItem,
   ProductionReadinessAutomationRunRequest,
   ProductionReadinessAutomationRunResult,
@@ -131,6 +132,16 @@ export function exportKnowledgeWritebackQueuePatch(filters: ProjectSupplementTas
     )),
   ) as Record<string, string | string[]>
   return apiGet<ProjectKnowledgeWritebackPatchPackage>('/projects/knowledge-candidates/writeback-patch/export', query)
+}
+
+export function exportSupplementCandidatePackage(filters: ProjectSupplementTaskListFilters = {}) {
+  const query = Object.fromEntries(
+    Object.entries(filters).filter((entry): entry is [string, string | string[]] => (
+      (typeof entry[1] === 'string' && entry[1].length > 0)
+      || (Array.isArray(entry[1]) && entry[1].length > 0)
+    )),
+  ) as Record<string, string | string[]>
+  return apiGet<ProjectSupplementCandidateExportPackage>('/projects/supplement-tasks/candidate-package/export', query)
 }
 
 export function getProjectProductionBoard(projectId: string) {

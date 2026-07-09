@@ -43,6 +43,7 @@ import type {
   GearsJobSubmitResult,
   ProjectKnowledgeCandidateExportPackage,
   ProjectKnowledgeWritebackPatchPackage,
+  ProjectSupplementCandidateExportPackage,
   ProjectDraftProductionMaterialFieldsResult,
   ProjectSupplementTaskListItem,
   ProjectSeedanceAssetPlaceholderResult,
@@ -7540,6 +7541,86 @@ export async function exportProjectKnowledgeWritebackPatch(
   });
 }
 
+export async function exportProjectSupplementCandidatePackage(
+  filters: Pick<ProjectSupplementTaskListFilters, 'project_id' | 'video_type' | 'province' | 'status' | 'stage' | 'blocking_level' | 'source' | 'knowledge_writeback_status' | 'task_keys' | 'search_query'> = {},
+): Promise<ApiResponse<ProjectSupplementCandidateExportPackage>> {
+  const exportedAt = new Date().toISOString();
+  const taskKeySet = new Set((filters.task_keys ?? []).map(item => item.trim()).filter(Boolean));
+  const searchQuery = filters.search_query?.trim();
+  const tasksResult = await listProjectSupplementTasks({
+    project_id: filters.project_id,
+    video_type: filters.video_type,
+    province: filters.province,
+    status: filters.status,
+    stage: filters.stage,
+    blocking_level: filters.blocking_level,
+    source: filters.source,
+    knowledge_writeback_status: filters.knowledge_writeback_status,
+  });
+  if (!tasksResult.ok || !tasksResult.data) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      tasksResult.error?.message ?? 'Failed to list supplement candidate tasks',
+    );
+  }
+
+  const items: ProjectSupplementCandidateExportPackage['items'] = tasksResult.data
+    .map(item => ({
+      ...item,
+      task_key: knowledgeWritebackTaskKey(item.project_id, item.task.task_id),
+    }))
+    .filter(item => taskKeySet.size === 0 || taskKeySet.has(item.task_key))
+    .filter(item => !searchQuery || supplementCandidateSearchText(item).includes(searchQuery.toLowerCase()));
+  const targetFiles = [...new Set(items.map(item => item.suggested_file_path).filter((item): item is string => Boolean(item)))];
+  const projectCount = new Set(items.map(item => item.project_id)).size;
+  const openItems = items.filter(item => item.task.status === 'open');
+  const blockingOpenCount = openItems.filter(item => item.task.blocking_level === 'blocking').length;
+  const riskOpenCount = openItems.filter(item => item.task.blocking_level === 'risk').length;
+  const optionalOpenCount = openItems.filter(item => item.task.blocking_level === 'optional').length;
+  const exportFilters: ProjectSupplementCandidateExportPackage['filters'] = {
+    ...(filters.project_id ? { project_id: filters.project_id } : {}),
+    ...(filters.video_type ? { video_type: filters.video_type } : {}),
+    ...(filters.province ? { province: filters.province } : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.stage ? { stage: filters.stage } : {}),
+    ...(filters.blocking_level ? { blocking_level: filters.blocking_level } : {}),
+    ...(filters.source ? { source: filters.source } : {}),
+    ...(filters.knowledge_writeback_status ? { knowledge_writeback_status: filters.knowledge_writeback_status } : {}),
+    ...(searchQuery ? { search_query: searchQuery } : {}),
+    ...(taskKeySet.size > 0 ? { task_key_count: taskKeySet.size } : {}),
+  };
+  const markdown = [
+    '# Story Agent 素材补库候选包',
+    '',
+    `- 导出时间：${exportedAt}`,
+    `- 当前筛选任务：${items.length}`,
+    `- 待补任务：${openItems.length}`,
+    `- 分级：当前阻断 ${blockingOpenCount} / 需核验 ${riskOpenCount} / 生产前补充 ${optionalOpenCount}`,
+    `- 涉及项目：${projectCount}`,
+    `- 涉及目标文件：${targetFiles.length > 0 ? targetFiles.join('、') : '待人工判定'}`,
+    '- 写回策略：只生成候选稿、审稿材料和人工写回草案；不直接修改 data/provinces/*.md。',
+    '',
+    ...items.flatMap((item, index) => supplementCandidateMarkdownSection(item, index)),
+  ].join('\n');
+
+  return success({
+    schema_version: 'project-supplement-candidate-package/v1',
+    exported_at: exportedAt,
+    filters: exportFilters,
+    task_count: items.length,
+    open_task_count: openItems.length,
+    blocking_open_count: blockingOpenCount,
+    risk_open_count: riskOpenCount,
+    optional_open_count: optionalOpenCount,
+    project_count: projectCount,
+    target_files: targetFiles,
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    markdown,
+    items,
+  });
+}
+
 export async function exportProjectKnowledgeWritebackQueuePatch(
   filters: Pick<ProjectSupplementTaskListFilters, 'project_id' | 'video_type' | 'province' | 'knowledge_writeback_status' | 'task_keys' | 'search_query'> = {},
 ): Promise<ApiResponse<ProjectKnowledgeWritebackPatchPackage>> {
@@ -7717,6 +7798,91 @@ const KNOWLEDGE_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'written_back',
   'needs_revision',
 ];
+
+function supplementCandidateSearchText(
+  item: ProjectSupplementCandidateExportPackage['items'][number],
+): string {
+  const task = item.task;
+  return [
+    item.task_key,
+    item.project_id,
+    item.project_title,
+    item.source_entry,
+    item.video_type,
+    item.target_province ?? '',
+    item.suggested_file_path ?? '',
+    task.label,
+    task.description,
+    task.category ?? '',
+    task.stage ?? '',
+    task.blocking_level ?? '',
+    task.source,
+    task.recommended_question ?? '',
+    task.intake_prompt ?? '',
+    task.supplement_note ?? '',
+    task.knowledge_candidate_markdown ?? '',
+    task.knowledge_writeback_draft_markdown ?? '',
+    task.knowledge_candidate_review_note ?? '',
+    task.knowledge_writeback_note ?? '',
+    ...(task.affects ?? []),
+    ...(task.recommended_fields ?? []),
+    ...Object.values(task.supplement_field_values ?? {}),
+  ].join(' ').toLowerCase();
+}
+
+function supplementCandidateMarkdownSection(
+  item: ProjectSupplementCandidateExportPackage['items'][number],
+  index: number,
+): string[] {
+  const task = item.task;
+  return [
+    `## ${index + 1}. ${task.label}`,
+    '',
+    `- task_key：${item.task_key}`,
+    `- project_id：${item.project_id}`,
+    `- 项目：${item.project_title}`,
+    `- 来源条目：${item.source_entry}`,
+    `- 类型：${item.video_type}`,
+    `- 目标省份：${item.target_province ?? '待人工判定'}`,
+    `- 建议目标文件：${item.suggested_file_path ?? '待人工判定'}`,
+    `- 来源类型：${task.source}`,
+    `- 阶段：${task.stage ?? '未标注'}`,
+    `- 分级：${task.blocking_level ?? '未标注'}`,
+    `- 类别：${task.category ?? 'general'}`,
+    `- 更新时间：${task.updated_at ?? task.resolved_at ?? item.updated_at}`,
+    '',
+    '### 缺口说明',
+    '',
+    task.description,
+    '',
+    ...(task.recommended_fields?.length
+      ? ['### 建议补充字段', '', ...task.recommended_fields.map(field => `- ${field}`), '']
+      : []),
+    ...(task.affects?.length
+      ? ['### 影响范围', '', ...task.affects.map(affect => `- ${affect}`), '']
+      : []),
+    ...(task.intake_prompt
+      ? ['### 采集提示', '', task.intake_prompt, '']
+      : []),
+    ...(task.supplement_note
+      ? ['### 已记录补充说明', '', task.supplement_note, '']
+      : []),
+    ...(task.supplement_field_values && Object.keys(task.supplement_field_values).length > 0
+      ? [
+          '### 已填写字段',
+          '',
+          ...Object.entries(task.supplement_field_values).map(([field, value]) => `- ${field}：${value}`),
+          '',
+        ]
+      : []),
+    ...(task.knowledge_candidate_markdown
+      ? ['### 现有知识库候选稿', '', task.knowledge_candidate_markdown, '']
+      : []),
+    ...(task.knowledge_writeback_draft_markdown
+      ? ['### 现有正式写入草案', '', task.knowledge_writeback_draft_markdown, '']
+      : []),
+  ];
+}
 
 function knowledgeWritebackTaskKey(projectId: string, taskId: string): string {
   return `${projectId}::${taskId}`;
