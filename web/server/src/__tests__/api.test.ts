@@ -1598,6 +1598,42 @@ describe('System API', () => {
       expect(res.body.data.notes.join('\n')).toContain('Series governance');
       expect(res.body.data.notes.join('\n')).toContain('Series relink candidates');
 
+      const backlogRes = await request.get('/api/system/story-agent-backlog-handoff?limit=20');
+      expect(backlogRes.status).toBe(200);
+      expectSuccess(backlogRes.body);
+      expect(backlogRes.body.data).toMatchObject({
+        schema_version: 'story-agent-backlog-handoff/v1',
+        source_health_schema: 'story-agent-generated-health/v1',
+        direct_writeback_to_province_markdown: false,
+        province_markdown_written: false,
+        summary: expect.objectContaining({
+          total_item_count: expect.any(Number),
+          generated_health_item_count: expect.any(Number),
+          supplement_candidate_item_count: expect.any(Number),
+          p0_count: expect.any(Number),
+          p1_count: expect.any(Number),
+        }),
+      });
+      expect(backlogRes.body.data.summary.generated_health_item_count).toBeGreaterThanOrEqual(3);
+      expect(backlogRes.body.data.summary.p0_count).toBeGreaterThanOrEqual(2);
+      expect(backlogRes.body.data.items).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          source_kind: 'generated_health',
+          project_id: 'health-interrupted-story',
+          priority: 'P0',
+          action_type: 'repair_story_project_refs',
+          missing_contracts: expect.arrayContaining(['current_story']),
+        }),
+        expect.objectContaining({
+          source_kind: 'generated_health',
+          project_id: 'health-relink-series',
+          priority: 'P0',
+          action_type: 'restore_series_story_refs',
+        }),
+      ]));
+      expect(backlogRes.body.data.markdown).toContain('# Story Agent Backlog Handoff');
+      expect(backlogRes.body.data.markdown).toContain('province_markdown_written: false');
+
       const governanceRes = await request.get('/api/system/story-agent-generated-governance-plan?limit=2');
       expect(governanceRes.status).toBe(200);
       expectSuccess(governanceRes.body);

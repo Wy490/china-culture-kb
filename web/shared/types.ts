@@ -1773,6 +1773,67 @@ export interface StoryAgentGeneratedHealthReport {
   markdown: string;
 }
 
+export type StoryAgentBacklogHandoffPriority = 'P0' | 'P1' | 'P2' | 'P3';
+
+export type StoryAgentBacklogHandoffActionType =
+  | 'repair_story_project_refs'
+  | 'repair_quality'
+  | 'repair_delivery_contract'
+  | 'resolve_material_gate'
+  | 'complete_supplement_task'
+  | 'restore_series_story_refs'
+  | 'continue_series_generation'
+  | 'repair_series_delivery';
+
+export interface StoryAgentBacklogHandoffItem {
+  backlog_id: string;
+  source_kind: 'generated_health' | 'supplement_candidate';
+  priority: StoryAgentBacklogHandoffPriority;
+  action_type: StoryAgentBacklogHandoffActionType;
+  project_id: string;
+  title?: string;
+  scope?: StoryAgentGeneratedHealthScope;
+  status?: StoryAgentGeneratedHealthStatus | KnowledgeSupplementTaskStatus;
+  risk_score: number;
+  reason: string;
+  recommended_action: string;
+  target_file?: string;
+  task_key?: string;
+  task_id?: string;
+  video_type?: VideoType;
+  source_entry?: string;
+  missing_contracts: string[];
+  evidence: string[];
+}
+
+export interface StoryAgentBacklogHandoffPackage {
+  schema_version: 'story-agent-backlog-handoff/v1';
+  generated_at: string;
+  source_health_schema: 'story-agent-generated-health/v1';
+  source_supplement_candidate_schema: 'project-supplement-candidate-package/v1' | '';
+  direct_writeback_to_province_markdown: false;
+  province_markdown_written: false;
+  summary: {
+    total_item_count: number;
+    generated_health_item_count: number;
+    supplement_candidate_item_count: number;
+    interrupted_count: number;
+    production_gap_count: number;
+    quality_failed_count: number;
+    material_blocked_count: number;
+    open_supplement_candidate_count: number;
+    supplement_blocking_open_count: number;
+    supplement_risk_open_count: number;
+    supplement_optional_open_count: number;
+    p0_count: number;
+    p1_count: number;
+    p2_count: number;
+    p3_count: number;
+  };
+  items: StoryAgentBacklogHandoffItem[];
+  markdown: string;
+}
+
 export type StoryAgentGeneratedGovernanceActionKey =
   | 'restore_or_relink_series_story_refs'
   | 'archive_or_rebuild_series_fixtures'

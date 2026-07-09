@@ -2694,6 +2694,9 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
   if (!currentVersion) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" has no version snapshots`);
   }
+  if (!currentVersion.story) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" current version has no story snapshot`);
+  }
 
   const currentStory = normalizeStoryGenerationFields(currentVersion.story);
   return success({
@@ -8561,6 +8564,7 @@ async function hydrateProjectMetaForCurrentStory(project: StoryProjectMeta): Pro
   const versions = await readVersionSnapshots(project.project_id);
   const currentVersion = versions.find(version => version.version_id === project.current_version_id) ?? versions[0];
   if (!currentVersion) return project;
+  if (!currentVersion.story) return project;
   return hydrateProjectMetaForStory(project, normalizeStoryGenerationFields(currentVersion.story));
 }
 

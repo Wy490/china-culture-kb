@@ -2,13 +2,24 @@ import type { Dirent } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type {
+  ProjectSupplementCandidateExportItem,
+  ProjectSupplementCandidateExportPackage,
+  StoryAgentBacklogHandoffActionType,
+  StoryAgentBacklogHandoffItem,
+  StoryAgentBacklogHandoffPackage,
+  StoryAgentBacklogHandoffPriority,
   StoryAgentGeneratedHealthItem,
   StoryAgentGeneratedHealthReport,
   StoryAgentGeneratedHealthScope,
   StoryAgentGeneratedHealthStatus,
 } from '@shared/types.js';
+import { exportProjectSupplementCandidatePackage } from './project-service.js';
 
 interface GeneratedHealthOptions {
+  limit?: number;
+}
+
+interface StoryAgentBacklogHandoffOptions {
   limit?: number;
 }
 
@@ -522,6 +533,193 @@ function countMissing(items: StoryAgentGeneratedHealthItem[], contract: string, 
   ).length;
 }
 
+function backlogPriorityRank(priority: StoryAgentBacklogHandoffPriority): number {
+  if (priority === 'P0') return 0;
+  if (priority === 'P1') return 1;
+  if (priority === 'P2') return 2;
+  return 3;
+}
+
+function backlogActionTypeForHealthItem(item: StoryAgentGeneratedHealthItem): StoryAgentBacklogHandoffActionType {
+  if (item.scope === 'ai_comic_series_project') {
+    if (item.missing_contracts.includes('generated_episode_story_refs')) return 'restore_series_story_refs';
+    if (item.status === 'planned' || item.missing_contracts.includes('remaining_episodes')) return 'continue_series_generation';
+    return 'repair_series_delivery';
+  }
+  if (item.missing_contracts.includes('current_story') || item.missing_contracts.includes('current_version')) {
+    return 'repair_story_project_refs';
+  }
+  if (item.quality_passed === false) return 'repair_quality';
+  if (item.material_sufficiency_blocked) return 'resolve_material_gate';
+  if ((item.open_supplement_task_count ?? 0) > 0) return 'complete_supplement_task';
+  return 'repair_delivery_contract';
+}
+
+function backlogPriorityForHealthItem(item: StoryAgentGeneratedHealthItem): StoryAgentBacklogHandoffPriority {
+  if (
+    item.status === 'interrupted'
+    || item.missing_contracts.includes('current_story')
+    || item.missing_contracts.includes('current_version')
+  ) {
+    return 'P0';
+  }
+  if (item.quality_passed === false || item.material_sufficiency_blocked) return 'P1';
+  if (item.status === 'production_gap') return 'P1';
+  if ((item.open_supplement_task_count ?? 0) > 0) return 'P2';
+  return 'P3';
+}
+
+function backlogReasonForHealthItem(item: StoryAgentGeneratedHealthItem): string {
+  if (item.status === 'interrupted') return 'Generated project current refs or linked story artifacts are interrupted.';
+  if (item.quality_passed === false) return 'Latest story version has failed quality validation.';
+  if (item.material_sufficiency_blocked) return 'Material sufficiency gate is blocking production readiness.';
+  if ((item.open_supplement_task_count ?? 0) > 0) return 'Open supplement tasks still need candidate drafting or human review.';
+  if (item.status === 'production_gap') return 'Generated artifact is missing command-layer delivery contracts.';
+  if (item.status === 'planned') return 'Series target is planned but has not generated episode story artifacts.';
+  return 'Generated target needs follow-up before final sign-off.';
+}
+
+function healthItemNeedsBacklog(item: StoryAgentGeneratedHealthItem): boolean {
+  return item.status !== 'ready'
+    || item.quality_passed === false
+    || (item.open_supplement_task_count ?? 0) > 0
+    || item.material_sufficiency_blocked === true;
+}
+
+function backlogPriorityForSupplementItem(item: ProjectSupplementCandidateExportItem): StoryAgentBacklogHandoffPriority {
+  if (item.task.blocking_level === 'blocking') return 'P0';
+  if (item.task.blocking_level === 'risk') return 'P1';
+  return 'P2';
+}
+
+function supplementRiskScore(priority: StoryAgentBacklogHandoffPriority): number {
+  if (priority === 'P0') return 95;
+  if (priority === 'P1') return 72;
+  if (priority === 'P2') return 45;
+  return 18;
+}
+
+function healthBacklogItem(item: StoryAgentGeneratedHealthItem): StoryAgentBacklogHandoffItem {
+  const priority = backlogPriorityForHealthItem(item);
+  return {
+    backlog_id: `generated-health::${item.scope}::${item.project_id}`,
+    source_kind: 'generated_health',
+    priority,
+    action_type: backlogActionTypeForHealthItem(item),
+    project_id: item.project_id,
+    title: item.title,
+    scope: item.scope,
+    status: item.status,
+    risk_score: item.risk_score,
+    reason: backlogReasonForHealthItem(item),
+    recommended_action: item.recommended_actions[0] ?? 'Review generated health evidence and repair the command-layer contract.',
+    missing_contracts: item.missing_contracts,
+    evidence: [
+      ...item.evidence,
+      `direct_writeback_to_province_markdown=false`,
+      `province_markdown_written=false`,
+    ],
+  };
+}
+
+function supplementBacklogItem(item: ProjectSupplementCandidateExportItem): StoryAgentBacklogHandoffItem {
+  const priority = backlogPriorityForSupplementItem(item);
+  const blockingLevel = item.task.blocking_level ?? 'optional';
+  return {
+    backlog_id: `supplement-candidate::${item.task_key}`,
+    source_kind: 'supplement_candidate',
+    priority,
+    action_type: 'complete_supplement_task',
+    project_id: item.project_id,
+    title: item.task.label || item.project_title,
+    status: item.task.status,
+    risk_score: supplementRiskScore(priority),
+    reason: `${blockingLevel} supplement gap from ${item.task.source}.`,
+    recommended_action: item.task.intake_prompt
+      ?? item.task.recommended_question
+      ?? '补齐素材缺口并重新导出候选包。',
+    target_file: item.suggested_file_path,
+    task_key: item.task_key,
+    task_id: item.task.task_id,
+    video_type: item.video_type,
+    source_entry: item.source_entry,
+    missing_contracts: [],
+    evidence: [
+      `project_title=${item.project_title}`,
+      `stage=${item.task.stage ?? 'unknown'}`,
+      `blocking_level=${blockingLevel}`,
+      `source=${item.task.source}`,
+      `recommended_fields=${item.task.recommended_fields?.join(',') || 'none'}`,
+      `direct_writeback_to_province_markdown=false`,
+      `province_markdown_written=false`,
+    ],
+  };
+}
+
+function summarizeBacklogHandoff(
+  items: StoryAgentBacklogHandoffItem[],
+  health: StoryAgentGeneratedHealthReport,
+  supplementPackage: ProjectSupplementCandidateExportPackage | undefined,
+): StoryAgentBacklogHandoffPackage['summary'] {
+  return {
+    total_item_count: items.length,
+    generated_health_item_count: items.filter(item => item.source_kind === 'generated_health').length,
+    supplement_candidate_item_count: items.filter(item => item.source_kind === 'supplement_candidate').length,
+    interrupted_count: health.summary.interrupted_count,
+    production_gap_count: health.summary.production_gap_count,
+    quality_failed_count: health.summary.story_quality_failed_count ?? 0,
+    material_blocked_count: health.summary.story_material_sufficiency_blocked_count ?? 0,
+    open_supplement_candidate_count: supplementPackage?.open_task_count ?? 0,
+    supplement_blocking_open_count: supplementPackage?.blocking_open_count ?? 0,
+    supplement_risk_open_count: supplementPackage?.risk_open_count ?? 0,
+    supplement_optional_open_count: supplementPackage?.optional_open_count ?? 0,
+    p0_count: items.filter(item => item.priority === 'P0').length,
+    p1_count: items.filter(item => item.priority === 'P1').length,
+    p2_count: items.filter(item => item.priority === 'P2').length,
+    p3_count: items.filter(item => item.priority === 'P3').length,
+  };
+}
+
+function renderStoryAgentBacklogHandoffMarkdown(
+  handoff: Omit<StoryAgentBacklogHandoffPackage, 'markdown'>,
+): string {
+  return [
+    '# Story Agent Backlog Handoff',
+    '',
+    `> schema_version: ${handoff.schema_version}`,
+    `> generated_at: ${handoff.generated_at}`,
+    `> source_health_schema: ${handoff.source_health_schema}`,
+    `> source_supplement_candidate_schema: ${handoff.source_supplement_candidate_schema || 'unavailable'}`,
+    `> direct_writeback_to_province_markdown: ${handoff.direct_writeback_to_province_markdown}`,
+    `> province_markdown_written: ${handoff.province_markdown_written}`,
+    '',
+    '## Summary',
+    '',
+    `- total_item_count: ${handoff.summary.total_item_count}`,
+    `- generated_health_item_count: ${handoff.summary.generated_health_item_count}`,
+    `- supplement_candidate_item_count: ${handoff.summary.supplement_candidate_item_count}`,
+    `- interrupted_count: ${handoff.summary.interrupted_count}`,
+    `- production_gap_count: ${handoff.summary.production_gap_count}`,
+    `- quality_failed_count: ${handoff.summary.quality_failed_count}`,
+    `- material_blocked_count: ${handoff.summary.material_blocked_count}`,
+    `- open_supplement_candidate_count: ${handoff.summary.open_supplement_candidate_count}`,
+    `- supplement_open_by_level: blocking ${handoff.summary.supplement_blocking_open_count} / risk ${handoff.summary.supplement_risk_open_count} / optional ${handoff.summary.supplement_optional_open_count}`,
+    `- priority: P0 ${handoff.summary.p0_count} / P1 ${handoff.summary.p1_count} / P2 ${handoff.summary.p2_count} / P3 ${handoff.summary.p3_count}`,
+    '',
+    '## Handoff Items',
+    '',
+    ...(handoff.items.length
+      ? handoff.items.slice(0, 50).map(item => [
+        `- ${item.priority} · ${item.source_kind} · ${item.action_type} · ${item.project_id}`,
+        `  - title: ${item.title ?? 'untitled'}`,
+        `  - reason: ${item.reason}`,
+        `  - next: ${item.recommended_action}`,
+        `  - target: ${item.target_file ?? item.scope ?? 'generated artifact'}`,
+      ].join('\n'))
+      : ['- none']),
+  ].join('\n').trim() + '\n';
+}
+
 export async function getStoryAgentGeneratedHealth(
   options: GeneratedHealthOptions = {},
 ): Promise<StoryAgentGeneratedHealthReport> {
@@ -602,5 +800,42 @@ export async function getStoryAgentGeneratedHealth(
   return {
     ...report,
     markdown: renderMarkdown(report),
+  };
+}
+
+export async function getStoryAgentBacklogHandoffPackage(
+  options: StoryAgentBacklogHandoffOptions = {},
+): Promise<StoryAgentBacklogHandoffPackage> {
+  const [health, supplementResult] = await Promise.all([
+    getStoryAgentGeneratedHealth(),
+    exportProjectSupplementCandidatePackage({ status: 'open' }),
+  ]);
+  const supplementPackage = supplementResult.ok && supplementResult.data ? supplementResult.data : undefined;
+  const healthItems = health.items
+    .filter(healthItemNeedsBacklog)
+    .map(healthBacklogItem);
+  const supplementItems = (supplementPackage?.items ?? []).map(supplementBacklogItem);
+  const allItems = [...healthItems, ...supplementItems].sort((a, b) => {
+    const priorityDiff = backlogPriorityRank(a.priority) - backlogPriorityRank(b.priority);
+    if (priorityDiff !== 0) return priorityDiff;
+    const riskDiff = b.risk_score - a.risk_score;
+    if (riskDiff !== 0) return riskDiff;
+    return a.project_id.localeCompare(b.project_id);
+  });
+  const limit = boundedLimit(options.limit);
+  const visibleItems = limit ? allItems.slice(0, limit) : allItems;
+  const handoff: Omit<StoryAgentBacklogHandoffPackage, 'markdown'> = {
+    schema_version: 'story-agent-backlog-handoff/v1',
+    generated_at: new Date().toISOString(),
+    source_health_schema: health.schema_version,
+    source_supplement_candidate_schema: supplementPackage?.schema_version ?? '',
+    direct_writeback_to_province_markdown: false,
+    province_markdown_written: false,
+    summary: summarizeBacklogHandoff(allItems, health, supplementPackage),
+    items: visibleItems,
+  };
+  return {
+    ...handoff,
+    markdown: renderStoryAgentBacklogHandoffMarkdown(handoff),
   };
 }
