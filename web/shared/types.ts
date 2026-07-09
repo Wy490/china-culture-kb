@@ -2016,6 +2016,16 @@ export interface StoryAgentMvpStatusReport {
     story_supplement_candidate_package_target_file_count: number;
     story_supplement_candidate_package_direct_writeback_to_province_markdown: false;
     story_supplement_candidate_package_province_markdown_written: false;
+    story_agent_backlog_handoff_schema: 'story-agent-backlog-handoff/v1';
+    story_agent_backlog_handoff_item_count: number;
+    story_agent_backlog_handoff_generated_health_item_count: number;
+    story_agent_backlog_handoff_supplement_candidate_item_count: number;
+    story_agent_backlog_handoff_p0_count: number;
+    story_agent_backlog_handoff_p1_count: number;
+    story_agent_backlog_handoff_p2_count: number;
+    story_agent_backlog_handoff_p3_count: number;
+    story_agent_backlog_handoff_direct_writeback_to_province_markdown: false;
+    story_agent_backlog_handoff_province_markdown_written: false;
     story_material_sufficiency_blocked_count: number;
     readiness_target_count: number;
     readiness_ready_count: number;
@@ -2171,6 +2181,7 @@ export interface StoryAgentMvpStatusReport {
   next_actions: string[];
   notes: string[];
   generated_health: StoryAgentGeneratedHealthReport;
+  backlog_handoff: StoryAgentBacklogHandoffPackage;
   generated_governance_plan: StoryAgentGeneratedGovernancePlan;
   production_material_pack_health: ProductionMaterialPackHealthReport;
   domain_pack_health: DomainPackProductionHealthReport;
@@ -3013,6 +3024,7 @@ export type GearsExecutionWorkerEvidenceDocumentKind =
   | 'pressure_report'
   | 'generated_project_pressure_report'
   | 'generated_health_report'
+  | 'story_agent_backlog_handoff_report'
   | 'story_agent_mvp_status_report'
   | 'production_material_pack_health_report'
   | 'domain_pack_production_health_report';

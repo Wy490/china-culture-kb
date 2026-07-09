@@ -65,7 +65,10 @@ import {
   GEARS_CALLBACK_BATCH_ITEM_LIMIT,
   GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
 } from '@shared/types.js';
-import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
+import {
+  getStoryAgentBacklogHandoffPackage,
+  getStoryAgentGeneratedHealth,
+} from './generated-health-service.js';
 import { getStoryAgentMvpStatus } from './story-agent-mvp-status-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
 import { getDomainPackProductionHealthReport } from './domain-pack-service.js';
@@ -6554,6 +6557,7 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
   const pressure = getGearsExecutionPressureReport();
   const generatedPressure = await getGearsExecutionGeneratedProjectPressureReport();
   const generatedHealth = await getStoryAgentGeneratedHealth({ limit: 50 });
+  const backlogHandoff = await getStoryAgentBacklogHandoffPackage({ limit: 50 });
   const mvpStatus = await getStoryAgentMvpStatus({ generatedLimit: 50, portfolioLimit: 50 });
   const productionMaterialPackHealth = getProductionMaterialPackHealthReport();
   const domainPackHealth = getDomainPackProductionHealthReport();
@@ -6605,6 +6609,14 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
       '/api/system/story-agent-generated-health',
       generatedHealth.markdown,
       'Read-only health scan of generated Story Agent projects before selecting GEARS worker smoke targets.',
+    ),
+    workerEvidenceDocument(
+      'story_agent_backlog_handoff_report',
+      'Story Agent backlog handoff report',
+      'story-agent-backlog-handoff-report.md',
+      '/api/system/story-agent-backlog-handoff',
+      backlogHandoff.markdown,
+      'Read-only P0/P1 handoff queue joining generated health gaps with supplement candidates before GEARS worker sign-off.',
     ),
     workerEvidenceDocument(
       'story_agent_mvp_status_report',
@@ -6704,6 +6716,7 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
       'Attach gears-worker-acceptance-integrity.json/.md and require integrity_passed=true before handoff.',
       'Attach gears-worker-evidence-signoff.json/.md as the final post-archive signoff snapshot.',
       'Read worker evidence signoff through Web API or MCP and attach the signoff Markdown / JSON summary.',
+      'Attach story-agent-backlog-handoff-report.md to show P0/P1 generated and supplement handoff targets before GEARS worker sign-off.',
       'Attach story-agent-mvp-status-report.md to show Story Agent MVP lane status before GEARS worker sign-off.',
       'Attach story-agent-mvp-status-audit.json/.md and require status=passed or warning with no failed_checks before sign-off.',
       'Confirm story-agent-mvp-status-audit.json records real_external_callback_readiness with local_acceptance_counts_as_real_external_callback=false before sign-off.',

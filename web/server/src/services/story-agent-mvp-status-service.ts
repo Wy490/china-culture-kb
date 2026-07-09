@@ -19,7 +19,10 @@ import type {
 import { getDomainPackExpansionCandidateReport } from './domain-pack-expansion-service.js';
 import { getDomainPackProductionHealthReport } from './domain-pack-service.js';
 import { getStoryAgentGeneratedGovernancePlan } from './generated-governance-service.js';
-import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
+import {
+  getStoryAgentBacklogHandoffPackage,
+  getStoryAgentGeneratedHealth,
+} from './generated-health-service.js';
 import { getProductionReadinessPortfolio } from './production-readiness-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
 import { exportProjectSupplementCandidatePackage, listProjectSupplementTasks } from './project-service.js';
@@ -1463,6 +1466,8 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- story supplement backlog: ${report.summary.story_supplement_open_count} open (${report.summary.story_supplement_blocking_open_count} blocking / ${report.summary.story_supplement_risk_open_count} risk / ${report.summary.story_supplement_optional_open_count} optional)`,
     `- story supplement candidate package: ${report.summary.story_supplement_candidate_package_ready ? 'ready' : 'unavailable'} (${report.summary.story_supplement_candidate_package_schema || 'none'}), ${report.summary.story_supplement_candidate_package_task_count} tasks, ${report.summary.story_supplement_candidate_package_open_task_count} open (${report.summary.story_supplement_candidate_package_blocking_open_count} blocking / ${report.summary.story_supplement_candidate_package_risk_open_count} risk / ${report.summary.story_supplement_candidate_package_optional_open_count} optional), ${report.summary.story_supplement_candidate_package_project_count} projects, ${report.summary.story_supplement_candidate_package_target_file_count} target files`,
     `- story supplement candidate package province written: ${report.summary.story_supplement_candidate_package_province_markdown_written}`,
+    `- story agent backlog handoff: ${report.summary.story_agent_backlog_handoff_item_count} items (${report.summary.story_agent_backlog_handoff_generated_health_item_count} generated / ${report.summary.story_agent_backlog_handoff_supplement_candidate_item_count} supplement), P0/P1/P2/P3 ${report.summary.story_agent_backlog_handoff_p0_count}/${report.summary.story_agent_backlog_handoff_p1_count}/${report.summary.story_agent_backlog_handoff_p2_count}/${report.summary.story_agent_backlog_handoff_p3_count}`,
+    `- story agent backlog handoff province written: ${report.summary.story_agent_backlog_handoff_province_markdown_written}`,
     `- story material gates blocked: ${report.summary.story_material_sufficiency_blocked_count}`,
     `- readiness targets: ${report.summary.readiness_target_count}`,
     `- readiness ready: ${report.summary.readiness_ready_count}`,
@@ -1612,8 +1617,9 @@ export async function getStoryAgentMvpStatus(
   options: StoryAgentMvpStatusOptions = {},
 ): Promise<StoryAgentMvpStatusReport> {
   const generatedHealth = await getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 });
-  const [generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio, supplementBacklogMetrics] = await Promise.all([
+  const [generatedGovernancePlan, backlogHandoff, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio, supplementBacklogMetrics] = await Promise.all([
     getStoryAgentGeneratedGovernancePlan({ limit: options.generatedLimit ?? 200 }),
+    getStoryAgentBacklogHandoffPackage({ limit: options.generatedLimit ?? 50 }),
     getProductionMaterialPackHealthReport(),
     getDomainPackProductionHealthReport(),
     getDomainPackExpansionCandidateReport({ includeMarkdown: false }),
@@ -1688,6 +1694,19 @@ export async function getStoryAgentMvpStatus(
         supplementBacklogMetrics.candidate_package_direct_writeback_to_province_markdown,
       story_supplement_candidate_package_province_markdown_written:
         supplementBacklogMetrics.candidate_package_province_markdown_written,
+      story_agent_backlog_handoff_schema: backlogHandoff.schema_version,
+      story_agent_backlog_handoff_item_count: backlogHandoff.summary.total_item_count,
+      story_agent_backlog_handoff_generated_health_item_count:
+        backlogHandoff.summary.generated_health_item_count,
+      story_agent_backlog_handoff_supplement_candidate_item_count:
+        backlogHandoff.summary.supplement_candidate_item_count,
+      story_agent_backlog_handoff_p0_count: backlogHandoff.summary.p0_count,
+      story_agent_backlog_handoff_p1_count: backlogHandoff.summary.p1_count,
+      story_agent_backlog_handoff_p2_count: backlogHandoff.summary.p2_count,
+      story_agent_backlog_handoff_p3_count: backlogHandoff.summary.p3_count,
+      story_agent_backlog_handoff_direct_writeback_to_province_markdown:
+        backlogHandoff.direct_writeback_to_province_markdown,
+      story_agent_backlog_handoff_province_markdown_written: backlogHandoff.province_markdown_written,
       story_material_sufficiency_blocked_count: generatedHealth.summary.story_material_sufficiency_blocked_count ?? 0,
       readiness_target_count: productionPortfolio.summary.total_target_count,
       readiness_ready_count: productionPortfolio.summary.ready_count,
@@ -1848,6 +1867,7 @@ export async function getStoryAgentMvpStatus(
       'Domain Pack production health is now a Story Agent MVP lane: required production prompt packs must keep trigger words, production prompts, review boundaries, and asset usage coverage before prompt package sign-off.',
       'Domain Pack expansion candidates are tracked as a Story Agent MVP lane: first-wave material expansion must stay in candidate_review with candidate Markdown, human review, source-level checks, and no direct province Markdown writeback.',
       'Knowledge writeback queue governance is now a Story Agent MVP lane: only approved candidates with writeback drafts are counted, and province Markdown changes remain manual review patches.',
+      'Story Agent backlog handoff is embedded in MVP evidence: generated health gaps and supplement candidates share one P0/P1 operator queue without province Markdown writeback.',
       'MCP Story Agent loop is complete at 100%: read-only context, blueprint, validation, delivery, repair prompt, controlled versioning, generated governance, readiness automation, MVP status, and GEARS evidence signoff are all exposed as tools.',
       'Content and production command layer is complete at 100% inside china-culture-kb; generated target health and real GEARS endpoint acceptance remain separate status surfaces.',
       'Production Board / Delivery Contract command surface is complete at 100%; Seedance asset upload checklists now make external reference-material handoff explicit, and missing per-target exports remain tracked by the delivery_contract lane and generated governance plan.',
@@ -1858,6 +1878,7 @@ export async function getStoryAgentMvpStatus(
       'Use this report to decide whether to repair Story Agent contracts, run safe readiness automation, or proceed to GEARS worker evidence sign-off.',
     ],
     generated_health: generatedHealth,
+    backlog_handoff: backlogHandoff,
     generated_governance_plan: generatedGovernancePlan,
     production_material_pack_health: productionMaterialPackHealth,
     domain_pack_health: domainPackHealth,

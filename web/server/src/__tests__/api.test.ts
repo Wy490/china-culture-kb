@@ -1856,6 +1856,16 @@ describe('System API', () => {
           story_supplement_candidate_package_target_file_count: expect.any(Number),
           story_supplement_candidate_package_direct_writeback_to_province_markdown: false,
           story_supplement_candidate_package_province_markdown_written: false,
+          story_agent_backlog_handoff_schema: 'story-agent-backlog-handoff/v1',
+          story_agent_backlog_handoff_item_count: expect.any(Number),
+          story_agent_backlog_handoff_generated_health_item_count: expect.any(Number),
+          story_agent_backlog_handoff_supplement_candidate_item_count: expect.any(Number),
+          story_agent_backlog_handoff_p0_count: expect.any(Number),
+          story_agent_backlog_handoff_p1_count: expect.any(Number),
+          story_agent_backlog_handoff_p2_count: expect.any(Number),
+          story_agent_backlog_handoff_p3_count: expect.any(Number),
+          story_agent_backlog_handoff_direct_writeback_to_province_markdown: false,
+          story_agent_backlog_handoff_province_markdown_written: false,
           story_material_sufficiency_blocked_count: expect.any(Number),
           production_material_pack_status: 'passed',
           production_material_pack_count: expect.any(Number),
@@ -1919,6 +1929,11 @@ describe('System API', () => {
         generated_health: {
           schema_version: 'story-agent-generated-health/v1',
         },
+        backlog_handoff: {
+          schema_version: 'story-agent-backlog-handoff/v1',
+          direct_writeback_to_province_markdown: false,
+          province_markdown_written: false,
+        },
         generated_governance_plan: {
           schema_version: 'story-agent-generated-governance-plan/v1',
         },
@@ -1967,6 +1982,7 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('Seedance placeholder assets');
       expect(res.body.data.markdown).toContain('local acceptance counts as real external callback: false');
       expect(res.body.data.markdown).toContain('story supplement candidate package');
+      expect(res.body.data.markdown).toContain('story agent backlog handoff');
       expect(res.body.data.markdown).toContain('knowledge writeback ready drafts');
       expect(res.body.data.markdown).toContain('domain pack expansion field workbench items');
       expect(res.body.data.markdown).toContain('domain pack expansion pipeline progress: 100%');
@@ -3950,6 +3966,7 @@ describe('System API', () => {
           'pressure_report',
           'generated_project_pressure_report',
           'generated_health_report',
+          'story_agent_backlog_handoff_report',
           'story_agent_mvp_status_report',
           'production_material_pack_health_report',
           'domain_pack_production_health_report',
@@ -3970,6 +3987,11 @@ describe('System API', () => {
             filename: 'story-agent-generated-health-report.md',
             source_endpoint: '/api/system/story-agent-generated-health',
             content: expect.stringContaining('# Story Agent Generated Health'),
+          }),
+          expect.objectContaining({
+            filename: 'story-agent-backlog-handoff-report.md',
+            source_endpoint: '/api/system/story-agent-backlog-handoff',
+            content: expect.stringContaining('# Story Agent Backlog Handoff'),
           }),
           expect.objectContaining({
             filename: 'story-agent-mvp-status-report.md',
@@ -3994,6 +4016,7 @@ describe('System API', () => {
           'Attach gears-worker-acceptance-checksums.json/.md so GEARS v2 can verify evidence files by sha256.',
           'Attach gears-worker-acceptance-integrity.json/.md and require integrity_passed=true before handoff.',
           'Attach gears-worker-evidence-signoff.json/.md as the final post-archive signoff snapshot.',
+          'Attach story-agent-backlog-handoff-report.md to show P0/P1 generated and supplement handoff targets before GEARS worker sign-off.',
           'Attach story-agent-mvp-status-report.md to show Story Agent MVP lane status before GEARS worker sign-off.',
           'Attach story-agent-mvp-status-audit.json/.md and require status=passed or warning with no failed_checks before sign-off.',
           'Confirm story-agent-mvp-status-audit.json records real_external_callback_readiness with local_acceptance_counts_as_real_external_callback=false before sign-off.',
