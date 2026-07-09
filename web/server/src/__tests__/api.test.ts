@@ -2047,7 +2047,8 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        expect.stringContaining('tool_count=27'),
+        expect.stringContaining('tool_count=28'),
+        expect.stringContaining('kb_get_story_agent_backlog_handoff'),
         expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
         expect.stringContaining('kb_get_domain_pack_expansion_writeback_draft'),
         expect.stringContaining('kb_update_domain_pack_expansion_review_state'),

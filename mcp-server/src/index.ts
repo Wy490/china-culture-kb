@@ -29,6 +29,7 @@ import {
   getStoryAgentGeneratedGovernancePlan,
   runStoryAgentGeneratedGovernance,
 } from './tools/get-generated-governance-plan.js';
+import { getStoryAgentBacklogHandoff } from './tools/get-story-agent-backlog-handoff.js';
 import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
 import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
 import {
@@ -550,6 +551,25 @@ server.tool(
   },
   async (input) => {
     const result = await getStoryAgentGeneratedHealth(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  }
+);
+
+// kb_get_story_agent_backlog_handoff — read generated/supplement backlog handoff
+server.tool(
+  'kb_get_story_agent_backlog_handoff',
+  '读取 Story Agent backlog handoff 包。只读合并 generated health 与素材补库候选任务，输出 P0/P1/P2 优先级、目标文件和人工下一步，不写入 data/provinces/*.md。',
+  {
+    limit: z.number().int().positive().max(100).optional().describe('最多返回多少个 handoff 项，默认 30'),
+    include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
+  },
+  async (input) => {
+    const result = await getStoryAgentBacklogHandoff(input);
     return {
       content: [{
         type: 'text',
