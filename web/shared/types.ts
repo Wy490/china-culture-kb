@@ -1944,6 +1944,13 @@ export interface StoryAgentMvpStatusReport {
     story_supplement_optional_open_count: number;
     story_supplement_risk_open_count: number;
     story_supplement_blocking_open_count: number;
+    story_supplement_candidate_package_schema: 'project-supplement-candidate-package/v1' | '';
+    story_supplement_candidate_package_ready: boolean;
+    story_supplement_candidate_package_task_count: number;
+    story_supplement_candidate_package_project_count: number;
+    story_supplement_candidate_package_target_file_count: number;
+    story_supplement_candidate_package_direct_writeback_to_province_markdown: false;
+    story_supplement_candidate_package_province_markdown_written: false;
     story_material_sufficiency_blocked_count: number;
     readiness_target_count: number;
     readiness_ready_count: number;

@@ -97,6 +97,17 @@ export interface StoryAgentMvpStatusReport {
     generated_planned_count: number;
     generated_production_gap_count: number;
     generated_interrupted_count: number;
+    story_supplement_open_count: number;
+    story_supplement_optional_open_count: number;
+    story_supplement_risk_open_count: number;
+    story_supplement_blocking_open_count: number;
+    story_supplement_candidate_package_schema: 'project-supplement-candidate-package/v1' | '';
+    story_supplement_candidate_package_ready: boolean;
+    story_supplement_candidate_package_task_count: number;
+    story_supplement_candidate_package_project_count: number;
+    story_supplement_candidate_package_target_file_count: number;
+    story_supplement_candidate_package_direct_writeback_to_province_markdown: false;
+    story_supplement_candidate_package_province_markdown_written: false;
     readiness_target_count: number;
     readiness_ready_count: number;
     readiness_needs_action_count: number;
@@ -372,6 +383,21 @@ interface DomainPackExpansionReviewMetrics {
   writeback_needs_revision_count: number;
 }
 
+interface StorySupplementBacklogMetrics {
+  open_count: number;
+  optional_open_count: number;
+  risk_open_count: number;
+  blocking_open_count: number;
+  candidate_package_schema: 'project-supplement-candidate-package/v1' | '';
+  candidate_package_ready: boolean;
+  candidate_package_task_count: number;
+  candidate_package_project_count: number;
+  candidate_package_target_file_count: number;
+  candidate_package_direct_writeback_to_province_markdown: false;
+  candidate_package_province_markdown_written: false;
+  read_error_count: number;
+}
+
 function uniqueStrings(values: Array<string | undefined>): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -491,6 +517,90 @@ function normalizeWritebackStatus(value: unknown): KnowledgeWritebackStatus {
 function isKnowledgeWritebackReadyTask(task: JsonRecord): boolean {
   return task.knowledge_candidate_review_status === 'approved'
     && Boolean(asString(task.knowledge_writeback_draft_markdown));
+}
+
+function supplementBlockingLevel(task: JsonRecord): 'blocking' | 'risk' | 'optional' {
+  const level = task.blocking_level;
+  return level === 'blocking' || level === 'risk' || level === 'optional'
+    ? level
+    : 'optional';
+}
+
+function supplementTargetFile(project: JsonRecord, story: JsonRecord): string | undefined {
+  const explicit = asString(story.suggested_file_path) ?? asString(project.suggested_file_path);
+  if (explicit) return explicit;
+  const province = asString(story.target_province)
+    ?? asString(project.target_province)
+    ?? asString(story.province)
+    ?? asString(project.province);
+  return province ? `data/provinces/${province}.md` : undefined;
+}
+
+async function getStorySupplementBacklogMetrics(): Promise<StorySupplementBacklogMetrics> {
+  const projectIds = new Set<string>();
+  const targetFiles = new Set<string>();
+  let openCount = 0;
+  let optionalOpenCount = 0;
+  let riskOpenCount = 0;
+  let blockingOpenCount = 0;
+  let readErrorCount = 0;
+
+  try {
+    const root = path.resolve(generatedRoot(), 'projects');
+    const entries = await fs.readdir(root, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const projectDir = path.resolve(root, entry.name);
+      const project = await readJson(path.resolve(projectDir, 'project.json'));
+      if (!project) {
+        readErrorCount += 1;
+        continue;
+      }
+      const projectId = asString(project.project_id) ?? entry.name;
+      const story = await readCurrentStoryRecord(projectDir, project);
+      if (!story) continue;
+      const targetFile = supplementTargetFile(project, story);
+      for (const task of asArray(story.supplement_tasks).map(asRecord)) {
+        if (task.status !== 'open') continue;
+        openCount += 1;
+        projectIds.add(projectId);
+        if (targetFile) targetFiles.add(targetFile);
+        const level = supplementBlockingLevel(task);
+        if (level === 'blocking') blockingOpenCount += 1;
+        else if (level === 'risk') riskOpenCount += 1;
+        else optionalOpenCount += 1;
+      }
+    }
+    return {
+      open_count: openCount,
+      optional_open_count: optionalOpenCount,
+      risk_open_count: riskOpenCount,
+      blocking_open_count: blockingOpenCount,
+      candidate_package_schema: 'project-supplement-candidate-package/v1',
+      candidate_package_ready: true,
+      candidate_package_task_count: openCount,
+      candidate_package_project_count: projectIds.size,
+      candidate_package_target_file_count: targetFiles.size,
+      candidate_package_direct_writeback_to_province_markdown: false,
+      candidate_package_province_markdown_written: false,
+      read_error_count: readErrorCount,
+    };
+  } catch {
+    return {
+      open_count: 0,
+      optional_open_count: 0,
+      risk_open_count: 0,
+      blocking_open_count: 0,
+      candidate_package_schema: '',
+      candidate_package_ready: false,
+      candidate_package_task_count: 0,
+      candidate_package_project_count: 0,
+      candidate_package_target_file_count: 0,
+      candidate_package_direct_writeback_to_province_markdown: false,
+      candidate_package_province_markdown_written: false,
+      read_error_count: readErrorCount + 1,
+    };
+  }
 }
 
 function missingContractCount(health: StoryAgentGeneratedHealthReport, contract: string, scope?: HealthScope): number {
@@ -998,7 +1108,10 @@ function knowledgeWritebackLane(metrics: KnowledgeWritebackQueueMetrics): StoryA
   };
 }
 
-function storyQualityLane(health: StoryAgentGeneratedHealthReport): StoryAgentMvpLane {
+function storyQualityLane(
+  health: StoryAgentGeneratedHealthReport,
+  supplementMetrics: StorySupplementBacklogMetrics,
+): StoryAgentMvpLane {
   const summary = health.summary;
   const storyCount = summary.scanned_story_project_count;
   const missingCurrent = summary.missing_current_story_count;
@@ -1006,29 +1119,54 @@ function storyQualityLane(health: StoryAgentGeneratedHealthReport): StoryAgentMv
   const missingQuality = summary.missing_quality_count;
   const status: MvpStatus = missingCurrent > 0
     ? 'blocked'
-    : missingScene > 0 || missingQuality > 0 || storyCount === 0
+    : missingScene > 0 || missingQuality > 0 || supplementMetrics.blocking_open_count > 0 || supplementMetrics.risk_open_count > 0 || storyCount === 0
       ? 'needs_action'
       : 'ready';
   return {
     key: 'story_quality',
     label: 'Story quality',
     status,
-    score: storyCount === 0 ? 35 : clampScore(100 - missingCurrent * 40 - missingScene * 25 - missingQuality * 20),
+    score: storyCount === 0
+      ? 35
+      : clampScore(
+          100
+          - missingCurrent * 40
+          - missingScene * 25
+          - missingQuality * 20
+          - supplementMetrics.blocking_open_count * 12
+          - supplementMetrics.risk_open_count * 6,
+        ),
     detail: storyCount === 0
       ? 'No standalone story project has measurable scene and quality evidence.'
-      : `${storyCount - Math.min(storyCount, missingScene + missingQuality)}/${storyCount} story projects have quality evidence.`,
+      : `${storyCount - Math.min(storyCount, missingScene + missingQuality)}/${storyCount} story projects have quality evidence; ${supplementMetrics.open_count} open supplement tasks (${supplementMetrics.blocking_open_count} blocking, ${supplementMetrics.risk_open_count} risk, ${supplementMetrics.optional_open_count} optional).`,
     evidence: [
       `story_projects=${storyCount}`,
       `missing_current_story=${missingCurrent}`,
       `missing_scene_breakdown=${missingScene}`,
       `missing_quality=${missingQuality}`,
+      `open_supplement_tasks=${supplementMetrics.open_count}`,
+      `supplement_blocking=${supplementMetrics.blocking_open_count}`,
+      `supplement_risk=${supplementMetrics.risk_open_count}`,
+      `supplement_optional=${supplementMetrics.optional_open_count}`,
+      `supplement_candidate_package_schema=${supplementMetrics.candidate_package_schema || 'none'}`,
+      `supplement_candidate_package_ready=${supplementMetrics.candidate_package_ready}`,
+      `supplement_candidate_package_tasks=${supplementMetrics.candidate_package_task_count}`,
+      `supplement_candidate_package_projects=${supplementMetrics.candidate_package_project_count}`,
+      `supplement_candidate_package_target_files=${supplementMetrics.candidate_package_target_file_count}`,
+      `supplement_candidate_package_direct_writeback=${supplementMetrics.candidate_package_direct_writeback_to_province_markdown}`,
+      `supplement_candidate_package_province_written=${supplementMetrics.candidate_package_province_markdown_written}`,
+      `supplement_read_errors=${supplementMetrics.read_error_count}`,
     ],
     next_action: missingCurrent > 0
       ? 'Restore interrupted story pointers before repair automation.'
       : missingScene > 0 || missingQuality > 0
         ? 'Run Story Agent validation/repair to regenerate scene_breakdown and quality_report.'
+        : supplementMetrics.blocking_open_count > 0 || supplementMetrics.risk_open_count > 0
+          ? 'Resolve blocking or risk-level supplement tasks before treating Story Agent material backlog as closed.'
         : storyCount === 0
           ? 'Generate a story project for quality validation.'
+          : supplementMetrics.open_count > 0
+            ? 'Export the supplement candidate package for manual material review without province Markdown writeback.'
           : undefined,
   };
 }
@@ -1377,6 +1515,9 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
     '## Summary',
     '',
     `- generated targets: ${report.summary.generated_target_count}`,
+    `- story supplement backlog: ${report.summary.story_supplement_open_count} open (${report.summary.story_supplement_blocking_open_count} blocking / ${report.summary.story_supplement_risk_open_count} risk / ${report.summary.story_supplement_optional_open_count} optional)`,
+    `- story supplement candidate package: ${report.summary.story_supplement_candidate_package_ready ? 'ready' : 'unavailable'} (${report.summary.story_supplement_candidate_package_schema || 'none'}), ${report.summary.story_supplement_candidate_package_task_count} tasks, ${report.summary.story_supplement_candidate_package_project_count} projects, ${report.summary.story_supplement_candidate_package_target_file_count} target files`,
+    `- story supplement candidate package province written: ${report.summary.story_supplement_candidate_package_province_markdown_written}`,
     `- readiness targets: ${report.summary.readiness_target_count}`,
     `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
     `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
@@ -1498,13 +1639,14 @@ function buildMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): str
 export async function getStoryAgentMvpStatus(
   input: GetStoryAgentMvpStatusInput = {},
 ): Promise<StoryAgentMvpStatusReport> {
-  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio] = await Promise.all([
+  const [generatedHealth, generatedGovernancePlan, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, supplementBacklogMetrics, productionPortfolio] = await Promise.all([
     getStoryAgentGeneratedHealth({ limit: input.generated_limit ?? 100, include_markdown: false }),
     getStoryAgentGeneratedGovernancePlan({ limit: input.generated_limit ?? 100, include_markdown: false }),
     Promise.resolve(getProductionMaterialPackHealthReport()),
     Promise.resolve(getDomainPackProductionHealthReport()),
     Promise.resolve(getDomainPackExpansionCandidateReport()),
     getKnowledgeWritebackQueueMetrics(),
+    getStorySupplementBacklogMetrics(),
     getProductionReadinessPortfolio({ limit: input.portfolio_limit ?? 100, include_markdown: false }),
   ]);
   const lanes = [
@@ -1514,7 +1656,7 @@ export async function getStoryAgentMvpStatus(
     domainPackLane(domainPackHealth),
     domainPackExpansionLane(domainPackExpansionCandidates),
     knowledgeWritebackLane(writebackMetrics),
-    storyQualityLane(generatedHealth),
+    storyQualityLane(generatedHealth, supplementBacklogMetrics),
     repairLoopLane(productionPortfolio),
     deliveryContractLane(generatedHealth),
     productionCommandLane(productionPortfolio),
@@ -1546,6 +1688,19 @@ export async function getStoryAgentMvpStatus(
       generated_planned_count: generatedHealth.summary.planned_count,
       generated_production_gap_count: generatedHealth.summary.production_gap_count,
       generated_interrupted_count: generatedHealth.summary.interrupted_count,
+      story_supplement_open_count: supplementBacklogMetrics.open_count,
+      story_supplement_optional_open_count: supplementBacklogMetrics.optional_open_count,
+      story_supplement_risk_open_count: supplementBacklogMetrics.risk_open_count,
+      story_supplement_blocking_open_count: supplementBacklogMetrics.blocking_open_count,
+      story_supplement_candidate_package_schema: supplementBacklogMetrics.candidate_package_schema,
+      story_supplement_candidate_package_ready: supplementBacklogMetrics.candidate_package_ready,
+      story_supplement_candidate_package_task_count: supplementBacklogMetrics.candidate_package_task_count,
+      story_supplement_candidate_package_project_count: supplementBacklogMetrics.candidate_package_project_count,
+      story_supplement_candidate_package_target_file_count: supplementBacklogMetrics.candidate_package_target_file_count,
+      story_supplement_candidate_package_direct_writeback_to_province_markdown:
+        supplementBacklogMetrics.candidate_package_direct_writeback_to_province_markdown,
+      story_supplement_candidate_package_province_markdown_written:
+        supplementBacklogMetrics.candidate_package_province_markdown_written,
       readiness_target_count: productionPortfolio.summary.total_target_count,
       readiness_ready_count: productionPortfolio.summary.ready_count,
       readiness_needs_action_count: productionPortfolio.summary.needs_action_count,
@@ -1676,6 +1831,7 @@ export async function getStoryAgentMvpStatus(
       'Domain Pack expansion candidates are tracked as a MCP Story Agent MVP lane: first-wave material expansion must stay in candidate_review with candidate Markdown, human review, source-level checks, and no direct province Markdown writeback.',
       'Domain Pack expansion writeback drafts are read-only MCP exports for approved review items; they are candidate patch material, not completed province Markdown writes.',
       'Knowledge writeback queue governance is now a MCP Story Agent MVP lane: only approved candidates with writeback drafts are counted, and province Markdown changes remain manual review patches.',
+      'Story supplement candidate packages are now exposed in MCP MVP evidence: open supplement tasks can be batched for manual material review without province Markdown writeback.',
       'MCP Story Agent loop is complete at 100%: read-only context, blueprint, validation, delivery, repair prompt, controlled versioning, generated governance, readiness automation, MVP status, and GEARS evidence signoff are all exposed as tools.',
       'Content and production command layer is complete at 100% inside china-culture-kb; generated target health and real GEARS endpoint acceptance remain separate status surfaces.',
       'Production Board / Delivery Contract command surface is complete at 100%; Seedance asset upload checklists now make external reference-material handoff explicit, and missing per-target exports remain tracked by the delivery_contract lane and generated governance plan.',

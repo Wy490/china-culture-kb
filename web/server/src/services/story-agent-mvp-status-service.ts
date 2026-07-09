@@ -22,7 +22,7 @@ import { getStoryAgentGeneratedGovernancePlan } from './generated-governance-ser
 import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
 import { getProductionReadinessPortfolio } from './production-readiness-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
-import { listProjectSupplementTasks } from './project-service.js';
+import { exportProjectSupplementCandidatePackage, listProjectSupplementTasks } from './project-service.js';
 import { getKnowledgeWritebackQueueExportPackage } from './knowledge-writeback-queue-service.js';
 
 interface StoryAgentMvpStatusOptions {
@@ -206,6 +206,13 @@ interface StorySupplementBacklogMetrics {
   optional_open_count: number;
   risk_open_count: number;
   blocking_open_count: number;
+  candidate_package_schema: 'project-supplement-candidate-package/v1' | '';
+  candidate_package_ready: boolean;
+  candidate_package_task_count: number;
+  candidate_package_project_count: number;
+  candidate_package_target_file_count: number;
+  candidate_package_direct_writeback_to_province_markdown: false;
+  candidate_package_province_markdown_written: false;
   read_error?: string;
 }
 
@@ -522,6 +529,15 @@ async function getStorySupplementBacklogMetrics(
   health: StoryAgentGeneratedHealthReport,
 ): Promise<StorySupplementBacklogMetrics> {
   const fallbackOpenCount = health.summary.story_open_supplement_task_count ?? 0;
+  const defaultCandidatePackageMetrics = {
+    candidate_package_schema: '' as const,
+    candidate_package_ready: false,
+    candidate_package_task_count: 0,
+    candidate_package_project_count: 0,
+    candidate_package_target_file_count: 0,
+    candidate_package_direct_writeback_to_province_markdown: false as const,
+    candidate_package_province_markdown_written: false as const,
+  };
   const result = await listProjectSupplementTasks({ status: 'open' });
   if (!result.ok || !result.data) {
     return {
@@ -529,14 +545,33 @@ async function getStorySupplementBacklogMetrics(
       optional_open_count: 0,
       risk_open_count: 0,
       blocking_open_count: 0,
+      ...defaultCandidatePackageMetrics,
       read_error: result.error?.message ?? 'Failed to read open supplement tasks',
     };
   }
+  const candidatePackageResult = await exportProjectSupplementCandidatePackage({ status: 'open' });
+  const candidatePackageMetrics = candidatePackageResult.ok && candidatePackageResult.data
+    ? {
+        candidate_package_schema: candidatePackageResult.data.schema_version,
+        candidate_package_ready: true,
+        candidate_package_task_count: candidatePackageResult.data.task_count,
+        candidate_package_project_count: candidatePackageResult.data.project_count,
+        candidate_package_target_file_count: candidatePackageResult.data.target_files.length,
+        candidate_package_direct_writeback_to_province_markdown:
+          candidatePackageResult.data.direct_writeback_to_province_markdown,
+        candidate_package_province_markdown_written:
+          candidatePackageResult.data.province_markdown_written,
+      }
+    : defaultCandidatePackageMetrics;
   const counts: StorySupplementBacklogMetrics = {
     open_count: result.data.length,
     optional_open_count: 0,
     risk_open_count: 0,
     blocking_open_count: 0,
+    ...candidatePackageMetrics,
+    ...(candidatePackageResult.ok
+      ? {}
+      : { read_error: candidatePackageResult.error?.message ?? 'Failed to export supplement candidate package' }),
   };
   for (const item of result.data) {
     if (item.task.blocking_level === 'blocking') counts.blocking_open_count += 1;
@@ -971,6 +1006,13 @@ function storyQualityLane(
       `supplement_blocking=${blockingSupplementTasks}`,
       `supplement_risk=${riskSupplementTasks}`,
       `supplement_optional=${optionalSupplementTasks}`,
+      `supplement_candidate_package_schema=${supplementMetrics.candidate_package_schema || 'none'}`,
+      `supplement_candidate_package_ready=${supplementMetrics.candidate_package_ready}`,
+      `supplement_candidate_package_tasks=${supplementMetrics.candidate_package_task_count}`,
+      `supplement_candidate_package_projects=${supplementMetrics.candidate_package_project_count}`,
+      `supplement_candidate_package_target_files=${supplementMetrics.candidate_package_target_file_count}`,
+      `supplement_candidate_package_direct_writeback=${supplementMetrics.candidate_package_direct_writeback_to_province_markdown}`,
+      `supplement_candidate_package_province_written=${supplementMetrics.candidate_package_province_markdown_written}`,
       `material_sufficiency_blocked=${materialBlocked}`,
       `supplement_read_error=${supplementMetrics.read_error ?? 'none'}`,
     ],
@@ -1401,6 +1443,8 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- story quality passed/failed: ${report.summary.story_quality_passed_count}/${report.summary.story_quality_failed_count}`,
     `- story open supplement tasks: ${report.summary.story_open_supplement_task_count}`,
     `- story supplement backlog: ${report.summary.story_supplement_open_count} open (${report.summary.story_supplement_blocking_open_count} blocking / ${report.summary.story_supplement_risk_open_count} risk / ${report.summary.story_supplement_optional_open_count} optional)`,
+    `- story supplement candidate package: ${report.summary.story_supplement_candidate_package_ready ? 'ready' : 'unavailable'} (${report.summary.story_supplement_candidate_package_schema || 'none'}), ${report.summary.story_supplement_candidate_package_task_count} tasks, ${report.summary.story_supplement_candidate_package_project_count} projects, ${report.summary.story_supplement_candidate_package_target_file_count} target files`,
+    `- story supplement candidate package province written: ${report.summary.story_supplement_candidate_package_province_markdown_written}`,
     `- story material gates blocked: ${report.summary.story_material_sufficiency_blocked_count}`,
     `- readiness targets: ${report.summary.readiness_target_count}`,
     `- readiness ready: ${report.summary.readiness_ready_count}`,
@@ -1611,6 +1655,15 @@ export async function getStoryAgentMvpStatus(
       story_supplement_optional_open_count: supplementBacklogMetrics.optional_open_count,
       story_supplement_risk_open_count: supplementBacklogMetrics.risk_open_count,
       story_supplement_blocking_open_count: supplementBacklogMetrics.blocking_open_count,
+      story_supplement_candidate_package_schema: supplementBacklogMetrics.candidate_package_schema,
+      story_supplement_candidate_package_ready: supplementBacklogMetrics.candidate_package_ready,
+      story_supplement_candidate_package_task_count: supplementBacklogMetrics.candidate_package_task_count,
+      story_supplement_candidate_package_project_count: supplementBacklogMetrics.candidate_package_project_count,
+      story_supplement_candidate_package_target_file_count: supplementBacklogMetrics.candidate_package_target_file_count,
+      story_supplement_candidate_package_direct_writeback_to_province_markdown:
+        supplementBacklogMetrics.candidate_package_direct_writeback_to_province_markdown,
+      story_supplement_candidate_package_province_markdown_written:
+        supplementBacklogMetrics.candidate_package_province_markdown_written,
       story_material_sufficiency_blocked_count: generatedHealth.summary.story_material_sufficiency_blocked_count ?? 0,
       readiness_target_count: productionPortfolio.summary.total_target_count,
       readiness_ready_count: productionPortfolio.summary.ready_count,

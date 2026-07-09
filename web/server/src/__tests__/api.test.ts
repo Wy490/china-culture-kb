@@ -1809,6 +1809,13 @@ describe('System API', () => {
           story_supplement_optional_open_count: expect.any(Number),
           story_supplement_risk_open_count: expect.any(Number),
           story_supplement_blocking_open_count: expect.any(Number),
+          story_supplement_candidate_package_schema: 'project-supplement-candidate-package/v1',
+          story_supplement_candidate_package_ready: true,
+          story_supplement_candidate_package_task_count: expect.any(Number),
+          story_supplement_candidate_package_project_count: expect.any(Number),
+          story_supplement_candidate_package_target_file_count: expect.any(Number),
+          story_supplement_candidate_package_direct_writeback_to_province_markdown: false,
+          story_supplement_candidate_package_province_markdown_written: false,
           story_material_sufficiency_blocked_count: expect.any(Number),
           production_material_pack_status: 'passed',
           production_material_pack_count: expect.any(Number),
@@ -1919,6 +1926,7 @@ describe('System API', () => {
       expect(res.body.data.summary.domain_pack_expansion_pipeline_stage).toBe('complete');
       expect(res.body.data.markdown).toContain('Seedance placeholder assets');
       expect(res.body.data.markdown).toContain('local acceptance counts as real external callback: false');
+      expect(res.body.data.markdown).toContain('story supplement candidate package');
       expect(res.body.data.markdown).toContain('knowledge writeback ready drafts');
       expect(res.body.data.markdown).toContain('domain pack expansion field workbench items');
       expect(res.body.data.markdown).toContain('domain pack expansion pipeline progress: 100%');
@@ -1961,6 +1969,9 @@ describe('System API', () => {
         expect.stringMatching(/^supplement_optional=\d+/),
         expect.stringMatching(/^supplement_risk=\d+/),
         expect.stringMatching(/^supplement_blocking=\d+/),
+        expect.stringMatching(/^supplement_candidate_package_ready=(true|false)$/),
+        expect.stringMatching(/^supplement_candidate_package_tasks=\d+/),
+        expect.stringMatching(/^supplement_candidate_package_target_files=\d+/),
         expect.stringMatching(/^material_sufficiency_blocked=\d+/),
       ]));
       expect(res.body.data.progress).toEqual(expect.arrayContaining([
