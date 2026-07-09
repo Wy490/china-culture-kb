@@ -52,6 +52,22 @@
       >
         {{ exportingWritebackPatch ? '复制中…' : '复制写回队列 Patch' }}
       </button>
+      <button
+        type="button"
+        class="supplement-page__toolbar-action supplement-page__toolbar-action--secondary"
+        :disabled="candidateExportItems.length === 0"
+        @click="copySupplementCandidatePackage"
+      >
+        复制补库候选包
+      </button>
+      <button
+        type="button"
+        class="supplement-page__toolbar-action supplement-page__toolbar-action--secondary"
+        :disabled="candidateExportItems.length === 0"
+        @click="downloadSupplementCandidatePackage"
+      >
+        下载补库候选包
+      </button>
     </section>
 
     <div v-if="copyMessage" class="supplement-page__copy-message">{{ copyMessage }}</div>
@@ -79,8 +95,20 @@
         <strong>{{ blockingOpenCount }}</strong>
       </div>
       <div>
+        <span>需核验</span>
+        <strong>{{ riskOpenCount }}</strong>
+      </div>
+      <div>
         <span>生产前补充</span>
+        <strong>{{ optionalOpenCount }}</strong>
+      </div>
+      <div>
+        <span>生产阶段缺口</span>
         <strong>{{ productionReadyOpenCount }}</strong>
+      </div>
+      <div>
+        <span>候选稿</span>
+        <strong>{{ candidateDraftCount }}</strong>
       </div>
       <div>
         <span>写回草案</span>
@@ -183,6 +211,14 @@
           >
             {{ updatingTaskId === item.task.task_id ? '更新中…' : '重新打开' }}
           </button>
+          <button
+            v-if="item.task.status === 'open' && item.task.source === 'production_material_missing_field'"
+            class="supplement-page__task-action supplement-page__task-action--secondary"
+            :disabled="draftingProjectId === item.project_id"
+            @click="draftProductionFieldsForTask(item)"
+          >
+            {{ draftingProjectId === item.project_id ? '草拟中…' : '草拟本项目生产字段' }}
+          </button>
         </aside>
       </article>
 
@@ -194,7 +230,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { exportKnowledgeWritebackQueuePatch, listSupplementTasks, updateProjectSupplementTask } from '@/api/projects'
+import {
+  draftProjectProductionMaterialFields,
+  exportKnowledgeWritebackQueuePatch,
+  listSupplementTasks,
+  updateProjectSupplementTask,
+} from '@/api/projects'
 import type {
   KnowledgeCandidateReviewStatus,
   KnowledgeSupplementTaskCategory,
@@ -229,6 +270,7 @@ const sourceFilter = ref<KnowledgeSupplementTaskSource | ''>(queryEnum(route.que
 const writebackFilter = ref<KnowledgeWritebackStatus | ''>(queryEnum(route.query.knowledge_writeback_status, WRITEBACK_FILTERS))
 const projectFilter = ref(queryString(route.query.project_id))
 const updatingTaskId = ref('')
+const draftingProjectId = ref('')
 const exportingWritebackPatch = ref(false)
 const copyMessage = ref('')
 const drafts = reactive<Record<string, string>>({})
@@ -270,10 +312,14 @@ const filteredTasks = computed(() => {
 const openCount = computed(() => tasks.value.filter(item => item.task.status === 'open').length)
 const resolvedCount = computed(() => tasks.value.filter(item => item.task.status === 'resolved').length)
 const blockingOpenCount = computed(() => tasks.value.filter(item => item.task.status === 'open' && item.task.blocking_level === 'blocking').length)
+const riskOpenCount = computed(() => tasks.value.filter(item => item.task.status === 'open' && item.task.blocking_level === 'risk').length)
+const optionalOpenCount = computed(() => tasks.value.filter(item => item.task.status === 'open' && item.task.blocking_level === 'optional').length)
 const productionReadyOpenCount = computed(() => tasks.value.filter(item => item.task.status === 'open' && item.task.stage === 'production_ready').length)
+const candidateDraftCount = computed(() => tasks.value.filter(item => Boolean(item.task.knowledge_candidate_markdown)).length)
 const writebackDraftCount = computed(() => tasks.value.filter(item => taskWritebackStatus(item.task) === 'draft_ready').length)
 const writebackQueuedCount = computed(() => tasks.value.filter(item => taskWritebackStatus(item.task) === 'queued').length)
 const writebackWrittenCount = computed(() => tasks.value.filter(item => taskWritebackStatus(item.task) === 'written_back').length)
+const candidateExportItems = computed(() => filteredTasks.value.filter(item => item.task.status === 'open'))
 
 function categoryLabel(category: KnowledgeSupplementTaskCategory): string {
   const map: Record<KnowledgeSupplementTaskCategory, string> = {
@@ -368,6 +414,12 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function formatDateTime(iso: string): string {
+  if (!iso) return '未记录'
+  const d = new Date(iso)
+  return `${formatDate(iso)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 function updateDraft(taskId: string, event: Event) {
   drafts[taskId] = (event.target as HTMLTextAreaElement).value
 }
@@ -435,6 +487,129 @@ async function copyWritebackQueuePatch() {
     error.value = err instanceof Error ? err.message : '复制写回队列 Patch 失败'
   } finally {
     exportingWritebackPatch.value = false
+  }
+}
+
+function buildSupplementCandidatePackage(items: ProjectSupplementTaskListItem[]): string {
+  const generatedAt = new Date().toISOString()
+  const blockingCount = items.filter(item => item.task.blocking_level === 'blocking').length
+  const riskCount = items.filter(item => item.task.blocking_level === 'risk').length
+  const optionalCount = items.filter(item => item.task.blocking_level === 'optional').length
+  const targetFiles = [...new Set(items.map(item => item.suggested_file_path).filter((value): value is string => Boolean(value)))]
+  const lines = [
+    '# 素材补库候选包',
+    '',
+    `- 生成时间：${generatedAt}`,
+    `- 当前筛选待补任务：${items.length}`,
+    `- 分级：当前阻断 ${blockingCount} / 需核验 ${riskCount} / 生产前补充 ${optionalCount}`,
+    `- 涉及目标文件：${targetFiles.length > 0 ? targetFiles.join('、') : '待人工判定'}`,
+    '- 写回策略：只生成候选稿、审稿材料和人工写回草案；不直接修改 data/provinces/*.md。',
+    '',
+  ]
+
+  for (const [index, item] of items.entries()) {
+    const task = item.task
+    lines.push(
+      `## ${index + 1}. ${task.label}`,
+      '',
+      `- project_id：${item.project_id}`,
+      `- 项目：${item.project_title}`,
+      `- 来源条目：${item.source_entry}`,
+      `- 类型：${typeLabel(item.video_type)}`,
+      `- 目标省份：${item.target_province ?? '待人工判定'}`,
+      `- 建议目标文件：${item.suggested_file_path ?? '待人工判定'}`,
+      `- 来源类型：${sourceLabel(task.source)}`,
+      `- 阶段：${task.stage ? stageLabel(task.stage) : '未标注'}`,
+      `- 分级：${task.blocking_level ? blockingLabel(task.blocking_level) : '未标注'}`,
+      `- 类别：${task.category ? categoryLabel(task.category) : '通用资料'}`,
+      `- 更新时间：${formatDateTime(item.updated_at)}`,
+      '',
+      '### 缺口说明',
+      '',
+      task.description,
+      '',
+    )
+    if (task.recommended_fields?.length) {
+      lines.push('### 建议补充字段', '', ...task.recommended_fields.map(field => `- ${fieldLabel(field)}`), '')
+    }
+    if (task.affects?.length) {
+      lines.push('### 影响范围', '', ...task.affects.map(affect => `- ${affect}`), '')
+    }
+    if (task.intake_prompt) {
+      lines.push('### 采集提示', '', task.intake_prompt, '')
+    }
+    if (task.supplement_note) {
+      lines.push('### 已记录补充说明', '', task.supplement_note, '')
+    }
+    if (task.supplement_field_values && Object.keys(task.supplement_field_values).length > 0) {
+      lines.push(
+        '### 已填写字段',
+        '',
+        ...Object.entries(task.supplement_field_values).map(([field, value]) => `- ${fieldLabel(field)}：${value}`),
+        '',
+      )
+    }
+    if (task.knowledge_candidate_markdown) {
+      lines.push('### 现有知识库候选稿', '', task.knowledge_candidate_markdown, '')
+    }
+    if (task.knowledge_writeback_draft_markdown) {
+      lines.push('### 现有正式写入草案', '', task.knowledge_writeback_draft_markdown, '')
+    }
+  }
+
+  return `${lines.join('\n')}\n`
+}
+
+function downloadText(filename: string, text: string, type: string) {
+  const blob = new Blob([text], { type })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function copySupplementCandidatePackage() {
+  const items = candidateExportItems.value
+  if (items.length === 0) return
+  error.value = ''
+  try {
+    const markdown = buildSupplementCandidatePackage(items)
+    await navigator.clipboard.writeText(markdown)
+    copyMessage.value = `已复制 ${items.length} 条素材补库候选任务。`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '复制补库候选包失败'
+  }
+}
+
+function downloadSupplementCandidatePackage() {
+  const items = candidateExportItems.value
+  if (items.length === 0) return
+  downloadText(
+    `knowledge-supplement-candidates-${new Date().toISOString().slice(0, 10)}.md`,
+    buildSupplementCandidatePackage(items),
+    'text/markdown;charset=utf-8',
+  )
+  copyMessage.value = `已下载 ${items.length} 条素材补库候选任务。`
+}
+
+async function draftProductionFieldsForTask(item: ProjectSupplementTaskListItem) {
+  draftingProjectId.value = item.project_id
+  error.value = ''
+  copyMessage.value = ''
+  try {
+    const res = await draftProjectProductionMaterialFields(item.project_id)
+    if (res.ok && res.data) {
+      copyMessage.value = `已为《${item.project_title}》草拟 ${res.data.drafted_field_count} 个生产素材字段。`
+      await loadTasks()
+    } else {
+      error.value = res.error?.message ?? '草拟生产素材字段失败'
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '草拟生产素材字段失败'
+  } finally {
+    draftingProjectId.value = ''
   }
 }
 
@@ -565,6 +740,12 @@ onMounted(async () => {
 .supplement-page__toolbar-action:disabled {
   cursor: not-allowed;
   opacity: 0.68;
+}
+
+.supplement-page__toolbar-action--secondary {
+  border-color: #c7d3dd;
+  background: #fff;
+  color: #33475b;
 }
 
 .supplement-page__copy-message {

@@ -7,6 +7,7 @@
       </div>
       <div class="projects-page__header-actions">
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/domain-pack-expansion-queue">扩库审稿队列</RouterLink>
+        <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/supplement-tasks">素材补充任务</RouterLink>
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/knowledge-writeback-queue">知识库写回队列</RouterLink>
         <RouterLink class="projects-page__cta projects-page__cta--secondary" to="/ai-comic-series/new">新建漫剧系列</RouterLink>
         <RouterLink class="projects-page__cta" to="/story/new">新建单片短片</RouterLink>
@@ -119,6 +120,9 @@
         <span>阻断目标 {{ storyAgentMvpStatus.summary.readiness_blocked_count }}</span>
         <span>安全自动化 {{ storyAgentMvpStatus.summary.ready_automation_step_count }}</span>
         <span>GEARS/人工 {{ storyAgentMvpStatus.summary.external_or_manual_step_count }}</span>
+        <RouterLink class="projects-page__metric-link" :to="{ name: 'SupplementTasks', query: { status: 'open' } }">
+          素材补充 {{ storyAgentMvpStatus.summary.story_supplement_open_count }} 待补 · 阻断 {{ storyAgentMvpStatus.summary.story_supplement_blocking_open_count }} · 风险 {{ storyAgentMvpStatus.summary.story_supplement_risk_open_count }} · 生产前 {{ storyAgentMvpStatus.summary.story_supplement_optional_open_count }} · 质量 {{ storyAgentMvpStatus.summary.story_quality_passed_count }}/{{ storyAgentMvpStatus.summary.story_quality_failed_count }}
+        </RouterLink>
         <span>模板 {{ storyAgentMvpStatus.summary.production_material_pack_status }} {{ storyAgentMvpStatus.summary.production_material_pack_core_ready_count }}/{{ storyAgentMvpStatus.summary.production_material_pack_core_total_count }}</span>
         <span>Domain Pack {{ storyAgentMvpStatus.summary.domain_pack_status }} {{ storyAgentMvpStatus.summary.production_domain_pack_ready_count }}/{{ storyAgentMvpStatus.summary.production_domain_pack_required_count }}</span>
         <RouterLink class="projects-page__metric-link" to="/domain-pack-expansion-queue">
