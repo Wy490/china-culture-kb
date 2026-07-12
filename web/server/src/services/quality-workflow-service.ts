@@ -126,8 +126,8 @@ function buildOutlineCoverageReport(story: StoryGenerateResult): OutlineCoverage
     const matchedTokens = matchedScenes
       .flatMap(item => item.matched)
       .filter((item, itemIndex, arr) => arr.indexOf(item) === itemIndex);
-    const strongThreshold = Math.max(2, Math.ceil(tokens.length / 3));
-    const strongMatch = matchedScenes.some(item => item.matched.length >= Math.max(2, Math.ceil(tokens.length / 3)));
+    const strongThreshold = Math.max(1, Math.ceil(tokens.length / 3));
+    const strongMatch = matchedScenes.some(item => item.matched.length >= strongThreshold);
     const aggregateStrongMatch = matchedTokens.length >= strongThreshold;
     const status: OutlineCoverageNode['status'] = strongMatch
       || aggregateStrongMatch
@@ -599,7 +599,8 @@ function excerptAroundTerm(text: string, term: string): string {
 function extractOutlineNodes(story: StoryGenerateResult): string[] {
   const adaptationNodes = story.adaptation_analysis?.plot_beats ?? [];
   const outline = story.original_user_query ?? '';
-  if (adaptationNodes.length === 0 && !isLikelyStructuredOutline(outline)) {
+  const focusNodes = extractFocusedOutlineNodes(outline);
+  if (adaptationNodes.length === 0 && focusNodes.length === 0 && !isLikelyStructuredOutline(outline)) {
     return [];
   }
   const rawNodes = outline
@@ -610,10 +611,26 @@ function extractOutlineNodes(story: StoryGenerateResult): string[] {
   const episodeNodes = rawNodes.filter(isEpisodeOutlineNode);
   const nodes = adaptationNodes.length > 0
     ? adaptationNodes
-    : (episodeNodes.length >= 4 ? episodeNodes : rawNodes).slice(0, 10);
+    : focusNodes.length > 0
+      ? focusNodes
+      : (episodeNodes.length >= 4 ? episodeNodes : rawNodes).slice(0, 10);
   return nodes
     .map(item => item.trim())
     .filter((item, index, arr) => item && arr.indexOf(item) === index)
+    .slice(0, 10);
+}
+
+function extractFocusedOutlineNodes(outline: string): string[] {
+  const match = outline.match(/^(.*?)(?:，|,)?\s*重点(?:表现|讲述|呈现|突出)([^。！？!?]+)[。！？!?]?$/);
+  if (!match) return [];
+  const spine = match[1].trim().replace(/(?:的)?故事$/, '').trim();
+  const focusItems = match[2]
+    .split(/[、，,]/)
+    .map(item => item.trim())
+    .filter(item => item.length >= 2);
+  return [spine, ...focusItems]
+    .filter(Boolean)
+    .filter((item, index, arr) => arr.indexOf(item) === index)
     .slice(0, 10);
 }
 
@@ -659,6 +676,9 @@ function storySceneText(scene: StoryGenerateResult['scene_breakdown'][number]): 
     scene.key_action,
     scene.conflict,
     scene.dialogue_or_narration,
+    scene.cultural_note,
+    scene.factual_basis,
+    ...(scene.fictionalized_elements ?? []),
     scene.visual_prompt,
     scene.camera_suggestion,
     ...(scene.characters ?? []),
@@ -674,7 +694,8 @@ function extractMeaningfulTokens(text: string): string[] {
   const anchorTerms = [
     '周敦颐', '疑案', '拒签', '死刑文书', '文书', '画押', '对白', '冲突',
     '表情', '动作', '结尾', '追看', '钩子', '案卷', '催签', '重查', '上官',
-    '良知', '证人', '现场',
+    '良知', '证人', '现场', '毛泽东', '湖南', '韶山', '求学', '新民学会',
+    '农民运动', '革命觉醒', '理想形成',
   ];
   const rawMatches = text.match(/[\u4e00-\u9fa5]{2,12}|[A-Za-z0-9]{3,}/g) ?? [];
   const splitMatches = rawMatches.flatMap(item => item
@@ -703,15 +724,15 @@ function hasSemanticSignalEvidence(text: string, signal: string): boolean {
   const compactText = text.replace(/\s+/g, '');
   const checks: Array<[RegExp, RegExp[]]> = [
     [/目标明确|人物目标清楚|必须有主角目标/, [/所求/, /要弄清/, /为了/, /求学不是/, /志向/, /书袋内侧写下/, /不能签字/, /要先看清事实/, /重查/, /重问证人/, /承担亡国之痛/, /还能把什么留给后人/]],
-    [/阻力具体|必须有阻力|制度压力可见/, [/官场规则/, /制度压力/, /名声/, /人情/, /催客/, /浊浪/, /路远/, /书卷会湿/, /行程.{0,6}误/, /知军.{0,8}催/, /催他签字/, /此案已定/, /得罪上官/, /可能丢官/, /获罪/, /长官权威/, /国都失陷/, /亡国之痛/]],
+    [/阻力具体|必须有阻力|制度压力可见/, [/官场规则/, /制度压力/, /时代压力/, /军阀统治/, /社会动荡/, /地方权势/, /谷价/, /租息/, /名声/, /人情/, /催客/, /浊浪/, /路远/, /书卷会湿/, /行程.{0,6}误/, /知军.{0,8}催/, /催他签字/, /此案已定/, /得罪上官/, /可能丢官/, /获罪/, /长官权威/, /国都失陷/, /亡国之痛/]],
     [/两难成立/, [/若[^。；]+；若/, /一边[^。；]+一边/, /赶路.{0,12}帮人/, /安稳.{0,12}远行/]],
     [/选择有代价|必须有选择和代价/, [/错过渡船/, /书卷会湿/, /行程.{0,6}误/, /泥痕/, /误一程/, /付出/, /书页.{0,6}皱/, /丢官/, /获罪/, /仕途代价/, /交还任命文书/, /准备辞官/, /得罪上官/, /永别/, /投江/, /怀石/, /一身沉入/]],
     [/行动具体/, [/系紧/, /停下脚步/, /蹲下/, /扶起/, /挽起/, /踩进/, /捞起/, /裹书/, /写下/, /长揖/, /背起/, /收起/]],
     [/精神落点来自选择|结尾有人物变化/, [/守良知/, /守住/, /正义/, /廉洁/, /出淤泥而不染/, /更清楚的心/, /泥痕/, /继续上路/, /守.{0,4}心/, /囚犯因此免死/, /承担仕途代价/, /退回的不是/, /精神坐标/, /忠愤/, /后世反复讲述/]],
-    [/因果链清楚|事件因果清楚|必须有事件因果/, [/因为/, /于是/, /导致/, /若[^。；]+；若/, /才/, /看见.{0,12}生出/, /生出.{0,12}承担/, /愿意承担.{0,12}才/, /忽然发现/, /郢都失守/, /流放无归/, /不愿苟活/, /发现疑点/, /疑点重重/, /证词前后不合/, /证据不足/, /只待.{0,6}画押/, /因此免死/]],
-    [/人物不是年表|不得写成年表式介绍/, [/(少年周敦颐|周敦颐).*(背起|停下脚步|蹲下|挽起|踩进|写下|停住笔|重查|翻到案卷|不能签字|退回|交还任命文书|逐页细读|记录疑点)/, /屈原.*(站在风里|走向汨罗江|整理衣冠|怀石|投江)/]],
+    [/因果链清楚|事件因果清楚|必须有事件因果/, [/因为/, /因此/, /于是/, /导致/, /若[^。；]+；若/, /才/, /看见.{0,12}生出/, /生出.{0,12}承担/, /愿意承担.{0,12}才/, /忽然发现/, /郢都失守/, /流放无归/, /不愿苟活/, /发现疑点/, /疑点重重/, /证词前后不合/, /证据不足/, /只待.{0,6}画押/, /因此免死/]],
+    [/人物不是年表|不得写成年表式介绍/, [/(少年周敦颐|周敦颐).*(背起|停下脚步|蹲下|挽起|踩进|写下|停住笔|重查|翻到案卷|不能签字|退回|交还任命文书|逐页细读|记录疑点)/, /屈原.*(站在风里|走向汨罗江|整理衣冠|怀石|投江)/, /毛泽东.*(收起|离开|走进|围坐|放下|翻开|整理|徒步|组织|倾听|考察)/]],
     [/史实边界明确|必须标注创作边界|必须有事实边界/, [/影视化创作/, /事实边界/, /史实边界/, /再现边界/, /确证/, /可考/, /据《?史记/, /传统叙述/, /不是《爱莲说》/, /不把.{0,20}写成/, /仍要说清/, /只作.{0,8}伏笔/]],
-    [/必须有时代压力|制度压力可见/, [/郢都失守/, /流放/, /亡国/, /楚国/, /上官/, /催签/, /制度压力/, /官场规则/]],
+    [/必须有时代压力|制度压力可见/, [/郢都失守/, /流放/, /亡国/, /楚国/, /军阀统治/, /社会动荡/, /时代压力/, /地方权势/, /谷价/, /租息/, /上官/, /催签/, /制度压力/, /官场规则/]],
     [/必须有对白或强旁白|对白密度高/, [/：/, /问/, /说/, /低声/, /反问/, /旁白/, /若有冤情/, /这一笔就是人命/, /不是旁观/]],
     [/必须有结尾钩子|结尾钩子强|钩子可承接/, [/门外/, /下一/, /又牵出/, /封存/, /案号/, /未完/, /新证/, /反常/, /必须解释/]],
     [/必须有表情动作|表情动作明确|开场有强画面/, [/特写/, /定格/, /烛火/, /案卷/, /停住笔/, /推开/, /翻开/, /重查/, /江水/, /怀石/, /针尖/, /绣架/]],

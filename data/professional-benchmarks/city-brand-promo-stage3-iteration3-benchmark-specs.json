@@ -1,0 +1,9 @@
+{"schema_version":"city-brand-promo-professional-benchmark-specs/v1","video_type":"city_brand_promo","policy":{"real_model_output_required":true,"fixture_or_simulation_counts_as_professional_pass":false},"summary":{"fixed_project_spec_count":5,"fixed_real_model_project_count":0,"failure_fixture_count":3,"human_blind_review_pass_count":0},"projects":[
+{"benchmark_id":"city-001-beijing-red-building","source_entry":"北大红楼——新文化运动的策源地","city":"北京","status":"awaiting_real_model_run","professional_passed":false},
+{"benchmark_id":"city-002-wuhan-wuchang","source_entry":"武昌起义——辛亥革命的第一声枪响","city":"武汉","status":"awaiting_real_model_run","professional_passed":false},
+{"benchmark_id":"city-003-xian-incident","source_entry":"西安事变——抗日民族统一战线的转折","city":"西安","status":"awaiting_real_model_run","professional_passed":false},
+{"benchmark_id":"city-004-yueyang-tower","source_entry":"岳阳楼——先忧后乐的精神地标","city":"岳阳","status":"awaiting_real_model_run","professional_passed":false},
+{"benchmark_id":"city-005-changsha-kiln","source_entry":"长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创","city":"长沙","status":"awaiting_real_model_run","professional_passed":false}],"failure_fixtures":[
+{"fixture_id":"city-failure-001-generic-slogan","fixture_kind":"simulation_failure_fixture","expected_hard_gate_ids":["city_proposition_missing","brand_landing_missing"],"professional_passed":false},
+{"fixture_id":"city-failure-002-sight-list","fixture_kind":"simulation_failure_fixture","expected_hard_gate_ids":["viewpoint_missing","route_missing","transition_missing"],"professional_passed":false},
+{"fixture_id":"city-failure-003-no-life-or-boundary","fixture_kind":"simulation_failure_fixture","expected_hard_gate_ids":["daily_life_missing","geographic_boundary_missing"],"professional_passed":false}]}

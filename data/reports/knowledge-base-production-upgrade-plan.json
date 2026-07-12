@@ -1,12 +1,12 @@
 {
   "schema_version": "kb-production-material-upgrade-plan/v1",
-  "generated_at": "2026-07-05T04:29:37.351Z",
-  "source_audit_generated_at": "2026-07-05T04:29:37.344Z",
+  "generated_at": "2026-07-12T18:46:08.426Z",
+  "source_audit_generated_at": "2026-07-12T18:46:08.419Z",
   "summary": {
-    "total_entries": 169,
-    "high_priority_entries": 169,
+    "total_entries": 174,
+    "high_priority_entries": 174,
     "planned_batches": 13,
-    "planned_entry_actions": 396,
+    "planned_entry_actions": 398,
     "format_only_actions": 0
   },
   "batches": [
@@ -776,6 +776,93 @@
           "safe_auto_apply": "none"
         },
         {
+          "action_id": "heritage_promo-minimum-pack--香港--港式奶茶制作技艺",
+          "entry_name": "港式奶茶制作技艺",
+          "province": "香港",
+          "type": "饮食文化",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "heritage_promo-minimum-pack--澳门--土生葡人美食烹饪技艺",
+          "entry_name": "土生葡人美食烹饪技艺",
+          "province": "澳门",
+          "type": "饮食文化",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "heritage_promo-minimum-pack--澳门--鱼行醉龙节",
+          "entry_name": "鱼行醉龙节",
+          "province": "澳门",
+          "type": "节庆习俗",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
           "action_id": "heritage_promo-minimum-pack--湖南--嘉禾伴嫁歌-千年湘南女性的歌堂之夜",
           "entry_name": "嘉禾伴嫁歌——千年湘南女性的歌堂之夜",
           "province": "湖南",
@@ -1396,90 +1483,6 @@
           "entry_name": "衡山皮影戏——湘南光影的千年传奇",
           "province": "湖南",
           "type": "非遗",
-          "priority": "high",
-          "production_card_score": 91,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--花瑶挑花-穿在身上的花瑶密码",
-          "entry_name": "花瑶挑花——穿在身上的花瑶密码",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 91,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--江永女书-世界唯一的女性专属文字",
-          "entry_name": "江永女书——世界唯一的女性专属文字",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 91,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--浏阳豆豉-千年发酵的鲜味密码",
-          "entry_name": "浏阳豆豉——千年发酵的鲜味密码",
-          "province": "湖南",
-          "type": "饮食文化",
           "priority": "high",
           "production_card_score": 91,
           "issue_tags": [
@@ -4397,7 +4400,7 @@
       "label": "儿童故事片最小素材包补齐",
       "goal": "补齐儿童故事片生产所需的最小字段。",
       "rationale": "只补目标片型需要的字段，比泛泛扩库更快提升生成质量。",
-      "entry_count": 16,
+      "entry_count": 18,
       "actions": [
         {
           "action_id": "children_story-minimum-pack--湖南--湘潭龙舞-纸扎龙灯的火光与鼓声",
@@ -4621,6 +4624,58 @@
           "issue_tags": [
             "存在待核点",
             "推荐片型模板覆盖低：children_story、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_age_band",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "recommended_questions": [
+            "目标儿童年龄段是什么，哪些词汇、恐惧尺度和情绪强度必须控制？",
+            "主角面对的善意张力、选择和成长结果分别是什么？",
+            "哪些文化信息可以儿童化讲述，哪些仍必须保留事实边界或禁写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "children_story-minimum-pack--澳门--鱼行醉龙节",
+          "entry_name": "鱼行醉龙节",
+          "province": "澳门",
+          "type": "节庆习俗",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_age_band",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "recommended_questions": [
+            "目标儿童年龄段是什么，哪些词汇、恐惧尺度和情绪强度必须控制？",
+            "主角面对的善意张力、选择和成长结果分别是什么？",
+            "哪些文化信息可以儿童化讲述，哪些仍必须保留事实边界或禁写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "children_story-minimum-pack--香港--中秋节-大坑舞火龙",
+          "entry_name": "中秋节——大坑舞火龙",
+          "province": "香港",
+          "type": "节庆习俗",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -6006,6 +6061,33 @@
           "safe_auto_apply": "none"
         },
         {
+          "action_id": "social_short-minimum-pack--香港--中秋节-大坑舞火龙",
+          "entry_name": "中秋节——大坑舞火龙",
+          "province": "香港",
+          "type": "节庆习俗",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "opening_hook",
+            "platform_context",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "recommended_questions": [
+            "前三秒钩子、反差问题或冷知识入口是什么？",
+            "竖屏镜头、字幕节奏、分享触发点和评论互动如何安排？",
+            "哪些信息需要做成事实边界卡，避免短视频夸张成未经核实的断言？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
           "action_id": "social_short-minimum-pack--湖南--嘉禾伴嫁歌-千年湘南女性的歌堂之夜",
           "entry_name": "嘉禾伴嫁歌——千年湘南女性的歌堂之夜",
           "province": "湖南",
@@ -6145,32 +6227,6 @@
           "issue_tags": [
             "存在待核点",
             "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "opening_hook",
-            "platform_context",
-            "share_trigger",
-            "vertical_shot_plan",
-            "diagram_or_caption_plan",
-            "fact_boundary_card"
-          ],
-          "recommended_questions": [
-            "前三秒钩子、反差问题或冷知识入口是什么？",
-            "竖屏镜头、字幕节奏、分享触发点和评论互动如何安排？",
-            "哪些信息需要做成事实边界卡，避免短视频夸张成未经核实的断言？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "social_short-minimum-pack--湖南--长沙弹词-月琴敲响的湘中市井",
-          "entry_name": "长沙弹词——月琴敲响的湘中市井",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",

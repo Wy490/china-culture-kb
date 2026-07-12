@@ -1,0 +1,605 @@
+{
+  "schema_version": "story-agent-stage8-blind-review-evaluator-readiness/v1",
+  "generated_at": "2026-07-12T17:00:00.000Z",
+  "policy": {
+    "score_threshold_is_human_blind_review_pass": false,
+    "fixture_simulation_fallback_counts_as_real_review": false,
+    "evaluator_can_grant_professional_pass": false,
+    "external_signed_human_artifacts_required_for_finalization": true
+  },
+  "summary": {
+    "target_video_type_count": 15,
+    "weight_contract_ready_count": 15,
+    "weight_sum_valid_count": 15,
+    "unique_weight_contract_sha256_count": 15,
+    "blind_review_bundle_schema_version": "professional-benchmark-blind-review/v2",
+    "blind_review_decision_schema_version": "professional-benchmark-blind-review-decision/v2",
+    "real_review_bundle_count": 0,
+    "human_blind_review_pass_project_count": 0,
+    "professional_pass_count": 0
+  },
+  "thresholds": {
+    "minimum_weighted_average_score": 85,
+    "minimum_dimension_score": 75,
+    "maximum_baseline_gap": 3,
+    "minimum_production_advance_vote_ratio_numerator": 2,
+    "minimum_production_advance_vote_ratio_denominator": 3,
+    "required_role_count": 3,
+    "required_hard_gate_failure_count": 0
+  },
+  "source_bindings": [
+    {
+      "path": "web/server/src/services/professional-benchmark-artifact-service.ts",
+      "sha256": "033e132a1542812c484781cc6c8eccb38d82addcea1b6d236f35678ed73be3f5"
+    },
+    {
+      "path": "web/server/src/services/professional-benchmark-finalization-service.ts",
+      "sha256": "4aeac3129809631bea0488cbae41370c0f7b57fcb413fec6a93ac602b097ccc9"
+    },
+    {
+      "path": "web/server/src/services/professional-benchmark-review-service.ts",
+      "sha256": "3e555f723146013f13bc9c34271718f6fda4022cc6e5e1f4572b74c148e7c0e0"
+    },
+    {
+      "path": "web/server/src/services/professional-text-contracts.ts",
+      "sha256": "eded9774f26b400637d33155a693a0b93a72e856c41b6cf779f95c8ec694900c"
+    }
+  ],
+  "video_types": [
+    {
+      "video_type": "character_story",
+      "label": "人物故事",
+      "line": "剧情故事线",
+      "weight_contract_sha256": "070fef2105909447f09059e11bf64283a66cad4e41c2123587c16a9e1cd10ad2",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 8,
+        "premise_and_theme_unity": 10,
+        "structure_causality_and_pacing": 15,
+        "character_agency_and_relationship_change": 12,
+        "scene_function_visible_action_and_blocking": 12,
+        "dialogue_narration_and_subtext": 10,
+        "emotional_curve_and_aftertaste": 10,
+        "cultural_fact_and_adaptation_boundary": 10,
+        "production_executability": 8,
+        "originality_and_distinctiveness": 5
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 15
+        },
+        {
+          "dimension_id": "character_agency_and_relationship_change",
+          "weight": 12
+        },
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "historical_drama",
+      "label": "历史剧情短片",
+      "line": "剧情故事线",
+      "weight_contract_sha256": "cf62d5090e19abfb7764ca448e7ba5b29724a17e23d7b676b1059aeaf3b48ef6",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 8,
+        "premise_and_theme_unity": 10,
+        "structure_causality_and_pacing": 15,
+        "character_agency_and_relationship_change": 12,
+        "scene_function_visible_action_and_blocking": 12,
+        "dialogue_narration_and_subtext": 10,
+        "emotional_curve_and_aftertaste": 7,
+        "cultural_fact_and_adaptation_boundary": 15,
+        "production_executability": 8,
+        "originality_and_distinctiveness": 3
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "cultural_fact_and_adaptation_boundary",
+          "weight": 15
+        },
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 15
+        },
+        {
+          "dimension_id": "character_agency_and_relationship_change",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "legend_story",
+      "label": "神话/传说故事",
+      "line": "剧情故事线",
+      "weight_contract_sha256": "ff33390f8b4b25f04a4918e1de1eb0a9f5305d2b7c0c892efc6cb92d3b4f3378",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 8,
+        "premise_and_theme_unity": 10,
+        "structure_causality_and_pacing": 15,
+        "character_agency_and_relationship_change": 12,
+        "scene_function_visible_action_and_blocking": 12,
+        "dialogue_narration_and_subtext": 10,
+        "emotional_curve_and_aftertaste": 10,
+        "cultural_fact_and_adaptation_boundary": 10,
+        "production_executability": 8,
+        "originality_and_distinctiveness": 5
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 15
+        },
+        {
+          "dimension_id": "character_agency_and_relationship_change",
+          "weight": 12
+        },
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "ai_comic_drama",
+      "label": "AI 漫剧单片",
+      "line": "剧情故事线",
+      "weight_contract_sha256": "aa7b7e9d3d80f95362b22e9d93d50a9bdc13b2f78d5cd7118d12f58b18713e0a",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 8,
+        "premise_and_theme_unity": 9,
+        "structure_causality_and_pacing": 15,
+        "character_agency_and_relationship_change": 12,
+        "scene_function_visible_action_and_blocking": 15,
+        "dialogue_narration_and_subtext": 12,
+        "emotional_curve_and_aftertaste": 9,
+        "cultural_fact_and_adaptation_boundary": 7,
+        "production_executability": 8,
+        "originality_and_distinctiveness": 5
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 15
+        },
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 15
+        },
+        {
+          "dimension_id": "character_agency_and_relationship_change",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "children_story",
+      "label": "儿童故事片",
+      "line": "剧情故事线",
+      "weight_contract_sha256": "0336895ac62f129e2381292756ce48b4394799dff6cfef4c2067321f109f7c61",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 10,
+        "premise_and_theme_unity": 10,
+        "structure_causality_and_pacing": 15,
+        "character_agency_and_relationship_change": 12,
+        "scene_function_visible_action_and_blocking": 12,
+        "dialogue_narration_and_subtext": 10,
+        "emotional_curve_and_aftertaste": 10,
+        "cultural_fact_and_adaptation_boundary": 8,
+        "production_executability": 8,
+        "originality_and_distinctiveness": 5
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 15
+        },
+        {
+          "dimension_id": "character_agency_and_relationship_change",
+          "weight": 12
+        },
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "culture_promo",
+      "label": "文化宣传片",
+      "line": "宣传传播线",
+      "weight_contract_sha256": "d73c3c1c58832b3e024da5955bb15e6165ad8e8bbd40d7111d0ac240485f94b2",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 10,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 13,
+        "character_agency_and_relationship_change": 6,
+        "scene_function_visible_action_and_blocking": 14,
+        "dialogue_narration_and_subtext": 12,
+        "emotional_curve_and_aftertaste": 9,
+        "cultural_fact_and_adaptation_boundary": 10,
+        "production_executability": 9,
+        "originality_and_distinctiveness": 5
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 14
+        },
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 13
+        },
+        {
+          "dimension_id": "dialogue_narration_and_subtext",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "heritage_promo",
+      "label": "非遗/工艺宣传片",
+      "line": "宣传传播线",
+      "weight_contract_sha256": "a2ca6f2bce3e0e4ac718a2960a1e5a6ca12369a3a6ca3401b481d0c1490581bf",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 10,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 13,
+        "character_agency_and_relationship_change": 6,
+        "scene_function_visible_action_and_blocking": 14,
+        "dialogue_narration_and_subtext": 12,
+        "emotional_curve_and_aftertaste": 5,
+        "cultural_fact_and_adaptation_boundary": 13,
+        "production_executability": 12,
+        "originality_and_distinctiveness": 3
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 14
+        },
+        {
+          "dimension_id": "cultural_fact_and_adaptation_boundary",
+          "weight": 13
+        },
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 13
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "city_brand_promo",
+      "label": "城市/文旅宣传片",
+      "line": "宣传传播线",
+      "weight_contract_sha256": "27e45096af78e76a2623724107bc8e0a28c48ce76898b1c562aca231f539d4ca",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 10,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 13,
+        "character_agency_and_relationship_change": 6,
+        "scene_function_visible_action_and_blocking": 14,
+        "dialogue_narration_and_subtext": 12,
+        "emotional_curve_and_aftertaste": 9,
+        "cultural_fact_and_adaptation_boundary": 10,
+        "production_executability": 9,
+        "originality_and_distinctiveness": 5
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 14
+        },
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 13
+        },
+        {
+          "dimension_id": "dialogue_narration_and_subtext",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "social_short",
+      "label": "竖屏短视频",
+      "line": "宣传传播线",
+      "weight_contract_sha256": "a18baa03613f7237f9e08be0298fe42e19528fcd2813d12b83362a545f4132ea",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 10,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 17,
+        "character_agency_and_relationship_change": 3,
+        "scene_function_visible_action_and_blocking": 14,
+        "dialogue_narration_and_subtext": 13,
+        "emotional_curve_and_aftertaste": 8,
+        "cultural_fact_and_adaptation_boundary": 10,
+        "production_executability": 9,
+        "originality_and_distinctiveness": 4
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 17
+        },
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 14
+        },
+        {
+          "dimension_id": "dialogue_narration_and_subtext",
+          "weight": 13
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "documentary_short",
+      "label": "微纪录片",
+      "line": "非虚构与知识线",
+      "weight_contract_sha256": "05779fbbdb74834dbc441ab7a46ad3825c9c8e67d9b08627e5d7a2f17a854da7",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 10,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 15,
+        "character_agency_and_relationship_change": 4,
+        "scene_function_visible_action_and_blocking": 12,
+        "dialogue_narration_and_subtext": 10,
+        "emotional_curve_and_aftertaste": 6,
+        "cultural_fact_and_adaptation_boundary": 16,
+        "production_executability": 10,
+        "originality_and_distinctiveness": 5
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "cultural_fact_and_adaptation_boundary",
+          "weight": 16
+        },
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 15
+        },
+        {
+          "dimension_id": "premise_and_theme_unity",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "explainer_video",
+      "label": "知识讲解视频",
+      "line": "非虚构与知识线",
+      "weight_contract_sha256": "c3f6f7b479e8197a0653186b7bfcb0a2978b0250a8522751f6fa19525ced3662",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 10,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 15,
+        "character_agency_and_relationship_change": 4,
+        "scene_function_visible_action_and_blocking": 12,
+        "dialogue_narration_and_subtext": 10,
+        "emotional_curve_and_aftertaste": 6,
+        "cultural_fact_and_adaptation_boundary": 16,
+        "production_executability": 10,
+        "originality_and_distinctiveness": 5
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "cultural_fact_and_adaptation_boundary",
+          "weight": 16
+        },
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 15
+        },
+        {
+          "dimension_id": "premise_and_theme_unity",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "lecture_video",
+      "label": "宣讲片",
+      "line": "非虚构与知识线",
+      "weight_contract_sha256": "96d07eda5fabb311c1551db836aa514b65ea276146f5396eb1b696d9ddaed099",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 10,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 15,
+        "character_agency_and_relationship_change": 4,
+        "scene_function_visible_action_and_blocking": 12,
+        "dialogue_narration_and_subtext": 10,
+        "emotional_curve_and_aftertaste": 6,
+        "cultural_fact_and_adaptation_boundary": 16,
+        "production_executability": 10,
+        "originality_and_distinctiveness": 5
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "cultural_fact_and_adaptation_boundary",
+          "weight": 16
+        },
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 15
+        },
+        {
+          "dimension_id": "premise_and_theme_unity",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "education_training",
+      "label": "教育/培训片",
+      "line": "非虚构与知识线",
+      "weight_contract_sha256": "a06725778489deba0c543791d2cf164ab7fcb068ce656206f3c0c5f3e2dd16c3",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 12,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 18,
+        "character_agency_and_relationship_change": 4,
+        "scene_function_visible_action_and_blocking": 12,
+        "dialogue_narration_and_subtext": 10,
+        "emotional_curve_and_aftertaste": 3,
+        "cultural_fact_and_adaptation_boundary": 13,
+        "production_executability": 14,
+        "originality_and_distinctiveness": 2
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "structure_causality_and_pacing",
+          "weight": 18
+        },
+        {
+          "dimension_id": "production_executability",
+          "weight": 14
+        },
+        {
+          "dimension_id": "cultural_fact_and_adaptation_boundary",
+          "weight": 13
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "scene_short",
+      "label": "场景短片",
+      "line": "空间与意境线",
+      "weight_contract_sha256": "97f1b7d41b1d045b652f7ea463afa8087c8ce7c4c9f3f1725d31eb7c30e35a73",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 8,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 12,
+        "character_agency_and_relationship_change": 3,
+        "scene_function_visible_action_and_blocking": 18,
+        "dialogue_narration_and_subtext": 8,
+        "emotional_curve_and_aftertaste": 15,
+        "cultural_fact_and_adaptation_boundary": 8,
+        "production_executability": 10,
+        "originality_and_distinctiveness": 6
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 18
+        },
+        {
+          "dimension_id": "emotional_curve_and_aftertaste",
+          "weight": 15
+        },
+        {
+          "dimension_id": "premise_and_theme_unity",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    },
+    {
+      "video_type": "landscape_mood",
+      "label": "山水意境片",
+      "line": "空间与意境线",
+      "weight_contract_sha256": "f1461b0b0917ccceab9a469ada620dd54f036477508335926ff0b187fdf1de00",
+      "dimension_weights": {
+        "creative_brief_and_audience_promise": 8,
+        "premise_and_theme_unity": 12,
+        "structure_causality_and_pacing": 12,
+        "character_agency_and_relationship_change": 3,
+        "scene_function_visible_action_and_blocking": 18,
+        "dialogue_narration_and_subtext": 8,
+        "emotional_curve_and_aftertaste": 15,
+        "cultural_fact_and_adaptation_boundary": 8,
+        "production_executability": 10,
+        "originality_and_distinctiveness": 6
+      },
+      "weight_sum": 100,
+      "top_weight_dimensions": [
+        {
+          "dimension_id": "scene_function_visible_action_and_blocking",
+          "weight": 18
+        },
+        {
+          "dimension_id": "emotional_curve_and_aftertaste",
+          "weight": 15
+        },
+        {
+          "dimension_id": "premise_and_theme_unity",
+          "weight": 12
+        }
+      ],
+      "evaluator_ready": true,
+      "real_review_bundle_count": 0,
+      "human_blind_review_pass_project_count": 0,
+      "professional_pass_count": 0
+    }
+  ]
+}

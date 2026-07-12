@@ -3,12 +3,16 @@ import cors from 'cors';
 import { resolve } from 'node:path';
 import { createCorsOptions } from './middleware/cors.js';
 import { errorHandler } from './middleware/error-handler.js';
+import { createJsonBodyParser } from './middleware/json-body.js';
 import { entriesRouter } from './routes/entries.js';
 import { storiesRouter } from './routes/stories.js';
 import { systemRouter } from './routes/system.js';
 import { outlineRouter } from './routes/outline.js';
 import { projectsRouter } from './routes/projects.js';
 import { gearsCallbackRouter } from './routes/gears-callback.js';
+import { stage6RevisionsRouter } from './routes/stage6-revisions.js';
+import { stage7GoldenCardsRouter } from './routes/stage7-golden-cards.js';
+import { stage8BlindReviewRouter } from './routes/stage8-blind-review.js';
 
 // Default KB_ROOT to ../../data (relative to this file → project root /data)
 if (!process.env.KB_ROOT) {
@@ -19,7 +23,7 @@ const app = express();
 
 // Middleware
 app.use(cors(createCorsOptions()));
-app.use(express.json());
+app.use(createJsonBodyParser());
 
 // Routes
 app.use('/api/entries', entriesRouter);
@@ -28,6 +32,9 @@ app.use('/api/system', systemRouter);
 app.use('/api/story-outline', outlineRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/gears-callback', gearsCallbackRouter);
+app.use('/api/stage6-revisions', stage6RevisionsRouter);
+app.use('/api/stage7-golden-cards', stage7GoldenCardsRouter);
+app.use('/api/stage8-blind-review', stage8BlindReviewRouter);
 
 // Unified error handler (must be after all routes)
 app.use(errorHandler);

@@ -1,0 +1,351 @@
+{
+  "schema_version": "domain-pack-real-external-adapter-config-registry-enable-gates/v1",
+  "updated_at": "2026-07-10",
+  "status": "real_adapter_registry_created_all_adapters_disabled",
+  "scope": "Iteration 28：为 5 类真实外部记录解析适配器建立配置契约、默认禁用注册表和安全启用门槛；只保存环境变量名称，不保存端点值、令牌、密码、私钥或其他秘密。本文件不读取环境变量，不实例化运行时适配器，不连接外部系统，不代表真实解析、真实导入、真实签署、正式 Patch 或正式知识库写入。",
+  "source_orchestrator_file": "mcp-server/src/lib/real-submission-external-record-orchestrator.ts",
+  "registry_module_file": "mcp-server/src/lib/real-submission-external-adapter-registry.ts",
+  "registry_markdown_file": "docs/production-cards/domain-pack-real-external-adapter-config-registry-enable-gates-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "adapter_registry_is_runtime_registration": false,
+    "disabled_config_is_external_connection": false,
+    "manual_registration_eligible_is_enabled": false,
+    "environment_variable_references_are_secret_values": false,
+    "environment_values_read": false,
+    "current_layer": "real_external_adapter_config_registry_and_enablement_gates_only"
+  },
+  "counts": {
+    "adapter_config_field_count": 17,
+    "adapter_config_count": 5,
+    "safety_enablement_gate_count": 8,
+    "environment_variable_reference_count": 16,
+    "raw_secret_value_count": 0,
+    "enabled_adapter_config_count": 0,
+    "health_check_passed_count": 0,
+    "audit_sink_ready_count": 0,
+    "simulation_isolation_passed_count": 0,
+    "human_approval_verified_count": 0,
+    "manual_registration_eligible_count": 0,
+    "runtime_adapter_registered_count": 0,
+    "real_external_connection_count": 0,
+    "formal_patch_count": 0,
+    "machine_gate_count": 10
+  },
+  "adapter_config_field_schema": [
+    "adapter_id",
+    "resolver_id",
+    "adapter_mode",
+    "enabled",
+    "endpoint_env_var",
+    "auth_scheme",
+    "credential_env_var_names",
+    "healthcheck_path",
+    "timeout_ms",
+    "audit_log_sink_env_var",
+    "owner_role",
+    "health_check_status",
+    "audit_readiness_status",
+    "simulation_isolation_status",
+    "human_approval_status",
+    "human_approval_record_reference",
+    "runtime_adapter_registered"
+  ],
+  "safety_enablement_gates": [
+    {
+      "gate_id": "config-valid",
+      "requirement": "配置字段、resolver ID、超时和相对健康检查路径合法。"
+    },
+    {
+      "gate_id": "endpoint-reference-ready",
+      "requirement": "endpoint_env_var 只能保存大写环境变量名称。"
+    },
+    {
+      "gate_id": "auth-reference-ready",
+      "requirement": "credential_env_var_names 只能保存非空环境变量名称列表。"
+    },
+    {
+      "gate_id": "health-check-passed",
+      "requirement": "真实适配器健康检查必须为 passed。"
+    },
+    {
+      "gate_id": "audit-sink-ready",
+      "requirement": "审计落点环境变量引用存在且 audit_readiness_status=ready。"
+    },
+    {
+      "gate_id": "simulation-isolation-passed",
+      "requirement": "真实适配器必须证明不会接受模拟夹具和 SIMULATION 引用。"
+    },
+    {
+      "gate_id": "human-approval-verified",
+      "requirement": "必须有 approved 状态和独立人工批准记录引用。"
+    },
+    {
+      "gate_id": "runtime-registration-remains-manual",
+      "requirement": "静态配置不得直接声明 runtime_adapter_registered=true。"
+    }
+  ],
+  "real_adapter_configs": [
+    {
+      "adapter_id": "external-source-submission-adapter",
+      "resolver_id": "source-submission-record-resolver",
+      "adapter_mode": "external",
+      "enabled": false,
+      "endpoint_env_var": "CCKB_SOURCE_SUBMISSION_API_BASE_URL",
+      "auth_scheme": "bearer_env",
+      "credential_env_var_names": [
+        "CCKB_SOURCE_SUBMISSION_API_TOKEN"
+      ],
+      "healthcheck_path": "/health",
+      "timeout_ms": 5000,
+      "audit_log_sink_env_var": "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK",
+      "owner_role": "外部提交记录适配器负责人",
+      "health_check_status": "not_run",
+      "audit_readiness_status": "not_configured",
+      "simulation_isolation_status": "not_verified",
+      "human_approval_status": "not_requested",
+      "human_approval_record_reference": "",
+      "runtime_adapter_registered": false
+    },
+    {
+      "adapter_id": "external-reviewer-identity-adapter",
+      "resolver_id": "reviewer-identity-record-resolver",
+      "adapter_mode": "external",
+      "enabled": false,
+      "endpoint_env_var": "CCKB_REVIEWER_IDENTITY_API_BASE_URL",
+      "auth_scheme": "bearer_env",
+      "credential_env_var_names": [
+        "CCKB_REVIEWER_IDENTITY_API_TOKEN"
+      ],
+      "healthcheck_path": "/health",
+      "timeout_ms": 5000,
+      "audit_log_sink_env_var": "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK",
+      "owner_role": "审稿人身份适配器负责人",
+      "health_check_status": "not_run",
+      "audit_readiness_status": "not_configured",
+      "simulation_isolation_status": "not_verified",
+      "human_approval_status": "not_requested",
+      "human_approval_record_reference": "",
+      "runtime_adapter_registered": false
+    },
+    {
+      "adapter_id": "external-attachment-record-adapter",
+      "resolver_id": "attachment-or-waiver-record-resolver",
+      "adapter_mode": "external",
+      "enabled": false,
+      "endpoint_env_var": "CCKB_ATTACHMENT_RECORD_API_BASE_URL",
+      "auth_scheme": "api_key_env",
+      "credential_env_var_names": [
+        "CCKB_ATTACHMENT_RECORD_API_KEY"
+      ],
+      "healthcheck_path": "/health",
+      "timeout_ms": 8000,
+      "audit_log_sink_env_var": "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK",
+      "owner_role": "附件与豁免记录适配器负责人",
+      "health_check_status": "not_run",
+      "audit_readiness_status": "not_configured",
+      "simulation_isolation_status": "not_verified",
+      "human_approval_status": "not_requested",
+      "human_approval_record_reference": "",
+      "runtime_adapter_registered": false
+    },
+    {
+      "adapter_id": "external-signature-record-adapter",
+      "resolver_id": "signature-record-resolver",
+      "adapter_mode": "external",
+      "enabled": false,
+      "endpoint_env_var": "CCKB_SIGNATURE_RECORD_API_BASE_URL",
+      "auth_scheme": "mtls_env",
+      "credential_env_var_names": [
+        "CCKB_SIGNATURE_MTLS_CERT_PATH",
+        "CCKB_SIGNATURE_MTLS_KEY_PATH"
+      ],
+      "healthcheck_path": "/health",
+      "timeout_ms": 5000,
+      "audit_log_sink_env_var": "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK",
+      "owner_role": "签署记录适配器负责人",
+      "health_check_status": "not_run",
+      "audit_readiness_status": "not_configured",
+      "simulation_isolation_status": "not_verified",
+      "human_approval_status": "not_requested",
+      "human_approval_record_reference": "",
+      "runtime_adapter_registered": false
+    },
+    {
+      "adapter_id": "external-formal-patch-request-adapter",
+      "resolver_id": "formal-patch-request-record-resolver",
+      "adapter_mode": "external",
+      "enabled": false,
+      "endpoint_env_var": "CCKB_PATCH_REQUEST_API_BASE_URL",
+      "auth_scheme": "bearer_env",
+      "credential_env_var_names": [
+        "CCKB_PATCH_REQUEST_API_TOKEN"
+      ],
+      "healthcheck_path": "/health",
+      "timeout_ms": 5000,
+      "audit_log_sink_env_var": "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK",
+      "owner_role": "正式 Patch 请求适配器负责人",
+      "health_check_status": "not_run",
+      "audit_readiness_status": "not_configured",
+      "simulation_isolation_status": "not_verified",
+      "human_approval_status": "not_requested",
+      "human_approval_record_reference": "",
+      "runtime_adapter_registered": false
+    }
+  ],
+  "registry_evaluation_scenarios": [
+    {
+      "scenario_id": "registry-all-disabled-default-001",
+      "target_adapter_id": null,
+      "config_overrides": {},
+      "expected_registry_status": "all_disabled_default",
+      "expected_adapter_status": "disabled_default",
+      "expected_manual_registration_eligible_count": 0,
+      "simulation_only": true
+    },
+    {
+      "scenario_id": "registry-enabled-without-gates-blocked-001",
+      "target_adapter_id": "external-source-submission-adapter",
+      "config_overrides": {
+        "enabled": true
+      },
+      "expected_registry_status": "enablement_blocked",
+      "expected_adapter_status": "blocked_enablement_gates",
+      "expected_manual_registration_eligible_count": 0,
+      "simulation_only": true
+    },
+    {
+      "scenario_id": "registry-invalid-direct-endpoint-blocked-001",
+      "target_adapter_id": "external-source-submission-adapter",
+      "config_overrides": {
+        "endpoint_env_var": "https://example.invalid/api"
+      },
+      "expected_registry_status": "invalid_registry",
+      "expected_adapter_status": "blocked_invalid_config",
+      "expected_manual_registration_eligible_count": 0,
+      "simulation_only": true
+    },
+    {
+      "scenario_id": "registry-gates-met-manual-registration-only-001",
+      "target_adapter_id": "external-source-submission-adapter",
+      "config_overrides": {
+        "enabled": true,
+        "health_check_status": "passed",
+        "audit_readiness_status": "ready",
+        "simulation_isolation_status": "passed",
+        "human_approval_status": "approved",
+        "human_approval_record_reference": "external-human-approval-record-001"
+      },
+      "expected_registry_status": "manual_registration_eligible",
+      "expected_adapter_status": "eligible_for_manual_runtime_registration",
+      "expected_manual_registration_eligible_count": 1,
+      "simulation_only": true
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "five-real-adapter-configs-created",
+      "status": "met_as_disabled_configs",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "seventeen-config-fields-frozen",
+      "status": "met",
+      "target_count": 17,
+      "current_count": 17
+    },
+    {
+      "gate_id": "eight-safety-enablement-gates-created",
+      "status": "met",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "all-real-adapters-disabled-by-default",
+      "status": "met",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "credential-references-use-environment-variable-names",
+      "status": "met",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "raw-secret-values-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "runtime-adapters-registered-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "real-external-connections-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_28_exit_gates": [
+    {
+      "gate_id": "real-adapter-config-registry-created",
+      "status": "met_as_disabled_registry",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "endpoint-auth-health-audit-human-gates-created",
+      "status": "met",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "environment-reference-only-policy-enforced",
+      "status": "met",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "manual-eligibility-does-not-register-runtime-adapter",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "no-real-adapter-connection-or-secret-stored",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

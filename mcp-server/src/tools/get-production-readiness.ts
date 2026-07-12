@@ -117,6 +117,9 @@ interface GearsSummary {
   total: number;
   active: number;
   ready: number;
+  external_ready: number;
+  local_acceptance_ready: number;
+  ready_without_external_artifact: number;
   failed: number;
   rejected: number;
   canceled: number;
@@ -153,6 +156,9 @@ export interface ProductionReadinessReport {
     failed_shot_count?: number;
     gears_job_count: number;
     active_gears_job_count: number;
+    external_ready_gears_job_count?: number;
+    local_acceptance_ready_gears_job_count?: number;
+    ready_without_external_gears_artifact_count?: number;
     seedance_placeholder_asset_count: number;
     seedance_production_asset_ready_count: number;
   };
@@ -174,6 +180,8 @@ const GEARS_STATUSES: GearsJobStatus[] = [
   'canceled',
   'rejected',
 ];
+
+const LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL = 'https://local.story-agent.invalid/gears-acceptance';
 
 function generatedRoot(): string {
   return path.resolve(getKbRoot(), '..', 'web', 'generated');
@@ -353,24 +361,51 @@ function statusScore(status: ProductionReadinessStatus): number {
   return 30;
 }
 
+function artifactIsLocalAcceptance(artifact: JsonRecord): boolean {
+  const url = asString(artifact.url);
+  const metadata = asRecord(artifact.metadata);
+  return artifact.role === 'local_acceptance'
+    || metadata.not_external_provider_output === true
+    || url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL);
+}
+
+function gearsItemHasLocalAcceptanceArtifact(item: JsonRecord): boolean {
+  return asArray(item.artifacts).some(artifactIsLocalAcceptance)
+    || asStringArray(item.artifact_urls).some(url => url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
+}
+
+function gearsItemHasExternalArtifact(item: JsonRecord): boolean {
+  return asArray(item.artifacts).some(artifact => {
+    const url = asString(artifact.url);
+    return Boolean(url) && !artifactIsLocalAcceptance(artifact);
+  }) || asStringArray(item.artifact_urls).some(url => !url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
+}
+
 function normalizeGearsSummary(ledger: unknown): GearsSummary {
   const statusCounts = Object.fromEntries(GEARS_STATUSES.map(status => [status, 0])) as Record<GearsJobStatus, number>;
   let missingArtifact = 0;
   let pollFailure = 0;
+  let externalReady = 0;
+  let localAcceptanceReady = 0;
   for (const item of asArray(asRecord(ledger).items)) {
     const status = GEARS_STATUSES.includes(item.status as GearsJobStatus)
       ? item.status as GearsJobStatus
       : 'submitted';
     statusCounts[status] += 1;
     const artifacts = asArray(item.artifacts);
-    const artifactUrls = Array.isArray(item.artifact_urls) ? item.artifact_urls : [];
+    const artifactUrls = asStringArray(item.artifact_urls);
     if (status === 'ready' && artifacts.length === 0 && artifactUrls.length === 0) missingArtifact += 1;
+    if (status === 'ready' && gearsItemHasExternalArtifact(item)) externalReady += 1;
+    if (status === 'ready' && gearsItemHasLocalAcceptanceArtifact(item)) localAcceptanceReady += 1;
     if (item.last_poll_error) pollFailure += 1;
   }
   return {
     total: Object.values(statusCounts).reduce((sum, count) => sum + count, 0),
     active: statusCounts.submitted + statusCounts.queued + statusCounts.processing,
     ready: statusCounts.ready,
+    external_ready: externalReady,
+    local_acceptance_ready: localAcceptanceReady,
+    ready_without_external_artifact: Math.max(0, statusCounts.ready - externalReady),
     failed: statusCounts.failed,
     rejected: statusCounts.rejected,
     canceled: statusCounts.canceled,
@@ -438,6 +473,9 @@ function buildSummary(params: {
     failed_shot_count: params.failedShotCount,
     gears_job_count: params.gearsSummary.total,
     active_gears_job_count: params.gearsSummary.active,
+    external_ready_gears_job_count: params.gearsSummary.external_ready,
+    local_acceptance_ready_gears_job_count: params.gearsSummary.local_acceptance_ready,
+    ready_without_external_gears_artifact_count: params.gearsSummary.ready_without_external_artifact,
     seedance_placeholder_asset_count: params.seedancePlaceholderAssetCount ?? 0,
     seedance_production_asset_ready_count: params.seedanceProductionAssetReadyCount ?? 0,
   };
@@ -449,6 +487,7 @@ function apiPath(scope: ProductionReadinessScope, projectId: string, actionKey: 
       export_production_board: `/api/projects/${projectId}/production-board/export`,
       repair_production_board: `/api/projects/${projectId}/production-board/repair-export`,
       export_retry_package: `/api/projects/${projectId}/production-board/export-seedance-retry-package`,
+      export_gears_external_callback_handoff: `/api/projects/${projectId}/production-board/gears-jobs/export-external-callback-handoff`,
       submit_gears_jobs: `/api/projects/${projectId}/production-board/gears-jobs/submit`,
       sync_gears_jobs: `/api/projects/${projectId}/production-board/gears-jobs/sync`,
     };
@@ -485,14 +524,14 @@ function payloadHint(scope: ProductionReadinessScope, projectId: string, actionK
 function automationRunner(actionKey: string): AutomationRunner {
   if (actionKey === 'kb_validate_genre_story' || actionKey === 'kb_repair_story') return 'mcp_tool';
   if (actionKey === 'submit_gears_jobs' || actionKey === 'sync_gears_jobs') return 'gears_worker';
-  if (actionKey === 'export_review_repair_package') return 'operator_review';
+  if (actionKey === 'export_review_repair_package' || actionKey === 'export_gears_external_callback_handoff') return 'operator_review';
   return 'story_agent_api';
 }
 
 function automationMode(actionKey: string): AutomationMode {
   if (actionKey === 'kb_validate_genre_story' || actionKey === 'kb_repair_story') return 'read_only';
   if (actionKey === 'submit_gears_jobs' || actionKey === 'sync_gears_jobs') return 'external_execution';
-  if (actionKey === 'export_review_repair_package') return 'manual';
+  if (actionKey === 'export_review_repair_package' || actionKey === 'export_gears_external_callback_handoff') return 'manual';
   return 'writes_project';
 }
 
@@ -503,6 +542,7 @@ function automationPrerequisites(actionKey: string): string[] {
   if (actionKey === 'sync_gears_jobs') return ['GEARS_API_BASE_URL configured', 'existing GEARS Job Ledger'];
   if (actionKey === 'generate_next_episode') return ['series plan loaded', 'previous episode context reviewed'];
   if (actionKey === 'export_review_repair_package') return ['open review ledger items reviewed'];
+  if (actionKey === 'export_gears_external_callback_handoff') return ['existing GEARS Job Ledger', 'operator confirms local acceptance is not final media'];
   return [];
 }
 
@@ -514,6 +554,7 @@ function expectedAutomationResult(actionKey: string): string {
     export_production_board: '生成 Production Board 交付包并记录当前版本 export 信息。',
     export_retry_package: '生成失败镜头/返修镜头重试包。',
     export_review_repair_package: '生成审片返修包，供人工或 GEARS 重试链路使用。',
+    export_gears_external_callback_handoff: '导出待真实外部回片的 callback 样例、preflight 和 safe import 交接包。',
     export_editing_platform_package: '生成外部剪辑平台交付包。',
     generate_next_episode: '生成下一集故事并更新系列项目生成进度。',
     rebuild_series_ledger: '重建连续性账本并刷新系列质量审计。',
@@ -529,6 +570,7 @@ function safetyNote(actionKey: string): string {
   if (actionKey === 'repair_production_board' || actionKey === 'export_production_board') return '会写项目版本或导出目录；执行前应确认当前项目 ID 正确。';
   if (actionKey === 'generate_next_episode') return '会产生新故事/系列状态；需要确保承接上一集连续性。';
   if (actionKey === 'export_review_repair_package') return '涉及审片意见取舍，建议保留人工复核。';
+  if (actionKey === 'export_gears_external_callback_handoff') return '只导出交接材料；不得把 local_acceptance URL 当成真实外部媒体。';
   return '只读或低风险动作。';
 }
 
@@ -618,6 +660,9 @@ function buildMarkdown(report: Omit<ProductionReadinessReport, 'markdown'>): str
     `- blockers: ${report.summary.blocker_count}`,
     `- warnings: ${report.summary.warning_count}`,
     `- next actions: ${report.summary.next_action_count}`,
+    `- GEARS external ready: ${report.summary.external_ready_gears_job_count ?? 0}`,
+    `- GEARS local acceptance ready: ${report.summary.local_acceptance_ready_gears_job_count ?? 0}`,
+    `- GEARS ready without external artifact: ${report.summary.ready_without_external_gears_artifact_count ?? 0}`,
     `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
     `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
     '',
@@ -818,6 +863,24 @@ async function buildStoryProjectReadiness(
       lane_key: 'gears_execution',
     });
   }
+  if (gearsSummary.local_acceptance_ready > 0 && gearsSummary.ready_without_external_artifact > 0) {
+    issues.push({
+      issue_id: 'gears-local-acceptance-only',
+      severity: 'info',
+      lane_key: 'gears_execution',
+      label: `${gearsSummary.local_acceptance_ready} 个 GEARS job 仅有本地验收产物`,
+      detail: 'local.story-agent.invalid 只验证本地账本链路，不代表 GEARS/Seedance 真实回片。',
+      action_key: 'export_gears_external_callback_handoff',
+      action_label: '导出真实回片交接包',
+    });
+    pushAction(actions, {
+      action_key: 'export_gears_external_callback_handoff',
+      label: '导出 GEARS 外部回片交接包',
+      detail: `${gearsSummary.ready_without_external_artifact} 个 ready job 仍缺真实外部 artifact。`,
+      priority: 58,
+      lane_key: 'gears_execution',
+    });
+  }
 
   const lanes: ProductionReadinessLane[] = [
     {
@@ -877,24 +940,78 @@ async function buildStoryProjectReadiness(
     {
       key: 'gears_execution',
       label: 'GEARS Execution',
-      status: gearsSummary.total === 0 ? 'needs_action' : gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled + gearsSummary.missing_artifact > 0 ? 'blocked' : gearsSummary.active > 0 || gearsSummary.poll_failure > 0 ? 'needs_action' : 'ready',
-      score: gearsSummary.total === 0 ? 40 : clampScore((gearsSummary.ready / gearsSummary.total) * 100 - (gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled) * 20 - gearsSummary.missing_artifact * 20),
-      detail: `jobs ${gearsSummary.total}，ready ${gearsSummary.ready}，active ${gearsSummary.active}。`,
+      status: gearsSummary.total === 0
+        ? 'needs_action'
+        : gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled + gearsSummary.missing_artifact > 0
+          ? 'blocked'
+          : gearsSummary.active > 0 || gearsSummary.poll_failure > 0 || gearsSummary.ready_without_external_artifact > 0
+            ? 'needs_action'
+            : 'ready',
+      score: gearsSummary.total === 0 ? 40 : clampScore(
+        (gearsSummary.external_ready / gearsSummary.total) * 100
+        + (gearsSummary.local_acceptance_ready / gearsSummary.total) * 65
+        - (gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled) * 20
+        - gearsSummary.missing_artifact * 20,
+      ),
+      detail: `jobs ${gearsSummary.total}，external ready ${gearsSummary.external_ready}，local acceptance ${gearsSummary.local_acceptance_ready}，active ${gearsSummary.active}。`,
       count_text: `jobs ${gearsSummary.total}`,
-      evidence: [`missing_artifact ${gearsSummary.missing_artifact}`, `poll_failure ${gearsSummary.poll_failure}`],
-      action_key: gearsSummary.total === 0 ? 'submit_gears_jobs' : gearsSummary.active > 0 ? 'sync_gears_jobs' : undefined,
-      action_label: gearsSummary.total === 0 ? '提交 GEARS' : gearsSummary.active > 0 ? '同步 GEARS' : undefined,
+      evidence: [
+        `external_ready ${gearsSummary.external_ready}`,
+        `local_acceptance_ready ${gearsSummary.local_acceptance_ready}`,
+        `ready_without_external ${gearsSummary.ready_without_external_artifact}`,
+        `missing_artifact ${gearsSummary.missing_artifact}`,
+        `poll_failure ${gearsSummary.poll_failure}`,
+      ],
+      action_key: gearsSummary.total === 0
+        ? 'submit_gears_jobs'
+        : gearsSummary.active > 0
+          ? 'sync_gears_jobs'
+          : gearsSummary.ready_without_external_artifact > 0
+            ? 'export_gears_external_callback_handoff'
+            : undefined,
+      action_label: gearsSummary.total === 0
+        ? '提交 GEARS'
+        : gearsSummary.active > 0
+          ? '同步 GEARS'
+          : gearsSummary.ready_without_external_artifact > 0
+            ? '导出真实回片交接包'
+            : undefined,
     },
     {
       key: 'commercial_ops',
       label: 'Commercial Workbench',
-      status: hasExport && gearsSummary.total > 0 && issues.every(issue => issue.severity !== 'blocking') ? 'ready' : 'needs_action',
-      score: clampScore((hasExport ? 40 : 10) + (gearsSummary.total > 0 ? 40 : 10) + (qualityPassed ? 20 : 0)),
-      detail: hasExport && gearsSummary.total > 0 ? '交付包与 GEARS 账本已具备。' : '商业中台还缺交付包或 GEARS 账本。',
+      status: hasExport
+        && gearsSummary.total > 0
+        && gearsSummary.ready_without_external_artifact === 0
+        && issues.every(issue => issue.severity !== 'blocking')
+        ? 'ready'
+        : 'needs_action',
+      score: clampScore(
+        (hasExport ? 40 : 10)
+        + (gearsSummary.total > 0 ? (gearsSummary.external_ready / gearsSummary.total) * 40 : 10)
+        + (qualityPassed ? 20 : 0),
+      ),
+      detail: hasExport && gearsSummary.total > 0
+        ? gearsSummary.ready_without_external_artifact > 0
+          ? `${gearsSummary.ready_without_external_artifact} 个 GEARS job 仍缺真实外部 artifact。`
+          : '交付包、GEARS 账本和真实外部 artifact 已具备。'
+        : '商业中台还缺交付包或 GEARS 账本。',
       count_text: `export ${hasExport ? 1 : 0} / gears ${gearsSummary.total}`,
       evidence: [`project_status ${asString(project.status)}`],
-      action_key: !hasExport ? 'export_production_board' : gearsSummary.total === 0 ? 'submit_gears_jobs' : undefined,
-      action_label: !hasExport ? '导出交付包' : gearsSummary.total === 0 ? '提交 GEARS' : undefined,
+      action_key: !hasExport
+        ? 'export_production_board'
+        : gearsSummary.total === 0
+          ? 'submit_gears_jobs'
+          : gearsSummary.ready_without_external_artifact > 0
+            ? 'export_gears_external_callback_handoff'
+            : undefined,
+      action_label: !hasExport
+        ? '导出交付包'
+        : gearsSummary.total === 0
+          ? '提交 GEARS'
+          : gearsSummary.ready_without_external_artifact > 0
+            ? '导出真实回片交接包'
+            : undefined,
     },
   ];
   const automationLedger = normalizeAutomationRunLedger(project.production_readiness_automation_ledger);
@@ -1123,20 +1240,58 @@ async function buildSeriesReadiness(
     {
       key: 'gears_execution',
       label: 'GEARS Execution',
-      status: gearsSummary.total === 0 ? 'needs_action' : gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled + gearsSummary.missing_artifact > 0 ? 'blocked' : gearsSummary.active > 0 ? 'needs_action' : 'ready',
-      score: gearsSummary.total === 0 ? 40 : clampScore((gearsSummary.ready / gearsSummary.total) * 100 - (gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled) * 20),
-      detail: `jobs ${gearsSummary.total}，ready ${gearsSummary.ready}，active ${gearsSummary.active}。`,
+      status: gearsSummary.total === 0
+        ? 'needs_action'
+        : gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled + gearsSummary.missing_artifact > 0
+          ? 'blocked'
+          : gearsSummary.active > 0 || gearsSummary.ready_without_external_artifact > 0
+            ? 'needs_action'
+            : 'ready',
+      score: gearsSummary.total === 0 ? 40 : clampScore(
+        (gearsSummary.external_ready / gearsSummary.total) * 100
+        + (gearsSummary.local_acceptance_ready / gearsSummary.total) * 65
+        - (gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled) * 20,
+      ),
+      detail: `jobs ${gearsSummary.total}，external ready ${gearsSummary.external_ready}，local acceptance ${gearsSummary.local_acceptance_ready}，active ${gearsSummary.active}。`,
       count_text: `jobs ${gearsSummary.total}`,
-      evidence: [`missing_artifact ${gearsSummary.missing_artifact}`, `poll_failure ${gearsSummary.poll_failure}`],
-      action_key: gearsSummary.total === 0 ? 'submit_gears_jobs' : gearsSummary.active > 0 ? 'sync_gears_jobs' : undefined,
-      action_label: gearsSummary.total === 0 ? '提交 GEARS' : gearsSummary.active > 0 ? '同步 GEARS' : undefined,
+      evidence: [
+        `external_ready ${gearsSummary.external_ready}`,
+        `local_acceptance_ready ${gearsSummary.local_acceptance_ready}`,
+        `ready_without_external ${gearsSummary.ready_without_external_artifact}`,
+        `missing_artifact ${gearsSummary.missing_artifact}`,
+        `poll_failure ${gearsSummary.poll_failure}`,
+      ],
+      action_key: gearsSummary.total === 0
+        ? 'submit_gears_jobs'
+        : gearsSummary.active > 0 || gearsSummary.ready_without_external_artifact > 0
+          ? 'sync_gears_jobs'
+          : undefined,
+      action_label: gearsSummary.total === 0
+        ? '提交 GEARS'
+        : gearsSummary.active > 0 || gearsSummary.ready_without_external_artifact > 0
+          ? '同步 GEARS'
+          : undefined,
     },
     {
       key: 'commercial_ops',
       label: '可商用制作中台',
-      status: generatedEpisodeCount >= totalEpisodeCount && gearsSummary.total > 0 && issues.every(issue => issue.severity !== 'blocking') ? 'ready' : 'needs_action',
-      score: clampScore((generatedEpisodeCount >= totalEpisodeCount ? 30 : 10) + (gearsSummary.total > 0 ? 30 : 10) + (finalReady ? 25 : 5) + (openReviewCount === 0 ? 15 : 0)),
-      detail: generatedEpisodeCount >= totalEpisodeCount && gearsSummary.total > 0 ? '系列已具备商业运营跟踪基础。' : '仍缺完整分集、GEARS 账本或最终交付。',
+      status: generatedEpisodeCount >= totalEpisodeCount
+        && gearsSummary.total > 0
+        && gearsSummary.ready_without_external_artifact === 0
+        && issues.every(issue => issue.severity !== 'blocking')
+        ? 'ready'
+        : 'needs_action',
+      score: clampScore(
+        (generatedEpisodeCount >= totalEpisodeCount ? 30 : 10)
+        + (gearsSummary.total > 0 ? (gearsSummary.external_ready / gearsSummary.total) * 30 : 10)
+        + (finalReady ? 25 : 5)
+        + (openReviewCount === 0 ? 15 : 0),
+      ),
+      detail: generatedEpisodeCount >= totalEpisodeCount && gearsSummary.total > 0
+        ? gearsSummary.ready_without_external_artifact > 0
+          ? '系列 GEARS 账本仍缺真实外部 artifact。'
+          : '系列已具备商业运营跟踪基础。'
+        : '仍缺完整分集、GEARS 账本或最终交付。',
       count_text: `episodes ${generatedEpisodeCount}/${totalEpisodeCount} / gears ${gearsSummary.total}`,
       evidence: [`project_status ${asString(project.status)}`],
       action_key: generatedEpisodeCount < totalEpisodeCount ? 'generate_next_episode' : gearsSummary.total === 0 ? 'submit_gears_jobs' : undefined,

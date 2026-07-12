@@ -1,0 +1,488 @@
+{
+  "schema_version": "domain-pack-real-external-adapter-activation-approval-offline-drill/v1",
+  "updated_at": "2026-07-10",
+  "status": "activation_approval_packages_created_offline_drill_only",
+  "scope": "Iteration 29：为 5 类默认禁用真实适配器生成独立人工启用审批包，并建立只记录环境变量名称 present/missing 状态的离线快照与健康、审计、模拟隔离、回滚演练。审批包和演练不会读取环境变量值，不会实例化或注册适配器，不会连接外部系统，也不代表真实导入、真实签署、正式 Patch 或正式知识库写入。",
+  "source_registry_file": "data/production-cards/domain-pack-real-external-adapter-config-registry-and-enable-gates.json",
+  "activation_drill_module_file": "mcp-server/src/lib/real-submission-external-adapter-activation-drill.ts",
+  "activation_drill_markdown_file": "docs/production-cards/domain-pack-real-external-adapter-activation-approval-offline-drill-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "activation_approval_package_is_adapter_enablement": false,
+    "offline_drill_is_real_connection": false,
+    "environment_presence_snapshot_reads_values": false,
+    "ready_for_manual_activation_review_is_runtime_registration": false,
+    "current_layer": "real_external_adapter_activation_approval_and_offline_drill_only"
+  },
+  "counts": {
+    "activation_approval_package_count": 5,
+    "manual_activation_review_field_count": 8,
+    "offline_drill_check_count": 6,
+    "activation_evaluation_gate_count": 8,
+    "environment_variable_reference_count": 16,
+    "unique_environment_variable_name_count": 12,
+    "offline_drill_scenario_count": 4,
+    "environment_value_read_count": 0,
+    "raw_secret_value_count": 0,
+    "ready_for_manual_activation_review_count": 0,
+    "adapter_enabled_count": 0,
+    "runtime_adapter_registered_count": 0,
+    "real_external_connection_count": 0,
+    "formal_patch_count": 0,
+    "machine_gate_count": 11
+  },
+  "environment_presence_snapshot_contract": {
+    "entry_fields": [
+      "environment_variable_name",
+      "presence_status"
+    ],
+    "allowed_presence_statuses": [
+      "present",
+      "missing"
+    ],
+    "values_read": false,
+    "raw_secret_values_stored": false,
+    "forbidden_fields": [
+      "value",
+      "secret",
+      "token",
+      "password",
+      "private_key"
+    ]
+  },
+  "manual_activation_review_field_schema": [
+    {
+      "field_id": "activation_request_id",
+      "required": true
+    },
+    {
+      "field_id": "requested_by",
+      "required": true
+    },
+    {
+      "field_id": "adapter_owner_confirmation",
+      "required": true
+    },
+    {
+      "field_id": "risk_review_reference",
+      "required": true
+    },
+    {
+      "field_id": "change_window",
+      "required": true
+    },
+    {
+      "field_id": "rollback_owner",
+      "required": true
+    },
+    {
+      "field_id": "approval_status",
+      "required": true
+    },
+    {
+      "field_id": "approval_record_reference",
+      "required": true
+    }
+  ],
+  "offline_drill_checklist": [
+    {
+      "check_id": "health-check-contract-validated",
+      "requirement": "离线确认健康检查使用相对路径、受控超时和脱敏失败输出；本轮不发起网络请求。"
+    },
+    {
+      "check_id": "audit-write-contract-validated",
+      "requirement": "离线确认审计事件包含 adapter、resolver、请求关联和结果状态且不包含凭据；本轮不写真实审计落点。"
+    },
+    {
+      "check_id": "simulation-fixture-rejected",
+      "requirement": "确认真实适配器启用路径拒绝 fixture ID。"
+    },
+    {
+      "check_id": "simulation-reference-rejected",
+      "requirement": "确认真实适配器启用路径拒绝 SIMULATION 引用。"
+    },
+    {
+      "check_id": "rollback-disablement-validated",
+      "requirement": "确认回滚步骤首先恢复 enabled=false。"
+    },
+    {
+      "check_id": "rollback-registration-removal-validated",
+      "requirement": "确认回滚步骤移除运行时注册并保留审计记录。"
+    }
+  ],
+  "activation_approval_packages": [
+    {
+      "approval_package_id": "activation-approval-external-source-submission-adapter",
+      "adapter_id": "external-source-submission-adapter",
+      "resolver_id": "source-submission-record-resolver",
+      "owner_role": "外部提交记录适配器负责人",
+      "status": "pending_environment_snapshot_offline_drill_and_human_approval",
+      "required_environment_variable_names": [
+        "CCKB_SOURCE_SUBMISSION_API_BASE_URL",
+        "CCKB_SOURCE_SUBMISSION_API_TOKEN",
+        "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK"
+      ],
+      "manual_activation_review_field_ids": [
+        "activation_request_id",
+        "requested_by",
+        "adapter_owner_confirmation",
+        "risk_review_reference",
+        "change_window",
+        "rollback_owner",
+        "approval_status",
+        "approval_record_reference"
+      ],
+      "offline_drill_check_ids": [
+        "health-check-contract-validated",
+        "audit-write-contract-validated",
+        "simulation-fixture-rejected",
+        "simulation-reference-rejected",
+        "rollback-disablement-validated",
+        "rollback-registration-removal-validated"
+      ],
+      "adapter_enabled": false,
+      "runtime_adapter_registered": false,
+      "real_external_connection_created": false,
+      "environment_values_read": false
+    },
+    {
+      "approval_package_id": "activation-approval-external-reviewer-identity-adapter",
+      "adapter_id": "external-reviewer-identity-adapter",
+      "resolver_id": "reviewer-identity-record-resolver",
+      "owner_role": "审稿人身份适配器负责人",
+      "status": "pending_environment_snapshot_offline_drill_and_human_approval",
+      "required_environment_variable_names": [
+        "CCKB_REVIEWER_IDENTITY_API_BASE_URL",
+        "CCKB_REVIEWER_IDENTITY_API_TOKEN",
+        "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK"
+      ],
+      "manual_activation_review_field_ids": [
+        "activation_request_id",
+        "requested_by",
+        "adapter_owner_confirmation",
+        "risk_review_reference",
+        "change_window",
+        "rollback_owner",
+        "approval_status",
+        "approval_record_reference"
+      ],
+      "offline_drill_check_ids": [
+        "health-check-contract-validated",
+        "audit-write-contract-validated",
+        "simulation-fixture-rejected",
+        "simulation-reference-rejected",
+        "rollback-disablement-validated",
+        "rollback-registration-removal-validated"
+      ],
+      "adapter_enabled": false,
+      "runtime_adapter_registered": false,
+      "real_external_connection_created": false,
+      "environment_values_read": false
+    },
+    {
+      "approval_package_id": "activation-approval-external-attachment-record-adapter",
+      "adapter_id": "external-attachment-record-adapter",
+      "resolver_id": "attachment-or-waiver-record-resolver",
+      "owner_role": "附件与豁免记录适配器负责人",
+      "status": "pending_environment_snapshot_offline_drill_and_human_approval",
+      "required_environment_variable_names": [
+        "CCKB_ATTACHMENT_RECORD_API_BASE_URL",
+        "CCKB_ATTACHMENT_RECORD_API_KEY",
+        "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK"
+      ],
+      "manual_activation_review_field_ids": [
+        "activation_request_id",
+        "requested_by",
+        "adapter_owner_confirmation",
+        "risk_review_reference",
+        "change_window",
+        "rollback_owner",
+        "approval_status",
+        "approval_record_reference"
+      ],
+      "offline_drill_check_ids": [
+        "health-check-contract-validated",
+        "audit-write-contract-validated",
+        "simulation-fixture-rejected",
+        "simulation-reference-rejected",
+        "rollback-disablement-validated",
+        "rollback-registration-removal-validated"
+      ],
+      "adapter_enabled": false,
+      "runtime_adapter_registered": false,
+      "real_external_connection_created": false,
+      "environment_values_read": false
+    },
+    {
+      "approval_package_id": "activation-approval-external-signature-record-adapter",
+      "adapter_id": "external-signature-record-adapter",
+      "resolver_id": "signature-record-resolver",
+      "owner_role": "签署记录适配器负责人",
+      "status": "pending_environment_snapshot_offline_drill_and_human_approval",
+      "required_environment_variable_names": [
+        "CCKB_SIGNATURE_RECORD_API_BASE_URL",
+        "CCKB_SIGNATURE_MTLS_CERT_PATH",
+        "CCKB_SIGNATURE_MTLS_KEY_PATH",
+        "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK"
+      ],
+      "manual_activation_review_field_ids": [
+        "activation_request_id",
+        "requested_by",
+        "adapter_owner_confirmation",
+        "risk_review_reference",
+        "change_window",
+        "rollback_owner",
+        "approval_status",
+        "approval_record_reference"
+      ],
+      "offline_drill_check_ids": [
+        "health-check-contract-validated",
+        "audit-write-contract-validated",
+        "simulation-fixture-rejected",
+        "simulation-reference-rejected",
+        "rollback-disablement-validated",
+        "rollback-registration-removal-validated"
+      ],
+      "adapter_enabled": false,
+      "runtime_adapter_registered": false,
+      "real_external_connection_created": false,
+      "environment_values_read": false
+    },
+    {
+      "approval_package_id": "activation-approval-external-formal-patch-request-adapter",
+      "adapter_id": "external-formal-patch-request-adapter",
+      "resolver_id": "formal-patch-request-record-resolver",
+      "owner_role": "正式 Patch 请求适配器负责人",
+      "status": "pending_environment_snapshot_offline_drill_and_human_approval",
+      "required_environment_variable_names": [
+        "CCKB_PATCH_REQUEST_API_BASE_URL",
+        "CCKB_PATCH_REQUEST_API_TOKEN",
+        "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK"
+      ],
+      "manual_activation_review_field_ids": [
+        "activation_request_id",
+        "requested_by",
+        "adapter_owner_confirmation",
+        "risk_review_reference",
+        "change_window",
+        "rollback_owner",
+        "approval_status",
+        "approval_record_reference"
+      ],
+      "offline_drill_check_ids": [
+        "health-check-contract-validated",
+        "audit-write-contract-validated",
+        "simulation-fixture-rejected",
+        "simulation-reference-rejected",
+        "rollback-disablement-validated",
+        "rollback-registration-removal-validated"
+      ],
+      "adapter_enabled": false,
+      "runtime_adapter_registered": false,
+      "real_external_connection_created": false,
+      "environment_values_read": false
+    }
+  ],
+  "offline_drill_scenarios": [
+    {
+      "scenario_id": "activation-drill-environment-missing-001",
+      "target_adapter_id": "external-source-submission-adapter",
+      "present_environment_variable_names": [],
+      "drill_evidence": {
+        "health_check_contract_validated": false,
+        "audit_write_contract_validated": false,
+        "simulation_fixture_rejected": false,
+        "simulation_reference_rejected": false,
+        "rollback_disablement_validated": false,
+        "rollback_registration_removal_validated": false
+      },
+      "human_approval": {
+        "approval_status": "not_requested",
+        "approval_record_reference": ""
+      },
+      "expected_status": "blocked_environment_references_missing",
+      "simulation_only": true
+    },
+    {
+      "scenario_id": "activation-drill-offline-evidence-missing-001",
+      "target_adapter_id": "external-source-submission-adapter",
+      "present_environment_variable_names": [
+        "CCKB_SOURCE_SUBMISSION_API_BASE_URL",
+        "CCKB_SOURCE_SUBMISSION_API_TOKEN",
+        "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK"
+      ],
+      "drill_evidence": {
+        "health_check_contract_validated": false,
+        "audit_write_contract_validated": false,
+        "simulation_fixture_rejected": false,
+        "simulation_reference_rejected": false,
+        "rollback_disablement_validated": false,
+        "rollback_registration_removal_validated": false
+      },
+      "human_approval": {
+        "approval_status": "not_requested",
+        "approval_record_reference": ""
+      },
+      "expected_status": "blocked_offline_drill",
+      "simulation_only": true
+    },
+    {
+      "scenario_id": "activation-drill-human-approval-missing-001",
+      "target_adapter_id": "external-source-submission-adapter",
+      "present_environment_variable_names": [
+        "CCKB_SOURCE_SUBMISSION_API_BASE_URL",
+        "CCKB_SOURCE_SUBMISSION_API_TOKEN",
+        "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK"
+      ],
+      "drill_evidence": {
+        "health_check_contract_validated": true,
+        "audit_write_contract_validated": true,
+        "simulation_fixture_rejected": true,
+        "simulation_reference_rejected": true,
+        "rollback_disablement_validated": true,
+        "rollback_registration_removal_validated": true
+      },
+      "human_approval": {
+        "approval_status": "not_requested",
+        "approval_record_reference": ""
+      },
+      "expected_status": "blocked_human_approval",
+      "simulation_only": true
+    },
+    {
+      "scenario_id": "activation-drill-ready-for-manual-review-only-001",
+      "target_adapter_id": "external-source-submission-adapter",
+      "present_environment_variable_names": [
+        "CCKB_SOURCE_SUBMISSION_API_BASE_URL",
+        "CCKB_SOURCE_SUBMISSION_API_TOKEN",
+        "CCKB_EXTERNAL_RESOLUTION_AUDIT_SINK"
+      ],
+      "drill_evidence": {
+        "health_check_contract_validated": true,
+        "audit_write_contract_validated": true,
+        "simulation_fixture_rejected": true,
+        "simulation_reference_rejected": true,
+        "rollback_disablement_validated": true,
+        "rollback_registration_removal_validated": true
+      },
+      "human_approval": {
+        "approval_status": "approved",
+        "approval_record_reference": "simulation-human-approval-record-001"
+      },
+      "expected_status": "ready_for_manual_activation_review",
+      "simulation_only": true
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "five-activation-approval-packages-created",
+      "status": "met_as_pending_packages",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "environment-presence-only-contract-created",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "six-offline-drill-checks-created",
+      "status": "met",
+      "target_count": 6,
+      "current_count": 6
+    },
+    {
+      "gate_id": "four-blocking-scenarios-covered",
+      "status": "met_as_simulation_only",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "environment-values-read-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "raw-secret-values-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "adapters-enabled-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "runtime-adapters-registered-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "real-external-connections-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_29_exit_gates": [
+    {
+      "gate_id": "independent-activation-approval-packages-created",
+      "status": "met_as_pending_human_execution",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "environment-presence-snapshot-does-not-read-values",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "health-audit-isolation-rollback-drills-covered",
+      "status": "met_as_offline_contract",
+      "target_count": 6,
+      "current_count": 6
+    },
+    {
+      "gate_id": "all-passed-still-requires-manual-activation-review",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "no-adapter-enabled-registered-or-connected",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

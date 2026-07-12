@@ -229,6 +229,49 @@ describe('generateStoryWithAdapter', () => {
     expect(result.reason).toContain('STORY_GEN_COMMAND');
   });
 
+  it('does not auto-discover or invoke a bundled bridge in production without explicit opt-in', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    delete process.env.STORY_GEN_COMMAND;
+    delete process.env.STORY_GEN_COMMAND_ARGS;
+    process.env.NODE_ENV = 'production';
+
+    try {
+      const result = await generateStoryWithAdapter({
+        pkg: {
+          prompt_version: 'story-generation/v1',
+          context: {
+            entry_name: '授权门禁测试',
+            entry_type: '测试',
+            entry_region: '本地',
+            entry_keywords: [],
+            video_type: 'character_story',
+            presentation_style: 'cinematic',
+            story_structure: 'single_event_drama',
+            target_duration: '1分钟',
+            tone: '',
+          },
+          entry_summary: '仅验证显式 opt-in。',
+          entry_story: '不得调用外部模型。',
+          entry_cultural_significance: '无',
+          output_contract: { must_provide: [], should_respect: [], return_json_fields: [] },
+          system_prompt: 'test',
+          user_prompt: 'test',
+        },
+        modelProfileId: 'claude_sonnet',
+      });
+
+      expect(result).toMatchObject({
+        provider: 'local_only',
+        output: null,
+        used_fallback: false,
+        reason: 'STORY_GEN_COMMAND is not configured',
+      });
+    } finally {
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
   it('returns fallback with reason when model profile is unknown', async () => {
     delete process.env.STORY_GEN_COMMAND;
     delete process.env.STORY_GEN_PROVIDER;

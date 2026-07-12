@@ -1,0 +1,276 @@
+{
+  "schema_version": "domain-pack-external-record-resolution-orchestrator-fixtures/v1",
+  "updated_at": "2026-07-10",
+  "status": "external_record_orchestrator_fixtures_created_real_resolution_zero",
+  "scope": "Iteration 27：为 5 类外部记录解析适配器接口和 10 项解析状态编排器建立 unresolved、failed、resolved_as_simulation、模拟适配器伪称 resolved_real 降级以及本地校验阻断场景；全部适配器和场景仅用于测试，不代表真实外部系统连接、真实记录解析、真实提交导入、真实签署、正式 Patch 或正式知识库写入。",
+  "source_import_contract_file": "data/production-cards/domain-pack-real-submission-import-contract-and-external-record-resolution.json",
+  "source_validator_fixtures_file": "data/production-cards/domain-pack-real-submission-import-validator-rejection-fixtures.json",
+  "orchestrator_module_file": "mcp-server/src/lib/real-submission-external-record-orchestrator.ts",
+  "orchestrator_markdown_file": "docs/production-cards/domain-pack-external-record-resolution-orchestrator-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "test_adapter_result_is_real_resolution": false,
+    "resolved_as_simulation_is_real_record": false,
+    "orchestrator_result_is_real_import": false,
+    "orchestrator_result_is_signature": false,
+    "current_layer": "external_record_adapter_interface_and_orchestration_fixture_only"
+  },
+  "counts": {
+    "external_record_adapter_interface_count": 5,
+    "resolution_check_count": 10,
+    "test_adapter_profile_count": 4,
+    "orchestration_scenario_count": 5,
+    "unresolved_scenario_count": 1,
+    "failed_scenario_count": 1,
+    "resolved_as_simulation_scenario_count": 2,
+    "blocked_local_validation_scenario_count": 1,
+    "real_external_adapter_count": 0,
+    "real_external_record_resolution_count": 0,
+    "real_submission_import_count": 0,
+    "real_signature_count": 0,
+    "formal_patch_count": 0,
+    "machine_gate_count": 10
+  },
+  "test_adapter_profiles": [
+    {
+      "profile_id": "adapter-profile-all-unresolved-001",
+      "adapter_mode": "simulation",
+      "resolver_statuses": {
+        "source-submission-record-resolver": "unresolved",
+        "reviewer-identity-record-resolver": "unresolved",
+        "attachment-or-waiver-record-resolver": "unresolved",
+        "signature-record-resolver": "unresolved",
+        "formal-patch-request-record-resolver": "unresolved"
+      },
+      "reason_id": "test_adapter_has_no_external_connection"
+    },
+    {
+      "profile_id": "adapter-profile-signature-failed-001",
+      "adapter_mode": "simulation",
+      "resolver_statuses": {
+        "source-submission-record-resolver": "unresolved",
+        "reviewer-identity-record-resolver": "unresolved",
+        "attachment-or-waiver-record-resolver": "unresolved",
+        "signature-record-resolver": "failed",
+        "formal-patch-request-record-resolver": "unresolved"
+      },
+      "reason_id": "test_signature_resolution_failure"
+    },
+    {
+      "profile_id": "adapter-profile-all-resolved-as-simulation-001",
+      "adapter_mode": "simulation",
+      "resolver_statuses": {
+        "source-submission-record-resolver": "resolved_as_simulation",
+        "reviewer-identity-record-resolver": "resolved_as_simulation",
+        "attachment-or-waiver-record-resolver": "resolved_as_simulation",
+        "signature-record-resolver": "resolved_as_simulation",
+        "formal-patch-request-record-resolver": "resolved_as_simulation"
+      },
+      "reason_id": "test_record_shape_resolved_simulation_only"
+    },
+    {
+      "profile_id": "adapter-profile-simulation-claims-resolved-real-001",
+      "adapter_mode": "simulation",
+      "resolver_statuses": {
+        "source-submission-record-resolver": "resolved_real",
+        "reviewer-identity-record-resolver": "resolved_real",
+        "attachment-or-waiver-record-resolver": "resolved_real",
+        "signature-record-resolver": "resolved_real",
+        "formal-patch-request-record-resolver": "resolved_real"
+      },
+      "reason_id": "test_adapter_illegal_real_resolution_claim"
+    }
+  ],
+  "orchestration_scenarios": [
+    {
+      "scenario_id": "orchestrator-unresolved-external-records-001",
+      "base_envelope_source": "base_format_valid_envelope",
+      "input_overrides": {},
+      "adapter_profile_id": "adapter-profile-all-unresolved-001",
+      "expected_status": "external_resolution_incomplete",
+      "expected_total_check_count": 10,
+      "expected_unresolved_count": 9,
+      "expected_failed_count": 0,
+      "expected_resolved_as_simulation_count": 0,
+      "expected_resolved_real_count": 0,
+      "expected_not_applicable_count": 1,
+      "simulation_only": true,
+      "real_submission_imported": false
+    },
+    {
+      "scenario_id": "orchestrator-signature-resolution-failed-001",
+      "base_envelope_source": "base_format_valid_envelope",
+      "input_overrides": {},
+      "adapter_profile_id": "adapter-profile-signature-failed-001",
+      "expected_status": "external_resolution_failed",
+      "expected_total_check_count": 10,
+      "expected_unresolved_count": 8,
+      "expected_failed_count": 1,
+      "expected_resolved_as_simulation_count": 0,
+      "expected_resolved_real_count": 0,
+      "expected_not_applicable_count": 1,
+      "simulation_only": true,
+      "real_submission_imported": false
+    },
+    {
+      "scenario_id": "orchestrator-resolved-as-simulation-only-001",
+      "base_envelope_source": "base_format_valid_envelope",
+      "input_overrides": {},
+      "adapter_profile_id": "adapter-profile-all-resolved-as-simulation-001",
+      "expected_status": "resolved_as_simulation_only",
+      "expected_total_check_count": 10,
+      "expected_unresolved_count": 0,
+      "expected_failed_count": 0,
+      "expected_resolved_as_simulation_count": 9,
+      "expected_resolved_real_count": 0,
+      "expected_not_applicable_count": 1,
+      "simulation_only": true,
+      "real_submission_imported": false
+    },
+    {
+      "scenario_id": "orchestrator-simulation-real-claim-downgraded-001",
+      "base_envelope_source": "base_format_valid_envelope",
+      "input_overrides": {
+        "import_envelope_id": "real-import-envelope-orchestrator-local-pass-002",
+        "source_record_id": "external-review-record-orchestrator-002",
+        "idempotency_key": "external-review-system:external-review-record-orchestrator-002:v1",
+        "payload_digest_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "explicit_formal_patch_request": true,
+        "formal_patch_request_record_reference": "external-authorized-patch-request-orchestrator-001"
+      },
+      "adapter_profile_id": "adapter-profile-simulation-claims-resolved-real-001",
+      "expected_status": "resolved_as_simulation_only",
+      "expected_total_check_count": 10,
+      "expected_unresolved_count": 0,
+      "expected_failed_count": 0,
+      "expected_resolved_as_simulation_count": 10,
+      "expected_resolved_real_count": 0,
+      "expected_not_applicable_count": 0,
+      "simulation_only": true,
+      "real_submission_imported": false
+    },
+    {
+      "scenario_id": "orchestrator-blocked-by-local-validation-001",
+      "base_envelope_source": "base_format_valid_envelope",
+      "input_overrides": {
+        "import_envelope_id": "submission-fixture-valid-craft-approved-001"
+      },
+      "adapter_profile_id": "adapter-profile-all-unresolved-001",
+      "expected_status": "blocked_local_validation",
+      "expected_total_check_count": 0,
+      "expected_unresolved_count": 0,
+      "expected_failed_count": 0,
+      "expected_resolved_as_simulation_count": 0,
+      "expected_resolved_real_count": 0,
+      "expected_not_applicable_count": 0,
+      "simulation_only": true,
+      "real_submission_imported": false
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "five-external-record-adapter-interfaces-created",
+      "status": "met",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "ten-resolution-checks-orchestrated",
+      "status": "met",
+      "target_count": 10,
+      "current_count": 10
+    },
+    {
+      "gate_id": "test-adapter-profiles-created",
+      "status": "met_as_simulation_only",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "orchestration-scenarios-created",
+      "status": "met_as_simulation_only",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "unresolved-failed-simulation-statuses-covered",
+      "status": "met",
+      "target_count": 3,
+      "current_count": 3
+    },
+    {
+      "gate_id": "simulation-real-claim-downgraded",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "real-external-adapters-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "real-submission-imports-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_27_exit_gates": [
+    {
+      "gate_id": "external-record-adapter-interface-set-created",
+      "status": "met",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "resolution-state-orchestrator-created",
+      "status": "met",
+      "target_count": 10,
+      "current_count": 10
+    },
+    {
+      "gate_id": "three-required-test-statuses-covered",
+      "status": "met_as_simulation_only",
+      "target_count": 3,
+      "current_count": 3
+    },
+    {
+      "gate_id": "test-adapters-cannot-claim-real-resolution",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "no-real-resolution-import-or-signature-claimed",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

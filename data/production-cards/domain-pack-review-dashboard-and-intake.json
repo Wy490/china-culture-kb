@@ -1,0 +1,602 @@
+{
+  "schema_version": "domain-pack-review-dashboard-intake/v1",
+  "updated_at": "2026-07-10",
+  "status": "dashboard_created_intake_template_only",
+  "scope": "Iteration 16：建立 Domain Pack 审稿批次看板与人工决策填报入口，汇总 9 个候选包、14 条 repair/reject 任务和 2 个 pass 草案阻断项；本文件只提供填报与校验入口，不代表人工审稿通过或正式写回。",
+  "source_evidence_ledger_file": "data/production-cards/domain-pack-review-evidence-ledger.json",
+  "source_patch_isolation_file": "data/production-cards/domain-pack-human-review-and-patch-isolation.json",
+  "source_precheck_file": "data/production-cards/p0-p1-review-export-and-domain-pack-precheck.json",
+  "decision_intake_markdown_file": "docs/production-cards/domain-pack-review-decision-intake-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "manual_patch_required": true,
+    "intake_form_is_formal_approval": false,
+    "blank_or_pending_intake_is_approval": false,
+    "current_layer": "review_dashboard_and_intake_template_only"
+  },
+  "counts": {
+    "dashboard_column_count": 5,
+    "dashboard_candidate_count": 9,
+    "decision_intake_markdown_count": 1,
+    "required_field_rule_count": 10,
+    "ledger_fill_status_count": 9,
+    "ledger_fill_required_complete_count": 0,
+    "open_repair_reject_task_count": 14,
+    "pass_blocker_count": 2,
+    "formal_patch_count": 0,
+    "machine_gate_count": 9
+  },
+  "review_dashboard_columns": [
+    {
+      "column_id": "evidence_pending",
+      "label": "待补证",
+      "status_filter": "pending_evidence_attachment",
+      "action": "补齐来源、事实边界、授权、样本验证、审稿人身份和最终决策记录附件。",
+      "candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-medical-heritage-privacy-boundary",
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-heritage-process-consent",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-documentary-site-source-boundary",
+        "dp-ai-comic-continuity-shot-language",
+        "dp-craft-material-tool-process"
+      ]
+    },
+    {
+      "column_id": "reviewer_assignment_pending",
+      "label": "待分配/签署审稿人",
+      "status_filter": "real_reviewer_signed_false",
+      "action": "填入真实审稿人姓名、角色和签署状态；未签署不得进入人工 Patch 候选。",
+      "candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-medical-heritage-privacy-boundary",
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-heritage-process-consent",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-documentary-site-source-boundary",
+        "dp-ai-comic-continuity-shot-language",
+        "dp-craft-material-tool-process"
+      ]
+    },
+    {
+      "column_id": "decision_not_started",
+      "label": "待审稿决策",
+      "status_filter": "decision_status_not_started",
+      "action": "只能在证据槽位完整且真实审稿人签署后填写 approve_for_manual_patch_candidate / repair_required / reject_or_rebuild。",
+      "candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-medical-heritage-privacy-boundary",
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-heritage-process-consent",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-documentary-site-source-boundary",
+        "dp-ai-comic-continuity-shot-language",
+        "dp-craft-material-tool-process"
+      ]
+    },
+    {
+      "column_id": "repair_reject_open",
+      "label": "待修复/重取材",
+      "status_filter": "open_repair_or_reject",
+      "action": "repair 任务补证后可重提审；reject 任务必须重建来源包或移除候选，不得复用原候选直接晋升。",
+      "task_ids": [
+        "repair-task-001",
+        "repair-task-002",
+        "repair-task-003",
+        "repair-task-004",
+        "repair-task-005",
+        "repair-task-006",
+        "repair-task-007",
+        "repair-task-008",
+        "repair-task-009",
+        "repair-task-010",
+        "repair-task-011",
+        "reject-task-001",
+        "reject-task-002",
+        "reject-task-003"
+      ]
+    },
+    {
+      "column_id": "pass_blocked_until_real_review",
+      "label": "pass 草案阻断",
+      "status_filter": "writeback_allowed_now_false",
+      "action": "两个 pass 只是草案准备项，真实人工审稿、证据附件、决策台账和人工 Patch 均完成前不得正式写回。",
+      "prepare_template_ids": [
+        "pass-draft-prepare-001",
+        "pass-draft-prepare-002"
+      ],
+      "source_task_ids": [
+        "pass-candidate-001",
+        "pass-candidate-002"
+      ]
+    }
+  ],
+  "required_field_rules": [
+    {
+      "field_id": "candidate_id",
+      "label": "候选包 ID",
+      "required": true,
+      "validation": "must_match_domain_pack_candidate"
+    },
+    {
+      "field_id": "reviewer_name",
+      "label": "审稿人姓名",
+      "required": true,
+      "validation": "must_be_real_person_or_named_review_group"
+    },
+    {
+      "field_id": "reviewer_role",
+      "label": "审稿角色",
+      "required": true,
+      "validation": "must_match_required_reviewer_roles"
+    },
+    {
+      "field_id": "decision",
+      "label": "审稿决策",
+      "required": true,
+      "validation": "approve_for_manual_patch_candidate|repair_required|reject_or_rebuild"
+    },
+    {
+      "field_id": "source_bibliography_attachment",
+      "label": "来源目录附件",
+      "required": true,
+      "validation": "must_reference_attachment_or_tracking_id"
+    },
+    {
+      "field_id": "fact_boundary_table_attachment",
+      "label": "事实边界表附件",
+      "required": true,
+      "validation": "must_separate_fact_plausible_dramatization_fiction_unknown"
+    },
+    {
+      "field_id": "authorization_or_consent_attachment",
+      "label": "授权或同意附件",
+      "required": true,
+      "validation": "must_reference_rights_consent_or_explicit_gap"
+    },
+    {
+      "field_id": "sample_validation_attachment",
+      "label": "样本验证附件",
+      "required": true,
+      "validation": "must_reference_at_least_three_samples_or_explicit_gap"
+    },
+    {
+      "field_id": "final_decision_reason",
+      "label": "最终决策理由",
+      "required": true,
+      "validation": "must_explain_evidence_boundary_and_followup_action"
+    },
+    {
+      "field_id": "manual_patch_request_state",
+      "label": "人工 Patch 请求状态",
+      "required": true,
+      "validation": "not_requested|requested_after_real_review"
+    }
+  ],
+  "ledger_fill_statuses": [
+    {
+      "ledger_entry_id": "decision-ledger-001",
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "intake_status": "not_started",
+      "decision_status": "not_started",
+      "required_fields_complete": false,
+      "missing_required_field_ids": [
+        "reviewer_name",
+        "reviewer_role",
+        "decision",
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "final_decision_reason",
+        "manual_patch_request_state"
+      ],
+      "evidence_slots_complete": false,
+      "real_reviewer_signed": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "intake_status": "not_started",
+      "decision_status": "not_started",
+      "required_fields_complete": false,
+      "missing_required_field_ids": [
+        "reviewer_name",
+        "reviewer_role",
+        "decision",
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "final_decision_reason",
+        "manual_patch_request_state"
+      ],
+      "evidence_slots_complete": false,
+      "real_reviewer_signed": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-003",
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "intake_status": "not_started",
+      "decision_status": "not_started",
+      "required_fields_complete": false,
+      "missing_required_field_ids": [
+        "reviewer_name",
+        "reviewer_role",
+        "decision",
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "final_decision_reason",
+        "manual_patch_request_state"
+      ],
+      "evidence_slots_complete": false,
+      "real_reviewer_signed": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-004",
+      "candidate_id": "dp-heritage-process-consent",
+      "intake_status": "not_started",
+      "decision_status": "not_started",
+      "required_fields_complete": false,
+      "missing_required_field_ids": [
+        "reviewer_name",
+        "reviewer_role",
+        "decision",
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "final_decision_reason",
+        "manual_patch_request_state"
+      ],
+      "evidence_slots_complete": false,
+      "real_reviewer_signed": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-005",
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "intake_status": "not_started",
+      "decision_status": "not_started",
+      "required_fields_complete": false,
+      "missing_required_field_ids": [
+        "reviewer_name",
+        "reviewer_role",
+        "decision",
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "final_decision_reason",
+        "manual_patch_request_state"
+      ],
+      "evidence_slots_complete": false,
+      "real_reviewer_signed": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-006",
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "intake_status": "not_started",
+      "decision_status": "not_started",
+      "required_fields_complete": false,
+      "missing_required_field_ids": [
+        "reviewer_name",
+        "reviewer_role",
+        "decision",
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "final_decision_reason",
+        "manual_patch_request_state"
+      ],
+      "evidence_slots_complete": false,
+      "real_reviewer_signed": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-007",
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "intake_status": "not_started",
+      "decision_status": "not_started",
+      "required_fields_complete": false,
+      "missing_required_field_ids": [
+        "reviewer_name",
+        "reviewer_role",
+        "decision",
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "final_decision_reason",
+        "manual_patch_request_state"
+      ],
+      "evidence_slots_complete": false,
+      "real_reviewer_signed": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-008",
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "intake_status": "not_started",
+      "decision_status": "not_started",
+      "required_fields_complete": false,
+      "missing_required_field_ids": [
+        "reviewer_name",
+        "reviewer_role",
+        "decision",
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "final_decision_reason",
+        "manual_patch_request_state"
+      ],
+      "evidence_slots_complete": false,
+      "real_reviewer_signed": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-009",
+      "candidate_id": "dp-craft-material-tool-process",
+      "intake_status": "not_started",
+      "decision_status": "not_started",
+      "required_fields_complete": false,
+      "missing_required_field_ids": [
+        "reviewer_name",
+        "reviewer_role",
+        "decision",
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "final_decision_reason",
+        "manual_patch_request_state"
+      ],
+      "evidence_slots_complete": false,
+      "real_reviewer_signed": false,
+      "formal_patch_created": false
+    }
+  ],
+  "repair_reject_intake_queue": [
+    {
+      "task_id": "repair-task-001",
+      "decision_type": "repair",
+      "owner_role": "医疗伦理审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-002",
+      "decision_type": "repair",
+      "owner_role": "纪录片事实审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-003",
+      "decision_type": "repair",
+      "owner_role": "医疗伦理审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-004",
+      "decision_type": "repair",
+      "owner_role": "革命历史事实审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-005",
+      "decision_type": "repair",
+      "owner_role": "民族文化审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-006",
+      "decision_type": "repair",
+      "owner_role": "社区授权审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-007",
+      "decision_type": "repair",
+      "owner_role": "社区授权审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-008",
+      "decision_type": "repair",
+      "owner_role": "版权授权审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-009",
+      "decision_type": "repair",
+      "owner_role": "革命历史事实审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-010",
+      "decision_type": "repair",
+      "owner_role": "现场授权审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "repair-task-011",
+      "decision_type": "repair",
+      "owner_role": "纪录片事实审稿",
+      "intake_status": "waiting_for_evidence_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "reject-task-001",
+      "decision_type": "reject",
+      "owner_role": "敏感历史伦理审稿",
+      "intake_status": "waiting_for_new_source_package_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "reject-task-002",
+      "decision_type": "reject",
+      "owner_role": "革命历史事实审稿",
+      "intake_status": "waiting_for_new_source_package_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    },
+    {
+      "task_id": "reject-task-003",
+      "decision_type": "reject",
+      "owner_role": "版权授权审稿",
+      "intake_status": "waiting_for_new_source_package_entry",
+      "required_form_section": "repair_or_reject_task_update"
+    }
+  ],
+  "pass_blocker_intake_queue": [
+    {
+      "prepare_template_id": "pass-draft-prepare-001",
+      "source_task_id": "pass-candidate-001",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "intake_status": "blocked_until_required_fields_complete",
+      "writeback_allowed_now": false,
+      "formal_patch_created": false,
+      "blocking_gate_ids": [
+        "real_human_review_approved",
+        "source_or_authorization_evidence_attached",
+        "domain_pack_decision_ledger_recorded",
+        "manual_patch_reviewed",
+        "formal_patch_explicitly_requested_by_human"
+      ]
+    },
+    {
+      "prepare_template_id": "pass-draft-prepare-002",
+      "source_task_id": "pass-candidate-002",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "intake_status": "blocked_until_required_fields_complete",
+      "writeback_allowed_now": false,
+      "formal_patch_created": false,
+      "blocking_gate_ids": [
+        "real_human_review_approved",
+        "source_or_authorization_evidence_attached",
+        "domain_pack_decision_ledger_recorded",
+        "manual_patch_reviewed",
+        "formal_patch_explicitly_requested_by_human"
+      ]
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "review-dashboard-columns-created",
+      "status": "met",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "dashboard-covers-nine-domain-pack-candidates",
+      "status": "met",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "decision-intake-markdown-created",
+      "status": "met_as_template_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "required-field-rules-created",
+      "status": "met",
+      "target_count": 10,
+      "current_count": 10
+    },
+    {
+      "gate_id": "ledger-fill-statuses-created-without-approval",
+      "status": "met_as_not_started",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "repair-reject-intake-queue-created",
+      "status": "met",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "pass-blocker-intake-queue-created",
+      "status": "met_as_blocking_queue",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-or-domain-pack-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_16_exit_gates": [
+    {
+      "gate_id": "review-dashboard-created",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "decision-intake-form-created",
+      "status": "met_as_template_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "blank-ledger-fill-statuses-block-approval",
+      "status": "met_as_not_started",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "repair-reject-open-tasks-visible",
+      "status": "met",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "pass-blockers-visible",
+      "status": "met_as_blocking_queue",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "schema_version": "lecture-video-professional-benchmark-specs/v1",
+  "video_type": "lecture_video",
+  "policy": {
+    "real_model_output_required": true,
+    "institutional_wording_review_required": true,
+    "fixture_or_simulation_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "lecture-001-yueyang-public-responsibility",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "status": "awaiting_real_model_and_wording_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "lecture-002-beida-red-building-public-discussion",
+      "source_entry": "北大红楼——新文化运动的策源地",
+      "status": "awaiting_real_model_and_wording_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "lecture-003-wuchang-choice-and-consequence",
+      "source_entry": "武昌起义——辛亥革命的第一声枪响",
+      "status": "awaiting_real_model_and_wording_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "lecture-004-zhijiang-memory-and-peace",
+      "source_entry": "芷江受降——抗战胜利的庄严见证",
+      "status": "awaiting_real_model_and_wording_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "lecture-005-gutian-organization-and-belief",
+      "source_entry": "古田会议——\"党指挥枪\"的思想根基",
+      "status": "awaiting_real_model_and_wording_review",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "lecture-failure-001-slogan-and-fact-list",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["argument_chain_missing", "argument_evidence_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "lecture-failure-002-no-reasonable-counterargument",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["counterargument_missing", "counterargument_response_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "lecture-failure-003-unconfirmed-slogan-action",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["rhetorical_transition_missing", "action_conclusion_missing", "institutional_wording_unconfirmed"],
+      "professional_passed": false
+    }
+  ]
+}

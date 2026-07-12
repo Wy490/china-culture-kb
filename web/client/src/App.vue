@@ -10,6 +10,23 @@
         <RouterLink to="/knowledge-writeback-queue">写回队列</RouterLink>
         <RouterLink to="/search">素材搜索</RouterLink>
         <RouterLink to="/story/new">单片短片</RouterLink>
+        <RouterLink to="/story/stage6-revisions">修订工作台</RouterLink>
+        <RouterLink to="/story/stage6-intake">真实输入接入</RouterLink>
+        <RouterLink to="/story/stage6-preflight">批次预检</RouterLink>
+        <RouterLink to="/story/stage6-exit-audit">退出审计</RouterLink>
+        <RouterLink to="/story/stage6-package-inspector">初始包检查</RouterLink>
+        <RouterLink to="/story/stage6-operations">Stage 6 总控</RouterLink>
+        <RouterLink to="/story/stage6-table-read-inspector">桌读证据</RouterLink>
+        <RouterLink to="/story/stage6-exit-review-signature">退出签名</RouterLink>
+        <RouterLink to="/story/stage7-golden-card-review">黄金卡审稿</RouterLink>
+        <RouterLink to="/story/stage7-golden-card-expansion">候选补齐</RouterLink>
+        <RouterLink to="/story/stage7-golden-card-signature">黄金卡签名</RouterLink>
+        <RouterLink to="/story/stage7-operations">Stage 7 总控</RouterLink>
+        <RouterLink to="/story/stage8-blind-review-intake">Stage 8 盲评</RouterLink>
+        <RouterLink to="/story/stage8-blind-review-signature">盲评签名</RouterLink>
+        <RouterLink to="/story/stage8-finalization-preflight">终局预检</RouterLink>
+        <RouterLink to="/story/stage8-durable-release-import">Release 导入</RouterLink>
+        <RouterLink to="/story/stage8-operations">Stage 8 总控</RouterLink>
         <RouterLink to="/ai-comic-series/new">漫剧系列</RouterLink>
       </nav>
     </header>

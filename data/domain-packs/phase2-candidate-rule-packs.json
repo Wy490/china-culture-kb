@@ -1,0 +1,574 @@
+{
+  "schema_version": "phase2-domain-pack-candidates/v1",
+  "updated_at": "2026-07-09",
+  "status": "candidate_pending_domain_review",
+  "source_index_file": "data/production-cards/golden-card-unified-index.json",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "write_policy": {
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "promotion_requires": [
+      "human_domain_review",
+      "at_least_3_card_or_project_usages",
+      "regression_fixture_or_project_validation",
+      "manual_patch_to_formal_domain_pack"
+    ],
+    "reason": "本文件仅保存 Phase 2 候选规则包，避免把尚未审稿的规则直接混入正式 Domain Pack。"
+  },
+  "candidate_count": 9,
+  "candidates": [
+    {
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "entry_name": "重大历史伤痛证据表达候选包",
+      "domain": "safety_rule",
+      "role": "rule_pack_candidate",
+      "type": "Domain Pack Candidate",
+      "region": "通用",
+      "status": "candidate_pending_domain_review",
+      "source_rule_candidate_id": "dp-sensitive-history-evidence-expression",
+      "summary": "用于南京大屠杀等重大历史伤痛题材：以地点、档案、名单、地图、仪式和当代人物反应承载情绪，禁止血腥复现、虚构证词冒充和娱乐化冲突。",
+      "keywords": [
+        "重大历史伤痛",
+        "证据链",
+        "纪念馆",
+        "名单墙",
+        "审判档案",
+        "创伤记忆",
+        "克制表达"
+      ],
+      "asset_usage": [
+        "source_grounding",
+        "safety_boundary",
+        "scene_space",
+        "scene_props",
+        "gears_delivery"
+      ],
+      "production_prompts": [
+        "优先使用纪念馆、名单墙、档案、地图、白花、悼念仪式和观众反应作为画面锚点。",
+        "用证据链和当代记忆组织场景，不用暴力复现制造冲击。",
+        "虚构人物只能作为当代讲述入口，不得冒充幸存者、遇难者或真实证词。",
+        "Seedance/GEARS 提示词必须明确无血腥、无猎奇、无娱乐化复现。"
+      ],
+      "review_boundaries": [
+        "不得否认、弱化或娱乐化重大历史伤痛。",
+        "不得把虚构日记、对白或人物写成真实档案或证词。",
+        "不得生成施暴细节、血腥特写或刺激性受害画面。",
+        "日期、数字、地点和机构口径必须回到知识库来源或官方资料复核。"
+      ],
+      "trigger_words": [
+        "南京大屠杀",
+        "国家公祭日",
+        "纪念馆",
+        "名单墙",
+        "审判档案",
+        "创伤历史",
+        "historical_trauma"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-nanjing-massacre-memory-evidence",
+        "documentary-golden-nanjing-massacre-memory-site"
+      ],
+      "source_regression_fixture_ids": [
+        "regression-nanjing-memory-evidence",
+        "regression-nanjing-massacre-memory-documentary"
+      ],
+      "promotion_gate": "需通过敏感历史表达人工审稿，并至少在 2 条南京样本外再验证 1 个同类严肃题材。"
+    },
+    {
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "entry_name": "民族医药文化记录与隐私边界候选包",
+      "domain": "safety_rule",
+      "role": "rule_pack_candidate",
+      "type": "Domain Pack Candidate",
+      "region": "通用",
+      "status": "candidate_pending_domain_review",
+      "source_rule_candidate_id": "dp-medical-heritage-privacy-boundary",
+      "summary": "用于湘西苗医苗药等民族医药文化记录：只呈现文化、档案、标本、机构和传承边界，不输出疗效承诺、药方比例、诊疗操作教程或患者隐私。",
+      "keywords": [
+        "民族医药",
+        "苗医苗药",
+        "医疗伦理",
+        "患者隐私",
+        "药方边界",
+        "文化记录",
+        "非医疗建议"
+      ],
+      "asset_usage": [
+        "safety_boundary",
+        "source_grounding",
+        "credibility_boundary",
+        "scene_space",
+        "gears_delivery"
+      ],
+      "production_prompts": [
+        "镜头优先使用项目页、档案盒、标本柜、公开展板和机构外部空间。",
+        "诊疗空间、患者信息、处方比例、剂量和操作步骤默认不可拍、不可写。",
+        "旁白必须说明这是文化记录，不构成医疗建议或疗效承诺。",
+        "如需表现采集或标本，只写生态、许可、保护和档案边界，不写使用教程。"
+      ],
+      "review_boundaries": [
+        "不得出现疗效承诺、药方比例、剂量、操作教程或患者隐私。",
+        "不得把文化传承片写成医疗科普或治疗指导。",
+        "不得拍摄未经授权的诊疗过程、患者面部、病历和机构内部限制空间。",
+        "项目级别、保护单位、传承人口径和可拍机构必须复核。"
+      ],
+      "trigger_words": [
+        "苗医苗药",
+        "民族医药",
+        "药材",
+        "诊疗",
+        "患者",
+        "配方",
+        "医疗伦理",
+        "medical_ethics"
+      ],
+      "source_card_ids": [
+        "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+        "documentary-golden-xiangxi-miao-medicine-archive"
+      ],
+      "source_regression_fixture_ids": [
+        "regression-xiangxi-miao-medicine-boundary-promo"
+      ],
+      "promotion_gate": "需通过医疗伦理和隐私审稿，并至少补 1 条微纪录苗医苗药边界回归样本。"
+    },
+    {
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "entry_name": "革命历史事件再现边界候选包",
+      "domain": "source_pack",
+      "role": "source_pack_candidate",
+      "type": "Domain Pack Candidate",
+      "region": "通用",
+      "status": "candidate_pending_domain_review",
+      "source_rule_candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "summary": "用于平江起义、武昌起义等革命历史事件：可用虚构见证者、地图、旧址和道具组织戏剧线，但真实人物、日期、地点和争议细节必须保留来源与多说法边界。",
+      "keywords": [
+        "革命历史",
+        "起义",
+        "旧址",
+        "路线图",
+        "多说法",
+        "事件再现",
+        "第一枪"
+      ],
+      "asset_usage": [
+        "source_grounding",
+        "credibility_boundary",
+        "scene_space",
+        "plot_structure",
+        "gears_delivery"
+      ],
+      "production_prompts": [
+        "先列今天可见旧址、纪念馆、展陈和路线图，再组织历史事件链条。",
+        "虚构见证者只承担视角功能，不替代真实人物、组织或口述。",
+        "争议细节用多说法、回忆差异或待核标注处理。",
+        "起义夜、军械库和枪声可用地图、剪影和复原件示意，不能写成真实影像。"
+      ],
+      "review_boundaries": [
+        "不得把第一枪、组织关系、逃亡路线等争议点写成唯一无争议结论。",
+        "不得混淆计划泄露、起义爆发和后续响应的日期。",
+        "不得把展陈复原件写成当年原物。",
+        "不得把文学化对白写成历史人物真实发言。"
+      ],
+      "trigger_words": [
+        "武昌起义",
+        "平江起义",
+        "首义",
+        "红楼",
+        "天岳书院",
+        "军械库",
+        "revolutionary_history"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-pingjiang-uprising-tianyue-night",
+        "ai-comic-golden-wuchang-uprising-one-hour",
+        "documentary-golden-wuchang-uprising-red-building",
+        "documentary-golden-pingjiang-uprising-site"
+      ],
+      "source_regression_fixture_ids": [
+        "regression-wuchang-uprising-sleeve-list",
+        "regression-wuchang-uprising-red-building-documentary"
+      ],
+      "promotion_gate": "需完成至少 3 条革命历史样本，并由事实审稿确认多说法边界。"
+    },
+    {
+      "candidate_id": "dp-heritage-process-consent",
+      "entry_name": "非遗流程与授权候选包",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack_candidate",
+      "type": "Domain Pack Candidate",
+      "region": "通用",
+      "status": "candidate_pending_domain_review",
+      "source_rule_candidate_id": "dp-heritage-process-consent",
+      "summary": "用于非遗宣传和微纪录：先拍材料、工具、手部动作、排练/传习空间和当代连接；传承人、曲目、肖像、场地和社区叙述必须列授权边界。",
+      "keywords": [
+        "非遗流程",
+        "授权",
+        "传承人",
+        "手部动作",
+        "排练",
+        "传习",
+        "当代连接"
+      ],
+      "asset_usage": [
+        "plot_structure",
+        "scene_props",
+        "visual_style",
+        "source_grounding",
+        "credibility_boundary"
+      ],
+      "production_prompts": [
+        "按材料、工具、工序、动作、声音、当代空间组织素材。",
+        "每个流程节点至少补一个可拍动作和一个授权边界。",
+        "传承人、学徒、排练厅、传习所、社区空间必须标注授权状态。",
+        "观众稿展示过程和处境，不用抽象赞美替代具体动作。"
+      ],
+      "review_boundaries": [
+        "项目级别、保护单位和代表性传承人必须复核。",
+        "未授权曲目、唱词、肖像和排练空间不能进入可交付提示词。",
+        "示范片段不能写成全部传统或唯一正宗。",
+        "医疗、祭祀、危险工艺和少数民族仪式需额外伦理边界。"
+      ],
+      "trigger_words": [
+        "非遗",
+        "heritage_promo",
+        "传承人",
+        "工序",
+        "排练",
+        "授权",
+        "传习"
+      ],
+      "source_card_ids": [
+        "heritage-promo-golden-changde-sixian-yangqin",
+        "heritage-promo-golden-yueyang-baling-opera-three-voices",
+        "heritage-promo-golden-tujia-hand-waving-ritual",
+        "documentary-golden-changde-sixian-theatre"
+      ],
+      "source_regression_fixture_ids": [
+        "regression-changde-sixian-yangqin-promo",
+        "regression-tujia-hand-waving-ritual-promo"
+      ],
+      "promotion_gate": "需至少覆盖曲艺、戏曲、民族仪式三类非遗样本，并完成人工授权审稿。"
+    },
+    {
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "entry_name": "民族仪式与社区边界候选包",
+      "domain": "safety_rule",
+      "role": "rule_pack_candidate",
+      "type": "Domain Pack Candidate",
+      "region": "通用",
+      "status": "candidate_pending_domain_review",
+      "source_rule_candidate_id": "dp-ethnic-ritual-community-boundary",
+      "summary": "用于白族仗鼓舞、土家摆手舞、桑植民歌等民族文化素材：必须区分公开表演、教学示范、节庆仪式和社区内部知识，不把镜头示范写成全部传统或原生仪式全貌。",
+      "keywords": [
+        "民族仪式",
+        "社区授权",
+        "公开表演",
+        "教学示范",
+        "节庆",
+        "族群文化",
+        "边界"
+      ],
+      "asset_usage": [
+        "safety_boundary",
+        "credibility_boundary",
+        "scene_space",
+        "dialogue_tone",
+        "gears_delivery"
+      ],
+      "production_prompts": [
+        "拍摄前先确认社区、传承人或机构授权，并把可拍范围写入素材卡。",
+        "公开表演、教学示范、节庆仪式和社区内部知识要分层。",
+        "视觉提示词只使用已授权的公开动作、场地和服饰线索。",
+        "旁白避免替族群解释禁忌、秘传或未公开知识。"
+      ],
+      "review_boundaries": [
+        "不得把示范动作写成原生仪式全貌。",
+        "不得把族群文化神秘化、猎奇化或符号化消费。",
+        "未经授权不得生成祭祀、禁忌、秘传内容的细节解释。",
+        "歌词、舞步、服饰和纹样含义需要来源或社区确认。"
+      ],
+      "trigger_words": [
+        "土家族",
+        "白族",
+        "苗族",
+        "侗族",
+        "摆手舞",
+        "仗鼓舞",
+        "民歌",
+        "社区授权"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+        "ai-comic-golden-tujia-hand-waving-dance-circle",
+        "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+        "heritage-promo-golden-tujia-hand-waving-ritual",
+        "documentary-golden-tujia-hand-waving-site"
+      ],
+      "source_regression_fixture_ids": [
+        "regression-tongdao-dong-brocade-sun-pattern",
+        "regression-tujia-hand-waving-ritual-promo"
+      ],
+      "promotion_gate": "需社区授权审稿和至少 3 类民族文化样本验证。"
+    },
+    {
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "entry_name": "戏曲曲艺版权与舞台资产候选包",
+      "domain": "source_pack",
+      "role": "source_pack_candidate",
+      "type": "Domain Pack Candidate",
+      "region": "通用",
+      "status": "candidate_pending_domain_review",
+      "source_rule_candidate_id": "dp-performance-rights-and-stage-assets",
+      "summary": "用于戏曲、曲艺和民歌素材：把曲目、唱词、曲谱、演员肖像、后台空间、剧团授权和乐器/服化道资产分层管理。",
+      "keywords": [
+        "戏曲",
+        "曲艺",
+        "唱词",
+        "曲谱",
+        "剧目",
+        "肖像授权",
+        "舞台资产"
+      ],
+      "asset_usage": [
+        "source_grounding",
+        "scene_props",
+        "character_clothing",
+        "visual_style",
+        "gears_delivery"
+      ],
+      "production_prompts": [
+        "先列曲目、唱词、曲谱、演员肖像和后台空间的授权状态。",
+        "把乐器、服化道、舞台、排练厅和观众席作为可复用视觉资产。",
+        "未授权唱段只写声音气质和动作，不长引歌词。",
+        "剧目片段、脸谱、唱腔和声腔差异必须标注来源或待核。"
+      ],
+      "review_boundaries": [
+        "不得长篇引用未授权歌词、唱词或剧本。",
+        "不得把示范演员写成代表性传承人，除非来源确认。",
+        "不得把舞台复排写成历史原貌。",
+        "不得把地方戏曲声腔、剧目和流派混写。"
+      ],
+      "trigger_words": [
+        "常德丝弦",
+        "湘昆",
+        "湘剧",
+        "花鼓戏",
+        "巴陵戏",
+        "武陵戏",
+        "唱词",
+        "曲谱"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-xiangkun-ancient-stage-spear",
+        "ai-comic-golden-changde-sixian-snapped-string",
+        "heritage-promo-golden-changde-sixian-yangqin",
+        "heritage-promo-golden-yueyang-baling-opera-three-voices",
+        "heritage-promo-golden-xiang-opera-four-voices",
+        "documentary-golden-xiangkun-ancient-stage",
+        "documentary-golden-changde-sixian-theatre"
+      ],
+      "source_regression_fixture_ids": [
+        "regression-changde-sixian-yangqin-promo"
+      ],
+      "promotion_gate": "需完成曲艺、戏曲和民歌版权授权模板，并通过至少 3 条舞台类样本验证。"
+    },
+    {
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "entry_name": "微纪录现场与来源边界候选包",
+      "domain": "source_pack",
+      "role": "source_pack_candidate",
+      "type": "Domain Pack Candidate",
+      "region": "通用",
+      "status": "candidate_pending_domain_review",
+      "source_rule_candidate_id": "dp-documentary-site-source-boundary",
+      "summary": "用于微纪录片：以今天可见的地点、实物、展陈、声音和采访角色进入；再现画面、复原件、复制件和真实影像必须显式分层。",
+      "keywords": [
+        "微纪录",
+        "现实现场",
+        "来源线索",
+        "B-roll",
+        "再现边界",
+        "采访角色",
+        "展陈"
+      ],
+      "asset_usage": [
+        "source_grounding",
+        "credibility_boundary",
+        "scene_space",
+        "scene_props",
+        "gears_delivery"
+      ],
+      "production_prompts": [
+        "先确定今天可拍的现场、实物、展陈、环境声或采访入口。",
+        "每条历史或文化事实分配来源、旁白、采访、展陈或再现呈现方式。",
+        "B-roll 计划必须包含地点、物件、动作、声音和转场用途。",
+        "再现、复原件、复制件、真实影像和传说要分层写明。"
+      ],
+      "review_boundaries": [
+        "不可用再现镜头替代真实影像或证据。",
+        "不可把展陈复原件写成历史原物。",
+        "不可把文学意境、传说或口述写成现场亲历。",
+        "采访内容需要授权，个人记忆不自动替代通行史实。"
+      ],
+      "trigger_words": [
+        "documentary_short",
+        "微纪录",
+        "现实现场",
+        "展陈",
+        "旧址",
+        "B-roll",
+        "再现边界"
+      ],
+      "source_card_ids": [
+        "documentary-golden-nanjing-massacre-memory-site",
+        "documentary-golden-wuchang-uprising-red-building",
+        "documentary-golden-yueyang-tower-text-site",
+        "documentary-golden-changsha-tongguan-kiln-shard",
+        "documentary-golden-xiangkun-ancient-stage"
+      ],
+      "source_regression_fixture_ids": [
+        "regression-yueyang-tower-text-site-documentary",
+        "regression-nanjing-massacre-memory-documentary",
+        "regression-wuchang-uprising-red-building-documentary"
+      ],
+      "promotion_gate": "需微纪录至少 5 条样本验证，并确认 site/source/reconstruction 三层字段稳定。"
+    },
+    {
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "entry_name": "AI 漫剧连续性分镜候选包",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack_candidate",
+      "type": "Domain Pack Candidate",
+      "region": "通用",
+      "status": "candidate_pending_domain_review",
+      "source_rule_candidate_id": "dp-ai-comic-continuity-shot-language",
+      "summary": "用于 AI 漫剧：必须保留角色稳定标签、道具锚点、场景顺序、情绪节拍、单镜头测试和多镜头连续性，才能进入 Seedance/GEARS 分镜交付。",
+      "keywords": [
+        "AI漫剧",
+        "分镜",
+        "角色稳定",
+        "道具锚点",
+        "单镜头测试",
+        "多镜头连续性",
+        "Seedance"
+      ],
+      "asset_usage": [
+        "plot_structure",
+        "dialogue_tone",
+        "visual_style",
+        "character_arc",
+        "gears_delivery"
+      ],
+      "production_prompts": [
+        "每集先写第一格钩子、主角目标、对手压力、关系碰撞和结尾问题。",
+        "为角色列稳定外观、随身物、表情范围和不可改变特征。",
+        "单镜头验证身份、画质、构图和场景锚点。",
+        "多镜头验证动作、视线、道具位置、情绪顺序和转场连续性。"
+      ],
+      "review_boundaries": [
+        "不得把爆款反转套到真实灾难、民族习俗或严肃历史题材上。",
+        "真实人物对白和历史现场冲突必须标注来源或虚构边界。",
+        "参考图或关键帧缺失时只能生成占位需求。",
+        "Seedance prompt 不得混入审稿词、来源说明或内部分析。"
+      ],
+      "trigger_words": [
+        "AI漫剧",
+        "ai_comic_drama",
+        "漫画分镜",
+        "关键帧",
+        "表情节拍",
+        "单镜头",
+        "多分镜",
+        "Seedance"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-nanjing-massacre-memory-evidence",
+        "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+        "ai-comic-golden-wuchang-uprising-one-hour",
+        "ai-comic-golden-changsha-kiln-underglaze-shard"
+      ],
+      "source_regression_fixture_ids": [
+        "regression-nanjing-memory-evidence",
+        "regression-tongdao-dong-brocade-sun-pattern",
+        "regression-wuchang-uprising-sleeve-list"
+      ],
+      "promotion_gate": "需继续通过 Seedance prompt 包测试，且至少 5 条 AI 漫剧样本不含内部提示词污染。"
+    },
+    {
+      "candidate_id": "dp-craft-material-tool-process",
+      "entry_name": "工艺材料工具流程候选包",
+      "domain": "narrative_pattern",
+      "role": "pattern_pack_candidate",
+      "type": "Domain Pack Candidate",
+      "region": "通用",
+      "status": "candidate_pending_domain_review",
+      "source_rule_candidate_id": "dp-craft-material-tool-process",
+      "summary": "用于侗锦、岳州扇、长沙窑等工艺类素材：按材料、工具、手部动作、工序顺序、声音质感、实物/复原件边界和危险细节禁用项拆分。",
+      "keywords": [
+        "工艺",
+        "材料",
+        "工具",
+        "手部动作",
+        "工序",
+        "文物",
+        "复原件"
+      ],
+      "asset_usage": [
+        "plot_structure",
+        "scene_props",
+        "visual_style",
+        "source_grounding",
+        "credibility_boundary"
+      ],
+      "production_prompts": [
+        "先拆材料、工具、工序、手部动作、声音质感和成品使用场景。",
+        "把文物、现代复原件、博物馆展品和示范道具分开。",
+        "每个工序必须有来源或待核说明，不凭空补完。",
+        "危险、秘传或未授权细节只写边界，不写教程。"
+      ],
+      "review_boundaries": [
+        "不得把现代复原件写成古代原物。",
+        "不得公开未授权或危险操作教程。",
+        "不得把纹样含义、釉色技术或器物用途写成无来源定论。",
+        "不得把单个匠人的示范写成全部工艺标准。"
+      ],
+      "trigger_words": [
+        "侗锦",
+        "岳州扇",
+        "长沙窑",
+        "铜官陶瓷",
+        "工序",
+        "材料",
+        "工具",
+        "复原件"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+        "ai-comic-golden-yuezhou-fan-lake-wind",
+        "ai-comic-golden-changsha-kiln-underglaze-shard",
+        "documentary-golden-changsha-tongguan-kiln-shard"
+      ],
+      "source_regression_fixture_ids": [
+        "regression-tongdao-dong-brocade-sun-pattern"
+      ],
+      "promotion_gate": "需至少补齐 3 类工艺样本的来源和现场复核，再进入正式 Domain Pack 审稿。"
+    }
+  ],
+  "promotion_backlog": [
+    {
+      "backlog_id": "phase2-candidate-human-review",
+      "description": "8 个候选包均需人工领域审稿后才能写入正式 Domain Pack。",
+      "status": "pending"
+    },
+    {
+      "backlog_id": "phase2-project-usage-validation",
+      "description": "每个候选包至少被 3 个真实条目或项目调用验证。",
+      "status": "pending"
+    },
+    {
+      "backlog_id": "phase2-formal-pack-patch",
+      "description": "审稿通过后再人工 Patch 到 data/domain-packs/china-culture.json。",
+      "status": "pending"
+    }
+  ]
+}

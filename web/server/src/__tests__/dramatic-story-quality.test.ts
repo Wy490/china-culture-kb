@@ -95,4 +95,59 @@ describe('validateDramaticStory', () => {
     expect(story.full_text).not.toContain('爱之如子');
     expect(story.characters.map(character => character.name)).toEqual(['周敦颐']);
   });
+
+  it('does not inject case-signing dialogue or unrelated locations into a Mao Zedong awakening story', () => {
+    const entry: EntryDetail = {
+      name: '毛泽东——从韶山冲走向天安门的农家革命者',
+      province: '湖南',
+      region: '湖南湘潭韶山',
+      type: '历史人物',
+      summary: '毛泽东从韶山农家少年成长为投身革命实践的青年。',
+      story: [
+        '**韶山少年（1893—1910）**：毛泽东在韶山读书务农，1910年决意离家求学，临行写下“孩儿立志出乡关”。',
+        '**长沙求学与新民学会（1910—1918）**：毛泽东在湖南一师求学，1918年与蔡和森等创建新民学会，立旨“改造中国与世界”。',
+        '**湘江评论与驱张运动（1919—1920）**：毛泽东在长沙创刊主编《湘江评论》，提出“民众联合的力量最强”，并投身驱张运动。',
+        '**韶山农民实践与考察报告（1925—1927）**：毛泽东组织农民夜校和农民协会，随后考察湖南农民运动。',
+      ].join('\n\n'),
+      culturalSignificance: '湖南乡土、青年求学和农民实践共同推动了革命理想的形成。',
+      relatedLocations: [
+        { name: '韶山毛泽东故居', description: '少年成长地' },
+        { name: '湖南第一师范', description: '长沙求学地' },
+        { name: '《湘江评论》旧址', description: '长沙办刊和思想行动相关地点' },
+      ],
+      keywords: ['毛泽东', '韶山', '湖南一师', '新民学会', '湘江评论', '农民运动'],
+      sources: ['测试史料'],
+      credibility: '高',
+      unverifiedPoints: [],
+      era: '近代',
+    };
+
+    const story = generateDramaticContent({
+      entry,
+      centralEvent: '湘江评论与驱张运动（1919—1920）',
+      videoType: 'historical_drama',
+      presentationStyle: 'cinematic',
+      targetDuration: '3分钟',
+      tone: '庄重',
+      originalUserQuery: '毛泽东少年时期到革命觉醒，重点表现湖南乡土、求学、新民学会、农民运动、理想形成。',
+    });
+
+    expect(story.title).toBe('毛泽东：从韶山少年到革命觉醒');
+    expect(story.full_text).toContain('离开韶山求学');
+    expect(story.full_text).toContain('湖南第一师范');
+    expect(story.full_text).toContain('新民学会');
+    expect(story.full_text).toContain('夜校');
+    expect(story.full_text).toContain('湘潭、湘乡、衡山、醴陵、长沙');
+    expect(story.full_text).not.toMatch(/此案有疑|不能签字|拒签\/断案|上官施压/);
+    expect(story.scene_breakdown.map(scene => scene.location)).toEqual([
+      '韶山冲农舍与田埂',
+      '湖南第一师范与湘中乡路',
+      '长沙岳麓山下新民学会成立旧址',
+      '韶山农民夜校旧址',
+      '湖南五县农民运动考察路线',
+    ]);
+    expect(story.scene_breakdown.every(scene => !/案卷|签笔|衙署/.test(scene.visual_prompt))).toBe(true);
+    expect(story.characters.map(character => character.name)).toEqual(expect.arrayContaining(['毛泽东']));
+    expect(story.characters.map(character => character.name)).not.toContain('少年');
+  });
 });

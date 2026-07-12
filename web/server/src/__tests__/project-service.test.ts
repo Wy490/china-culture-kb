@@ -1291,7 +1291,7 @@ describe('project-service', () => {
     expect(afterLocalAcceptance.data?.summary.external_ready_gears_job_count).toBe(0);
     expect(afterLocalAcceptance.data?.summary.local_acceptance_ready_gears_job_count).toBe(submitRes.data?.submitted_count);
     expect(afterLocalAcceptance.data?.summary.ready_without_external_gears_artifact_count).toBe(submitRes.data?.submitted_count);
-    expect(acceptedGearsLane?.status).toBe('ready');
+    expect(acceptedGearsLane?.status).toBe('needs_action');
     expect(acceptedGearsLane?.evidence).toContain(`local_acceptance_ready ${submitRes.data?.submitted_count}`);
     expect(afterLocalAcceptance.data?.issues.find(issue =>
       issue.issue_id === 'gears-local-acceptance-only'
@@ -1626,7 +1626,9 @@ describe('project-service', () => {
     expect(afterExternalCallback.data?.summary.external_ready_gears_job_count).toBe(1);
     expect(afterExternalCallback.data?.summary.local_acceptance_ready_gears_job_count).toBe((submitRes.data?.submitted_count ?? 1) - 1);
     expect(afterExternalCallback.data?.summary.ready_without_external_gears_artifact_count).toBe((submitRes.data?.submitted_count ?? 1) - 1);
-    expect(externalGearsLane?.status).toBe('ready');
+    expect(externalGearsLane?.status).toBe(
+      (submitRes.data?.submitted_count ?? 1) > 1 ? 'needs_action' : 'ready',
+    );
     expect(externalGearsLane?.evidence).toContain('external_ready 1');
     expect(afterExternalCallback.data?.next_actions.map(action => action.action_key)).toContain('export_gears_external_callback_handoff');
 

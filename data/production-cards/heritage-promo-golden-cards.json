@@ -1,0 +1,1154 @@
+{
+  "schema_version": "heritage-promo-golden-production-cards/v1",
+  "updated_at": "2026-07-09",
+  "video_type": "heritage_promo",
+  "review_status": "pending_human_review",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "reason": "本文件是非遗/工艺宣传片生产素材卡候选层，用于审稿、抽样回归和后续人工写回，不直接改写 data/provinces/*.md。"
+  },
+  "purpose": "为非遗/工艺宣传片建立 10 条黄金生产素材卡，补足材料、工具、流程、手部动作、声音质感、授权边界和生产风险。",
+  "required_fields": [
+    "project_name",
+    "heritage_or_craft_type",
+    "confirmed_status_and_sources",
+    "official_catalog_or_resource_links",
+    "materials",
+    "tools",
+    "process_steps",
+    "hand_actions",
+    "practitioner_or_transmission_line",
+    "community_or_practitioner_consent",
+    "documentation_assets",
+    "visual_symbols",
+    "sound_or_texture_details",
+    "modern_connection",
+    "production_risks"
+  ],
+  "source_policy": [
+    "项目级别、申报地区、代表性传承人、保护单位、现行演出和活动时间必须以官方项目页、文旅部门、保护机构或剧团资料复核。",
+    "曲词、唱段、曲谱、剧目片段、传承人肖像和医疗场景必须明确授权。",
+    "宣传片可以使用示范匠人、演员、学徒和讲解员，但不得把示意表演写成原生仪式或真实治疗过程。",
+    "涉及医疗、药材、正骨、祭祀、歌词、剧目版本和族群服饰时，必须保留事实边界和禁用断言。"
+  ],
+  "cards": [
+    {
+      "card_id": "heritage-promo-golden-changde-sixian-yangqin",
+      "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#常德丝弦——湘北水乡的扬琴说唱",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "常德丝弦",
+        "heritage_or_craft_type": "曲艺 / 扬琴说唱 / 湘北方言曲艺",
+        "confirmed_status_and_sources": [
+          "2006 年首批国家级非遗项目线索，项目编号 V-27，申报地区湖南省常德市，需以中国非遗网项目页和国务院通知复核。",
+          "条目记录扬琴为主奏，琵琶、二胡、三弦等丝弦乐器伴奏。",
+          "九板十八调、代表曲目和 1959 年出访传播史为可用叙事线索，但完整清单和档案需补证。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网曲艺类名录入口",
+          "中国非遗网常德丝弦项目页待复核",
+          "谌晓辉、朱晓玲等代表性传承人公开索引待复核",
+          "常德丝弦艺术团或保护传承机构资料待确认"
+        ],
+        "materials": [
+          "曲本、唱词本、谱架和排练记录",
+          "扬琴弦、琴槌、琵琶/二胡/三弦等伴奏乐器",
+          "常德方言口语材料和水乡生活记忆访谈"
+        ],
+        "tools": [
+          "扬琴、琴槌、调音扳手",
+          "麦克风、录音设备、谱架",
+          "曲目授权单、演出许可和采访授权单"
+        ],
+        "process_steps": [
+          "确认可拍曲目、唱段授权和演员肖像授权。",
+          "拍摄扬琴调音、摆谱、试槌和坐唱准备。",
+          "记录主奏扬琴、伴奏乐器和方言唱白的配合。",
+          "采访演员或保护机构说明项目身份、曲目边界和传播史。",
+          "用水乡空镜、小剧场、排练厅和老照片转场，说明当代传承。"
+        ],
+        "hand_actions": [
+          "琴槌轻敲扬琴弦",
+          "手指翻曲本、压住谱角",
+          "调音扳手微调琴弦",
+          "演员坐唱时轻点节拍",
+          "乐师交换眼神后同步落槌"
+        ],
+        "practitioner_or_transmission_line": [
+          "常德丝弦演员/说唱艺人",
+          "扬琴主奏和丝弦伴奏乐师",
+          "常德丝弦艺术团或保护机构讲述者",
+          "老听众和社区记忆讲述者"
+        ],
+        "community_or_practitioner_consent": [
+          "拍摄曲目、曲词、演唱片段、演员肖像和排练空间前需机构或个人授权。",
+          "老听众和社区讲述需录音录像同意，不把个人回忆写成通行史实。",
+          "未授权唱词不得长篇引用。"
+        ],
+        "documentation_assets": [
+          "项目页或名录截图",
+          "传承人公开索引截图",
+          "曲本、曲谱、排练照片",
+          "常德丝弦艺术团/保护机构授权材料",
+          "老照片或出访资料复制件"
+        ],
+        "visual_symbols": [
+          "扬琴与琴槌",
+          "小舞台和茶馆桌椅",
+          "常德水乡街巷",
+          "曲本、谱架和麦克风",
+          "老照片与出访资料展板"
+        ],
+        "sound_or_texture_details": [
+          "扬琴明亮颗粒感",
+          "常德方言唱白的婉转尾音",
+          "琵琶、二胡、三弦的丝弦层次",
+          "小剧场观众轻声应和或掌声"
+        ],
+        "modern_connection": [
+          "从小剧场、艺术团排练和社区听众进入当代传承。",
+          "可用年轻伴奏员学习旧曲本表现曲艺如何继续发声。",
+          "与常德城市文化、水乡记忆和方言保护连接。"
+        ],
+        "production_risks": [
+          "代表曲目和唱词涉及版权与表演授权。",
+          "九板十八调完整清单、1959 年出访国家和具体场次需补证。",
+          "不得把示范片段写成全部常德丝弦传统。",
+          "不得长引未授权歌词。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "常德丝弦为常德曲艺重要项目，条目记录首批国家级非遗线索。",
+          "扬琴、琵琶、二胡、三弦等为条目中的声画锚点。"
+        ],
+        "needs_verification": [
+          "保护单位、代表性传承人最新口径。",
+          "九板十八调完整清单。",
+          "1959 年出访国家和场次。"
+        ],
+        "forbidden_claims": [
+          "不得无授权使用完整唱段或歌词。",
+          "不得把比喻性评价写成学术定论。"
+        ]
+      },
+      "source_refs": ["hunan-changde-sixian-entry", "ich-quyi-catalog-cue", "changde-sixian-inheritor-cues"]
+    },
+    {
+      "card_id": "heritage-promo-golden-yueyang-baling-opera-three-voices",
+      "entry_name": "岳阳巴陵戏——洞庭湖畔的古戏曲遗存",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#岳阳巴陵戏——洞庭湖畔的古戏曲遗存",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "岳阳巴陵戏",
+        "heritage_or_craft_type": "地方戏曲 / 传统戏剧 / 洞庭湖戏曲",
+        "confirmed_status_and_sources": [
+          "2006 年首批国家级非遗项目线索，需以中国非遗网项目页复核。",
+          "条目记录巴陵戏融合昆、高、弹三大声腔，代表剧目含《岳阳楼》《打鼓骂曹》等。",
+          "弋阳腔南传、三腔合流形成时间和民国戏园资料需专业文献补证。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网传统戏剧类名录入口",
+          "岳阳市巴陵戏传承研究院资料待确认",
+          "岳阳楼景区官方资料作为题材空间线索"
+        ],
+        "materials": [
+          "剧本、曲谱、唱腔笔记",
+          "水袖、髯口、靠旗、折扇和传统戏服",
+          "岳阳楼、洞庭湖和巴陵旧城的地方影像"
+        ],
+        "tools": [
+          "鼓槌、锣钹、胡琴、月琴、三弦、笛子、唢呐",
+          "脸谱笔、头面柜、衣箱",
+          "档案扫描仪、录音设备和采访授权单"
+        ],
+        "process_steps": [
+          "复核可拍剧目、唱段、演员和院团授权。",
+          "拍摄后台上妆、穿戴、整理髯口、水袖和靠旗。",
+          "记录乐队试音、司鼓落点和昆/高/弹声腔切换训练。",
+          "拍摄岳阳楼或洞庭湖空镜作为地域转场。",
+          "采访传承研究院或老艺人说明三腔合流和剧目边界。"
+        ],
+        "hand_actions": [
+          "演员甩水袖、扶髯口、开折扇",
+          "司鼓敲击鼓板提示入场",
+          "乐师翻曲谱、拉胡琴、吹笛",
+          "化妆师勾画脸谱和整理头面",
+          "档案员翻老剧目表"
+        ],
+        "practitioner_or_transmission_line": [
+          "巴陵戏演员",
+          "老艺人/传承人",
+          "乐师和司鼓",
+          "岳阳市巴陵戏传承研究院讲述者",
+          "戏曲研究者或地方志整理者"
+        ],
+        "community_or_practitioner_consent": [
+          "院团排练、剧目片段、演员肖像和后台服化道必须获得授权。",
+          "岳阳楼景区、旧戏园遗存和档案照片使用需确认拍摄和版权边界。",
+          "老艺人口述只作为个人记忆，不自动替代文献史实。"
+        ],
+        "documentation_assets": [
+          "国家级非遗项目页或名录截图",
+          "院团/传承研究院授权文件",
+          "剧目表、节目单和曲谱片段",
+          "岳阳楼景区素材授权或替代空镜清单",
+          "地方戏曲志页码线索"
+        ],
+        "visual_symbols": [
+          "岳阳楼与洞庭湖水面",
+          "三腔合流的曲谱和排练镜",
+          "水袖、髯口、靠旗",
+          "后台衣箱和头面柜",
+          "戏台幕布和桌围椅披"
+        ],
+        "sound_or_texture_details": [
+          "昆腔文雅、高腔豪放、弹腔明快的对照提示",
+          "鼓板入场声",
+          "洞庭湖风声与戏台锣鼓转场",
+          "后台衣箱开合和头面碰响"
+        ],
+        "modern_connection": [
+          "从岳阳楼游客熟悉的地方符号进入巴陵戏。",
+          "用青年演员排练和传承研究院复排表现当代保护。",
+          "将洞庭湖水路文化与戏班流动演出相连。"
+        ],
+        "production_risks": [
+          "三腔形成时间、弋阳腔南传路径和民国戏园数量需补证。",
+          "剧目片段、曲谱和演员肖像需授权。",
+          "不得把舞台化复排写成历史现场原貌。",
+          "不得混用湘剧、花鼓戏、武陵戏服饰和声腔。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "巴陵戏为岳阳地方戏曲项目，条目记录首批国家级非遗线索。",
+          "昆、高、弹三腔合流是条目中的核心艺术特征。"
+        ],
+        "needs_verification": [
+          "三腔合流具体形成时间。",
+          "弋阳腔南传年代和路径。",
+          "代表性传承人批次和院团资料。"
+        ],
+        "forbidden_claims": [
+          "不得把《岳阳楼》剧目和岳阳楼历史文本直接混写。",
+          "不得跨剧种套用服化道。"
+        ]
+      },
+      "source_refs": ["hunan-baling-opera-entry", "ich-traditional-theatre-cue", "yueyang-tower-cue"]
+    },
+    {
+      "card_id": "heritage-promo-golden-changde-wuling-opera-backstage",
+      "entry_name": "常德武陵戏——沅澧流域的湖南五大剧种之一",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#常德武陵戏——沅澧流域的湖南五大剧种之一",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "常德武陵戏",
+        "heritage_or_craft_type": "地方戏曲 / 常德汉剧 / 高腔与弹腔体系",
+        "confirmed_status_and_sources": [
+          "条目记录常德高腔 2006 年首批国家级非遗线索，武陵戏/常德汉剧与常德高腔项目边界需复核。",
+          "高、弹、昆三种声腔，土、苏、京三套锣鼓，内八块和外八块为可用生产线索。",
+          "四大名班、明代源流、剧目数量和老郎庙等具体信息需戏曲志与机构档案补证。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网传统戏剧类名录入口",
+          "常德高腔/武陵戏相关项目页待复核",
+          "常德汉剧院或武陵戏传承机构资料待确认",
+          "《中国戏曲志·湖南卷》线索"
+        ],
+        "materials": [
+          "剧本、曲谱、锣鼓经",
+          "戏服、髯口、盔头、靴子",
+          "折扇、马鞭、令旗等程式道具",
+          "四大名班、老郎庙和四眼井巷档案线索"
+        ],
+        "tools": [
+          "司鼓鼓槌、锣钹、胡琴、唢呐",
+          "化妆盒、脸谱笔、衣箱",
+          "录音设备、档案扫描设备、授权单"
+        ],
+        "process_steps": [
+          "复核常德高腔与武陵戏/常德汉剧的项目口径。",
+          "拍摄后台化妆、穿戴髯口、整理靴子和令旗。",
+          "记录外八块身段训练和内八块表情训练的示范边界。",
+          "拍摄土、苏、京锣鼓和文武场配合。",
+          "访问传承机构说明四大名班、剧目体系和待核点。"
+        ],
+        "hand_actions": [
+          "演员扶髯口、抖袖、执令旗",
+          "司鼓落槌指挥身段",
+          "乐师翻锣鼓经、拉胡琴、吹唢呐",
+          "化妆师勾脸和固定盔头",
+          "档案员指认老节目单或班社资料"
+        ],
+        "practitioner_or_transmission_line": [
+          "武陵戏/常德汉剧演员",
+          "乐师和锣鼓师",
+          "传承人或剧团档案讲述者",
+          "戏曲研究者",
+          "青年演员和戏校学员"
+        ],
+        "community_or_practitioner_consent": [
+          "剧团、排练场、后台服化道、演员肖像和曲目片段需授权。",
+          "四眼井巷、老郎庙等空间如为遗址或复建场景，需实地拍摄许可和口径说明。",
+          "个人口述班史需标注为口述记忆，不直接写成定论。"
+        ],
+        "documentation_assets": [
+          "国家级名录项目页或通知截图",
+          "常德传承机构授权材料",
+          "剧目表、曲谱、锣鼓经和老照片",
+          "四大名班、老郎庙、四眼井巷的地方志线索",
+          "排练录像和访谈同意书"
+        ],
+        "visual_symbols": [
+          "常德后台衣箱和化妆桌",
+          "司鼓、锣钹、胡琴和唢呐",
+          "髯口、令旗、马鞭和盔头",
+          "老郎庙/班社牌匾线索",
+          "沅澧流域水路转场"
+        ],
+        "sound_or_texture_details": [
+          "锣鼓半台戏的强节奏",
+          "胡琴和唢呐的文武场对照",
+          "演员靴底踏台声",
+          "后台衣箱木纹与戏服摩擦声"
+        ],
+        "modern_connection": [
+          "用青年演员训练外八块和内八块呈现当代传承。",
+          "用常德城市空间和沅澧流域说明剧种地理身份。",
+          "将项目口径复核本身拍成知识透明度的一部分。"
+        ],
+        "production_risks": [
+          "常德高腔与武陵戏/常德汉剧项目边界必须先复核。",
+          "四大名班始建年份、明代文献和班社谱系需补证。",
+          "内八块、外八块示范需专业演员或教师确认。",
+          "不得将复建空间或口述传说写成确证史实。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "常德武陵戏/常德汉剧为常德重要地方戏曲线索。",
+          "条目记录高、弹、昆声腔和土、苏、京锣鼓等生产锚点。"
+        ],
+        "needs_verification": [
+          "国家级项目名称、编号、保护单位和常德汉剧整体关系。",
+          "四大名班始建年份。",
+          "外八块和内八块术语细节。"
+        ],
+        "forbidden_claims": [
+          "不得把常德高腔项目直接等同于全部武陵戏，除非项目页证实。",
+          "不得编造班社年表。"
+        ]
+      },
+      "source_refs": ["hunan-changde-wuling-opera-entry", "ich-traditional-theatre-cue", "changde-opera-archive-cue"]
+    },
+    {
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#湘西苗医苗药——武陵山中的民族医药体系",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "湘西苗医苗药",
+        "heritage_or_craft_type": "民族医药 / 非遗医药文化 / 药材与传承记录",
+        "confirmed_status_and_sources": [
+          "公开索引显示苗医药（癫痫症疗法、钻节风疗法）项目编号 IX-15，申报地区含湖南省凤凰县、花垣县，需以中国非遗网项目页复核。",
+          "苗医正骨单独列入国家级非遗的说法为待核线索，宣传片不得直接确认。",
+          "涉及疾病疗效、正骨、药材功效和临床应用时必须使用医学与非遗双重审稿。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网传统医药类名录入口",
+          "苗医药项目页待复核",
+          "凤凰县、花垣县非遗资料待确认",
+          "湘西州民族医药机构或民族中医院资料待确认"
+        ],
+        "materials": [
+          "药材标本、药名标签、晾晒竹匾",
+          "项目页打印件、非遗档案和访谈提纲",
+          "民族医药机构诊室、标本柜和药柜画面",
+          "山地药材生态环境影像"
+        ],
+        "tools": [
+          "药篓、药锄、布袋",
+          "研钵、药杵、药柜、标本夹",
+          "手套、口罩、消毒用品",
+          "采访授权单、医疗场景拍摄许可和风险提示卡"
+        ],
+        "process_steps": [
+          "先复核项目名称、申报地区、保护单位和可拍机构。",
+          "拍摄药材标本、药柜、晾晒、清洗等文化记录画面，不展示可复制治疗步骤。",
+          "采访非遗保护人员或民族医药研究者说明项目身份和证据边界。",
+          "拍摄山地生态、药材采集路线和标本整理，但不公开药方比例。",
+          "以字幕明确本片为非遗文化记录，不构成医疗建议。"
+        ],
+        "hand_actions": [
+          "采药者戴手套翻看药材叶片",
+          "档案员翻项目页和药材标签",
+          "研究者把标本放入标本夹",
+          "助手在竹匾上摊开已授权拍摄的药材",
+          "医生或专家指向非遗展板而非演示治疗"
+        ],
+        "practitioner_or_transmission_line": [
+          "苗医药传承人/民间医师",
+          "药材采集者和炮制助手",
+          "民族医药研究者或医院专家",
+          "非遗保护人员/档案员",
+          "患者或家属仅在明确授权和伦理许可下出镜"
+        ],
+        "community_or_practitioner_consent": [
+          "医疗机构、医师、患者、家属、药材采集地和仪式场景均需书面授权。",
+          "患者隐私、诊疗记录、疗效陈述和未成年人出镜必须严格审查。",
+          "社区禁忌、药王节和采药地点不得未经同意公开。"
+        ],
+        "documentation_assets": [
+          "国家级名录项目页截图",
+          "凤凰县/花垣县非遗资料",
+          "民族医药机构拍摄许可",
+          "专家访谈授权和医学审稿记录",
+          "药材标本照片与标签清单"
+        ],
+        "visual_symbols": [
+          "武陵山药草坡和竹林小径",
+          "药篓、药柜、标本柜和晾晒竹匾",
+          "项目页打印件和非遗展柜",
+          "民族医药机构走廊和诊室牌",
+          "药王节供品和民俗场景，需授权"
+        ],
+        "sound_or_texture_details": [
+          "山地风声、脚步踩过竹叶声",
+          "药材翻动的干叶摩擦声",
+          "研钵轻响，但不展示配方比例",
+          "专家访谈的克制说明声"
+        ],
+        "modern_connection": [
+          "从民族医药机构、非遗档案和药材生态保护进入当代语境。",
+          "强调传统知识保护、现代医学协作和审慎传播。",
+          "用年轻记录者学习如何拍摄而不越界作为叙事入口。"
+        ],
+        "production_risks": [
+          "不得提供诊疗建议、药方比例、正骨操作教程或疗效承诺。",
+          "患者隐私和医疗场景伦理风险高。",
+          "苗医正骨国家级项目身份未核实，不得确认。",
+          "药材采集可能涉及生态保护和社区禁忌。",
+          "医疗、药材和疾病内容需专业审稿。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "公开索引显示苗医药项目与湖南凤凰县、花垣县线索相关。",
+          "条目记录药材、民族医药机构、非遗档案和山地生态为生产锚点。"
+        ],
+        "needs_verification": [
+          "具体保护单位、代表性传承人和项目页最新表述。",
+          "苗医正骨项目身份。",
+          "药王节起源、地区差异和可拍边界。"
+        ],
+        "forbidden_claims": [
+          "不得承诺疗效或替代正规医疗。",
+          "不得公开具体治疗教程和药方比例。",
+          "不得展示患者隐私。"
+        ]
+      },
+      "source_refs": ["hunan-xiangxi-miao-medicine-entry", "ich-traditional-medicine-cue", "fenghuang-huayuan-miao-medicine-cue"]
+    },
+    {
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "桑植白族仗鼓舞",
+        "heritage_or_craft_type": "传统舞蹈 / 白族仗鼓舞 / 舞武合一",
+        "confirmed_status_and_sources": [
+          "2011 年第三批国家级非遗项目线索，项目编号 III-98，申报地区湖南省桑植县，需以项目页复核。",
+          "条目记录仗鼓约 1.2 米、三人鼎足队形、倒丁字步、舞武同源等生产锚点。",
+          "白族东迁、八十一套路和动作来源需族谱、地方志和舞蹈学资料补证。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网传统舞蹈类名录入口",
+          "白族仗鼓舞项目页待复核",
+          "桑植县非物质文化遗产保护中心资料待确认"
+        ],
+        "materials": [
+          "仗鼓、鼓面、木质鼓身",
+          "白族服饰、头巾、腰带",
+          "三人队形地标线、动作图谱",
+          "族谱、迁徙路线图和地方志摘页"
+        ],
+        "tools": [
+          "仗鼓、锣、鼓、唢呐",
+          "训练木杖、动作谱、节拍器",
+          "摄像机、地标胶带、采访授权单"
+        ],
+        "process_steps": [
+          "确认传习点、舞者、伴奏者和村寨拍摄授权。",
+          "拍摄仗鼓外形、握法、背法和鼓面纹理。",
+          "记录倒丁字步、三人鼎足队形和鼓点合拍。",
+          "拍摄舞者示范舞武合一动作，但不做武术攻击教程。",
+          "采访保护中心或寨老说明白族聚居和迁徙记忆的待核边界。"
+        ],
+        "hand_actions": [
+          "舞者横握仗鼓并击奏",
+          "鼓槌落在鼓面",
+          "脚尖踩出倒丁字步",
+          "三人互看后调整队形",
+          "寨老翻族谱或指向迁徙地图"
+        ],
+        "practitioner_or_transmission_line": [
+          "桑植白族仗鼓舞传承人/舞者",
+          "三人舞组",
+          "锣鼓/唢呐伴奏者",
+          "桑植白族寨老或族谱讲述者",
+          "桑植县非遗保护中心工作人员"
+        ],
+        "community_or_practitioner_consent": [
+          "村寨、传习点、舞者、伴奏者、族谱和迁徙叙事均需授权。",
+          "白族服饰和仪式空间按当地规范拍摄。",
+          "不将训练动作剪成危险挑战或武打教程。"
+        ],
+        "documentation_assets": [
+          "国家级项目页或名录截图",
+          "桑植非遗保护中心授权",
+          "动作图谱、训练录像和传承人访谈",
+          "族谱或迁徙地图拍摄许可",
+          "活动点位和节庆公告"
+        ],
+        "visual_symbols": [
+          "1.2 米仗鼓",
+          "三人鼎足队形",
+          "倒丁字步地标线",
+          "白族村寨广场",
+          "迁徙路线图和族谱"
+        ],
+        "sound_or_texture_details": [
+          "鼓面击打的干脆声",
+          "唢呐和锣鼓节奏",
+          "脚步踩地的顿挫",
+          "山地广场回声"
+        ],
+        "modern_connection": [
+          "以传习所影像记录和青年舞者训练进入当代保护。",
+          "用白族聚居乡的现实场景连接族群记忆。",
+          "将舞蹈动作和迁徙故事分层呈现。"
+        ],
+        "production_risks": [
+          "白族东迁具体年份和路线需族谱与史志补证。",
+          "八十一套路名称和动作分类需传承人确认。",
+          "舞武同源不可剪成危险武术教学。",
+          "族谱、村寨和服饰拍摄需社区同意。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "白族仗鼓舞为桑植县国家级非遗相关项目线索。",
+          "仗鼓、倒丁字步、三人队形和舞武合一是条目中的视觉锚点。"
+        ],
+        "needs_verification": [
+          "保护单位和代表性传承人最新口径。",
+          "白族迁徙路线与具体年代。",
+          "八十一套路完整清单。"
+        ],
+        "forbidden_claims": [
+          "不得把舞蹈动作改成攻击教程。",
+          "不得把待核迁徙细节写成定论。"
+        ]
+      },
+      "source_refs": ["hunan-sangzhi-baizu-zhanggu-entry", "ich-dance-catalog-cue", "sangzhi-ich-center-cue"]
+    },
+    {
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#土家族摆手舞——湘西土家的集体仪式",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "土家族摆手舞",
+        "heritage_or_craft_type": "传统舞蹈 / 民俗仪式 / 土家族集体舞",
+        "confirmed_status_and_sources": [
+          "国家级非遗项目线索，需以中国非遗网项目页复核。",
+          "条目记录摆手堂、正月至三月、大摆手/小摆手、集体围圈和模仿生产生活动作。",
+          "大摆手和小摆手具体差异、摆手堂建筑形制和活动时间需实地或公告复核。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网传统舞蹈类名录入口",
+          "湘西州非遗保护中心资料待确认",
+          "永顺、龙山、保靖当地活动公告待确认"
+        ],
+        "materials": [
+          "土家族服饰、头巾和腰带",
+          "鼓、鼓槌、动作记录本",
+          "摆手堂导览图、祭祀供品线索",
+          "活动公告和社区授权材料"
+        ],
+        "tools": [
+          "鼓、鼓架、鼓槌",
+          "拍摄地标线、录音设备",
+          "采访授权单、社区活动许可"
+        ],
+        "process_steps": [
+          "确认摆手活动时间、场地、社区同意和可拍边界。",
+          "拍摄摆手堂空间、鼓架和围圈队形。",
+          "记录领舞、鼓师、歌师和群众进入圆圈的过程。",
+          "拍摄模仿生产生活的摆手动作，但不替代完整仪式说明。",
+          "采访非遗保护机构说明大摆手/小摆手差异和待核点。"
+        ],
+        "hand_actions": [
+          "领舞者摆手示范",
+          "鼓师落槌引节奏",
+          "参与者跟随踏足转圈",
+          "歌师翻唱词或动作记录本",
+          "长者指向摆手堂空间"
+        ],
+        "practitioner_or_transmission_line": [
+          "摆手舞传承人/领舞者",
+          "村寨参与群众",
+          "鼓师和歌师",
+          "湘西州非遗保护机构讲述者",
+          "社区长者或活动组织者"
+        ],
+        "community_or_practitioner_consent": [
+          "集体仪式和村寨活动必须获得社区组织者同意。",
+          "祭祀供品、神龛和禁忌画面需按当地规范拍摄。",
+          "游客展演和传统仪式必须在片中分层说明。"
+        ],
+        "documentation_assets": [
+          "国家级项目页或名录截图",
+          "活动公告、社区许可和拍摄授权",
+          "摆手堂空间照片和动作图谱",
+          "传承人访谈和保护机构资料",
+          "现场环境声采集记录"
+        ],
+        "visual_symbols": [
+          "摆手堂",
+          "圆圈队形",
+          "鼓架和鼓槌",
+          "摆手踏足动作",
+          "村寨屋檐、火塘或广场"
+        ],
+        "sound_or_texture_details": [
+          "鼓点带动围圈节奏",
+          "脚步踏地声",
+          "集体歌声和呼应",
+          "广场或摆手堂的空间回响"
+        ],
+        "modern_connection": [
+          "用返乡青年或社区记录者学习入圈表现当代参与。",
+          "说明摆手舞在身份认同、节庆和社区聚合中的作用。",
+          "区分保护性展演、教学和传统仪式现场。"
+        ],
+        "production_risks": [
+          "大摆手和小摆手差异需补证。",
+          "祭祀空间和社区禁忌不可随意拍摄。",
+          "不得把旅游展演等同传统原貌。",
+          "不得编造唱词、祭祀对象和仪式流程。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "土家族摆手舞与摆手堂、围圈、鼓点和生产生活动作相关。",
+          "条目记录正月至三月、大摆手和小摆手线索。"
+        ],
+        "needs_verification": [
+          "现行活动时间和地点。",
+          "摆手堂建筑形制。",
+          "大摆手/小摆手完整流程。"
+        ],
+        "forbidden_claims": [
+          "不得把展演写成原生仪式。",
+          "不得无授权拍摄祭祀禁忌。"
+        ]
+      },
+      "source_refs": ["hunan-tujia-hand-waving-dance-entry", "xiangxi-ich-center-cue"]
+    },
+    {
+      "card_id": "heritage-promo-golden-xiangkun-stage",
+      "entry_name": "湘昆——山野昆曲的南岭遗音",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#湘昆——山野昆曲的南岭遗音",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "湘昆",
+        "heritage_or_craft_type": "传统戏剧 / 昆曲湖南分支 / 山野昆曲",
+        "confirmed_status_and_sources": [
+          "昆曲国家级项目含湖南省线索，2006 年首批国家级非遗，需以中国非遗网项目页复核。",
+          "条目记录湘昆为湘南本土化分支，湖南省昆剧团、桂阳湘昆古戏台和武戏突出为生产锚点。",
+          "三昆说法、古戏台单体信息、剧目版本和老艺人细节需补证。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网昆曲项目页",
+          "雷子文代表性传承人公开信息待复核",
+          "第八批全国重点文物保护单位湘昆古戏台公告线索",
+          "湖南省昆剧团资料待确认"
+        ],
+        "materials": [
+          "曲谱、剧本、折子戏排练本",
+          "水袖、靴子、靠旗、兵器道具",
+          "古戏台文物资料和院团年表",
+          "戏服头面、化妆用品和获奖资料"
+        ],
+        "tools": [
+          "曲笛、笙、鼓槌、拍板",
+          "排练镜、把杆、谱架",
+          "兵器架、服装架、录音设备",
+          "采访授权和文物拍摄许可"
+        ],
+        "process_steps": [
+          "确认院团排练、古戏台和剧目片段拍摄许可。",
+          "拍摄后台上妆、穿靴、整理水袖和兵器道具。",
+          "记录武戏身段训练、曲笛伴奏和司鼓节奏。",
+          "拍摄桂阳古戏台梁柱、藻井和台口作为历史空间。",
+          "采访院团老艺人或研究者说明湘昆与苏昆、永昆对照的边界。"
+        ],
+        "hand_actions": [
+          "演员整理水袖和靴子",
+          "武戏演员持兵器定势",
+          "笛师按孔试音",
+          "司鼓敲拍板",
+          "文物人员指认古戏台构件"
+        ],
+        "practitioner_or_transmission_line": [
+          "湘昆演员",
+          "湖南省昆剧团老艺人/传承人",
+          "武戏身段教师",
+          "琴师、笛师和司鼓",
+          "戏曲研究者和文物保护人员"
+        ],
+        "community_or_practitioner_consent": [
+          "院团排练、演员肖像、剧目片段和后台服化道需授权。",
+          "古戏台为文物空间时需拍摄许可，不得触碰或搬动构件。",
+          "剧目版本、老艺人故事和三昆说法需标注来源层级。"
+        ],
+        "documentation_assets": [
+          "昆曲项目页截图",
+          "湖南省昆剧团授权材料",
+          "古戏台文物公告和开放信息",
+          "传承人公开索引截图",
+          "曲谱、剧目表和院团年表"
+        ],
+        "visual_symbols": [
+          "桂阳古戏台梁柱与台口",
+          "湘昆武戏兵器和靠旗",
+          "曲笛、拍板和谱架",
+          "排练镜与服装架",
+          "郴州/桂阳山地街巷"
+        ],
+        "sound_or_texture_details": [
+          "曲笛清亮声",
+          "拍板和司鼓节奏",
+          "靴底踏台和水袖摩擦",
+          "古戏台木结构空间回声"
+        ],
+        "modern_connection": [
+          "以湖南省昆剧团排练和青年演员训练进入当代传承。",
+          "用古戏台回访连接历史空间和现代表演。",
+          "通过武戏片段展示湘昆的山野气质。"
+        ],
+        "production_risks": [
+          "三昆说法和湘昆剧目版本需学术来源。",
+          "古戏台拍摄涉及文物保护许可。",
+          "院团现址、开放排练和代表剧目需核实。",
+          "不得把苏昆、湘剧、祁剧服饰和湘昆混用。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "昆曲国家级项目含湖南省线索。",
+          "湘昆与郴州、桂阳、嘉禾、古戏台和湖南省昆剧团相关。"
+        ],
+        "needs_verification": [
+          "三昆说法权威来源。",
+          "古戏台单体地址和开放情况。",
+          "院团现址与可拍剧目。"
+        ],
+        "forbidden_claims": [
+          "不得宣称某剧目版本为失传孤本，除非补证。",
+          "不得无许可拍摄文物空间。"
+        ]
+      },
+      "source_refs": ["hunan-xiangkun-entry", "kunqu-ich-cue", "xiangkun-ancient-stage-cue"]
+    },
+    {
+      "card_id": "heritage-promo-golden-hunan-huagu-opera-three-small",
+      "entry_name": "湖南花鼓戏——湖南人的戏",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#湖南花鼓戏——湖南人的戏",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "湖南花鼓戏",
+        "heritage_or_craft_type": "地方戏曲 / 民间小戏 / 湖南方言戏曲",
+        "confirmed_status_and_sources": [
+          "2008 年第二批国家级非遗项目线索，需以中国非遗网项目页复核。",
+          "条目记录三小角色、湖南方言、川调/打调、花鼓、大筒、唢呐和《刘海砍樵》等代表剧目。",
+          "各地分支唱腔差异和《刘海砍樵》版本需补证。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网传统戏剧类名录入口",
+          "湖南省花鼓戏剧院资料待确认",
+          "各地花鼓戏分支资料待补充"
+        ],
+        "materials": [
+          "戏服、头饰、手帕、扇子",
+          "剧本、曲谱、方言唱词本",
+          "花鼓、大筒、唢呐",
+          "剧照墙、剧目海报和非遗展板"
+        ],
+        "tools": [
+          "花鼓、大筒、唢呐、锣鼓点板",
+          "化妆台、脸谱/妆面用品、服装架",
+          "排练镜、谱架、录音设备"
+        ],
+        "process_steps": [
+          "确认可拍剧目、唱段、演员和剧院授权。",
+          "拍摄三小角色上妆、整理手帕和扇子。",
+          "记录方言唱白、川调/打调训练和伴奏试音。",
+          "拍摄乡村戏台或排练厅的观众互动和生活气息。",
+          "采访剧院讲述者说明代表剧目、分支唱腔和版本边界。"
+        ],
+        "hand_actions": [
+          "小旦整理手帕",
+          "小生开扇转身",
+          "小丑做生活化身段",
+          "乐师拉大筒、吹唢呐、击花鼓",
+          "演员翻方言唱词本"
+        ],
+        "practitioner_or_transmission_line": [
+          "花鼓戏演员/唱腔传承人",
+          "乐师和伴奏者",
+          "剧院讲解员或戏曲研究者",
+          "观众、票友和学员"
+        ],
+        "community_or_practitioner_consent": [
+          "剧目、唱词、排练和后台拍摄需剧院或演出方授权。",
+          "乡村戏台和基层演出需场地方和演员同意。",
+          "方言唱词和代表段落不得超授权传播。"
+        ],
+        "documentation_assets": [
+          "国家级项目页或名录截图",
+          "湖南省花鼓戏剧院授权",
+          "剧目海报、剧照和曲谱片段",
+          "演员访谈同意书",
+          "各地分支资料清单"
+        ],
+        "visual_symbols": [
+          "三小角色",
+          "手帕、扇子、花鼓和大筒",
+          "乡村戏台和剧院排练厅",
+          "《刘海砍樵》剧照或授权片段",
+          "湖南方言唱词本"
+        ],
+        "sound_or_texture_details": [
+          "湖南方言唱白",
+          "花鼓明快节奏",
+          "大筒弦声和唢呐声",
+          "观众笑声与互动"
+        ],
+        "modern_connection": [
+          "从年轻演员练三小角色进入花鼓戏传承。",
+          "将剧院排练和基层演出连接起来。",
+          "通过方言和生活气息说明其为什么被称为湖南人的戏。"
+        ],
+        "production_risks": [
+          "《刘海砍樵》版本差异和授权需确认。",
+          "各地分支唱腔差异不能笼统混写。",
+          "不得把花鼓戏与湘剧、巴陵戏服化道混用。",
+          "不得未经授权使用唱段和曲谱。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "湖南花鼓戏为国家级非遗相关项目线索。",
+          "三小角色、湖南方言、花鼓、大筒、唢呐和《刘海砍樵》为条目锚点。"
+        ],
+        "needs_verification": [
+          "项目页、保护单位和代表性传承人。",
+          "《刘海砍樵》版本差异。",
+          "各地分支唱腔差异。"
+        ],
+        "forbidden_claims": [
+          "不得把一个分支唱腔代表全湖南花鼓戏。",
+          "不得无授权使用完整唱词。"
+        ]
+      },
+      "source_refs": ["hunan-huagu-opera-entry", "ich-traditional-theatre-cue", "hunan-huagu-opera-theatre-cue"]
+    },
+    {
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "entry_name": "桑植民歌——长征路上的歌声与守望",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#桑植民歌——长征路上的歌声与守望",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "桑植民歌",
+        "heritage_or_craft_type": "传统音乐 / 山地民歌 / 多民族民歌",
+        "confirmed_status_and_sources": [
+          "2006 年首批国家级非遗项目线索，需以项目页复核。",
+          "条目记录高腔、平腔、低腔，桑植多民族聚居和《马桑树儿搭灯台》红色记忆线索。",
+          "曲调数量、分类体系、长征传唱版本和传播路径需补证。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网传统音乐类名录入口",
+          "桑植民歌项目页待复核",
+          "桑植民歌博物馆和桑植县非遗传承基地资料待确认",
+          "桑植贺龙纪念馆资料线索"
+        ],
+        "materials": [
+          "歌词本、曲谱整理本和录音设备",
+          "马桑树/灯台树图示或授权植物画面",
+          "土家族、白族、苗族服饰和生活道具",
+          "长征路线图、纪念碑和老照片"
+        ],
+        "tools": [
+          "录音笔、指向麦、监听耳机",
+          "曲谱夹、采访提纲、授权单",
+          "便携灯、山地拍摄防护设备"
+        ],
+        "process_steps": [
+          "确认歌手、曲目、歌词版权和录音录像授权。",
+          "拍摄博物馆、传承基地、村寨山坡或田野的演唱环境。",
+          "记录歌者起腔、对唱、停顿和呼吸，不长引未授权歌词。",
+          "采访研究者说明高腔/平腔/低腔和曲调分类边界。",
+          "在刘家坪或纪念空间谨慎连接长征记忆与民歌传唱。"
+        ],
+        "hand_actions": [
+          "歌手翻歌词本后合上，转为口传",
+          "采风者调整录音笔角度",
+          "讲解员指向长征路线图",
+          "歌者手扶胸口起腔",
+          "研究者标注曲调分类表"
+        ],
+        "practitioner_or_transmission_line": [
+          "桑植民歌传承人/歌手",
+          "土家族、白族、苗族村寨歌者",
+          "桑植民歌博物馆讲解员或音乐研究者",
+          "长征记忆讲述者或后人，需授权"
+        ],
+        "community_or_practitioner_consent": [
+          "歌手、曲目、歌词、录音、村寨空间和纪念馆拍摄需授权。",
+          "红色记忆讲述涉及家庭与地方历史，应避免替个人编造经历。",
+          "未授权歌词不得完整使用。"
+        ],
+        "documentation_assets": [
+          "国家级项目页或名录截图",
+          "桑植民歌博物馆/传承基地授权",
+          "曲谱、歌词本和采风记录",
+          "贺龙纪念馆或刘家坪相关资料",
+          "歌手访谈同意书"
+        ],
+        "visual_symbols": [
+          "桑植山地村寨和田野山坡",
+          "歌词本、录音笔和曲谱整理本",
+          "马桑树与灯台树意象",
+          "长征路线图和纪念空间",
+          "多民族服饰和生活道具"
+        ],
+        "sound_or_texture_details": [
+          "高腔的山地穿透感",
+          "平腔、低腔的呼吸和尾音",
+          "村寨环境声、山风和脚步",
+          "录音笔拾取的空间回声"
+        ],
+        "modern_connection": [
+          "用青年采风者记录老歌手进入当代传承。",
+          "把民歌与红色记忆、村寨生活和多民族文化交融分层呈现。",
+          "连接博物馆展示、学校教学和田野采风。"
+        ],
+        "production_risks": [
+          "歌词版权和演唱授权风险高。",
+          "《马桑树儿搭灯台》长征传唱版本和路径需补证。",
+          "2000 余首曲调和分类体系需专业来源。",
+          "不得把爱情歌、红色歌谣和具体个人经历混写。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "桑植民歌为桑植传统民歌项目线索。",
+          "高腔、平腔、低腔和《马桑树儿搭灯台》为条目锚点。"
+        ],
+        "needs_verification": [
+          "长征传唱版本和传播路径。",
+          "曲调数量和分类体系。",
+          "可拍歌手、曲目和授权状态。"
+        ],
+        "forbidden_claims": [
+          "不得长引未授权歌词。",
+          "不得把口述情节写成通行史实。"
+        ]
+      },
+      "source_refs": ["hunan-sangzhi-folk-song-entry", "sangzhi-folk-song-ich-cue", "sangzhi-long-march-memory-cue"]
+    },
+    {
+      "card_id": "heritage-promo-golden-xiang-opera-four-voices",
+      "entry_name": "湘剧——湖南戏曲的中州遗韵",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#湘剧——湖南戏曲的中州遗韵",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 15,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "project_name": "湘剧",
+        "heritage_or_craft_type": "地方戏曲 / 湖南大戏 / 高低昆乱四大声腔",
+        "confirmed_status_and_sources": [
+          "2008 年国家级非遗项目线索，需以中国非遗网项目页和国务院通知复核。",
+          "条目记录高、低、昆、乱四大声腔，长沙、衡阳、湘西流派和江湖十八本、小八出等体系。",
+          "剧目清单、流派边界、《拜月记》活化石评价和传承人资料需补证。"
+        ],
+        "official_catalog_or_resource_links": [
+          "中国非物质文化遗产网传统戏剧类名录入口",
+          "湘剧项目页待复核",
+          "湖南省湘剧院、衡阳湘剧传承机构资料待确认",
+          "代表性传承人公开索引待复核"
+        ],
+        "materials": [
+          "水袖、折扇、髯口、靠旗",
+          "曲谱、剧本、身段笔记",
+          "司鼓鼓槌、锣钹、胡琴",
+          "戏服头面、脸谱笔、化妆盒",
+          "档案、老照片和剧目清单"
+        ],
+        "tools": [
+          "排练镜、谱架、录音设备",
+          "锣鼓、胡琴、拍板",
+          "后台化妆工具和服装架",
+          "档案扫描设备和授权单"
+        ],
+        "process_steps": [
+          "复核项目页、保护单位、流派和可拍剧目授权。",
+          "拍摄后台上妆、穿戴、水袖和髯口整理。",
+          "记录高、低、昆、乱声腔训练或讲解对照。",
+          "拍摄排练厅、戏台、档案室和青年演员课堂。",
+          "采访研究者说明江湖十八本、小八出和《拜月记》评价边界。"
+        ],
+        "hand_actions": [
+          "演员甩水袖、开折扇、扶髯口",
+          "司鼓落槌",
+          "琴师拉胡琴",
+          "青年演员看镜练身段",
+          "档案员翻剧目清单"
+        ],
+        "practitioner_or_transmission_line": [
+          "湘剧演员",
+          "湘剧老艺人/传承人",
+          "乐队司鼓和琴师",
+          "戏校学生或青年演员",
+          "剧团档案员和戏曲研究者"
+        ],
+        "community_or_practitioner_consent": [
+          "院团、演员、排练、后台、剧目片段和档案照片需授权。",
+          "不同流派和代表剧目需由对应机构确认。",
+          "学员或未成年人出镜需监护与机构许可。"
+        ],
+        "documentation_assets": [
+          "湘剧项目页或名录截图",
+          "湖南省湘剧院/衡阳传承机构授权材料",
+          "曲谱、剧目表和老照片",
+          "代表性传承人索引截图",
+          "戏校训练和排练录像许可"
+        ],
+        "visual_symbols": [
+          "高低昆乱四声腔提示图",
+          "湘剧后台衣箱和头面柜",
+          "水袖、折扇、髯口、靠旗",
+          "排练镜和戏校课堂",
+          "剧目档案和老照片"
+        ],
+        "sound_or_texture_details": [
+          "帮腔和锣鼓节奏",
+          "水袖摩擦和靴底踏台",
+          "胡琴与拍板声",
+          "排练厅口令声"
+        ],
+        "modern_connection": [
+          "用青年演员学习传统折子戏连接当代传承。",
+          "以档案室和排练厅共同呈现湘剧不是旧物，而是仍在训练的体系。",
+          "与花鼓戏、巴陵戏等湖南剧种做边界清晰的对照。"
+        ],
+        "production_risks": [
+          "湘剧项目编号、保护单位和代表性传承人需复核。",
+          "江湖十八本、小八出和《拜月记》评价需专业文献。",
+          "不同流派不能混写。",
+          "剧目片段、曲谱、演员肖像和学员出镜需授权。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "湘剧为湖南重要地方戏曲和国家级非遗相关项目线索。",
+          "高、低、昆、乱四大声腔和戏曲后台资产为条目锚点。"
+        ],
+        "needs_verification": [
+          "项目页、保护单位和传承人最新口径。",
+          "三大流派边界。",
+          "江湖十八本具体清单。"
+        ],
+        "forbidden_claims": [
+          "不得把某一院团版本写成全部湘剧。",
+          "不得无来源使用南戏活化石等评价。"
+        ]
+      },
+      "source_refs": ["hunan-xiang-opera-entry", "ich-traditional-theatre-cue", "hunan-xiang-opera-institution-cue"]
+    }
+  ],
+  "phase_progress_note": {
+    "phase": "Phase 1 - 黄金生产素材卡",
+    "iteration": "Iteration 4 - 非遗/工艺宣传片黄金卡 10 条",
+    "completion_logic": "10 条非遗/工艺宣传片卡已覆盖 15 个必填字段，但尚未完成人工审稿；其中高风险项目需先补证或授权后才能 production_ready。",
+    "next_gate": [
+      "抽样 2 条建立宣传片分镜、GEARS 分段和质量报告。",
+      "为医疗、曲艺、戏曲、舞蹈分别增加自动结构校验。",
+      "继续补充官方项目页、保护单位、传承人和可拍授权。"
+    ]
+  }
+}

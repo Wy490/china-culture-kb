@@ -1,0 +1,203 @@
+{
+  "schema_version": "knowledge-base-long-term-development-status/v1",
+  "updated_at": "2026-07-10",
+  "scope": "素材库长期生产化，不等同于 Story Agent 产品总进度",
+  "overall_progress_percent": 99,
+  "current_phase": {
+    "phase_id": "phase_2",
+    "label": "Domain Pack 高复用资产",
+    "status": "in_progress",
+    "phase_progress_percent": 99,
+    "summary": "Phase 1 已达到本地 9 条回归样本门槛；9 个 Phase 2 Domain Pack 候选规则包已结构化；P0/P1 来源和授权占位、16 个审稿导出 Markdown、审稿核对清单、人工审稿批次索引、P0/P1 质量规则、pass/repair/reject 审稿模拟约束、Domain Pack 晋升预检、9 个独立人工审稿模板、Patch 隔离层、证据附件槽位、空白决策台账、审稿批次看板、人工填报入口、填报校验结构、候选通过模拟、人工 Patch 候选导出、差异草案模板、正式 Patch 前预审矩阵、周节奏分派、证据附件冻结清单、签署催办看板、签署反馈样例校验、审稿包锁版、失败原因索引、正式 Patch 前失败报告、真实人审交接包、真实审稿人填报字段冻结、外部执行清单、回填校验夹具、签署前预检、真实提交导入契约、外部记录解析清单、确定性导入校验器、外部记录解析适配器接口、状态编排器、默认禁用安全注册表、5 份激活审批包和离线演练层已建立，尚未人工审稿、启用真实适配器或写入正式 Domain Pack。"
+  },
+  "last_progress_report": {
+    "reported_at": "2026-07-10",
+    "phase": "Phase 2 - Domain Pack 高复用资产",
+    "iteration": "Iteration 29 - 真实适配器启用审批包与离线演练",
+    "stage_progress_change": "Phase 2 99% -> 99%; Phase 5 99% -> 99%; Phase 7 99% -> 99%",
+    "overall_progress_change": "98% -> 99%",
+    "completed": [
+      "新增 mcp-server/src/lib/real-submission-external-adapter-activation-drill.ts",
+      "新增 data/production-cards/domain-pack-real-external-adapter-activation-approval-and-offline-drill.json",
+      "新增 docs/production-cards/domain-pack-real-external-adapter-activation-approval-offline-drill-20260710.md",
+      "新增 mcp-server/__tests__/domain-pack-real-external-adapter-activation-drill.test.ts",
+      "为 5 类默认禁用真实适配器生成 5 份独立激活审批包",
+      "冻结请求 ID、申请人、负责人确认、风险复核、变更窗口、回滚负责人、批准状态和批准记录引用 8 个审批字段",
+      "建立只保存环境变量名称和 present/missing 状态的存在性快照纯函数",
+      "快照函数不访问 process.env，不读取环境变量值，不保存秘密值",
+      "建立 health、audit、simulation fixture、SIMULATION reference 和两项 rollback 共 6 项离线演练",
+      "实现 blocked_invalid_config、blocked_environment_references_missing、blocked_offline_drill、blocked_human_approval 和 ready_for_manual_activation_review 五类状态",
+      "建立环境缺失、演练缺失、批准缺失和全门槛通过 4 个 simulation_only 场景",
+      "继续保持 ready_for_manual_activation_review 不等于已启用、已注册或已连接",
+      "TypeScript 构建通过",
+      "全量 Vitest 回归通过：77 个测试文件、338 项测试",
+      "知识库 lint 通过：34 个省份文件、169 条条目、169 条增强条目",
+      "继续保持正式 data/domain-packs/china-culture.json 未被自动改写",
+      "继续保持不直接写回 data/provinces/*.md"
+    ],
+    "not_counted_as_complete": [
+      "尚未完成人工审稿",
+      "30 条黄金卡尚未全部完成来源补证和授权确认",
+      "30 条中尚未达到 24 条人工审稿通过",
+      "30 条中尚未达到 18 条写回队列",
+      "16 个审稿 Markdown 导出仍为模板，尚未成为人工审稿通过的正式写回草案",
+      "pass / repair / reject 结果只是流程模拟，不是真实人工审稿结论",
+      "9 个候选 Domain Pack 预检均为 blocked",
+      "9 个 Domain Pack 审稿模板仍为 template_pending_human_review",
+      "9 条人工审稿决策台账仍为 not_started",
+      "9 组证据槽位仍为 pending_evidence_attachment",
+      "9 条填报状态仍为 not_started，必填字段尚未补齐",
+      "9 条真实台账校验结果仍为 blocked_blank_intake",
+      "5 个填报结果只是模拟样例，不是真实人工审稿结论",
+      "1 个可通过样例只是人工 Patch 候选模拟，不是正式 Patch",
+      "1 个差异草案只是人工复核模板，尚未应用 Patch",
+      "4 个签署占位仍为空白",
+      "8 条正式 Patch 前检查中关键人工审稿、证据附件、去重合并和 audit/lint 仍未完成",
+      "1 个修复重提审任务只是补证模板，尚未重提审",
+      "8 项预审矩阵只是分派台账，不是真实审批",
+      "4 个签署分派仍未指定真实负责人或签署",
+      "audit / lint 负责人仍处于 waiting_for_patch_request，尚未运行正式写回后检查",
+      "7 项周节奏分派仍未开始",
+      "4 项 repair 补证风险分派仍未开始",
+      "2 个证据附件包只是冻结槽位，附件文件尚未提交",
+      "4 个签署催办仍为 open_owner_needed",
+      "2 个 audit/lint 运行清单仍为 waiting_for_formal_patch",
+      "4 项 repair 补证附件跟进仍为 open_pending_attachment",
+      "5 个签署反馈只是模拟样例，不是真实签署",
+      "2 个审稿包只是锁版清单，不是附件提交或审批",
+      "4 个签署失败仍因负责人缺失和签署缺失",
+      "2 个 audit/lint 锁定项仍未运行",
+      "12 项正式 Patch 前失败报告只是阻断汇总，不是 Patch 请求",
+      "2 个人审交接包只是交接材料，不是正式审批",
+      "2 张可打印审稿单只是空白模板，不是真实签署",
+      "真实负责人、真实附件、真实签署和正式 Patch 后 audit/lint 仍需外部人工执行",
+      "8 份真实审稿人填报实例仍为 blocked_blank_external_intake",
+      "有效真实审稿提交数仍为 0",
+      "16 项外部执行任务仍为 open 或 blocked",
+      "外部执行清单只是任务台账，不是负责人指派、附件提交、签署或 audit/lint 运行结果",
+      "3 个格式合法回填夹具仍为 simulation_only，不是真实审稿提交",
+      "11 个非法回填夹具只是规则回归样本",
+      "14 个签署前预检结果全部 blocked，pre_signature_ready 数量仍为 0",
+      "模拟附件引用和模拟签署引用均未经过外部记录解析",
+      "24 字段真实提交导入信封只是契约，不是已接收提交",
+      "8 条角色级导入路由仍为 blocked_blank_import_envelope",
+      "5 类外部记录解析器仍为 contract_only_not_run",
+      "10 项外部记录解析清单尚无真实信封可解析",
+      "真实提交导入数和已解析外部记录数仍为 0",
+      "2 个本地格式通过场景只是 fixture，仍需 9 项或 10 项外部记录解析",
+      "4 个拒绝报告场景只是模拟数据隔离回归",
+      "校验器没有连接真实身份、附件、签署或授权系统",
+      "校验器结果中的 real_submission_imported 和 is_signed 始终为 false",
+      "4 个适配器 profile 全部为 simulation 测试配置",
+      "5 个编排场景全部为 simulation_only",
+      "真实 external 适配器数量仍为 0",
+      "resolved_as_simulation 结果不得计为真实外部记录",
+      "真实外部记录解析数仍为 0",
+      "5 个真实适配器配置全部为 enabled=false",
+      "环境变量名称引用不等于已读取环境变量值",
+      "health、audit、simulation isolation 和 human approval 通过数仍为 0",
+      "manual_registration_eligible 和 runtime_adapter_registered 数量仍为 0",
+      "真实外部连接数和秘密值存储数仍为 0",
+      "5 份适配器激活审批包仍为 pending_environment_snapshot_offline_drill_and_human_approval",
+      "环境变量存在性场景只是 simulation_only 输入，不是真实环境快照",
+      "6 项健康、审计、模拟隔离和回滚检查只是离线契约，不是真实网络演练",
+      "ready_for_manual_activation_review 场景只是回归样本，不是真实人工批准",
+      "适配器启用、运行时注册和真实外部连接数量仍为 0",
+      "2 个 pass 候选仍只是草案准备模板，不是正式 Patch",
+      "14 条 repair / reject 任务仍为 open",
+      "9 个候选 Domain Pack 尚未人工审稿",
+      "9 个候选 Domain Pack 尚未写入 data/domain-packs/china-culture.json",
+      "尚未写回 data/provinces/*.md"
+    ]
+  },
+  "progress_model": [
+    {
+      "phase_id": "phase_0",
+      "label": "路线与治理口径",
+      "weight_percent": 8,
+      "completed_percent": 100
+    },
+    {
+      "phase_id": "phase_1",
+      "label": "黄金生产素材卡",
+      "weight_percent": 17,
+      "completed_percent": 98,
+      "target": "AI 漫剧 10 条、非遗宣传 10 条、微纪录 10 条、统一索引、审稿队列、9 条回归样本"
+    },
+    {
+      "phase_id": "phase_2",
+      "label": "Domain Pack 高复用资产",
+      "weight_percent": 15,
+      "completed_percent": 99,
+      "target": "8 类高复用生产包完成审稿与调用验证；当前已有 9 个候选规则包、首批审稿问题、16 个审稿核对清单、P0/P1 质量规则、审稿模拟约束、晋升预检、独立审稿模板、证据槽位、空白决策台账、审稿看板、人工填报入口、填报校验模拟、人工 Patch 候选导出、差异草案模板、预审矩阵、周节奏分派、签署反馈样例校验、审稿包锁版、正式 Patch 前失败报告、人审交接包、真实审稿人填报字段冻结、外部执行清单、回填校验夹具、签署前预检、真实提交导入契约、外部记录解析清单、确定性导入校验器、外部记录状态编排器、默认禁用安全注册表、激活审批包和离线演练层"
+    },
+    {
+      "phase_id": "phase_3",
+      "label": "多片型稳定产出矩阵",
+      "weight_percent": 15,
+      "completed_percent": 20,
+      "target": "8 个高频片型各 20 条生产素材卡和 5 个回归样本"
+    },
+    {
+      "phase_id": "phase_4",
+      "label": "全国题材覆盖",
+      "weight_percent": 15,
+      "completed_percent": 7,
+      "target": "34 个省份各至少 5 条可生产素材"
+    },
+    {
+      "phase_id": "phase_5",
+      "label": "项目反馈到素材库闭环",
+      "weight_percent": 12,
+      "completed_percent": 99,
+      "target": "项目补充任务稳定沉淀为审稿通过的写回草案；当前已有 16 条 P0/P1 候选写回队列、16 条 Markdown 模板、16 个审稿导出文件、16 个审稿核对清单、3 套写回约束、2 个 pass 草案准备模板、14 条 repair/reject 任务、证据映射、人工填报入口、填报校验结果结构、Patch 导出草案、修复补证任务模板、正式 Patch 前预审矩阵、证据附件冻结清单、签署催办看板、签署反馈样例、审稿包锁版失败原因索引、正式 Patch 前失败报告、人审交接包、真实审稿人填报字段冻结、外部执行清单、回填校验夹具、签署前预检、真实提交导入契约、外部记录解析清单、确定性导入校验器、外部记录状态编排器、默认禁用安全注册表、激活审批包和离线演练层"
+    },
+    {
+      "phase_id": "phase_6",
+      "label": "评测样本与成片验收",
+      "weight_percent": 10,
+      "completed_percent": 30,
+      "target": "建立跨片型回归样本矩阵；当前已有 9 条回归样本覆盖矩阵"
+    },
+    {
+      "phase_id": "phase_7",
+      "label": "规模化运营与协作",
+      "weight_percent": 8,
+      "completed_percent": 99,
+      "target": "建立周节奏、批量审稿、写回和样本回归机制；当前已有首批 4 个人工审稿批次索引、批次机器门槛、Domain Pack 晋升预检门槛、Patch 隔离规则、空白决策台账、审稿看板、人工填报表、填报校验、模拟候选队列、签署占位、正式 Patch 前检查、预审矩阵、周节奏分派台账、证据附件冻结清单、签署催办看板、签署反馈样例校验、审稿包锁版、失败报告、可打印人审交接包、角色级真实审稿人填报模板、16 项外部执行清单、14 个回填校验夹具、12 项签署前预检、24 字段真实导入契约、外部记录解析清单、确定性导入校验器、10 项外部记录状态编排器、5 类默认禁用真实适配器注册表、5 份激活审批包和离线演练层"
+    }
+  ],
+  "next_iteration": {
+    "iteration_id": "iteration_30",
+    "label": "真实外部执行交接与 100% 完成门槛",
+    "planned_progress_change": "99% -> 100%（仅在真实负责人、外部记录、审批和安全检查完成后）",
+    "candidate_entries": [
+      "9 个 Phase 2 候选 Domain Pack",
+      "5 份待执行适配器激活审批包",
+      "16 项外部人工执行任务",
+      "真实负责人和审批记录",
+      "真实外部记录解析证据",
+      "健康、审计、隔离与回滚执行记录",
+      "最终完成门槛审计"
+    ],
+    "acceptance_target": [
+      "汇总真实外部执行所需负责人、记录、审批和安全检查阻塞项",
+      "真实证据齐备前总进度保持 99% 且不得声明完成",
+      "真实执行完成后重新运行导入、解析、签署、Patch 和 audit/lint 门槛",
+      "只在人工审稿、真实记录解析和正式写回全部满足时评估 100%",
+      "继续保持不直接写回 data/provinces/*.md"
+    ]
+  },
+  "reporting_format": {
+    "required_items": [
+      "当前阶段",
+      "本轮完成内容",
+      "阶段进度变化",
+      "总进度变化",
+      "验证命令与结果",
+      "新增或修改文件",
+      "下一步最小交付",
+      "阻塞项"
+    ]
+  }
+}

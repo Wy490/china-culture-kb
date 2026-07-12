@@ -6,11 +6,20 @@ import { fail, ErrorCodes, type ErrorCode } from '@shared/types.js';
  * validation middleware and returns a consistent ApiResponse envelope.
  */
 export function errorHandler(
-  err: Error & { code?: string; status?: number },
+  err: Error & { code?: string; status?: number; type?: string },
   _req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
+  // body-parser request size errors → 413 with an actionable message
+  if (err.status === 413 || err.type === 'entity.too.large') {
+    res.status(413).json(fail(
+      ErrorCodes.VALIDATION_ERROR,
+      '请求内容过大，请缩短原文、拆分素材，或联系管理员调整 JSON_BODY_LIMIT 后重试',
+    ));
+    return;
+  }
+
   // Zod validation errors → 400 VALIDATION_ERROR
   if (err.name === 'ZodError') {
     const details =

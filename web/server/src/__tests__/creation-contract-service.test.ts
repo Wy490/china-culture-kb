@@ -75,6 +75,20 @@ function makeMaterialPack(): MaterialPack {
 }
 
 describe('creation contract compatibility layer', () => {
+  it('treats AI comic generation from a knowledge entry as source adaptation', () => {
+    const request: StoryGenerateRequest = {
+      entry_name: '刘海砍樵——人仙之恋的湖南民间传说',
+      video_type: 'ai_comic_drama',
+      source_material_mode: 'generate_from_knowledge',
+    };
+    const creationUseCase = resolveCreationUseCase(request, 'ai_comic_drama');
+
+    expect(creationUseCase).toBe('adapted_ai_comic');
+    expect(resolveTruthMode(request, creationUseCase, 'ai_comic_drama')).toBe('source_adaptation');
+    expect(resolveCreationUseCase({ video_type: 'ai_comic_drama', outline: '原创奇幻故事' }, 'ai_comic_drama'))
+      .toBe('original_ai_comic');
+  });
+
   it('keeps old knowledge_pack requests valid while accepting material_pack requests', () => {
     const oldRequest = StoryGenerateRequestSchema.safeParse({
       video_type: 'character_story',

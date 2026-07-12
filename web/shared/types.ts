@@ -529,6 +529,7 @@ export function fail<T = never>(
 
 export interface StoryPlanRequest {
   entry_name: string;
+  original_user_query?: string;
 }
 
 export interface RecommendedType {
@@ -1729,8 +1730,13 @@ export interface StoryAgentGeneratedHealthItem {
   missing_episode_story_id_count?: number;
   production_item_count?: number;
   ready_production_item_count?: number;
+  failed_production_item_count?: number;
+  test_fixture_failure_item_count?: number;
+  seedance_failure_marker_present?: boolean;
   contract_evidence_count?: number;
   relink_candidate?: boolean;
+  signoff_eligible?: boolean;
+  governance_disposition?: 'soft_archived_signoff_excluded';
   cut_ready?: boolean;
   subtitle_ready?: boolean;
   thumbnail_ready_count?: number;
@@ -1770,6 +1776,13 @@ export interface StoryAgentGeneratedHealthReport {
     series_missing_story_ref_project_count?: number;
     series_contract_evidence_count?: number;
     series_relink_candidate_count?: number;
+    series_signoff_portfolio_count?: number;
+    series_soft_archive_excluded_count?: number;
+    series_seedance_failed_project_count?: number;
+    series_seedance_failed_item_count?: number;
+    series_seedance_failure_marker_project_count?: number;
+    series_seedance_test_fixture_failure_project_count?: number;
+    series_seedance_test_fixture_failure_item_count?: number;
   };
   items: StoryAgentGeneratedHealthItem[];
   notes: string[];
@@ -8228,6 +8241,2013 @@ export interface StoryQualityRepairApplyResult {
   detail?: StoryProjectDetail;
 }
 
+export type ProfessionalTextPackageField =
+  | 'creative_brief'
+  | 'audience_promise'
+  | 'premise_or_core_question'
+  | 'theme_statement'
+  | 'truth_and_adaptation_contract'
+  | 'structure_outline'
+  | 'sequence_beats'
+  | 'scene_breakdown'
+  | 'full_text'
+  | 'dialogue_or_narration_pass'
+  | 'director_text_plan'
+  | 'continuity_ledger'
+  | 'quality_report'
+  | 'coverage_report'
+  | 'revision_trace'
+  | 'delivery_text_package';
+
+export type ProfessionalQualityDimensionId =
+  | 'creative_brief_and_audience_promise'
+  | 'premise_and_theme_unity'
+  | 'structure_causality_and_pacing'
+  | 'character_agency_and_relationship_change'
+  | 'scene_function_visible_action_and_blocking'
+  | 'dialogue_narration_and_subtext'
+  | 'emotional_curve_and_aftertaste'
+  | 'cultural_fact_and_adaptation_boundary'
+  | 'production_executability'
+  | 'originality_and_distinctiveness';
+
+export type ProfessionalTextArchitectureMode =
+  | 'character_relationships'
+  | 'information_architecture'
+  | 'spatial_route'
+  | 'visual_mood';
+
+export interface ProfessionalTextTypeContract {
+  schema_version: 'professional-text-type-contract/v1';
+  video_type: VideoType;
+  line: '剧情故事线' | '宣传传播线' | '非虚构与知识线' | '空间与意境线';
+  primary_text_form: string;
+  architecture_mode: ProfessionalTextArchitectureMode;
+  required_package_fields: ProfessionalTextPackageField[];
+  required_deliverables: string[];
+  exclusive_quality_gate: string;
+  quality_dimension_weights: Record<ProfessionalQualityDimensionId, number>;
+  hard_gates: string[];
+  repair_focus: string[];
+}
+
+export type ProfessionalTextPackageStatus =
+  | 'skeleton'
+  | 'draft'
+  | 'in_review'
+  | 'revision_required'
+  | 'approved';
+
+export type ProfessionalEvidenceStatus =
+  | 'verified_fact'
+  | 'plausible_dramatization'
+  | 'fictional_addition'
+  | 'unknown';
+
+export interface ProfessionalCreativeBrief {
+  target_audience: string;
+  platform: string;
+  target_duration: SupportedDuration;
+  communication_goal: string;
+  production_goal: string;
+  budget_assumptions: string[];
+  delivery_constraints: string[];
+}
+
+export interface ProfessionalEvidenceItem {
+  evidence_id: string;
+  status: ProfessionalEvidenceStatus;
+  claim: string;
+  source: string;
+  allowed_usage: string;
+  verification_note: string;
+}
+
+export interface ResearchAndEvidenceDossier {
+  source_summary: string;
+  evidence_items: ProfessionalEvidenceItem[];
+  unknowns: string[];
+  authorization_notes: string[];
+}
+
+export interface ProfessionalTruthAndAdaptationContract {
+  truth_mode: TruthMode;
+  verified_facts: string[];
+  plausible_dramatizations: string[];
+  fictional_additions: string[];
+  unknown_or_forbidden_claims: string[];
+  required_disclaimers: string[];
+}
+
+export interface ProfessionalStructureOutline {
+  structure_name: string;
+  opening: string;
+  development: string[];
+  climax_or_key_turn: string;
+  ending: string;
+}
+
+export interface ProfessionalSequenceBeat {
+  beat_id: string;
+  order: number;
+  title: string;
+  purpose: string;
+  visible_action: string;
+  conflict_discovery_or_instruction: string;
+  emotional_or_information_turn: string;
+  evidence_ids: string[];
+}
+
+export interface ProfessionalDialogueOrNarrationPass {
+  mode: 'dialogue' | 'narration' | 'mixed' | 'minimal_text';
+  voice_rules: string[];
+  polished_text: string;
+  unresolved_issues: string[];
+}
+
+export interface ProfessionalDirectorSequencePlan {
+  sequence_id: string;
+  scene_ids: number[];
+  blocking_and_visible_action: string;
+  camera_and_transition_intent: string;
+  sound_intent: string;
+  production_constraints: string[];
+}
+
+export interface ProfessionalDirectorTextPlan {
+  visual_strategy: string;
+  sound_strategy: string;
+  rhythm_strategy: string;
+  sequences: ProfessionalDirectorSequencePlan[];
+}
+
+export interface ProfessionalContinuityLedgerItem {
+  continuity_id: string;
+  category: 'character' | 'relationship' | 'fact' | 'prop' | 'location' | 'time' | 'visual' | 'terminology';
+  rule: string;
+  applies_to_scene_ids: number[];
+  evidence_ids: string[];
+}
+
+export interface ProfessionalContinuityLedger {
+  items: ProfessionalContinuityLedgerItem[];
+  unresolved_conflicts: string[];
+}
+
+export interface ProfessionalQualityDimensionScore {
+  dimension_id: ProfessionalQualityDimensionId;
+  weight: number;
+  score?: number;
+  evidence: string[];
+  issues: string[];
+}
+
+export interface ProfessionalTextQualityReport {
+  status: 'not_evaluated' | 'failed' | 'production_candidate' | 'professional_candidate' | 'high_quality_candidate';
+  total_score?: number;
+  dimensions: ProfessionalQualityDimensionScore[];
+  hard_gate_failures: string[];
+  professional_passed: boolean;
+  evaluator_notes: string[];
+}
+
+export interface ProfessionalCoverageReport {
+  verdict: 'not_evaluated' | 'pass' | 'revise' | 'rebuild';
+  strengths: string[];
+  structure_notes: string[];
+  character_or_information_notes: string[];
+  scene_notes: string[];
+  dialogue_or_narration_notes: string[];
+  pacing_notes: string[];
+  fact_and_culture_notes: string[];
+  production_notes: string[];
+  action_items: string[];
+}
+
+export interface ProfessionalRevisionTraceItem {
+  revision_id: string;
+  created_at: string;
+  source: 'agent' | 'writer_editor' | 'director' | 'fact_culture_reviewer' | 'user';
+  reason: string;
+  changed_sections: ProfessionalTextPackageField[];
+  resolved_issue_ids: string[];
+  remaining_issues: string[];
+  quality_delta?: number;
+}
+
+export interface ProfessionalDeliveryTextPackage {
+  script_text: string;
+  scene_units: Array<{
+    scene_id: number;
+    script_text: string;
+    visual_action: string;
+    camera_intent: string;
+    sound_intent: string;
+    continuity_notes: string[];
+    evidence_boundary_notes: string[];
+  }>;
+  gears_handoff_notes: string[];
+  seedance_handoff_notes: string[];
+  validation_notes: string[];
+}
+
+export interface ProfessionalTextPackage {
+  schema_version: 'professional-text-package/v1';
+  package_id: string;
+  story_id?: string;
+  project_id?: string;
+  video_type: VideoType;
+  status: ProfessionalTextPackageStatus;
+  created_at: string;
+  updated_at: string;
+  contract_version: 'professional-text-type-contract/v1';
+  creative_brief: ProfessionalCreativeBrief;
+  research_and_evidence_dossier: ResearchAndEvidenceDossier;
+  audience_promise: string;
+  premise_or_core_question: string;
+  theme_statement: string;
+  truth_and_adaptation_contract: ProfessionalTruthAndAdaptationContract;
+  relationship_or_information_architecture: {
+    mode: ProfessionalTextArchitectureMode;
+    nodes: Array<{ node_id: string; label: string; role: string }>;
+    links: Array<{ from: string; to: string; relationship: string }>;
+  };
+  structure_outline: ProfessionalStructureOutline;
+  sequence_beats: ProfessionalSequenceBeat[];
+  scene_breakdown: StoryScene[];
+  full_text: string;
+  dialogue_or_narration_pass: ProfessionalDialogueOrNarrationPass;
+  director_text_plan: ProfessionalDirectorTextPlan;
+  continuity_ledger: ProfessionalContinuityLedger;
+  quality_report: ProfessionalTextQualityReport;
+  coverage_report: ProfessionalCoverageReport;
+  revision_trace: ProfessionalRevisionTraceItem[];
+  delivery_text_package: ProfessionalDeliveryTextPackage;
+}
+
+export type Stage6RealInputProvenance =
+  | 'operator_submitted_real_input'
+  | 'preparation_template'
+  | 'fixture'
+  | 'simulation'
+  | 'fallback';
+
+export type Stage6VerificationStatus = 'unverified' | 'verified';
+
+export type Stage6ReviewerRole =
+  | 'writer_editor'
+  | 'director'
+  | 'fact_culture_reviewer';
+
+export interface Stage6VerificationRecord {
+  status: Stage6VerificationStatus;
+  reference: string;
+  verified_by: string;
+  verified_at: string;
+}
+
+export interface Stage6ReviewerAssignment {
+  role: Stage6ReviewerRole;
+  reviewer_id: string;
+  display_name: string;
+  identity_verification: Stage6VerificationRecord;
+}
+
+export interface Stage6RealInputProject {
+  benchmark_id: string;
+  video_type: VideoType;
+  source_entry: string;
+  provenance: Stage6RealInputProvenance;
+  real_project_id: string;
+  initial_package: {
+    path: string;
+    sha256: string;
+  };
+  creator_authorization: {
+    subject_type: 'model' | 'human_author';
+    subject_id: string;
+    authorized_rounds: Array<1 | 2>;
+    verification: Stage6VerificationRecord;
+  };
+  revision_budget: {
+    currency: string;
+    amount: number;
+    authorized_rounds: Array<1 | 2>;
+    verification: Stage6VerificationRecord;
+  };
+  reviewers: Stage6ReviewerAssignment[];
+  table_read: {
+    schedule_reference: string;
+    scheduled_at: string;
+    timezone: string;
+    participant_reviewer_ids: string[];
+    verification: Stage6VerificationRecord;
+  };
+}
+
+export interface Stage6RealInputIntake {
+  schema_version: 'story-agent-stage6-real-input-intake/v1';
+  submitted_at: string;
+  operator: {
+    operator_id: string;
+    display_name: string;
+    contact_reference: string;
+  };
+  projects: Stage6RealInputProject[];
+}
+
+export interface Stage6RealInputReadinessIssue {
+  code: string;
+  path: string;
+  message: string;
+}
+
+export interface Stage6RealInputProjectReadiness {
+  benchmark_id: string;
+  video_type: VideoType;
+  source_entry: string;
+  real_project_id: string;
+  initial_package_path: string;
+  initial_package_sha256: string;
+  status: 'ready' | 'blocked';
+  blockers: Stage6RealInputReadinessIssue[];
+  checks: {
+    intake_schema_valid: boolean;
+    registry_binding_valid: boolean;
+    real_provenance_verified: boolean;
+    real_project_id_valid: boolean;
+    initial_package_file_valid: boolean;
+    initial_package_schema_valid: boolean;
+    initial_package_binding_valid: boolean;
+    initial_package_sha256_valid: boolean;
+    creator_authorization_verified: boolean;
+    revision_budget_verified: boolean;
+    reviewer_assignments_verified: boolean;
+    table_read_verified: boolean;
+  };
+  completed_verified_round_count: 0;
+  professional_passed: false;
+}
+
+export interface Stage6RealInputReadinessReport {
+  schema_version: 'story-agent-stage6-real-input-readiness/v1';
+  generated_at: string;
+  source_intake_path: string;
+  source_intake_schema_version: string;
+  source_intake_canonical_sha256: string;
+  source_registry_schema_version: string;
+  source_registry_canonical_sha256: string;
+  policy: {
+    readiness_counts_as_completed_revision: false;
+    fixture_simulation_fallback_counts_as_real_input: false;
+    professional_pass_can_be_granted_by_intake: false;
+  };
+  global_errors: Stage6RealInputReadinessIssue[];
+  summary: {
+    project_count: number;
+    ready_project_count: number;
+    blocked_project_count: number;
+    completed_verified_revision_round_count: 0;
+    professional_pass_count: 0;
+  };
+  projects: Stage6RealInputProjectReadiness[];
+}
+
+export interface Stage6OperatorIntakeValidationResult {
+  schema_version: 'story-agent-stage6-operator-intake-validation/v1';
+  generated_at: string;
+  source_intake_canonical_sha256: string;
+  schema_valid: boolean;
+  dry_run_only: true;
+  input_persisted: false;
+  execution_started: false;
+  professional_passed: false;
+  report: Stage6RealInputReadinessReport;
+}
+
+export interface Stage6OperatorIntakeWorkspace {
+  schema_version: 'story-agent-stage6-operator-intake-workspace/v1';
+  generated_at: string;
+  policy: {
+    dry_run_only: true;
+    input_files_are_not_persisted: true;
+    readiness_counts_as_completed_revision: false;
+    fixture_simulation_fallback_counts_as_real_input: false;
+    professional_pass_can_be_granted_by_intake: false;
+  };
+  template: Stage6RealInputIntake;
+  template_validation: Stage6OperatorIntakeValidationResult;
+}
+
+export interface Stage6OperatorRevisionPreflight {
+  status: 'blocked' | 'ready' | 'already_completed';
+  blockers: string[];
+  benchmark_id: string;
+  real_project_id: string;
+  round_number: 1 | 2;
+  attempt_number: number;
+  readiness_report_sha256: string;
+  command_sha256: string;
+  professional_passed: false;
+}
+
+export interface Stage6OperatorRevisionPreflightResult {
+  schema_version: 'story-agent-stage6-operator-revision-preflight/v1';
+  generated_at: string;
+  dry_run_only: true;
+  execute_endpoint_available: false;
+  artifacts_written: false;
+  execution_started: false;
+  verified_real_revision_credit: false;
+  professional_passed: false;
+  preflight: Stage6OperatorRevisionPreflight;
+}
+
+export interface Stage6OperatorRevisionPreflightWorkspace {
+  schema_version: 'story-agent-stage6-operator-revision-preflight-workspace/v1';
+  generated_at: string;
+  policy: {
+    dry_run_only: true;
+    execute_endpoint_available: false;
+    explicit_cli_execute_required: true;
+    artifacts_written_by_preflight: false;
+    fixture_simulation_fallback_counts_as_real_revision: false;
+    readiness_counts_as_completed_revision: false;
+    professional_pass_can_be_granted_by_preflight: false;
+  };
+  command_template: unknown;
+  current_batch_summary: {
+    project_count: number;
+    planned_round_count: number;
+    p0_ready_project_count: number;
+    blocked_project_count: number;
+    completed_verified_revision_round_count: number;
+    professional_pass_count: 0;
+  };
+  template_preflight: Stage6OperatorRevisionPreflightResult;
+}
+
+export interface Stage6ExitAuditBlocker {
+  code: string;
+  detail: string;
+}
+
+export interface Stage6ExitAuditProjectResult {
+  benchmark_id: string;
+  video_type: VideoType;
+  source_entry: string;
+  real_project_id: string;
+  status: 'blocked' | 'eligible_for_stage6_exit_review';
+  blockers: Stage6ExitAuditBlocker[];
+  checks: {
+    p0_readiness_reverified: boolean;
+    two_rounds_completed: boolean;
+    two_rounds_real_provenance_verified: boolean;
+    immutable_artifact_dag_valid: boolean;
+    package_hash_chain_valid: boolean;
+    revision_budget_valid: boolean;
+    three_role_table_read_valid: boolean;
+    all_feedback_effectively_closed: boolean;
+    derived_rebuilds_complete: boolean;
+    quality_improvement_traceable: boolean;
+  };
+  recorded_round_count: number;
+  verified_real_revision_round_count: number;
+  effective_open_feedback_count: number;
+  total_cost_amount: number;
+  cost_currency: string;
+  stage6_exit_candidate: boolean;
+  professional_passed: false;
+}
+
+export interface Stage6RealRevisionExitAuditReport {
+  schema_version: 'story-agent-stage6-real-revision-exit-audit/v1';
+  generated_at: string;
+  source_readiness_canonical_sha256: string;
+  source_intake_canonical_sha256: string;
+  source_registry_canonical_sha256: string;
+  policy: {
+    required_real_revision_round_count: 2;
+    simulation_fixture_fallback_counts_as_real_revision: false;
+    prepared_or_recovered_counts_as_real_revision: false;
+    effective_open_feedback_blocks_exit: true;
+    stage6_exit_candidate_counts_as_professional_pass: false;
+  };
+  summary: {
+    project_count: number;
+    blocked_project_count: number;
+    eligible_for_stage6_exit_review_project_count: number;
+    recorded_round_count: number;
+    verified_real_revision_round_count: number;
+    effective_open_feedback_count: number;
+    professional_pass_count: 0;
+  };
+  projects: Stage6ExitAuditProjectResult[];
+}
+
+export interface Stage6ProfessionalPackageInspectionIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'request' | 'schema' | 'binding' | 'revisionable' | 'consistency' | 'credit';
+  blocking: boolean;
+}
+
+export interface Stage6ProfessionalPackageInspectionResult {
+  schema_version: 'story-agent-stage6-professional-package-inspection/v1';
+  generated_at: string;
+  dry_run_only: true;
+  input_persisted: false;
+  p0_readiness_granted: false;
+  execution_started: false;
+  verified_real_revision_credit: false;
+  professional_passed: false;
+  source_file_sha256: string;
+  canonical_package_sha256: string;
+  schema_valid: boolean;
+  p0_package_gate_passed: boolean;
+  expected_binding: {
+    project_id: string;
+    video_type: VideoType | '';
+  };
+  checks: {
+    request_valid: boolean;
+    json_valid: boolean;
+    package_schema_valid: boolean;
+    project_id_present: boolean;
+    expected_project_binding_valid: boolean;
+    expected_video_type_binding_valid: boolean;
+    non_skeleton_status: boolean;
+    full_text_present: boolean;
+    sequence_beats_present: boolean;
+    scene_breakdown_present: boolean;
+    delivery_script_present: boolean;
+    scene_ids_unique: boolean;
+    delivery_scene_ids_bound: boolean;
+  };
+  package_summary: {
+    package_id: string;
+    project_id: string;
+    video_type: VideoType | '';
+    status: ProfessionalTextPackageStatus | '';
+    full_text_character_count: number;
+    sequence_beat_count: number;
+    scene_count: number;
+    delivery_scene_count: number;
+    evidence_item_count: number;
+    continuity_item_count: number;
+    revision_trace_count: number;
+    quality_total_score?: number;
+    source_claimed_professional_passed: boolean;
+  };
+  issues: Stage6ProfessionalPackageInspectionIssue[];
+}
+
+export interface Stage6ProfessionalPackageInspectorWorkspace {
+  schema_version: 'story-agent-stage6-professional-package-inspector-workspace/v1';
+  generated_at: string;
+  policy: {
+    dry_run_only: true;
+    input_files_are_not_persisted: true;
+    p0_readiness_can_be_granted: false;
+    canonical_hash_is_p0_source_file_hash: false;
+    self_reported_professional_pass_is_credit: false;
+  };
+  selected_video_type: VideoType;
+  template: ProfessionalTextPackage;
+  template_inspection: Stage6ProfessionalPackageInspectionResult;
+}
+
+export type Stage6OperatorRequirementCategory =
+  | 'operator_identity'
+  | 'real_project'
+  | 'initial_package'
+  | 'authorization'
+  | 'budget'
+  | 'reviewers'
+  | 'table_read'
+  | 'revision_execution'
+  | 'exit_evidence';
+
+export type Stage6OperatorPhase =
+  | 'awaiting_real_input'
+  | 'awaiting_round_1'
+  | 'awaiting_round_2'
+  | 'awaiting_table_read_closure'
+  | 'awaiting_exit_evidence'
+  | 'eligible_for_stage6_exit_review';
+
+export interface Stage6OperatorControlTowerProject {
+  benchmark_id: string;
+  video_type: VideoType;
+  source_entry: string;
+  real_project_id: string;
+  phase: Stage6OperatorPhase;
+  readiness_status: 'ready' | 'blocked';
+  execution_status: Stage6RevisionWorkspaceProjectSummary['execution_status'];
+  exit_audit_status: Stage6ExitAuditProjectResult['status'];
+  recorded_round_count: number;
+  verified_real_revision_round_count: number;
+  effective_open_feedback_count: number;
+  stage6_exit_candidate: boolean;
+  professional_passed: false;
+  requirement_categories: Stage6OperatorRequirementCategory[];
+  blocker_codes: string[];
+  blocking_evidence_paths: string[];
+  next_action: {
+    code: string;
+    label: string;
+    route: string;
+    external_input_required: boolean;
+  };
+}
+
+export interface Stage6OperatorControlTowerReport {
+  schema_version: 'story-agent-stage6-operator-control-tower/v1';
+  generated_at: string;
+  handoff_canonical_sha256: string;
+  source_readiness_canonical_sha256: string;
+  source_intake_canonical_sha256: string;
+  source_registry_canonical_sha256: string;
+  policy: {
+    read_only: true;
+    handoff_package_persisted: false;
+    handoff_generation_is_external_input_completion: false;
+    execute_endpoint_available: false;
+    fixture_simulation_fallback_prepared_counts_as_real_revision: false;
+    exit_candidate_counts_as_professional_pass: false;
+  };
+  summary: {
+    project_count: number;
+    external_handoff_project_count: number;
+    p0_ready_project_count: number;
+    blocked_project_count: number;
+    planned_revision_round_count: 30;
+    recorded_revision_round_count: number;
+    verified_real_revision_round_count: number;
+    effective_open_feedback_count: number;
+    exit_review_candidate_project_count: number;
+    professional_pass_count: 0;
+  };
+  lanes: Array<{
+    lane_id: 'package_inspection' | 'operator_intake' | 'revision_execution' | 'table_read_and_versions' | 'exit_audit';
+    label: string;
+    status: 'blocked' | 'ready_for_operator' | 'complete';
+    completed_count: number;
+    target_count: number;
+    route: string;
+    credit_granted: false;
+  }>;
+  projects: Stage6OperatorControlTowerProject[];
+}
+
+export interface Stage6TableReadEvidenceInspectionIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'request' | 'schema' | 'identity' | 'reviewer' | 'session' | 'credit';
+  blocking: boolean;
+}
+
+export interface Stage6TableReadEvidenceInspectionResult {
+  schema_version: 'story-agent-stage6-table-read-evidence-inspection/v1';
+  generated_at: string;
+  dry_run_only: true;
+  input_persisted: false;
+  table_read_state_mutated: false;
+  signature_created: false;
+  human_table_read_credit_granted: false;
+  execution_started: false;
+  professional_passed: false;
+  source_file_sha256: string;
+  canonical_artifact_sha256: string;
+  schema_valid: boolean;
+  signature_preflight_ready: boolean;
+  expected_binding: {
+    benchmark_id: string;
+    real_project_id: string;
+    round_number: 1 | 2;
+    session_reference: string;
+  };
+  checks: {
+    request_valid: boolean;
+    json_valid: boolean;
+    artifact_schema_valid: boolean;
+    p0_readiness_reverified: boolean;
+    benchmark_binding_valid: boolean;
+    real_project_binding_valid: boolean;
+    round_binding_valid: boolean;
+    session_reference_valid: boolean;
+    table_read_schedule_verified: boolean;
+    three_required_roles_present: boolean;
+    reviewer_ids_match_verified_intake: boolean;
+    feedback_ids_unique: boolean;
+    submitted_at_not_before_scheduled_at: boolean;
+  };
+  artifact_summary: {
+    benchmark_id: string;
+    real_project_id: string;
+    round_number: 1 | 2 | 0;
+    session_reference: string;
+    feedback_count: number;
+    writer_editor_feedback_count: number;
+    director_feedback_count: number;
+    fact_culture_reviewer_feedback_count: number;
+    evidence_required_feedback_count: number;
+    source_claimed_signature_or_credit: boolean;
+  };
+  issues: Stage6TableReadEvidenceInspectionIssue[];
+}
+
+export interface Stage6TableReadEvidenceInspectorWorkspace {
+  schema_version: 'story-agent-stage6-table-read-evidence-inspector-workspace/v1';
+  generated_at: string;
+  policy: {
+    dry_run_only: true;
+    input_files_are_not_persisted: true;
+    signature_preflight_is_signature: false;
+    self_reported_signature_or_credit_is_accepted: false;
+    human_table_read_credit_can_be_granted: false;
+    professional_pass_can_be_granted: false;
+  };
+  selected_benchmark_id: string;
+  selected_round_number: 1 | 2;
+  projects: Array<{
+    benchmark_id: string;
+    video_type: VideoType;
+    source_entry: string;
+    real_project_id: string;
+    readiness_status: 'ready' | 'blocked';
+  }>;
+  template: unknown;
+  template_raw_json: string;
+  template_inspection: Stage6TableReadEvidenceInspectionResult;
+}
+
+export interface Stage6ExitReviewSignatureIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'request' | 'schema' | 'trust' | 'binding' | 'decision' | 'signature' | 'credit';
+  blocking: boolean;
+}
+
+export interface Stage6ExitReviewSignatureInspectionResult {
+  schema_version: 'story-agent-stage6-exit-review-signature-inspection/v1';
+  generated_at: string;
+  dry_run_only: true;
+  attestation_persisted: false;
+  stage6_exit_record_persisted: false;
+  signature_created: false;
+  execution_started: false;
+  professional_passed: false;
+  source_file_sha256: string;
+  canonical_attestation_payload_sha256: string;
+  signature_verification_ready: boolean;
+  expected_binding: {
+    benchmark_id: string;
+    real_project_id: string;
+    exit_audit_binding_sha256: string;
+    stage6_exit_candidate: boolean;
+  };
+  checks: {
+    request_valid: boolean;
+    json_valid: boolean;
+    attestation_schema_valid: boolean;
+    trust_policy_schema_valid: boolean;
+    trust_policy_active: boolean;
+    stage6_exit_candidate_reverified: boolean;
+    benchmark_binding_valid: boolean;
+    real_project_binding_valid: boolean;
+    exit_audit_binding_valid: boolean;
+    approval_decision_valid: boolean;
+    required_roles_signed: boolean;
+    trusted_signer_bindings_valid: boolean;
+    signed_payload_digests_valid: boolean;
+    cryptographic_signatures_valid: boolean;
+    signature_timestamps_valid: boolean;
+  };
+  signature_summary: {
+    signature_count: number;
+    required_role_count: 3;
+    trusted_signer_count: number;
+    payload_digest_match_count: number;
+    cryptographically_verified_signature_count: number;
+    writer_editor_signature_count: number;
+    director_signature_count: number;
+    fact_culture_reviewer_signature_count: number;
+    source_claimed_professional_pass: boolean;
+  };
+  issues: Stage6ExitReviewSignatureIssue[];
+}
+
+export interface Stage6ExitReviewSignatureInspectorWorkspace {
+  schema_version: 'story-agent-stage6-exit-review-signature-inspector-workspace/v1';
+  generated_at: string;
+  trust_policy: {
+    policy_id: string;
+    status: 'preparation_template' | 'active';
+    trusted_signer_count: number;
+    required_role_count: 3;
+  };
+  policy: {
+    dry_run_only: true;
+    trust_policy_must_be_external_to_attestation: true;
+    signature_verification_is_signature_creation: false;
+    attestation_files_are_not_persisted: true;
+    stage6_exit_record_can_be_persisted: false;
+    exit_attestation_is_professional_pass: false;
+  };
+  selected_benchmark_id: string;
+  projects: Array<{
+    benchmark_id: string;
+    video_type: VideoType;
+    source_entry: string;
+    real_project_id: string;
+    stage6_exit_candidate: boolean;
+  }>;
+  template: unknown;
+  template_raw_json: string;
+  template_inspection: Stage6ExitReviewSignatureInspectionResult;
+}
+
+export type Stage7GoldenCardReviewerRole =
+  | 'source_reviewer'
+  | 'authorization_reviewer'
+  | 'type_director'
+  | 'fact_reviewer'
+  | 'ethics_reviewer'
+  | 'local_culture_reviewer';
+
+export interface Stage7GoldenCardReviewIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'request' | 'schema' | 'binding' | 'reviewer' | 'evidence' | 'decision' | 'credit';
+  blocking: boolean;
+}
+
+export interface Stage7GoldenCardReviewInspectionResult {
+  schema_version: 'story-agent-stage7-golden-card-review-inspection/v1';
+  generated_at: string;
+  dry_run_only: true;
+  review_record_persisted: false;
+  source_card_modified: false;
+  province_markdown_modified: false;
+  human_approval_granted: false;
+  golden_card_promoted: false;
+  professional_passed: false;
+  approval_preflight_ready: boolean;
+  source_file_sha256: string;
+  canonical_card_payload_sha256: string;
+  expected_binding: {
+    card_id: string;
+    video_type: VideoType;
+    source_card_file: string;
+    risk_tier: 'p0' | 'p1' | 'p2';
+    required_roles: Stage7GoldenCardReviewerRole[];
+  };
+  checks: {
+    request_valid: boolean;
+    json_valid: boolean;
+    intake_schema_valid: boolean;
+    card_found_in_index: boolean;
+    card_pending_human_review: boolean;
+    card_id_binding_valid: boolean;
+    video_type_binding_valid: boolean;
+    source_file_binding_valid: boolean;
+    source_file_digest_valid: boolean;
+    card_payload_digest_valid: boolean;
+    review_decision_recorded: boolean;
+    reviewer_roles_complete: boolean;
+    reviewer_identities_verified: boolean;
+    review_timestamps_valid: boolean;
+    evidence_refs_present: boolean;
+    review_notes_present: boolean;
+    unanimous_role_approval: boolean;
+    source_claimed_credit_rejected: boolean;
+  };
+  review_summary: {
+    review_count: number;
+    required_role_count: number;
+    matched_required_role_count: number;
+    verified_identity_count: number;
+    approving_role_count: number;
+    evidence_reference_count: number;
+    source_claimed_human_approval: boolean;
+    source_claimed_golden_card_promotion: boolean;
+    source_claimed_professional_pass: boolean;
+  };
+  issues: Stage7GoldenCardReviewIssue[];
+}
+
+export interface Stage7GoldenCardReviewWorkspace {
+  schema_version: 'story-agent-stage7-golden-card-review-workspace/v1';
+  generated_at: string;
+  policy: {
+    dry_run_only: true;
+    review_records_are_not_persisted: true;
+    source_cards_are_not_modified: true;
+    province_markdown_is_not_modified: true;
+    approval_preflight_is_human_approval: false;
+    pending_or_fixture_counts_as_approved: false;
+    professional_pass_can_be_granted: false;
+  };
+  summary: {
+    target_video_type_count: 15;
+    target_human_approved_card_count: 75;
+    indexed_candidate_card_count: number;
+    candidate_video_type_count: number;
+    missing_video_type_count: number;
+    missing_target_card_count: number;
+    pending_human_review_card_count: number;
+    approval_preflight_ready_card_count: 0;
+    human_approved_card_count: 0;
+    promoted_golden_card_count: 0;
+    professional_pass_count: 0;
+  };
+  video_types: Array<{
+    video_type: VideoType;
+    label: string;
+    target_card_count: 5;
+    indexed_candidate_card_count: number;
+    pending_human_review_card_count: number;
+    human_approved_card_count: 0;
+    missing_target_card_count: number;
+    coverage_status: 'candidate_coverage_present' | 'missing_candidates';
+  }>;
+  cards: Array<{
+    card_id: string;
+    video_type: VideoType;
+    entry_name: string;
+    province: string;
+    source_card_file: string;
+    risk_tier: 'p0' | 'p1' | 'p2';
+    review_status: string;
+    required_roles: Stage7GoldenCardReviewerRole[];
+    approval_preflight_ready: false;
+    human_approved: false;
+  }>;
+  selected_card_id: string;
+  template: unknown;
+  template_raw_json: string;
+  template_inspection: Stage7GoldenCardReviewInspectionResult;
+}
+
+export interface Stage7GoldenCardCandidateIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'request' | 'schema' | 'slot' | 'binding' | 'content' | 'evidence' | 'authorization' | 'credit';
+  blocking: boolean;
+}
+
+export interface Stage7GoldenCardCandidateInspectionResult {
+  schema_version: 'story-agent-stage7-golden-card-candidate-inspection/v1';
+  generated_at: string;
+  dry_run_only: true;
+  candidate_persisted: false;
+  golden_index_modified: false;
+  source_card_file_created: false;
+  province_markdown_modified: false;
+  human_approval_granted: false;
+  golden_card_promoted: false;
+  professional_passed: false;
+  candidate_ready_for_external_human_review: boolean;
+  source_file_sha256: string;
+  benchmark_project_sha256: string;
+  profile_contract_sha256: string;
+  expected_binding: {
+    slot_id: string;
+    candidate_id: string;
+    video_type: VideoType;
+    benchmark_id: string;
+    source_entry: string;
+    benchmark_file: string;
+    required_material_fields: string[];
+  };
+  checks: {
+    request_valid: boolean;
+    json_valid: boolean;
+    candidate_schema_valid: boolean;
+    slot_found: boolean;
+    target_video_type_still_missing_candidates: boolean;
+    slot_id_binding_valid: boolean;
+    candidate_id_binding_valid: boolean;
+    video_type_binding_valid: boolean;
+    benchmark_binding_valid: boolean;
+    source_entry_binding_valid: boolean;
+    benchmark_file_binding_valid: boolean;
+    benchmark_file_digest_valid: boolean;
+    benchmark_project_digest_valid: boolean;
+    profile_contract_digest_valid: boolean;
+    required_material_fields_present: boolean;
+    required_material_fields_filled: boolean;
+    visible_actions_present: boolean;
+    verified_facts_present: boolean;
+    source_refs_present: boolean;
+    forbidden_claims_present: boolean;
+    source_entry_confirmed: boolean;
+    source_authorization_resolved: boolean;
+    candidate_status_valid: boolean;
+    source_claimed_credit_rejected: boolean;
+  };
+  content_summary: {
+    required_material_field_count: number;
+    present_material_field_count: number;
+    filled_material_field_count: number;
+    visible_action_count: number;
+    verified_fact_count: number;
+    plausible_dramatization_count: number;
+    fictional_addition_count: number;
+    unknown_count: number;
+    forbidden_claim_count: number;
+    source_reference_count: number;
+    source_claimed_human_approval: boolean;
+    source_claimed_golden_card_promotion: boolean;
+    source_claimed_professional_pass: boolean;
+  };
+  issues: Stage7GoldenCardCandidateIssue[];
+}
+
+export interface Stage7GoldenCardCandidateWorkspace {
+  schema_version: 'story-agent-stage7-golden-card-candidate-workspace/v1';
+  generated_at: string;
+  policy: {
+    dry_run_only: true;
+    slots_are_not_golden_cards: true;
+    validated_candidates_are_not_persisted: true;
+    candidate_ready_is_human_approval: false;
+    benchmark_specs_are_not_real_model_outputs: true;
+    fixture_or_template_counts_as_candidate: false;
+    professional_pass_can_be_granted: false;
+  };
+  summary: {
+    target_video_type_count: 15;
+    already_covered_video_type_count: 3;
+    missing_video_type_count: 12;
+    planned_slot_count: 60;
+    candidate_import_ready_slot_count: 0;
+    authored_candidate_count: 0;
+    persisted_candidate_count: 0;
+    human_approved_card_count: 0;
+    professional_pass_count: 0;
+  };
+  video_types: Array<{
+    video_type: VideoType;
+    label: string;
+    current_candidate_count: number;
+    planned_slot_count: number;
+    missing_target_card_count: number;
+    status: 'already_has_candidate_coverage' | 'slots_prepared_missing_candidate_content';
+  }>;
+  slots: Array<{
+    slot_id: string;
+    candidate_id: string;
+    video_type: VideoType;
+    video_type_label: string;
+    benchmark_id: string;
+    source_entry: string;
+    benchmark_file: string;
+    required_material_fields: string[];
+    status: 'template_slot_only';
+    candidate_ready_for_external_human_review: false;
+    human_approved: false;
+  }>;
+  selected_slot_id: string;
+  template: unknown;
+  template_raw_json: string;
+  template_inspection: Stage7GoldenCardCandidateInspectionResult;
+}
+
+export interface Stage7GoldenCardReviewSignatureIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'request' | 'schema' | 'trust' | 'review' | 'binding' | 'decision' | 'signature' | 'credit';
+  blocking: boolean;
+}
+
+export interface Stage7GoldenCardReviewSignatureInspectionResult {
+  schema_version: 'story-agent-stage7-golden-card-review-signature-inspection/v1';
+  generated_at: string;
+  dry_run_only: true;
+  signature_created: false;
+  signed_review_persisted: false;
+  source_card_modified: false;
+  golden_index_modified: false;
+  province_markdown_modified: false;
+  human_approval_granted: false;
+  golden_card_promoted: false;
+  professional_passed: false;
+  signature_verification_ready: boolean;
+  canonical_review_payload_sha256: string;
+  canonical_signature_payload_sha256: string;
+  expected_binding: {
+    card_id: string;
+    video_type: VideoType;
+    source_card_file_sha256: string;
+    card_payload_sha256: string;
+    required_roles: Stage7GoldenCardReviewerRole[];
+    review_approval_preflight_ready: boolean;
+  };
+  checks: {
+    request_valid: boolean;
+    signature_json_valid: boolean;
+    signature_attestation_schema_valid: boolean;
+    trust_policy_schema_valid: boolean;
+    trust_policy_active: boolean;
+    review_approval_preflight_reverified: boolean;
+    card_id_binding_valid: boolean;
+    video_type_binding_valid: boolean;
+    source_file_digest_binding_valid: boolean;
+    card_payload_digest_binding_valid: boolean;
+    review_payload_digest_binding_valid: boolean;
+    approval_decision_valid: boolean;
+    required_roles_signed: boolean;
+    trusted_signer_bindings_valid: boolean;
+    signed_payload_digests_valid: boolean;
+    cryptographic_signatures_valid: boolean;
+    signature_timestamps_valid: boolean;
+    source_claimed_credit_rejected: boolean;
+  };
+  signature_summary: {
+    signature_count: number;
+    required_role_count: number;
+    trusted_signer_count: number;
+    payload_digest_match_count: number;
+    cryptographically_verified_signature_count: number;
+    source_claimed_human_approval: boolean;
+    source_claimed_golden_card_promotion: boolean;
+    source_claimed_professional_pass: boolean;
+  };
+  review_inspection: Stage7GoldenCardReviewInspectionResult;
+  issues: Stage7GoldenCardReviewSignatureIssue[];
+}
+
+export interface Stage7GoldenCardReviewSignatureWorkspace {
+  schema_version: 'story-agent-stage7-golden-card-review-signature-workspace/v1';
+  generated_at: string;
+  policy: {
+    dry_run_only: true;
+    trust_policy_is_external_to_attestation: true;
+    signature_verification_is_signature_creation: false;
+    signed_reviews_are_not_persisted: true;
+    verification_ready_is_human_approval: false;
+    golden_card_promotion_can_be_granted: false;
+    professional_pass_can_be_granted: false;
+  };
+  trust_policy: {
+    policy_id: string;
+    status: 'preparation_template' | 'active';
+    trusted_signer_count: number;
+  };
+  cards: Stage7GoldenCardReviewWorkspace['cards'];
+  selected_card_id: string;
+  review_template_raw_json: string;
+  signature_template: unknown;
+  signature_template_raw_json: string;
+  template_inspection: Stage7GoldenCardReviewSignatureInspectionResult;
+}
+
+export interface Stage7MaterialOperationsReport {
+  schema_version: 'story-agent-stage7-material-operations/v1';
+  generated_at: string;
+  policy: {
+    read_only: true;
+    handoff_is_memory_only: true;
+    handoff_is_external_completion: false;
+    template_or_slot_counts_as_candidate: false;
+    review_preflight_or_signature_fixture_counts_as_human_approval: false;
+    simulation_counts_as_real_domain_pack_review: false;
+    professional_pass_can_be_granted: false;
+  };
+  summary: {
+    golden_card_target_count: 75;
+    golden_card_indexed_candidate_count: number;
+    golden_card_pending_human_review_count: number;
+    golden_card_human_approved_count: 0;
+    covered_video_type_count: number;
+    missing_video_type_count: number;
+    planned_candidate_slot_count: number;
+    authored_candidate_count: 0;
+    golden_review_preflight_ready_count: 0;
+    golden_signature_verification_ready_count: 0;
+    trusted_golden_reviewer_signer_count: 0;
+    domain_pack_candidate_count: number;
+    domain_pack_evidence_complete_count: 0;
+    domain_pack_human_approved_count: 0;
+    domain_pack_pre_signature_ready_count: 0;
+    domain_pack_real_reviewer_submission_count: 0;
+    domain_pack_real_signature_count: 0;
+    domain_pack_formal_patch_count: 0;
+    promoted_domain_pack_count: 0;
+    external_handoff_task_count: number;
+    professional_pass_count: 0;
+  };
+  lanes: Array<{
+    lane_id: 'candidate_coverage' | 'golden_review' | 'golden_signature' | 'domain_pack_review' | 'domain_pack_promotion';
+    label: string;
+    status: 'blocked_external_input' | 'preparation_only';
+    current_count: number;
+    target_count: number;
+    blocker_count: number;
+    next_action: string;
+  }>;
+  tasks: Array<{
+    task_id: string;
+    scope: 'video_type' | 'golden_card' | 'domain_pack';
+    target_id: string;
+    label: string;
+    priority: 'p0' | 'p1' | 'p2';
+    next_action: 'complete_candidate_content_and_source_evidence' | 'complete_external_role_reviews' | 'complete_real_domain_pack_evidence_and_review';
+    evidence_status: 'missing_external_input';
+    counts_as_completion: false;
+  }>;
+  source_bindings: Array<{ path: string; sha256: string }>;
+  handoff_package: {
+    schema_version: 'story-agent-stage7-material-external-handoff/v1';
+    generated_at: string;
+    memory_only: true;
+    persisted: false;
+    execution_started: false;
+    human_approval_granted: false;
+    golden_card_promoted: false;
+    domain_pack_promoted: false;
+    professional_passed: false;
+    source_bindings: Array<{ path: string; sha256: string }>;
+    tasks: Stage7MaterialOperationsReport['tasks'];
+  };
+}
+
+export type Stage8BlindReviewRole =
+  | 'screenwriter_or_script_editor'
+  | 'genre_or_director_reviewer'
+  | 'fact_or_culture_reviewer';
+
+export type Stage8BlindReviewInputProvenance =
+  | 'operator_submitted_real_review'
+  | 'preparation_template'
+  | 'fixture'
+  | 'simulation'
+  | 'fallback';
+
+export interface Stage8BlindReviewIntakeProject {
+  benchmark_id: string;
+  video_type: VideoType;
+  source_entry: string;
+  provenance: Stage8BlindReviewInputProvenance;
+  run_id: string;
+  final_package: { path: string; sha256: string };
+  randomization: {
+    batch_id: string;
+    candidate_label: string;
+    candidate_origin_hidden_from_reviewers: boolean;
+  };
+  baseline: {
+    baseline_id: string;
+    path: string;
+    sha256: string;
+    rights: 'pending' | 'public_domain' | 'user_owned' | 'licensed';
+    average_score: number;
+    rights_verification: Stage6VerificationRecord;
+  };
+  reviewer_assignments: Array<{
+    role: Stage8BlindReviewRole;
+    reviewer_id: string;
+    identity_verification: Stage6VerificationRecord;
+    independence_verification: Stage6VerificationRecord;
+    conflict_of_interest_declared: boolean;
+  }>;
+  review_schedule: {
+    schedule_reference: string;
+    due_at: string;
+    timezone: string;
+    verification: Stage6VerificationRecord;
+  };
+  human_blind_review_passed: false;
+  professional_passed: false;
+}
+
+export interface Stage8BlindReviewIntake {
+  schema_version: 'story-agent-stage8-blind-review-intake/v1';
+  submitted_at: string;
+  operator: { operator_id: string; display_name: string; contact_reference: string };
+  projects: Stage8BlindReviewIntakeProject[];
+}
+
+export interface Stage8BlindReviewReadinessIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'schema' | 'registry' | 'provenance' | 'package' | 'randomization' | 'baseline' | 'reviewer' | 'schedule' | 'credit';
+}
+
+export interface Stage8BlindReviewProjectReadiness {
+  benchmark_id: string;
+  video_type: VideoType;
+  source_entry: string;
+  status: 'ready_for_external_blind_review' | 'blocked';
+  blockers: Stage8BlindReviewReadinessIssue[];
+  checks: {
+    project_schema_valid: boolean;
+    registry_binding_valid: boolean;
+    real_provenance_verified: boolean;
+    run_id_present_and_unique: boolean;
+    final_package_file_valid: boolean;
+    final_package_sha256_valid: boolean;
+    final_package_schema_valid: boolean;
+    final_package_video_type_binding_valid: boolean;
+    final_package_content_complete: boolean;
+    blind_randomization_valid: boolean;
+    authorized_baseline_file_valid: boolean;
+    authorized_baseline_sha256_valid: boolean;
+    baseline_rights_verified: boolean;
+    three_role_assignments_verified: boolean;
+    reviewer_independence_verified: boolean;
+    review_schedule_verified: boolean;
+    source_claimed_credit_rejected: boolean;
+  };
+  review_record_persisted: false;
+  human_blind_review_passed: false;
+  professional_passed: false;
+}
+
+export interface Stage8BlindReviewReadinessReport {
+  schema_version: 'story-agent-stage8-blind-review-readiness/v1';
+  generated_at: string;
+  source_intake_canonical_sha256: string;
+  source_bindings: Array<{ path: string; sha256: string }>;
+  policy: {
+    readiness_is_human_blind_review_pass: false;
+    fixture_simulation_fallback_counts_as_real_review: false;
+    threshold_evaluation_without_verified_human_artifacts_counts_as_pass: false;
+    intake_can_persist_reviews: false;
+    intake_can_grant_professional_pass: false;
+  };
+  global_errors: Stage8BlindReviewReadinessIssue[];
+  summary: {
+    target_video_type_count: 15;
+    project_count: 75;
+    ready_for_external_blind_review_count: number;
+    blocked_project_count: number;
+    reviewer_assignment_ready_project_count: number;
+    human_blind_review_pass_project_count: 0;
+    human_blind_review_pass_project_target: 45;
+    professional_pass_count: 0;
+  };
+  video_types: Array<{
+    video_type: VideoType;
+    label: string;
+    project_count: 5;
+    ready_project_count: number;
+    blocked_project_count: number;
+    human_blind_review_pass_project_count: 0;
+  }>;
+  projects: Stage8BlindReviewProjectReadiness[];
+}
+
+export interface Stage8BlindReviewValidationResult {
+  schema_version: 'story-agent-stage8-blind-review-validation/v1';
+  generated_at: string;
+  dry_run_only: true;
+  input_persisted: false;
+  review_record_persisted: false;
+  review_execution_started: false;
+  human_blind_review_passed: false;
+  professional_passed: false;
+  report: Stage8BlindReviewReadinessReport;
+}
+
+export interface Stage8BlindReviewWorkspace {
+  schema_version: 'story-agent-stage8-blind-review-workspace/v1';
+  generated_at: string;
+  policy: Stage8BlindReviewReadinessReport['policy'] & { dry_run_only: true };
+  thresholds: {
+    minimum_weighted_average_score: 85;
+    minimum_dimension_score: 75;
+    maximum_baseline_gap: 3;
+    minimum_production_advance_vote_ratio: '2/3';
+    required_role_count: 3;
+    hard_gate_failure_count_required: 0;
+  };
+  template: Stage8BlindReviewIntake;
+  template_raw_json: string;
+  template_validation: Stage8BlindReviewValidationResult;
+}
+
+export interface Stage8BlindReviewEvaluatorReadinessReport {
+  schema_version: 'story-agent-stage8-blind-review-evaluator-readiness/v1';
+  generated_at: string;
+  policy: {
+    score_threshold_is_human_blind_review_pass: false;
+    fixture_simulation_fallback_counts_as_real_review: false;
+    evaluator_can_grant_professional_pass: false;
+    external_signed_human_artifacts_required_for_finalization: true;
+  };
+  summary: {
+    target_video_type_count: 15;
+    weight_contract_ready_count: number;
+    weight_sum_valid_count: number;
+    unique_weight_contract_sha256_count: number;
+    blind_review_bundle_schema_version: 'professional-benchmark-blind-review/v2';
+    blind_review_decision_schema_version: 'professional-benchmark-blind-review-decision/v2';
+    real_review_bundle_count: 0;
+    human_blind_review_pass_project_count: 0;
+    professional_pass_count: 0;
+  };
+  thresholds: {
+    minimum_weighted_average_score: 85;
+    minimum_dimension_score: 75;
+    maximum_baseline_gap: 3;
+    minimum_production_advance_vote_ratio_numerator: 2;
+    minimum_production_advance_vote_ratio_denominator: 3;
+    required_role_count: 3;
+    required_hard_gate_failure_count: 0;
+  };
+  source_bindings: Array<{ path: string; sha256: string }>;
+  video_types: Array<{
+    video_type: VideoType;
+    label: string;
+    line: string;
+    weight_contract_sha256: string;
+    dimension_weights: Record<ProfessionalQualityDimensionId, number>;
+    weight_sum: 100;
+    top_weight_dimensions: Array<{ dimension_id: ProfessionalQualityDimensionId; weight: number }>;
+    evaluator_ready: true;
+    real_review_bundle_count: 0;
+    human_blind_review_pass_project_count: 0;
+    professional_pass_count: 0;
+  }>;
+}
+
+export interface Stage8BlindReviewSignatureIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'schema' | 'registry' | 'review' | 'decision' | 'binding' | 'trust' | 'signature' | 'credit';
+  blocking: true;
+}
+
+export interface Stage8BlindReviewSignatureInspectionResult {
+  schema_version: 'story-agent-stage8-blind-review-signature-inspection/v1';
+  generated_at: string;
+  dry_run_only: true;
+  signature_created: false;
+  signed_review_persisted: false;
+  finalization_started: false;
+  human_blind_review_passed: false;
+  signed_release_created: false;
+  professional_passed: false;
+  signature_verification_ready: boolean;
+  canonical_review_bundle_sha256: string;
+  canonical_decision_sha256: string;
+  canonical_signature_payload_sha256: string;
+  expected_binding: {
+    benchmark_id: string;
+    video_type: VideoType;
+    required_roles: Stage8BlindReviewRole[];
+  };
+  checks: {
+    request_valid: boolean;
+    review_bundle_json_valid: boolean;
+    review_bundle_schema_valid: boolean;
+    registry_binding_valid: boolean;
+    score_threshold_passed: boolean;
+    score_threshold_is_not_human_credit: boolean;
+    trust_policy_schema_valid: boolean;
+    trust_policy_active: boolean;
+    signature_attestation_json_valid: boolean;
+    signature_attestation_schema_valid: boolean;
+    benchmark_binding_valid: boolean;
+    video_type_binding_valid: boolean;
+    run_id_binding_valid: boolean;
+    review_bundle_digest_binding_valid: boolean;
+    decision_digest_binding_valid: boolean;
+    weight_contract_digest_binding_valid: boolean;
+    score_threshold_binding_valid: boolean;
+    required_roles_signed: boolean;
+    trusted_reviewer_bindings_valid: boolean;
+    signed_payload_digests_valid: boolean;
+    cryptographic_signatures_valid: boolean;
+    signature_timestamps_valid: boolean;
+    source_claimed_credit_rejected: boolean;
+  };
+  signature_summary: {
+    signature_count: number;
+    required_role_count: 3;
+    trusted_reviewer_count: number;
+    payload_digest_match_count: number;
+    cryptographically_verified_signature_count: number;
+    real_signature_credit_count: 0;
+    human_blind_review_pass_credit_count: 0;
+    professional_pass_count: 0;
+  };
+  decision_summary: {
+    video_type: VideoType | '';
+    average_score: number;
+    baseline_score_difference: number;
+    production_advance_vote_count: number;
+    hard_gate_failure_count: number;
+    score_threshold_passed: boolean;
+    counts_as_human_blind_review_pass: false;
+    professional_passed: false;
+    blockers: string[];
+  };
+  issues: Stage8BlindReviewSignatureIssue[];
+}
+
+export interface Stage8BlindReviewSignatureWorkspace {
+  schema_version: 'story-agent-stage8-blind-review-signature-workspace/v1';
+  generated_at: string;
+  policy: {
+    dry_run_only: true;
+    trust_policy_is_repository_controlled: true;
+    signature_verification_is_signature_creation: false;
+    signed_reviews_are_not_persisted: true;
+    score_threshold_is_human_blind_review_pass: false;
+    signature_ready_is_human_blind_review_pass: false;
+    professional_pass_can_be_granted: false;
+  };
+  summary: {
+    project_count: 75;
+    score_threshold_ready_project_count: 0;
+    signature_verification_ready_project_count: 0;
+    trusted_reviewer_count: number;
+    real_signature_count: 0;
+    human_blind_review_pass_project_count: 0;
+    professional_pass_count: 0;
+  };
+  trust_policy: { policy_id: string; status: 'preparation_template' | 'active'; trusted_reviewer_count: number };
+  projects: Array<{ benchmark_id: string; video_type: VideoType; source_entry: string; signature_status: 'blocked_missing_external_review_and_signatures' }>;
+  selected_benchmark_id: string;
+  review_bundle_template: unknown;
+  review_bundle_template_raw_json: string;
+  signature_template: unknown;
+  signature_template_raw_json: string;
+  template_inspection: Stage8BlindReviewSignatureInspectionResult;
+}
+
+export interface Stage8FinalizationPreflightIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'json' | 'schema' | 'identity' | 'artifact' | 'revision' | 'review' | 'trust' | 'signature' | 'release' | 'credit';
+  blocking: true;
+}
+
+export interface Stage8FinalizationDecision {
+  schema_version: 'professional-benchmark-finalization-decision/v2';
+  benchmark_id: string;
+  run_id: string;
+  video_type: VideoType | '';
+  eligible_for_signed_release: boolean;
+  professional_passed: false;
+  initial_quality_score: number;
+  final_quality_score: number;
+  verified_quality_improvement: number;
+  blockers: string[];
+}
+
+export interface Stage8FinalizationPreflightResult {
+  schema_version: 'story-agent-stage8-finalization-preflight-result/v1';
+  generated_at: string;
+  dry_run_only: true;
+  input_persisted: false;
+  finalization_started: false;
+  signed_release_created: false;
+  professional_passed: false;
+  expected_binding: { benchmark_id: string; video_type: VideoType };
+  checks: {
+    request_valid: boolean;
+    finalization_input_json_valid: boolean;
+    trust_policy_json_valid: boolean;
+    benchmark_binding_valid: boolean;
+    video_type_binding_valid: boolean;
+    finalization_input_schema_valid: boolean;
+    external_trust_policy_valid: boolean;
+    professional_artifact_completion_ready: boolean;
+    verified_real_revision_delta_ready: boolean;
+    signed_external_blind_review_ready: boolean;
+    eligible_for_signed_release: boolean;
+    durable_signed_release_present: false;
+    source_claimed_credit_rejected: boolean;
+  };
+  decision: Stage8FinalizationDecision;
+  issues: Stage8FinalizationPreflightIssue[];
+}
+
+export interface Stage8FinalizationPreflightWorkspace {
+  schema_version: 'story-agent-stage8-finalization-preflight-workspace/v1';
+  generated_at: string;
+  policy: {
+    dry_run_only: true;
+    finalization_candidate_is_signed_release: false;
+    finalization_candidate_is_professional_pass: false;
+    readiness_or_preparation_counts_as_real_evidence: false;
+    fixture_simulation_fallback_counts_as_real_evidence: false;
+    signed_release_can_be_created: false;
+    professional_pass_can_be_granted: false;
+  };
+  summary: {
+    project_count: 75;
+    artifact_completion_ready_project_count: number;
+    verified_revision_delta_ready_project_count: number;
+    signed_blind_review_ready_project_count: number;
+    external_trust_ready_project_count: number;
+    finalization_candidate_ready_project_count: number;
+    signed_release_project_count: 0;
+    professional_pass_count: 0;
+  };
+  trust_policy: { policy_id: string; status: 'preparation_template'; trusted_key_count: number };
+  projects: Array<{
+    benchmark_id: string;
+    video_type: VideoType;
+    source_entry: string;
+    status: 'blocked';
+    checks: {
+      professional_artifact_completion_ready: false;
+      verified_real_revision_delta_ready: false;
+      signed_external_blind_review_ready: false;
+      external_trust_policy_ready: false;
+      finalization_candidate_ready: false;
+      durable_signed_release_present: false;
+    };
+    blockers: Stage8FinalizationPreflightIssue[];
+    professional_passed: false;
+  }>;
+  selected_benchmark_id: string;
+  finalization_input_template: unknown;
+  finalization_input_template_raw_json: string;
+  trust_policy_template: unknown;
+  trust_policy_template_raw_json: string;
+  template_preflight: Stage8FinalizationPreflightResult;
+}
+
+export interface Stage8DurableReleaseIssue {
+  code: string;
+  path: string;
+  message: string;
+  gate: 'json' | 'schema' | 'identity' | 'decision' | 'manifest' | 'authority' | 'signature' | 'time' | 'duplicate' | 'credit';
+  blocking: true;
+}
+
+export interface Stage8DurableReleaseInspectionResult {
+  schema_version: 'story-agent-stage8-durable-release-inspection/v1';
+  generated_at: string;
+  dry_run_only: true;
+  release_record_created: false;
+  release_record_imported: false;
+  release_record_persisted: false;
+  professional_passed: false;
+  verification_ready: boolean;
+  expected_binding: { benchmark_id: string; video_type: VideoType };
+  canonical_finalization_decision_sha256: string;
+  canonical_artifact_manifest_sha256: string;
+  canonical_release_record_sha256: string;
+  canonical_signature_payload_sha256: string;
+  checks: {
+    request_valid: boolean;
+    finalization_decision_json_valid: boolean;
+    finalization_decision_schema_valid: boolean;
+    finalization_decision_quality_gate_valid: boolean;
+    finalization_candidate_eligible: boolean;
+    release_record_json_valid: boolean;
+    release_record_schema_valid: boolean;
+    benchmark_binding_valid: boolean;
+    run_id_binding_valid: boolean;
+    video_type_binding_valid: boolean;
+    finalization_decision_digest_binding_valid: boolean;
+    artifact_manifest_digest_valid: boolean;
+    artifact_manifest_identity_valid: boolean;
+    artifact_manifest_immutable_shape_valid: boolean;
+    artifact_manifest_required_records_bound: boolean;
+    authority_registry_schema_valid: boolean;
+    authority_registry_is_external: boolean;
+    authority_binding_valid: boolean;
+    authority_key_trusted: boolean;
+    release_id_unique: boolean;
+    issued_at_valid: boolean;
+    expires_at_valid: boolean;
+    signature_payload_digest_valid: boolean;
+    cryptographic_signature_valid: boolean;
+    source_claimed_credit_rejected: boolean;
+  };
+  summary: {
+    artifact_count: number;
+    trusted_authority_count: number;
+    known_release_id_count: number;
+    duplicate_release_id: boolean;
+    cryptographically_verified_signature_count: 0 | 1;
+    durable_signed_release_credit_count: 0;
+    professional_pass_count: 0;
+  };
+  issues: Stage8DurableReleaseIssue[];
+}
+
+export interface Stage8DurableReleaseWorkspace {
+  schema_version: 'story-agent-stage8-durable-release-workspace/v1';
+  generated_at: string;
+  policy: {
+    read_only: true;
+    authority_registry_is_repository_controlled: true;
+    request_supplied_authority_is_trusted: false;
+    verification_is_release_creation: false;
+    verification_is_durable_import: false;
+    fixture_simulation_prepared_counts_as_signed_release: false;
+    professional_pass_can_be_granted: false;
+  };
+  summary: {
+    project_count: 75;
+    finalization_candidate_ready_project_count: 0;
+    active_release_authority_count: number;
+    release_record_verification_ready_project_count: 0;
+    durable_signed_release_imported_count: 0;
+    professional_pass_count: 0;
+  };
+  authority_registry: {
+    registry_id: string;
+    status: 'preparation_template' | 'active';
+    active_authority_count: number;
+    known_release_id_count: number;
+  };
+  projects: Array<{
+    benchmark_id: string;
+    video_type: VideoType;
+    source_entry: string;
+    status: 'blocked_missing_finalization_candidate_and_external_release';
+    durable_signed_release_imported: false;
+    professional_passed: false;
+  }>;
+  selected_benchmark_id: string;
+  finalization_decision_template: Stage8FinalizationDecision;
+  finalization_decision_template_raw_json: string;
+  release_record_template: unknown;
+  release_record_template_raw_json: string;
+  template_inspection: Stage8DurableReleaseInspectionResult;
+}
+
+export type Stage8OperationsPhase =
+  | 'awaiting_blind_review_intake'
+  | 'awaiting_external_review_bundle'
+  | 'awaiting_three_role_signatures'
+  | 'awaiting_finalization_candidate'
+  | 'awaiting_durable_release_record'
+  | 'awaiting_authorized_external_import';
+
+export type Stage8OperationsNextActionCode =
+  | 'complete_external_blind_review_intake'
+  | 'submit_external_human_review_bundle'
+  | 'complete_three_role_review_signatures'
+  | 'assemble_finalization_candidate_evidence'
+  | 'obtain_independent_durable_signed_release'
+  | 'complete_authorized_external_release_import';
+
+export interface Stage8OperationsProject {
+  benchmark_id: string;
+  video_type: VideoType;
+  source_entry: string;
+  phase: Stage8OperationsPhase;
+  checks: {
+    blind_review_intake_ready: boolean;
+    evaluator_contract_ready: boolean;
+    real_review_bundle_present: boolean;
+    three_role_signature_verification_ready: boolean;
+    finalization_candidate_ready: boolean;
+    durable_release_verification_ready: boolean;
+    durable_release_imported: false;
+    human_blind_review_passed: false;
+    professional_passed: false;
+  };
+  blocker_codes: string[];
+  next_action: {
+    code: Stage8OperationsNextActionCode;
+    label: string;
+    route: string;
+    required_external_evidence: string[];
+    external_input_required: true;
+    counts_as_completion: false;
+  };
+}
+
+export interface Stage8OperationsReport {
+  schema_version: 'story-agent-stage8-operations/v1';
+  generated_at: string;
+  handoff_canonical_sha256: string;
+  policy: {
+    read_only: true;
+    handoff_is_memory_only: true;
+    handoff_is_external_completion: false;
+    execute_or_import_endpoint_available: false;
+    readiness_or_machine_threshold_can_skip_external_evidence: false;
+    fixture_simulation_fallback_prepared_counts_as_real_review: false;
+    signature_verification_is_real_signature_credit: false;
+    finalization_candidate_is_signed_release: false;
+    release_verification_is_durable_import: false;
+    professional_pass_can_be_granted: false;
+  };
+  summary: {
+    project_count: 75;
+    external_handoff_project_count: 75;
+    blind_review_intake_ready_project_count: number;
+    evaluator_contract_ready_video_type_count: number;
+    real_review_bundle_count: 0;
+    three_role_signature_ready_project_count: 0;
+    finalization_candidate_ready_project_count: 0;
+    durable_release_verification_ready_project_count: 0;
+    durable_release_imported_count: 0;
+    human_blind_review_pass_project_count: 0;
+    professional_pass_count: 0;
+  };
+  lanes: Array<{
+    lane_id: 'blind_review_intake' | 'all_format_evaluator' | 'review_signatures' | 'finalization_candidate' | 'durable_release';
+    label: string;
+    status: 'blocked_external_input' | 'contract_ready_waiting_external_input';
+    current_count: number;
+    target_count: number;
+    blocker_count: number;
+    route: string;
+    next_action: string;
+    credit_granted: false;
+  }>;
+  projects: Stage8OperationsProject[];
+  source_bindings: Array<{ path: string; sha256: string }>;
+  handoff_package: {
+    schema_version: 'story-agent-stage8-external-handoff/v1';
+    generated_at: string;
+    canonical_sha256: string;
+    memory_only: true;
+    persisted: false;
+    execution_started: false;
+    external_evidence_completed: false;
+    human_blind_review_passed: false;
+    durable_release_imported: false;
+    professional_passed: false;
+    source_bindings: Array<{ path: string; sha256: string }>;
+    tasks: Array<{
+      task_id: string;
+      benchmark_id: string;
+      video_type: VideoType;
+      source_entry: string;
+      phase: Stage8OperationsPhase;
+      next_action: Stage8OperationsProject['next_action'];
+    }>;
+  };
+}
+
+export type Stage6EvidenceBadge =
+  | 'real_model_verified'
+  | 'human_authored_verified'
+  | 'simulation'
+  | 'fixture'
+  | 'prepared'
+  | 'blocked';
+
+export interface Stage6RevisionWorkspaceProjectSummary {
+  benchmark_id: string;
+  video_type: VideoType;
+  source_entry: string;
+  real_project_id: string;
+  readiness_status: 'ready' | 'blocked';
+  execution_status: 'blocked' | 'awaiting_round_1' | 'round_1_completed' | 'two_rounds_completed';
+  completed_round_count: number;
+  verified_real_revision_round_count: number;
+  open_feedback_count: number;
+  evidence_badge: Stage6EvidenceBadge;
+  stage6_exit_candidate: boolean;
+  professional_passed: false;
+  blockers: string[];
+}
+
+export interface Stage6RevisionWorkspacePortfolio {
+  schema_version: 'story-agent-stage6-revision-workspace-portfolio/v1';
+  generated_at: string;
+  policy: {
+    machine_candidate_is_professional_pass: false;
+    readiness_is_revision_completion: false;
+    simulation_fixture_fallback_is_real_evidence: false;
+  };
+  summary: {
+    project_count: number;
+    blocked_project_count: number;
+    ready_project_count: number;
+    completed_revision_round_count: number;
+    verified_real_revision_round_count: number;
+    professional_pass_count: 0;
+  };
+  projects: Stage6RevisionWorkspaceProjectSummary[];
+}
+
+export interface Stage6RevisionWorkspaceVersion {
+  round_number: 0 | 1 | 2;
+  label: string;
+  available: boolean;
+  package_sha256: string;
+  full_text: string;
+  scene_count: number;
+  total_score?: number;
+  quality_dimensions: Array<{
+    dimension_id: ProfessionalQualityDimensionId;
+    label: string;
+    score?: number;
+    delta_from_previous?: number;
+  }>;
+  hard_gate_failures: string[];
+  evidence_badge: Stage6EvidenceBadge;
+  professional_passed: false;
+}
+
+export interface Stage6RevisionWorkspaceFeedbackItem {
+  feedback_id: string;
+  round_number: 1 | 2;
+  source: 'writer_editor' | 'director' | 'fact_culture_reviewer' | 'user';
+  category: 'structure' | 'character_or_information' | 'scene' | 'dialogue_or_narration' | 'pacing' | 'fact_and_culture';
+  note: string;
+  issue_id: string;
+  target_sections: ProfessionalTextPackageField[];
+  evidence_required: boolean;
+  immutable_status: 'open' | 'closed';
+  effective_status: 'open' | 'closed';
+  assigned_reviewer_id: string;
+  resolution_note: string;
+  reopened: boolean;
+}
+
+export interface Stage6RevisionWorkspaceDetail {
+  schema_version: 'story-agent-stage6-revision-workspace-detail/v1';
+  generated_at: string;
+  project: Stage6RevisionWorkspaceProjectSummary;
+  coverage: Array<{
+    category: 'structure' | 'character_or_information' | 'scene' | 'dialogue_or_narration' | 'pacing' | 'fact_and_culture';
+    label: string;
+    notes: string[];
+    action_items: string[];
+    issue_ids: string[];
+  }>;
+  versions: Stage6RevisionWorkspaceVersion[];
+  text_diffs: Array<{
+    from_round: 0 | 1;
+    to_round: 1 | 2;
+    available: boolean;
+    added_line_count: number;
+    removed_line_count: number;
+    hunks: Array<{ type: 'same' | 'added' | 'removed'; text: string }>;
+  }>;
+  feedback: Stage6RevisionWorkspaceFeedbackItem[];
+  reviewers: Array<{
+    role: Stage6ReviewerRole;
+    reviewer_id: string;
+    display_name: string;
+    identity_verified: boolean;
+  }>;
+  feedback_drafts: Array<{
+    draft_id: string;
+    round_number: 1 | 2;
+    reviewer_id: string;
+    category: 'structure' | 'character_or_information' | 'scene' | 'dialogue_or_narration' | 'pacing' | 'fact_and_culture';
+    note: string;
+    issue_id: string;
+    target_sections: ProfessionalTextPackageField[];
+    evidence_required: boolean;
+    created_at: string;
+    created_by: string;
+    provenance: 'preparation_draft';
+    counts_as_human_table_read: false;
+  }>;
+  derived_rebuilds: Array<{
+    round_number: 1 | 2;
+    required_sections: ProfessionalTextPackageField[];
+    rebuilt_sections: ProfessionalTextPackageField[];
+    complete: boolean;
+  }>;
+  effective_stage6_exit_candidate: boolean;
+  review_state_revision: number;
+  professional_passed: false;
+}
+
+export interface Stage6FeedbackReviewUpdateRequest {
+  schema_version: 'story-agent-stage6-feedback-review-update/v1';
+  action: 'assign' | 'close' | 'reopen';
+  expected_state_revision: number;
+  actor_id: string;
+  actor_name: string;
+  assigned_reviewer_id?: string;
+  resolution_note?: string;
+}
+
+export interface Stage6FeedbackDraftCreateRequest {
+  schema_version: 'story-agent-stage6-feedback-draft-create/v1';
+  round_number: 1 | 2;
+  reviewer_id: string;
+  category: 'structure' | 'character_or_information' | 'scene' | 'dialogue_or_narration' | 'pacing' | 'fact_and_culture';
+  note: string;
+  issue_id: string;
+  target_sections: ProfessionalTextPackageField[];
+  evidence_required: boolean;
+  actor_id: string;
+  actor_name: string;
+}
+
 export type EvidenceBoundaryType = 'verified' | 'uncertain' | 'creative_treatment';
 
 export interface EvidenceBoundary {
@@ -8361,6 +10381,7 @@ export interface StoryGenerateResult {
   reference_trace?: ReferenceTrace[];
   repair_trace?: StoryRepairTrace[];
   production_board_repair_trace?: StoryProductionBoardRepairTrace[];
+  professional_text_package?: ProfessionalTextPackage;
   memory_mosaic_seed?: MemoryMosaicStorySeed;
   // Type-specific optional fields — character_story / historical_drama / legend_story
   characters?: StoryCharacter[];

@@ -1,0 +1,1345 @@
+{
+  "schema_version": "story-agent-stage6-real-revision-exit-audit/v1",
+  "generated_at": "2026-07-11T16:11:29.171Z",
+  "source_readiness_canonical_sha256": "df8a2ee492f9673927c93c64295825bd9512dfb802e36d19bb7021c63c1a948c",
+  "source_intake_canonical_sha256": "0d1d66e38c14c5ef113b7221b0545e1d666c73d6a0b5f3981011c98ee058566c",
+  "source_registry_canonical_sha256": "d19140ac1d8b6f10b99c6c34244a57f469900e42dde0fb68126b808d8dc1e6ac",
+  "policy": {
+    "required_real_revision_round_count": 2,
+    "simulation_fixture_fallback_counts_as_real_revision": false,
+    "prepared_or_recovered_counts_as_real_revision": false,
+    "effective_open_feedback_blocks_exit": true,
+    "stage6_exit_candidate_counts_as_professional_pass": false
+  },
+  "summary": {
+    "project_count": 15,
+    "blocked_project_count": 15,
+    "eligible_for_stage6_exit_review_project_count": 0,
+    "recorded_round_count": 0,
+    "verified_real_revision_round_count": 0,
+    "effective_open_feedback_count": 0,
+    "professional_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "stage6-001-character-story",
+      "video_type": "character_story",
+      "source_entry": "周敦颐——理学开山鼻祖",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-001-character-story.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-001-character-story.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-001-character-story.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-001-character-story.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-001-character-story.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-001-character-story.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-001-character-story.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-001-character-story.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-001-character-story.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-001-character-story.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-001-character-story.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-001-character-story.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-002-historical-drama",
+      "video_type": "historical_drama",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-002-historical-drama.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-002-historical-drama.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-002-historical-drama.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-002-historical-drama.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-002-historical-drama.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-002-historical-drama.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-002-historical-drama.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-002-historical-drama.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-002-historical-drama.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-002-historical-drama.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-002-historical-drama.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-002-historical-drama.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-003-legend-story",
+      "video_type": "legend_story",
+      "source_entry": "洞庭湖君山——传说叠加的洞庭明珠",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-003-legend-story.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-003-legend-story.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-003-legend-story.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-003-legend-story.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-003-legend-story.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-003-legend-story.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-003-legend-story.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-003-legend-story.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-003-legend-story.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-003-legend-story.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-003-legend-story.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-003-legend-story.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-004-children-story",
+      "video_type": "children_story",
+      "source_entry": "马王堆汉墓——沉睡两千年的汉代文明",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-004-children-story.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-004-children-story.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-004-children-story.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-004-children-story.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-004-children-story.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-004-children-story.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-004-children-story.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-004-children-story.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-004-children-story.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-004-children-story.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-004-children-story.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-004-children-story.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-005-ai-comic-drama",
+      "video_type": "ai_comic_drama",
+      "source_entry": "通道侗锦——湘西南侗寨的指尖花雨",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-005-ai-comic-drama.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-005-ai-comic-drama.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-005-ai-comic-drama.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-005-ai-comic-drama.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-005-ai-comic-drama.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-005-ai-comic-drama.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-005-ai-comic-drama.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-005-ai-comic-drama.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-005-ai-comic-drama.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-005-ai-comic-drama.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-005-ai-comic-drama.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-005-ai-comic-drama.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-006-culture-promo",
+      "video_type": "culture_promo",
+      "source_entry": "湘绣——中国四大名绣之一",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-006-culture-promo.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-006-culture-promo.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-006-culture-promo.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-006-culture-promo.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-006-culture-promo.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-006-culture-promo.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-006-culture-promo.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-006-culture-promo.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-006-culture-promo.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-006-culture-promo.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-006-culture-promo.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-006-culture-promo.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-007-heritage-promo",
+      "video_type": "heritage_promo",
+      "source_entry": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-007-heritage-promo.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-007-heritage-promo.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-007-heritage-promo.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-007-heritage-promo.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-007-heritage-promo.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-007-heritage-promo.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-007-heritage-promo.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-007-heritage-promo.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-007-heritage-promo.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-007-heritage-promo.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-007-heritage-promo.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-007-heritage-promo.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-008-city-brand-promo",
+      "video_type": "city_brand_promo",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-008-city-brand-promo.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-008-city-brand-promo.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-008-city-brand-promo.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-008-city-brand-promo.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-008-city-brand-promo.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-008-city-brand-promo.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-008-city-brand-promo.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-008-city-brand-promo.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-008-city-brand-promo.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-008-city-brand-promo.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-008-city-brand-promo.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-008-city-brand-promo.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-009-social-short",
+      "video_type": "social_short",
+      "source_entry": "永州摩崖石刻——柳宗元书写的山水文学基因",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-009-social-short.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-009-social-short.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-009-social-short.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-009-social-short.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-009-social-short.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-009-social-short.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-009-social-short.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-009-social-short.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-009-social-short.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-009-social-short.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-009-social-short.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-009-social-short.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-010-documentary-short",
+      "video_type": "documentary_short",
+      "source_entry": "马王堆汉墓——沉睡两千年的汉代文明",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-010-documentary-short.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-010-documentary-short.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-010-documentary-short.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-010-documentary-short.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-010-documentary-short.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-010-documentary-short.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-010-documentary-short.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-010-documentary-short.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-010-documentary-short.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-010-documentary-short.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-010-documentary-short.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-010-documentary-short.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-011-explainer-video",
+      "video_type": "explainer_video",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-011-explainer-video.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-011-explainer-video.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-011-explainer-video.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-011-explainer-video.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-011-explainer-video.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-011-explainer-video.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-011-explainer-video.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-011-explainer-video.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-011-explainer-video.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-011-explainer-video.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-011-explainer-video.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-011-explainer-video.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-012-lecture-video",
+      "video_type": "lecture_video",
+      "source_entry": "岳麓书院——千年学府与实事求是",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-012-lecture-video.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-012-lecture-video.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-012-lecture-video.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-012-lecture-video.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-012-lecture-video.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-012-lecture-video.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-012-lecture-video.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-012-lecture-video.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-012-lecture-video.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-012-lecture-video.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-012-lecture-video.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-012-lecture-video.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-013-education-training",
+      "video_type": "education_training",
+      "source_entry": "湘绣——中国四大名绣之一",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-013-education-training.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-013-education-training.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-013-education-training.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-013-education-training.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-013-education-training.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-013-education-training.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-013-education-training.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-013-education-training.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-013-education-training.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-013-education-training.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-013-education-training.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-013-education-training.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-014-scene-short",
+      "video_type": "scene_short",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-014-scene-short.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-014-scene-short.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-014-scene-short.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-014-scene-short.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-014-scene-short.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-014-scene-short.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-014-scene-short.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-014-scene-short.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-014-scene-short.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-014-scene-short.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-014-scene-short.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-014-scene-short.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-015-landscape-mood",
+      "video_type": "landscape_mood",
+      "source_entry": "张家界武陵源——3.8亿年雕琢的世界自然遗产",
+      "real_project_id": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "p0_operator_identity_missing",
+          "detail": "operator"
+        },
+        {
+          "code": "p0_operator_contact_reference_missing",
+          "detail": "operator.contact_reference"
+        },
+        {
+          "code": "p0_real_input_provenance_required",
+          "detail": "projects.stage6-015-landscape-mood.provenance"
+        },
+        {
+          "code": "p0_real_project_id_missing",
+          "detail": "projects.stage6-015-landscape-mood.real_project_id"
+        },
+        {
+          "code": "p0_initial_package_path_missing",
+          "detail": "projects.stage6-015-landscape-mood.initial_package.path"
+        },
+        {
+          "code": "p0_creator_authorization_unverified",
+          "detail": "projects.stage6-015-landscape-mood.creator_authorization"
+        },
+        {
+          "code": "p0_revision_budget_unverified",
+          "detail": "projects.stage6-015-landscape-mood.revision_budget"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-015-landscape-mood.reviewers.writer_editor"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-015-landscape-mood.reviewers.writer_editor.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-015-landscape-mood.reviewers.director"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-015-landscape-mood.reviewers.director.identity_verification"
+        },
+        {
+          "code": "p0_anonymous_reviewer_not_allowed",
+          "detail": "projects.stage6-015-landscape-mood.reviewers.fact_culture_reviewer"
+        },
+        {
+          "code": "p0_reviewer_identity_unverified",
+          "detail": "projects.stage6-015-landscape-mood.reviewers.fact_culture_reviewer.identity_verification"
+        },
+        {
+          "code": "p0_table_read_schedule_unverified",
+          "detail": "projects.stage6-015-landscape-mood.table_read"
+        },
+        {
+          "code": "revision_execution_state_missing",
+          "detail": "No P1 execution state exists for this project."
+        }
+      ],
+      "checks": {
+        "p0_readiness_reverified": false,
+        "two_rounds_completed": false,
+        "two_rounds_real_provenance_verified": false,
+        "immutable_artifact_dag_valid": false,
+        "package_hash_chain_valid": false,
+        "revision_budget_valid": false,
+        "three_role_table_read_valid": false,
+        "all_feedback_effectively_closed": false,
+        "derived_rebuilds_complete": false,
+        "quality_improvement_traceable": false
+      },
+      "recorded_round_count": 0,
+      "verified_real_revision_round_count": 0,
+      "effective_open_feedback_count": 0,
+      "total_cost_amount": 0,
+      "cost_currency": "",
+      "stage6_exit_candidate": false,
+      "professional_passed": false
+    }
+  ]
+}

@@ -1,0 +1,181 @@
+{
+  "schema_version": "character-story-professional-benchmark-specs/v1",
+  "created_at": "2026-07-11T00:00:00.000+08:00",
+  "video_type": "character_story",
+  "policy": {
+    "real_model_output_required": true,
+    "model_and_prompt_version_required": true,
+    "initial_and_final_draft_required": true,
+    "human_blind_review_required_for_professional_pass": true,
+    "fixture_or_simulation_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "fixed_real_model_project_pass_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "character-benchmark-001-zhou-dunyi-choice",
+      "source_province": "湖南",
+      "source_entry": "周敦颐——理学开山鼻祖",
+      "central_event": "南安军拒签冤案：周敦颐拒绝在不应判死的案件上签字，并取出告身准备辞官",
+      "dramatic_question": "当上级命令与人命事实冲突时，周敦颐是否愿意用仕途为拒签承担代价？",
+      "creative_brief": {
+        "target_audience": "对传统文化有兴趣的18至35岁短视频观众",
+        "platform": "横竖屏均可改编的剧情短片",
+        "target_duration": "5分钟",
+        "communication_goal": "用拒签冤案中的选择与代价呈现人物操守，不写成生平年表。",
+        "production_goal": "形成可进入分镜和导演文本的单事件人物剧本。"
+      },
+      "audience_promise": "观众将看到一个官员如何在仕途与人命之间作出不可撤回的选择。",
+      "required_evidence_focus": [
+        "《宋史》可考的南安军拒签冤案",
+        "辞官告身和王逵改判的史实边界",
+        "不得把影视化对白伪装成史料原文"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "character-benchmark-002-wang-fuzhi-last-stand",
+      "source_province": "湖南",
+      "source_entry": "王夫之——船山先生",
+      "central_event": "南明政治实践受挫并离开后，王夫之在抗清失败与清贫隐居中选择继续著述",
+      "dramatic_question": "当现实行动失败且著述未必能在生前流传时，王夫之为什么仍要继续写下去？",
+      "creative_brief": {
+        "target_audience": "大学生与青年知识观众",
+        "platform": "人物历史剧情短片",
+        "target_duration": "8分钟",
+        "communication_goal": "围绕时代崩塌中的思想选择，呈现人物如何承受失败并继续著述。",
+        "production_goal": "形成有时代压力、关系变化和晚年余味的分场剧本。"
+      },
+      "audience_promise": "观众将理解一次政治与人生失败如何转化为持续数十年的思想行动。",
+      "required_evidence_focus": [
+        "人物经历与时代事件的可考边界",
+        "隐居著述与后世评价不得倒置为当时结果",
+        "避免把思想评价替代人物行动"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "character-benchmark-003-jia-yi-changsha",
+      "source_province": "湖南",
+      "source_entry": "贾谊——长沙太傅的千年哀思",
+      "central_event": "贾谊被贬长沙王太傅后，在政治失意中仍选择继续观察现实并写作政论",
+      "dramatic_question": "当改革主张换来贬谪时，贾谊是沉默自保，还是继续用文字承担政治判断？",
+      "creative_brief": {
+        "target_audience": "城市文化与历史人物内容观众",
+        "platform": "城市文化人物短片",
+        "target_duration": "5分钟",
+        "communication_goal": "用贬谪长沙后的处境、关系和选择呈现才华与命运的张力。",
+        "production_goal": "连接人物行动与长沙空间，但不虚构未有证据的城市事件。"
+      },
+      "audience_promise": "观众将看到一位年轻政治家在被排斥之后如何重新定义自己的表达。",
+      "required_evidence_focus": [
+        "贬为长沙王太傅的时间与身份",
+        "故居、文章和后世纪念空间的时序边界",
+        "不得直接复刻受版权保护的现代改写文本"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "character-benchmark-004-tao-kan-discipline",
+      "source_province": "湖南",
+      "source_entry": "陶侃——长沙公的精进与隐忍",
+      "central_event": "陶侃在安逸环境中坚持每日运甓，以具体行动抵抗松懈并承受旁人不解",
+      "dramatic_question": "当勤勉被旁人视为无用自苦时，陶侃如何证明自律不是姿态而是现实准备？",
+      "creative_brief": {
+        "target_audience": "职场成长与历史人物故事观众",
+        "platform": "人物选择短片",
+        "target_duration": "3分钟",
+        "communication_goal": "用一个具体行动检验“勤勉”是否只是标签，并呈现其关系代价。",
+        "production_goal": "形成低场景数、高动作密度的可拍人物故事。"
+      },
+      "audience_promise": "观众将看到自律如何在现实压力中成为行动，而不只是一句格言。",
+      "required_evidence_focus": [
+        "运甓等典故的来源等级",
+        "历史人物评价与可证事件分开",
+        "不得把后世成语直接写成现场原话"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "character-benchmark-005-huaisu-writing",
+      "source_province": "湖南",
+      "source_entry": "怀素——天地悠然的草书僧人",
+      "central_event": "缺少纸张的怀素选择以蕉叶和漆盘持续练字，在失败与质疑中形成自己的书写道路",
+      "dramatic_question": "当材料匮乏且练习尚未得到认可时，怀素是否会继续把每一次失败变成下一笔？",
+      "creative_brief": {
+        "target_audience": "书法、美术与东方审美内容观众",
+        "platform": "人物艺术短片",
+        "target_duration": "5分钟",
+        "communication_goal": "用练习、失败、旁人关系和一次创作选择呈现艺术人格。",
+        "production_goal": "形成动作、纸墨声音和书写空间共同推进的导演文本。"
+      },
+      "audience_promise": "观众将看到狂草的速度背后需要怎样漫长、具体且有代价的训练。",
+      "required_evidence_focus": [
+        "蕉叶练字、醉书等故事的文献与传说边界",
+        "书法作品与人物传说不得互相替代",
+        "艺术风格评价必须落到可见动作和材料"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "character-failure-001-chronology-summary",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "正文按出生、求学、任官、晚年顺序罗列，没有单一事件和不可撤回的选择。",
+      "mutations": [
+        "replace_full_text_with_chronology_summary",
+        "remove_scene_turns"
+      ],
+      "expected_hard_gate_ids": [
+        "full_text_not_final",
+        "scene_action_or_turn_missing"
+      ],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "character-failure-002-no-choice-cost",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "主角只有抽象品格和目标，没有阻力、两难、关键选择与现实代价。",
+      "mutations": [
+        "remove_resistance",
+        "remove_choice",
+        "remove_cost",
+        "freeze_relationship_state"
+      ],
+      "expected_hard_gate_ids": [
+        "resistance_missing",
+        "choice_missing",
+        "cost_missing",
+        "relationship_change_missing"
+      ],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "character-failure-003-no-truth-dialogue-boundary",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "没有事实与戏剧化分层，角色声线相同，关键对白只是旁白信息搬运。",
+      "mutations": [
+        "remove_evidence_items",
+        "remove_unknowns_and_disclaimers",
+        "remove_voice_rules",
+        "remove_subtext_strategy"
+      ],
+      "expected_hard_gate_ids": [
+        "dialogue_voice_or_subtext_missing",
+        "truth_boundary_missing"
+      ],
+      "professional_passed": false
+    }
+  ]
+}

@@ -1,0 +1,573 @@
+{
+  "schema_version": "domain-pack-human-review-patch-isolation/v1",
+  "updated_at": "2026-07-10",
+  "status": "review_templates_created_patch_isolated",
+  "scope": "Iteration 14：为 9 个候选 Domain Pack 建立独立人工审稿模板、pass 候选草案准备模板、repair/reject 可追踪状态和正式 Patch 隔离规则。",
+  "source_precheck_file": "data/production-cards/p0-p1-review-export-and-domain-pack-precheck.json",
+  "source_domain_pack_candidate_file": "data/domain-packs/phase2-candidate-rule-packs.json",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "manual_patch_required": true,
+    "current_layer": "human_review_templates_and_patch_isolation_only",
+    "review_templates_are_formal_approval": false
+  },
+  "counts": {
+    "domain_pack_review_template_count": 9,
+    "domain_pack_review_markdown_count": 9,
+    "pass_draft_prepare_template_count": 2,
+    "tracked_repair_reject_task_count": 14,
+    "repair_task_status_count": 11,
+    "reject_task_status_count": 3,
+    "patch_isolation_rule_count": 6,
+    "formal_patch_count": 0,
+    "machine_gate_count": 7
+  },
+  "patch_isolation_rules": [
+    {
+      "rule_id": "no-automatic-formal-domain-pack-patch",
+      "description": "候选 Domain Pack 审稿模板不能自动写入 data/domain-packs/china-culture.json。"
+    },
+    {
+      "rule_id": "no-province-markdown-writeback",
+      "description": "Domain Pack 审稿、pass 草案准备和 repair/reject 状态均不得写入 data/provinces/*.md。"
+    },
+    {
+      "rule_id": "pass-is-draft-preparation-only",
+      "description": "pass 候选只允许生成草案准备模板，不代表真实人工审稿通过。"
+    },
+    {
+      "rule_id": "repair-must-stay-open-until-evidence",
+      "description": "repair 任务在来源、授权、事实边界或表达边界修复前保持 open。"
+    },
+    {
+      "rule_id": "reject-requires-new-source-package",
+      "description": "reject 任务必须重新取材或移除当前候选，不能复用原候选直接晋升。"
+    },
+    {
+      "rule_id": "manual-patch-required-after-real-review",
+      "description": "真实人工审稿通过后仍需人工 Patch 审核，不允许自动改正式库。"
+    }
+  ],
+  "domain_pack_review_templates": [
+    {
+      "template_id": "domain-pack-review-template-001",
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "entry_name": "重大历史伤痛证据表达候选包",
+      "path": "docs/production-cards/domain-pack-review-template-dp-sensitive-history-evidence-expression-20260710.md",
+      "review_status": "template_pending_human_review",
+      "linked_precheck_status": "blocked_pending_real_human_review",
+      "required_reviewer_roles": [
+        "事实审稿",
+        "伦理审稿",
+        "纪录片/漫剧导演审稿"
+      ],
+      "required_sections": [
+        "来源与证据链",
+        "事实边界",
+        "表达禁区",
+        "可复用规则",
+        "样本验证",
+        "晋升结论"
+      ],
+      "linked_quality_rule_ids": [
+        "p0-trauma-history-no-reenactment-expanded",
+        "p0-trauma-history-no-false-testimony"
+      ],
+      "formal_patch_created": false
+    },
+    {
+      "template_id": "domain-pack-review-template-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "entry_name": "民族医药文化记录与隐私边界候选包",
+      "path": "docs/production-cards/domain-pack-review-template-dp-medical-heritage-privacy-boundary-20260710.md",
+      "review_status": "template_pending_human_review",
+      "linked_precheck_status": "blocked_pending_repair",
+      "required_reviewer_roles": [
+        "医疗伦理审稿",
+        "民族文化审稿",
+        "授权审稿"
+      ],
+      "required_sections": [
+        "来源与保护机构",
+        "医疗伦理边界",
+        "隐私与授权",
+        "可拍空间",
+        "样本验证",
+        "晋升结论"
+      ],
+      "linked_quality_rule_ids": [
+        "p0-medical-heritage-no-instruction-expanded",
+        "p0-medical-heritage-privacy-boundary"
+      ],
+      "formal_patch_created": false
+    },
+    {
+      "template_id": "domain-pack-review-template-003",
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "entry_name": "革命历史事件再现边界候选包",
+      "path": "docs/production-cards/domain-pack-review-template-dp-revolutionary-history-event-reconstruction-20260710.md",
+      "review_status": "template_pending_human_review",
+      "linked_precheck_status": "blocked_pending_repair_and_reject_resolution",
+      "required_reviewer_roles": [
+        "革命历史事实审稿",
+        "旧址档案审稿",
+        "片型导演审稿"
+      ],
+      "required_sections": [
+        "时间线来源",
+        "多说法边界",
+        "真实人物表达",
+        "旧址与展陈许可",
+        "样本验证",
+        "晋升结论"
+      ],
+      "linked_quality_rule_ids": [
+        "p1-revolutionary-history-source-boundary",
+        "p1-documentary-site-archive-boundary"
+      ],
+      "formal_patch_created": false
+    },
+    {
+      "template_id": "domain-pack-review-template-004",
+      "candidate_id": "dp-heritage-process-consent",
+      "entry_name": "非遗流程与授权候选包",
+      "path": "docs/production-cards/domain-pack-review-template-dp-heritage-process-consent-20260710.md",
+      "review_status": "template_pending_human_review",
+      "linked_precheck_status": "blocked_pending_authorization_repair",
+      "required_reviewer_roles": [
+        "非遗流程审稿",
+        "授权审稿",
+        "片型导演审稿"
+      ],
+      "required_sections": [
+        "材料工具流程",
+        "手部动作与声音",
+        "社区与传承人授权",
+        "公开/非公开边界",
+        "样本验证",
+        "晋升结论"
+      ],
+      "linked_quality_rule_ids": [
+        "p1-ethnic-community-consent-boundary",
+        "p1-heritage-performance-rights-boundary"
+      ],
+      "formal_patch_created": false
+    },
+    {
+      "template_id": "domain-pack-review-template-005",
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "entry_name": "民族仪式与社区边界候选包",
+      "path": "docs/production-cards/domain-pack-review-template-dp-ethnic-ritual-community-boundary-20260710.md",
+      "review_status": "template_pending_human_review",
+      "linked_precheck_status": "blocked_pending_community_boundary_review",
+      "required_reviewer_roles": [
+        "民族文化审稿",
+        "社区授权审稿",
+        "伦理审稿"
+      ],
+      "required_sections": [
+        "社区授权",
+        "公开展演边界",
+        "内部知识排除",
+        "仪式空间限制",
+        "样本验证",
+        "晋升结论"
+      ],
+      "linked_quality_rule_ids": [
+        "p1-ethnic-community-consent-boundary",
+        "p1-heritage-performance-rights-boundary",
+        "p0-medical-heritage-privacy-boundary"
+      ],
+      "formal_patch_created": false
+    },
+    {
+      "template_id": "domain-pack-review-template-006",
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "entry_name": "戏曲曲艺版权与舞台资产候选包",
+      "path": "docs/production-cards/domain-pack-review-template-dp-performance-rights-and-stage-assets-20260710.md",
+      "review_status": "template_pending_human_review",
+      "linked_precheck_status": "blocked_pending_rights_repair",
+      "required_reviewer_roles": [
+        "版权授权审稿",
+        "表演资产审稿",
+        "声音素材审稿"
+      ],
+      "required_sections": [
+        "曲词曲谱权利",
+        "录音与声音授权",
+        "肖像与表演片段",
+        "舞台资产边界",
+        "样本验证",
+        "晋升结论"
+      ],
+      "linked_quality_rule_ids": [
+        "p1-heritage-performance-rights-boundary"
+      ],
+      "formal_patch_created": false
+    },
+    {
+      "template_id": "domain-pack-review-template-007",
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "entry_name": "微纪录现场与来源边界候选包",
+      "path": "docs/production-cards/domain-pack-review-template-dp-documentary-site-source-boundary-20260710.md",
+      "review_status": "template_pending_human_review",
+      "linked_precheck_status": "blocked_pending_site_archive_repair",
+      "required_reviewer_roles": [
+        "纪录片事实审稿",
+        "现场授权审稿",
+        "档案材料审稿"
+      ],
+      "required_sections": [
+        "现实现场",
+        "开放状态",
+        "展陈复制件许可",
+        "再现边界",
+        "样本验证",
+        "晋升结论"
+      ],
+      "linked_quality_rule_ids": [
+        "p1-documentary-site-archive-boundary",
+        "p0-trauma-history-no-reenactment-expanded",
+        "p0-medical-heritage-privacy-boundary"
+      ],
+      "formal_patch_created": false
+    },
+    {
+      "template_id": "domain-pack-review-template-008",
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "entry_name": "AI 漫剧连续性分镜候选包",
+      "path": "docs/production-cards/domain-pack-review-template-dp-ai-comic-continuity-shot-language-20260710.md",
+      "review_status": "template_pending_human_review",
+      "linked_precheck_status": "blocked_pending_ai_comic_boundary_review",
+      "required_reviewer_roles": [
+        "AI 漫剧导演审稿",
+        "事实边界审稿",
+        "提示词边界审稿"
+      ],
+      "required_sections": [
+        "角色连续性",
+        "镜头提示词边界",
+        "虚构入口限制",
+        "敏感题材排除",
+        "样本验证",
+        "晋升结论"
+      ],
+      "linked_quality_rule_ids": [
+        "p0-trauma-history-no-reenactment-expanded",
+        "p1-revolutionary-history-source-boundary",
+        "p1-ethnic-community-consent-boundary"
+      ],
+      "formal_patch_created": false
+    },
+    {
+      "template_id": "domain-pack-review-template-009",
+      "candidate_id": "dp-craft-material-tool-process",
+      "entry_name": "工艺材料工具流程候选包",
+      "path": "docs/production-cards/domain-pack-review-template-dp-craft-material-tool-process-20260710.md",
+      "review_status": "template_pending_human_review",
+      "linked_precheck_status": "blocked_pending_coverage_expansion",
+      "required_reviewer_roles": [
+        "工艺流程审稿",
+        "材料工具审稿",
+        "授权审稿"
+      ],
+      "required_sections": [
+        "材料工具",
+        "流程步骤",
+        "纹样与技法来源",
+        "跨样本覆盖",
+        "样本验证",
+        "晋升结论"
+      ],
+      "linked_quality_rule_ids": [
+        "p1-ethnic-community-consent-boundary"
+      ],
+      "formal_patch_created": false
+    }
+  ],
+  "pass_draft_prepare_templates": [
+    {
+      "prepare_template_id": "pass-draft-prepare-001",
+      "source_task_id": "pass-candidate-001",
+      "writeback_template_id": "writeback-template-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "status": "draft_preparation_template_only",
+      "formal_patch_created": false,
+      "writeback_allowed_now": false,
+      "allowed_after_real_review": [
+        "production_material_summary",
+        "heritage_boundary_summary",
+        "authorization_or_consent_gaps",
+        "forbidden_claims"
+      ],
+      "prohibited_in_template": [
+        "generated_full_text",
+        "scene_breakdown",
+        "gears_segments",
+        "dialogue_bubbles",
+        "seedance_prompt",
+        "fictional_plot"
+      ]
+    },
+    {
+      "prepare_template_id": "pass-draft-prepare-002",
+      "source_task_id": "pass-candidate-002",
+      "writeback_template_id": "writeback-template-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "status": "draft_preparation_template_only",
+      "formal_patch_created": false,
+      "writeback_allowed_now": false,
+      "allowed_after_real_review": [
+        "production_material_summary",
+        "heritage_boundary_summary",
+        "authorization_or_consent_gaps",
+        "source_or_authorization_gaps"
+      ],
+      "prohibited_in_template": [
+        "generated_full_text",
+        "scene_breakdown",
+        "gears_segments",
+        "dialogue_bubbles",
+        "seedance_prompt",
+        "fictional_plot"
+      ]
+    }
+  ],
+  "repair_reject_task_statuses": [
+    {
+      "task_id": "repair-task-001",
+      "decision_type": "repair",
+      "status": "open_pending_source_and_authorization",
+      "owner_role": "医疗伦理审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-002",
+      "decision_type": "repair",
+      "status": "open_pending_site_and_archive_permission",
+      "owner_role": "纪录片事实审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-003",
+      "decision_type": "repair",
+      "status": "open_pending_medical_privacy_boundary",
+      "owner_role": "医疗伦理审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-004",
+      "decision_type": "repair",
+      "status": "open_pending_history_timeline_source",
+      "owner_role": "革命历史事实审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-005",
+      "decision_type": "repair",
+      "status": "open_pending_community_authorization",
+      "owner_role": "民族文化审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-006",
+      "decision_type": "repair",
+      "status": "open_pending_ritual_boundary",
+      "owner_role": "社区授权审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-007",
+      "decision_type": "repair",
+      "status": "open_pending_public_private_boundary",
+      "owner_role": "社区授权审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-008",
+      "decision_type": "repair",
+      "status": "open_pending_performance_rights",
+      "owner_role": "版权授权审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-009",
+      "decision_type": "repair",
+      "status": "open_pending_revolutionary_history_archive",
+      "owner_role": "革命历史事实审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-010",
+      "decision_type": "repair",
+      "status": "open_pending_site_status_and_interview",
+      "owner_role": "现场授权审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "repair-task-011",
+      "decision_type": "repair",
+      "status": "open_pending_site_and_internal_knowledge_exclusion",
+      "owner_role": "纪录片事实审稿",
+      "next_status_options": [
+        "evidence_attached",
+        "repair_resubmitted",
+        "rejected_after_review"
+      ]
+    },
+    {
+      "task_id": "reject-task-001",
+      "decision_type": "reject",
+      "status": "open_requires_new_source_package",
+      "owner_role": "敏感历史伦理审稿",
+      "next_status_options": [
+        "new_source_package_created",
+        "candidate_removed",
+        "restart_review"
+      ]
+    },
+    {
+      "task_id": "reject-task-002",
+      "decision_type": "reject",
+      "status": "open_requires_new_history_boundary_package",
+      "owner_role": "革命历史事实审稿",
+      "next_status_options": [
+        "new_source_package_created",
+        "candidate_removed",
+        "restart_review"
+      ]
+    },
+    {
+      "task_id": "reject-task-003",
+      "decision_type": "reject",
+      "status": "open_requires_new_rights_and_memory_package",
+      "owner_role": "版权授权审稿",
+      "next_status_options": [
+        "new_source_package_created",
+        "candidate_removed",
+        "restart_review"
+      ]
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "nine-domain-pack-review-templates-created",
+      "status": "met",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "domain-pack-review-markdown-created",
+      "status": "met_as_templates",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "pass-draft-prepare-templates-created",
+      "status": "met_as_template_only",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "repair-reject-statuses-created",
+      "status": "met",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-not-written",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "province-markdown-not-written",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_14_exit_gates": [
+    {
+      "gate_id": "domain-pack-human-review-templates-created",
+      "status": "met",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "pass-candidates-isolated-from-formal-patch",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "repair-reject-tracking-created",
+      "status": "met",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "formal-domain-pack-still-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "province-markdown-still-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

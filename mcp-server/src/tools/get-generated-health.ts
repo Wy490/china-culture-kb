@@ -34,8 +34,13 @@ export interface StoryAgentGeneratedHealthItem {
   missing_episode_story_id_count?: number;
   production_item_count?: number;
   ready_production_item_count?: number;
+  failed_production_item_count?: number;
+  test_fixture_failure_item_count?: number;
+  seedance_failure_marker_present?: boolean;
   contract_evidence_count?: number;
   relink_candidate?: boolean;
+  signoff_eligible?: boolean;
+  governance_disposition?: 'soft_archived_signoff_excluded';
   cut_ready?: boolean;
   subtitle_ready?: boolean;
   thumbnail_ready_count?: number;
@@ -68,6 +73,13 @@ export interface StoryAgentGeneratedHealthReport {
     series_missing_story_ref_project_count?: number;
     series_contract_evidence_count?: number;
     series_relink_candidate_count?: number;
+    series_signoff_portfolio_count?: number;
+    series_soft_archive_excluded_count?: number;
+    series_seedance_failed_project_count?: number;
+    series_seedance_failed_item_count?: number;
+    series_seedance_failure_marker_project_count?: number;
+    series_seedance_test_fixture_failure_project_count?: number;
+    series_seedance_test_fixture_failure_item_count?: number;
   };
   items: StoryAgentGeneratedHealthItem[];
   notes: string[];
@@ -76,6 +88,26 @@ export interface StoryAgentGeneratedHealthReport {
 
 function generatedRoot(): string {
   return process.env.WEB_GENERATED_ROOT || path.resolve(getKbRoot(), '..', 'web', 'generated');
+}
+
+async function readSignoffExcludedSeriesIds(): Promise<Set<string>> {
+  try {
+    const manifestPath = process.env.STORY_AGENT_SOFT_ARCHIVE_MANIFEST_PATH
+      || path.resolve(getKbRoot(), 'reports', 'story-agent-soft-archive-manifest-20260710.json');
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')) as JsonRecord;
+    const policy = asRecord(manifest.policy);
+    if (asString(manifest.mode) !== 'active_signoff_exclusion'
+      || policy.signoff_exclusion_applied !== true) {
+      return new Set();
+    }
+    return new Set(asArray(manifest.entries)
+      .map(asRecord)
+      .filter(item => asString(item.execution_status) === 'signoff_exclusion_active')
+      .map(item => asString(item.project_id))
+      .filter((item): item is string => Boolean(item)));
+  } catch {
+    return new Set();
+  }
 }
 
 function asRecord(value: unknown): JsonRecord {
@@ -254,15 +286,31 @@ function hasOutput(record: JsonRecord, fields: string[]): boolean {
   return fields.some(field => Boolean(asString(record[field])));
 }
 
-function seriesHealth(input: { id: string; record: JsonRecord }, availableStoryIds: Set<string>): StoryAgentGeneratedHealthItem {
+function productionFailureIsMarkedTestFixture(item: JsonRecord): boolean {
+  const failureReason = asString(item.failure_reason) ?? '';
+  const noteText = asArray(item.notes).filter(value => typeof value === 'string').join(' ');
+  return failureReason.includes('测试标记')
+    || noteText.includes('测试标记')
+    || (asString(item.provider_job_id) === 'seedance-job-failed' && noteText.includes('测试'));
+}
+
+function seriesHealth(
+  input: { id: string; record: JsonRecord },
+  availableStoryIds: Set<string>,
+  signoffExcludedSeriesIds: Set<string>,
+): StoryAgentGeneratedHealthItem {
   const project = Object.keys(asRecord(input.record.project)).length ? asRecord(input.record.project) : input.record;
   const plan = asRecord(input.record.plan);
+  const projectId = asString(project.series_project_id ?? input.record.series_project_id) ?? input.id;
+  const signoffExcluded = signoffExcludedSeriesIds.has(projectId);
   const storyIds = generatedStoryIds(input.record);
   const episodeCount = asNumber(project.episode_count ?? plan.episode_count) ?? asArray(plan.episodes).length;
   const generatedEpisodeCount = asNumber(project.generated_episode_count) ?? storyIds.length;
   const missingEpisodeStoryIdCount = storyIds.filter(id => !availableStoryIds.has(id)).length;
   const productionItems = asArray(asRecord(input.record.seedance_production).items).filter(isRecord);
   const readyProductionItems = productionItems.filter(item => asString(item.status) === 'ready' && Boolean(asString(item.video_url)));
+  const failedProductionItems = productionItems.filter(item => asString(item.status) === 'failed');
+  const testFixtureFailureItems = failedProductionItems.filter(productionFailureIsMarkedTestFixture);
   const thumbnailReadyCount = productionItems.filter(item => asString(asRecord(item.thumbnail).status) === 'ready').length;
   const cut = asRecord(input.record.seedance_cut_assembly);
   const subtitle = asRecord(input.record.seedance_subtitle_render);
@@ -299,7 +347,7 @@ function seriesHealth(input: { id: string; record: JsonRecord }, availableStoryI
         : 'ready';
   return {
     scope: 'ai_comic_series_project',
-    project_id: asString(project.series_project_id ?? input.record.series_project_id) ?? input.id,
+    project_id: projectId,
     title: asString(project.title ?? plan.series_title),
     status,
     risk_score: riskScore(status, missing.size),
@@ -310,20 +358,32 @@ function seriesHealth(input: { id: string; record: JsonRecord }, availableStoryI
       `episodes=${generatedEpisodeCount}/${episodeCount}`,
       `generated_episode_story_ids=${storyIds.length}`,
       `production_items=${productionItems.length}`,
+      `failed_production_items=${failedProductionItems.length}, test_fixture_failures=${testFixtureFailureItems.length}`,
       `contract_evidence=${contractEvidence.join(',') || 'none'}`,
       `cut_ready=${cutReady}, subtitle_ready=${subtitleReady}, final_delivery_ready=${finalDeliveryReady}`,
+      `signoff_eligible=${!signoffExcluded}`,
     ],
-    recommended_actions: status === 'planned'
-      ? ['生成第一集分集故事，再导出 GEARS delivery 与系列生产指挥包。']
-      : ['补齐系列 GEARS delivery、镜头生产账本或后期生产指令包。'],
+    recommended_actions: signoffExcluded
+      ? [
+          '该历史样本已通过可逆 manifest 排除出 GEARS signoff portfolio；原项目文件保持不变。',
+          '如需恢复，先进入人工重建白名单并按当前 Story Agent 合同生成新版本。',
+        ]
+      : status === 'planned'
+        ? ['生成第一集分集故事，再导出 GEARS delivery 与系列生产指挥包。']
+        : ['补齐系列 GEARS delivery、镜头生产账本或后期生产指令包。'],
     episode_count: episodeCount,
     generated_episode_count: generatedEpisodeCount,
     generated_episode_story_id_count: storyIds.length,
     missing_episode_story_id_count: missingEpisodeStoryIdCount,
     production_item_count: productionItems.length,
     ready_production_item_count: readyProductionItems.length,
+    failed_production_item_count: failedProductionItems.length,
+    test_fixture_failure_item_count: testFixtureFailureItems.length,
+    seedance_failure_marker_present: JSON.stringify(input.record).includes('seedance-job-failed'),
     contract_evidence_count: contractEvidence.length,
     relink_candidate: relinkCandidate,
+    signoff_eligible: !signoffExcluded,
+    governance_disposition: signoffExcluded ? 'soft_archived_signoff_excluded' : undefined,
     cut_ready: cutReady,
     subtitle_ready: subtitleReady,
     thumbnail_ready_count: thumbnailReadyCount,
@@ -356,6 +416,13 @@ function buildMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'>
     `- series_missing_story_ref_projects: ${report.summary.series_missing_story_ref_project_count ?? 0}`,
     `- series_contract_evidence: ${report.summary.series_contract_evidence_count ?? 0}`,
     `- series_relink_candidates: ${report.summary.series_relink_candidate_count ?? 0}`,
+    `- series_signoff_portfolio: ${report.summary.series_signoff_portfolio_count ?? 0}`,
+    `- series_soft_archive_excluded: ${report.summary.series_soft_archive_excluded_count ?? 0}`,
+    `- series_seedance_failed_projects: ${report.summary.series_seedance_failed_project_count ?? 0}`,
+    `- series_seedance_failed_items: ${report.summary.series_seedance_failed_item_count ?? 0}`,
+    `- series_seedance_failure_marker_projects: ${report.summary.series_seedance_failure_marker_project_count ?? 0}`,
+    `- series_seedance_test_fixture_failure_projects: ${report.summary.series_seedance_test_fixture_failure_project_count ?? 0}`,
+    `- series_seedance_test_fixture_failure_items: ${report.summary.series_seedance_test_fixture_failure_item_count ?? 0}`,
     '',
     '## Priority Items',
     '',
@@ -373,23 +440,39 @@ export async function getStoryAgentGeneratedHealth(
   input: GetStoryAgentGeneratedHealthInput = {},
 ): Promise<StoryAgentGeneratedHealthReport> {
   const limit = Number.isFinite(input.limit) ? Math.max(1, Math.min(Math.floor(input.limit ?? 30), 100)) : 30;
-  const [storyRecords, seriesRecords, storyIds] = await Promise.all([
+  const [storyRecords, seriesRecords, storyIds, signoffExcludedSeriesIds] = await Promise.all([
     listProjectRecords('projects'),
     listProjectRecords('ai-comic-series-projects'),
     listStoryIds(),
+    readSignoffExcludedSeriesIds(),
   ]);
   const storyItems = await Promise.all(storyRecords.map(storyHealth));
-  const seriesItems = seriesRecords.map(record => seriesHealth(record, storyIds));
+  const seriesItems = seriesRecords.map(record => seriesHealth(record, storyIds, signoffExcludedSeriesIds));
   const countSeriesStatus = (status: HealthStatus) => seriesItems.filter(item => item.status === status).length;
   const seriesPlannedOnlyCount = countSeriesStatus('planned');
   const seriesProductionGapCount = countSeriesStatus('production_gap');
   const seriesInterruptedCount = countSeriesStatus('interrupted');
-  const seriesGovernanceAttentionCount = seriesPlannedOnlyCount + seriesProductionGapCount + seriesInterruptedCount;
+  const seriesGovernanceAttentionCount = seriesItems.filter(item =>
+    item.signoff_eligible !== false && item.status !== 'ready'
+  ).length;
+  const seriesSoftArchiveExcludedCount = seriesItems.filter(item => item.signoff_eligible === false).length;
+  const seriesSignoffPortfolioCount = seriesItems.length - seriesSoftArchiveExcludedCount;
   const seriesMissingStoryRefProjectCount = seriesItems.filter(item => (item.missing_episode_story_id_count ?? 0) > 0).length;
   const seriesContractEvidenceCount = seriesItems.filter(item => (item.contract_evidence_count ?? 0) > 0).length;
   const seriesRelinkCandidateCount = seriesItems.filter(item => item.relink_candidate).length;
+  const seriesSeedanceFailedProjectCount = seriesItems.filter(item => (item.failed_production_item_count ?? 0) > 0).length;
+  const seriesSeedanceFailedItemCount = seriesItems.reduce((sum, item) => sum + (item.failed_production_item_count ?? 0), 0);
+  const seriesSeedanceFailureMarkerProjectCount = seriesItems.filter(item => item.seedance_failure_marker_present).length;
+  const seriesSeedanceTestFixtureFailureProjectCount = seriesItems.filter(
+    item => (item.test_fixture_failure_item_count ?? 0) > 0,
+  ).length;
+  const seriesSeedanceTestFixtureFailureItemCount = seriesItems.reduce(
+    (sum, item) => sum + (item.test_fixture_failure_item_count ?? 0),
+    0,
+  );
   const allItems = [...storyItems, ...seriesItems].sort((a, b) => (
-    statusRank(a.status) - statusRank(b.status)
+    Number(a.signoff_eligible === false) - Number(b.signoff_eligible === false)
+    || statusRank(a.status) - statusRank(b.status)
     || b.risk_score - a.risk_score
     || (b.updated_at ?? '').localeCompare(a.updated_at ?? '')
   ));
@@ -422,6 +505,13 @@ export async function getStoryAgentGeneratedHealth(
       series_missing_story_ref_project_count: seriesMissingStoryRefProjectCount,
       series_contract_evidence_count: seriesContractEvidenceCount,
       series_relink_candidate_count: seriesRelinkCandidateCount,
+      series_signoff_portfolio_count: seriesSignoffPortfolioCount,
+      series_soft_archive_excluded_count: seriesSoftArchiveExcludedCount,
+      series_seedance_failed_project_count: seriesSeedanceFailedProjectCount,
+      series_seedance_failed_item_count: seriesSeedanceFailedItemCount,
+      series_seedance_failure_marker_project_count: seriesSeedanceFailureMarkerProjectCount,
+      series_seedance_test_fixture_failure_project_count: seriesSeedanceTestFixtureFailureProjectCount,
+      series_seedance_test_fixture_failure_item_count: seriesSeedanceTestFixtureFailureItemCount,
     },
     items,
     notes: [
@@ -430,9 +520,17 @@ export async function getStoryAgentGeneratedHealth(
       seriesGovernanceAttentionCount > 0
         ? `Series governance: ${seriesGovernanceAttentionCount} AI comic series targets are planned-only, production-gap, or interrupted; archive fixtures or repair contracts before using portfolio readiness for GEARS sign-off.`
         : 'Series governance: all scanned AI comic series targets are command-layer ready.',
+      seriesSoftArchiveExcludedCount > 0
+        ? `Soft archive: ${seriesSoftArchiveExcludedCount} historical series are reversibly excluded from the GEARS signoff portfolio by manifest; project JSON files are unchanged.`
+        : '',
       seriesRelinkCandidateCount > 0
         ? `Series relink candidates: ${seriesRelinkCandidateCount} interrupted series already have production or postproduction contract evidence; restore missing episode story JSON or update refs before judging GEARS readiness.`
         : '',
+      seriesSeedanceFailedItemCount > 0 && seriesSeedanceFailedItemCount === seriesSeedanceTestFixtureFailureItemCount
+        ? `Seedance failures: all ${seriesSeedanceFailedItemCount} failed production items are explicitly test-marked fixtures; exclude them from real delivery failure counts.`
+        : seriesSeedanceFailedItemCount > 0
+          ? `Seedance failures: ${seriesSeedanceFailedItemCount - seriesSeedanceTestFixtureFailureItemCount} failed production items are not explicitly test-marked and require operator review.`
+          : '',
       'china-culture-kb remains the content and production command layer; media execution stays in GEARS v2.',
     ].filter(Boolean),
   };

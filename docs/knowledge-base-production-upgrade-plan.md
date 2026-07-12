@@ -1,14 +1,14 @@
 # 素材库生产化升级计划
 
-生成时间：2026-07-05T04:29:37.351Z
-来源审计时间：2026-07-05T04:29:37.344Z
+生成时间：2026-07-12T18:46:08.426Z
+来源审计时间：2026-07-12T18:46:08.419Z
 
 ## 总览
 
-- 条目总数：169
-- 高优先级条目：169
+- 条目总数：174
+- 高优先级条目：174
 - 批次数：13
-- 计划动作数：396
+- 计划动作数：398
 - 可格式化自动处理动作：0
 
 ## 批次
@@ -192,7 +192,7 @@
 - 批次 ID：children_story_minimum_pack
 - 目标：补齐儿童故事片生产所需的最小字段。
 - 原因：只补目标片型需要的字段，比泛泛扩库更快提升生成质量。
-- 条目数：16
+- 条目数：18
 
 | 条目 | 省份 | 类型 | 分数 | 优先级 | 建议字段 |
 |---|---|---|---:|---|---|
@@ -205,6 +205,8 @@
 | 瑶族盘王节——瑶族始祖的千年祭典 | 湖南 | 节庆习俗 | 91 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 | 狐仙报恩母题——湖南民间叙事与志异边界 | 湖南 | 志异母题；民间故事结构；GEARS叙事设定包 | 100 | high | audience_age_band、core_question、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 | 炎帝神农氏——炎陵传说 | 湖南 | 神话传说 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 鱼行醉龙节 | 澳门 | 节庆习俗 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 中秋节——大坑舞火龙 | 香港 | 节庆习俗 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 | 土家哭嫁歌——新娘的眼泪与歌声 | 湖南 | 民俗活动 | 82 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、parent_teacher_note |
 | 安仁赶分社——春分时节的神农药市 | 湖南 | 民俗活动 | 91 | high | audience_age_band、child_safe_conflict、protagonist_choice、emotional_resolution、parent_teacher_note |
 | 刘海砍樵——人仙之恋的湖南民间传说 | 湖南 | 民间故事 | 91 | high | audience_age_band、core_question、child_safe_conflict、emotional_resolution、parent_teacher_note |

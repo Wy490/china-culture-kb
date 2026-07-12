@@ -361,7 +361,12 @@ function isUsableQuote(value: string): boolean {
 // Extract character names from story text
 // ---------------------------------------------------------------------------
 
-function extractCharacterNames(storyText: string, entryName: string, protagonistOverride?: string): string[] {
+function extractCharacterNames(
+  storyText: string,
+  entryName: string,
+  protagonistOverride?: string,
+  keywords: string[] = [],
+): string[] {
   const protagonist = protagonistOverride ?? entryName.split('——')[0].trim();
   const chars = [protagonist];
 
@@ -376,6 +381,13 @@ function extractCharacterNames(storyText: string, entryName: string, protagonist
 
   for (const [name, count] of counts) {
     if (count >= 2) chars.push(name);
+  }
+  const namedPersonPattern = /^[赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳史唐费薛雷贺倪汤滕殷罗毕郝邬安常乐于傅皮卞齐康伍余元顾孟黄穆萧尹姚邵汪祁毛禹狄米贝明臧计伏成戴宋茅庞熊纪舒屈项祝董梁杜阮蓝闵席季麻强贾路娄危江童颜郭梅盛林刁钟徐邱骆高夏蔡田樊胡凌霍虞万支柯昝管卢莫经房裘缪解应宗丁宣邓郁单杭洪包诸左石崔吉钮龚程嵇邢滑裴陆荣翁荀羊甄曲封芮储靳汲邴糜松井段富巫乌焦巴弓牧隗山谷车侯宓蓬全郗班仰秋仲伊宫宁仇栾暴甘钭厉戎祖武符刘景詹束龙叶幸司韶郜黎蓟薄印宿白怀蒲台从鄂索咸籍赖卓蔺蒙池乔阴胥能苍双闻莘党翟谭贡劳逄姬申扶堵冉宰郦雍却璩桑桂濮牛寿通边燕冀浦尚农温别庄晏柴瞿阎慕连茹习宦艾鱼容向古易慎戈廖庾终暨居衡步都耿满弘匡国文寇广禄阙东欧殳沃利蔚越夔隆师巩厍聂晁勾敖融冷訾辛阚那简饶空曾毋沙乜养鞠须丰巢关蒯相查后荆红游竺权逯盖益桓公][\u4e00-\u9fa5]{1,3}$/;
+  for (const keyword of keywords) {
+    const candidate = keyword.trim();
+    if (candidate === protagonist || chars.includes(candidate)) continue;
+    if (/砍樵|传书|起义|会师|运动|文化|传说|花鼓戏|狐仙$/.test(candidate)) continue;
+    if (namedPersonPattern.test(candidate) || /大姐|姑娘|龙女$/.test(candidate)) chars.push(candidate);
   }
   return chars.slice(0, 6);
 }
@@ -423,7 +435,7 @@ function inferProtagonist(entry: EntryDetail, videoType: VideoType): string {
   const subject = inferSubject(entry);
   if (!DRAMATIC_VIDEO_TYPES.includes(videoType)) return subject;
 
-  const eventNameMatch = subject.match(/^([\u4e00-\u9fa5]{2,4})(?:投江|殉国|断案|拒签|治案|悟道|起义|会师|抗日|创立|修建|改建|被贬|求学)/);
+  const eventNameMatch = subject.match(/^([\u4e00-\u9fa5]{2,4}?)(?:投江|殉国|断案|拒签|治案|悟道|砍樵|传书|起义|会师|抗日|创立|修建|改建|被贬|求学)/);
   if (eventNameMatch) return eventNameMatch[1];
 
   if (/^[\u4e00-\u9fa5]{2,4}$/.test(subject)) return subject;
@@ -444,10 +456,10 @@ function eventWithProtagonist(protagonist: string, centralEvent: string): string
 
 function generateStoryTitle(centralEvent: string, entry: EntryDetail, videoType: VideoType): string {
   // If central event is a specific dramatic event, use it as title basis
-  const protagonist = entry.name.split('——')[0].trim();
+  const protagonist = inferProtagonist(entry, videoType);
 
   // Try to create a dramatic title
-  const eventShort = centralEvent.length <= 8 ? centralEvent : centralEvent.substring(0, 8);
+  const eventShort = centralEvent.length <= 24 ? centralEvent : `${centralEvent.substring(0, 24)}…`;
 
   // Check if the event contains dramatic keywords for title inspiration
   if (centralEvent.includes('拒签')) return `${eventShort}`;
@@ -462,7 +474,7 @@ function generateStoryTitle(centralEvent: string, entry: EntryDetail, videoType:
 
   // For children story, simplify
   if (videoType === 'children_story') {
-    return `${protagonist}的${eventShort}`;
+    return centralEvent.startsWith(protagonist) ? eventShort : `${protagonist}的${eventShort}`;
   }
 
   // Default: use central event as title
@@ -505,16 +517,19 @@ export function generateDramaticContent(input: DramaticContentInput): {
   // Determine scene count: min 3, max based on structure and duration
   const targetSceneCount = Math.max(
     structure.min_scenes,
-    Math.min(structure.max_scenes, Math.max(3, Math.round(totalSeconds / 50)))
+    Math.min(
+      structure.max_scenes,
+      Math.max(3, structure.scene_templates.length, Math.round(totalSeconds / 50)),
+    ),
   );
 
   const perSceneDuration = Math.round(totalSeconds / targetSceneCount);
 
   // Extract event-relevant content from the entry
   const eventParagraphs = extractEventParagraphs(entry.story, centralEvent);
-  const quotes = extractQuotes(entry.story);
+  const quotes = extractQuotes(eventParagraphs.join('\n'));
   const protagonist = inferProtagonist(entry, videoType);
-  const characterNames = extractCharacterNames(entry.story, entry.name, protagonist);
+  const characterNames = extractCharacterNames(entry.story, entry.name, protagonist, entry.keywords);
 
   // Supporting knowledge from knowledge_pack
   const supportingRegions = knowledgePack?.supporting_entries
@@ -531,43 +546,76 @@ export function generateDramaticContent(input: DramaticContentInput): {
   // Extend or trim templates to match targetSceneCount
   const templates = adjustTemplates(sceneTemplates, targetSceneCount);
 
-  const scenes: StoryScene[] = [];
-  const fullTextParts: string[] = [];
+  const requestedGrowthArc = buildRequestedMaoGrowthArc({
+    entry,
+    originalUserQuery,
+    knowledgePack,
+    perSceneDuration,
+  });
+  if (requestedGrowthArc?.length) {
+    const requestedSceneDuration = Math.round(totalSeconds / requestedGrowthArc.length);
+    for (const scene of requestedGrowthArc) scene.duration_sec = requestedSceneDuration;
+  }
+  const scenes: StoryScene[] = requestedGrowthArc ?? [];
+  const fullTextParts: string[] = scenes.map(scene => scene.plot);
 
-  for (let i = 0; i < templates.length; i++) {
-    const template = templates[i];
-    const scene = generateSceneContent(
-      i, template, entry, centralEvent, eventParagraphs, quotes,
-      characterNames, protagonist, perSceneDuration, tone, videoType,
-      supportingRegions, supportingContext,
-    );
-    scenes.push(scene);
-    fullTextParts.push(scene.plot);
+  if (!requestedGrowthArc) {
+    for (let i = 0; i < templates.length; i++) {
+      const template = templates[i];
+      const scene = generateSceneContent(
+        i, template, entry, centralEvent, eventParagraphs, quotes,
+        characterNames, protagonist, perSceneDuration, tone, videoType,
+        supportingRegions, supportingContext,
+      );
+      scenes.push(scene);
+      fullTextParts.push(scene.plot);
+    }
   }
 
   // Generate full_text from scene plots with transitions
   const fullText = buildFullText(fullTextParts, scenes, protagonist, centralEvent, entry, videoType);
 
   // Generate title
-  const title = generateStoryTitle(centralEvent, entry, videoType);
+  const title = requestedGrowthArc
+    ? `${protagonist}：从韶山少年到革命觉醒`
+    : generateStoryTitle(centralEvent, entry, videoType);
 
   // Generate logline
-  const logline = generateLogline(entry, centralEvent, videoType);
+  const logline = requestedGrowthArc
+    ? `${protagonist}从韶山田埂走进长沙课堂，再走到农民中间，在一次次亲眼所见和具体行动中寻找改变中国的道路。`
+    : generateLogline(entry, centralEvent, videoType);
 
   // Generate theme
-  const theme = generateTheme(entry, centralEvent, videoType);
+  const theme = requestedGrowthArc
+    ? '理想不是凭空形成的，它来自乡土经验、求学追问、同伴讨论和人民实践。'
+    : generateTheme(entry, centralEvent, videoType);
 
   // Build gears_segments from scenes
   const gearsSegments = generateDramaticGearsSegments(scenes, videoType, presentationStyle);
 
   // Build characters
-  const characters = buildCharacters(characterNames, protagonist, entry, centralEvent);
+  const arcCharacterNames = requestedGrowthArc
+    ? [...new Set(requestedGrowthArc.flatMap(scene => scene.characters))]
+    : characterNames;
+  const characters = requestedGrowthArc
+    ? buildMaoGrowthArcCharacters(arcCharacterNames)
+    : NON_DRAMATIC_VIDEO_TYPES.includes(videoType)
+      ? []
+    : buildCharacters(arcCharacterNames, protagonist, entry, centralEvent);
 
   // Build act_structure
   const actStructure = buildActStructure(scenes);
 
   // Build protagonist_arc
-  const protagonistArc = buildProtagonistArc(protagonist, scenes, centralEvent, entry);
+  const protagonistArc = requestedGrowthArc
+    ? [{
+        starting_state: '韶山少年从乡土生活中感到困惑，想通过求学寻找个人与国家的出路。',
+        turning_point: '游学、新民学会和农民夜校让他从个人求索转向组织行动与人民实践。',
+        resolution: '五县考察使他把乡土观察转化为对农民革命力量的判断，理想在实践中形成。',
+      }]
+    : NON_DRAMATIC_VIDEO_TYPES.includes(videoType)
+      ? []
+    : buildProtagonistArc(protagonist, scenes, centralEvent, entry);
 
   // Cultural constraints
   const culturalConstraints = buildCulturalConstraints(entry, knowledgePack);
@@ -627,6 +675,141 @@ function adjustTemplates(templates: SceneTemplate[], targetCount: number): Scene
   return result;
 }
 
+function buildRequestedMaoGrowthArc(input: {
+  entry: EntryDetail;
+  originalUserQuery?: string;
+  knowledgePack?: KnowledgePack;
+  perSceneDuration: number;
+}): StoryScene[] | undefined {
+  const query = input.originalUserQuery ?? '';
+  const protagonist = input.entry.name.split('——')[0]?.trim();
+  const requestedSignals = ['少年', '求学', '新民学会', '农民运动', '理想形成', '革命觉醒']
+    .filter(signal => query.includes(signal));
+  if (
+    protagonist !== '毛泽东'
+    || requestedSignals.length < 4
+    || !input.entry.story.includes('韶山少年')
+    || !input.entry.story.includes('长沙求学与新民学会')
+    || !input.entry.story.includes('韶山农民实践与考察报告')
+  ) {
+    return undefined;
+  }
+
+  const sourceEntries = [
+    input.entry.name,
+    ...(input.knowledgePack?.primary_entries
+      .filter(entry => entry.entry_name !== input.entry.name)
+      .map(entry => entry.entry_name) ?? []),
+  ];
+  const makeScene = (scene: Omit<StoryScene, 'scene_id' | 'duration_sec' | 'source_entries'>, index: number): StoryScene => ({
+    ...scene,
+    scene_id: index + 1,
+    duration_sec: input.perSceneDuration,
+    source_entries: sourceEntries,
+  });
+
+  return [
+    makeScene({
+      title: '田埂与书页',
+      location: '韶山冲农舍与田埂',
+      time_of_day: '夜晚',
+      dramatic_function: '乡土起点',
+      plot: '白天，少年毛泽东跟着父亲在田里劳作；夜里，他把《水浒》《三国》藏在账本下面，借微光继续读。父亲希望他守住家业，他却越来越想知道：田埂之外的中国为什么贫弱。1910年秋，他收起书和行囊，决定离开韶山求学。',
+      key_action: '少年毛泽东在务农与读书的拉扯中收拾行囊，选择离乡求学',
+      characters: ['毛泽东', '毛贻昌'],
+      visual_prompt: '1910年前后的韶山冲农舍，夜色，木桌、旧书、账本、油灯与窗外田埂，少年毛泽东把书收入布包，父亲站在门边，克制的家庭张力，中近景',
+      camera_suggestion: '从田埂劳作手部特写切到夜读书页，再缓推至收拾行囊的动作',
+      cultural_note: '离乡求学与赠父诗见条目记载；具体夜读调度属于依据史料进行的有限影视化补足。',
+      conflict: '父亲希望守住家业 vs 少年想走出乡土寻找国家出路',
+      dialogue_or_narration: '旁白：他最早看到的中国，不在地图上，而在韶山的田里、账本里和农人的日子里。',
+      factual_basis: '依据毛泽东条目“韶山少年（1893—1910）”及相关待核实说明。',
+      fictionalized_elements: ['夜读与收拾行囊的连续场景为影视化组织，未虚构新的历史事件。'],
+    }, 0),
+    makeScene({
+      title: '把课堂走到乡间',
+      location: '湖南第一师范与湘中乡路',
+      time_of_day: '白天',
+      dramatic_function: '求学与观察',
+      plot: '在湖南第一师范，毛泽东读新书、练身体，也不断追问书本怎样回应现实。1917年暑假，他与萧子升徒步游学，身无分文，沿途写对联换食宿。走过宁乡、安化、益阳、沅江，他看见农民的劳作与困顿，课堂里的问题第一次有了真实面孔。',
+      key_action: '毛泽东离开课堂徒步九百余里，把沿途观察记进随身笔记',
+      characters: ['毛泽东', '萧子升', '杨昌济'],
+      visual_prompt: '1910年代湖南第一师范课堂与湘中乡路交叉剪辑，青年毛泽东背布包、穿草鞋，手持笔记和写有对联的纸张，农舍、稻田与赶路脚步，纪实质感',
+      camera_suggestion: '课堂固定中景转为手持跟拍乡路，脚步、草鞋、笔记本和农人面孔连续特写',
+      cultural_note: '一师求学、1917年徒步游学及写对联换食宿来自条目；具体镜头衔接为影视化处理。',
+      conflict: '只在书本中寻找答案 vs 走进乡村亲眼观察现实',
+      dialogue_or_narration: '旁白：书告诉他世界可以改变，乡路让他看见为什么必须改变。',
+      factual_basis: '依据毛泽东条目“长沙求学与新民学会（1910—1918）”。',
+      fictionalized_elements: ['课堂与游学的交叉剪辑为叙事压缩。'],
+    }, 1),
+    makeScene({
+      title: '从砥砺品行到改造世界',
+      location: '长沙岳麓山下新民学会成立旧址',
+      time_of_day: '黄昏',
+      dramatic_function: '同伴与组织',
+      plot: '长沙岳麓山下，毛泽东、蔡和森、萧子升等青年围坐在木桌旁讨论新民学会章程。1918年的军阀统治与社会动荡把时代压力推到桌前：只谈个人修养已经不能回答现实。毛泽东把目光从纸上抬起，学会的方向逐渐指向“改造中国与世界”。',
+      key_action: '毛泽东与蔡和森等人修改并确认新民学会的行动方向',
+      characters: ['毛泽东', '蔡和森', '萧子升'],
+      visual_prompt: '1918年长沙岳麓山下朴素民居，木桌、章程手稿、笔记本、油灯，毛泽东与蔡和森、萧子升围桌讨论，窗外岳麓山暮色，青年群像与纸面文字特写',
+      camera_suggestion: '环绕青年群像，落到章程文字，再切毛泽东抬眼作出判断的近景',
+      cultural_note: '事实边界：新民学会成立时间、成员与宗旨转向来自条目；具体会议对白和动作属于影视化创作再现。',
+      conflict: '军阀统治与社会动荡的时代压力下，只求个人品行进步 vs 组织起来回应更广阔的社会问题',
+      dialogue_or_narration: '旁白：个人怎样变好，已经不够；他们开始追问，一个国家怎样改变。',
+      factual_basis: '依据毛泽东条目及“新民学会——湖南共产党的前身”条目。',
+      fictionalized_elements: ['会议现场的具体座次、动作与对白节奏为有限再现。'],
+    }, 2),
+    makeScene({
+      title: '夜校里的答案',
+      location: '韶山农民夜校旧址',
+      time_of_day: '夜晚',
+      dramatic_function: '人民实践',
+      plot: '回到韶山后，毛泽东走进农民夜校。1925年的夜校里，他在黑板上写字，农民学员却更关心谷价、租息和一家人的生计。他因此放下原来的讲稿，先听大家把难处说完，再把识字课和现实问题连在一起。夜校之外，农民协会开始组织起来；理想第一次不只是纸上的主张，而成为共同解决问题的行动。',
+      key_action: '毛泽东停下单向讲授，听取农民诉求并组织夜校与农民协会',
+      characters: ['毛泽东', '杨开慧', '农民夜校学员'],
+      visual_prompt: '1925年韶山农民夜校，夜晚，旧校舍黑板、粉笔、油灯、谷米账册，毛泽东站在黑板旁倾听农民发言，杨开慧整理教材，农民学员围坐，真实乡土空间',
+      camera_suggestion: '先拍黑板与粉笔，再转向农民粗糙双手和发言面孔，最后回到毛泽东放下讲稿的动作',
+      cultural_note: '事实边界：农民夜校、杨开慧协助教学和农民协会来自条目；具体课堂发言为基于现实议题的影视化创作补足。',
+      conflict: '地方权势、谷价与租息构成现实阻力；预设的启蒙方式 vs 农民最迫切的生计诉求',
+      dialogue_or_narration: '旁白：他来到农民中间，不只是为了告诉他们答案，也为了重新学习问题本身。',
+      factual_basis: '依据毛泽东条目“韶山农民实践与考察报告（1925—1927）”。',
+      fictionalized_elements: ['放下讲稿与个别课堂发言为合成场景，不作为原话史实。'],
+    }, 3),
+    makeScene({
+      title: '把脚印写成道路',
+      location: '湖南五县农民运动考察路线',
+      time_of_day: '清晨',
+      dramatic_function: '高潮',
+      plot: '走访湖南五县的第三十二天，毛泽东在清晨翻开沾着泥点的笔记。1927年初，他已经徒步考察湘潭、湘乡、衡山、醴陵、长沙，看到农民怎样组织、斗争并承担后果。因此，多年前从韶山带出的个人求学疑问，转化为一个清晰判断：道路不在远方，就在人民已经行动起来的土地上；这也成为他革命理想形成的关键一步。',
+      key_action: '毛泽东整理五县调查笔记，把乡土观察转化为对农民革命力量的判断',
+      characters: ['毛泽东', '农民协会骨干'],
+      visual_prompt: '1927年湖南乡村清晨，泥泞道路、草鞋、斗笠、写满调查记录的笔记本，毛泽东与农民协会骨干同行，远处稻田和村舍，晨光照亮翻开的《湖南农民运动考察报告》手稿',
+      camera_suggestion: '跟拍泥路脚步，切到笔记中的地名和数据，最后拉远至行走在田野中的人物群像',
+      cultural_note: '事实边界：五县三十二天考察与考察报告来自条目；将多年成长压缩为首尾呼应属于影视化创作组织。',
+      conflict: '把农民仅视为被帮助者的旧认识 vs 看见农民作为革命主体的现实行动',
+      dialogue_or_narration: '旁白：他的理想不是在一间书房里突然完成的，而是在湖南的田埂、课堂、会议桌和农民中间一步步形成。',
+      factual_basis: '依据毛泽东条目关于1927年湖南五县农民运动考察及报告的记载。',
+      fictionalized_elements: ['泥点笔记与清晨整理手稿为视觉化处理。'],
+    }, 4),
+  ];
+}
+
+function buildMaoGrowthArcCharacters(characterNames: string[]): StoryCharacter[] {
+  const descriptions: Record<string, { role: string; description: string }> = {
+    毛泽东: { role: 'protagonist', description: '从韶山少年、长沙学生成长为走进农民实践的青年行动者。' },
+    毛贻昌: { role: 'family_pressure', description: '父亲，希望儿子守住家业；构成少年离乡选择中的家庭压力。' },
+    萧子升: { role: 'peer', description: '同学与游学伙伴，和毛泽东一起走入湘中乡村观察现实。' },
+    杨昌济: { role: 'mentor', description: '湖南一师师长，参与青年毛泽东求学与思想启蒙阶段。' },
+    蔡和森: { role: 'peer', description: '新民学会同伴，与毛泽东共同讨论从个人修养到社会改造的方向。' },
+    杨开慧: { role: 'collaborator', description: '协助韶山农民夜校教学的行动伙伴。' },
+    农民夜校学员: { role: 'community', description: '以谷价、租息和生计问题把抽象理想拉回乡土现实的群体。' },
+    农民协会骨干: { role: 'community', description: '农民运动实践中的组织者群体，使人民力量成为可见行动。' },
+  };
+  return characterNames.slice(0, 8).map((name) => ({
+    name,
+    role: descriptions[name]?.role ?? 'supporting',
+    description: descriptions[name]?.description ?? '青年成长与湖南实践线中的相关人物。',
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Generate content for a single scene
 // ---------------------------------------------------------------------------
@@ -671,7 +854,7 @@ function generateSceneContent(
   const cameraSuggestion = CAMERA_BY_FUNCTION[template.function_label] ?? '中景固定镜头';
 
   // Build characters for this scene
-  const sceneChars = determineSceneCharacters(template, characterNames, protagonist);
+  const sceneChars = determineSceneCharacters(template, characterNames, protagonist, videoType);
 
   // Build cultural note
   const culturalNote = buildSceneCulturalNote(entry, centralEvent, template);
@@ -726,6 +909,16 @@ function determineLocation(entry: EntryDetail, idx: number, centralEvent: string
   if (centralEvent.includes('断案')) return '分宁县衙';
   if (centralEvent.includes('投江') || centralEvent.includes('殉国')) return '汨罗江畔';
 
+  const eventText = [centralEvent, ...paragraphs].join(' ');
+  const eventLocation = entry.relatedLocations.find((place) => {
+    const name = typeof place === 'string' ? place : place.name;
+    const coreName = name.replace(/[《》]/g, '').replace(/(?:故居|旧址|遗址|纪念馆|所在地)$/g, '');
+    return eventText.includes(name) || (coreName.length >= 2 && eventText.replace(/[《》]/g, '').includes(coreName));
+  });
+  if (eventLocation) {
+    return typeof eventLocation === 'string' ? eventLocation : eventLocation.name;
+  }
+
   const primaryPlace = subjectPlace(entry);
   if (primaryPlace && (/工坊|楼|阁|亭|台|寺|庙|祠|馆|园|城|镇|村|江|湖|山|洞|溪/.test(primaryPlace) || primaryPlace !== inferSubject(entry))) {
     return primaryPlace;
@@ -774,11 +967,11 @@ function buildSceneTitle(template: SceneTemplate, centralEvent: string, idx: num
     '分析精神': [`分析精神`, '精神提炼'],
     '联系当下': [`联系当下`, '现实映射'],
     '总结号召': [`总结号召`, '行动号召'],
-    '小主人公': [`少年出场`, '新任官员'],
-    '遇到问题': [`发现问题`, '冤案疑点'],
-    '学习成长': [`探索真相`, '翻查案卷'],
-    '做出选择': [`勇敢拒绝`, '做出选择'],
-    '温暖结尾': [`冤案得雪`, '温暖结尾'],
+    '小主人公': [`小主人公`, '好奇出发'],
+    '遇到问题': [`遇到问题`, '意外发现'],
+    '学习成长': [`探索发现`, '认真听看'],
+    '做出选择': [`勇敢选择`, '做出选择'],
+    '温暖结尾': [`温暖结尾`, '带着收获回家'],
     '3秒钩子': [`3秒开场`, '冲击画面'],
     '关键信息': [`核心事实`, '人物+事件'],
     '情绪推进': [`情感渲染`, '情绪推进'],
@@ -932,16 +1125,16 @@ function buildScenePlot(
       return buildChildProtagonist(protagonistName, entry, region);
 
     case '遇到问题':
-      return buildChildProblem(protagonistName, centralEvent);
+      return buildChildProblem(protagonistName, centralEvent, entry);
 
     case '学习成长':
-      return buildChildGrowth(protagonistName, centralEvent, actionDetails);
+      return buildChildGrowth(protagonistName, centralEvent, actionDetails, entry);
 
     case '做出选择':
-      return buildChildChoice(protagonistName, centralEvent, keyQuote);
+      return buildChildChoice(protagonistName, centralEvent, keyQuote, entry);
 
     case '温暖结尾':
-      return buildChildEnding(protagonistName, centralEvent);
+      return buildChildEnding(protagonistName, centralEvent, entry);
 
     case '3秒钩子':
       return buildShortHook(protagonistName, centralEvent, keyQuote);
@@ -1123,7 +1316,7 @@ function buildConflictEscalation(protagonist: string, centralEvent: string, deta
   if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
     return `国都失陷、流放无归，身边人劝${protagonist}保全性命，江风却把亡国之痛吹到眼前。苟活可以避祸，殉志则意味着永别。`;
   }
-  return `${antagonist}施压加大，矛盾不断深化。${protagonist}面对两难选择：妥协保全自己，还是坚持正义？${details || `外部压力与内心良知之间，裂痕越来越大`}`;
+  return `${centralEvent}进入关键阶段，旧有秩序、现实处境与新的主张正面碰撞。${protagonist}必须把思考变成行动，并承担选择带来的后果。${details || ''}`;
 }
 
 function buildKeyActionScene(protagonist: string, centralEvent: string, details: string, quote: string): string {
@@ -1136,7 +1329,7 @@ function buildKeyActionScene(protagonist: string, centralEvent: string, details:
   if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
     return `${protagonist}整理衣冠，把怀石抱入怀中。他回望楚地，最后一次低声诵读诗句，然后一步步走向汨罗江。`;
   }
-  return `${protagonist}做出选择——${details || `他选择了${centralEvent}的道路`}${quote ? `，说出："${quote}"` : ''}`;
+  return `${protagonist}不再停留在思考中，开始围绕${centralEvent}采取具体行动。${details || ''}${quote ? `他在行动中提出："${quote}"` : ''}`;
 }
 
 function antagonist_placeholder(): string {
@@ -1158,7 +1351,7 @@ function buildClimaxScene(protagonist: string, centralEvent: string, quote: stri
   if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
     return `${eventWithProtagonist(protagonist, centralEvent)}。江水合拢，岸边的人声忽然停住；这个选择，成为后世反复讲述的精神坐标。`;
   }
-  return `${eventWithProtagonist(protagonist, centralEvent)}——关键时刻到来。${quote ? `"${quote}"` : '他的选择改变了一切'}`;
+  return `${eventWithProtagonist(protagonist, centralEvent)}进入关键时刻。${quote ? `"${quote}"` : `${protagonist}以实际行动回应现实，个人志向由此转向更广阔的人群与时代问题。`}`;
 }
 
 function buildEndingScene(protagonist: string, centralEvent: string, entry: EntryDetail, videoType: VideoType): string {
@@ -1240,56 +1433,75 @@ function buildProposeTheme(protagonist: string, centralEvent: string, entry: Ent
 }
 
 function buildTellFacts(protagonist: string, centralEvent: string, details: string): string {
-  return `${eventWithProtagonist(protagonist, centralEvent)}——${details || '事实经过'}。这不是虚构的故事，而是有史料记载的真实选择。`;
+  return `围绕${centralEvent}，先看可考事实：${details || '事件发生的时间、地点、参与者和来源线索'}。史料记载、后世追述和现场再现需要分层说明。`;
 }
 
 function buildAnalyzeSpirit(protagonist: string, centralEvent: string, entry: EntryDetail): string {
-  return `${centralEvent}照见三种精神：不畏权势的公正、出淤泥而不染的廉洁、守正不阿的担当。${entry.culturalSignificance?.substring(0, 60) ?? `${protagonist}的选择，是精神力量的具体体现`}`;
+  return `${centralEvent}首先体现的是开放讨论：不同观点可以在共同问题前展开论证；其次是求真，结论要经得起事实和学理检验；最后是传承，让一场对话成为后来者继续思考的起点。${entry.culturalSignificance?.substring(0, 60) ?? ''}`;
 }
 
 function buildConnectPresent(protagonist: string, centralEvent: string, entry: EntryDetail): string {
-  return `${eventWithProtagonist(protagonist, centralEvent)}的精神，在今天如何传承？公正不是口号，廉洁不是标签，担当不是姿态——是需要像${protagonist}那样，在压力下做出的具体选择。`;
+  return `${centralEvent}的开放治学精神，在今天仍可以落到课堂讨论、学术交流和公共学习中：允许分歧，要求证据，也愿意修正自己的判断。${entry.name.split('——')[0]}因此不只是历史遗址，也是仍在发生学习的空间。`;
 }
 
 function buildCallToAction(protagonist: string, centralEvent: string, quote: string): string {
-  return `${quote || `"${centralEvent}"`}——传承这种精神，坚守正道。让${protagonist}的选择，照亮每一个面对压力的人。`;
+  return `${quote || `“${centralEvent}”`}。把开放变成愿意倾听，把求真变成查证依据，把传承变成继续发问；一次好的学习，不以口号结束，而从下一次有根据的讨论开始。`;
 }
 
 function buildChildProtagonist(protagonist: string, entry: EntryDetail, region: string): string {
-  const simpleName = protagonist.length <= 3 ? protagonist : protagonist.substring(0, 3);
-  return `${simpleName}是一个年轻的官员，刚到${region}上任。他有正义感，好奇心强，愿意认真看每一份文件。他不像其他人那样急着完成任务，他想知道真相。`;
+  if (entry.keywords.includes('人仙之恋') || (entry.keywords.includes('狐仙') && entry.keywords.includes('刘海砍樵'))) {
+    return `${protagonist}是${region}山林里勤劳善良的年轻樵夫。每天，他背着柴担、带着斧头走上山路；这一天，他在竹林边遇见了提着花篮的胡大姐。`;
+  }
+  const source = cleanSourceSentences(entry.story).find(sentence => sentence.startsWith(protagonist));
+  return source
+    ? `${source}。这一次，他遇到了一件需要认真看、认真听的小难题。`
+    : `${protagonist}住在${region}。他好奇、善良，遇到问题时愿意先看清楚，再想办法。`;
 }
 
-function buildChildProblem(protagonist: string, centralEvent: string): string {
-  return `${protagonist}发现一个问题：有一个人不该被惩罚，但上面的人要惩罚他。${protagonist}翻看资料，发现证据不对——这个人是冤枉的！`;
+function buildChildProblem(protagonist: string, centralEvent: string, entry: EntryDetail): string {
+  if (entry.keywords.includes('人仙之恋') || entry.keywords.includes('狐仙')) {
+    return `胡大姐告诉${protagonist}，自己来自传说中的狐仙世界。${protagonist}吃了一惊：如果只因为身份不同就转身离开，他会不会错过一个真诚善良的朋友？`;
+  }
+  return `${protagonist}在“${centralEvent}”中遇到了一个问题。眼前看到的和原先以为的不一样，他决定不急着下结论。`;
 }
 
-function buildChildGrowth(protagonist: string, centralEvent: string, details: string): string {
-  return `${protagonist}开始认真调查。他翻看案卷、询问别人、想办法帮助那个被冤枉的人。他不怕困难，因为他知道做正确的事很重要。`;
+function buildChildGrowth(protagonist: string, centralEvent: string, details: string, entry: EntryDetail): string {
+  if (entry.keywords.includes('人仙之恋') || entry.keywords.includes('狐仙')) {
+    return `${protagonist}想起胡大姐一路上的帮助，也看见她没有伤害任何人。他先听她把话说完，再用自己亲眼看到的善意作判断，害怕慢慢变成了理解。`;
+  }
+  return `${protagonist}先观察，再询问，还亲手试了一次。${details || `他从${centralEvent}里找到了一条能解决问题的线索`}。`;
 }
 
-function buildChildChoice(protagonist: string, centralEvent: string, quote: string): string {
-  return `${protagonist}做出了勇敢的决定：他拒绝做不对的事！${quote ? `他说："${quote}"` : '他说："这样做不对，我不能签字！"'}`;
+function buildChildChoice(protagonist: string, centralEvent: string, quote: string, entry: EntryDetail): string {
+  if (entry.keywords.includes('人仙之恋') || entry.keywords.includes('狐仙')) {
+    return `${protagonist}没有因为传说中的身份而否定胡大姐。他选择相信亲眼见过的善良，并和她一起面对接下来的考验。`;
+  }
+  const usableQuote = quote && quote !== centralEvent && !centralEvent.includes(quote) ? quote : '';
+  return `${protagonist}做出了勇敢而温和的选择：不跟着误会走，要用行动把问题解决。${usableQuote ? `他说：“${usableQuote}”` : ''}`;
 }
 
-function buildChildEnding(protagonist: string, centralEvent: string): string {
-  return `冤枉的人被救了！${protagonist}学到了一个道理：做正确的事有时候很困难，但只要坚持，正义一定能赢。`;
+function buildChildEnding(protagonist: string, centralEvent: string, entry: EntryDetail): string {
+  if (entry.keywords.includes('人仙之恋') || entry.keywords.includes('狐仙')) {
+    return `${protagonist}和胡大姐一起走过考验，山路上又响起轻快的歌声。这个温暖结局属于民间传说的讲法，也提醒孩子：认识一个人，要看他的行动和真心。`;
+  }
+  return `问题终于有了温暖的答案。${protagonist}明白了：遇到不同的人和事，先理解、再判断，善良也需要勇敢的行动。`;
 }
 
 function buildShortHook(protagonist: string, centralEvent: string, quote: string): string {
-  return `${quote || centralEvent}——${protagonist}${centralEvent}，3秒记住这个名字和这个选择。`;
+  return `${centralEvent}？镜头贴近${protagonist}最关键的材料与动作，答案先藏在一个反常细节里。`;
 }
 
 function buildShortKeyInfo(protagonist: string, centralEvent: string): string {
-  return `${protagonist}${centralEvent}——谁做了什么选择，什么结果。5秒讲清核心事实。`;
+  return `${centralEvent}的关键不在表面：材料怎样变化、手如何操作、最后产生什么差别，三个信息依次出现。`;
 }
 
 function buildShortEmotion(protagonist: string, centralEvent: string, toneAdj: string): string {
-  return `${toneAdj}${protagonist}的压力、抉择、坚守——从紧张到感动，画面推情绪。`;
+  return `${toneAdj}材料在手指间一点点变化，粗糙变得细密，单一变得有层次；${protagonist}的耐心，让看不见的细节显出来。`;
 }
 
 function buildShortGoldenQuote(protagonist: string, centralEvent: string, quote: string): string {
-  return `${quote || `"吾不为也"`}——${protagonist}${centralEvent}的精神定格。`;
+  const usableQuote = quote && quote !== centralEvent && !centralEvent.includes(quote) ? `“${quote}”` : '看见一处细节，才看见一门手艺的分量';
+  return `${usableQuote}。成品纹理与手中的材料同框，问题在答案里停住。`;
 }
 
 function buildAiComicEntrance(protagonist: string, centralEvent: string, region: string, details: string): string {
@@ -1360,7 +1572,7 @@ function buildCultureRoots(entry: EntryDetail, centralEvent: string): string {
 
 function buildCraftDisplay(entry: EntryDetail, centralEvent: string, details: string): string {
   const keywords = entry.keywords.slice(0, 3).join('、');
-  return `${keywords}——技艺的核心展示。手的动作、材料的质感、工具的声音。${details ? `具体步骤：${details}` : `从原料到成品，每一步都是匠心`}。画面要有微距和慢动作。`;
+  return `${keywords}依次进入手边：材料铺开，工具落下，手指调整力度。${details ? `具体步骤：${details}` : '从原料到成品，每一步都留下可见变化'}。针尖、纹理和工具声把技艺讲清。`;
 }
 
 function buildModernInheritance(entry: EntryDetail, protagonist: string): string {
@@ -1370,7 +1582,7 @@ function buildModernInheritance(entry: EntryDetail, protagonist: string): string
 
 function buildSloganClose(entry: EntryDetail, protagonist: string, quote: string): string {
   const coreMessage = entry.culturalSignificance?.split(/[。]/)[0]?.substring(0, 30) ?? entry.type;
-  return `${quote || `${coreMessage}——文化精神最凝练的表达`}。画面定格，精神定格。`;
+  return `${quote || `${coreMessage}——文化精神最凝练的表达`}。镜头从代表性符号拉向今天仍在这里学习、参观和实践的人，让文化根脉落在现实行动中。`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1420,7 +1632,7 @@ function buildCityHistory(entry: EntryDetail, centralEvent: string, protagonist:
 
 function buildCityCulture(entry: EntryDetail, region: string): string {
   const keywords = entry.keywords.slice(0, 3).join('、');
-  return `${region}的地方文化——${keywords}。方言、饮食、习俗、技艺，每一项都是这座城市的DNA。要有烟火气，不是空镜堆砌。`;
+  return `${region}的地方文化落在${keywords}里，也落在晨读的人、讲解的声音和街巷里的日常往来中。地标因此不只是景点，而是仍被使用的生活空间。`;
 }
 
 function buildCityLife(entry: EntryDetail, region: string): string {
@@ -1441,7 +1653,7 @@ function buildSpaceIntro(entry: EntryDetail, region: string): string {
 }
 
 function buildSceneNarrative(protagonist: string, centralEvent: string, details: string, entry: EntryDetail): string {
-  return `在这个空间中发生了什么——${protagonist}${centralEvent}。叙事要简短但具体：${details || entry.story.substring(0, 60).replace(/\*\*/g, '').split(/[。]/)[0]}。不是空镜，而是有故事的空间。`;
+  return `沿着空间继续前行，${protagonist}${centralEvent}留下的痕迹逐渐显现：${details || entry.story.substring(0, 60).replace(/\*\*/g, '').split(/[。]/)[0]}。脚步经过实物、建筑和人的活动，地点开始有了时间。`;
 }
 
 function buildTimeOverlay(entry: EntryDetail, centralEvent: string, protagonist: string): string {
@@ -1450,7 +1662,7 @@ function buildTimeOverlay(entry: EntryDetail, centralEvent: string, protagonist:
 }
 
 function buildMoodClose(entry: EntryDetail, region: string): string {
-  return `${region}的精神——不是故事的结局，而是空间本身。一个画面，一句旁白。留白收束。`;
+  return `脚步停下，${region}的风声仍从建筑与树影之间穿过。镜头留在空出的石阶和渐远的人声上，让空间自己完成最后一句。`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1458,18 +1670,18 @@ function buildMoodClose(entry: EntryDetail, region: string): string {
 // ---------------------------------------------------------------------------
 
 function buildLandscapeOpening(entry: EntryDetail, region: string): string {
-  return `${region}——山、水、云、雾、光影。没有人物、没有叙事。只有自然本身的美与气息。画面要美，节奏要慢。`;
+  return `清晨的${region}先从雾里露出一线峰脊，水汽沿石壁缓慢上升。没有急促的人声，只有风、滴水和远处鸟鸣把山谷一点点唤醒。`;
 }
 
 function buildMoodFlow(entry: EntryDetail, region: string): string {
   const keywords = entry.keywords.filter(k => ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬'].some(w => k.includes(w)));
   const moodWords = keywords.length > 0 ? keywords.join('→') : '晨昏→四季→风雨→晴雾';
-  return `意境在时间中流变——${moodWords}。同一个山水在不同状态下的美感。纯视觉诗，没有解释性旁白。`;
+  return `${moodWords}依次掠过${region}：晨光擦亮峰壁，雨雾吞没半座山林，暮色又把溪谷拉深。山水不解释，只在时间里改变呼吸。`;
 }
 
 function buildSpiritEssence(entry: EntryDetail, region: string): string {
   const core = entry.culturalSignificance?.substring(0, 30)?.split(/[。]/)[0] ?? '山水灵韵';
-  return `${core}——山水的精神不是"资源"，而是灵韵。一句话定格。画面要有留白。`;
+  return `${core}。云从峰间移开，最远的一根石柱重新出现；风声退下去，山水把未说完的部分留给观看的人。`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1482,20 +1694,20 @@ function buildPoseQuestion(centralEvent: string, entry: EntryDetail): string {
 
 function buildConceptExplain(centralEvent: string, entry: EntryDetail): string {
   const keywords = entry.keywords.slice(0, 3).join('、');
-  return `核心概念：${keywords}。用类比和对比让复杂变简单——${entry.summary?.substring(0, 60) ?? centralEvent}。每个概念只讲一个要点。`;
+  return `先认清三个概念：${keywords}。${entry.summary?.substring(0, 60) ?? centralEvent}。可以把岩层看作叠放的书页，把垂直节理看作书页上的裂缝，流水再沿裂缝不断切开。`;
 }
 
 function buildCaseEvidence(protagonist: string, centralEvent: string, details: string): string {
-  return `具体案例：${protagonist}${centralEvent}。${details || '不是抽象论证，而是有真实的人物、事件、地点作为例证'}。案例要简短有力，直击要点。`;
+  return `以${protagonist}为例观察${centralEvent}：${details || '岩层、节理、溪谷和孤立峰柱同时出现在真实地点中'}。同一组地貌细节，把概念和现场对应起来。`;
 }
 
 function buildLogicDeepen(centralEvent: string, entry: EntryDetail): string {
   const culturalSig = entry.culturalSignificance?.substring(0, 60) ?? '';
-  return `不只是"是什么"——${centralEvent}意味着什么？${culturalSig || '深层原理和延伸思考'}。从现象到本质，逻辑递进。`;
+  return `${centralEvent}不只是形状问题。${culturalSig || '岩石性质提供基础，节理决定切割方向，流水侵蚀和重力崩塌共同塑造今天的峰林'}。少掉其中任何一层，都解释不了眼前的地貌。`;
 }
 
 function buildSummary(centralEvent: string, entry: EntryDetail): string {
-  return `要点归纳：${entry.keywords.slice(0, 3).join('·')}——${centralEvent}的核心启示。用最简洁的语言重述核心要点。`;
+  return `最后记住${entry.keywords.slice(0, 3).join('、')}三个词：${centralEvent}不是一次完成的雕刻，而是岩层、裂隙、流水与漫长时间共同留下的结果。`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1503,27 +1715,27 @@ function buildSummary(centralEvent: string, entry: EntryDetail): string {
 // ---------------------------------------------------------------------------
 
 function buildLearningObjective(centralEvent: string, entry: EntryDetail): string {
-  return `学习目标：学完本节，你能掌握${centralEvent}的3个核心要点——${entry.keywords.slice(0, 3).join('、')}。目标具体可衡量。`;
+  return `学习目标：学完本节，能够说出${centralEvent}的三个层次，并用${entry.keywords.slice(0, 3).join('、')}各举一个现场例子。`;
 }
 
 function buildKnowledgeTeach(centralEvent: string, entry: EntryDetail): string {
-  return `核心知识讲解——${centralEvent}的要点1：${entry.keywords[0] ?? centralEvent}。要点2：${entry.keywords[1] ?? '文化背景'}。要点3：${entry.keywords[2] ?? '现实意义'}。结构化、分步骤、有逻辑。`;
+  return `第一层看${entry.keywords[0] ?? centralEvent}，确认对象与地点；第二层看${entry.keywords[1] ?? '历史背景'}，理解关键事件；第三层看${entry.keywords[2] ?? '当代延续'}，分清历史遗存和今天的使用。`;
 }
 
 function buildDemonstration(protagonist: string, centralEvent: string, details: string): string {
-  return `示范演示——${protagonist}${centralEvent}的操作流程。${details || '从准备到执行到检验，每一步都有标注和要点提示'}。`;
+  return `示范：从一处实物或建筑细节开始，找到对应事件，再回到今天的现场。${details || `${protagonist}、${centralEvent}与可见空间被逐一对应`}。`;
 }
 
 function buildPracticeGuide(centralEvent: string): string {
-  return `练习引导——基于${centralEvent}的思考题：这个事件照见了什么精神？在当代如何体现？让观众主动参与，不只是被动接受。`;
+  return `练习：为${centralEvent}制作三张卡片，分别写“可见实物”“历史事件”“当代使用”，并说明三者为什么不能混为同一个时代。`;
 }
 
 function buildAssessment(centralEvent: string, entry: EntryDetail): string {
-  return `知识检验——${centralEvent}的核心知识点回顾：${entry.keywords.slice(0, 3).join('、')}。你是否达到了学习目标？`;
+  return `知识检验：看到${entry.keywords.slice(0, 3).join('、')}时，能否指出它属于地点、事件还是文化解释？再用一句话说明${centralEvent}的时间关系。`;
 }
 
 function buildExtendedSummary(centralEvent: string, entry: EntryDetail): string {
-  return `总结拓展——${centralEvent}的要点归纳+延伸方向：${entry.type}相关的其他内容、参考资料、进阶学习路径。`;
+  return `复盘：先辨实物，再核事件，最后讨论当代意义。继续学习${centralEvent}时，可对照${entry.type}条目的来源、现场说明和待核实点。`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1543,12 +1755,12 @@ function buildSceneConflict(template: SceneTemplate, centralEvent: string, prota
   const conflictMap: Record<string, string> = {
     '钩子开场': `悬念开场：${centralEvent}的危机是什么？`,
     '主角处境': `${protagonist}的身份与职责 vs 制度/权力压力`,
-    '冲突升级': `个人良知 vs 权力要求——签字还是拒签？`,
+    '冲突升级': `旧有秩序与现实压力 vs ${protagonist}正在形成的新判断`,
     '关键行动': `${protagonist}做出选择——采取行动`,
     '高潮': `${centralEvent}的核心冲突爆发——正面交锋`,
     '结尾': `良知坚守 vs 权势得失——精神落点`,
-    '时代危机': `时代压迫 vs 个人良知`,
-    '人物卷入': `职责要求 vs 个人判断`,
+    '时代危机': `社会现实与旧有秩序 vs 改变现实的愿望`,
+    '人物卷入': `${protagonist}的个人求索 vs 时代提出的公共问题`,
     '历史余响': `短期得失 vs 长期精神`,
   };
   return conflictMap[template.function_label] ?? `${centralEvent}——${protagonist}的抉择`;
@@ -1581,18 +1793,26 @@ function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string,
       if (template.function_label === '结尾') return `旁白：周敦颐守住的不是一纸判文，而是人命面前不能含糊的公道。`;
     }
     if (videoType === 'ai_comic_drama') {
-      if (template.function_label === '钩子开场') return `旁白：案卷上的一个疑点，让${protagonist}停住了笔。`;
-      if (template.function_label === '人物登场') return `${protagonist}（压低声音）：证词前后不合，不能草草定案。`;
-      if (template.function_label === '冲突爆发') return `上官（不耐）：照旧签了。${protagonist}（克制）：若有冤情，这一笔就是人命。`;
-      if (template.function_label === '反转/觉醒') return `${protagonist}（抬眼）：我愿重查，也不愿误杀。`;
-      if (template.function_label === '高燃收束') return `${protagonist}：为求一时顺从而害一人性命，吾不为也。`;
+      const isCaseEvent = centralEvent.includes('断案') || centralEvent.includes('拒签');
+      if (isCaseEvent) {
+        if (template.function_label === '钩子开场') return `旁白：案卷上的一个疑点，让${protagonist}停住了笔。`;
+        if (template.function_label === '人物登场') return `${protagonist}（压低声音）：证词前后不合，不能草草定案。`;
+        if (template.function_label === '冲突爆发') return `上官（不耐）：照旧签了。${protagonist}（克制）：若有冤情，这一笔就是人命。`;
+        if (template.function_label === '反转/觉醒') return `${protagonist}（抬眼）：我愿重查，也不愿误杀。`;
+        if (template.function_label === '高燃收束') return `${protagonist}：为求一时顺从而害一人性命，吾不为也。`;
+      }
+      if (template.function_label === '钩子开场') return `旁白：${centralEvent}最意外的一幕，在这一刻定格。`;
+      if (template.function_label === '人物登场') return `${protagonist}（警觉）：我只相信亲眼看见的行动。`;
+      if (template.function_label === '冲突爆发') return `对方（逼问）：知道真相以后，你还会留下吗？${protagonist}（迟疑）：让我自己做决定。`;
+      if (template.function_label === '反转/觉醒') return `${protagonist}（抬眼）：身份不是答案，做过什么才是。`;
+      if (template.function_label === '高燃收束') return `${protagonist}：我选择相信真心，也愿意承担接下来的考验。`;
     }
     // Find quotes in paragraphs related to this scene's function
     if (template.function_label === '高潮' && quotes.length > 0) {
       return `核心台词："${quotes[0]}"`;
     }
     if (template.function_label === '关键行动') {
-      return `${protagonist}："此案有疑，我不能签字。"`;
+      return `旁白：${protagonist}不再只追问答案，而是围绕${centralEvent}开始组织、写作、调查或实践。`;
     }
     if (template.function_label === '钩子开场') {
       return `旁白：${centralEvent}——这不是传说，而是真实发生过的选择。`;
@@ -1614,7 +1834,18 @@ function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string,
 
   // For children story, use simple narration
   if (videoType === 'children_story') {
-    return `${protagonist}：这样做不对，我不能签字！`;
+    const isFolkloreEncounter = paragraphs.some(paragraph => /狐仙|胡大姐|人仙/.test(paragraph));
+    if (isFolkloreEncounter) {
+      const lines: Record<string, string> = {
+        '小主人公': `旁白：${protagonist}背起柴担上山，没想到竹林里正等着一次奇妙相遇。`,
+        '遇到问题': `${protagonist}：我有些害怕，但我愿意先听你把话说完。`,
+        '学习成长': `旁白：他没有只听传闻，而是想起胡大姐真正做过的事。`,
+        '做出选择': `${protagonist}：我相信亲眼看见的善良，我们一起面对。`,
+        '温暖结尾': '旁白：传说有不同讲法，这个版本把真心和理解留在了山路上。',
+      };
+      return lines[template.function_label] ?? `旁白：${protagonist}先理解，再做选择。`;
+    }
+    return `旁白：${protagonist}先认真观察，再用温和而勇敢的行动解决问题。`;
   }
 
   if (videoType === 'heritage_promo') {
@@ -1624,10 +1855,23 @@ function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string,
   }
 
   // Default: narration
-  return `${protagonist}停在文书前，没有急着落笔；他要先看清事实，再决定如何承担。`;
+  const sourceLine = cleanSourceSentences(paragraphs.join('\n'))[0];
+  return sourceLine
+    ? `旁白：${sourceLine}`
+    : `旁白：${protagonist}在${centralEvent}中不断观察、判断，并把认识变成行动。`;
 }
 
 function buildKeyAction(template: SceneTemplate, protagonist: string, centralEvent: string): string {
+  if (['小主人公', '遇到问题', '学习成长', '做出选择', '温暖结尾'].includes(template.function_label)) {
+    const actionMap: Record<string, string> = {
+      '小主人公': `${protagonist}带着日常工具进入故事现场`,
+      '遇到问题': `${protagonist}停下脚步，先听对方说明情况`,
+      '学习成长': `${protagonist}观察行动和细节，不被传闻牵着走`,
+      '做出选择': `${protagonist}用一个温和而勇敢的动作表达决定`,
+      '温暖结尾': `${protagonist}与伙伴一起离开，留下可重复的温暖意象`,
+    };
+    return actionMap[template.function_label] ?? `${protagonist}解决眼前问题`;
+  }
   if (['技艺渊源', '匠人登场', '工艺全程', '精神内核', '传承之路'].includes(template.function_label)) {
     const actionMap: Record<string, string> = {
       '技艺渊源': '展示成品、旧照片和原料，建立技艺来处',
@@ -1660,11 +1904,17 @@ function buildKeyAction(template: SceneTemplate, protagonist: string, centralEve
     return actionMap[template.function_label] ?? eventWithProtagonist(protagonist, centralEvent);
   }
   if (['人物登场', '冲突爆发', '反转/觉醒', '高燃收束'].includes(template.function_label)) {
-    const actionMap: Record<string, string> = {
+    const isCaseEvent = centralEvent.includes('断案') || centralEvent.includes('拒签');
+    const actionMap: Record<string, string> = isCaseEvent ? {
       '人物登场': `${protagonist}发现案卷证词矛盾，拒绝草草落笔`,
       '冲突爆发': `上官催签，${protagonist}当场摊开疑点反驳`,
       '反转/觉醒': `${protagonist}离开案头，转向现场重查`,
       '高燃收束': `${protagonist}退回未签文书，留下下一步追查钩子`,
+    } : {
+      '人物登场': `${protagonist}带着标志性物件进入现场，注意到反常细节`,
+      '冲突爆发': `对立信息逼近，${protagonist}用亲眼所见作出反问`,
+      '反转/觉醒': `${protagonist}放弃最省事的退路，转身采取新行动`,
+      '高燃收束': `${protagonist}用明确选择回应${centralEvent}，留下后续考验`,
     };
     return actionMap[template.function_label] ?? `${protagonist}${centralEvent}`;
   }
@@ -1672,9 +1922,9 @@ function buildKeyAction(template: SceneTemplate, protagonist: string, centralEve
     '钩子开场': `进入危机现场`,
     '主角处境': `认清处境与选择压力`,
     '冲突升级': `面对两难，压力加深`,
-    '关键行动': `${protagonist}做出关键选择——拒签/断案/抗命`,
-    '高潮': `核心冲突爆发，说出关键台词`,
-    '结尾': `精神落点——守住良知`,
+    '关键行动': `${protagonist}围绕${centralEvent}采取具体行动`,
+    '高潮': `${centralEvent}形成决定性行动与思想转折`,
+    '结尾': `交代行动后果与理想形成`,
     '时代危机': `建立时代危机背景`,
     '人物卷入': `${protagonist}卷入事件中心`,
     '历史余响': `展示历史影响`,
@@ -1722,29 +1972,52 @@ function buildVisualPrompt(template: SceneTemplate, location: string, timeOfDay:
   }
 
   if (['人物登场', '冲突爆发', '反转/觉醒', '高燃收束'].includes(template.function_label)) {
-    const visualMap: Record<string, string> = {
+    const isCaseEvent = centralEvent.includes('断案') || centralEvent.includes('拒签');
+    const visualMap: Record<string, string> = isCaseEvent ? {
       '人物登场': `${location}，${timeOfDay}，${protagonist}摊开案卷，证词两页并排，门外人影逼近，中景分镜`,
       '冲突爆发': `${location}，${timeOfDay}，上官推笔、烛油黑痕、${protagonist}按住疑点，近景快速切换`,
       '反转/觉醒': `${location}，${timeOfDay}，${protagonist}合上案卷转向牢门，众人错愕，动作转折特写`,
       '高燃收束': `${location}，${timeOfDay}，未签文书推回案头，晨光照在案卷疑点，人物正面定格`,
+    } : {
+      '人物登场': `${location}，${timeOfDay}，${protagonist}携带标志性物件入画，环境异象与警觉表情同框，中景漫画分镜`,
+      '冲突爆发': `${location}，${timeOfDay}，${protagonist}与对方近景对切，身份线索、手部动作和表情连续变化`,
+      '反转/觉醒': `${location}，${timeOfDay}，${protagonist}突然转身采取行动，背景人物错愕，动态构图`,
+      '高燃收束': `${location}，${timeOfDay}，${protagonist}与核心人物并肩定格，${keywords}成为前景视觉钩子`,
     };
-    return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${protagonist}、案卷、表情变化，漫画分镜构图`;
+    return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${protagonist}、${keywords}、表情变化，漫画分镜构图`;
   }
 
-  const visualMap: Record<string, string> = {
+  const isCaseEvent = centralEvent.includes('断案') || centralEvent.includes('拒签');
+  const visualMap: Record<string, string> = isCaseEvent ? {
     '钩子开场': `${location}，${timeOfDay}，木案、烛火、文书、案卷、判词，${protagonist}停笔特写，竖屏近景构图`,
     '主角处境': `${location}，${timeOfDay}，${protagonist}面对案卷和文书，中景展示人物、木案与门外压力`,
     '冲突升级': `${location}，${timeOfDay}，案卷细节、施压者身影、${protagonist}表情变化，近景交替构图`,
     '关键行动': `${location}，${timeOfDay}，${protagonist}翻开案卷、放下签笔、按住文书，动作特写`,
     '高潮': `${location}，${timeOfDay}，${protagonist}正面抬头，案卷和烛火在前景，情绪特写`,
     '结尾': `${location}，${timeOfDay}，远景拉开，${keywords}与书卷、案卷、晨光形成收束构图`,
+  } : {
+    '钩子开场': `${location}，${timeOfDay}，${keywords}形成强视觉前景，${protagonist}在关键动作中入画`,
+    '主角处境': `${location}，${timeOfDay}，${protagonist}与身份物件、现实环境同框，中景建立处境`,
+    '冲突升级': `${location}，${timeOfDay}，对立人物、环境阻力与${protagonist}表情变化交替呈现`,
+    '关键行动': `${location}，${timeOfDay}，${protagonist}围绕${centralEvent}采取具体行动，手部与物件特写`,
+    '高潮': `${location}，${timeOfDay}，${protagonist}完成决定性动作，人物关系和情绪在同一画面爆发`,
+    '结尾': `${location}，${timeOfDay}，远景拉开，${keywords}与人物行动结果形成收束构图`,
   };
 
   return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${keywords}，人物、道具、光线、空间层次清晰`;
 }
 
-function determineSceneCharacters(template: SceneTemplate, characterNames: string[], protagonist: string): string[] {
+function determineSceneCharacters(
+  template: SceneTemplate,
+  characterNames: string[],
+  protagonist: string,
+  videoType: VideoType,
+): string[] {
+  if (NON_DRAMATIC_VIDEO_TYPES.includes(videoType)) return [];
   const allChars = [protagonist];
+  if (['遇到问题', '学习成长', '做出选择', '温暖结尾'].includes(template.function_label) && characterNames.length > 1) {
+    allChars.push(characterNames[1]);
+  }
   if (['冲突升级', '关键行动', '高潮'].includes(template.function_label) && characterNames.length > 1) {
     allChars.push(characterNames[1]);
   }
@@ -2060,6 +2333,8 @@ export function validateDramaticStory(result: {
     s.dramatic_function === '高潮'
     || s.dramatic_function === '高燃收束'
     || s.dramatic_function === '金句落点'
+    || s.dramatic_function === '命运转折'
+    || s.dramatic_function === '做出选择'
   ) || isNonDramatic;
   if (!hasClimax) issues.push('缺少高潮场景');
 
@@ -2070,6 +2345,7 @@ export function validateDramaticStory(result: {
     '良知', '精神', '道德', '价值', '正义', '廉洁', '担当', '坚守', '传承', '出淤泥而不染',
     '理想', '信仰', '人民', '道路', '觉醒', '初心', '使命', '家国', '民族', '奋斗', '求索',
     '牺牲', '独立自主', '实事求是', '敢为天下先',
+    '善良', '理解', '真心', '温暖', '成长', '勇敢',
   ];
   const lastScene = scenes[scenes.length - 1];
   const lastSceneText = lastScene

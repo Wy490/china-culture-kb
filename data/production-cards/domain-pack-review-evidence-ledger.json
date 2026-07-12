@@ -1,0 +1,649 @@
+{
+  "schema_version": "domain-pack-review-evidence-ledger/v1",
+  "updated_at": "2026-07-10",
+  "status": "evidence_slots_created_decision_ledger_blank",
+  "scope": "Iteration 15：为 9 个 Domain Pack 审稿模板补证据附件槽位、建立真实人工审稿决策台账空白结构、映射 repair/reject 任务到证据槽位，并为 pass 草案准备项补真实审稿前阻断门槛。",
+  "source_patch_isolation_file": "data/production-cards/domain-pack-human-review-and-patch-isolation.json",
+  "source_precheck_file": "data/production-cards/p0-p1-review-export-and-domain-pack-precheck.json",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "manual_patch_required": true,
+    "current_layer": "evidence_slot_and_decision_ledger_only",
+    "blank_decision_ledger_is_approval": false
+  },
+  "counts": {
+    "domain_pack_evidence_slot_set_count": 9,
+    "evidence_slot_schema_count": 6,
+    "domain_pack_review_markdown_with_evidence_slots_count": 9,
+    "decision_ledger_entry_count": 9,
+    "decision_ledger_approved_count": 0,
+    "repair_reject_task_evidence_mapping_count": 14,
+    "pass_draft_blocker_set_count": 2,
+    "formal_patch_count": 0,
+    "machine_gate_count": 8
+  },
+  "evidence_slot_schema": [
+    {
+      "slot_id": "source_bibliography_attachment",
+      "label": "来源目录附件",
+      "required": true,
+      "description": "官方、机构、档案、项目页、旧址资料或明确待补证来源。"
+    },
+    {
+      "slot_id": "fact_boundary_table_attachment",
+      "label": "事实边界表附件",
+      "required": true,
+      "description": "区分已核事实、待核事项、可影视化表达、禁止断言。"
+    },
+    {
+      "slot_id": "authorization_or_consent_attachment",
+      "label": "授权或同意附件",
+      "required": true,
+      "description": "场地、肖像、声音、曲词曲谱、社区、机构、档案复制件或采访授权。"
+    },
+    {
+      "slot_id": "sample_validation_attachment",
+      "label": "样本验证附件",
+      "required": true,
+      "description": "至少 3 个条目或项目使用验证，或明确仍不足的验证缺口。"
+    },
+    {
+      "slot_id": "reviewer_identity_and_role_attachment",
+      "label": "审稿人身份与角色附件",
+      "required": true,
+      "description": "记录事实、伦理、授权、片型导演等审稿角色和签署状态。"
+    },
+    {
+      "slot_id": "final_decision_record_attachment",
+      "label": "最终决策记录附件",
+      "required": true,
+      "description": "记录 approve / repair / reject 决策、理由、后续动作和是否允许人工 Patch。"
+    }
+  ],
+  "domain_pack_evidence_slot_sets": [
+    {
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "template_id": "domain-pack-review-template-001",
+      "path": "docs/production-cards/domain-pack-review-template-dp-sensitive-history-evidence-expression-20260710.md",
+      "slot_status": "pending_evidence_attachment",
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ]
+    },
+    {
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "template_id": "domain-pack-review-template-002",
+      "path": "docs/production-cards/domain-pack-review-template-dp-medical-heritage-privacy-boundary-20260710.md",
+      "slot_status": "pending_evidence_attachment",
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ]
+    },
+    {
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "template_id": "domain-pack-review-template-003",
+      "path": "docs/production-cards/domain-pack-review-template-dp-revolutionary-history-event-reconstruction-20260710.md",
+      "slot_status": "pending_evidence_attachment",
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ]
+    },
+    {
+      "candidate_id": "dp-heritage-process-consent",
+      "template_id": "domain-pack-review-template-004",
+      "path": "docs/production-cards/domain-pack-review-template-dp-heritage-process-consent-20260710.md",
+      "slot_status": "pending_evidence_attachment",
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ]
+    },
+    {
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "template_id": "domain-pack-review-template-005",
+      "path": "docs/production-cards/domain-pack-review-template-dp-ethnic-ritual-community-boundary-20260710.md",
+      "slot_status": "pending_evidence_attachment",
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ]
+    },
+    {
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "template_id": "domain-pack-review-template-006",
+      "path": "docs/production-cards/domain-pack-review-template-dp-performance-rights-and-stage-assets-20260710.md",
+      "slot_status": "pending_evidence_attachment",
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ]
+    },
+    {
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "template_id": "domain-pack-review-template-007",
+      "path": "docs/production-cards/domain-pack-review-template-dp-documentary-site-source-boundary-20260710.md",
+      "slot_status": "pending_evidence_attachment",
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ]
+    },
+    {
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "template_id": "domain-pack-review-template-008",
+      "path": "docs/production-cards/domain-pack-review-template-dp-ai-comic-continuity-shot-language-20260710.md",
+      "slot_status": "pending_evidence_attachment",
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ]
+    },
+    {
+      "candidate_id": "dp-craft-material-tool-process",
+      "template_id": "domain-pack-review-template-009",
+      "path": "docs/production-cards/domain-pack-review-template-dp-craft-material-tool-process-20260710.md",
+      "slot_status": "pending_evidence_attachment",
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ]
+    }
+  ],
+  "human_review_decision_ledger": [
+    {
+      "ledger_entry_id": "decision-ledger-001",
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "decision_status": "not_started",
+      "allowed_decisions": [
+        "approve_for_manual_patch_candidate",
+        "repair_required",
+        "reject_or_rebuild"
+      ],
+      "real_reviewer_signed": false,
+      "evidence_slots_complete": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "decision_status": "not_started",
+      "allowed_decisions": [
+        "approve_for_manual_patch_candidate",
+        "repair_required",
+        "reject_or_rebuild"
+      ],
+      "real_reviewer_signed": false,
+      "evidence_slots_complete": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-003",
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "decision_status": "not_started",
+      "allowed_decisions": [
+        "approve_for_manual_patch_candidate",
+        "repair_required",
+        "reject_or_rebuild"
+      ],
+      "real_reviewer_signed": false,
+      "evidence_slots_complete": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-004",
+      "candidate_id": "dp-heritage-process-consent",
+      "decision_status": "not_started",
+      "allowed_decisions": [
+        "approve_for_manual_patch_candidate",
+        "repair_required",
+        "reject_or_rebuild"
+      ],
+      "real_reviewer_signed": false,
+      "evidence_slots_complete": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-005",
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "decision_status": "not_started",
+      "allowed_decisions": [
+        "approve_for_manual_patch_candidate",
+        "repair_required",
+        "reject_or_rebuild"
+      ],
+      "real_reviewer_signed": false,
+      "evidence_slots_complete": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-006",
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "decision_status": "not_started",
+      "allowed_decisions": [
+        "approve_for_manual_patch_candidate",
+        "repair_required",
+        "reject_or_rebuild"
+      ],
+      "real_reviewer_signed": false,
+      "evidence_slots_complete": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-007",
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "decision_status": "not_started",
+      "allowed_decisions": [
+        "approve_for_manual_patch_candidate",
+        "repair_required",
+        "reject_or_rebuild"
+      ],
+      "real_reviewer_signed": false,
+      "evidence_slots_complete": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-008",
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "decision_status": "not_started",
+      "allowed_decisions": [
+        "approve_for_manual_patch_candidate",
+        "repair_required",
+        "reject_or_rebuild"
+      ],
+      "real_reviewer_signed": false,
+      "evidence_slots_complete": false,
+      "formal_patch_created": false
+    },
+    {
+      "ledger_entry_id": "decision-ledger-009",
+      "candidate_id": "dp-craft-material-tool-process",
+      "decision_status": "not_started",
+      "allowed_decisions": [
+        "approve_for_manual_patch_candidate",
+        "repair_required",
+        "reject_or_rebuild"
+      ],
+      "real_reviewer_signed": false,
+      "evidence_slots_complete": false,
+      "formal_patch_created": false
+    }
+  ],
+  "repair_reject_task_evidence_mappings": [
+    {
+      "task_id": "repair-task-001",
+      "decision_type": "repair",
+      "owner_role": "医疗伦理审稿",
+      "candidate_ids": [
+        "dp-medical-heritage-privacy-boundary",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "authorization_or_consent_attachment",
+        "fact_boundary_table_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-002",
+      "decision_type": "repair",
+      "owner_role": "纪录片事实审稿",
+      "candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-documentary-site-source-boundary"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "authorization_or_consent_attachment",
+        "final_decision_record_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-003",
+      "decision_type": "repair",
+      "owner_role": "医疗伦理审稿",
+      "candidate_ids": [
+        "dp-medical-heritage-privacy-boundary",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-documentary-site-source-boundary"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "authorization_or_consent_attachment",
+        "fact_boundary_table_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-004",
+      "decision_type": "repair",
+      "owner_role": "革命历史事实审稿",
+      "candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-ai-comic-continuity-shot-language"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "final_decision_record_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-005",
+      "decision_type": "repair",
+      "owner_role": "民族文化审稿",
+      "candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-ai-comic-continuity-shot-language"
+      ],
+      "required_slot_ids": [
+        "authorization_or_consent_attachment",
+        "fact_boundary_table_attachment",
+        "sample_validation_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-006",
+      "decision_type": "repair",
+      "owner_role": "社区授权审稿",
+      "candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-ai-comic-continuity-shot-language"
+      ],
+      "required_slot_ids": [
+        "authorization_or_consent_attachment",
+        "fact_boundary_table_attachment",
+        "final_decision_record_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-007",
+      "decision_type": "repair",
+      "owner_role": "社区授权审稿",
+      "candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ],
+      "required_slot_ids": [
+        "authorization_or_consent_attachment",
+        "fact_boundary_table_attachment",
+        "reviewer_identity_and_role_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-008",
+      "decision_type": "repair",
+      "owner_role": "版权授权审稿",
+      "candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ],
+      "required_slot_ids": [
+        "authorization_or_consent_attachment",
+        "source_bibliography_attachment",
+        "final_decision_record_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-009",
+      "decision_type": "repair",
+      "owner_role": "革命历史事实审稿",
+      "candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-documentary-site-source-boundary"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "authorization_or_consent_attachment",
+        "fact_boundary_table_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-010",
+      "decision_type": "repair",
+      "owner_role": "现场授权审稿",
+      "candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-documentary-site-source-boundary"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "authorization_or_consent_attachment",
+        "reviewer_identity_and_role_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "repair-task-011",
+      "decision_type": "repair",
+      "owner_role": "纪录片事实审稿",
+      "candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-documentary-site-source-boundary"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "authorization_or_consent_attachment",
+        "fact_boundary_table_attachment"
+      ],
+      "status": "open_pending_evidence"
+    },
+    {
+      "task_id": "reject-task-001",
+      "decision_type": "reject",
+      "owner_role": "敏感历史伦理审稿",
+      "candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-ai-comic-continuity-shot-language"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "final_decision_record_attachment"
+      ],
+      "status": "open_requires_new_source_package"
+    },
+    {
+      "task_id": "reject-task-002",
+      "decision_type": "reject",
+      "owner_role": "革命历史事实审稿",
+      "candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-ai-comic-continuity-shot-language"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "final_decision_record_attachment"
+      ],
+      "status": "open_requires_new_source_package"
+    },
+    {
+      "task_id": "reject-task-003",
+      "decision_type": "reject",
+      "owner_role": "版权授权审稿",
+      "candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-documentary-site-source-boundary"
+      ],
+      "required_slot_ids": [
+        "source_bibliography_attachment",
+        "authorization_or_consent_attachment",
+        "final_decision_record_attachment"
+      ],
+      "status": "open_requires_new_source_package"
+    }
+  ],
+  "pass_draft_blocker_sets": [
+    {
+      "prepare_template_id": "pass-draft-prepare-001",
+      "source_task_id": "pass-candidate-001",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "writeback_allowed_now": false,
+      "formal_patch_created": false,
+      "blocking_gate_ids": [
+        "real_human_review_approved",
+        "source_or_authorization_evidence_attached",
+        "domain_pack_decision_ledger_recorded",
+        "manual_patch_reviewed",
+        "formal_patch_explicitly_requested_by_human"
+      ]
+    },
+    {
+      "prepare_template_id": "pass-draft-prepare-002",
+      "source_task_id": "pass-candidate-002",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "writeback_allowed_now": false,
+      "formal_patch_created": false,
+      "blocking_gate_ids": [
+        "real_human_review_approved",
+        "source_or_authorization_evidence_attached",
+        "domain_pack_decision_ledger_recorded",
+        "manual_patch_reviewed",
+        "formal_patch_explicitly_requested_by_human"
+      ]
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "evidence-slot-sets-created",
+      "status": "met",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "markdown-evidence-slots-added",
+      "status": "met",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "decision-ledger-created-blank",
+      "status": "met_as_blank_ledger",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "decision-ledger-no-approvals",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "repair-reject-tasks-mapped-to-evidence",
+      "status": "met",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "pass-draft-blockers-created",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_15_exit_gates": [
+    {
+      "gate_id": "domain-pack-evidence-slots-created",
+      "status": "met",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "blank-human-decision-ledger-created",
+      "status": "met_as_blank_ledger",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "repair-reject-evidence-mapping-created",
+      "status": "met",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "pass-draft-blocking-gates-created",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "formal-domain-pack-still-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "province-markdown-still-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

@@ -1,0 +1,733 @@
+{
+  "schema_version": "domain-pack-real-reviewer-submission-validation-pre-signature-preflight/v1",
+  "updated_at": "2026-07-10",
+  "status": "submission_validation_fixtures_created_pre_signature_preflight_blocked",
+  "scope": "Iteration 24：基于真实审稿人填报字段契约建立格式合法与非法回填校验夹具，覆盖全部 11 条校验规则，并生成 12 项签署前预检；全部夹具仅用于结构和规则回归，不代表真实审稿人、真实附件、真实签署、正式审批、正式 Patch 请求、正式 Patch 或正式库写入。",
+  "source_intake_contract_file": "data/production-cards/domain-pack-real-reviewer-intake-field-freeze-and-external-execution-checklist.json",
+  "source_handoff_file": "data/production-cards/domain-pack-formal-patch-failure-report-and-human-handoff.json",
+  "pre_signature_markdown_file": "docs/production-cards/domain-pack-real-reviewer-submission-validation-pre-signature-preflight-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "simulation_fixtures_are_real_submissions": false,
+    "structurally_valid_fixture_is_signed": false,
+    "pre_signature_preflight_is_approval": false,
+    "attachment_references_verified": false,
+    "signature_references_verified": false,
+    "formal_patch_request_recorded": false,
+    "current_layer": "submission_validation_fixtures_and_pre_signature_preflight_only"
+  },
+  "counts": {
+    "source_intake_field_count": 16,
+    "source_validation_rule_count": 11,
+    "simulated_attachment_reference_set_count": 3,
+    "simulation_fixture_count": 14,
+    "structurally_valid_fixture_count": 3,
+    "invalid_fixture_count": 11,
+    "covered_validation_rule_count": 11,
+    "pre_signature_check_count": 12,
+    "pre_signature_fixture_result_count": 14,
+    "pre_signature_ready_count": 0,
+    "real_reviewer_submission_count": 0,
+    "real_signature_count": 0,
+    "formal_patch_count": 0,
+    "machine_gate_count": 10
+  },
+  "simulated_attachment_reference_sets": [
+    {
+      "reference_set_id": "simulation-attachment-set-complete-craft-001",
+      "source_evidence_package_id": "evidence-freeze-package-001",
+      "reference_status": "structurally_complete_simulation_not_externally_verified",
+      "attachment_record_references": [
+        {
+          "slot_id": "source_bibliography_attachment",
+          "record_reference": "SIMULATION-CRAFT-SOURCE-001"
+        },
+        {
+          "slot_id": "fact_boundary_table_attachment",
+          "record_reference": "SIMULATION-CRAFT-FACT-001"
+        },
+        {
+          "slot_id": "authorization_or_consent_attachment",
+          "record_reference": "SIMULATION-CRAFT-AUTH-001"
+        },
+        {
+          "slot_id": "sample_validation_attachment",
+          "record_reference": "SIMULATION-CRAFT-SAMPLE-001"
+        },
+        {
+          "slot_id": "reviewer_identity_and_role_attachment",
+          "record_reference": "SIMULATION-CRAFT-IDENTITY-001"
+        },
+        {
+          "slot_id": "final_decision_record_attachment",
+          "record_reference": "SIMULATION-CRAFT-DECISION-001"
+        }
+      ],
+      "simulation_only": true,
+      "attachment_references_verified": false
+    },
+    {
+      "reference_set_id": "simulation-attachment-set-complete-repair-001",
+      "source_evidence_package_id": "evidence-freeze-package-002",
+      "reference_status": "structurally_complete_simulation_not_externally_verified",
+      "attachment_record_references": [
+        {
+          "slot_id": "source_bibliography_attachment",
+          "record_reference": "SIMULATION-REPAIR-SOURCE-001"
+        },
+        {
+          "slot_id": "fact_boundary_table_attachment",
+          "record_reference": "SIMULATION-REPAIR-FACT-001"
+        },
+        {
+          "slot_id": "authorization_or_consent_attachment",
+          "record_reference": "SIMULATION-REPAIR-AUTH-001"
+        },
+        {
+          "slot_id": "sample_validation_attachment",
+          "record_reference": "SIMULATION-REPAIR-SAMPLE-001"
+        },
+        {
+          "slot_id": "reviewer_identity_and_role_attachment",
+          "record_reference": "SIMULATION-REPAIR-IDENTITY-001"
+        },
+        {
+          "slot_id": "final_decision_record_attachment",
+          "record_reference": "SIMULATION-REPAIR-DECISION-001"
+        }
+      ],
+      "simulation_only": true,
+      "attachment_references_verified": false
+    },
+    {
+      "reference_set_id": "simulation-attachment-set-incomplete-craft-001",
+      "source_evidence_package_id": "evidence-freeze-package-001",
+      "reference_status": "structurally_incomplete_missing_final_decision_record",
+      "attachment_record_references": [
+        {
+          "slot_id": "source_bibliography_attachment",
+          "record_reference": "SIMULATION-INCOMPLETE-SOURCE-001"
+        },
+        {
+          "slot_id": "fact_boundary_table_attachment",
+          "record_reference": "SIMULATION-INCOMPLETE-FACT-001"
+        },
+        {
+          "slot_id": "authorization_or_consent_attachment",
+          "record_reference": "SIMULATION-INCOMPLETE-AUTH-001"
+        },
+        {
+          "slot_id": "sample_validation_attachment",
+          "record_reference": "SIMULATION-INCOMPLETE-SAMPLE-001"
+        },
+        {
+          "slot_id": "reviewer_identity_and_role_attachment",
+          "record_reference": "SIMULATION-INCOMPLETE-IDENTITY-001"
+        }
+      ],
+      "simulation_only": true,
+      "attachment_references_verified": false
+    }
+  ],
+  "structurally_valid_simulation_fixtures": [
+    {
+      "fixture_id": "submission-fixture-valid-craft-approved-001",
+      "source_template_id": "real-reviewer-intake-001",
+      "fixture_validation_mode": "format_and_cross_reference_only",
+      "input": {
+        "reviewer_intake_id": "real-reviewer-intake-001",
+        "source_handoff_package_id": "human-handoff-package-001",
+        "candidate_id": "dp-craft-material-tool-process",
+        "reviewer_name_or_group": "结构校验占位 A",
+        "reviewer_identity_type": "accountable_group",
+        "reviewer_role": "事实/工艺流程审稿负责人",
+        "assignment_or_followup_id": "dispatch-signature-001",
+        "review_decision": "approved",
+        "decision_reason": "结构校验文本：工艺流程字段和事实边界格式完整。",
+        "evidence_package_id": "evidence-freeze-package-001",
+        "attachment_reference_set_id": "simulation-attachment-set-complete-craft-001",
+        "attachment_waiver_record_references": [],
+        "signed_at": "2026-07-10T15:00:00+08:00",
+        "signature_record_reference": "SIMULATION-SIGNATURE-REF-001",
+        "explicit_formal_patch_request": false,
+        "formal_patch_request_record_reference": ""
+      },
+      "format_validation_status": "valid_as_simulation_fixture_only",
+      "failed_rule_ids": [],
+      "external_identity_verification_status": "not_run_simulation_only",
+      "external_attachment_verification_status": "not_run_simulation_only",
+      "external_signature_verification_status": "not_run_simulation_only",
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "fixture_id": "submission-fixture-valid-craft-rejected-001",
+      "source_template_id": "real-reviewer-intake-004",
+      "fixture_validation_mode": "format_and_cross_reference_only",
+      "input": {
+        "reviewer_intake_id": "real-reviewer-intake-004",
+        "source_handoff_package_id": "human-handoff-package-001",
+        "candidate_id": "dp-craft-material-tool-process",
+        "reviewer_name_or_group": "结构校验占位 B",
+        "reviewer_identity_type": "person",
+        "reviewer_role": "人工 Patch 复核负责人",
+        "assignment_or_followup_id": "dispatch-signature-004",
+        "review_decision": "rejected_for_rework",
+        "decision_reason": "结构校验文本：差异草案仍需补充分支条件后重审。",
+        "evidence_package_id": "evidence-freeze-package-001",
+        "attachment_reference_set_id": "simulation-attachment-set-complete-craft-001",
+        "attachment_waiver_record_references": [],
+        "signed_at": "2026-07-10T15:10:00+08:00",
+        "signature_record_reference": "SIMULATION-SIGNATURE-REF-002",
+        "explicit_formal_patch_request": false,
+        "formal_patch_request_record_reference": ""
+      },
+      "format_validation_status": "valid_as_simulation_fixture_only",
+      "failed_rule_ids": [],
+      "external_identity_verification_status": "not_run_simulation_only",
+      "external_attachment_verification_status": "not_run_simulation_only",
+      "external_signature_verification_status": "not_run_simulation_only",
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "fixture_id": "submission-fixture-valid-repair-resubmit-001",
+      "source_template_id": "real-reviewer-intake-005",
+      "fixture_validation_mode": "format_and_cross_reference_only",
+      "input": {
+        "reviewer_intake_id": "real-reviewer-intake-005",
+        "source_handoff_package_id": "human-handoff-package-002",
+        "candidate_id": "dp-medical-heritage-privacy-boundary",
+        "reviewer_name_or_group": "结构校验占位 C",
+        "reviewer_identity_type": "accountable_group",
+        "reviewer_role": "医疗伦理审稿负责人",
+        "assignment_or_followup_id": "repair-evidence-followup-001",
+        "review_decision": "approved_for_resubmission",
+        "decision_reason": "结构校验文本：隐私边界和授权附件字段已按修复轨道填写。",
+        "evidence_package_id": "evidence-freeze-package-002",
+        "attachment_reference_set_id": "simulation-attachment-set-complete-repair-001",
+        "attachment_waiver_record_references": [],
+        "signed_at": "2026-07-10T15:20:00+08:00",
+        "signature_record_reference": "SIMULATION-SIGNATURE-REF-003",
+        "explicit_formal_patch_request": false,
+        "formal_patch_request_record_reference": ""
+      },
+      "format_validation_status": "valid_as_simulation_fixture_only",
+      "failed_rule_ids": [],
+      "external_identity_verification_status": "not_run_simulation_only",
+      "external_attachment_verification_status": "not_run_simulation_only",
+      "external_signature_verification_status": "not_run_simulation_only",
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    }
+  ],
+  "invalid_simulation_fixtures": [
+    {
+      "fixture_id": "submission-fixture-invalid-source-id-001",
+      "derived_from_fixture_id": "submission-fixture-valid-craft-approved-001",
+      "input_overrides": {
+        "candidate_id": "dp-mismatched-candidate"
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "intake-source-identifiers-must-match-handoff"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-reviewer-name-001",
+      "derived_from_fixture_id": "submission-fixture-valid-craft-approved-001",
+      "input_overrides": {
+        "reviewer_name_or_group": ""
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-identity-type-001",
+      "derived_from_fixture_id": "submission-fixture-valid-craft-approved-001",
+      "input_overrides": {
+        "reviewer_identity_type": "anonymous"
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "reviewer-identity-type-must-be-valid"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-role-001",
+      "derived_from_fixture_id": "submission-fixture-valid-craft-approved-001",
+      "input_overrides": {
+        "reviewer_role": "医疗伦理审稿负责人"
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "reviewer-role-must-match-locked-role"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-assignment-001",
+      "derived_from_fixture_id": "submission-fixture-valid-craft-approved-001",
+      "input_overrides": {
+        "assignment_or_followup_id": "dispatch-signature-004"
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "assignment-or-followup-must-match-role"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-decision-001",
+      "derived_from_fixture_id": "submission-fixture-valid-repair-resubmit-001",
+      "input_overrides": {
+        "review_decision": "approved"
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "decision-must-match-review-track"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-reason-001",
+      "derived_from_fixture_id": "submission-fixture-valid-craft-rejected-001",
+      "input_overrides": {
+        "decision_reason": ""
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "decision-reason-must-be-nonblank"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-attachments-001",
+      "derived_from_fixture_id": "submission-fixture-valid-craft-approved-001",
+      "input_overrides": {
+        "attachment_reference_set_id": "simulation-attachment-set-incomplete-craft-001"
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "all-attachment-slots-must-have-record-or-waiver"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-timezone-001",
+      "derived_from_fixture_id": "submission-fixture-valid-craft-approved-001",
+      "input_overrides": {
+        "signed_at": "2026-07-10T15:00:00"
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "signed-at-must-have-timezone"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-signature-reference-001",
+      "derived_from_fixture_id": "submission-fixture-valid-repair-resubmit-001",
+      "input_overrides": {
+        "signature_record_reference": ""
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-patch-request-001",
+      "derived_from_fixture_id": "submission-fixture-valid-craft-approved-001",
+      "input_overrides": {
+        "explicit_formal_patch_request": true,
+        "formal_patch_request_record_reference": ""
+      },
+      "validation_status": "invalid_expected_rule_failure",
+      "expected_failed_rule_ids": [
+        "formal-patch-request-must-have-separate-authorized-record"
+      ],
+      "simulation_only": true,
+      "is_real_reviewer_submission": false,
+      "is_signed": false,
+      "pre_signature_ready": false
+    }
+  ],
+  "pre_signature_check_matrix": [
+    {
+      "check_id": "source-contract-cross-reference-valid",
+      "check_kind": "deterministic",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "real-reviewer-identity-externally-verified",
+      "check_kind": "external_human_verification",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "reviewer-role-locked-and-matched",
+      "check_kind": "deterministic",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "assignment-or-followup-matched",
+      "check_kind": "deterministic",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "decision-value-valid-for-track",
+      "check_kind": "deterministic",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "decision-reason-present",
+      "check_kind": "deterministic",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "attachment-records-externally-resolved",
+      "check_kind": "external_record_verification",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "signed-at-format-and-timezone-valid",
+      "check_kind": "deterministic",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "signature-record-externally-resolved",
+      "check_kind": "external_record_verification",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "formal-patch-request-separated-and-authorized",
+      "check_kind": "deterministic_and_external_record_verification",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "simulation-fixture-excluded-from-real-submission",
+      "check_kind": "deterministic_guardrail",
+      "required_for_real_submission": true
+    },
+    {
+      "check_id": "formal-write-boundaries-still-zero",
+      "check_kind": "deterministic_guardrail",
+      "required_for_real_submission": true
+    }
+  ],
+  "pre_signature_fixture_results": [
+    {
+      "fixture_id": "submission-fixture-valid-craft-approved-001",
+      "format_validation_status": "valid_as_simulation_fixture_only",
+      "blocking_check_ids": [
+        "real-reviewer-identity-externally-verified",
+        "attachment-records-externally-resolved",
+        "signature-record-externally-resolved",
+        "simulation-fixture-excluded-from-real-submission"
+      ],
+      "pre_signature_status": "blocked_external_verification_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-valid-craft-rejected-001",
+      "format_validation_status": "valid_as_simulation_fixture_only",
+      "blocking_check_ids": [
+        "real-reviewer-identity-externally-verified",
+        "attachment-records-externally-resolved",
+        "signature-record-externally-resolved",
+        "simulation-fixture-excluded-from-real-submission"
+      ],
+      "pre_signature_status": "blocked_external_verification_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-valid-repair-resubmit-001",
+      "format_validation_status": "valid_as_simulation_fixture_only",
+      "blocking_check_ids": [
+        "real-reviewer-identity-externally-verified",
+        "attachment-records-externally-resolved",
+        "signature-record-externally-resolved",
+        "simulation-fixture-excluded-from-real-submission"
+      ],
+      "pre_signature_status": "blocked_external_verification_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-source-id-001",
+      "blocking_rule_ids": [
+        "intake-source-identifiers-must-match-handoff"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-reviewer-name-001",
+      "blocking_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-identity-type-001",
+      "blocking_rule_ids": [
+        "reviewer-identity-type-must-be-valid"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-role-001",
+      "blocking_rule_ids": [
+        "reviewer-role-must-match-locked-role"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-assignment-001",
+      "blocking_rule_ids": [
+        "assignment-or-followup-must-match-role"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-decision-001",
+      "blocking_rule_ids": [
+        "decision-must-match-review-track"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-reason-001",
+      "blocking_rule_ids": [
+        "decision-reason-must-be-nonblank"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-attachments-001",
+      "blocking_rule_ids": [
+        "all-attachment-slots-must-have-record-or-waiver"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-timezone-001",
+      "blocking_rule_ids": [
+        "signed-at-must-have-timezone"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-signature-reference-001",
+      "blocking_rule_ids": [
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    },
+    {
+      "fixture_id": "submission-fixture-invalid-patch-request-001",
+      "blocking_rule_ids": [
+        "formal-patch-request-must-have-separate-authorized-record"
+      ],
+      "pre_signature_status": "blocked_rule_failure_and_simulation_only",
+      "pre_signature_ready": false
+    }
+  ],
+  "failure_reason_summary": [
+    {
+      "failure_group_id": "deterministic_rule_failures",
+      "fixture_count": 11,
+      "covered_rule_count": 11,
+      "resolution": "修正字段值或交叉引用后重新运行格式校验。"
+    },
+    {
+      "failure_group_id": "real_identity_not_verified",
+      "fixture_count": 3,
+      "covered_check_id": "real-reviewer-identity-externally-verified",
+      "resolution": "由外部人工流程核实真实个人或可追责小组身份。"
+    },
+    {
+      "failure_group_id": "attachment_records_not_verified",
+      "fixture_count": 3,
+      "covered_check_id": "attachment-records-externally-resolved",
+      "resolution": "将附件引用解析到真实文件或有权豁免记录。"
+    },
+    {
+      "failure_group_id": "signature_records_not_verified",
+      "fixture_count": 3,
+      "covered_check_id": "signature-record-externally-resolved",
+      "resolution": "将签署引用解析到真实、可追责的签署记录。"
+    },
+    {
+      "failure_group_id": "simulation_fixture_disqualified",
+      "fixture_count": 14,
+      "covered_check_id": "simulation-fixture-excluded-from-real-submission",
+      "resolution": "模拟夹具永远不能晋升为真实提交，必须导入独立真实记录。"
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "submission-validation-fixtures-created",
+      "status": "met_as_simulation_only",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "structurally-valid-fixtures-created",
+      "status": "met_as_format_only_not_real_submission",
+      "target_count": 3,
+      "current_count": 3
+    },
+    {
+      "gate_id": "invalid-fixtures-created",
+      "status": "met",
+      "target_count": 11,
+      "current_count": 11
+    },
+    {
+      "gate_id": "all-intake-validation-rules-covered",
+      "status": "met",
+      "target_count": 11,
+      "current_count": 11
+    },
+    {
+      "gate_id": "pre-signature-checks-created",
+      "status": "met",
+      "target_count": 12,
+      "current_count": 12
+    },
+    {
+      "gate_id": "pre-signature-results-created",
+      "status": "met_as_all_blocked",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "pre-signature-ready-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "real-reviewer-submissions-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_24_exit_gates": [
+    {
+      "gate_id": "legal-illegal-validation-fixtures-created",
+      "status": "met_as_simulation_only",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "all-eleven-validation-rules-covered",
+      "status": "met",
+      "target_count": 11,
+      "current_count": 11
+    },
+    {
+      "gate_id": "pre-signature-preflight-created",
+      "status": "met_as_all_blocked",
+      "target_count": 12,
+      "current_count": 12
+    },
+    {
+      "gate_id": "failure-reason-summary-created",
+      "status": "met",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "no-real-review-or-signature-claimed",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

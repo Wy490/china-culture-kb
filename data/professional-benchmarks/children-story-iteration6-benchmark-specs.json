@@ -1,0 +1,152 @@
+{
+  "schema_version": "children-story-professional-benchmark-specs/v1",
+  "created_at": "2026-07-11T00:00:00.000+08:00",
+  "video_type": "children_story",
+  "policy": {
+    "real_model_output_required": true,
+    "model_and_prompt_version_required": true,
+    "initial_and_final_draft_required": true,
+    "child_development_or_safety_review_required": true,
+    "human_blind_review_required_for_professional_pass": true,
+    "fixture_or_simulation_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "fixed_real_model_project_pass_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "children-benchmark-001-xiang-embroidery-thread",
+      "source_province": "湖南",
+      "source_entry": "湘绣——中国四大名绣之一",
+      "target_age_band": "7-9",
+      "child_problem": "小主人公把不同颜色的绣线混在一起，害怕承认后会耽误大家准备展览",
+      "repeated_motif": "每次尝试都重新排好一小束彩线",
+      "emotional_learning": "犯错时先说出来、再求助和一步步整理，比假装没事更勇敢",
+      "safety_focus": [
+        "针具只由成人示范，儿童不模仿危险操作",
+        "儿童角色与具体事件为虚构，不冒充真实传承人经历"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "children-benchmark-002-liling-color-cup",
+      "source_province": "湖南",
+      "source_entry": "醴陵釉下五彩瓷——东方陶瓷巅峰的百年传奇",
+      "target_age_band": "7-9",
+      "child_problem": "孩子设计的杯子颜色总是混成一团，需要学会观察、等待并修改图案",
+      "repeated_motif": "纸上的三片小叶子从挤在一起到各有位置",
+      "emotional_learning": "作品不一次成功也没关系，耐心观察能帮助下一次尝试",
+      "safety_focus": [
+        "窑炉、高温、化学材料和专业工具只作为远距离观察背景",
+        "不提供儿童可模仿的烧制步骤或操作教程"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "children-benchmark-003-tantou-new-year-print",
+      "source_province": "湖南",
+      "source_entry": "滩头年画——湘西南木版年画的最后守望",
+      "target_age_band": "7-9",
+      "child_problem": "小主人公想让两张年画印得一模一样，却发现纸张和按压都会带来小差别",
+      "repeated_motif": "木版上反复出现的一只圆眼小狮子",
+      "emotional_learning": "不同不等于失败，认真比较能看见每次尝试的进步",
+      "safety_focus": [
+        "刻刀、颜料和压印设备由成人操作",
+        "不把商业传承困境转成儿童承担的沉重责任"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "children-benchmark-004-dongdongkui-breath",
+      "source_province": "湖南",
+      "source_entry": "土家族咚咚喹——湘西山野的儿童单簧竹乐",
+      "target_age_band": "4-6",
+      "child_problem": "孩子一着急就吹不出声音，需要先听、慢慢呼吸并和伙伴轮流",
+      "repeated_motif": "咚、咚、轻轻吹的三拍声音",
+      "emotional_learning": "着急的时候可以停一下、听一听，再重新尝试",
+      "safety_focus": [
+        "乐器清洁和个人卫生由成人说明，不共用入口部件",
+        "声音练习不过度憋气，不形成医疗或训练指导"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "children-benchmark-005-hengshan-shadow-puppet",
+      "source_province": "湖南",
+      "source_entry": "衡山皮影戏——湘南光影的千年传奇",
+      "target_age_band": "10-12",
+      "child_problem": "临时少了一个角色，孩子们要在互相埋怨前一起找到安全、简单的替代办法",
+      "repeated_motif": "幕布上一束从窄到宽的光",
+      "emotional_learning": "合作不是谁都不犯错，而是出问题时愿意听见别人并重新分工",
+      "safety_focus": [
+        "灯具、电线、剪刻工具和操控设备由成人负责",
+        "不复制受版权保护的现代剧目台词、人物造型或完整情节"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "children-failure-001-no-age-adult-language",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "没有年龄段、语言层级或句长规则，正文使用成人化抽象术语。",
+      "mutations": [
+        "remove_age_band",
+        "remove_reading_level_and_vocabulary_rules",
+        "remove_sentence_limit"
+      ],
+      "expected_hard_gate_ids": [
+        "age_and_language_missing"
+      ],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "children-failure-002-unsafe-punitive-conflict",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "用惊吓、羞辱和惩罚解决问题，没有温和风险或儿童安全边界。",
+      "mutations": [
+        "replace_with_unsafe_conflict",
+        "remove_safe_stakes",
+        "remove_warm_resolution",
+        "remove_sensitive_content_boundaries"
+      ],
+      "expected_hard_gate_ids": [
+        "gentle_conflict_missing",
+        "warm_resolution_missing",
+        "child_safety_boundary_missing"
+      ],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "children-failure-003-moral-lecture-without-attempts",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "成人旁白直接讲道理，孩子没有两次尝试、重复母题、情绪学习或亲师开放问题。",
+      "mutations": [
+        "remove_attempts",
+        "remove_positive_choice",
+        "remove_emotional_learning",
+        "remove_repeated_motif",
+        "remove_parent_teacher_prompt",
+        "remove_scene_turns"
+      ],
+      "expected_hard_gate_ids": [
+        "attempt_causality_missing",
+        "positive_choice_missing",
+        "emotional_learning_missing",
+        "repeated_motif_missing",
+        "scene_action_or_turn_missing",
+        "parent_or_teacher_prompt_missing"
+      ],
+      "professional_passed": false
+    }
+  ]
+}

@@ -1,0 +1,355 @@
+{
+  "schema_version": "domain-pack-formal-patch-preflight-matrix-weekly-dispatch/v1",
+  "updated_at": "2026-07-10",
+  "status": "preflight_matrix_created_dispatch_only",
+  "scope": "Iteration 19：为正式 Patch 应用前建立预审矩阵与周节奏分派台账，分派签署占位、audit/lint 负责人和补证任务风险；本文件只用于预审调度，不代表正式审批，不应用 Patch，不写入正式 Domain Pack，不写回省份 Markdown。",
+  "source_patch_export_file": "data/production-cards/domain-pack-manual-patch-export-and-diff-draft.json",
+  "source_validation_file": "data/production-cards/domain-pack-review-intake-validation-and-pass-simulation.json",
+  "diff_draft_markdown_file": "docs/production-cards/domain-pack-manual-patch-diff-draft-dp-craft-material-tool-process-20260710.md",
+  "repair_resubmission_task_markdown_file": "docs/production-cards/domain-pack-repair-resubmission-task-dp-medical-heritage-privacy-boundary-20260710.md",
+  "weekly_dispatch_markdown_file": "docs/production-cards/domain-pack-formal-patch-preflight-matrix-weekly-dispatch-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "preflight_matrix_is_formal_approval": false,
+    "weekly_dispatch_is_signature": false,
+    "current_layer": "formal_patch_preflight_matrix_and_dispatch_only"
+  },
+  "counts": {
+    "preflight_matrix_item_count": 8,
+    "signature_assignment_count": 4,
+    "audit_lint_owner_assignment_count": 2,
+    "weekly_dispatch_item_count": 7,
+    "repair_resubmission_dispatch_item_count": 4,
+    "open_blocking_item_count": 7,
+    "met_blocking_item_count": 1,
+    "high_due_risk_count": 3,
+    "formal_patch_count": 0,
+    "machine_gate_count": 9
+  },
+  "formal_patch_preflight_matrix": [
+    {
+      "check_id": "real-human-review-approved-in-actual-ledger",
+      "source_check_status": "not_met",
+      "assigned_role": "事实/工艺流程审稿负责人",
+      "assignment_id": "dispatch-signature-001",
+      "weekly_status": "not_started",
+      "due_risk": "high",
+      "blocks_formal_patch": true
+    },
+    {
+      "check_id": "evidence-attachment-files-committed",
+      "source_check_status": "not_met",
+      "assigned_role": "授权与证据附件负责人",
+      "assignment_id": "dispatch-signature-003",
+      "weekly_status": "not_started",
+      "due_risk": "high",
+      "blocks_formal_patch": true
+    },
+    {
+      "check_id": "duplicate-merge-reviewed-against-existing-formal-pack",
+      "source_check_status": "not_met",
+      "assigned_role": "材料工具与去重合并审稿负责人",
+      "assignment_id": "dispatch-signature-002",
+      "weekly_status": "not_started",
+      "due_risk": "medium",
+      "blocks_formal_patch": true
+    },
+    {
+      "check_id": "domain-pack-diff-reviewed-by-human",
+      "source_check_status": "not_met",
+      "assigned_role": "人工 Patch 复核负责人",
+      "assignment_id": "dispatch-signature-004",
+      "weekly_status": "not_started",
+      "due_risk": "medium",
+      "blocks_formal_patch": true
+    },
+    {
+      "check_id": "formal-patch-explicitly-requested-by-human",
+      "source_check_status": "not_met",
+      "assigned_role": "人工 Patch 复核负责人",
+      "assignment_id": "dispatch-signature-004",
+      "weekly_status": "not_started",
+      "due_risk": "high",
+      "blocks_formal_patch": true
+    },
+    {
+      "check_id": "kb-production-audit-required-after-patch",
+      "source_check_status": "not_run",
+      "assigned_role": "audit 运行负责人",
+      "assignment_id": "dispatch-audit-001",
+      "weekly_status": "waiting_for_patch_request",
+      "due_risk": "low",
+      "blocks_formal_patch": true
+    },
+    {
+      "check_id": "kb-lint-required-after-patch",
+      "source_check_status": "not_run",
+      "assigned_role": "lint 运行负责人",
+      "assignment_id": "dispatch-lint-001",
+      "weekly_status": "waiting_for_patch_request",
+      "due_risk": "low",
+      "blocks_formal_patch": true
+    },
+    {
+      "check_id": "province-markdown-writeback-still-forbidden",
+      "source_check_status": "met",
+      "assigned_role": "知识库维护负责人",
+      "assignment_id": "dispatch-governance-001",
+      "weekly_status": "guardrail_met",
+      "due_risk": "low",
+      "blocks_formal_patch": true
+    }
+  ],
+  "signature_assignments": [
+    {
+      "assignment_id": "dispatch-signature-001",
+      "signature_id": "signature-placeholder-001",
+      "source_role": "工艺流程审稿",
+      "assigned_role": "事实/工艺流程审稿负责人",
+      "owner_placeholder": "[待指定]",
+      "target_candidate_id": "dp-craft-material-tool-process",
+      "required_for": "real_human_review_approved_in_actual_ledger",
+      "weekly_status": "not_started",
+      "signature_status": "blank",
+      "is_signed": false
+    },
+    {
+      "assignment_id": "dispatch-signature-002",
+      "signature_id": "signature-placeholder-002",
+      "source_role": "材料工具审稿",
+      "assigned_role": "材料工具与去重合并审稿负责人",
+      "owner_placeholder": "[待指定]",
+      "target_candidate_id": "dp-craft-material-tool-process",
+      "required_for": "candidate_field_merge_review",
+      "weekly_status": "not_started",
+      "signature_status": "blank",
+      "is_signed": false
+    },
+    {
+      "assignment_id": "dispatch-signature-003",
+      "signature_id": "signature-placeholder-003",
+      "source_role": "授权审稿",
+      "assigned_role": "授权与证据附件负责人",
+      "owner_placeholder": "[待指定]",
+      "target_candidate_id": "dp-craft-material-tool-process",
+      "required_for": "evidence_attachment_files_committed",
+      "weekly_status": "not_started",
+      "signature_status": "blank",
+      "is_signed": false
+    },
+    {
+      "assignment_id": "dispatch-signature-004",
+      "signature_id": "signature-placeholder-004",
+      "source_role": "人工 Patch 复核",
+      "assigned_role": "人工 Patch 复核负责人",
+      "owner_placeholder": "[待指定]",
+      "target_candidate_id": "dp-craft-material-tool-process",
+      "required_for": "formal_patch_explicitly_requested_by_human",
+      "weekly_status": "not_started",
+      "signature_status": "blank",
+      "is_signed": false
+    }
+  ],
+  "audit_lint_owner_assignments": [
+    {
+      "assignment_id": "dispatch-audit-001",
+      "check_id": "kb-production-audit-required-after-patch",
+      "assigned_role": "audit 运行负责人",
+      "owner_placeholder": "[待指定]",
+      "command_after_patch": "npm run kb:production-audit",
+      "weekly_status": "waiting_for_patch_request",
+      "has_run": false
+    },
+    {
+      "assignment_id": "dispatch-lint-001",
+      "check_id": "kb-lint-required-after-patch",
+      "assigned_role": "lint 运行负责人",
+      "owner_placeholder": "[待指定]",
+      "command_after_patch": "npm run kb:lint",
+      "weekly_status": "waiting_for_patch_request",
+      "has_run": false
+    }
+  ],
+  "weekly_dispatch_items": [
+    {
+      "dispatch_id": "weekly-dispatch-001",
+      "workstream": "diff_draft_review",
+      "owner_role": "事实/工艺流程审稿负责人",
+      "target": "复核工艺材料工具流程候选包事实边界与工序口径",
+      "status": "not_started",
+      "due_risk": "high"
+    },
+    {
+      "dispatch_id": "weekly-dispatch-002",
+      "workstream": "merge_dedup_review",
+      "owner_role": "材料工具与去重合并审稿负责人",
+      "target": "判断与正式库非遗流程生产包合并、扩展或去重新增",
+      "status": "not_started",
+      "due_risk": "medium"
+    },
+    {
+      "dispatch_id": "weekly-dispatch-003",
+      "workstream": "evidence_and_authorization",
+      "owner_role": "授权与证据附件负责人",
+      "target": "补齐证据附件、授权附件和来源目录",
+      "status": "not_started",
+      "due_risk": "high"
+    },
+    {
+      "dispatch_id": "weekly-dispatch-004",
+      "workstream": "manual_patch_review",
+      "owner_role": "人工 Patch 复核负责人",
+      "target": "人工复核差异草案并确认是否显式请求正式 Patch",
+      "status": "not_started",
+      "due_risk": "high"
+    },
+    {
+      "dispatch_id": "weekly-dispatch-005",
+      "workstream": "repair_resubmission",
+      "owner_role": "医疗伦理审稿负责人",
+      "target": "处理民族医药隐私边界补证任务",
+      "status": "not_started",
+      "due_risk": "high"
+    },
+    {
+      "dispatch_id": "weekly-dispatch-006",
+      "workstream": "post_patch_audit",
+      "owner_role": "audit 运行负责人",
+      "target": "正式 Patch 后运行 production audit",
+      "status": "waiting_for_patch_request",
+      "due_risk": "low"
+    },
+    {
+      "dispatch_id": "weekly-dispatch-007",
+      "workstream": "post_patch_lint",
+      "owner_role": "lint 运行负责人",
+      "target": "正式 Patch 后运行 kb lint",
+      "status": "waiting_for_patch_request",
+      "due_risk": "low"
+    }
+  ],
+  "repair_resubmission_dispatch": [
+    {
+      "repair_dispatch_id": "repair-dispatch-001",
+      "source_update_id": "medical_privacy_boundary_rechecked",
+      "owner_role": "医疗伦理审稿负责人",
+      "status": "not_started",
+      "due_risk": "high"
+    },
+    {
+      "repair_dispatch_id": "repair-dispatch-002",
+      "source_update_id": "authorization_gap_closed_or_marked",
+      "owner_role": "授权与证据附件负责人",
+      "status": "not_started",
+      "due_risk": "high"
+    },
+    {
+      "repair_dispatch_id": "repair-dispatch-003",
+      "source_update_id": "fact_boundary_table_updated",
+      "owner_role": "事实边界审稿负责人",
+      "status": "not_started",
+      "due_risk": "medium"
+    },
+    {
+      "repair_dispatch_id": "repair-dispatch-004",
+      "source_update_id": "real_reviewer_identity_attached",
+      "owner_role": "审稿签署管理员",
+      "status": "not_started",
+      "due_risk": "medium"
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "preflight-matrix-created",
+      "status": "met",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "signature-placeholders-dispatched",
+      "status": "met_as_unsigned_assignments",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "audit-lint-owners-dispatched",
+      "status": "met_as_waiting_for_patch",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "weekly-dispatch-created",
+      "status": "met",
+      "target_count": 7,
+      "current_count": 7
+    },
+    {
+      "gate_id": "repair-dispatch-created",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-not-written",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "weekly-dispatch-not-signature",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_19_exit_gates": [
+    {
+      "gate_id": "formal-patch-preflight-matrix-created",
+      "status": "met",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "signature-and-audit-dispatch-created",
+      "status": "met_as_unsigned_assignments",
+      "target_count": 6,
+      "current_count": 6
+    },
+    {
+      "gate_id": "repair-task-weekly-risk-created",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "formal-patch-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

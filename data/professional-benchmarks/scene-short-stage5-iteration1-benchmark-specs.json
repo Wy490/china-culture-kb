@@ -1,0 +1,67 @@
+{
+  "schema_version": "scene-short-professional-benchmark-specs/v1",
+  "video_type": "scene_short",
+  "policy": {
+    "real_model_output_required": true,
+    "real_location_and_director_review_required": true,
+    "fixture_or_simulation_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "scene-001-yueyang-tower-route",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "status": "awaiting_real_model_location_and_director_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "scene-002-beida-red-building-corridor",
+      "source_entry": "北大红楼——新文化运动的策源地",
+      "status": "awaiting_real_model_location_and_director_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "scene-003-wuchang-city-trace",
+      "source_entry": "武昌起义——辛亥革命的第一声枪响",
+      "status": "awaiting_real_model_location_and_director_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "scene-004-changsha-kiln-river-route",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "status": "awaiting_real_model_location_and_director_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "scene-005-miluo-river-custom-route",
+      "source_entry": "汨罗江畔端午习俗——龙舟文化的发源地",
+      "status": "awaiting_real_model_location_and_director_review",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "scene-failure-001-sight-list-without-trigger-or-discovery",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["trigger_missing", "discovery_or_change_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "scene-failure-002-biography-replaces-space",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["spatial_identity_missing", "space_not_protagonist"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "scene-failure-003-no-time-sound-or-transition",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["time_layer_missing", "sound_route_missing", "transition_missing"],
+      "professional_passed": false
+    }
+  ]
+}

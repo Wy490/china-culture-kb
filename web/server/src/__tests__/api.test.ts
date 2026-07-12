@@ -151,6 +151,7 @@ beforeEach(() => {
     process.env.KB_ROOT = resolve(testWorkspaceRoot, 'data');
     process.env.WEB_GENERATED_ROOT = resolve(testWorkspaceRoot, 'web', 'generated');
   }
+  delete process.env.STORY_AGENT_SOFT_ARCHIVE_MANIFEST_PATH;
 });
 
 afterAll(async () => {
@@ -1478,6 +1479,12 @@ describe('System API', () => {
               status: 'ready',
               output_path: '/generated/relink/thumb-1.jpg',
             },
+          }, {
+            shot_id: 'shot-2',
+            status: 'failed',
+            provider_job_id: 'seedance-job-failed',
+            failure_reason: '人物手部变形',
+            notes: ['测试标记失败'],
           }],
         },
         seedance_cut_assembly: {
@@ -1534,6 +1541,19 @@ describe('System API', () => {
           '1': '20260622-story-health-series-archive-missing',
         },
       }));
+      const manifestPath = resolve(testWorkspaceRoot, 'story-agent-soft-archive-manifest-20260710.json');
+      process.env.STORY_AGENT_SOFT_ARCHIVE_MANIFEST_PATH = manifestPath;
+      await writeFile(manifestPath, JSON.stringify({
+        schema_version: 'story-agent-soft-archive-manifest/v1',
+        mode: 'active_signoff_exclusion',
+        policy: {
+          signoff_exclusion_applied: true,
+        },
+        entries: [{
+          project_id: 'health-archive-series',
+          execution_status: 'signoff_exclusion_active',
+        }],
+      }));
 
       const res = await request.get('/api/system/story-agent-generated-health?limit=200');
       expect(res.status).toBe(200);
@@ -1554,6 +1574,13 @@ describe('System API', () => {
           series_missing_story_ref_project_count: expect.any(Number),
           series_contract_evidence_count: expect.any(Number),
           series_relink_candidate_count: expect.any(Number),
+          series_signoff_portfolio_count: expect.any(Number),
+          series_soft_archive_excluded_count: expect.any(Number),
+          series_seedance_failed_project_count: expect.any(Number),
+          series_seedance_failed_item_count: expect.any(Number),
+          series_seedance_failure_marker_project_count: expect.any(Number),
+          series_seedance_test_fixture_failure_project_count: expect.any(Number),
+          series_seedance_test_fixture_failure_item_count: expect.any(Number),
           story_quality_passed_with_issue_count: expect.any(Number),
           story_quality_passed_with_open_supplement_count: expect.any(Number),
           story_quality_passed_with_issue_and_open_supplement_count: expect.any(Number),
@@ -1568,6 +1595,12 @@ describe('System API', () => {
       expect(res.body.data.summary.series_missing_story_ref_project_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_contract_evidence_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_relink_candidate_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_soft_archive_excluded_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_seedance_failed_project_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_seedance_failed_item_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_seedance_failure_marker_project_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_seedance_test_fixture_failure_project_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_seedance_test_fixture_failure_item_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.items).toEqual(expect.arrayContaining([
         expect.objectContaining({
           scope: 'story_project',
@@ -1593,14 +1626,26 @@ describe('System API', () => {
           missing_contracts: expect.arrayContaining(['generated_episode_story_refs']),
           contract_evidence_count: expect.any(Number),
           relink_candidate: true,
+          failed_production_item_count: 1,
+          test_fixture_failure_item_count: 1,
+          seedance_failure_marker_present: true,
+        }),
+        expect.objectContaining({
+          scope: 'ai_comic_series_project',
+          project_id: 'health-archive-series',
+          signoff_eligible: false,
+          governance_disposition: 'soft_archived_signoff_excluded',
         }),
       ]));
       expect(res.body.data.markdown).toContain('# Story Agent Generated Health');
       expect(res.body.data.markdown).toContain('series_governance_attention');
       expect(res.body.data.markdown).toContain('series_relink_candidates');
+      expect(res.body.data.markdown).toContain('series_soft_archive_excluded');
+      expect(res.body.data.markdown).toContain('series_seedance_test_fixture_failure_items');
       expect(res.body.data.markdown).toContain('health-interrupted-story');
       expect(res.body.data.notes.join('\n')).toContain('Series governance');
       expect(res.body.data.notes.join('\n')).toContain('Series relink candidates');
+      expect(res.body.data.notes.join('\n')).toContain('explicitly test-marked fixtures');
 
       const backlogRes = await request.get('/api/system/story-agent-backlog-handoff?limit=20');
       expect(backlogRes.status).toBe(200);

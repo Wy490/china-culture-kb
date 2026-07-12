@@ -1,0 +1,67 @@
+{
+  "schema_version": "documentary-short-professional-benchmark-specs/v1",
+  "video_type": "documentary_short",
+  "policy": {
+    "real_model_output_required": true,
+    "real_site_and_interview_verification_required": true,
+    "fixture_or_simulation_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "documentary-001-beida-red-building",
+      "source_entry": "北大红楼——新文化运动的策源地",
+      "status": "awaiting_real_site_interview_and_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "documentary-002-wuchang-uprising",
+      "source_entry": "武昌起义——辛亥革命的第一声枪响",
+      "status": "awaiting_real_site_interview_and_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "documentary-003-yueyang-tower",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "status": "awaiting_real_site_interview_and_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "documentary-004-zhijiang-surrender",
+      "source_entry": "芷江受降——抗战胜利的庄严见证",
+      "status": "awaiting_real_site_interview_and_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "documentary-005-changsha-kiln",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "status": "awaiting_real_site_interview_and_model_run",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "documentary-failure-001-invented-interview",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["interview_consent_missing", "truth_boundary_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "documentary-failure-002-no-site-or-source-trace",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["real_site_missing", "source_trace_missing", "b_roll_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "documentary-failure-003-narration-replaces-discovery",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["discovery_chain_missing", "reenactment_boundary_missing", "narration_restraint_missing"],
+      "professional_passed": false
+    }
+  ]
+}

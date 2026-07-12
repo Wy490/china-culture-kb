@@ -1,0 +1,306 @@
+{
+  "schema_version": "domain-pack-evidence-freeze-signature-reminder-board/v1",
+  "updated_at": "2026-07-10",
+  "status": "evidence_package_frozen_reminder_board_created",
+  "scope": "Iteration 20：冻结正式 Patch 前证据附件包必备槽位，为 4 个签署分派建立催办看板和真实负责人占位，并为 audit/lint 分派建立正式 Patch 后运行清单；本文件只用于附件和催办治理，不代表附件已提交、签署已完成、正式审批已通过或正式库已写入。",
+  "source_preflight_matrix_file": "data/production-cards/domain-pack-formal-patch-preflight-matrix-and-weekly-dispatch.json",
+  "source_evidence_ledger_file": "data/production-cards/domain-pack-review-evidence-ledger.json",
+  "source_patch_export_file": "data/production-cards/domain-pack-manual-patch-export-and-diff-draft.json",
+  "reminder_board_markdown_file": "docs/production-cards/domain-pack-evidence-freeze-signature-reminder-board-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "evidence_freeze_is_attachment_submission": false,
+    "reminder_board_is_signature": false,
+    "audit_lint_runbook_is_run_result": false,
+    "current_layer": "evidence_freeze_and_signature_reminder_only"
+  },
+  "counts": {
+    "evidence_package_count": 2,
+    "frozen_attachment_slot_count": 6,
+    "frozen_required_slot_reference_count": 12,
+    "signature_reminder_count": 4,
+    "real_owner_placeholder_count": 4,
+    "signature_completed_count": 0,
+    "audit_lint_runbook_item_count": 2,
+    "audit_lint_run_count": 0,
+    "repair_evidence_followup_count": 4,
+    "attachment_file_committed_count": 0,
+    "formal_patch_count": 0,
+    "machine_gate_count": 9
+  },
+  "frozen_attachment_slot_schema": [
+    {
+      "slot_id": "source_bibliography_attachment",
+      "label": "来源目录附件",
+      "freeze_status": "frozen_required"
+    },
+    {
+      "slot_id": "fact_boundary_table_attachment",
+      "label": "事实边界表附件",
+      "freeze_status": "frozen_required"
+    },
+    {
+      "slot_id": "authorization_or_consent_attachment",
+      "label": "授权或同意附件",
+      "freeze_status": "frozen_required"
+    },
+    {
+      "slot_id": "sample_validation_attachment",
+      "label": "样本验证附件",
+      "freeze_status": "frozen_required"
+    },
+    {
+      "slot_id": "reviewer_identity_and_role_attachment",
+      "label": "审稿人身份与角色附件",
+      "freeze_status": "frozen_required"
+    },
+    {
+      "slot_id": "final_decision_record_attachment",
+      "label": "最终决策记录附件",
+      "freeze_status": "frozen_required"
+    }
+  ],
+  "evidence_attachment_packages": [
+    {
+      "package_id": "evidence-freeze-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "source_export_id": "manual-patch-export-001",
+      "purpose": "manual_patch_candidate_diff_draft_review",
+      "package_status": "frozen_required_slots_pending_files",
+      "frozen_required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ],
+      "attachment_file_committed": false,
+      "evidence_freeze_is_attachment_submission": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "package_id": "evidence-freeze-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "source_repair_task_template_id": "repair-resubmission-task-template-001",
+      "purpose": "repair_resubmission_evidence_followup",
+      "package_status": "frozen_required_slots_pending_files",
+      "frozen_required_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ],
+      "attachment_file_committed": false,
+      "evidence_freeze_is_attachment_submission": false,
+      "repair_resubmitted": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    }
+  ],
+  "signature_reminder_board": [
+    {
+      "reminder_id": "signature-reminder-001",
+      "assignment_id": "dispatch-signature-001",
+      "signature_id": "signature-placeholder-001",
+      "assigned_role": "事实/工艺流程审稿负责人",
+      "real_owner_placeholder": "[待指定]",
+      "target_candidate_id": "dp-craft-material-tool-process",
+      "reminder_status": "open_owner_needed",
+      "signature_status": "blank",
+      "is_signed": false,
+      "reminder_board_is_signature": false
+    },
+    {
+      "reminder_id": "signature-reminder-002",
+      "assignment_id": "dispatch-signature-002",
+      "signature_id": "signature-placeholder-002",
+      "assigned_role": "材料工具与去重合并审稿负责人",
+      "real_owner_placeholder": "[待指定]",
+      "target_candidate_id": "dp-craft-material-tool-process",
+      "reminder_status": "open_owner_needed",
+      "signature_status": "blank",
+      "is_signed": false,
+      "reminder_board_is_signature": false
+    },
+    {
+      "reminder_id": "signature-reminder-003",
+      "assignment_id": "dispatch-signature-003",
+      "signature_id": "signature-placeholder-003",
+      "assigned_role": "授权与证据附件负责人",
+      "real_owner_placeholder": "[待指定]",
+      "target_candidate_id": "dp-craft-material-tool-process",
+      "reminder_status": "open_owner_needed",
+      "signature_status": "blank",
+      "is_signed": false,
+      "reminder_board_is_signature": false
+    },
+    {
+      "reminder_id": "signature-reminder-004",
+      "assignment_id": "dispatch-signature-004",
+      "signature_id": "signature-placeholder-004",
+      "assigned_role": "人工 Patch 复核负责人",
+      "real_owner_placeholder": "[待指定]",
+      "target_candidate_id": "dp-craft-material-tool-process",
+      "reminder_status": "open_owner_needed",
+      "signature_status": "blank",
+      "is_signed": false,
+      "reminder_board_is_signature": false
+    }
+  ],
+  "audit_lint_post_patch_runbook": [
+    {
+      "runbook_id": "post-patch-runbook-001",
+      "source_assignment_id": "dispatch-audit-001",
+      "check_id": "kb-production-audit-required-after-patch",
+      "command_after_patch": "npm run kb:production-audit",
+      "run_timing": "after_formal_patch_only",
+      "run_status": "waiting_for_formal_patch",
+      "has_run": false,
+      "audit_lint_runbook_is_run_result": false
+    },
+    {
+      "runbook_id": "post-patch-runbook-002",
+      "source_assignment_id": "dispatch-lint-001",
+      "check_id": "kb-lint-required-after-patch",
+      "command_after_patch": "npm run kb:lint",
+      "run_timing": "after_formal_patch_only",
+      "run_status": "waiting_for_formal_patch",
+      "has_run": false,
+      "audit_lint_runbook_is_run_result": false
+    }
+  ],
+  "repair_evidence_followups": [
+    {
+      "followup_id": "repair-evidence-followup-001",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "source_update_id": "medical_privacy_boundary_rechecked",
+      "owner_role": "医疗伦理审稿负责人",
+      "followup_status": "open_pending_attachment",
+      "evidence_package_id": "evidence-freeze-package-002"
+    },
+    {
+      "followup_id": "repair-evidence-followup-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "source_update_id": "authorization_gap_closed_or_marked",
+      "owner_role": "授权与证据附件负责人",
+      "followup_status": "open_pending_attachment",
+      "evidence_package_id": "evidence-freeze-package-002"
+    },
+    {
+      "followup_id": "repair-evidence-followup-003",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "source_update_id": "fact_boundary_table_updated",
+      "owner_role": "事实边界审稿负责人",
+      "followup_status": "open_pending_attachment",
+      "evidence_package_id": "evidence-freeze-package-002"
+    },
+    {
+      "followup_id": "repair-evidence-followup-004",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "source_update_id": "real_reviewer_identity_attached",
+      "owner_role": "审稿签署管理员",
+      "followup_status": "open_pending_attachment",
+      "evidence_package_id": "evidence-freeze-package-002"
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "evidence-package-list-created",
+      "status": "met_as_frozen_slot_list",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "required-attachment-slots-frozen",
+      "status": "met_as_slot_freeze_only",
+      "target_count": 6,
+      "current_count": 6
+    },
+    {
+      "gate_id": "signature-reminder-board-created",
+      "status": "met_as_unsigned_reminders",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "audit-lint-runbook-created",
+      "status": "met_as_waiting_for_formal_patch",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "repair-evidence-followups-created",
+      "status": "met_as_pending_attachment",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "attachment-files-not-committed",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "reminder-board-not-signature",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_20_exit_gates": [
+    {
+      "gate_id": "evidence-attachment-package-list-frozen",
+      "status": "met_as_slot_freeze_only",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "signature-reminder-board-created",
+      "status": "met_as_unsigned_reminders",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "audit-lint-post-patch-runbook-created",
+      "status": "met_as_waiting_for_formal_patch",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "formal-patch-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

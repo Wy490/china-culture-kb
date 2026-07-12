@@ -1,0 +1,41 @@
+{
+  "schema_version": "story-agent-stage6-revision-batch-command/v1",
+  "command_id": "",
+  "created_at": "",
+  "benchmark_id": "stage6-001-character-story",
+  "real_project_id": "",
+  "round_number": 1,
+  "opt_in_execution_confirmed": false,
+  "readiness_report": {
+    "path": "data/reports/story-agent-stage6-p0-project-readiness.json",
+    "sha256": "df985eb3754556a0bdc636635511950f6b63ea9913c8ca57ad35cffcd635770e"
+  },
+  "before_package": {
+    "path": "",
+    "sha256": ""
+  },
+  "revision_submission": {
+    "path": "",
+    "sha256": ""
+  },
+  "table_read_feedback": {
+    "path": "",
+    "sha256": ""
+  },
+  "cost_record": {
+    "path": "",
+    "sha256": ""
+  },
+  "declared_changed_sections": [],
+  "feedback_resolutions": [],
+  "provenance": {
+    "artifact_kind": "human_authored",
+    "output_id": "",
+    "model_or_author": "",
+    "prompt_or_brief_version": "",
+    "provenance_verified": false,
+    "verification_reference": "",
+    "verified_by": "",
+    "verified_at": ""
+  }
+}

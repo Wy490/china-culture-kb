@@ -1,0 +1,600 @@
+{
+  "schema_version": "p0-p1-source-evidence-writeback-drafts/v1",
+  "updated_at": "2026-07-10",
+  "status": "template_pending_human_review",
+  "scope": "Iteration 9：为 P0/P1 审稿项建立来源证据包模板、候选写回 Markdown 草案模板和 P0 专项检查样例。",
+  "source_review_queue_file": "data/production-cards/p0-p1-review-and-writeback-queue.json",
+  "source_index_file": "data/production-cards/golden-card-unified-index.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "manual_patch_required": true,
+    "current_layer": "template_only",
+    "allowed_after": [
+      "human_review_approved",
+      "source_or_authorization_evidence_attached",
+      "writeback_draft_markdown_reviewed",
+      "manual_patch_reviewed"
+    ],
+    "prohibited_in_writeback_templates": [
+      "generated_full_text",
+      "scene_breakdown",
+      "gears_segments",
+      "dialogue_bubbles",
+      "fictional_plot",
+      "seedance_prompt",
+      "medical_instruction",
+      "sensitive_history_reenactment"
+    ]
+  },
+  "counts": {
+    "source_evidence_package_template_count": 16,
+    "writeback_markdown_template_count": 16,
+    "p0_special_check_sample_count": 4,
+    "iteration_9_exit_gate_count": 4
+  },
+  "shared_evidence_slot_schema": [
+    {
+      "slot_id": "source_bibliography",
+      "label": "来源目录",
+      "required": true,
+      "description": "列出知识库来源、官方入口、机构资料、档案线索或待补证来源。"
+    },
+    {
+      "slot_id": "fact_boundary_table",
+      "label": "事实边界表",
+      "required": true,
+      "description": "区分已核事实、待核事项、可影视化表达和禁止断言。"
+    },
+    {
+      "slot_id": "authorization_or_consent",
+      "label": "授权或同意",
+      "required": true,
+      "description": "记录人物肖像、曲词曲谱、场地、社区、机构、采访或档案材料授权。"
+    },
+    {
+      "slot_id": "writeback_scope_review",
+      "label": "写回范围审查",
+      "required": true,
+      "description": "确认哪些字段可转为知识库候选写回，哪些只能留在生产素材层。"
+    },
+    {
+      "slot_id": "p0_special_safety_check",
+      "label": "P0 专项安全检查",
+      "required_for_risk_tiers": [
+        "p0"
+      ],
+      "description": "创伤历史、医疗伦理和隐私题材必须额外检查。"
+    }
+  ],
+  "source_evidence_package_templates": [
+    {
+      "evidence_package_id": "evidence-p0-001",
+      "review_item_id": "review-p0-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "writeback_candidate_id": "writeback-candidate-p0-001",
+      "risk_tier": "p0",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review",
+        "p0_special_safety_check"
+      ],
+      "minimum_pass_conditions": [
+        "纪念馆、审判档案和安全区来源口径已复核。",
+        "虚构讲解员、虚构材料和真实证据链已分层。",
+        "AI 漫剧表达不出现血腥复现、猎奇和虚构证词冒充。"
+      ],
+      "writeback_scope_hint": "只允许写回经审稿的证据边界、禁用断言和片型生产素材摘要。"
+    },
+    {
+      "evidence_package_id": "evidence-p0-002",
+      "review_item_id": "review-p0-002",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "writeback_candidate_id": "writeback-candidate-p0-002",
+      "risk_tier": "p0",
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review",
+        "p0_special_safety_check"
+      ],
+      "minimum_pass_conditions": [
+        "非遗项目、保护机构和可拍空间来源已复核。",
+        "人物肖像、机构、采访和场地授权已记录。",
+        "不出现疗效承诺、药方比例、诊疗教程或患者隐私。"
+      ],
+      "writeback_scope_hint": "只允许写回文化记录边界、授权缺口和禁止医疗指导事项。"
+    },
+    {
+      "evidence_package_id": "evidence-p0-003",
+      "review_item_id": "review-p0-003",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "writeback_candidate_id": "writeback-candidate-p0-003",
+      "risk_tier": "p0",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review",
+        "p0_special_safety_check"
+      ],
+      "minimum_pass_conditions": [
+        "纪念馆、名单墙、安全区、审判档案和公祭日口径已复核。",
+        "真实影像、复制件、展陈和再现边界已分层。",
+        "微纪录片不使用暴力再现替代证据。"
+      ],
+      "writeback_scope_hint": "只允许写回现实入口、来源线索、再现边界和禁用断言。"
+    },
+    {
+      "evidence_package_id": "evidence-p0-004",
+      "review_item_id": "review-p0-004",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "writeback_candidate_id": "writeback-candidate-p0-004",
+      "risk_tier": "p0",
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review",
+        "p0_special_safety_check"
+      ],
+      "minimum_pass_conditions": [
+        "民族医药机构、档案、标本和展陈来源已复核。",
+        "患者隐私、诊疗空间和机构授权边界已记录。",
+        "旁白明确为文化记录，不构成医疗建议。"
+      ],
+      "writeback_scope_hint": "只允许写回档案、标本、授权和非医疗建议边界。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-001",
+      "review_item_id": "review-p1-001",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "writeback_candidate_id": "writeback-candidate-p1-001",
+      "risk_tier": "p1",
+      "entry_name": "平江起义——从旧军队内部爆发的革命枪响",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "起义时间线、旧址、彭德怀等人物来源已复核。",
+        "虚构传令兵和真实历史人物已分层。",
+        "漫剧表达不神化、不替真实人物编造发言。"
+      ],
+      "writeback_scope_hint": "只允许写回革命历史事实边界、旧址线索和片型禁用断言。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-002",
+      "review_item_id": "review-p1-002",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "writeback_candidate_id": "writeback-candidate-p1-002",
+      "risk_tier": "p1",
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "公开展演、舞步、服饰和社区授权边界已补证。",
+        "虚构人物和代际冲突不得写成真实传承史。",
+        "民族文化表达避免猎奇化和符号化。"
+      ],
+      "writeback_scope_hint": "只允许写回公开展演边界、授权缺口和生产素材摘要。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-003",
+      "review_item_id": "review-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "writeback_candidate_id": "writeback-candidate-p1-003",
+      "risk_tier": "p1",
+      "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "侗锦工艺流程、纹样来源和社区授权已补证。",
+        "纹样含义不得无来源定论。",
+        "虚构家庭故事不得反向写成事实。"
+      ],
+      "writeback_scope_hint": "只允许写回工艺流程待核点、纹样边界和授权要求。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-004",
+      "review_item_id": "review-p1-004",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "writeback_candidate_id": "writeback-candidate-p1-004",
+      "risk_tier": "p1",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "公开动作、仪式空间和社区授权边界已确认。",
+        "内部知识和禁忌不进入生成提示。",
+        "公开教学不被写成全部传统。"
+      ],
+      "writeback_scope_hint": "只允许写回公开/非公开边界、授权缺口和禁用断言。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-005",
+      "review_item_id": "review-p1-005",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "writeback_candidate_id": "writeback-candidate-p1-005",
+      "risk_tier": "p1",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "10 月 9 日计划泄露和 10 月 10 日起义边界已复核。",
+        "第一枪多说法边界已明确。",
+        "虚构名单和衣袖线索不得写成真实档案。"
+      ],
+      "writeback_scope_hint": "只允许写回时间线、多说法和再现边界。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-006",
+      "review_item_id": "review-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "writeback_candidate_id": "writeback-candidate-p1-006",
+      "risk_tier": "p1",
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "非遗名录、保护单位和传承人口径已复核。",
+        "服饰、舞步、表演片段和社区空间授权已记录。",
+        "示范流程不写成完整仪式。"
+      ],
+      "writeback_scope_hint": "只允许写回已审稿的流程动作、授权边界和禁用断言。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-007",
+      "review_item_id": "review-p1-007",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "writeback_candidate_id": "writeback-candidate-p1-007",
+      "risk_tier": "p1",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "社区授权单、公开展演和可拍范围已补证。",
+        "仪式边界和内部知识边界已标注。",
+        "生成稿不得解释未授权禁忌。"
+      ],
+      "writeback_scope_hint": "只允许写回授权范围、公开动作和不可声称事项。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-008",
+      "review_item_id": "review-p1-008",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "writeback_candidate_id": "writeback-candidate-p1-008",
+      "risk_tier": "p1",
+      "entry_name": "桑植民歌——长征路上的歌声与守望",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "民歌采录、歌词、曲谱和肖像授权已记录。",
+        "个人回忆与通行史实分层。",
+        "未授权歌词不长引。"
+      ],
+      "writeback_scope_hint": "只允许写回采录授权、曲词边界和来源缺口。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-009",
+      "review_item_id": "review-p1-009",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "writeback_candidate_id": "writeback-candidate-p1-009",
+      "risk_tier": "p1",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "红楼、首义广场和楚望台线索来源已补证。",
+        "复原件、展陈和真实影像已分层。",
+        "第一枪多说法不被压成唯一答案。"
+      ],
+      "writeback_scope_hint": "只允许写回现实现场、时间线、多说法和再现边界。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-010",
+      "review_item_id": "review-p1-010",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "writeback_candidate_id": "writeback-candidate-p1-010",
+      "risk_tier": "p1",
+      "entry_name": "平江起义——从旧军队内部爆发的革命枪响",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "天岳书院、纪念空间和旧址现状已复核。",
+        "真实人物、虚构旁白和再现场景已分层。",
+        "再现画面不替代真实史料。"
+      ],
+      "writeback_scope_hint": "只允许写回旧址、来源、再现边界和禁用断言。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-011",
+      "review_item_id": "review-p1-011",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "writeback_candidate_id": "writeback-candidate-p1-011",
+      "risk_tier": "p1",
+      "entry_name": "桑植民歌——长征路上的歌声与守望",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "田野录音、采访和演唱授权已记录。",
+        "红色历史、地方记忆和个人口述已分层。",
+        "现场录音空间和表演肖像授权已明确。"
+      ],
+      "writeback_scope_hint": "只允许写回采访授权、现场边界、曲词禁用和来源缺口。"
+    },
+    {
+      "evidence_package_id": "evidence-p1-012",
+      "review_item_id": "review-p1-012",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "writeback_candidate_id": "writeback-candidate-p1-012",
+      "risk_tier": "p1",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "evidence_slots": [
+        "source_bibliography",
+        "fact_boundary_table",
+        "authorization_or_consent",
+        "writeback_scope_review"
+      ],
+      "minimum_pass_conditions": [
+        "摆手堂、广场、展演空间和社区授权已补证。",
+        "公开仪式、教学示范和内部知识边界已分层。",
+        "不得无来源解释禁忌或秘传内容。"
+      ],
+      "writeback_scope_hint": "只允许写回现实现场、授权边界和公开动作边界。"
+    }
+  ],
+  "writeback_markdown_templates": [
+    {
+      "writeback_template_id": "writeback-template-p0-001",
+      "writeback_candidate_id": "writeback-candidate-p0-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：南京大屠杀 AI 漫剧生产边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- production_material_summary: [待人工审稿]\n- evidence_boundary_summary: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n- source_or_authorization_gaps: [待人工审稿]\n\n### 不写入内容\n- 不写入生成故事、分镜、对白、Seedance 提示词或虚构材料。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-002",
+      "writeback_candidate_id": "writeback-candidate-p0-002",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：湘西苗医苗药宣传片边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- production_material_summary: [待人工审稿]\n- evidence_boundary_summary: [待人工审稿]\n- medical_privacy_boundary: [待人工审稿]\n- source_or_authorization_gaps: [待人工审稿]\n\n### 不写入内容\n- 不写入药方、剂量、诊疗步骤、患者信息或生成故事。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-003",
+      "writeback_candidate_id": "writeback-candidate-p0-003",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：南京大屠杀微纪录现场与来源边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- documentary_site_summary: [待人工审稿]\n- source_cue_summary: [待人工审稿]\n- reconstruction_boundary: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n\n### 不写入内容\n- 不写入暴力再现、虚构证词、分镜或生成旁白。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-004",
+      "writeback_candidate_id": "writeback-candidate-p0-004",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：湘西苗医苗药微纪录档案边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- documentary_site_summary: [待人工审稿]\n- source_cue_summary: [待人工审稿]\n- medical_privacy_boundary: [待人工审稿]\n- source_or_authorization_gaps: [待人工审稿]\n\n### 不写入内容\n- 不写入医疗建议、诊疗过程、患者信息、分镜或生成旁白。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-001",
+      "writeback_candidate_id": "writeback-candidate-p1-001",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：平江起义 AI 漫剧生产边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- production_material_summary: [待人工审稿]\n- historical_boundary_summary: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n- source_or_authorization_gaps: [待人工审稿]\n\n### 不写入内容\n- 不写入虚构传令兵、对白、分镜或生成故事。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-002",
+      "writeback_candidate_id": "writeback-candidate-p1-002",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：桑植白族仗鼓舞 AI 漫剧边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- production_material_summary: [待人工审稿]\n- community_boundary_summary: [待人工审稿]\n- authorization_gaps: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n\n### 不写入内容\n- 不写入虚构人物、代际剧情、对白或未授权仪式说明。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-003",
+      "writeback_candidate_id": "writeback-candidate-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：通道侗锦 AI 漫剧工艺边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- craft_material_summary: [待人工审稿]\n- pattern_boundary_summary: [待人工审稿]\n- authorization_gaps: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n\n### 不写入内容\n- 不写入虚构家庭故事、无来源纹样解释或生成分镜。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-004",
+      "writeback_candidate_id": "writeback-candidate-p1-004",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：土家族摆手舞 AI 漫剧边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- public_action_boundary: [待人工审稿]\n- community_consent_gap: [待人工审稿]\n- production_material_summary: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n\n### 不写入内容\n- 不写入未授权仪式空间、禁忌解释、虚构剧情或对白。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-005",
+      "writeback_candidate_id": "writeback-candidate-p1-005",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：武昌起义 AI 漫剧时间线边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- timeline_boundary_summary: [待人工审稿]\n- contested_detail_summary: [待人工审稿]\n- production_material_summary: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n\n### 不写入内容\n- 不写入虚构名单、衣袖线索、对白、分镜或唯一化第一枪断言。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-006",
+      "writeback_candidate_id": "writeback-candidate-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：桑植白族仗鼓舞宣传片流程边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- heritage_process_summary: [待人工审稿]\n- community_consent_gap: [待人工审稿]\n- official_catalog_gap: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n\n### 不写入内容\n- 不写入未授权表演片段、完整仪式解释或生成文案。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-007",
+      "writeback_candidate_id": "writeback-candidate-p1-007",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：土家族摆手舞宣传片授权边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- public_performance_boundary: [待人工审稿]\n- community_consent_gap: [待人工审稿]\n- official_catalog_gap: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n\n### 不写入内容\n- 不写入未授权仪式空间、内部知识、生成旁白或分镜。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-008",
+      "writeback_candidate_id": "writeback-candidate-p1-008",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：桑植民歌宣传片采录边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- field_recording_boundary: [待人工审稿]\n- lyrics_authorization_gap: [待人工审稿]\n- source_boundary_summary: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n\n### 不写入内容\n- 不写入未授权歌词、曲谱、演唱片段、个人回忆扩写或生成文案。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-009",
+      "writeback_candidate_id": "writeback-candidate-p1-009",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：武昌起义微纪录现场边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- documentary_site_summary: [待人工审稿]\n- timeline_boundary_summary: [待人工审稿]\n- contested_detail_summary: [待人工审稿]\n- reconstruction_boundary: [待人工审稿]\n\n### 不写入内容\n- 不写入真实战斗影像假称、唯一化第一枪断言、生成旁白或分镜。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-010",
+      "writeback_candidate_id": "writeback-candidate-p1-010",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：平江起义微纪录旧址边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- documentary_site_summary: [待人工审稿]\n- historical_boundary_summary: [待人工审稿]\n- reconstruction_boundary: [待人工审稿]\n- source_or_authorization_gaps: [待人工审稿]\n\n### 不写入内容\n- 不写入虚构对白、再现场景、生成旁白或未复核旧址现状。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-011",
+      "writeback_candidate_id": "writeback-candidate-p1-011",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：桑植民歌微纪录田野边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- documentary_site_summary: [待人工审稿]\n- field_recording_boundary: [待人工审稿]\n- lyrics_authorization_gap: [待人工审稿]\n- source_boundary_summary: [待人工审稿]\n\n### 不写入内容\n- 不写入未授权歌词、录音、采访扩写、生成旁白或分镜。"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-012",
+      "writeback_candidate_id": "writeback-candidate-p1-012",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "status": "template_pending_human_review",
+      "province_markdown_written": false,
+      "markdown_template": "## 候选写回草案：土家族摆手舞微纪录现场边界\n\n状态：template_pending_human_review\n\n### 可写回候选字段\n- documentary_site_summary: [待人工审稿]\n- public_action_boundary: [待人工审稿]\n- community_consent_gap: [待人工审稿]\n- forbidden_claims: [待人工审稿]\n\n### 不写入内容\n- 不写入未授权仪式空间、禁忌解释、生成旁白或分镜。"
+    }
+  ],
+  "p0_special_check_samples": [
+    {
+      "sample_id": "p0-trauma-reject-gore-reenactment",
+      "risk_family": "historical_trauma",
+      "expected_decision": "reject",
+      "sample_text": "用刺激性暴力画面复现受害过程，并让虚构人物说出类似真实证词的话。",
+      "triggered_blockers": [
+        "sensitive_history_reenactment",
+        "fictional_testimony_impersonation",
+        "gore_or_sensationalism"
+      ],
+      "required_repair": "改为纪念馆、名单、档案、地图、白花、审判资料和当代人物反应。"
+    },
+    {
+      "sample_id": "p0-trauma-pass-evidence-led",
+      "risk_family": "historical_trauma",
+      "expected_decision": "allow_for_human_review",
+      "sample_text": "镜头停在名单墙、白花、安全区地图和审判档案复制件，旁白说明证据链和今天的纪念责任。",
+      "required_review_notes": [
+        "复核日期、数字和机构口径",
+        "确认无虚构证词冒充",
+        "确认无血腥或猎奇复现"
+      ]
+    },
+    {
+      "sample_id": "p0-medical-reject-instruction",
+      "risk_family": "medical_heritage",
+      "expected_decision": "reject",
+      "sample_text": "展示药方比例、使用方法和诊疗操作，并暗示观众可以照做。",
+      "triggered_blockers": [
+        "medical_instruction",
+        "dosage_or_formula",
+        "treatment_claim"
+      ],
+      "required_repair": "改为项目页、标本柜、档案盒、公开展板、授权边界和非医疗建议说明。"
+    },
+    {
+      "sample_id": "p0-medical-pass-cultural-record",
+      "risk_family": "medical_heritage",
+      "expected_decision": "allow_for_human_review",
+      "sample_text": "镜头只拍公开展板、标本柜、档案员和机构外部空间，旁白说明这是文化记录，不构成医疗建议。",
+      "required_review_notes": [
+        "复核机构和项目来源",
+        "确认无患者隐私",
+        "确认无药方比例、剂量或操作教程"
+      ]
+    }
+  ],
+  "iteration_9_exit_gates": [
+    {
+      "gate_id": "source-evidence-package-templates-created",
+      "status": "met",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "writeback-markdown-templates-created",
+      "status": "met_as_templates_only",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "p0-special-check-samples-created",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

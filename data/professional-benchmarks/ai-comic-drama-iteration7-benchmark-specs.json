@@ -1,0 +1,95 @@
+{
+  "schema_version": "ai-comic-drama-professional-benchmark-specs/v1",
+  "created_at": "2026-07-11T00:00:00.000+08:00",
+  "video_type": "ai_comic_drama",
+  "policy": {
+    "real_model_output_required": true,
+    "model_and_prompt_version_required": true,
+    "initial_and_final_draft_required": true,
+    "comic_director_and_asset_continuity_review_required": true,
+    "human_blind_review_required_for_professional_pass": true,
+    "fixture_or_pending_golden_card_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "fixed_real_model_project_pass_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "comic-benchmark-001-pingjiang-uprising",
+      "source_province": "湖南",
+      "source_entry": "平江起义——从旧军队内部爆发的革命枪响",
+      "source_golden_card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "episode_hook": "名单即将被搜出，主角把写有同伴名字的衣袖压进灯火死角",
+      "continuity_focus": ["名单衣袖", "军装与夜间旧址", "真实人物和虚构见证者分层"],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "comic-benchmark-002-sangzhi-zhanggu",
+      "source_province": "湖南",
+      "source_entry": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "source_golden_card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "episode_hook": "最后一步鼓点突然断掉，少年发现鼓带上的旧结正在松开",
+      "continuity_focus": ["仗鼓和鼓带", "舞步方向", "服装纹样与场地连续"],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "comic-benchmark-003-tongdao-brocade",
+      "source_province": "湖南",
+      "source_entry": "通道侗锦——湘西南侗寨的指尖花雨",
+      "source_golden_card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "episode_hook": "太阳纹只差最后一线，织机另一端却出现了不属于图样的颜色",
+      "continuity_focus": ["太阳纹位置", "经纬线颜色", "织机与人物手部关系"],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "comic-benchmark-004-wuchang-uprising",
+      "source_province": "湖北",
+      "source_entry": "武昌起义——辛亥革命的第一声枪响",
+      "source_golden_card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "episode_hook": "营门即将封闭，普通士兵手里的路线图只剩一个时辰有效",
+      "continuity_focus": ["路线图", "营门与军械库空间", "第一枪多说法边界"],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "comic-benchmark-005-changsha-kiln",
+      "source_province": "湖南",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "source_golden_card_id": "ai-comic-golden-changsha-kiln-underglaze-shard",
+      "episode_hook": "破瓷片上的一笔颜色与新画稿完全相反，学徒必须在入窑前作出选择",
+      "continuity_focus": ["破瓷片纹样", "画稿颜色", "窑炉高温和工具安全边界"],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "comic-failure-001-outline-without-panels",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "只有长段剧情说明，没有每场3至6格、构图、可画动作和格级资产。",
+      "expected_hard_gate_ids": ["panelability_missing", "visible_action_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "comic-failure-002-dialogue-wall-no-reactions",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "角色连续长对白，没有短气泡限制、表情变化或反应格。",
+      "expected_hard_gate_ids": ["bubble_dialogue_missing", "expression_reaction_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "comic-failure-003-asset-drift-no-ending-hook",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "角色、道具和地点没有资产表，格级引用漂移，最后一格只做总结。",
+      "expected_hard_gate_ids": ["ending_hook_missing", "asset_continuity_missing"],
+      "professional_passed": false
+    }
+  ]
+}

@@ -1,0 +1,698 @@
+{
+  "schema_version": "p0-p1-review-simulation-writeback-constraints/v1",
+  "updated_at": "2026-07-10",
+  "status": "simulation_only_pending_real_human_review",
+  "scope": "Iteration 12：为 P0/P1 审稿导出建立 pass / repair / reject 模拟结果、写回草案字段约束、P1 质量规则和机器可测门槛。",
+  "source_quality_index_file": "data/production-cards/p0-p1-review-export-quality-index.json",
+  "source_export_package_file": "data/production-cards/p0-p1-review-export-package.json",
+  "source_review_queue_file": "data/production-cards/p0-p1-review-and-writeback-queue.json",
+  "simulation_policy": {
+    "decision_source": "policy_simulation_only",
+    "does_not_replace_human_review": true,
+    "does_not_grant_writeback_approval": true,
+    "requires_real_reviewer_before_writeback": true,
+    "purpose": "提前验证审稿流、写回字段约束、修复任务和驳回路径是否完整。"
+  },
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "manual_patch_required": true,
+    "current_layer": "review_simulation_only",
+    "simulation_is_formal_writeback": false,
+    "pass_result_is_not_human_approval": true
+  },
+  "counts": {
+    "simulated_review_result_count": 16,
+    "pass_count": 2,
+    "repair_count": 11,
+    "reject_count": 3,
+    "batch_simulation_count": 4,
+    "writeback_constraint_set_count": 3,
+    "p1_quality_rule_count": 4,
+    "p1_quality_sample_expectation_count": 8,
+    "machine_gate_count": 6
+  },
+  "decision_taxonomy": [
+    {
+      "decision": "pass",
+      "meaning": "结构上可进入候选写回草案准备，但仍需真实人工审稿、来源补证和授权确认后才能写回。",
+      "writeback_allowed_now": false
+    },
+    {
+      "decision": "repair",
+      "meaning": "必须先补来源、授权、边界或表达修复任务；修复前不得进入写回草案。",
+      "writeback_allowed_now": false
+    },
+    {
+      "decision": "reject",
+      "meaning": "当前候选不应进入写回草案；只保留驳回原因和后续重新取材建议。",
+      "writeback_allowed_now": false
+    }
+  ],
+  "writeback_constraint_sets": [
+    {
+      "constraint_set_id": "constraint-pass-candidate",
+      "applies_to_decision": "pass",
+      "writeback_allowed_now": false,
+      "candidate_status_after_simulation": "eligible_for_draft_after_real_human_review",
+      "required_before_any_writeback": [
+        "real_human_review_approved",
+        "source_or_authorization_evidence_attached",
+        "writeback_markdown_draft_reviewed",
+        "manual_patch_reviewed"
+      ],
+      "allowed_field_groups_after_real_approval": [
+        "production_material_summary",
+        "evidence_boundary_summary",
+        "historical_boundary_summary",
+        "heritage_boundary_summary",
+        "authorization_or_consent_gaps",
+        "forbidden_claims",
+        "source_or_authorization_gaps"
+      ],
+      "prohibited_field_groups": [
+        "generated_full_text",
+        "scene_breakdown",
+        "gears_segments",
+        "dialogue_bubbles",
+        "fictional_plot",
+        "seedance_prompt",
+        "medical_instruction",
+        "sensitive_history_reenactment"
+      ]
+    },
+    {
+      "constraint_set_id": "constraint-repair-required",
+      "applies_to_decision": "repair",
+      "writeback_allowed_now": false,
+      "candidate_status_after_simulation": "blocked_pending_repair_and_real_review",
+      "required_before_any_writeback": [
+        "repair_tasks_completed",
+        "real_human_review_approved",
+        "source_or_authorization_evidence_attached",
+        "manual_patch_reviewed"
+      ],
+      "allowed_field_groups_after_real_approval": [],
+      "prohibited_field_groups": [
+        "generated_full_text",
+        "scene_breakdown",
+        "gears_segments",
+        "dialogue_bubbles",
+        "fictional_plot",
+        "seedance_prompt",
+        "unverified_claim",
+        "unauthorized_media"
+      ]
+    },
+    {
+      "constraint_set_id": "constraint-reject-blocked",
+      "applies_to_decision": "reject",
+      "writeback_allowed_now": false,
+      "candidate_status_after_simulation": "rejected_for_writeback_candidate_layer",
+      "required_before_any_writeback": [
+        "new_source_package_required",
+        "new_candidate_review_required",
+        "real_human_review_approved",
+        "manual_patch_reviewed"
+      ],
+      "allowed_field_groups_after_real_approval": [],
+      "prohibited_field_groups": [
+        "all_current_candidate_fields",
+        "generated_full_text",
+        "scene_breakdown",
+        "gears_segments",
+        "dialogue_bubbles",
+        "fictional_plot",
+        "seedance_prompt",
+        "unverified_claim",
+        "unauthorized_media"
+      ]
+    }
+  ],
+  "simulated_review_results": [
+    {
+      "writeback_template_id": "writeback-template-p0-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "risk_tier": "p0",
+      "batch_id": "batch-p0-sensitive-boundaries",
+      "simulated_decision": "reject",
+      "constraint_set_id": "constraint-reject-blocked",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "P0 创伤历史题材在没有真实人工审稿和完整证据链前，不应进入写回草案。",
+      "required_next_actions": [
+        "补纪念馆、审判档案和安全区来源目录",
+        "删除任何虚构证词和暴力再现表达",
+        "重新提交 P0 专项安全检查"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-002",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "risk_tier": "p0",
+      "batch_id": "batch-p0-sensitive-boundaries",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "医疗伦理、机构授权和患者隐私边界仍需补证。",
+      "required_next_actions": [
+        "补非遗项目、保护机构和民族医药机构来源",
+        "补机构拍摄、采访和肖像授权",
+        "确认不含疗效、剂量、诊疗教程和患者隐私"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-003",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "risk_tier": "p0",
+      "batch_id": "batch-p0-sensitive-boundaries",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "纪录片现场、展陈复制件和再现边界仍需真实来源和授权复核。",
+      "required_next_actions": [
+        "补纪念馆、名单墙、国家公祭日和档案来源",
+        "补展陈复制件和拍摄许可",
+        "确认不使用暴力再现替代证据"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-004",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "risk_tier": "p0",
+      "batch_id": "batch-p0-sensitive-boundaries",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "档案、标本、机构采访和非诊疗空间边界仍需补证。",
+      "required_next_actions": [
+        "补民族医药机构和非遗保护单位资料",
+        "补标本柜、档案盒和展板拍摄许可",
+        "确认不含患者信息和诊疗过程"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-001",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-ai-comic-history-and-community",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "革命历史时间线、旧址和虚构见证者边界需要补证。",
+      "required_next_actions": [
+        "补平江起义纪念资料和天岳书院旧址资料",
+        "标注虚构传令兵不能反写为事实",
+        "删除无来源真实人物对白"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-002",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-ai-comic-history-and-community",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "公开展演、服饰舞步和社区授权边界仍需补证。",
+      "required_next_actions": [
+        "补白族仗鼓舞非遗项目资料",
+        "补表演者肖像和社区同意",
+        "将虚构代际冲突留在生产素材层"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-ai-comic-history-and-community",
+      "simulated_decision": "pass",
+      "constraint_set_id": "constraint-pass-candidate",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "结构上适合进入候选写回草案准备，但仍需真实人工确认工艺流程、纹样边界和社区授权。",
+      "required_next_actions": [
+        "补通道侗锦项目资料和工坊来源",
+        "确认纹样含义不做无来源定论",
+        "真实人工审稿后再生成写回草案"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-004",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-ai-comic-history-and-community",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "公开动作、仪式空间和社区边界仍需区分。",
+      "required_next_actions": [
+        "补摆手舞项目资料和公开展演来源",
+        "补社区授权和未授权空间排除确认",
+        "删除内部知识和禁忌解释"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-005",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-ai-comic-history-and-community",
+      "simulated_decision": "reject",
+      "constraint_set_id": "constraint-reject-blocked",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "第一枪多说法、虚构线索和真实历史时间线边界未清前，不应进入写回草案。",
+      "required_next_actions": [
+        "重新补 10 月 9 日和 10 月 10 日时间线来源",
+        "列出第一枪多说法边界",
+        "删除唯一化断言和虚构证据链"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-heritage-consent-and-process",
+      "simulated_decision": "pass",
+      "constraint_set_id": "constraint-pass-candidate",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "结构上适合进入候选写回草案准备，但仍需真实人工确认公开展演、动作边界和授权。",
+      "required_next_actions": [
+        "补国家或地方非遗项目页",
+        "补表演片段、服饰和道具拍摄许可",
+        "真实人工审稿后再生成写回草案"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-007",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-heritage-consent-and-process",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "摆手堂、公开展演和内部仪式空间边界仍需授权确认。",
+      "required_next_actions": [
+        "补社区授权单",
+        "补公开动作拍摄许可",
+        "排除未授权仪式空间和内部知识"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-008",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-heritage-consent-and-process",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "声音、歌词、曲谱和采录空间授权仍需补证。",
+      "required_next_actions": [
+        "补演唱者肖像和声音授权",
+        "补歌词曲谱授权",
+        "确认不写入未授权歌词曲谱全文"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-009",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-documentary-sites-and-archives",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "红楼、首义广场、展陈复制件和多说法来源仍需复核。",
+      "required_next_actions": [
+        "补红楼、首义广场和楚望台资料",
+        "补展陈和复原件使用许可",
+        "标注第一枪多说法边界"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-010",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-documentary-sites-and-archives",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "旧址现状、展陈资料和采访授权仍需补证。",
+      "required_next_actions": [
+        "补平江起义纪念馆或旧址资料",
+        "补天岳书院和相关展陈资料",
+        "删除虚构对白和未复核旧址现状"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-011",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-documentary-sites-and-archives",
+      "simulated_decision": "reject",
+      "constraint_set_id": "constraint-reject-blocked",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "田野录音、歌词曲谱、个人回忆和红色记忆边界未清前，不应进入写回草案。",
+      "required_next_actions": [
+        "重新补桑植民歌项目资料和田野录音来源",
+        "补演唱和录音授权",
+        "删除未授权歌词、采录扩写和个人回忆扩写"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-012",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "risk_tier": "p1",
+      "batch_id": "batch-p1-documentary-sites-and-archives",
+      "simulated_decision": "repair",
+      "constraint_set_id": "constraint-repair-required",
+      "writeback_allowed_now": false,
+      "province_markdown_written": false,
+      "primary_reason": "摆手堂、现场拍摄许可和内部知识排除仍需确认。",
+      "required_next_actions": [
+        "补摆手堂、广场和公开展演资料",
+        "补社区授权和现场拍摄许可",
+        "排除未授权空间和内部知识"
+      ]
+    }
+  ],
+  "batch_simulations": [
+    {
+      "batch_id": "batch-p0-sensitive-boundaries",
+      "status": "simulation_complete_pending_real_human_review",
+      "decision_counts": {
+        "pass": 0,
+        "repair": 3,
+        "reject": 1
+      },
+      "writeback_template_ids": [
+        "writeback-template-p0-001",
+        "writeback-template-p0-002",
+        "writeback-template-p0-003",
+        "writeback-template-p0-004"
+      ],
+      "machine_gate_ids": [
+        "decisions-complete",
+        "no-direct-province-writeback",
+        "repair-items-have-next-actions",
+        "reject-items-have-blockers"
+      ]
+    },
+    {
+      "batch_id": "batch-p1-ai-comic-history-and-community",
+      "status": "simulation_complete_pending_real_human_review",
+      "decision_counts": {
+        "pass": 1,
+        "repair": 3,
+        "reject": 1
+      },
+      "writeback_template_ids": [
+        "writeback-template-p1-001",
+        "writeback-template-p1-002",
+        "writeback-template-p1-003",
+        "writeback-template-p1-004",
+        "writeback-template-p1-005"
+      ],
+      "machine_gate_ids": [
+        "decisions-complete",
+        "no-direct-province-writeback",
+        "pass-items-still-require-real-review",
+        "repair-items-have-next-actions",
+        "reject-items-have-blockers"
+      ]
+    },
+    {
+      "batch_id": "batch-p1-heritage-consent-and-process",
+      "status": "simulation_complete_pending_real_human_review",
+      "decision_counts": {
+        "pass": 1,
+        "repair": 2,
+        "reject": 0
+      },
+      "writeback_template_ids": [
+        "writeback-template-p1-006",
+        "writeback-template-p1-007",
+        "writeback-template-p1-008"
+      ],
+      "machine_gate_ids": [
+        "decisions-complete",
+        "no-direct-province-writeback",
+        "pass-items-still-require-real-review",
+        "repair-items-have-next-actions"
+      ]
+    },
+    {
+      "batch_id": "batch-p1-documentary-sites-and-archives",
+      "status": "simulation_complete_pending_real_human_review",
+      "decision_counts": {
+        "pass": 0,
+        "repair": 3,
+        "reject": 1
+      },
+      "writeback_template_ids": [
+        "writeback-template-p1-009",
+        "writeback-template-p1-010",
+        "writeback-template-p1-011",
+        "writeback-template-p1-012"
+      ],
+      "machine_gate_ids": [
+        "decisions-complete",
+        "no-direct-province-writeback",
+        "repair-items-have-next-actions",
+        "reject-items-have-blockers"
+      ]
+    }
+  ],
+  "p1_quality_rules": [
+    {
+      "rule_id": "p1-revolutionary-history-source-boundary",
+      "risk_family": "revolutionary_history",
+      "reject_patterns": [
+        "虚构见证者写成真实人物",
+        "唯一化第一枪断言",
+        "真实人物对白无来源",
+        "错置事件地点",
+        "错置事件时间",
+        "神化真实人物"
+      ],
+      "allow_requires_any": [
+        "时间线来源",
+        "旧址资料",
+        "多说法边界",
+        "展陈资料",
+        "纪念馆资料"
+      ],
+      "repair_suggestions": [
+        "把虚构见证者标注为影视化入口，不写入事实层。",
+        "多说法事项只写边界，不写唯一化定论。",
+        "真实人物对白必须删除或标注为不可写回。"
+      ]
+    },
+    {
+      "rule_id": "p1-ethnic-community-consent-boundary",
+      "risk_family": "ethnic_community_boundary",
+      "reject_patterns": [
+        "未授权仪式空间",
+        "内部禁忌",
+        "猎奇化",
+        "把公开展演写成全部传统",
+        "社区未同意",
+        "无来源解释纹样含义"
+      ],
+      "allow_requires_any": [
+        "社区授权",
+        "公开展演资料",
+        "保护单位资料",
+        "公开动作拍摄许可",
+        "纹样来源"
+      ],
+      "repair_suggestions": [
+        "把公开展演、教学展示和内部仪式空间分层。",
+        "社区未授权内容只保留为补证问题。",
+        "纹样含义和仪式解释必须补来源或删除。"
+      ]
+    },
+    {
+      "rule_id": "p1-heritage-performance-rights-boundary",
+      "risk_family": "heritage_performance_rights",
+      "reject_patterns": [
+        "未授权歌词",
+        "曲谱全文",
+        "未授权录音",
+        "表演肖像未授权",
+        "声音采样未授权",
+        "个人回忆扩写"
+      ],
+      "allow_requires_any": [
+        "演唱授权",
+        "录音授权",
+        "曲词曲谱授权",
+        "表演者肖像授权",
+        "采录空间同意"
+      ],
+      "repair_suggestions": [
+        "只写授权状态和缺口，不写歌词曲谱全文。",
+        "声音、肖像和表演片段必须单独记录授权。",
+        "个人回忆不得扩写成事实叙述。"
+      ]
+    },
+    {
+      "rule_id": "p1-documentary-site-archive-boundary",
+      "risk_family": "documentary_site_archive",
+      "reject_patterns": [
+        "旧址现状未核实",
+        "展陈复制件未授权",
+        "再现场景替代证据",
+        "采访无授权",
+        "真实影像假称",
+        "未复核开放状态"
+      ],
+      "allow_requires_any": [
+        "旧址资料",
+        "展陈资料使用许可",
+        "采访授权",
+        "现实现场开放状态",
+        "档案来源"
+      ],
+      "repair_suggestions": [
+        "补现实现场开放状态和拍摄许可。",
+        "展陈、复制件和档案材料必须记录使用许可。",
+        "再现场景只能作为表达方式，不得替代证据。"
+      ]
+    }
+  ],
+  "p1_quality_sample_expectations": [
+    {
+      "sample_id": "p1-history-reject-false-witness",
+      "rule_id": "p1-revolutionary-history-source-boundary",
+      "sample_text": "把虚构见证者写成真实人物，并加入真实人物对白无来源的桥段。",
+      "expected_decision": "reject"
+    },
+    {
+      "sample_id": "p1-history-allow-source-boundary",
+      "rule_id": "p1-revolutionary-history-source-boundary",
+      "sample_text": "镜头围绕旧址资料、时间线来源和多说法边界展开，虚构角色只作为入口。",
+      "expected_decision": "allow_for_human_review"
+    },
+    {
+      "sample_id": "p1-community-reject-ritual-private",
+      "rule_id": "p1-ethnic-community-consent-boundary",
+      "sample_text": "展示未授权仪式空间和内部禁忌，并把公开展演写成全部传统。",
+      "expected_decision": "reject"
+    },
+    {
+      "sample_id": "p1-community-allow-public-performance",
+      "rule_id": "p1-ethnic-community-consent-boundary",
+      "sample_text": "只使用公开展演资料、社区授权和公开动作拍摄许可，内部空间列为排除项。",
+      "expected_decision": "allow_for_human_review"
+    },
+    {
+      "sample_id": "p1-performance-reject-lyrics-recording",
+      "rule_id": "p1-heritage-performance-rights-boundary",
+      "sample_text": "直接写入未授权歌词、曲谱全文和未授权录音。",
+      "expected_decision": "reject"
+    },
+    {
+      "sample_id": "p1-performance-allow-authorized-record",
+      "rule_id": "p1-heritage-performance-rights-boundary",
+      "sample_text": "只记录演唱授权、录音授权、曲词曲谱授权和采录空间同意状态。",
+      "expected_decision": "allow_for_human_review"
+    },
+    {
+      "sample_id": "p1-documentary-reject-archive-misuse",
+      "rule_id": "p1-documentary-site-archive-boundary",
+      "sample_text": "用再现场景替代证据，且展陈复制件未授权、旧址现状未核实。",
+      "expected_decision": "reject"
+    },
+    {
+      "sample_id": "p1-documentary-allow-site-permission",
+      "rule_id": "p1-documentary-site-archive-boundary",
+      "sample_text": "围绕旧址资料、现实现场开放状态、展陈资料使用许可和采访授权进行记录。",
+      "expected_decision": "allow_for_human_review"
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "decisions-complete",
+      "status": "met_as_simulation",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "decision-taxonomy-covered",
+      "status": "met",
+      "required_decisions": [
+        "pass",
+        "repair",
+        "reject"
+      ]
+    },
+    {
+      "gate_id": "pass-items-still-require-real-review",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "repair-items-have-next-actions",
+      "status": "met",
+      "target_count": 11,
+      "current_count": 11
+    },
+    {
+      "gate_id": "reject-items-have-blockers",
+      "status": "met",
+      "target_count": 3,
+      "current_count": 3
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_12_exit_gates": [
+    {
+      "gate_id": "review-simulation-created",
+      "status": "met_as_simulation_only",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "writeback-constraints-created",
+      "status": "met",
+      "target_count": 3,
+      "current_count": 3
+    },
+    {
+      "gate_id": "p1-quality-rules-created",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "batch-pass-repair-reject-gates-created",
+      "status": "met_as_machine_gates",
+      "target_count": 6,
+      "current_count": 6
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

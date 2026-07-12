@@ -1,0 +1,976 @@
+{
+  "schema_version": "documentary-short-golden-production-cards/v1",
+  "updated_at": "2026-07-09",
+  "video_type": "documentary_short",
+  "review_status": "pending_human_review",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "reason": "本文件是微纪录片生产素材卡候选层，用于审稿、抽样回归和后续人工写回，不直接改写 data/provinces/*.md。"
+  },
+  "purpose": "为微纪录片建立 10 条黄金生产素材卡，补足现实入口、来源结构、访谈角色、B-roll、再现边界和不可声称事项。",
+  "required_fields": [
+    "documentary_question",
+    "real_world_site_or_object",
+    "source_quotes_or_source_cues",
+    "timeline",
+    "witness_or_expert_roles",
+    "interview_clip_selection",
+    "field_notes",
+    "b_roll_plan",
+    "reconstruction_boundary",
+    "present_day_trace",
+    "ambient_sound",
+    "what_must_not_be_claimed"
+  ],
+  "source_policy": [
+    "微纪录片必须优先使用今天可见的地点、实物、展陈、声音、仪式或档案入口。",
+    "采访、旁白、B-roll、档案材料和再现画面必须分层，不把再现画面写成真实历史影像。",
+    "涉及战争、屠杀、革命牺牲、医疗、民族仪式、曲词和文物时，必须保留审稿边界和授权要求。",
+    "生成稿不得把来源说明、审稿状态、质量报告和内部字段名写进观众旁白。"
+  ],
+  "cards": [
+    {
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "province": "江苏",
+      "source_entry_path": "data/provinces/江苏.md#南京大屠杀——中华民族最深的伤痕",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "今天的纪念馆、名单墙、日记和审判档案，怎样让观众理解南京大屠杀不是抽象数字，而是有证据链支撑的民族记忆？",
+        "real_world_site_or_object": [
+          "侵华日军南京大屠杀遇难同胞纪念馆",
+          "江东门集体屠杀遗址和遇难者名单墙",
+          "南京安全区地图、拉贝日记/魏特琳日记复制件、审判档案展陈"
+        ],
+        "source_quotes_or_source_cues": [
+          "纪念馆官方资料",
+          "远东国际军事法庭审判档案",
+          "南京军事法庭审判档案",
+          "拉贝日记、魏特琳日记和马吉影像资料线索"
+        ],
+        "timeline": [
+          "1937-12-13：南京沦陷",
+          "1937-12 至 1938-01：大规模暴行持续约六周",
+          "1946-1948：东京审判与南京审判确认责任",
+          "2014 起：每年 12 月 13 日为国家公祭日"
+        ],
+        "witness_or_expert_roles": [
+          "纪念馆讲解员",
+          "南京大屠杀史研究者",
+          "遇难者后人或纪念活动参与者，需授权",
+          "档案整理或展陈工作人员"
+        ],
+        "interview_clip_selection": [
+          "讲解员说明名单墙和展陈证据如何组织。",
+          "研究者说明日记、影像和审判档案的证据链。",
+          "后人或纪念参与者讲述为什么要读清名字，避免替其编造经历。",
+          "档案人员说明复制件、原件和公开展示边界。"
+        ],
+        "field_notes": [
+          "镜头语气必须庄重克制，不拍猎奇、血腥或刺激性再现。",
+          "以展陈、白花、档案、地图、空镜和人物沉默承载情绪。",
+          "所有数字、地点和人物称谓按知识库来源或馆方口径。"
+        ],
+        "b_roll_plan": [
+          "纪念馆外墙、献花区和名单墙慢镜头",
+          "安全区地图和展柜资料细节",
+          "白花、烛光、悼念册、导览册",
+          "审判时间线展板和法庭照片",
+          "观众驻足、低头、放花的手部动作"
+        ],
+        "reconstruction_boundary": [
+          "不做暴行现场再现。",
+          "如需表现历史压力，只能用地图线、档案翻页、空镜和声音设计示意。",
+          "虚构旁白不得冒充幸存者证词。"
+        ],
+        "present_day_trace": [
+          "国家公祭日仪式",
+          "纪念馆常设展陈",
+          "拉贝故居开放状态待实地确认",
+          "今天参观者在名单墙前停留的行为"
+        ],
+        "ambient_sound": [
+          "纪念馆低频环境声",
+          "脚步声、献花声、纸页翻动声",
+          "仪式钟声或默哀环境声，需授权"
+        ],
+        "what_must_not_be_claimed": [
+          "不得否认、弱化或娱乐化南京大屠杀。",
+          "不得把虚构人物、虚构日记或虚构对白写成真实证词。",
+          "不得展示刺激性暴力复现。",
+          "不得随意改动 1937-12-13、遇难者 30 万以上等既有口径。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "南京大屠杀、国家公祭日、纪念馆、拉贝/魏特琳日记和审判档案为条目事实锚点。"
+        ],
+        "needs_verification": [
+          "拉贝故居当前开放和保存状态。",
+          "每个集体屠杀地点的完整清单与人数分类口径。"
+        ],
+        "forbidden_claims": [
+          "不得用再现画面替代真实影像或证词。"
+        ]
+      },
+      "source_refs": ["jiangsu-nanjing-massacre-entry", "S1", "S4", "S5"]
+    },
+    {
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "province": "湖北",
+      "source_entry_path": "data/provinces/湖北.md#武昌起义——辛亥革命的第一声枪响",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "武昌为什么被称为首义之城，今天的红楼、首义广场和纪念馆展陈能怎样讲清从爆炸暴露到多省响应的历史链条？",
+        "real_world_site_or_object": [
+          "辛亥革命武昌起义纪念馆红楼",
+          "首义广场",
+          "楚望台军械库线索空间",
+          "起义路线图、十四省独立地图和展柜资料"
+        ],
+        "source_quotes_or_source_cues": [
+          "辛亥革命武昌起义纪念馆官方资料",
+          "中国近代史和党史资料线索",
+          "当事人口述和回忆，需标注多说法边界"
+        ],
+        "timeline": [
+          "1911-10-09：汉口俄租界炸弹意外，计划泄露",
+          "1911-10-10：武昌新军起义",
+          "1911-10-11 至 10-12：武汉三镇相继光复",
+          "1912-01-01：中华民国临时政府成立",
+          "1912-02-12：清帝退位"
+        ],
+        "witness_or_expert_roles": [
+          "纪念馆讲解员",
+          "辛亥史研究者",
+          "城市文史讲述者",
+          "纪念馆展陈策划或档案人员"
+        ],
+        "interview_clip_selection": [
+          "讲解员说明红楼和首义广场的空间关系。",
+          "研究者解释保路运动、新军和革命组织的背景。",
+          "档案人员提示第一枪细节存在回忆差异。",
+          "城市讲述者说明首义记忆如何进入今天的武汉空间。"
+        ],
+        "field_notes": [
+          "用路线图和展陈物件讲因果，避免拍成单纯热血复现。",
+          "金兆龙、程定国率先开枪的细节需保留多说法。",
+          "新军服饰和武器复原件需注明复原或展陈。"
+        ],
+        "b_roll_plan": [
+          "红楼外观、首义广场、纪念雕塑",
+          "展柜中的传单、军帽、枪械复原件",
+          "起义路线图和十四省独立地图",
+          "纪念馆讲解员指向时间线",
+          "游客在首义广场停步和拍照"
+        ],
+        "reconstruction_boundary": [
+          "起义夜、军械库和枪声只能用地图动画、剪影、展陈复原件和声音设计示意。",
+          "不得把虚构士兵对白写成史实。",
+          "不得武断确认第一枪的所有细节。"
+        ],
+        "present_day_trace": [
+          "红楼常设展陈",
+          "首义广场公共纪念空间",
+          "武汉城市中的首义地名和纪念符号"
+        ],
+        "ambient_sound": [
+          "广场环境声",
+          "展厅脚步和讲解声",
+          "地图动画低频鼓点",
+          "远处钟声或城市交通声"
+        ],
+        "what_must_not_be_claimed": [
+          "不得把第一枪细节写成单一无争议版本。",
+          "不得把文学社、共进会组织关系简化成未核定论。",
+          "不得把展陈复原件写成当年原物。",
+          "不得混淆 10 月 9 日计划泄露和 10 月 10 日起义。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "1911 年 10 月 10 日武昌起义、红楼、首义广场和多省响应为条目事实锚点。"
+        ],
+        "needs_verification": [
+          "第一枪具体经过的不同回忆。",
+          "瑞澂逃跑路线和文学社/共进会合并细节。"
+        ],
+        "forbidden_claims": [
+          "不得把再现场景写成真实影像。"
+        ]
+      },
+      "source_refs": ["hubei-wuchang-uprising-entry", "S3"]
+    },
+    {
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "entry_name": "平江起义——从旧军队内部爆发的革命枪响",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#平江起义——从旧军队内部爆发的革命枪响",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "天岳书院和旧址展陈如何让观众看见一支旧军队内部为什么会爆发革命行动，并如何走向红五军？",
+        "real_world_site_or_object": [
+          "平江起义旧址/天岳书院线索",
+          "平江起义纪念馆或旧址展陈",
+          "起义路线图、红五军相关展板",
+          "释放农民运动骨干的展陈线索"
+        ],
+        "source_quotes_or_source_cues": [
+          "彭德怀自述资料线索",
+          "平江起义纪念机构资料",
+          "党史资料和地方革命史资料"
+        ],
+        "timeline": [
+          "1928-07-22：平江起义爆发",
+          "起义后：红五军成立",
+          "后续：部队向周边转移并与井冈山革命根据地线索相连"
+        ],
+        "witness_or_expert_roles": [
+          "旧址讲解员",
+          "党史研究者",
+          "当地文史工作者",
+          "展陈档案整理人员"
+        ],
+        "interview_clip_selection": [
+          "讲解员说明天岳书院空间如何成为起义记忆现场。",
+          "研究者解释旧军队内部起义的背景和人物关系。",
+          "档案人员说明兵力、路线和具体时间仍需按资料核实。",
+          "当地讲述者说明旧址今天如何被参观和学习。"
+        ],
+        "field_notes": [
+          "重点拍空间层：书院、院落、展板、路线图。",
+          "人物对白和会议细节不做戏剧化复原。",
+          "将革命事件、纪念馆展陈和后世教育分层。"
+        ],
+        "b_roll_plan": [
+          "天岳书院门匾、院落、石阶和展厅",
+          "彭德怀、滕代远、黄公略相关展板",
+          "红五军时间线和路线图",
+          "展柜文献、旧照片和观众脚步",
+          "平江城市或山路空镜"
+        ],
+        "reconstruction_boundary": [
+          "起义夜只能用空镜、地图、展陈和脚步声示意。",
+          "不得虚构人物对白作为真实会议记录。",
+          "兵力、路线和具体行动时刻需补证后才能进入解说。"
+        ],
+        "present_day_trace": [
+          "平江起义旧址开放参观",
+          "党史教育和研学活动",
+          "地方公共纪念空间"
+        ],
+        "ambient_sound": [
+          "旧址院落脚步声",
+          "展厅低声讲解",
+          "山路风声",
+          "翻动档案复制件的纸声"
+        ],
+        "what_must_not_be_claimed": [
+          "不得编造起义会议对白。",
+          "不得确认待核兵力数字和路线细节。",
+          "不得把同一空间不同历史时期混在同一场景。",
+          "不得把革命历史拍成无来源爽文。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "1928 年 7 月 22 日平江起义、彭德怀等人物和红五军线索为条目锚点。"
+        ],
+        "needs_verification": [
+          "具体兵力、行动路线、嘉义行动和转移节点。"
+        ],
+        "forbidden_claims": [
+          "不得把纪念展陈完全等同当年现场原貌。"
+        ]
+      },
+      "source_refs": ["hunan-pingjiang-uprising-entry", "S27", "S35"]
+    },
+    {
+      "card_id": "documentary-golden-yueyang-tower-text-site",
+      "entry_name": "岳阳楼——先忧后乐的精神地标",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#岳阳楼——先忧后乐的精神地标",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "今天登上岳阳楼看到的建筑、碑刻、湖风和游客视线，如何连接《岳阳楼记》、杜甫诗和岳阳楼的屡毁屡建？",
+        "real_world_site_or_object": [
+          "岳阳楼主楼",
+          "楼内《岳阳楼记》雕屏、碑刻、匾额和楹联",
+          "洞庭湖湖面、栏杆、远帆和楼梯",
+          "三醉亭、仙梅亭、吕仙祠线索"
+        ],
+        "source_quotes_or_source_cues": [
+          "范仲淹《岳阳楼记》文本",
+          "杜甫《登岳阳楼》诗作",
+          "岳阳楼景区官方资料",
+          "文物保护和重修资料线索"
+        ],
+        "timeline": [
+          "约 215 年：鲁肃阅军楼线索，具体年份待考",
+          "唐代：岳阳楼转向观赏名楼",
+          "1046 年：范仲淹作《岳阳楼记》",
+          "1880 年：现存岳阳楼清光绪重建形制",
+          "1984 年：落架大修后开放",
+          "1988 年：全国重点文物保护单位"
+        ],
+        "witness_or_expert_roles": [
+          "岳阳楼景区讲解员",
+          "文史研究者",
+          "碑刻或古建筑研究者",
+          "游客或研学学生"
+        ],
+        "interview_clip_selection": [
+          "讲解员说明主楼、雕屏和洞庭湖视线关系。",
+          "研究者区分文本、建筑、诗作和传说层。",
+          "古建筑研究者说明现存楼体和历代重修边界。",
+          "游客说出今天登楼时最先看见的现场痕迹。"
+        ],
+        "field_notes": [
+          "范仲淹是否亲临岳阳楼存在争议，不能写成无争议事实。",
+          "吕洞宾三醉属于传说层。",
+          "现存楼体、历史原貌和落架大修必须分清。"
+        ],
+        "b_roll_plan": [
+          "岳阳楼远景、盔顶、飞檐、木柱和楼梯",
+          "《岳阳楼记》雕屏、碑刻、匾额",
+          "洞庭湖水面、栏杆、远帆和湖风",
+          "游客登楼脚步和视线",
+          "导览图、文本文献摘页和景区展板"
+        ],
+        "reconstruction_boundary": [
+          "不再现范仲淹在岳阳楼现场写作。",
+          "鲁肃阅军楼和唐代重修可用示意地图和旁白分层说明。",
+          "吕洞宾传说只能作为民间传说或戏曲文学线索。"
+        ],
+        "present_day_trace": [
+          "今天可登楼观看洞庭湖",
+          "楼内雕屏与碑刻陈列",
+          "研学、游客导览和文保标识",
+          "湖风和栏杆形成现场体验"
+        ],
+        "ambient_sound": [
+          "湖风声",
+          "楼梯脚步声",
+          "游客低声读碑刻",
+          "远处船声和城市环境声"
+        ],
+        "what_must_not_be_claimed": [
+          "不得把《岳阳楼记》写成范仲淹登楼游记。",
+          "不得把吕洞宾传说写成确证历史。",
+          "不得把现存楼体直接等同东汉或北宋原貌。",
+          "不得无来源确认鲁肃阅军楼具体年份和形制。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "岳阳楼、洞庭湖、《岳阳楼记》、杜甫诗作和现存文保空间为条目锚点。"
+        ],
+        "needs_verification": [
+          "鲁肃阅军楼具体年份。",
+          "范仲淹是否亲临岳阳的学术争议。",
+          "30 余次毁建的完整记录。"
+        ],
+        "forbidden_claims": [
+          "不得把文学意境当作现场纪实。"
+        ]
+      },
+      "source_refs": ["hunan-yueyang-tower-entry", "fan-zhongyan-text-cue", "dufu-poem-cue", "yueyang-tower-official-cue"]
+    },
+    {
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "entry_name": "桑植民歌——长征路上的歌声与守望",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#桑植民歌——长征路上的歌声与守望",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "桑植民歌如何通过今天的歌者、山地村寨、博物馆和长征记忆，让观众听见多民族山地生活与红色离别的交织？",
+        "real_world_site_or_object": [
+          "桑植民歌博物馆",
+          "桑植县非遗传承基地",
+          "桑植刘家坪红二方面军长征出发地线索",
+          "桑植山地村寨、田野和山坡"
+        ],
+        "source_quotes_or_source_cues": [
+          "桑植民歌国家级非遗项目资料",
+          "桑植贺龙纪念馆资料线索",
+          "田野调查和民间口述传统，需标注来源层级",
+          "曲谱、歌词本和采风记录"
+        ],
+        "timeline": [
+          "明清至更早：民歌生活传统线索",
+          "1935 年：红二方面军从桑植出发长征，相关传唱路径需补证",
+          "2006 年：首批国家级非遗线索"
+        ],
+        "witness_or_expert_roles": [
+          "桑植民歌传承人/歌手",
+          "桑植民歌博物馆讲解员",
+          "音乐研究者",
+          "红色记忆讲述者或后人，需授权"
+        ],
+        "interview_clip_selection": [
+          "歌手讲起腔、对唱和山地环境。",
+          "研究者说明高腔、平腔、低腔的分类待核边界。",
+          "讲解员说明民歌和长征记忆如何在展陈中分层。",
+          "后人讲述个人记忆时标注为个体口述。"
+        ],
+        "field_notes": [
+          "不得长引未授权歌词。",
+          "爱情歌、红色歌谣和个人经历要分开。",
+          "曲调数量和分类体系需专业来源。"
+        ],
+        "b_roll_plan": [
+          "歌者口型、呼吸、山坡远景",
+          "录音笔、歌词本、曲谱整理本",
+          "博物馆展柜、老照片和音频播放设备",
+          "刘家坪纪念空间和长征路线图",
+          "村寨吊脚楼、田埂、火塘和听众反应"
+        ],
+        "reconstruction_boundary": [
+          "不再现红军出发时具体送别对白。",
+          "长征传唱只能以来源线索和口述层级呈现。",
+          "如需表现历史情绪，用空镜、歌声和展陈材料，不写成真实影像。"
+        ],
+        "present_day_trace": [
+          "传承基地教学",
+          "歌手现场演唱",
+          "博物馆展陈",
+          "刘家坪红色记忆空间"
+        ],
+        "ambient_sound": [
+          "山地风声",
+          "歌者起腔和空间回声，需授权",
+          "录音设备按键声",
+          "村寨环境声"
+        ],
+        "what_must_not_be_claimed": [
+          "不得完整引用未授权歌词。",
+          "不得确认《马桑树儿搭灯台》在长征中的具体版本和路线，除非补证。",
+          "不得把个人口述写成通行史实。",
+          "不得把 2000 余首曲调分类写成已完整掌握。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "桑植民歌、国家级非遗线索、山地歌唱和长征记忆关联为条目锚点。"
+        ],
+        "needs_verification": [
+          "长征传唱版本与传播路径。",
+          "曲调分类体系和代表性曲目授权。"
+        ],
+        "forbidden_claims": [
+          "不得无授权传播完整唱段。"
+        ]
+      },
+      "source_refs": ["hunan-sangzhi-folk-song-entry", "S3", "S9"]
+    },
+    {
+      "card_id": "documentary-golden-changsha-tongguan-kiln-shard",
+      "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "一片长沙窑瓷片、一座铜官窑址和一张海路图，如何让观众理解釉下彩、诗文瓷和唐代外销陶瓷的关系？",
+        "real_world_site_or_object": [
+          "铜官窑遗址/长沙窑遗址核心区",
+          "博物馆长沙窑展厅",
+          "陶瓷工坊",
+          "黑石号或海上丝绸之路路线图展陈"
+        ],
+        "source_quotes_or_source_cues": [
+          "中国非遗网项目线索",
+          "考古与博物馆展陈资料",
+          "黑石号相关研究线索",
+          "陶瓷烧制传承人或工坊资料"
+        ],
+        "timeline": [
+          "唐代：长沙窑/铜官窑烧造与外销线索",
+          "黑石号沉船资料对应外销瓷证据链，具体数量需补证",
+          "2011 年：长沙窑铜官陶瓷烧制技艺国家级非遗线索"
+        ],
+        "witness_or_expert_roles": [
+          "博物馆讲解员",
+          "考古研究者",
+          "陶瓷烧制传承人/陶工",
+          "彩绘师或题诗工匠",
+          "非遗保护人员"
+        ],
+        "interview_clip_selection": [
+          "讲解员说明瓷片和展柜标签如何构成证据入口。",
+          "考古研究者说明黑石号、外销和釉下彩的来源边界。",
+          "陶工展示拉坯、彩绘、施釉和入窑流程。",
+          "保护人员说明现代复原作品不能冒充文物。"
+        ],
+        "field_notes": [
+          "现代工坊作品和唐代文物必须区分。",
+          "最早、第一、开创等绝对表述需谨慎。",
+          "诗文瓷文字引用需确认版权和释读。"
+        ],
+        "b_roll_plan": [
+          "瓷片展柜、考古编号牌和馆藏图录",
+          "陶泥、拉坯轮、彩绘笔、釉料碗",
+          "窑炉、匣钵、晾坯架和出窑工具",
+          "黑石号路线图和海路动画",
+          "湘江岸线、铜官老街和窑场遗址牌"
+        ],
+        "reconstruction_boundary": [
+          "唐代烧制现场只能用示意图、工坊动作和展陈材料表达。",
+          "不得把现代复原品写成出土文物。",
+          "黑石号数量和器物归属需来源确认后再说。"
+        ],
+        "present_day_trace": [
+          "铜官窑遗址和博物馆展陈",
+          "当代陶瓷工坊",
+          "非遗保护与文旅展示",
+          "湘江沿线和铜官老街"
+        ],
+        "ambient_sound": [
+          "拉坯轮转动声",
+          "彩绘笔落在坯体上的轻声",
+          "窑火或工坊环境声",
+          "展厅低声讲解"
+        ],
+        "what_must_not_be_claimed": [
+          "不得无来源使用世界最早、唯一、第一等绝对判断。",
+          "不得把现代复原品冒充唐代文物。",
+          "不得随意确认黑石号器物数量。",
+          "不得长篇引用或编造诗文瓷铭文。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "长沙窑/铜官窑、釉下彩、诗文瓷、黑石号线索和非遗项目为条目锚点。"
+        ],
+        "needs_verification": [
+          "黑石号器物数量和具体来源。",
+          "釉下彩最早/开创表述的权威口径。",
+          "诗文瓷文字释读。"
+        ],
+        "forbidden_claims": [
+          "不得把工坊演示作为唐代真实影像。"
+        ]
+      },
+      "source_refs": ["hunan-changsha-tongguan-kiln-entry", "black-stone-ship-cue", "national-ich-list-cue"]
+    },
+    {
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#湘西苗医苗药——武陵山中的民族医药体系",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "在不提供医疗建议的前提下，如何用档案、标本柜、山地生态和专家访谈记录湘西苗医苗药的非遗文化？",
+        "real_world_site_or_object": [
+          "凤凰县、花垣县苗医药项目线索地",
+          "湘西民族医药机构或民族中医院线索",
+          "药材标本室、药柜、非遗展柜",
+          "湘西山地药材生态路"
+        ],
+        "source_quotes_or_source_cues": [
+          "国家级非遗传统医药类名录入口",
+          "苗医药项目页待复核",
+          "凤凰县、花垣县非遗资料",
+          "民族医药研究者或机构资料"
+        ],
+        "timeline": [
+          "传统苗医药长期口传和实践线索",
+          "第三批扩展项目线索：苗医药（癫痫症疗法、钻节风疗法），需以项目页复核",
+          "当代：民族医药机构、非遗保护和现代审慎传播"
+        ],
+        "witness_or_expert_roles": [
+          "非遗档案员",
+          "民族医药研究者或医院专家",
+          "苗医药传承人/民间医师，需授权",
+          "药材采集者",
+          "患者或家属仅在伦理许可下出现"
+        ],
+        "interview_clip_selection": [
+          "档案员说明项目页、保护单位和申报地区。",
+          "研究者说明传统知识记录和现代医疗边界。",
+          "采集者说明生态和采集许可，不给药方。",
+          "传承人讲述传承经历而非疗效承诺。"
+        ],
+        "field_notes": [
+          "镜头先拍档案和标本，再拍环境，不进未经授权诊疗现场。",
+          "不展示药方比例、正骨操作、诊疗记录和患者隐私。",
+          "字幕需明确本片是非遗文化记录，不构成医疗建议。"
+        ],
+        "b_roll_plan": [
+          "项目页打印件、非遗档案盒、授权单",
+          "药材标本、标签、标本柜和晾晒竹匾",
+          "山地小路、药篓和生态环境",
+          "机构走廊、公开展板和诊室门牌",
+          "手套、口罩和消毒用品作为现代边界提示"
+        ],
+        "reconstruction_boundary": [
+          "不再现治疗过程。",
+          "不公开配方、比例和操作步骤。",
+          "药王节或民俗信仰场景需社区授权并标注为民俗层。"
+        ],
+        "present_day_trace": [
+          "民族医药机构资料",
+          "非遗档案和项目页",
+          "药材标本和生态保护",
+          "现代审慎传播与专业审稿"
+        ],
+        "ambient_sound": [
+          "山地风声和脚步声",
+          "标本夹开合声",
+          "展柜环境声",
+          "专家访谈室低声"
+        ],
+        "what_must_not_be_claimed": [
+          "不得提供医疗建议、疗效承诺或替代正规医疗。",
+          "不得公开药方比例和诊疗操作教程。",
+          "不得展示患者隐私、诊疗记录和未授权医疗场景。",
+          "不得确认苗医正骨单独列入国家级非遗，除非官方补证。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "苗医药项目与凤凰县、花垣县线索、药材、档案和民族医药机构为条目锚点。"
+        ],
+        "needs_verification": [
+          "项目页最新表述、保护单位和代表性传承人。",
+          "苗医正骨项目身份。",
+          "药王节地区差异和拍摄许可。"
+        ],
+        "forbidden_claims": [
+          "不得将非遗记录转成医疗教学。"
+        ]
+      },
+      "source_refs": ["hunan-xiangxi-miao-medicine-entry", "ich-traditional-medicine-cue"]
+    },
+    {
+      "card_id": "documentary-golden-xiangkun-ancient-stage",
+      "entry_name": "湘昆——山野昆曲的南岭遗音",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#湘昆——山野昆曲的南岭遗音",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "湘昆的山野气质如何在郴州院团排练、桂阳古戏台、曲谱和武戏身段中被今天看见？",
+        "real_world_site_or_object": [
+          "湖南省昆剧团排练厅/后台线索",
+          "桂阳县湘昆古戏台",
+          "曲谱、剧目表、院团年表",
+          "武戏排练场和古戏台梁柱"
+        ],
+        "source_quotes_or_source_cues": [
+          "中国非遗网昆曲项目页",
+          "雷子文等代表性传承人公开信息待复核",
+          "第八批全国重点文物保护单位湘昆古戏台线索",
+          "湖南省昆剧团资料"
+        ],
+        "timeline": [
+          "明末清初：昆曲传入湘南线索，具体路径待考",
+          "1957 年：湖南省昆剧团成立线索",
+          "2006 年：昆曲国家级非遗项目含湖南省线索",
+          "第八批全国重点文物保护单位：湘昆古戏台线索"
+        ],
+        "witness_or_expert_roles": [
+          "湘昆演员",
+          "湖南省昆剧团老艺人或传承人",
+          "文物保护人员",
+          "戏曲研究者",
+          "武戏身段教师"
+        ],
+        "interview_clip_selection": [
+          "演员讲武戏训练和唱念做打。",
+          "文物人员说明古戏台开放、保护和拍摄边界。",
+          "研究者解释湘昆、苏昆、永昆对照的来源层级。",
+          "院团人员说明排练、剧目和授权。"
+        ],
+        "field_notes": [
+          "古戏台为文物空间，不触碰构件。",
+          "三昆说法、院团史和剧目清单需来源。",
+          "排练片段和剧目片段需院团授权。"
+        ],
+        "b_roll_plan": [
+          "古戏台梁柱、藻井、台口和石阶",
+          "演员整理水袖、靴子和兵器道具",
+          "曲笛、拍板、谱架和排练镜",
+          "院团档案柜、老照片和剧目海报",
+          "郴州/桂阳山地街巷和祠堂外景"
+        ],
+        "reconstruction_boundary": [
+          "不再现明清昆曲传入现场。",
+          "用地图、文献和院团口述说明本土化过程。",
+          "古戏台镜头只呈现今天可见状态，不冒充历史演出影像。"
+        ],
+        "present_day_trace": [
+          "湖南省昆剧团排练",
+          "桂阳古戏台文物空间",
+          "当代演员训练和档案整理",
+          "观众和地方文旅保护"
+        ],
+        "ambient_sound": [
+          "曲笛试音",
+          "拍板和司鼓节奏",
+          "靴底踏台声",
+          "古戏台木结构空间声"
+        ],
+        "what_must_not_be_claimed": [
+          "不得无来源宣称湘昆为三昆之一的权威定论。",
+          "不得把古戏台今天状态写成明清原貌。",
+          "不得无授权使用完整剧目片段。",
+          "不得混用苏昆、湘剧、祁剧等服化道。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "昆曲国家级项目含湖南省线索，湘昆与郴州、桂阳和古戏台相关。"
+        ],
+        "needs_verification": [
+          "院团现址和开放许可。",
+          "古戏台单体资料和开放情况。",
+          "三昆说法权威来源。"
+        ],
+        "forbidden_claims": [
+          "不得把文物空间用作无授权戏剧化复原场。"
+        ]
+      },
+      "source_refs": ["hunan-xiangkun-entry", "kunqu-ich-cue", "xiangkun-ancient-stage-cue"]
+    },
+    {
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#土家族摆手舞——湘西土家的集体仪式",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "摆手堂前的鼓点、圆圈和参与者动作，如何让观众理解土家族摆手舞既是舞蹈，也是集体仪式和身份认同？",
+        "real_world_site_or_object": [
+          "永顺县摆手堂",
+          "龙山/保靖土家村寨活动现场",
+          "湘西州非遗保护中心或传习点",
+          "鼓架、祭台、动作图谱和活动公告"
+        ],
+        "source_quotes_or_source_cues": [
+          "中国非遗网项目页待复核",
+          "湘西州非遗保护中心资料",
+          "当地活动公告和社区组织资料",
+          "传承人访谈与现场观察"
+        ],
+        "timeline": [
+          "古代至今：土家族集体仪式传统线索",
+          "正月至三月：摆手活动时间线索，具体日期需公告确认",
+          "当代：非遗保护、传习点和节庆展演"
+        ],
+        "witness_or_expert_roles": [
+          "摆手舞传承人/领舞者",
+          "鼓师和歌师",
+          "村寨社区组织者",
+          "非遗保护机构讲述者",
+          "参与群众，需授权"
+        ],
+        "interview_clip_selection": [
+          "领舞者说明摆手踏足和围圈关系。",
+          "鼓师讲鼓点如何组织集体动作。",
+          "社区组织者说明祭祀和拍摄禁忌。",
+          "非遗保护人员区分大摆手、小摆手和旅游展演。"
+        ],
+        "field_notes": [
+          "先取得社区同意，再拍摄摆手堂、祭台和群众。",
+          "旅游展演、教学演示和传统仪式必须分层。",
+          "祭祀供品、神龛和禁忌画面需按当地规范。"
+        ],
+        "b_roll_plan": [
+          "摆手堂门面、木柱、祭台和鼓架",
+          "围圈队形俯拍和脚步踏地",
+          "鼓槌落点、领舞者手势",
+          "参与者服饰、头巾和腰带",
+          "活动公告、动作图谱和非遗展板"
+        ],
+        "reconstruction_boundary": [
+          "不重演未经许可的祭祀流程。",
+          "不把旅游展演写成原生仪式。",
+          "大摆手与小摆手差异需来源确认后再解说。"
+        ],
+        "present_day_trace": [
+          "村寨节庆活动",
+          "非遗传习点教学",
+          "社区围圈参与",
+          "青年返乡记录和研学活动"
+        ],
+        "ambient_sound": [
+          "鼓点",
+          "脚步踏地声",
+          "集体歌声或呼应声，需授权",
+          "摆手堂空间回响"
+        ],
+        "what_must_not_be_claimed": [
+          "不得编造祭祀对象、唱词和完整流程。",
+          "不得将展演等同历史原貌。",
+          "不得未经授权拍摄或传播禁忌画面。",
+          "不得混淆大摆手和小摆手。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "摆手堂、围圈、鼓点、正月至三月和生产生活动作是条目锚点。"
+        ],
+        "needs_verification": [
+          "活动日期、具体村寨和社区许可。",
+          "大摆手/小摆手完整差异。",
+          "摆手堂建筑形制。"
+        ],
+        "forbidden_claims": [
+          "不得越过社区同意拍摄仪式。"
+        ]
+      },
+      "source_refs": ["hunan-tujia-hand-waving-dance-entry", "xiangxi-ich-center-cue"]
+    },
+    {
+      "card_id": "documentary-golden-changde-sixian-theatre",
+      "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#常德丝弦——湘北水乡的扬琴说唱",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 12,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "documentary_question": "一把扬琴、一本曲本和一间小剧场，如何让常德丝弦从非遗名录变成今天仍能被听见的城市声音？",
+        "real_world_site_or_object": [
+          "常德市武陵区曲艺小剧场/排练厅",
+          "常德丝弦艺术团或保护机构",
+          "扬琴、琵琶、二胡、三弦和曲本",
+          "老照片、出访资料和曲目展板"
+        ],
+        "source_quotes_or_source_cues": [
+          "中国非遗网曲艺类名录入口",
+          "常德丝弦项目页待复核",
+          "谌晓辉、朱晓玲传承人公开索引待复核",
+          "常德曲艺保护机构资料"
+        ],
+        "timeline": [
+          "明末清初：江浙丝竹传入常德的起源说，需补证",
+          "2006 年：首批国家级非遗线索",
+          "1959 年出访传播史线索，具体国家和场次需档案复核",
+          "当代：艺术团排练和小剧场演出"
+        ],
+        "witness_or_expert_roles": [
+          "常德丝弦演员/说唱艺人",
+          "扬琴主奏和伴奏乐师",
+          "保护机构讲述者",
+          "老听众或社区讲述者",
+          "曲艺研究者"
+        ],
+        "interview_clip_selection": [
+          "演员讲坐唱和常德方言。",
+          "乐师说明扬琴为何是主奏锚点。",
+          "机构讲述者说明项目身份、曲目和授权。",
+          "老听众讲记忆时标注为个人经历。"
+        ],
+        "field_notes": [
+          "唱词和唱段必须有授权。",
+          "九板十八调完整清单需从曲艺志或机构档案核实。",
+          "不能把一个演出片段代表全部常德丝弦。"
+        ],
+        "b_roll_plan": [
+          "扬琴调弦、琴槌落点和谱架",
+          "演员坐唱、麦克风和小剧场观众席",
+          "曲本、唱词本和排练记录",
+          "老照片、出访资料复制件和非遗展板",
+          "常德水乡街巷和城市夜景"
+        ],
+        "reconstruction_boundary": [
+          "不再现明末清初传入现场。",
+          "1959 年出访只用档案和展板说明，具体国家待核。",
+          "未授权曲词只以声音氛围或短授权片段呈现。"
+        ],
+        "present_day_trace": [
+          "小剧场演出",
+          "艺术团排练",
+          "社区听众和方言记忆",
+          "年轻演员或伴奏员学习曲本"
+        ],
+        "ambient_sound": [
+          "扬琴颗粒声",
+          "常德方言尾音，需授权",
+          "小剧场观众掌声",
+          "排练厅翻谱声"
+        ],
+        "what_must_not_be_claimed": [
+          "不得长引未授权歌词。",
+          "不得确认九板十八调完整清单，除非补证。",
+          "不得确认 1959 年出访国家和场次，除非档案复核。",
+          "不得把常德丝弦改写成普通流行演唱。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "常德丝弦、扬琴说唱、国家级非遗线索和常德方言曲艺为条目锚点。"
+        ],
+        "needs_verification": [
+          "项目页、保护单位和代表性传承人。",
+          "九板十八调完整清单。",
+          "1959 年出访档案。"
+        ],
+        "forbidden_claims": [
+          "不得无授权使用完整曲目。"
+        ]
+      },
+      "source_refs": ["hunan-changde-sixian-entry", "ich-quyi-catalog-cue"]
+    }
+  ],
+  "phase_progress_note": {
+    "phase": "Phase 1 - 黄金生产素材卡",
+    "iteration": "Iteration 5 - 微纪录片黄金卡 10 条",
+    "completion_logic": "10 条微纪录片卡已覆盖 12 个必填字段，但尚未完成人工审稿；敏感历史、医疗、仪式和曲艺内容需继续补证和授权。",
+    "next_gate": [
+      "抽样 2 条建立微纪录分镜、GEARS 分段和质量报告。",
+      "增加自动化结构校验和敏感边界校验。",
+      "对 30 条黄金卡做统一索引和 Phase 1 汇总报告。"
+    ]
+  }
+}

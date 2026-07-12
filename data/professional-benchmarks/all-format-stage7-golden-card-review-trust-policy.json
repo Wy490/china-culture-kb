@@ -1,0 +1,12 @@
+{
+  "schema_version": "story-agent-stage7-golden-card-review-trust-policy/v1",
+  "policy_id": "stage7-golden-card-review-trust-policy-template-001",
+  "status": "preparation_template",
+  "trust_source": "external_configuration",
+  "evidence_environment": "external",
+  "established_at": "",
+  "signers": [],
+  "human_approval_can_be_granted": false,
+  "golden_card_promotion_can_be_granted": false,
+  "professional_pass_can_be_granted": false
+}

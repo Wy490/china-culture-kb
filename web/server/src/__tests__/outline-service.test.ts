@@ -134,14 +134,20 @@ describe('outline-service', () => {
     expect(res.data?.knowledge_needs.some(need => need.keywords.includes('故事'))).toBe(false);
     expect(res.data?.detected_subjects).not.toContain('毛泽');
     expect(res.data?.detected_subjects).not.toContain('向革');
+    expect(res.data?.detected_characters.map(character => character.name)).toEqual(['毛泽东']);
   });
 
   it('matches the Mao Zedong entry for protagonist knowledge needs', async () => {
     const analysis = await analyzeOutline({
-      outline: '我想做一个毛泽东少年求学走向革命的故事',
+      outline: '毛泽东少年时期到革命觉醒的故事，重点表现湖南乡土、求学、新民学会、农民运动、理想形成。',
     });
 
     expect(analysis.ok).toBe(true);
+    expect(analysis.data?.story_intent.time_range).toBe('少年→求学→新民学会→农民运动→革命觉醒→理想形成');
+    expect(analysis.data?.story_intent.core_theme).toBe('求学与革命觉醒');
+    expect(analysis.data?.story_intent.conflict_keywords).toEqual(expect.arrayContaining(['新民学会', '农民运动']));
+    expect(analysis.data?.knowledge_needs.find(need => need.need_id === 'historical_events')?.keywords)
+      .toEqual(expect.arrayContaining(['新民学会', '农民运动']));
     const res = await multiMatchEntries({
       outline: analysis.data!.outline,
       knowledge_needs: analysis.data!.knowledge_needs,
@@ -154,7 +160,16 @@ describe('outline-service', () => {
       ...(res.data?.matched_knowledge_pack.supporting_entries ?? []),
     ].map(entry => entry.entry_name);
     expect(matchedNames.some(name => name.startsWith('毛泽东——'))).toBe(true);
-    expect(res.data?.matched_knowledge_pack.primary_entries.every(entry => entry.type === '历史人物')).toBe(true);
+    const mao = res.data?.matched_knowledge_pack.primary_entries.find(entry => entry.entry_name.startsWith('毛泽东——'));
+    expect(mao?.type).toBe('历史人物');
+    expect(mao?.role_in_story).toBe('main_character');
+    expect(res.data?.matched_knowledge_pack.primary_entries[0]?.entry_name).toMatch(/^毛泽东——/);
+    expect(res.data?.matched_knowledge_pack.overall_confidence).toBe(1);
+    expect(res.data?.matched_knowledge_pack.supporting_entries.length).toBeLessThanOrEqual(15);
+    expect(matchedNames.some(name => name.startsWith('新民学会——'))).toBe(true);
+    expect(matchedNames.some(name => name.startsWith('湖南花鼓戏——'))).toBe(false);
+    expect(matchedNames.some(name => name.startsWith('刘海砍樵——'))).toBe(false);
+    expect(matchedNames.some(name => name.includes('宋代士人设定包'))).toBe(false);
   });
 
   it('enriches multi-match knowledge pack summaries with detailed story snippets', async () => {

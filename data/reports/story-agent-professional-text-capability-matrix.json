@@ -1,0 +1,4435 @@
+{
+  "schema_version": "story-agent-professional-text-capability-matrix/v1",
+  "generated_at": "2026-07-11T14:23:30.126Z",
+  "stage": "stage_6",
+  "iteration": "iteration_2",
+  "source_handoff": "docs/story-agent-all-format-professional-text-creation-handoff-20260710.md",
+  "source_files": [
+    "web/shared/types.ts",
+    "web/shared/schemas.ts",
+    "web/server/src/services/genre-story-profiles.ts",
+    "web/server/src/services/story-blueprint-service.ts",
+    "web/server/src/services/story-service.ts",
+    "web/server/src/services/story-generation-prompt.ts",
+    "web/server/src/services/genre-quality-service.ts",
+    "web/server/src/services/quality-workflow-service.ts",
+    "web/server/src/services/story-repair-service.ts",
+    "web/server/src/services/quality-repair-service.ts",
+    "web/server/src/services/professional-text-contracts.ts",
+    "web/server/src/services/professional-text-package-service.ts",
+    "web/server/src/__tests__/professional-text-package-contract.test.ts",
+    "web/server/src/services/professional-text-pipeline-service.ts",
+    "web/server/src/services/professional-text-quality-service.ts",
+    "web/server/src/services/professional-text-revision-service.ts",
+    "web/server/src/services/professional-historical-drama-pipeline-service.ts",
+    "web/server/src/services/professional-historical-drama-quality-service.ts",
+    "web/server/src/services/professional-historical-drama-revision-service.ts",
+    "web/server/src/services/professional-legend-story-pipeline-service.ts",
+    "web/server/src/services/professional-legend-story-quality-service.ts",
+    "web/server/src/services/professional-legend-story-revision-service.ts",
+    "web/server/src/services/professional-children-story-pipeline-service.ts",
+    "web/server/src/services/professional-children-story-quality-service.ts",
+    "web/server/src/services/professional-children-story-revision-service.ts",
+    "web/server/src/services/professional-ai-comic-drama-pipeline-service.ts",
+    "web/server/src/services/professional-ai-comic-drama-quality-service.ts",
+    "web/server/src/services/professional-ai-comic-drama-revision-service.ts",
+    "web/server/src/services/professional-culture-promo-pipeline-service.ts",
+    "web/server/src/services/professional-culture-promo-quality-service.ts",
+    "web/server/src/services/professional-culture-promo-revision-service.ts",
+    "web/server/src/services/professional-heritage-promo-pipeline-service.ts",
+    "web/server/src/services/professional-heritage-promo-quality-service.ts",
+    "web/server/src/services/professional-heritage-promo-revision-service.ts",
+    "web/server/src/services/professional-city-brand-promo-pipeline-service.ts",
+    "web/server/src/services/professional-city-brand-promo-quality-service.ts",
+    "web/server/src/services/professional-city-brand-promo-revision-service.ts",
+    "web/server/src/services/professional-social-short-pipeline-service.ts",
+    "web/server/src/services/professional-social-short-quality-service.ts",
+    "web/server/src/services/professional-social-short-revision-service.ts",
+    "web/server/src/services/professional-documentary-short-pipeline-service.ts",
+    "web/server/src/services/professional-documentary-short-quality-service.ts",
+    "web/server/src/services/professional-documentary-short-revision-service.ts",
+    "web/server/src/services/professional-explainer-video-pipeline-service.ts",
+    "web/server/src/services/professional-explainer-video-quality-service.ts",
+    "web/server/src/services/professional-explainer-video-revision-service.ts",
+    "web/server/src/services/professional-lecture-video-pipeline-service.ts",
+    "web/server/src/services/professional-lecture-video-quality-service.ts",
+    "web/server/src/services/professional-lecture-video-revision-service.ts",
+    "web/server/src/services/professional-education-training-pipeline-service.ts",
+    "web/server/src/services/professional-education-training-quality-service.ts",
+    "web/server/src/services/professional-education-training-revision-service.ts",
+    "web/server/src/services/professional-scene-short-pipeline-service.ts",
+    "web/server/src/services/professional-scene-short-quality-service.ts",
+    "web/server/src/services/professional-scene-short-revision-service.ts",
+    "web/server/src/services/professional-landscape-mood-pipeline-service.ts",
+    "web/server/src/services/professional-landscape-mood-quality-service.ts",
+    "web/server/src/services/professional-landscape-mood-revision-service.ts",
+    "web/server/src/services/professional-multi-round-revision-service.ts",
+    "web/server/src/services/professional-multi-round-revision-execution-service.ts",
+    "scripts/story-agent-multi-round-revision-execution-plan.mts",
+    "web/server/src/services/professional-benchmark-service.ts",
+    "web/server/src/services/professional-benchmark-prompt-service.ts",
+    "web/server/scripts/professional-character-benchmark-bridge.mjs",
+    "web/server/src/services/professional-benchmark-bridge-adapter.ts",
+    "web/server/src/services/professional-benchmark-run-service.ts",
+    "web/server/src/services/professional-benchmark-artifact-service.ts",
+    "web/server/src/services/professional-benchmark-review-service.ts",
+    "web/server/src/services/professional-benchmark-post-initial-service.ts",
+    "web/server/src/services/professional-benchmark-finalization-service.ts",
+    "web/server/src/__tests__/professional-character-story-pipeline.test.ts",
+    "web/server/src/__tests__/professional-historical-drama-pipeline.test.ts",
+    "web/server/src/__tests__/professional-legend-story-pipeline.test.ts",
+    "web/server/src/__tests__/professional-children-story-pipeline.test.ts",
+    "web/server/src/__tests__/professional-ai-comic-drama-pipeline.test.ts",
+    "web/server/src/__tests__/professional-culture-promo-pipeline.test.ts",
+    "web/server/src/__tests__/professional-heritage-promo-pipeline.test.ts",
+    "web/server/src/__tests__/professional-city-brand-promo-pipeline.test.ts",
+    "web/server/src/__tests__/professional-social-short-pipeline.test.ts",
+    "web/server/src/__tests__/professional-documentary-short-pipeline.test.ts",
+    "web/server/src/__tests__/professional-explainer-video-pipeline.test.ts",
+    "web/server/src/__tests__/professional-lecture-video-pipeline.test.ts",
+    "web/server/src/__tests__/professional-education-training-pipeline.test.ts",
+    "web/server/src/__tests__/professional-scene-short-pipeline.test.ts",
+    "web/server/src/__tests__/professional-landscape-mood-pipeline.test.ts",
+    "web/server/src/__tests__/professional-multi-round-revision.test.ts",
+    "web/server/src/__tests__/professional-multi-round-revision-execution.test.ts",
+    "web/server/src/__tests__/professional-character-story-benchmark.test.ts",
+    "data/professional-benchmarks/character-story-iteration3-benchmark-specs.json",
+    "data/professional-benchmarks/historical-drama-iteration4-benchmark-specs.json",
+    "data/professional-benchmarks/legend-story-iteration5-benchmark-specs.json",
+    "data/professional-benchmarks/children-story-iteration6-benchmark-specs.json",
+    "data/professional-benchmarks/ai-comic-drama-iteration7-benchmark-specs.json",
+    "data/professional-benchmarks/culture-promo-stage3-iteration1-benchmark-specs.json",
+    "data/professional-benchmarks/heritage-promo-stage3-iteration2-benchmark-specs.json",
+    "data/professional-benchmarks/city-brand-promo-stage3-iteration3-benchmark-specs.json",
+    "data/professional-benchmarks/social-short-stage3-iteration4-benchmark-specs.json",
+    "data/professional-benchmarks/documentary-short-stage4-iteration1-benchmark-specs.json",
+    "data/professional-benchmarks/explainer-video-stage4-iteration2-benchmark-specs.json",
+    "data/professional-benchmarks/lecture-video-stage4-iteration3-benchmark-specs.json",
+    "data/professional-benchmarks/education-training-stage4-iteration4-benchmark-specs.json",
+    "data/professional-benchmarks/scene-short-stage5-iteration1-benchmark-specs.json",
+    "data/professional-benchmarks/landscape-mood-stage5-iteration2-benchmark-specs.json",
+    "data/professional-benchmarks/all-format-stage6-iteration1-multi-round-revision-specs.json",
+    "data/professional-benchmarks/all-format-stage6-iteration2-execution-manifest.json",
+    "data/professional-benchmarks/character-story-iteration3-execution-manifest.json",
+    "scripts/story-agent-character-benchmark-preflight.ts",
+    "scripts/story-agent-character-benchmark-runner.mts",
+    "data/professional-benchmarks/character-story-iteration3-controlled-run-plan.json",
+    "scripts/story-agent-character-benchmark-lifecycle-plan.mts",
+    "data/professional-benchmarks/character-story-iteration3-lifecycle-plan.json",
+    "data/production-packs/video-type-material-supplement-packs.json",
+    "data/production-cards/golden-card-unified-index.json",
+    "web/client/src/views/StoryStudio.vue",
+    "web/client/src/components/StoryResult.vue",
+    "web/client/src/views/ProjectDetail.vue"
+  ],
+  "audit_policy": {
+    "changes_generation_behavior": false,
+    "fixture_or_simulation_counts_as_professional_pass": false,
+    "pending_human_review_counts_as_approved": false,
+    "profile_presence_counts_as_professional_package_pass": false,
+    "benchmark_spec_counts_as_fixed_real_model_project": false,
+    "controlled_run_plan_counts_as_fixed_real_model_project": false,
+    "strict_contract_or_integrity_check_counts_as_professional_pass": false,
+    "blind_review_threshold_without_verified_human_artifacts_counts_as_pass": false,
+    "finalization_candidate_without_signed_release_counts_as_pass": false,
+    "strict_technical_readiness_counts_as_real_model_execution": false,
+    "lifecycle_plan_counts_as_completed_project": false,
+    "machine_candidate_score_counts_as_professional_pass": false
+  },
+  "summary": {
+    "video_type_coverage_count": 15,
+    "legacy_profile_contract_count": 15,
+    "legacy_structural_generation_count": 15,
+    "profile_quality_rule_count": 15,
+    "profile_repair_guidance_count": 15,
+    "professional_text_package_contract_count": 15,
+    "professional_text_package_skeleton_schema_pass_count": 15,
+    "professional_weighted_quality_hard_gate_count": 15,
+    "explicit_semantic_quality_type_count": 6,
+    "professional_text_package_pass_count": 0,
+    "production_material_pack_count": 8,
+    "golden_card_video_type_count": 3,
+    "golden_card_draft_count": 30,
+    "human_approved_golden_card_count": 0,
+    "fixture_regression_video_type_count": 3,
+    "fixture_regression_count": 9,
+    "professional_vertical_pipeline_type_count": 15,
+    "professional_quality_evaluator_type_count": 15,
+    "professional_revision_planner_type_count": 15,
+    "fixed_project_spec_count": 5,
+    "failure_fixture_count": 3,
+    "historical_drama_fixed_project_spec_count": 5,
+    "historical_drama_failure_fixture_count": 3,
+    "legend_story_fixed_project_spec_count": 5,
+    "legend_story_failure_fixture_count": 3,
+    "children_story_fixed_project_spec_count": 5,
+    "children_story_failure_fixture_count": 3,
+    "ai_comic_drama_fixed_project_spec_count": 5,
+    "ai_comic_drama_failure_fixture_count": 3,
+    "culture_promo_fixed_project_spec_count": 5,
+    "culture_promo_failure_fixture_count": 3,
+    "heritage_promo_fixed_project_spec_count": 5,
+    "heritage_promo_failure_fixture_count": 3,
+    "city_brand_promo_fixed_project_spec_count": 5,
+    "city_brand_promo_failure_fixture_count": 3,
+    "social_short_fixed_project_spec_count": 5,
+    "social_short_failure_fixture_count": 3,
+    "documentary_short_fixed_project_spec_count": 5,
+    "documentary_short_failure_fixture_count": 3,
+    "explainer_video_fixed_project_spec_count": 5,
+    "explainer_video_failure_fixture_count": 3,
+    "lecture_video_fixed_project_spec_count": 5,
+    "lecture_video_failure_fixture_count": 3,
+    "education_training_fixed_project_spec_count": 5,
+    "education_training_failure_fixture_count": 3,
+    "scene_short_fixed_project_spec_count": 5,
+    "scene_short_failure_fixture_count": 3,
+    "landscape_mood_fixed_project_spec_count": 5,
+    "landscape_mood_failure_fixture_count": 3,
+    "fixed_project_spec_total_count": 75,
+    "failure_fixture_total_count": 45,
+    "benchmark_preflight_type_count": 1,
+    "benchmark_source_snapshot_ready_count": 5,
+    "bridge_activation_plan_ready_count": 5,
+    "strict_technical_ready_count": 5,
+    "real_model_execution_ready_count": 0,
+    "benchmark_prompt_contract_type_count": 1,
+    "strict_scene_output_contract_type_count": 1,
+    "strict_real_model_bridge_type_count": 1,
+    "benchmark_run_ledger_type_count": 1,
+    "artifact_integrity_contract_type_count": 1,
+    "blind_review_threshold_contract_type_count": 1,
+    "controlled_runner_type_count": 1,
+    "controlled_run_plan_project_count": 5,
+    "prepared_run_ledger_count": 5,
+    "controlled_blocked_run_count": 5,
+    "post_initial_coordinator_type_count": 1,
+    "finalization_candidate_gate_type_count": 1,
+    "lifecycle_plan_type_count": 1,
+    "lifecycle_plan_project_count": 5,
+    "lifecycle_awaiting_verified_initial_count": 5,
+    "finalization_candidate_count": 0,
+    "signed_release_count": 0,
+    "model_invocation_count": 0,
+    "real_model_completed_count": 0,
+    "fixed_real_model_regression_project_count": 0,
+    "human_blind_review_pass_project_count": 0,
+    "professional_capability_hard_gate_failure_type_count": 15,
+    "evaluated_professional_output_count": 0,
+    "evaluated_output_hard_gate_failure_count": 0,
+    "multi_round_revision_contract_implemented": true,
+    "multi_round_revision_project_spec_count": 15,
+    "completed_two_round_verified_project_count": 0,
+    "recorded_verified_revision_round_count": 0,
+    "multi_round_revision_failure_fixture_count": 3,
+    "multi_round_revision_execution_implemented": true,
+    "planned_revision_round_count": 30,
+    "blocked_revision_project_count": 15,
+    "ready_for_round_1_project_count": 0
+  },
+  "video_types": [
+    {
+      "video_type": "character_story",
+      "label": "人物故事",
+      "group": "剧情故事类",
+      "line": "剧情故事线",
+      "professional_required_deliverables": [
+        "人物命题",
+        "关键选择",
+        "关系网",
+        "人物弧",
+        "分场剧本"
+      ],
+      "professional_exclusive_quality_gate": "不能写成年表；选择必须造成代价和变化",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "围绕人物选择、阻力、代价和精神落点展开。",
+        "text_shape": "连续剧情正文，场景推进清楚，主角通过行动被看见。",
+        "framework": [
+          "钩子开场",
+          "主角处境",
+          "冲突升级",
+          "关键行动",
+          "高潮选择",
+          "余味结尾"
+        ],
+        "must_include": [
+          "主角目标",
+          "可视化阻力",
+          "价值选择",
+          "选择代价",
+          "人物弧光",
+          "可信度边界"
+        ],
+        "required_fields": [
+          "characters",
+          "protagonist_arc"
+        ],
+        "quality_rules": [
+          "必须有主角目标",
+          "必须有阻力",
+          "必须有选择和代价",
+          "不得写成年表式介绍"
+        ],
+        "repair_guidance": [
+          "补强主角当下目标",
+          "把抽象评价改写成行动",
+          "为结尾增加精神落点"
+        ],
+        "truth_rules": [
+          "真实人物事迹需要保留可考边界，合理补写的动作和对白不得伪装成史料原文。"
+        ],
+        "adaptation_rules": [
+          "改编已有文本时，优先保留主角目标、人物关系、关键选择和主题落点。"
+        ],
+        "scene_template_count": 6
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "characters",
+        "protagonist_arc"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 4,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [
+          "目标/阻力/选择代价语义证据",
+          "反年表检查",
+          "人物精神落点"
+        ],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": false,
+        "production_material_sample_entry_count": 0,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": true,
+        "benchmark_source_snapshot_ready_count": 5,
+        "bridge_activation_plan_ready_count": 5,
+        "strict_technical_ready_count": 5,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": true,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": true,
+        "strict_scene_output_contract_implemented": true,
+        "strict_real_model_bridge_implemented": true,
+        "benchmark_run_ledger_implemented": true,
+        "artifact_integrity_contract_implemented": true,
+        "blind_review_threshold_contract_implemented": true,
+        "controlled_runner_implemented": true,
+        "controlled_run_plan_project_count": 5,
+        "prepared_run_ledger_count": 5,
+        "controlled_blocked_run_count": 5,
+        "post_initial_coordinator_implemented": true,
+        "finalization_candidate_gate_implemented": true,
+        "lifecycle_plan_implemented": true,
+        "lifecycle_plan_project_count": 5,
+        "lifecycle_awaiting_verified_initial_count": 5,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 37,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/api.test.ts",
+          "web/server/src/__tests__/creation-contract-service.test.ts",
+          "web/server/src/__tests__/dramatic-story-quality.test.ts",
+          "web/server/src/__tests__/gears-callback-service.test.ts",
+          "web/server/src/__tests__/gears-delivery-save.test.ts",
+          "web/server/src/__tests__/gears-delivery-service.test.ts",
+          "web/server/src/__tests__/gears-webhook-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/mao-growth-story-e2e.test.ts",
+          "web/server/src/__tests__/memory-mosaic-service.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/professional-benchmark-artifact-service.test.ts",
+          "web/server/src/__tests__/professional-benchmark-bridge-adapter.test.ts",
+          "web/server/src/__tests__/professional-benchmark-finalization-service.test.ts",
+          "web/server/src/__tests__/professional-character-benchmark-bridge.test.ts",
+          "web/server/src/__tests__/professional-character-story-benchmark-prompt.test.ts",
+          "web/server/src/__tests__/professional-character-story-benchmark.test.ts",
+          "web/server/src/__tests__/professional-character-story-pipeline.test.ts",
+          "web/server/src/__tests__/professional-multi-round-revision.test.ts",
+          "web/server/src/__tests__/professional-text-package-contract.test.ts",
+          "web/server/src/__tests__/project-service.test.ts",
+          "web/server/src/__tests__/quality-repair-service.test.ts",
+          "web/server/src/__tests__/quality-workflow-service.test.ts",
+          "web/server/src/__tests__/scene-regeneration-prompt.test.ts",
+          "web/server/src/__tests__/seedance-prompt-service.test.ts",
+          "web/server/src/__tests__/story-blueprint-genre-quality.test.ts",
+          "web/server/src/__tests__/story-generation-model.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/story-regenerate-service.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/generate-gears-delivery.test.ts",
+          "mcp-server/__tests__/generate-seedance-prompt.test.ts",
+          "mcp-server/__tests__/generate-story-blueprint.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts",
+          "mcp-server/__tests__/repair-story.test.ts",
+          "mcp-server/__tests__/update-project-version.test.ts",
+          "mcp-server/__tests__/validate-genre-story.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "character_story",
+        "line": "剧情故事线",
+        "primary_text_form": "人物选择驱动的分场剧本",
+        "architecture_mode": "character_relationships",
+        "required_deliverables": [
+          "人物命题",
+          "关键选择",
+          "关系网",
+          "人物弧",
+          "分场剧本"
+        ],
+        "exclusive_quality_gate": "不能写成年表；选择必须造成代价和变化",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 8,
+          "premise_and_theme_unity": 10,
+          "structure_causality_and_pacing": 15,
+          "character_agency_and_relationship_change": 12,
+          "scene_function_visible_action_and_blocking": 12,
+          "dialogue_narration_and_subtext": 10,
+          "emotional_curve_and_aftertaste": 10,
+          "cultural_fact_and_adaptation_boundary": 10,
+          "production_executability": 8,
+          "originality_and_distinctiveness": 5
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "人物必须有当下目标、阻力、选择和可见代价"
+        ],
+        "repair_focus": [
+          "把生平摘要改成单一压力事件",
+          "强化关系变化",
+          "让结尾承接选择后的代价"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "缺少 ProductionMaterialPack",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "historical_drama",
+      "label": "历史剧情短片",
+      "group": "剧情故事类",
+      "line": "剧情故事线",
+      "professional_required_deliverables": [
+        "史实压力",
+        "事件因果",
+        "角色立场",
+        "戏剧化边界",
+        "分场剧本"
+      ],
+      "professional_exclusive_quality_gate": "事实和虚构分层；冲突必须来自时代处境",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "在史实锚点下还原历史事件中的压力、因果和人物选择。",
+        "text_shape": "有历史现场感的剧情正文，史实和影视化补足边界清晰。",
+        "framework": [
+          "时代危机",
+          "人物卷入",
+          "制度压力",
+          "关键行动",
+          "正面冲突",
+          "历史余响"
+        ],
+        "must_include": [
+          "历史场景质感",
+          "事件因果",
+          "史实锚点",
+          "影视化边界"
+        ],
+        "required_fields": [
+          "characters",
+          "protagonist_arc"
+        ],
+        "quality_rules": [
+          "必须有时代压力",
+          "必须有事件因果",
+          "必须标注创作边界"
+        ],
+        "repair_guidance": [
+          "补充史实依据",
+          "压缩宏观背景",
+          "把历史说明改成场景行动"
+        ],
+        "truth_rules": [
+          "历史剧情可以影视化补足场面，但事件因果、人物身份和时代边界必须可解释。"
+        ],
+        "adaptation_rules": [
+          "历史改编需要保留原作主线，同时补足服饰、称谓、器物和时代边界。"
+        ],
+        "scene_template_count": 6
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "characters",
+        "protagonist_arc"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [
+          "事件因果",
+          "时代/制度压力",
+          "史实边界"
+        ],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": false,
+        "production_material_sample_entry_count": 0,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 13,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/dramatic-story-quality.test.ts",
+          "web/server/src/__tests__/gears-delivery-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/mao-growth-story-e2e.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/professional-historical-drama-pipeline.test.ts",
+          "web/server/src/__tests__/quality-workflow-service.test.ts",
+          "web/server/src/__tests__/story-blueprint-genre-quality.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "mcp-server/__tests__/generate-story-blueprint.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts",
+          "mcp-server/__tests__/repair-story.test.ts",
+          "mcp-server/__tests__/validate-genre-story.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "historical_drama",
+        "line": "剧情故事线",
+        "primary_text_form": "史实压力驱动的历史分场剧本",
+        "architecture_mode": "character_relationships",
+        "required_deliverables": [
+          "史实压力",
+          "事件因果",
+          "角色立场",
+          "戏剧化边界",
+          "分场剧本"
+        ],
+        "exclusive_quality_gate": "事实和虚构分层；冲突必须来自时代处境",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 8,
+          "premise_and_theme_unity": 10,
+          "structure_causality_and_pacing": 15,
+          "character_agency_and_relationship_change": 12,
+          "scene_function_visible_action_and_blocking": 12,
+          "dialogue_narration_and_subtext": 10,
+          "emotional_curve_and_aftertaste": 7,
+          "cultural_fact_and_adaptation_boundary": 15,
+          "production_executability": 8,
+          "originality_and_distinctiveness": 3
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "史实锚点、合理补足和虚构添加必须分层记录"
+        ],
+        "repair_focus": [
+          "补足制度与时代压力",
+          "把宏观背景转成场景行动",
+          "修复事实与虚构边界"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "缺少 ProductionMaterialPack",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "legend_story",
+      "label": "神话/传说故事",
+      "group": "剧情故事类",
+      "line": "剧情故事线",
+      "professional_required_deliverables": [
+        "版本说明",
+        "象征意象",
+        "凡人选择",
+        "口述节奏",
+        "完整剧本"
+      ],
+      "professional_exclusive_quality_gate": "不把传说写成史实；象征必须服务人物选择",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "以传说意象和凡人选择呈现民间故事的象征力量。",
+        "text_shape": "有神异氛围、象征画面和传说边界的叙事文本。",
+        "framework": [
+          "传说起源",
+          "神异显现",
+          "凡人考验",
+          "命运转折",
+          "传说流传"
+        ],
+        "must_include": [
+          "神异元素",
+          "象征画面",
+          "民间版本提示",
+          "传说与史实边界"
+        ],
+        "required_fields": [
+          "characters"
+        ],
+        "quality_rules": [
+          "必须有象征意象",
+          "必须有人物考验",
+          "必须标明传说边界"
+        ],
+        "repair_guidance": [
+          "增加凡人的选择",
+          "补充传说边界",
+          "减少现代解释性旁白"
+        ],
+        "truth_rules": [
+          "传说、神异和民间说法不得写成确定史实，需要用“相传/民间说法”等边界表达。"
+        ],
+        "adaptation_rules": [
+          "改编传说时保留核心禁忌、考验、象征意象和流传理由。"
+        ],
+        "scene_template_count": 5
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "characters"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": false,
+        "production_material_sample_entry_count": 0,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 6,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/professional-legend-story-pipeline.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "legend_story",
+        "line": "剧情故事线",
+        "primary_text_form": "有版本边界的口述传说完整剧本",
+        "architecture_mode": "character_relationships",
+        "required_deliverables": [
+          "版本说明",
+          "象征意象",
+          "凡人选择",
+          "口述节奏",
+          "完整剧本"
+        ],
+        "exclusive_quality_gate": "不把传说写成史实；象征必须服务人物选择",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 8,
+          "premise_and_theme_unity": 10,
+          "structure_causality_and_pacing": 15,
+          "character_agency_and_relationship_change": 12,
+          "scene_function_visible_action_and_blocking": 12,
+          "dialogue_narration_and_subtext": 10,
+          "emotional_curve_and_aftertaste": 10,
+          "cultural_fact_and_adaptation_boundary": 10,
+          "production_executability": 8,
+          "originality_and_distinctiveness": 5
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "必须显式标注民间版本、未知点和象征性处理"
+        ],
+        "repair_focus": [
+          "让神异元素推动凡人考验",
+          "建立重复象征意象",
+          "恢复传说口述节奏和边界"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "缺少 ProductionMaterialPack",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "ai_comic_drama",
+      "label": "AI 漫剧单片",
+      "group": "剧情故事类",
+      "line": "剧情故事线",
+      "professional_required_deliverables": [
+        "集钩子",
+        "关系碰撞",
+        "可分格动作",
+        "对白气泡",
+        "表情节拍",
+        "结尾钩子"
+      ],
+      "professional_exclusive_quality_gate": "每格可画；角色和资产连续；对白不能承担全部叙事",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "用强分镜、强对白、强表情和结尾钩子推动追看。",
+        "text_shape": "场景短促，情绪和对白密度高，每段能转成漫画分镜。",
+        "framework": [
+          "钩子开场",
+          "人物登场",
+          "对白冲突",
+          "反转觉醒",
+          "高燃收束"
+        ],
+        "must_include": [
+          "对白/旁白",
+          "表情标注",
+          "漫画分镜画面",
+          "结尾钩子"
+        ],
+        "required_fields": [],
+        "quality_rules": [
+          "必须有对白或强旁白",
+          "必须有结尾钩子",
+          "必须有表情动作"
+        ],
+        "repair_guidance": [
+          "增加对白交锋",
+          "补强表情变化",
+          "为结尾增加追看钩子"
+        ],
+        "truth_rules": [
+          "AI 漫剧可强戏剧化，但若来自真实人物或机构素材，不能伪造可核验事实和发言。"
+        ],
+        "adaptation_rules": [
+          "改编原作时必须保留主角关系、关键冲突和情绪底色，压缩为可分镜场面。"
+        ],
+        "scene_template_count": 5
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [
+          "对白或强旁白",
+          "结尾钩子",
+          "表情动作/名场面"
+        ],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": true,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": true,
+        "production_material_sample_entry_count": 10,
+        "golden_card_draft_count": 10,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 3,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 25,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/api.test.ts",
+          "web/server/src/__tests__/creation-contract-service.test.ts",
+          "web/server/src/__tests__/domain-pack-expansion-service.test.ts",
+          "web/server/src/__tests__/gears-delivery-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/outline-service.test.ts",
+          "web/server/src/__tests__/production-material-readiness-service.test.ts",
+          "web/server/src/__tests__/professional-ai-comic-drama-pipeline.test.ts",
+          "web/server/src/__tests__/project-service.test.ts",
+          "web/server/src/__tests__/quality-repair-service.test.ts",
+          "web/server/src/__tests__/quality-workflow-service.test.ts",
+          "web/server/src/__tests__/seedance-prompt-service.test.ts",
+          "web/server/src/__tests__/story-blueprint-genre-quality.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/generate-gears-delivery.test.ts",
+          "mcp-server/__tests__/generate-seedance-prompt.test.ts",
+          "mcp-server/__tests__/get-production-readiness.test.ts",
+          "mcp-server/__tests__/get-project-context.test.ts",
+          "mcp-server/__tests__/get-story-agent-mvp-status.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts",
+          "mcp-server/__tests__/repair-story.test.ts",
+          "mcp-server/__tests__/update-project-version.test.ts",
+          "mcp-server/__tests__/validate-genre-story.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "ai_comic_drama",
+        "line": "剧情故事线",
+        "primary_text_form": "可分格、可配气泡和表情节拍的短剧本",
+        "architecture_mode": "character_relationships",
+        "required_deliverables": [
+          "集钩子",
+          "关系碰撞",
+          "可分格动作",
+          "对白气泡",
+          "表情节拍",
+          "结尾钩子"
+        ],
+        "exclusive_quality_gate": "每格可画；角色和资产连续；对白不能承担全部叙事",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 8,
+          "premise_and_theme_unity": 9,
+          "structure_causality_and_pacing": 15,
+          "character_agency_and_relationship_change": 12,
+          "scene_function_visible_action_and_blocking": 15,
+          "dialogue_narration_and_subtext": 12,
+          "emotional_curve_and_aftertaste": 9,
+          "cultural_fact_and_adaptation_boundary": 7,
+          "production_executability": 8,
+          "originality_and_distinctiveness": 5
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "每场必须能拆成稳定角色、资产和可画动作"
+        ],
+        "repair_focus": [
+          "压缩对白并补反应格",
+          "强化三秒钩子和结尾追看动作",
+          "修复角色、道具和场景连续性"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "children_story",
+      "label": "儿童故事片",
+      "group": "剧情故事类",
+      "line": "剧情故事线",
+      "professional_required_deliverables": [
+        "年龄段",
+        "温和冲突",
+        "重复母题",
+        "情绪学习",
+        "亲师提示"
+      ],
+      "professional_exclusive_quality_gate": "儿童可理解；不残酷、不恐吓、不把说教当情节",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "用儿童可理解的因果、温和冲突和正向选择表达文化价值。",
+        "text_shape": "语言清楚温和，因果简单，结尾温暖。",
+        "framework": [
+          "小主人公",
+          "遇到问题",
+          "探索发现",
+          "勇敢选择",
+          "温暖结尾"
+        ],
+        "must_include": [
+          "儿童可理解语言",
+          "正向价值",
+          "清楚因果",
+          "温暖安全的情绪"
+        ],
+        "required_fields": [
+          "characters",
+          "protagonist_arc"
+        ],
+        "quality_rules": [
+          "语言必须简单",
+          "结尾必须温暖",
+          "不得出现不适合儿童的细节"
+        ],
+        "repair_guidance": [
+          "简化官场或历史复杂性",
+          "把沉重冲突改成可理解问题",
+          "增加温暖结尾"
+        ],
+        "truth_rules": [
+          "面向儿童的改写可以寓言化，但不得把复杂或存疑史实包装成简单定论。"
+        ],
+        "adaptation_rules": [
+          "改编给儿童时，保留原作温度和主题，简化冲突、称谓和典故。"
+        ],
+        "scene_template_count": 5
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "characters",
+        "protagonist_arc"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": true,
+        "production_material_sample_entry_count": 3,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 11,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/api.test.ts",
+          "web/server/src/__tests__/domain-pack-expansion-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/production-material-readiness-service.test.ts",
+          "web/server/src/__tests__/professional-children-story-pipeline.test.ts",
+          "web/server/src/__tests__/project-service.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/get-story-agent-mvp-status.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "children_story",
+        "line": "剧情故事线",
+        "primary_text_form": "适龄、温和冲突和重复母题的儿童动画剧本",
+        "architecture_mode": "character_relationships",
+        "required_deliverables": [
+          "年龄段",
+          "温和冲突",
+          "重复母题",
+          "情绪学习",
+          "亲师提示"
+        ],
+        "exclusive_quality_gate": "儿童可理解；不残酷、不恐吓、不把说教当情节",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 10,
+          "premise_and_theme_unity": 10,
+          "structure_causality_and_pacing": 15,
+          "character_agency_and_relationship_change": 12,
+          "scene_function_visible_action_and_blocking": 12,
+          "dialogue_narration_and_subtext": 10,
+          "emotional_curve_and_aftertaste": 10,
+          "cultural_fact_and_adaptation_boundary": 8,
+          "production_executability": 8,
+          "originality_and_distinctiveness": 5
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "必须标明年龄段并通过儿童安全与理解门槛"
+        ],
+        "repair_focus": [
+          "简化冲突与词汇",
+          "用行动呈现情绪学习",
+          "把说教改成重复母题和温暖反馈"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "culture_promo",
+      "label": "文化宣传片",
+      "group": "宣传推广类",
+      "line": "宣传传播线",
+      "professional_required_deliverables": [
+        "传播命题",
+        "视觉符号",
+        "信息曲线",
+        "旁白",
+        "行动召唤"
+      ],
+      "professional_exclusive_quality_gate": "不能只有赞美；文化细节必须承担叙事功能",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "用视觉符号、文化根基、当代延续和传播关键句建立传播力。",
+        "text_shape": "宣传片旁白和画面组织，不是剧情短片。",
+        "framework": [
+          "符号引入",
+          "文化根基",
+          "过程展示",
+          "现代传承",
+          "标语收束"
+        ],
+        "must_include": [
+          "核心视觉符号",
+          "核心信息",
+          "当代连接",
+          "一句可传播关键句"
+        ],
+        "required_fields": [
+          "visual_symbols",
+          "core_message",
+          "slogan_or_key_sentence",
+          "modern_connection"
+        ],
+        "quality_rules": [
+          "必须有核心主张",
+          "必须有视觉符号",
+          "必须有当代连接"
+        ],
+        "repair_guidance": [
+          "补充视觉符号",
+          "把口号改成可拍画面",
+          "增加当代延续"
+        ],
+        "truth_rules": [
+          "文化表达可以凝练和诗化，但来源事实、地域归属和文化身份不得混淆。"
+        ],
+        "adaptation_rules": [
+          "从原作改编宣传片时，只提炼可传播主题和视觉符号，不替换原作核心关系。"
+        ],
+        "scene_template_count": 5
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "visual_symbols",
+        "core_message",
+        "slogan_or_key_sentence",
+        "modern_connection"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [
+          "核心主张",
+          "视觉符号",
+          "当代连接"
+        ],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": false,
+        "production_material_sample_entry_count": 0,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 11,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/api.test.ts",
+          "web/server/src/__tests__/creation-contract-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/memory-mosaic-service.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/professional-culture-promo-pipeline.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/story-repair-service.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/generate-story-blueprint.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "culture_promo",
+        "line": "宣传传播线",
+        "primary_text_form": "传播命题驱动的旁白与导演文本",
+        "architecture_mode": "information_architecture",
+        "required_deliverables": [
+          "传播命题",
+          "视觉符号",
+          "信息曲线",
+          "旁白",
+          "行动召唤"
+        ],
+        "exclusive_quality_gate": "不能只有赞美；文化细节必须承担叙事功能",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 10,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 13,
+          "character_agency_and_relationship_change": 6,
+          "scene_function_visible_action_and_blocking": 14,
+          "dialogue_narration_and_subtext": 12,
+          "emotional_curve_and_aftertaste": 9,
+          "cultural_fact_and_adaptation_boundary": 10,
+          "production_executability": 9,
+          "originality_and_distinctiveness": 5
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "传播主张必须由可核验文化细节和可拍画面支撑"
+        ],
+        "repair_focus": [
+          "把赞美和口号改成具体对象",
+          "建立视觉符号的重复与变化",
+          "让行动召唤承接观众承诺"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "缺少 ProductionMaterialPack",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "heritage_promo",
+      "label": "非遗/工艺宣传片",
+      "group": "宣传推广类",
+      "line": "宣传传播线",
+      "professional_required_deliverables": [
+        "材料",
+        "工具",
+        "工序",
+        "手部动作",
+        "传承压力",
+        "当代连接"
+      ],
+      "professional_exclusive_quality_gate": "工序可拍；授权和危险操作边界清楚",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "让技艺流程、手部动作、匠人情感和传承困境同时成立。",
+        "text_shape": "工艺流程清楚，画面聚焦材料、工具、手部动作和传承关系。",
+        "framework": [
+          "技艺渊源",
+          "匠人登场",
+          "工艺全程",
+          "精神内核",
+          "传承之路"
+        ],
+        "must_include": [
+          "原料/工具/手部动作",
+          "完整流程",
+          "传承人或实践者",
+          "传承困境与希望"
+        ],
+        "required_fields": [
+          "visual_symbols",
+          "craft_or_ritual_process",
+          "modern_connection",
+          "core_message",
+          "slogan_or_key_sentence"
+        ],
+        "quality_rules": [
+          "必须有工艺流程",
+          "必须有材料或工具",
+          "必须有传承关系"
+        ],
+        "repair_guidance": [
+          "补充具体步骤",
+          "把抽象匠心改成手部动作",
+          "增加传承困境"
+        ],
+        "truth_rules": [
+          "工艺步骤、传承谱系和非遗称谓必须清楚区分已确认事实与创作性描述。"
+        ],
+        "adaptation_rules": [
+          "改编时保留技艺流程和传承关系，剧情化人物只能服务流程理解。"
+        ],
+        "scene_template_count": 5
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "visual_symbols",
+        "craft_or_ritual_process",
+        "modern_connection",
+        "core_message",
+        "slogan_or_key_sentence"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [
+          "流程顺序",
+          "材料工具",
+          "传承动作"
+        ],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": true,
+        "production_material_sample_entry_count": 10,
+        "golden_card_draft_count": 10,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 3,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 13,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/api.test.ts",
+          "web/server/src/__tests__/domain-pack-expansion-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/production-material-readiness-service.test.ts",
+          "web/server/src/__tests__/professional-heritage-promo-pipeline.test.ts",
+          "web/server/src/__tests__/project-service.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/story-repair-service.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/get-story-agent-mvp-status.test.ts",
+          "mcp-server/__tests__/heritage-promo-golden-cards-regression.test.ts",
+          "mcp-server/__tests__/validate-genre-story.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "heritage_promo",
+        "line": "宣传传播线",
+        "primary_text_form": "材料、工具和工序驱动的非遗导演文本",
+        "architecture_mode": "information_architecture",
+        "required_deliverables": [
+          "材料",
+          "工具",
+          "工序",
+          "手部动作",
+          "传承压力",
+          "当代连接"
+        ],
+        "exclusive_quality_gate": "工序可拍；授权和危险操作边界清楚",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 10,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 13,
+          "character_agency_and_relationship_change": 6,
+          "scene_function_visible_action_and_blocking": 14,
+          "dialogue_narration_and_subtext": 12,
+          "emotional_curve_and_aftertaste": 5,
+          "cultural_fact_and_adaptation_boundary": 13,
+          "production_executability": 12,
+          "originality_and_distinctiveness": 3
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "工序顺序、授权、禁忌和危险操作必须可核验"
+        ],
+        "repair_focus": [
+          "补材料工具和手部动词",
+          "建立师徒或传承压力",
+          "补足授权与危险操作提示"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "city_brand_promo",
+      "label": "城市/文旅宣传片",
+      "group": "宣传推广类",
+      "line": "宣传传播线",
+      "professional_required_deliverables": [
+        "城市主张",
+        "人物视角",
+        "空间路线",
+        "城市证据",
+        "品牌落点"
+      ],
+      "professional_exclusive_quality_gate": "避免城市宣传套话；地理、生活和人物必须真实关联",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "用地标、历史、人文和生活气息凝练地方气质。",
+        "text_shape": "城市形象片文案，空间识别清楚，古今连接自然。",
+        "framework": [
+          "地标引入",
+          "历史底蕴",
+          "人文风貌",
+          "生活气息",
+          "品牌定格"
+        ],
+        "must_include": [
+          "城市空间识别",
+          "地方文化特色",
+          "现实生活温度",
+          "品牌主张"
+        ],
+        "required_fields": [
+          "visual_symbols",
+          "core_message",
+          "slogan_or_key_sentence",
+          "modern_connection"
+        ],
+        "quality_rules": [
+          "必须有地标识别",
+          "必须有城市气质",
+          "必须有生活场景"
+        ],
+        "repair_guidance": [
+          "加入真实地方细节",
+          "减少泛化口号",
+          "增加古今连接"
+        ],
+        "truth_rules": [
+          "城市故事可以用一日路线或象征串联，但地名、历史归属和现实业态不能错置。"
+        ],
+        "adaptation_rules": [
+          "若从原作改编城市宣传内容，原作事件只能作为城市气质的入口，不能强行改地点。"
+        ],
+        "scene_template_count": 5
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "visual_symbols",
+        "core_message",
+        "slogan_or_key_sentence",
+        "modern_connection"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": false,
+        "production_material_sample_entry_count": 0,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 6,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/professional-city-brand-promo-pipeline.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "city_brand_promo",
+        "line": "宣传传播线",
+        "primary_text_form": "人物视角和空间路线驱动的城市品牌片文本",
+        "architecture_mode": "spatial_route",
+        "required_deliverables": [
+          "城市主张",
+          "人物视角",
+          "空间路线",
+          "城市证据",
+          "品牌落点"
+        ],
+        "exclusive_quality_gate": "避免城市宣传套话；地理、生活和人物必须真实关联",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 10,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 13,
+          "character_agency_and_relationship_change": 6,
+          "scene_function_visible_action_and_blocking": 14,
+          "dialogue_narration_and_subtext": 12,
+          "emotional_curve_and_aftertaste": 9,
+          "cultural_fact_and_adaptation_boundary": 10,
+          "production_executability": 9,
+          "originality_and_distinctiveness": 5
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "城市主张必须有真实空间、生活方式和人物证据"
+        ],
+        "repair_focus": [
+          "删除通用城市套话",
+          "用人物行动连接空间路线",
+          "让品牌落点来自前文证据"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "缺少 ProductionMaterialPack",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "social_short",
+      "label": "竖屏短视频",
+      "group": "宣传推广类",
+      "line": "宣传传播线",
+      "professional_required_deliverables": [
+        "三秒钩子",
+        "节拍表",
+        "反差",
+        "字幕",
+        "竖屏画面",
+        "互动问题"
+      ],
+      "professional_exclusive_quality_gate": "60 至 90 秒内持续有新信息；事实边界不能被钩子牺牲",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "前 3 秒抓人，中段高信息密度，结尾有可转发记忆点。",
+        "text_shape": "短句、强钩子、强字幕感，适合竖屏快节奏。",
+        "framework": [
+          "3秒钩子",
+          "关键信息",
+          "情绪推进",
+          "金句落点"
+        ],
+        "must_include": [
+          "竖屏节奏",
+          "强开头",
+          "字幕/画面记忆点",
+          "可转发核心句"
+        ],
+        "required_fields": [
+          "visual_symbols",
+          "core_message",
+          "slogan_or_key_sentence"
+        ],
+        "quality_rules": [
+          "开头必须有钩子",
+          "必须有三类信息点或一个强记忆点",
+          "不得铺垫过长"
+        ],
+        "repair_guidance": [
+          "重写第一句钩子",
+          "压缩长句",
+          "补充字幕记忆点"
+        ],
+        "truth_rules": [
+          "短视频可以强钩子，但不能用标题党扭曲事实、地域、人物身份或机构口径。"
+        ],
+        "adaptation_rules": [
+          "改编时优先抽取最强冲突或反差点，保留原作基本因果。"
+        ],
+        "scene_template_count": 4
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "visual_symbols",
+        "core_message",
+        "slogan_or_key_sentence"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": true,
+        "production_material_sample_entry_count": 3,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 11,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/api.test.ts",
+          "web/server/src/__tests__/domain-pack-expansion-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/production-material-readiness-service.test.ts",
+          "web/server/src/__tests__/professional-social-short-pipeline.test.ts",
+          "web/server/src/__tests__/project-service.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/get-story-agent-mvp-status.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "social_short",
+        "line": "宣传传播线",
+        "primary_text_form": "竖屏钩子、节拍和字幕一体的社交短视频文本",
+        "architecture_mode": "information_architecture",
+        "required_deliverables": [
+          "三秒钩子",
+          "节拍表",
+          "反差",
+          "字幕",
+          "竖屏画面",
+          "互动问题"
+        ],
+        "exclusive_quality_gate": "60 至 90 秒内持续有新信息；事实边界不能被钩子牺牲",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 10,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 17,
+          "character_agency_and_relationship_change": 3,
+          "scene_function_visible_action_and_blocking": 14,
+          "dialogue_narration_and_subtext": 13,
+          "emotional_curve_and_aftertaste": 8,
+          "cultural_fact_and_adaptation_boundary": 10,
+          "production_executability": 9,
+          "originality_and_distinctiveness": 4
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "强钩子不得扭曲事实、身份、地域或机构口径"
+        ],
+        "repair_focus": [
+          "重写前三秒观看理由",
+          "压缩无新信息节拍",
+          "让字幕、画面和旁白分工"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "documentary_short",
+      "label": "微纪录片",
+      "group": "讲解教育类",
+      "line": "非虚构与知识线",
+      "professional_required_deliverables": [
+        "核心问题",
+        "现实现场",
+        "采访角色",
+        "史料线索",
+        "B-roll",
+        "再现边界"
+      ],
+      "professional_exclusive_quality_gate": "不虚构采访或现场；旁白克制；证据推动发现",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "用现实现场、史料、再现和解读组成可信短纪录结构。",
+        "text_shape": "纪实旁白为主，现场和史料并重，事实与再现边界清楚。",
+        "framework": [
+          "现实引入",
+          "历史回望",
+          "关键节点",
+          "史料/专家解读",
+          "当代意义"
+        ],
+        "must_include": [
+          "现实地点或实物",
+          "史料引用或来源提示",
+          "可拍摄现场素材",
+          "事实与再现边界"
+        ],
+        "required_fields": [
+          "source_quotes",
+          "field_notes"
+        ],
+        "quality_rules": [
+          "必须有现实现场",
+          "必须有来源提示",
+          "必须有事实边界"
+        ],
+        "repair_guidance": [
+          "补充现场物件",
+          "增加来源提示",
+          "把戏剧对白改成纪实叙述"
+        ],
+        "truth_rules": [
+          "纪录片口径中，再现、推测、传说和未核实说法必须显式标边界。"
+        ],
+        "adaptation_rules": [
+          "改编已有素材时，原作可作为访问线索或叙述素材，不得改写成未经证实的事实。"
+        ],
+        "scene_template_count": 5
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "source_quotes",
+        "field_notes"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [
+          "现实现场",
+          "来源提示",
+          "版本/再现边界"
+        ],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": true,
+        "production_material_sample_entry_count": 10,
+        "golden_card_draft_count": 10,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 3,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 14,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/api.test.ts",
+          "web/server/src/__tests__/creation-contract-service.test.ts",
+          "web/server/src/__tests__/domain-pack-expansion-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/production-material-readiness-service.test.ts",
+          "web/server/src/__tests__/professional-documentary-short-pipeline.test.ts",
+          "web/server/src/__tests__/project-service.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/documentary-short-golden-cards-regression.test.ts",
+          "mcp-server/__tests__/generate-script.test.ts",
+          "mcp-server/__tests__/get-story-agent-mvp-status.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "documentary_short",
+        "line": "非虚构与知识线",
+        "primary_text_form": "现实现场和证据发现驱动的微纪录文本",
+        "architecture_mode": "information_architecture",
+        "required_deliverables": [
+          "核心问题",
+          "现实现场",
+          "采访角色",
+          "史料线索",
+          "B-roll",
+          "再现边界"
+        ],
+        "exclusive_quality_gate": "不虚构采访或现场；旁白克制；证据推动发现",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 10,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 15,
+          "character_agency_and_relationship_change": 4,
+          "scene_function_visible_action_and_blocking": 12,
+          "dialogue_narration_and_subtext": 10,
+          "emotional_curve_and_aftertaste": 6,
+          "cultural_fact_and_adaptation_boundary": 16,
+          "production_executability": 10,
+          "originality_and_distinctiveness": 5
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "不得伪造采访、现场、文献来源或历史再现证据"
+        ],
+        "repair_focus": [
+          "从现实现场提出问题",
+          "用证据而非旁白推动发现",
+          "标注采访、史料和再现边界"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "explainer_video",
+      "label": "知识讲解视频",
+      "group": "讲解教育类",
+      "line": "非虚构与知识线",
+      "professional_required_deliverables": [
+        "问题",
+        "概念",
+        "例子",
+        "视觉比喻",
+        "误区",
+        "总结"
+      ],
+      "professional_exclusive_quality_gate": "一段只讲一个核心概念；画面能解释而非装饰",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "围绕一个问题，用概念、步骤、例子和总结让观众理解知识。",
+        "text_shape": "问题驱动、层级清楚、适合图文或动画辅助。",
+        "framework": [
+          "提出问题",
+          "概念解释",
+          "关键步骤/脉络",
+          "例子说明",
+          "总结记忆点"
+        ],
+        "must_include": [
+          "清晰论点",
+          "知识大纲",
+          "图文示意建议",
+          "文化边界"
+        ],
+        "required_fields": [
+          "argument_points",
+          "knowledge_outline"
+        ],
+        "quality_rules": [
+          "必须有核心问题",
+          "必须有知识层级",
+          "必须有例子或类比"
+        ],
+        "repair_guidance": [
+          "补充核心问题",
+          "拆分知识层级",
+          "增加例子说明"
+        ],
+        "truth_rules": [
+          "讲解内容必须区分事实、解释、类比和观点，不能把类比写成史实。"
+        ],
+        "adaptation_rules": [
+          "改编文本为讲解视频时，保留原作论点，把情节转成案例或问题。"
+        ],
+        "scene_template_count": 5
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "argument_points",
+        "knowledge_outline"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": true,
+        "production_material_sample_entry_count": 10,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 12,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/api.test.ts",
+          "web/server/src/__tests__/domain-pack-expansion-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/production-material-readiness-service.test.ts",
+          "web/server/src/__tests__/professional-explainer-video-pipeline.test.ts",
+          "web/server/src/__tests__/project-service.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/get-story-agent-mvp-status.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts",
+          "mcp-server/__tests__/validate-genre-story.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "explainer_video",
+        "line": "非虚构与知识线",
+        "primary_text_form": "问题、概念、例子和视觉比喻驱动的解释文本",
+        "architecture_mode": "information_architecture",
+        "required_deliverables": [
+          "问题",
+          "概念",
+          "例子",
+          "视觉比喻",
+          "误区",
+          "总结"
+        ],
+        "exclusive_quality_gate": "一段只讲一个核心概念；画面能解释而非装饰",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 10,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 15,
+          "character_agency_and_relationship_change": 4,
+          "scene_function_visible_action_and_blocking": 12,
+          "dialogue_narration_and_subtext": 10,
+          "emotional_curve_and_aftertaste": 6,
+          "cultural_fact_and_adaptation_boundary": 16,
+          "production_executability": 10,
+          "originality_and_distinctiveness": 5
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "概念、例子和视觉比喻不得造成事实性误导"
+        ],
+        "repair_focus": [
+          "拆分一段多概念",
+          "补可视化因果或比喻",
+          "增加误区辨析和可复述结论"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "lecture_video",
+      "label": "宣讲片",
+      "group": "讲解教育类",
+      "line": "非虚构与知识线",
+      "professional_required_deliverables": [
+        "立论",
+        "论证",
+        "案例",
+        "反方",
+        "修辞转场",
+        "行动结论"
+      ],
+      "professional_exclusive_quality_gate": "论点可验证；不是资料罗列或口号堆叠",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "用案例支撑观点，提炼精神，并形成有号召力的结尾。",
+        "text_shape": "观点明确，论据有层次，结尾有力量但不过度口号化。",
+        "framework": [
+          "提出主题",
+          "讲述事实",
+          "分析精神",
+          "联系当下",
+          "总结号召"
+        ],
+        "must_include": [
+          "核心观点",
+          "案例事实",
+          "精神提炼",
+          "现实连接"
+        ],
+        "required_fields": [
+          "argument_points",
+          "knowledge_outline"
+        ],
+        "quality_rules": [
+          "必须有中心观点",
+          "必须有例证",
+          "必须有现实连接"
+        ],
+        "repair_guidance": [
+          "补充论点",
+          "为观点增加案例",
+          "减少空泛号召"
+        ],
+        "truth_rules": [
+          "宣讲片可以有立场，但观点必须由案例和事实支撑，不得替代事实核验。"
+        ],
+        "adaptation_rules": [
+          "改编时把原作冲突转成论据链条，保留核心主题而非照搬情节密度。"
+        ],
+        "scene_template_count": 5
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "argument_points",
+        "knowledge_outline"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": true,
+        "production_material_sample_entry_count": 2,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 10,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/memory-mosaic-service.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/production-material-readiness-service.test.ts",
+          "web/server/src/__tests__/professional-lecture-video-pipeline.test.ts",
+          "web/server/src/__tests__/project-service.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/get-story-agent-mvp-status.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "lecture_video",
+        "line": "非虚构与知识线",
+        "primary_text_form": "立论、论证、反方和结论驱动的讲演文本",
+        "architecture_mode": "information_architecture",
+        "required_deliverables": [
+          "立论",
+          "论证",
+          "案例",
+          "反方",
+          "修辞转场",
+          "行动结论"
+        ],
+        "exclusive_quality_gate": "论点可验证；不是资料罗列或口号堆叠",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 10,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 15,
+          "character_agency_and_relationship_change": 4,
+          "scene_function_visible_action_and_blocking": 12,
+          "dialogue_narration_and_subtext": 10,
+          "emotional_curve_and_aftertaste": 6,
+          "cultural_fact_and_adaptation_boundary": 16,
+          "production_executability": 10,
+          "originality_and_distinctiveness": 5
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "核心论点和关键案例必须可验证并回应合理反方"
+        ],
+        "repair_focus": [
+          "建立论点与证据链",
+          "补反方和回应",
+          "把资料罗列改成有目的的修辞转场"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "education_training",
+      "label": "教育/培训片",
+      "group": "讲解教育类",
+      "line": "非虚构与知识线",
+      "professional_required_deliverables": [
+        "学习目标",
+        "知识步骤",
+        "案例",
+        "练习",
+        "评估",
+        "复盘"
+      ],
+      "professional_exclusive_quality_gate": "能教会和检验；练习与目标对应",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "用学习目标、知识模块、步骤示范和复盘支持教学场景。",
+        "text_shape": "课程式结构，目标明确，步骤和复盘清楚。",
+        "framework": [
+          "学习目标",
+          "知识模块",
+          "操作/理解步骤",
+          "案例练习",
+          "复盘要点"
+        ],
+        "must_include": [
+          "教学目标",
+          "分层知识大纲",
+          "可复盘要点",
+          "适合课堂或培训的节奏"
+        ],
+        "required_fields": [
+          "argument_points",
+          "knowledge_outline"
+        ],
+        "quality_rules": [
+          "必须有学习目标",
+          "必须有步骤",
+          "必须有复盘或练习"
+        ],
+        "repair_guidance": [
+          "增加学习目标",
+          "拆分步骤",
+          "补充练习或复盘"
+        ],
+        "truth_rules": [
+          "培训内容必须以可核验知识、步骤或制度口径为准，不用剧情爽点替代学习路径。"
+        ],
+        "adaptation_rules": [
+          "改编原作时只抽取可教学的案例、选择和复盘点，不保留无关支线。"
+        ],
+        "scene_template_count": 6
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "argument_points",
+        "knowledge_outline"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": true,
+        "production_material_sample_entry_count": 2,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 11,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/api.test.ts",
+          "web/server/src/__tests__/domain-pack-expansion-service.test.ts",
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/production-material-readiness-service.test.ts",
+          "web/server/src/__tests__/professional-education-training-pipeline.test.ts",
+          "web/server/src/__tests__/project-service.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/get-story-agent-mvp-status.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "education_training",
+        "line": "非虚构与知识线",
+        "primary_text_form": "目标、示范、练习和评估闭环的培训文本",
+        "architecture_mode": "information_architecture",
+        "required_deliverables": [
+          "学习目标",
+          "知识步骤",
+          "案例",
+          "练习",
+          "评估",
+          "复盘"
+        ],
+        "exclusive_quality_gate": "能教会和检验；练习与目标对应",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 12,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 18,
+          "character_agency_and_relationship_change": 4,
+          "scene_function_visible_action_and_blocking": 12,
+          "dialogue_narration_and_subtext": 10,
+          "emotional_curve_and_aftertaste": 3,
+          "cultural_fact_and_adaptation_boundary": 13,
+          "production_executability": 14,
+          "originality_and_distinctiveness": 2
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "学习目标、练习和评估必须一一对应"
+        ],
+        "repair_focus": [
+          "把目标改成可观察能力",
+          "补示范与分步练习",
+          "让评估验证学习目标"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "scene_short",
+      "label": "场景短片",
+      "group": "场景空间类",
+      "line": "空间与意境线",
+      "professional_required_deliverables": [
+        "空间路线",
+        "人物或事件触发",
+        "镜头行动",
+        "声音",
+        "转场"
+      ],
+      "professional_exclusive_quality_gate": "空间必须发生变化或发现，不能只是景点介绍",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "以空间为主角，用视觉路线、时间层和氛围带观众进入地点。",
+        "text_shape": "空间导览式叙事，地点、路线、氛围和历史回声清楚。",
+        "framework": [
+          "空间建立",
+          "视觉移动",
+          "历史层显影",
+          "人物或物件经过",
+          "氛围收束"
+        ],
+        "must_include": [
+          "明确视觉路线",
+          "空间身份",
+          "时间层",
+          "氛围关键词"
+        ],
+        "required_fields": [
+          "spatial_identity",
+          "visual_route",
+          "time_layer",
+          "atmosphere"
+        ],
+        "quality_rules": [
+          "必须有空间身份",
+          "必须有视觉路线",
+          "必须有氛围结尾"
+        ],
+        "repair_guidance": [
+          "补充空间路线",
+          "减少人物生平介绍",
+          "增加时间层和氛围"
+        ],
+        "truth_rules": [
+          "空间气氛可以诗化，但真实地点、功能和历史层需要与素材一致。"
+        ],
+        "adaptation_rules": [
+          "改编成场景短片时，把原作关系压缩为空间中的物件、声音和行动痕迹。"
+        ],
+        "scene_template_count": 4
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "spatial_identity",
+        "visual_route",
+        "time_layer",
+        "atmosphere"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": false,
+        "production_material_sample_entry_count": 0,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 21,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/memory-mosaic-service.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/professional-ai-comic-drama-pipeline.test.ts",
+          "web/server/src/__tests__/professional-children-story-pipeline.test.ts",
+          "web/server/src/__tests__/professional-city-brand-promo-pipeline.test.ts",
+          "web/server/src/__tests__/professional-culture-promo-pipeline.test.ts",
+          "web/server/src/__tests__/professional-documentary-short-pipeline.test.ts",
+          "web/server/src/__tests__/professional-education-training-pipeline.test.ts",
+          "web/server/src/__tests__/professional-explainer-video-pipeline.test.ts",
+          "web/server/src/__tests__/professional-heritage-promo-pipeline.test.ts",
+          "web/server/src/__tests__/professional-historical-drama-pipeline.test.ts",
+          "web/server/src/__tests__/professional-landscape-mood-pipeline.test.ts",
+          "web/server/src/__tests__/professional-lecture-video-pipeline.test.ts",
+          "web/server/src/__tests__/professional-legend-story-pipeline.test.ts",
+          "web/server/src/__tests__/professional-scene-short-pipeline.test.ts",
+          "web/server/src/__tests__/professional-social-short-pipeline.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts",
+          "mcp-server/__tests__/validate-genre-story.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "scene_short",
+        "line": "空间与意境线",
+        "primary_text_form": "空间路线、事件触发和声音转场驱动的场景文本",
+        "architecture_mode": "spatial_route",
+        "required_deliverables": [
+          "空间路线",
+          "人物或事件触发",
+          "镜头行动",
+          "声音",
+          "转场"
+        ],
+        "exclusive_quality_gate": "空间必须发生变化或发现，不能只是景点介绍",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 8,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 12,
+          "character_agency_and_relationship_change": 3,
+          "scene_function_visible_action_and_blocking": 18,
+          "dialogue_narration_and_subtext": 8,
+          "emotional_curve_and_aftertaste": 15,
+          "cultural_fact_and_adaptation_boundary": 8,
+          "production_executability": 10,
+          "originality_and_distinctiveness": 6
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "每个空间节点必须发生行动、发现或时间变化"
+        ],
+        "repair_focus": [
+          "建立清晰空间路线",
+          "加入触发行动或发现",
+          "用声音和转场连接时间层"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "缺少 ProductionMaterialPack",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    },
+    {
+      "video_type": "landscape_mood",
+      "label": "山水意境片",
+      "group": "场景空间类",
+      "line": "空间与意境线",
+      "professional_required_deliverables": [
+        "情绪命题",
+        "时间变化",
+        "构图节奏",
+        "自然声音",
+        "极简文案"
+      ],
+      "professional_exclusive_quality_gate": "情绪由视听建立；文案不能压过画面",
+      "legacy_profile_contract_complete": true,
+      "legacy_profile_contract": {
+        "narrative_promise": "用山水、季节、声音、光影和低密度旁白形成诗性留白。",
+        "text_shape": "低密度、重感官、重留白，不以剧情为中心。",
+        "framework": [
+          "自然开场",
+          "山水流动",
+          "人文痕迹",
+          "情绪停驻",
+          "留白收束"
+        ],
+        "must_include": [
+          "山水意象",
+          "光影/季节/天气",
+          "低密度旁白",
+          "留白感"
+        ],
+        "required_fields": [
+          "spatial_identity",
+          "visual_route",
+          "time_layer",
+          "atmosphere"
+        ],
+        "quality_rules": [
+          "必须有自然意象",
+          "必须有光影季节",
+          "旁白不可过密"
+        ],
+        "repair_guidance": [
+          "减少知识解释",
+          "增加声音和光影",
+          "把口号改成诗性旁白"
+        ],
+        "truth_rules": [
+          "诗性表达不得替代基本地点事实；自然、人文和季节信息必须避免硬凑。"
+        ],
+        "adaptation_rules": [
+          "改编时保留原作情绪和意象，不强行加入复杂剧情冲突。"
+        ],
+        "scene_template_count": 3
+      },
+      "legacy_output_contract_fields": [
+        "title",
+        "logline",
+        "theme",
+        "full_text",
+        "scene_breakdown",
+        "cultural_constraints",
+        "credibility_note",
+        "spatial_identity",
+        "visual_route",
+        "time_layer",
+        "atmosphere"
+      ],
+      "legacy_structural_generation_supported": true,
+      "legacy_generation_chain_evidence": {
+        "genre_profile_contract": true,
+        "story_service_chain": true,
+        "source_files": [
+          "web/server/src/services/story-service.ts",
+          "web/server/src/services/story-generation-prompt.ts",
+          "web/server/src/services/story-blueprint-service.ts"
+        ]
+      },
+      "story_blueprint_support": {
+        "genre_beats": true,
+        "evidence_boundaries": true,
+        "character_arcs": true,
+        "target_duration": true,
+        "audience_promise": true,
+        "platform_and_budget_assumptions": true,
+        "relationship_or_information_architecture": true,
+        "director_text_plan": true
+      },
+      "quality_support": {
+        "status": "professional_candidate_evaluator",
+        "profile_quality_rule_count": 3,
+        "generic_structure_validation": true,
+        "outline_coverage": true,
+        "pattern_quality": true,
+        "gears_readiness": true,
+        "audience_text_pollution": true,
+        "explicit_semantic_evidence": [],
+        "professional_dimension_weights_implemented": true,
+        "structured_hard_gates_implemented": true,
+        "professional_quality_evaluator_implemented": true,
+        "machine_evaluated_professional_dimensions": [
+          "creative_brief_and_audience_promise",
+          "premise_and_theme_unity",
+          "structure_causality_and_pacing",
+          "character_agency_and_relationship_change",
+          "scene_function_visible_action_and_blocking",
+          "dialogue_narration_and_subtext",
+          "emotional_curve_and_aftertaste",
+          "cultural_fact_and_adaptation_boundary",
+          "production_executability",
+          "originality_and_distinctiveness"
+        ],
+        "missing_professional_dimensions": [
+          "originality_and_distinctiveness_human_validation"
+        ]
+      },
+      "repair_support": {
+        "status": "professional_targeted_revision_plan",
+        "profile_repair_guidance_count": 3,
+        "generic_model_rewrite_prompt": true,
+        "quality_repair_apply_and_diff": true,
+        "deterministic_local_repair": false,
+        "professional_revision_plan_implemented": true,
+        "deterministic_derived_text_rebuild_implemented": true,
+        "professional_revision_trace": true,
+        "real_model_quality_improvement_proof_count": 0
+      },
+      "material_and_benchmark_support": {
+        "production_material_pack_present": false,
+        "production_material_sample_entry_count": 0,
+        "golden_card_draft_count": 0,
+        "human_approved_golden_card_count": 0,
+        "fixture_regression_count": 0,
+        "fixture_counted_as_professional_pass": false,
+        "fixed_project_spec_count": 5,
+        "failure_fixture_count": 3,
+        "benchmark_preflight_implemented": false,
+        "benchmark_source_snapshot_ready_count": 0,
+        "bridge_activation_plan_ready_count": 0,
+        "strict_technical_ready_count": 0,
+        "real_model_execution_ready_count": 0,
+        "strict_technical_readiness": false,
+        "real_model_adapter_configured": false,
+        "real_model_execution_authorized": false,
+        "benchmark_prompt_contract_implemented": false,
+        "strict_scene_output_contract_implemented": false,
+        "strict_real_model_bridge_implemented": false,
+        "benchmark_run_ledger_implemented": false,
+        "artifact_integrity_contract_implemented": false,
+        "blind_review_threshold_contract_implemented": false,
+        "controlled_runner_implemented": false,
+        "controlled_run_plan_project_count": 0,
+        "prepared_run_ledger_count": 0,
+        "controlled_blocked_run_count": 0,
+        "post_initial_coordinator_implemented": false,
+        "finalization_candidate_gate_implemented": false,
+        "lifecycle_plan_implemented": false,
+        "lifecycle_plan_project_count": 0,
+        "lifecycle_awaiting_verified_initial_count": 0,
+        "finalization_candidate_count": 0,
+        "signed_release_count": 0,
+        "model_invocation_count": 0,
+        "real_model_completed_count": 0,
+        "fixed_real_model_regression_project_count": 0,
+        "human_blind_review_pass_project_count": 0
+      },
+      "test_and_ui_support": {
+        "legacy_test_reference_file_count": 6,
+        "legacy_test_reference_files": [
+          "web/server/src/__tests__/genre-story-profiles.test.ts",
+          "web/server/src/__tests__/narrative-pattern-library.test.ts",
+          "web/server/src/__tests__/professional-landscape-mood-pipeline.test.ts",
+          "web/server/src/__tests__/story-generation-prompt.test.ts",
+          "web/server/src/__tests__/video-type-generation-matrix.test.ts",
+          "mcp-server/__tests__/professional-text-stage0-audit.test.ts"
+        ],
+        "video_type_selectable_in_story_studio": true,
+        "generic_story_result_supported": true,
+        "generic_quality_repair_ui_supported": true,
+        "professional_workflow_ui_complete": false
+      },
+      "professional_uniform_fields_expected": [
+        "creative_brief",
+        "audience_promise",
+        "premise_or_core_question",
+        "theme_statement",
+        "truth_and_adaptation_contract",
+        "structure_outline",
+        "sequence_beats",
+        "scene_breakdown",
+        "full_text",
+        "dialogue_or_narration_pass",
+        "director_text_plan",
+        "continuity_ledger",
+        "quality_report",
+        "coverage_report",
+        "revision_trace",
+        "delivery_text_package"
+      ],
+      "professional_text_contract": {
+        "schema_version": "professional-text-type-contract/v1",
+        "required_package_fields": [
+          "creative_brief",
+          "audience_promise",
+          "premise_or_core_question",
+          "theme_statement",
+          "truth_and_adaptation_contract",
+          "structure_outline",
+          "sequence_beats",
+          "scene_breakdown",
+          "full_text",
+          "dialogue_or_narration_pass",
+          "director_text_plan",
+          "continuity_ledger",
+          "quality_report",
+          "coverage_report",
+          "revision_trace",
+          "delivery_text_package"
+        ],
+        "video_type": "landscape_mood",
+        "line": "空间与意境线",
+        "primary_text_form": "时间、构图、自然声音和极简文案驱动的意境文本",
+        "architecture_mode": "visual_mood",
+        "required_deliverables": [
+          "情绪命题",
+          "时间变化",
+          "构图节奏",
+          "自然声音",
+          "极简文案"
+        ],
+        "exclusive_quality_gate": "情绪由视听建立；文案不能压过画面",
+        "quality_dimension_weights": {
+          "creative_brief_and_audience_promise": 8,
+          "premise_and_theme_unity": 12,
+          "structure_causality_and_pacing": 12,
+          "character_agency_and_relationship_change": 3,
+          "scene_function_visible_action_and_blocking": 18,
+          "dialogue_narration_and_subtext": 8,
+          "emotional_curve_and_aftertaste": 15,
+          "cultural_fact_and_adaptation_boundary": 8,
+          "production_executability": 10,
+          "originality_and_distinctiveness": 6
+        },
+        "hard_gates": [
+          "未知、传说或虚构内容不得写成确证事实",
+          "必须明确受众、时长和片型承诺",
+          "full_text 不得是大纲、资料摘要或内部分析",
+          "场景必须有行动、变化或推进功能",
+          "分场、正文、GEARS 分段和交付文本不得互相矛盾",
+          "视觉提示不得混入来源说明、质量标签、TODO 或内部字段",
+          "不得使用未授权原文、角色、样片剧情或具体作者风格仿写",
+          "不得缺少片型专属必交项",
+          "去掉旁白后仍必须看得出时间、空间和情绪结构"
+        ],
+        "repair_focus": [
+          "减少知识解释和口号",
+          "加强光影、天气和自然声音变化",
+          "把文案压到最少必要密度"
+        ]
+      },
+      "professional_text_package_contract_implemented": true,
+      "professional_text_package_skeleton_schema_passed": true,
+      "professional_vertical_pipeline_implemented": true,
+      "professional_text_package_passed": false,
+      "professional_hard_gate_status": "failed_missing_professional_output_and_evidence",
+      "professional_gaps": [
+        "缺少真实模型固定项目和初稿到终稿修订证据",
+        "缺少真人盲评与三角色签署",
+        "缺少人工通过黄金卡",
+        "缺少 ProductionMaterialPack",
+        "十维评分和硬门槛已接入候选文本评估，但缺真实模型文本、原创性判断和真人盲评证据",
+        "定向修订计划和陈旧派生文本重建已实现，但缺真实模型初稿到终稿的质量增量证明"
+      ]
+    }
+  ]
+}

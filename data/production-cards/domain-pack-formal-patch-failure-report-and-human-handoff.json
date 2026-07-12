@@ -1,0 +1,487 @@
+{
+  "schema_version": "domain-pack-formal-patch-failure-human-handoff/v1",
+  "updated_at": "2026-07-10",
+  "status": "formal_patch_failure_report_human_handoff_created",
+  "scope": "Iteration 22：汇总正式 Patch 前缺失附件、签署、真实负责人和 audit/lint 等待状态，为 2 个候选生成真实人审交接包与可打印审稿单；本文件只用于失败报告和人工交接，不代表正式审批、真实签署、正式 Patch 请求、正式 Patch 或正式库写入。",
+  "source_review_lock_file": "data/production-cards/domain-pack-signature-feedback-validation-and-review-lock.json",
+  "source_freeze_file": "data/production-cards/domain-pack-evidence-freeze-and-signature-reminder-board.json",
+  "source_preflight_matrix_file": "data/production-cards/domain-pack-formal-patch-preflight-matrix-and-weekly-dispatch.json",
+  "human_handoff_markdown_file": "docs/production-cards/domain-pack-formal-patch-failure-human-handoff-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "handoff_package_is_formal_approval": false,
+    "failure_report_is_patch_request": false,
+    "printable_handoff_is_signature": false,
+    "current_layer": "formal_patch_failure_report_and_human_handoff_only"
+  },
+  "counts": {
+    "failure_report_item_count": 12,
+    "source_failure_reason_count": 10,
+    "blocker_group_count": 4,
+    "human_handoff_package_count": 2,
+    "printable_review_sheet_count": 2,
+    "open_owner_assignment_count": 4,
+    "missing_attachment_package_count": 2,
+    "missing_attachment_slot_reference_count": 12,
+    "missing_signature_count": 4,
+    "audit_lint_waiting_count": 2,
+    "real_human_approval_count": 0,
+    "formal_patch_count": 0,
+    "machine_gate_count": 9
+  },
+  "blocker_summary": [
+    {
+      "blocker_group_id": "missing_attachments",
+      "label": "证据附件缺失",
+      "item_count": 2,
+      "affected_candidate_ids": [
+        "dp-craft-material-tool-process",
+        "dp-medical-heritage-privacy-boundary"
+      ],
+      "blocking_effect": "blocks_review_or_repair_submission",
+      "human_resolution": "为每个证据包补齐 6 类真实附件，或由有权负责人记录明确豁免。"
+    },
+    {
+      "blocker_group_id": "missing_signatures",
+      "label": "真实签署缺失",
+      "item_count": 4,
+      "affected_candidate_ids": [
+        "dp-craft-material-tool-process"
+      ],
+      "blocking_effect": "blocks_formal_patch",
+      "human_resolution": "由匹配分派角色的真实审稿人作出通过或退回决定并留存签署记录。"
+    },
+    {
+      "blocker_group_id": "missing_owners",
+      "label": "真实负责人缺失",
+      "item_count": 4,
+      "affected_candidate_ids": [
+        "dp-craft-material-tool-process"
+      ],
+      "blocking_effect": "blocks_signature",
+      "human_resolution": "把 4 个 [待指定] 占位替换为可追责的真实个人或审稿小组。"
+    },
+    {
+      "blocker_group_id": "audit_lint_not_run",
+      "label": "正式 Patch 后检查尚未运行",
+      "item_count": 2,
+      "affected_candidate_ids": [
+        "dp-craft-material-tool-process"
+      ],
+      "blocking_effect": "waits_for_formal_patch",
+      "human_resolution": "仅在人工明确请求并完成正式 Patch 后运行 production audit 与 kb lint。"
+    }
+  ],
+  "formal_patch_failure_report": {
+    "missing_attachment_items": [
+      {
+        "failure_id": "missing-attachment-package-001",
+        "source_evidence_package_id": "evidence-freeze-package-001",
+        "candidate_id": "dp-craft-material-tool-process",
+        "missing_slot_ids": [
+          "source_bibliography_attachment",
+          "fact_boundary_table_attachment",
+          "authorization_or_consent_attachment",
+          "sample_validation_attachment",
+          "reviewer_identity_and_role_attachment",
+          "final_decision_record_attachment"
+        ],
+        "missing_slot_count": 6,
+        "status": "open_blocks_review_package_submission"
+      },
+      {
+        "failure_id": "missing-attachment-package-002",
+        "source_evidence_package_id": "evidence-freeze-package-002",
+        "candidate_id": "dp-medical-heritage-privacy-boundary",
+        "missing_slot_ids": [
+          "source_bibliography_attachment",
+          "fact_boundary_table_attachment",
+          "authorization_or_consent_attachment",
+          "sample_validation_attachment",
+          "reviewer_identity_and_role_attachment",
+          "final_decision_record_attachment"
+        ],
+        "missing_slot_count": 6,
+        "status": "open_blocks_repair_resubmission"
+      }
+    ],
+    "missing_signature_items": [
+      {
+        "failure_id": "missing-signature-001",
+        "source_reminder_id": "signature-reminder-001",
+        "assignment_id": "dispatch-signature-001",
+        "candidate_id": "dp-craft-material-tool-process",
+        "assigned_role": "事实/工艺流程审稿负责人",
+        "signature_status": "blank",
+        "is_signed": false,
+        "status": "open_blocks_formal_patch"
+      },
+      {
+        "failure_id": "missing-signature-002",
+        "source_reminder_id": "signature-reminder-002",
+        "assignment_id": "dispatch-signature-002",
+        "candidate_id": "dp-craft-material-tool-process",
+        "assigned_role": "材料工具与去重合并审稿负责人",
+        "signature_status": "blank",
+        "is_signed": false,
+        "status": "open_blocks_formal_patch"
+      },
+      {
+        "failure_id": "missing-signature-003",
+        "source_reminder_id": "signature-reminder-003",
+        "assignment_id": "dispatch-signature-003",
+        "candidate_id": "dp-craft-material-tool-process",
+        "assigned_role": "授权与证据附件负责人",
+        "signature_status": "blank",
+        "is_signed": false,
+        "status": "open_blocks_formal_patch"
+      },
+      {
+        "failure_id": "missing-signature-004",
+        "source_reminder_id": "signature-reminder-004",
+        "assignment_id": "dispatch-signature-004",
+        "candidate_id": "dp-craft-material-tool-process",
+        "assigned_role": "人工 Patch 复核负责人",
+        "signature_status": "blank",
+        "is_signed": false,
+        "status": "open_blocks_formal_patch"
+      }
+    ],
+    "missing_owner_items": [
+      {
+        "failure_id": "missing-owner-001",
+        "source_reminder_id": "signature-reminder-001",
+        "assignment_id": "dispatch-signature-001",
+        "assigned_role": "事实/工艺流程审稿负责人",
+        "real_owner_placeholder": "[待指定]",
+        "status": "open_blocks_signature"
+      },
+      {
+        "failure_id": "missing-owner-002",
+        "source_reminder_id": "signature-reminder-002",
+        "assignment_id": "dispatch-signature-002",
+        "assigned_role": "材料工具与去重合并审稿负责人",
+        "real_owner_placeholder": "[待指定]",
+        "status": "open_blocks_signature"
+      },
+      {
+        "failure_id": "missing-owner-003",
+        "source_reminder_id": "signature-reminder-003",
+        "assignment_id": "dispatch-signature-003",
+        "assigned_role": "授权与证据附件负责人",
+        "real_owner_placeholder": "[待指定]",
+        "status": "open_blocks_signature"
+      },
+      {
+        "failure_id": "missing-owner-004",
+        "source_reminder_id": "signature-reminder-004",
+        "assignment_id": "dispatch-signature-004",
+        "assigned_role": "人工 Patch 复核负责人",
+        "real_owner_placeholder": "[待指定]",
+        "status": "open_blocks_signature"
+      }
+    ],
+    "audit_lint_waiting_items": [
+      {
+        "blocker_id": "audit-lint-waiting-001",
+        "source_lock_id": "audit-lint-lock-001",
+        "source_runbook_id": "post-patch-runbook-001",
+        "assignment_id": "dispatch-audit-001",
+        "command_after_patch": "npm run kb:production-audit",
+        "has_run": false,
+        "status": "waiting_for_formal_patch"
+      },
+      {
+        "blocker_id": "audit-lint-waiting-002",
+        "source_lock_id": "audit-lint-lock-002",
+        "source_runbook_id": "post-patch-runbook-002",
+        "assignment_id": "dispatch-lint-001",
+        "command_after_patch": "npm run kb:lint",
+        "has_run": false,
+        "status": "waiting_for_formal_patch"
+      }
+    ]
+  },
+  "human_handoff_packages": [
+    {
+      "handoff_package_id": "human-handoff-package-001",
+      "source_review_lock_id": "review-lock-package-001",
+      "source_evidence_package_id": "evidence-freeze-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "handoff_purpose": "manual_patch_candidate_human_review",
+      "handoff_status": "ready_for_human_assignment_blocked_by_attachments_signatures_and_owners",
+      "required_attachment_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ],
+      "required_reviewer_roles": [
+        "事实/工艺流程审稿负责人",
+        "材料工具与去重合并审稿负责人",
+        "授权与证据附件负责人",
+        "人工 Patch 复核负责人"
+      ],
+      "source_signature_reminder_ids": [
+        "signature-reminder-001",
+        "signature-reminder-002",
+        "signature-reminder-003",
+        "signature-reminder-004"
+      ],
+      "open_failure_ids": [
+        "missing-attachment-package-001",
+        "missing-signature-001",
+        "missing-signature-002",
+        "missing-signature-003",
+        "missing-signature-004",
+        "missing-owner-001",
+        "missing-owner-002",
+        "missing-owner-003",
+        "missing-owner-004"
+      ],
+      "post_patch_blocker_ids": [
+        "audit-lint-waiting-001",
+        "audit-lint-waiting-002"
+      ],
+      "printable_review_sheet_id": "printable-handoff-sheet-001",
+      "next_human_decision": "指定真实负责人、提交附件、完成角色匹配的真实审稿，并明确决定是否提出正式 Patch 请求。",
+      "all_required_attachments_present": false,
+      "all_signatures_complete": false,
+      "real_owner_assigned": false,
+      "handoff_package_is_formal_approval": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "handoff_package_id": "human-handoff-package-002",
+      "source_review_lock_id": "review-lock-package-002",
+      "source_evidence_package_id": "evidence-freeze-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "handoff_purpose": "repair_resubmission_human_review",
+      "handoff_status": "ready_for_human_assignment_blocked_by_attachments_and_repair_signoff",
+      "required_attachment_slot_ids": [
+        "source_bibliography_attachment",
+        "fact_boundary_table_attachment",
+        "authorization_or_consent_attachment",
+        "sample_validation_attachment",
+        "reviewer_identity_and_role_attachment",
+        "final_decision_record_attachment"
+      ],
+      "required_reviewer_roles": [
+        "医疗伦理审稿负责人",
+        "授权与证据附件负责人",
+        "事实边界审稿负责人",
+        "审稿签署管理员"
+      ],
+      "repair_followup_ids": [
+        "repair-evidence-followup-001",
+        "repair-evidence-followup-002",
+        "repair-evidence-followup-003",
+        "repair-evidence-followup-004"
+      ],
+      "open_failure_ids": [
+        "missing-attachment-package-002"
+      ],
+      "additional_open_blocker_ids": [
+        "medical-privacy-boundary-signoff-pending",
+        "authorization-gap-signoff-pending",
+        "fact-boundary-signoff-pending",
+        "reviewer-identity-signoff-pending"
+      ],
+      "printable_review_sheet_id": "printable-handoff-sheet-002",
+      "next_human_decision": "补齐隐私边界、授权、事实边界与审稿人身份附件后，由对应角色决定是否允许修复重提审。",
+      "all_required_attachments_present": false,
+      "repair_signoff_complete": false,
+      "repair_resubmitted": false,
+      "handoff_package_is_formal_approval": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    }
+  ],
+  "printable_review_sheets": [
+    {
+      "sheet_id": "printable-handoff-sheet-001",
+      "handoff_package_id": "human-handoff-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "sheet_title": "工艺材料工具流程候选包正式 Patch 前审稿单",
+      "review_section_ids": [
+        "candidate_summary",
+        "required_attachment_slots",
+        "failure_reason_checklist",
+        "reviewer_role_and_identity",
+        "signature_or_rejection_decision",
+        "formal_patch_request_warning",
+        "post_patch_audit_lint_note"
+      ],
+      "required_signoff_fields": [
+        "reviewer_name_or_group",
+        "reviewer_role",
+        "decision_approved_or_rejected",
+        "decision_reason",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "signature_record_reference": "",
+      "printable_handoff_is_signature": false,
+      "handoff_package_is_formal_approval": false,
+      "failure_report_is_patch_request": false
+    },
+    {
+      "sheet_id": "printable-handoff-sheet-002",
+      "handoff_package_id": "human-handoff-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "sheet_title": "民族医药隐私边界候选包修复重提审审稿单",
+      "review_section_ids": [
+        "repair_scope_summary",
+        "privacy_boundary_evidence",
+        "authorization_or_consent_evidence",
+        "fact_boundary_evidence",
+        "reviewer_identity_and_role",
+        "repair_resubmission_decision"
+      ],
+      "required_signoff_fields": [
+        "reviewer_name_or_group",
+        "reviewer_role",
+        "decision_resubmit_or_reject",
+        "decision_reason",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "signature_record_reference": "",
+      "printable_handoff_is_signature": false,
+      "handoff_package_is_formal_approval": false,
+      "failure_report_is_patch_request": false
+    }
+  ],
+  "human_action_checklist": [
+    {
+      "action_id": "human-action-001",
+      "action": "为 dispatch-signature-001 至 dispatch-signature-004 指定真实个人或可追责审稿小组。",
+      "status": "open_external_human_action"
+    },
+    {
+      "action_id": "human-action-002",
+      "action": "为 evidence-freeze-package-001 提交 6 类真实附件或逐项记录有权豁免。",
+      "status": "open_external_human_action"
+    },
+    {
+      "action_id": "human-action-003",
+      "action": "为 evidence-freeze-package-002 提交 6 类真实附件并完成 4 项修复补证复核。",
+      "status": "open_external_human_action"
+    },
+    {
+      "action_id": "human-action-004",
+      "action": "收集真实审稿通过或退回决定及其签署记录引用。",
+      "status": "open_external_human_action"
+    },
+    {
+      "action_id": "human-action-005",
+      "action": "仅在真实审稿完成且人工显式请求正式 Patch 后执行写入，并随后运行 production audit 与 kb lint。",
+      "status": "blocked_until_explicit_patch_request"
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "formal-patch-failure-report-created",
+      "status": "met",
+      "target_count": 12,
+      "current_count": 12
+    },
+    {
+      "gate_id": "blocker-groups-summarized",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "human-handoff-packages-created",
+      "status": "met_as_handoff_only",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "printable-review-sheets-created",
+      "status": "met_as_unsigned_templates",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "open-owner-assignments-recorded",
+      "status": "met_as_open_blockers",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "missing-attachment-packages-recorded",
+      "status": "met_as_open_blockers",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "missing-signatures-recorded",
+      "status": "met_as_open_blockers",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_22_exit_gates": [
+    {
+      "gate_id": "failure-report-and-four-blocker-groups-created",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "human-review-handoff-packages-created",
+      "status": "met_as_handoff_only",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "printable-review-sheets-created",
+      "status": "met_as_unsigned_templates",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "owners-attachments-signatures-still-explicitly-blocked",
+      "status": "met",
+      "target_count": 10,
+      "current_count": 10
+    },
+    {
+      "gate_id": "audit-lint-still-waiting-for-formal-patch",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

@@ -1,0 +1,731 @@
+{
+  "schema_version": "p0-p1-review-export-domain-pack-precheck/v1",
+  "updated_at": "2026-07-10",
+  "status": "precheck_only_pending_real_human_review",
+  "scope": "Iteration 13：生成审稿结果导出包总览、pass / repair / reject 任务队列、P0/P1 质量规则到 9 个候选 Domain Pack 的映射，以及候选 Domain Pack 晋升前检查清单。",
+  "source_simulation_file": "data/production-cards/p0-p1-review-simulation-and-writeback-constraints.json",
+  "source_quality_index_file": "data/production-cards/p0-p1-review-export-quality-index.json",
+  "source_domain_pack_candidate_file": "data/domain-packs/phase2-candidate-rule-packs.json",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "manual_patch_required": true,
+    "current_layer": "review_export_and_domain_pack_precheck_only",
+    "precheck_is_formal_promotion": false
+  },
+  "counts": {
+    "review_result_export_count": 16,
+    "pass_candidate_count": 2,
+    "repair_task_count": 11,
+    "reject_task_count": 3,
+    "domain_pack_candidate_count": 9,
+    "domain_pack_rule_mapping_count": 9,
+    "promotion_precheck_count": 9,
+    "promotion_ready_count": 0,
+    "promotion_blocked_count": 9,
+    "machine_gate_count": 7
+  },
+  "review_result_export_package": {
+    "package_id": "p0-p1-review-result-export-20260710-iteration13",
+    "package_status": "ready_for_real_human_review_packet",
+    "decision_source": "policy_simulation_only",
+    "decision_counts": {
+      "pass": 2,
+      "repair": 11,
+      "reject": 3
+    },
+    "export_notes": [
+      "本导出包只整理模拟结果，不替代真实人工审稿。",
+      "pass 只表示可准备候选草案，仍需真实审稿、来源补证、授权确认和人工 Patch。",
+      "repair 和 reject 进入任务队列，不生成正式写回草案。",
+      "所有导出项均保持 writeback_allowed_now=false。"
+    ]
+  },
+  "review_result_export_manifest": [
+    {
+      "writeback_template_id": "writeback-template-p0-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "decision": "reject",
+      "queue": "reject_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-002",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-003",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-004",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-001",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-002",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "decision": "pass",
+      "queue": "pass_candidate_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-004",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-005",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "decision": "reject",
+      "queue": "reject_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "decision": "pass",
+      "queue": "pass_candidate_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-007",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-008",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-009",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-010",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-011",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "decision": "reject",
+      "queue": "reject_task_queue",
+      "writeback_allowed_now": false
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-012",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "decision": "repair",
+      "queue": "repair_task_queue",
+      "writeback_allowed_now": false
+    }
+  ],
+  "pass_candidate_queue": [
+    {
+      "task_id": "pass-candidate-001",
+      "writeback_template_id": "writeback-template-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "candidate_status": "eligible_for_draft_after_real_human_review",
+      "writeback_allowed_now": false,
+      "linked_domain_pack_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-craft-material-tool-process",
+        "dp-ai-comic-continuity-shot-language"
+      ],
+      "required_before_draft": [
+        "real_human_review_approved",
+        "source_or_authorization_evidence_attached",
+        "manual_patch_reviewed"
+      ]
+    },
+    {
+      "task_id": "pass-candidate-002",
+      "writeback_template_id": "writeback-template-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "candidate_status": "eligible_for_draft_after_real_human_review",
+      "writeback_allowed_now": false,
+      "linked_domain_pack_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ],
+      "required_before_draft": [
+        "real_human_review_approved",
+        "source_or_authorization_evidence_attached",
+        "manual_patch_reviewed"
+      ]
+    }
+  ],
+  "repair_task_queue": [
+    {
+      "task_id": "repair-task-001",
+      "writeback_template_id": "writeback-template-p0-002",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "repair_focus": [
+        "医疗伦理",
+        "机构授权",
+        "患者隐私"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-medical-heritage-privacy-boundary",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "task_id": "repair-task-002",
+      "writeback_template_id": "writeback-template-p0-003",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "repair_focus": [
+        "纪念馆来源",
+        "展陈授权",
+        "再现边界"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "task_id": "repair-task-003",
+      "writeback_template_id": "writeback-template-p0-004",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "repair_focus": [
+        "机构来源",
+        "标本档案授权",
+        "非诊疗空间"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-medical-heritage-privacy-boundary",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "task_id": "repair-task-004",
+      "writeback_template_id": "writeback-template-p1-001",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "repair_focus": [
+        "革命历史时间线",
+        "旧址来源",
+        "虚构见证者边界"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "task_id": "repair-task-005",
+      "writeback_template_id": "writeback-template-p1-002",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "repair_focus": [
+        "公开展演",
+        "服饰舞步",
+        "社区授权"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "task_id": "repair-task-006",
+      "writeback_template_id": "writeback-template-p1-004",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "repair_focus": [
+        "公开动作",
+        "仪式空间",
+        "社区边界"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "task_id": "repair-task-007",
+      "writeback_template_id": "writeback-template-p1-007",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "repair_focus": [
+        "社区授权",
+        "公开动作",
+        "未授权空间排除"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "task_id": "repair-task-008",
+      "writeback_template_id": "writeback-template-p1-008",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "repair_focus": [
+        "声音授权",
+        "歌词曲谱授权",
+        "采录空间同意"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "task_id": "repair-task-009",
+      "writeback_template_id": "writeback-template-p1-009",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "repair_focus": [
+        "多说法来源",
+        "展陈许可",
+        "现实现场"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "task_id": "repair-task-010",
+      "writeback_template_id": "writeback-template-p1-010",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "repair_focus": [
+        "旧址现状",
+        "展陈资料",
+        "采访授权"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "task_id": "repair-task-011",
+      "writeback_template_id": "writeback-template-p1-012",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "repair_focus": [
+        "摆手堂资料",
+        "现场拍摄许可",
+        "内部知识排除"
+      ],
+      "linked_domain_pack_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-documentary-site-source-boundary"
+      ]
+    }
+  ],
+  "reject_task_queue": [
+    {
+      "task_id": "reject-task-001",
+      "writeback_template_id": "writeback-template-p0-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "reject_reason": "P0 创伤历史题材在没有真实人工审稿和完整证据链前，不应进入写回草案。",
+      "linked_domain_pack_candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-ai-comic-continuity-shot-language"
+      ],
+      "restart_required": true
+    },
+    {
+      "task_id": "reject-task-002",
+      "writeback_template_id": "writeback-template-p1-005",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "reject_reason": "第一枪多说法、虚构线索和真实历史时间线边界未清前，不应进入写回草案。",
+      "linked_domain_pack_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-ai-comic-continuity-shot-language"
+      ],
+      "restart_required": true
+    },
+    {
+      "task_id": "reject-task-003",
+      "writeback_template_id": "writeback-template-p1-011",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "reject_reason": "田野录音、歌词曲谱、个人回忆和红色记忆边界未清前，不应进入写回草案。",
+      "linked_domain_pack_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-documentary-site-source-boundary"
+      ],
+      "restart_required": true
+    }
+  ],
+  "domain_pack_quality_rule_mappings": [
+    {
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "mapped_quality_rule_ids": [
+        "p0-trauma-history-no-reenactment-expanded",
+        "p0-trauma-history-no-false-testimony"
+      ],
+      "related_writeback_template_ids": [
+        "writeback-template-p0-001",
+        "writeback-template-p0-003"
+      ],
+      "blocking_decisions": [
+        "reject",
+        "repair"
+      ]
+    },
+    {
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "mapped_quality_rule_ids": [
+        "p0-medical-heritage-no-instruction-expanded",
+        "p0-medical-heritage-privacy-boundary"
+      ],
+      "related_writeback_template_ids": [
+        "writeback-template-p0-002",
+        "writeback-template-p0-004"
+      ],
+      "blocking_decisions": [
+        "repair"
+      ]
+    },
+    {
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "mapped_quality_rule_ids": [
+        "p1-revolutionary-history-source-boundary",
+        "p1-documentary-site-archive-boundary"
+      ],
+      "related_writeback_template_ids": [
+        "writeback-template-p1-001",
+        "writeback-template-p1-005",
+        "writeback-template-p1-009",
+        "writeback-template-p1-010"
+      ],
+      "blocking_decisions": [
+        "repair",
+        "reject"
+      ]
+    },
+    {
+      "candidate_id": "dp-heritage-process-consent",
+      "mapped_quality_rule_ids": [
+        "p1-ethnic-community-consent-boundary",
+        "p1-heritage-performance-rights-boundary"
+      ],
+      "related_writeback_template_ids": [
+        "writeback-template-p0-002",
+        "writeback-template-p1-006",
+        "writeback-template-p1-007",
+        "writeback-template-p1-008"
+      ],
+      "blocking_decisions": [
+        "repair"
+      ]
+    },
+    {
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "mapped_quality_rule_ids": [
+        "p1-ethnic-community-consent-boundary",
+        "p1-heritage-performance-rights-boundary",
+        "p0-medical-heritage-privacy-boundary"
+      ],
+      "related_writeback_template_ids": [
+        "writeback-template-p0-002",
+        "writeback-template-p0-004",
+        "writeback-template-p1-002",
+        "writeback-template-p1-003",
+        "writeback-template-p1-004",
+        "writeback-template-p1-006",
+        "writeback-template-p1-007",
+        "writeback-template-p1-008",
+        "writeback-template-p1-011",
+        "writeback-template-p1-012"
+      ],
+      "blocking_decisions": [
+        "repair",
+        "reject"
+      ]
+    },
+    {
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "mapped_quality_rule_ids": [
+        "p1-heritage-performance-rights-boundary"
+      ],
+      "related_writeback_template_ids": [
+        "writeback-template-p1-008",
+        "writeback-template-p1-011"
+      ],
+      "blocking_decisions": [
+        "repair",
+        "reject"
+      ]
+    },
+    {
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "mapped_quality_rule_ids": [
+        "p1-documentary-site-archive-boundary",
+        "p0-trauma-history-no-reenactment-expanded",
+        "p0-medical-heritage-privacy-boundary"
+      ],
+      "related_writeback_template_ids": [
+        "writeback-template-p0-003",
+        "writeback-template-p0-004",
+        "writeback-template-p1-009",
+        "writeback-template-p1-010",
+        "writeback-template-p1-011",
+        "writeback-template-p1-012"
+      ],
+      "blocking_decisions": [
+        "repair",
+        "reject"
+      ]
+    },
+    {
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "mapped_quality_rule_ids": [
+        "p0-trauma-history-no-reenactment-expanded",
+        "p1-revolutionary-history-source-boundary",
+        "p1-ethnic-community-consent-boundary"
+      ],
+      "related_writeback_template_ids": [
+        "writeback-template-p0-001",
+        "writeback-template-p1-001",
+        "writeback-template-p1-002",
+        "writeback-template-p1-003",
+        "writeback-template-p1-004",
+        "writeback-template-p1-005"
+      ],
+      "blocking_decisions": [
+        "repair",
+        "reject"
+      ]
+    },
+    {
+      "candidate_id": "dp-craft-material-tool-process",
+      "mapped_quality_rule_ids": [
+        "p1-ethnic-community-consent-boundary"
+      ],
+      "related_writeback_template_ids": [
+        "writeback-template-p1-003"
+      ],
+      "blocking_decisions": [
+        "insufficient_real_review_coverage"
+      ]
+    }
+  ],
+  "domain_pack_promotion_prechecks": [
+    {
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "precheck_status": "blocked_pending_real_human_review",
+      "can_promote_now": false,
+      "formal_domain_pack_written": false,
+      "blockers": [
+        "关联结果含 reject 和 repair。",
+        "缺真实敏感历史人工审稿。",
+        "缺至少 3 个审稿通过样本。"
+      ]
+    },
+    {
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "precheck_status": "blocked_pending_repair",
+      "can_promote_now": false,
+      "formal_domain_pack_written": false,
+      "blockers": [
+        "关联结果均为 repair。",
+        "缺医疗伦理和隐私真实审稿。",
+        "缺微纪录苗医苗药边界回归补证。"
+      ]
+    },
+    {
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "precheck_status": "blocked_pending_repair_and_reject_resolution",
+      "can_promote_now": false,
+      "formal_domain_pack_written": false,
+      "blockers": [
+        "武昌起义 AI 漫剧项为 reject。",
+        "革命历史多说法边界仍需补证。",
+        "真实人物对白和旧址现状仍需人工复核。"
+      ]
+    },
+    {
+      "candidate_id": "dp-heritage-process-consent",
+      "precheck_status": "blocked_pending_authorization_repair",
+      "can_promote_now": false,
+      "formal_domain_pack_written": false,
+      "blockers": [
+        "关联结果含多个 repair。",
+        "社区、表演、声音和曲词曲谱授权未完成。",
+        "pass 项仍不等于真实人工审稿通过。"
+      ]
+    },
+    {
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "precheck_status": "blocked_pending_community_boundary_review",
+      "can_promote_now": false,
+      "formal_domain_pack_written": false,
+      "blockers": [
+        "关联结果含 reject 和多个 repair。",
+        "民族社区公开/非公开边界未真实审稿。",
+        "未授权仪式空间、内部知识和声音授权仍需补证。"
+      ]
+    },
+    {
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "precheck_status": "blocked_pending_rights_repair",
+      "can_promote_now": false,
+      "formal_domain_pack_written": false,
+      "blockers": [
+        "关联结果含 reject。",
+        "歌词、曲谱、录音和表演肖像授权未完成。",
+        "需新增可通过样本支撑舞台资产规则。"
+      ]
+    },
+    {
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "precheck_status": "blocked_pending_site_archive_repair",
+      "can_promote_now": false,
+      "formal_domain_pack_written": false,
+      "blockers": [
+        "关联结果含 reject 和多个 repair。",
+        "旧址开放状态、展陈复制件和采访授权未完成。",
+        "再现边界仍需真实人工审稿。"
+      ]
+    },
+    {
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "precheck_status": "blocked_pending_ai_comic_boundary_review",
+      "can_promote_now": false,
+      "formal_domain_pack_written": false,
+      "blockers": [
+        "关联结果含两个 reject。",
+        "AI 漫剧连续性规则不能覆盖敏感历史和革命历史事实边界。",
+        "需真实审稿确认虚构入口和镜头提示词边界。"
+      ]
+    },
+    {
+      "candidate_id": "dp-craft-material-tool-process",
+      "precheck_status": "blocked_pending_coverage_expansion",
+      "can_promote_now": false,
+      "formal_domain_pack_written": false,
+      "blockers": [
+        "当前仅有 1 个关联模拟 pass。",
+        "缺至少 3 个真实审稿通过样本。",
+        "缺跨工艺材料、工具和流程验证。"
+      ]
+    }
+  ],
+  "promotion_required_checklist": [
+    "real_domain_review_completed",
+    "all_related_repair_tasks_resolved",
+    "all_related_reject_tasks_restarted_or_removed",
+    "at_least_3_card_or_project_usages_verified",
+    "regression_fixture_or_project_validation_attached",
+    "formal_domain_pack_manual_patch_reviewed",
+    "no_direct_write_to_china_culture_json"
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "review-result-export-manifest-complete",
+      "status": "met",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "repair-task-queue-created",
+      "status": "met",
+      "target_count": 11,
+      "current_count": 11
+    },
+    {
+      "gate_id": "reject-task-queue-created",
+      "status": "met",
+      "target_count": 3,
+      "current_count": 3
+    },
+    {
+      "gate_id": "domain-pack-rule-mapping-covers-all-candidates",
+      "status": "met",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "promotion-prechecks-block-all-unreviewed-candidates",
+      "status": "met",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "no-direct-formal-domain-pack-write",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_13_exit_gates": [
+    {
+      "gate_id": "review-result-export-package-created",
+      "status": "met",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "repair-and-reject-queues-created",
+      "status": "met",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "domain-pack-promotion-precheck-created",
+      "status": "met_as_blocking_precheck",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "formal-domain-pack-not-written",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "province-markdown-not-written",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

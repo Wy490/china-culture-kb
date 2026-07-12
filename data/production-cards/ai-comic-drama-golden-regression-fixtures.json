@@ -1,0 +1,584 @@
+{
+  "schema_version": "ai-comic-drama-golden-regression-fixtures/v1",
+  "updated_at": "2026-07-09",
+  "source_cards_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+  "review_status": "local_regression_fixture_pending_human_review",
+  "purpose": "为 AI 漫剧黄金卡抽样建立离线生成回归样本，覆盖 StoryBlueprint、5 场以内 scene_breakdown、gears_segments 和 Seedance prompt 输入。",
+  "fixtures": [
+    {
+      "fixture_id": "regression-nanjing-memory-evidence",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "regression_scope": [
+        "story_blueprint",
+        "scene_breakdown",
+        "gears_segments",
+        "seedance_prompt"
+      ],
+      "story": {
+        "storyId": "20260709-ai-comic-regression-nanjing-memory-evidence",
+        "project_id": "20260709-project-ai-comic-regression-nanjing-memory-evidence",
+        "title": "不要让证据失声",
+        "generation_type": "production_card_regression_fixture",
+        "video_type": "ai_comic_drama",
+        "presentation_style": "ai_comic",
+        "source_entry": "南京大屠杀——中华民族最深的伤痕",
+        "logline": "年轻讲解员在纪念馆闭馆前重新整理一段展陈讲述，学会用证据而不是刺激画面守住记忆。",
+        "theme": "记忆、证据、克制表达",
+        "credibility_note": "历史事实只以展陈、地图、档案和当代人物反应呈现；虚构人物不得替代真实证词。",
+        "story_blueprint": {
+          "schema_version": "story-blueprint/v1",
+          "entry_name": "南京大屠杀——中华民族最深的伤痕",
+          "video_type": "ai_comic_drama",
+          "presentation_style": "ai_comic",
+          "story_structure": "case_reconstruction",
+          "target_duration": "1分钟",
+          "central_event": "纪念馆排练前的证据链重组",
+          "central_question": "怎样在不制造猎奇画面的前提下，让观众听见证据背后的名字？",
+          "protagonist": "年轻讲解员",
+          "genre_beats": [
+            "异常钩子：白花下压着未归档复印件",
+            "目标建立：讲解员要重组展陈讲述",
+            "关系碰撞：资深馆员压住情绪化表达",
+            "价值转向：遇难者后人要求读清名字",
+            "余味结尾：下一位观众走进展厅"
+          ],
+          "evidence_boundaries": [
+            "展陈空间和历史时间线为事实锚点",
+            "讲解员、后人对白和未归档复印件为虚构入口",
+            "不展示血腥施暴画面"
+          ]
+        },
+        "characters": [
+          {
+            "name": "年轻讲解员",
+            "role": "protagonist",
+            "description": "深色正装，白花胸针，档案手套，眼神克制",
+            "arc": "从急于制造情绪转为用证据承担记忆"
+          },
+          {
+            "name": "资深馆员",
+            "role": "mentor_pressure",
+            "description": "灰发，细框眼镜，抱着文件夹，语气沉稳"
+          },
+          {
+            "name": "遇难者后人",
+            "role": "witness_of_memory",
+            "description": "素色外套，手持旧照片，动作缓慢"
+          }
+        ],
+        "full_text": "闭馆音乐响起时，年轻讲解员在名单墙旁停住。白花下面露出一页日记复印件，像有人把未说完的话留给了她。她想把这页放进明天的讲述里，让观众立刻沉默。资深馆员却按住文件夹提醒她：展厅里最需要被守住的不是眼泪，是证据。后来，一位遇难者后人站在名单墙前，请她把名字读慢。讲解员重新打开稿子，把夸张的句子划去，只留下日期、地点、地图和名字。灯光熄灭前，她对空展厅排练最后一句：请听清楚，每一个名字都曾经是一个人。",
+        "scene_breakdown": [
+          {
+            "scene_id": 1,
+            "title": "白花下的复印件",
+            "duration_sec": 10,
+            "location": "纪念馆名单墙前",
+            "time_of_day": "闭馆前傍晚",
+            "dramatic_function": "第一格钩子",
+            "plot": "闭馆灯光变暗，年轻讲解员在白花下发现一页日记复印件。",
+            "key_action": "她戴着档案手套，缓慢抽出被白花压住的纸页。",
+            "characters": ["年轻讲解员"],
+            "visual_prompt": "冷灰色纪念馆展厅，名单墙，白花，深色正装讲解员戴档案手套抽出纸页，画面庄重无血腥",
+            "camera_suggestion": "低声环境音效参考；从白花特写慢推到讲解员侧脸",
+            "dialogue_or_narration": "旁白：有些纸页，不该被沉默盖住。",
+            "factual_basis": "展陈空间和名单墙为当代记忆锚点。",
+            "fictionalized_elements": ["未归档复印件为叙事虚构"]
+          },
+          {
+            "scene_id": 2,
+            "title": "档案桌前",
+            "duration_sec": 12,
+            "location": "纪念馆档案整理桌",
+            "time_of_day": "夜晚",
+            "dramatic_function": "目标建立",
+            "plot": "讲解员把复印件、安全区地图和影像资料摆开，准备改写明天的讲述。",
+            "key_action": "她把夸张标题写在稿纸上，又犹豫着停笔。",
+            "characters": ["年轻讲解员"],
+            "visual_prompt": "档案整理桌，安全区地图，影像资料夹，白花胸针，讲解员低头停笔，桌灯冷光",
+            "camera_suggestion": "俯拍文件排列，再切到手指停在稿纸边缘",
+            "dialogue_or_narration": "年轻讲解员：如果他们没有感到痛，会不会转身就忘？"
+          },
+          {
+            "scene_id": 3,
+            "title": "馆员按住文件夹",
+            "duration_sec": 12,
+            "location": "展厅通道",
+            "time_of_day": "夜晚",
+            "dramatic_function": "关系碰撞",
+            "plot": "资深馆员看见她的稿子，要求她删掉刺激化表达。",
+            "key_action": "馆员用文件夹轻轻压住稿纸，讲解员抬头对视。",
+            "characters": ["年轻讲解员", "资深馆员"],
+            "visual_prompt": "展厅通道，灰发馆员手中文件夹压住稿纸，讲解员抬头，背景是模糊展柜灯光",
+            "camera_suggestion": "中近景正反打，最后停在文件夹边缘",
+            "dialogue_or_narration": "资深馆员：你要讲证据，不是制造眼泪。"
+          },
+          {
+            "scene_id": 4,
+            "title": "请把名字读慢",
+            "duration_sec": 12,
+            "location": "纪念馆名单墙前",
+            "time_of_day": "第二天清晨",
+            "dramatic_function": "价值转向",
+            "plot": "遇难者后人站在名单墙前，请她不要替任何人编话，只把名字读清楚。",
+            "key_action": "讲解员收起复印件，双手握住讲解稿，放慢呼吸。",
+            "characters": ["年轻讲解员", "遇难者后人"],
+            "visual_prompt": "清晨展厅，名单墙前素色外套后人手持旧照片，讲解员握紧稿纸，白花在画面下方",
+            "camera_suggestion": "静态双人构图，轻微推近到旧照片边缘",
+            "dialogue_or_narration": "遇难者后人：请把数字读慢一点，每一个都是人。"
+          },
+          {
+            "scene_id": 5,
+            "title": "空展厅排练",
+            "duration_sec": 12,
+            "location": "纪念馆主展厅门口",
+            "time_of_day": "开馆前",
+            "dramatic_function": "克制收束",
+            "plot": "讲解员把档案夹合上，对着空展厅排练新的讲述，下一位参观者的身影出现在门口。",
+            "key_action": "她把白花扶正，抬头说出最后一句。",
+            "characters": ["年轻讲解员", "资深馆员"],
+            "visual_prompt": "开馆前展厅门口，讲解员扶正白花胸针，资深馆员站在远处，门口出现参观者剪影",
+            "camera_suggestion": "从胸针近景拉到展厅门口，结尾半秒定格",
+            "dialogue_or_narration": "年轻讲解员：请听清楚，每一个名字都曾经是一个人。"
+          }
+        ],
+        "gears_segments": [
+          {
+            "segment_id": 1,
+            "source_scene_id": 1,
+            "duration_sec": 10,
+            "panel_count": 5,
+            "script_text": "白花下露出日记复印件，讲解员第一次停住。",
+            "segment_prompt_hint": "白花、名单墙、档案手套形成第一格钩子。"
+          },
+          {
+            "segment_id": 2,
+            "source_scene_id": 2,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "档案桌上，讲解员试图把资料写成更刺痛的讲述。",
+            "segment_prompt_hint": "地图、影像资料和停笔动作表现选择压力。"
+          },
+          {
+            "segment_id": 3,
+            "source_scene_id": 3,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "资深馆员压住稿纸，要求她讲证据而不是制造眼泪。",
+            "segment_prompt_hint": "文件夹压住稿纸，正反打呈现表达边界。"
+          },
+          {
+            "segment_id": 4,
+            "source_scene_id": 4,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "后人在名单墙前请求她把名字读慢。",
+            "segment_prompt_hint": "旧照片、名单墙和握稿纸的手形成情绪转向。"
+          },
+          {
+            "segment_id": 5,
+            "source_scene_id": 5,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "讲解员对空展厅排练，下一位参观者走进门口。",
+            "segment_prompt_hint": "白花扶正、展厅门口剪影、结尾定格。"
+          }
+        ],
+        "quality_report": {
+          "schema_version": "production-card-regression-quality/v1",
+          "risk_level": "high",
+          "local_structure_status": "ready_for_seedance_prompt_regression",
+          "human_review_required": true,
+          "known_gaps": [
+            "需要人工复核敏感历史表达是否足够克制。",
+            "不得把虚构复印件误认为真实档案。"
+          ]
+        }
+      }
+    },
+    {
+      "fixture_id": "regression-tongdao-dong-brocade-sun-pattern",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
+      "regression_scope": [
+        "story_blueprint",
+        "scene_breakdown",
+        "gears_segments",
+        "seedance_prompt"
+      ],
+      "story": {
+        "storyId": "20260709-ai-comic-regression-tongdao-dong-brocade",
+        "project_id": "20260709-project-ai-comic-regression-tongdao-dong-brocade",
+        "title": "天亮前的太阳纹",
+        "generation_type": "production_card_regression_fixture",
+        "video_type": "ai_comic_drama",
+        "presentation_style": "ai_comic",
+        "source_entry": "通道侗锦——湘西南侗寨的指尖花雨",
+        "logline": "年轻织女在离家前补完一块缺失太阳纹的侗锦，理解经纬线里的家族记忆。",
+        "theme": "传承、离家、慢工与记忆",
+        "credibility_note": "纹样含义、传承人和授权信息需补证；短剧只表达工艺动作和代际关系。",
+        "story_blueprint": {
+          "schema_version": "story-blueprint/v1",
+          "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
+          "video_type": "ai_comic_drama",
+          "presentation_style": "ai_comic",
+          "story_structure": "craft_process",
+          "target_duration": "1分钟",
+          "central_event": "出嫁木箱里的太阳纹缺口",
+          "central_question": "年轻人怎样把侗锦从好看的纹样重新看成经纬中的家族记忆？",
+          "protagonist": "年轻织女",
+          "genre_beats": [
+            "异常钩子：木箱打开，太阳纹缺一角",
+            "目标建立：天亮前补完纹样",
+            "关系碰撞：母亲反对把纹样当流量符号",
+            "工艺转向：外婆示范经纬和手部节奏",
+            "余味结尾：鸟纹提出下一集问题"
+          ],
+          "evidence_boundaries": [
+            "侗锦、织机、蓝底彩纹和太阳纹为知识库视觉锚点",
+            "三代女性与出嫁木箱为虚构叙事入口",
+            "不对纹样来源和含义做绝对解释"
+          ]
+        },
+        "characters": [
+          {
+            "name": "年轻织女",
+            "role": "protagonist",
+            "description": "素色上衣，银饰小发夹，手指缠线，动作急",
+            "arc": "从赶时间完成到理解慢工和纹样边界"
+          },
+          {
+            "name": "母亲",
+            "role": "mentor_pressure",
+            "description": "深蓝侗族服饰，线轴篮，严厉但关心"
+          },
+          {
+            "name": "外婆",
+            "role": "tradition_witness",
+            "description": "银白发，坐在织机旁，动作缓慢稳当"
+          }
+        ],
+        "full_text": "离家前夜，年轻织女打开木箱，发现那块要带走的侗锦缺了太阳纹。她急着用最快的办法补上，却被母亲拦住：纹样不是贴上去的，是一根一根线数出来的。外婆没有责备，只把梭子放到她掌心，教她听木机抬落的节奏。窗外天色一点点亮，年轻织女终于把缺口合上。她以为故事结束了，外婆却指向边角的一只鸟纹：你知道它为什么不能飞出边框吗？",
+        "scene_breakdown": [
+          {
+            "scene_id": 1,
+            "title": "木箱里的缺口",
+            "duration_sec": 10,
+            "location": "侗寨木楼卧房",
+            "time_of_day": "离家前夜",
+            "dramatic_function": "第一格钩子",
+            "plot": "木箱打开，蓝底侗锦上的太阳纹缺了一角。",
+            "key_action": "年轻织女伸手按住缺口，表情一下子慌了。",
+            "characters": ["年轻织女"],
+            "visual_prompt": "侗寨木楼卧房，嫁妆木箱打开，蓝底彩纹侗锦缺少太阳纹一角，年轻织女银饰发夹反光",
+            "camera_suggestion": "从木箱俯拍慢推到缺口，环境音效参考木楼夜声",
+            "dialogue_or_narration": "年轻织女：怎么偏偏少了这里？"
+          },
+          {
+            "scene_id": 2,
+            "title": "母亲拦住快手",
+            "duration_sec": 12,
+            "location": "木楼织机旁",
+            "time_of_day": "夜晚",
+            "dramatic_function": "关系碰撞",
+            "plot": "年轻织女想快速补纹，母亲拦住她的手。",
+            "key_action": "母亲把线轴篮放在织机边，示意她先数经纬。",
+            "characters": ["年轻织女", "母亲"],
+            "visual_prompt": "木楼织机旁，深蓝服饰母亲按住线轴篮，年轻织女手指缠线，彩线在木机上绷紧",
+            "camera_suggestion": "手部近景接双人侧面，镜头保持织机方向固定",
+            "dialogue_or_narration": "母亲：你看见的是花，我数的是线。"
+          },
+          {
+            "scene_id": 3,
+            "title": "外婆递来梭子",
+            "duration_sec": 12,
+            "location": "木楼织机旁",
+            "time_of_day": "深夜",
+            "dramatic_function": "工艺示范",
+            "plot": "外婆坐到织机旁，把梭子放进年轻织女掌心。",
+            "key_action": "年轻织女跟着外婆的手势穿梭、压线、停顿。",
+            "characters": ["年轻织女", "外婆"],
+            "visual_prompt": "银白发外婆坐在织机旁，梭子放进年轻织女手心，彩线穿过经纬，木机纹理清晰",
+            "camera_suggestion": "微距手部，随后横移显示经纬线交错",
+            "dialogue_or_narration": "外婆：慢一点，太阳才不会在布上歪。"
+          },
+          {
+            "scene_id": 4,
+            "title": "太阳纹合上",
+            "duration_sec": 12,
+            "location": "侗寨木楼窗边",
+            "time_of_day": "天亮前",
+            "dramatic_function": "目标完成",
+            "plot": "窗外泛白，太阳纹一点点合上，年轻织女终于停住急促的手。",
+            "key_action": "她把织好的局部托到窗边，让光照过纹样。",
+            "characters": ["年轻织女", "母亲", "外婆"],
+            "visual_prompt": "天亮前蓝光进入木楼，年轻织女托起织好的太阳纹，母亲和外婆站在背后，彩线细节清楚",
+            "camera_suggestion": "从织机近景拉到窗边三人构图",
+            "dialogue_or_narration": "年轻织女：我不是要逃开寨子，我想把它带出去。"
+          },
+          {
+            "scene_id": 5,
+            "title": "不能飞出边框的鸟",
+            "duration_sec": 10,
+            "location": "侗寨木楼窗边",
+            "time_of_day": "清晨",
+            "dramatic_function": "结尾钩子",
+            "plot": "太阳纹完成后，外婆指向边角一只鸟纹，留下新的问题。",
+            "key_action": "年轻织女低头看向鸟纹，手指停在边框外。",
+            "characters": ["年轻织女", "外婆"],
+            "visual_prompt": "清晨木楼窗边，侗锦边角鸟纹与太阳纹同框，外婆手指轻点边框，年轻织女低头凝视",
+            "camera_suggestion": "鸟纹特写后切到年轻织女眼神，结尾定格",
+            "dialogue_or_narration": "外婆：你知道它为什么不能飞出边框吗？"
+          }
+        ],
+        "gears_segments": [
+          {
+            "segment_id": 1,
+            "source_scene_id": 1,
+            "duration_sec": 10,
+            "panel_count": 5,
+            "script_text": "木箱打开，侗锦太阳纹缺一角，年轻织女慌了。",
+            "segment_prompt_hint": "木箱俯拍、蓝底彩纹、缺口形成第一格钩子。"
+          },
+          {
+            "segment_id": 2,
+            "source_scene_id": 2,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "母亲拦住她的快手，要求她先数清经纬。",
+            "segment_prompt_hint": "线轴篮、手指缠线、织机方向保持连续。"
+          },
+          {
+            "segment_id": 3,
+            "source_scene_id": 3,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "外婆递来梭子，教她慢下来。",
+            "segment_prompt_hint": "梭子入手、经纬交错和外婆慢动作。"
+          },
+          {
+            "segment_id": 4,
+            "source_scene_id": 4,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "天亮前太阳纹合上，年轻织女说想把寨子带出去。",
+            "segment_prompt_hint": "窗光、三代人、纹样完成。"
+          },
+          {
+            "segment_id": 5,
+            "source_scene_id": 5,
+            "duration_sec": 10,
+            "panel_count": 5,
+            "script_text": "外婆指向鸟纹，留下下一集问题。",
+            "segment_prompt_hint": "鸟纹边框特写和眼神定格。"
+          }
+        ],
+        "quality_report": {
+          "schema_version": "production-card-regression-quality/v1",
+          "risk_level": "medium",
+          "local_structure_status": "ready_for_seedance_prompt_regression",
+          "human_review_required": true,
+          "known_gaps": [
+            "纹样含义需补充权威来源后才能做解释。",
+            "传承人和授权信息尚未进入本样本。"
+          ]
+        }
+      }
+    },
+    {
+      "fixture_id": "regression-wuchang-uprising-sleeve-list",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "regression_scope": [
+        "story_blueprint",
+        "scene_breakdown",
+        "gears_segments",
+        "seedance_prompt"
+      ],
+      "story": {
+        "storyId": "20260709-ai-comic-regression-wuchang-uprising",
+        "project_id": "20260709-project-ai-comic-regression-wuchang-uprising",
+        "title": "袖口里的名单",
+        "generation_type": "production_card_regression_fixture",
+        "video_type": "ai_comic_drama",
+        "presentation_style": "ai_comic",
+        "source_entry": "武昌起义——辛亥革命的第一声枪响",
+        "logline": "爆炸暴露后的武昌营房里，虚构新军士兵必须在烧掉名单和冲向楚望台之间做出选择。",
+        "theme": "选择、风险、历史转折",
+        "credibility_note": "普通士兵和名单为虚构入口；1911 年 10 月 9 日暴露与 10 月 10 日起义时间关系需保持清晰。",
+        "story_blueprint": {
+          "schema_version": "story-blueprint/v1",
+          "entry_name": "武昌起义——辛亥革命的第一声枪响",
+          "video_type": "ai_comic_drama",
+          "presentation_style": "ai_comic",
+          "story_structure": "single_event_drama",
+          "target_duration": "1分钟",
+          "central_event": "爆炸暴露后一小时内的营房选择",
+          "central_question": "第一枪响起前，普通士兵怎样在恐惧和行动之间做选择？",
+          "protagonist": "虚构新军士兵",
+          "genre_beats": [
+            "异常钩子：爆炸消息传进营房",
+            "目标建立：保护袖口名单",
+            "关系碰撞：同袍要求烧掉名单保命",
+            "行动升级：搜查声逼近，士兵冲出营房",
+            "余味结尾：新地图指向更多省份"
+          ],
+          "evidence_boundaries": [
+            "1911 年 10 月 9 日暴露与 10 月 10 日起义为时间锚点",
+            "新军营房、楚望台和多省响应为知识库锚点",
+            "第一枪细节保留多说法边界"
+          ]
+        },
+        "characters": [
+          {
+            "name": "虚构新军士兵",
+            "role": "protagonist",
+            "description": "清末新军制服，袖口藏纸，紧绷下颌",
+            "arc": "从求生恐惧转为承担选择"
+          },
+          {
+            "name": "同袍",
+            "role": "mirror_pressure",
+            "description": "帽檐压低，手扶枪栓，眼神游移"
+          },
+          {
+            "name": "军官",
+            "role": "decision_pressure",
+            "description": "腰刀，指挥图，沉声命令"
+          }
+        ],
+        "full_text": "10 月 9 日的爆炸消息传进武昌营房时，虚构新军士兵把名单塞进袖口。有人劝他烧掉，至少今晚还能活。他听见走廊里搜查声越来越近，也听见自己心跳压过灯火。名单在袖口里被汗水打湿，他终于把它交给同袍：如果明天没人知道该站在哪边，今晚就真的结束了。营房门被推开，他冲向楚望台方向。枪声之后，他以为天快亮了，却有人递来一张新地图。",
+        "scene_breakdown": [
+          {
+            "scene_id": 1,
+            "title": "爆炸消息",
+            "duration_sec": 10,
+            "location": "武昌新军营房",
+            "time_of_day": "1911 年 10 月 9 日夜",
+            "dramatic_function": "第一格钩子",
+            "plot": "爆炸暴露的消息传进营房，众人一瞬间安静。",
+            "key_action": "虚构新军士兵把名单塞进袖口，油灯照出纸角。",
+            "characters": ["虚构新军士兵", "同袍"],
+            "visual_prompt": "清末新军营房，煤油灯，士兵制服，袖口露出名单纸角，同袍压低帽檐，夜色紧张",
+            "camera_suggestion": "从油灯火苗切到袖口纸角，环境音效参考远处急促脚步",
+            "dialogue_or_narration": "旁白：爆炸声把秘密推到了每个人面前。"
+          },
+          {
+            "scene_id": 2,
+            "title": "烧掉还是留下",
+            "duration_sec": 12,
+            "location": "营房角落",
+            "time_of_day": "夜晚",
+            "dramatic_function": "关系碰撞",
+            "plot": "同袍递来火柴，要求他烧掉名单保命。",
+            "key_action": "士兵按住袖口后退半步，火柴光映在脸上。",
+            "characters": ["虚构新军士兵", "同袍"],
+            "visual_prompt": "营房角落，火柴光，袖口名单，两个新军士兵低声对峙，墙上枪影晃动",
+            "camera_suggestion": "火柴特写后切正反打，镜头缓慢逼近",
+            "dialogue_or_narration": "同袍：烧了名单，我们还能活。"
+          },
+          {
+            "scene_id": 3,
+            "title": "搜查声逼近",
+            "duration_sec": 12,
+            "location": "营房走廊",
+            "time_of_day": "夜晚",
+            "dramatic_function": "压力升级",
+            "plot": "走廊搜查声逼近，军官低声命令他们准备行动。",
+            "key_action": "士兵把名单交给同袍，自己拉动枪栓。",
+            "characters": ["虚构新军士兵", "同袍", "军官"],
+            "visual_prompt": "窄走廊，煤油灯拉长影子，军官展开指挥图，士兵把折痕名单交给同袍，枪栓反光",
+            "camera_suggestion": "手持感跟拍，名单交接后切到枪栓近景",
+            "dialogue_or_narration": "虚构新军士兵：名单烧了，明天谁还知道该站在哪边？"
+          },
+          {
+            "scene_id": 4,
+            "title": "冲向楚望台",
+            "duration_sec": 12,
+            "location": "武昌夜间街巷",
+            "time_of_day": "10 月 10 日前夜转折",
+            "dramatic_function": "行动升级",
+            "plot": "营房门被推开，士兵跟随队伍冲向楚望台方向。",
+            "key_action": "他回头确认同袍已收好名单，然后转身奔跑。",
+            "characters": ["虚构新军士兵", "同袍", "军官"],
+            "visual_prompt": "武昌夜间街巷，清末新军士兵奔跑，远处楚望台方向有火光，袖口空了，同袍藏好名单",
+            "camera_suggestion": "低机位跟拍奔跑脚步，再抬到远处火光",
+            "dialogue_or_narration": "军官：今晚没有旁观的人，只有选择。"
+          },
+          {
+            "scene_id": 5,
+            "title": "新地图",
+            "duration_sec": 10,
+            "location": "楚望台方向街口",
+            "time_of_day": "枪声之后",
+            "dramatic_function": "结尾钩子",
+            "plot": "枪声之后，有人递来一张标着多省方向的新地图。",
+            "key_action": "士兵接过地图，火光映出他脸上的震动。",
+            "characters": ["虚构新军士兵", "军官"],
+            "visual_prompt": "楚望台方向街口，火光，士兵接过新地图，地图上多条线向外延伸，夜色中人群剪影",
+            "camera_suggestion": "地图特写后拉到士兵脸，再定格在向外延伸的线",
+            "dialogue_or_narration": "旁白：接下来响起的，会是哪一省？"
+          }
+        ],
+        "gears_segments": [
+          {
+            "segment_id": 1,
+            "source_scene_id": 1,
+            "duration_sec": 10,
+            "panel_count": 5,
+            "script_text": "爆炸消息传入营房，士兵把名单塞进袖口。",
+            "segment_prompt_hint": "油灯、袖口纸角和压低帽檐的同袍构成钩子。"
+          },
+          {
+            "segment_id": 2,
+            "source_scene_id": 2,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "同袍递来火柴，要他烧掉名单。",
+            "segment_prompt_hint": "火柴光和袖口名单构成关系冲突。"
+          },
+          {
+            "segment_id": 3,
+            "source_scene_id": 3,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "搜查声逼近，士兵交出名单并拉动枪栓。",
+            "segment_prompt_hint": "名单交接、指挥图、枪栓近景。"
+          },
+          {
+            "segment_id": 4,
+            "source_scene_id": 4,
+            "duration_sec": 12,
+            "panel_count": 6,
+            "script_text": "队伍冲出营房，奔向楚望台方向。",
+            "segment_prompt_hint": "夜巷奔跑、远处火光、同袍藏好名单。"
+          },
+          {
+            "segment_id": 5,
+            "source_scene_id": 5,
+            "duration_sec": 10,
+            "panel_count": 5,
+            "script_text": "枪声之后，新地图把视线引向更多省份。",
+            "segment_prompt_hint": "地图线条向外延伸，结尾留追问。"
+          }
+        ],
+        "quality_report": {
+          "schema_version": "production-card-regression-quality/v1",
+          "risk_level": "medium_high",
+          "local_structure_status": "ready_for_seedance_prompt_regression",
+          "human_review_required": true,
+          "known_gaps": [
+            "第一枪细节不可在生成稿中武断确认。",
+            "普通士兵和袖口名单需保持虚构入口标识。"
+          ]
+        }
+      }
+    }
+  ],
+  "acceptance_gates": {
+    "story_blueprint": "每条 fixture 必须包含 central_question、genre_beats 和 evidence_boundaries。",
+    "scene_breakdown": "每条 fixture 场景数不超过 5，且每场包含 location、plot、key_action、visual_prompt 和 camera_suggestion。",
+    "gears_segments": "每条 fixture 的 gears_segments 数量必须与 scene_breakdown 一致，并通过 source_scene_id 对齐。",
+    "seedance_prompt": "Seedance prompt 生成不得混入质量报告、来源说明、审稿字段和内部检测词。"
+  }
+}

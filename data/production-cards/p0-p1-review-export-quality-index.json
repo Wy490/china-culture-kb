@@ -1,0 +1,695 @@
+{
+  "schema_version": "p0-p1-review-export-quality-index/v1",
+  "updated_at": "2026-07-10",
+  "status": "quality_index_pending_human_review",
+  "scope": "Iteration 11：为 P0/P1 审稿导出文件补审稿核对清单、P0 扩展质量规则、导出包总览和人工审稿批次索引。",
+  "source_export_package_file": "data/production-cards/p0-p1-review-export-package.json",
+  "source_evidence_file": "data/production-cards/p0-p1-source-evidence-and-writeback-drafts.json",
+  "source_review_queue_file": "data/production-cards/p0-p1-review-and-writeback-queue.json",
+  "export_root": "docs/production-cards/review-exports/20260710",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "manual_patch_required": true,
+    "current_layer": "review_quality_index_only",
+    "exported_markdown_is_formal_writeback": false,
+    "quality_index_is_formal_writeback": false
+  },
+  "counts": {
+    "markdown_export_count": 16,
+    "markdown_checklist_count": 16,
+    "review_batch_count": 4,
+    "checklist_item_count": 6,
+    "p0_extended_quality_rule_count": 4,
+    "p0_repair_suggestion_count": 14,
+    "quality_sample_expectation_count": 4
+  },
+  "review_package_overview": {
+    "batch_date": "2026-07-10",
+    "package_status": "pending_human_review",
+    "risk_mix": {
+      "p0": 4,
+      "p1": 12
+    },
+    "review_order": [
+      "先审 P0 创伤历史和医疗伦理边界。",
+      "再审 P1 历史事件、民族社区、非遗流程和纪录片现场边界。",
+      "最后只把通过审稿的可复用字段转入人工写回草案。"
+    ],
+    "human_review_minimum_output": [
+      "来源目录或待补证来源线索。",
+      "事实边界表：已核事实、待核事项、可影视化表达、禁止断言。",
+      "授权或同意记录：场地、肖像、声音、曲词曲谱、社区、机构或档案复制件。",
+      "写回范围判断：哪些可进入知识库候选写回，哪些只能留在生产素材层。",
+      "P0 项必须额外给出专项安全检查结论。"
+    ],
+    "promotion_blockers": [
+      "没有来源目录或来源线索。",
+      "没有授权或同意判断。",
+      "把虚构剧情、对白、分镜、视频提示词当作知识库事实。",
+      "P0 创伤历史出现暴力再现、猎奇或虚构证词冒充。",
+      "P0 医疗文化出现疗效承诺、药方剂量、诊疗教程或患者隐私。"
+    ]
+  },
+  "checklist_schema": [
+    {
+      "checklist_item_id": "source-bibliography-filled",
+      "label": "来源目录已补齐",
+      "applies_to": [
+        "p0",
+        "p1"
+      ],
+      "required": true,
+      "pass_condition": "至少补入官方、机构、档案、项目页或明确待补证来源线索。"
+    },
+    {
+      "checklist_item_id": "fact-boundary-table-reviewed",
+      "label": "事实边界表已复核",
+      "applies_to": [
+        "p0",
+        "p1"
+      ],
+      "required": true,
+      "pass_condition": "区分已核事实、待核事项、可影视化表达和禁止断言。"
+    },
+    {
+      "checklist_item_id": "authorization-consent-confirmed",
+      "label": "授权或同意已确认",
+      "applies_to": [
+        "p0",
+        "p1"
+      ],
+      "required": true,
+      "pass_condition": "记录场地、肖像、声音、曲词曲谱、社区、机构或档案材料授权状态。"
+    },
+    {
+      "checklist_item_id": "writeback-scope-limited",
+      "label": "写回范围仅限可复用字段",
+      "applies_to": [
+        "p0",
+        "p1"
+      ],
+      "required": true,
+      "pass_condition": "仅允许来源、边界、授权缺口、禁用断言和生产素材摘要进入候选写回。"
+    },
+    {
+      "checklist_item_id": "generated-material-excluded",
+      "label": "生成故事、分镜、对白、视频提示词已排除",
+      "applies_to": [
+        "p0",
+        "p1"
+      ],
+      "required": true,
+      "pass_condition": "导出内容不包含项目生成正文、分镜、对白、镜头提示词或虚构剧情。"
+    },
+    {
+      "checklist_item_id": "p0-special-rule-pass",
+      "label": "P0 专项安全检查通过",
+      "applies_to": [
+        "p0"
+      ],
+      "required": true,
+      "pass_condition": "创伤历史、医疗伦理和隐私题材必须通过扩展 P0 质量规则或完成修复。"
+    }
+  ],
+  "markdown_review_checklists": [
+    {
+      "writeback_template_id": "writeback-template-p0-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "risk_tier": "p0",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p0-001.md",
+      "evidence_package_id": "evidence-p0-001",
+      "review_item_id": "review-p0-001",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded",
+        "p0-special-rule-pass"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-002",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "risk_tier": "p0",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p0-002.md",
+      "evidence_package_id": "evidence-p0-002",
+      "review_item_id": "review-p0-002",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded",
+        "p0-special-rule-pass"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-003",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "risk_tier": "p0",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p0-003.md",
+      "evidence_package_id": "evidence-p0-003",
+      "review_item_id": "review-p0-003",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded",
+        "p0-special-rule-pass"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-004",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "risk_tier": "p0",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p0-004.md",
+      "evidence_package_id": "evidence-p0-004",
+      "review_item_id": "review-p0-004",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded",
+        "p0-special-rule-pass"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-001",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-001.md",
+      "evidence_package_id": "evidence-p1-001",
+      "review_item_id": "review-p1-001",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-002",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-002.md",
+      "evidence_package_id": "evidence-p1-002",
+      "review_item_id": "review-p1-002",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-003.md",
+      "evidence_package_id": "evidence-p1-003",
+      "review_item_id": "review-p1-003",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-004",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-004.md",
+      "evidence_package_id": "evidence-p1-004",
+      "review_item_id": "review-p1-004",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-005",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-005.md",
+      "evidence_package_id": "evidence-p1-005",
+      "review_item_id": "review-p1-005",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-006.md",
+      "evidence_package_id": "evidence-p1-006",
+      "review_item_id": "review-p1-006",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-007",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-007.md",
+      "evidence_package_id": "evidence-p1-007",
+      "review_item_id": "review-p1-007",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-008",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-008.md",
+      "evidence_package_id": "evidence-p1-008",
+      "review_item_id": "review-p1-008",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-009",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-009.md",
+      "evidence_package_id": "evidence-p1-009",
+      "review_item_id": "review-p1-009",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-010",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-010.md",
+      "evidence_package_id": "evidence-p1-010",
+      "review_item_id": "review-p1-010",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-011",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-011.md",
+      "evidence_package_id": "evidence-p1-011",
+      "review_item_id": "review-p1-011",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-012",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "risk_tier": "p1",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-012.md",
+      "evidence_package_id": "evidence-p1-012",
+      "review_item_id": "review-p1-012",
+      "checklist_status": "pending_human_review",
+      "checklist_item_ids": [
+        "source-bibliography-filled",
+        "fact-boundary-table-reviewed",
+        "authorization-consent-confirmed",
+        "writeback-scope-limited",
+        "generated-material-excluded"
+      ]
+    }
+  ],
+  "review_batches": [
+    {
+      "batch_id": "batch-p0-sensitive-boundaries",
+      "priority": 1,
+      "risk_tier": "p0",
+      "status": "pending_human_review",
+      "review_focus": [
+        "创伤历史表达边界",
+        "医疗伦理和患者隐私",
+        "来源、授权和禁用断言硬门槛"
+      ],
+      "writeback_template_ids": [
+        "writeback-template-p0-001",
+        "writeback-template-p0-002",
+        "writeback-template-p0-003",
+        "writeback-template-p0-004"
+      ],
+      "card_ids": [
+        "ai-comic-golden-nanjing-massacre-memory-evidence",
+        "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+        "documentary-golden-nanjing-massacre-memory-site",
+        "documentary-golden-xiangxi-miao-medicine-archive"
+      ],
+      "completion_gates": [
+        "all_checklist_items_resolved",
+        "p0_quality_rules_pass_or_repaired",
+        "source_or_authorization_evidence_attached",
+        "no_direct_writeback_to_province_markdown"
+      ]
+    },
+    {
+      "batch_id": "batch-p1-ai-comic-history-and-community",
+      "priority": 2,
+      "risk_tier": "p1",
+      "status": "pending_human_review",
+      "review_focus": [
+        "AI 漫剧史实和虚构分层",
+        "民族社区公开/非公开边界",
+        "角色设定不反写为知识库事实"
+      ],
+      "writeback_template_ids": [
+        "writeback-template-p1-001",
+        "writeback-template-p1-002",
+        "writeback-template-p1-003",
+        "writeback-template-p1-004",
+        "writeback-template-p1-005"
+      ],
+      "card_ids": [
+        "ai-comic-golden-pingjiang-uprising-tianyue-night",
+        "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+        "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+        "ai-comic-golden-tujia-hand-waving-dance-circle",
+        "ai-comic-golden-wuchang-uprising-one-hour"
+      ],
+      "completion_gates": [
+        "all_checklist_items_resolved",
+        "source_or_authorization_evidence_attached",
+        "no_direct_writeback_to_province_markdown"
+      ]
+    },
+    {
+      "batch_id": "batch-p1-heritage-consent-and-process",
+      "priority": 3,
+      "risk_tier": "p1",
+      "status": "pending_human_review",
+      "review_focus": [
+        "非遗流程、材料和动作边界",
+        "社区、表演者、声音和曲词曲谱授权",
+        "公开展演不替代全部传统"
+      ],
+      "writeback_template_ids": [
+        "writeback-template-p1-006",
+        "writeback-template-p1-007",
+        "writeback-template-p1-008"
+      ],
+      "card_ids": [
+        "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+        "heritage-promo-golden-tujia-hand-waving-ritual",
+        "heritage-promo-golden-sangzhi-folk-song-field-recording"
+      ],
+      "completion_gates": [
+        "all_checklist_items_resolved",
+        "source_or_authorization_evidence_attached",
+        "no_direct_writeback_to_province_markdown"
+      ]
+    },
+    {
+      "batch_id": "batch-p1-documentary-sites-and-archives",
+      "priority": 4,
+      "risk_tier": "p1",
+      "status": "pending_human_review",
+      "review_focus": [
+        "纪录片现实现场和来源线索",
+        "旧址、展陈、档案复制件和采访授权",
+        "再现镜头不替代事实证据"
+      ],
+      "writeback_template_ids": [
+        "writeback-template-p1-009",
+        "writeback-template-p1-010",
+        "writeback-template-p1-011",
+        "writeback-template-p1-012"
+      ],
+      "card_ids": [
+        "documentary-golden-wuchang-uprising-red-building",
+        "documentary-golden-pingjiang-uprising-site",
+        "documentary-golden-sangzhi-folk-song-field",
+        "documentary-golden-tujia-hand-waving-site"
+      ],
+      "completion_gates": [
+        "all_checklist_items_resolved",
+        "source_or_authorization_evidence_attached",
+        "no_direct_writeback_to_province_markdown"
+      ]
+    }
+  ],
+  "p0_extended_quality_rules": [
+    {
+      "rule_id": "p0-trauma-history-no-reenactment-expanded",
+      "extends_rule_id": "p0-trauma-history-no-reenactment",
+      "risk_family": "historical_trauma",
+      "reject_patterns": [
+        "血腥",
+        "施暴",
+        "刺激性暴力",
+        "虚构人物说出类似真实证词",
+        "虚构证词",
+        "猎奇",
+        "惨烈镜头",
+        "受害者临终独白",
+        "复仇爽感",
+        "煽动仇恨"
+      ],
+      "caution_patterns": [
+        "受害过程",
+        "尸体特写",
+        "哭喊复现",
+        "儿童受害者视角"
+      ],
+      "allow_requires_any": [
+        "名单墙",
+        "白花",
+        "安全区地图",
+        "审判档案",
+        "纪念馆",
+        "国家公祭日",
+        "幸存者口述档案说明"
+      ],
+      "repair_suggestions": [
+        "改为证据物件、纪念空间和当代参观动作。",
+        "将虚构角色限定为当代讲解员、档案整理者或观众。",
+        "用来源链、名单、地图、档案盒和献花动作替代暴力再现。",
+        "补充不可声称事项，避免虚构证词冒充真实证据。"
+      ],
+      "linked_sample_ids": [
+        "p0-trauma-reject-gore-reenactment",
+        "p0-trauma-pass-evidence-led"
+      ]
+    },
+    {
+      "rule_id": "p0-trauma-history-no-false-testimony",
+      "extends_rule_id": "p0-trauma-history-no-reenactment",
+      "risk_family": "historical_trauma",
+      "reject_patterns": [
+        "假托幸存者口述",
+        "虚构证词",
+        "编造档案编号",
+        "替真实人物写遗言",
+        "未经来源的第一人称回忆",
+        "受害者临终独白"
+      ],
+      "caution_patterns": [
+        "第一人称回忆",
+        "真实姓名独白",
+        "档案编号",
+        "见证人口述"
+      ],
+      "allow_requires_any": [
+        "来源出处",
+        "档案来源",
+        "纪念馆",
+        "审判档案",
+        "安全区地图"
+      ],
+      "repair_suggestions": [
+        "把第一人称证词改为旁白概述或来源说明。",
+        "没有来源的真实姓名、档案编号和遗言一律删除。",
+        "保留可核验地点、展陈和纪念动作，不新增证词。"
+      ],
+      "linked_sample_ids": [
+        "p0-trauma-reject-gore-reenactment"
+      ]
+    },
+    {
+      "rule_id": "p0-medical-heritage-no-instruction-expanded",
+      "extends_rule_id": "p0-medical-heritage-no-instruction",
+      "risk_family": "medical_heritage",
+      "reject_patterns": [
+        "药方比例",
+        "使用方法",
+        "诊疗操作",
+        "照做",
+        "疗效",
+        "剂量",
+        "包治",
+        "根治",
+        "偏方",
+        "患者可自行使用"
+      ],
+      "caution_patterns": [
+        "药材配伍",
+        "治疗过程",
+        "具体症状",
+        "临床经验"
+      ],
+      "allow_requires_any": [
+        "公开展板",
+        "标本柜",
+        "档案员",
+        "机构外部空间",
+        "不构成医疗建议",
+        "文化记录"
+      ],
+      "repair_suggestions": [
+        "删除比例、剂量、步骤和照做措辞。",
+        "把镜头改为公开展板、标本柜、档案盒、机构外部空间或采访前置授权。",
+        "旁白明确为文化记录，不构成医疗建议。",
+        "把诊疗效果表述改为待核来源或保护项目背景。"
+      ],
+      "linked_sample_ids": [
+        "p0-medical-reject-instruction",
+        "p0-medical-pass-cultural-record"
+      ]
+    },
+    {
+      "rule_id": "p0-medical-heritage-privacy-boundary",
+      "extends_rule_id": "p0-medical-heritage-no-instruction",
+      "risk_family": "medical_privacy",
+      "reject_patterns": [
+        "患者姓名",
+        "患者信息",
+        "病历",
+        "诊疗现场",
+        "面部特写",
+        "隐私部位",
+        "未经同意采访"
+      ],
+      "caution_patterns": [
+        "诊室",
+        "病案",
+        "治疗对象",
+        "个人症状"
+      ],
+      "allow_requires_any": [
+        "机构授权",
+        "采访授权",
+        "匿名处理",
+        "公开展板",
+        "非诊疗空间"
+      ],
+      "repair_suggestions": [
+        "删除患者可识别信息和诊疗现场描述。",
+        "改拍非诊疗空间、公开展板、器具陈列或机构外景。",
+        "补充机构授权、采访授权和匿名处理记录。"
+      ],
+      "linked_sample_ids": [
+        "p0-medical-reject-instruction",
+        "p0-medical-pass-cultural-record"
+      ]
+    }
+  ],
+  "p0_quality_sample_expectations": [
+    {
+      "sample_id": "p0-trauma-reject-gore-reenactment",
+      "rule_id": "p0-trauma-history-no-reenactment-expanded",
+      "expected_decision": "reject"
+    },
+    {
+      "sample_id": "p0-trauma-pass-evidence-led",
+      "rule_id": "p0-trauma-history-no-reenactment-expanded",
+      "expected_decision": "allow_for_human_review"
+    },
+    {
+      "sample_id": "p0-medical-reject-instruction",
+      "rule_id": "p0-medical-heritage-no-instruction-expanded",
+      "expected_decision": "reject"
+    },
+    {
+      "sample_id": "p0-medical-pass-cultural-record",
+      "rule_id": "p0-medical-heritage-no-instruction-expanded",
+      "expected_decision": "allow_for_human_review"
+    }
+  ],
+  "iteration_11_exit_gates": [
+    {
+      "gate_id": "markdown-checklists-created",
+      "status": "met_as_review_checklists",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "p0-quality-rules-expanded",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "review-batch-index-created",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

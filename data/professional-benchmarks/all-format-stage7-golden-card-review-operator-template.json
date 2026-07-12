@@ -1,0 +1,14 @@
+{
+  "schema_version": "story-agent-stage7-golden-card-review-intake/v1",
+  "review_id": "",
+  "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+  "video_type": "ai_comic_drama",
+  "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+  "source_card_file_sha256": "36698944d6203313c207f90f92ce3d7f51357aa9f105adfad0af04228e494425",
+  "card_payload_sha256": "31908393d5834859cc512384edbf87915d2a952497353bd3a7b26a645d123309",
+  "overall_decision": "pending_review",
+  "reviews": [],
+  "human_approved": false,
+  "golden_card_promoted": false,
+  "professional_passed": false
+}

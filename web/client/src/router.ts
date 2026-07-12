@@ -67,6 +67,91 @@ export const router = createRouter({
       component: () => import('./views/StoryStudio.vue'),
     },
     {
+      path: '/story/stage6-revisions',
+      name: 'Stage6RevisionWorkspace',
+      component: () => import('./views/Stage6RevisionWorkspace.vue'),
+    },
+    {
+      path: '/story/stage6-intake',
+      name: 'Stage6OperatorIntake',
+      component: () => import('./views/Stage6OperatorIntake.vue'),
+    },
+    {
+      path: '/story/stage6-preflight',
+      name: 'Stage6RevisionPreflight',
+      component: () => import('./views/Stage6RevisionPreflight.vue'),
+    },
+    {
+      path: '/story/stage6-exit-audit',
+      name: 'Stage6ExitAudit',
+      component: () => import('./views/Stage6ExitAudit.vue'),
+    },
+    {
+      path: '/story/stage6-package-inspector',
+      name: 'Stage6ProfessionalPackageInspector',
+      component: () => import('./views/Stage6ProfessionalPackageInspector.vue'),
+    },
+    {
+      path: '/story/stage6-operations',
+      name: 'Stage6OperatorControlTower',
+      component: () => import('./views/Stage6OperatorControlTower.vue'),
+    },
+    {
+      path: '/story/stage6-table-read-inspector',
+      name: 'Stage6TableReadEvidenceInspector',
+      component: () => import('./views/Stage6TableReadEvidenceInspector.vue'),
+    },
+    {
+      path: '/story/stage6-exit-review-signature',
+      name: 'Stage6ExitReviewSignatureInspector',
+      component: () => import('./views/Stage6ExitReviewSignatureInspector.vue'),
+    },
+    {
+      path: '/story/stage7-golden-card-review',
+      name: 'Stage7GoldenCardReviewIntake',
+      component: () => import('./views/Stage7GoldenCardReviewIntake.vue'),
+    },
+    {
+      path: '/story/stage7-golden-card-expansion',
+      name: 'Stage7GoldenCardCandidateExpansion',
+      component: () => import('./views/Stage7GoldenCardCandidateExpansion.vue'),
+    },
+    {
+      path: '/story/stage7-golden-card-signature',
+      name: 'Stage7GoldenCardReviewSignature',
+      component: () => import('./views/Stage7GoldenCardReviewSignature.vue'),
+    },
+    {
+      path: '/story/stage7-operations',
+      name: 'Stage7MaterialOperations',
+      component: () => import('./views/Stage7MaterialOperations.vue'),
+    },
+    {
+      path: '/story/stage8-blind-review-intake',
+      name: 'Stage8BlindReviewIntake',
+      component: () => import('./views/Stage8BlindReviewIntake.vue'),
+    },
+    {
+      path: '/story/stage8-blind-review-signature',
+      name: 'Stage8BlindReviewSignature',
+      component: () => import('./views/Stage8BlindReviewSignature.vue'),
+    },
+    {
+      path: '/story/stage8-finalization-preflight',
+      name: 'Stage8FinalizationPreflight',
+      component: () => import('./views/Stage8FinalizationPreflight.vue'),
+    },
+    {
+      path: '/story/stage8-durable-release-import',
+      name: 'Stage8DurableReleaseImport',
+      component: () => import('./views/Stage8DurableReleaseImport.vue'),
+    },
+    {
+      path: '/story/stage8-operations',
+      name: 'Stage8Operations',
+      component: () => import('./views/Stage8Operations.vue'),
+    },
+    {
       path: '/ai-comic-series/new',
       name: 'AiComicSeriesStudio',
       component: () => import('./views/AiComicSeriesStudio.vue'),

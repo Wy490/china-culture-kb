@@ -397,12 +397,15 @@ export function appendDomainPackEntries(
     entry?: EntryDetail;
     primaryEntries?: KnowledgePackEntry[];
     limit?: number;
+    includeKnowledgePackContext?: boolean;
   },
 ): KnowledgePackEntry[] {
   const generated = buildDomainPackEntries({
     query: context.query,
     entry: context.entry,
-    knowledgePackEntries: [...(context.primaryEntries ?? []), ...supportingEntries],
+    knowledgePackEntries: context.includeKnowledgePackContext === false
+      ? []
+      : [...(context.primaryEntries ?? []), ...supportingEntries],
     limit: context.limit,
   });
   const existingNames = new Set(supportingEntries.map(entry => entry.entry_name));

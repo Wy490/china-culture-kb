@@ -97,6 +97,51 @@ function makeStory(): StoryGenerateResult {
 }
 
 describe('quality-workflow-service', () => {
+  it('fully covers short focus nodes in a thematic historical outline', () => {
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      video_type: 'historical_drama',
+      original_user_query: '毛泽东少年时期到革命觉醒的故事，重点表现湖南乡土、求学、新民学会、农民运动、理想形成。',
+      full_text: '毛泽东从韶山乡土出发求学，参与新民学会，走进农民运动，革命觉醒与理想形成都落实为行动。',
+      scene_breakdown: [
+        {
+          ...makeStory().scene_breakdown[0],
+          title: '从韶山到求学',
+          plot: '少年毛泽东从湖南韶山乡土出发，选择离乡求学。',
+          key_action: '收拾行囊离开韶山',
+          characters: ['毛泽东'],
+        },
+        {
+          ...makeStory().scene_breakdown[1],
+          title: '新民学会',
+          plot: '毛泽东与同伴组织新民学会，把个人求索变成社会行动。',
+          key_action: '修改学会章程',
+          characters: ['毛泽东', '蔡和森'],
+        },
+        {
+          ...makeStory().scene_breakdown[2],
+          title: '农民运动与理想形成',
+          plot: '毛泽东走进农民运动，在人民实践中完成革命觉醒与理想形成。',
+          key_action: '整理农民运动调查笔记',
+          characters: ['毛泽东', '农民协会骨干'],
+        },
+      ],
+    };
+
+    const report = enrichStoryQualityReport({ story, qualityReport: makeBaseReport() });
+
+    expect(report.outline_coverage_report?.coverage_score).toBe(100);
+    expect(report.outline_coverage_report?.nodes.map(node => [node.text, node.status])).toEqual([
+      ['毛泽东少年时期到革命觉醒', 'covered'],
+      ['湖南乡土', 'covered'],
+      ['求学', 'covered'],
+      ['新民学会', 'covered'],
+      ['农民运动', 'covered'],
+      ['理想形成', 'covered'],
+    ]);
+    expect(report.issues.some(issue => issue.includes('大纲覆盖不足'))).toBe(false);
+  });
+
   it('covers instruction-style AI comic outlines across multiple scenes', () => {
     const story: StoryGenerateResult = {
       ...makeStory(),

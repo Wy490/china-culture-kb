@@ -1,0 +1,17 @@
+{
+  "schema_version":"heritage-promo-professional-benchmark-specs/v1","created_at":"2026-07-11T00:00:00.000+08:00","video_type":"heritage_promo",
+  "policy":{"real_model_output_required":true,"heritage_domain_and_authorization_review_required":true,"fixture_or_pending_golden_card_counts_as_professional_pass":false},
+  "summary":{"fixed_project_spec_count":5,"fixed_real_model_project_count":0,"fixed_real_model_project_pass_count":0,"failure_fixture_count":3,"human_blind_review_pass_count":0},
+  "projects":[
+    {"benchmark_id":"heritage-001-sixian","source_entry":"常德丝弦——湘北水乡的扬琴说唱","golden_card_id":"heritage-promo-golden-changde-sixian-yangqin","process_focus":"调弦、击弦、说唱配合","status":"awaiting_real_model_run","professional_passed":false},
+    {"benchmark_id":"heritage-002-baling-opera","source_entry":"岳阳巴陵戏——洞庭湖畔的古戏曲遗存","golden_card_id":"heritage-promo-golden-yueyang-baling-opera-three-voices","process_focus":"三种声腔与后台准备","status":"awaiting_real_model_run","professional_passed":false},
+    {"benchmark_id":"heritage-003-zhanggu","source_entry":"桑植白族仗鼓舞——700年前迁徙白族的武舞合一","golden_card_id":"heritage-promo-golden-sangzhi-baizu-zhanggu-process","process_focus":"系鼓、持鼓、步法与鼓点","status":"awaiting_real_model_run","professional_passed":false},
+    {"benchmark_id":"heritage-004-hand-waving","source_entry":"土家族摆手舞——湘西土家的集体仪式","golden_card_id":"heritage-promo-golden-tujia-hand-waving-ritual","process_focus":"队列、手势、节奏与社区参与","status":"awaiting_real_model_run","professional_passed":false},
+    {"benchmark_id":"heritage-005-huagu-opera","source_entry":"湖南花鼓戏——湖南人的戏","golden_card_id":"heritage-promo-golden-hunan-huagu-opera-three-small","process_focus":"化妆、服装、锣鼓与三小表演","status":"awaiting_real_model_run","professional_passed":false}
+  ],
+  "failure_fixtures":[
+    {"fixture_id":"heritage-failure-001-craftsmanship-slogan","fixture_kind":"simulation_failure_fixture","expected_hard_gate_ids":["material_tool_missing","process_missing"],"professional_passed":false},
+    {"fixture_id":"heritage-failure-002-no-hands-or-relationship","fixture_kind":"simulation_failure_fixture","expected_hard_gate_ids":["hand_action_missing","practitioner_relationship_missing","transmission_pressure_missing"],"professional_passed":false},
+    {"fixture_id":"heritage-failure-003-no-consent-or-hazard","fixture_kind":"simulation_failure_fixture","expected_hard_gate_ids":["authorization_missing","hazard_boundary_missing"],"professional_passed":false}
+  ]
+}

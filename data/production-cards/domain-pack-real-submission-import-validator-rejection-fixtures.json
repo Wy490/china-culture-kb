@@ -1,0 +1,292 @@
+{
+  "schema_version": "domain-pack-real-submission-import-validator-rejection-fixtures/v1",
+  "updated_at": "2026-07-10",
+  "status": "local_import_validator_fixtures_created_real_import_still_zero",
+  "scope": "Iteration 26：为真实提交导入信封校验器建立 2 个本地格式通过场景和 4 个模拟数据拒绝场景；本文件只用于确定性校验回归，所有场景均为 fixture，不代表真实外部提交、真实身份、真实附件、真实签署、正式 Patch 或正式知识库写入。",
+  "source_import_contract_file": "data/production-cards/domain-pack-real-submission-import-contract-and-external-record-resolution.json",
+  "validator_module_file": "mcp-server/src/lib/real-submission-import-validator.ts",
+  "rejection_report_markdown_file": "docs/production-cards/domain-pack-real-submission-import-validator-rejection-report-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "local_format_pass_is_real_import": false,
+    "rejection_fixture_is_real_submission": false,
+    "validator_runs_external_resolvers": false,
+    "validator_result_is_signature": false,
+    "current_layer": "deterministic_import_envelope_validation_and_rejection_fixture_only"
+  },
+  "counts": {
+    "validator_scenario_count": 6,
+    "local_format_pass_scenario_count": 2,
+    "local_rejection_scenario_count": 4,
+    "covered_simulation_rejection_rule_count": 4,
+    "format_pass_unresolved_check_count_without_patch_request": 9,
+    "format_pass_unresolved_check_count_with_patch_request": 10,
+    "real_submission_import_count": 0,
+    "external_resolver_run_count": 0,
+    "real_signature_count": 0,
+    "formal_patch_count": 0,
+    "machine_gate_count": 9
+  },
+  "base_format_valid_envelope": {
+    "import_envelope_id": "real-import-envelope-local-pass-001",
+    "import_contract_version": "domain-pack-real-submission-import/v1",
+    "received_at": "2026-07-10T17:45:00+08:00",
+    "source_system": "external-review-system",
+    "source_record_id": "external-review-record-001",
+    "idempotency_key": "external-review-system:external-review-record-001:v1",
+    "payload_digest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "source_handoff_package_id": "human-handoff-package-001",
+    "reviewer_intake_id": "real-reviewer-intake-001",
+    "candidate_id": "dp-craft-material-tool-process",
+    "reviewer_name_or_group": "外部工艺事实审稿组一",
+    "reviewer_identity_type": "accountable_group",
+    "reviewer_identity_record_reference": "external-identity-record-001",
+    "reviewer_role": "事实/工艺流程审稿负责人",
+    "assignment_or_followup_id": "dispatch-signature-001",
+    "review_decision": "approved",
+    "decision_reason": "本地格式回归输入：字段完整，仍等待外部身份、附件和签署记录解析。",
+    "evidence_package_id": "evidence-freeze-package-001",
+    "attachment_record_manifest": [
+      {
+        "slot_id": "source_bibliography_attachment",
+        "record_reference": "external-attachment-source-001"
+      },
+      {
+        "slot_id": "fact_boundary_table_attachment",
+        "record_reference": "external-attachment-fact-001"
+      },
+      {
+        "slot_id": "authorization_or_consent_attachment",
+        "record_reference": "external-attachment-auth-001"
+      },
+      {
+        "slot_id": "sample_validation_attachment",
+        "record_reference": "external-attachment-sample-001"
+      },
+      {
+        "slot_id": "reviewer_identity_and_role_attachment",
+        "record_reference": "external-attachment-identity-001"
+      },
+      {
+        "slot_id": "final_decision_record_attachment",
+        "record_reference": "external-attachment-decision-001"
+      }
+    ],
+    "signed_at": "2026-07-10T17:40:00+08:00",
+    "signature_record_reference": "external-signature-record-001",
+    "explicit_formal_patch_request": false,
+    "formal_patch_request_record_reference": "",
+    "submitter_attestation": {
+      "not_fixture": true,
+      "not_simulation": true,
+      "not_blank_template": true,
+      "not_auto_generated_signature": true,
+      "source_accuracy_confirmed": true
+    }
+  },
+  "validation_scenarios": [
+    {
+      "scenario_id": "validator-format-pass-external-resolution-required-001",
+      "scenario_kind": "local_format_pass_fixture",
+      "input_overrides": {},
+      "expected_status": "format_valid_external_resolution_required",
+      "expected_local_format_valid": true,
+      "expected_unresolved_external_check_count": 9,
+      "expected_rejection_reason_ids": [],
+      "expected_failed_validation_rule_ids": [],
+      "simulation_only": true,
+      "real_submission_imported": false
+    },
+    {
+      "scenario_id": "validator-format-pass-patch-request-external-resolution-required-001",
+      "scenario_kind": "local_format_pass_fixture",
+      "input_overrides": {
+        "import_envelope_id": "real-import-envelope-local-pass-002",
+        "source_record_id": "external-review-record-002",
+        "idempotency_key": "external-review-system:external-review-record-002:v1",
+        "payload_digest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "explicit_formal_patch_request": true,
+        "formal_patch_request_record_reference": "external-authorized-patch-request-001"
+      },
+      "expected_status": "format_valid_external_resolution_required",
+      "expected_local_format_valid": true,
+      "expected_unresolved_external_check_count": 10,
+      "expected_rejection_reason_ids": [],
+      "expected_failed_validation_rule_ids": [],
+      "simulation_only": true,
+      "real_submission_imported": false
+    },
+    {
+      "scenario_id": "validator-reject-fixture-identifier-001",
+      "scenario_kind": "local_rejection_fixture",
+      "input_overrides": {
+        "import_envelope_id": "submission-fixture-valid-craft-approved-001"
+      },
+      "expected_status": "rejected_local_validation",
+      "expected_local_format_valid": false,
+      "expected_unresolved_external_check_count": 0,
+      "expected_rejection_reason_ids": [
+        "reject-fixture-identifiers"
+      ],
+      "expected_failed_validation_rule_ids": [
+        "import-envelope-id-must-not-be-fixture"
+      ],
+      "simulation_only": true,
+      "real_submission_imported": false
+    },
+    {
+      "scenario_id": "validator-reject-simulation-reference-001",
+      "scenario_kind": "local_rejection_fixture",
+      "input_overrides": {
+        "signature_record_reference": "SIMULATION-SIGNATURE-REF-001"
+      },
+      "expected_status": "rejected_local_validation",
+      "expected_local_format_valid": false,
+      "expected_unresolved_external_check_count": 0,
+      "expected_rejection_reason_ids": [
+        "reject-simulation-record-references"
+      ],
+      "expected_failed_validation_rule_ids": [
+        "all-record-references-must-reject-simulation"
+      ],
+      "simulation_only": true,
+      "real_submission_imported": false
+    },
+    {
+      "scenario_id": "validator-reject-structural-placeholder-001",
+      "scenario_kind": "local_rejection_fixture",
+      "input_overrides": {
+        "reviewer_name_or_group": "结构校验占位 A"
+      },
+      "expected_status": "rejected_local_validation",
+      "expected_local_format_valid": false,
+      "expected_unresolved_external_check_count": 0,
+      "expected_rejection_reason_ids": [
+        "reject-structural-placeholder-values"
+      ],
+      "expected_failed_validation_rule_ids": [
+        "reviewer-identity-record-must-resolve"
+      ],
+      "simulation_only": true,
+      "real_submission_imported": false
+    },
+    {
+      "scenario_id": "validator-reject-simulation-metadata-001",
+      "scenario_kind": "local_rejection_fixture",
+      "input_overrides": {
+        "simulation_only": true
+      },
+      "expected_status": "rejected_local_validation",
+      "expected_local_format_valid": false,
+      "expected_unresolved_external_check_count": 0,
+      "expected_rejection_reason_ids": [
+        "reject-simulation-flags-and-fixture-metadata"
+      ],
+      "expected_failed_validation_rule_ids": [
+        "submitter-attestation-must-reject-template-data"
+      ],
+      "simulation_only": true,
+      "real_submission_imported": false
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "deterministic-import-validator-created",
+      "status": "met_as_local_validation_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "validator-scenarios-created",
+      "status": "met_as_fixture_only",
+      "target_count": 6,
+      "current_count": 6
+    },
+    {
+      "gate_id": "local-format-pass-scenarios-created",
+      "status": "met_as_external_resolution_required",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "simulation-rejection-scenarios-created",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "all-simulation-rejection-rules-covered",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "external-resolvers-not-run",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "real-submission-imports-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_26_exit_gates": [
+    {
+      "gate_id": "twenty-four-field-validator-implemented",
+      "status": "met_as_local_validation_only",
+      "target_count": 24,
+      "current_count": 24
+    },
+    {
+      "gate_id": "four-simulation-rejection-reports-covered",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "local-pass-distinguished-from-external-resolution",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "no-validator-result-claimed-as-signature",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-real-import-or-patch-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

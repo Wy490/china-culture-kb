@@ -1,0 +1,36 @@
+{
+  "schema_version": "story-agent-stage7-golden-card-candidate/v1",
+  "slot_id": "stage7-slot-character-benchmark-001-zhou-dunyi-choice",
+  "candidate_id": "stage7-golden-candidate-character-benchmark-001-zhou-dunyi-choice",
+  "video_type": "character_story",
+  "benchmark_id": "character-benchmark-001-zhou-dunyi-choice",
+  "source_entry": "周敦颐——理学开山鼻祖",
+  "benchmark_file": "data/professional-benchmarks/character-story-iteration3-benchmark-specs.json",
+  "benchmark_file_sha256": "8e3dba391de03206b8d515cad7989201114d0e5658bb2678870336e1e92fe8ce",
+  "benchmark_project_sha256": "a74ea3ac4a547fe92a96e964c1c2c1c4a7b70b691a3957f93c0b784a05a72cfd",
+  "profile_contract_sha256": "99a4f354e1245a3e63fc256a82ed1590a07fa2ca8ef1d19dfb83c4e7d6c36892",
+  "source_entry_confirmed": false,
+  "source_authorization_status": "pending_evidence",
+  "source_refs": [],
+  "material_fields": {
+    "characters": "",
+    "protagonist_arc": "",
+    "visual_anchor": "",
+    "source_boundary": "",
+    "forbidden_claims": ""
+  },
+  "visible_actions": [],
+  "evidence_boundaries": {
+    "verified_facts": [],
+    "plausible_dramatization": [],
+    "fictional_additions": [],
+    "unknowns": [],
+    "forbidden_claims": []
+  },
+  "candidate_status": "draft_pending_human_review",
+  "created_by": "human_operator",
+  "generated_by_model": false,
+  "human_approved": false,
+  "golden_card_promoted": false,
+  "professional_passed": false
+}

@@ -1,0 +1,46 @@
+{
+  "schema_version": "story-agent-stage7-golden-card-candidate-readiness/v1",
+  "updated_at": "2026-07-12T12:24:00.000Z",
+  "status": "60_template_slots_prepared_zero_authored_candidates",
+  "policy": {
+    "dry_run_only": true,
+    "slots_are_not_golden_cards": true,
+    "validated_candidates_are_not_persisted": true,
+    "candidate_ready_is_human_approval": false,
+    "benchmark_specs_are_not_real_model_outputs": true,
+    "fixture_or_template_counts_as_candidate": false,
+    "professional_pass_can_be_granted": false
+  },
+  "summary": {
+    "target_video_type_count": 15,
+    "already_covered_video_type_count": 3,
+    "missing_video_type_count": 12,
+    "planned_slot_count": 60,
+    "candidate_import_ready_slot_count": 0,
+    "authored_candidate_count": 0,
+    "persisted_candidate_count": 0,
+    "human_approved_card_count": 0,
+    "professional_pass_count": 0
+  },
+  "slot_sources": [
+    { "video_type": "character_story", "benchmark_file": "data/professional-benchmarks/character-story-iteration3-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "historical_drama", "benchmark_file": "data/professional-benchmarks/historical-drama-iteration4-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "legend_story", "benchmark_file": "data/professional-benchmarks/legend-story-iteration5-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "children_story", "benchmark_file": "data/professional-benchmarks/children-story-iteration6-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "culture_promo", "benchmark_file": "data/professional-benchmarks/culture-promo-stage3-iteration1-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "city_brand_promo", "benchmark_file": "data/professional-benchmarks/city-brand-promo-stage3-iteration3-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "social_short", "benchmark_file": "data/professional-benchmarks/social-short-stage3-iteration4-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "explainer_video", "benchmark_file": "data/professional-benchmarks/explainer-video-stage4-iteration2-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "lecture_video", "benchmark_file": "data/professional-benchmarks/lecture-video-stage4-iteration3-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "education_training", "benchmark_file": "data/professional-benchmarks/education-training-stage4-iteration4-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "scene_short", "benchmark_file": "data/professional-benchmarks/scene-short-stage5-iteration1-benchmark-specs.json", "slot_count": 5 },
+    { "video_type": "landscape_mood", "benchmark_file": "data/professional-benchmarks/landscape-mood-stage5-iteration2-benchmark-specs.json", "slot_count": 5 }
+  ],
+  "credit": {
+    "stage6_exit_completed": false,
+    "stage7_real_candidate_authoring_started": false,
+    "golden_candidate_credit_granted": false,
+    "human_review_credit_granted": false,
+    "professional_progress_delta": 0
+  }
+}

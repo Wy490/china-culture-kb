@@ -1,0 +1,121 @@
+{
+  "schema_version": "knowledge-base-content-supply-progress/v1",
+  "generated_at": "2026-07-12T18:43:38.852Z",
+  "timezone": "Asia/Shanghai",
+  "phase": "Phase 0 complete / M1 batch 1 complete",
+  "progress_scope": "content_supply_only",
+  "governance_progress_excluded": true,
+  "baseline": {
+    "audit_generated_at": "2026-07-12T18:33:26.863Z",
+    "province_files": 34,
+    "formal_entries": 169,
+    "sources": 596,
+    "regions_with_entries": 31,
+    "regions_at_least_two_entries": 14,
+    "regions_at_least_five_entries": 1,
+    "zero_entry_regions": [
+      "香港",
+      "澳门",
+      "台湾"
+    ],
+    "one_entry_region_count": 17,
+    "hunan_entries": 124,
+    "hunan_share_percent": 73.37
+  },
+  "current": {
+    "audit_generated_at": "2026-07-12T18:43:38.852Z",
+    "province_files": 34,
+    "formal_entries": 174,
+    "sources": 612,
+    "regions_with_entries": 34,
+    "regions_at_least_two_entries": 16,
+    "regions_at_least_five_entries": 1,
+    "zero_entry_regions": [],
+    "one_entry_region_count": 18,
+    "hunan_entries": 124,
+    "hunan_share_percent": 71.26,
+    "entries_missing_sources": 0,
+    "entries_missing_related_locations": 0,
+    "entries_missing_verification_method": 0,
+    "entries_with_machine_metadata": 174,
+    "entries_with_asset_split": 174
+  },
+  "m1": {
+    "target_formal_entries": 192,
+    "planned_new_entries": 23,
+    "formal_entries_added": 5,
+    "formal_entries_remaining": 18,
+    "batch_progress_percent": 21.74,
+    "candidate_plan_count": 23,
+    "candidate_plan_counts_as_formal": false,
+    "source_qualified_new_entries": 5,
+    "production_card_score_gte_90": 5,
+    "production_card_score_100": 5,
+    "fixed_retrieval_queries_passed": 5,
+    "fixed_retrieval_queries_total": 5,
+    "next_batch": [
+      "歌仔戏",
+      "川江号子",
+      "泉州提线木偶戏",
+      "壮族织锦技艺",
+      "黎族传统纺染织绣技艺"
+    ]
+  },
+  "batch_1_entries": [
+    {
+      "province": "香港",
+      "name": "中秋节——大坑舞火龙",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "混合"
+    },
+    {
+      "province": "香港",
+      "name": "港式奶茶制作技艺",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "澳门",
+      "name": "鱼行醉龙节",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "混合"
+    },
+    {
+      "province": "澳门",
+      "name": "土生葡人美食烹饪技艺",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "台湾",
+      "name": "大溪木艺——木器产业、分工与手工具传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "excluded_from_completion": {
+    "fixtures": 0,
+    "simulations": 0,
+    "fallbacks": 0,
+    "prepared_items": 0,
+    "machine_scores_as_human_approval": 0,
+    "golden_cards_awarded": 0,
+    "real_human_review_passes_claimed": 0,
+    "generated_stories_written_back": 0
+  },
+  "verification": {
+    "kb_lint": "passed: 34 files, 174 entries, 174 enriched entries",
+    "production_audit": "passed: 174 entries, 0 missing verification method, 174 asset splits",
+    "credibility_normalization": "dry-run: 34 files scanned, 0 files changed, 0 entries changed",
+    "machine_metadata_enrichment": "dry-run: 34 files scanned, 0 files changed, 0 fields added",
+    "asset_split_suggestions": "174 entries scanned, 0 entries without asset split, 0 suggestions",
+    "production_upgrade_plan": "generated: 13 batches, 398 actions; advisory only",
+    "fixed_retrieval": "5/5 new-entry queries returned the intended entry at top 1",
+    "git_diff_check": "passed"
+  }
+}

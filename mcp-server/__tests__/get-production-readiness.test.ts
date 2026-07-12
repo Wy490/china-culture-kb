@@ -208,6 +208,18 @@ beforeEach(() => {
         notes: [],
         versions: [],
         updated_at: '2026-06-22T02:01:00.000Z',
+      }, {
+        production_id: 'ep1-shot2-test-failure',
+        episode_no: 1,
+        episode_title: '第一集',
+        shot_id: 'shot-2',
+        status: 'failed',
+        provider_job_id: 'seedance-job-failed',
+        failure_reason: '人物手部变形',
+        retry_count: 1,
+        notes: ['测试标记失败'],
+        versions: [],
+        updated_at: '2026-06-22T02:01:30.000Z',
       }],
     },
     seedance_review_ledger: {
@@ -377,6 +389,63 @@ describe('kb_get_production_readiness', () => {
     expect(result!.markdown).toContain('Latest Automation Run');
   });
 
+  it('keeps local acceptance artifacts out of external GEARS readiness', async () => {
+    const projectPath = path.join(tmpDir, 'web', 'generated', 'projects', projectId, 'project.json');
+    const project = JSON.parse(fs.readFileSync(projectPath, 'utf-8')) as Record<string, any>;
+    const localAcceptanceUrl = `https://local.story-agent.invalid/gears-acceptance/${projectId}/shot-1.mp4`;
+    project.seedance_shot_ledger.items = [{
+      production_id: 'shot-1',
+      shot_id: 'shot-1',
+      status: 'ready',
+      video_url: localAcceptanceUrl,
+      retry_count: 0,
+      notes: ['local acceptance artifact; not external provider output'],
+      versions: [],
+      updated_at: '2026-06-22T01:03:00.000Z',
+    }];
+    project.gears_job_ledger.items = [{
+      gears_job_id: 'local-gears-seedance_video-shot-1-1',
+      job_type: 'seedance_video',
+      source_unit_id: 'shot-1',
+      status: 'ready',
+      artifact_urls: [localAcceptanceUrl],
+      artifacts: [{
+        kind: 'video',
+        url: localAcceptanceUrl,
+        role: 'local_acceptance',
+        metadata: {
+          acceptance_scope: 'local',
+          not_external_provider_output: true,
+        },
+      }],
+      submitted_at: '2026-06-22T01:01:00.000Z',
+      updated_at: '2026-06-22T01:03:00.000Z',
+    }];
+    fs.writeFileSync(projectPath, JSON.stringify(project, null, 2));
+
+    const result = await getProductionReadiness({ project_id: projectId });
+    const gearsLane = result?.lanes.find(lane => lane.key === 'gears_execution');
+
+    expect(result?.summary.external_ready_gears_job_count).toBe(0);
+    expect(result?.summary.local_acceptance_ready_gears_job_count).toBe(1);
+    expect(result?.summary.ready_without_external_gears_artifact_count).toBe(1);
+    expect(gearsLane?.status).toBe('needs_action');
+    expect(gearsLane?.score).toBe(65);
+    expect(result?.issues).toContainEqual(expect.objectContaining({
+      issue_id: 'gears-local-acceptance-only',
+      severity: 'info',
+    }));
+    expect(result?.next_actions.map(action => action.action_key)).toContain('export_gears_external_callback_handoff');
+    expect(result?.automation_plan.steps).toContainEqual(expect.objectContaining({
+      action_key: 'export_gears_external_callback_handoff',
+      runner: 'operator_review',
+      mode: 'manual',
+      can_auto_execute: false,
+    }));
+    expect(result?.markdown).toContain('GEARS local acceptance ready: 1');
+    expect(result?.markdown).toContain('GEARS ready without external artifact: 1');
+  });
+
   it('returns an AI comic series production readiness report', async () => {
     const result = await getProductionReadiness({ series_project_id: seriesProjectId });
 
@@ -494,6 +563,11 @@ describe('kb_get_production_readiness', () => {
     expect(result.summary.series_missing_story_ref_project_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.series_contract_evidence_count).toBeGreaterThanOrEqual(1);
     expect(result.summary.series_relink_candidate_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_seedance_failed_project_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_seedance_failed_item_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_seedance_failure_marker_project_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_seedance_test_fixture_failure_project_count).toBeGreaterThanOrEqual(1);
+    expect(result.summary.series_seedance_test_fixture_failure_item_count).toBeGreaterThanOrEqual(1);
     expect(result.items).toEqual(expect.arrayContaining([
       expect.objectContaining({
         scope: 'story_project',
@@ -507,6 +581,9 @@ describe('kb_get_production_readiness', () => {
         missing_contracts: expect.arrayContaining(['generated_episode_story_refs']),
         contract_evidence_count: expect.any(Number),
         relink_candidate: true,
+        failed_production_item_count: 1,
+        test_fixture_failure_item_count: 1,
+        seedance_failure_marker_present: true,
       }),
       expect.objectContaining({
         scope: 'ai_comic_series_project',
@@ -516,7 +593,42 @@ describe('kb_get_production_readiness', () => {
     ]));
     expect(result.markdown).toContain('MCP Story Agent Generated Health');
     expect(result.markdown).toContain('series_relink_candidates');
+    expect(result.markdown).toContain('series_seedance_test_fixture_failure_items');
     expect(result.notes.join('\n')).toContain('Series relink candidates');
+    expect(result.notes.join('\n')).toContain('explicitly test-marked fixtures');
+  });
+
+  it('reversibly excludes manifest-listed historical series from GEARS signoff', async () => {
+    const reportsDir = path.join(dataRoot, 'reports');
+    fs.mkdirSync(reportsDir, { recursive: true });
+    fs.writeFileSync(path.join(reportsDir, 'story-agent-soft-archive-manifest-20260710.json'), JSON.stringify({
+      schema_version: 'story-agent-soft-archive-manifest/v1',
+      mode: 'active_signoff_exclusion',
+      policy: {
+        signoff_exclusion_applied: true,
+      },
+      entries: [{
+        project_id: seriesProjectId,
+        execution_status: 'signoff_exclusion_active',
+      }],
+    }, null, 2));
+
+    const result = await getStoryAgentGeneratedHealth({ limit: 10 });
+
+    expect(result.summary.series_soft_archive_excluded_count).toBe(1);
+    expect(result.summary.series_signoff_portfolio_count).toBe(1);
+    expect(result.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        project_id: seriesProjectId,
+        signoff_eligible: false,
+        governance_disposition: 'soft_archived_signoff_excluded',
+      }),
+      expect.objectContaining({
+        project_id: secondaryRelinkSeriesId,
+        signoff_eligible: true,
+      }),
+    ]));
+    expect(result.notes.join('\n')).toContain('reversibly excluded');
   });
 
   it('returns a read-only generated governance plan', async () => {

@@ -1,0 +1,67 @@
+{
+  "schema_version": "landscape-mood-professional-benchmark-specs/v1",
+  "video_type": "landscape_mood",
+  "policy": {
+    "real_model_output_required": true,
+    "real_location_cinematography_sound_and_edit_review_required": true,
+    "fixture_or_simulation_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "landscape-001-wulingyuan-mist-to-dusk",
+      "source_entry": "张家界武陵源——3.8亿年雕琢的世界自然遗产",
+      "status": "awaiting_real_model_location_cinematography_sound_edit_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "landscape-002-dongting-junshan-light",
+      "source_entry": "洞庭湖君山——传说叠加的洞庭明珠",
+      "status": "awaiting_real_model_location_cinematography_sound_edit_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "landscape-003-orange-island-river-day",
+      "source_entry": "橘子洲——一江碧水映文心",
+      "status": "awaiting_real_model_location_cinematography_sound_edit_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "landscape-004-hengshan-cloud-bell",
+      "source_entry": "南岳衡山——五岳独秀的儒释道名山",
+      "status": "awaiting_real_model_location_cinematography_sound_edit_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "landscape-005-miluo-river-seasonal-sound",
+      "source_entry": "汨罗江畔端午习俗——龙舟文化的发源地",
+      "status": "awaiting_real_model_location_cinematography_sound_edit_review",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "landscape-failure-001-dense-lecture-narration",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["without_narration_unreadable", "narration_too_dense"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "landscape-failure-002-static-postcard-no-time-or-motion",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["time_change_missing", "natural_motion_missing", "light_or_weather_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "landscape-failure-003-music-replaces-natural-sound-and-silence",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["natural_sound_missing", "ending_silence_missing"],
+      "professional_passed": false
+    }
+  ]
+}

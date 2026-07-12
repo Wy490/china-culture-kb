@@ -78,6 +78,31 @@ const EMOTION_WORDS = [
   '希望', '信念', '理想', '信仰',
 ];
 
+const HISTORICAL_EVENT_PHRASES = [
+  '新民学会',
+  '农民运动',
+  '湘江评论',
+  '驱张运动',
+  '秋收起义',
+  '五四运动',
+  '农民协会',
+  '农民夜校',
+  '湖南农民运动考察报告',
+];
+
+const CANONICAL_STORY_PHASES: Array<{ label: string; patterns: string[] }> = [
+  { label: '少年', patterns: ['少年时期', '少年时代', '少年'] },
+  { label: '求学', patterns: ['求学'] },
+  { label: '新民学会', patterns: ['新民学会'] },
+  { label: '农民运动', patterns: ['农民运动', '农民协会', '农民夜校'] },
+  { label: '革命觉醒', patterns: ['革命觉醒', '觉醒'] },
+  { label: '理想形成', patterns: ['理想形成', '形成理想'] },
+  { label: '起义', patterns: ['起义'] },
+  { label: '抗战', patterns: ['抗战'] },
+  { label: '解放', patterns: ['解放'] },
+  { label: '建国', patterns: ['建国'] },
+];
+
 const CITY_NAMES = [
   '长沙', '岳阳', '衡阳', '株洲', '湘潭', '邵阳', '常德', '益阳', '永州',
   '怀化', '娄底', '郴州', '张家界', '湘西', '浏阳', '汨罗', '韶山',
@@ -242,6 +267,10 @@ function classifySubjects(outline: string, knownPersonNames: string[] = []): Cla
   result.person_names = removeCoveredShortNames(result.person_names)
     .sort((a, b) => outline.indexOf(a) - outline.indexOf(b));
 
+  for (const phrase of HISTORICAL_EVENT_PHRASES) {
+    if (outline.includes(phrase)) addUnique(result.event_words, phrase);
+  }
+
   // Also extract 2-4 char overlapping substrings for longer segments
   const candidates: string[] = [];
   for (const seg of segments) {
@@ -277,7 +306,9 @@ function classifySubjects(outline: string, knownPersonNames: string[] = []): Cla
 
     // Event words
     if (EVENT_WORDS.includes(word)) {
-      addUnique(result.event_words, word);
+      if (!result.event_words.some(event => event.includes(word))) {
+        addUnique(result.event_words, word);
+      }
       continue;
     }
 
@@ -317,6 +348,12 @@ function classifySubjects(outline: string, knownPersonNames: string[] = []): Cla
   return result;
 }
 
+function extractCanonicalStoryPhases(outline: string): string[] {
+  return CANONICAL_STORY_PHASES
+    .filter(phase => phase.patterns.some(pattern => outline.includes(pattern)))
+    .map(phase => phase.label);
+}
+
 function extractDetectedCharacters(outline: string, subjects: ClassifiedSubjects): StoryDetectedCharacter[] {
   const characters: StoryDetectedCharacter[] = [];
   const mainCharacter = subjects.person_names[0] ?? null;
@@ -335,6 +372,10 @@ function extractDetectedCharacters(outline: string, subjects: ClassifiedSubjects
   for (const rule of IDENTITY_CHARACTER_RULES) {
     const alias = rule.aliases.find(item => outline.includes(item));
     if (!alias) continue;
+    const describesNamedPerson = subjects.person_names.some(name =>
+      outline.includes(`${name}${alias}`) || outline.includes(`${alias}${name}`),
+    );
+    if (describesNamedPerson && (rule.name === '少年' || rule.name === '少女')) continue;
     addDetectedCharacter(characters, {
       name: rule.name,
       role_position: rule.role_position,
@@ -434,13 +475,26 @@ function inferStoryIntent(subjects: ClassifiedSubjects, outline: string): {
   target_emotion: string[];
 } {
   const mainCharacter = subjects.person_names.length > 0 ? subjects.person_names[0] : null;
-  const timeRange = subjects.period_words.length > 0 ? subjects.period_words.join('→') : null;
+  const canonicalPhases = extractCanonicalStoryPhases(outline);
+  const timeRange = canonicalPhases.length > 0
+    ? canonicalPhases.join('→')
+    : subjects.period_words.length > 0
+      ? subjects.period_words.join('→')
+      : null;
 
   // Core theme from action/event/life-phase words.
-  const phaseThemeWords = subjects.period_words.filter(p =>
+  const phaseThemeWords = canonicalPhases.filter(p =>
+    ['求学', '革命觉醒', '起义', '抗战', '解放', '建国'].includes(p)
+  );
+  const fallbackPhaseThemeWords = subjects.period_words.filter(p =>
     ['求学', '革命', '觉醒', '起义', '抗战', '解放', '建国', '改革开放'].includes(p)
   );
-  const themeParts = [...subjects.action_words.slice(0, 2), ...subjects.event_words.slice(0, 2), ...phaseThemeWords.slice(0, 2)];
+  const themeParts = [...new Set([
+    ...phaseThemeWords,
+    ...subjects.action_words,
+    ...fallbackPhaseThemeWords,
+    ...subjects.event_words,
+  ])].slice(0, 2);
   const coreTheme = themeParts.length > 0 ? themeParts.join('与') : (outline.length > 20 ? outline.substring(0, 20) + '…' : outline);
 
   // Conflict keywords from event + action intersection
@@ -616,23 +670,46 @@ export async function multiMatchEntries(
 
   // Step 2: For each knowledge_need, independently match entries
   const entryRoleMap = new Map<string, { entry: SearchableEntry; score: number; role: string; reason: string; keywords: string[] }>();
+  const primaryRoleIds = ['main_character', 'historical_events'];
+  const matchedNeedIds = new Set<string>();
+  const rolePriority = (role: string) => role === 'main_character' ? 3 : role === 'historical_events' ? 2 : 1;
 
   for (const need of knowledge_needs) {
     // Build a combined query from need keywords
-    const needQuery = [need.keywords.join(' '), localizedContext].filter(Boolean).join(' ');
+    // Keep the need-specific terms dominant while retaining the full outline as
+    // disambiguating context. A query such as "湖南" alone otherwise ranks any
+    // Hunan entry equally and pollutes a person-focused story with unrelated
+    // opera, folklore, food, or ancient-history material.
+    const needQuery = [
+      need.keywords.join(' '),
+      need.need_id === 'main_character' ? '' : outline,
+      localizedContext,
+    ].filter(Boolean).join(' ');
     const queryKeywords = extractKeywords(needQuery);
     const queryProvince = detectProvince(needQuery);
 
+    const needMatches: Array<{ entry: SearchableEntry; score: number }> = [];
     for (const entry of allEntries) {
       if (!entryMatchesNeedRole(need, entry)) continue;
       const score = computeMatchScore(needQuery, queryKeywords, entry, queryProvince);
       if (score >= 0.35) {
-        const existing = entryRoleMap.get(entry.name);
-        // Keep the best role (highest score) for each entry
-        if (!existing || score > existing.score) {
-          const reason = buildMultiMatchReason(need, entry, score);
-          entryRoleMap.set(entry.name, { entry, score, role: need.need_id, reason, keywords: queryKeywords });
-        }
+        needMatches.push({ entry, score });
+      }
+    }
+
+    needMatches.sort((a, b) => b.score - a.score);
+    for (const { entry, score } of needMatches.slice(0, limit_per_need)) {
+      if (score >= 0.55) matchedNeedIds.add(need.need_id);
+      const existing = entryRoleMap.get(entry.name);
+      // Main character / historical-event grounding must not be demoted to a
+      // broad regional-context role merely because the latter scores higher.
+      if (
+        !existing
+        || rolePriority(need.need_id) > rolePriority(existing.role)
+        || (rolePriority(need.need_id) === rolePriority(existing.role) && score > existing.score)
+      ) {
+        const reason = buildMultiMatchReason(need, entry, score);
+        entryRoleMap.set(entry.name, { entry, score, role: need.need_id, reason, keywords: queryKeywords });
       }
     }
   }
@@ -642,7 +719,6 @@ export async function multiMatchEntries(
   const supportingEntries: KnowledgePackEntry[] = [];
   const missingNeeds: KnowledgePackMissing[] = [];
 
-  const primaryRoleIds = ['main_character', 'historical_events'];
   const supportingRoleIds = ['regional_context', 'cultural_background', 'supporting_characters'];
 
   for (const [entryName, data] of entryRoleMap) {
@@ -676,16 +752,27 @@ export async function multiMatchEntries(
   }
 
   // Sort by score descending
-  primaryEntries.sort((a, b) => b.score - a.score);
+  primaryEntries.sort((a, b) =>
+    rolePriority(b.role_in_story) - rolePriority(a.role_in_story)
+    || b.score - a.score,
+  );
   supportingEntries.sort((a, b) => b.score - a.score);
-  const enrichedSupportingEntries = appendDomainPackEntries(supportingEntries, {
-    query: [outline, localizedContext].filter(Boolean).join(' '),
-    primaryEntries,
-    limit: 5,
-  });
+  const cappedSupportingEntries = supportingEntries.slice(0, Math.max(8, limit_per_need * 2));
+  const requestsProductionPack = /服饰|器物|称谓|场景道具|资产边界|GEARS|分镜|传说|志异|神话|地方化|后世影响|当代转化/.test(outline);
+  const enrichedSupportingEntries = requestsProductionPack
+    ? appendDomainPackEntries(cappedSupportingEntries, {
+        query: [outline, localizedContext].filter(Boolean).join(' '),
+        primaryEntries,
+        limit: 3,
+        includeKnowledgePackContext: false,
+      })
+    : cappedSupportingEntries;
 
   // Check for missing needs
-  const coveredNeedIds = new Set([...primaryEntries, ...enrichedSupportingEntries].map(e => e.role_in_story));
+  const coveredNeedIds = new Set([
+    ...matchedNeedIds,
+    ...[...primaryEntries, ...enrichedSupportingEntries].map(e => e.role_in_story),
+  ]);
   for (const need of knowledge_needs) {
     if (need.required && !coveredNeedIds.has(need.need_id)) {
       missingNeeds.push({

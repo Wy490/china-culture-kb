@@ -1,0 +1,1102 @@
+{
+  "schema_version": "ai-comic-drama-golden-production-cards/v1",
+  "updated_at": "2026-07-09",
+  "video_type": "ai_comic_drama",
+  "review_status": "pending_human_review",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "reason": "本文件是片型生产素材卡候选层，用于审稿、生成验证和后续人工写回，不直接改写 data/provinces/*.md。"
+  },
+  "purpose": "为 AI 漫剧片型建立 10 条黄金生产素材卡，补足钩子、角色稳定、分镜提示、参考资产、连续性检查和禁用断言。",
+  "required_fields": [
+    "episode_hook",
+    "world_and_truth_mode",
+    "protagonist_goal",
+    "opponent_or_pressure",
+    "relationship_collision",
+    "scene_anchor",
+    "character_stability_tags",
+    "dialogue_bubbles",
+    "emotion_beats",
+    "shot_prompt_layers",
+    "reference_images_or_keyframes",
+    "identity_motion_consistency_plan",
+    "single_shot_test",
+    "multi_shot_continuity",
+    "transition_plan",
+    "ending_hook",
+    "forbidden_claims"
+  ],
+  "source_policy": [
+    "硬事实只来自既有知识库条目及其来源线索。",
+    "主角、对话、现场调度可做影视化虚构，但必须标注为 fictional_additions 或 plausible_dramatization。",
+    "敏感战争、遇难者、真实人物和非遗传承内容不得娱乐化、猎奇化或替代正式史实表述。",
+    "生成稿不得把来源说明、核实方法、审稿状态和质量检测词写进观众对白。"
+  ],
+  "cards": [
+    {
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "province": "江苏",
+      "source_entry_path": "data/provinces/江苏.md#南京大屠杀——中华民族最深的伤痕",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "纪念馆闭馆前，年轻讲解员在名单墙旁发现一页未归档的日记复印件，白花下压着一句话：不要让证据失声。",
+        "world_and_truth_mode": "当代纪念馆证据守护剧。1937 年南京大屠杀、遇难者纪念、国际安全区和审判证据为史实层；讲解员和展陈排练为虚构入口；禁止把受害场景做成刺激性复现。",
+        "protagonist_goal": "年轻讲解员要在纪念日排练前，把日记、地图、影像和审判材料整理成一段克制但有力量的短展陈讲述。",
+        "opponent_or_pressure": "时间压力、参观者误解、网络轻佻表达和资深馆员对事实准确性的严格要求同时压来。",
+        "relationship_collision": [
+          "资深馆员：你要讲证据，不是制造眼泪。",
+          "年轻讲解员：可如果他们没有感到痛，记忆会不会又被放下？",
+          "遇难者后人：请别替他们编一句话，只要把名字读清楚。"
+        ],
+        "scene_anchor": [
+          "侵华日军南京大屠杀遇难同胞纪念馆",
+          "遇难者名单墙",
+          "南京安全区地图",
+          "日记复印件、黑白影像资料、白花"
+        ],
+        "character_stability_tags": [
+          "年轻讲解员：深色正装、白花胸针、档案手套、克制眼神",
+          "资深馆员：灰发、细框眼镜、文件夹、语气沉稳",
+          "遇难者后人：素色外套、手持旧照片、动作缓慢",
+          "画面禁用血腥特写，以展陈、文字、空镜和人物反应承载情绪"
+        ],
+        "dialogue_bubbles": [
+          "这一页不是故事，它是证词旁边的影子。",
+          "请把数字读慢一点，每一个都是人。",
+          "我不怕他们哭，我怕他们只看完就走。",
+          "记忆不是喊出来的，是一遍遍核准后留下来的。"
+        ],
+        "emotion_beats": [
+          "误以为找到戏剧化线索的急切",
+          "被资深馆员提醒后的收束",
+          "面对名单墙时的沉默",
+          "把展陈讲述改成证据链后的坚定"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "当代南京纪念馆，克制纪实漫画风，年轻讲解员整理档案，历史事实只以展陈、文字、地图和观众反应呈现。",
+          "mood_quality": "冷灰色展厅光、低饱和、细线条漫画、轻胶片颗粒、静默庄重、无猎奇画面。",
+          "visual_content": "名单墙前白花、档案手套翻动日记复印件、安全区地图局部、馆员侧脸、参观者停步。",
+          "single_shot_test": "先测试讲解员正装、白花、档案手套和名单墙构图是否稳定，画面不出现血腥复现。",
+          "multi_shot_continuity": "从档案桌到名单墙再到展厅门口，白花、文件夹和讲解员视线方向保持连续。"
+        },
+        "reference_images_or_keyframes": [
+          "纪念馆外观和展厅空间参考",
+          "名单墙局部构图参考",
+          "安全区地图或展陈图形参考",
+          "白花、档案手套、日记复印件关键帧"
+        ],
+        "identity_motion_consistency_plan": [
+          "讲解员每格保留深色正装、白花胸针和档案手套。",
+          "资深馆员每格保留灰发、眼镜和文件夹。",
+          "镜头运动以推近、停顿、转向展陈为主，避免夸张动作削弱庄重性。"
+        ],
+        "single_shot_test": [
+          "名单墙前讲解员低头读名，构图庄重。",
+          "档案桌上日记复印件与白花同框，文字不可清晰生成真实伪引文。",
+          "馆员制止情绪化表达的半身近景。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：档案桌 -> 名单墙 -> 安全区地图 -> 展厅门口排练。",
+          "道具顺序：日记复印件由桌上进入讲解员手中，最后放回档案夹。",
+          "情绪顺序：急切 -> 被提醒 -> 沉默 -> 克制坚定。"
+        ],
+        "transition_plan": [
+          "用白花压暗转到名单墙。",
+          "用地图线条擦除转到展厅空间。",
+          "用展厅灯光熄灭转到排练前的最后一句。"
+        ],
+        "ending_hook": "讲解员关上档案夹，却发现展柜玻璃上倒映出下一位参观者的脸：这一次，他会听见多少名字？",
+        "forbidden_claims": [
+          "不得否认、弱化或娱乐化南京大屠杀。",
+          "不得把虚构日记、虚构对白写成真实幸存者证词。",
+          "不得生成血腥猎奇受害画面或施暴细节。",
+          "不得随意改写 1937-12-13、遇难者 30 万以上等知识库已列史实口径。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "南京大屠杀发生在 1937 年 12 月 13 日后的一段时期。",
+          "知识库条目采用遇难者 30 万以上的官方记忆口径。",
+          "南京安全区、拉贝日记、魏特琳日记和影像资料是条目中的重要来源线索。",
+          "侵华日军南京大屠杀遇难同胞纪念馆是当代记忆和展陈空间。"
+        ],
+        "plausible_dramatization": [
+          "当代讲解员为展陈排练整理证据链。",
+          "资深馆员提醒年轻讲解员克制表达。"
+        ],
+        "fictional_additions": [
+          "未归档日记复印件和遇难者后人的具体对白。"
+        ],
+        "forbidden_claims": [
+          "虚构材料不得冒充真实档案。",
+          "不得把观众稿写成来源注释或审稿报告。"
+        ]
+      },
+      "source_refs": ["jiangsu-nanjing-massacre-entry", "S1", "S4", "S5"]
+    },
+    {
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "entry_name": "平江起义——从旧军队内部爆发的革命枪响",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#平江起义——从旧军队内部爆发的革命枪响",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "天岳书院夜色里，一把钥匙落在石阶上，旧军服里的年轻传令兵发现清乡命令背面藏着起义暗号。",
+        "world_and_truth_mode": "革命历史事件漫剧。1928 年 7 月 22 日平江起义、彭德怀、滕代远、黄公略、红五军和天岳书院为史实锚点；传令兵为虚构见证者。",
+        "protagonist_goal": "虚构传令兵要在城内封锁前，把彭德怀等人发动起义的关键命令送到指定营房，并释放被关押的农民运动骨干。",
+        "opponent_or_pressure": "清乡压力、旧军队内部监视、命令提前暴露的风险和天亮前必须行动的时间限制。",
+        "relationship_collision": [
+          "老兵：你这一步出去，就再也回不来了。",
+          "传令兵：不出去，院子里关着的人也回不来。",
+          "指挥者：今晚不是逞勇，是把队伍带到该去的地方。"
+        ],
+        "scene_anchor": [
+          "天岳书院旧址",
+          "石阶、院门、营房灯火",
+          "旧军服、传令纸、钥匙、红布标记"
+        ],
+        "character_stability_tags": [
+          "传令兵：旧军服、绑腿、肩背文件袋、紧张但机敏",
+          "彭德怀形象：军装、沉稳眼神、地图或命令锚点，不神化",
+          "老兵：胡茬、枪带、半信半疑",
+          "被释放者：素布衣、手腕绳印，避免夸张煽情"
+        ],
+        "dialogue_bubbles": [
+          "这张命令，白天是枷锁，今晚是火种。",
+          "天岳书院的门一开，枪声就不只在城里响。",
+          "别喊口号，先把人带出来。",
+          "如果路被截断，就往山里走。"
+        ],
+        "emotion_beats": [
+          "发现暗号的惊惧",
+          "面对老兵质疑的犹豫",
+          "打开牢门时的爆发",
+          "队伍离城时的决绝"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "1928 年湖南平江，旧军队内部起义前夜，天岳书院与营房之间的紧张传令，革命历史漫画风。",
+          "mood_quality": "夜色、油灯、潮湿石阶、低角度构图、红色只作为布条和火光点缀。",
+          "visual_content": "钥匙落地、传令纸翻面、院门开启、被关押者走出、队伍向山路转移。",
+          "single_shot_test": "测试传令兵旧军服、文件袋、钥匙和天岳书院石阶是否稳定。",
+          "multi_shot_continuity": "从院门到营房再到城外山路，文件袋始终在传令兵左肩，红布标记位置不跳变。"
+        },
+        "reference_images_or_keyframes": [
+          "天岳书院旧址空间参考",
+          "1920 年代军装和绑腿参考",
+          "夜间油灯营房关键帧",
+          "队伍离城山路剪影"
+        ],
+        "identity_motion_consistency_plan": [
+          "传令兵始终使用旧军服、左肩文件袋和短发轮廓。",
+          "钥匙、命令纸、红布为三大道具锚点，每次出现位置要连贯。",
+          "人物运动以低身快走、推门、回头确认、沿山路撤离为主。"
+        ],
+        "single_shot_test": [
+          "钥匙落在天岳书院石阶上的特写。",
+          "传令兵手持命令纸回头的半身镜头。",
+          "院门打开后人影从暗处走出的背光镜头。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：书院石阶 -> 营房外墙 -> 关押处 -> 城外山路。",
+          "动作顺序：拾钥匙 -> 送命令 -> 开门 -> 转移。",
+          "视线顺序：传令兵看命令 -> 看老兵 -> 看门锁 -> 看山路。"
+        ],
+        "transition_plan": [
+          "用钥匙落地声切入第一格。",
+          "用命令纸翻面转场到营房。",
+          "用院门开启的黑影转到城外山路。"
+        ],
+        "ending_hook": "山路尽头传来新的命令：他们要去的不是躲藏处，而是下一支队伍的诞生地。",
+        "forbidden_claims": [
+          "不得编造具体会议对白并写成史实。",
+          "不得随意确认待核的兵力数字、路线细节和个别行动时间。",
+          "不得把虚构传令兵写入真实人物名单。",
+          "不得把革命历史简化成无来源的爽文复仇。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "平江起义发生于 1928 年 7 月 22 日。",
+          "知识库条目关联彭德怀、滕代远、黄公略等人物。",
+          "起义后形成红五军并与后续革命根据地发展相关。",
+          "天岳书院是条目中的重要空间锚点。"
+        ],
+        "plausible_dramatization": [
+          "通过夜间传令串联起义前后的行动压力。",
+          "用钥匙和命令纸表现释放与转向。"
+        ],
+        "fictional_additions": [
+          "传令兵、老兵和具体牢门场景为叙事入口。"
+        ],
+        "forbidden_claims": [
+          "具体兵力和路线需审稿补证后才能进入观众稿。"
+        ]
+      },
+      "source_refs": ["hunan-pingjiang-uprising-entry", "S27", "S35"]
+    },
+    {
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "传习所排练时，三人队形突然少了中间一拍，老艺人摘下仗鼓说：这一步忘了，鼓就只剩响声。",
+        "world_and_truth_mode": "非遗传承漫剧。桑植白族仗鼓舞、国家级非遗项目、仗鼓、三人队形和倒 T 步为事实锚点；师徒排练冲突为影视化虚构。",
+        "protagonist_goal": "年轻舞者要在影像记录前学会倒 T 步与三人配合，让动作、鼓点和族群记忆能被完整拍下。",
+        "opponent_or_pressure": "动作濒临遗忘、排练时间不足、年轻人只追求好看动作而忽视仪式和迁徙记忆。",
+        "relationship_collision": [
+          "年轻舞者：镜头里只要动作漂亮就行吧？",
+          "老艺人：漂亮不是传承，走错一步，来路就断一截。",
+          "同伴：你抢节奏，我们三个人就不像一支队伍。"
+        ],
+        "scene_anchor": [
+          "桑植白族传习空间",
+          "仗鼓、鼓槌、三人队形",
+          "地面倒 T 步标线",
+          "墙上迁徙路线或族群记忆图"
+        ],
+        "character_stability_tags": [
+          "年轻舞者：白族服饰元素、短发、红色腰带、动作急",
+          "老艺人：深色传统服饰、手持仗鼓、步伐稳",
+          "两名同伴：服饰颜色区分但队形统一",
+          "仗鼓长度和背法保持一致，不夸张变形"
+        ],
+        "dialogue_bubbles": [
+          "鼓在手里，路在脚下。",
+          "倒 T 步不是花样，是三个人互相守住方向。",
+          "你听见鼓声了吗？它在等你的脚。",
+          "再来一遍，这次别抢在鼓点前面。"
+        ],
+        "emotion_beats": [
+          "自信炫技",
+          "被老艺人点破后的羞愧",
+          "反复练习中的焦躁",
+          "三人终于合拍时的安静喜悦"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "当代桑植白族传习所，非遗传承主题，三人仗鼓舞排练，漫画风但动作写实。",
+          "mood_quality": "木地板、自然光、鼓面纹理、动作残影、暖色但不旅游海报化。",
+          "visual_content": "仗鼓横在身前、脚步踩过倒 T 标线、三人错位又合拢、老艺人敲停鼓点。",
+          "single_shot_test": "测试仗鼓比例、三人队形和年轻舞者红腰带是否稳定。",
+          "multi_shot_continuity": "脚步方向、鼓槌高度和三人左右位置连续，避免每格服饰跳变。"
+        },
+        "reference_images_or_keyframes": [
+          "桑植白族仗鼓外形参考",
+          "三人舞蹈队形关键帧",
+          "倒 T 步地面示意",
+          "传习所室内空间参考"
+        ],
+        "identity_motion_consistency_plan": [
+          "年轻舞者保持红腰带和右手先起鼓槌的动作习惯。",
+          "老艺人保持深色衣、低姿态示范和仗鼓水平线。",
+          "每个动作格保留脚尖方向和鼓槌高度作为连续性锚点。"
+        ],
+        "single_shot_test": [
+          "三人队形中间一拍错位的定格。",
+          "老艺人用鼓槌指向地面倒 T 标线。",
+          "年轻舞者低头重新踩步的近景。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：传习所入场 -> 错拍 -> 老艺人示范 -> 三人合拍。",
+          "动作顺序：举鼓 -> 跨步 -> 转身 -> 合击。",
+          "道具顺序：仗鼓始终在舞者身体前侧或腰侧，不突然消失。"
+        ],
+        "transition_plan": [
+          "用鼓点断拍转场到老艺人示范。",
+          "用脚步踩线的近景转到三人队形全景。",
+          "用最后一次合击的鼓面震动转到结尾问题。"
+        ],
+        "ending_hook": "录像机红灯亮起，老艺人却又收住鼓槌：下一拍，你知道它为什么要这样走吗？",
+        "forbidden_claims": [
+          "不得把待核迁徙年代、路线和套路数量写成绝对定论。",
+          "不得编造代表性传承人身份或授权。",
+          "不得把舞蹈动作改成武打招式教程。",
+          "不得把白族文化符号与其他民族服饰随意混搭。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "桑植白族仗鼓舞为国家级非遗相关项目。",
+          "条目记录仗鼓、三人队形、倒 T 步和武舞合一等动作特征。",
+          "桑植白族和迁徙记忆是条目叙事的重要背景。"
+        ],
+        "plausible_dramatization": [
+          "通过传习所影像记录前的排练冲突呈现传承压力。",
+          "用错拍和合拍表现动作知识。"
+        ],
+        "fictional_additions": [
+          "年轻舞者、老艺人和具体排练对白。"
+        ],
+        "forbidden_claims": [
+          "迁徙年份、81 套动作和传承人资料需要补证后再确认。"
+        ]
+      },
+      "source_refs": ["hunan-sangzhi-baizu-zhanggu-entry", "national-ich-list-iii-98"]
+    },
+    {
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#通道侗锦——湘西南侗寨的指尖花雨",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "出嫁木箱打开时，最显眼的一块侗锦缺了太阳纹，年轻织女必须在天亮前补完最后一段经纬。",
+        "world_and_truth_mode": "非遗工艺传承漫剧。通道侗锦、侗族织锦、经纬交织、纹样和嫁妆语境为事实锚点；出嫁木箱和母女冲突为虚构叙事入口。",
+        "protagonist_goal": "年轻织女要完成一块带有太阳纹与寨中记忆的侗锦，在离家前证明自己不是只会拍短视频的人。",
+        "opponent_or_pressure": "织机复杂、时间紧、母亲不愿她把纹样只当流量符号，同辈催她放弃。",
+        "relationship_collision": [
+          "母亲：纹样不是贴上去的，是一线一线数出来的。",
+          "年轻织女：我怕我织得太慢，赶不上明天。",
+          "外婆：慢一点，太阳才不会在布上歪。"
+        ],
+        "scene_anchor": [
+          "侗寨木楼",
+          "织机、彩线、经纬线",
+          "嫁妆木箱",
+          "太阳纹、花鸟纹样、蓝底彩纹"
+        ],
+        "character_stability_tags": [
+          "年轻织女：素色上衣、银饰小发夹、手指缠线",
+          "母亲：深蓝侗族服饰、线轴篮、严厉表情",
+          "外婆：银白发、坐在织机旁、动作缓慢",
+          "织机、彩线和木箱位置保持连续"
+        ],
+        "dialogue_bubbles": [
+          "你看见的是花，我数的是线。",
+          "少一根纬线，太阳就会偏一寸。",
+          "我不是要逃开寨子，我想把它带出去。",
+          "先把手放稳，再说远方。"
+        ],
+        "emotion_beats": [
+          "急着完成的慌乱",
+          "被母亲否定后的委屈",
+          "看懂经纬规律后的专注",
+          "天亮前补上纹样的释然"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "湘西南通道侗寨木楼内，侗锦织机旁的三代女性，非遗工艺漫画短剧。",
+          "mood_quality": "清晨前蓝光、木楼暖灯、线束高饱和但整体克制、微距手部纹理。",
+          "visual_content": "彩线穿梭、织机抬落、嫁妆木箱打开、太阳纹逐渐成形、母女对视。",
+          "single_shot_test": "测试织女发夹、织机结构、蓝底彩纹和太阳纹构图是否稳定。",
+          "multi_shot_continuity": "彩线从线篮到织机再到成品纹样的路径连续，手指动作方向不跳。"
+        },
+        "reference_images_or_keyframes": [
+          "通道侗锦纹样和蓝底彩纹参考",
+          "侗寨木楼室内空间参考",
+          "织机手部动作关键帧",
+          "嫁妆木箱打开关键帧"
+        ],
+        "identity_motion_consistency_plan": [
+          "年轻织女保留银饰发夹和右手缠线动作。",
+          "母亲保留深蓝服饰和线轴篮。",
+          "织机方向固定，梭子从画面右向左运动，下一格必须接上。"
+        ],
+        "single_shot_test": [
+          "织机前彩线穿梭的手部近景。",
+          "木箱里缺少太阳纹的侗锦半成品。",
+          "母亲俯身纠正纬线的侧脸。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：木箱打开 -> 织机返工 -> 外婆示范 -> 天亮成纹。",
+          "动作顺序：抽线 -> 穿梭 -> 压实 -> 展开。",
+          "纹样顺序：缺口 -> 半圆 -> 放射线 -> 完整太阳纹。"
+        ],
+        "transition_plan": [
+          "用梭子穿过经线的运动做横向转场。",
+          "用木楼窗外天色变亮表现时间压力。",
+          "用布面纹样展开转到结尾。"
+        ],
+        "ending_hook": "太阳纹终于合上，外婆却指着角落里一只鸟纹问：你知道它为什么不能飞出边框吗？",
+        "forbidden_claims": [
+          "不得编造纹样来源和固定寓意。",
+          "不得确认未核实传承人、授权或代表作信息。",
+          "不得把侗锦简化成嫁妆单一用途。",
+          "不得混用苗绣、土家织锦等其他工艺视觉。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "通道侗锦为国家级非遗相关项目。",
+          "条目记录经纬织造、蓝底彩纹、太阳纹等视觉特征。",
+          "侗寨、嫁妆和女性织造经验是条目中的重要叙事资源。"
+        ],
+        "plausible_dramatization": [
+          "用三代女性和嫁妆木箱呈现技艺传承。",
+          "用天亮前补纹样形成短剧压力。"
+        ],
+        "fictional_additions": [
+          "年轻织女、母亲、外婆和具体木箱事件。"
+        ],
+        "forbidden_claims": [
+          "纹样寓意、传承人和授权状态需审稿确认。"
+        ]
+      },
+      "source_refs": ["hunan-tongdao-dong-brocade-entry", "national-ich-list-second-batch", "su-tianmei-inheritor-cue"]
+    },
+    {
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#土家族摆手舞——湘西土家的集体仪式",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "鼓声响起，摆手堂前的圆圈却裂开一道缺口，返乡青年举着相机站在原地，不知道该拍还是该入圈。",
+        "world_and_truth_mode": "民族民俗与非遗传承漫剧。土家族摆手舞、摆手堂、圆圈队形、农事生活动作和大小摆手语境为事实锚点；返乡拍摄者为虚构入口。",
+        "protagonist_goal": "返乡青年要拍一段介绍摆手舞的短片，但必须先学会自己入圈，理解它不是舞台摆拍，而是集体仪式。",
+        "opponent_or_pressure": "旅游化拍摄需求、长辈对误拍的担心、大小摆手边界不清和青年对动作含义的陌生。",
+        "relationship_collision": [
+          "返乡青年：我站外面拍，画面更完整。",
+          "长者：你站外面，只拍到动作，听不到心跳。",
+          "同龄人：你连方向都跟不上，还想解释给别人听？"
+        ],
+        "scene_anchor": [
+          "湘西土家摆手堂",
+          "鼓、圆圈队形、火塘或广场",
+          "模仿农事和生活的摆手动作",
+          "正月到三月活动时间感"
+        ],
+        "character_stability_tags": [
+          "返乡青年：相机背带、运动外套、犹豫表情",
+          "长者：土家服饰元素、手持鼓槌或引导动作",
+          "同龄舞者：腰带、整齐步伐、看向青年",
+          "群体队形始终保持圆形或半圆，不随镜头乱散"
+        ],
+        "dialogue_bubbles": [
+          "镜头在外面，人要在圈里。",
+          "摆手不是给谁看的，是大家一起记得。",
+          "左手慢半拍，后面一圈都会乱。",
+          "你拍下来的，是我们怎么站在一起。"
+        ],
+        "emotion_beats": [
+          "旁观者的局促",
+          "被点名入圈的尴尬",
+          "跟上鼓点后的兴奋",
+          "放下相机后真正参与的理解"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "湘西土家摆手堂前，返乡青年从拍摄者变成参与者，集体舞蹈仪式漫画短剧。",
+          "mood_quality": "暮色火光、鼓声可视化线条、群体动作残影、温暖但不舞台秀化。",
+          "visual_content": "圆圈缺口、相机背带、鼓槌落下、摆手动作同步、青年放下相机入圈。",
+          "single_shot_test": "测试返乡青年相机背带、摆手堂门面和圆圈队形是否稳定。",
+          "multi_shot_continuity": "青年从圈外右侧进入圆圈缺口，下一格必须站在同一缺口位置继续动作。"
+        },
+        "reference_images_or_keyframes": [
+          "摆手堂建筑或广场空间参考",
+          "摆手舞圆圈队形关键帧",
+          "鼓和鼓槌近景",
+          "青年从圈外入圈的转折关键帧"
+        ],
+        "identity_motion_consistency_plan": [
+          "返乡青年每格保留相机背带，直到结尾主动放下。",
+          "长者位置固定在鼓旁或圆圈内侧，不随意漂移。",
+          "群体动作方向顺时针或逆时针固定，镜头切换时保持一致。"
+        ],
+        "single_shot_test": [
+          "圆圈裂开缺口，青年站在缺口外。",
+          "长者用鼓槌示意他入圈。",
+          "青年放下相机跟随摆手动作。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：摆手堂外 -> 圆圈缺口 -> 鼓旁学习 -> 全员合圈。",
+          "动作顺序：举相机 -> 放下 -> 模仿 -> 同步。",
+          "道具顺序：相机从手中到胸前再到地面包旁。"
+        ],
+        "transition_plan": [
+          "用鼓点波纹转场到群体动作。",
+          "用相机取景框切换到青年视角。",
+          "用圆圈合拢的俯视镜头转到结尾问题。"
+        ],
+        "ending_hook": "圆圈终于合上，青年回看相机，却发现最重要的一格没有拍到：他该怎么把参与拍给别人看？",
+        "forbidden_claims": [
+          "不得把旅游展演等同于所有传统仪式原貌。",
+          "不得混淆大摆手、小摆手的具体流程和时间。",
+          "不得编造祭祀对象、唱词和仪式细节。",
+          "不得用外来舞蹈动作替代摆手舞动作。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "土家族摆手舞是湘西土家族集体仪式和舞蹈资源。",
+          "条目记录摆手堂、大小摆手、正月至三月活动时间和模拟生产生活动作。",
+          "鼓点、圆圈和集体参与是重要视觉锚点。"
+        ],
+        "plausible_dramatization": [
+          "返乡青年从拍摄者变成参与者。",
+          "用圆圈缺口表现集体仪式与旁观视角的冲突。"
+        ],
+        "fictional_additions": [
+          "返乡青年、长者对白和拍摄任务。"
+        ],
+        "forbidden_claims": [
+          "大小摆手差异、仪式建筑细节需审稿补证。"
+        ]
+      },
+      "source_refs": ["hunan-tujia-hand-waving-dance-entry", "xiangxi-ich-cue"]
+    },
+    {
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "province": "湖北",
+      "source_entry_path": "data/provinces/湖北.md#武昌起义——辛亥革命的第一声枪响",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "1911 年 10 月 9 日爆炸消息传到营房，虚构新军士兵把名单塞进袖口，只剩一小时决定是烧掉它还是冲向楚望台。",
+        "world_and_truth_mode": "辛亥革命历史事件漫剧。武昌起义、新军、1911 年 10 月 10 日、爆炸暴露、楚望台军械库、瑞澂出逃和多省响应为史实锚点；普通士兵视角为虚构入口。",
+        "protagonist_goal": "虚构新军士兵要在搜查前保护同志名单，并决定是否跟随起义队伍夺取关键军械空间。",
+        "opponent_or_pressure": "搜查、名单暴露、同袍动摇、指挥混乱和第一枪记忆存在不同说法的叙事边界。",
+        "relationship_collision": [
+          "同袍：烧了名单，我们还能活。",
+          "士兵：名单烧了，明天谁还知道该站在哪边？",
+          "军官：今晚没有旁观的人，只有选择。"
+        ],
+        "scene_anchor": [
+          "武昌新军营房",
+          "楚望台军械库",
+          "起义前夜街巷",
+          "名单、袖口、枪栓、城楼火光"
+        ],
+        "character_stability_tags": [
+          "新军士兵：清末新军制服、袖口藏纸、紧绷下颌",
+          "同袍：帽檐压低、手扶枪栓、眼神游移",
+          "军官：腰刀或指挥图、沉声命令",
+          "名单纸角每格保留折痕，不突然变成公开文书"
+        ],
+        "dialogue_bubbles": [
+          "爆炸声把秘密炸到了所有人眼前。",
+          "第一枪之前，最响的是心跳。",
+          "如果今晚退后，明天就没有名单可点了。",
+          "楚望台不是终点，是门被撞开的地方。"
+        ],
+        "emotion_beats": [
+          "消息传来的震惊",
+          "是否焚毁名单的恐惧",
+          "冲出营房前的决断",
+          "看见城中响应后的不可置信"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "1911 年武昌起义前夜，新军营房与楚望台之间，普通士兵视角，历史漫画短剧。",
+          "mood_quality": "煤油灯、夜雨、军械库冷光、紧张快切、清末城市街巷。",
+          "visual_content": "爆炸消息纸条、袖口藏名单、枪栓拉动、营房门被推开、楚望台火光。",
+          "single_shot_test": "测试新军制服、袖口名单、营房灯光和清末环境是否稳定。",
+          "multi_shot_continuity": "名单从袖口到手心再到交给同袍，纸张折痕和方向连续。"
+        },
+        "reference_images_or_keyframes": [
+          "辛亥革命武昌起义纪念馆或红楼空间参考",
+          "清末新军服饰参考",
+          "楚望台军械库意象关键帧",
+          "夜间营房搜查构图"
+        ],
+        "identity_motion_consistency_plan": [
+          "主角保留袖口藏名单和新军制服，帽檐高度一致。",
+          "同袍保留手扶枪栓动作，体现动摇。",
+          "动作从隐藏、躲避、冲出到夺取空间，镜头方向由室内向外推进。"
+        ],
+        "single_shot_test": [
+          "营房灯下袖口露出名单纸角。",
+          "同袍伸手要烧名单的对峙近景。",
+          "楚望台方向火光映在士兵脸上。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：营房 -> 走廊搜查 -> 街巷奔跑 -> 楚望台方向。",
+          "动作顺序：藏名单 -> 护名单 -> 拉枪栓 -> 跑向军械库。",
+          "情绪顺序：恐惧 -> 对峙 -> 决断 -> 震动。"
+        ],
+        "transition_plan": [
+          "用爆炸消息纸条的焦痕转场。",
+          "用袖口名单抽出动作转到走廊搜查。",
+          "用枪栓声切到城楼火光。"
+        ],
+        "ending_hook": "枪声之后，士兵以为天快亮了，却有人递来一张新地图：接下来响起的，会是哪一省？",
+        "forbidden_claims": [
+          "不得武断确认第一枪个人和细节，除非补充来源。",
+          "不得把虚构士兵写成真实起义领袖。",
+          "不得编造具体营房命令、对白和搜查细节为史实。",
+          "不得混淆 10 月 9 日暴露与 10 月 10 日起义的时间关系。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "武昌起义发生在 1911 年 10 月 10 日。",
+          "10 月 9 日爆炸暴露与起义提前相关。",
+          "新军、楚望台军械库、瑞澂出逃和多省响应是条目中的关键叙事点。",
+          "纪念空间包括辛亥革命相关展陈场所。"
+        ],
+        "plausible_dramatization": [
+          "普通新军士兵通过保护名单进入历史现场。",
+          "用一小时倒计时形成短剧推进。"
+        ],
+        "fictional_additions": [
+          "主角士兵、同袍、袖口名单和具体营房对峙。"
+        ],
+        "forbidden_claims": [
+          "第一枪细节和具体人物行动需保留多说法边界。"
+        ]
+      },
+      "source_refs": ["hubei-wuchang-uprising-entry"]
+    },
+    {
+      "card_id": "ai-comic-golden-xiangkun-ancient-stage-spear",
+      "entry_name": "湘昆——山野昆曲的南岭遗音",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#湘昆——山野昆曲的南岭遗音",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "古戏台开演前，道具长枪突然断在年轻武生手里，后台老师只说一句：湘昆的劲，不在枪上。",
+        "world_and_truth_mode": "戏曲传承漫剧。湘昆作为昆曲湖南支脉、郴州/桂阳/嘉禾等地域、山野昆曲、武戏和古戏台为事实锚点；断枪排练为虚构入口。",
+        "protagonist_goal": "年轻武生要在古戏台演出前找回身段、唱念和武戏节奏的平衡，避免把湘昆演成普通武打。",
+        "opponent_or_pressure": "道具损坏、临演压力、短视频审美催促加快动作、老师坚持曲牌身段不能丢。",
+        "relationship_collision": [
+          "年轻武生：观众想看快，慢了他们会划走。",
+          "老师：你快过曲子，就不是湘昆。",
+          "搭档：枪断了，眼神不能断。"
+        ],
+        "scene_anchor": [
+          "湘南古戏台",
+          "后台衣箱、靠旗、长枪道具",
+          "锣鼓点和曲牌节奏",
+          "山地村镇夜演空间"
+        ],
+        "character_stability_tags": [
+          "年轻武生：练功服、断枪、眉眼锋利但急躁",
+          "老师：旧戏衣外披长衫、折扇或板眼提示、目光严厉",
+          "搭档：水袖或靠旗、站位稳定",
+          "戏台梁柱、灯笼和后台衣箱不跳变"
+        ],
+        "dialogue_bubbles": [
+          "枪断了，身段还在。",
+          "山里的昆曲，慢处也有刀锋。",
+          "别追镜头，追板眼。",
+          "你这一转，是给台下看，也是给前人看。"
+        ],
+        "emotion_beats": [
+          "临演事故的慌乱",
+          "被老师压住节奏的不服",
+          "听见锣鼓后重新入戏",
+          "上台前由急转稳"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "湘南古戏台后台，年轻武生在老师指导下找回湘昆身段和节奏，戏曲传承漫画风。",
+          "mood_quality": "木质戏台、灯笼暖光、后台阴影、戏服色彩点亮、动作线条克制优雅。",
+          "visual_content": "断枪特写、老师打板、武生转身定格、古戏台梁柱、台下山村观众。",
+          "single_shot_test": "测试武生练功服、断枪和古戏台后台环境是否稳定。",
+          "multi_shot_continuity": "断枪从手中到衣箱旁再到修补后的短枪，道具位置连续；武生站位由后台左侧走向台口。"
+        },
+        "reference_images_or_keyframes": [
+          "湘南古戏台空间参考",
+          "昆曲武生身段参考",
+          "后台衣箱和戏服参考",
+          "断枪与打板关键帧"
+        ],
+        "identity_motion_consistency_plan": [
+          "武生保留练功服和断枪，额前碎发作为身份锚点。",
+          "老师保留折扇或板眼提示道具。",
+          "动作从快乱到慢稳，镜头需保留身体重心变化。"
+        ],
+        "single_shot_test": [
+          "断枪落在后台木地板上的特写。",
+          "老师用折扇压住武生手腕。",
+          "武生在台口转身定格，山村夜色在身后。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：后台事故 -> 老师纠正 -> 锣鼓起 -> 台口定格。",
+          "动作顺序：挥枪过快 -> 枪断 -> 收势 -> 重新入板。",
+          "情绪顺序：急躁 -> 不服 -> 倾听 -> 稳住。"
+        ],
+        "transition_plan": [
+          "用断枪落地声转入静默。",
+          "用打板节奏把后台切到台口。",
+          "用水袖或靠旗扫过镜头进入结尾。"
+        ],
+        "ending_hook": "武生刚稳住身段，台下忽然有人问：这出戏的老路数，还剩几个人会？",
+        "forbidden_claims": [
+          "不得把湘昆和其他地方剧种服饰、曲牌混用。",
+          "不得编造具体剧目、老艺人和传承谱系。",
+          "不得把武戏改成纯武打动作。",
+          "不得确认古戏台年代、地点和团体信息，除非补充来源。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "湘昆是昆曲在湖南湘南地区的重要支脉。",
+          "条目记录郴州、桂阳、嘉禾等地域线索和山野昆曲特征。",
+          "武戏、古戏台和专业剧团/传承空间是重要影视锚点。"
+        ],
+        "plausible_dramatization": [
+          "古戏台开演前的后台事故。",
+          "老师用节奏纠正年轻演员。"
+        ],
+        "fictional_additions": [
+          "年轻武生、断枪、老师与搭档对白。"
+        ],
+        "forbidden_claims": [
+          "具体剧目、古戏台和代表性艺人需审稿确认。"
+        ]
+      },
+      "source_refs": ["hunan-xiangkun-entry", "kunqu-ich-cue", "lei-ziwen-inheritor-cue"]
+    },
+    {
+      "card_id": "ai-comic-golden-yuezhou-fan-lake-wind",
+      "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#岳州扇——洞庭湖畔的文人雅扇",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "洞庭湖风忽然掀起，学徒手里的半成岳州扇啪地折回，扇面上刚写下的一笔墨被风拖成了浪。",
+        "world_and_truth_mode": "传统工艺与文人审美漫剧。岳州扇、洞庭湖、岳阳楼文化意象、湘竹扇骨、纸/绢扇面和书画题写为事实锚点；学徒赶制展品为虚构入口。",
+        "protagonist_goal": "学徒要在展陈前完成一把既能体现岳州地方气质、又不夸大历史名头的文人雅扇。",
+        "opponent_or_pressure": "湖风损坏、师傅要求重做、展方催稿、学徒想用夸张题字吸引观众。",
+        "relationship_collision": [
+          "学徒：写上天下第一扇，观众就会停下。",
+          "师傅：扇子靠骨立住，不靠大话立住。",
+          "展方：我们要亮点，也要经得住问。"
+        ],
+        "scene_anchor": [
+          "洞庭湖岸与岳阳楼意象",
+          "制扇案台、湘竹扇骨、扇面",
+          "题字、绘画、印章",
+          "湖风吹动扇骨的声音"
+        ],
+        "character_stability_tags": [
+          "学徒：浅色工装、袖口沾墨、手持半成扇",
+          "师傅：布围裙、竹尺、沉稳手势",
+          "展方策划：文件夹、现代衣着、催促表情",
+          "半成扇的墨痕和折痕保持连续"
+        ],
+        "dialogue_bubbles": [
+          "风把墨吹坏了，也把大话吹掉了。",
+          "一根扇骨偏了，开合就不正。",
+          "岳州的气，不一定写在最大的字里。",
+          "重做，不是退后，是让它站稳。"
+        ],
+        "emotion_beats": [
+          "作品被风毁掉的沮丧",
+          "被师傅否定夸张宣传的不甘",
+          "重新校扇骨时的专注",
+          "扇子展开后与湖风相合的平静"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "洞庭湖畔制扇工坊，学徒重做岳州扇，传统工艺与地方文人气质漫画短剧。",
+          "mood_quality": "湖面自然光、竹骨纹理、墨色晕染、清爽克制、文人雅致但不仿古堆砌。",
+          "visual_content": "半成扇折回、墨痕变浪、竹尺校骨、题字落笔、扇面展开映出湖光。",
+          "single_shot_test": "测试半成扇、墨痕、学徒浅色工装和洞庭湖背景是否稳定。",
+          "multi_shot_continuity": "墨痕从失败扇面到重做草稿再到最终保留一条湖纹，形成视觉连续。"
+        },
+        "reference_images_or_keyframes": [
+          "岳州扇折扇结构参考",
+          "湘竹扇骨和扇面材质参考",
+          "洞庭湖与岳阳楼远景参考",
+          "书画题字手部关键帧"
+        ],
+        "identity_motion_consistency_plan": [
+          "学徒保留袖口墨痕，情绪变化通过开合扇动作表现。",
+          "师傅保留竹尺，用校准动作替代说教。",
+          "扇子开合方向固定，避免扇面图案左右跳变。"
+        ],
+        "single_shot_test": [
+          "湖风吹折半成扇，墨痕拖成浪。",
+          "师傅用竹尺校扇骨。",
+          "最终扇面在湖光中展开。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：湖岸试扇 -> 工坊返工 -> 题字案台 -> 展陈展开。",
+          "动作顺序：开扇失败 -> 拆检 -> 校骨 -> 落墨 -> 展开。",
+          "道具顺序：坏扇面保留在案台一角，最终成扇与其对照。"
+        ],
+        "transition_plan": [
+          "用湖风吹动扇面的折线转场。",
+          "用竹尺划过扇骨转到工坊案台。",
+          "用印章落下切到展陈灯光。"
+        ],
+        "ending_hook": "扇面终于展开，师傅却合上另一把旧扇：你知道这把扇子为什么不题字吗？",
+        "forbidden_claims": [
+          "不得确认三大名扇、天下第一等未核夸张称号。",
+          "不得把文人题字虚构成具体历史名人真迹。",
+          "不得混用其他地区扇种工艺。",
+          "不得编造岳阳楼与某把具体扇子的直接史实关系。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "岳州扇与岳阳、洞庭湖和岳阳楼文化意象相关。",
+          "条目记录湘竹扇骨、纸/绢扇面、书画题写等工艺和审美要素。",
+          "岳州扇为湖南地方非遗/传统工艺线索。"
+        ],
+        "plausible_dramatization": [
+          "学徒因湖风毁扇而重做。",
+          "师傅纠正夸张宣传语。"
+        ],
+        "fictional_additions": [
+          "学徒、师傅、展方策划和具体展陈任务。"
+        ],
+        "forbidden_claims": [
+          "历史名头和名人题字需要补证。"
+        ]
+      },
+      "source_refs": ["hunan-yuezhou-fan-entry", "hunan-ich-cue", "yueyang-tower-cue"]
+    },
+    {
+      "card_id": "ai-comic-golden-changsha-kiln-underglaze-shard",
+      "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "博物馆灯光扫过一片唐代长沙窑诗文瓷残片，年轻陶艺师在玻璃上看见一条通往黑石号的海路。",
+        "world_and_truth_mode": "考古与工艺想象漫剧。唐代长沙窑/铜官窑、釉下彩、诗文瓷、黑石号和海上贸易线索为事实锚点；陶艺师与残片视觉幻象为虚构入口。",
+        "protagonist_goal": "年轻陶艺师要为展览做一件不冒充文物的当代复原灵感作品，讲清釉下彩、诗文瓷和外销路线的关系。",
+        "opponent_or_pressure": "观众爱听最早第一的绝对说法，展览需要亮点，陶艺师必须避免把现代作品包装成古物。",
+        "relationship_collision": [
+          "策展人：我们需要一句能记住的话。",
+          "陶艺师：如果那句话站不住，瓷片会先碎。",
+          "小观众：它真的从这里到过海上吗？"
+        ],
+        "scene_anchor": [
+          "长沙窑/铜官窑博物馆或窑址意象",
+          "诗文瓷残片",
+          "釉下彩颜料、坯体、窑火",
+          "黑石号海路地图"
+        ],
+        "character_stability_tags": [
+          "年轻陶艺师：工作围裙、指尖有泥、随身速写本",
+          "策展人：黑色西装、展签稿、语速快",
+          "小观众：背包、好奇眼神、指向展柜",
+          "瓷片只作为展柜内文物或视觉幻象，不被角色直接拿出"
+        ],
+        "dialogue_bubbles": [
+          "瓷片不说大话，它只留下痕迹。",
+          "釉在火前就有颜色，火后才有答案。",
+          "我们可以做灵感作品，不能做假古董。",
+          "海路不是一条线，是一件件器物走出的方向。"
+        ],
+        "emotion_beats": [
+          "看见残片时的惊奇",
+          "面对宣传压力的犹疑",
+          "回到工坊试色的专注",
+          "向小观众解释边界后的轻松"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "唐代长沙窑文化展与当代陶艺工坊交错，年轻陶艺师用釉下彩灵感作品讲述瓷片与海路，考古工艺漫画风。",
+          "mood_quality": "展柜冷光与窑火暖光对比、釉色细节、海图蓝绿线条、克制奇幻幻象。",
+          "visual_content": "诗文瓷残片、釉色试片、窑火、黑石号海路地图、陶艺师速写本。",
+          "single_shot_test": "测试陶艺师围裙、指尖泥、展柜瓷片和海图幻象是否稳定。",
+          "multi_shot_continuity": "瓷片从展柜反光变成速写本图案，再变成当代作品试片，明确不是文物转移。"
+        },
+        "reference_images_or_keyframes": [
+          "长沙窑诗文瓷和釉下彩纹样参考",
+          "铜官窑址或博物馆展柜参考",
+          "陶艺工坊试色板关键帧",
+          "黑石号航线或外销瓷地图示意"
+        ],
+        "identity_motion_consistency_plan": [
+          "陶艺师每格保留围裙、泥手和速写本。",
+          "文物瓷片只在展柜内出现，幻象用半透明海图表现。",
+          "当代作品用明显新坯和试片区分，避免误认古物。"
+        ],
+        "single_shot_test": [
+          "展柜瓷片反光映出海图。",
+          "陶艺师在工坊试釉色的手部近景。",
+          "小观众隔着玻璃提问的对视镜头。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：展柜 -> 海图幻象 -> 工坊试色 -> 展览讲解。",
+          "动作顺序：观察 -> 速写 -> 试色 -> 展示当代作品。",
+          "边界顺序：文物 -> 灵感草图 -> 现代作品，字幕中清楚区分。"
+        ],
+        "transition_plan": [
+          "用展柜反光中的海图线转场。",
+          "用釉色刷过坯体转到窑火。",
+          "用试片排列切回展览空间。"
+        ],
+        "ending_hook": "小观众问出最后一个问题：如果一片瓷能走到海上，那它带走的第一句话是什么？",
+        "forbidden_claims": [
+          "不得未经核实使用世界最早、唯一开创等绝对表述。",
+          "不得把现代复原作品冒充唐代文物。",
+          "不得随意确认黑石号具体器物数量和来源归属。",
+          "不得长篇引用诗文瓷文字或编造残片铭文。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "长沙窑/铜官窑与唐代陶瓷、釉下彩和诗文瓷相关。",
+          "条目记录黑石号、海上丝绸之路和外销陶瓷线索。",
+          "长沙窑铜官陶瓷烧制技艺为国家级非遗相关项目。"
+        ],
+        "plausible_dramatization": [
+          "当代陶艺师受展柜残片启发制作灵感作品。",
+          "用海图幻象表现外销路线。"
+        ],
+        "fictional_additions": [
+          "陶艺师、策展人、小观众和具体展览任务。"
+        ],
+        "forbidden_claims": [
+          "最早、第一和黑石号数量等说法需补充权威来源。"
+        ]
+      },
+      "source_refs": ["hunan-changsha-tongguan-kiln-entry", "national-ich-list-cue", "black-stone-ship-cue"]
+    },
+    {
+      "card_id": "ai-comic-golden-changde-sixian-snapped-string",
+      "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+      "province": "湖南",
+      "source_entry_path": "data/provinces/湖南.md#常德丝弦——湘北水乡的扬琴说唱",
+      "source_status": "existing_kb_entry_candidate_production_card",
+      "review_status": "pending_human_review",
+      "field_completion": {
+        "filled_required_field_count": 17,
+        "missing_required_fields": []
+      },
+      "material_fields": {
+        "episode_hook": "录音棚里扬琴弦突然崩断，年轻伴奏员看着旧谱上缺失的一行，发现今晚要录的不只是一首曲子。",
+        "world_and_truth_mode": "曲艺传承漫剧。常德丝弦、扬琴说唱、九腔十八调、代表曲目和国家级非遗为事实锚点；录音棚抢救录制为虚构入口。",
+        "protagonist_goal": "年轻伴奏员要在老艺人口述和旧谱之间找回准确节奏，让一段常德丝弦能被规范录制。",
+        "opponent_or_pressure": "弦断、旧谱缺行、版权和授权边界、短视频团队要求改成更快更炸的版本。",
+        "relationship_collision": [
+          "短视频导演：节奏再快一点，前 3 秒要抓人。",
+          "老艺人：快可以，腔不能丢。",
+          "伴奏员：我能修弦，但这缺的一行谁来补？"
+        ],
+        "scene_anchor": [
+          "常德水乡意象与录音棚",
+          "扬琴、弦、琴槌、旧谱",
+          "老艺人口述座位",
+          "录音红灯和节拍器"
+        ],
+        "character_stability_tags": [
+          "年轻伴奏员：白衬衫、耳机、指尖贴胶布",
+          "老艺人：深色外套、手扶谱架、慢声提示",
+          "短视频导演：鸭舌帽、分镜板、急促手势",
+          "扬琴、断弦和旧谱始终作为核心道具"
+        ],
+        "dialogue_bubbles": [
+          "弦断了，腔还在人的口里。",
+          "九腔十八调，不是十八个快节奏。",
+          "这一拍慢下来，水才有回声。",
+          "别补一句热闹，先问它原来怎么唱。"
+        ],
+        "emotion_beats": [
+          "录制事故的慌张",
+          "面对改编要求的动摇",
+          "听老艺人口述后的顿悟",
+          "重新录制时的稳准"
+        ],
+        "shot_prompt_layers": {
+          "base_setting": "常德丝弦录音现场，年轻伴奏员在老艺人指导下处理断弦与旧谱缺口，曲艺传承漫画短剧。",
+          "mood_quality": "录音棚冷光与水乡回忆暖色交替、扬琴金属弦细节、声音波形视觉化。",
+          "visual_content": "断弦弹起、旧谱缺行、老艺人口述、琴槌落下、录音红灯亮起。",
+          "single_shot_test": "测试伴奏员耳机、指尖胶布、扬琴断弦和旧谱缺行是否稳定。",
+          "multi_shot_continuity": "断弦从崩断到替换再到重新录制，琴槌左右位置和谱架方向保持一致。"
+        },
+        "reference_images_or_keyframes": [
+          "扬琴结构和琴槌动作参考",
+          "常德丝弦演出或传习空间参考",
+          "录音棚红灯关键帧",
+          "常德水乡意象转场参考"
+        ],
+        "identity_motion_consistency_plan": [
+          "伴奏员保持耳机和指尖胶布，紧张时反复看谱。",
+          "老艺人保持谱架旁坐姿和手扶旧谱动作。",
+          "声音波形作为转场元素，不替代真实歌词。"
+        ],
+        "single_shot_test": [
+          "扬琴弦崩断的瞬间特写。",
+          "旧谱缺行处被伴奏员手指压住。",
+          "老艺人靠近麦克风轻声提示节奏。"
+        ],
+        "multi_shot_continuity": [
+          "场景顺序：录音棚事故 -> 旧谱核对 -> 口述示范 -> 重新录制。",
+          "动作顺序：断弦 -> 停录 -> 询问 -> 修弦 -> 落槌。",
+          "情绪顺序：慌乱 -> 被催促 -> 求证 -> 稳住。"
+        ],
+        "transition_plan": [
+          "用断弦弹起的弧线转场到旧谱。",
+          "用声音波形转入水乡回忆画面。",
+          "用录音红灯亮起切回现实。"
+        ],
+        "ending_hook": "录音终于通过，老艺人却把另一页旧谱推过来：下一段，你敢不敢慢慢听？",
+        "forbidden_claims": [
+          "不得长篇引用曲词或使用未授权唱段。",
+          "不得编造九腔十八调完整清单和曲谱细节。",
+          "不得确认 1959 年海外演出国家等待核信息。",
+          "不得把常德丝弦改写成普通流行歌表演。"
+        ]
+      },
+      "evidence_boundaries": {
+        "verified_facts": [
+          "常德丝弦为国家级非遗相关曲艺项目。",
+          "条目记录扬琴说唱、九腔十八调、代表作品和水乡地域气质。",
+          "老艺人、传承空间、曲谱和授权边界是生产化需要补足的关键。"
+        ],
+        "plausible_dramatization": [
+          "录音棚断弦事故推动传承冲突。",
+          "旧谱缺行和口述示范表现曲艺知识传递。"
+        ],
+        "fictional_additions": [
+          "年轻伴奏员、短视频导演和具体录音任务。"
+        ],
+        "forbidden_claims": [
+          "歌词、曲谱、海外演出和代表性传承人信息需授权和补证。"
+        ]
+      },
+      "source_refs": ["hunan-changde-sixian-entry", "national-ich-first-batch-cue", "tan-xiaohui-inheritor-cue", "zhu-xiaoling-inheritor-cue"]
+    }
+  ],
+  "phase_progress_note": {
+    "phase": "Phase 1 - 黄金生产素材卡",
+    "iteration": "Iteration 2 - AI 漫剧黄金卡 10 条",
+    "completion_logic": "10 条 AI 漫剧卡已覆盖 17 个必填字段，但尚未完成人工审稿和生成回归，因此计为草案完成，不计为 production_ready。",
+    "next_gate": [
+      "人工审稿：事实边界、禁用断言和敏感表达。",
+      "生成回归：至少抽 3 条生成 StoryBlueprint、scene_breakdown 和 Seedance prompt。",
+      "补证：对传承人、授权、具体年代、具体曲目/剧目/纹样含义等高风险字段补来源。"
+    ]
+  }
+}

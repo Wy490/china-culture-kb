@@ -969,9 +969,14 @@ const creationUseCaseOptions = CREATION_USE_CASE_OPTIONS
 const truthModeOptions = TRUTH_MODE_OPTIONS
 
 function creationContractRequestFields() {
+  const usesKnowledgeEntryForAiComic = selectedVideoType.value === 'ai_comic_drama'
+    && inputMode.value === 'entry'
+    && Boolean(selectedEntry.value)
+    && selectedCreationUseCase.value === 'original_ai_comic'
+    && selectedTruthMode.value === 'fictional_original'
   return {
-    creation_use_case: selectedCreationUseCase.value || undefined,
-    truth_mode: selectedTruthMode.value || undefined,
+    creation_use_case: usesKnowledgeEntryForAiComic ? 'adapted_ai_comic' : selectedCreationUseCase.value || undefined,
+    truth_mode: usesKnowledgeEntryForAiComic ? 'source_adaptation' : selectedTruthMode.value || undefined,
     client_type: clientType.value.trim() || undefined,
     target_audience: targetAudience.value.trim() || undefined,
     communication_goal: communicationGoal.value.trim() || undefined,
@@ -1234,8 +1239,9 @@ watch(selectedModelProfileId, (value) => {
   }
 })
 
-watch(selectedVideoType, () => {
+watch(selectedVideoType, (videoType) => {
   applyRecommendedNarrativePatterns(planResult.value)
+  if (videoType) alignCreationContractWithVideoType(videoType)
 })
 
 function applyRecommendedNarrativePatterns(plan: StoryPlanResult | null) {
@@ -1293,6 +1299,17 @@ function handleSelectType(type: GenerationType) {
 function handleSelectVideoType(vt: VideoType) {
   selectedVideoType.value = vt
   selectedPresentationStyle.value = VIDEO_TYPE_CONFIG[vt].default_presentation_style
+}
+
+function alignCreationContractWithVideoType(vt: VideoType) {
+  if (
+    vt === 'historical_drama'
+    && selectedCreationUseCase.value === 'original_ai_comic'
+    && selectedTruthMode.value === 'fictional_original'
+  ) {
+    selectedCreationUseCase.value = 'institutional_promo'
+    selectedTruthMode.value = 'factual_reconstruction'
+  }
 }
 
 function handleSelectEvent(event: string) {
@@ -1356,7 +1373,6 @@ async function handleGenerate() {
 
     const res = await storyGenerate({
       entry_name: primaryEntryName,
-      original_user_query: outlineText.value || undefined,
       generation_type: generationTypeToSend as GenerationType,
       video_type: videoTypeToSend as VideoType,
       model_profile_id: selectedModelProfileId.value || undefined,
@@ -1390,7 +1406,6 @@ async function handleGenerate() {
     && (!knowledgePack.value || selectedPrimaryEntries.value.length === 0)
   ) {
     const res = await storyGenerate({
-      original_user_query: outlineText.value || undefined,
       generation_type: generationTypeToSend as GenerationType,
       video_type: videoTypeToSend as VideoType,
       model_profile_id: selectedModelProfileId.value || undefined,
@@ -1430,7 +1445,6 @@ async function handleGenerate() {
 
     const res = await storyGenerate({
       entry_name: primaryEntryName,
-      original_user_query: outlineText.value || undefined,
       generation_type: generationTypeToSend as GenerationType,
       video_type: videoTypeToSend as VideoType,
       model_profile_id: selectedModelProfileId.value || undefined,

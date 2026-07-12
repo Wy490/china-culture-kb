@@ -1,0 +1,67 @@
+{
+  "schema_version": "education-training-professional-benchmark-specs/v1",
+  "video_type": "education_training",
+  "policy": {
+    "real_model_output_required": true,
+    "instructional_subject_and_safety_review_required": true,
+    "fixture_or_simulation_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "training-001-kiln-evidence-reading",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "status": "awaiting_real_model_instructional_and_safety_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "training-002-brocade-observation-record",
+      "source_entry": "湘西土家织锦——西兰卡普：穿在身上的土家史诗",
+      "status": "awaiting_real_model_instructional_and_safety_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "training-003-zhanggu-safe-field-recording",
+      "source_entry": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "status": "awaiting_real_model_instructional_and_safety_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "training-004-yueyang-source-labeling",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "status": "awaiting_real_model_instructional_and_safety_review",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "training-005-miluo-respectful-custom-recording",
+      "source_entry": "汨罗江畔端午习俗——龙舟文化的发源地",
+      "status": "awaiting_real_model_instructional_and_safety_review",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "training-failure-001-vague-unobservable-objectives",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["learning_objective_missing", "objective_practice_assessment_misaligned"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "training-failure-002-practice-without-assessment",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["assessment_missing", "objective_practice_assessment_misaligned"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "training-failure-003-promo-without-demo-feedback-safety",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["demonstration_missing", "feedback_missing", "institutional_or_safety_boundary_missing"],
+      "professional_passed": false
+    }
+  ]
+}

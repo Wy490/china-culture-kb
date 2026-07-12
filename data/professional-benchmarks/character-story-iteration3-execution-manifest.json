@@ -1,0 +1,683 @@
+{
+  "schema_version": "character-story-professional-benchmark-execution-manifest/v2",
+  "generated_at": "2026-07-11T02:45:52.890Z",
+  "video_type": "character_story",
+  "strict_readiness": {
+    "provider": "dedicated_strict_bridge",
+    "model_profile_id": "claude_opus",
+    "model_runtime": "claude",
+    "model_id": "opus",
+    "strict_bridge_manifest_path": "/Users/wuyu/Desktop/china-culture-kb/web/server/scripts/professional-character-benchmark-bridge.mjs",
+    "strict_bridge_realpath": "/Users/wuyu/Desktop/china-culture-kb/web/server/scripts/professional-character-benchmark-bridge.mjs",
+    "strict_bridge_sha256": "a63a6b11979c4adb0267a2637446a8b42fe1dd9a7ea430d497c87475ca2fecb2",
+    "strict_bridge_readable": true,
+    "selected_model_cli_manifest_path": "/opt/homebrew/bin/claude",
+    "selected_model_cli_realpath": "/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+    "selected_model_cli_sha256": "377f0ecedba8246bdabdf312ce8b7cc8ae1160997b26f5edca352a4a8d61dc78",
+    "selected_model_cli_executable": true,
+    "technical_ready": true,
+    "blockers": []
+  },
+  "policy": {
+    "writes_generated_story": false,
+    "invokes_model": false,
+    "source_snapshot_is_professional_pass": false,
+    "fixture_or_simulation_counts_as_real_run": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "source_snapshot_ready_count": 5,
+    "strict_bridge_anchor_ready_count": 5,
+    "strict_cli_anchor_ready_count": 5,
+    "strict_technical_ready_count": 5,
+    "real_model_execution_ready_count": 0,
+    "fixed_real_model_project_count": 0,
+    "fixed_real_model_project_pass_count": 0,
+    "human_blind_review_pass_count": 0,
+    "professional_pass_count": 0
+  },
+  "packages": [
+    {
+      "schema_version": "character-story-professional-benchmark-execution-package/v2",
+      "benchmark_id": "character-benchmark-001-zhou-dunyi-choice",
+      "video_type": "character_story",
+      "status": "source_package_ready",
+      "source_snapshot": {
+        "source_entry": "周敦颐——理学开山鼻祖",
+        "source_province": "湖南",
+        "source_region": "永州→道县（籍贯/出生地）；衡阳（少年成长地）",
+        "source_type": "历史人物",
+        "source_era": "宋",
+        "knowledge_base_credibility": "混合",
+        "summary": "周敦颐（1017—1073），字茂叔，号濂溪先生，湖南道州营道（今永州道县）人，北宋著名哲学家，被尊为\"理学开山鼻祖\"。著有《太极图说》《通书》《爱莲说》，构建\"无极→太极→阴阳→五行→万物→人→道德\"的宇宙—道德哲学体系，将道教宇宙生成模式引入儒学，为宋代理学奠基。",
+        "story": "**少年与家庭**：周敦颐出身道州营道（今永州道县）楼田村书香门第。父周辅成，宋天禧三年（1019）进士，曾任桂岭县令，约乾兴元年（1022）病逝，周敦颐年仅五六岁即丧父。母亲郑氏为龙图阁学士郑向之妹，携幼子从道州远赴京师（开封）投奔舅父。郑向视敦颐如己出——\"爱之如子，为之命名，教之读书\"（度正[S41]年谱原文），亲自指导学业，后又以恩荫授周敦颐试将作监主簿，为其开辟仕途。郑向的抚养与教育是周敦颐从边远道州孤儿成长为全国性理学宗师的关键转折。少年时回道县在濂溪畔读书洗笔，因深爱此溪水清澈不染，后以\"濂溪\"为号。\n\n**月岩悟道传说**：道县有天然溶洞\"月岩\"，地方传说称周敦颐少年时曾在月岩洞中读书，并把洞中天光、月影盈亏与太极阴阳之理相连。该说法可作为道县地方记忆和后世阐释使用，但截至2026-06-13尚未定位到可直接引用的地方志、碑刻或景区正式原文，不能写成《太极图说》思想形成的确证因果。\n\n**濂溪观莲传说**：地方传说称少年周敦颐爱莲，在濂溪边种莲观莲，感悟莲花出淤泥而不染的品格，后来写成了千古名篇《爱莲说》。该说法可作为道县地方记忆和后世阐释使用，但截至2026-06-13尚未定位到可直接引用的宋代文献佐证少年濂溪种莲与《爱莲说》写作之间的直接因果关系——《爱莲说》有确证的创作地点在南康军（1071年或1063年），而非道县少年时期。\n\n**衡阳少年成长**：周敦颐幼年随母迁居衡阳，在衡阳度过重要成长阶段（度正[S41]年谱可证）。衡阳民间有周敦颐少年聪慧、读书悟道的故事，以及他与衡阳西湖观莲的关联传说——衡阳西湖为唐代以来著名莲池景观，地方传说称少年周敦颐常至西湖观莲体悟品格。该观莲传说为地方口述传统（D级），无宋代文献佐证。衡阳后来建有濂溪书院（始建于宋淳熙年间，即周敦颐去世约百年后），是湖南重要的理学传播中心而非周敦颐本人创建。\n\n**汝城治政与兴学（1054—约1057）**：周敦颐任郴州桂阳令（今汝城）约四年，是其\"以德化民\"治政理念的重要实践期。据度正[S41]年谱和汝城地方志记载：1）修建县学（学宫），使汝城首次有正式官办学校，当地学风渐兴——\"治天下者必先治其学\"的理念在此落地；2）不以刑罚威吓百姓而以德教化——传说有疑难案件，周敦颐不急判罚而耐心劝导，当事人悔悟自新（此为地方传说D级，非正史确证）；3）地方传说周敦颐夜间巡视乡里，见有百姓家中灯火读书便予以鼓励——\"夜巡劝学\"传说（D级）。汝城民间传说周敦颐在此悟道著《太极图说》，但[S41]年谱和学界主流认为《太极图说》完成于合州而非汝城，不得写成确证因果。汝城至今有濂溪书院遗址和\"爱莲池\"遗迹，均为后世纪念空间而非周敦颐本人创建。\n\n**湖湘学脉传承**：周敦颐思想在湖南的传播路径为后世建构而非本人亲历——**濂学→湖湘学派**：周敦颐在道县出生、衡阳成长的地理关联，使其成为湖湘学脉的源头符号。衡阳濂溪书院（淳熙年间建）、道县濂溪祠与濂溪书院、汝城濂溪书院均为后世纪念与传播空间。南宋起湖湘学者以周敦颐为学脉起点，胡宏、张栻等在岳麓书院讲学时推尊濂溪为理学开山，形成\"濂溪→湖湘\"的学术谱系叙事。→详见湖南[[岳麓书院——千年学府的文化守望]]\n\n| 年份（约） | 年龄 | 任职 | 关键事件 |\n|------------|------|------|----------|\n| 1037 | 21 | 洪州分宁主簿（今江西修水） | 初入仕途。**分宁断案**：一桩久拖不决的疑案，周敦颐到任后一审定案，当地百姓惊叹\"老吏不如也\" |\n| 1046 | 30 | 南安军司理参军（今江西大余） | **拒签冤案**：囚犯依律不该死，知军王逵欲判死刑，周敦颐力争不可，取出告身（委任状）准备辞官：\"杀人以媚人，吾不为也！\"王逵感悟改判，囚犯免死。程珦因此令二子程颢、程颐拜周敦颐为师 |\n| 1047-1054 | — | 岭口等地县令 | 历任多地 |\n| 1054 | 38 | 郴州桂阳令（今汝城） | 治政兴学——修建县学、以德化民→详见故事梗概\"汝城治政与兴学\"段落 |\n| 1056 | 40 | 南昌知县 | 回洪州任知县 |\n| 1060 | 44 | 合州判官（今重庆合川） | 在合州著述深化理学思想，完成《太极图说》与《通书》核心内容 |\n| 1067 | 51 | 广南东路转运判官 | — |\n| 1068 | 52 | 提点广南东路刑狱 | 巡按诸州。**端州抑制采砚**：任端州知州时（今广东肇庆），当地盛产端砚，前任官员借采砚之名大肆搜刮行贿牟利，周敦颐严格限制采砚数量，明令禁止官员借端砚谋私。离任时只带走两枚端砚自用 |\n| 1071 | 55 | 知南康军（今江西庐山市） | 在官署旁凿池种莲写《爱莲说》。庐山筑濂溪书堂讲学归隐 |\n| 1073 | 57 | 病逝庐山 | 卒于庐山濂溪书堂，葬庐山 |\n\n**清廉自守**：周敦颐为官二十余年，俸禄常散济亲友穷困，自家却清贫度日，妻子有时难以温饱。不谋私利不为家人求官，很少携家眷随任。黄庭坚评其品格：\"廉于取名，薄于徼福，鲜于求人，廉于取与，耻于有求。\"——五\"廉\"之评精辟概括其为人。",
+        "cultural_significance": "周敦颐融合儒、道、释三家思想，将道教宇宙生成模式引入儒学，构建完整宇宙—道德哲学体系，为宋代理学奠基。其影响链：**濂学开其源→洛学衍其流→关学辅其翼→闽学总其成**。程颢程颐受其启发发展出洛学，朱熹尊其为理学开山，合称\"濂、洛、关、闽\"四大理学流派，周敦颐居首。朱熹编纂[S18]以周敦颐为首，建构\"濂→洛→闽\"的道统传承谱系。1241年（南宋淳祐元年）周敦颐首次从祀孔庙，后位次不断提升，最终居于先贤之列。",
+        "sources": [
+          {
+            "source_id": "source-1",
+            "citation": "[S12] 《宋史·道学传·周敦颐》（A级）",
+            "grade": "A"
+          },
+          {
+            "source_id": "source-2",
+            "citation": "[S17] 黄宗羲《宋元学案·濂溪学案》（C级）",
+            "grade": "C"
+          },
+          {
+            "source_id": "source-3",
+            "citation": "[S18] 朱熹编《近思录》收录周敦颐著作（C级）",
+            "grade": "C"
+          },
+          {
+            "source_id": "source-4",
+            "citation": "[S19] 陈来《宋明理学》——\"诚—几—慎动\"体系阐释（C级）",
+            "grade": "C"
+          },
+          {
+            "source_id": "source-5",
+            "citation": "[S41] 度正编《周敦颐年谱》——仕途时间线主要依据（B级）",
+            "grade": "B"
+          },
+          {
+            "source_id": "source-6",
+            "citation": "[S42] 朱熹《周子太极图说解》——太极图说权威注释（C级）",
+            "grade": "C"
+          },
+          {
+            "source_id": "source-7",
+            "citation": "[S43] 陆九渊《与朱元晦书》——朱陆太极无极辩论原始文献（A级）",
+            "grade": "A"
+          },
+          {
+            "source_id": "source-8",
+            "citation": "[S44] 朱震《汉上易传·卦图》——太极图传承链记载（B级）",
+            "grade": "B"
+          },
+          {
+            "source_id": "source-9",
+            "citation": "[S45] 冯友兰《中国哲学史》——太极图与陈抟关系论述（C级）",
+            "grade": "C"
+          },
+          {
+            "source_id": "source-10",
+            "citation": "[S46] 汝城县地方志/文史资料——汝城兴学治政记载（B级）",
+            "grade": "B"
+          },
+          {
+            "source_id": "source-11",
+            "citation": "[S47] 衡阳西湖与濂溪书院文史资料——衡阳少年成长记载（B级）",
+            "grade": "B"
+          },
+          {
+            "source_id": "source-12",
+            "citation": "[S48] 梁绍辉《周敦颐评传》——传说考证系统研究（C级）",
+            "grade": "C"
+          },
+          {
+            "source_id": "source-13",
+            "citation": "[S49] 明嘉靖《道州志》（约1528）——月岩悟道传说首次文献记载（B级）",
+            "grade": "B"
+          },
+          {
+            "source_id": "source-14",
+            "citation": "[S50] 清康熙《永州府志》——月岩悟道叙事升级\"悟道\"一词（B级）",
+            "grade": "B"
+          },
+          {
+            "source_id": "source-15",
+            "citation": "[S51] 潘兴嗣《濂溪先生墓志铭》（约1073）——最早一手传记，不含传说（A级）",
+            "grade": "A"
+          },
+          {
+            "source_id": "source-16",
+            "citation": "道县文旅：月岩悟道传说（D级）",
+            "grade": "D"
+          },
+          {
+            "source_id": "source-17",
+            "citation": "永州新闻网：濂溪故里周敦颐家乡（D级）",
+            "grade": "D"
+          },
+          {
+            "source_id": "source-18",
+            "citation": "汝城民间传说：夜巡劝学、以德劝导悔悟（D级）",
+            "grade": "D"
+          },
+          {
+            "source_id": "source-19",
+            "citation": "衡阳民间传说：西湖观莲关联周敦颐（D级）",
+            "grade": "D"
+          }
+        ],
+        "unverified_points": [
+          "周敦颐与二程的师承关系是正式师徒还是少年启发，学界有不同看法",
+          "《太极图说》来源是否受道教陈抟影响尚有学术争议（朱震说传承自陈抟→穆修→李之才→周敦颐，朱熹否认）",
+          "月岩悟道传说为民间传说——deep-research考证结果：最早文献出处为明嘉靖《道州志》（约1528年，何维柏编）山川卷仅记\"相传宋儒周敦颐尝悟道于此\"，此前宋代文献（潘兴嗣《濂溪先生墓志铭》约1073年、朱熹《濂溪先生年谱》1179年、度正增补年谱）均未提及月岩悟道叙事。清康熙《永州府志》始用\"悟道\"一词，现代叙事增加\"著太极图说于月岩\"细节。属层累建构（顾颉刚层累地造成的中国古史概念）——明嘉靖为首记、清康熙为升级、现代为再升级，不得写成确证因果",
+          "濂溪观莲传说为地方口述传统（D级）——deep-research考证结果：宋代文献仅记\"家濂溪\"（潘兴嗣墓志铭）和\"以营道濂溪之上名其居曰濂溪书堂\"（潘兴嗣原文），从未记载\"在濂溪边种莲观莲\"这一具体行为。明代地方志始建构\"濂溪有莲→周观莲→写爱莲说\"因果链，属\"名胜—名人—名作\"三联文化符号建构模式（地方志理论研究），无宋代文献佐证少年种莲与《爱莲说》写作的直接因果关系——《爱莲说》有确证创作地点在南康军（朱熹《濂溪先生行状》明确记载）",
+          "衡阳西湖观莲传说为地方口述传统（D级）——deep-research考证结果：宋代核心文献（度正年谱、朱熹《伊洛渊源录》、胡宏《周子通书序》）均未提及周敦颐在衡阳西湖观莲。朱熹《濂溪先生行状》明确记载周敦颐在\"南安军署内凿池种莲撰《爱莲说》\"，南宋彭骥《爱莲说》跋也提及此文在南安军所作。衡阳西湖观莲传说主要见于明清衡州府志、衡阳县志，属后世地方文化建构而非宋代 contemporaneous 证据",
+          "汝城夜巡劝学传说为地方传说（D级）——deep-research考证结果：最早见于明清汝城县志/桂阳县志，非宋代一手文献。宋史·周敦颐传仅记治政概略（\"治政有方\"），不含夜巡劝学细节。该传说属明清地方志增补",
+          "汝城悟道著《太极图说》传说——deep-research考证结果：学界主流认定《太极图说》完成于合州（朱熹年谱推断）或南安军（另一主流观点），汝城说法仅由汝城地方文献支持，梁绍辉《周敦颐评传》（南京大学出版社1994）系统考证后认定汝城说法为地方传说而非文献可证史实",
+          "汝城修建县学——度正[S41]年谱记载周敦颐任桂阳令期间治政兴学，但\"修建县学使汝城首次有官办学校\"的具体细节需进一步核实[S46]汝城地方志原文",
+          "周辅成去世年份有乾兴元年（1022）和更晚两种说法，不同年谱版本有差异"
+        ],
+        "verification_method": "可信度说明：混合——正史记载部分基本可靠（A级[S12]《宋史》+B级[S41]度正年谱交叉佐证；拒签冤案、分宁断案均有正史记载），汝城兴学治政部分基本可靠（B级[S41]年谱+B级[S46]汝城地方志交叉佐证），衡阳少年成长部分基本可靠（B级[S41]年谱+B级[S47]衡阳文史交叉佐证），**湖南5个地方传说全部为后世建构**（deep-research考证结果）：月岩悟道最早出处为明嘉靖《道州志》[S49]（B级，约1528年），此前潘兴嗣墓志铭[S51]（A级，1073年）和朱熹年谱均未提及；濂溪观莲因果链为明代地方志\"名胜—名人—名作\"三联建构模式；衡阳西湖观莲最早见于明清衡州府志；汝城夜巡劝学最早见于明清汝城县志；汝城悟道著太极图说为地方传说（梁绍辉[S48]系统考证认定）。学术争议部分尚无定论（太极图与陈抟传承关系学界仍在讨论）\n\n以[S12]《宋史》核实周敦颐籍贯、任官、拒签冤案、晚年归隐等正史线索；以[S41]度正《周敦颐年谱》核实仕途时间线和二程相关记载；以[S17]、[S18]、[S42]核实理学文本和后世道统阐释；以[S46]、[S47]及地方志/文史资料核对汝城、衡阳、长沙等地方化传播空间；对月岩悟道、观莲传说、汝城悟道等民间叙事，必须标为地方传说或后世阐释，不作为确证史实。",
+        "snapshot_sha256": "8c76912d4acad1a8f030d4c0b52efcd3bf7ae1128fa40fc83ec4287201bc901f",
+        "claim_level_verification_complete": false
+      },
+      "creative_contract": {
+        "central_event": "南安军拒签冤案：周敦颐拒绝在不应判死的案件上签字，并取出告身准备辞官",
+        "dramatic_question": "当上级命令与人命事实冲突时，周敦颐是否愿意用仕途为拒签承担代价？",
+        "target_audience": "对传统文化有兴趣的18至35岁短视频观众",
+        "platform": "横竖屏均可改编的剧情短片",
+        "target_duration": "5分钟",
+        "communication_goal": "用拒签冤案中的选择与代价呈现人物操守，不写成生平年表。",
+        "production_goal": "形成可进入分镜和导演文本的单事件人物剧本。",
+        "audience_promise": "观众将看到一个官员如何在仕途与人命之间作出不可撤回的选择。"
+      },
+      "truth_boundary": {
+        "knowledge_base_claim_status": "mixed_claims_require_source_level_review",
+        "required_evidence_focus": [
+          "《宋史》可考的南安军拒签冤案",
+          "辞官告身和王逵改判的史实边界",
+          "不得把影视化对白伪装成史料原文"
+        ],
+        "plausible_dramatization_allowlist": [
+          "不改变可核验事件结果的动作、停顿、情绪和非引文对白",
+          "符合时代与场景常识但不声称为个人专属史实的服饰、陈设和调度",
+          "为呈现选择压力而设置的无名关系角色，必须标记为戏剧化合成人物"
+        ],
+        "fictional_addition_policy": "新增人物、对白、关系和偶合必须显式记录，不得伪装成史料。",
+        "unknown_or_forbidden_claims": [
+          "周敦颐与二程的师承关系是正式师徒还是少年启发，学界有不同看法",
+          "《太极图说》来源是否受道教陈抟影响尚有学术争议（朱震说传承自陈抟→穆修→李之才→周敦颐，朱熹否认）",
+          "月岩悟道传说为民间传说——deep-research考证结果：最早文献出处为明嘉靖《道州志》（约1528年，何维柏编）山川卷仅记\"相传宋儒周敦颐尝悟道于此\"，此前宋代文献（潘兴嗣《濂溪先生墓志铭》约1073年、朱熹《濂溪先生年谱》1179年、度正增补年谱）均未提及月岩悟道叙事。清康熙《永州府志》始用\"悟道\"一词，现代叙事增加\"著太极图说于月岩\"细节。属层累建构（顾颉刚层累地造成的中国古史概念）——明嘉靖为首记、清康熙为升级、现代为再升级，不得写成确证因果",
+          "濂溪观莲传说为地方口述传统（D级）——deep-research考证结果：宋代文献仅记\"家濂溪\"（潘兴嗣墓志铭）和\"以营道濂溪之上名其居曰濂溪书堂\"（潘兴嗣原文），从未记载\"在濂溪边种莲观莲\"这一具体行为。明代地方志始建构\"濂溪有莲→周观莲→写爱莲说\"因果链，属\"名胜—名人—名作\"三联文化符号建构模式（地方志理论研究），无宋代文献佐证少年种莲与《爱莲说》写作的直接因果关系——《爱莲说》有确证创作地点在南康军（朱熹《濂溪先生行状》明确记载）",
+          "衡阳西湖观莲传说为地方口述传统（D级）——deep-research考证结果：宋代核心文献（度正年谱、朱熹《伊洛渊源录》、胡宏《周子通书序》）均未提及周敦颐在衡阳西湖观莲。朱熹《濂溪先生行状》明确记载周敦颐在\"南安军署内凿池种莲撰《爱莲说》\"，南宋彭骥《爱莲说》跋也提及此文在南安军所作。衡阳西湖观莲传说主要见于明清衡州府志、衡阳县志，属后世地方文化建构而非宋代 contemporaneous 证据",
+          "汝城夜巡劝学传说为地方传说（D级）——deep-research考证结果：最早见于明清汝城县志/桂阳县志，非宋代一手文献。宋史·周敦颐传仅记治政概略（\"治政有方\"），不含夜巡劝学细节。该传说属明清地方志增补",
+          "汝城悟道著《太极图说》传说——deep-research考证结果：学界主流认定《太极图说》完成于合州（朱熹年谱推断）或南安军（另一主流观点），汝城说法仅由汝城地方文献支持，梁绍辉《周敦颐评传》（南京大学出版社1994）系统考证后认定汝城说法为地方传说而非文献可证史实",
+          "汝城修建县学——度正[S41]年谱记载周敦颐任桂阳令期间治政兴学，但\"修建县学使汝城首次有官办学校\"的具体细节需进一步核实[S46]汝城地方志原文",
+          "周辅成去世年份有乾兴元年（1022）和更晚两种说法，不同年谱版本有差异",
+          "不得把知识库未逐条映射来源的叙述写成史料原文或唯一确定版本。"
+        ],
+        "required_disclaimers": [
+          "本项目为基于知识条目的影视化创作候选，戏剧化对白与场面不等同史料原文。",
+          "进入专业通过前必须完成人工事实与文化审阅。"
+        ]
+      },
+      "story_generation_request": {
+        "entry_name": "周敦颐——理学开山鼻祖",
+        "original_user_query": "固定专业评测项目：character-benchmark-001-zhou-dunyi-choice\n中心事件：南安军拒签冤案：周敦颐拒绝在不应判死的案件上签字，并取出告身准备辞官\n戏剧问题：当上级命令与人命事实冲突时，周敦颐是否愿意用仕途为拒签承担代价？\n观众承诺：观众将看到一个官员如何在仕途与人命之间作出不可撤回的选择。\n创作目标：用拒签冤案中的选择与代价呈现人物操守，不写成生平年表。\n必须围绕单一压力事件组织人物目标、阻力、选择、代价和关系变化，不得写成年表。\n每场必须有可见行动、冲突或发现、情绪转折以及继续存在的理由。\n对白必须区分角色声线并包含潜台词，不得把旁白资料拆成角色台词。\n知识库声明、合理戏剧化、明确虚构和未知项必须分层；不得伪造史料原话。\n重点核验：《宋史》可考的南安军拒签冤案；辞官告身和王逵改判的史实边界；不得把影视化对白伪装成史料原文",
+        "video_type": "character_story",
+        "model_profile_id": "claude_opus",
+        "selected_event": "南安军拒签冤案：周敦颐拒绝在不应判死的案件上签字，并取出告身准备辞官",
+        "target_video_duration": "5分钟",
+        "target_audience": "对传统文化有兴趣的18至35岁短视频观众",
+        "communication_goal": "用拒签冤案中的选择与代价呈现人物操守，不写成生平年表。",
+        "presentation_style": "cinematic",
+        "story_structure": "single_event_drama",
+        "truth_mode": "factual_reconstruction",
+        "source_material_mode": "generate_from_knowledge",
+        "genre_strictness": "strict",
+        "story_priority": "balanced",
+        "auto_repair": true,
+        "output_gears_segments": false
+      },
+      "execution_contract": {
+        "execution_kind": "real_model",
+        "benchmark_prompt_version": "character-story-professional-benchmark/v2",
+        "story_generation_prompt_version": "story-generation/v1",
+        "professional_text_package_version": "professional-text-package/v1",
+        "model_profile_id": "claude_opus",
+        "model_runtime": "claude",
+        "model_id": "opus",
+        "fallback_allowed_for_benchmark_credit": false,
+        "fixture_allowed_for_benchmark_credit": false,
+        "required_artifacts": [
+          "story-generation-prompt-package.json",
+          "initial-story.json",
+          "initial-professional-text-package.json",
+          "revision-plan.json",
+          "final-professional-text-package.json",
+          "model-usage-and-cost.json",
+          "human-blind-review.json"
+        ]
+      },
+      "professional_passed": false
+    },
+    {
+      "schema_version": "character-story-professional-benchmark-execution-package/v2",
+      "benchmark_id": "character-benchmark-002-wang-fuzhi-last-stand",
+      "video_type": "character_story",
+      "status": "source_package_ready",
+      "source_snapshot": {
+        "source_entry": "王夫之——船山先生",
+        "source_province": "湖南",
+        "source_region": "衡阳→衡阳县",
+        "source_type": "历史人物",
+        "source_era": "明清",
+        "knowledge_base_credibility": "基本可靠",
+        "summary": "王夫之（1619—1692），字而农，号姜斋，别号船山病叟，湖南衡阳人，明清之际伟大哲学家、思想家。与顾炎武、黄宗羲并称明清三大儒。提出\"气一元论\"唯物主义哲学，主张\"天地之化日新\"，被誉为中国古代唯物主义哲学的集大成者。",
+        "story": "1619年生于衡阳书香门第，自幼聪颖，1642年中举人。1644年明亡，王夫之积极参与抗清，在衡阳组织义军抵抗清军，后投奔南明永历政权任职。因内部倾轧失望而离开。\n\n抗清失败后隐居衡阳石船山（今衡阳县曲兰镇），自号\"船山病叟\"以示坚守民族气节、誓不仕清。数十年如一日清贫隐居、勤奋著书。\n\n提出\"气一元论\"，认为世界由\"气\"构成，否定程朱理学\"理在气先\"；主张运动绝对、静止相对的辩证法思想；强调\"行先知后\"，知行相资以为用；批判君主专制提出\"天下者非一人之天下也\"；反对\"存天理灭人欲\"，主张\"人欲之正当即天理\"。\n\n1692年病逝于石船山，享年73岁。生前著作多未刊行，死后由后人整理出版。曾国藩兄弟刊刻《船山遗书》使其思想广泛传播。",
+        "cultural_significance": "王夫之思想对后世影响深远，尤其对近代湖南学者群体（曾国藩、谭嗣同等）产生重大影响。船山学成为专门研究领域，衡阳建有船山书院、王船山故居纪念馆。\"六经责我开生面\"体现其继承和创新经学的精神。",
+        "sources": [
+          {
+            "source_id": "source-1",
+            "citation": "王夫之著作：《张子正蒙注》《周易外传》《读通鉴论》《宋论》等（A级；传世著作线索）",
+            "grade": "A"
+          },
+          {
+            "source_id": "source-2",
+            "citation": "曾国藩刊刻《船山遗书》（B级；需补版本和刊刻资料）",
+            "grade": "B"
+          }
+        ],
+        "unverified_points": [
+          "王夫之在南明永历政权中的具体任职待查",
+          "石船山隐居期间的生活细节多据后人追述"
+        ],
+        "verification_method": "外部核实：王夫之著作传世；曾国藩刊刻《船山遗书》有刊行记录",
+        "snapshot_sha256": "15b81084cf18d1aefa209d1a39f310d4a56adb3246865f89c94c92f9968fb7b2",
+        "claim_level_verification_complete": false
+      },
+      "creative_contract": {
+        "central_event": "南明政治实践受挫并离开后，王夫之在抗清失败与清贫隐居中选择继续著述",
+        "dramatic_question": "当现实行动失败且著述未必能在生前流传时，王夫之为什么仍要继续写下去？",
+        "target_audience": "大学生与青年知识观众",
+        "platform": "人物历史剧情短片",
+        "target_duration": "8分钟",
+        "communication_goal": "围绕时代崩塌中的思想选择，呈现人物如何承受失败并继续著述。",
+        "production_goal": "形成有时代压力、关系变化和晚年余味的分场剧本。",
+        "audience_promise": "观众将理解一次政治与人生失败如何转化为持续数十年的思想行动。"
+      },
+      "truth_boundary": {
+        "knowledge_base_claim_status": "mixed_claims_require_source_level_review",
+        "required_evidence_focus": [
+          "人物经历与时代事件的可考边界",
+          "隐居著述与后世评价不得倒置为当时结果",
+          "避免把思想评价替代人物行动"
+        ],
+        "plausible_dramatization_allowlist": [
+          "不改变可核验事件结果的动作、停顿、情绪和非引文对白",
+          "符合时代与场景常识但不声称为个人专属史实的服饰、陈设和调度",
+          "为呈现选择压力而设置的无名关系角色，必须标记为戏剧化合成人物"
+        ],
+        "fictional_addition_policy": "新增人物、对白、关系和偶合必须显式记录，不得伪装成史料。",
+        "unknown_or_forbidden_claims": [
+          "王夫之在南明永历政权中的具体任职待查",
+          "石船山隐居期间的生活细节多据后人追述",
+          "不得把知识库未逐条映射来源的叙述写成史料原文或唯一确定版本。"
+        ],
+        "required_disclaimers": [
+          "本项目为基于知识条目的影视化创作候选，戏剧化对白与场面不等同史料原文。",
+          "进入专业通过前必须完成人工事实与文化审阅。"
+        ]
+      },
+      "story_generation_request": {
+        "entry_name": "王夫之——船山先生",
+        "original_user_query": "固定专业评测项目：character-benchmark-002-wang-fuzhi-last-stand\n中心事件：南明政治实践受挫并离开后，王夫之在抗清失败与清贫隐居中选择继续著述\n戏剧问题：当现实行动失败且著述未必能在生前流传时，王夫之为什么仍要继续写下去？\n观众承诺：观众将理解一次政治与人生失败如何转化为持续数十年的思想行动。\n创作目标：围绕时代崩塌中的思想选择，呈现人物如何承受失败并继续著述。\n必须围绕单一压力事件组织人物目标、阻力、选择、代价和关系变化，不得写成年表。\n每场必须有可见行动、冲突或发现、情绪转折以及继续存在的理由。\n对白必须区分角色声线并包含潜台词，不得把旁白资料拆成角色台词。\n知识库声明、合理戏剧化、明确虚构和未知项必须分层；不得伪造史料原话。\n重点核验：人物经历与时代事件的可考边界；隐居著述与后世评价不得倒置为当时结果；避免把思想评价替代人物行动",
+        "video_type": "character_story",
+        "model_profile_id": "claude_opus",
+        "selected_event": "南明政治实践受挫并离开后，王夫之在抗清失败与清贫隐居中选择继续著述",
+        "target_video_duration": "8分钟",
+        "target_audience": "大学生与青年知识观众",
+        "communication_goal": "围绕时代崩塌中的思想选择，呈现人物如何承受失败并继续著述。",
+        "presentation_style": "cinematic",
+        "story_structure": "single_event_drama",
+        "truth_mode": "factual_reconstruction",
+        "source_material_mode": "generate_from_knowledge",
+        "genre_strictness": "strict",
+        "story_priority": "balanced",
+        "auto_repair": true,
+        "output_gears_segments": false
+      },
+      "execution_contract": {
+        "execution_kind": "real_model",
+        "benchmark_prompt_version": "character-story-professional-benchmark/v2",
+        "story_generation_prompt_version": "story-generation/v1",
+        "professional_text_package_version": "professional-text-package/v1",
+        "model_profile_id": "claude_opus",
+        "model_runtime": "claude",
+        "model_id": "opus",
+        "fallback_allowed_for_benchmark_credit": false,
+        "fixture_allowed_for_benchmark_credit": false,
+        "required_artifacts": [
+          "story-generation-prompt-package.json",
+          "initial-story.json",
+          "initial-professional-text-package.json",
+          "revision-plan.json",
+          "final-professional-text-package.json",
+          "model-usage-and-cost.json",
+          "human-blind-review.json"
+        ]
+      },
+      "professional_passed": false
+    },
+    {
+      "schema_version": "character-story-professional-benchmark-execution-package/v2",
+      "benchmark_id": "character-benchmark-003-jia-yi-changsha",
+      "video_type": "character_story",
+      "status": "source_package_ready",
+      "source_snapshot": {
+        "source_entry": "贾谊——长沙太傅的千年哀思",
+        "source_province": "湖南",
+        "source_region": "河南→洛阳（籍贯），贬长沙王太傅（西汉长沙国，范围远大于今长沙市）",
+        "source_type": "历史人物",
+        "source_era": "西汉",
+        "knowledge_base_credibility": "基本可靠",
+        "summary": "贾谊（前200—前168），西汉著名政论家、文学家，年少得志后被贬为长沙王太傅，在长沙度过三年，写下《吊屈原赋》等名篇。\"长沙\"之名因贾谊而增添了文人贬谪的文化意象。长沙现存贾谊故居。",
+        "story": "贾谊年少才高，18岁即以文才闻名，被汉文帝召为博士，后升太中大夫。他提出改革建议（削藩、重农、礼制），触犯权贵利益，遭周勃等老臣排挤。\n\n汉文帝不得已将贾谊贬为长沙王太傅。长沙当时被视为偏远之地，贾谊南渡湘江赴任途中，经过汨罗江（屈原投江之处），感同身受写下《吊屈原赋》，以屈原自比：\"共承嘉惠兮，俟罪长沙。侧闻屈原兮，自沉汨罗。\"\n\n在长沙三年，贾谊虽身处贬谪仍忧心国事，写下《治安策》，系统分析了西汉面临的匈奴威胁、诸侯割据等问题，提出\"众建诸侯而少其力\"的削藩方略。文帝虽赏识其才华，但终未重用。\n\n后文帝召贾谊回长安，但仅让他做梁王太傅。梁怀王骑马摔死，贾谊自责未尽辅导之责，悲伤过度，一年后去世，年仅33岁。\n\n长沙太平街现存贾谊故居，相传为贾谊在长沙时的居所，历代修缮。",
+        "cultural_significance": "贾谊的贬谪使\"长沙\"从地理名称变为文人贬谪的文化意象。他在长沙写下的《吊屈原赋》将屈原与贾谊两个贬谪文人串联，形成了中国文学中\"悲士不遇\"的经典叙事链条。",
+        "sources": [
+          {
+            "source_id": "source-1",
+            "citation": "《史记·屈原贾生列传》（A级）",
+            "grade": "A"
+          },
+          {
+            "source_id": "source-2",
+            "citation": "长沙晚报\"文脉长沙\"专栏相关报道（C级）",
+            "grade": "C"
+          },
+          {
+            "source_id": "source-3",
+            "citation": "洪孟春主编《大地苍茫》（\"文脉长沙\"丛书，湖南人民出版社）（C级；需回查原书篇章）",
+            "grade": "C"
+          }
+        ],
+        "unverified_points": [
+          "贾谊故居是否确为贾谊实际居住之所，历代修缮后原貌已不可考",
+          "《大地苍茫》中关于贾谊的具体篇章内容待补充原书核实"
+        ],
+        "verification_method": "外部核实：《史记》有贾谊传记；贾谊故居为现存建筑可实地参观",
+        "snapshot_sha256": "120dd5ed0799277e056d1981d95b8c4f564c3f5b7ad495827a86610fb4c8bcda",
+        "claim_level_verification_complete": false
+      },
+      "creative_contract": {
+        "central_event": "贾谊被贬长沙王太傅后，在政治失意中仍选择继续观察现实并写作政论",
+        "dramatic_question": "当改革主张换来贬谪时，贾谊是沉默自保，还是继续用文字承担政治判断？",
+        "target_audience": "城市文化与历史人物内容观众",
+        "platform": "城市文化人物短片",
+        "target_duration": "5分钟",
+        "communication_goal": "用贬谪长沙后的处境、关系和选择呈现才华与命运的张力。",
+        "production_goal": "连接人物行动与长沙空间，但不虚构未有证据的城市事件。",
+        "audience_promise": "观众将看到一位年轻政治家在被排斥之后如何重新定义自己的表达。"
+      },
+      "truth_boundary": {
+        "knowledge_base_claim_status": "mixed_claims_require_source_level_review",
+        "required_evidence_focus": [
+          "贬为长沙王太傅的时间与身份",
+          "故居、文章和后世纪念空间的时序边界",
+          "不得直接复刻受版权保护的现代改写文本"
+        ],
+        "plausible_dramatization_allowlist": [
+          "不改变可核验事件结果的动作、停顿、情绪和非引文对白",
+          "符合时代与场景常识但不声称为个人专属史实的服饰、陈设和调度",
+          "为呈现选择压力而设置的无名关系角色，必须标记为戏剧化合成人物"
+        ],
+        "fictional_addition_policy": "新增人物、对白、关系和偶合必须显式记录，不得伪装成史料。",
+        "unknown_or_forbidden_claims": [
+          "贾谊故居是否确为贾谊实际居住之所，历代修缮后原貌已不可考",
+          "《大地苍茫》中关于贾谊的具体篇章内容待补充原书核实",
+          "不得把知识库未逐条映射来源的叙述写成史料原文或唯一确定版本。"
+        ],
+        "required_disclaimers": [
+          "本项目为基于知识条目的影视化创作候选，戏剧化对白与场面不等同史料原文。",
+          "进入专业通过前必须完成人工事实与文化审阅。"
+        ]
+      },
+      "story_generation_request": {
+        "entry_name": "贾谊——长沙太傅的千年哀思",
+        "original_user_query": "固定专业评测项目：character-benchmark-003-jia-yi-changsha\n中心事件：贾谊被贬长沙王太傅后，在政治失意中仍选择继续观察现实并写作政论\n戏剧问题：当改革主张换来贬谪时，贾谊是沉默自保，还是继续用文字承担政治判断？\n观众承诺：观众将看到一位年轻政治家在被排斥之后如何重新定义自己的表达。\n创作目标：用贬谪长沙后的处境、关系和选择呈现才华与命运的张力。\n必须围绕单一压力事件组织人物目标、阻力、选择、代价和关系变化，不得写成年表。\n每场必须有可见行动、冲突或发现、情绪转折以及继续存在的理由。\n对白必须区分角色声线并包含潜台词，不得把旁白资料拆成角色台词。\n知识库声明、合理戏剧化、明确虚构和未知项必须分层；不得伪造史料原话。\n重点核验：贬为长沙王太傅的时间与身份；故居、文章和后世纪念空间的时序边界；不得直接复刻受版权保护的现代改写文本",
+        "video_type": "character_story",
+        "model_profile_id": "claude_opus",
+        "selected_event": "贾谊被贬长沙王太傅后，在政治失意中仍选择继续观察现实并写作政论",
+        "target_video_duration": "5分钟",
+        "target_audience": "城市文化与历史人物内容观众",
+        "communication_goal": "用贬谪长沙后的处境、关系和选择呈现才华与命运的张力。",
+        "presentation_style": "cinematic",
+        "story_structure": "single_event_drama",
+        "truth_mode": "factual_reconstruction",
+        "source_material_mode": "generate_from_knowledge",
+        "genre_strictness": "strict",
+        "story_priority": "balanced",
+        "auto_repair": true,
+        "output_gears_segments": false
+      },
+      "execution_contract": {
+        "execution_kind": "real_model",
+        "benchmark_prompt_version": "character-story-professional-benchmark/v2",
+        "story_generation_prompt_version": "story-generation/v1",
+        "professional_text_package_version": "professional-text-package/v1",
+        "model_profile_id": "claude_opus",
+        "model_runtime": "claude",
+        "model_id": "opus",
+        "fallback_allowed_for_benchmark_credit": false,
+        "fixture_allowed_for_benchmark_credit": false,
+        "required_artifacts": [
+          "story-generation-prompt-package.json",
+          "initial-story.json",
+          "initial-professional-text-package.json",
+          "revision-plan.json",
+          "final-professional-text-package.json",
+          "model-usage-and-cost.json",
+          "human-blind-review.json"
+        ]
+      },
+      "professional_passed": false
+    },
+    {
+      "schema_version": "character-story-professional-benchmark-execution-package/v2",
+      "benchmark_id": "character-benchmark-004-tao-kan-discipline",
+      "video_type": "character_story",
+      "status": "source_package_ready",
+      "source_snapshot": {
+        "source_entry": "陶侃——长沙公的精进与隐忍",
+        "source_province": "湖南",
+        "source_region": "江西→九江（籍贯），封长沙公（东晋长沙，食邑长沙）",
+        "source_type": "历史人物",
+        "source_era": "魏晋",
+        "knowledge_base_credibility": "基本可靠",
+        "summary": "陶侃（259—334），东晋名将、政治家，封长沙公，以精进勤勉和隐忍坚韧著称。从寒门小吏到封公拜将，一生体现了\"经世致用\"的实干精神，被后世湖湘文化引为先贤。",
+        "story": "陶侃出身寒门，早年仅为县中小吏。他以极致的勤勉闻名：每日搬运百砖从室内到室外再搬回，以此锻炼体魄意志，防止安逸懒散。人称\"陶侃运甓\"（甓=砖）。\n\n他做事精细有序，重视时间管理——常对人说：\"大禹圣者，乃惜寸阴；至于众人，当惜分阴。\"留下\"惜分阴\"的名训。他对公务一丝不苟，无事时不浪费片刻。\n\n陶侃从寒门小吏起步，经积年奋战升为东晋名将，平定苏峻叛乱稳定东晋政局。被封为长沙公，食邑长沙。晚年位极人臣但始终谨慎自律，不骄不纵。",
+        "cultural_significance": "陶侃\"运甓惜分阴\"的故事成为湖湘文化中勤勉务实的经典叙事，与后来湖湘精神\"经世致用\"一脉相承。长沙公的封号使陶侃与长沙建立了直接的历史关联。",
+        "sources": [
+          {
+            "source_id": "source-1",
+            "citation": "《大地苍茫》目录4：陶侃的精进与隐忍（洪孟春主编，长沙晚报社编著，湖南人民出版社）（C级；需回查原书篇章）",
+            "grade": "C"
+          },
+          {
+            "source_id": "source-2",
+            "citation": "《晋书·陶侃传》（A级）",
+            "grade": "A"
+          }
+        ],
+        "unverified_points": [
+          "[S1] 目录4：陶侃的精进与隐忍"
+        ],
+        "verification_method": "外部核实：《晋书》有陶侃传记；\"运甓惜分阴\"为正史记载",
+        "snapshot_sha256": "05146ba005b49e7fddb094f80e3eb2c94df592ce1676411cf5cd663814095645",
+        "claim_level_verification_complete": false
+      },
+      "creative_contract": {
+        "central_event": "陶侃在安逸环境中坚持每日运甓，以具体行动抵抗松懈并承受旁人不解",
+        "dramatic_question": "当勤勉被旁人视为无用自苦时，陶侃如何证明自律不是姿态而是现实准备？",
+        "target_audience": "职场成长与历史人物故事观众",
+        "platform": "人物选择短片",
+        "target_duration": "3分钟",
+        "communication_goal": "用一个具体行动检验“勤勉”是否只是标签，并呈现其关系代价。",
+        "production_goal": "形成低场景数、高动作密度的可拍人物故事。",
+        "audience_promise": "观众将看到自律如何在现实压力中成为行动，而不只是一句格言。"
+      },
+      "truth_boundary": {
+        "knowledge_base_claim_status": "mixed_claims_require_source_level_review",
+        "required_evidence_focus": [
+          "运甓等典故的来源等级",
+          "历史人物评价与可证事件分开",
+          "不得把后世成语直接写成现场原话"
+        ],
+        "plausible_dramatization_allowlist": [
+          "不改变可核验事件结果的动作、停顿、情绪和非引文对白",
+          "符合时代与场景常识但不声称为个人专属史实的服饰、陈设和调度",
+          "为呈现选择压力而设置的无名关系角色，必须标记为戏剧化合成人物"
+        ],
+        "fictional_addition_policy": "新增人物、对白、关系和偶合必须显式记录，不得伪装成史料。",
+        "unknown_or_forbidden_claims": [
+          "[S1] 目录4：陶侃的精进与隐忍",
+          "不得把知识库未逐条映射来源的叙述写成史料原文或唯一确定版本。"
+        ],
+        "required_disclaimers": [
+          "本项目为基于知识条目的影视化创作候选，戏剧化对白与场面不等同史料原文。",
+          "进入专业通过前必须完成人工事实与文化审阅。"
+        ]
+      },
+      "story_generation_request": {
+        "entry_name": "陶侃——长沙公的精进与隐忍",
+        "original_user_query": "固定专业评测项目：character-benchmark-004-tao-kan-discipline\n中心事件：陶侃在安逸环境中坚持每日运甓，以具体行动抵抗松懈并承受旁人不解\n戏剧问题：当勤勉被旁人视为无用自苦时，陶侃如何证明自律不是姿态而是现实准备？\n观众承诺：观众将看到自律如何在现实压力中成为行动，而不只是一句格言。\n创作目标：用一个具体行动检验“勤勉”是否只是标签，并呈现其关系代价。\n必须围绕单一压力事件组织人物目标、阻力、选择、代价和关系变化，不得写成年表。\n每场必须有可见行动、冲突或发现、情绪转折以及继续存在的理由。\n对白必须区分角色声线并包含潜台词，不得把旁白资料拆成角色台词。\n知识库声明、合理戏剧化、明确虚构和未知项必须分层；不得伪造史料原话。\n重点核验：运甓等典故的来源等级；历史人物评价与可证事件分开；不得把后世成语直接写成现场原话",
+        "video_type": "character_story",
+        "model_profile_id": "claude_opus",
+        "selected_event": "陶侃在安逸环境中坚持每日运甓，以具体行动抵抗松懈并承受旁人不解",
+        "target_video_duration": "3分钟",
+        "target_audience": "职场成长与历史人物故事观众",
+        "communication_goal": "用一个具体行动检验“勤勉”是否只是标签，并呈现其关系代价。",
+        "presentation_style": "cinematic",
+        "story_structure": "single_event_drama",
+        "truth_mode": "factual_reconstruction",
+        "source_material_mode": "generate_from_knowledge",
+        "genre_strictness": "strict",
+        "story_priority": "balanced",
+        "auto_repair": true,
+        "output_gears_segments": false
+      },
+      "execution_contract": {
+        "execution_kind": "real_model",
+        "benchmark_prompt_version": "character-story-professional-benchmark/v2",
+        "story_generation_prompt_version": "story-generation/v1",
+        "professional_text_package_version": "professional-text-package/v1",
+        "model_profile_id": "claude_opus",
+        "model_runtime": "claude",
+        "model_id": "opus",
+        "fallback_allowed_for_benchmark_credit": false,
+        "fixture_allowed_for_benchmark_credit": false,
+        "required_artifacts": [
+          "story-generation-prompt-package.json",
+          "initial-story.json",
+          "initial-professional-text-package.json",
+          "revision-plan.json",
+          "final-professional-text-package.json",
+          "model-usage-and-cost.json",
+          "human-blind-review.json"
+        ]
+      },
+      "professional_passed": false
+    },
+    {
+      "schema_version": "character-story-professional-benchmark-execution-package/v2",
+      "benchmark_id": "character-benchmark-005-huaisu-writing",
+      "video_type": "character_story",
+      "status": "source_package_ready",
+      "source_snapshot": {
+        "source_entry": "怀素——天地悠然的草书僧人",
+        "source_province": "湖南",
+        "source_region": "长沙→多地区（一说永州→零陵，唐代籍贯有争议）",
+        "source_type": "历史人物",
+        "source_era": "唐",
+        "knowledge_base_credibility": "基本可靠",
+        "summary": "怀素（约737—799），俗姓钱，字藏真，长沙（一说零陵）人，唐代僧人书法家。与张旭并称\"颠张醉素\"，以狂草闻名天下。少年时种芭蕉万株以蕉叶代纸练字，居所名\"绿天庵\"。代表作《自叙帖》被誉为草书巅峰之作。",
+        "story": "怀素自幼出家为僧，少年时便痴迷书法。因家境贫寒无纸可书，在寺庙周围种芭蕉万余株，以芭蕉叶代纸练习书写，居所遂名为\"绿天庵\"。又曾用漆盘练字，盘被磨穿。这些典故成为书法史著名轶事。\n\n怀素性情狂放，嗜酒如命，常醉后挥毫，笔势纵横跌宕，人称\"醉素\"。与张旭\"颠张\"并称，共同奠定唐代狂草黄金时代。\n\n怀素早年书法受颜真卿影响，曾专门向颜真卿请教笔法。他广游名山大川遍访名家观摩碑刻。大历年间赴长安，与文人名士广泛交往名声渐显。\n\n代表作《自叙帖》为草书长卷，详述自身学书经历与当时名人评价，现藏台北故宫博物院。晚年《小草千字文》风格由狂草转为今草，趋于内敛平和含禅意。\n\n李白赞曰：\"吾师醉后倚绳床，须臾扫尽数千张。飘风骤雨惊飒飒，落花飞雪何茫茫。\"",
+        "cultural_significance": "怀素以长沙僧人身份兼书家闻名，将长沙与草书书法紧密关联。\"绿天庵\"芭蕉练字的典故体现了对艺术的极致执着。\"颠张醉素\"共同确立了唐代狂草的艺术高峰，对后世草书影响千年。",
+        "sources": [
+          {
+            "source_id": "source-1",
+            "citation": "《大地苍茫》目录7：天地悠然一怀素（洪孟春主编，长沙晚报社编著，湖南人民出版社）（C级；需回查原书篇章）",
+            "grade": "C"
+          },
+          {
+            "source_id": "source-2",
+            "citation": "宋代《宣和书谱》收录怀素作品（B级）",
+            "grade": "B"
+          }
+        ],
+        "unverified_points": [
+          "怷素籍贯为长沙还是零陵存在争议",
+          "《大地苍茫》原书该篇章的具体内容待补充"
+        ],
+        "verification_method": "外部核实：《自叙帖》等作品传世为实物证据；唐代文献有怀素记载",
+        "snapshot_sha256": "d6a9c9b7b0f8cc90c099e2a20804c1a42aefbd501801a4f2d728c780bbcd040c",
+        "claim_level_verification_complete": false
+      },
+      "creative_contract": {
+        "central_event": "缺少纸张的怀素选择以蕉叶和漆盘持续练字，在失败与质疑中形成自己的书写道路",
+        "dramatic_question": "当材料匮乏且练习尚未得到认可时，怀素是否会继续把每一次失败变成下一笔？",
+        "target_audience": "书法、美术与东方审美内容观众",
+        "platform": "人物艺术短片",
+        "target_duration": "5分钟",
+        "communication_goal": "用练习、失败、旁人关系和一次创作选择呈现艺术人格。",
+        "production_goal": "形成动作、纸墨声音和书写空间共同推进的导演文本。",
+        "audience_promise": "观众将看到狂草的速度背后需要怎样漫长、具体且有代价的训练。"
+      },
+      "truth_boundary": {
+        "knowledge_base_claim_status": "mixed_claims_require_source_level_review",
+        "required_evidence_focus": [
+          "蕉叶练字、醉书等故事的文献与传说边界",
+          "书法作品与人物传说不得互相替代",
+          "艺术风格评价必须落到可见动作和材料"
+        ],
+        "plausible_dramatization_allowlist": [
+          "不改变可核验事件结果的动作、停顿、情绪和非引文对白",
+          "符合时代与场景常识但不声称为个人专属史实的服饰、陈设和调度",
+          "为呈现选择压力而设置的无名关系角色，必须标记为戏剧化合成人物"
+        ],
+        "fictional_addition_policy": "新增人物、对白、关系和偶合必须显式记录，不得伪装成史料。",
+        "unknown_or_forbidden_claims": [
+          "怷素籍贯为长沙还是零陵存在争议",
+          "《大地苍茫》原书该篇章的具体内容待补充",
+          "不得把知识库未逐条映射来源的叙述写成史料原文或唯一确定版本。"
+        ],
+        "required_disclaimers": [
+          "本项目为基于知识条目的影视化创作候选，戏剧化对白与场面不等同史料原文。",
+          "进入专业通过前必须完成人工事实与文化审阅。"
+        ]
+      },
+      "story_generation_request": {
+        "entry_name": "怀素——天地悠然的草书僧人",
+        "original_user_query": "固定专业评测项目：character-benchmark-005-huaisu-writing\n中心事件：缺少纸张的怀素选择以蕉叶和漆盘持续练字，在失败与质疑中形成自己的书写道路\n戏剧问题：当材料匮乏且练习尚未得到认可时，怀素是否会继续把每一次失败变成下一笔？\n观众承诺：观众将看到狂草的速度背后需要怎样漫长、具体且有代价的训练。\n创作目标：用练习、失败、旁人关系和一次创作选择呈现艺术人格。\n必须围绕单一压力事件组织人物目标、阻力、选择、代价和关系变化，不得写成年表。\n每场必须有可见行动、冲突或发现、情绪转折以及继续存在的理由。\n对白必须区分角色声线并包含潜台词，不得把旁白资料拆成角色台词。\n知识库声明、合理戏剧化、明确虚构和未知项必须分层；不得伪造史料原话。\n重点核验：蕉叶练字、醉书等故事的文献与传说边界；书法作品与人物传说不得互相替代；艺术风格评价必须落到可见动作和材料",
+        "video_type": "character_story",
+        "model_profile_id": "claude_opus",
+        "selected_event": "缺少纸张的怀素选择以蕉叶和漆盘持续练字，在失败与质疑中形成自己的书写道路",
+        "target_video_duration": "5分钟",
+        "target_audience": "书法、美术与东方审美内容观众",
+        "communication_goal": "用练习、失败、旁人关系和一次创作选择呈现艺术人格。",
+        "presentation_style": "cinematic",
+        "story_structure": "single_event_drama",
+        "truth_mode": "factual_reconstruction",
+        "source_material_mode": "generate_from_knowledge",
+        "genre_strictness": "strict",
+        "story_priority": "balanced",
+        "auto_repair": true,
+        "output_gears_segments": false
+      },
+      "execution_contract": {
+        "execution_kind": "real_model",
+        "benchmark_prompt_version": "character-story-professional-benchmark/v2",
+        "story_generation_prompt_version": "story-generation/v1",
+        "professional_text_package_version": "professional-text-package/v1",
+        "model_profile_id": "claude_opus",
+        "model_runtime": "claude",
+        "model_id": "opus",
+        "fallback_allowed_for_benchmark_credit": false,
+        "fixture_allowed_for_benchmark_credit": false,
+        "required_artifacts": [
+          "story-generation-prompt-package.json",
+          "initial-story.json",
+          "initial-professional-text-package.json",
+          "revision-plan.json",
+          "final-professional-text-package.json",
+          "model-usage-and-cost.json",
+          "human-blind-review.json"
+        ]
+      },
+      "professional_passed": false
+    }
+  ]
+}

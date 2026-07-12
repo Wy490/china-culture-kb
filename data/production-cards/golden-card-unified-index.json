@@ -1,0 +1,1568 @@
+{
+  "schema_version": "golden-card-unified-index/v1",
+  "updated_at": "2026-07-09",
+  "scope": "Phase 1 黄金生产素材卡统一索引、审稿队列、补证任务、回归样本覆盖矩阵和 Phase 2 Domain Pack 候选抽取。",
+  "review_status": "pending_human_review",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "writeback_allowed_after": [
+      "human_review_approved",
+      "source_or_authorization_evidence_attached",
+      "writeback_draft_created",
+      "manual_patch_reviewed"
+    ],
+    "reason": "本索引只管理生产素材卡候选层，不直接改写 data/provinces/*.md。"
+  },
+  "source_card_files": [
+    {
+      "video_type": "ai_comic_drama",
+      "path": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "card_count": 10,
+      "required_field_count": 17
+    },
+    {
+      "video_type": "heritage_promo",
+      "path": "data/production-cards/heritage-promo-golden-cards.json",
+      "card_count": 10,
+      "required_field_count": 15
+    },
+    {
+      "video_type": "documentary_short",
+      "path": "data/production-cards/documentary-short-golden-cards.json",
+      "card_count": 10,
+      "required_field_count": 12
+    }
+  ],
+  "counts": {
+    "total_cards": 30,
+    "by_video_type": {
+      "ai_comic_drama": 10,
+      "heritage_promo": 10,
+      "documentary_short": 10
+    },
+    "by_review_status": {
+      "pending_human_review": 30
+    },
+    "by_risk_tier": {
+      "p0": 4,
+      "p1": 12,
+      "p2": 14
+    },
+    "regression_fixture_count": 9,
+    "phase2_domain_pack_candidate_count": 9
+  },
+  "risk_tiers": [
+    {
+      "tier": "p0",
+      "label": "最高优先级审稿",
+      "definition": "创伤历史、重大历史伤痛、医疗伦理或隐私边界，一旦生成失误会造成事实、伦理或公共表达风险。",
+      "default_review_roles": [
+        "事实审稿",
+        "伦理审稿",
+        "片型导演审稿"
+      ]
+    },
+    {
+      "tier": "p1",
+      "label": "高优先级审稿",
+      "definition": "革命历史、民族仪式、族群文化、社区授权和多版本口述边界，需要先补证再扩大生成。",
+      "default_review_roles": [
+        "事实审稿",
+        "地方文化审稿",
+        "片型导演审稿"
+      ]
+    },
+    {
+      "tier": "p2",
+      "label": "常规生产审稿",
+      "definition": "戏曲曲艺版权、工艺流程、实地拍摄、文保地点、文本与传说边界等常规生产风险。",
+      "default_review_roles": [
+        "来源审稿",
+        "授权审稿",
+        "片型导演审稿"
+      ]
+    }
+  ],
+  "review_index": [
+    {
+      "index_id": "gci-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "video_type": "ai_comic_drama",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "province": "江苏",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p0",
+      "risk_tags": [
+        "historical_trauma",
+        "evidence_chain",
+        "no_gore_reenactment",
+        "fiction_boundary"
+      ],
+      "review_lanes": [
+        "sensitive_history_evidence_review",
+        "ai_comic_expression_review",
+        "seedance_prompt_boundary_review"
+      ],
+      "supplement_task_ids": [
+        "task-sensitive-history-evidence",
+        "task-regression-sample-expansion",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [
+        "regression-nanjing-memory-evidence"
+      ],
+      "phase2_candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-002",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "video_type": "ai_comic_drama",
+      "entry_name": "平江起义——从旧军队内部爆发的革命枪响",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "revolutionary_history",
+        "real_person_boundary",
+        "event_reconstruction"
+      ],
+      "review_lanes": [
+        "revolutionary_history_source_review",
+        "ai_comic_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-revolutionary-history-source",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-003",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "video_type": "ai_comic_drama",
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "ethnic_heritage",
+        "dance_ritual_boundary",
+        "community_consent"
+      ],
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "ai_comic_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-ethnic-community-consent",
+        "task-performance-rights",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-004",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "video_type": "ai_comic_drama",
+      "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "ethnic_craft",
+        "pattern_meaning_boundary",
+        "community_consent"
+      ],
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "craft_process_review",
+        "ai_comic_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-ethnic-community-consent",
+        "task-craft-process-source",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [
+        "regression-tongdao-dong-brocade-sun-pattern"
+      ],
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-craft-material-tool-process",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-005",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "video_type": "ai_comic_drama",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "ethnic_ritual",
+        "festival_boundary",
+        "community_consent"
+      ],
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "ai_comic_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-ethnic-community-consent",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-006",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "video_type": "ai_comic_drama",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "province": "湖北",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "revolutionary_history",
+        "contested_first_shot",
+        "event_reconstruction"
+      ],
+      "review_lanes": [
+        "revolutionary_history_source_review",
+        "ai_comic_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-revolutionary-history-source",
+        "task-regression-sample-expansion",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [
+        "regression-wuchang-uprising-sleeve-list"
+      ],
+      "phase2_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-007",
+      "card_id": "ai-comic-golden-xiangkun-ancient-stage-spear",
+      "video_type": "ai_comic_drama",
+      "entry_name": "湘昆——山野昆曲的南岭遗音",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "opera_performance_rights",
+        "stage_asset_continuity"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "ai_comic_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-008",
+      "card_id": "ai-comic-golden-yuezhou-fan-lake-wind",
+      "video_type": "ai_comic_drama",
+      "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "craft_process",
+        "regional_style_boundary"
+      ],
+      "review_lanes": [
+        "craft_process_review",
+        "ai_comic_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-craft-process-source",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-craft-material-tool-process",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-009",
+      "card_id": "ai-comic-golden-changsha-kiln-underglaze-shard",
+      "video_type": "ai_comic_drama",
+      "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "craft_process",
+        "artifact_claim_boundary",
+        "museum_reference"
+      ],
+      "review_lanes": [
+        "craft_process_review",
+        "site_and_object_source_review",
+        "ai_comic_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-craft-process-source",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-craft-material-tool-process",
+        "dp-documentary-site-source-boundary",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-010",
+      "card_id": "ai-comic-golden-changde-sixian-snapped-string",
+      "video_type": "ai_comic_drama",
+      "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "performance_rights",
+        "dialect_text_boundary"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "ai_comic_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "index_id": "gci-011",
+      "card_id": "heritage-promo-golden-changde-sixian-yangqin",
+      "video_type": "heritage_promo",
+      "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "performance_rights",
+        "lyrics_authorization",
+        "practitioner_consent"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-official-catalog-source",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [
+        "regression-changde-sixian-yangqin-promo"
+      ],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-012",
+      "card_id": "heritage-promo-golden-yueyang-baling-opera-three-voices",
+      "video_type": "heritage_promo",
+      "entry_name": "岳阳巴陵戏——洞庭湖畔的古戏曲遗存",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "opera_performance_rights",
+        "repertoire_authorization",
+        "stage_asset_boundary"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-official-catalog-source",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-013",
+      "card_id": "heritage-promo-golden-changde-wuling-opera-backstage",
+      "video_type": "heritage_promo",
+      "entry_name": "常德武陵戏——沅澧流域的湖南五大剧种之一",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "opera_performance_rights",
+        "repertoire_authorization",
+        "stage_asset_boundary"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-official-catalog-source",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-014",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "video_type": "heritage_promo",
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p0",
+      "risk_tags": [
+        "medical_ethics",
+        "privacy_boundary",
+        "no_medical_instruction",
+        "ethnic_knowledge_boundary"
+      ],
+      "review_lanes": [
+        "medical_ethics_review",
+        "ethnic_heritage_consent_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-medical-privacy-review",
+        "task-ethnic-community-consent",
+        "task-regression-sample-expansion",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [
+        "regression-xiangxi-miao-medicine-boundary-promo"
+      ],
+      "phase2_candidate_ids": [
+        "dp-medical-heritage-privacy-boundary",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-015",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "video_type": "heritage_promo",
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "ethnic_heritage",
+        "dance_ritual_boundary",
+        "community_consent"
+      ],
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-ethnic-community-consent",
+        "task-performance-rights",
+        "task-official-catalog-source",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-016",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "video_type": "heritage_promo",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "ethnic_ritual",
+        "festival_boundary",
+        "community_consent"
+      ],
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-ethnic-community-consent",
+        "task-official-catalog-source",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [
+        "regression-tujia-hand-waving-ritual-promo"
+      ],
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-017",
+      "card_id": "heritage-promo-golden-xiangkun-stage",
+      "video_type": "heritage_promo",
+      "entry_name": "湘昆——山野昆曲的南岭遗音",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "opera_performance_rights",
+        "repertoire_authorization",
+        "stage_asset_boundary"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-official-catalog-source",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-018",
+      "card_id": "heritage-promo-golden-hunan-huagu-opera-three-small",
+      "video_type": "heritage_promo",
+      "entry_name": "湖南花鼓戏——湖南人的戏",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "opera_performance_rights",
+        "regional_style_boundary",
+        "repertoire_authorization"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-official-catalog-source",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-019",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "video_type": "heritage_promo",
+      "entry_name": "桑植民歌——长征路上的歌声与守望",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "ethnic_folk_song",
+        "lyrics_authorization",
+        "field_recording_consent"
+      ],
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "performance_rights_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-ethnic-community-consent",
+        "task-performance-rights",
+        "task-official-catalog-source",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-020",
+      "card_id": "heritage-promo-golden-xiang-opera-four-voices",
+      "video_type": "heritage_promo",
+      "entry_name": "湘剧——湖南戏曲的中州遗韵",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "opera_performance_rights",
+        "repertoire_authorization",
+        "historical_style_boundary"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "heritage_consent_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-official-catalog-source",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "index_id": "gci-021",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "video_type": "documentary_short",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "province": "江苏",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p0",
+      "risk_tags": [
+        "historical_trauma",
+        "evidence_chain",
+        "no_gore_reenactment",
+        "archive_boundary"
+      ],
+      "review_lanes": [
+        "sensitive_history_evidence_review",
+        "documentary_site_source_review",
+        "trauma_memory_expression_review"
+      ],
+      "supplement_task_ids": [
+        "task-sensitive-history-evidence",
+        "task-site-field-verification",
+        "task-regression-sample-expansion",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [
+        "regression-nanjing-massacre-memory-documentary"
+      ],
+      "phase2_candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "index_id": "gci-022",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "video_type": "documentary_short",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "province": "湖北",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "revolutionary_history",
+        "contested_first_shot",
+        "site_source_boundary"
+      ],
+      "review_lanes": [
+        "revolutionary_history_source_review",
+        "documentary_site_source_review"
+      ],
+      "supplement_task_ids": [
+        "task-revolutionary-history-source",
+        "task-site-field-verification",
+        "task-regression-sample-expansion",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [
+        "regression-wuchang-uprising-red-building-documentary"
+      ],
+      "phase2_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "index_id": "gci-023",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "video_type": "documentary_short",
+      "entry_name": "平江起义——从旧军队内部爆发的革命枪响",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "revolutionary_history",
+        "real_person_boundary",
+        "site_source_boundary"
+      ],
+      "review_lanes": [
+        "revolutionary_history_source_review",
+        "documentary_site_source_review"
+      ],
+      "supplement_task_ids": [
+        "task-revolutionary-history-source",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "index_id": "gci-024",
+      "card_id": "documentary-golden-yueyang-tower-text-site",
+      "video_type": "documentary_short",
+      "entry_name": "岳阳楼——先忧后乐的精神地标",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "site_text_boundary",
+        "legend_boundary",
+        "heritage_site_claim"
+      ],
+      "review_lanes": [
+        "documentary_site_source_review",
+        "site_text_boundary_review"
+      ],
+      "supplement_task_ids": [
+        "task-site-text-boundary",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [
+        "regression-yueyang-tower-text-site-documentary"
+      ],
+      "phase2_candidate_ids": [
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "index_id": "gci-025",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "video_type": "documentary_short",
+      "entry_name": "桑植民歌——长征路上的歌声与守望",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "ethnic_folk_song",
+        "field_recording_consent",
+        "lyrics_authorization"
+      ],
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "performance_rights_review",
+        "documentary_site_source_review"
+      ],
+      "supplement_task_ids": [
+        "task-ethnic-community-consent",
+        "task-performance-rights",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "index_id": "gci-026",
+      "card_id": "documentary-golden-changsha-tongguan-kiln-shard",
+      "video_type": "documentary_short",
+      "entry_name": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "craft_process",
+        "artifact_claim_boundary",
+        "museum_reference"
+      ],
+      "review_lanes": [
+        "craft_process_review",
+        "documentary_site_source_review"
+      ],
+      "supplement_task_ids": [
+        "task-craft-process-source",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-craft-material-tool-process",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "index_id": "gci-027",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "video_type": "documentary_short",
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p0",
+      "risk_tags": [
+        "medical_ethics",
+        "privacy_boundary",
+        "no_medical_instruction",
+        "ethnic_knowledge_boundary"
+      ],
+      "review_lanes": [
+        "medical_ethics_review",
+        "ethnic_heritage_consent_review",
+        "documentary_site_source_review"
+      ],
+      "supplement_task_ids": [
+        "task-medical-privacy-review",
+        "task-ethnic-community-consent",
+        "task-site-field-verification",
+        "task-regression-sample-expansion",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-medical-heritage-privacy-boundary",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "index_id": "gci-028",
+      "card_id": "documentary-golden-xiangkun-ancient-stage",
+      "video_type": "documentary_short",
+      "entry_name": "湘昆——山野昆曲的南岭遗音",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "opera_performance_rights",
+        "site_source_boundary",
+        "stage_asset_boundary"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "documentary_site_source_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "index_id": "gci-029",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "video_type": "documentary_short",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p1",
+      "risk_tags": [
+        "ethnic_ritual",
+        "festival_boundary",
+        "community_consent",
+        "site_source_boundary"
+      ],
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "documentary_site_source_review"
+      ],
+      "supplement_task_ids": [
+        "task-ethnic-community-consent",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "index_id": "gci-030",
+      "card_id": "documentary-golden-changde-sixian-theatre",
+      "video_type": "documentary_short",
+      "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+      "province": "湖南",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_status": "pending_human_review",
+      "risk_tier": "p2",
+      "risk_tags": [
+        "performance_rights",
+        "dialect_text_boundary",
+        "site_source_boundary"
+      ],
+      "review_lanes": [
+        "performance_rights_review",
+        "documentary_site_source_review"
+      ],
+      "supplement_task_ids": [
+        "task-performance-rights",
+        "task-site-field-verification",
+        "task-writeback-draft-after-approval"
+      ],
+      "regression_fixture_ids": [],
+      "phase2_candidate_ids": [
+        "dp-performance-rights-and-stage-assets",
+        "dp-documentary-site-source-boundary"
+      ]
+    }
+  ],
+  "supplement_tasks": [
+    {
+      "task_id": "task-sensitive-history-evidence",
+      "priority": "p0",
+      "task_type": "source_and_expression_review",
+      "title": "重大历史伤痛证据链与表达边界补证",
+      "card_ids": [
+        "ai-comic-golden-nanjing-massacre-memory-evidence",
+        "documentary-golden-nanjing-massacre-memory-site"
+      ],
+      "acceptance_evidence": [
+        "官方纪念馆或档案来源口径已核对",
+        "遇难者、证词、档案、再现画面边界已标注",
+        "生成样本不含猎奇、血腥、娱乐化或虚构证词冒充"
+      ],
+      "blocks_production_ready": true
+    },
+    {
+      "task_id": "task-medical-privacy-review",
+      "priority": "p0",
+      "task_type": "medical_ethics_and_privacy",
+      "title": "民族医药题材医疗伦理、隐私和禁用教程补证",
+      "card_ids": [
+        "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+        "documentary-golden-xiangxi-miao-medicine-archive"
+      ],
+      "acceptance_evidence": [
+        "不公开配方比例、剂量、操作教程和患者隐私",
+        "采拍空间、人物肖像和机构授权已记录",
+        "观众稿明确是文化记录，不构成医疗建议"
+      ],
+      "blocks_production_ready": true
+    },
+    {
+      "task_id": "task-revolutionary-history-source",
+      "priority": "p1",
+      "task_type": "historical_source_boundary",
+      "title": "革命历史事件时间线、人物和多版本细节补证",
+      "card_ids": [
+        "ai-comic-golden-pingjiang-uprising-tianyue-night",
+        "ai-comic-golden-wuchang-uprising-one-hour",
+        "documentary-golden-wuchang-uprising-red-building",
+        "documentary-golden-pingjiang-uprising-site"
+      ],
+      "acceptance_evidence": [
+        "时间线、地点、人物身份和纪念馆/旧址来源已核对",
+        "争议或多版本细节已标注为多说法",
+        "虚构见证者不替代真实人物口述"
+      ],
+      "blocks_production_ready": true
+    },
+    {
+      "task_id": "task-ethnic-community-consent",
+      "priority": "p1",
+      "task_type": "community_consent",
+      "title": "民族非遗、仪式和社区拍摄授权边界补证",
+      "card_ids": [
+        "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+        "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+        "ai-comic-golden-tujia-hand-waving-dance-circle",
+        "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+        "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+        "heritage-promo-golden-tujia-hand-waving-ritual",
+        "heritage-promo-golden-sangzhi-folk-song-field-recording",
+        "documentary-golden-sangzhi-folk-song-field",
+        "documentary-golden-xiangxi-miao-medicine-archive",
+        "documentary-golden-tujia-hand-waving-site"
+      ],
+      "acceptance_evidence": [
+        "社区、传承人或机构授权要求已列明",
+        "仪式、纹样、歌词、舞步和采集场景的公开边界已标注",
+        "不把示范动作写成原生仪式全貌"
+      ],
+      "blocks_production_ready": true
+    },
+    {
+      "task_id": "task-performance-rights",
+      "priority": "p1",
+      "task_type": "copyright_and_performance_authorization",
+      "title": "戏曲曲艺、唱词、曲谱、剧目和表演肖像授权补证",
+      "card_ids": [
+        "ai-comic-golden-xiangkun-ancient-stage-spear",
+        "ai-comic-golden-changde-sixian-snapped-string",
+        "heritage-promo-golden-changde-sixian-yangqin",
+        "heritage-promo-golden-yueyang-baling-opera-three-voices",
+        "heritage-promo-golden-changde-wuling-opera-backstage",
+        "heritage-promo-golden-xiangkun-stage",
+        "heritage-promo-golden-hunan-huagu-opera-three-small",
+        "heritage-promo-golden-sangzhi-folk-song-field-recording",
+        "heritage-promo-golden-xiang-opera-four-voices",
+        "documentary-golden-sangzhi-folk-song-field",
+        "documentary-golden-xiangkun-ancient-stage",
+        "documentary-golden-changde-sixian-theatre"
+      ],
+      "acceptance_evidence": [
+        "曲目、唱词、曲谱、剧目片段和表演肖像授权已记录",
+        "未授权歌词不长引",
+        "拍摄排练、后台和舞台空间的机构许可已明确"
+      ],
+      "blocks_production_ready": true
+    },
+    {
+      "task_id": "task-craft-process-source",
+      "priority": "p2",
+      "task_type": "craft_process_and_object_source",
+      "title": "工艺材料、工具、流程、文物和实物来源补证",
+      "card_ids": [
+        "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+        "ai-comic-golden-yuezhou-fan-lake-wind",
+        "ai-comic-golden-changsha-kiln-underglaze-shard",
+        "documentary-golden-changsha-tongguan-kiln-shard"
+      ],
+      "acceptance_evidence": [
+        "工序顺序、材料、工具和术语有来源或待核标注",
+        "文物、博物馆展品和复原件不混写",
+        "不公开未授权或危险操作细节"
+      ],
+      "blocks_production_ready": true
+    },
+    {
+      "task_id": "task-site-field-verification",
+      "priority": "p2",
+      "task_type": "field_site_and_present_day_trace",
+      "title": "现实拍摄地点、开放状态、展陈和现存痕迹补证",
+      "card_ids": [
+        "ai-comic-golden-pingjiang-uprising-tianyue-night",
+        "ai-comic-golden-tujia-hand-waving-dance-circle",
+        "ai-comic-golden-yuezhou-fan-lake-wind",
+        "ai-comic-golden-changsha-kiln-underglaze-shard",
+        "documentary-golden-nanjing-massacre-memory-site",
+        "documentary-golden-wuchang-uprising-red-building",
+        "documentary-golden-pingjiang-uprising-site",
+        "documentary-golden-yueyang-tower-text-site",
+        "documentary-golden-sangzhi-folk-song-field",
+        "documentary-golden-changsha-tongguan-kiln-shard",
+        "documentary-golden-xiangxi-miao-medicine-archive",
+        "documentary-golden-xiangkun-ancient-stage",
+        "documentary-golden-tujia-hand-waving-site",
+        "documentary-golden-changde-sixian-theatre"
+      ],
+      "acceptance_evidence": [
+        "现实地点、开放状态、可拍范围和授权要求已核对",
+        "B-roll、采访角色和展陈资料来源已标注",
+        "再现场景不替代真实影像"
+      ],
+      "blocks_production_ready": true
+    },
+    {
+      "task_id": "task-site-text-boundary",
+      "priority": "p2",
+      "task_type": "site_text_and_legend_boundary",
+      "title": "名胜文本、诗作、传说和建筑史边界补证",
+      "card_ids": [
+        "documentary-golden-yueyang-tower-text-site"
+      ],
+      "acceptance_evidence": [
+        "楼体、文本、诗作、传说和后世重修分层清楚",
+        "不把文学意境写成现场亲历",
+        "争议事实保持审稿标注"
+      ],
+      "blocks_production_ready": true
+    },
+    {
+      "task_id": "task-official-catalog-source",
+      "priority": "p2",
+      "task_type": "official_catalog_and_inheritor_source",
+      "title": "非遗官方名录、保护单位和代表性传承人口径补证",
+      "card_ids": [
+        "heritage-promo-golden-changde-sixian-yangqin",
+        "heritage-promo-golden-yueyang-baling-opera-three-voices",
+        "heritage-promo-golden-changde-wuling-opera-backstage",
+        "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+        "heritage-promo-golden-tujia-hand-waving-ritual",
+        "heritage-promo-golden-xiangkun-stage",
+        "heritage-promo-golden-hunan-huagu-opera-three-small",
+        "heritage-promo-golden-sangzhi-folk-song-field-recording",
+        "heritage-promo-golden-xiang-opera-four-voices"
+      ],
+      "acceptance_evidence": [
+        "项目级别、申报地区、保护单位和代表性传承人口径已复核",
+        "近年机构名称变更已检查",
+        "不可把旧资料直接写成当前状态"
+      ],
+      "blocks_production_ready": true
+    },
+    {
+      "task_id": "task-regression-sample-expansion",
+      "priority": "p1",
+      "task_type": "regression_fixture_expansion",
+      "title": "Phase 1 样本达到 9 条并持续维护",
+      "card_ids": [
+        "ai-comic-golden-nanjing-massacre-memory-evidence",
+        "ai-comic-golden-wuchang-uprising-one-hour",
+        "heritage-promo-golden-tujia-hand-waving-ritual",
+        "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+        "documentary-golden-nanjing-massacre-memory-site",
+        "documentary-golden-wuchang-uprising-red-building",
+        "documentary-golden-xiangxi-miao-medicine-archive"
+      ],
+      "acceptance_evidence": [
+        "AI 漫剧、非遗宣传、微纪录各至少 3 条真实回归样本",
+        "每条样本包含 scene_breakdown、gears_segments 和 quality_report",
+        "敏感题材样本包含专门边界检查"
+      ],
+      "blocks_production_ready": false
+    },
+    {
+      "task_id": "task-writeback-draft-after-approval",
+      "priority": "p1",
+      "task_type": "writeback_governance",
+      "title": "人工审稿通过后生成写回草案和写回队列",
+      "card_ids": [
+        "all_phase_1_golden_cards"
+      ],
+      "acceptance_evidence": [
+        "只把来源清楚、可复用的生产字段转为写回草案",
+        "生成故事、台词、项目样片和未授权内容不写入省份 Markdown",
+        "写回队列保留 province_markdown_written=false 直到人工 Patch"
+      ],
+      "blocks_production_ready": true
+    }
+  ],
+  "regression_coverage_matrix": [
+    {
+      "fixture_id": "regression-nanjing-memory-evidence",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "video_type": "ai_comic_drama",
+      "source_fixture_file": "data/production-cards/ai-comic-drama-golden-regression-fixtures.json",
+      "covered_layers": [
+        "story_blueprint",
+        "scene_breakdown",
+        "gears_segments",
+        "seedance_prompt",
+        "quality_report"
+      ],
+      "risk_boundary_checked": [
+        "historical_trauma",
+        "no_gore_reenactment",
+        "fiction_boundary"
+      ]
+    },
+    {
+      "fixture_id": "regression-tongdao-dong-brocade-sun-pattern",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "video_type": "ai_comic_drama",
+      "source_fixture_file": "data/production-cards/ai-comic-drama-golden-regression-fixtures.json",
+      "covered_layers": [
+        "story_blueprint",
+        "scene_breakdown",
+        "gears_segments",
+        "seedance_prompt",
+        "quality_report"
+      ],
+      "risk_boundary_checked": [
+        "ethnic_craft",
+        "pattern_meaning_boundary",
+        "community_consent"
+      ]
+    },
+    {
+      "fixture_id": "regression-wuchang-uprising-sleeve-list",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "video_type": "ai_comic_drama",
+      "source_fixture_file": "data/production-cards/ai-comic-drama-golden-regression-fixtures.json",
+      "covered_layers": [
+        "story_blueprint",
+        "scene_breakdown",
+        "gears_segments",
+        "seedance_prompt",
+        "quality_report"
+      ],
+      "risk_boundary_checked": [
+        "revolutionary_history",
+        "contested_first_shot",
+        "event_reconstruction"
+      ]
+    },
+    {
+      "fixture_id": "regression-changde-sixian-yangqin-promo",
+      "card_id": "heritage-promo-golden-changde-sixian-yangqin",
+      "video_type": "heritage_promo",
+      "source_fixture_file": "data/production-cards/heritage-promo-golden-regression-fixtures.json",
+      "covered_layers": [
+        "promo_scene_breakdown",
+        "gears_segments",
+        "quality_report"
+      ],
+      "risk_boundary_checked": [
+        "performance_rights",
+        "lyrics_authorization",
+        "practitioner_consent"
+      ]
+    },
+    {
+      "fixture_id": "regression-xiangxi-miao-medicine-boundary-promo",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "video_type": "heritage_promo",
+      "source_fixture_file": "data/production-cards/heritage-promo-golden-regression-fixtures.json",
+      "covered_layers": [
+        "promo_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "medical_boundary_check"
+      ],
+      "risk_boundary_checked": [
+        "medical_ethics",
+        "privacy_boundary",
+        "no_medical_instruction"
+      ]
+    },
+    {
+      "fixture_id": "regression-tujia-hand-waving-ritual-promo",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "video_type": "heritage_promo",
+      "source_fixture_file": "data/production-cards/heritage-promo-golden-regression-fixtures.json",
+      "covered_layers": [
+        "promo_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "ritual_boundary_check",
+        "community_consent_boundary"
+      ],
+      "risk_boundary_checked": [
+        "ethnic_ritual",
+        "festival_boundary",
+        "community_consent"
+      ]
+    },
+    {
+      "fixture_id": "regression-yueyang-tower-text-site-documentary",
+      "card_id": "documentary-golden-yueyang-tower-text-site",
+      "video_type": "documentary_short",
+      "source_fixture_file": "data/production-cards/documentary-short-golden-regression-fixtures.json",
+      "covered_layers": [
+        "documentary_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "site_text_boundary_check"
+      ],
+      "risk_boundary_checked": [
+        "site_text_boundary",
+        "legend_boundary",
+        "heritage_site_claim"
+      ]
+    },
+    {
+      "fixture_id": "regression-nanjing-massacre-memory-documentary",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "video_type": "documentary_short",
+      "source_fixture_file": "data/production-cards/documentary-short-golden-regression-fixtures.json",
+      "covered_layers": [
+        "documentary_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "trauma_memory_boundary_check"
+      ],
+      "risk_boundary_checked": [
+        "historical_trauma",
+        "evidence_chain",
+        "no_gore_reenactment",
+        "archive_boundary"
+      ]
+    },
+    {
+      "fixture_id": "regression-wuchang-uprising-red-building-documentary",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "video_type": "documentary_short",
+      "source_fixture_file": "data/production-cards/documentary-short-golden-regression-fixtures.json",
+      "covered_layers": [
+        "documentary_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "revolutionary_history_boundary_check",
+        "contested_first_shot_boundary_check"
+      ],
+      "risk_boundary_checked": [
+        "revolutionary_history",
+        "contested_first_shot",
+        "site_source_boundary"
+      ]
+    }
+  ],
+  "phase2_domain_pack_rule_candidates": [
+    {
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "label": "重大历史伤痛证据表达包",
+      "applies_to_video_types": [
+        "ai_comic_drama",
+        "documentary_short"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-nanjing-massacre-memory-evidence",
+        "documentary-golden-nanjing-massacre-memory-site"
+      ],
+      "reusable_rule": "重大伤痛题材以地点、档案、名单、地图、仪式和当代人物反应承载情绪；禁止血腥复现、虚构证词冒充和娱乐化冲突。",
+      "validation_hint": "抽检 full_text、scene_breakdown 和 visual_prompt，不得出现猎奇暴力、伪造证词和来源说明混入观众稿。",
+      "phase2_status": "candidate_from_phase_1_index"
+    },
+    {
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "label": "民族医药文化记录与隐私边界包",
+      "applies_to_video_types": [
+        "heritage_promo",
+        "documentary_short"
+      ],
+      "source_card_ids": [
+        "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+        "documentary-golden-xiangxi-miao-medicine-archive"
+      ],
+      "reusable_rule": "民族医药题材只能作为文化、档案、标本、机构和传承边界记录，不输出疗效承诺、药方比例、诊疗操作教程或患者隐私。",
+      "validation_hint": "抽检 full_text、scene_breakdown 和 visual_prompt，不得出现剂量、配方、操作教程、患者身份信息或医疗建议口吻。",
+      "phase2_status": "candidate_from_phase_1_index"
+    },
+    {
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "label": "革命历史事件再现边界包",
+      "applies_to_video_types": [
+        "ai_comic_drama",
+        "documentary_short"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-pingjiang-uprising-tianyue-night",
+        "ai-comic-golden-wuchang-uprising-one-hour",
+        "documentary-golden-wuchang-uprising-red-building",
+        "documentary-golden-pingjiang-uprising-site"
+      ],
+      "reusable_rule": "革命历史可用虚构见证者、地图、旧址和道具组织戏剧线，但真实人物、日期、地点和争议细节必须保留来源与多说法边界。",
+      "validation_hint": "检查虚构人物不替代真实人物口述，第一枪、路线、组织关系等争议点不写成唯一无争议定论。",
+      "phase2_status": "candidate_from_phase_1_index"
+    },
+    {
+      "candidate_id": "dp-heritage-process-consent",
+      "label": "非遗流程与授权包",
+      "applies_to_video_types": [
+        "heritage_promo",
+        "documentary_short"
+      ],
+      "source_card_ids": [
+        "heritage-promo-golden-changde-sixian-yangqin",
+        "heritage-promo-golden-yueyang-baling-opera-three-voices",
+        "heritage-promo-golden-tujia-hand-waving-ritual",
+        "documentary-golden-changde-sixian-theatre"
+      ],
+      "reusable_rule": "非遗宣传先拍材料、工具、手部动作、排练/传习空间和当代连接；传承人、曲目、肖像、场地和社区叙述必须列授权边界。",
+      "validation_hint": "每条素材至少有流程动作、授权项、声音/质感锚点和不可声称事项。",
+      "phase2_status": "candidate_from_phase_1_index"
+    },
+    {
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "label": "民族仪式与社区边界包",
+      "applies_to_video_types": [
+        "ai_comic_drama",
+        "heritage_promo",
+        "documentary_short"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+        "ai-comic-golden-tujia-hand-waving-dance-circle",
+        "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+        "heritage-promo-golden-tujia-hand-waving-ritual",
+        "documentary-golden-tujia-hand-waving-site"
+      ],
+      "reusable_rule": "民族仪式素材必须区分公开表演、教学示范、节庆仪式和社区内部知识；不得把镜头示范写成全部传统或原生仪式全貌。",
+      "validation_hint": "检查 ritual、festival、community_consent、fiction_boundary 标签是否同时存在，并确认生成稿没有擅自解释禁忌或秘传内容。",
+      "phase2_status": "candidate_from_phase_1_index"
+    },
+    {
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "label": "戏曲曲艺版权与舞台资产包",
+      "applies_to_video_types": [
+        "ai_comic_drama",
+        "heritage_promo",
+        "documentary_short"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-xiangkun-ancient-stage-spear",
+        "ai-comic-golden-changde-sixian-snapped-string",
+        "heritage-promo-golden-changde-sixian-yangqin",
+        "heritage-promo-golden-yueyang-baling-opera-three-voices",
+        "heritage-promo-golden-xiang-opera-four-voices",
+        "documentary-golden-xiangkun-ancient-stage",
+        "documentary-golden-changde-sixian-theatre"
+      ],
+      "reusable_rule": "戏曲曲艺类素材必须把曲目、唱词、曲谱、演员肖像、后台空间、剧团授权和乐器/服化道资产分层管理。",
+      "validation_hint": "观众稿不长引未授权唱词，visual_prompt 使用公开可拍资产和通用舞台元素，不伪造具体剧目版权内容。",
+      "phase2_status": "candidate_from_phase_1_index"
+    },
+    {
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "label": "微纪录现场与来源边界包",
+      "applies_to_video_types": [
+        "documentary_short"
+      ],
+      "source_card_ids": [
+        "documentary-golden-nanjing-massacre-memory-site",
+        "documentary-golden-wuchang-uprising-red-building",
+        "documentary-golden-yueyang-tower-text-site",
+        "documentary-golden-changsha-tongguan-kiln-shard",
+        "documentary-golden-xiangkun-ancient-stage"
+      ],
+      "reusable_rule": "微纪录以今天可见的地点、实物、展陈、声音和采访角色进入；再现画面、复原件、复制件和真实影像必须显式分层。",
+      "validation_hint": "每个 documentary_short 卡必须有 real_world_site_or_object、source_quotes_or_source_cues、b_roll_plan、reconstruction_boundary 和 what_must_not_be_claimed。",
+      "phase2_status": "candidate_from_phase_1_index"
+    },
+    {
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "label": "AI 漫剧连续性分镜包",
+      "applies_to_video_types": [
+        "ai_comic_drama"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-nanjing-massacre-memory-evidence",
+        "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+        "ai-comic-golden-wuchang-uprising-one-hour",
+        "ai-comic-golden-changsha-kiln-underglaze-shard"
+      ],
+      "reusable_rule": "AI 漫剧卡必须保留角色稳定标签、道具锚点、场景顺序、情绪节拍、单镜头测试和多镜头连续性，才能进入 Seedance/GEARS 分镜交付。",
+      "validation_hint": "Seedance prompt 包不得含内部审稿词，shot_units 的角色、地点、visual_prompt 和 material_validation 必须完整。",
+      "phase2_status": "candidate_from_phase_1_index"
+    },
+    {
+      "candidate_id": "dp-craft-material-tool-process",
+      "label": "工艺材料工具流程包",
+      "applies_to_video_types": [
+        "ai_comic_drama",
+        "heritage_promo",
+        "documentary_short"
+      ],
+      "source_card_ids": [
+        "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+        "ai-comic-golden-yuezhou-fan-lake-wind",
+        "ai-comic-golden-changsha-kiln-underglaze-shard",
+        "documentary-golden-changsha-tongguan-kiln-shard"
+      ],
+      "reusable_rule": "工艺类素材按材料、工具、手部动作、工序顺序、声音质感、实物/复原件边界和危险细节禁用项拆分。",
+      "validation_hint": "工序不得凭空补全；文物、现代复原、博物馆展品和示范道具不能互相替代。",
+      "phase2_status": "candidate_from_phase_1_index"
+    }
+  ],
+  "phase_1_exit_gates": [
+    {
+      "gate_id": "gate-human-review-24",
+      "description": "30 条黄金卡中至少 24 条人工审稿通过。",
+      "current_status": "not_started",
+      "current_count": 0,
+      "target_count": 24
+    },
+    {
+      "gate_id": "gate-writeback-queue-18",
+      "description": "至少 18 条进入写回队列，但仍不直接写入 data/provinces/*.md。",
+      "current_status": "not_started",
+      "current_count": 0,
+      "target_count": 18
+    },
+    {
+      "gate_id": "gate-regression-fixtures-9",
+      "description": "AI 漫剧、非遗宣传、微纪录各至少 3 条回归样本。",
+      "current_status": "met_for_local_regression",
+      "current_count": 9,
+      "target_count": 9
+    },
+    {
+      "gate_id": "gate-production-audit",
+      "description": "重新运行生产审计、升级计划和 lint，不出现来源、地点、可信度倒退。",
+      "current_status": "pending",
+      "current_count": 0,
+      "target_count": 1
+    }
+  ]
+}

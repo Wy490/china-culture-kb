@@ -1,0 +1,9 @@
+{
+  "schema_version": "professional-benchmark-release-authority-registry/v1",
+  "registry_id": "all-format-stage8-release-authority-preparation-20260712",
+  "trust_source": "external_configuration",
+  "evidence_environment": "external",
+  "established_at": "2026-07-12T19:00:00.000Z",
+  "authorities": [],
+  "known_release_ids": []
+}

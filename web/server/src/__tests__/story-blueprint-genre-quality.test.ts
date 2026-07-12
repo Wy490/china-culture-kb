@@ -224,6 +224,52 @@ describe('story blueprint and genre quality', () => {
     expect(report.issues.filter(issue => issue.includes('流派质量信号偏弱'))).toEqual([]);
   });
 
+  it('recognizes Mao growth actions, historical pressure, causality, and fact boundaries', () => {
+    const story = {
+      ...makeStory(),
+      source_entry: '毛泽东——从韶山冲走向天安门的农家革命者',
+      video_type: 'historical_drama',
+      original_user_query: '毛泽东少年时期到革命觉醒的故事，重点表现湖南乡土、求学、新民学会、农民运动、理想形成。',
+      title: '毛泽东：从韶山少年到革命觉醒',
+      logline: '毛泽东从湖南乡土出发，在求学、结社与农民实践中形成革命理想。',
+      theme: '理想在走进人民、看见现实并采取行动的过程中形成。',
+      full_text: [
+        '社会动荡与军阀统治构成时代压力，毛泽东离开韶山走进长沙求学。',
+        '他组织新民学会讨论如何改造中国，又走进农民夜校倾听谷价、租息和生计问题。',
+        '因此，他徒步考察湖南五县，整理调查笔记，把乡土观察转化为对农民革命力量的判断。',
+      ].join('\n\n'),
+      scene_breakdown: [{
+        ...makeStory().scene_breakdown[0],
+        title: '把脚印写成道路',
+        location: '湖南五县农民运动考察路线',
+        dramatic_function: '高潮',
+        plot: '毛泽东翻开沾着泥点的笔记，因此确认道路就在人民已经行动起来的土地上。',
+        key_action: '毛泽东徒步考察并整理调查笔记',
+        characters: ['毛泽东', '农民协会骨干'],
+        conflict: '地方权势与农民改变现实的行动相冲突',
+        cultural_note: '事实边界：五县考察来自条目；清晨整理手稿是影视化创作。',
+        factual_basis: '依据毛泽东条目关于1927年湖南五县农民运动考察的记载。',
+        fictionalized_elements: ['泥点笔记是视觉化处理。'],
+      }],
+      characters: [{ name: '毛泽东', role: 'protagonist', description: '从韶山少年成长为青年行动者。' }],
+      protagonist_arc: [{ starting_state: '离乡求学', turning_point: '走进农民实践', resolution: '形成革命理想' }],
+    } as StoryGenerateResult;
+
+    const report = validateGenreStoryQuality({
+      story,
+      baseReport: makeBaseReport(),
+    });
+    const issues = report.issues.join('\n');
+
+    expect(issues).not.toContain('因果链清楚');
+    expect(issues).not.toContain('人物不是年表');
+    expect(issues).not.toContain('制度压力可见');
+    expect(issues).not.toContain('史实边界明确');
+    expect(issues).not.toContain('必须有时代压力');
+    expect(issues).not.toContain('必须有事件因果');
+    expect(issues).not.toContain('必须标注创作边界');
+  });
+
   it('recognizes AI comic setpiece and choice signals from natural scene text', () => {
     const story = {
       ...makeStory(),

@@ -1,0 +1,140 @@
+{
+  "schema_version": "historical-drama-professional-benchmark-specs/v1",
+  "created_at": "2026-07-11T00:00:00.000+08:00",
+  "video_type": "historical_drama",
+  "policy": {
+    "real_model_output_required": true,
+    "model_and_prompt_version_required": true,
+    "initial_and_final_draft_required": true,
+    "human_blind_review_required_for_professional_pass": true,
+    "fixture_or_simulation_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "fixed_real_model_project_pass_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "historical-benchmark-001-wuchang-uprising",
+      "source_province": "湖北",
+      "source_entry": "武昌起义——辛亥革命的第一声枪响",
+      "central_event": "1911年10月10日晚，起义力量在计划泄露与清军搜捕压力下提前行动并争夺楚望台军械库",
+      "dramatic_question": "当计划暴露、联络受阻且命令链断裂时，参与者能否把仓促行动变成可持续的起义？",
+      "required_evidence_focus": [
+        "起义日期、关键地点与行动次序",
+        "第一枪等争议细节必须保留多说法边界",
+        "普通士兵视角、现场对白和具体站位必须标注为戏剧化创作"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "historical-benchmark-002-nanchang-uprising",
+      "source_province": "江西",
+      "source_entry": "南昌起义——人民军队的第一声枪响",
+      "central_event": "1927年南昌起义从部署、提前行动到部队撤离南昌的关键决策链",
+      "dramatic_question": "在政治与军事压力同时收紧时，指挥者如何决定提前行动，并承担行动后的战略后果？",
+      "required_evidence_focus": [
+        "起义时间、领导者职责与撤离过程的史实边界",
+        "不同角色的政治立场与军事判断不得混写",
+        "会议对白和战斗细节不得伪装成史料原文"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "historical-benchmark-003-xian-incident",
+      "source_province": "陕西",
+      "source_entry": "西安事变——抗日民族统一战线的转折",
+      "central_event": "1936年西安事变从兵谏发生到和平解决的立场博弈与决策链",
+      "dramatic_question": "在军事对峙、全国舆论与抗日诉求交织时，各方为什么最终选择和平解决？",
+      "required_evidence_focus": [
+        "事件日期、谈判参与者与结果的可考边界",
+        "各方立场变化必须由行动和信息推动",
+        "私下谈话、心理活动和场面调度必须明确为合理戏剧化"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "historical-benchmark-004-gutian-conference",
+      "source_province": "福建",
+      "source_entry": "古田会议——\"党指挥枪\"的思想根基",
+      "central_event": "古田会议召开前后，围绕军队建设方向的分歧如何形成决议并落实为组织行动",
+      "dramatic_question": "当队伍内部对军事与政治工作的关系存在根本分歧时，会议如何把争论转化为共同执行的原则？",
+      "required_evidence_focus": [
+        "会议背景、时间、地点与决议内容",
+        "思想分歧不得简化成虚构的个人善恶冲突",
+        "会场对白与人物站位必须服从文献边界"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "historical-benchmark-005-zhijiang-surrender",
+      "source_province": "湖南",
+      "source_entry": "芷江受降——抗战胜利的庄严见证",
+      "central_event": "1945年芷江受降会谈中，受降程序、命令交接与历史责任如何被落实到具体行动",
+      "dramatic_question": "在胜利情绪与严肃受降程序并存的时刻，参与者如何让国家记忆落在可核验的文件和行动上？",
+      "required_evidence_focus": [
+        "会谈日期、地点、参与方与受降程序",
+        "现场文件和仪式细节必须有来源等级",
+        "普通见证者、对白和情绪反应只能作为标注后的戏剧化入口"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "historical-failure-001-background-summary",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "正文只是背景知识和时间点罗列，没有可执行的因果事件链。",
+      "mutations": [
+        "replace_full_text_with_background_summary",
+        "remove_factual_event_chain"
+      ],
+      "expected_hard_gate_ids": [
+        "full_text_not_final",
+        "event_causality_missing"
+      ],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "historical-failure-002-no-era-position-consequence",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "移除时代制度压力、角色立场冲突和关键决定后果，只保留泛化冲突。",
+      "mutations": [
+        "remove_era_and_institutional_pressure",
+        "collapse_role_positions",
+        "remove_decision_and_consequence"
+      ],
+      "expected_hard_gate_ids": [
+        "era_or_institutional_pressure_missing",
+        "role_position_conflict_missing",
+        "decision_or_consequence_missing"
+      ],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "historical-failure-003-collapsed-truth-boundary",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "移除分场证据边界、未知项、免责声明和对白声线，使戏剧化内容看起来像史料。",
+      "mutations": [
+        "remove_scene_truth_boundaries",
+        "remove_unknowns_and_disclaimers",
+        "remove_dialogue_voice_rules",
+        "remove_subtext_strategy"
+      ],
+      "expected_hard_gate_ids": [
+        "scene_truth_boundary_missing",
+        "dialogue_voice_or_subtext_missing",
+        "truth_boundary_missing"
+      ],
+      "professional_passed": false
+    }
+  ]
+}

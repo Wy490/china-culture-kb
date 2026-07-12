@@ -1,0 +1,584 @@
+{
+  "schema_version": "character-story-professional-benchmark-lifecycle-plan/v1",
+  "generated_at": "2026-07-11T03:07:32.162Z",
+  "video_type": "character_story",
+  "mode": "plan_only",
+  "source_manifest": {
+    "path": "data/professional-benchmarks/character-story-iteration3-execution-manifest.json",
+    "schema_version": "character-story-professional-benchmark-execution-manifest/v2",
+    "sha256": "d883fa7bf113a515703b24f7e4507a391f1e92818463ab8e27cb608fd3d4ee40"
+  },
+  "source_controlled_plan": {
+    "path": "data/professional-benchmarks/character-story-iteration3-controlled-run-plan.json",
+    "schema_version": "character-story-controlled-benchmark-run-plan/v2",
+    "integrity_sha256": "4ca8265268c70a7566c9c9c4ef15d4307272697f2a2d5146a4131be2cc3005e6",
+    "artifact_sha256": "e27e566fc18b5a9b0b2415bb963955ce7f5ad22595c2a8a23198eba221ab8ef5"
+  },
+  "policy": {
+    "invokes_model": false,
+    "writes_model_outputs": false,
+    "creates_run_directory": false,
+    "contains_prompt_text": false,
+    "contains_credentials_or_secrets": false,
+    "verified_external_provenance_required": true,
+    "fixture_counts_as_progress_or_credit": false,
+    "simulation_counts_as_progress_or_credit": false,
+    "local_output_counts_as_progress_or_credit": false,
+    "human_blind_review_required": true,
+    "signed_release_required_for_professional_pass": true
+  },
+  "required_artifact_chain": [
+    {
+      "stage_id": "verified_initial_external_story",
+      "artifact_file": "initial-story.json",
+      "completion_evidence": "strict artifact envelope and verified external provider provenance"
+    },
+    {
+      "stage_id": "initial_professional_text_package",
+      "artifact_file": "initial-professional-text-package.json",
+      "completion_evidence": "package hash bound to the verified initial story artifact"
+    },
+    {
+      "stage_id": "initial_quality_report",
+      "artifact_file": "initial-quality-report.json",
+      "completion_evidence": "machine quality report bound to the initial professional text package"
+    },
+    {
+      "stage_id": "revision_work_order",
+      "artifact_file": "revision-work-order.json",
+      "completion_evidence": "revision instructions bound to initial package and quality hashes"
+    },
+    {
+      "stage_id": "revision_output",
+      "artifact_file": "revision-output.json",
+      "completion_evidence": "revision output bound to the initial package and revision work order"
+    },
+    {
+      "stage_id": "final_professional_text_package",
+      "artifact_file": "final-professional-text-package.json",
+      "completion_evidence": "final package bound to the independently recorded revision output"
+    },
+    {
+      "stage_id": "final_quality_report",
+      "artifact_file": "final-quality-report.json",
+      "completion_evidence": "final quality snapshot bound to the final package and revision-output DAG"
+    },
+    {
+      "stage_id": "human_blind_review",
+      "artifact_file": "human-blind-review.json",
+      "completion_evidence": "authorized independent blind-review quorum bound to final hashes"
+    },
+    {
+      "stage_id": "artifact_validation",
+      "artifact_file": "artifact-validation.json",
+      "completion_evidence": "professional_completion validation after the human review artifact closes the persisted DAG"
+    },
+    {
+      "stage_id": "finalization_candidate",
+      "artifact_file": "finalization-decision.json",
+      "completion_evidence": "fail-closed candidate decision explicitly eligible for a separate signed release"
+    },
+    {
+      "stage_id": "signed_release",
+      "artifact_file": "signed-release-record.json",
+      "completion_evidence": "authorized signed release after every prior gate passes"
+    }
+  ],
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "awaiting_verified_initial_run_count": 5,
+    "blocked_run_count": 5,
+    "model_invocation_count": 0,
+    "initial_real_model_completed_count": 0,
+    "initial_professional_text_package_count": 0,
+    "initial_quality_report_count": 0,
+    "revision_work_order_count": 0,
+    "revision_output_count": 0,
+    "final_professional_text_package_count": 0,
+    "final_quality_report_count": 0,
+    "artifact_validation_pass_count": 0,
+    "human_blind_review_pass_count": 0,
+    "finalization_candidate_count": 0,
+    "signed_release_count": 0,
+    "professional_pass_count": 0,
+    "fixture_simulation_or_local_credit_count": 0
+  },
+  "runs": [
+    {
+      "benchmark_id": "character-benchmark-001-zhou-dunyi-choice",
+      "run_id": "character-story-iteration3-run-001-d883fa7bf113",
+      "controlled_run_sha256": "876b0b6ed316a17514c510f4b2b945872302b9a9cbbd6c3a0dc5fd709c29f9ac",
+      "source_snapshot_sha256": "8c76912d4acad1a8f030d4c0b52efcd3bf7ae1128fa40fc83ec4287201bc901f",
+      "status": "awaiting_verified_initial_run",
+      "execution_state": "blocked",
+      "blockers": [
+        "verified_initial_external_story_missing"
+      ],
+      "stages": [
+        {
+          "stage_id": "verified_initial_external_story",
+          "artifact_file": "initial-story.json",
+          "status": "awaiting_verified_input",
+          "blocker": "verified_initial_external_story_missing",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_professional_text_package",
+          "artifact_file": "initial-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:verified_initial_external_story",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_quality_report",
+          "artifact_file": "initial-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_work_order",
+          "artifact_file": "revision-work-order.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_output",
+          "artifact_file": "revision-output.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_work_order",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_professional_text_package",
+          "artifact_file": "final-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_output",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_quality_report",
+          "artifact_file": "final-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "human_blind_review",
+          "artifact_file": "human-blind-review.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "artifact_validation",
+          "artifact_file": "artifact-validation.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:human_blind_review",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "finalization_candidate",
+          "artifact_file": "finalization-decision.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:artifact_validation",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "signed_release",
+          "artifact_file": "signed-release-record.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:finalization_candidate",
+          "professional_credit": false
+        }
+      ],
+      "initial_real_model_completed": false,
+      "model_output_validated": false,
+      "human_blind_review_passed": false,
+      "signed_release_present": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "character-benchmark-002-wang-fuzhi-last-stand",
+      "run_id": "character-story-iteration3-run-002-d883fa7bf113",
+      "controlled_run_sha256": "cd84097405b456e1695a0c602e76118b726f56bb23ac2e2d5c8675ef5fc247f5",
+      "source_snapshot_sha256": "15b81084cf18d1aefa209d1a39f310d4a56adb3246865f89c94c92f9968fb7b2",
+      "status": "awaiting_verified_initial_run",
+      "execution_state": "blocked",
+      "blockers": [
+        "verified_initial_external_story_missing"
+      ],
+      "stages": [
+        {
+          "stage_id": "verified_initial_external_story",
+          "artifact_file": "initial-story.json",
+          "status": "awaiting_verified_input",
+          "blocker": "verified_initial_external_story_missing",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_professional_text_package",
+          "artifact_file": "initial-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:verified_initial_external_story",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_quality_report",
+          "artifact_file": "initial-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_work_order",
+          "artifact_file": "revision-work-order.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_output",
+          "artifact_file": "revision-output.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_work_order",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_professional_text_package",
+          "artifact_file": "final-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_output",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_quality_report",
+          "artifact_file": "final-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "human_blind_review",
+          "artifact_file": "human-blind-review.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "artifact_validation",
+          "artifact_file": "artifact-validation.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:human_blind_review",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "finalization_candidate",
+          "artifact_file": "finalization-decision.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:artifact_validation",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "signed_release",
+          "artifact_file": "signed-release-record.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:finalization_candidate",
+          "professional_credit": false
+        }
+      ],
+      "initial_real_model_completed": false,
+      "model_output_validated": false,
+      "human_blind_review_passed": false,
+      "signed_release_present": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "character-benchmark-003-jia-yi-changsha",
+      "run_id": "character-story-iteration3-run-003-d883fa7bf113",
+      "controlled_run_sha256": "50186c589774d004b1ad8f02c49b794dd9c90c995db46a4da09b08e303724966",
+      "source_snapshot_sha256": "120dd5ed0799277e056d1981d95b8c4f564c3f5b7ad495827a86610fb4c8bcda",
+      "status": "awaiting_verified_initial_run",
+      "execution_state": "blocked",
+      "blockers": [
+        "verified_initial_external_story_missing"
+      ],
+      "stages": [
+        {
+          "stage_id": "verified_initial_external_story",
+          "artifact_file": "initial-story.json",
+          "status": "awaiting_verified_input",
+          "blocker": "verified_initial_external_story_missing",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_professional_text_package",
+          "artifact_file": "initial-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:verified_initial_external_story",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_quality_report",
+          "artifact_file": "initial-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_work_order",
+          "artifact_file": "revision-work-order.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_output",
+          "artifact_file": "revision-output.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_work_order",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_professional_text_package",
+          "artifact_file": "final-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_output",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_quality_report",
+          "artifact_file": "final-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "human_blind_review",
+          "artifact_file": "human-blind-review.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "artifact_validation",
+          "artifact_file": "artifact-validation.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:human_blind_review",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "finalization_candidate",
+          "artifact_file": "finalization-decision.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:artifact_validation",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "signed_release",
+          "artifact_file": "signed-release-record.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:finalization_candidate",
+          "professional_credit": false
+        }
+      ],
+      "initial_real_model_completed": false,
+      "model_output_validated": false,
+      "human_blind_review_passed": false,
+      "signed_release_present": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "character-benchmark-004-tao-kan-discipline",
+      "run_id": "character-story-iteration3-run-004-d883fa7bf113",
+      "controlled_run_sha256": "fddef9e559a36981109ca406d654ff28081f434667e6de240b516ef9b41fb3e0",
+      "source_snapshot_sha256": "05146ba005b49e7fddb094f80e3eb2c94df592ce1676411cf5cd663814095645",
+      "status": "awaiting_verified_initial_run",
+      "execution_state": "blocked",
+      "blockers": [
+        "verified_initial_external_story_missing"
+      ],
+      "stages": [
+        {
+          "stage_id": "verified_initial_external_story",
+          "artifact_file": "initial-story.json",
+          "status": "awaiting_verified_input",
+          "blocker": "verified_initial_external_story_missing",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_professional_text_package",
+          "artifact_file": "initial-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:verified_initial_external_story",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_quality_report",
+          "artifact_file": "initial-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_work_order",
+          "artifact_file": "revision-work-order.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_output",
+          "artifact_file": "revision-output.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_work_order",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_professional_text_package",
+          "artifact_file": "final-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_output",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_quality_report",
+          "artifact_file": "final-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "human_blind_review",
+          "artifact_file": "human-blind-review.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "artifact_validation",
+          "artifact_file": "artifact-validation.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:human_blind_review",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "finalization_candidate",
+          "artifact_file": "finalization-decision.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:artifact_validation",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "signed_release",
+          "artifact_file": "signed-release-record.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:finalization_candidate",
+          "professional_credit": false
+        }
+      ],
+      "initial_real_model_completed": false,
+      "model_output_validated": false,
+      "human_blind_review_passed": false,
+      "signed_release_present": false,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "character-benchmark-005-huaisu-writing",
+      "run_id": "character-story-iteration3-run-005-d883fa7bf113",
+      "controlled_run_sha256": "7186f3e2c03c9b28f7a4009bfc0460a7b4952f8825cbc6504d5693beeb570e68",
+      "source_snapshot_sha256": "d6a9c9b7b0f8cc90c099e2a20804c1a42aefbd501801a4f2d728c780bbcd040c",
+      "status": "awaiting_verified_initial_run",
+      "execution_state": "blocked",
+      "blockers": [
+        "verified_initial_external_story_missing"
+      ],
+      "stages": [
+        {
+          "stage_id": "verified_initial_external_story",
+          "artifact_file": "initial-story.json",
+          "status": "awaiting_verified_input",
+          "blocker": "verified_initial_external_story_missing",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_professional_text_package",
+          "artifact_file": "initial-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:verified_initial_external_story",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "initial_quality_report",
+          "artifact_file": "initial-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_work_order",
+          "artifact_file": "revision-work-order.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:initial_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "revision_output",
+          "artifact_file": "revision-output.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_work_order",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_professional_text_package",
+          "artifact_file": "final-professional-text-package.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:revision_output",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "final_quality_report",
+          "artifact_file": "final-quality-report.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_professional_text_package",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "human_blind_review",
+          "artifact_file": "human-blind-review.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:final_quality_report",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "artifact_validation",
+          "artifact_file": "artifact-validation.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:human_blind_review",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "finalization_candidate",
+          "artifact_file": "finalization-decision.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:artifact_validation",
+          "professional_credit": false
+        },
+        {
+          "stage_id": "signed_release",
+          "artifact_file": "signed-release-record.json",
+          "status": "blocked_by_prior_stage",
+          "blocker": "prior_stage_incomplete:finalization_candidate",
+          "professional_credit": false
+        }
+      ],
+      "initial_real_model_completed": false,
+      "model_output_validated": false,
+      "human_blind_review_passed": false,
+      "signed_release_present": false,
+      "professional_passed": false
+    }
+  ],
+  "integrity_sha256": "a3965e7e4e9e896bdee06cdfcda33bce0cc888703c76ebd89b96c542b932146f"
+}

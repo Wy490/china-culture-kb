@@ -1,0 +1,3251 @@
+{
+  "schema_version": "story-agent-relink-triage/v1",
+  "generated_at": "2026-07-11T14:27:02.035Z",
+  "source_queue": "data/reports/story-agent-monitor-remediation-queue-20260710.json",
+  "mode": "evidence_triage_only",
+  "policy": {
+    "exact_backup_preferred": true,
+    "suffix_only_match_allowed": false,
+    "bulk_relink_allowed": false,
+    "fixture_reclassification_requires_operator_confirmation": true
+  },
+  "summary": {
+    "candidate_count": 99,
+    "safe_auto_relink_count": 0,
+    "suffix_hint_manual_review_count": 9,
+    "guessed_relink_count": 0,
+    "resolved_count": 0,
+    "by_review_route": {
+      "external_backup_or_fixture_reclassification_review": 79,
+      "external_backup_required": 11,
+      "manual_suffix_evidence_review": 9
+    }
+  },
+  "entries": [
+    {
+      "project_id": "20260616-series-03y4dnyp",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xh9"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-0jvryh4e",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xie"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 0,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [
+        {
+          "missing_story_id": "20260616-story-5xie",
+          "candidate_story_ids": [
+            "20260625-story-5xie"
+          ]
+        }
+      ],
+      "auto_recovery_safe": false,
+      "review_route": "manual_suffix_evidence_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-14f7hwtl",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xhd"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 0,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-248e0ajj",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xi4"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-48p21xn0",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xi1"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-4srb8plm",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xh5"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-53vv8eka",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xgy"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [
+        {
+          "missing_story_id": "20260616-story-5xgy",
+          "candidate_story_ids": [
+            "20260626-story-5xgy"
+          ]
+        }
+      ],
+      "auto_recovery_safe": false,
+      "review_route": "manual_suffix_evidence_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-6p4tltae",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xij"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-8ufj52fc",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xgl"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-93a5x6e0",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xhi"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-973gs2q6",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xia"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-ahes2c0b",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xij"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-axkn53bg",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xhw"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-c8iqkv6g",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xib"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-c95tcz25",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xit"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-d04yy6ug",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xir"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-eo361gig",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xhf"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-eyrdc7g7",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xgv"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-f5sejix1",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xi0"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-fmfvxe2o",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xh1"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [
+        {
+          "missing_story_id": "20260616-story-5xh1",
+          "candidate_story_ids": [
+            "20260626-story-5xh1"
+          ]
+        }
+      ],
+      "auto_recovery_safe": false,
+      "review_route": "manual_suffix_evidence_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-hkgeh6b6",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xij"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-hpuwjvbv",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xig"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-ijmoo24p",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xgt"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-j5a88reo",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xiz"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-jhnaldxw",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xh6"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-kd53l5ot",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xig"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-ld6dqyuz",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xiy"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-lvsc7llv",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xhx"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-muibguse",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xgo"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-nf3io63o",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xgu"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-o0lzwyyo",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xix"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-penya03q",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xhc"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-q99mozrf",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xhb"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-rtj9gq9d",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xgs"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-v6p5goq8",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xgu"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-vcy90diy",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xi8"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-vuytovzv",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xgm"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-vvu73c3t",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xik"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-xs85niqk",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xha"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-y95gbrsl",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xi3"
+      ],
+      "contract_evidence": [
+        "seedance_production"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260616-series-zpgbl3by",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260616-story-5xh6"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260617-series-pr23ohni",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260617-story-5xh6"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-24iwafi4",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xit"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-60vk0rvi",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xgo"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-8dd27w7l",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xgm"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-9ffxglk7",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xij"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-9q0rcs0u",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xhm"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-a6is95fp",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xh3"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-b330b0gy",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xii"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-eqbsibbi",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xiw"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-lb987ajh",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xgd"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-lc5d1g93",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xit"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-myzcg4in",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xh1"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [
+        {
+          "missing_story_id": "20260618-story-5xh1",
+          "candidate_story_ids": [
+            "20260626-story-5xh1"
+          ]
+        }
+      ],
+      "auto_recovery_safe": false,
+      "review_route": "manual_suffix_evidence_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-n394n53h",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xj5"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-rlpbp0sw",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xip"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-rqaq8jko",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xgt"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-sdf4fmli",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xib"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-sjapezcu",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xi9"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-twhggw5n",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xh8"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-uup1jo84",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xhn"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-vgb7x9zg",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xje"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260618-series-w0vp7pgt",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260618-story-5xhv"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-0nf0gc2q",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xj7"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-0so7mqbg",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xgk"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-15y1e2jo",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xgx"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [
+        {
+          "missing_story_id": "20260619-story-5xgx",
+          "candidate_story_ids": [
+            "20260626-story-5xgx"
+          ]
+        }
+      ],
+      "auto_recovery_safe": false,
+      "review_route": "manual_suffix_evidence_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-1rfi5mzq",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xit"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-3e9ga2oj",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xik"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-3f89ec1y",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xij"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "gears_job_ledger",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 0,
+      "failed_production_item_count": 5,
+      "test_fixture_failure_item_count": 5,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-415fpgzn",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xht"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-47wn74m1",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xi0"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-6uokxeln",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xh9"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-8w5njblm",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xgp"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-938udzsf",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xh0"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-9qldms1r",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xgs"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-a4tgicqe",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xj1"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-acyqrolx",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhf"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-cfveneh0",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xig"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-e46v4kjl",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhe"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-g6k9pvey",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xi1"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-gwsk6j5e",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhs"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 0,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-h415oqzu",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhu"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [
+        {
+          "missing_story_id": "20260619-story-5xhu",
+          "candidate_story_ids": [
+            "20260626-story-5xhu"
+          ]
+        }
+      ],
+      "auto_recovery_safe": false,
+      "review_route": "manual_suffix_evidence_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-m6o798v9",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xha"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-mbmlccz0",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhw"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-mm0zaxdx",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xgj"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-mr4rytk0",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xin"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [
+        {
+          "missing_story_id": "20260619-story-5xin",
+          "candidate_story_ids": [
+            "20260625-story-5xin"
+          ]
+        }
+      ],
+      "auto_recovery_safe": false,
+      "review_route": "manual_suffix_evidence_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-nkgnnace",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhv"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-nnehhap0",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhs"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-oilvd3xd",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xi5"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-pgwscm8n",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xif"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [
+        {
+          "missing_story_id": "20260619-story-5xif",
+          "candidate_story_ids": [
+            "20260626-story-5xif"
+          ]
+        }
+      ],
+      "auto_recovery_safe": false,
+      "review_route": "manual_suffix_evidence_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-ro4zdr72",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhg"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-rwhglfqp",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xgf"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-sf6hfgxh",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhx"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-tx5wokt2",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xir"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-uavcbd6j",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xj2"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [
+        {
+          "missing_story_id": "20260619-story-5xj2",
+          "candidate_story_ids": [
+            "20260626-story-5xj2"
+          ]
+        }
+      ],
+      "auto_recovery_safe": false,
+      "review_route": "manual_suffix_evidence_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-ulkublp4",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xil"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-vap0lbi8",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xhw"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 0,
+      "failed_production_item_count": 0,
+      "test_fixture_failure_item_count": 0,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_required",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-vw8eg21m",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xj7"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-zkqc9z0q",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xh0"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    },
+    {
+      "project_id": "20260619-series-zsr44a4w",
+      "title": "濂溪少年志",
+      "missing_story_ids": [
+        "20260619-story-5xi4"
+      ],
+      "contract_evidence": [
+        "seedance_production",
+        "thumbnails",
+        "cut_assembly",
+        "subtitle_render",
+        "final_delivery"
+      ],
+      "ready_production_item_count": 1,
+      "failed_production_item_count": 1,
+      "test_fixture_failure_item_count": 1,
+      "unmarked_failure_item_count": 0,
+      "potential_suffix_matches": [],
+      "auto_recovery_safe": false,
+      "review_route": "external_backup_or_fixture_reclassification_review",
+      "execution_status": "operator_evidence_required",
+      "acceptable_outcomes": [
+        "exact_story_backup_restored",
+        "confirmed_fixture_or_regression_reclassified",
+        "isolated_pending_evidence"
+      ],
+      "required_match_evidence": [
+        "exact_story_id_or_verified_version_mapping",
+        "episode_identity",
+        "full_text_or_scene_identity",
+        "continuity_and_production_ledger_consistency"
+      ],
+      "guessed_relink_allowed": false
+    }
+  ]
+}

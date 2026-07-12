@@ -1,0 +1,45 @@
+{
+  "schema_version": "all-format-professional-multi-round-revision-specs/v1",
+  "stage": "stage_6",
+  "iteration": "iteration_1",
+  "policy": {
+    "minimum_verified_revision_rounds_per_project": 2,
+    "real_project_and_provenance_required": true,
+    "human_table_read_feedback_required": true,
+    "derived_text_rebuild_required_after_source_change": true,
+    "fixture_or_simulation_counts_as_verified_revision": false,
+    "stage6_exit_candidate_counts_as_professional_pass": false
+  },
+  "summary": {
+    "covered_video_type_count": 15,
+    "fixed_multi_round_revision_project_spec_count": 15,
+    "completed_two_round_verified_project_count": 0,
+    "recorded_verified_revision_round_count": 0,
+    "human_table_read_closed_feedback_count": 0,
+    "traceable_quality_improvement_project_count": 0,
+    "failure_fixture_count": 3,
+    "professional_pass_count": 0
+  },
+  "projects": [
+    { "benchmark_id": "stage6-001-character-story", "video_type": "character_story", "source_entry": "周敦颐——理学开山鼻祖", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-002-historical-drama", "video_type": "historical_drama", "source_entry": "岳阳楼——先忧后乐的精神地标", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-003-legend-story", "video_type": "legend_story", "source_entry": "洞庭湖君山——传说叠加的洞庭明珠", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-004-children-story", "video_type": "children_story", "source_entry": "马王堆汉墓——沉睡两千年的汉代文明", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-005-ai-comic-drama", "video_type": "ai_comic_drama", "source_entry": "通道侗锦——湘西南侗寨的指尖花雨", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-006-culture-promo", "video_type": "culture_promo", "source_entry": "湘绣——中国四大名绣之一", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-007-heritage-promo", "video_type": "heritage_promo", "source_entry": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-008-city-brand-promo", "video_type": "city_brand_promo", "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-009-social-short", "video_type": "social_short", "source_entry": "永州摩崖石刻——柳宗元书写的山水文学基因", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-010-documentary-short", "video_type": "documentary_short", "source_entry": "马王堆汉墓——沉睡两千年的汉代文明", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-011-explainer-video", "video_type": "explainer_video", "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-012-lecture-video", "video_type": "lecture_video", "source_entry": "岳麓书院——千年学府与实事求是", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-013-education-training", "video_type": "education_training", "source_entry": "湘绣——中国四大名绣之一", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-014-scene-short", "video_type": "scene_short", "source_entry": "岳阳楼——先忧后乐的精神地标", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false },
+    { "benchmark_id": "stage6-015-landscape-mood", "video_type": "landscape_mood", "source_entry": "张家界武陵源——3.8亿年雕琢的世界自然遗产", "status": "awaiting_real_initial_package_and_table_read", "verified_revision_round_count": 0, "professional_passed": false }
+  ],
+  "failure_fixtures": [
+    { "fixture_id": "stage6-failure-001-simulation-score-increase", "fixture_kind": "simulation_failure_fixture", "expected_blocker": "fixture_or_simulation_credit_forbidden", "professional_passed": false },
+    { "fixture_id": "stage6-failure-002-stale-derived-text", "fixture_kind": "simulation_failure_fixture", "expected_blocker": "stale_derived_sections", "professional_passed": false },
+    { "fixture_id": "stage6-failure-003-unresolved-table-read-feedback", "fixture_kind": "simulation_failure_fixture", "expected_blocker": "open_table_read_feedback", "professional_passed": false }
+  ]
+}

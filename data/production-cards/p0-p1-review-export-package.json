@@ -1,0 +1,443 @@
+{
+  "schema_version": "p0-p1-review-export-package/v1",
+  "updated_at": "2026-07-10",
+  "status": "export_package_pending_human_review",
+  "scope": "Iteration 10：P0/P1 来源占位、授权占位、可导出审稿 Markdown 文件和 P0 自动化质量规则。",
+  "source_evidence_file": "data/production-cards/p0-p1-source-evidence-and-writeback-drafts.json",
+  "source_review_queue_file": "data/production-cards/p0-p1-review-and-writeback-queue.json",
+  "export_root": "docs/production-cards/review-exports/20260710",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "manual_patch_required": true,
+    "current_layer": "review_export_only",
+    "exported_markdown_is_formal_writeback": false
+  },
+  "counts": {
+    "source_placeholder_set_count": 16,
+    "authorization_placeholder_set_count": 16,
+    "markdown_export_count": 16,
+    "p0_quality_rule_count": 2,
+    "p0_quality_sample_expectation_count": 4
+  },
+  "source_placeholder_sets": [
+    {
+      "evidence_package_id": "evidence-p0-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "risk_tier": "p0",
+      "source_placeholders": [
+        "纪念馆官方资料或展陈说明",
+        "审判档案、安全区、日记和影像资料来源线索",
+        "知识库原条目来源复核"
+      ],
+      "authorization_placeholders": [
+        "纪念馆展陈和档案复制件使用许可",
+        "人物肖像和虚构入口说明",
+        "Seedance/GEARS 提示词边界审稿"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p0-002",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "risk_tier": "p0",
+      "source_placeholders": [
+        "非遗项目页和保护机构资料",
+        "民族医药机构公开资料",
+        "知识库原条目来源复核"
+      ],
+      "authorization_placeholders": [
+        "机构拍摄许可",
+        "人物肖像和采访授权",
+        "诊疗空间、患者隐私和标本拍摄边界"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p0-003",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "risk_tier": "p0",
+      "source_placeholders": [
+        "纪念馆、名单墙和国家公祭日资料",
+        "审判档案、安全区和日记来源线索",
+        "现实现场开放状态资料"
+      ],
+      "authorization_placeholders": [
+        "纪念馆拍摄许可",
+        "展陈和档案复制件使用许可",
+        "采访和悼念活动拍摄同意"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p0-004",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "risk_tier": "p0",
+      "source_placeholders": [
+        "民族医药机构公开资料",
+        "档案、标本和展板来源线索",
+        "非遗项目和保护单位资料"
+      ],
+      "authorization_placeholders": [
+        "机构采访和拍摄许可",
+        "标本柜、档案盒和展板拍摄许可",
+        "患者隐私和诊疗空间禁止项确认"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-001",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "平江起义纪念资料",
+        "天岳书院旧址资料",
+        "相关人物和红五军来源线索"
+      ],
+      "authorization_placeholders": [
+        "旧址或纪念空间拍摄许可",
+        "展陈资料使用许可",
+        "虚构见证者边界审稿"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-002",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "白族仗鼓舞非遗项目资料",
+        "公开展演和社区资料",
+        "服饰、舞步和仪式边界来源"
+      ],
+      "authorization_placeholders": [
+        "社区或机构拍摄同意",
+        "表演者肖像授权",
+        "未公开仪式内容排除确认"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "通道侗锦项目资料",
+        "工艺流程和纹样来源",
+        "传承人或工坊资料"
+      ],
+      "authorization_placeholders": [
+        "工坊拍摄许可",
+        "传承人或示范者肖像授权",
+        "纹样含义和社区叙述授权"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-004",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "土家族摆手舞项目资料",
+        "公开展演和摆手堂资料",
+        "社区文化边界说明"
+      ],
+      "authorization_placeholders": [
+        "社区授权",
+        "公开动作拍摄同意",
+        "内部仪式空间排除确认"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-005",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "武昌起义纪念馆资料",
+        "10 月 9 日和 10 月 10 日时间线来源",
+        "第一枪多说法资料"
+      ],
+      "authorization_placeholders": [
+        "红楼和展陈拍摄许可",
+        "复原件和档案复制件使用许可",
+        "虚构线索边界审稿"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "国家或地方非遗项目页",
+        "保护单位和传承人口径",
+        "公开展演资料"
+      ],
+      "authorization_placeholders": [
+        "表演片段授权",
+        "服饰和道具拍摄许可",
+        "社区或机构同意"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-007",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "土家族摆手舞名录资料",
+        "摆手堂和公开展演资料",
+        "社区授权说明"
+      ],
+      "authorization_placeholders": [
+        "社区授权单",
+        "公开动作拍摄许可",
+        "未授权仪式空间排除确认"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-008",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "桑植民歌项目资料",
+        "田野采录和红色记忆来源",
+        "曲词曲谱来源线索"
+      ],
+      "authorization_placeholders": [
+        "演唱者肖像和声音授权",
+        "歌词和曲谱授权",
+        "采录空间拍摄同意"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-009",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "红楼、首义广场和楚望台资料",
+        "时间线和多说法来源",
+        "展陈和复原件资料"
+      ],
+      "authorization_placeholders": [
+        "纪念馆拍摄许可",
+        "展陈和复原件使用许可",
+        "采访授权"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-010",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "平江起义纪念馆或旧址资料",
+        "天岳书院和相关展陈资料",
+        "革命人物来源线索"
+      ],
+      "authorization_placeholders": [
+        "旧址拍摄许可",
+        "展陈资料使用许可",
+        "采访授权"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-011",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "桑植民歌项目资料",
+        "田野录音和地方记忆来源",
+        "红色历史资料"
+      ],
+      "authorization_placeholders": [
+        "演唱和录音授权",
+        "歌词曲谱授权",
+        "采访和现场拍摄许可"
+      ]
+    },
+    {
+      "evidence_package_id": "evidence-p1-012",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "risk_tier": "p1",
+      "source_placeholders": [
+        "摆手堂、广场和公开展演资料",
+        "土家族摆手舞项目资料",
+        "社区文化边界说明"
+      ],
+      "authorization_placeholders": [
+        "社区授权",
+        "现场拍摄许可",
+        "内部知识和未授权空间排除确认"
+      ]
+    }
+  ],
+  "markdown_exports": [
+    {
+      "writeback_template_id": "writeback-template-p0-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p0-001.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-002",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p0-002.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-003",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p0-003.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p0-004",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p0-004.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-001",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-001.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-002",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-002.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-003.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-004",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-004.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-005",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-005.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-006.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-007",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-007.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-008",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-008.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-009",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-009.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-010",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-010.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-011",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-011.md"
+    },
+    {
+      "writeback_template_id": "writeback-template-p1-012",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "path": "docs/production-cards/review-exports/20260710/writeback-template-p1-012.md"
+    }
+  ],
+  "p0_quality_rules": [
+    {
+      "rule_id": "p0-trauma-history-no-reenactment",
+      "risk_family": "historical_trauma",
+      "reject_patterns": [
+        "血腥",
+        "施暴",
+        "刺激性暴力",
+        "虚构人物说出类似真实证词",
+        "虚构证词",
+        "猎奇"
+      ],
+      "allow_requires_any": [
+        "名单墙",
+        "白花",
+        "安全区地图",
+        "审判档案",
+        "纪念馆"
+      ],
+      "linked_sample_ids": [
+        "p0-trauma-reject-gore-reenactment",
+        "p0-trauma-pass-evidence-led"
+      ]
+    },
+    {
+      "rule_id": "p0-medical-heritage-no-instruction",
+      "risk_family": "medical_heritage",
+      "reject_patterns": [
+        "药方比例",
+        "使用方法",
+        "诊疗操作",
+        "照做",
+        "疗效",
+        "剂量"
+      ],
+      "allow_requires_any": [
+        "公开展板",
+        "标本柜",
+        "档案员",
+        "机构外部空间",
+        "不构成医疗建议"
+      ],
+      "linked_sample_ids": [
+        "p0-medical-reject-instruction",
+        "p0-medical-pass-cultural-record"
+      ]
+    }
+  ],
+  "p0_quality_sample_expectations": [
+    {
+      "sample_id": "p0-trauma-reject-gore-reenactment",
+      "rule_id": "p0-trauma-history-no-reenactment",
+      "expected_decision": "reject"
+    },
+    {
+      "sample_id": "p0-trauma-pass-evidence-led",
+      "rule_id": "p0-trauma-history-no-reenactment",
+      "expected_decision": "allow_for_human_review"
+    },
+    {
+      "sample_id": "p0-medical-reject-instruction",
+      "rule_id": "p0-medical-heritage-no-instruction",
+      "expected_decision": "reject"
+    },
+    {
+      "sample_id": "p0-medical-pass-cultural-record",
+      "rule_id": "p0-medical-heritage-no-instruction",
+      "expected_decision": "allow_for_human_review"
+    }
+  ],
+  "iteration_10_exit_gates": [
+    {
+      "gate_id": "source-and-authorization-placeholders-created",
+      "status": "met",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "review-markdown-files-exported",
+      "status": "met_as_review_exports",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "p0-quality-rules-created",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

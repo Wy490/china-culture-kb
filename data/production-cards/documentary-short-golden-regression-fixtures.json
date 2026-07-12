@@ -1,0 +1,464 @@
+{
+  "schema_version": "documentary-short-golden-regression-fixtures/v1",
+  "updated_at": "2026-07-09",
+  "source_cards_file": "data/production-cards/documentary-short-golden-cards.json",
+  "review_status": "local_regression_fixture_pending_human_review",
+  "purpose": "为微纪录片黄金卡抽样建立离线回归样本，覆盖微纪录分镜、GEARS 分段、质量报告和敏感边界。",
+  "fixtures": [
+    {
+      "fixture_id": "regression-yueyang-tower-text-site-documentary",
+      "card_id": "documentary-golden-yueyang-tower-text-site",
+      "entry_name": "岳阳楼——先忧后乐的精神地标",
+      "regression_scope": [
+        "documentary_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "site_text_boundary_check"
+      ],
+      "documentary": {
+        "documentaryId": "20260709-documentary-regression-yueyang-tower",
+        "project_id": "20260709-project-documentary-yueyang-tower",
+        "title": "楼在湖边，文章在风里",
+        "generation_type": "production_card_regression_fixture",
+        "video_type": "documentary_short",
+        "presentation_style": "documentary",
+        "source_entry": "岳阳楼——先忧后乐的精神地标",
+        "logline": "从今天的岳阳楼、洞庭湖风和楼内雕屏进入，分清建筑、文本、诗作、传说和重修历史。",
+        "theme": "现场、文本、公共记忆、事实边界",
+        "full_text": "湖风从洞庭湖吹上楼梯，游客停在雕屏前低声读字。镜头没有把范仲淹放进岳阳楼现场，而是跟着讲解员从楼体、碑刻、文本和湖面之间移动。文史研究者提醒我们：文章可以让一座楼拥有精神高度，但文学意境不等于现场纪实。最后，镜头回到栏杆边，今天的人仍然在这里登楼、读文、看湖。",
+        "scene_breakdown": [
+          {
+            "scene_id": 1,
+            "title": "湖风上楼",
+            "duration_sec": 10,
+            "location": "岳阳楼楼梯与栏杆",
+            "time_of_day": "上午",
+            "dramatic_function": "现实入口",
+            "plot": "湖风吹过栏杆，游客沿木梯登楼，洞庭湖在远处展开。",
+            "key_action": "镜头跟随脚步上楼，在栏杆边停住。",
+            "characters": ["寻访者", "游客"],
+            "visual_prompt": "岳阳楼木梯，栏杆，洞庭湖远景，游客缓慢登楼，湖风吹动衣角，纪录片质感",
+            "camera_suggestion": "低机位跟脚步上楼，再推向洞庭湖远景",
+            "dialogue_or_narration": "旁白：一座楼，先以风和木梯把今天的人带到湖边。"
+          },
+          {
+            "scene_id": 2,
+            "title": "雕屏前读文",
+            "duration_sec": 12,
+            "location": "岳阳楼楼内雕屏前",
+            "time_of_day": "上午",
+            "dramatic_function": "文本入口",
+            "plot": "讲解员带寻访者来到雕屏前，说明文本和楼体如何互相成就。",
+            "key_action": "讲解员指向雕屏，寻访者把导览图折好放下。",
+            "characters": ["讲解员", "寻访者"],
+            "visual_prompt": "岳阳楼楼内雕屏，碑刻，讲解员指向文字，寻访者手持导览图，木柱和匾额在背景",
+            "camera_suggestion": "雕屏局部慢移，切到讲解员手势",
+            "dialogue_or_narration": "讲解员：今天看见的是楼，也是后人一遍遍读出的公共记忆。"
+          },
+          {
+            "scene_id": 3,
+            "title": "文本不等于亲历",
+            "duration_sec": 12,
+            "location": "岳阳楼文献展板旁",
+            "time_of_day": "中午",
+            "dramatic_function": "事实边界",
+            "plot": "文史研究者说明《岳阳楼记》、杜甫诗和吕洞宾传说属于不同来源层。",
+            "key_action": "研究者把三张手卡分开放在桌上。",
+            "characters": ["文史研究者", "寻访者"],
+            "visual_prompt": "文献展板旁，三张手卡分别写着文本、诗作、传说，研究者把手卡分开放置，画面清晰克制",
+            "camera_suggestion": "俯拍手卡分层，再切研究者半身",
+            "dialogue_or_narration": "文史研究者：文学让楼更高，但不能替代现场证据。"
+          },
+          {
+            "scene_id": 4,
+            "title": "重修的木纹",
+            "duration_sec": 12,
+            "location": "岳阳楼木柱与文保标识旁",
+            "time_of_day": "下午",
+            "dramatic_function": "建筑边界",
+            "plot": "镜头拍摄木柱、盔顶、文保标识和落架大修资料，说明现存楼体和历史原貌的差异。",
+            "key_action": "古建筑研究者用手势沿木柱纹理轻轻比划，不触碰文物。",
+            "characters": ["古建筑研究者", "寻访者"],
+            "visual_prompt": "岳阳楼木柱，盔顶细节，文保标识，研究者在一旁比划木纹方向，不触碰文物",
+            "camera_suggestion": "木纹微距切到文保标识，再拉到研究者说明",
+            "dialogue_or_narration": "旁白：今天可见的楼体，也带着一次次修复留下的纹路。"
+          },
+          {
+            "scene_id": 5,
+            "title": "回到湖面",
+            "duration_sec": 10,
+            "location": "岳阳楼栏杆边",
+            "time_of_day": "傍晚",
+            "dramatic_function": "现实收束",
+            "plot": "寻访者站在栏杆边看洞庭湖，游客仍在雕屏前停留。",
+            "key_action": "镜头从游客视线拉到湖面和远帆。",
+            "characters": ["寻访者", "游客"],
+            "visual_prompt": "傍晚岳阳楼栏杆边，洞庭湖水汽，远帆，游客在雕屏前停留，寻访者看向湖面",
+            "camera_suggestion": "从游客视线拉到湖面远景，结尾定格在湖风和栏杆",
+            "dialogue_or_narration": "旁白：楼在湖边，文章在风里，今天的人仍在这里读它。"
+          }
+        ],
+        "gears_segments": [
+          {
+            "segment_id": 1,
+            "source_scene_id": 1,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "湖风和登楼脚步打开现实入口。",
+            "segment_prompt_hint": "木梯、栏杆、洞庭湖远景。"
+          },
+          {
+            "segment_id": 2,
+            "source_scene_id": 2,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "讲解员在雕屏前说明楼与文本的公共记忆。",
+            "segment_prompt_hint": "雕屏、手势、导览图。"
+          },
+          {
+            "segment_id": 3,
+            "source_scene_id": 3,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "研究者把文本、诗作、传说分层。",
+            "segment_prompt_hint": "三张手卡分开放置，避免混写来源层。"
+          },
+          {
+            "segment_id": 4,
+            "source_scene_id": 4,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "木柱和文保标识说明现存楼体与重修边界。",
+            "segment_prompt_hint": "木纹、文保标识、研究者不触碰文物。"
+          },
+          {
+            "segment_id": 5,
+            "source_scene_id": 5,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "镜头回到湖面，游客仍在今天读楼。",
+            "segment_prompt_hint": "湖面、远帆、栏杆和游客视线。"
+          }
+        ],
+        "quality_report": {
+          "schema_version": "documentary-short-regression-quality/v1",
+          "risk_level": "medium",
+          "local_structure_status": "ready_for_documentary_storyboard_regression",
+          "human_review_required": true,
+          "known_gaps": [
+            "范仲淹是否亲临岳阳楼的争议需人工审稿。",
+            "鲁肃阅军楼年份、三十余次毁建记录需补证。",
+            "该样本刻意不把文学意境写成现场亲历。"
+          ]
+        }
+      }
+    },
+    {
+      "fixture_id": "regression-nanjing-massacre-memory-documentary",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "regression_scope": [
+        "documentary_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "trauma_memory_boundary_check"
+      ],
+      "documentary": {
+        "documentaryId": "20260709-documentary-regression-nanjing-memory",
+        "project_id": "20260709-project-documentary-nanjing-memory",
+        "title": "请把名字读慢一点",
+        "generation_type": "production_card_regression_fixture",
+        "video_type": "documentary_short",
+        "presentation_style": "documentary",
+        "source_entry": "南京大屠杀——中华民族最深的伤痕",
+        "logline": "从纪念馆名单墙、日记复制件、安全区地图和审判档案进入，用克制镜头呈现证据链和今天的记忆责任。",
+        "theme": "证据、名字、追思、克制表达",
+        "full_text": "纪念馆里，脚步声很轻。镜头从白花和名单墙开始，不进入暴力再现，而是停在日记复制件、安全区地图和审判档案前。讲解员说，展柜里的每一页资料都不是为了制造恐惧，而是为了让事实不失声。片尾，观众在名单墙前停下，白花被轻轻放好。",
+        "scene_breakdown": [
+          {
+            "scene_id": 1,
+            "title": "白花与名字",
+            "duration_sec": 10,
+            "location": "纪念馆名单墙前",
+            "time_of_day": "上午",
+            "dramatic_function": "现实入口",
+            "plot": "观众在名单墙前停下，白花被放到献花区。",
+            "key_action": "镜头从白花推到名单墙，再停在观众低头的背影。",
+            "characters": ["讲解员", "观众"],
+            "visual_prompt": "纪念馆名单墙，白花，献花区，观众低头背影，黑灰色庄重空间，无血腥画面",
+            "camera_suggestion": "白花近景慢推到名单墙，最后静止",
+            "dialogue_or_narration": "旁白：有些名字，需要被慢慢读出来。"
+          },
+          {
+            "scene_id": 2,
+            "title": "日记复制件",
+            "duration_sec": 12,
+            "location": "纪念馆展柜前",
+            "time_of_day": "上午",
+            "dramatic_function": "来源入口",
+            "plot": "讲解员带观众看日记复制件和影像资料说明卡。",
+            "key_action": "讲解员指向展柜标签，观众隔着玻璃观看。",
+            "characters": ["讲解员", "观众"],
+            "visual_prompt": "展柜玻璃，日记复制件，影像资料说明卡，讲解员指向标签，观众隔玻璃凝视",
+            "camera_suggestion": "展柜标签微距，切到讲解员手势",
+            "dialogue_or_narration": "讲解员：这些资料让后来的人知道，记忆有来源。"
+          },
+          {
+            "scene_id": 3,
+            "title": "安全区地图",
+            "duration_sec": 12,
+            "location": "南京安全区展陈区",
+            "time_of_day": "上午",
+            "dramatic_function": "空间证据",
+            "plot": "安全区地图展示救援空间和难民保护线索。",
+            "key_action": "研究者用激光笔沿地图边界移动，说明空间关系。",
+            "characters": ["研究者", "讲解员"],
+            "visual_prompt": "安全区地图展板，研究者用激光笔沿地图边界移动，旁边有救援者照片和说明牌",
+            "camera_suggestion": "沿地图线缓慢移动，再切到救援者照片",
+            "dialogue_or_narration": "研究者：地图不是背景，它告诉我们保护发生在哪里。"
+          },
+          {
+            "scene_id": 4,
+            "title": "审判档案",
+            "duration_sec": 12,
+            "location": "战后审判文献展厅",
+            "time_of_day": "下午",
+            "dramatic_function": "法律确认",
+            "plot": "展厅里的审判档案和时间线说明战后责任追究。",
+            "key_action": "档案人员翻开展示用复制件，镜头停在时间线而非暴力图像。",
+            "characters": ["档案人员", "观众"],
+            "visual_prompt": "审判文献展厅，档案复制件，时间线展板，档案人员戴手套翻页，观众安静站立",
+            "camera_suggestion": "从手套翻页切到时间线展板，镜头保持稳定",
+            "dialogue_or_narration": "旁白：证据进入法庭，责任也被写进档案。"
+          },
+          {
+            "scene_id": 5,
+            "title": "出口前的停顿",
+            "duration_sec": 10,
+            "location": "纪念馆出口与和平雕塑旁",
+            "time_of_day": "傍晚",
+            "dramatic_function": "克制收束",
+            "plot": "观众离开展厅前回头看一眼，白花仍在名单墙下。",
+            "key_action": "讲解员合上导览册，镜头停在出口处的沉默。",
+            "characters": ["讲解员", "观众"],
+            "visual_prompt": "纪念馆出口，和平雕塑，讲解员合上导览册，观众回头，远处白花和名单墙虚化",
+            "camera_suggestion": "从导览册合上拉到出口空间，结尾静默定格",
+            "dialogue_or_narration": "旁白：离开之前，请记住这不是过去的一页纸。"
+          }
+        ],
+        "gears_segments": [
+          {
+            "segment_id": 1,
+            "source_scene_id": 1,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "白花和名单墙打开纪念馆现实入口。",
+            "segment_prompt_hint": "白花、名单墙、观众背影，庄重无刺激画面。"
+          },
+          {
+            "segment_id": 2,
+            "source_scene_id": 2,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "日记复制件和展柜标签让记忆有来源。",
+            "segment_prompt_hint": "展柜、复制件、讲解员手势。"
+          },
+          {
+            "segment_id": 3,
+            "source_scene_id": 3,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "安全区地图说明救援空间和证据关系。",
+            "segment_prompt_hint": "地图线、救援者照片、研究者激光笔。"
+          },
+          {
+            "segment_id": 4,
+            "source_scene_id": 4,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "审判档案和时间线呈现责任追究。",
+            "segment_prompt_hint": "手套翻页、档案复制件、时间线展板。"
+          },
+          {
+            "segment_id": 5,
+            "source_scene_id": 5,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "出口前的沉默把证据和今天的记忆连接起来。",
+            "segment_prompt_hint": "导览册合上、和平雕塑、观众回头。"
+          }
+        ],
+        "quality_report": {
+          "schema_version": "documentary-short-regression-quality/v1",
+          "risk_level": "high",
+          "local_structure_status": "ready_for_trauma_memory_boundary_review",
+          "human_review_required": true,
+          "sensitive_history_review_required": true,
+          "known_gaps": [
+            "需要人工复核创伤历史表达是否克制。",
+            "拉贝故居开放状态和安全区旧址拍摄许可需补证。",
+            "该样本不做暴力复现，不使用虚构证词。"
+          ]
+        }
+      }
+    },
+    {
+      "fixture_id": "regression-wuchang-uprising-red-building-documentary",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "regression_scope": [
+        "documentary_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "revolutionary_history_boundary_check",
+        "contested_first_shot_boundary_check"
+      ],
+      "documentary": {
+        "documentaryId": "20260709-documentary-regression-wuchang-uprising",
+        "project_id": "20260709-project-documentary-wuchang-uprising",
+        "title": "红楼前，第一声如何被记住",
+        "generation_type": "production_card_regression_fixture",
+        "video_type": "documentary_short",
+        "presentation_style": "documentary",
+        "source_entry": "武昌起义——辛亥革命的第一声枪响",
+        "logline": "从今天的红楼、首义广场、展陈路线图和研究者讲述进入武昌起义，保留第一枪细节的多说法边界。",
+        "theme": "首义空间、事件链条、展陈证据、多说法边界",
+        "full_text": "红楼前的广场上，游客先看见的是今天的纪念空间。镜头跟随讲解员进入展厅，从起义时间线、军械库线索和武汉三镇地图，慢慢还原一场事件怎样从计划泄露走向多省响应。研究者提醒我们：第一枪被反复讲述，也留下不同回忆。纪录片不急着替历史补一个确定镜头，而是把红楼、展陈、路线图和仍需核对的细节放在同一张桌上。",
+        "scene_breakdown": [
+          {
+            "scene_id": 1,
+            "title": "红楼前的今天",
+            "duration_sec": 10,
+            "location": "辛亥革命武昌起义纪念馆红楼外",
+            "time_of_day": "上午",
+            "dramatic_function": "现实入口",
+            "plot": "游客在红楼前停步拍照，讲解员打开导览图。",
+            "key_action": "镜头从红楼外墙移到导览图上的起义路线。",
+            "characters": ["讲解员", "寻访者", "游客"],
+            "visual_prompt": "红楼外观，首义广场游客，讲解员展开导览图，纪录片质感，画面清晰克制",
+            "camera_suggestion": "红楼外墙横移到导览图特写，再切寻访者侧脸",
+            "dialogue_or_narration": "旁白：今天的红楼，是许多人理解首义的第一站。"
+          },
+          {
+            "scene_id": 2,
+            "title": "计划泄露的前夜",
+            "duration_sec": 12,
+            "location": "纪念馆时间线展板前",
+            "time_of_day": "上午",
+            "dramatic_function": "事件链条",
+            "plot": "讲解员在时间线前说明 10 月 9 日计划暴露和 10 月 10 日起义之间的关系。",
+            "key_action": "讲解员用手势把两个日期分开指给寻访者。",
+            "characters": ["讲解员", "寻访者"],
+            "visual_prompt": "纪念馆时间线展板，10月9日与10月10日日期分层，讲解员手势清楚，展厅冷光",
+            "camera_suggestion": "日期特写切到讲解员手势，避免戏剧化爆炸复现",
+            "dialogue_or_narration": "讲解员：计划泄露和起义爆发，不是同一个时刻。"
+          },
+          {
+            "scene_id": 3,
+            "title": "军械库只作示意",
+            "duration_sec": 12,
+            "location": "楚望台军械库线索展板旁",
+            "time_of_day": "中午",
+            "dramatic_function": "再现边界",
+            "plot": "研究者说明军械库和起义夜可以用地图动画示意，但不能把剪影当作真实影像。",
+            "key_action": "研究者把复原图、路线图和展陈照片分开放在桌上。",
+            "characters": ["研究者", "寻访者"],
+            "visual_prompt": "展板旁桌面，复原图、路线图、展陈照片三层分开放置，研究者指向地图，不出现战斗复现",
+            "camera_suggestion": "俯拍三类材料分层，再切研究者半身",
+            "dialogue_or_narration": "研究者：可以示意路线，但不能把示意当成当年的镜头。"
+          },
+          {
+            "scene_id": 4,
+            "title": "第一枪的多说法",
+            "duration_sec": 12,
+            "location": "展厅档案复制件和口述资料展柜旁",
+            "time_of_day": "下午",
+            "dramatic_function": "事实边界",
+            "plot": "研究者解释第一枪细节在回忆材料中存在不同表述。",
+            "key_action": "寻访者在笔记本上写下多说法，而不是写下唯一答案。",
+            "characters": ["研究者", "寻访者"],
+            "visual_prompt": "展柜旁，档案复制件和口述资料说明牌，寻访者在笔记本写下多说法三个字",
+            "camera_suggestion": "笔记本特写后拉到展柜，不制造枪战画面",
+            "dialogue_or_narration": "旁白：有些细节被记住，也需要被谨慎地比较。"
+          },
+          {
+            "scene_id": 5,
+            "title": "首义广场的回应",
+            "duration_sec": 10,
+            "location": "首义广场",
+            "time_of_day": "傍晚",
+            "dramatic_function": "现实收束",
+            "plot": "镜头回到广场，地图动画把武汉三镇和多省响应连起来。",
+            "key_action": "寻访者合上笔记本，抬头看向红楼和广场人群。",
+            "characters": ["寻访者", "游客"],
+            "visual_prompt": "傍晚首义广场，红楼远景，寻访者合上笔记本，半透明地图线连接武汉三镇和多省响应",
+            "camera_suggestion": "从笔记本合上拉到广场远景，地图线淡入淡出",
+            "dialogue_or_narration": "旁白：一声枪响被城市记住，也被后来的中国不断追问。"
+          }
+        ],
+        "gears_segments": [
+          {
+            "segment_id": 1,
+            "source_scene_id": 1,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "红楼和导览图打开今天的首义空间。",
+            "segment_prompt_hint": "红楼外观、游客、导览图路线。"
+          },
+          {
+            "segment_id": 2,
+            "source_scene_id": 2,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "时间线区分 10 月 9 日计划泄露和 10 月 10 日起义。",
+            "segment_prompt_hint": "两个日期分层、讲解员手势、展厅冷光。"
+          },
+          {
+            "segment_id": 3,
+            "source_scene_id": 3,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "军械库和起义夜只用地图、复原图和展陈资料示意。",
+            "segment_prompt_hint": "复原图、路线图、展陈照片三层分开放置。"
+          },
+          {
+            "segment_id": 4,
+            "source_scene_id": 4,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "研究者提示第一枪细节存在不同回忆。",
+            "segment_prompt_hint": "展柜、口述资料说明牌、笔记本写多说法。"
+          },
+          {
+            "segment_id": 5,
+            "source_scene_id": 5,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "首义广场和地图线把城市记忆与多省响应连接。",
+            "segment_prompt_hint": "红楼远景、广场、半透明地图线。"
+          }
+        ],
+        "quality_report": {
+          "schema_version": "documentary-short-regression-quality/v1",
+          "risk_level": "medium_high",
+          "local_structure_status": "ready_for_revolutionary_history_boundary_review",
+          "human_review_required": true,
+          "revolutionary_history_review_required": true,
+          "known_gaps": [
+            "第一枪细节、组织关系和口述差异需人工审稿。",
+            "楚望台军械库旧址、红楼展陈和首义广场拍摄许可需补证。",
+            "本样本不用战斗复现替代真实影像，也不把多说法写成唯一答案。"
+          ]
+        }
+      }
+    }
+  ],
+  "acceptance_gates": {
+    "documentary_scene_breakdown": "每条 fixture 场景数不超过 5，且每场包含 location、plot、key_action、visual_prompt 和 camera_suggestion。",
+    "gears_segments": "每条 fixture 的 gears_segments 数量必须与 scene_breakdown 一致，并通过 source_scene_id 对齐。",
+    "quality_report": "每条 fixture 必须声明 risk_level、human_review_required 和 known_gaps。",
+    "site_text_boundary_check": "岳阳楼样本不得把《岳阳楼记》写成范仲淹现场亲历。",
+    "trauma_memory_boundary_check": "南京大屠杀样本不得包含血腥复现、虚构证词或娱乐化表达。",
+    "revolutionary_history_boundary_check": "武昌起义样本必须区分计划泄露、起义爆发、军械库示意和第一枪多说法。"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "schema_version": "social-short-professional-benchmark-specs/v1",
+  "video_type": "social_short",
+  "policy": {
+    "real_model_output_required": true,
+    "fixture_or_simulation_counts_as_professional_pass": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "social-001-changsha-kiln-color",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "professional_duration_sec": 75,
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "social-002-tujia-brocade-pattern",
+      "source_entry": "湘西土家织锦——西兰卡普：穿在身上的土家史诗",
+      "professional_duration_sec": 75,
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "social-003-zhanggu-action",
+      "source_entry": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "professional_duration_sec": 75,
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "social-004-changde-sichuan-sound",
+      "source_entry": "常德丝弦——湘北水乡的扬琴说唱",
+      "professional_duration_sec": 75,
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "social-005-miluo-dragon-boat",
+      "source_entry": "汨罗江畔端午习俗——龙舟文化的发源地",
+      "professional_duration_sec": 75,
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "social-failure-001-clickbait-without-evidence",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["hook_fact_boundary_missing", "truth_boundary_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "social-failure-002-repeated-information-and-channel-copy",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["new_information_missing", "channel_division_missing"],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "social-failure-003-wrong-duration-and-no-interaction",
+      "fixture_kind": "simulation_failure_fixture",
+      "expected_hard_gate_ids": ["duration_out_of_range", "beat_plan_missing", "interaction_missing"],
+      "professional_passed": false
+    }
+  ]
+}

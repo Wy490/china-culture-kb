@@ -473,6 +473,524 @@ export const StoryGenerateRequestSchema = z.object({
   { message: 'memory_mosaic_biography is only compatible with character_story, historical_drama, documentary_short, or ai_comic_drama', path: ['story_structure'] },
 );
 
+export const ProfessionalTextPackageFieldSchema = z.enum([
+  'creative_brief',
+  'audience_promise',
+  'premise_or_core_question',
+  'theme_statement',
+  'truth_and_adaptation_contract',
+  'structure_outline',
+  'sequence_beats',
+  'scene_breakdown',
+  'full_text',
+  'dialogue_or_narration_pass',
+  'director_text_plan',
+  'continuity_ledger',
+  'quality_report',
+  'coverage_report',
+  'revision_trace',
+  'delivery_text_package',
+]);
+
+export const ProfessionalQualityDimensionIdSchema = z.enum([
+  'creative_brief_and_audience_promise',
+  'premise_and_theme_unity',
+  'structure_causality_and_pacing',
+  'character_agency_and_relationship_change',
+  'scene_function_visible_action_and_blocking',
+  'dialogue_narration_and_subtext',
+  'emotional_curve_and_aftertaste',
+  'cultural_fact_and_adaptation_boundary',
+  'production_executability',
+  'originality_and_distinctiveness',
+]);
+
+export const ProfessionalTextArchitectureModeSchema = z.enum([
+  'character_relationships',
+  'information_architecture',
+  'spatial_route',
+  'visual_mood',
+]);
+
+const ProfessionalQualityDimensionWeightsSchema = z.object({
+  creative_brief_and_audience_promise: z.number().min(0).max(100),
+  premise_and_theme_unity: z.number().min(0).max(100),
+  structure_causality_and_pacing: z.number().min(0).max(100),
+  character_agency_and_relationship_change: z.number().min(0).max(100),
+  scene_function_visible_action_and_blocking: z.number().min(0).max(100),
+  dialogue_narration_and_subtext: z.number().min(0).max(100),
+  emotional_curve_and_aftertaste: z.number().min(0).max(100),
+  cultural_fact_and_adaptation_boundary: z.number().min(0).max(100),
+  production_executability: z.number().min(0).max(100),
+  originality_and_distinctiveness: z.number().min(0).max(100),
+}).refine(
+  weights => Math.abs(Object.values(weights).reduce((sum, value) => sum + value, 0) - 100) < 0.001,
+  { message: 'professional quality dimension weights must total 100' },
+);
+
+export const ProfessionalTextTypeContractSchema = z.object({
+  schema_version: z.literal('professional-text-type-contract/v1'),
+  video_type: VideoTypeSchema,
+  line: z.enum(['剧情故事线', '宣传传播线', '非虚构与知识线', '空间与意境线']),
+  primary_text_form: z.string().trim().min(1),
+  architecture_mode: ProfessionalTextArchitectureModeSchema,
+  required_package_fields: z.array(ProfessionalTextPackageFieldSchema).length(16),
+  required_deliverables: z.array(z.string().trim().min(1)).min(5),
+  exclusive_quality_gate: z.string().trim().min(1),
+  quality_dimension_weights: ProfessionalQualityDimensionWeightsSchema,
+  hard_gates: z.array(z.string().trim().min(1)).min(1),
+  repair_focus: z.array(z.string().trim().min(1)).min(1),
+}).superRefine((contract, context) => {
+  if (new Set(contract.required_package_fields).size !== contract.required_package_fields.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['required_package_fields'],
+      message: 'required_package_fields must not contain duplicates',
+    });
+  }
+});
+
+const ProfessionalCreativeBriefSchema = z.object({
+  target_audience: z.string(),
+  platform: z.string(),
+  target_duration: DurationSchema,
+  communication_goal: z.string(),
+  production_goal: z.string(),
+  budget_assumptions: z.array(z.string()),
+  delivery_constraints: z.array(z.string()),
+});
+
+const ProfessionalEvidenceItemSchema = z.object({
+  evidence_id: z.string().trim().min(1),
+  status: z.enum(['verified_fact', 'plausible_dramatization', 'fictional_addition', 'unknown']),
+  claim: z.string(),
+  source: z.string(),
+  allowed_usage: z.string(),
+  verification_note: z.string(),
+});
+
+const ResearchAndEvidenceDossierSchema = z.object({
+  source_summary: z.string(),
+  evidence_items: z.array(ProfessionalEvidenceItemSchema),
+  unknowns: z.array(z.string()),
+  authorization_notes: z.array(z.string()),
+});
+
+const ProfessionalTruthAndAdaptationContractSchema = z.object({
+  truth_mode: TruthModeSchema,
+  verified_facts: z.array(z.string()),
+  plausible_dramatizations: z.array(z.string()),
+  fictional_additions: z.array(z.string()),
+  unknown_or_forbidden_claims: z.array(z.string()),
+  required_disclaimers: z.array(z.string()),
+});
+
+const ProfessionalStructureOutlineSchema = z.object({
+  structure_name: z.string(),
+  opening: z.string(),
+  development: z.array(z.string()),
+  climax_or_key_turn: z.string(),
+  ending: z.string(),
+});
+
+const ProfessionalSequenceBeatSchema = z.object({
+  beat_id: z.string().trim().min(1),
+  order: z.number().int().min(1),
+  title: z.string(),
+  purpose: z.string(),
+  visible_action: z.string(),
+  conflict_discovery_or_instruction: z.string(),
+  emotional_or_information_turn: z.string(),
+  evidence_ids: z.array(z.string()),
+});
+
+const ProfessionalStorySceneSchema = z.object({
+  scene_id: z.number().int().min(1),
+  title: z.string(),
+  duration_sec: z.number().min(0),
+  location: z.string(),
+  time_of_day: z.string(),
+  dramatic_function: z.string(),
+  plot: z.string(),
+  key_action: z.string(),
+  characters: z.array(z.string()),
+  visual_prompt: z.string(),
+  camera_suggestion: z.string(),
+  cultural_note: z.string(),
+  conflict: z.string().optional(),
+  dialogue_or_narration: z.string().optional(),
+  source_entries: z.array(z.string()).optional(),
+  factual_basis: z.string().optional(),
+  fictionalized_elements: z.array(z.string()).optional(),
+});
+
+const ProfessionalDialogueOrNarrationPassSchema = z.object({
+  mode: z.enum(['dialogue', 'narration', 'mixed', 'minimal_text']),
+  voice_rules: z.array(z.string()),
+  polished_text: z.string(),
+  unresolved_issues: z.array(z.string()),
+});
+
+const ProfessionalDirectorTextPlanSchema = z.object({
+  visual_strategy: z.string(),
+  sound_strategy: z.string(),
+  rhythm_strategy: z.string(),
+  sequences: z.array(z.object({
+    sequence_id: z.string().trim().min(1),
+    scene_ids: z.array(z.number().int().min(1)),
+    blocking_and_visible_action: z.string(),
+    camera_and_transition_intent: z.string(),
+    sound_intent: z.string(),
+    production_constraints: z.array(z.string()),
+  })),
+});
+
+const ProfessionalContinuityLedgerSchema = z.object({
+  items: z.array(z.object({
+    continuity_id: z.string().trim().min(1),
+    category: z.enum(['character', 'relationship', 'fact', 'prop', 'location', 'time', 'visual', 'terminology']),
+    rule: z.string(),
+    applies_to_scene_ids: z.array(z.number().int().min(1)),
+    evidence_ids: z.array(z.string()),
+  })),
+  unresolved_conflicts: z.array(z.string()),
+});
+
+const ProfessionalTextQualityReportSchema = z.object({
+  status: z.enum(['not_evaluated', 'failed', 'production_candidate', 'professional_candidate', 'high_quality_candidate']),
+  total_score: z.number().min(0).max(100).optional(),
+  dimensions: z.array(z.object({
+    dimension_id: ProfessionalQualityDimensionIdSchema,
+    weight: z.number().min(0).max(100),
+    score: z.number().min(0).max(100).optional(),
+    evidence: z.array(z.string()),
+    issues: z.array(z.string()),
+  })),
+  hard_gate_failures: z.array(z.string()),
+  professional_passed: z.boolean(),
+  evaluator_notes: z.array(z.string()),
+});
+
+const ProfessionalCoverageReportSchema = z.object({
+  verdict: z.enum(['not_evaluated', 'pass', 'revise', 'rebuild']),
+  strengths: z.array(z.string()),
+  structure_notes: z.array(z.string()),
+  character_or_information_notes: z.array(z.string()),
+  scene_notes: z.array(z.string()),
+  dialogue_or_narration_notes: z.array(z.string()),
+  pacing_notes: z.array(z.string()),
+  fact_and_culture_notes: z.array(z.string()),
+  production_notes: z.array(z.string()),
+  action_items: z.array(z.string()),
+});
+
+const ProfessionalRevisionTraceItemSchema = z.object({
+  revision_id: z.string().trim().min(1),
+  created_at: z.string().datetime(),
+  source: z.enum(['agent', 'writer_editor', 'director', 'fact_culture_reviewer', 'user']),
+  reason: z.string(),
+  changed_sections: z.array(ProfessionalTextPackageFieldSchema),
+  resolved_issue_ids: z.array(z.string()),
+  remaining_issues: z.array(z.string()),
+  quality_delta: z.number().optional(),
+});
+
+const ProfessionalDeliveryTextPackageSchema = z.object({
+  script_text: z.string(),
+  scene_units: z.array(z.object({
+    scene_id: z.number().int().min(1),
+    script_text: z.string(),
+    visual_action: z.string(),
+    camera_intent: z.string(),
+    sound_intent: z.string(),
+    continuity_notes: z.array(z.string()),
+    evidence_boundary_notes: z.array(z.string()),
+  })),
+  gears_handoff_notes: z.array(z.string()),
+  seedance_handoff_notes: z.array(z.string()),
+  validation_notes: z.array(z.string()),
+});
+
+export const ProfessionalTextPackageSchema = z.object({
+  schema_version: z.literal('professional-text-package/v1'),
+  package_id: z.string().trim().min(1),
+  story_id: z.string().trim().min(1).optional(),
+  project_id: z.string().trim().min(1).optional(),
+  video_type: VideoTypeSchema,
+  status: z.enum(['skeleton', 'draft', 'in_review', 'revision_required', 'approved']),
+  created_at: z.string().datetime(),
+  updated_at: z.string().datetime(),
+  contract_version: z.literal('professional-text-type-contract/v1'),
+  creative_brief: ProfessionalCreativeBriefSchema,
+  research_and_evidence_dossier: ResearchAndEvidenceDossierSchema,
+  audience_promise: z.string(),
+  premise_or_core_question: z.string(),
+  theme_statement: z.string(),
+  truth_and_adaptation_contract: ProfessionalTruthAndAdaptationContractSchema,
+  relationship_or_information_architecture: z.object({
+    mode: ProfessionalTextArchitectureModeSchema,
+    nodes: z.array(z.object({
+      node_id: z.string().trim().min(1),
+      label: z.string(),
+      role: z.string(),
+    })),
+    links: z.array(z.object({
+      from: z.string().trim().min(1),
+      to: z.string().trim().min(1),
+      relationship: z.string(),
+    })),
+  }),
+  structure_outline: ProfessionalStructureOutlineSchema,
+  sequence_beats: z.array(ProfessionalSequenceBeatSchema),
+  scene_breakdown: z.array(ProfessionalStorySceneSchema),
+  full_text: z.string(),
+  dialogue_or_narration_pass: ProfessionalDialogueOrNarrationPassSchema,
+  director_text_plan: ProfessionalDirectorTextPlanSchema,
+  continuity_ledger: ProfessionalContinuityLedgerSchema,
+  quality_report: ProfessionalTextQualityReportSchema,
+  coverage_report: ProfessionalCoverageReportSchema,
+  revision_trace: z.array(ProfessionalRevisionTraceItemSchema),
+  delivery_text_package: ProfessionalDeliveryTextPackageSchema,
+}).superRefine((pkg, context) => {
+  if (pkg.status === 'approved' && pkg.quality_report.professional_passed !== true) {
+    context.addIssue({
+      code: 'custom',
+      path: ['quality_report', 'professional_passed'],
+      message: 'approved package requires professional_passed=true',
+    });
+  }
+  if (pkg.quality_report.professional_passed && pkg.quality_report.hard_gate_failures.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['quality_report', 'hard_gate_failures'],
+      message: 'hard gate failures cannot coexist with professional_passed=true',
+    });
+  }
+});
+
+export const Stage6VerificationRecordSchema = z.object({
+  status: z.enum(['unverified', 'verified']),
+  reference: z.string(),
+  verified_by: z.string(),
+  verified_at: z.string(),
+}).strict();
+
+export const Stage6ReviewerAssignmentSchema = z.object({
+  role: z.enum(['writer_editor', 'director', 'fact_culture_reviewer']),
+  reviewer_id: z.string(),
+  display_name: z.string(),
+  identity_verification: Stage6VerificationRecordSchema,
+}).strict();
+
+export const Stage6RealInputProjectSchema = z.object({
+  benchmark_id: z.string(),
+  video_type: VideoTypeSchema,
+  source_entry: z.string(),
+  provenance: z.enum([
+    'operator_submitted_real_input',
+    'preparation_template',
+    'fixture',
+    'simulation',
+    'fallback',
+  ]),
+  real_project_id: z.string(),
+  initial_package: z.object({
+    path: z.string(),
+    sha256: z.string(),
+  }).strict(),
+  creator_authorization: z.object({
+    subject_type: z.enum(['model', 'human_author']),
+    subject_id: z.string(),
+    authorized_rounds: z.array(z.union([z.literal(1), z.literal(2)])),
+    verification: Stage6VerificationRecordSchema,
+  }).strict(),
+  revision_budget: z.object({
+    currency: z.string(),
+    amount: z.number().finite().min(0),
+    authorized_rounds: z.array(z.union([z.literal(1), z.literal(2)])),
+    verification: Stage6VerificationRecordSchema,
+  }).strict(),
+  reviewers: z.array(Stage6ReviewerAssignmentSchema),
+  table_read: z.object({
+    schedule_reference: z.string(),
+    scheduled_at: z.string(),
+    timezone: z.string(),
+    participant_reviewer_ids: z.array(z.string()),
+    verification: Stage6VerificationRecordSchema,
+  }).strict(),
+}).strict();
+
+export const Stage6RealInputIntakeSchema = z.object({
+  schema_version: z.literal('story-agent-stage6-real-input-intake/v1'),
+  submitted_at: z.string(),
+  operator: z.object({
+    operator_id: z.string(),
+    display_name: z.string(),
+    contact_reference: z.string(),
+  }).strict(),
+  projects: z.array(Stage6RealInputProjectSchema).length(15),
+}).strict();
+
+const Stage6RealInputReadinessIssueSchema = z.object({
+  code: z.string().trim().min(1),
+  path: z.string(),
+  message: z.string().trim().min(1),
+}).strict();
+
+export const Stage6RealInputProjectReadinessSchema = z.object({
+  benchmark_id: z.string().trim().min(1),
+  video_type: VideoTypeSchema,
+  source_entry: z.string(),
+  real_project_id: z.string(),
+  initial_package_path: z.string(),
+  initial_package_sha256: z.string(),
+  status: z.enum(['ready', 'blocked']),
+  blockers: z.array(Stage6RealInputReadinessIssueSchema),
+  checks: z.object({
+    intake_schema_valid: z.boolean(),
+    registry_binding_valid: z.boolean(),
+    real_provenance_verified: z.boolean(),
+    real_project_id_valid: z.boolean(),
+    initial_package_file_valid: z.boolean(),
+    initial_package_schema_valid: z.boolean(),
+    initial_package_binding_valid: z.boolean(),
+    initial_package_sha256_valid: z.boolean(),
+    creator_authorization_verified: z.boolean(),
+    revision_budget_verified: z.boolean(),
+    reviewer_assignments_verified: z.boolean(),
+    table_read_verified: z.boolean(),
+  }).strict(),
+  completed_verified_round_count: z.literal(0),
+  professional_passed: z.literal(false),
+}).strict();
+
+export const Stage6RealInputReadinessReportSchema = z.object({
+  schema_version: z.literal('story-agent-stage6-real-input-readiness/v1'),
+  generated_at: z.string().datetime(),
+  source_intake_path: z.string(),
+  source_intake_schema_version: z.string(),
+  source_intake_canonical_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  source_registry_schema_version: z.string(),
+  source_registry_canonical_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  policy: z.object({
+    readiness_counts_as_completed_revision: z.literal(false),
+    fixture_simulation_fallback_counts_as_real_input: z.literal(false),
+    professional_pass_can_be_granted_by_intake: z.literal(false),
+  }).strict(),
+  global_errors: z.array(Stage6RealInputReadinessIssueSchema),
+  summary: z.object({
+    project_count: z.number().int().nonnegative(),
+    ready_project_count: z.number().int().nonnegative(),
+    blocked_project_count: z.number().int().nonnegative(),
+    completed_verified_revision_round_count: z.literal(0),
+    professional_pass_count: z.literal(0),
+  }).strict(),
+  projects: z.array(Stage6RealInputProjectReadinessSchema).length(15),
+}).strict().superRefine((report, context) => {
+  if (report.summary.project_count !== report.projects.length
+    || report.summary.ready_project_count !== report.projects.filter(project => project.status === 'ready').length
+    || report.summary.blocked_project_count !== report.projects.filter(project => project.status === 'blocked').length) {
+    context.addIssue({ code: 'custom', path: ['summary'], message: 'readiness summary does not match projects' });
+  }
+  if (report.projects.some(project => (project.status === 'ready') !== (project.blockers.length === 0))) {
+    context.addIssue({ code: 'custom', path: ['projects'], message: 'project readiness status does not match blockers' });
+  }
+});
+
+const Stage8BlindReviewRoleSchema = z.enum([
+  'screenwriter_or_script_editor',
+  'genre_or_director_reviewer',
+  'fact_or_culture_reviewer',
+]);
+
+export const Stage8BlindReviewIntakeProjectSchema = z.object({
+  benchmark_id: z.string(),
+  video_type: VideoTypeSchema,
+  source_entry: z.string(),
+  provenance: z.enum([
+    'operator_submitted_real_review',
+    'preparation_template',
+    'fixture',
+    'simulation',
+    'fallback',
+  ]),
+  run_id: z.string(),
+  final_package: z.object({ path: z.string(), sha256: z.string() }).strict(),
+  randomization: z.object({
+    batch_id: z.string(),
+    candidate_label: z.string(),
+    candidate_origin_hidden_from_reviewers: z.boolean(),
+  }).strict(),
+  baseline: z.object({
+    baseline_id: z.string(),
+    path: z.string(),
+    sha256: z.string(),
+    rights: z.enum(['pending', 'public_domain', 'user_owned', 'licensed']),
+    average_score: z.number().finite().min(0).max(100),
+    rights_verification: Stage6VerificationRecordSchema,
+  }).strict(),
+  reviewer_assignments: z.array(z.object({
+    role: Stage8BlindReviewRoleSchema,
+    reviewer_id: z.string(),
+    identity_verification: Stage6VerificationRecordSchema,
+    independence_verification: Stage6VerificationRecordSchema,
+    conflict_of_interest_declared: z.boolean(),
+  }).strict()).length(3),
+  review_schedule: z.object({
+    schedule_reference: z.string(),
+    due_at: z.string(),
+    timezone: z.string(),
+    verification: Stage6VerificationRecordSchema,
+  }).strict(),
+  human_blind_review_passed: z.literal(false),
+  professional_passed: z.literal(false),
+}).strict().superRefine((project, context) => {
+  const roles = project.reviewer_assignments.map(item => item.role);
+  const reviewerIds = project.reviewer_assignments.map(item => item.reviewer_id).filter(Boolean);
+  if (new Set(roles).size !== 3) context.addIssue({ code: 'custom', path: ['reviewer_assignments'], message: 'three_unique_roles_required' });
+  if (new Set(reviewerIds).size !== reviewerIds.length) context.addIssue({ code: 'custom', path: ['reviewer_assignments'], message: 'reviewer_ids_must_be_unique' });
+});
+
+export const Stage8BlindReviewIntakeSchema = z.object({
+  schema_version: z.literal('story-agent-stage8-blind-review-intake/v1'),
+  submitted_at: z.string(),
+  operator: z.object({ operator_id: z.string(), display_name: z.string(), contact_reference: z.string() }).strict(),
+  projects: z.array(Stage8BlindReviewIntakeProjectSchema).length(75),
+}).strict().superRefine((intake, context) => {
+  const benchmarkIds = intake.projects.map(item => item.benchmark_id).filter(Boolean);
+  if (new Set(benchmarkIds).size !== benchmarkIds.length) context.addIssue({ code: 'custom', path: ['projects'], message: 'benchmark_ids_must_be_unique' });
+});
+
+export const Stage6FeedbackReviewUpdateRequestSchema = z.object({
+  schema_version: z.literal('story-agent-stage6-feedback-review-update/v1'),
+  action: z.enum(['assign', 'close', 'reopen']),
+  expected_state_revision: z.number().int().nonnegative(),
+  actor_id: z.string().trim().min(1),
+  actor_name: z.string().trim().min(1),
+  assigned_reviewer_id: z.string().trim().min(1).optional(),
+  resolution_note: z.string().trim().min(1).optional(),
+}).strict().superRefine((request, context) => {
+  if (request.action === 'assign' && !request.assigned_reviewer_id) {
+    context.addIssue({ code: 'custom', path: ['assigned_reviewer_id'], message: 'assign requires assigned_reviewer_id' });
+  }
+  if (request.action === 'close' && !request.resolution_note) {
+    context.addIssue({ code: 'custom', path: ['resolution_note'], message: 'close requires resolution_note' });
+  }
+});
+
+export const Stage6FeedbackDraftCreateRequestSchema = z.object({
+  schema_version: z.literal('story-agent-stage6-feedback-draft-create/v1'),
+  round_number: z.union([z.literal(1), z.literal(2)]),
+  reviewer_id: z.string().trim().min(1),
+  category: z.enum(['structure', 'character_or_information', 'scene', 'dialogue_or_narration', 'pacing', 'fact_and_culture']),
+  note: z.string().trim().min(1),
+  issue_id: z.string().trim().min(1),
+  target_sections: z.array(ProfessionalTextPackageFieldSchema).min(1),
+  evidence_required: z.boolean(),
+  actor_id: z.string().trim().min(1),
+  actor_name: z.string().trim().min(1),
+}).strict();
+
 // ---------------------------------------------------------------------------
 // Entry detail query (GET query params)
 // ---------------------------------------------------------------------------

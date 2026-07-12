@@ -1,0 +1,387 @@
+{
+  "schema_version": "story-agent-stage6-revision-batch-status/v1",
+  "generated_at": "2026-07-11T15:27:12.465Z",
+  "source_readiness_path": "data/reports/story-agent-stage6-p0-project-readiness.json",
+  "source_readiness_sha256": "df985eb3754556a0bdc636635511950f6b63ea9913c8ca57ad35cffcd635770e",
+  "source_intake_canonical_sha256": "0d1d66e38c14c5ef113b7221b0545e1d666c73d6a0b5f3981011c98ee058566c",
+  "policy": {
+    "explicit_execute_flag_required": true,
+    "p0_verified_readiness_required": true,
+    "immutable_artifacts_required": true,
+    "simulation_fixture_fallback_counts_as_real_revision": false,
+    "preparation_or_recovery_counts_as_completed_revision": false,
+    "professional_pass_can_be_granted_by_executor": false
+  },
+  "summary": {
+    "project_count": 15,
+    "planned_round_count": 30,
+    "p0_ready_project_count": 0,
+    "round_1_awaiting_command_count": 0,
+    "blocked_project_count": 15,
+    "completed_verified_revision_round_count": 0,
+    "completed_two_round_verified_project_count": 0,
+    "professional_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "stage6-001-character-story",
+      "video_type": "character_story",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-002-historical-drama",
+      "video_type": "historical_drama",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-003-legend-story",
+      "video_type": "legend_story",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-004-children-story",
+      "video_type": "children_story",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-005-ai-comic-drama",
+      "video_type": "ai_comic_drama",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-006-culture-promo",
+      "video_type": "culture_promo",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-007-heritage-promo",
+      "video_type": "heritage_promo",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-008-city-brand-promo",
+      "video_type": "city_brand_promo",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-009-social-short",
+      "video_type": "social_short",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-010-documentary-short",
+      "video_type": "documentary_short",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-011-explainer-video",
+      "video_type": "explainer_video",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-012-lecture-video",
+      "video_type": "lecture_video",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-013-education-training",
+      "video_type": "education_training",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-014-scene-short",
+      "video_type": "scene_short",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-015-landscape-mood",
+      "video_type": "landscape_mood",
+      "real_project_id": "",
+      "p0_readiness": "blocked",
+      "rounds": [
+        {
+          "round_number": 1,
+          "status": "blocked",
+          "blockers": [
+            "p0_verified_readiness_required"
+          ]
+        },
+        {
+          "round_number": 2,
+          "status": "blocked",
+          "blockers": [
+            "round_1_verified_completion_required"
+          ]
+        }
+      ],
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    }
+  ]
+}

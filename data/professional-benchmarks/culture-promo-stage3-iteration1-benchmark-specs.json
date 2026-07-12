@@ -1,0 +1,19 @@
+{
+  "schema_version": "culture-promo-professional-benchmark-specs/v1",
+  "created_at": "2026-07-11T00:00:00.000+08:00",
+  "video_type": "culture_promo",
+  "policy": { "real_model_output_required": true, "human_blind_review_required_for_professional_pass": true, "fixture_or_simulation_counts_as_professional_pass": false },
+  "summary": { "fixed_project_spec_count": 5, "fixed_real_model_project_count": 0, "fixed_real_model_project_pass_count": 0, "failure_fixture_count": 3, "human_blind_review_pass_count": 0 },
+  "projects": [
+    { "benchmark_id": "promo-benchmark-001-yueyang-tower", "source_province": "湖南", "source_entry": "岳阳楼——先忧后乐的精神地标", "communication_proposition": "一座楼如何让观看风景变成思考人与天下的关系", "visual_symbols": ["楼窗", "洞庭水线"], "status": "awaiting_real_model_run", "professional_passed": false },
+    { "benchmark_id": "promo-benchmark-002-junshan", "source_province": "湖南", "source_entry": "洞庭湖君山——传说叠加的洞庭明珠", "communication_proposition": "在一座小岛上看见传说、茶与现实空间如何层层叠加", "visual_symbols": ["岛屿水线", "竹叶与茶芽"], "status": "awaiting_real_model_run", "professional_passed": false },
+    { "benchmark_id": "promo-benchmark-003-xiang-embroidery", "source_province": "湖南", "source_entry": "湘绣——中国四大名绣之一", "communication_proposition": "一根线如何从材料变成今天仍被使用的文化语言", "visual_symbols": ["丝线", "针脚前后对照"], "status": "awaiting_real_model_run", "professional_passed": false },
+    { "benchmark_id": "promo-benchmark-004-wulingyuan", "source_province": "湖南", "source_entry": "张家界武陵源——3.8亿年雕琢的世界自然遗产", "communication_proposition": "从一根石柱理解时间如何塑造武陵源的地方气质", "visual_symbols": ["石英砂岩峰柱", "云雾高度变化"], "status": "awaiting_real_model_run", "professional_passed": false },
+    { "benchmark_id": "promo-benchmark-005-yuelu-academy", "source_province": "湖南", "source_entry": "岳麓书院——千年学府弦歌不绝", "communication_proposition": "从一张书案看见学习如何在同一空间跨越时代", "visual_symbols": ["书案", "檐下光影"], "status": "awaiting_real_model_run", "professional_passed": false }
+  ],
+  "failure_fixtures": [
+    { "fixture_id": "promo-failure-001-empty-praise", "fixture_kind": "simulation_failure_fixture", "description": "只有美丽、厚重、源远流长等赞美，没有传播命题和文化证据。", "expected_hard_gate_ids": ["proposition_missing", "proof_point_missing"], "professional_passed": false },
+    { "fixture_id": "promo-failure-002-symbol-wall-no-curve", "fixture_kind": "simulation_failure_fixture", "description": "堆叠风景符号，逐场没有新信息，旁白重复画面。", "expected_hard_gate_ids": ["visual_symbol_missing", "information_curve_missing", "voiceover_visual_overlap"], "professional_passed": false },
+    { "fixture_id": "promo-failure-003-no-modern-action", "fixture_kind": "simulation_failure_fixture", "description": "停在历史百科介绍，没有当代连接、行动召唤或证据支撑的关键句。", "expected_hard_gate_ids": ["modern_connection_missing", "call_to_action_missing", "slogan_missing"], "professional_passed": false }
+  ]
+}

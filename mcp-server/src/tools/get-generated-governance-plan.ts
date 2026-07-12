@@ -250,7 +250,9 @@ export async function getStoryAgentGeneratedGovernancePlan(
 ): Promise<StoryAgentGeneratedGovernancePlan> {
   const sampleLimit = Number.isFinite(input.limit) ? Math.max(1, Math.min(Math.floor(input.limit ?? 20), 100)) : 20;
   const health = await getStoryAgentGeneratedHealth({ limit: 100, include_markdown: false });
-  const seriesItems = health.items.filter(item => item.scope === 'ai_comic_series_project');
+  const seriesItems = health.items.filter(item =>
+    item.scope === 'ai_comic_series_project' && item.signoff_eligible !== false
+  );
   const storyItems = health.items.filter(item => item.scope === 'story_project');
   const relinkSamples = seriesItems.filter(item => item.relink_candidate).slice(0, sampleLimit);
   const archiveSamples = seriesItems.filter(item => item.status === 'interrupted' && !item.relink_candidate).slice(0, sampleLimit);
@@ -266,7 +268,9 @@ export async function getStoryAgentGeneratedGovernancePlan(
   const readySignoffCandidateCount = health.summary.ready_count;
   const seriesArchiveOrRebuildCandidateCount = Math.max(
     0,
-    (health.summary.series_interrupted_count ?? 0) - seriesRelinkCandidateCount,
+    (health.summary.series_interrupted_count ?? 0)
+      - seriesRelinkCandidateCount
+      - (health.summary.series_soft_archive_excluded_count ?? 0),
   );
 
   const actions = [
@@ -350,7 +354,7 @@ export async function getStoryAgentGeneratedGovernancePlan(
     notes: [
       'MCP generated governance plan is read-only and does not modify generated files.',
       'Use relink candidates before judging GEARS v2 worker readiness.',
-      'Archive/rebuild candidates should be excluded from GEARS signoff until regenerated or marked as fixtures.',
+      `${health.summary.series_soft_archive_excluded_count ?? 0} archive/rebuild candidates are currently excluded from GEARS signoff by reversible manifest.`,
       'china-culture-kb remains the content and production command layer; media execution stays in GEARS v2.',
     ],
     source_health_summary: health.summary,
@@ -370,7 +374,9 @@ export async function runStoryAgentGeneratedGovernance(
   const requestedProjectIds = input.project_ids?.length ? new Set(input.project_ids) : undefined;
   const plan = await getStoryAgentGeneratedGovernancePlan({ limit: maxTargets, include_markdown: false });
   const health = await getStoryAgentGeneratedHealth({ limit: 100, include_markdown: false });
-  const seriesItems = health.items.filter(item => item.scope === 'ai_comic_series_project');
+  const seriesItems = health.items.filter(item =>
+    item.scope === 'ai_comic_series_project' && item.signoff_eligible !== false
+  );
   const storyItems = health.items.filter(item => item.scope === 'story_project');
   const targetGroups: Record<GovernanceActionKey, GovernanceTarget[]> = {
     restore_or_relink_series_story_refs: seriesItems.filter(item => item.relink_candidate).map(toTarget),

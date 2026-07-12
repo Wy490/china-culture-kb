@@ -1,0 +1,1467 @@
+{
+  "schema_version": "professional-multi-round-revision-execution-manifest/v1",
+  "generated_at": "2026-07-11T14:17:13.588Z",
+  "source_registry_schema_version": "all-format-professional-multi-round-revision-specs/v1",
+  "policy": {
+    "required_round_count_per_project": 2,
+    "fixture_or_simulation_counts_as_execution": false,
+    "prepared_or_ready_counts_as_completed_revision": false,
+    "signed_human_review_required_for_professional_pass": true
+  },
+  "summary": {
+    "project_spec_count": 15,
+    "covered_video_type_count": 15,
+    "planned_revision_round_count": 30,
+    "blocked_project_count": 15,
+    "ready_for_round_1_project_count": 0,
+    "completed_two_round_verified_project_count": 0,
+    "recorded_verified_revision_round_count": 0,
+    "professional_pass_count": 0
+  },
+  "execution_requirements": {
+    "real_model_or_human_author_authorization_reference": "",
+    "revision_budget_reference": "",
+    "table_read_schedule_reference": ""
+  },
+  "projects": [
+    {
+      "benchmark_id": "stage6-001-character-story",
+      "video_type": "character_story",
+      "source_entry": "周敦颐——理学开山鼻祖",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "character_or_information"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "scene",
+            "dialogue_or_narration",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-002-historical-drama",
+      "video_type": "historical_drama",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "character_or_information",
+            "scene",
+            "dialogue_or_narration"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-003-legend-story",
+      "video_type": "legend_story",
+      "source_entry": "洞庭湖君山——传说叠加的洞庭明珠",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "character_or_information"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "dialogue_or_narration",
+            "pacing",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-004-children-story",
+      "video_type": "children_story",
+      "source_entry": "马王堆汉墓——沉睡两千年的汉代文明",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "character_or_information",
+            "scene"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "dialogue_or_narration",
+            "pacing",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-005-ai-comic-drama",
+      "video_type": "ai_comic_drama",
+      "source_entry": "通道侗锦——湘西南侗寨的指尖花雨",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "scene"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "character_or_information",
+            "dialogue_or_narration",
+            "pacing"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-006-culture-promo",
+      "video_type": "culture_promo",
+      "source_entry": "湘绣——中国四大名绣之一",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "scene",
+            "dialogue_or_narration",
+            "pacing"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-007-heritage-promo",
+      "video_type": "heritage_promo",
+      "source_entry": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "scene",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "character_or_information",
+            "pacing",
+            "dialogue_or_narration"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-008-city-brand-promo",
+      "video_type": "city_brand_promo",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "scene"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "character_or_information",
+            "pacing",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-009-social-short",
+      "video_type": "social_short",
+      "source_entry": "永州摩崖石刻——柳宗元书写的山水文学基因",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "pacing"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "scene",
+            "dialogue_or_narration",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-010-documentary-short",
+      "video_type": "documentary_short",
+      "source_entry": "马王堆汉墓——沉睡两千年的汉代文明",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "fact_and_culture",
+            "structure"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "character_or_information",
+            "scene",
+            "dialogue_or_narration"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-011-explainer-video",
+      "video_type": "explainer_video",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "character_or_information"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "scene",
+            "dialogue_or_narration",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-012-lecture-video",
+      "video_type": "lecture_video",
+      "source_entry": "岳麓书院——千年学府与实事求是",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "character_or_information",
+            "dialogue_or_narration",
+            "pacing"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-013-education-training",
+      "video_type": "education_training",
+      "source_entry": "湘绣——中国四大名绣之一",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "character_or_information"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "scene",
+            "pacing",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-014-scene-short",
+      "video_type": "scene_short",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "structure",
+            "scene"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "pacing",
+            "dialogue_or_narration",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-015-landscape-mood",
+      "video_type": "landscape_mood",
+      "source_entry": "张家界武陵源——3.8亿年雕琢的世界自然遗产",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "planned_rounds": [
+        {
+          "round_number": 1,
+          "primary_categories": [
+            "scene",
+            "pacing"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        },
+        {
+          "round_number": 2,
+          "primary_categories": [
+            "dialogue_or_narration",
+            "fact_and_culture"
+          ],
+          "required_inputs": [
+            "schema_valid_professional_text_package",
+            "automatic_coverage_action_set",
+            "open_table_read_feedback",
+            "verified_evidence_dossier",
+            "authorized_model_or_human_author"
+          ],
+          "required_outputs": [
+            "revised_professional_text_package",
+            "before_after_package_sha256",
+            "quality_dimension_delta",
+            "resolved_new_and_remaining_issue_ids",
+            "table_read_feedback_resolution",
+            "revision_provenance_and_cost_record"
+          ],
+          "mandatory_rebuild_sections": [
+            "sequence_beats",
+            "scene_breakdown",
+            "director_text_plan",
+            "delivery_text_package"
+          ]
+        }
+      ],
+      "table_read_roles": [
+        {
+          "role": "writer_editor",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "director",
+          "reviewer_id": "",
+          "required": true
+        },
+        {
+          "role": "fact_culture_reviewer",
+          "reviewer_id": "",
+          "required": true
+        }
+      ],
+      "blockers": [
+        "real_project_id_missing",
+        "initial_professional_text_package_missing",
+        "model_or_human_author_authorization_missing",
+        "revision_budget_missing",
+        "writer_editor_assignment_missing",
+        "director_assignment_missing",
+        "fact_culture_reviewer_assignment_missing",
+        "table_read_schedule_missing"
+      ],
+      "status": "blocked",
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    }
+  ]
+}

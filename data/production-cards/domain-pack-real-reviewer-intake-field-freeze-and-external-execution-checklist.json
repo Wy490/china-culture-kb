@@ -1,0 +1,804 @@
+{
+  "schema_version": "domain-pack-real-reviewer-intake-field-freeze-external-execution/v1",
+  "updated_at": "2026-07-10",
+  "status": "real_reviewer_intake_fields_frozen_external_execution_checklist_created",
+  "scope": "Iteration 23：冻结真实审稿人填报字段和校验规则，为 2 个人审交接包建立 8 份按角色分配的空白填报实例，并把负责人指定、附件提交、审稿签署和正式 Patch 后 audit/lint 整理成外部执行清单；本文件不代填真实身份，不制造签署，不代表正式审批、正式 Patch 请求、正式 Patch 或正式库写入。",
+  "source_handoff_file": "data/production-cards/domain-pack-formal-patch-failure-report-and-human-handoff.json",
+  "source_review_lock_file": "data/production-cards/domain-pack-signature-feedback-validation-and-review-lock.json",
+  "external_execution_markdown_file": "docs/production-cards/domain-pack-real-reviewer-intake-field-freeze-external-execution-checklist-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "reviewer_intake_templates_are_real_submissions": false,
+    "blank_intake_is_signature": false,
+    "external_execution_checklist_is_run_result": false,
+    "formal_patch_request_recorded": false,
+    "current_layer": "real_reviewer_intake_field_freeze_and_external_execution_only"
+  },
+  "counts": {
+    "frozen_reviewer_intake_field_count": 16,
+    "unconditional_required_field_count": 14,
+    "conditional_required_field_count": 1,
+    "optional_field_count": 1,
+    "intake_validation_rule_count": 11,
+    "blank_reviewer_intake_template_count": 8,
+    "craft_review_intake_template_count": 4,
+    "repair_review_intake_template_count": 4,
+    "valid_real_reviewer_intake_count": 0,
+    "external_execution_workstream_count": 4,
+    "external_execution_task_count": 16,
+    "owner_assignment_task_count": 4,
+    "attachment_submission_task_count": 2,
+    "review_signature_submission_task_count": 8,
+    "post_patch_audit_lint_task_count": 2,
+    "audit_lint_run_count": 0,
+    "formal_patch_count": 0,
+    "machine_gate_count": 10
+  },
+  "reviewer_intake_field_schema": [
+    {
+      "field_id": "reviewer_intake_id",
+      "label": "填报记录 ID",
+      "value_type": "string",
+      "requirement": "required",
+      "fill_policy": "system_prefilled_immutable"
+    },
+    {
+      "field_id": "source_handoff_package_id",
+      "label": "来源人审交接包 ID",
+      "value_type": "string",
+      "requirement": "required",
+      "fill_policy": "system_prefilled_immutable"
+    },
+    {
+      "field_id": "candidate_id",
+      "label": "候选 Domain Pack ID",
+      "value_type": "string",
+      "requirement": "required",
+      "fill_policy": "system_prefilled_immutable"
+    },
+    {
+      "field_id": "reviewer_name_or_group",
+      "label": "真实审稿人姓名或可追责小组",
+      "value_type": "string",
+      "requirement": "required",
+      "fill_policy": "external_human_input"
+    },
+    {
+      "field_id": "reviewer_identity_type",
+      "label": "审稿主体类型",
+      "value_type": "enum",
+      "allowed_values": [
+        "person",
+        "accountable_group"
+      ],
+      "requirement": "required",
+      "fill_policy": "external_human_input"
+    },
+    {
+      "field_id": "reviewer_role",
+      "label": "审稿角色",
+      "value_type": "string",
+      "requirement": "required",
+      "fill_policy": "system_prefilled_role_locked"
+    },
+    {
+      "field_id": "assignment_or_followup_id",
+      "label": "签署分派或修复跟进 ID",
+      "value_type": "string",
+      "requirement": "required",
+      "fill_policy": "system_prefilled_immutable"
+    },
+    {
+      "field_id": "review_decision",
+      "label": "审稿决定",
+      "value_type": "enum_by_review_track",
+      "allowed_values_by_track": {
+        "manual_patch_candidate_human_review": [
+          "approved",
+          "rejected_for_rework"
+        ],
+        "repair_resubmission_human_review": [
+          "approved_for_resubmission",
+          "rejected_for_more_evidence"
+        ]
+      },
+      "requirement": "required",
+      "fill_policy": "external_human_input"
+    },
+    {
+      "field_id": "decision_reason",
+      "label": "决定理由",
+      "value_type": "string",
+      "requirement": "required",
+      "fill_policy": "external_human_input"
+    },
+    {
+      "field_id": "evidence_package_id",
+      "label": "证据包 ID",
+      "value_type": "string",
+      "requirement": "required",
+      "fill_policy": "system_prefilled_immutable"
+    },
+    {
+      "field_id": "attachment_record_references",
+      "label": "附件记录引用",
+      "value_type": "array_of_slot_reference",
+      "requirement": "required",
+      "fill_policy": "external_human_input"
+    },
+    {
+      "field_id": "attachment_waiver_record_references",
+      "label": "附件豁免记录引用",
+      "value_type": "array_of_slot_reference",
+      "requirement": "optional",
+      "fill_policy": "external_authorized_human_input"
+    },
+    {
+      "field_id": "signed_at",
+      "label": "签署时间",
+      "value_type": "iso_8601_datetime_with_timezone",
+      "requirement": "required",
+      "fill_policy": "external_human_input"
+    },
+    {
+      "field_id": "signature_record_reference",
+      "label": "签署记录引用",
+      "value_type": "string",
+      "requirement": "required",
+      "fill_policy": "external_human_input"
+    },
+    {
+      "field_id": "explicit_formal_patch_request",
+      "label": "是否显式提出正式 Patch 请求",
+      "value_type": "boolean",
+      "requirement": "required",
+      "fill_policy": "external_authorized_human_input_default_false"
+    },
+    {
+      "field_id": "formal_patch_request_record_reference",
+      "label": "正式 Patch 请求记录引用",
+      "value_type": "string",
+      "requirement": "conditional_required_when_explicit_formal_patch_request_true",
+      "fill_policy": "external_authorized_human_input"
+    }
+  ],
+  "intake_validation_rules": [
+    {
+      "rule_id": "intake-source-identifiers-must-match-handoff",
+      "validation": "来源交接包、候选、证据包和填报记录 ID 必须来自本轮冻结模板。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "reviewer-name-must-be-real-and-nonblank",
+      "validation": "reviewer_name_or_group 不能为空，也不能使用 [待指定] 或模拟样例名称。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "reviewer-identity-type-must-be-valid",
+      "validation": "reviewer_identity_type 只能是 person 或 accountable_group。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "reviewer-role-must-match-locked-role",
+      "validation": "reviewer_role 必须与交接包冻结角色一致。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "assignment-or-followup-must-match-role",
+      "validation": "签署分派或修复跟进 ID 必须与冻结角色一一对应。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "decision-must-match-review-track",
+      "validation": "人工 Patch 候选只能通过或退回，修复候选只能允许重提审或要求继续补证。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "decision-reason-must-be-nonblank",
+      "validation": "决定理由不能为空。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "all-attachment-slots-must-have-record-or-waiver",
+      "validation": "6 类冻结附件槽位必须逐项有附件记录引用或有权豁免记录引用。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "signed-at-must-have-timezone",
+      "validation": "signed_at 必须是带时区的 ISO 8601 时间。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "signature-record-reference-must-be-nonblank",
+      "validation": "签署记录引用不能为空，空白模板和可打印审稿单不能作为签署引用。",
+      "blocks_submission": true
+    },
+    {
+      "rule_id": "formal-patch-request-must-have-separate-authorized-record",
+      "validation": "仅当有权人员显式请求正式 Patch 时才允许为 true，并且必须提供独立请求记录引用；审稿提交本身不能创建 Patch。",
+      "blocks_formal_patch": true
+    }
+  ],
+  "blank_reviewer_intake_templates": [
+    {
+      "reviewer_intake_id": "real-reviewer-intake-001",
+      "review_track": "manual_patch_candidate_human_review",
+      "source_handoff_package_id": "human-handoff-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "reviewer_name_or_group": "",
+      "reviewer_identity_type": "",
+      "reviewer_role": "事实/工艺流程审稿负责人",
+      "assignment_or_followup_id": "dispatch-signature-001",
+      "allowed_review_decisions": [
+        "approved",
+        "rejected_for_rework"
+      ],
+      "review_decision": "",
+      "decision_reason": "",
+      "evidence_package_id": "evidence-freeze-package-001",
+      "required_attachment_slot_count": 6,
+      "attachment_record_references": [],
+      "attachment_waiver_record_references": [],
+      "signed_at": "",
+      "signature_record_reference": "",
+      "explicit_formal_patch_request": false,
+      "formal_patch_request_record_reference": "",
+      "validation_status": "blocked_blank_external_intake",
+      "failed_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank",
+        "reviewer-identity-type-must-be-valid",
+        "decision-must-match-review-track",
+        "decision-reason-must-be-nonblank",
+        "all-attachment-slots-must-have-record-or-waiver",
+        "signed-at-must-have-timezone",
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "is_signed": false,
+      "reviewer_intake_templates_are_real_submissions": false,
+      "blank_intake_is_signature": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "reviewer_intake_id": "real-reviewer-intake-002",
+      "review_track": "manual_patch_candidate_human_review",
+      "source_handoff_package_id": "human-handoff-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "reviewer_name_or_group": "",
+      "reviewer_identity_type": "",
+      "reviewer_role": "材料工具与去重合并审稿负责人",
+      "assignment_or_followup_id": "dispatch-signature-002",
+      "allowed_review_decisions": [
+        "approved",
+        "rejected_for_rework"
+      ],
+      "review_decision": "",
+      "decision_reason": "",
+      "evidence_package_id": "evidence-freeze-package-001",
+      "required_attachment_slot_count": 6,
+      "attachment_record_references": [],
+      "attachment_waiver_record_references": [],
+      "signed_at": "",
+      "signature_record_reference": "",
+      "explicit_formal_patch_request": false,
+      "formal_patch_request_record_reference": "",
+      "validation_status": "blocked_blank_external_intake",
+      "failed_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank",
+        "reviewer-identity-type-must-be-valid",
+        "decision-must-match-review-track",
+        "decision-reason-must-be-nonblank",
+        "all-attachment-slots-must-have-record-or-waiver",
+        "signed-at-must-have-timezone",
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "is_signed": false,
+      "reviewer_intake_templates_are_real_submissions": false,
+      "blank_intake_is_signature": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "reviewer_intake_id": "real-reviewer-intake-003",
+      "review_track": "manual_patch_candidate_human_review",
+      "source_handoff_package_id": "human-handoff-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "reviewer_name_or_group": "",
+      "reviewer_identity_type": "",
+      "reviewer_role": "授权与证据附件负责人",
+      "assignment_or_followup_id": "dispatch-signature-003",
+      "allowed_review_decisions": [
+        "approved",
+        "rejected_for_rework"
+      ],
+      "review_decision": "",
+      "decision_reason": "",
+      "evidence_package_id": "evidence-freeze-package-001",
+      "required_attachment_slot_count": 6,
+      "attachment_record_references": [],
+      "attachment_waiver_record_references": [],
+      "signed_at": "",
+      "signature_record_reference": "",
+      "explicit_formal_patch_request": false,
+      "formal_patch_request_record_reference": "",
+      "validation_status": "blocked_blank_external_intake",
+      "failed_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank",
+        "reviewer-identity-type-must-be-valid",
+        "decision-must-match-review-track",
+        "decision-reason-must-be-nonblank",
+        "all-attachment-slots-must-have-record-or-waiver",
+        "signed-at-must-have-timezone",
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "is_signed": false,
+      "reviewer_intake_templates_are_real_submissions": false,
+      "blank_intake_is_signature": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "reviewer_intake_id": "real-reviewer-intake-004",
+      "review_track": "manual_patch_candidate_human_review",
+      "source_handoff_package_id": "human-handoff-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "reviewer_name_or_group": "",
+      "reviewer_identity_type": "",
+      "reviewer_role": "人工 Patch 复核负责人",
+      "assignment_or_followup_id": "dispatch-signature-004",
+      "allowed_review_decisions": [
+        "approved",
+        "rejected_for_rework"
+      ],
+      "review_decision": "",
+      "decision_reason": "",
+      "evidence_package_id": "evidence-freeze-package-001",
+      "required_attachment_slot_count": 6,
+      "attachment_record_references": [],
+      "attachment_waiver_record_references": [],
+      "signed_at": "",
+      "signature_record_reference": "",
+      "explicit_formal_patch_request": false,
+      "formal_patch_request_record_reference": "",
+      "validation_status": "blocked_blank_external_intake",
+      "failed_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank",
+        "reviewer-identity-type-must-be-valid",
+        "decision-must-match-review-track",
+        "decision-reason-must-be-nonblank",
+        "all-attachment-slots-must-have-record-or-waiver",
+        "signed-at-must-have-timezone",
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "is_signed": false,
+      "reviewer_intake_templates_are_real_submissions": false,
+      "blank_intake_is_signature": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "reviewer_intake_id": "real-reviewer-intake-005",
+      "review_track": "repair_resubmission_human_review",
+      "source_handoff_package_id": "human-handoff-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "reviewer_name_or_group": "",
+      "reviewer_identity_type": "",
+      "reviewer_role": "医疗伦理审稿负责人",
+      "assignment_or_followup_id": "repair-evidence-followup-001",
+      "allowed_review_decisions": [
+        "approved_for_resubmission",
+        "rejected_for_more_evidence"
+      ],
+      "review_decision": "",
+      "decision_reason": "",
+      "evidence_package_id": "evidence-freeze-package-002",
+      "required_attachment_slot_count": 6,
+      "attachment_record_references": [],
+      "attachment_waiver_record_references": [],
+      "signed_at": "",
+      "signature_record_reference": "",
+      "explicit_formal_patch_request": false,
+      "formal_patch_request_record_reference": "",
+      "validation_status": "blocked_blank_external_intake",
+      "failed_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank",
+        "reviewer-identity-type-must-be-valid",
+        "decision-must-match-review-track",
+        "decision-reason-must-be-nonblank",
+        "all-attachment-slots-must-have-record-or-waiver",
+        "signed-at-must-have-timezone",
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "is_signed": false,
+      "reviewer_intake_templates_are_real_submissions": false,
+      "blank_intake_is_signature": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "reviewer_intake_id": "real-reviewer-intake-006",
+      "review_track": "repair_resubmission_human_review",
+      "source_handoff_package_id": "human-handoff-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "reviewer_name_or_group": "",
+      "reviewer_identity_type": "",
+      "reviewer_role": "授权与证据附件负责人",
+      "assignment_or_followup_id": "repair-evidence-followup-002",
+      "allowed_review_decisions": [
+        "approved_for_resubmission",
+        "rejected_for_more_evidence"
+      ],
+      "review_decision": "",
+      "decision_reason": "",
+      "evidence_package_id": "evidence-freeze-package-002",
+      "required_attachment_slot_count": 6,
+      "attachment_record_references": [],
+      "attachment_waiver_record_references": [],
+      "signed_at": "",
+      "signature_record_reference": "",
+      "explicit_formal_patch_request": false,
+      "formal_patch_request_record_reference": "",
+      "validation_status": "blocked_blank_external_intake",
+      "failed_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank",
+        "reviewer-identity-type-must-be-valid",
+        "decision-must-match-review-track",
+        "decision-reason-must-be-nonblank",
+        "all-attachment-slots-must-have-record-or-waiver",
+        "signed-at-must-have-timezone",
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "is_signed": false,
+      "reviewer_intake_templates_are_real_submissions": false,
+      "blank_intake_is_signature": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "reviewer_intake_id": "real-reviewer-intake-007",
+      "review_track": "repair_resubmission_human_review",
+      "source_handoff_package_id": "human-handoff-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "reviewer_name_or_group": "",
+      "reviewer_identity_type": "",
+      "reviewer_role": "事实边界审稿负责人",
+      "assignment_or_followup_id": "repair-evidence-followup-003",
+      "allowed_review_decisions": [
+        "approved_for_resubmission",
+        "rejected_for_more_evidence"
+      ],
+      "review_decision": "",
+      "decision_reason": "",
+      "evidence_package_id": "evidence-freeze-package-002",
+      "required_attachment_slot_count": 6,
+      "attachment_record_references": [],
+      "attachment_waiver_record_references": [],
+      "signed_at": "",
+      "signature_record_reference": "",
+      "explicit_formal_patch_request": false,
+      "formal_patch_request_record_reference": "",
+      "validation_status": "blocked_blank_external_intake",
+      "failed_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank",
+        "reviewer-identity-type-must-be-valid",
+        "decision-must-match-review-track",
+        "decision-reason-must-be-nonblank",
+        "all-attachment-slots-must-have-record-or-waiver",
+        "signed-at-must-have-timezone",
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "is_signed": false,
+      "reviewer_intake_templates_are_real_submissions": false,
+      "blank_intake_is_signature": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    },
+    {
+      "reviewer_intake_id": "real-reviewer-intake-008",
+      "review_track": "repair_resubmission_human_review",
+      "source_handoff_package_id": "human-handoff-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "reviewer_name_or_group": "",
+      "reviewer_identity_type": "",
+      "reviewer_role": "审稿签署管理员",
+      "assignment_or_followup_id": "repair-evidence-followup-004",
+      "allowed_review_decisions": [
+        "approved_for_resubmission",
+        "rejected_for_more_evidence"
+      ],
+      "review_decision": "",
+      "decision_reason": "",
+      "evidence_package_id": "evidence-freeze-package-002",
+      "required_attachment_slot_count": 6,
+      "attachment_record_references": [],
+      "attachment_waiver_record_references": [],
+      "signed_at": "",
+      "signature_record_reference": "",
+      "explicit_formal_patch_request": false,
+      "formal_patch_request_record_reference": "",
+      "validation_status": "blocked_blank_external_intake",
+      "failed_rule_ids": [
+        "reviewer-name-must-be-real-and-nonblank",
+        "reviewer-identity-type-must-be-valid",
+        "decision-must-match-review-track",
+        "decision-reason-must-be-nonblank",
+        "all-attachment-slots-must-have-record-or-waiver",
+        "signed-at-must-have-timezone",
+        "signature-record-reference-must-be-nonblank"
+      ],
+      "is_signed": false,
+      "reviewer_intake_templates_are_real_submissions": false,
+      "blank_intake_is_signature": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    }
+  ],
+  "external_execution_checklist": {
+    "owner_assignment_tasks": [
+      {
+        "task_id": "external-owner-task-001",
+        "source_failure_id": "missing-owner-001",
+        "assignment_id": "dispatch-signature-001",
+        "target_reviewer_intake_id": "real-reviewer-intake-001",
+        "required_role": "事实/工艺流程审稿负责人",
+        "real_owner": "",
+        "completion_record_reference": "",
+        "status": "open_external_human_action"
+      },
+      {
+        "task_id": "external-owner-task-002",
+        "source_failure_id": "missing-owner-002",
+        "assignment_id": "dispatch-signature-002",
+        "target_reviewer_intake_id": "real-reviewer-intake-002",
+        "required_role": "材料工具与去重合并审稿负责人",
+        "real_owner": "",
+        "completion_record_reference": "",
+        "status": "open_external_human_action"
+      },
+      {
+        "task_id": "external-owner-task-003",
+        "source_failure_id": "missing-owner-003",
+        "assignment_id": "dispatch-signature-003",
+        "target_reviewer_intake_id": "real-reviewer-intake-003",
+        "required_role": "授权与证据附件负责人",
+        "real_owner": "",
+        "completion_record_reference": "",
+        "status": "open_external_human_action"
+      },
+      {
+        "task_id": "external-owner-task-004",
+        "source_failure_id": "missing-owner-004",
+        "assignment_id": "dispatch-signature-004",
+        "target_reviewer_intake_id": "real-reviewer-intake-004",
+        "required_role": "人工 Patch 复核负责人",
+        "real_owner": "",
+        "completion_record_reference": "",
+        "status": "open_external_human_action"
+      }
+    ],
+    "attachment_submission_tasks": [
+      {
+        "task_id": "external-attachment-task-001",
+        "source_failure_id": "missing-attachment-package-001",
+        "evidence_package_id": "evidence-freeze-package-001",
+        "candidate_id": "dp-craft-material-tool-process",
+        "required_slot_count": 6,
+        "submitted_attachment_record_references": [],
+        "approved_waiver_record_references": [],
+        "all_slots_addressed": false,
+        "status": "open_external_human_action"
+      },
+      {
+        "task_id": "external-attachment-task-002",
+        "source_failure_id": "missing-attachment-package-002",
+        "evidence_package_id": "evidence-freeze-package-002",
+        "candidate_id": "dp-medical-heritage-privacy-boundary",
+        "required_slot_count": 6,
+        "submitted_attachment_record_references": [],
+        "approved_waiver_record_references": [],
+        "all_slots_addressed": false,
+        "status": "open_external_human_action"
+      }
+    ],
+    "review_signature_submission_tasks": [
+      {
+        "task_id": "external-review-task-001",
+        "target_reviewer_intake_id": "real-reviewer-intake-001",
+        "source_handoff_package_id": "human-handoff-package-001",
+        "submission_record_reference": "",
+        "is_signed": false,
+        "status": "blocked_blank_intake"
+      },
+      {
+        "task_id": "external-review-task-002",
+        "target_reviewer_intake_id": "real-reviewer-intake-002",
+        "source_handoff_package_id": "human-handoff-package-001",
+        "submission_record_reference": "",
+        "is_signed": false,
+        "status": "blocked_blank_intake"
+      },
+      {
+        "task_id": "external-review-task-003",
+        "target_reviewer_intake_id": "real-reviewer-intake-003",
+        "source_handoff_package_id": "human-handoff-package-001",
+        "submission_record_reference": "",
+        "is_signed": false,
+        "status": "blocked_blank_intake"
+      },
+      {
+        "task_id": "external-review-task-004",
+        "target_reviewer_intake_id": "real-reviewer-intake-004",
+        "source_handoff_package_id": "human-handoff-package-001",
+        "submission_record_reference": "",
+        "is_signed": false,
+        "status": "blocked_blank_intake"
+      },
+      {
+        "task_id": "external-review-task-005",
+        "target_reviewer_intake_id": "real-reviewer-intake-005",
+        "source_handoff_package_id": "human-handoff-package-002",
+        "submission_record_reference": "",
+        "is_signed": false,
+        "status": "blocked_blank_intake"
+      },
+      {
+        "task_id": "external-review-task-006",
+        "target_reviewer_intake_id": "real-reviewer-intake-006",
+        "source_handoff_package_id": "human-handoff-package-002",
+        "submission_record_reference": "",
+        "is_signed": false,
+        "status": "blocked_blank_intake"
+      },
+      {
+        "task_id": "external-review-task-007",
+        "target_reviewer_intake_id": "real-reviewer-intake-007",
+        "source_handoff_package_id": "human-handoff-package-002",
+        "submission_record_reference": "",
+        "is_signed": false,
+        "status": "blocked_blank_intake"
+      },
+      {
+        "task_id": "external-review-task-008",
+        "target_reviewer_intake_id": "real-reviewer-intake-008",
+        "source_handoff_package_id": "human-handoff-package-002",
+        "submission_record_reference": "",
+        "is_signed": false,
+        "status": "blocked_blank_intake"
+      }
+    ],
+    "post_patch_audit_lint_tasks": [
+      {
+        "task_id": "external-post-patch-task-001",
+        "source_blocker_id": "audit-lint-waiting-001",
+        "assignment_id": "dispatch-audit-001",
+        "command_after_patch": "npm run kb:production-audit",
+        "run_record_reference": "",
+        "has_run": false,
+        "status": "blocked_until_formal_patch"
+      },
+      {
+        "task_id": "external-post-patch-task-002",
+        "source_blocker_id": "audit-lint-waiting-002",
+        "assignment_id": "dispatch-lint-001",
+        "command_after_patch": "npm run kb:lint",
+        "run_record_reference": "",
+        "has_run": false,
+        "status": "blocked_until_formal_patch"
+      }
+    ]
+  },
+  "machine_gates": [
+    {
+      "gate_id": "reviewer-intake-fields-frozen",
+      "status": "met",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "intake-validation-rules-created",
+      "status": "met",
+      "target_count": 11,
+      "current_count": 11
+    },
+    {
+      "gate_id": "blank-reviewer-intake-templates-created",
+      "status": "met_as_blank_unsigned_templates",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "valid-real-reviewer-intakes-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "external-execution-workstreams-created",
+      "status": "met_as_open_external_tasks",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "external-execution-tasks-created",
+      "status": "met_as_open_or_blocked_tasks",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "blank-intakes-not-signatures",
+      "status": "met",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "audit-lint-not-run",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_23_exit_gates": [
+    {
+      "gate_id": "real-reviewer-intake-contract-frozen",
+      "status": "met",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "role-specific-blank-intakes-created",
+      "status": "met_as_blank_unsigned_templates",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "external-execution-checklist-created",
+      "status": "met_as_open_or_blocked_tasks",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "no-real-reviewer-submission-claimed",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "audit-lint-still-blocked-until-formal-patch",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

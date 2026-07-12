@@ -6616,7 +6616,7 @@ export async function getProjectProductionReadiness(
       status: productionReadinessGearsStatus(gearsSummary),
       score: productionReadinessGearsScore(gearsSummary),
       detail: gearsSummary.total > 0
-        ? `GEARS jobs ready ${gearsSummary.ready}，active ${gearsSummary.active}，failed ${gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled}。`
+        ? `GEARS jobs external ready ${gearsSummary.external_ready}，local acceptance ${gearsSummary.local_acceptance_ready}，active ${gearsSummary.active}，failed ${gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled}。`
         : '尚未提交 GEARS job；等待从交付包建账本。',
       count_text: `jobs ${gearsSummary.total}`,
       evidence: [
@@ -6629,14 +6629,18 @@ export async function getProjectProductionReadiness(
         ? 'submit_gears_jobs'
         : gearsSummary.active > 0
           ? activeGearsActionKey
-          : undefined,
+          : gearsSummary.ready_without_external_artifact > 0
+            ? 'export_gears_external_callback_handoff'
+            : undefined,
       action_label: gearsSummary.total === 0
         ? '提交 GEARS'
         : gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled > 0
           ? '重提 GEARS'
           : gearsSummary.active > 0
             ? localGearsAcceptanceAvailable ? '本地验收' : '同步 GEARS'
-            : undefined,
+            : gearsSummary.ready_without_external_artifact > 0
+              ? '导出真实回片交接包'
+              : undefined,
     },
     {
       key: 'review_repair',
@@ -6659,18 +6663,39 @@ export async function getProjectProductionReadiness(
     {
       key: 'commercial_ops',
       label: 'Commercial Workbench',
-      status: currentVersion?.production_board_export && gearsSummary.total > 0 ? 'ready' : 'needs_action',
-      score: (currentVersion?.production_board_export ? 50 : 20) + (gearsSummary.total > 0 ? 50 : 20),
+      status: currentVersion?.production_board_export
+        && gearsSummary.total > 0
+        && gearsSummary.ready_without_external_artifact === 0
+        ? 'ready'
+        : 'needs_action',
+      score: Math.round(
+        (currentVersion?.production_board_export ? 50 : 20)
+        + (gearsSummary.total > 0 ? (gearsSummary.external_ready / gearsSummary.total) * 50 : 20),
+      ),
       detail: currentVersion?.production_board_export && gearsSummary.total > 0
-        ? '交付包和 GEARS 账本都已具备，可进入制作运营跟踪。'
+        ? gearsSummary.ready_without_external_artifact > 0
+          ? `交付包和 GEARS 账本已具备，但仍有 ${gearsSummary.ready_without_external_artifact} 个 job 缺真实外部 artifact。`
+          : '交付包、GEARS 账本和真实外部 artifact 已具备，可进入制作运营跟踪。'
         : '商业制作中台还缺交付包落盘或 GEARS job 账本。',
       count_text: `export ${currentVersion?.production_board_export ? 1 : 0} / gears ${gearsSummary.total}`,
       evidence: [
         `project_status ${detail.project.status}`,
         `version ${detail.project.current_version_id}`,
       ],
-      action_key: !currentVersion?.production_board_export ? 'export_production_board' : gearsSummary.total === 0 ? 'submit_gears_jobs' : undefined,
-      action_label: !currentVersion?.production_board_export ? '导出交付包' : gearsSummary.total === 0 ? '提交 GEARS' : undefined,
+      action_key: !currentVersion?.production_board_export
+        ? 'export_production_board'
+        : gearsSummary.total === 0
+          ? 'submit_gears_jobs'
+          : gearsSummary.ready_without_external_artifact > 0
+            ? 'export_gears_external_callback_handoff'
+            : undefined,
+      action_label: !currentVersion?.production_board_export
+        ? '导出交付包'
+        : gearsSummary.total === 0
+          ? '提交 GEARS'
+          : gearsSummary.ready_without_external_artifact > 0
+            ? '导出真实回片交接包'
+            : undefined,
     },
   ];
 
@@ -7039,18 +7064,26 @@ function productionReadinessShotScore(
 function productionReadinessGearsStatus(summary: ProductionReadinessGearsSummary): ProductionReadinessStatus {
   if (summary.total === 0) return 'needs_action';
   if (summary.failed + summary.rejected + summary.canceled + summary.missing_artifact > 0) return 'blocked';
-  if (summary.active > 0 || summary.poll_failure > 0 || summary.ready < summary.total) return 'needs_action';
+  if (
+    summary.active > 0
+    || summary.poll_failure > 0
+    || summary.ready < summary.total
+    || summary.ready_without_external_artifact > 0
+  ) return 'needs_action';
   return 'ready';
 }
 
 function productionReadinessGearsScore(summary: ProductionReadinessGearsSummary): number {
   if (summary.total === 0) return 45;
-  const readyScore = (summary.ready / summary.total) * 100;
+  const externalReadyScore = (summary.external_ready / summary.total) * 100;
+  const localAcceptanceCredit = (summary.local_acceptance_ready / summary.total) * 65;
   const activeCredit = (summary.active / summary.total) * 50;
   const failurePenalty = ((summary.failed + summary.rejected + summary.canceled) / summary.total) * 70;
   const artifactPenalty = (summary.missing_artifact / summary.total) * 80;
   const pollPenalty = (summary.poll_failure / summary.total) * 20;
-  return Math.max(0, Math.min(100, Math.round(readyScore + activeCredit - failurePenalty - artifactPenalty - pollPenalty)));
+  return Math.max(0, Math.min(100, Math.round(
+    externalReadyScore + localAcceptanceCredit + activeCredit - failurePenalty - artifactPenalty - pollPenalty,
+  )));
 }
 
 function buildProductionReadinessSummary(

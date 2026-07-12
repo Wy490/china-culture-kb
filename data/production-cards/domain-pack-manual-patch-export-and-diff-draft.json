@@ -1,0 +1,254 @@
+{
+  "schema_version": "domain-pack-manual-patch-export-diff-draft/v1",
+  "updated_at": "2026-07-10",
+  "status": "manual_patch_export_created_diff_draft_not_applied",
+  "scope": "Iteration 18：将人工 Patch 候选模拟项导出为可人工复核的差异草案模板，并将修复重提审模拟项转为补证任务模板；本文件只生成导出包和草案，不应用 Patch，不写入正式 Domain Pack，不写回省份 Markdown。",
+  "source_validation_file": "data/production-cards/domain-pack-review-intake-validation-and-pass-simulation.json",
+  "source_candidate_file": "data/domain-packs/phase2-candidate-rule-packs.json",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "diff_draft_markdown_file": "docs/production-cards/domain-pack-manual-patch-diff-draft-dp-craft-material-tool-process-20260710.md",
+  "repair_resubmission_task_markdown_file": "docs/production-cards/domain-pack-repair-resubmission-task-dp-medical-heritage-privacy-boundary-20260710.md",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "manual_patch_export_is_formal_patch": false,
+    "repair_resubmission_task_is_approval": false,
+    "current_layer": "manual_patch_export_and_diff_draft_template_only"
+  },
+  "counts": {
+    "manual_patch_export_package_count": 1,
+    "diff_draft_template_count": 1,
+    "signature_placeholder_count": 4,
+    "preflight_check_count": 8,
+    "repair_resubmission_task_template_count": 1,
+    "formal_patch_count": 0,
+    "formal_domain_pack_write_count": 0,
+    "machine_gate_count": 9
+  },
+  "manual_patch_export_packages": [
+    {
+      "export_id": "manual-patch-export-001",
+      "source_queue_id": "manual-patch-sim-candidate-001",
+      "source_sample_id": "sim-valid-approve-craft-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "candidate_entry_name": "工艺材料工具流程候选包",
+      "export_status": "diff_draft_created_not_applied",
+      "diff_draft_markdown_file": "docs/production-cards/domain-pack-manual-patch-diff-draft-dp-craft-material-tool-process-20260710.md",
+      "recommended_action": "merge_or_extend_existing_heritage_process_pack_after_real_review",
+      "merge_target_entry_name": "非遗流程生产包——材料工具、工序动作与授权边界",
+      "duplicate_risk": "high_if_appended_as_new_formal_entry",
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    }
+  ],
+  "diff_draft_templates": [
+    {
+      "diff_draft_id": "domain-pack-diff-draft-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "draft_status": "template_only_not_applied",
+      "operation": "manual_review_then_merge_existing_entry_or_append_after_dedup",
+      "target_file": "data/domain-packs/china-culture.json",
+      "target_entry_name": "非遗流程生产包——材料工具、工序动作与授权边界",
+      "draft_markdown_file": "docs/production-cards/domain-pack-manual-patch-diff-draft-dp-craft-material-tool-process-20260710.md",
+      "draft_fields": [
+        "summary",
+        "keywords",
+        "asset_usage",
+        "production_prompts",
+        "review_boundaries",
+        "trigger_words"
+      ],
+      "must_preserve_boundaries": [
+        "不得把现代复原件写成古代原物",
+        "不得公开未授权或危险操作教程",
+        "不得把纹样含义、釉色技术或器物用途写成无来源定论",
+        "不得把单个匠人的示范写成全部工艺标准"
+      ],
+      "diff_draft_applied": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false
+    }
+  ],
+  "signature_placeholders": [
+    {
+      "signature_id": "signature-placeholder-001",
+      "role": "工艺流程审稿",
+      "required_for": "real_human_review_approved_in_actual_ledger",
+      "status": "blank"
+    },
+    {
+      "signature_id": "signature-placeholder-002",
+      "role": "材料工具审稿",
+      "required_for": "candidate_field_merge_review",
+      "status": "blank"
+    },
+    {
+      "signature_id": "signature-placeholder-003",
+      "role": "授权审稿",
+      "required_for": "evidence_attachment_files_committed",
+      "status": "blank"
+    },
+    {
+      "signature_id": "signature-placeholder-004",
+      "role": "人工 Patch 复核",
+      "required_for": "formal_patch_explicitly_requested_by_human",
+      "status": "blank"
+    }
+  ],
+  "preflight_checks_before_formal_patch": [
+    {
+      "check_id": "real-human-review-approved-in-actual-ledger",
+      "status": "not_met",
+      "blocking": true
+    },
+    {
+      "check_id": "evidence-attachment-files-committed",
+      "status": "not_met",
+      "blocking": true
+    },
+    {
+      "check_id": "duplicate-merge-reviewed-against-existing-formal-pack",
+      "status": "not_met",
+      "blocking": true
+    },
+    {
+      "check_id": "domain-pack-diff-reviewed-by-human",
+      "status": "not_met",
+      "blocking": true
+    },
+    {
+      "check_id": "formal-patch-explicitly-requested-by-human",
+      "status": "not_met",
+      "blocking": true
+    },
+    {
+      "check_id": "kb-production-audit-required-after-patch",
+      "status": "not_run",
+      "blocking": true
+    },
+    {
+      "check_id": "kb-lint-required-after-patch",
+      "status": "not_run",
+      "blocking": true
+    },
+    {
+      "check_id": "province-markdown-writeback-still-forbidden",
+      "status": "met",
+      "blocking": true
+    }
+  ],
+  "repair_resubmission_task_templates": [
+    {
+      "task_template_id": "repair-resubmission-task-template-001",
+      "source_queue_id": "repair-resubmission-sim-001",
+      "source_sample_id": "sim-valid-repair-medical-001",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "candidate_entry_name": "民族医药文化记录与隐私边界候选包",
+      "task_status": "evidence_task_template_created_not_resubmitted",
+      "task_markdown_file": "docs/production-cards/domain-pack-repair-resubmission-task-dp-medical-heritage-privacy-boundary-20260710.md",
+      "required_evidence_updates": [
+        "medical_privacy_boundary_rechecked",
+        "authorization_gap_closed_or_marked",
+        "fact_boundary_table_updated",
+        "real_reviewer_identity_attached"
+      ],
+      "repair_resubmitted": false,
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "manual-patch-export-package-created",
+      "status": "met_as_draft_export",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "diff-draft-template-created",
+      "status": "met_as_template_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "signature-placeholders-created",
+      "status": "met_as_blank_placeholders",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "preflight-checks-created",
+      "status": "met",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "repair-resubmission-task-template-created",
+      "status": "met_as_template_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-not-written",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "diff-draft-not-applied",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_18_exit_gates": [
+    {
+      "gate_id": "patch-candidate-export-created",
+      "status": "met_as_draft_export",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "human-review-diff-draft-created",
+      "status": "met_as_template_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "repair-resubmission-evidence-task-created",
+      "status": "met_as_template_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "formal-patch-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

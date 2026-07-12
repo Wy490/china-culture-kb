@@ -90,6 +90,22 @@ async function readJsonRecord(filePath: string): Promise<Record<string, unknown>
   }
 }
 
+async function readSignoffExcludedSeriesIds(): Promise<Set<string>> {
+  const manifestPath = process.env.STORY_AGENT_SOFT_ARCHIVE_MANIFEST_PATH
+    || resolve(kbRoot(), 'reports', 'story-agent-soft-archive-manifest-20260710.json');
+  const manifest = await readJsonRecord(manifestPath);
+  const policy = isObjectRecord(manifest?.policy) ? manifest.policy : undefined;
+  if (stringField(manifest?.mode) !== 'active_signoff_exclusion'
+    || booleanField(policy?.signoff_exclusion_applied) !== true) {
+    return new Set();
+  }
+  return new Set(asArray(manifest?.entries)
+    .filter(isObjectRecord)
+    .filter(item => stringField(item.execution_status) === 'signoff_exclusion_active')
+    .map(item => stringField(item.project_id))
+    .filter((item): item is string => Boolean(item)));
+}
+
 async function readGeneratedProjectRecords(rootPaths: string[]): Promise<GeneratedProjectRecord[]> {
   const records: GeneratedProjectRecord[] = [];
   const seen = new Set<string>();
@@ -337,6 +353,17 @@ function hasPathLikeOutput(ledger: Record<string, unknown> | undefined, fields: 
   return fields.some(field => Boolean(stringField(ledger[field])));
 }
 
+function productionFailureIsMarkedTestFixture(item: Record<string, unknown>): boolean {
+  const failureReason = stringField(item.failure_reason) ?? '';
+  const noteText = asArray(item.notes)
+    .map(note => stringField(note))
+    .filter((note): note is string => Boolean(note))
+    .join(' ');
+  return failureReason.includes('测试标记')
+    || noteText.includes('测试标记')
+    || (stringField(item.provider_job_id) === 'seedance-job-failed' && noteText.includes('测试'));
+}
+
 function buildSeriesRecommendations(status: StoryAgentGeneratedHealthStatus, missingContracts: string[]): string[] {
   if (status === 'planned') {
     return ['生成第一集分集故事，再导出 GEARS delivery 与系列生产指挥包。'];
@@ -361,10 +388,16 @@ function buildSeriesRecommendations(status: StoryAgentGeneratedHealthStatus, mis
   return actions;
 }
 
-function buildSeriesHealthItem(input: GeneratedProjectRecord, availableStoryIds: Set<string>): StoryAgentGeneratedHealthItem {
+function buildSeriesHealthItem(
+  input: GeneratedProjectRecord,
+  availableStoryIds: Set<string>,
+  signoffExcludedSeriesIds: Set<string>,
+): StoryAgentGeneratedHealthItem {
   const record = input.record;
   const project = seriesProjectRecord(record);
   const plan = seriesPlanRecord(record);
+  const projectId = seriesProjectId(record, input.dir_name);
+  const signoffExcluded = signoffExcludedSeriesIds.has(projectId);
   const episodeCount = numberField(project.episode_count ?? plan.episode_count)
     ?? asArray(plan.episodes).length;
   const storyIds = generatedEpisodeStoryIds(record);
@@ -379,6 +412,8 @@ function buildSeriesHealthItem(input: GeneratedProjectRecord, availableStoryIds:
       stringField(version.status) === 'ready' && Boolean(stringField(version.video_url)),
     );
   });
+  const failedProductionItems = productionItems.filter(item => stringField(item.status) === 'failed');
+  const testFixtureFailureItems = failedProductionItems.filter(productionFailureIsMarkedTestFixture);
   const thumbnailReadyCount = productionItems.filter(item => {
     const thumbnail = isObjectRecord(item.thumbnail) ? item.thumbnail : undefined;
     return stringField(thumbnail?.status) === 'ready' && Boolean(stringField(thumbnail?.output_path));
@@ -404,6 +439,7 @@ function buildSeriesHealthItem(input: GeneratedProjectRecord, availableStoryIds:
     `episodes=${generatedEpisodeCount}/${episodeCount}`,
     `generated_episode_story_ids=${storyIds.length}`,
     `production_items=${productionItems.length}`,
+    `failed_production_items=${failedProductionItems.length}, test_fixture_failures=${testFixtureFailureItems.length}`,
     `contract_evidence=${contractEvidence.join(',') || 'none'}`,
   ];
 
@@ -429,10 +465,11 @@ function buildSeriesHealthItem(input: GeneratedProjectRecord, availableStoryIds:
         : 'ready';
   evidence.push(`ready_production_items=${readyProductionItems.length}`);
   evidence.push(`cut_ready=${cutReady}, subtitle_ready=${subtitleReady}, final_delivery_ready=${finalDeliveryReady}`);
+  evidence.push(`signoff_eligible=${!signoffExcluded}`);
 
   return {
     scope: 'ai_comic_series_project',
-    project_id: seriesProjectId(record, input.dir_name),
+    project_id: projectId,
     title: seriesProjectTitle(record),
     status,
     risk_score: riskScore(status, uniqueMissingContracts.length),
@@ -440,15 +477,25 @@ function buildSeriesHealthItem(input: GeneratedProjectRecord, availableStoryIds:
     issue_count: uniqueMissingContracts.length,
     missing_contracts: uniqueMissingContracts,
     evidence,
-    recommended_actions: buildSeriesRecommendations(status, uniqueMissingContracts),
+    recommended_actions: signoffExcluded
+      ? [
+          '该历史样本已通过可逆 manifest 排除出 GEARS signoff portfolio；原项目文件保持不变。',
+          '如需恢复，先进入人工重建白名单并按当前 Story Agent 合同生成新版本。',
+        ]
+      : buildSeriesRecommendations(status, uniqueMissingContracts),
     episode_count: episodeCount,
     generated_episode_count: generatedEpisodeCount,
     generated_episode_story_id_count: storyIds.length,
     missing_episode_story_id_count: missingEpisodeStoryIdCount,
     production_item_count: productionItems.length,
     ready_production_item_count: readyProductionItems.length,
+    failed_production_item_count: failedProductionItems.length,
+    test_fixture_failure_item_count: testFixtureFailureItems.length,
+    seedance_failure_marker_present: JSON.stringify(record).includes('seedance-job-failed'),
     contract_evidence_count: contractEvidence.length,
     relink_candidate: relinkCandidate,
+    signoff_eligible: !signoffExcluded,
+    governance_disposition: signoffExcluded ? 'soft_archived_signoff_excluded' : undefined,
     cut_ready: cutReady,
     subtitle_ready: subtitleReady,
     thumbnail_ready_count: thumbnailReadyCount,
@@ -500,6 +547,13 @@ function renderMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'
     `- series_missing_story_ref_projects: ${report.summary.series_missing_story_ref_project_count ?? 0}`,
     `- series_contract_evidence: ${report.summary.series_contract_evidence_count ?? 0}`,
     `- series_relink_candidates: ${report.summary.series_relink_candidate_count ?? 0}`,
+    `- series_signoff_portfolio: ${report.summary.series_signoff_portfolio_count ?? 0}`,
+    `- series_soft_archive_excluded: ${report.summary.series_soft_archive_excluded_count ?? 0}`,
+    `- series_seedance_failed_projects: ${report.summary.series_seedance_failed_project_count ?? 0}`,
+    `- series_seedance_failed_items: ${report.summary.series_seedance_failed_item_count ?? 0}`,
+    `- series_seedance_failure_marker_projects: ${report.summary.series_seedance_failure_marker_project_count ?? 0}`,
+    `- series_seedance_test_fixture_failure_projects: ${report.summary.series_seedance_test_fixture_failure_project_count ?? 0}`,
+    `- series_seedance_test_fixture_failure_items: ${report.summary.series_seedance_test_fixture_failure_item_count ?? 0}`,
     '',
     '## Priority Items',
     '',
@@ -729,14 +783,21 @@ function renderStoryAgentBacklogHandoffMarkdown(
 export async function getStoryAgentGeneratedHealth(
   options: GeneratedHealthOptions = {},
 ): Promise<StoryAgentGeneratedHealthReport> {
-  const [storyRecords, seriesRecords, availableStoryIds] = await Promise.all([
+  const [storyRecords, seriesRecords, availableStoryIds, signoffExcludedSeriesIds] = await Promise.all([
     readGeneratedProjectRecords(generatedRoots().map(root => resolve(root, 'projects'))),
     readGeneratedProjectRecords(generatedRoots().map(root => resolve(root, 'ai-comic-series-projects'))),
     readGeneratedStoryIds(),
+    readSignoffExcludedSeriesIds(),
   ]);
   const storyItems = await Promise.all(storyRecords.map(buildStoryHealthItem));
-  const seriesItems = seriesRecords.map(record => buildSeriesHealthItem(record, availableStoryIds));
+  const seriesItems = seriesRecords.map(record => buildSeriesHealthItem(
+    record,
+    availableStoryIds,
+    signoffExcludedSeriesIds,
+  ));
   const allItems = [...storyItems, ...seriesItems].sort((a, b) => {
+    const signoffDiff = Number(a.signoff_eligible === false) - Number(b.signoff_eligible === false);
+    if (signoffDiff !== 0) return signoffDiff;
     const rankDiff = statusRank(a.status) - statusRank(b.status);
     if (rankDiff !== 0) return rankDiff;
     const riskDiff = b.risk_score - a.risk_score;
@@ -749,10 +810,24 @@ export async function getStoryAgentGeneratedHealth(
   const seriesPlannedOnlyCount = countByStatusAndScope(allItems, 'planned', 'ai_comic_series_project');
   const seriesProductionGapCount = countByStatusAndScope(allItems, 'production_gap', 'ai_comic_series_project');
   const seriesInterruptedCount = countByStatusAndScope(allItems, 'interrupted', 'ai_comic_series_project');
-  const seriesGovernanceAttentionCount = seriesPlannedOnlyCount + seriesProductionGapCount + seriesInterruptedCount;
+  const seriesGovernanceAttentionCount = seriesItems.filter(item =>
+    item.signoff_eligible !== false && item.status !== 'ready'
+  ).length;
+  const seriesSoftArchiveExcludedCount = seriesItems.filter(item => item.signoff_eligible === false).length;
+  const seriesSignoffPortfolioCount = seriesItems.length - seriesSoftArchiveExcludedCount;
   const seriesMissingStoryRefProjectCount = seriesItems.filter(item => (item.missing_episode_story_id_count ?? 0) > 0).length;
   const seriesContractEvidenceCount = seriesItems.filter(item => (item.contract_evidence_count ?? 0) > 0).length;
   const seriesRelinkCandidateCount = seriesItems.filter(item => item.relink_candidate).length;
+  const seriesSeedanceFailedProjectCount = seriesItems.filter(item => (item.failed_production_item_count ?? 0) > 0).length;
+  const seriesSeedanceFailedItemCount = seriesItems.reduce((sum, item) => sum + (item.failed_production_item_count ?? 0), 0);
+  const seriesSeedanceFailureMarkerProjectCount = seriesItems.filter(item => item.seedance_failure_marker_present).length;
+  const seriesSeedanceTestFixtureFailureProjectCount = seriesItems.filter(
+    item => (item.test_fixture_failure_item_count ?? 0) > 0,
+  ).length;
+  const seriesSeedanceTestFixtureFailureItemCount = seriesItems.reduce(
+    (sum, item) => sum + (item.test_fixture_failure_item_count ?? 0),
+    0,
+  );
   const storyQualityPassedCount = storyItems.filter(item => item.quality_passed === true).length;
   const storyQualityFailedCount = storyItems.filter(item => item.quality_passed === false).length;
   const storyOpenSupplementTaskCount = storyItems.reduce((sum, item) => sum + (item.open_supplement_task_count ?? 0), 0);
@@ -803,6 +878,13 @@ export async function getStoryAgentGeneratedHealth(
       series_missing_story_ref_project_count: seriesMissingStoryRefProjectCount,
       series_contract_evidence_count: seriesContractEvidenceCount,
       series_relink_candidate_count: seriesRelinkCandidateCount,
+      series_signoff_portfolio_count: seriesSignoffPortfolioCount,
+      series_soft_archive_excluded_count: seriesSoftArchiveExcludedCount,
+      series_seedance_failed_project_count: seriesSeedanceFailedProjectCount,
+      series_seedance_failed_item_count: seriesSeedanceFailedItemCount,
+      series_seedance_failure_marker_project_count: seriesSeedanceFailureMarkerProjectCount,
+      series_seedance_test_fixture_failure_project_count: seriesSeedanceTestFixtureFailureProjectCount,
+      series_seedance_test_fixture_failure_item_count: seriesSeedanceTestFixtureFailureItemCount,
     },
     items: reportItems,
     notes: [
@@ -811,9 +893,17 @@ export async function getStoryAgentGeneratedHealth(
       seriesGovernanceAttentionCount > 0
         ? `Series governance: ${seriesGovernanceAttentionCount} AI comic series targets are planned-only, production-gap, or interrupted; archive fixtures or repair contracts before using portfolio readiness for GEARS sign-off.`
         : 'Series governance: all scanned AI comic series targets are command-layer ready.',
+      seriesSoftArchiveExcludedCount > 0
+        ? `Soft archive: ${seriesSoftArchiveExcludedCount} historical series are reversibly excluded from the GEARS signoff portfolio by manifest; project JSON files are unchanged.`
+        : '',
       seriesRelinkCandidateCount > 0
         ? `Series relink candidates: ${seriesRelinkCandidateCount} interrupted series already have production or postproduction contract evidence; restore missing episode story JSON or update refs before judging GEARS readiness.`
         : '',
+      seriesSeedanceFailedItemCount > 0 && seriesSeedanceFailedItemCount === seriesSeedanceTestFixtureFailureItemCount
+        ? `Seedance failures: all ${seriesSeedanceFailedItemCount} failed production items are explicitly test-marked fixtures; exclude them from real delivery failure counts.`
+        : seriesSeedanceFailedItemCount > 0
+          ? `Seedance failures: ${seriesSeedanceFailedItemCount - seriesSeedanceTestFixtureFailureItemCount} failed production items are not explicitly test-marked and require operator review.`
+          : '',
       storyQualityPassedWithIssueAndOpenSupplementCount > 0
         ? `Quality follow-up semantics: ${storyQualityPassedWithIssueAndOpenSupplementCount} story projects pass the main quality gate while retaining advisory issues and open supplement tasks; treat these as operator follow-up backlog, not hidden quality failures.`
         : '',
@@ -835,6 +925,7 @@ export async function getStoryAgentBacklogHandoffPackage(
   ]);
   const supplementPackage = supplementResult.ok && supplementResult.data ? supplementResult.data : undefined;
   const healthItems = health.items
+    .filter(item => item.signoff_eligible !== false)
     .filter(healthItemNeedsBacklog)
     .map(healthBacklogItem);
   const supplementItems = (supplementPackage?.items ?? []).map(supplementBacklogItem);

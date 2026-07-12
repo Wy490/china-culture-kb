@@ -1,0 +1,736 @@
+{
+  "schema_version": "domain-pack-real-submission-import-contract-external-record-resolution/v1",
+  "updated_at": "2026-07-10",
+  "status": "real_submission_import_contract_created_external_records_unresolved",
+  "scope": "Iteration 25：定义独立于模拟夹具的真实审稿提交导入信封、角色级导入路由、入口校验和外部记录解析清单；显式拒绝 fixture ID、SIMULATION 引用、结构校验占位和 simulation_only 数据进入真实提交。本文件只定义导入资格，不代表已经导入真实提交、解析真实记录、完成真实签署、提出正式 Patch、应用正式 Patch 或写入正式知识库。",
+  "source_pre_signature_file": "data/production-cards/domain-pack-real-reviewer-submission-validation-fixtures-and-pre-signature-preflight.json",
+  "source_intake_contract_file": "data/production-cards/domain-pack-real-reviewer-intake-field-freeze-and-external-execution-checklist.json",
+  "source_handoff_file": "data/production-cards/domain-pack-formal-patch-failure-report-and-human-handoff.json",
+  "record_resolution_markdown_file": "docs/production-cards/domain-pack-real-submission-import-contract-external-record-resolution-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "diff_draft_applied": false,
+    "import_contract_is_real_submission": false,
+    "blank_import_route_is_imported_submission": false,
+    "external_record_checklist_is_resolution_result": false,
+    "simulation_fixture_import_allowed": false,
+    "formal_patch_request_recorded": false,
+    "current_layer": "real_submission_import_contract_and_external_record_resolution_only"
+  },
+  "counts": {
+    "import_envelope_field_count": 24,
+    "unconditional_required_field_count": 23,
+    "conditional_required_field_count": 1,
+    "import_validation_rule_count": 14,
+    "simulation_rejection_rule_count": 4,
+    "explicitly_rejected_fixture_count": 14,
+    "external_record_resolver_count": 5,
+    "record_resolution_checklist_item_count": 10,
+    "blank_import_route_count": 8,
+    "real_submission_import_count": 0,
+    "resolved_external_record_count": 0,
+    "real_signature_count": 0,
+    "formal_patch_count": 0,
+    "machine_gate_count": 10
+  },
+  "real_submission_import_envelope_schema": [
+    {
+      "field_id": "import_envelope_id",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "import_system_generated",
+      "constraint": "must_not_contain_fixture_or_simulation_marker"
+    },
+    {
+      "field_id": "import_contract_version",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "import_system_generated",
+      "constraint": "must_equal_domain_pack_real_submission_import_v1"
+    },
+    {
+      "field_id": "received_at",
+      "value_type": "iso_8601_datetime_with_timezone",
+      "requirement": "required",
+      "source": "import_system_generated"
+    },
+    {
+      "field_id": "source_system",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "external_submission_system"
+    },
+    {
+      "field_id": "source_record_id",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "external_submission_system"
+    },
+    {
+      "field_id": "idempotency_key",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "external_submission_system_or_import_system"
+    },
+    {
+      "field_id": "payload_digest_sha256",
+      "value_type": "lowercase_hex_64",
+      "requirement": "required",
+      "source": "import_system_generated"
+    },
+    {
+      "field_id": "source_handoff_package_id",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "locked_route"
+    },
+    {
+      "field_id": "reviewer_intake_id",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "locked_route"
+    },
+    {
+      "field_id": "candidate_id",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "locked_route"
+    },
+    {
+      "field_id": "reviewer_name_or_group",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "external_submission"
+    },
+    {
+      "field_id": "reviewer_identity_type",
+      "value_type": "enum_person_or_accountable_group",
+      "requirement": "required",
+      "source": "external_submission"
+    },
+    {
+      "field_id": "reviewer_identity_record_reference",
+      "value_type": "external_record_reference",
+      "requirement": "required",
+      "source": "external_identity_system"
+    },
+    {
+      "field_id": "reviewer_role",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "locked_route"
+    },
+    {
+      "field_id": "assignment_or_followup_id",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "locked_route"
+    },
+    {
+      "field_id": "review_decision",
+      "value_type": "enum_by_review_track",
+      "requirement": "required",
+      "source": "external_submission"
+    },
+    {
+      "field_id": "decision_reason",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "external_submission"
+    },
+    {
+      "field_id": "evidence_package_id",
+      "value_type": "string",
+      "requirement": "required",
+      "source": "locked_route"
+    },
+    {
+      "field_id": "attachment_record_manifest",
+      "value_type": "array_of_six_slot_resolution_records",
+      "requirement": "required",
+      "source": "external_evidence_system"
+    },
+    {
+      "field_id": "signed_at",
+      "value_type": "iso_8601_datetime_with_timezone",
+      "requirement": "required",
+      "source": "external_signature_system"
+    },
+    {
+      "field_id": "signature_record_reference",
+      "value_type": "external_record_reference",
+      "requirement": "required",
+      "source": "external_signature_system"
+    },
+    {
+      "field_id": "explicit_formal_patch_request",
+      "value_type": "boolean",
+      "requirement": "required",
+      "source": "external_authorized_human_default_false"
+    },
+    {
+      "field_id": "formal_patch_request_record_reference",
+      "value_type": "external_record_reference",
+      "requirement": "conditional_required_when_explicit_formal_patch_request_true",
+      "source": "external_authorization_system"
+    },
+    {
+      "field_id": "submitter_attestation",
+      "value_type": "object_with_non_simulation_and_accuracy_assertions",
+      "requirement": "required",
+      "source": "external_submitter"
+    }
+  ],
+  "import_validation_rules": [
+    {
+      "rule_id": "import-contract-version-must-match",
+      "validation": "import_contract_version 必须等于 domain-pack-real-submission-import/v1。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "import-envelope-id-must-not-be-fixture",
+      "validation": "import_envelope_id 不能包含 fixture、simulation 或样例标记。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "source-record-must-be-external-and-unique",
+      "validation": "source_system、source_record_id 和 idempotency_key 必须非空，且不能指向本仓库模拟夹具。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "payload-digest-must-be-valid-sha256",
+      "validation": "payload_digest_sha256 必须是 64 位小写十六进制摘要。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "route-identifiers-must-match-frozen-intake",
+      "validation": "交接包、填报模板、候选、角色、分派和证据包必须与冻结导入路由一致。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "reviewer-identity-record-must-resolve",
+      "validation": "真实审稿人姓名、主体类型和身份记录引用必须由外部身份解析器验证。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "role-and-assignment-must-match",
+      "validation": "reviewer_role 与 assignment_or_followup_id 必须匹配冻结路由。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "decision-and-reason-must-match-review-track",
+      "validation": "决定值必须属于对应审稿轨道，且决定理由非空。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "evidence-package-must-match-route",
+      "validation": "evidence_package_id 必须匹配冻结路由。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "all-six-attachment-slots-must-resolve",
+      "validation": "attachment_record_manifest 必须覆盖 6 个唯一槽位，每项均解析到真实附件或有权豁免记录。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "all-record-references-must-reject-simulation",
+      "validation": "任何身份、附件、签署或 Patch 请求记录引用都不能包含 SIMULATION、fixture 或结构校验占位。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "signature-record-and-time-must-resolve",
+      "validation": "signed_at 必须带时区，signature_record_reference 必须由外部签署解析器验证。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "formal-patch-request-must-be-separate-and-resolved",
+      "validation": "只有 explicit_formal_patch_request=true 时才要求独立 Patch 请求记录，且该记录必须由授权解析器验证；导入本身不创建 Patch。",
+      "blocks_real_import": true
+    },
+    {
+      "rule_id": "submitter-attestation-must-reject-template-data",
+      "validation": "提交者必须声明数据不是 fixture、simulation、空白模板或自动生成签署，并对来源准确性负责。",
+      "blocks_real_import": true
+    }
+  ],
+  "simulation_rejection_rules": [
+    {
+      "rule_id": "reject-fixture-identifiers",
+      "match_targets": [
+        "import_envelope_id",
+        "source_record_id",
+        "reviewer_intake_id"
+      ],
+      "rejected_patterns": [
+        "submission-fixture-",
+        "fixture_id",
+        "validation_fixture"
+      ],
+      "action": "reject_real_import"
+    },
+    {
+      "rule_id": "reject-simulation-record-references",
+      "match_targets": [
+        "reviewer_identity_record_reference",
+        "attachment_record_manifest.*.record_reference",
+        "signature_record_reference",
+        "formal_patch_request_record_reference"
+      ],
+      "rejected_patterns": [
+        "SIMULATION-",
+        "simulation-attachment-set-"
+      ],
+      "action": "reject_real_import"
+    },
+    {
+      "rule_id": "reject-structural-placeholder-values",
+      "match_targets": [
+        "reviewer_name_or_group",
+        "decision_reason"
+      ],
+      "rejected_patterns": [
+        "结构校验占位",
+        "结构校验文本",
+        "[待指定]"
+      ],
+      "action": "reject_real_import"
+    },
+    {
+      "rule_id": "reject-simulation-flags-and-fixture-metadata",
+      "match_targets": [
+        "simulation_only",
+        "fixture_validation_mode",
+        "derived_from_fixture_id"
+      ],
+      "rejected_values": [
+        true,
+        "field_present"
+      ],
+      "action": "reject_real_import"
+    }
+  ],
+  "explicitly_rejected_fixture_ids": [
+    "submission-fixture-valid-craft-approved-001",
+    "submission-fixture-valid-craft-rejected-001",
+    "submission-fixture-valid-repair-resubmit-001",
+    "submission-fixture-invalid-source-id-001",
+    "submission-fixture-invalid-reviewer-name-001",
+    "submission-fixture-invalid-identity-type-001",
+    "submission-fixture-invalid-role-001",
+    "submission-fixture-invalid-assignment-001",
+    "submission-fixture-invalid-decision-001",
+    "submission-fixture-invalid-reason-001",
+    "submission-fixture-invalid-attachments-001",
+    "submission-fixture-invalid-timezone-001",
+    "submission-fixture-invalid-signature-reference-001",
+    "submission-fixture-invalid-patch-request-001"
+  ],
+  "external_record_resolvers": [
+    {
+      "resolver_id": "source-submission-record-resolver",
+      "record_kind": "source_submission_record",
+      "required_input_field": "source_record_id",
+      "success_status": "resolved_external_source_record",
+      "current_status": "resolver_contract_only_not_run"
+    },
+    {
+      "resolver_id": "reviewer-identity-record-resolver",
+      "record_kind": "reviewer_identity_record",
+      "required_input_field": "reviewer_identity_record_reference",
+      "success_status": "resolved_identity_matches_name_type_and_role",
+      "current_status": "resolver_contract_only_not_run"
+    },
+    {
+      "resolver_id": "attachment-or-waiver-record-resolver",
+      "record_kind": "attachment_or_authorized_waiver_record",
+      "required_input_field": "attachment_record_manifest",
+      "success_status": "resolved_all_six_unique_slots",
+      "current_status": "resolver_contract_only_not_run"
+    },
+    {
+      "resolver_id": "signature-record-resolver",
+      "record_kind": "signature_record",
+      "required_input_field": "signature_record_reference",
+      "success_status": "resolved_signature_matches_identity_decision_and_time",
+      "current_status": "resolver_contract_only_not_run"
+    },
+    {
+      "resolver_id": "formal-patch-request-record-resolver",
+      "record_kind": "authorized_formal_patch_request_record",
+      "required_input_field": "formal_patch_request_record_reference",
+      "success_status": "resolved_authorized_request_separate_from_review_submission",
+      "current_status": "conditional_resolver_contract_only_not_run"
+    }
+  ],
+  "external_record_resolution_checklist": [
+    {
+      "check_id": "resolve-source-submission-record",
+      "resolver_id": "source-submission-record-resolver",
+      "target": "source_record_id",
+      "requirement": "required",
+      "current_status": "missing_real_import_envelope"
+    },
+    {
+      "check_id": "resolve-reviewer-identity-record",
+      "resolver_id": "reviewer-identity-record-resolver",
+      "target": "reviewer_identity_record_reference",
+      "requirement": "required",
+      "current_status": "missing_real_import_envelope"
+    },
+    {
+      "check_id": "resolve-source-bibliography-attachment",
+      "resolver_id": "attachment-or-waiver-record-resolver",
+      "target": "source_bibliography_attachment",
+      "requirement": "required_attachment_or_authorized_waiver",
+      "current_status": "missing_real_import_envelope"
+    },
+    {
+      "check_id": "resolve-fact-boundary-table-attachment",
+      "resolver_id": "attachment-or-waiver-record-resolver",
+      "target": "fact_boundary_table_attachment",
+      "requirement": "required_attachment_or_authorized_waiver",
+      "current_status": "missing_real_import_envelope"
+    },
+    {
+      "check_id": "resolve-authorization-or-consent-attachment",
+      "resolver_id": "attachment-or-waiver-record-resolver",
+      "target": "authorization_or_consent_attachment",
+      "requirement": "required_attachment_or_authorized_waiver",
+      "current_status": "missing_real_import_envelope"
+    },
+    {
+      "check_id": "resolve-sample-validation-attachment",
+      "resolver_id": "attachment-or-waiver-record-resolver",
+      "target": "sample_validation_attachment",
+      "requirement": "required_attachment_or_authorized_waiver",
+      "current_status": "missing_real_import_envelope"
+    },
+    {
+      "check_id": "resolve-reviewer-identity-role-attachment",
+      "resolver_id": "attachment-or-waiver-record-resolver",
+      "target": "reviewer_identity_and_role_attachment",
+      "requirement": "required_attachment_or_authorized_waiver",
+      "current_status": "missing_real_import_envelope"
+    },
+    {
+      "check_id": "resolve-final-decision-record-attachment",
+      "resolver_id": "attachment-or-waiver-record-resolver",
+      "target": "final_decision_record_attachment",
+      "requirement": "required_attachment_or_authorized_waiver",
+      "current_status": "missing_real_import_envelope"
+    },
+    {
+      "check_id": "resolve-signature-record",
+      "resolver_id": "signature-record-resolver",
+      "target": "signature_record_reference",
+      "requirement": "required",
+      "current_status": "missing_real_import_envelope"
+    },
+    {
+      "check_id": "resolve-formal-patch-request-record",
+      "resolver_id": "formal-patch-request-record-resolver",
+      "target": "formal_patch_request_record_reference",
+      "requirement": "conditional_when_explicit_formal_patch_request_true",
+      "current_status": "not_applicable_until_explicit_request"
+    }
+  ],
+  "blank_import_envelope_routes": [
+    {
+      "import_route_id": "real-import-route-001",
+      "source_reviewer_intake_id": "real-reviewer-intake-001",
+      "source_handoff_package_id": "human-handoff-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "reviewer_role": "事实/工艺流程审稿负责人",
+      "assignment_or_followup_id": "dispatch-signature-001",
+      "evidence_package_id": "evidence-freeze-package-001",
+      "allowed_review_decisions": [
+        "approved",
+        "rejected_for_rework"
+      ],
+      "blank_external_field_ids": [
+        "source_system",
+        "source_record_id",
+        "reviewer_name_or_group",
+        "reviewer_identity_record_reference",
+        "attachment_record_manifest",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "import_status": "blocked_blank_import_envelope",
+      "real_submission_imported": false
+    },
+    {
+      "import_route_id": "real-import-route-002",
+      "source_reviewer_intake_id": "real-reviewer-intake-002",
+      "source_handoff_package_id": "human-handoff-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "reviewer_role": "材料工具与去重合并审稿负责人",
+      "assignment_or_followup_id": "dispatch-signature-002",
+      "evidence_package_id": "evidence-freeze-package-001",
+      "allowed_review_decisions": [
+        "approved",
+        "rejected_for_rework"
+      ],
+      "blank_external_field_ids": [
+        "source_system",
+        "source_record_id",
+        "reviewer_name_or_group",
+        "reviewer_identity_record_reference",
+        "attachment_record_manifest",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "import_status": "blocked_blank_import_envelope",
+      "real_submission_imported": false
+    },
+    {
+      "import_route_id": "real-import-route-003",
+      "source_reviewer_intake_id": "real-reviewer-intake-003",
+      "source_handoff_package_id": "human-handoff-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "reviewer_role": "授权与证据附件负责人",
+      "assignment_or_followup_id": "dispatch-signature-003",
+      "evidence_package_id": "evidence-freeze-package-001",
+      "allowed_review_decisions": [
+        "approved",
+        "rejected_for_rework"
+      ],
+      "blank_external_field_ids": [
+        "source_system",
+        "source_record_id",
+        "reviewer_name_or_group",
+        "reviewer_identity_record_reference",
+        "attachment_record_manifest",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "import_status": "blocked_blank_import_envelope",
+      "real_submission_imported": false
+    },
+    {
+      "import_route_id": "real-import-route-004",
+      "source_reviewer_intake_id": "real-reviewer-intake-004",
+      "source_handoff_package_id": "human-handoff-package-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "reviewer_role": "人工 Patch 复核负责人",
+      "assignment_or_followup_id": "dispatch-signature-004",
+      "evidence_package_id": "evidence-freeze-package-001",
+      "allowed_review_decisions": [
+        "approved",
+        "rejected_for_rework"
+      ],
+      "blank_external_field_ids": [
+        "source_system",
+        "source_record_id",
+        "reviewer_name_or_group",
+        "reviewer_identity_record_reference",
+        "attachment_record_manifest",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "import_status": "blocked_blank_import_envelope",
+      "real_submission_imported": false
+    },
+    {
+      "import_route_id": "real-import-route-005",
+      "source_reviewer_intake_id": "real-reviewer-intake-005",
+      "source_handoff_package_id": "human-handoff-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "reviewer_role": "医疗伦理审稿负责人",
+      "assignment_or_followup_id": "repair-evidence-followup-001",
+      "evidence_package_id": "evidence-freeze-package-002",
+      "allowed_review_decisions": [
+        "approved_for_resubmission",
+        "rejected_for_more_evidence"
+      ],
+      "blank_external_field_ids": [
+        "source_system",
+        "source_record_id",
+        "reviewer_name_or_group",
+        "reviewer_identity_record_reference",
+        "attachment_record_manifest",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "import_status": "blocked_blank_import_envelope",
+      "real_submission_imported": false
+    },
+    {
+      "import_route_id": "real-import-route-006",
+      "source_reviewer_intake_id": "real-reviewer-intake-006",
+      "source_handoff_package_id": "human-handoff-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "reviewer_role": "授权与证据附件负责人",
+      "assignment_or_followup_id": "repair-evidence-followup-002",
+      "evidence_package_id": "evidence-freeze-package-002",
+      "allowed_review_decisions": [
+        "approved_for_resubmission",
+        "rejected_for_more_evidence"
+      ],
+      "blank_external_field_ids": [
+        "source_system",
+        "source_record_id",
+        "reviewer_name_or_group",
+        "reviewer_identity_record_reference",
+        "attachment_record_manifest",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "import_status": "blocked_blank_import_envelope",
+      "real_submission_imported": false
+    },
+    {
+      "import_route_id": "real-import-route-007",
+      "source_reviewer_intake_id": "real-reviewer-intake-007",
+      "source_handoff_package_id": "human-handoff-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "reviewer_role": "事实边界审稿负责人",
+      "assignment_or_followup_id": "repair-evidence-followup-003",
+      "evidence_package_id": "evidence-freeze-package-002",
+      "allowed_review_decisions": [
+        "approved_for_resubmission",
+        "rejected_for_more_evidence"
+      ],
+      "blank_external_field_ids": [
+        "source_system",
+        "source_record_id",
+        "reviewer_name_or_group",
+        "reviewer_identity_record_reference",
+        "attachment_record_manifest",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "import_status": "blocked_blank_import_envelope",
+      "real_submission_imported": false
+    },
+    {
+      "import_route_id": "real-import-route-008",
+      "source_reviewer_intake_id": "real-reviewer-intake-008",
+      "source_handoff_package_id": "human-handoff-package-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "reviewer_role": "审稿签署管理员",
+      "assignment_or_followup_id": "repair-evidence-followup-004",
+      "evidence_package_id": "evidence-freeze-package-002",
+      "allowed_review_decisions": [
+        "approved_for_resubmission",
+        "rejected_for_more_evidence"
+      ],
+      "blank_external_field_ids": [
+        "source_system",
+        "source_record_id",
+        "reviewer_name_or_group",
+        "reviewer_identity_record_reference",
+        "attachment_record_manifest",
+        "signed_at",
+        "signature_record_reference"
+      ],
+      "import_status": "blocked_blank_import_envelope",
+      "real_submission_imported": false
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "real-submission-import-envelope-schema-created",
+      "status": "met_as_contract_only",
+      "target_count": 24,
+      "current_count": 24
+    },
+    {
+      "gate_id": "import-validation-rules-created",
+      "status": "met",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "simulation-rejection-rules-created",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "all-known-fixtures-explicitly-rejected",
+      "status": "met",
+      "target_count": 14,
+      "current_count": 14
+    },
+    {
+      "gate_id": "external-record-resolver-contracts-created",
+      "status": "met_as_contract_only_not_run",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "record-resolution-checklist-created",
+      "status": "met_as_unresolved_checklist",
+      "target_count": 10,
+      "current_count": 10
+    },
+    {
+      "gate_id": "role-specific-import-routes-created",
+      "status": "met_as_blank_routes",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "real-submission-imports-still-zero",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_25_exit_gates": [
+    {
+      "gate_id": "real-submission-import-contract-separated-from-fixtures",
+      "status": "met",
+      "target_count": 24,
+      "current_count": 24
+    },
+    {
+      "gate_id": "fixture-and-simulation-rejection-created",
+      "status": "met",
+      "target_count": 4,
+      "current_count": 4
+    },
+    {
+      "gate_id": "external-record-resolution-contracts-created",
+      "status": "met_as_contract_only_not_run",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "eight-role-import-routes-created",
+      "status": "met_as_blank_routes",
+      "target_count": 8,
+      "current_count": 8
+    },
+    {
+      "gate_id": "no-real-import-or-signature-claimed",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

@@ -6,12 +6,14 @@ import type {
   EntryDetail,
   NarrativePatternId,
   PresentationStyle,
+  ProfessionalTextTypeContract,
   RecommendedNarrativePattern,
   StoryStructureType,
   TruthMode,
   VideoType,
 } from '@shared/types.js';
 import { NARRATIVE_PATTERN_LIBRARY, NARRATIVE_PATTERN_VIDEO_TYPE_MAP } from './narrative-pattern-library.js';
+import { PROFESSIONAL_TEXT_TYPE_CONTRACTS } from './professional-text-contracts.js';
 
 export type GenreOutputField =
   | 'characters'
@@ -74,6 +76,7 @@ export interface GenreStoryProfile extends GenreStoryMatrixFields {
   quality_rules: string[];
   repair_guidance: string[];
   dramatic_structure: GenreDramaticStructure;
+  professional_text_contract: ProfessionalTextTypeContract;
 }
 
 export interface GenreSampleGuidance {
@@ -106,7 +109,10 @@ export interface GenreStoryMatrixResolution {
   warnings: string[];
 }
 
-type GenreStoryProfileBase = Omit<GenreStoryProfile, keyof GenreStoryMatrixFields>;
+type GenreStoryProfileBase = Omit<
+  GenreStoryProfile,
+  keyof GenreStoryMatrixFields | 'professional_text_contract'
+>;
 
 type NarrativePatternSubjectRule = {
   family: string;
@@ -1019,6 +1025,7 @@ export const GENRE_STORY_PROFILES = Object.fromEntries(
     {
       ...profile,
       ...GENRE_MATRIX_DEFAULTS[videoType as VideoType],
+      professional_text_contract: PROFESSIONAL_TEXT_TYPE_CONTRACTS[videoType as VideoType],
     },
   ]),
 ) as Record<VideoType, GenreStoryProfile>;

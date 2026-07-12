@@ -1,0 +1,8 @@
+{
+  "schema_version": "professional-benchmark-trusted-verifier-policy/v1",
+  "policy_id": "all-format-stage8-finalization-preparation-20260712",
+  "trust_source": "external_configuration",
+  "evidence_environment": "external",
+  "established_at": "2026-07-12T18:00:00.000Z",
+  "keys": []
+}

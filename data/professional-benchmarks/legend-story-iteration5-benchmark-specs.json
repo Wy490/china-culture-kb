@@ -1,0 +1,143 @@
+{
+  "schema_version": "legend-story-professional-benchmark-specs/v1",
+  "created_at": "2026-07-11T00:00:00.000+08:00",
+  "video_type": "legend_story",
+  "policy": {
+    "real_model_output_required": true,
+    "model_and_prompt_version_required": true,
+    "initial_and_final_draft_required": true,
+    "human_blind_review_required_for_professional_pass": true,
+    "fixture_or_simulation_counts_as_professional_pass": false,
+    "legend_content_counts_as_verified_history": false
+  },
+  "summary": {
+    "fixed_project_spec_count": 5,
+    "fixed_real_model_project_count": 0,
+    "fixed_real_model_project_pass_count": 0,
+    "failure_fixture_count": 3,
+    "human_blind_review_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "legend-benchmark-001-quyuan-dragon-boat",
+      "source_province": "湖南",
+      "source_entry": "屈原投江汨罗——端午节起源",
+      "human_trial": "汨罗百姓在失去屈原后，选择用一次次下水寻找和投食行动守住共同记忆",
+      "symbolic_motif": "江面上反复出现的舟桨与缠线米团",
+      "required_version_focus": [
+        "屈原人物与投江文献线索",
+        "龙舟、投食、托梦与五彩线等民间版本分层",
+        "不得把单一起源叙事写成无争议的习俗史结论"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "legend-benchmark-002-yandi-herbs",
+      "source_province": "湖南",
+      "source_entry": "炎帝神农氏——炎陵传说",
+      "human_trial": "面对未知草木和族人病痛，传说中的神农选择亲自尝试并承担代价",
+      "symbolic_motif": "药篮中由空到满、又留下缺口的草叶",
+      "required_version_focus": [
+        "上古神话、古籍文本传统与炎陵地方传说分层",
+        "尝百草、白鹿守陵、龙脑石不得写成确证历史",
+        "不得产生医学疗效、用药或危险尝试指导"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "legend-benchmark-003-xiangfei-bamboo",
+      "source_province": "湖南",
+      "source_entry": "洞庭湖与娥皇女英——湘妃竹传说",
+      "human_trial": "娥皇女英在追寻与失去之间选择继续前行，让个人哀痛转化为地方记忆",
+      "symbolic_motif": "竹上由雨痕到泪痕的斑纹",
+      "required_version_focus": [
+        "舜帝古史叙事、湘妃文学传统与君山地方附会分层",
+        "泪染斑竹和投水结局必须标注神话传说性质",
+        "象征意象必须服务人物选择而非只做唯美奇观"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "legend-benchmark-004-liuhai-woodcutter",
+      "source_province": "湖南",
+      "source_entry": "刘海砍樵——人仙之恋的湖南民间传说",
+      "human_trial": "刘海在胡大姐身份显露与世俗压力中选择是否守住已经作出的承诺",
+      "symbolic_motif": "由劳作工具变为共同生活见证的柴担",
+      "required_version_focus": [
+        "武陵口述版本、长沙花鼓戏改编与现代传播版本分层",
+        "不得直接复制仍受版权保护的具体剧本文本和唱词",
+        "狐仙身份必须推动信任考验而非替人物解决一切"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "legend-benchmark-005-liuyi-letter",
+      "source_province": "湖南",
+      "source_entry": "柳毅传书——洞庭湖畔的书生与龙女",
+      "human_trial": "柳毅面对陌生龙女的求助，选择承担一封无法验证却可能带来危险的书信",
+      "symbolic_motif": "被水浸湿又重新显字的书信",
+      "required_version_focus": [
+        "唐代李朝威文学文本、洞庭地方口述与戏曲改编分层",
+        "柳毅井是现实地理锚点，不证明龙宫事件真实发生",
+        "传书行动和凡人守信必须高于龙宫奇观"
+      ],
+      "status": "awaiting_real_model_run",
+      "professional_passed": false
+    }
+  ],
+  "failure_fixtures": [
+    {
+      "fixture_id": "legend-failure-001-version-collapse",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "把文学文本、地方口述和戏曲改编合并成唯一真实历史版本。",
+      "mutations": [
+        "remove_version_boundaries",
+        "remove_unknowns_and_disclaimers"
+      ],
+      "expected_hard_gate_ids": [
+        "version_boundary_missing",
+        "truth_boundary_missing"
+      ],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "legend-failure-002-spectacle-without-human-choice",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "只有龙宫、水光和法术奇观，凡人没有目标、考验、选择与后果。",
+      "mutations": [
+        "remove_supernatural_function",
+        "remove_human_goal_and_trial",
+        "remove_choice_and_consequence"
+      ],
+      "expected_hard_gate_ids": [
+        "supernatural_function_missing",
+        "human_trial_missing",
+        "choice_or_consequence_missing"
+      ],
+      "professional_passed": false
+    },
+    {
+      "fixture_id": "legend-failure-003-no-motif-or-oral-rhythm",
+      "fixture_kind": "simulation_failure_fixture",
+      "description": "意象只出现一次且没有意义变化，全文改成现代解释性旁白。",
+      "mutations": [
+        "remove_symbolic_motif",
+        "remove_motif_repetition",
+        "remove_oral_rhythm_rules",
+        "remove_scene_turns_and_boundaries"
+      ],
+      "expected_hard_gate_ids": [
+        "symbolic_motif_missing",
+        "motif_repetition_missing",
+        "scene_action_or_turn_missing",
+        "oral_rhythm_missing",
+        "scene_legend_boundary_missing"
+      ],
+      "professional_passed": false
+    }
+  ]
+}

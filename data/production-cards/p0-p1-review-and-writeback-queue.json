@@ -1,0 +1,993 @@
+{
+  "schema_version": "p0-p1-review-and-writeback-queue/v1",
+  "updated_at": "2026-07-09",
+  "status": "pending_human_review",
+  "scope": "Iteration 8：P0/P1 黄金卡人工审稿包、候选写回草案队列和 Phase 2 候选 Domain Pack 首批审稿问题。",
+  "source_index_file": "data/production-cards/golden-card-unified-index.json",
+  "source_domain_pack_candidate_file": "data/domain-packs/phase2-candidate-rule-packs.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "manual_patch_required": true,
+    "allowed_after": [
+      "human_review_approved",
+      "source_or_authorization_evidence_attached",
+      "writeback_draft_created",
+      "manual_patch_reviewed"
+    ],
+    "prohibited_content": [
+      "generated_full_text",
+      "scene_breakdown",
+      "gears_segments",
+      "dialogue_bubbles",
+      "fictionalized_plot",
+      "unreviewed_source_claim",
+      "medical_instruction",
+      "sensitive_history_reenactment"
+    ]
+  },
+  "counts": {
+    "review_packet_count": 2,
+    "p0_card_count": 4,
+    "p1_card_count": 12,
+    "review_card_count": 16,
+    "writeback_draft_candidate_count": 16,
+    "domain_pack_review_question_count": 9
+  },
+  "review_packets": [
+    {
+      "packet_id": "p0-human-review-20260709",
+      "risk_tier": "p0",
+      "label": "最高优先级人工审稿包",
+      "status": "pending_human_review",
+      "card_count": 4,
+      "review_roles": [
+        "事实审稿",
+        "伦理审稿",
+        "片型导演审稿"
+      ],
+      "card_ids": [
+        "ai-comic-golden-nanjing-massacre-memory-evidence",
+        "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+        "documentary-golden-nanjing-massacre-memory-site",
+        "documentary-golden-xiangxi-miao-medicine-archive"
+      ],
+      "exit_criteria": [
+        "每张卡的事实、来源、伦理和表达边界均有明确审稿结论。",
+        "南京大屠杀题材不得出现猎奇、血腥复现、娱乐化或虚构证词冒充。",
+        "苗医苗药题材不得出现疗效承诺、药方比例、操作教程或患者隐私。",
+        "未通过 P0 审稿前不得进入正式写回队列。"
+      ]
+    },
+    {
+      "packet_id": "p1-human-review-20260709",
+      "risk_tier": "p1",
+      "label": "高优先级人工审稿包",
+      "status": "pending_human_review",
+      "card_count": 12,
+      "review_roles": [
+        "事实审稿",
+        "地方文化审稿",
+        "授权审稿",
+        "片型导演审稿"
+      ],
+      "card_ids": [
+        "ai-comic-golden-pingjiang-uprising-tianyue-night",
+        "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+        "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+        "ai-comic-golden-tujia-hand-waving-dance-circle",
+        "ai-comic-golden-wuchang-uprising-one-hour",
+        "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+        "heritage-promo-golden-tujia-hand-waving-ritual",
+        "heritage-promo-golden-sangzhi-folk-song-field-recording",
+        "documentary-golden-wuchang-uprising-red-building",
+        "documentary-golden-pingjiang-uprising-site",
+        "documentary-golden-sangzhi-folk-song-field",
+        "documentary-golden-tujia-hand-waving-site"
+      ],
+      "exit_criteria": [
+        "革命历史题材的时间线、人物、地点和多说法边界已确认。",
+        "民族仪式、民歌、舞蹈和纹样相关内容已有社区或机构授权边界。",
+        "曲词、曲谱、表演肖像和现场拍摄许可已列入补证任务。",
+        "通过审稿的字段只能进入候选写回草案，不直接改写省份 Markdown。"
+      ]
+    }
+  ],
+  "card_review_items": [
+    {
+      "review_item_id": "review-p0-001",
+      "packet_id": "p0-human-review-20260709",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "video_type": "ai_comic_drama",
+      "risk_tier": "p0",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_lanes": [
+        "sensitive_history_evidence_review",
+        "ai_comic_expression_review",
+        "seedance_prompt_boundary_review"
+      ],
+      "required_evidence_groups": [
+        "纪念馆或档案来源口径",
+        "虚构人物和虚构材料边界",
+        "Seedance prompt 无猎奇复现抽检"
+      ],
+      "decision_blockers": [
+        "虚构证词冒充真实证词",
+        "出现血腥或施暴复现",
+        "把来源说明写进观众稿"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p0-001",
+      "phase2_candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "review_item_id": "review-p0-002",
+      "packet_id": "p0-human-review-20260709",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "video_type": "heritage_promo",
+      "risk_tier": "p0",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_lanes": [
+        "medical_ethics_review",
+        "ethnic_heritage_consent_review",
+        "heritage_consent_review"
+      ],
+      "required_evidence_groups": [
+        "非遗项目和保护机构来源",
+        "拍摄机构、人物肖像和空间授权",
+        "医疗伦理和隐私边界说明"
+      ],
+      "decision_blockers": [
+        "出现疗效承诺或医疗建议",
+        "出现药方比例、剂量或操作教程",
+        "出现患者隐私或未授权诊疗空间"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p0-002",
+      "phase2_candidate_ids": [
+        "dp-medical-heritage-privacy-boundary",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "review_item_id": "review-p0-003",
+      "packet_id": "p0-human-review-20260709",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "entry_name": "南京大屠杀——中华民族最深的伤痕",
+      "video_type": "documentary_short",
+      "risk_tier": "p0",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_lanes": [
+        "sensitive_history_evidence_review",
+        "documentary_site_source_review",
+        "trauma_memory_expression_review"
+      ],
+      "required_evidence_groups": [
+        "纪念馆、审判档案和安全区来源口径",
+        "现实现场开放状态和拍摄许可",
+        "再现边界和观众稿克制表达抽检"
+      ],
+      "decision_blockers": [
+        "用再现画面替代真实影像或证词",
+        "出现猎奇暴力画面",
+        "改写遇难者数字、日期或来源口径"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p0-003",
+      "phase2_candidate_ids": [
+        "dp-sensitive-history-evidence-expression",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "review_item_id": "review-p0-004",
+      "packet_id": "p0-human-review-20260709",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "video_type": "documentary_short",
+      "risk_tier": "p0",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_lanes": [
+        "medical_ethics_review",
+        "ethnic_heritage_consent_review",
+        "documentary_site_source_review"
+      ],
+      "required_evidence_groups": [
+        "民族医药机构和档案来源",
+        "标本、展板、采访和现场拍摄许可",
+        "医疗伦理、患者隐私和非医疗建议说明"
+      ],
+      "decision_blockers": [
+        "诊疗过程或患者信息未经授权",
+        "将文化记录写成医疗指导",
+        "公开药方、剂量或治疗步骤"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p0-004",
+      "phase2_candidate_ids": [
+        "dp-medical-heritage-privacy-boundary",
+        "dp-ethnic-ritual-community-boundary",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-001",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "entry_name": "平江起义——从旧军队内部爆发的革命枪响",
+      "video_type": "ai_comic_drama",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_lanes": [
+        "revolutionary_history_source_review",
+        "ai_comic_expression_review"
+      ],
+      "required_evidence_groups": [
+        "起义时间线、旧址和人物来源",
+        "虚构传令兵边界",
+        "AI 漫剧表达不神化真实人物"
+      ],
+      "decision_blockers": [
+        "把虚构见证者写成真实人物",
+        "错置事件地点或时间",
+        "真实人物对白无来源却写成史实"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-001",
+      "phase2_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-002",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "video_type": "ai_comic_drama",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "ai_comic_expression_review"
+      ],
+      "required_evidence_groups": [
+        "公开展演和社区授权边界",
+        "舞步、服饰、仪式含义来源",
+        "虚构人物和代际冲突边界"
+      ],
+      "decision_blockers": [
+        "把示范动作写成全部仪式",
+        "擅自解释社区内部知识",
+        "民族文化被猎奇化或符号化"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-002",
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-003",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
+      "video_type": "ai_comic_drama",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "craft_process_review",
+        "ai_comic_expression_review"
+      ],
+      "required_evidence_groups": [
+        "侗锦工艺流程和纹样来源",
+        "社区、传承人和拍摄授权边界",
+        "太阳纹等纹样含义待核说明"
+      ],
+      "decision_blockers": [
+        "无来源解释纹样含义",
+        "把示范工序写成全部传统",
+        "虚构家庭故事反向写成真实传承史"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-003",
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-craft-material-tool-process",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-004",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "video_type": "ai_comic_drama",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "ai_comic_expression_review"
+      ],
+      "required_evidence_groups": [
+        "公开动作和仪式空间边界",
+        "社区授权要求",
+        "AI 漫剧虚构人物边界"
+      ],
+      "decision_blockers": [
+        "拍摄或描写未授权仪式空间",
+        "把公开动作写成全部传统",
+        "擅自解释禁忌和秘传内容"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-004",
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-005",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "video_type": "ai_comic_drama",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/ai-comic-drama-golden-cards.json",
+      "review_lanes": [
+        "revolutionary_history_source_review",
+        "ai_comic_expression_review"
+      ],
+      "required_evidence_groups": [
+        "10 月 9 日和 10 月 10 日事件链",
+        "第一枪多说法边界",
+        "虚构名单和衣袖线索边界"
+      ],
+      "decision_blockers": [
+        "把第一枪写成唯一无争议答案",
+        "混淆计划泄露和起义爆发日期",
+        "把虚构线索写成真实档案"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-005",
+      "phase2_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-ai-comic-continuity-shot-language"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-006",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "entry_name": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "video_type": "heritage_promo",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "heritage_consent_review"
+      ],
+      "required_evidence_groups": [
+        "非遗官方名录和保护单位",
+        "公开展演、服饰和舞步授权",
+        "社区叙述和传承人口径"
+      ],
+      "decision_blockers": [
+        "无授权使用表演片段",
+        "把民间说法写成官方定论",
+        "把示范流程写成完整仪式"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-006",
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-007",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "video_type": "heritage_promo",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "heritage_consent_review"
+      ],
+      "required_evidence_groups": [
+        "社区授权单和可拍范围",
+        "公开展演与仪式边界",
+        "官方名录和保护单位口径"
+      ],
+      "decision_blockers": [
+        "未授权仪式空间进入镜头",
+        "公开教学被写成全部传统",
+        "无来源解释仪式含义"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-007",
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-008",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "entry_name": "桑植民歌——长征路上的歌声与守望",
+      "video_type": "heritage_promo",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/heritage-promo-golden-cards.json",
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "performance_rights_review",
+        "heritage_consent_review"
+      ],
+      "required_evidence_groups": [
+        "民歌采录和演唱授权",
+        "歌词、曲谱和肖像权边界",
+        "红色记忆和社区讲述来源"
+      ],
+      "decision_blockers": [
+        "长引未授权歌词",
+        "把个人回忆写成通行史实",
+        "无授权录制或使用演唱片段"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-008",
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-heritage-process-consent"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-009",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "entry_name": "武昌起义——辛亥革命的第一声枪响",
+      "video_type": "documentary_short",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_lanes": [
+        "revolutionary_history_source_review",
+        "documentary_site_source_review"
+      ],
+      "required_evidence_groups": [
+        "红楼、首义广场和楚望台来源",
+        "第一枪多说法边界",
+        "复原件、展陈和真实影像分层"
+      ],
+      "decision_blockers": [
+        "把复原图写成真实影像",
+        "把第一枪细节写成唯一结论",
+        "混淆时间线节点"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-009",
+      "phase2_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-010",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "entry_name": "平江起义——从旧军队内部爆发的革命枪响",
+      "video_type": "documentary_short",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_lanes": [
+        "revolutionary_history_source_review",
+        "documentary_site_source_review"
+      ],
+      "required_evidence_groups": [
+        "天岳书院和纪念空间来源",
+        "彭德怀、滕代远、黄公略相关事实边界",
+        "旧址、展陈和再现场景分层"
+      ],
+      "decision_blockers": [
+        "虚构对白写成真实发言",
+        "旧址现状未经复核",
+        "再现画面替代真实史料"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-010",
+      "phase2_candidate_ids": [
+        "dp-revolutionary-history-event-reconstruction",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-011",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "entry_name": "桑植民歌——长征路上的歌声与守望",
+      "video_type": "documentary_short",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "performance_rights_review",
+        "documentary_site_source_review"
+      ],
+      "required_evidence_groups": [
+        "田野录音和采访授权",
+        "歌词、曲调和表演肖像权",
+        "红色历史和地方记忆来源"
+      ],
+      "decision_blockers": [
+        "未授权采录或长引歌词",
+        "把个人口述替代通行史实",
+        "现场录音空间未经授权"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-011",
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-performance-rights-and-stage-assets",
+        "dp-documentary-site-source-boundary"
+      ]
+    },
+    {
+      "review_item_id": "review-p1-012",
+      "packet_id": "p1-human-review-20260709",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "video_type": "documentary_short",
+      "risk_tier": "p1",
+      "source_card_file": "data/production-cards/documentary-short-golden-cards.json",
+      "review_lanes": [
+        "ethnic_heritage_consent_review",
+        "documentary_site_source_review"
+      ],
+      "required_evidence_groups": [
+        "摆手堂、广场和展演空间来源",
+        "社区授权和可拍范围",
+        "公开仪式、教学示范和内部知识边界"
+      ],
+      "decision_blockers": [
+        "未授权仪式空间入镜",
+        "无来源解释禁忌或秘传内容",
+        "把示范动作写成全部传统"
+      ],
+      "writeback_candidate_id": "writeback-candidate-p1-012",
+      "phase2_candidate_ids": [
+        "dp-ethnic-ritual-community-boundary",
+        "dp-documentary-site-source-boundary"
+      ]
+    }
+  ],
+  "writeback_draft_queue": [
+    {
+      "writeback_candidate_id": "writeback-candidate-p0-001",
+      "card_id": "ai-comic-golden-nanjing-massacre-memory-evidence",
+      "risk_tier": "p0",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p0-002",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "risk_tier": "p0",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p0-003",
+      "card_id": "documentary-golden-nanjing-massacre-memory-site",
+      "risk_tier": "p0",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p0-004",
+      "card_id": "documentary-golden-xiangxi-miao-medicine-archive",
+      "risk_tier": "p0",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-001",
+      "card_id": "ai-comic-golden-pingjiang-uprising-tianyue-night",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-002",
+      "card_id": "ai-comic-golden-sangzhi-baizu-zhanggu-last-step",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-003",
+      "card_id": "ai-comic-golden-tongdao-dong-brocade-sun-pattern",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-004",
+      "card_id": "ai-comic-golden-tujia-hand-waving-dance-circle",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-005",
+      "card_id": "ai-comic-golden-wuchang-uprising-one-hour",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-006",
+      "card_id": "heritage-promo-golden-sangzhi-baizu-zhanggu-process",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-007",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-008",
+      "card_id": "heritage-promo-golden-sangzhi-folk-song-field-recording",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-009",
+      "card_id": "documentary-golden-wuchang-uprising-red-building",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-010",
+      "card_id": "documentary-golden-pingjiang-uprising-site",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-011",
+      "card_id": "documentary-golden-sangzhi-folk-song-field",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    },
+    {
+      "writeback_candidate_id": "writeback-candidate-p1-012",
+      "card_id": "documentary-golden-tujia-hand-waving-site",
+      "risk_tier": "p1",
+      "candidate_status": "blocked_pending_human_review",
+      "target_policy": "manual_patch_candidate_only",
+      "allowed_field_groups_after_approval": [
+        "reviewed_evidence_boundary_summary",
+        "reviewed_production_material_summary",
+        "reviewed_forbidden_claims",
+        "reviewed_source_or_authorization_gaps"
+      ],
+      "required_gate_ids": [
+        "human_review_approved",
+        "source_evidence_attached",
+        "manual_patch_required"
+      ]
+    }
+  ],
+  "domain_pack_review_questions": [
+    {
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "review_status": "pending_domain_review",
+      "first_review_questions": [
+        "是否需要把创伤历史表达规则拆成战争、屠杀、灾害等不同子类？",
+        "纪念馆、名单、档案和仪式的画面边界是否足以阻止猎奇复现？",
+        "哪些数字、日期和机构口径必须固定为不可改写项？"
+      ],
+      "promotion_blockers": [
+        "缺少南京以外的同类严肃题材验证",
+        "尚未完成人工敏感历史审稿"
+      ]
+    },
+    {
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "review_status": "pending_domain_review",
+      "first_review_questions": [
+        "民族医药题材是否需要独立的医疗伦理审稿人角色？",
+        "文化记录、医学科普和医疗建议之间的边界如何写成机器可检规则？",
+        "哪些场景默认不可拍：诊疗室、患者、处方、药材处理还是全部内部空间？"
+      ],
+      "promotion_blockers": [
+        "缺少微纪录苗医苗药边界回归样本",
+        "尚未确认机构、肖像和患者隐私授权模板"
+      ]
+    },
+    {
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "review_status": "pending_domain_review",
+      "first_review_questions": [
+        "多说法细节在观众稿中应使用何种固定表达？",
+        "虚构见证者能否出现在革命历史漫剧中，边界如何标注？",
+        "旧址、展陈、复原件和真实历史影像的字幕提示是否需要模板化？"
+      ],
+      "promotion_blockers": [
+        "平江起义微纪录样本仍未回归",
+        "革命历史事实审稿尚未完成"
+      ]
+    },
+    {
+      "candidate_id": "dp-heritage-process-consent",
+      "review_status": "pending_domain_review",
+      "first_review_questions": [
+        "材料、工具、动作、声音、传承关系是否足以覆盖所有非遗宣传片？",
+        "授权字段是否需要区分个人、机构、社区和场地四类？",
+        "哪些非遗项目需要额外医疗、祭祀、版权或民族文化边界？"
+      ],
+      "promotion_blockers": [
+        "戏曲类和民族仪式类授权模板尚未统一",
+        "未达到每个候选包 3 个真实项目调用验证"
+      ]
+    },
+    {
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "review_status": "pending_domain_review",
+      "first_review_questions": [
+        "公开表演、教学示范、节庆仪式和社区内部知识的四层边界是否充分？",
+        "社区授权应如何记录到可机器读取字段？",
+        "生成提示词中哪些词会导致民族文化猎奇化或神秘化？"
+      ],
+      "promotion_blockers": [
+        "社区授权样例不足",
+        "民族文化审稿人角色尚未落地"
+      ]
+    },
+    {
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "review_status": "pending_domain_review",
+      "first_review_questions": [
+        "曲目、唱词、曲谱、肖像和剧团授权是否要拆成独立 gate？",
+        "未授权唱词在观众稿、prompt 和字幕里应如何统一禁用？",
+        "舞台资产、剧目资产和演员肖像资产是否需要不同写回字段？"
+      ],
+      "promotion_blockers": [
+        "版权授权字段尚未形成统一模板",
+        "舞台类样本数量不足"
+      ]
+    },
+    {
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "review_status": "pending_domain_review",
+      "first_review_questions": [
+        "现实现场、来源线索、B-roll、再现边界是否可以成为所有微纪录片必填字段？",
+        "复原件、复制件和真实影像的字幕提示是否需要自动生成？",
+        "个人口述和官方资料冲突时应如何进入 known_gaps？"
+      ],
+      "promotion_blockers": [
+        "现场开放状态和拍摄许可尚未批量补证",
+        "微纪录样本还没有覆盖全国多省题材"
+      ]
+    },
+    {
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "review_status": "pending_domain_review",
+      "first_review_questions": [
+        "角色稳定标签、道具锚点和多镜头连续性是否应进入统一 schema？",
+        "敏感历史和民族文化题材是否需要禁用部分爽感钩子？",
+        "Seedance prompt 污染检测词表是否需要从样本中抽取为正式规则？"
+      ],
+      "promotion_blockers": [
+        "AI 漫剧样本仍不足 5 条",
+        "未覆盖系列连续性样本"
+      ]
+    },
+    {
+      "candidate_id": "dp-craft-material-tool-process",
+      "review_status": "pending_domain_review",
+      "first_review_questions": [
+        "工艺材料、工具、动作、声音和成品使用是否要拆成五段式模板？",
+        "博物馆文物、现代复原件和示范道具如何防止混写？",
+        "危险工艺或秘传细节应如何写成不可生成项？"
+      ],
+      "promotion_blockers": [
+        "工艺样本仍未覆盖足够多门类",
+        "工序来源和现场复核不足"
+      ]
+    }
+  ],
+  "iteration_8_exit_gates": [
+    {
+      "gate_id": "p0-p1-review-packets-created",
+      "status": "met",
+      "target_count": 2,
+      "current_count": 2
+    },
+    {
+      "gate_id": "writeback-draft-queue-created",
+      "status": "met_as_candidate_queue",
+      "target_count": 16,
+      "current_count": 16
+    },
+    {
+      "gate_id": "domain-pack-review-questions-created",
+      "status": "met",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "no-direct-province-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

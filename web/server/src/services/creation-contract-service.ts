@@ -175,7 +175,11 @@ export function knowledgePackFromMaterialPack(materialPack: MaterialPack): Knowl
 export function resolveCreationUseCase(request: StoryGenerateRequest, videoType: VideoType): CreationUseCase {
   if (request.creation_use_case) return request.creation_use_case;
   if (request.source_material_mode === 'adapt_user_novel') return 'adapted_ai_comic';
-  if (videoType === 'ai_comic_drama') return 'original_ai_comic';
+  if (videoType === 'ai_comic_drama') {
+    return request.entry_name || request.knowledge_pack || request.material_pack
+      ? 'adapted_ai_comic'
+      : 'original_ai_comic';
+  }
   if (videoType === 'documentary_short') return 'documentary_short';
   if (videoType === 'education_training') return 'education_training';
   if (videoType === 'city_brand_promo' || videoType === 'social_short') return 'brand_commercial';

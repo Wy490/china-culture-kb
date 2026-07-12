@@ -1,0 +1,461 @@
+{
+  "schema_version": "heritage-promo-golden-regression-fixtures/v1",
+  "updated_at": "2026-07-09",
+  "source_cards_file": "data/production-cards/heritage-promo-golden-cards.json",
+  "review_status": "local_regression_fixture_pending_human_review",
+  "purpose": "为非遗/工艺宣传片黄金卡抽样建立离线回归样本，覆盖宣传片分镜、GEARS 分段、质量报告和风险边界。",
+  "fixtures": [
+    {
+      "fixture_id": "regression-changde-sixian-yangqin-promo",
+      "card_id": "heritage-promo-golden-changde-sixian-yangqin",
+      "entry_name": "常德丝弦——湘北水乡的扬琴说唱",
+      "regression_scope": [
+        "promo_scene_breakdown",
+        "gears_segments",
+        "quality_report"
+      ],
+      "promo": {
+        "promoId": "20260709-heritage-promo-regression-changde-sixian",
+        "project_id": "20260709-project-heritage-promo-changde-sixian",
+        "title": "扬琴一响，水乡开口",
+        "generation_type": "production_card_regression_fixture",
+        "video_type": "heritage_promo",
+        "presentation_style": "voiceover_montage",
+        "source_entry": "常德丝弦——湘北水乡的扬琴说唱",
+        "logline": "从一把扬琴的调音声进入常德丝弦，展示坐唱、伴奏、曲本、排练和当代小剧场传承。",
+        "theme": "方言、丝弦、水乡记忆、当代传承",
+        "full_text": "清晨的排练厅里，扬琴弦被轻轻调紧。演员翻开曲本，常德方言还没有出口，琴槌已经把节奏点亮。老艺人提醒年轻伴奏员：先把板眼听稳，再让词走出来。镜头从谱架、琴槌、坐唱队形，转到小剧场的观众席。常德丝弦不是只留在档案里的曲艺，它仍在排练、演出、被年轻人重新听见。",
+        "scene_breakdown": [
+          {
+            "scene_id": 1,
+            "title": "调弦开场",
+            "duration_sec": 10,
+            "location": "常德丝弦排练厅",
+            "time_of_day": "清晨",
+            "dramatic_function": "声音钩子",
+            "plot": "扬琴摆在排练厅中央，年轻伴奏员先调弦，再轻敲试音。",
+            "key_action": "琴槌落下，扬琴声打开第一层水乡声场。",
+            "characters": ["年轻伴奏员"],
+            "visual_prompt": "排练厅，扬琴，琴槌，谱架，年轻伴奏员调弦，清晨侧光，画面克制清爽",
+            "camera_suggestion": "从琴弦微距开始，慢推到伴奏员手部",
+            "dialogue_or_narration": "旁白：一把扬琴，是常德丝弦最先开口的地方。"
+          },
+          {
+            "scene_id": 2,
+            "title": "曲本与方言",
+            "duration_sec": 12,
+            "location": "排练厅谱架旁",
+            "time_of_day": "上午",
+            "dramatic_function": "工艺流程",
+            "plot": "演员翻开曲本，老艺人纠正常德方言尾音和入板节奏。",
+            "key_action": "老艺人用手指轻点谱角，年轻演员跟着慢念一句。",
+            "characters": ["老艺人", "年轻演员"],
+            "visual_prompt": "谱架旁，曲本翻开，老艺人手指点谱角，年轻演员坐唱练习，背景有扬琴和二胡",
+            "camera_suggestion": "曲本特写切到双人侧面，保留手指点谱动作",
+            "dialogue_or_narration": "老艺人：字要从常德话里出来，板眼才站得住。"
+          },
+          {
+            "scene_id": 3,
+            "title": "丝弦合奏",
+            "duration_sec": 12,
+            "location": "常德丝弦排练厅",
+            "time_of_day": "上午",
+            "dramatic_function": "声画层次",
+            "plot": "扬琴、琵琶、二胡和三弦依次加入，坐唱队形形成。",
+            "key_action": "乐师互看一眼，同时进入下一拍。",
+            "characters": ["年轻伴奏员", "年轻演员", "老艺人"],
+            "visual_prompt": "排练厅坐唱队形，扬琴、琵琶、二胡、三弦同框，乐师互看后同步落拍",
+            "camera_suggestion": "横移扫过乐器，再停在扬琴琴槌落点",
+            "dialogue_or_narration": "旁白：丝弦不是一根弦，是一群声音互相等候。"
+          },
+          {
+            "scene_id": 4,
+            "title": "小剧场上场",
+            "duration_sec": 12,
+            "location": "常德小剧场",
+            "time_of_day": "傍晚",
+            "dramatic_function": "当代连接",
+            "plot": "演员走上小剧场，观众席安静下来，第一声扬琴响起。",
+            "key_action": "年轻演员扶正麦克风，向老艺人点头后开唱。",
+            "characters": ["年轻演员", "老艺人", "年轻伴奏员"],
+            "visual_prompt": "小剧场舞台，麦克风，茶馆桌椅，观众安静，扬琴在舞台一侧，演员点头准备开唱",
+            "camera_suggestion": "从观众席后方推向舞台，再切到麦克风近景",
+            "dialogue_or_narration": "旁白：今天，它从排练厅走到观众面前。"
+          },
+          {
+            "scene_id": 5,
+            "title": "曲本合上",
+            "duration_sec": 10,
+            "location": "小剧场后台",
+            "time_of_day": "演出后",
+            "dramatic_function": "余味收束",
+            "plot": "演出结束后，老艺人把曲本合上，递给年轻演员。",
+            "key_action": "年轻演员双手接过曲本，扬琴声在门外余响。",
+            "characters": ["老艺人", "年轻演员"],
+            "visual_prompt": "小剧场后台，老艺人合上曲本递给年轻演员，墙上有剧照和非遗展板，暖色灯光",
+            "camera_suggestion": "曲本合上的近景，最后定格在年轻演员接过曲本的手",
+            "dialogue_or_narration": "老艺人：下一次，你来起头。"
+          }
+        ],
+        "gears_segments": [
+          {
+            "segment_id": 1,
+            "source_scene_id": 1,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "扬琴调弦和试音打开宣传片声音钩子。",
+            "segment_prompt_hint": "琴弦微距、琴槌落点、清晨排练厅。"
+          },
+          {
+            "segment_id": 2,
+            "source_scene_id": 2,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "老艺人用曲本纠正常德方言和入板节奏。",
+            "segment_prompt_hint": "曲本、谱架、点谱角动作和双人侧面。"
+          },
+          {
+            "segment_id": 3,
+            "source_scene_id": 3,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "扬琴、琵琶、二胡、三弦依次加入，形成丝弦声场。",
+            "segment_prompt_hint": "横移扫过乐器，保留扬琴主奏锚点。"
+          },
+          {
+            "segment_id": 4,
+            "source_scene_id": 4,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "小剧场开演，常德丝弦走到观众面前。",
+            "segment_prompt_hint": "观众席、麦克风、茶馆桌椅和舞台灯光。"
+          },
+          {
+            "segment_id": 5,
+            "source_scene_id": 5,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "演出后曲本交到年轻演员手中，留下传承动作。",
+            "segment_prompt_hint": "曲本合上、双手接过、后台展板定格。"
+          }
+        ],
+        "quality_report": {
+          "schema_version": "heritage-promo-regression-quality/v1",
+          "risk_level": "medium",
+          "local_structure_status": "ready_for_promo_storyboard_regression",
+          "human_review_required": true,
+          "known_gaps": [
+            "曲目、唱词、演员肖像和小剧场拍摄需要授权。",
+            "九板十八调、代表曲目和出访资料仍需补证。",
+            "该样本不引用完整唱词，适合作为结构回归。"
+          ]
+        }
+      }
+    },
+    {
+      "fixture_id": "regression-xiangxi-miao-medicine-boundary-promo",
+      "card_id": "heritage-promo-golden-xiangxi-miao-medicine-boundary",
+      "entry_name": "湘西苗医苗药——武陵山中的民族医药体系",
+      "regression_scope": [
+        "promo_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "medical_boundary_check"
+      ],
+      "promo": {
+        "promoId": "20260709-heritage-promo-regression-xiangxi-miao-medicine",
+        "project_id": "20260709-project-heritage-promo-xiangxi-miao-medicine",
+        "title": "不是药方，是档案",
+        "generation_type": "production_card_regression_fixture",
+        "video_type": "heritage_promo",
+        "presentation_style": "documentary",
+        "source_entry": "湘西苗医苗药——武陵山中的民族医药体系",
+        "logline": "一名年轻记录者在非遗档案员和研究者带领下，学习如何拍摄苗医苗药文化而不越过医疗边界。",
+        "theme": "传统知识、档案、伦理边界、现代审慎传播",
+        "full_text": "年轻记录者第一次来到湘西民族医药机构，镜头没有进入诊疗室，而是先停在非遗项目页和药材标本前。档案员告诉她：这不是药方，这是需要被尊重和核实的传统知识。山地路上，采集者只示范如何识别环境和保护标本，不公开配方。最后，研究者在展柜旁补上一句：文化记录要让人看见传承，也要让边界清楚。",
+        "scene_breakdown": [
+          {
+            "scene_id": 1,
+            "title": "项目页前停下",
+            "duration_sec": 10,
+            "location": "湘西民族医药机构档案室",
+            "time_of_day": "上午",
+            "dramatic_function": "边界开场",
+            "plot": "年轻记录者准备拍摄诊疗空间，档案员先把她带到项目页和非遗档案前。",
+            "key_action": "档案员把项目页打印件放在桌上，示意镜头先拍来源。",
+            "characters": ["年轻记录者", "非遗档案员"],
+            "visual_prompt": "民族医药机构档案室，项目页打印件，档案盒，年轻记录者放下摄像机，档案员指向非遗资料",
+            "camera_suggestion": "从摄像机镜头盖切到项目页桌面，静态构图",
+            "dialogue_or_narration": "非遗档案员：先拍来源，再谈故事。"
+          },
+          {
+            "scene_id": 2,
+            "title": "标本柜",
+            "duration_sec": 12,
+            "location": "药材标本室",
+            "time_of_day": "上午",
+            "dramatic_function": "文化记录",
+            "plot": "研究者打开标本柜，只介绍药材作为传统知识和生态记录的存在。",
+            "key_action": "研究者戴手套取出标本夹，年轻记录者拍下标签而非配方。",
+            "characters": ["年轻记录者", "民族医药研究者"],
+            "visual_prompt": "药材标本室，标本柜，标签，研究者戴手套取出标本夹，年轻记录者记录标签，画面不展示配方",
+            "camera_suggestion": "标本标签微距后切到研究者手套动作",
+            "dialogue_or_narration": "旁白：在这里，名字和来源比秘方更先被看见。"
+          },
+          {
+            "scene_id": 3,
+            "title": "山地采集路",
+            "duration_sec": 12,
+            "location": "湘西山地药材生态路",
+            "time_of_day": "下午",
+            "dramatic_function": "生态连接",
+            "plot": "采集者带记录者走在山地小路上，只说明生态环境和采集许可的重要性。",
+            "key_action": "采集者停在路边，用手势示意不要随意采摘。",
+            "characters": ["年轻记录者", "药材采集者"],
+            "visual_prompt": "湘西山地小路，竹林，药篓，采集者戴手套停下，示意不要随意采摘，年轻记录者点头",
+            "camera_suggestion": "跟拍脚步到停步手势，保留山地环境声",
+            "dialogue_or_narration": "药材采集者：有些地方能看，不能随手拿。"
+          },
+          {
+            "scene_id": 4,
+            "title": "镜头停在门外",
+            "duration_sec": 12,
+            "location": "民族医药机构走廊",
+            "time_of_day": "下午",
+            "dramatic_function": "伦理边界",
+            "plot": "镜头经过诊室门口时停下，研究者提醒患者隐私和医疗场景不能随意拍。",
+            "key_action": "年轻记录者关掉录制键，把镜头转向展板和走廊说明。",
+            "characters": ["年轻记录者", "民族医药研究者"],
+            "visual_prompt": "民族医药机构走廊，诊室门口只拍门牌和展板，年轻记录者按下停止录制键，研究者在旁提醒",
+            "camera_suggestion": "手持镜头停在门外，随后转向公开展板",
+            "dialogue_or_narration": "民族医药研究者：文化记录不能越过人的隐私。"
+          },
+          {
+            "scene_id": 5,
+            "title": "展柜前的说明",
+            "duration_sec": 10,
+            "location": "非遗展柜前",
+            "time_of_day": "傍晚",
+            "dramatic_function": "审慎收束",
+            "plot": "记录者在展柜前录下结尾说明，强调本片是非遗文化记录。",
+            "key_action": "她把采访授权单夹进文件夹，镜头定格在非遗展柜。",
+            "characters": ["年轻记录者", "非遗档案员", "民族医药研究者"],
+            "visual_prompt": "非遗展柜前，授权单，文件夹，项目资料，年轻记录者收好资料，研究者和档案员站在一侧",
+            "camera_suggestion": "授权单近景拉到展柜全景，结尾定格",
+            "dialogue_or_narration": "旁白：看见传承，也要看见边界。"
+          }
+        ],
+        "gears_segments": [
+          {
+            "segment_id": 1,
+            "source_scene_id": 1,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "记录者先在项目页前停下，确认来源入口。",
+            "segment_prompt_hint": "项目页、档案盒和摄像机镜头盖。"
+          },
+          {
+            "segment_id": 2,
+            "source_scene_id": 2,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "研究者展示标本和标签，不公开配方。",
+            "segment_prompt_hint": "标本柜、手套、标签微距。"
+          },
+          {
+            "segment_id": 3,
+            "source_scene_id": 3,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "山地采集路上，采集者强调生态和许可。",
+            "segment_prompt_hint": "山地小路、药篓、停步手势。"
+          },
+          {
+            "segment_id": 4,
+            "source_scene_id": 4,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "镜头停在诊室门外，转向公开展板。",
+            "segment_prompt_hint": "停止录制键、门牌、展板。"
+          },
+          {
+            "segment_id": 5,
+            "source_scene_id": 5,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "授权单收进文件夹，宣传片以边界说明收束。",
+            "segment_prompt_hint": "授权单、文件夹、非遗展柜定格。"
+          }
+        ],
+        "quality_report": {
+          "schema_version": "heritage-promo-regression-quality/v1",
+          "risk_level": "high",
+          "local_structure_status": "ready_for_boundary_review_regression",
+          "human_review_required": true,
+          "medical_review_required": true,
+          "known_gaps": [
+            "项目页、保护单位和可拍机构需复核。",
+            "患者和诊疗空间不得进入未经授权的镜头。",
+            "本样本刻意不展示药方比例、诊疗操作和疗效承诺。"
+          ]
+        }
+      }
+    },
+    {
+      "fixture_id": "regression-tujia-hand-waving-ritual-promo",
+      "card_id": "heritage-promo-golden-tujia-hand-waving-ritual",
+      "entry_name": "土家族摆手舞——湘西土家的集体仪式",
+      "regression_scope": [
+        "promo_scene_breakdown",
+        "gears_segments",
+        "quality_report",
+        "ritual_boundary_check",
+        "community_consent_boundary"
+      ],
+      "promo": {
+        "promoId": "20260709-heritage-promo-regression-tujia-hand-waving",
+        "project_id": "20260709-project-heritage-promo-tujia-hand-waving",
+        "title": "围成一圈之前",
+        "generation_type": "production_card_regression_fixture",
+        "video_type": "heritage_promo",
+        "presentation_style": "documentary_montage",
+        "source_entry": "土家族摆手舞——湘西土家的集体仪式",
+        "logline": "从摆手堂前的授权确认、鼓点排练、手势教学和社区长者讲述进入土家族摆手舞，强调公开展演与仪式边界。",
+        "theme": "集体记忆、社区授权、仪式边界、当代传承",
+        "full_text": "摆手堂前，摄制组没有先开机，而是把拍摄范围和授权单放在桌上。鼓点响起前，长者提醒年轻舞者：镜头能拍见脚步，也要知道哪些内容不能替大家说明。排练从最基础的摆手动作开始，手臂、步伐、鼓点和队形慢慢合在一起。片尾，年轻人围成一圈，镜头停在公开展演的广场上，把未获授权的仪式内容留在画面之外。",
+        "scene_breakdown": [
+          {
+            "scene_id": 1,
+            "title": "授权单先入镜",
+            "duration_sec": 10,
+            "location": "湘西土家族摆手堂外桌前",
+            "time_of_day": "上午",
+            "dramatic_function": "社区授权入口",
+            "plot": "拍摄前，社区联系人、长者和摄制组确认可拍范围。",
+            "key_action": "长者把授权单推到桌面中央，摄像机镜头盖仍未取下。",
+            "characters": ["社区联系人", "长者", "年轻摄制员"],
+            "visual_prompt": "摆手堂外木桌，授权单，摄像机镜头盖，土家织锦纹样布边，长者手指指向可拍范围，纪录片宣传片质感",
+            "camera_suggestion": "从镜头盖特写切到授权单，再拉出摆手堂外景",
+            "dialogue_or_narration": "旁白：有些文化，第一步不是开拍，是先问清楚。"
+          },
+          {
+            "scene_id": 2,
+            "title": "鼓点起步",
+            "duration_sec": 12,
+            "location": "摆手堂前广场",
+            "time_of_day": "上午",
+            "dramatic_function": "声音和动作钩子",
+            "plot": "鼓手敲出基础节奏，年轻舞者跟着学习第一组公开动作。",
+            "key_action": "鼓槌落下，舞者手臂从胸前缓慢展开。",
+            "characters": ["鼓手", "年轻舞者", "长者"],
+            "visual_prompt": "摆手堂前广场，鼓手敲鼓，年轻舞者排列成半圆，手臂缓慢展开，山地村寨背景",
+            "camera_suggestion": "鼓面微距接手臂展开，保持队形连续",
+            "dialogue_or_narration": "旁白：鼓点一响，脚步先学会跟上集体。"
+          },
+          {
+            "scene_id": 3,
+            "title": "只拍公开动作",
+            "duration_sec": 12,
+            "location": "摆手堂门口",
+            "time_of_day": "中午",
+            "dramatic_function": "边界说明",
+            "plot": "长者说明哪些动作适合公开教学，哪些仪式语境不能由宣传片替代。",
+            "key_action": "年轻摄制员把镜头从门内转回广场，避免拍摄未授权内容。",
+            "characters": ["长者", "年轻摄制员", "年轻舞者"],
+            "visual_prompt": "摆手堂门口，长者抬手示意，摄像机从门内转回广场，公开动作排练在背景继续",
+            "camera_suggestion": "跟随摄像机转向，最后停在公开排练队形",
+            "dialogue_or_narration": "长者：能教给游客看的动作，不等于把所有仪式都交给镜头。"
+          },
+          {
+            "scene_id": 4,
+            "title": "队形围合",
+            "duration_sec": 12,
+            "location": "村寨广场",
+            "time_of_day": "下午",
+            "dramatic_function": "当代传承",
+            "plot": "年轻舞者、老人和孩子在公开展演排练中围成一圈。",
+            "key_action": "手臂向同一方向摆动，队形从半圆变成完整圆形。",
+            "characters": ["年轻舞者", "长者", "孩子"],
+            "visual_prompt": "村寨广场，老人孩子和年轻舞者围成圆形，手臂同向摆动，鼓手在一侧，公开展演氛围",
+            "camera_suggestion": "高机位看队形围合，再切到脚步和手部动作",
+            "dialogue_or_narration": "旁白：摆手舞的力量，不在一个人的动作里，在大家终于合上同一拍。"
+          },
+          {
+            "scene_id": 5,
+            "title": "镜头停在广场",
+            "duration_sec": 10,
+            "location": "摆手堂外广场边缘",
+            "time_of_day": "傍晚",
+            "dramatic_function": "边界收束",
+            "plot": "演练结束后，摄制员关机，长者把授权单收回文件夹。",
+            "key_action": "镜头最后停在广场和鼓上，不进入未授权仪式空间。",
+            "characters": ["社区联系人", "长者", "年轻摄制员"],
+            "visual_prompt": "傍晚广场，鼓静置，授权单收进文件夹，摆手堂门口保持远景，暖色余光",
+            "camera_suggestion": "从鼓面拉到广场远景，结尾淡出",
+            "dialogue_or_narration": "旁白：看见，是为了尊重；停下，也是尊重。"
+          }
+        ],
+        "gears_segments": [
+          {
+            "segment_id": 1,
+            "source_scene_id": 1,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "拍摄前先确认社区授权和可拍范围。",
+            "segment_prompt_hint": "授权单、镜头盖、摆手堂外木桌。"
+          },
+          {
+            "segment_id": 2,
+            "source_scene_id": 2,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "鼓点带出公开动作教学和队形节奏。",
+            "segment_prompt_hint": "鼓面微距、手臂展开、半圆队形。"
+          },
+          {
+            "segment_id": 3,
+            "source_scene_id": 3,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "长者提示公开动作不等于全部仪式内容。",
+            "segment_prompt_hint": "摄像机从门内转回广场，保留边界动作。"
+          },
+          {
+            "segment_id": 4,
+            "source_scene_id": 4,
+            "duration_sec": 12,
+            "panel_count": 5,
+            "script_text": "公开展演中，队形从半圆围合成圆。",
+            "segment_prompt_hint": "高机位圆形队伍、脚步和手部动作。"
+          },
+          {
+            "segment_id": 5,
+            "source_scene_id": 5,
+            "duration_sec": 10,
+            "panel_count": 4,
+            "script_text": "镜头停在广场，未授权仪式空间留在画面外。",
+            "segment_prompt_hint": "鼓、授权文件夹、摆手堂远景。"
+          }
+        ],
+        "quality_report": {
+          "schema_version": "heritage-promo-regression-quality/v1",
+          "risk_level": "medium_high",
+          "local_structure_status": "ready_for_ritual_boundary_regression",
+          "human_review_required": true,
+          "community_consent_review_required": true,
+          "known_gaps": [
+            "摆手堂、公开展演空间和社区授权口径需实地或机构复核。",
+            "舞步、鼓点、服饰和仪式说明不能由宣传片自行解释为全部传统。",
+            "本样本只使用公开教学和展演动作，不进入未授权仪式空间。"
+          ]
+        }
+      }
+    }
+  ],
+  "acceptance_gates": {
+    "promo_scene_breakdown": "每条 fixture 场景数不超过 5，且每场包含 location、plot、key_action、visual_prompt 和 camera_suggestion。",
+    "gears_segments": "每条 fixture 的 gears_segments 数量必须与 scene_breakdown 一致，并通过 source_scene_id 对齐。",
+    "quality_report": "每条 fixture 必须声明 risk_level、human_review_required 和 known_gaps。",
+    "medical_boundary_check": "医疗类 fixture 的观众稿和分镜不得包含疗效承诺、药方比例、操作教程或患者隐私。"
+  }
+}

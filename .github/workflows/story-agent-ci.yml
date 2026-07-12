@@ -1,0 +1,49 @@
+name: Story Agent CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'codex/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: story-agent-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Contracts, tests, builds, and fail-closed audits
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      STORY_AGENT_CI: '1'
+      STORY_GEN_LOCAL_ONLY: '1'
+      STORY_GEN_COMMAND: ''
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            mcp-server/package-lock.json
+
+      - name: Install Web dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Install MCP dependencies
+        run: npm ci
+        working-directory: mcp-server
+
+      - name: Run unified Story Agent CI
+        run: node scripts/story-agent-ci.mjs --mode ci

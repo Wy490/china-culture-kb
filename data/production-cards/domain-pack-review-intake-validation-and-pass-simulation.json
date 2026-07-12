@@ -1,0 +1,589 @@
+{
+  "schema_version": "domain-pack-review-intake-validation-pass-simulation/v1",
+  "updated_at": "2026-07-10",
+  "status": "validation_simulation_created_no_formal_patch",
+  "scope": "Iteration 17：为 Domain Pack 人工填报入口建立机器可读校验结果结构，模拟合法/非法填报样例，并把可通过样例转入人工 Patch 候选模拟队列；本文件不代表真实人工审稿通过，不创建正式 Patch，不写入正式素材库。",
+  "source_dashboard_file": "data/production-cards/domain-pack-review-dashboard-and-intake.json",
+  "source_evidence_ledger_file": "data/production-cards/domain-pack-review-evidence-ledger.json",
+  "source_patch_isolation_file": "data/production-cards/domain-pack-human-review-and-patch-isolation.json",
+  "simulation_markdown_file": "docs/production-cards/domain-pack-review-intake-validation-and-pass-simulation-20260710.md",
+  "formal_domain_pack_file": "data/domain-packs/china-culture.json",
+  "writeback_policy": {
+    "direct_writeback_to_province_markdown": false,
+    "province_markdown_written": false,
+    "formal_domain_pack_written": false,
+    "direct_write_to_china_culture_json": false,
+    "formal_patch_created": false,
+    "manual_patch_required": true,
+    "simulated_results_are_real_review": false,
+    "manual_patch_candidate_queue_is_formal_patch": false,
+    "current_layer": "intake_validation_and_pass_simulation_only"
+  },
+  "counts": {
+    "validation_rule_count": 12,
+    "actual_candidate_validation_count": 9,
+    "actual_candidate_pass_count": 0,
+    "simulated_intake_sample_count": 5,
+    "simulated_valid_sample_count": 2,
+    "simulated_invalid_sample_count": 3,
+    "manual_patch_candidate_simulation_count": 1,
+    "repair_resubmission_simulation_count": 1,
+    "formal_patch_count": 0,
+    "machine_gate_count": 9
+  },
+  "validation_rules": [
+    {
+      "rule_id": "candidate-id-must-match-known-candidate",
+      "source_field_id": "candidate_id",
+      "severity": "blocking",
+      "description": "填报的 candidate_id 必须匹配 9 个 Phase 2 候选 Domain Pack。"
+    },
+    {
+      "rule_id": "reviewer-name-required",
+      "source_field_id": "reviewer_name",
+      "severity": "blocking",
+      "description": "必须填写真实审稿人姓名或可追踪审稿组名称。"
+    },
+    {
+      "rule_id": "reviewer-role-required",
+      "source_field_id": "reviewer_role",
+      "severity": "blocking",
+      "description": "必须填写候选包要求的审稿角色。"
+    },
+    {
+      "rule_id": "decision-must-be-allowed",
+      "source_field_id": "decision",
+      "severity": "blocking",
+      "description": "决策只能是 approve_for_manual_patch_candidate、repair_required 或 reject_or_rebuild。"
+    },
+    {
+      "rule_id": "source-bibliography-required",
+      "source_field_id": "source_bibliography_attachment",
+      "severity": "blocking",
+      "description": "必须提供来源目录附件或可追踪附件编号。"
+    },
+    {
+      "rule_id": "fact-boundary-table-required",
+      "source_field_id": "fact_boundary_table_attachment",
+      "severity": "blocking",
+      "description": "必须提供事实边界表，区分事实、可影视化表达、虚构和未知。"
+    },
+    {
+      "rule_id": "authorization-consent-required",
+      "source_field_id": "authorization_or_consent_attachment",
+      "severity": "blocking",
+      "description": "必须提供授权、同意或明确的授权缺口附件。"
+    },
+    {
+      "rule_id": "sample-validation-required",
+      "source_field_id": "sample_validation_attachment",
+      "severity": "blocking",
+      "description": "必须提供至少 3 个样本验证附件，或明确样本不足缺口。"
+    },
+    {
+      "rule_id": "final-decision-reason-required",
+      "source_field_id": "final_decision_reason",
+      "severity": "blocking",
+      "description": "必须说明最终决策理由、证据边界和后续动作。"
+    },
+    {
+      "rule_id": "manual-patch-state-required",
+      "source_field_id": "manual_patch_request_state",
+      "severity": "blocking",
+      "description": "必须填写 not_requested 或 requested_after_real_review。"
+    },
+    {
+      "rule_id": "real-reviewer-signature-required",
+      "source_field_id": "reviewer_identity_and_role_attachment",
+      "severity": "blocking",
+      "description": "进入人工 Patch 候选队列前必须有真实审稿人签署记录。"
+    },
+    {
+      "rule_id": "validation-cannot-create-formal-patch",
+      "source_field_id": "formal_patch_created",
+      "severity": "blocking",
+      "description": "校验通过只能进入人工 Patch 候选模拟队列，不能创建正式 Patch。"
+    }
+  ],
+  "actual_candidate_validation_results": [
+    {
+      "validation_result_id": "actual-validation-001",
+      "ledger_entry_id": "decision-ledger-001",
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "actual_intake_status": "not_started",
+      "validation_status": "blocked_blank_intake",
+      "failed_rule_ids": [
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "formal_patch_created": false
+    },
+    {
+      "validation_result_id": "actual-validation-002",
+      "ledger_entry_id": "decision-ledger-002",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "actual_intake_status": "not_started",
+      "validation_status": "blocked_blank_intake",
+      "failed_rule_ids": [
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "formal_patch_created": false
+    },
+    {
+      "validation_result_id": "actual-validation-003",
+      "ledger_entry_id": "decision-ledger-003",
+      "candidate_id": "dp-revolutionary-history-event-reconstruction",
+      "actual_intake_status": "not_started",
+      "validation_status": "blocked_blank_intake",
+      "failed_rule_ids": [
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "formal_patch_created": false
+    },
+    {
+      "validation_result_id": "actual-validation-004",
+      "ledger_entry_id": "decision-ledger-004",
+      "candidate_id": "dp-heritage-process-consent",
+      "actual_intake_status": "not_started",
+      "validation_status": "blocked_blank_intake",
+      "failed_rule_ids": [
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "formal_patch_created": false
+    },
+    {
+      "validation_result_id": "actual-validation-005",
+      "ledger_entry_id": "decision-ledger-005",
+      "candidate_id": "dp-ethnic-ritual-community-boundary",
+      "actual_intake_status": "not_started",
+      "validation_status": "blocked_blank_intake",
+      "failed_rule_ids": [
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "formal_patch_created": false
+    },
+    {
+      "validation_result_id": "actual-validation-006",
+      "ledger_entry_id": "decision-ledger-006",
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "actual_intake_status": "not_started",
+      "validation_status": "blocked_blank_intake",
+      "failed_rule_ids": [
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "formal_patch_created": false
+    },
+    {
+      "validation_result_id": "actual-validation-007",
+      "ledger_entry_id": "decision-ledger-007",
+      "candidate_id": "dp-documentary-site-source-boundary",
+      "actual_intake_status": "not_started",
+      "validation_status": "blocked_blank_intake",
+      "failed_rule_ids": [
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "formal_patch_created": false
+    },
+    {
+      "validation_result_id": "actual-validation-008",
+      "ledger_entry_id": "decision-ledger-008",
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "actual_intake_status": "not_started",
+      "validation_status": "blocked_blank_intake",
+      "failed_rule_ids": [
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "formal_patch_created": false
+    },
+    {
+      "validation_result_id": "actual-validation-009",
+      "ledger_entry_id": "decision-ledger-009",
+      "candidate_id": "dp-craft-material-tool-process",
+      "actual_intake_status": "not_started",
+      "validation_status": "blocked_blank_intake",
+      "failed_rule_ids": [
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "formal_patch_created": false
+    }
+  ],
+  "simulated_intake_samples": [
+    {
+      "sample_id": "sim-valid-approve-craft-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "simulation_kind": "valid_approve_for_manual_patch_candidate",
+      "simulated_decision": "approve_for_manual_patch_candidate",
+      "simulated_reviewer_role": "工艺流程审稿",
+      "manual_patch_request_state": "requested_after_real_review",
+      "validation_status": "valid_for_manual_patch_candidate_queue_simulation",
+      "passed_rule_ids": [
+        "candidate-id-must-match-known-candidate",
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required",
+        "validation-cannot-create-formal-patch"
+      ],
+      "failed_rule_ids": [],
+      "can_enter_manual_patch_candidate_queue": true,
+      "can_promote_now": false,
+      "simulation_only": true,
+      "formal_patch_created": false,
+      "direct_write_to_china_culture_json": false,
+      "province_markdown_written": false
+    },
+    {
+      "sample_id": "sim-valid-repair-medical-001",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "simulation_kind": "valid_repair_required",
+      "simulated_decision": "repair_required",
+      "simulated_reviewer_role": "医疗伦理审稿",
+      "manual_patch_request_state": "not_requested",
+      "validation_status": "valid_for_repair_resubmission_simulation",
+      "passed_rule_ids": [
+        "candidate-id-must-match-known-candidate",
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required",
+        "real-reviewer-signature-required",
+        "validation-cannot-create-formal-patch"
+      ],
+      "failed_rule_ids": [],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "simulation_only": true,
+      "formal_patch_created": false,
+      "direct_write_to_china_culture_json": false,
+      "province_markdown_written": false
+    },
+    {
+      "sample_id": "sim-invalid-missing-evidence-sensitive-001",
+      "candidate_id": "dp-sensitive-history-evidence-expression",
+      "simulation_kind": "invalid_missing_evidence",
+      "simulated_decision": "approve_for_manual_patch_candidate",
+      "simulated_reviewer_role": "伦理审稿",
+      "manual_patch_request_state": "requested_after_real_review",
+      "validation_status": "invalid_missing_required_fields",
+      "passed_rule_ids": [
+        "candidate-id-must-match-known-candidate",
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "manual-patch-state-required"
+      ],
+      "failed_rule_ids": [
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "simulation_only": true,
+      "formal_patch_created": false,
+      "direct_write_to_china_culture_json": false,
+      "province_markdown_written": false
+    },
+    {
+      "sample_id": "sim-invalid-bad-decision-performance-001",
+      "candidate_id": "dp-performance-rights-and-stage-assets",
+      "simulation_kind": "invalid_decision_value",
+      "simulated_decision": "direct_write_to_china_culture_json",
+      "simulated_reviewer_role": "版权授权审稿",
+      "manual_patch_request_state": "requested_after_real_review",
+      "validation_status": "invalid_decision_not_allowed",
+      "passed_rule_ids": [
+        "candidate-id-must-match-known-candidate",
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required"
+      ],
+      "failed_rule_ids": [
+        "decision-must-be-allowed",
+        "validation-cannot-create-formal-patch"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "simulation_only": true,
+      "formal_patch_created": false,
+      "direct_write_to_china_culture_json": false,
+      "province_markdown_written": false
+    },
+    {
+      "sample_id": "sim-invalid-patch-before-sign-ai-comic-001",
+      "candidate_id": "dp-ai-comic-continuity-shot-language",
+      "simulation_kind": "invalid_patch_request_before_signature",
+      "simulated_decision": "approve_for_manual_patch_candidate",
+      "simulated_reviewer_role": "AI 漫剧导演审稿",
+      "manual_patch_request_state": "requested_after_real_review",
+      "validation_status": "invalid_missing_real_reviewer_signature",
+      "passed_rule_ids": [
+        "candidate-id-must-match-known-candidate",
+        "reviewer-name-required",
+        "reviewer-role-required",
+        "decision-must-be-allowed",
+        "source-bibliography-required",
+        "fact-boundary-table-required",
+        "authorization-consent-required",
+        "sample-validation-required",
+        "final-decision-reason-required",
+        "manual-patch-state-required"
+      ],
+      "failed_rule_ids": [
+        "real-reviewer-signature-required"
+      ],
+      "can_enter_manual_patch_candidate_queue": false,
+      "can_promote_now": false,
+      "simulation_only": true,
+      "formal_patch_created": false,
+      "direct_write_to_china_culture_json": false,
+      "province_markdown_written": false
+    }
+  ],
+  "manual_patch_candidate_simulation_queue": [
+    {
+      "queue_id": "manual-patch-sim-candidate-001",
+      "source_sample_id": "sim-valid-approve-craft-001",
+      "candidate_id": "dp-craft-material-tool-process",
+      "queue_status": "simulation_candidate_only_not_formal_patch",
+      "required_before_formal_patch": [
+        "real_human_review_approved_in_actual_ledger",
+        "evidence_attachment_files_committed",
+        "domain_pack_diff_prepared_for_human_review",
+        "manual_patch_reviewed",
+        "formal_patch_explicitly_requested_by_human",
+        "audit_and_lint_passed_after_patch"
+      ],
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    }
+  ],
+  "repair_resubmission_simulation_queue": [
+    {
+      "queue_id": "repair-resubmission-sim-001",
+      "source_sample_id": "sim-valid-repair-medical-001",
+      "candidate_id": "dp-medical-heritage-privacy-boundary",
+      "queue_status": "simulation_repair_resubmission_only",
+      "required_before_resubmission": [
+        "medical_privacy_boundary_rechecked",
+        "authorization_gap_closed_or_marked",
+        "fact_boundary_table_updated",
+        "real_reviewer_identity_attached"
+      ],
+      "formal_patch_created": false,
+      "formal_domain_pack_written": false,
+      "province_markdown_written": false
+    }
+  ],
+  "machine_gates": [
+    {
+      "gate_id": "validation-rules-created",
+      "status": "met",
+      "target_count": 12,
+      "current_count": 12
+    },
+    {
+      "gate_id": "actual-blank-intake-results-created",
+      "status": "met_as_blocked",
+      "target_count": 9,
+      "current_count": 9
+    },
+    {
+      "gate_id": "actual-blank-intake-has-zero-passes",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "simulated-valid-and-invalid-samples-created",
+      "status": "met",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "simulated-manual-patch-candidate-created",
+      "status": "met_as_simulation_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "repair-resubmission-simulation-created",
+      "status": "met_as_simulation_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "simulated-results-not-real-review",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "formal-patch-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "no-direct-province-or-domain-pack-writeback",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ],
+  "iteration_17_exit_gates": [
+    {
+      "gate_id": "intake-validation-result-structure-created",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "valid-invalid-simulation-samples-created",
+      "status": "met",
+      "target_count": 5,
+      "current_count": 5
+    },
+    {
+      "gate_id": "manual-patch-candidate-queue-created-as-simulation",
+      "status": "met_as_simulation_only",
+      "target_count": 1,
+      "current_count": 1
+    },
+    {
+      "gate_id": "actual-ledger-still-has-zero-approvals",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-patch-still-not-created",
+      "status": "met",
+      "target_count": 0,
+      "current_count": 0
+    },
+    {
+      "gate_id": "formal-domain-pack-and-province-markdown-untouched",
+      "status": "met",
+      "target_count": 1,
+      "current_count": 1
+    }
+  ]
+}

@@ -156,10 +156,11 @@ function buildCharacterAsset(
   index: number,
 ): GearsCharacterAsset {
   const characterScenes = story.scene_breakdown.filter(scene => scene.characters?.includes(name));
+  const knowledgeKeys = story.source_entry.includes(name) ? [name, story.source_entry] : [name];
   const characterContext = [
     character?.description,
     character?.arc,
-    ...findKnowledgeSnippets(story, [name, story.source_entry]),
+    ...findKnowledgeSnippets(story, knowledgeKeys),
     ...findSupplementSnippets(story, [name]),
     ...characterScenes.flatMap(scene => [
       scene.title,
@@ -179,10 +180,10 @@ function buildCharacterAsset(
     role_position: mapRolePosition(character?.role, index),
     species_type: '人类',
     ethnicity: ['东亚'],
-    gender: inferGender(name, `${characterContext} ${storyContext}`),
-    age_range: inferAgeRange(`${name} ${characterContext} ${storyContext}`),
+    gender: inferGender(name, character?.description ?? characterContext),
+    age_range: inferAgeRange(name, character?.description ?? characterContext),
     appearance_features: appearanceFeatures,
-    clothing: inferClothing(`${characterContext} ${storyContext}`),
+    clothing: inferClothing(name, `${characterContext} ${storyContext}`),
     ...(carriedProps ? { carried_props: carriedProps, signature_objects: carriedProps } : {}),
     ...(character?.arc
       ? { background_oneliner: character.arc }
@@ -192,6 +193,15 @@ function buildCharacterAsset(
   };
 }
 
+const COLLECTIVE_CHARACTER_TERMS = [
+  '群体', '百姓', '众人', '村民', '乡民', '学生们', '孩子们', '人群',
+  '学员', '骨干', '群众', '协会成员', '农民们',
+];
+
+function isCollectiveCharacterName(name: string): boolean {
+  return COLLECTIVE_CHARACTER_TERMS.some(word => name.includes(word));
+}
+
 function inferGender(name: string, text: string): GearsGender {
   const nameGender = inferGenderFromText(name, true);
   if (nameGender !== '未指定') return nameGender;
@@ -199,13 +209,13 @@ function inferGender(name: string, text: string): GearsGender {
 }
 
 function inferGenderFromText(text: string, allowGroupTerms: boolean): GearsGender {
-  if (allowGroupTerms && ['群体', '百姓', '众人', '村民', '乡民', '学生们', '孩子们', '人群'].some(word => text.includes(word))) {
+  if (allowGroupTerms && isCollectiveCharacterName(text)) {
     return '不适用';
   }
-  if (['老奶奶', '老婆婆', '老妇人', '阿婆', '少女', '姑娘', '女子', '女儿', '母亲', '郑氏', '狐女', '龙女', '女鬼'].some(word => text.includes(word))) {
+  if (['杨开慧', '老奶奶', '老婆婆', '老妇人', '阿婆', '少女', '姑娘', '女子', '女儿', '母亲', '郑氏', '狐女', '龙女', '女鬼'].some(word => text.includes(word))) {
     return '女';
   }
-  if (['老人', '老者', '老先生', '少年', '书童', '船夫', '艄公', '渔父', '渔夫', '县令', '知县', '道士', '道人', '僧人', '和尚', '父亲', '上官', '王逵', '周敦颐', '毛泽东'].some(word => text.includes(word))) {
+  if (['毛贻昌', '萧子升', '杨昌济', '蔡和森', '老人', '老者', '老先生', '少年', '书童', '船夫', '艄公', '渔父', '渔夫', '县令', '知县', '道士', '道人', '僧人', '和尚', '父亲', '上官', '王逵', '周敦颐', '毛泽东'].some(word => text.includes(word))) {
     return '男';
   }
   if (['性别：女', '性别: 女', '女性', '女，', '女；', '女)'].some(word => text.includes(word))) return '女';
@@ -242,8 +252,20 @@ function mapRolePosition(role: string | undefined, index: number): GearsCharacte
   return '配角';
 }
 
-function inferAgeRange(text: string): GearsAgeRange {
+function inferAgeRange(name: string, text: string): GearsAgeRange {
+  if (isCollectiveCharacterName(name)) return '不适用';
+  const knownAges: Record<string, GearsAgeRange> = {
+    毛泽东: '青年',
+    毛贻昌: '中年',
+    萧子升: '青年',
+    杨昌济: '中年',
+    蔡和森: '青年',
+    杨开慧: '青年',
+  };
+  if (knownAges[name]) return knownAges[name];
+  if (text.includes('父亲') || text.includes('母亲') || text.includes('师长') || text.includes('老师')) return '中年';
   if (text.includes('儿童') || text.includes('孩子')) return '儿童';
+  if (text.includes('少年') && text.includes('青年')) return '青年';
   if (text.includes('少年')) return '少年';
   if (text.includes('青年') || text.includes('求学')) return '青年';
   if (text.includes('中年')) return '中年';
@@ -251,7 +273,25 @@ function inferAgeRange(text: string): GearsAgeRange {
   return '青年';
 }
 
-function inferClothing(text: string): string {
+function inferClothing(name: string, text: string): string {
+  if (name === '毛泽东') {
+    return '按清末民初至1920年代的场次年龄推进：韶山少年阶段穿湖南农家短褂布裤；一师求学与新民学会阶段穿朴素学生长衫或学生装；农民运动阶段穿便于乡村行走的布质长衫、短褂与布鞋，发式和年龄随年代一致。';
+  }
+  if (name === '毛贻昌') {
+    return '清末湖南中年农家经营者服装：深色棉麻对襟短褂、宽腿布裤、布鞋，不使用学生装。';
+  }
+  if (name === '杨昌济') {
+    return '民国初年中年学者教师服装：素色长衫、布鞋，仪容稳重，不使用少年学生造型。';
+  }
+  if (['萧子升', '蔡和森'].includes(name)) {
+    return '1910年代湖南青年学生服装：朴素长衫或学生装、布鞋，发式符合民国初年青年形象。';
+  }
+  if (name === '杨开慧') {
+    return '1920年代湖南青年女性知识分子服装：素色上衣与长裙或布裤、布鞋，发式简洁，符合农民夜校教学场景。';
+  }
+  if (isCollectiveCharacterName(name) && name.includes('农民')) {
+    return '1920年代湖南农民群体服装：棉麻短褂、布裤、草鞋或布鞋，按个体做旧差异，不使用统一学生装。';
+  }
   if (['周敦颐', '濂溪', '理学', '太极图说', '爱莲说', '宋', '北宋'].some(word => text.includes(word))) {
     return '北宋士人或少年读书人固定服装：素色交领长衫或圆领袍，布履，头发束起，所有单元保持一致。';
   }

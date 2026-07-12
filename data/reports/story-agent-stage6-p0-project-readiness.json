@@ -1,0 +1,1495 @@
+{
+  "schema_version": "story-agent-stage6-real-input-readiness/v1",
+  "generated_at": "2026-07-11T15:10:12.473Z",
+  "source_intake_path": "data/professional-benchmarks/all-format-stage6-p0-real-input-operator-template.json",
+  "source_intake_schema_version": "story-agent-stage6-real-input-intake/v1",
+  "source_intake_canonical_sha256": "0d1d66e38c14c5ef113b7221b0545e1d666c73d6a0b5f3981011c98ee058566c",
+  "source_registry_schema_version": "all-format-professional-multi-round-revision-specs/v1",
+  "source_registry_canonical_sha256": "d19140ac1d8b6f10b99c6c34244a57f469900e42dde0fb68126b808d8dc1e6ac",
+  "policy": {
+    "readiness_counts_as_completed_revision": false,
+    "fixture_simulation_fallback_counts_as_real_input": false,
+    "professional_pass_can_be_granted_by_intake": false
+  },
+  "global_errors": [
+    {
+      "code": "intake_submitted_at_invalid",
+      "path": "submitted_at",
+      "message": "Operator submission timestamp must be an ISO date-time."
+    },
+    {
+      "code": "operator_identity_missing",
+      "path": "operator",
+      "message": "A non-anonymous operator ID and display name are required."
+    },
+    {
+      "code": "operator_contact_reference_missing",
+      "path": "operator.contact_reference",
+      "message": "An auditable operator contact reference is required."
+    }
+  ],
+  "summary": {
+    "project_count": 15,
+    "ready_project_count": 0,
+    "blocked_project_count": 15,
+    "completed_verified_revision_round_count": 0,
+    "professional_pass_count": 0
+  },
+  "projects": [
+    {
+      "benchmark_id": "stage6-001-character-story",
+      "video_type": "character_story",
+      "source_entry": "周敦颐——理学开山鼻祖",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-001-character-story.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-001-character-story.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-001-character-story.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-001-character-story.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-001-character-story.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-001-character-story.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-001-character-story.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-001-character-story.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-001-character-story.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-001-character-story.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-001-character-story.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-001-character-story.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-002-historical-drama",
+      "video_type": "historical_drama",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-002-historical-drama.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-002-historical-drama.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-002-historical-drama.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-002-historical-drama.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-002-historical-drama.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-002-historical-drama.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-002-historical-drama.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-002-historical-drama.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-002-historical-drama.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-002-historical-drama.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-002-historical-drama.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-002-historical-drama.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-003-legend-story",
+      "video_type": "legend_story",
+      "source_entry": "洞庭湖君山——传说叠加的洞庭明珠",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-003-legend-story.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-003-legend-story.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-003-legend-story.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-003-legend-story.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-003-legend-story.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-003-legend-story.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-003-legend-story.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-003-legend-story.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-003-legend-story.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-003-legend-story.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-003-legend-story.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-003-legend-story.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-004-children-story",
+      "video_type": "children_story",
+      "source_entry": "马王堆汉墓——沉睡两千年的汉代文明",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-004-children-story.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-004-children-story.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-004-children-story.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-004-children-story.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-004-children-story.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-004-children-story.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-004-children-story.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-004-children-story.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-004-children-story.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-004-children-story.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-004-children-story.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-004-children-story.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-005-ai-comic-drama",
+      "video_type": "ai_comic_drama",
+      "source_entry": "通道侗锦——湘西南侗寨的指尖花雨",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-005-ai-comic-drama.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-005-ai-comic-drama.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-005-ai-comic-drama.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-005-ai-comic-drama.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-005-ai-comic-drama.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-005-ai-comic-drama.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-005-ai-comic-drama.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-005-ai-comic-drama.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-005-ai-comic-drama.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-005-ai-comic-drama.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-005-ai-comic-drama.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-005-ai-comic-drama.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-006-culture-promo",
+      "video_type": "culture_promo",
+      "source_entry": "湘绣——中国四大名绣之一",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-006-culture-promo.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-006-culture-promo.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-006-culture-promo.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-006-culture-promo.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-006-culture-promo.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-006-culture-promo.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-006-culture-promo.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-006-culture-promo.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-006-culture-promo.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-006-culture-promo.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-006-culture-promo.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-006-culture-promo.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-007-heritage-promo",
+      "video_type": "heritage_promo",
+      "source_entry": "桑植白族仗鼓舞——700年前迁徙白族的武舞合一",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-007-heritage-promo.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-007-heritage-promo.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-007-heritage-promo.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-007-heritage-promo.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-007-heritage-promo.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-007-heritage-promo.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-007-heritage-promo.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-007-heritage-promo.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-007-heritage-promo.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-007-heritage-promo.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-007-heritage-promo.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-007-heritage-promo.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-008-city-brand-promo",
+      "video_type": "city_brand_promo",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-008-city-brand-promo.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-008-city-brand-promo.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-008-city-brand-promo.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-008-city-brand-promo.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-008-city-brand-promo.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-008-city-brand-promo.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-008-city-brand-promo.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-008-city-brand-promo.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-008-city-brand-promo.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-008-city-brand-promo.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-008-city-brand-promo.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-008-city-brand-promo.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-009-social-short",
+      "video_type": "social_short",
+      "source_entry": "永州摩崖石刻——柳宗元书写的山水文学基因",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-009-social-short.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-009-social-short.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-009-social-short.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-009-social-short.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-009-social-short.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-009-social-short.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-009-social-short.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-009-social-short.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-009-social-short.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-009-social-short.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-009-social-short.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-009-social-short.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-010-documentary-short",
+      "video_type": "documentary_short",
+      "source_entry": "马王堆汉墓——沉睡两千年的汉代文明",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-010-documentary-short.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-010-documentary-short.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-010-documentary-short.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-010-documentary-short.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-010-documentary-short.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-010-documentary-short.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-010-documentary-short.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-010-documentary-short.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-010-documentary-short.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-010-documentary-short.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-010-documentary-short.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-010-documentary-short.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-011-explainer-video",
+      "video_type": "explainer_video",
+      "source_entry": "长沙窑铜官陶瓷烧制技艺——海上丝绸之路的釉下彩开创",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-011-explainer-video.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-011-explainer-video.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-011-explainer-video.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-011-explainer-video.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-011-explainer-video.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-011-explainer-video.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-011-explainer-video.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-011-explainer-video.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-011-explainer-video.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-011-explainer-video.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-011-explainer-video.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-011-explainer-video.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-012-lecture-video",
+      "video_type": "lecture_video",
+      "source_entry": "岳麓书院——千年学府与实事求是",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-012-lecture-video.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-012-lecture-video.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-012-lecture-video.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-012-lecture-video.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-012-lecture-video.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-012-lecture-video.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-012-lecture-video.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-012-lecture-video.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-012-lecture-video.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-012-lecture-video.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-012-lecture-video.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-012-lecture-video.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-013-education-training",
+      "video_type": "education_training",
+      "source_entry": "湘绣——中国四大名绣之一",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-013-education-training.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-013-education-training.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-013-education-training.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-013-education-training.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-013-education-training.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-013-education-training.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-013-education-training.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-013-education-training.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-013-education-training.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-013-education-training.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-013-education-training.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-013-education-training.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-014-scene-short",
+      "video_type": "scene_short",
+      "source_entry": "岳阳楼——先忧后乐的精神地标",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-014-scene-short.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-014-scene-short.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-014-scene-short.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-014-scene-short.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-014-scene-short.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-014-scene-short.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-014-scene-short.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-014-scene-short.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-014-scene-short.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-014-scene-short.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-014-scene-short.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-014-scene-short.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    },
+    {
+      "benchmark_id": "stage6-015-landscape-mood",
+      "video_type": "landscape_mood",
+      "source_entry": "张家界武陵源——3.8亿年雕琢的世界自然遗产",
+      "real_project_id": "",
+      "initial_package_path": "",
+      "initial_package_sha256": "",
+      "status": "blocked",
+      "blockers": [
+        {
+          "code": "operator_identity_missing",
+          "path": "operator",
+          "message": "A non-anonymous operator ID and display name are required."
+        },
+        {
+          "code": "operator_contact_reference_missing",
+          "path": "operator.contact_reference",
+          "message": "An auditable operator contact reference is required."
+        },
+        {
+          "code": "real_input_provenance_required",
+          "path": "projects.stage6-015-landscape-mood.provenance",
+          "message": "Fixture, simulation, fallback, and preparation provenance cannot become ready."
+        },
+        {
+          "code": "real_project_id_missing",
+          "path": "projects.stage6-015-landscape-mood.real_project_id",
+          "message": "A non-placeholder real project ID is required."
+        },
+        {
+          "code": "initial_package_path_missing",
+          "path": "projects.stage6-015-landscape-mood.initial_package.path",
+          "message": "Initial ProfessionalTextPackage path is required."
+        },
+        {
+          "code": "creator_authorization_unverified",
+          "path": "projects.stage6-015-landscape-mood.creator_authorization",
+          "message": "Creator/model authorization must be verified and cover rounds 1 and 2."
+        },
+        {
+          "code": "revision_budget_unverified",
+          "path": "projects.stage6-015-landscape-mood.revision_budget",
+          "message": "A verified positive budget covering rounds 1 and 2 is required."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-015-landscape-mood.reviewers.writer_editor",
+          "message": "writer_editor must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-015-landscape-mood.reviewers.writer_editor.identity_verification",
+          "message": "writer_editor identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-015-landscape-mood.reviewers.director",
+          "message": "director must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-015-landscape-mood.reviewers.director.identity_verification",
+          "message": "director identity verification is incomplete."
+        },
+        {
+          "code": "anonymous_reviewer_not_allowed",
+          "path": "projects.stage6-015-landscape-mood.reviewers.fact_culture_reviewer",
+          "message": "fact_culture_reviewer must have a non-anonymous ID and display name."
+        },
+        {
+          "code": "reviewer_identity_unverified",
+          "path": "projects.stage6-015-landscape-mood.reviewers.fact_culture_reviewer.identity_verification",
+          "message": "fact_culture_reviewer identity verification is incomplete."
+        },
+        {
+          "code": "table_read_schedule_unverified",
+          "path": "projects.stage6-015-landscape-mood.table_read",
+          "message": "Verified table-read scheduling must include all three assigned reviewer IDs."
+        }
+      ],
+      "checks": {
+        "intake_schema_valid": true,
+        "registry_binding_valid": true,
+        "real_provenance_verified": false,
+        "real_project_id_valid": false,
+        "initial_package_file_valid": false,
+        "initial_package_schema_valid": false,
+        "initial_package_binding_valid": false,
+        "initial_package_sha256_valid": false,
+        "creator_authorization_verified": false,
+        "revision_budget_verified": false,
+        "reviewer_assignments_verified": false,
+        "table_read_verified": false
+      },
+      "completed_verified_round_count": 0,
+      "professional_passed": false
+    }
+  ]
+}
